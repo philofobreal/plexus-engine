@@ -1,6 +1,8 @@
-import type { AudioFrame, BeatEvent, AnalysisResult } from '../types';
+import type { AnalysisRequest, AudioFrame, BeatEvent, AnalysisResult } from '../types';
 
-self.onmessage = function(e: MessageEvent<{samples: ArrayBuffer, sampleRate: number}>) {
+self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
+    try {
+    const requestId = e.data.requestId;
     const channel = new Float32Array(e.data.samples);
     const sampleRate = e.data.sampleRate;
     const hopSize = 1024; 
@@ -131,6 +133,14 @@ self.onmessage = function(e: MessageEvent<{samples: ArrayBuffer, sampleRate: num
         }
     }
 
-    const result: AnalysisResult = { bpm: estimatedBPM, frames: outFrames, events: outEvents, hopSize: hopSize };
+    const result: AnalysisResult = { requestId, bpm: estimatedBPM, frames: outFrames, events: outEvents, hopSize: hopSize };
     self.postMessage({ type: 'analysis_done', ...result });
+    } catch (error) {
+        self.postMessage({
+            type: 'analysis_error',
+            requestId: e.data.requestId,
+            errorCode: 'ANALYSIS_FAILED',
+            message: error instanceof Error ? error.message : 'Unknown analysis error'
+        });
+    }
 };

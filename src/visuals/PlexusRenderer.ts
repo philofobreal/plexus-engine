@@ -17,12 +17,22 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
             for (let i = 0; i < 75; i++) particles.push(new Particle(p));
         };
 
-        engine.onPlaybackEnded = () => {
+        const syncEventIndex = (time: number) => {
+            currentEventIdx = State.events.findIndex(e => e.time >= time);
+            if (currentEventIdx === -1) currentEventIdx = State.events.length;
+            State.beatDecay = 0;
+            State.snareFlash = 0;
+        };
+
+        engine.addPositionChangedListener(syncEventIndex);
+
+        engine.addPlaybackEndedListener(() => {
             currentEventIdx = 0;
             State.beatDecay = 0;
+            State.snareFlash = 0;
             State.currentFrame.state = 'IDLE';
             ui.updateDashboard();
-        };
+        });
 
         p.draw = () => {
             let ct = engine.getCurrentTime();

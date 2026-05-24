@@ -16,8 +16,29 @@ export interface AudioFrame {
 }
 
 export interface AnalysisResult {
+    requestId: number;
     bpm: number;
     frames: AudioFrame[];
     events: BeatEvent[];
     hopSize: number;
 }
+
+export interface AnalysisRequest {
+    requestId: number;
+    algorithmVersion: number;
+    samples: ArrayBuffer;
+    sampleRate: number;
+}
+
+export interface AnalysisSuccessMessage extends AnalysisResult {
+    type: 'analysis_done';
+}
+
+export interface AnalysisErrorMessage {
+    type: 'analysis_error';
+    requestId: number;
+    errorCode: string;
+    message: string;
+}
+
+export type AnalysisWorkerMessage = AnalysisSuccessMessage | AnalysisErrorMessage;

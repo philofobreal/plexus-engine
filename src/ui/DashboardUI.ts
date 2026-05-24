@@ -4,10 +4,10 @@ import { State } from '../state/store';
 export class DashboardUI {
     private isDraggingSlider = false;
     private els: Record<string, HTMLElement>;
-    private engine: AudioEngine; // <--- 1. Ide deklaráljuk
+    private engine: AudioEngine;
 
-    constructor(engine: AudioEngine) { // <--- 2. Itt kivesszük a 'private' szót
-        this.engine = engine; // <--- 3. Ide rendeljük hozzá
+    constructor(engine: AudioEngine) {
+        this.engine = engine;
         this.els = {
             status: document.getElementById('status-text')!,
             playBtn: document.getElementById('play-btn')!,
@@ -32,12 +32,26 @@ export class DashboardUI {
             valDyn: document.getElementById('val-dyn')!,
             barDyn: document.getElementById('bar-dyn')!
         };
+
+        this.engine.addPlaybackEndedListener(() => {
+            this.els.playBtn.innerText = "Play";
+            (this.els.seekBar as HTMLInputElement).value = "0";
+            this.updateDashboard();
+        });
+
+        this.engine.onAnalysisError = (message) => {
+            this.els.status.innerText = "Hiba: " + message;
+            (this.els.playBtn as HTMLButtonElement).disabled = true;
+            (this.els.seekBar as HTMLInputElement).disabled = true;
+            (this.els.upload as HTMLInputElement).disabled = false;
+        };
+
         this.initBindings();
     }
 
     private formatTime(seconds: number): string {
         if (!seconds || isNaN(seconds)) return "0:00";
-        let min = Math.floor(seconds / 60); 
+        let min = Math.floor(seconds / 60);
         let sec = Math.floor(seconds % 60);
         return `${min}:${sec < 10 ? '0' : ''}${sec}`;
     }
@@ -48,19 +62,24 @@ export class DashboardUI {
             if (!file) return;
 
             this.engine.stop(true);
-            this.els.status.innerText = "Globális Dal Analízis (Zéró-CPU előkészítés)...";
+            this.els.status.innerText = "Globalis dalanalizis (zero-CPU elokeszites)...";
             (this.els.upload as HTMLInputElement).disabled = true;
             (this.els.playBtn as HTMLButtonElement).disabled = true;
+            (this.els.seekBar as HTMLInputElement).disabled = true;
+            (this.els.seekBar as HTMLInputElement).value = "0";
+            this.els.playBtn.innerText = "Play";
+            this.els.timeCur.innerText = "0:00";
+            this.els.timeTot.innerText = "0:00";
             this.els.bpmBadge.style.display = "none";
-            
+
             this.engine.onAnalysisComplete = () => {
-                if (State.bpm > 0) { 
-                    this.els.bpmBadge.innerText = State.bpm + " BPM"; 
-                    this.els.bpmBadge.style.display = "inline-flex"; 
+                if (State.bpm > 0) {
+                    this.els.bpmBadge.innerText = State.bpm + " BPM";
+                    this.els.bpmBadge.style.display = "inline-flex";
                 }
-                this.els.status.innerText = "Kész: " + file.name;
-                (this.els.playBtn as HTMLButtonElement).disabled = false; 
-                (this.els.seekBar as HTMLInputElement).disabled = false; 
+                this.els.status.innerText = "Kesz: " + file.name;
+                (this.els.playBtn as HTMLButtonElement).disabled = false;
+                (this.els.seekBar as HTMLInputElement).disabled = false;
                 (this.els.upload as HTMLInputElement).disabled = false;
                 this.els.timeTot.innerText = this.formatTime(State.duration);
             };
@@ -69,11 +88,11 @@ export class DashboardUI {
         });
 
         this.els.playBtn.addEventListener('click', () => {
-            if (State.isPlaying) { 
-                this.engine.stop(false); 
+            if (State.isPlaying) {
+                this.engine.stop(false);
                 this.els.playBtn.innerText = "Play";
-            } else { 
-                this.engine.play(); 
+            } else {
+                this.engine.play();
                 this.els.playBtn.innerText = "Pause";
             }
         });
@@ -85,12 +104,7 @@ export class DashboardUI {
             if (State.duration > 0) {
                 let seekTime = (parseFloat((e.target as HTMLInputElement).value) / 100) * State.duration;
                 this.els.timeCur.innerText = this.formatTime(seekTime);
-                if (State.isPlaying) { 
-                    this.engine.stop(false); 
-                    this.engine.play(seekTime); 
-                } else { 
-                    this.engine.pausedAt = seekTime; 
-                }
+                this.engine.seek(seekTime);
             }
         });
         seek.addEventListener('change', () => this.isDraggingSlider = false);
@@ -106,8 +120,9 @@ export class DashboardUI {
     }
 
     updateDashboard() {
-        if (State.isPlaying && !this.isDraggingSlider) {
-            (this.els.seekBar as HTMLInputElement).value = ((State.currentTime / State.duration) * 100).toString();
+        if (!this.isDraggingSlider) {
+            const progress = State.duration > 0 ? (State.currentTime / State.duration) * 100 : 0;
+            (this.els.seekBar as HTMLInputElement).value = progress.toString();
             this.els.timeCur.innerText = this.formatTime(State.currentTime);
         }
 
@@ -116,7 +131,7 @@ export class DashboardUI {
         this.els.valM.innerText = State.currentFrame.m.toFixed(2); this.els.barM.style.width = (State.currentFrame.m * 100) + "%";
         this.els.valT.innerText = State.currentFrame.t.toFixed(2); this.els.barT.style.width = (State.currentFrame.t * 100) + "%";
         this.els.valBeat.innerText = State.beatDecay.toFixed(2); this.els.barBeat.style.width = (State.beatDecay * 100) + "%";
-        
+
         let dynText = "IDLE";
         if (State.isPlaying) {
             if (State.currentFrame.state === 'HIGH') dynText = "HIGH";
@@ -124,18 +139,21 @@ export class DashboardUI {
             else if (State.currentFrame.state === 'LOW_DROP') dynText = "LOW [DROP]";
             else if (State.currentFrame.state === 'LOW_OVERLOAD') dynText = "LOW [OVERLOAD]";
         }
-        
-        this.els.valDyn.innerText = dynText; 
+
+        this.els.valDyn.innerText = dynText;
         this.els.barDyn.style.width = (State.currentFrame.eRatio * 100) + "%";
-        
+
         let isLowMode = State.currentFrame.state !== 'HIGH' && State.currentFrame.state !== 'IDLE';
         let accentColor = isLowMode && State.isPlaying ? '#ff00aa' : '#00ffcc';
         this.els.valDyn.style.color = accentColor; this.els.barDyn.style.background = accentColor;
 
         if (State.duration > 0) {
             let progPercent = (State.currentTime / State.duration) * 100;
-            this.els.valProg.innerText = Math.floor(progPercent) + "%"; 
+            this.els.valProg.innerText = Math.floor(progPercent) + "%";
             this.els.barProg.style.width = progPercent + "%";
+        } else {
+            this.els.valProg.innerText = "0%";
+            this.els.barProg.style.width = "0%";
         }
     }
 }
