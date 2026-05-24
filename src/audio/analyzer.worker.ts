@@ -1,4 +1,17 @@
-import type { AnalysisRequest, AudioFrame, BeatEvent, AnalysisResult } from '../types';
+import type {
+    AnalysisRequest,
+    AudioFrame,
+    BeatEvent,
+    AnalysisResult,
+    TrackAnalysis,
+    TrackSection,
+    TrackSectionLabel,
+    VisualCueEvent,
+    VisualCueKind,
+    VisualFeatureFrame,
+    MusicPattern,
+    PatternOccurrence
+} from '../types';
 
 self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
     try {
@@ -42,6 +55,15 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
     function getTypicalMax(arr: Float32Array) {
         let sorted = new Float32Array(arr).sort();
         return sorted[Math.floor(sorted.length * 0.98)] || 0.001;
+    }
+
+    function clamp01(value: number) {
+        return Math.min(1, Math.max(0, value));
+    }
+
+    function smoothstep(edge0: number, edge1: number, value: number) {
+        let t = clamp01((value - edge0) / (edge1 - edge0));
+        return t * t * (3 - 2 * t);
     }
 
     let typFluxB = getTypicalMax(fluxB); let typFluxM = getTypicalMax(fluxM); let typFluxH = getTypicalMax(fluxH);
@@ -89,7 +111,9 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
 
     let outFrames: AudioFrame[] = new Array(totalFrames);
     let outEvents: BeatEvent[] = [];
+    let featureFrames: VisualFeatureFrame[] = new Array(totalFrames);
     let sE=0, sB=0, sM=0, sT=0; 
+    let sMelody=0, sVocal=0, sFx=0, sDensity=0, sBrightness=0, sTension=0;
     
     lastBeatTime = 0;
 
@@ -115,6 +139,44 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
         outFrames[i] = { e: sE, b: sB, m: sM, t: sT, state: state, eRatio: energyRatio };
 
         let nB = fluxB[i] / typFluxB; let nM = fluxM[i] / typFluxM; let nH = fluxH[i] / typFluxH;
+        let audibleEnergy = Math.min(rmsT[i] / typRmsT, 1);
+        let featureGate = smoothstep(0.04, 0.18, audibleEnergy);
+        let totalBand = rmsB[i] + rmsM[i] + rmsH[i] + 0.000001;
+        let midRatio = featureGate > 0 ? rmsM[i] / totalBand : 0;
+        let highRatio = featureGate > 0 ? rmsH[i] / totalBand : 0;
+        let bassRatio = featureGate > 0 ? rmsB[i] / totalBand : 0;
+        let rawFluxDensity = Math.min((nB + nM + nH) / 3, 1);
+        let fluxDensity = rawFluxDensity * featureGate;
+        let percussiveSuppression = 1 - clamp01(rawFluxDensity * 0.55 + Math.min(nB, 1) * 0.18 + Math.min(nH, 1) * 0.22);
+        let bassSuppression = 1 - clamp01((bassRatio - 0.34) * 2.1);
+        let brightnessSuppression = 1 - clamp01((highRatio - 0.42) * 2.4);
+        let midFocus = smoothstep(0.3, 0.48, midRatio) * (1 - smoothstep(0.72, 0.9, midRatio));
+        let sustainedMid = Math.max(0, midRatio - Math.min(nM, 1) * 0.18);
+        let melodyConfidence = featureGate * percussiveSuppression * bassSuppression * brightnessSuppression;
+        let melodyTarget = clamp01((sustainedMid - 0.3) * 2.35 + sM * 0.16) * melodyConfidence;
+        let vocalBandShape = midFocus * (1 - Math.abs(highRatio - 0.24) * 1.65);
+        let vocalConfidence = featureGate * percussiveSuppression * bassSuppression * (1 - clamp01(rawFluxDensity * 0.35));
+        let vocalTarget = clamp01(vocalBandShape - bassRatio * 0.35 - Math.max(0, highRatio - 0.38) * 0.55) * vocalConfidence;
+        let fxTarget = clamp01(highRatio * 1.35 + nH * 0.28 + fluxDensity * 0.25 - sB * 0.15) * featureGate;
+        let densityTarget = clamp01(fluxDensity * 0.7 + sE * 0.3) * featureGate;
+        let brightnessTarget = clamp01(highRatio * 1.45 + sT * 0.25) * featureGate;
+        let tensionTarget = clamp01(energyRatio * 0.55 + densityTarget * 0.3 + brightnessTarget * 0.15) * featureGate;
+
+        sMelody += (melodyTarget - sMelody) * 0.08;
+        sVocal += (vocalTarget - sVocal) * 0.06;
+        sFx += (fxTarget - sFx) * 0.14;
+        sDensity += (densityTarget - sDensity) * 0.1;
+        sBrightness += (brightnessTarget - sBrightness) * 0.1;
+        sTension += (tensionTarget - sTension) * 0.07;
+
+        featureFrames[i] = {
+            melody: sMelody,
+            vocal: sVocal,
+            fx: sFx,
+            density: sDensity,
+            brightness: sBrightness,
+            tension: sTension
+        };
         
         let scoreKick = nB * (1.0 - (nH * 0.5));
         let scoreSnare = Math.min(nB, Math.min(nM, nH)) * 1.5;
@@ -133,7 +195,159 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
         }
     }
 
-    const result: AnalysisResult = { requestId, bpm: estimatedBPM, frames: outFrames, events: outEvents, hopSize: hopSize };
+    function averageFeature(startIdx: number, endIdx: number, pick: (f: VisualFeatureFrame) => number) {
+        let sum = 0;
+        let count = Math.max(1, endIdx - startIdx);
+        for (let i = startIdx; i < endIdx && i < featureFrames.length; i++) sum += pick(featureFrames[i]);
+        return sum / count;
+    }
+
+    function dominantFeature(startIdx: number, endIdx: number): VisualCueKind | 'rhythm' {
+        let melody = averageFeature(startIdx, endIdx, f => f.melody);
+        let vocal = averageFeature(startIdx, endIdx, f => f.vocal);
+        let fx = averageFeature(startIdx, endIdx, f => f.fx);
+        let density = averageFeature(startIdx, endIdx, f => f.density);
+        let max = Math.max(melody, vocal, fx, density);
+        if (max === vocal) return 'vocal';
+        if (max === melody) return 'melody';
+        if (max === fx) return 'fx';
+        return 'rhythm';
+    }
+
+    let trackSections: TrackSection[] = blocks.map((block, idx) => {
+        let energy = (gMaxAvgE - gMinAvgE) > 0 ? (block.avgE - gMinAvgE) / (gMaxAvgE - gMinAvgE) : 0;
+        let density = averageFeature(block.startIdx, block.endIdx, f => f.density);
+        let tension = averageFeature(block.startIdx, block.endIdx, f => f.tension);
+        let label: TrackSectionLabel = 'verse';
+        if (idx === 0 && energy < 0.5) label = 'intro';
+        else if (idx === blocks.length - 1 && energy < 0.5) label = 'outro';
+        else if (energy > 0.72 && density > 0.48) label = 'peak';
+        else if (energy > 0.58 && tension > 0.58) label = 'drop';
+        else if (energy > 0.42 && tension > 0.5) label = 'build';
+        else if (energy < 0.28) label = 'break';
+
+        return {
+            start: block.startIdx * hopSize / sampleRate,
+            end: block.endIdx * hopSize / sampleRate,
+            label,
+            energy,
+            density,
+            dominantFeature: dominantFeature(block.startIdx, block.endIdx)
+        };
+    });
+
+    let visualCues: VisualCueEvent[] = [];
+    let lastCueTimes: Record<VisualCueKind, number> = { melody: -999, vocal: -999, fx: -999, impact: -999, break: -999, pattern: -999 };
+
+    function addCue(i: number, kind: VisualCueKind, intensity: number, confidence: number, minGap: number, duration: number, patternId?: string) {
+        let time = i * hopSize / sampleRate;
+        if (time - lastCueTimes[kind] < minGap) return;
+        visualCues.push({
+            time,
+            duration,
+            intensity: Math.min(Math.max(intensity, 0), 1),
+            confidence: Math.min(Math.max(confidence, 0), 1),
+            kind,
+            patternId
+        });
+        lastCueTimes[kind] = time;
+    }
+
+    function bucket(value: number, buckets: number) {
+        return Math.max(0, Math.min(buckets - 1, Math.floor(value * buckets)));
+    }
+
+    function patternSignature(section: TrackSection) {
+        return [
+            section.label,
+            section.dominantFeature,
+            `e${bucket(section.energy, 4)}`,
+            `d${bucket(section.density, 4)}`
+        ].join(':');
+    }
+
+    let patternGroups: Record<string, { sections: TrackSection[], indexes: number[] }> = {};
+    for (let i = 0; i < trackSections.length; i++) {
+        let section = trackSections[i];
+        if (section.end - section.start < secondsPerBeat * 4) continue;
+        let signature = patternSignature(section);
+        patternGroups[signature] = patternGroups[signature] || { sections: [], indexes: [] };
+        patternGroups[signature].sections.push(section);
+        patternGroups[signature].indexes.push(i);
+    }
+
+    let musicPatterns: MusicPattern[] = Object.entries(patternGroups)
+        .filter(([, group]) => group.sections.length >= 2)
+        .map(([signature, group], patternIdx) => {
+            let avgEnergy = group.sections.reduce((sum, section) => sum + section.energy, 0) / group.sections.length;
+            let avgDensity = group.sections.reduce((sum, section) => sum + section.density, 0) / group.sections.length;
+            let occurrences: PatternOccurrence[] = group.sections.map(section => ({
+                start: section.start,
+                end: section.end,
+                intensity: clamp01(section.energy * 0.55 + section.density * 0.45),
+                confidence: clamp01(0.45 + group.sections.length * 0.1)
+            }));
+
+            return {
+                id: `pattern-${patternIdx + 1}`,
+                signature,
+                label: group.sections[0].label,
+                dominantFeature: group.sections[0].dominantFeature,
+                occurrences,
+                averageEnergy: avgEnergy,
+                averageDensity: avgDensity
+            };
+        })
+        .sort((a, b) => b.occurrences.length - a.occurrences.length || (b.averageEnergy + b.averageDensity) - (a.averageEnergy + a.averageDensity))
+        .slice(0, 12);
+
+    for (let pattern of musicPatterns) {
+        for (let occurrence of pattern.occurrences) {
+            let frameIdx = Math.floor(occurrence.start * sampleRate / hopSize);
+            addCue(frameIdx, 'pattern', occurrence.intensity, occurrence.confidence, secondsPerBeat * 2, occurrence.end - occurrence.start, pattern.id);
+        }
+    }
+
+    for (let i = 2; i < totalFrames - 2; i++) {
+        let f = featureFrames[i];
+        let prev = featureFrames[i - 1];
+        let next = featureFrames[i + 1];
+        let evRatio = outFrames[i].eRatio;
+        if (f.melody > 0.52 && f.melody >= prev.melody && f.melody > next.melody) {
+            addCue(i, 'melody', f.melody, f.melody * (1 - Math.min(f.fx, 0.5)), 2.4, secondsPerBeat * 4);
+        }
+        if (f.vocal > 0.48 && f.vocal >= prev.vocal && f.vocal > next.vocal) {
+            addCue(i, 'vocal', f.vocal, f.vocal * (1 - Math.min(f.fx, 0.45)), 3.2, secondsPerBeat * 8);
+        }
+        if (f.fx > 0.62 && f.fx >= prev.fx && f.fx > next.fx) {
+            addCue(i, 'fx', f.fx, Math.min(1, f.brightness + f.density * 0.5), 1.2, secondsPerBeat * 2);
+        }
+        if (f.density > 0.72 && f.tension > 0.58 && evRatio > 0.5) {
+            addCue(i, 'impact', Math.max(f.density, f.tension), Math.min(1, evRatio + f.density * 0.35), 1.8, secondsPerBeat);
+        }
+        if (outFrames[i].state === 'LOW_DROP' && outFrames[i - 1].state !== 'LOW_DROP') {
+            addCue(i, 'break', 1 - f.density * 0.5, 0.85, 4.0, secondsPerBeat * 8);
+        }
+    }
+
+    visualCues.sort((a, b) => a.time - b.time);
+    let significantMoments = visualCues
+        .filter(cue => cue.confidence >= 0.5 || cue.kind === 'impact' || cue.kind === 'break')
+        .sort((a, b) => (b.intensity * b.confidence) - (a.intensity * a.confidence))
+        .slice(0, 32)
+        .sort((a, b) => a.time - b.time);
+
+    const trackAnalysis: TrackAnalysis = {
+        duration: channel.length / sampleRate,
+        sections: trackSections,
+        patterns: musicPatterns,
+        cues: visualCues,
+        significantMoments,
+        features: featureFrames,
+        featureHopSize: hopSize
+    };
+
+    const result: AnalysisResult = { requestId, bpm: estimatedBPM, frames: outFrames, events: outEvents, hopSize: hopSize, trackAnalysis };
     self.postMessage({ type: 'analysis_done', ...result });
     } catch (error) {
         self.postMessage({

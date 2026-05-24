@@ -2,14 +2,18 @@ import p5 from 'p5';
 import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
+import { drawClassicPlexusEffect } from './ClassicPlexusEffect';
+import { drawTemporalMusicEffect } from './TemporalMusicEffect';
 import type { DashboardUI } from '../ui/DashboardUI';
 import type { AudioEngine } from '../audio/AudioEngine';
+import type { VisualCueKind } from '../types';
 
 export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine: AudioEngine) {
     new p5((p: p5) => {
         let particles: Particle[] = [];
         let shockwaves: Shockwave[] = [];
         let currentEventIdx = 0;
+        let currentCueIdx = 0;
 
         p.setup = () => {
             p.createCanvas(p.windowWidth, p.windowHeight).parent(containerId);
@@ -20,16 +24,17 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
         const syncEventIndex = (time: number) => {
             currentEventIdx = State.events.findIndex(e => e.time >= time);
             if (currentEventIdx === -1) currentEventIdx = State.events.length;
-            State.beatDecay = 0;
-            State.snareFlash = 0;
+            currentCueIdx = State.trackAnalysis.cues.findIndex(e => e.time >= time);
+            if (currentCueIdx === -1) currentCueIdx = State.trackAnalysis.cues.length;
+            resetTransientVisualState();
         };
 
         engine.addPositionChangedListener(syncEventIndex);
 
         engine.addPlaybackEndedListener(() => {
             currentEventIdx = 0;
-            State.beatDecay = 0;
-            State.snareFlash = 0;
+            currentCueIdx = 0;
+            resetTransientVisualState();
             State.currentFrame.state = 'IDLE';
             ui.updateDashboard();
         });
@@ -40,101 +45,89 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
 
             if (State.isPlaying && State.frames.length > 0) {
                 let frameIdx = Math.floor(ct * State.sampleRate / State.hopSize);
-                if (frameIdx >= 0 && frameIdx < State.frames.length) {
-                    State.currentFrame = State.frames[frameIdx];
-                }
+                publishCurrentAnalysisFrame(frameIdx);
 
                 while (currentEventIdx < State.events.length && ct >= State.events[currentEventIdx].time) {
                     let ev = State.events[currentEventIdx];
                     State.beatDecay = 1.0;
-                    if(ev.type === 2) State.snareFlash = 1.0; 
+                    if (ev.type === 2) State.snareFlash = 1.0;
                     shockwaves.push(new Shockwave(p, ev.intensity, State.currentFrame.state, ev.type));
                     currentEventIdx++;
                 }
-            } else { 
-                State.currentFrame.e *= 0.9; State.currentFrame.b *= 0.9; 
-                State.currentFrame.m *= 0.9; State.currentFrame.t *= 0.9; 
-                State.currentFrame.eRatio *= 0.9;
+
+                while (currentCueIdx < State.trackAnalysis.cues.length && ct >= State.trackAnalysis.cues[currentCueIdx].time) {
+                    let cue = State.trackAnalysis.cues[currentCueIdx];
+                    State.cueDecay = Math.max(State.cueDecay, cue.intensity);
+                    State.activeCueKind = cue.kind;
+                    State.activePatternId = cue.kind === 'pattern' ? cue.patternId || null : State.activePatternId;
+                    shockwaves.push(new Shockwave(p, cue.intensity, State.currentFrame.state, cueTypeToShockwave(cue.kind)));
+                    currentCueIdx++;
+                }
+            } else {
+                decayCurrentAnalysisFrame();
                 if (!State.isPlaying) currentEventIdx = State.events.findIndex(e => e.time >= engine.pausedAt);
                 if (currentEventIdx === -1) currentEventIdx = State.events.length;
+                if (!State.isPlaying) currentCueIdx = State.trackAnalysis.cues.findIndex(e => e.time >= engine.pausedAt);
+                if (currentCueIdx === -1) currentCueIdx = State.trackAnalysis.cues.length;
             }
 
-            State.beatDecay *= 0.88; 
+            State.beatDecay *= 0.88;
             State.snareFlash *= 0.85;
-
-            let bgFlash = State.beatDecay * 12;
-            p.background(8 + bgFlash, 5 + bgFlash, 14 + bgFlash);
+            State.cueDecay *= 0.9;
+            if (State.cueDecay < 0.02) {
+                State.activeCueKind = null;
+                State.activePatternId = null;
+            }
 
             if (p.frameCount % 4 === 0) ui.updateDashboard();
 
-            drawCenterDynamics(p, shockwaves);
-            for (let pt of particles) pt.update(State.currentFrame.e, State.currentFrame.b, State.beatDecay, State.isPlaying);
-            drawPolygonalNetwork(p, particles);
+            if (State.visualMode === 'temporal') {
+                drawTemporalMusicEffect(p, particles, shockwaves);
+            } else {
+                drawClassicPlexusEffect(p, particles, shockwaves);
+            }
         };
 
         p.windowResized = () => p.resizeCanvas(p.windowWidth, p.windowHeight);
     });
 }
 
-function drawCenterDynamics(p: p5, shockwaves: Shockwave[]) {
-    let cx = p.width / 2; let cy = p.height / 2;
-    for (let i = shockwaves.length - 1; i >= 0; i--) {
-        let sw = shockwaves[i]; sw.update(); sw.draw(cx, cy);
-        if (sw.alpha <= 0) shockwaves.splice(i, 1); 
+function publishCurrentAnalysisFrame(frameIdx: number) {
+    if (frameIdx >= 0 && frameIdx < State.frames.length) {
+        State.currentFrame = State.frames[frameIdx];
     }
-    
-    let isLowMode = State.currentFrame.state.startsWith('LOW');
-    let glowRadius = Math.max(p.width, p.height) * (0.3 + State.currentFrame.b * 0.3);
-    
-    let ctx = p.drawingContext as CanvasRenderingContext2D;
-    let bgGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowRadius);
-    let hue = isLowMode ? 70 : 40; 
-    bgGlow.addColorStop(0, `rgba(${hue}, 25, 90, ${0.3 + State.currentFrame.b * 0.4})`);
-    bgGlow.addColorStop(1, 'rgba(10, 7, 16, 0)');
-    
-    ctx.fillStyle = bgGlow; 
-    p.noStroke(); p.circle(cx, cy, glowRadius * 2);
-
-    let coreRadius = 8 + State.beatDecay * 40;
-    p.fill(255, 255, 255, 80 + State.beatDecay * 175); 
-    p.circle(cx, cy, coreRadius);
+    if (frameIdx >= 0 && frameIdx < State.trackAnalysis.features.length) {
+        State.currentFeatures = State.trackAnalysis.features[frameIdx];
+    }
 }
 
-function drawPolygonalNetwork(p: p5, particles: Particle[]) {
-    let maxDist = State.isPlaying ? 130 + (State.currentFrame.b * 50) : 80; 
-    let maxDistSq = maxDist * maxDist;
-    
-    for (let i = 0; i < particles.length; i++) {
-        let p1 = particles[i]; let linesDrawn = 0, polysDrawn = 0; 
-        for (let j = i + 1; j < particles.length; j++) {
-            let p2 = particles[j];
-            let dist12Sq = (p1.pos.x - p2.pos.x)**2 + (p1.pos.y - p2.pos.y)**2;
-            
-            if (dist12Sq < maxDistSq) {
-                linesDrawn++; let d12 = Math.sqrt(dist12Sq);
-                let lineAlpha = p.map(d12, 0, maxDist, 180, 0) + (State.beatDecay * 75);
-                p.stroke(180 - State.currentFrame.t * 40, 220, 255, lineAlpha);
-                p.strokeWeight(0.5 + State.beatDecay * 2);
-                p.line(p1.pos.x, p1.pos.y, p2.pos.x, p2.pos.y);
+function decayCurrentAnalysisFrame() {
+    State.currentFrame.e *= 0.9;
+    State.currentFrame.b *= 0.9;
+    State.currentFrame.m *= 0.9;
+    State.currentFrame.t *= 0.9;
+    State.currentFrame.eRatio *= 0.9;
+    State.currentFeatures.melody *= 0.9;
+    State.currentFeatures.vocal *= 0.9;
+    State.currentFeatures.fx *= 0.9;
+    State.currentFeatures.density *= 0.9;
+    State.currentFeatures.brightness *= 0.9;
+    State.currentFeatures.tension *= 0.9;
+}
 
-                if (State.isPlaying && polysDrawn < 2 && dist12Sq < maxDistSq * 0.6) {
-                    for (let k = j + 1; k < particles.length; k++) {
-                        let p3 = particles[k];
-                        if ((p1.pos.x - p3.pos.x)**2 + (p1.pos.y - p3.pos.y)**2 < maxDistSq * 0.6 &&
-                            (p2.pos.x - p3.pos.x)**2 + (p2.pos.y - p3.pos.y)**2 < maxDistSq * 0.6) {
-                            polysDrawn++;
-                            let baseAlpha = Math.min(10 + (State.beatDecay * 40), 50);
-                            let finalPolyAlpha = baseAlpha + (State.snareFlash * 150);
-                            p.fill(220, 240, 255, finalPolyAlpha); p.noStroke(); 
-                            p.triangle(p1.pos.x, p1.pos.y, p2.pos.x, p2.pos.y, p3.pos.x, p3.pos.y);
-                            break; 
-                        }
-                    }
-                }
-            }
-            if (linesDrawn > 6) break; 
-        }
-        p.noStroke(); p.fill(255, 255, 255, 120 + State.beatDecay * 135); 
-        p.circle(p1.pos.x, p1.pos.y, 2 + State.beatDecay * 4);
-    }
+function resetTransientVisualState() {
+    State.beatDecay = 0;
+    State.snareFlash = 0;
+    State.cueDecay = 0;
+    State.activeCueKind = null;
+    State.activePatternId = null;
+}
+
+function cueTypeToShockwave(kind: VisualCueKind): number {
+    if (kind === 'melody') return 4;
+    if (kind === 'vocal') return 5;
+    if (kind === 'fx') return 6;
+    if (kind === 'break') return 7;
+    if (kind === 'pattern') return 8;
+    return 2;
 }

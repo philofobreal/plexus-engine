@@ -6,6 +6,8 @@ export interface BeatEvent {
 
 export type AutoState = 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
 
+export type VisualMode = 'classic' | 'temporal';
+
 export interface AudioFrame {
     e: number;
     b: number;
@@ -15,12 +17,71 @@ export interface AudioFrame {
     eRatio: number;
 }
 
+export type VisualCueKind = 'melody' | 'vocal' | 'fx' | 'impact' | 'break' | 'pattern';
+
+export type TrackSectionLabel = 'intro' | 'verse' | 'build' | 'drop' | 'break' | 'peak' | 'outro';
+
+export interface VisualFeatureFrame {
+    melody: number;
+    vocal: number;
+    fx: number;
+    density: number;
+    brightness: number;
+    tension: number;
+}
+
+export interface VisualCueEvent {
+    time: number;
+    duration: number;
+    intensity: number;
+    confidence: number;
+    kind: VisualCueKind;
+    patternId?: string;
+}
+
+export interface TrackSection {
+    start: number;
+    end: number;
+    label: TrackSectionLabel;
+    energy: number;
+    density: number;
+    dominantFeature: VisualCueKind | 'rhythm';
+}
+
+export interface PatternOccurrence {
+    start: number;
+    end: number;
+    intensity: number;
+    confidence: number;
+}
+
+export interface MusicPattern {
+    id: string;
+    signature: string;
+    label: TrackSectionLabel;
+    dominantFeature: VisualCueKind | 'rhythm';
+    occurrences: PatternOccurrence[];
+    averageEnergy: number;
+    averageDensity: number;
+}
+
+export interface TrackAnalysis {
+    duration: number;
+    sections: TrackSection[];
+    patterns: MusicPattern[];
+    cues: VisualCueEvent[];
+    significantMoments: VisualCueEvent[];
+    features: VisualFeatureFrame[];
+    featureHopSize: number;
+}
+
 export interface AnalysisResult {
     requestId: number;
     bpm: number;
     frames: AudioFrame[];
     events: BeatEvent[];
     hopSize: number;
+    trackAnalysis: TrackAnalysis;
 }
 
 export interface AnalysisRequest {

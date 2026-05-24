@@ -20,6 +20,7 @@ Minimum analysis success fields:
 - Frame list.
 - Beat event list.
 - Hop size.
+- Track analysis when visual-music features, sections, cues, and patterns are part of the accepted algorithm version.
 
 Minimum failure fields:
 
@@ -59,6 +60,8 @@ When the playback path still needs the decoded `AudioBuffer`, the default implem
 ## Deterministic Output
 
 For the same input samples, sample rate, and algorithm version, worker output must be deterministic. Avoid nondeterministic time, random values, shared mutable globals, and environment-dependent thresholds.
+
+When recurring temporal patterns are emitted, they must be derived from deterministic section signatures or other deterministic full-track features. Pattern ids must be stable for one accepted worker result and must be referenced by cue events through optional `patternId` fields.
 
 ## Termination And Errors
 

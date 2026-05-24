@@ -139,3 +139,17 @@ export interface AudioFrame {
 * A p5.js globális módban van a jelenlegi kódban. A TypeScript-es projektben az **Instance Mode** (`new p5((p) => { ... })`) használata kötelező a globális névtér szennyezésének elkerülése végett.
 * A Web Worker kódját Vite (vagy Webpack) alatt érdemes egy külön `.worker.ts` fájlba tenni, és a bundler beépített Worker importálóját használni (pl. `import MyWorker from './audio.worker.ts?worker'`), a jelenlegi Blob-os hack helyett.
 * A DOM (UI) manipuláció és a p5.js (Canvas) közötti kommunikációt egy Eseménybuszon (Event Bus) vagy Állapotkezelőn keresztül kell megoldani, hogy ne hivatkozzanak egymásra direkten.
+
+---
+
+## 7. Current TypeScript ADR Addendum
+
+### ADR-004: Full-track visual-music analysis as an append-only worker contract
+*   **Context:** Beat events and macro-dynamic frames were not enough to represent melody-like, vocal-like, fx-like, or recurring temporal content.
+*   **Decision:** The worker output now includes `trackAnalysis` with section structure, per-frame visual features, visual cue events, significant moments, and recurring `MusicPattern` entries. This is added to the existing payload instead of replacing `frames` or `events`.
+*   **Rationale:** Future effects can opt into richer musical context while the original Plexus effect and playback synchronization continue to read the legacy frame/event arrays.
+
+### ADR-005: Selectable visual modes
+*   **Context:** The original Plexus network remains useful, but the new pattern-analysis output needs a more expressive effect that reacts to repeated temporal shapes.
+*   **Decision:** The app exposes a `classic` mode and a `temporal` mode in separate effect files. `classic` preserves the existing Plexus network. `temporal` reuses the same particle and shockwave primitives, but treats track-analysis output as continuous modulation of polygon color, movement, density, connection sensitivity, background tone, and central mechanism rings for beat, melody, vocal, fx, and pattern resonance.
+*   **Rationale:** Keeping both modes makes the new behavior testable and reversible without deleting the established visual language. Pattern analysis exists to make the visual response more sensitive and sophisticated, not to turn musical sections into explicit bar-aligned labels.

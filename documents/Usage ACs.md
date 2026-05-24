@@ -64,3 +64,8 @@ A kód feldarabolása során érdemes a fenti kategóriákat **külön osztályo
 *   `MacroDynamicsEngine.ts` (AC 2.x)
 *   `PlexusRenderer.ts` (AC 3.x, AC 7.x)
 *   `DashboardUI.tsx` vagy `.vue` (AC 1.x, AC 4.x)
+
+## Current TypeScript AC Addendum
+
+*   **AC 3.5 - Visual mode selection:** The user can switch between `Classic` and `Temporal` visual modes without reloading the audio file. Classic preserves the Plexus network behavior. Temporal uses the same playback and precomputed analysis data as continuous visual modulation: polygon color, movement, density, network sensitivity, background tone, and central mechanism rings follow the detected musical details without turning them into explicit bar-aligned labels.
+*   **AC 5.5 - Visual music analysis output:** The worker output includes `trackAnalysis` with per-frame visual features, section structure, significant moments, recurring `MusicPattern` entries, and cue events. Playback and rendering may read this data, but must not perform audio analysis in the render loop.

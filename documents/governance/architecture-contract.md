@@ -34,6 +34,8 @@ Forbidden dependency directions:
 - UI to worker internals or DSP algorithms.
 - Types to runtime modules.
 
+Mode-specific visual implementations should live in separate files under `src/visuals/`. The renderer entrypoint may orchestrate playback synchronization and delegate drawing, but it should not accumulate multiple full effect implementations inline.
+
 ## Lifecycle Ownership
 
 - File decode and analysis request creation belong to audio.
@@ -55,6 +57,7 @@ Every shared state field needs a clear owner:
 - Audio owns duration, sample rate, play state, timing, analysis result publication, and accepted worker metadata.
 - Visuals own render-derived decay values and visual-only transient state.
 - UI owns DOM projection and user input dispatch.
+- Visual mode selection is user input owned by UI and stored in shared state as an explicit render-facing setting.
 - State module owns shape and initialization defaults.
 
 When ownership is ambiguous, add a small explicit API or handoff contract instead of adding hidden direct writes.

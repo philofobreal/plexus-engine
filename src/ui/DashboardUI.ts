@@ -11,6 +11,7 @@ export class DashboardUI {
         this.els = {
             status: document.getElementById('status-text')!,
             playBtn: document.getElementById('play-btn')!,
+            visualMode: document.getElementById('visual-mode')!,
             upload: document.getElementById('audio-upload')!,
             fsBtn: document.getElementById('fullscreen-btn')!,
             seekBar: document.getElementById('seek-bar')!,
@@ -25,6 +26,14 @@ export class DashboardUI {
             barM: document.getElementById('bar-mid')!,
             valT: document.getElementById('val-treble')!,
             barT: document.getElementById('bar-treble')!,
+            valMelody: document.getElementById('val-melody')!,
+            barMelody: document.getElementById('bar-melody')!,
+            valVocal: document.getElementById('val-vocal')!,
+            barVocal: document.getElementById('bar-vocal')!,
+            valFx: document.getElementById('val-fx')!,
+            barFx: document.getElementById('bar-fx')!,
+            valCue: document.getElementById('val-cue')!,
+            barCue: document.getElementById('bar-cue')!,
             valBeat: document.getElementById('val-beat')!,
             barBeat: document.getElementById('bar-beat')!,
             valProg: document.getElementById('val-prog')!,
@@ -77,7 +86,7 @@ export class DashboardUI {
                     this.els.bpmBadge.innerText = State.bpm + " BPM";
                     this.els.bpmBadge.style.display = "inline-flex";
                 }
-                this.els.status.innerText = "Kesz: " + file.name;
+                this.els.status.innerText = `Kesz: ${file.name} | ${State.trackAnalysis.sections.length} szekcio | ${State.trackAnalysis.patterns.length} minta | ${State.trackAnalysis.cues.length} cue`;
                 (this.els.playBtn as HTMLButtonElement).disabled = false;
                 (this.els.seekBar as HTMLInputElement).disabled = false;
                 (this.els.upload as HTMLInputElement).disabled = false;
@@ -95,6 +104,11 @@ export class DashboardUI {
                 this.engine.play();
                 this.els.playBtn.innerText = "Pause";
             }
+        });
+
+        (this.els.visualMode as HTMLSelectElement).addEventListener('change', (e) => {
+            const mode = (e.target as HTMLSelectElement).value;
+            State.visualMode = mode === 'temporal' ? 'temporal' : 'classic';
         });
 
         const seek = this.els.seekBar as HTMLInputElement;
@@ -130,6 +144,11 @@ export class DashboardUI {
         this.els.valB.innerText = State.currentFrame.b.toFixed(2); this.els.barB.style.width = (State.currentFrame.b * 100) + "%";
         this.els.valM.innerText = State.currentFrame.m.toFixed(2); this.els.barM.style.width = (State.currentFrame.m * 100) + "%";
         this.els.valT.innerText = State.currentFrame.t.toFixed(2); this.els.barT.style.width = (State.currentFrame.t * 100) + "%";
+        this.els.valMelody.innerText = State.currentFeatures.melody.toFixed(2); this.els.barMelody.style.width = (State.currentFeatures.melody * 100) + "%";
+        this.els.valVocal.innerText = State.currentFeatures.vocal.toFixed(2); this.els.barVocal.style.width = (State.currentFeatures.vocal * 100) + "%";
+        this.els.valFx.innerText = State.currentFeatures.fx.toFixed(2); this.els.barFx.style.width = (State.currentFeatures.fx * 100) + "%";
+        this.els.valCue.innerText = State.activeCueKind ? State.activeCueKind.toUpperCase() : "--";
+        this.els.barCue.style.width = (State.cueDecay * 100) + "%";
         this.els.valBeat.innerText = State.beatDecay.toFixed(2); this.els.barBeat.style.width = (State.beatDecay * 100) + "%";
 
         let dynText = "IDLE";

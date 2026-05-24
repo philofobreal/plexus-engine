@@ -15,6 +15,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div class="controls panel">
         <label class="file-upload">Load Audio<input type="file" id="audio-upload" accept="audio/*"></label>
         <button id="play-btn" class="std-btn" disabled>Play</button>
+        <label class="mode-select-label" title="Visual effect mode">
+          <select id="visual-mode" class="mode-select">
+            <option value="classic">Classic</option>
+            <option value="temporal">Temporal</option>
+          </select>
+        </label>
         <button id="fullscreen-btn" class="std-btn btn-icon" title="Teljes Képernyő">⛶</button>
       </div>
     </div>
@@ -24,6 +30,10 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div class="metric-card"><div class="m-label">Bass</div><div class="m-value" id="val-bass">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-bass" style="background:#60a5fa;"></div></div></div>
         <div class="metric-card"><div class="m-label">Mid</div><div class="m-value" id="val-mid">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-mid" style="background:#34d399;"></div></div></div>
         <div class="metric-card"><div class="m-label">Treble</div><div class="m-value" id="val-treble">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-treble" style="background:#f472b6;"></div></div></div>
+        <div class="metric-card"><div class="m-label">Melody</div><div class="m-value" id="val-melody">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-melody" style="background:#38bdf8;"></div></div></div>
+        <div class="metric-card"><div class="m-label">Vocal</div><div class="m-value" id="val-vocal">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-vocal" style="background:#fb7185;"></div></div></div>
+        <div class="metric-card"><div class="m-label">FX</div><div class="m-value" id="val-fx">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-fx" style="background:#bef264;"></div></div></div>
+        <div class="metric-card"><div class="m-label">Cue</div><div class="m-value" id="val-cue">--</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-cue" style="background:#facc15;"></div></div></div>
         <div class="metric-card"><div class="m-label">Beat Hit</div><div class="m-value" id="val-beat">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-beat" style="background:#f43f5e;"></div></div></div>
         <div class="metric-card"><div class="m-label">Progress</div><div class="m-value" id="val-prog">0%</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-prog" style="background:#22d3ee;"></div></div></div>
         <div class="metric-card" style="border-color: rgba(0,255,204,0.3); grid-column: span 2; display:flex; flex-direction:column; justify-content:center;">

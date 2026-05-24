@@ -38,6 +38,8 @@ The render loop may read precomputed frames and events. It must not:
 - Allocate unbounded objects.
 - Mutate worker result arrays.
 
+Visual modes may branch on precomputed `trackAnalysis` features, sections, cues, and patterns, but they must keep the same realtime budget: no audio analysis, no worker spawning, and no unbounded per-frame allocation in drawing paths.
+
 ## Seek And End Safety
 
 Seek must synchronously align:

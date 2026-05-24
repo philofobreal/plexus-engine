@@ -1,8 +1,18 @@
 import AnalyzerWorker from './analyzer.worker.ts?worker';
 import { State } from '../state/store';
-import type { AnalysisWorkerMessage } from '../types';
+import type { AnalysisWorkerMessage, TrackAnalysis, VisualFeatureFrame } from '../types';
 
-const ANALYSIS_ALGORITHM_VERSION = 1;
+const ANALYSIS_ALGORITHM_VERSION = 2;
+const EMPTY_FEATURES: VisualFeatureFrame = { melody: 0, vocal: 0, fx: 0, density: 0, brightness: 0, tension: 0 };
+const EMPTY_TRACK_ANALYSIS: TrackAnalysis = {
+    duration: 0,
+    sections: [],
+    patterns: [],
+    cues: [],
+    significantMoments: [],
+    features: [],
+    featureHopSize: 1024
+};
 
 export class AudioEngine {
     private ctx: AudioContext | null = null;
@@ -43,8 +53,13 @@ export class AudioEngine {
         State.bpm = 0;
         State.frames = [];
         State.events = [];
+        State.trackAnalysis = { ...EMPTY_TRACK_ANALYSIS, sections: [], patterns: [], cues: [], significantMoments: [], features: [] };
         State.hopSize = 1024;
         State.currentFrame = { e: 0, b: 0, m: 0, t: 0, state: 'IDLE', eRatio: 0 };
+        State.currentFeatures = { ...EMPTY_FEATURES };
+        State.activeCueKind = null;
+        State.activePatternId = null;
+        State.cueDecay = 0;
         State.beatDecay = 0;
         State.snareFlash = 0;
     }
@@ -94,6 +109,7 @@ export class AudioEngine {
                     State.bpm = e.data.bpm;
                     State.frames = e.data.frames;
                     State.events = e.data.events;
+                    State.trackAnalysis = e.data.trackAnalysis;
                     State.hopSize = e.data.hopSize;
                     if (this.onAnalysisComplete) this.onAnalysisComplete();
                     return;
