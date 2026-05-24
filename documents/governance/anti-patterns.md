@@ -1,0 +1,44 @@
+# Anti-Patterns
+
+This document extends `../../AGENTS.md`. If there is a conflict, `AGENTS.md` is authoritative.
+
+Stop and redesign if a change introduces any pattern below.
+
+## Architecture Anti-Patterns
+
+- Hidden shared state writes without a documented owner.
+- Circular dependencies between audio, UI, renderer, worker, and state modules.
+- Importing runtime-heavy dependencies into `src/types/`.
+- Worker code importing DOM, p5, UI, renderer, or shared mutable state.
+- UI code reaching into worker internals or DSP implementation details.
+- Renderer code controlling playback lifecycle.
+
+## Realtime Audio Anti-Patterns
+
+- Realtime FFT, beat detection, or spectral analysis in p5 `draw()`.
+- Reusing an `AudioBufferSourceNode`.
+- Manual source stop without clearing `onended`.
+- Deriving canonical playback time from UI or frame count.
+- Accidentally detaching playback audio data by transferring a buffer still needed by the main thread.
+
+## Event And State Anti-Patterns
+
+- Beat event indexes that are not reset on seek, load, stop, and end.
+- Worker results that can overwrite newer loads.
+- Mutating worker result arrays from renderer or UI code.
+- Async state transitions without a request id or cancellation path.
+- Multiple modules claiming ownership of the same state field.
+
+## Render Anti-Patterns
+
+- `new Particle()` during normal draw loop.
+- Unbounded shockwave or event object growth.
+- Async work inside `draw()`.
+- DOM updates every frame when throttling is sufficient.
+- Replacing squared-distance checks with unconditional square roots in hot loops.
+
+## Documentation Anti-Patterns
+
+- Duplicating canonical rules from `AGENTS.md` into compatibility shims.
+- Letting product history in `v0.1/` or `v0.2/` override current governance.
+- Updating governance docs without checking links and drift from `AGENTS.md`.

@@ -1,0 +1,65 @@
+# Worker Communication
+
+This document extends `../../AGENTS.md`. If there is a conflict, `AGENTS.md` is authoritative.
+
+## Boundary Contract
+
+Worker input and output are public contracts. Keep them typed and versionable.
+
+Minimum analysis request fields:
+
+- Request id.
+- Sample payload.
+- Sample rate.
+- Algorithm version when behavior changes.
+
+Minimum analysis success fields:
+
+- Request id.
+- BPM.
+- Frame list.
+- Beat event list.
+- Hop size.
+
+Minimum failure fields:
+
+- Request id.
+- Error code.
+- Human-readable message.
+
+## Race Prevention
+
+Every load creates a new current request id. A worker response may update state only when its request id equals the current request id.
+
+When a new file is selected:
+
+- Stop playback.
+- Invalidate the previous request id.
+- Terminate any active worker.
+- Clear or quarantine old analysis results until the new result is accepted.
+
+Stale success and stale failure messages must be ignored after worker cleanup.
+
+## Transfer And Copy Policy
+
+Choose one intentionally:
+
+- Copy sample data before posting to the worker when playback still depends on the source buffer.
+- Transfer sample data only when the sender no longer needs the transferred buffer.
+
+Do not pass `getChannelData(0).buffer` as a transferable unless playback safety has been proven and documented.
+
+## Deterministic Output
+
+For the same input samples, sample rate, and algorithm version, worker output must be deterministic. Avoid nondeterministic time, random values, shared mutable globals, and environment-dependent thresholds.
+
+## Termination And Errors
+
+Workers must terminate on:
+
+- Successful accepted result.
+- Analysis error.
+- User cancellation or superseded load.
+- Component teardown.
+
+Worker errors must restore UI control state through the audio/UI boundary and must not leave playback controls permanently disabled.
