@@ -51,3 +51,6 @@ Stop and redesign if a change introduces any pattern below.
 - Treating a dev-server background process as healthy without an HTTP reachability check.
 - Reporting browser smoke validation as complete when only build or HTTP startup was verified.
 - Adding a new dependency only to run simple contract tests that Node's built-in test runner can cover.
+- Forgetting `diff_export.ps1` when a PR-style complete snapshot, handoff artifact, or broad review context is explicitly useful.
+- Staging or committing generated `branch_pr_snapshot.md`.
+- Running `diff_export.ps1` blindly when its `git fetch` side effect or generated local artifact is irrelevant to the task.

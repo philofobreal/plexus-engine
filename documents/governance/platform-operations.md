@@ -34,6 +34,16 @@ Use this file for practical platform behavior that affects repeatability in Code
 - For Node built-in tests, prefer dependency-free `node --test` suites for contract and lifecycle invariants when browser/Web Audio mocking would otherwise require new packages.
 - Keep regression tests focused on stable contracts: worker schema, request-id handling, copy-vs-transfer policy, event-index sync, and documented thresholds.
 
+## Diff Export Workflow
+
+- `diff_export.ps1` is the repository-owned PR snapshot tool. Agents should recognize it and consider it before reviews, handoffs, PR preparation, large-change summaries, or when the user asks for a complete diff/context export.
+- The script writes `branch_pr_snapshot.md`, which is intentionally ignored by Git. Treat the generated file as a local review artifact, not source documentation.
+- The script compares the current branch against a base branch, defaulting to `main`. Pass `-BaseBranch <branch>` when the target branch is known to be different.
+- The script may run `git fetch origin <base>`. If network access is blocked or escalation is required, ask for approval only when the snapshot is actually needed for the task.
+- Use the generated snapshot as input for summarizing, reviewing, or transferring context. Do not edit source files based only on the snapshot when the live working tree can be inspected directly.
+- Regenerate the snapshot after material code or documentation changes if the previous snapshot is being used for a final review, PR description, or handoff.
+- If the script cannot run, fall back to targeted `git diff`, `git diff --cached`, `git diff --name-only`, and direct file reads, then report that the snapshot was not generated.
+
 ## Dev Server And Browser Smoke Checks
 
 - Browser smoke validation is best-effort unless the task explicitly requires interactive manual QA.

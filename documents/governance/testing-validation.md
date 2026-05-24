@@ -48,6 +48,12 @@ Documentation and governance changes:
 - Verify `AGENTS.md` remains the only canonical root policy and `CLAUDE.md` remains a thin inheritance shim.
 - Prefer adding platform-specific operating rules to `platform-operations.md` instead of scattering shell/runtime advice across subsystem docs.
 
+Diff export and handoff checks:
+
+- When preparing a PR summary, final handoff, or large-change review, consider running `.\diff_export.ps1 -BaseBranch <branch>` from `plexus-engine/`.
+- If `branch_pr_snapshot.md` is generated, verify it is not staged for commit and use it only as a local review artifact.
+- Report whether the snapshot was generated, skipped as unnecessary, or blocked by network/execution policy.
+
 ## Reporting Requirements
 
 Every final report must state:
@@ -58,6 +64,7 @@ Every final report must state:
 - Residual risk.
 - Any runtime fallback used, such as bundled Node instead of `bun` or `npm`.
 - Whether browser smoke validation was full browser automation, HTTP-only, or skipped.
+- Whether `diff_export.ps1` was used when the task involved PR-style review, handoff, or broad change summarization.
 
 ## Minimum Gate For Risky Areas
 
