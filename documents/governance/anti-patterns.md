@@ -42,3 +42,12 @@ Stop and redesign if a change introduces any pattern below.
 - Duplicating canonical rules from `AGENTS.md` into compatibility shims.
 - Letting product history in `v0.1/` or `v0.2/` override current governance.
 - Updating governance docs without checking links and drift from `AGENTS.md`.
+- Encoding-damaged legacy markdown rewrites that mix broad cleanup with behavioral changes.
+- Scattering platform/runtime workarounds across subsystem docs instead of centralizing them in `platform-operations.md`.
+
+## Platform Anti-Patterns
+
+- Assuming `bun`, `npm`, or shell shims are available on PATH without checking.
+- Treating a dev-server background process as healthy without an HTTP reachability check.
+- Reporting browser smoke validation as complete when only build or HTTP startup was verified.
+- Adding a new dependency only to run simple contract tests that Node's built-in test runner can cover.

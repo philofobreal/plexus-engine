@@ -49,6 +49,13 @@ Choose one intentionally:
 
 Do not pass `getChannelData(0).buffer` as a transferable unless playback safety has been proven and documented.
 
+When the playback path still needs the decoded `AudioBuffer`, the default implementation policy is:
+
+- Allocate a new `Float32Array` with the same length as the source channel.
+- Copy channel data with `analysisSamples.set(channelData)`.
+- Transfer only `analysisSamples.buffer` to the worker.
+- Keep the decoded `AudioBuffer` owned by `AudioEngine` for playback.
+
 ## Deterministic Output
 
 For the same input samples, sample rate, and algorithm version, worker output must be deterministic. Avoid nondeterministic time, random values, shared mutable globals, and environment-dependent thresholds.
@@ -63,3 +70,5 @@ Workers must terminate on:
 - Component teardown.
 
 Worker errors must restore UI control state through the audio/UI boundary and must not leave playback controls permanently disabled.
+
+If worker errors, stale worker messages, or cancellation paths are changed, add or update a targeted regression test covering the boundary contract.

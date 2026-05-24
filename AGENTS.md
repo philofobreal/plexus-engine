@@ -25,6 +25,7 @@ These documents extend this file and must not override it:
 - [Realtime Audio Safety](documents/governance/realtime-audio-safety.md)
 - [Worker Communication](documents/governance/worker-communication.md)
 - [Testing and Validation](documents/governance/testing-validation.md)
+- [Platform Operations](documents/governance/platform-operations.md)
 - [Anti-Patterns](documents/governance/anti-patterns.md)
 
 `CLAUDE.md` is a compatibility shim only. It must explicitly inherit from this file and must not accumulate independent policy.
@@ -104,6 +105,7 @@ Single-agent ownership required:
 - Any visual-only change requires render smoke validation.
 - Any worker algorithm change requires deterministic fixture-style validation where practical.
 - Any governance-only change must verify references, inheritance, and absence of contradictory policy.
+- If `bun` or `npm` are not available on PATH, use the Codex bundled Node runtime directly with local `node_modules` entrypoints and report that fallback.
 - Before reporting completion, state what validation was run and what was not run.
 
 ## Dependency Policy
