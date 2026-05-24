@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# PR diff export kimenete
+branch_pr_snapshot.md
