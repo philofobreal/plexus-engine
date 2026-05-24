@@ -38,11 +38,11 @@
 
 ## 5. Offline Analízis (Web Worker)
 *   **AC 5.1 - Aszinkron működés:** Az audio elemzés egy dedikált háttérszálon fut (`Web Worker`), megakadályozva a Main Thread (UI) lefagyását nagy fájlok (pl. 10 perces mixek) betöltésekor.
-*   **AC 5.2 - Crossover szűrés:** A Worker 3 virtuális DSP sávot (Bass, Mid, High) hoz létre IIR (Infinite Impulse Response) szűrőkkel az 1024 sample méretű ablakokon.
+*   **AC 5.2 - FFT-alapú spektrális bontás:** A Worker 1024 sample méretű, Hann-ablakkal súlyozott blokkokon futtat FFT-t. Az elemzés ebből számolja a relatív Bass, Mid és High sávokat, a spektrális fluxust, a spektrális centroidot és a spektrális flatness értéket; a vizuális és dob-esemény kimenetek ezekből a spektrális jellemzőkből készülnek, nem IIR crossover szűrőkből.
 *   **AC 5.3 - Kétmenetes (Two-pass) analízis:**
-    1.  *Kör:* A Worker kiszámolja az RMS energiákat és a Spektrális Fluxust, majd dinamikai blokkokra osztja a dalt.
-    2.  *Kör:* Megkeresi a lokális maximumokat (Peak picking), megállapítja a dob típusát (kombinált Flux pontozás alapján), és a blokk globális energiájához viszonyított Intenzitást (Intensity).
-*   **AC 5.4 - Worker Output:** A Worker kizárólag az alábbi adatszerkezetet adja vissza: `bpm (number)`, `frames (Array<AudioFrame>)` (ami tartalmazza a 1024 sample-enkénti sáv-energiákat, a kalkulált `state`-et és `eRatio`-t), valamint a `events (Array<BeatEvent>)`.
+    1.  *Kör:* A Worker kiszámolja az RMS energiát, spektrális fluxust, relatív sávenergiákat, centroidot és flatness értéket, majd beat-alapú makro dinamikai blokkokra osztja a dalt.
+    2.  *Kör:* A spektrális jellemzőket simítja, ezekből előállítja az `AudioFrame` idővonalat, a `VisualFeatureFrame` sorozatot, a peak picking alapján a `BeatEvent` eseményeket, valamint a szekciókat, cue-kat és ismétlődő zenei mintákat.
+*   **AC 5.4 - Worker Output:** A Worker success üzenete az alábbi adatszerkezetet adja vissza: `type: 'analysis_done'`, `requestId`, `bpm`, `frames (Array<AudioFrame>)` (1024 sample-enkénti simított energia/density/melody/fx vetületekkel, `state`-tel és `eRatio`-val), `events (Array<BeatEvent>)`, `hopSize`, valamint `trackAnalysis`. Hiba esetén `type: 'analysis_error'`, `requestId`, `errorCode` és `message` érkezik.
 
 ## 6. Lejátszó Motor (Audio Rendering)
 *   **AC 6.1 - Natív Web Audio API:** Tilos a `p5.sound` modult használni hang lejátszására. A lejátszást dedikált `AudioBufferSourceNode` végzi a zéró-késleltetés, a pontos időmérés (`audioContext.currentTime`) és a memóriaszivárgások elkerülése érdekében.
