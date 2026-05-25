@@ -58,6 +58,16 @@ The renderer supports two selectable visual modes through `State.visualMode`:
 
 Mode selection belongs to UI projection. `src/visuals/PlexusRenderer.ts` only synchronizes playback/analysis state and delegates to the selected effect file; no audio analysis may run in either visual mode.
 
+## Visual Tuning And Playback UI
+
+The current branch adds a metadata-driven visual tuning panel, JSON preset loading, surface-level playback controls, loop/once playback, responsive metrics, and idle-hiding UI chrome.
+
+Detailed documentation:
+
+- Feature record: `documents/features/visual-tuning-presets-and-playback-ui.md`
+- Acceptance criteria: `documents/acceptance-criteria/visual-tuning-presets-and-playback-ui-acs.md`
+- Architecture decision: `documents/adr/ADR-001-visual-tuning-presets-and-playback-ui.md`
+
 ## AC Clarifications
 
 - **AC 1.2 - Loading state:** Selecting a new file must stop playback, invalidate previous analysis, terminate any active worker, disable `Play` and `Seek`, reset visible playback position to `0:00`, and re-enable controls only after an accepted analysis result.
