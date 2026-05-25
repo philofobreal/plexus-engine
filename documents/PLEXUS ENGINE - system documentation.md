@@ -1,155 +1,216 @@
-# PLEXUS ENGINE – Átfogó Rendszerdokumentáció V0.2
-https://aistudio.google.com/prompts/1fd-DLh6ASLPZPzMbirNAJqUYC5T8Tu0t
+# PLEXUS ENGINE - Atfogo Rendszerdokumentacio V0.2
 
-## 1. Vezetői Összefoglaló (Executive Summary)
-A **Plexus Engine** egy böngészőben futó, hardvergyorsított, reaktív audio-vizualizációs motor. Fő megkülönböztető jegye a hagyományos vizualizátorokhoz (pl. Winamp, egyszerű webes equalizerek) képest a **zéró-késleltetésű (zero-latency) előzetes analízis (Pre-computation)** és a **makro-dinamikai állapotgép (Macro-Dynamics State Machine)**. A rendszer megérti a zene szerkezetét (kiállások, dropok), azonosítja a dobok típusát (Kick, Snare, Hi-hat), és a vizuális stratégiát (High/Low) ehhez igazítja.
+> **Aktualis statusz:** ez a fo rendszerdokumentacio a `plexus-engine/` TypeScript/Vite kodbazis aktualis allapotat irja le. A korabbi single-file HTML prototipus es IIR-alapu DSP megfogalmazasok torteneti hatternek szamitanak, nem kanonikus implementacios szerzodesnek.
 
----
+## 1. Vezetoi Osszefoglalo
 
-## 2. Általános Architektúra és Adatáramlás
-A rendszer jelenleg négy fő logikai rétegre oszlik, amelyek egy fájlban (HTML) találhatók. A TypeScript refaktorálás során ezeket szigorúan el kell különíteni.
+A **Plexus Engine** bongeszoben futo, hardvergyorsitott, reaktiv audio-vizualizacios motor. A rendszer fo elve a lejatszas elotti offline analizis: a hangfajl betoltesekor egy Web Worker kiszamolja a zenei es vizualis idovonalat, lejatszas kozben pedig a renderer csak az aktualis idoponthoz tartozo elore szamolt frame-eket, beat es cue esemenyeket fogyasztja.
 
-1. **UI Layer (HTML/CSS):** Glassmorphism stílusú, reszponzív (min-width/min-height limitált) felület. Kezeli a fájlfeltöltést, a lejátszásvezérlést, és a valós idejű műszerfal (Dashboard) frissítését.
-2. **Audio Engine (Native Web Audio API):** Felelős a hangfájlok dekódolásáért (`AudioContext.decodeAudioData`), a pufferelésért és a mikroszekundum-pontos lejátszásért (`AudioBufferSourceNode`).
-3. **Analysis Engine (Web Worker):** A főszáltól (Main Thread) függetlenül futó algoritmus. A fájl betöltésekor a teljes hanganyagot végigelemzi. Szűrőket (IIR) alkalmaz, fluxust számol, blokkokra bontja a dalt, és egy kész "Térképet" küld vissza a rajzolónak.
-4. **Render Engine (p5.js Canvas):** 60 FPS sebességgel futó vizuális mag. A kapott idővonal-térkép és a Web Audio API aktuális ideje (`currentTime`) alapján szinkronizálja és mozgatja a részecskéket (Particles), rajzolja a Plexus hálót és a lökéshullámokat (Shockwaves).
+Az aktualis implementacio ket vizualis modot tart fenn:
 
----
+* `classic`: az eredeti Plexus reszecskehalo, kozponti glow, beat shockwave es polygon flash viselkedes.
+* `temporal`: ugyanarra az offline analizisre epulo, teljes track-szintu zenei kontextust hasznalo mod, amely section, feature, cue es pattern adatokat hasznal folyamatos vizualis modulaciora.
 
-## 3. Részletes Feature Dokumentáció (Functional Specs)
+## 2. Altalanos Architektura Es Adataramlas
 
-### 3.1. Offline Globális Analízis (Zéró-CPU Lejátszás)
-A zene betöltésekor a rendszer nem azonnal indítja a lejátszást. A nyers PCM hangadatokat átadja egy Web Workernek. A Worker ezredmásodperc pontossággal kiszámolja az egész dal energiaszintjeit, és egy JSON-szerű adatszerkezetet ad vissza. Lejátszáskor a főszál *nem végez hang-matematikát*, csak a lejátszó idejéhez (Playhead) tartozó előre kiszámolt indexet olvassa ki a tömbből ($O(1)$ komplexitás).
+A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus modulhatarokat a `documents/governance/architecture-contract.md` es a `documents/current-typescript-implementation.md` tartja naprakeszen.
 
-### 3.2. Makro-Dinamikai Állapotgép (Auto-Routing)
-A zene dinamikusan, az analizált BPM alapján ütem-blokkokra (pl. 16 beat) van osztva. Minden blokk kap egy relatív energia-értéket (`energyRatio` 0.0 és 1.0 között) a dal globális minimumához és maximumához képest.
-*   **HIGH Állapot:** Ha az energia $\ge$ 45%. A vizuál 100%-os érzékenységgel működik, minden dobot megmutat.
-*   **LOW Állapot:** Ha az energia < 45%. A vizuál elfojtja magát. A háttér sötétebb (zöldes/sárgás helyett lila), a kisebb zörejeket ignorálja (Büntetés / Penalty kalkuláció).
-*   **Real-time Override:** Ha a blokk HIGH-ban van, de az élő energia hirtelen leesik (Drop / Kiállás), vagy túl magasra megy (Overload / Torzítás), a rendszer azonnal lekezeli ezt az állapotot (`LOW_DROP` / `LOW_OVERLOAD`), megelőzve a fals felvillanásokat.
+1. **Composition (`src/main.ts`):** letrehozza a DOM shellt, az `AudioEngine` peldanyt, a `DashboardUI` peldanyt es a p5 renderert.
+2. **UI Layer (`src/ui/DashboardUI.ts`, `src/style.css`):** kezeli a fajlfeltoltest, play/pause/seek/loop vezerlest, visual mode valasztast, preset betoltest, tuning panelt, metrics panelt, auto-hide chrome-ot es a dashboard frissitest.
+3. **Audio Engine (`src/audio/AudioEngine.ts`):** felelos a hangfajlok dekodolasaert, a `AudioBufferSourceNode` eletciklusert, a kanonikus idoszamitasert, a seek/end resetert, a worker request id kezelesert, a stale worker eredmenyek eldobasaert es a worker terminalasaert.
+4. **Analysis Engine (`src/audio/analyzer.worker.ts`):** dedikalt Web Worker. 1024 mintas Hann-windowed FFT pipeline-t hasznal, spektralis fluxust, relativ savenergiakat, centroidot es flatness erteket szamol, majd `AudioFrame`, `BeatEvent` es `TrackAnalysis` kimenetet publikal.
+5. **Shared contracts/state (`src/types/index.ts`, `src/state/store.ts`):** tarolja a megosztott tipusokat, az elfogadott analizis eredmenyeket, a vizualis modot, loop allapotot, aktualis frame-et, cue allapotokat es tuning konfiguraciot.
+6. **Render Engine (`src/visuals/`):** p5 canvas renderer, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `ClassicPlexusEffect.ts` / `TemporalMusicEffect.ts` modokat kezeli.
 
-### 3.3. Multi-Band Dob Detektor (Drum Signature)
-A motor három frekvenciasávra (Bass, Mid, High) bontja a hangot. A sávok energiájának hirtelen megugrásából (Spectral Flux) típusokba sorolja az ütéseket:
-*   **Típus 1 (Kick):** Csak mély, kevés magas. Hatalmas kék lökéshullám, a poligonháló megrezzen.
-*   **Típus 2 (Snare/Drop):** Mély, közép és magas is van jelen. Gyors, vastag fehér/magenta hullám, a poligonok szikrázóan vakítóra villannak.
-*   **Típus 3 (Hi-Hat):** Csak magas/közép. Apró, vékony zöldes hullám, nincs poligon-villanás.
+## 3. Funkcionalis Specifikacio
 
-### 3.4. BPM Detektálás és Kijelző
-A Worker az ütések közötti távolságokból (ms) kiszámolja a lehetséges BPM-eket, majd egy hisztogram segítségével megkeresi a leggyakoribb értéket (70 és 180 BPM között).
+### 3.1. Offline Globalis Analizis
 
----
+A zene betoltesekor a rendszer nem azonnal inditja a lejatszast. Az `AudioEngine` dekodolja a fajlt, explicit masolatot keszit az elso csatorna sample adataibol, majd ezt az `ArrayBuffer`-t kuldi a workernek. A lejatszashoz szukseges `AudioBuffer` a main thread tulajdonaban marad, igy az analizis transfer nem tudja veletlenul detached allapotba tenni a playback adatot.
 
-## 4. Technikai és Algoritmikus Specifikációk
+Lejatszas kozben a fo szal nem vegez audio analizist. A renderer az `AudioEngine.getCurrentTime()` alapjan frame indexet szamol:
 
-### 4.1. DSP (Digital Signal Processing) a Workerben
-A sávokra bontáshoz egypólusú IIR (Infinite Impulse Response) aluláteresztő szűrőket használ a kód:
-```javascript
-let a_bass = Math.exp(-2 * Math.PI * 150 / sampleRate);  // 150 Hz
-let a_high = Math.exp(-2 * Math.PI * 4000 / sampleRate); // 4000 Hz
+```ts
+frameIdx = Math.floor(currentTime * State.sampleRate / State.hopSize);
 ```
-Ebből generálódik a `Bass (0-150Hz)`, `Mid (150-4000Hz)` és `High (4000Hz+)` sáv.
-A *Spectral Flux* kiszámítása: `Math.max(0, currentRMS - previousRMS)` sávonként.
 
-### 4.2. A Plexus Hálózat optimalizálása ($O(N^2)$)
-A hálózat kirajzolása köbös ($O(N^3)$) művelet lenne, ami lehetetlen 60 FPS mellett 100 részecskénél.
-**Optimalizációs lépések:**
-1. Gyökvonás elkerülése: `distSq = dx*dx + dy*dy`. A `Math.sqrt()` csak akkor fut le, ha a pontok bizonyítottan a küszöbön belül vannak.
-2. Kapcsolati limit: `if (linesDrawn > 6) break;`. Egy pontból maximum 6 vonal indulhat.
-3. Poligon limit: `if (polysDrawn < 2)`. Egy pont maximum 2 háromszögnek lehet a része.
-4. Natív renderelés: `beginShape()` helyett a p5.js `triangle()` függvényének használata.
+### 3.2. Makro-Dinamikai Allapotgep
 
-### 4.3. Időszinkronizáció (Timekeeping)
-Mivel az `AudioBufferSourceNode` nem ad vissza `currentTime` tulajdonságot, az aktuális lejátszási időt manuálisan kell számolni a hardver órájához képest:
-`playbackTime = playStartOffset + (audioContext.currentTime - playStartContextTime)`
+A worker a BPM becslesbol 16 beat hosszu blokkokat kepez. A blokk relativ energiaja alapjan a frame `state` erteke `HIGH` vagy `LOW`, real-time jellegu override-okkal:
 
----
+* `HIGH`: ha a blokk energia aranya legalabb `0.45`.
+* `LOW`: ha a blokk energia aranya `0.45` alatt van.
+* `LOW_DROP`: ha HIGH blokkban a simitott pillanatnyi energia `0.35` ala esik.
+* `LOW_OVERLOAD`: ha a simitott pillanatnyi energia `0.95` fole megy.
 
-## 5. ADR (Architectural Decision Records)
+### 3.3. Beat, Cue Es Pattern Kimenetek
 
-Az alábbi döntések a prototípus evolúciója során születtek. Ezeket a TypeScript átírás során **tilos megváltoztatni** anélkül, hogy a következményeket (pl. memóriaszivárgás, CPU túlterhelés) megvizsgálnánk.
+A worker a spektralis fluxus csucsai alapjan `BeatEvent` esemenyeket general. A `TrackAnalysis` ezen felul section struktura, `VisualFeatureFrame` sorozat, visual cue esemenyek, significant moments es recurring `MusicPattern` bejegyzesek forrasa.
 
-### ADR-001: Natív Web Audio API vs. p5.sound lejátszás
-*   **Kontextus:** Eredetileg a `p5.sound` `loadSound()` és `play()` metódusait használtuk.
-*   **Döntés:** Elvetve. A p5.sound memóriaszivárgást okozott a Play/Pause gyors váltogatásakor, és nehezen viselte a csúszkával (Seek) történő gyors tekerést.
-*   **Jelenlegi állapot:** Közvetlen `AudioContext` és `AudioBufferSourceNode` használata. Újraindításkor a régi node eldobódik, új jön létre.
+A pattern detektalas determinisztikus section signature-okbol tortenik. A pattern cue-k opcion ellenorizheto `patternId` mezovel hivatkoznak a megfelelo `MusicPattern` elemre.
 
-### ADR-002: Real-time FFT vs. Pre-computed (Offline) Analízis
-*   **Kontextus:** A vizuál és a dob-detektor valós időben, a `draw()` ciklusban próbálta kitalálni, hogy mikor van drop.
-*   **Döntés:** Teljes offline analízis a Web Workerben.
-*   **Indoklás:** Valós időben a rendszer nem ismeri a dal jövőjét, így nem tud dinamikai arányokat (relatív hangerőt) számolni. Egy halk introban lévő dobot dropnak érzékelt. A Worker előre megismeri a dal "legmagasabb hegyeit és legmélyebb völgyeit", így tökéletes küszöbértékeket állít be. Lejátszáskor a CPU terhelés drasztikusan csökkent.
+### 3.4. BPM Detektalas Es Kijelzes
 
-### ADR-003: Poligonok Alfa-összeadódása (Whiteout / Overdraw)
-*   **Kontextus:** A sok részecske által generált egymást átfedő háromszögek átlátszósága (opacity) összeadódott, ami miatt a képernyő vakító fehér folttá vált.
-*   **Döntés:** Szigorú, hardkódolt alap Alpha korlátozás (max 50), melyet csak a pergődob/drop felvillanása léphet át tranzikens módon.
-*   **Indoklás:** A háromszögek alapértelmezett maximális alfa értéke még a legnagyobb ütésnél (Drop) sem haladhatja meg az 50-et. Tranzikens, ritkán előforduló snare/drop események hirtelen megdobhatják az alfát 200 felé, azonban ez a következő keretekben rapid módon elhalványul. Ezzel a Plexus háló alapállapotban opálos marad és nem ég ki a retina.
+A worker 70 es 180 BPM kozotti histogram alapjan becsul BPM-et. A UI-ban a BPM a metrics panel normal metrikakartyajakent jelenik meg; a fejlec csak a betoltott audio fajl nevet mutatja.
 
----
+## 4. Technikai Es Algoritmikus Specifikaciok
 
-## 6. TypeScript Refaktorálási Útmutató (Roadmap)
+### 4.1. DSP A Workerben
 
-A jövőbeli fejlesztéshez (Vite + TypeScript + OOP) az alábbi fájl- és osztálystruktúra kialakítása javasolt.
+Az aktualis worker nem IIR crossover szuroket hasznal. A `src/audio/analyzer.worker.ts` 1024 mintas hop merettel dolgozik, minden frame-et Hann ablakkal sulyoz, majd FFT-n szamolja a spektralis jellemzoket.
 
-### 6.1. Javasolt Könyvtárszerkezet
+Az elfogadott render-facing kimenetek:
+
+* `AudioFrame.e`: normalizalt RMS energia.
+* `AudioFrame.b`: simitott density projekcio.
+* `AudioFrame.m`: simitott melody-presence projekcio.
+* `AudioFrame.t`: simitott fx-presence projekcio.
+* `AudioFrame.state`: `IDLE`, `HIGH`, `LOW`, `LOW_DROP` vagy `LOW_OVERLOAD`.
+* `AudioFrame.eRatio`: blokk-szintu energia arany.
+
+A UI-ban a legacy `Bass`, `Mid`, `Treble` cimkek tovabbra is lathatok, de ezek az aktualis `b/m/t` projekciokat jelenitik meg, nem nyers crossover savokat.
+
+### 4.2. Plexus Halo Optimalizalas
+
+A classic es temporal renderer tovabbra is negyzetes tavolsagellenorzest hasznal hot loopban. A gyokvonas csak akkor tortenik meg, amikor a pontok mar biztosan a maximum tavolsagon belul vannak. A particle pool 75 elemre inicializalodik setupkor, normal draw loopban nem jonnek letre uj `Particle` peldanyok.
+
+### 4.3. Idoszinkronizacio
+
+Az elfogadott kanonikus playback ido formula:
+
+```ts
+playbackTime = playOffset + (audioContext.currentTime - playStartTime);
+```
+
+Nem elfogadott kanonikus idoforras: UI slider, animation frame timestamp, p5 frame count, media element ido vagy wall-clock timer.
+
+### 4.4. Source Node Eletciklus
+
+Az `AudioBufferSourceNode` one-shot objektum. Pause, stop, seek, replacement vagy cancellation eseten:
+
+1. `source.onended = null`.
+2. Guardolt `source.stop()`.
+3. `source.disconnect()`.
+4. Reference eldobasa.
+5. Kovetkezo playback szakaszhoz friss source letrehozasa.
+
+Natural end eseten `Loop` modban a lejatszas 0:00-rol ujraindul. `Once` modban az engine reseteli az idot es playback ended callbacket kuld a UI/render retegnek.
+
+## 5. ADR Osszefoglalo
+
+### ADR-001: Nativ Web Audio API vs. p5.sound
+
+* **Dontes:** a playback nativ Web Audio API-n, `AudioContext` es `AudioBufferSourceNode` hasznalataval tortenik.
+* **Indoklas:** a `p5.sound` nem resze az elfogadott audio pathnak, es nem ad eleg kontrollt a source node eletciklus, seek es memory safety felett.
+
+### ADR-002: Real-time FFT vs. Offline Analizis
+
+* **Dontes:** teljes offline analizis Web Workerben.
+* **Indoklas:** a renderernek nem szabad audio analizist, beat detectiont vagy worker spawn-t vegeznie draw loopban.
+
+### ADR-003: Worker Schema Es TrackAnalysis
+
+* **Dontes:** a worker success payload `type`, `requestId`, `bpm`, `frames`, `events`, `hopSize` es `trackAnalysis` mezoket tartalmaz.
+* **Indoklas:** a `trackAnalysis` append-only szerzodeskent boviti a legacy frame/event kimenetet, hogy az uj visual mode-ok gazdagabb zenei kontextust kapjanak.
+
+### ADR-004: Selectable Visual Modes
+
+* **Dontes:** a `State.visualMode` `classic` vagy `temporal` lehet. A valasztas UI tulajdon, a rendererek csak fogyasztjak.
+* **Indoklas:** az uj temporal viselkedes tesztelheto es visszafordithato marad az eredeti visual language torlese nelkul.
+
+### ADR-005: Visual Tuning Presets Es Playback UI Chrome
+
+* **Dontes:** a tuning defaultok es kontroll metadata a `src/config/visualTuning.ts` fajlban vannak. A presetek `public/visual-tuning-presets/` alatt JSON fajlok, listazasuk `index.json` manifestbol tortenik.
+* **Indoklas:** statikus Vite app nem tud megbizhatoan public konyvtarat listazni runtime-ban backend vagy manifest nelkul.
+
+## 6. Aktualis TypeScript Struktura
+
 ```text
 src/
-├── main.ts                 # Belépési pont, p5 instance inicializálása
-├── audio/
-│   ├── AudioEngine.ts      # Web Audio API wrapper (Play, Pause, Seek, Timekeeping)
-│   ├── AudioWorker.ts      # A Web Worker kódja (exportálandó string/blobként vagy Vite worker importként)
-│   └── Types.ts            # Audio interface-ek (BeatEvent, FrameData, BlockData)
-├── visuals/
-│   ├── PlexusEngine.ts     # A fő rajzoló menedzser (tartalmazza a részecskéket és a hálót)
-│   ├── Particle.ts         # A részecske osztály
-│   ├── Shockwave.ts        # A lökéshullám osztály
-│   └── ColorPalettes.ts    # HIGH és LOW állapotok színkódjai
-├── state/
-│   └── Store.ts            # Reakítv állapotkezelő (Zustand vagy egyedi PubSub a UI és a Canvas között)
-└── ui/
-    └── Dashboard.ts        # DOM manipuláció, csúszkák, gombok eseménykezelői
+|-- main.ts
+|-- audio/
+|   |-- AudioEngine.ts
+|   `-- analyzer.worker.ts
+|-- config/
+|   `-- visualTuning.ts
+|-- state/
+|   `-- store.ts
+|-- types/
+|   `-- index.ts
+|-- ui/
+|   `-- DashboardUI.ts
+|-- visuals/
+|   |-- PlexusRenderer.ts
+|   |-- ClassicPlexusEffect.ts
+|   |-- TemporalMusicEffect.ts
+|   |-- Particle.ts
+|   `-- Shockwave.ts
+`-- style.css
+
+public/
+`-- visual-tuning-presets/
+    |-- index.json
+    |-- default.json
+    |-- temporal1.json
+    |-- temporal2.json
+    |-- temporal3.json
+    `-- temporal4.json
 ```
 
-### 6.2. Kulcsfontosságú TypeScript Interface-ek (Tervezet)
+## 7. Kulcsfontossagu TypeScript Szerzodesek
 
-```typescript
-// Az offline analízisből visszatérő egyetlen dobütés
+```ts
 export interface BeatEvent {
-    time: number;          // Lejátszási idő másodpercben
-    intensity: number;     // 0.0 - 1.0 (Lokális hangerő)
-    type: 1 | 2 | 3;       // 1: Kick, 2: Snare/Drop, 3: Hi-hat
+    time: number;
+    intensity: number;
+    type: 1 | 2 | 3;
 }
 
-// Egy 2.5 másodperces dinamikai blokk
-export interface AudioBlock {
-    startTime: number;
-    endTime: number;
-    energyRatio: number;   // 0.0 - 1.0 (Viszonyítva a dal globális csúcsához)
-}
-
-// Egy 1024-es ablakmérethez (hopSize) tartozó simított adat és állapot
 export interface AudioFrame {
-    e: number; // Teljes energia
-    b: number; // Basszus
-    m: number; // Közép
-    t: number; // Magas
-    state: 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
+    e: number;
+    b: number;
+    m: number;
+    t: number;
+    state: 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
     eRatio: number;
 }
+
+export interface AnalysisRequest {
+    requestId: number;
+    algorithmVersion: number;
+    samples: ArrayBuffer;
+    sampleRate: number;
+}
+
+export interface AnalysisSuccessMessage {
+    type: 'analysis_done';
+    requestId: number;
+    bpm: number;
+    frames: AudioFrame[];
+    events: BeatEvent[];
+    hopSize: number;
+    trackAnalysis: TrackAnalysis;
+}
+
+export interface AnalysisErrorMessage {
+    type: 'analysis_error';
+    requestId: number;
+    errorCode: string;
+    message: string;
+}
 ```
 
-### 6.3. Technikai Megjegyzések a Portoláshoz
-* A p5.js globális módban van a jelenlegi kódban. A TypeScript-es projektben az **Instance Mode** (`new p5((p) => { ... })`) használata kötelező a globális névtér szennyezésének elkerülése végett.
-* A Web Worker kódját Vite (vagy Webpack) alatt érdemes egy külön `.worker.ts` fájlba tenni, és a bundler beépített Worker importálóját használni (pl. `import MyWorker from './audio.worker.ts?worker'`), a jelenlegi Blob-os hack helyett.
-* A DOM (UI) manipuláció és a p5.js (Canvas) közötti kommunikációt egy Eseménybuszon (Event Bus) vagy Állapotkezelőn keresztül kell megoldani, hogy ne hivatkozzanak egymásra direkten.
+## 8. Validacio Es Tesztek
 
----
+Az aktualis contract tesztek a `tests/contracts.test.mjs` fajlban vannak. Lefedik tobbek kozott:
 
-## 7. Current TypeScript ADR Addendum
-
-### ADR-004: Full-track visual-music analysis as an append-only worker contract
-*   **Context:** Beat events and macro-dynamic frames were not enough to represent melody-like, vocal-like, fx-like, or recurring temporal content.
-*   **Decision:** The worker output now includes `trackAnalysis` with section structure, per-frame visual features, visual cue events, significant moments, and recurring `MusicPattern` entries. This is added to the existing payload instead of replacing `frames` or `events`.
-*   **Rationale:** Future effects can opt into richer musical context while the original Plexus effect and playback synchronization continue to read the legacy frame/event arrays.
-
-### ADR-005: Selectable visual modes
-*   **Context:** The original Plexus network remains useful, but the new pattern-analysis output needs a more expressive effect that reacts to repeated temporal shapes.
-*   **Decision:** The app exposes a `classic` mode and a `temporal` mode in separate effect files. `classic` preserves the existing Plexus network. `temporal` reuses the same particle and shockwave primitives, but treats track-analysis output as continuous modulation of polygon color, movement, density, connection sensitivity, background tone, and central mechanism rings for beat, melody, vocal, fx, and pattern resonance.
-*   **Rationale:** Keeping both modes makes the new behavior testable and reversible without deleting the established visual language. Pattern analysis exists to make the visual response more sensitive and sophisticated, not to turn musical sections into explicit bar-aligned labels.
+* worker success/error payload szerzodest,
+* `trackAnalysis` precompute es state publication viselkedest,
+* recurring temporal pattern detektalast,
+* visual mode valasztast,
+* visual tuning defaultokat, kontrollokat es preset kompatibilitast,
+* FFT alapu analizist az IIR crossover megkozelites helyett,
+* playback data copy-vs-transfer policyt,
+* stale worker result vedelmet,
+* seek/stop idoszinkront,
+* loop mode, metrics toggle, draggable tuning es auto-hide chrome UI szerzodest.

@@ -74,5 +74,3 @@ Tradeoffs:
 - `src/visuals/TemporalMusicEffect.ts`
 - `src/visuals/PlexusRenderer.ts`
 - `public/visual-tuning-presets/`
-- `branch_pr_snapshot.md`
-

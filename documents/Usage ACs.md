@@ -1,9 +1,11 @@
 # 🎯 FELHASZNÁLÓI ÉS FUNKCIONÁLIS KRITÉRIUMOK (Usage ACs) V0.2
 
+> **Aktuális státusz:** ez a dokumentum a V0.2 termék- és viselkedési AC-k kódhű, TypeScript implementációhoz igazított változata. A régi prototípusos megfogalmazások helyett a `src/`, `public/visual-tuning-presets/` és `tests/` aktuális állapota az irányadó.
+
 ## 1. Fájlkezelés és Lejátszás (Audio & Playback)
 *   **AC 1.1 - Fájl betöltése:** A felhasználó képes `.mp3`, `.wav` és egyéb böngésző által támogatott audio fájlokat betölteni a "Load Audio" gombbal.
 *   **AC 1.2 - Betöltési állapot (UI Lock):** Fájl kiválasztásakor a lejátszás megáll, a `Play` és a csúszka (`Seek bar`) inaktívvá (disabled) válik, a státuszszöveg tájékoztat a dekódolásról és az analízisről.
-*   **AC 1.3 - Automatikus végállapot:** Amikor a dal a végéhez ér (duration - 0.1s), a lejátszás automatikusan leáll, a csúszka visszaugrik 0-ra, a vizuális állapotok (Energy, BeatDecay) és a UI alaphelyzetbe (IDLE) állnak.
+*   **AC 1.3 - Automatikus végállapot és loop:** Amikor a dal a végéhez ér (duration - 0.1s), a `Loop` mód az alapértelmezett, ezért a lejátszás 0:00-ról újraindul. `Once` módban a lejátszás leáll, a csúszka visszaugrik 0-ra, a vizuális állapotok (`beatDecay`, `snareFlash`, cue állapotok, event indexek) és a UI alaphelyzetbe állnak.
 *   **AC 1.4 - Élő Keresés (Seek):** A csúszka húzásakor (drag) az idő-kijelző valós időben frissül. Az egér/ujj elengedésekor, vagy húzás közben (input event) a zene azonnal, pattogás és memóriaszivárgás nélkül a megfelelő időpontra ugrik.
 
 ## 2. Makro-Dinamikai Állapotgép (Auto-Routing)
@@ -16,7 +18,7 @@
 
 ## 3. Vizuális Reakciók és Plexus Motor
 *   **AC 3.1 - Központba vonzó gravitáció:** A részecskék (maximum 75 db) folyamatosan mozognak az aktuális `Energy` alapján. Ha a képernyő középpontjától számított sugaruk meghaladja a látható tér 45%-át, mozgásvektoruk lágyan a középpont felé kezd fordulni.
-*   **AC 3.2 - Távolság-alapú Hálózat:** Vonal (Line) csak akkor rajzolódik két pont közé, ha távolságuk egy adott küszöb alatt van. A küszöb a Basszus értékkel dinamikusan tágul (min 80px, max ~180px).
+*   **AC 3.2 - Távolság-alapú Hálózat:** Vonal (Line) csak akkor rajzolódik két pont közé, ha távolságuk egy adott küszöb alatt van. A küszöb az aktuális `AudioFrame.b` render-facing density projekcióval dinamikusan tágul.
 *   **AC 3.3 - Fehér-beégés (Whiteout) védelem:** 
     *   Egy csomópontból maximum 6 vonal indulhat ki.
     *   Egy csomópont maximum 2 háromszög-képzésben vehet részt.
@@ -27,10 +29,10 @@
     *   *Típus 3 (Hi-Hat):* Vékony, gyors, zöldes hullám.
 
 ## 4. Felhasználói Felület (Dashboard)
-*   **AC 4.1 - Valós idejű metrikák:** A Dashboard (8 kártya) lejátszás közben mutatja a simított (smoothed) Energy, Bass, Mid, Treble, Beat Hit, Progress és Active Strategy értékeket.
+*   **AC 4.1 - Valós idejű metrikák:** A Dashboard metrikakártyái lejátszás közben mutatják a BPM-et, Energy-t, a render-facing `AudioFrame.b/m/t` értékeket, Melody/Vocal/FX feature értékeket, Beat Hit-et, Progress-t és a `Music Block & Dynamics` állapotot. A látható `Bass`, `Mid`, `Treble` címkék legacy UI-címkék; az aktuális worker contract szerint a mögöttük lévő `b`, `m`, `t` értékek density, melody-presence és fx-presence projekciók.
 *   **AC 4.2 - Teljesítmény-kímélő UI frissítés:** A DOM elemek (`innerText`, `style.width`) frissítése szigorúan csak minden 4. képkockánál (frameCount % 4 === 0) történik meg (~15 FPS), hogy ne terhelje a rajzoló (Canvas) motort.
-*   **AC 4.3 - BPM Kijelzés:** A sikeres elemzés után a fejlécben megjelenik a zene kalkulált BPM értéke egy világító plecsnin.
-*   **AC 4.4 - Reszponzivitás:** Ha az ablak mérete kisebb, mint 900px széles vagy 100vh magas, a UI nem esik szét, hanem natív böngészős görgetősáv (overflow) jelenik meg. A Canvas ezalatt is fixen a látható ablak (viewport) közepén marad (`position: fixed`).
+*   **AC 4.3 - BPM Kijelzés:** A sikeres elemzés után a kalkulált BPM a metrics panel normál metrikakártyájaként jelenik meg. A fejléc csak a betöltött audio fájl nevét mutatja.
+*   **AC 4.4 - Reszponzivitás:** A tuning panel, metrics grid és seekbar viewport-szélességhez igazodó layoutot használ. A Canvas a teljes ablakra méretezett p5 felület, és `windowResized` eseménynél újraméreteződik.
 
 ---
 
@@ -57,13 +59,13 @@
 *   **AC 8.1 - Zombi Node-ok elkerülése:** Pause/Stop esetén, vagy a zene beletekerésekor a meglévő `AudioBufferSourceNode` `onended` eseménykezelője nullázódik, a node leáll és leválasztódik (`disconnect()`), hogy a Garbage Collector azonnal takaríthassa.
 *   **AC 8.2 - Objektum újrahasznosítás:** A `particles` tömb a futás kezdetekor egyszer inicializálódik (75 elem). Futás közben a kód nem hoz létre (`new Particle()`) és nem töröl részecskéket, megelőzve a memóriatöredezést. A `Shockwaves` tömb dinamikusan ürül (`splice`), amint egy hullám alfája $\le$ 0.
 ---
-### 💡 Javaslat a TypeScript portoláshoz:
-A kód feldarabolása során érdemes a fenti kategóriákat **külön osztályokba vagy szolgáltatásokba (Services)** szervezni. Pl:
-*   `AudioAnalyzerWorker.ts` (AC 5.x)
-*   `AudioPlaybackService.ts` (AC 6.x, AC 8.x)
-*   `MacroDynamicsEngine.ts` (AC 2.x)
-*   `PlexusRenderer.ts` (AC 3.x, AC 7.x)
-*   `DashboardUI.tsx` vagy `.vue` (AC 1.x, AC 4.x)
+### 💡 Aktuális TypeScript modulok:
+A kód a fenti kategóriákat az alábbi modulokra bontja:
+*   `src/audio/analyzer.worker.ts` (AC 5.x)
+*   `src/audio/AudioEngine.ts` (AC 1.x, AC 6.x, AC 8.x)
+*   `src/state/store.ts` és `src/types/index.ts` (megosztott állapot és szerződések)
+*   `src/visuals/PlexusRenderer.ts`, `ClassicPlexusEffect.ts`, `TemporalMusicEffect.ts`, `Particle.ts`, `Shockwave.ts` (AC 3.x, AC 7.x)
+*   `src/ui/DashboardUI.ts` és `src/main.ts` (AC 1.x, AC 4.x, playback/tuning/preset UI)
 
 ## Current TypeScript AC Addendum
 

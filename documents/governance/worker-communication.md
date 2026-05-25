@@ -6,27 +6,29 @@ This document extends `../../AGENTS.md`. If there is a conflict, `AGENTS.md` is 
 
 Worker input and output are public contracts. Keep them typed and versionable.
 
-Minimum analysis request fields:
+Current analysis request fields:
 
-- Request id.
-- Sample payload.
-- Sample rate.
-- Algorithm version when behavior changes.
+- `requestId`.
+- `algorithmVersion`.
+- `samples` as an `ArrayBuffer`.
+- `sampleRate`.
 
-Minimum analysis success fields:
+Current analysis success message fields:
 
-- Request id.
-- BPM.
-- Frame list.
-- Beat event list.
-- Hop size.
-- Track analysis when visual-music features, sections, cues, and patterns are part of the accepted algorithm version.
+- `type: 'analysis_done'`.
+- `requestId`.
+- `bpm`.
+- `frames`.
+- `events`.
+- `hopSize`.
+- `trackAnalysis`.
 
-Minimum failure fields:
+Current failure message fields:
 
-- Request id.
-- Error code.
-- Human-readable message.
+- `type: 'analysis_error'`.
+- `requestId`.
+- `errorCode`.
+- `message`.
 
 ## Race Prevention
 

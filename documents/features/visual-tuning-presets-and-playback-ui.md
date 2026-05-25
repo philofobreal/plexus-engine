@@ -1,6 +1,6 @@
 # Visual Tuning, Presets, And Playback UI
 
-This feature document records the visual tuning and player-surface work implemented during the current branch. The implementation source was reviewed against `branch_pr_snapshot.md` and the active TypeScript code.
+This feature document records the visual tuning and player-surface behavior in the active TypeScript implementation.
 
 ## Feature Scope
 
@@ -67,6 +67,7 @@ Implemented capabilities:
 - The top panel shows the loaded audio file name only.
 - Analysis-completion details such as sample count, section count, or cue count are not shown in the header.
 - BPM is shown as a metrics value instead of in the title panel.
+- The legacy `Bass`, `Mid`, and `Treble` metric labels display the render-facing `AudioFrame.b`, `AudioFrame.m`, and `AudioFrame.t` values. In the current worker contract those values are smoothed density, melody-presence, and fx-presence projections, not raw crossover bands.
 - The metrics panel can be expanded or collapsed from a compact control above the seekbar.
 - The metrics grid uses the original card-style layout and responds to viewport width.
 - The cue metric card was removed.
@@ -87,4 +88,3 @@ The feature is split across these runtime layers:
 - `src/ui/DashboardUI.ts`: DOM controls, preset loading, panel visibility, dragging, playback shortcuts, metrics projection, and auto-hide behavior.
 - `src/audio/AudioEngine.ts`: loop-on-end playback behavior.
 - `src/visuals/`: render usage of tuning values, background color, and sensitivity-scaled audio data.
-

@@ -60,7 +60,7 @@ Mode selection belongs to UI projection. `src/visuals/PlexusRenderer.ts` only sy
 
 ## Visual Tuning And Playback UI
 
-The current branch adds a metadata-driven visual tuning panel, JSON preset loading, surface-level playback controls, loop/once playback, responsive metrics, and idle-hiding UI chrome.
+The active implementation includes a metadata-driven visual tuning panel, JSON preset loading, surface-level playback controls, loop/once playback, responsive metrics, and idle-hiding UI chrome.
 
 Detailed documentation:
 
@@ -71,7 +71,7 @@ Detailed documentation:
 ## AC Clarifications
 
 - **AC 1.2 - Loading state:** Selecting a new file must stop playback, invalidate previous analysis, terminate any active worker, disable `Play` and `Seek`, reset visible playback position to `0:00`, and re-enable controls only after an accepted analysis result.
-- **AC 1.3 - End state:** Natural track end must reset playback time, seek bar, `Play` label, active strategy text, beat decay, snare flash, and visual beat-event index.
+- **AC 1.3 / VT-7 - End state:** In `Loop` mode, natural track end resets the current source and immediately starts playback from `0:00`. In `Once` mode, natural track end resets playback time, seek bar, `Play` label, active strategy text, beat decay, snare flash, cue decay, and visual event indexes.
 - **AC 1.4 - Seek:** Seeking must use the audio engine `seek()` path so playback offset, visible time, paused time, source-node lifecycle, and visual beat-event index are aligned in one transition.
 - **AC 5.2 - Analyzer bands:** The current worker uses Hann-windowed FFT spectral features rather than the older IIR crossover wording from the prototype.
 - **AC 5.4 - Worker output:** The worker success payload includes `type`, `requestId`, `bpm`, `frames`, `events`, `hopSize`, and `trackAnalysis`. The worker may also emit typed failure payloads with `type`, `requestId`, `errorCode`, and `message`.

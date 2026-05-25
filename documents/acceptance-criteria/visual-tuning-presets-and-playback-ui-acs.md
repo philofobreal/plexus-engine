@@ -42,6 +42,7 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-4.5 Metrics layout:** Metrics use the original card-like grid layout and adapt by viewport width.
 - **VT-4.6 Cue removal:** The cue metrics block is not displayed.
 - **VT-4.7 Music block size:** `Music Block & Dynamics` occupies one metrics grid unit.
+- **VT-4.8 Legacy frame labels:** The visible `Bass`, `Mid`, and `Treble` metric labels may remain for continuity, but they project the current `AudioFrame.b`, `AudioFrame.m`, and `AudioFrame.t` values. In the accepted worker contract those are density, melody-presence, and fx-presence projections.
 
 ## VT-5 Seekbar
 
@@ -80,4 +81,3 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-9.2 Preset switching:** Switching presets after audio load must not reset playback state or require reloading the track.
 - **VT-9.3 Contract tests:** The shared tuning and worker contracts must remain covered by automated tests.
 - **VT-9.4 Build:** The TypeScript build must pass after changes to state, UI, audio, or visual contracts.
-
