@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "visualTuning": {
+    "particleIdleSpeed": 0.2,
+    "particleEnergySpeed": 8,
+    "particleBeatSpeed": 20,
+    "particleBoundaryPull": 0.05,
+    "particleBassTurn": 0.1,
+    "shockwaveRadius": 0.2,
+    "shockwaveSpeed": 0.25,
+    "shockwaveAlpha": 1,
+    "shockwaveThickness": 1,
+    "shockwaveExpansion": 0.05,
+    "shockwaveDecay": 5,
+    "circleHue": 205,
+    "circleAlpha": 1,
+    "circleSize": 1,
+    "circleLineWeight": 1,
+    "lineHue": 200,
+    "lineAlpha": 1,
+    "lineDistance": 1,
+    "lineWeight": 1,
+    "polygonHue": 238,
+    "polygonAlpha": 2,
+    "polygonSize": 0.65,
+    "polygonFlash": 1.15,
+    "temporalRingSize": 2.5,
+    "temporalRingAlpha": 0.25,
+    "temporalRingSpeed": 3,
+    "temporalNetworkDistance": 2.4,
+    "temporalPolygonAlpha": 2
+  }
+}
