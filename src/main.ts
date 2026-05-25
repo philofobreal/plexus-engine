@@ -24,6 +24,17 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <button id="fullscreen-btn" class="std-btn btn-icon" title="Teljes Képernyő">⛶</button>
       </div>
     </div>
+    <div class="tuning-panel panel">
+      <div class="tuning-header">
+        <div>
+          <div class="panel-title">Visual tuning</div>
+          <p>Live effect parameters</p>
+        </div>
+        <button id="copy-visual-config" class="std-btn compact-btn">Copy config</button>
+      </div>
+      <div id="visual-tuning-controls" class="tuning-grid"></div>
+      <div id="copy-config-status" class="copy-status" aria-live="polite"></div>
+    </div>
     <div class="bottom-section">
       <div class="metrics-grid">
         <div class="metric-card"><div class="m-label">Energy</div><div class="m-value" id="val-energy">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-energy" style="background:#a78bfa;"></div></div></div>

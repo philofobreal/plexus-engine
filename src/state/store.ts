@@ -1,3 +1,4 @@
+import { cloneDefaultVisualTuning } from '../config/visualTuning';
 import type { AudioFrame, BeatEvent, TrackAnalysis, VisualFeatureFrame, VisualCueKind, VisualMode } from '../types';
 
 const emptyFeatures: VisualFeatureFrame = {
@@ -40,5 +41,6 @@ export const State = {
     activePatternId: null as string | null,
     cueDecay: 0,
     beatDecay: 0,
-    snareFlash: 0
+    snareFlash: 0,
+    visualTuning: cloneDefaultVisualTuning()
 };

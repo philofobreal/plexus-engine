@@ -1,4 +1,5 @@
 import type { AudioEngine } from '../audio/AudioEngine';
+import { visualTuningControls, type VisualTuningKey } from '../config/visualTuning';
 import { State } from '../state/store';
 
 export class DashboardUI {
@@ -14,6 +15,9 @@ export class DashboardUI {
             visualMode: document.getElementById('visual-mode')!,
             upload: document.getElementById('audio-upload')!,
             fsBtn: document.getElementById('fullscreen-btn')!,
+            tuningControls: document.getElementById('visual-tuning-controls')!,
+            copyVisualConfig: document.getElementById('copy-visual-config')!,
+            copyConfigStatus: document.getElementById('copy-config-status')!,
             seekBar: document.getElementById('seek-bar')!,
             bpmBadge: document.getElementById('bpm-badge')!,
             timeCur: document.getElementById('time-current')!,
@@ -56,6 +60,7 @@ export class DashboardUI {
         };
 
         this.initBindings();
+        this.initVisualTuningControls();
     }
 
     private formatTime(seconds: number): string {
@@ -131,6 +136,98 @@ export class DashboardUI {
             let exitFS = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
             if(!doc.fullscreenElement) { reqFS?.call(docEl); } else { exitFS?.call(doc); }
         });
+    }
+
+    private initVisualTuningControls() {
+        const container = this.els.tuningControls;
+        container.innerHTML = "";
+        const groups = new Map<string, HTMLElement>();
+
+        for (const control of visualTuningControls) {
+            let group = groups.get(control.group);
+            if (!group) {
+                group = document.createElement('section');
+                group.className = 'tuning-group';
+                group.innerHTML = `<h2>${control.group}</h2>`;
+                groups.set(control.group, group);
+                container.appendChild(group);
+            }
+
+            const row = document.createElement('label');
+            row.className = 'tuning-control';
+            const valueId = `visual-tuning-value-${control.key}`;
+            const value = State.visualTuning[control.key];
+            row.innerHTML = `
+                <span class="tuning-label">${control.label}</span>
+                <input
+                    type="range"
+                    min="${control.min}"
+                    max="${control.max}"
+                    step="${control.step}"
+                    value="${value}"
+                    data-tuning-key="${control.key}"
+                    aria-label="${control.label}"
+                >
+                <output id="${valueId}" class="tuning-value">${this.formatTuningValue(value, control.unit)}</output>
+            `;
+            group.appendChild(row);
+        }
+
+        container.addEventListener('input', (event) => {
+            const input = event.target as HTMLInputElement;
+            const key = input.dataset.tuningKey as VisualTuningKey | undefined;
+            if (!key) return;
+
+            const value = Number(input.value);
+            State.visualTuning[key] = value;
+            const control = visualTuningControls.find(item => item.key === key);
+            const output = document.getElementById(`visual-tuning-value-${key}`);
+            if (output) output.textContent = this.formatTuningValue(value, control?.unit);
+        });
+
+        this.els.copyVisualConfig.addEventListener('click', () => {
+            this.copyVisualConfig();
+        });
+    }
+
+    private formatTuningValue(value: number, unit?: string) {
+        const decimals = value >= 10 || Number.isInteger(value) ? 0 : 2;
+        return `${value.toFixed(decimals)}${unit || ""}`;
+    }
+
+    private async copyVisualConfig() {
+        const payload = JSON.stringify({
+            version: 1,
+            visualTuning: State.visualTuning
+        }, null, 2);
+
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(payload);
+            } else {
+                this.copyTextFallback(payload);
+            }
+            this.els.copyConfigStatus.innerText = "Copied";
+        } catch {
+            this.copyTextFallback(payload);
+            this.els.copyConfigStatus.innerText = "Copied";
+        }
+
+        window.setTimeout(() => {
+            this.els.copyConfigStatus.innerText = "";
+        }, 1600);
+    }
+
+    private copyTextFallback(value: string) {
+        const textArea = document.createElement('textarea');
+        textArea.value = value;
+        textArea.setAttribute('readonly', 'true');
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
     }
 
     updateDashboard() {

@@ -120,6 +120,57 @@ test('visual mode selector preserves classic mode and exposes temporal mode', ()
   assert.doesNotMatch(temporal, /drawVocalPresence/);
 });
 
+test('visual effects expose live tuning controls and copyable config', () => {
+  const types = read('src/types/index.ts');
+  const config = read('src/config/visualTuning.ts');
+  const state = read('src/state/store.ts');
+  const main = read('src/main.ts');
+  const ui = read('src/ui/DashboardUI.ts');
+  const classic = read('src/visuals/ClassicPlexusEffect.ts');
+  const temporal = read('src/visuals/TemporalMusicEffect.ts');
+  const particle = read('src/visuals/Particle.ts');
+  const shockwave = read('src/visuals/Shockwave.ts');
+
+  assert.match(types, /export interface VisualTuningConfig/);
+  assert.match(config, /export const defaultVisualTuning: VisualTuningConfig/);
+  assert.match(config, /export const visualTuningControls: VisualTuningControl\[\]/);
+  assert.match(state, /visualTuning: cloneDefaultVisualTuning\(\)/);
+  assert.match(main, /id="visual-tuning-controls"/);
+  assert.match(main, /id="copy-visual-config"/);
+  assert.match(ui, /data-tuning-key="\$\{control\.key\}"/);
+  assert.match(ui, /State\.visualTuning\[key\] = value/);
+  assert.match(ui, /navigator\.clipboard\?\.writeText/);
+  assert.match(classic, /State\.visualTuning\.lineDistance/);
+  assert.match(classic, /State\.visualTuning\.polygonAlpha/);
+  assert.match(temporal, /State\.visualTuning\.temporalRingSize/);
+  assert.match(temporal, /State\.visualTuning\.temporalPolygonAlpha/);
+  assert.match(particle, /State\.visualTuning\.particleEnergySpeed/);
+  assert.match(shockwave, /State\.visualTuning\.shockwaveSpeed/);
+});
+
+test('visual tuning controls cover circle, line, polygon, particle, and temporal parameters', () => {
+  const config = read('src/config/visualTuning.ts');
+
+  for (const key of [
+    'circleHue',
+    'circleAlpha',
+    'circleSize',
+    'shockwaveSpeed',
+    'shockwaveThickness',
+    'lineHue',
+    'lineAlpha',
+    'lineWeight',
+    'polygonHue',
+    'polygonAlpha',
+    'polygonSize',
+    'particleEnergySpeed',
+    'temporalRingSpeed',
+    'temporalNetworkDistance'
+  ]) {
+    assert.match(config, new RegExp(`key: '${key}'`));
+  }
+});
+
 test('analysis thresholds match the V0.2 macro-dynamics ACs', () => {
   const worker = read('src/audio/analyzer.worker.ts');
 

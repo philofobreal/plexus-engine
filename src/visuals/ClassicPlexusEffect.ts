@@ -1,4 +1,5 @@
 import p5 from 'p5';
+import { hueToRgb } from '../config/visualTuning';
 import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
@@ -20,25 +21,29 @@ function drawCenterDynamics(p: p5, shockwaves: Shockwave[]) {
     }
 
     let isLowMode = State.currentFrame.state.startsWith('LOW');
-    let glowRadius = Math.max(p.width, p.height) * (0.3 + State.currentFrame.b * 0.3);
+    let glowRadius = Math.max(p.width, p.height) * (0.3 + State.currentFrame.b * 0.3) * State.visualTuning.circleSize;
 
     let ctx = p.drawingContext as CanvasRenderingContext2D;
     let bgGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowRadius);
-    let hue = isLowMode ? 70 : 40;
-    bgGlow.addColorStop(0, `rgba(${hue}, 25, 90, ${0.3 + State.currentFrame.b * 0.4})`);
+    let [glowR, glowG, glowB] = hueToRgb(State.visualTuning.circleHue + (isLowMode ? 105 : 0), 0.74, 0.5);
+    bgGlow.addColorStop(0, `rgba(${glowR}, ${glowG}, ${glowB}, ${(0.3 + State.currentFrame.b * 0.4) * State.visualTuning.circleAlpha})`);
     bgGlow.addColorStop(1, 'rgba(10, 7, 16, 0)');
 
     ctx.fillStyle = bgGlow;
     p.noStroke(); p.circle(cx, cy, glowRadius * 2);
 
-    let coreRadius = 8 + State.beatDecay * 40;
-    p.fill(255, 255, 255, 80 + State.beatDecay * 175);
+    let coreRadius = (8 + State.beatDecay * 40) * State.visualTuning.circleSize;
+    let [coreR, coreG, coreB] = hueToRgb(State.visualTuning.circleHue, 0.28, 0.9);
+    p.fill(coreR, coreG, coreB, (80 + State.beatDecay * 175) * State.visualTuning.circleAlpha);
     p.circle(cx, cy, coreRadius);
 }
 
 function drawPolygonalNetwork(p: p5, particles: Particle[]) {
-    let maxDist = State.isPlaying ? 130 + (State.currentFrame.b * 50) : 80;
+    let maxDist = (State.isPlaying ? 130 + (State.currentFrame.b * 50) : 80) * State.visualTuning.lineDistance;
     let maxDistSq = maxDist * maxDist;
+    let [lineR, lineG, lineB] = hueToRgb(State.visualTuning.lineHue);
+    let [polyR, polyG, polyB] = hueToRgb(State.visualTuning.polygonHue, 0.58, 0.82);
+    let [nodeR, nodeG, nodeB] = hueToRgb(State.visualTuning.circleHue, 0.35, 0.92);
 
     for (let i = 0; i < particles.length; i++) {
         let p1 = particles[i]; let linesDrawn = 0, polysDrawn = 0;
@@ -48,20 +53,20 @@ function drawPolygonalNetwork(p: p5, particles: Particle[]) {
 
             if (dist12Sq < maxDistSq) {
                 linesDrawn++; let d12 = Math.sqrt(dist12Sq);
-                let lineAlpha = p.map(d12, 0, maxDist, 180, 0) + (State.beatDecay * 75);
-                p.stroke(180 - State.currentFrame.t * 40, 220, 255, lineAlpha);
-                p.strokeWeight(0.5 + State.beatDecay * 2);
+                let lineAlpha = (p.map(d12, 0, maxDist, 180, 0) + (State.beatDecay * 75)) * State.visualTuning.lineAlpha;
+                p.stroke(lineR - State.currentFrame.t * 25, lineG, lineB, lineAlpha);
+                p.strokeWeight((0.5 + State.beatDecay * 2) * State.visualTuning.lineWeight);
                 p.line(p1.pos.x, p1.pos.y, p2.pos.x, p2.pos.y);
 
-                if (State.isPlaying && polysDrawn < 2 && dist12Sq < maxDistSq * 0.6) {
+                if (State.isPlaying && polysDrawn < 2 && dist12Sq < maxDistSq * 0.6 * State.visualTuning.polygonSize) {
                     for (let k = j + 1; k < particles.length; k++) {
                         let p3 = particles[k];
-                        if ((p1.pos.x - p3.pos.x)**2 + (p1.pos.y - p3.pos.y)**2 < maxDistSq * 0.6 &&
-                            (p2.pos.x - p3.pos.x)**2 + (p2.pos.y - p3.pos.y)**2 < maxDistSq * 0.6) {
+                        if ((p1.pos.x - p3.pos.x)**2 + (p1.pos.y - p3.pos.y)**2 < maxDistSq * 0.6 * State.visualTuning.polygonSize &&
+                            (p2.pos.x - p3.pos.x)**2 + (p2.pos.y - p3.pos.y)**2 < maxDistSq * 0.6 * State.visualTuning.polygonSize) {
                             polysDrawn++;
-                            let baseAlpha = Math.min(10 + (State.beatDecay * 40), 50);
-                            let finalPolyAlpha = baseAlpha + (State.snareFlash * 150);
-                            p.fill(220, 240, 255, finalPolyAlpha); p.noStroke();
+                            let baseAlpha = Math.min(10 + (State.beatDecay * 40), 50) * State.visualTuning.polygonAlpha;
+                            let finalPolyAlpha = baseAlpha + (State.snareFlash * 150 * State.visualTuning.polygonFlash);
+                            p.fill(polyR, polyG, polyB, finalPolyAlpha); p.noStroke();
                             p.triangle(p1.pos.x, p1.pos.y, p2.pos.x, p2.pos.y, p3.pos.x, p3.pos.y);
                             break;
                         }
@@ -70,7 +75,7 @@ function drawPolygonalNetwork(p: p5, particles: Particle[]) {
             }
             if (linesDrawn > 6) break;
         }
-        p.noStroke(); p.fill(255, 255, 255, 120 + State.beatDecay * 135);
-        p.circle(p1.pos.x, p1.pos.y, 2 + State.beatDecay * 4);
+        p.noStroke(); p.fill(nodeR, nodeG, nodeB, (120 + State.beatDecay * 135) * State.visualTuning.circleAlpha);
+        p.circle(p1.pos.x, p1.pos.y, (2 + State.beatDecay * 4) * State.visualTuning.circleSize);
     }
 }

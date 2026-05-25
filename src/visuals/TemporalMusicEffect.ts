@@ -1,4 +1,5 @@
 import p5 from 'p5';
+import { hueToRgb } from '../config/visualTuning';
 import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
@@ -56,9 +57,10 @@ function drawTemporalBackground(p: p5, cx: number, cy: number, resonance: Patter
     );
 
     let ctx = p.drawingContext as CanvasRenderingContext2D;
-    let radius = Math.max(p.width, p.height) * (0.28 + State.currentFrame.b * 0.16 + State.currentFeatures.tension * 0.18);
+    let radius = Math.max(p.width, p.height) * (0.28 + State.currentFrame.b * 0.16 + State.currentFeatures.tension * 0.18) * State.visualTuning.circleSize;
     let glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-    glow.addColorStop(0, `rgba(${28 + State.currentFeatures.vocal * 34}, ${26 + State.currentFeatures.fx * 36}, ${70 + State.currentFeatures.melody * 42}, ${0.22 + State.currentFeatures.density * 0.22 + resonance.strength * 0.12})`);
+    let [glowR, glowG, glowB] = hueToRgb(State.visualTuning.circleHue + State.currentFeatures.vocal * 70);
+    glow.addColorStop(0, `rgba(${glowR}, ${glowG}, ${glowB}, ${(0.22 + State.currentFeatures.density * 0.22 + resonance.strength * 0.12) * State.visualTuning.circleAlpha})`);
     glow.addColorStop(1, 'rgba(8, 5, 14, 0)');
     ctx.fillStyle = glow;
     p.noStroke();
@@ -79,7 +81,7 @@ function drawTemporalPolygonNetwork(p: p5, particles: Particle[], resonance: Pat
     let fx = State.currentFeatures.fx;
     let tension = State.currentFeatures.tension;
 
-    let maxDist = 104 + State.currentFrame.b * 34 + density * 54 + resonance.strength * 24;
+    let maxDist = (104 + State.currentFrame.b * 34 + density * 54 + resonance.strength * 24) * State.visualTuning.temporalNetworkDistance;
     let maxDistSq = maxDist * maxDist;
     let lineLimit = 4 + Math.floor(density * 3 + resonance.strength * 2);
     let polyLimit = 1 + Math.floor(Math.max(density, State.snareFlash) * 2);
@@ -101,24 +103,26 @@ function drawTemporalPolygonNetwork(p: p5, particles: Particle[], resonance: Pat
                 linesDrawn++;
                 let d12 = Math.sqrt(dist12Sq);
                 let closeness = 1 - d12 / maxDist;
-                let lineAlpha = closeness * (92 + density * 54 + resonance.strength * 52) + State.beatDecay * 38;
+                let lineAlpha = (closeness * (92 + density * 54 + resonance.strength * 52) + State.beatDecay * 38) * State.visualTuning.lineAlpha;
+                let [lineR, lineG, lineB] = hueToRgb(State.visualTuning.lineHue + melody * 45 + fx * 30, 0.68, 0.72);
                 p.stroke(
-                    118 + melody * 58 + fx * 36,
-                    182 + fx * 48 + resonance.strength * 34,
-                    220 + vocal * 30 - tension * 18,
+                    lineR,
+                    lineG,
+                    lineB - tension * 18 + vocal * 18,
                     lineAlpha
                 );
-                p.strokeWeight(0.45 + tension * 0.85 + State.beatDecay * 0.8);
+                p.strokeWeight((0.45 + tension * 0.85 + State.beatDecay * 0.8) * State.visualTuning.lineWeight);
                 p.line(p1.pos.x, p1.pos.y, p2.pos.x, p2.pos.y);
 
-                if (State.isPlaying && polysDrawn < polyLimit && dist12Sq < maxDistSq * (0.42 + density * 0.18)) {
+                if (State.isPlaying && polysDrawn < polyLimit && dist12Sq < maxDistSq * (0.42 + density * 0.18) * State.visualTuning.polygonSize) {
                     for (let k = j + 1; k < particles.length; k++) {
                         let p3 = particles[k];
-                        if ((p1.pos.x - p3.pos.x)**2 + (p1.pos.y - p3.pos.y)**2 < maxDistSq * 0.55 &&
-                            (p2.pos.x - p3.pos.x)**2 + (p2.pos.y - p3.pos.y)**2 < maxDistSq * 0.55) {
+                        if ((p1.pos.x - p3.pos.x)**2 + (p1.pos.y - p3.pos.y)**2 < maxDistSq * 0.55 * State.visualTuning.polygonSize &&
+                            (p2.pos.x - p3.pos.x)**2 + (p2.pos.y - p3.pos.y)**2 < maxDistSq * 0.55 * State.visualTuning.polygonSize) {
                             polysDrawn++;
-                            let alpha = Math.min(8 + density * 28 + resonance.strength * 22 + State.snareFlash * 105, 135);
-                            p.fill(96 + melody * 70, 145 + fx * 90, 210 + vocal * 36, alpha);
+                            let alpha = Math.min(8 + density * 28 + resonance.strength * 22 + State.snareFlash * 105 * State.visualTuning.polygonFlash, 135) * State.visualTuning.temporalPolygonAlpha * State.visualTuning.polygonAlpha;
+                            let [polyR, polyG, polyB] = hueToRgb(State.visualTuning.polygonHue + vocal * 40 + fx * 70, 0.7, 0.68);
+                            p.fill(polyR + melody * 24, polyG, polyB, alpha);
                             p.noStroke();
                             p.triangle(p1.pos.x, p1.pos.y, p2.pos.x, p2.pos.y, p3.pos.x, p3.pos.y);
                             break;
@@ -131,8 +135,9 @@ function drawTemporalPolygonNetwork(p: p5, particles: Particle[], resonance: Pat
 
         if (connected) {
             p.noStroke();
-            p.fill(230, 245, 255, 45 + density * 55 + State.beatDecay * 65);
-            p.circle(p1.pos.x, p1.pos.y, 1.4 + density * 1.9);
+            let [nodeR, nodeG, nodeB] = hueToRgb(State.visualTuning.circleHue, 0.35, 0.9);
+            p.fill(nodeR, nodeG, nodeB, (45 + density * 55 + State.beatDecay * 65) * State.visualTuning.circleAlpha);
+            p.circle(p1.pos.x, p1.pos.y, (1.4 + density * 1.9) * State.visualTuning.circleSize);
         }
     }
 }
@@ -147,60 +152,60 @@ function drawCenterMechanisms(
 ) {
     let sectionEnergy = section?.energy || State.currentFrame.eRatio;
     drawMechanismRing(p, cx, cy, {
-        radius: 24 + State.currentFrame.b * 46 + State.beatDecay * 32,
+        radius: (24 + State.currentFrame.b * 46 + State.beatDecay * 32) * State.visualTuning.temporalRingSize,
         deformation: State.beatDecay * 0.08,
-        color: [105, 195, 255],
-        alpha: 48 + State.beatDecay * 125,
-        weight: 1.6 + State.beatDecay * 2.2,
+        color: hueToRgb(State.visualTuning.circleHue),
+        alpha: (48 + State.beatDecay * 125) * State.visualTuning.temporalRingAlpha,
+        weight: (1.6 + State.beatDecay * 2.2) * State.visualTuning.circleLineWeight,
         lobes: 6,
-        phase: p.frameCount * 0.02
+        phase: p.frameCount * 0.02 * State.visualTuning.temporalRingSpeed
     });
 
     if (State.currentFeatures.melody > 0.08) {
         drawMechanismRing(p, cx, cy, {
-            radius: 74 + State.currentFeatures.melody * 70,
+            radius: (74 + State.currentFeatures.melody * 70) * State.visualTuning.temporalRingSize,
             deformation: State.currentFeatures.melody * 0.045,
-            color: [84, 205, 255],
-            alpha: 30 + State.currentFeatures.melody * 78,
-            weight: 0.9 + State.currentFeatures.melody * 1.2,
+            color: hueToRgb(State.visualTuning.circleHue + 25),
+            alpha: (30 + State.currentFeatures.melody * 78) * State.visualTuning.temporalRingAlpha,
+            weight: (0.9 + State.currentFeatures.melody * 1.2) * State.visualTuning.circleLineWeight,
             lobes: 5,
-            phase: p.frameCount * 0.008
+            phase: p.frameCount * 0.008 * State.visualTuning.temporalRingSpeed
         });
     }
 
     if (State.currentFeatures.vocal > 0.08) {
         drawMechanismRing(p, cx, cy, {
-            radius: 106 + State.currentFeatures.vocal * 78,
+            radius: (106 + State.currentFeatures.vocal * 78) * State.visualTuning.temporalRingSize,
             deformation: State.currentFeatures.vocal * 0.03,
-            color: [255, 150, 215],
-            alpha: 24 + State.currentFeatures.vocal * 70,
-            weight: 1.2 + State.currentFeatures.vocal * 1.4,
+            color: hueToRgb(State.visualTuning.circleHue + 125),
+            alpha: (24 + State.currentFeatures.vocal * 70) * State.visualTuning.temporalRingAlpha,
+            weight: (1.2 + State.currentFeatures.vocal * 1.4) * State.visualTuning.circleLineWeight,
             lobes: 4,
-            phase: p.frameCount * 0.006
+            phase: p.frameCount * 0.006 * State.visualTuning.temporalRingSpeed
         });
     }
 
     if (State.currentFeatures.fx > 0.08) {
         drawMechanismRing(p, cx, cy, {
-            radius: 52 + State.currentFeatures.fx * 82 + State.currentFeatures.brightness * 28,
+            radius: (52 + State.currentFeatures.fx * 82 + State.currentFeatures.brightness * 28) * State.visualTuning.temporalRingSize,
             deformation: State.currentFeatures.fx * 0.11,
-            color: [185, 255, 112],
-            alpha: 24 + State.currentFeatures.fx * 92,
-            weight: 0.8 + State.currentFeatures.fx * 1.6,
+            color: hueToRgb(State.visualTuning.circleHue + 80),
+            alpha: (24 + State.currentFeatures.fx * 92) * State.visualTuning.temporalRingAlpha,
+            weight: (0.8 + State.currentFeatures.fx * 1.6) * State.visualTuning.circleLineWeight,
             lobes: 9,
-            phase: -p.frameCount * 0.018
+            phase: -p.frameCount * 0.018 * State.visualTuning.temporalRingSpeed
         });
     }
 
     if (resonance.strength > 0.05) {
         drawMechanismRing(p, cx, cy, {
-            radius: 138 + resonance.strength * 96 + sectionEnergy * 32,
+            radius: (138 + resonance.strength * 96 + sectionEnergy * 32) * State.visualTuning.temporalRingSize,
             deformation: resonance.strength * 0.065,
-            color: [118, 255, 210],
-            alpha: 18 + resonance.strength * 86,
-            weight: 1 + resonance.strength * 1.6,
+            color: hueToRgb(State.visualTuning.circleHue + 160),
+            alpha: (18 + resonance.strength * 86) * State.visualTuning.temporalRingAlpha,
+            weight: (1 + resonance.strength * 1.6) * State.visualTuning.circleLineWeight,
             lobes: 3 + ((resonance.pattern?.occurrences.length || 0) % 4),
-            phase: resonance.phase * Math.PI * 2 + p.frameCount * 0.004
+            phase: resonance.phase * Math.PI * 2 + p.frameCount * 0.004 * State.visualTuning.temporalRingSpeed
         });
     }
 

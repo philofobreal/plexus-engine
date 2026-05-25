@@ -1,4 +1,5 @@
 import p5 from 'p5';
+import { State } from '../state/store';
 
 export class Particle {
     pos: p5.Vector;
@@ -20,14 +21,16 @@ export class Particle {
         
         if (this.p.dist(this.pos.x, this.pos.y, cx, cy) > Math.max(this.p.width, this.p.height) * 0.45) {
             let angleToCenter = this.p.atan2(cy - this.pos.y, cx - this.pos.x);
-            this.vel.x += this.p.cos(angleToCenter) * 0.05; 
-            this.vel.y += this.p.sin(angleToCenter) * 0.05;
+            this.vel.x += this.p.cos(angleToCenter) * State.visualTuning.particleBoundaryPull; 
+            this.vel.y += this.p.sin(angleToCenter) * State.visualTuning.particleBoundaryPull;
             this.vel.normalize(); 
         }
         
-        let speed = isPlaying ? (energy * 8) + (beat * 20) : 0.2; 
+        let speed = isPlaying
+            ? (energy * State.visualTuning.particleEnergySpeed) + (beat * State.visualTuning.particleBeatSpeed)
+            : State.visualTuning.particleIdleSpeed; 
         if (bass > 0.4) {
-            let heading = this.vel.heading() + this.p.random(-0.1, 0.1) * bass;
+            let heading = this.vel.heading() + this.p.random(-State.visualTuning.particleBassTurn, State.visualTuning.particleBassTurn) * bass;
             this.vel.set(this.p.cos(heading), this.p.sin(heading));
         }
         this.pos.add(p5.Vector.mult(this.vel, speed));

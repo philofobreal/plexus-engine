@@ -8,6 +8,37 @@ export type AutoState = 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
 
 export type VisualMode = 'classic' | 'temporal';
 
+export interface VisualTuningConfig {
+    particleIdleSpeed: number;
+    particleEnergySpeed: number;
+    particleBeatSpeed: number;
+    particleBoundaryPull: number;
+    particleBassTurn: number;
+    shockwaveRadius: number;
+    shockwaveSpeed: number;
+    shockwaveAlpha: number;
+    shockwaveThickness: number;
+    shockwaveExpansion: number;
+    shockwaveDecay: number;
+    circleHue: number;
+    circleAlpha: number;
+    circleSize: number;
+    circleLineWeight: number;
+    lineHue: number;
+    lineAlpha: number;
+    lineDistance: number;
+    lineWeight: number;
+    polygonHue: number;
+    polygonAlpha: number;
+    polygonSize: number;
+    polygonFlash: number;
+    temporalRingSize: number;
+    temporalRingAlpha: number;
+    temporalRingSpeed: number;
+    temporalNetworkDistance: number;
+    temporalPolygonAlpha: number;
+}
+
 export interface AudioFrame {
     e: number;
     b: number;
