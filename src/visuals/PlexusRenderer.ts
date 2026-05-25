@@ -4,6 +4,7 @@ import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
 import { drawClassicPlexusEffect } from './ClassicPlexusEffect';
 import { drawTemporalMusicEffect } from './TemporalMusicEffect';
+import { tuneAudioFrame, tuneAudioValue, tuneVisualFeatures } from '../config/visualTuning';
 import type { DashboardUI } from '../ui/DashboardUI';
 import type { AudioEngine } from '../audio/AudioEngine';
 import type { VisualCueKind } from '../types';
@@ -51,16 +52,17 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
                     let ev = State.events[currentEventIdx];
                     State.beatDecay = 1.0;
                     if (ev.type === 2) State.snareFlash = 1.0;
-                    shockwaves.push(new Shockwave(p, ev.intensity, State.currentFrame.state, ev.type));
+                    shockwaves.push(new Shockwave(p, tuneAudioValue(ev.intensity, State.visualTuning), State.currentFrame.state, ev.type));
                     currentEventIdx++;
                 }
 
                 while (currentCueIdx < State.trackAnalysis.cues.length && ct >= State.trackAnalysis.cues[currentCueIdx].time) {
                     let cue = State.trackAnalysis.cues[currentCueIdx];
-                    State.cueDecay = Math.max(State.cueDecay, cue.intensity);
+                    let cueIntensity = tuneAudioValue(cue.intensity, State.visualTuning);
+                    State.cueDecay = Math.max(State.cueDecay, cueIntensity);
                     State.activeCueKind = cue.kind;
                     State.activePatternId = cue.kind === 'pattern' ? cue.patternId || null : State.activePatternId;
-                    shockwaves.push(new Shockwave(p, cue.intensity, State.currentFrame.state, cueTypeToShockwave(cue.kind)));
+                    shockwaves.push(new Shockwave(p, cueIntensity, State.currentFrame.state, cueTypeToShockwave(cue.kind)));
                     currentCueIdx++;
                 }
             } else {
@@ -94,10 +96,10 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
 
 function publishCurrentAnalysisFrame(frameIdx: number) {
     if (frameIdx >= 0 && frameIdx < State.frames.length) {
-        State.currentFrame = State.frames[frameIdx];
+        State.currentFrame = tuneAudioFrame(State.frames[frameIdx], State.visualTuning);
     }
     if (frameIdx >= 0 && frameIdx < State.trackAnalysis.features.length) {
-        State.currentFeatures = State.trackAnalysis.features[frameIdx];
+        State.currentFeatures = tuneVisualFeatures(State.trackAnalysis.features[frameIdx], State.visualTuning);
     }
 }
 

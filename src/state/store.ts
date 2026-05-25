@@ -35,6 +35,7 @@ export const State = {
 
     // Real-time visualization state
     visualMode: 'classic' as VisualMode,
+    loopPlayback: true,
     currentFrame: { e: 0, b: 0, m: 0, t: 0, state: 'IDLE', eRatio: 0 } as AudioFrame,
     currentFeatures: { ...emptyFeatures } as VisualFeatureFrame,
     activeCueKind: null as VisualCueKind | null,

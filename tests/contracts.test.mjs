@@ -134,11 +134,17 @@ test('visual effects expose live tuning controls and copyable config', () => {
   assert.match(types, /export interface VisualTuningConfig/);
   assert.match(config, /export const defaultVisualTuning: VisualTuningConfig/);
   assert.match(config, /export const visualTuningControls: VisualTuningControl\[\]/);
+  assert.match(config, /normalizeVisualTuningConfig/);
   assert.match(state, /visualTuning: cloneDefaultVisualTuning\(\)/);
+  assert.match(main, /id="toggle-tuning-panel"/);
+  assert.match(main, /id="visual-preset-list"/);
   assert.match(main, /id="visual-tuning-controls"/);
   assert.match(main, /id="copy-visual-config"/);
   assert.match(ui, /data-tuning-key="\$\{control\.key\}"/);
   assert.match(ui, /State\.visualTuning\[key\] = value/);
+  assert.match(ui, /loadVisualPresetList/);
+  assert.match(ui, /loadVisualPreset\(fileName/);
+  assert.match(ui, /syncVisualTuningControls/);
   assert.match(ui, /navigator\.clipboard\?\.writeText/);
   assert.match(classic, /State\.visualTuning\.lineDistance/);
   assert.match(classic, /State\.visualTuning\.polygonAlpha/);
@@ -148,10 +154,28 @@ test('visual effects expose live tuning controls and copyable config', () => {
   assert.match(shockwave, /State\.visualTuning\.shockwaveSpeed/);
 });
 
+test('visual tuning presets are read from public json files and remain backward compatible', () => {
+  const manifest = JSON.parse(read('public/visual-tuning-presets/index.json'));
+  const preset = JSON.parse(read('public/visual-tuning-presets/default.json'));
+  const config = read('src/config/visualTuning.ts');
+  const ui = read('src/ui/DashboardUI.ts');
+
+  assert.ok(Array.isArray(manifest.presets));
+  assert.ok(manifest.presets.includes('default.json'));
+  assert.ok(preset.visualTuning);
+  assert.match(config, /const next = cloneDefaultVisualTuning\(\)/);
+  assert.match(config, /source\?\.\[key\]/);
+  assert.match(ui, /visual-tuning-presets\/\$\{encodeURIComponent\(fileName\)\}/);
+  assert.match(ui, /Object\.assign\(State\.visualTuning, normalizeVisualTuningConfig/);
+});
+
 test('visual tuning controls cover circle, line, polygon, particle, and temporal parameters', () => {
   const config = read('src/config/visualTuning.ts');
 
   for (const key of [
+    'backgroundRed',
+    'backgroundGreen',
+    'backgroundBlue',
     'circleHue',
     'circleAlpha',
     'circleSize',
@@ -262,5 +286,37 @@ test('playback seek and stop keep canonical time and visual sync callbacks align
   assert.match(renderer, /addPositionChangedListener\(syncEventIndex\)/);
   assert.match(renderer, /State\.events\.findIndex\(e => e\.time >= time\)/);
   assert.match(ui, /this\.engine\.seek\(seekTime\)/);
-  assert.match(ui, /this\.els\.playBtn\.innerText = "Play"/);
+  assert.match(ui, /setPlaybackUi\(false\)/);
+});
+
+test('player UI supports background controls, metrics toggle, draggable tuning, and loop mode', () => {
+  const main = read('src/main.ts');
+  const state = read('src/state/store.ts');
+  const audio = read('src/audio/AudioEngine.ts');
+  const ui = read('src/ui/DashboardUI.ts');
+  const css = read('src/style.css');
+
+  assert.match(main, /id="center-play-btn"/);
+  assert.match(main, /id="toggle-loop"/);
+  assert.match(main, /id="toggle-metrics"/);
+  assert.match(main, /class="bottom-toolbar"/);
+  assert.match(main, /id="metrics-grid"/);
+  assert.match(main, /Music Block & Dynamics/);
+  assert.match(main, /id="visual-preset-list"[\s\S]*id="toggle-loop"/);
+  assert.doesNotMatch(main, /id="toggle-loop"[\s\S]*id="toggle-metrics"[\s\S]*id="toggle-tuning-panel"/);
+  assert.match(state, /loopPlayback: true/);
+  assert.match(audio, /State\.loopPlayback/);
+  assert.match(ui, /canvasContainer\.addEventListener\('click'/);
+  assert.match(ui, /event\.code === 'Space'/);
+  assert.match(ui, /event\.code === 'ArrowLeft'/);
+  assert.match(ui, /event\.code === 'ArrowRight'/);
+  assert.match(ui, /initTuningPanelDrag/);
+  assert.match(css, /\.center-play-btn/);
+  assert.match(css, /\.metrics-grid\.is-hidden/);
+  assert.match(css, /\.metrics-toggle/);
+  assert.match(css, /body\.chrome-idle \.top-row/);
+  assert.match(ui, /initChromeAutoHide/);
+  assert.match(css, /grid-template-columns: repeat\(auto-fit, minmax\(310px, 1fr\)\)/);
+  assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(main, /id="val-cue"/);
 });

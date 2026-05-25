@@ -6,7 +6,11 @@ import { Shockwave } from './Shockwave';
 
 export function drawClassicPlexusEffect(p: p5, particles: Particle[], shockwaves: Shockwave[]) {
     let bgFlash = State.beatDecay * 12;
-    p.background(8 + bgFlash, 5 + bgFlash, 14 + bgFlash);
+    p.background(
+        Math.min(State.visualTuning.backgroundRed + bgFlash, 255),
+        Math.min(State.visualTuning.backgroundGreen + bgFlash, 255),
+        Math.min(State.visualTuning.backgroundBlue + bgFlash, 255)
+    );
 
     drawCenterDynamics(p, shockwaves);
     for (let pt of particles) pt.update(State.currentFrame.e, State.currentFrame.b, State.beatDecay, State.isPlaying);
@@ -25,8 +29,9 @@ function drawCenterDynamics(p: p5, shockwaves: Shockwave[]) {
 
     let ctx = p.drawingContext as CanvasRenderingContext2D;
     let bgGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowRadius);
-    let [glowR, glowG, glowB] = hueToRgb(State.visualTuning.circleHue + (isLowMode ? 105 : 0), 0.74, 0.5);
-    bgGlow.addColorStop(0, `rgba(${glowR}, ${glowG}, ${glowB}, ${(0.3 + State.currentFrame.b * 0.4) * State.visualTuning.circleAlpha})`);
+    let [glowR, glowG, glowB] = hueToRgb(State.visualTuning.circleBackgroundHue + (isLowMode ? 105 : 0), 0.74, 0.5);
+    let glowAlpha = Math.min((0.3 + State.currentFrame.b * 0.4) * State.visualTuning.circleBackgroundAlpha, 1);
+    bgGlow.addColorStop(0, `rgba(${glowR}, ${glowG}, ${glowB}, ${glowAlpha})`);
     bgGlow.addColorStop(1, 'rgba(10, 7, 16, 0)');
 
     ctx.fillStyle = bgGlow;

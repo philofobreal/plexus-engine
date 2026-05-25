@@ -150,8 +150,13 @@ export class AudioEngine {
 
         this.source.onended = () => {
             if (this.getCurrentTime() >= State.duration - 0.1) {
-                this.stop(true);
-                this.emitPlaybackEnded();
+                if (State.loopPlayback) {
+                    this.stop(true);
+                    this.play(0);
+                } else {
+                    this.stop(true);
+                    this.emitPlaybackEnded();
+                }
             }
         };
 

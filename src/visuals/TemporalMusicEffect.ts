@@ -1,5 +1,5 @@
 import p5 from 'p5';
-import { hueToRgb } from '../config/visualTuning';
+import { hueToRgb, tuneAudioValue } from '../config/visualTuning';
 import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
@@ -43,6 +43,7 @@ function getPatternResonance(time: number): PatternResonance {
         }
     }
 
+    best.strength = tuneAudioValue(best.strength, State.visualTuning);
     if (State.activeCueKind === 'pattern') best.strength = Math.max(best.strength, State.cueDecay * 0.55);
     return best;
 }
@@ -51,16 +52,17 @@ function drawTemporalBackground(p: p5, cx: number, cy: number, resonance: Patter
     let bgPulse = State.beatDecay * 10 + State.cueDecay * 6;
     let sectionEnergy = section?.energy || State.currentFrame.eRatio;
     p.background(
-        7 + bgPulse + State.currentFeatures.fx * 10,
-        5 + bgPulse * 0.45 + resonance.strength * 12,
-        14 + bgPulse + State.currentFeatures.vocal * 10 + sectionEnergy * 10
+        Math.min(State.visualTuning.backgroundRed + bgPulse + State.currentFeatures.fx * 10, 255),
+        Math.min(State.visualTuning.backgroundGreen + bgPulse * 0.45 + resonance.strength * 12, 255),
+        Math.min(State.visualTuning.backgroundBlue + bgPulse + State.currentFeatures.vocal * 10 + sectionEnergy * 10, 255)
     );
 
     let ctx = p.drawingContext as CanvasRenderingContext2D;
     let radius = Math.max(p.width, p.height) * (0.28 + State.currentFrame.b * 0.16 + State.currentFeatures.tension * 0.18) * State.visualTuning.circleSize;
     let glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-    let [glowR, glowG, glowB] = hueToRgb(State.visualTuning.circleHue + State.currentFeatures.vocal * 70);
-    glow.addColorStop(0, `rgba(${glowR}, ${glowG}, ${glowB}, ${(0.22 + State.currentFeatures.density * 0.22 + resonance.strength * 0.12) * State.visualTuning.circleAlpha})`);
+    let [glowR, glowG, glowB] = hueToRgb(State.visualTuning.circleBackgroundHue + State.currentFeatures.vocal * 70);
+    let glowAlpha = Math.min((0.22 + State.currentFeatures.density * 0.22 + resonance.strength * 0.12) * State.visualTuning.circleBackgroundAlpha, 1);
+    glow.addColorStop(0, `rgba(${glowR}, ${glowG}, ${glowB}, ${glowAlpha})`);
     glow.addColorStop(1, 'rgba(8, 5, 14, 0)');
     ctx.fillStyle = glow;
     p.noStroke();

@@ -9,6 +9,10 @@ export type AutoState = 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
 export type VisualMode = 'classic' | 'temporal';
 
 export interface VisualTuningConfig {
+    audioSensitivity: number;
+    backgroundRed: number;
+    backgroundGreen: number;
+    backgroundBlue: number;
     particleIdleSpeed: number;
     particleEnergySpeed: number;
     particleBeatSpeed: number;
@@ -20,6 +24,8 @@ export interface VisualTuningConfig {
     shockwaveThickness: number;
     shockwaveExpansion: number;
     shockwaveDecay: number;
+    circleBackgroundHue: number;
+    circleBackgroundAlpha: number;
     circleHue: number;
     circleAlpha: number;
     circleSize: number;
