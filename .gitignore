@@ -25,3 +25,4 @@ dist-ssr
 
 # PR diff export kimenete
 branch_pr_snapshot.md
+plexus-source-export.md
