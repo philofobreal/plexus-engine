@@ -9,6 +9,8 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-1.3 Dragging:** The panel can be repositioned by dragging its header, and normal slider/select interaction inside the panel must not start a drag.
 - **VT-1.4 Responsive layout:** The panel uses responsive columns and avoids an awkward fixed internal scroll on common desktop widths.
 - **VT-1.5 Extendable controls:** Adding a new numeric visual tuning parameter must require updating the typed default config and the control metadata, not duplicating slider UI code.
+- **VT-1.6 Export tuning:** The `Copy config` control copies the current `State.visualTuning` values to the clipboard as valid preset JSON under a `visualTuning` property, including a version field.
+- **VT-1.7 Copy fallback and feedback:** If the Clipboard API is unavailable or rejects the write, the UI uses a DOM textarea fallback copy path. Successful copy attempts show a short, non-layout-shifting `Copied` status.
 
 ## VT-2 Tuning Parameters
 
@@ -32,6 +34,7 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-3.8 Stable state reference:** Loading a preset mutates the existing shared tuning object instead of replacing it with a new reference.
 - **VT-3.9 Quiet success:** Successful preset loads do not display transient success text that shifts the UI.
 - **VT-3.10 Error visibility:** Failed manifest or preset loads may show an error state long enough to diagnose the problem.
+- **VT-3.11 Transient status scope:** Transient status text is allowed for copy feedback and preset-load failures when it is placed in an existing fixed-size or non-shifting status area and clears itself after a short timeout.
 
 ## VT-4 Header And Metrics
 
@@ -59,6 +62,7 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-6.5 Keyboard play/pause:** Pressing `Space` toggles play and pause when the visual surface is the active element.
 - **VT-6.6 Keyboard seek:** `ArrowLeft` and `ArrowRight` seek backward and forward by five seconds when the visual surface is the active element.
 - **VT-6.7 Focus scope:** Playback keyboard shortcuts must not hijack typing or control interaction outside the visual surface.
+- **VT-6.8 Fullscreen toggle:** The fullscreen control toggles the document between normal and fullscreen presentation using the browser Fullscreen API, including vendor-prefixed fallbacks where needed.
 
 ## VT-7 Looping
 
@@ -74,6 +78,8 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-8.3 Hover persistence:** Hovering or focusing chrome keeps it visible even after the idle timer elapses.
 - **VT-8.4 State preservation:** Collapsed panels stay collapsed after reveal; open panels return only if they were open.
 - **VT-8.5 Cursor hide:** The mouse cursor is hidden while the chrome is in the idle-hidden state.
+- **VT-8.6 UI pinning:** A single click on the visual background, after the double-click detection window expires, toggles a pinned chrome state that keeps the UI visible and disables idle auto-hide.
+- **VT-8.7 UI unpinning:** A subsequent single click on the visual background restores the normal idle auto-hide behavior.
 
 ## VT-9 Regression Requirements
 
@@ -81,3 +87,4 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-9.2 Preset switching:** Switching presets after audio load must not reset playback state or require reloading the track.
 - **VT-9.3 Contract tests:** The shared tuning and worker contracts must remain covered by automated tests.
 - **VT-9.4 Build:** The TypeScript build must pass after changes to state, UI, audio, or visual contracts.
+- **VT-9.5 Decode failure UI:** If browser-level audio decoding or file loading fails before worker analysis can complete, the UI must show a file-load error, keep playback and seek controls disabled, and re-enable file selection.

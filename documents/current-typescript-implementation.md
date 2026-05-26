@@ -45,7 +45,7 @@ The accepted worker failure payload is:
 
 `trackAnalysis` is the offline visual-music layer. It contains section-level structure, recurring temporal patterns, visual cue events, significant moments, and per-frame feature vectors for melody, vocal, fx, density, brightness, and tension. Effects should read these precomputed values from shared state during playback instead of running analysis in the render loop.
 
-The analyzer worker derives these values from a fixed 1024-sample FFT pipeline. Each frame is Hann-windowed before the FFT, then the worker calculates spectral flux, relative bass/mid/high magnitude bands, spectral centroid, and spectral flatness. The render-facing `AudioFrame` values are smoothed projections of those spectral features: `e` is normalized RMS energy, `b` is density, `m` is melody presence, and `t` is fx presence. Beat events are selected from spectral-flux peaks and classified from the smoothed density/fx context.
+The analyzer worker derives these values from a fixed 1024-sample FFT pipeline. Each frame is Hann-windowed before the FFT, then the worker calculates spectral flux, relative bass/mid/high magnitude bands, spectral centroid, and spectral flatness. The render-facing `AudioFrame` values are smoothed projections of those spectral features: `e` is normalized RMS energy, `b` is density, `m` is melody presence, and `t` is fx presence. Beat events are selected from spectral-flux peaks and classified from the smoothed density/fx context: fx presence above `0.6` emits type 3, otherwise density above `0.7` emits type 2, and all other accepted peaks emit type 1.
 
 Recurring temporal patterns are detected heuristically from full-track section signatures. The worker groups similar section-level energy, density, label, and dominant-feature signatures, publishes repeated groups as `MusicPattern` entries, and emits `pattern` cue events for each occurrence so effects can react when a known musical shape returns.
 
@@ -60,7 +60,7 @@ Mode selection belongs to UI projection. `src/visuals/PlexusRenderer.ts` only sy
 
 ## Visual Tuning And Playback UI
 
-The active implementation includes a metadata-driven visual tuning panel, JSON preset loading, surface-level playback controls, loop/once playback, responsive metrics, and idle-hiding UI chrome.
+The active implementation includes a metadata-driven visual tuning panel, JSON preset loading and copy export, surface-level playback controls, fullscreen presentation mode, loop/once playback, responsive metrics, and idle-hiding UI chrome. A single visual-surface click pins or unpins the chrome after the double-click detection window, while double-click remains the play/pause gesture.
 
 Detailed documentation:
 
@@ -73,6 +73,8 @@ Detailed documentation:
 - **AC 1.2 - Loading state:** Selecting a new file must stop playback, invalidate previous analysis, terminate any active worker, disable `Play` and `Seek`, reset visible playback position to `0:00`, and re-enable controls only after an accepted analysis result.
 - **AC 1.3 / VT-7 - End state:** In `Loop` mode, natural track end resets the current source and immediately starts playback from `0:00`. In `Once` mode, natural track end resets playback time, seek bar, `Play` label, active strategy text, beat decay, snare flash, cue decay, and visual event indexes.
 - **AC 1.4 - Seek:** Seeking must use the audio engine `seek()` path so playback offset, visible time, paused time, source-node lifecycle, and visual beat-event index are aligned in one transition.
+- **AC 1.5 - Decode failure UI:** Browser-level audio decode or file-load failures must leave `Play` and `Seek` disabled, re-enable file selection, and show a file-load error in the dashboard.
+- **AC 3.6 - Beat event classification:** Beat type classification is part of the analyzer contract: smoothed fx presence greater than `0.6` maps to type 3, otherwise smoothed density greater than `0.7` maps to type 2, and the fallback maps to type 1.
 - **AC 5.2 - Analyzer bands:** The current worker uses Hann-windowed FFT spectral features rather than the older IIR crossover wording from the prototype.
 - **AC 5.4 - Worker output:** The worker success payload includes `type`, `requestId`, `bpm`, `frames`, `events`, `hopSize`, and `trackAnalysis`. The worker may also emit typed failure payloads with `type`, `requestId`, `errorCode`, and `message`.
 - **AC 8.1 - Worker and source cleanup:** New file loads must terminate superseded workers and ignore stale worker messages. Audio samples sent to the worker must be an explicit copy when playback still depends on the decoded `AudioBuffer`.

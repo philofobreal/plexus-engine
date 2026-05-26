@@ -39,6 +39,8 @@ Implemented capabilities:
 - Selecting a preset immediately loads its tuning values.
 - Old preset files remain valid because missing parameters are filled from defaults.
 - Preset loading does not show transient success messages that would resize or shift the panel.
+- The `Copy config` button exports the current tuning state as preset-compatible JSON with a `version` field and a `visualTuning` payload.
+- Copy feedback is intentionally transient and confined to the tuning panel status area so it does not shift layout. Preset-load failures may use the same status area for short-lived diagnostic text.
 
 Preset JSON can be stored either as the raw tuning object or under a `visualTuning` property. Invalid or unknown fields are ignored.
 
@@ -52,6 +54,8 @@ Implemented capabilities:
 - Double-clicking the visual background toggles play and pause.
 - Pressing `Space` toggles play and pause when the visual surface is focused.
 - `ArrowLeft` and `ArrowRight` seek backward and forward by five seconds when the visual surface is focused.
+- Single-clicking the visual background pins or unpins the UI chrome after the double-click detection delay. Pinned chrome remains visible and does not idle-hide.
+- The fullscreen button toggles browser fullscreen mode for presentation use.
 - Playback loops by default.
 - A `Loop` / `Once` top-control toggle switches between endless repeat and one-shot playback.
 - The audio engine restarts from the beginning on natural end when loop mode is active.
@@ -88,3 +92,13 @@ The feature is split across these runtime layers:
 - `src/ui/DashboardUI.ts`: DOM controls, preset loading, panel visibility, dragging, playback shortcuts, metrics projection, and auto-hide behavior.
 - `src/audio/AudioEngine.ts`: loop-on-end playback behavior.
 - `src/visuals/`: render usage of tuning values, background color, and sensitivity-scaled audio data.
+
+## Analysis And Error Handling Details
+
+Browser-level file loading and `AudioContext.decodeAudioData` failures are surfaced through the dashboard as file-load errors. In that state playback and seek remain disabled, while file selection is re-enabled so the user can choose another track.
+
+Beat event types are assigned by the analyzer worker from smoothed visual-feature context after spectral-flux peak picking:
+
+- Type 3 is emitted when smoothed fx presence is greater than `0.6`.
+- Type 2 is emitted when fx does not pass that threshold and smoothed density is greater than `0.7`.
+- Type 1 is the fallback for all other accepted beat peaks.
