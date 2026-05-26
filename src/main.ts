@@ -5,73 +5,98 @@ import { startPlexusRenderer } from './visuals/PlexusRenderer';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="canvas-container" tabindex="0" aria-label="Visual playback surface"></div>
+  
   <button id="center-play-btn" class="center-play-btn" disabled aria-label="Play">
-    <span class="play-triangle"></span>
+    <svg viewBox="0 0 24 24" class="play-icon" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
   </button>
+
   <div class="ui-wrapper" id="ui-layer">
     <div class="top-row">
-      <div class="panel">
-        <h1>Plexus Engine</h1>
+      <!-- Bal oldali Meta Panel -->
+      <div class="panel meta-panel">
+        <div class="brand">
+          <div class="brand-dot"></div>
+          <h1>Plexus Engine</h1>
+        </div>
         <div class="track-meta">
           <span id="status-text" class="track-title">Choose an audio file</span>
         </div>
       </div>
+
+      <!-- Jobb oldali Vezérlő Panel -->
       <div class="controls panel">
-        <label class="file-upload" for="audio-upload">Load Audio</label>
+        <label class="file-upload btn-pill" for="audio-upload">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+          Load
+        </label>
         <input type="file" id="audio-upload" class="file-input" accept="audio/*">
-        <button id="play-btn" class="std-btn" disabled>Play</button>
-        <label class="mode-select-label" title="Visual effect mode">
+        
+        <button id="play-btn" class="std-btn btn-pill" disabled>Play</button>
+        
+        <div class="select-wrapper">
           <select id="visual-mode" class="mode-select">
             <option value="classic">Classic</option>
             <option value="temporal">Temporal</option>
           </select>
-        </label>
-        <select id="visual-preset-list" class="mode-select preset-select" aria-label="Visual tuning presets">
-          <option value="">No presets</option>
-        </select>
-        <button id="toggle-loop" class="std-btn compact-btn is-active" aria-pressed="true">Loop</button>
-        <button id="toggle-tuning-panel" class="std-btn compact-btn" aria-expanded="false">Tuning</button>
-        <button id="fullscreen-btn" class="std-btn btn-icon" title="Fullscreen">[]</button>
+        </div>
+
+        <div class="select-wrapper">
+          <select id="visual-preset-list" class="mode-select preset-select" aria-label="Visual tuning presets">
+            <option value="">No presets</option>
+          </select>
+        </div>
+
+        <button id="toggle-loop" class="std-btn btn-pill is-active" aria-pressed="true">Loop</button>
+        <button id="toggle-tuning-panel" class="std-btn btn-pill" aria-expanded="false">Tuning</button>
+        <button id="fullscreen-btn" class="std-btn btn-icon btn-pill" title="Fullscreen">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        </button>
       </div>
     </div>
+
+    <!-- Tuning Panel -->
     <div class="tuning-panel panel is-hidden" id="visual-tuning-panel">
       <div class="tuning-header" id="visual-tuning-drag-handle">
-        <div>
-          <div class="panel-title">Visual tuning</div>
+        <div class="tuning-title-area">
+          <div class="panel-title">Visual Tuning</div>
           <p>Live effect parameters</p>
         </div>
         <div class="tuning-actions">
-          <button id="copy-visual-config" class="std-btn compact-btn">Copy config</button>
+          <button id="copy-visual-config" class="std-btn btn-pill outline">Copy config</button>
         </div>
       </div>
       <div id="visual-tuning-controls" class="tuning-grid"></div>
       <div id="copy-config-status" class="copy-status" aria-live="polite"></div>
     </div>
+
+    <!-- Alsó szekció (Metrikák és Seekbar) -->
     <div class="bottom-section">
       <div class="metrics-grid" id="metrics-grid">
-        <div class="metric-card bpm-card"><div class="m-label">BPM</div><div class="m-value bpm-badge" id="bpm-badge">-- BPM</div><div class="m-bar-bg"><div class="m-bar-fill" style="background:#00ffcc; width:100%;"></div></div></div>
-        <div class="metric-card"><div class="m-label">Energy</div><div class="m-value" id="val-energy">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-energy" style="background:#a78bfa;"></div></div></div>
-        <div class="metric-card"><div class="m-label">Bass</div><div class="m-value" id="val-bass">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-bass" style="background:#60a5fa;"></div></div></div>
-        <div class="metric-card"><div class="m-label">Mid</div><div class="m-value" id="val-mid">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-mid" style="background:#34d399;"></div></div></div>
-        <div class="metric-card"><div class="m-label">Treble</div><div class="m-value" id="val-treble">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-treble" style="background:#f472b6;"></div></div></div>
-        <div class="metric-card"><div class="m-label">Melody</div><div class="m-value" id="val-melody">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-melody" style="background:#38bdf8;"></div></div></div>
-        <div class="metric-card"><div class="m-label">Vocal</div><div class="m-value" id="val-vocal">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-vocal" style="background:#fb7185;"></div></div></div>
-        <div class="metric-card"><div class="m-label">FX</div><div class="m-value" id="val-fx">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-fx" style="background:#bef264;"></div></div></div>
-        <div class="metric-card"><div class="m-label">Beat Hit</div><div class="m-value" id="val-beat">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-beat" style="background:#f43f5e;"></div></div></div>
-        <div class="metric-card"><div class="m-label">Progress</div><div class="m-value" id="val-prog">0%</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-prog" style="background:#22d3ee;"></div></div></div>
-        <div class="metric-card" style="border-color: rgba(0,255,204,0.3); display:flex; flex-direction:column; justify-content:center;">
-            <div class="m-label">Music Block & Dynamics</div>
-            <div class="m-value" id="val-dyn" style="color:#00ffcc; font-size:1.1rem; padding-top:4px;">IDLE</div>
-            <div class="m-bar-bg"><div class="m-bar-fill" id="bar-dyn" style="background:#00ffcc;"></div></div>
+        <div class="metric-card bpm-card"><div class="m-label">BPM</div><div class="m-value bpm-badge" id="bpm-badge">--</div><div class="m-bar-bg"><div class="m-bar-fill" style="width:100%;"></div></div></div>
+        <div class="metric-card"><div class="m-label">Energy</div><div class="m-value" id="val-energy">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-energy"></div></div></div>
+        <div class="metric-card"><div class="m-label">Bass</div><div class="m-value" id="val-bass">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-bass"></div></div></div>
+        <div class="metric-card"><div class="m-label">Mid</div><div class="m-value" id="val-mid">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-mid"></div></div></div>
+        <div class="metric-card"><div class="m-label">Treble</div><div class="m-value" id="val-treble">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-treble"></div></div></div>
+        <div class="metric-card"><div class="m-label">Melody</div><div class="m-value" id="val-melody">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-melody"></div></div></div>
+        <div class="metric-card"><div class="m-label">Vocal</div><div class="m-value" id="val-vocal">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-vocal"></div></div></div>
+        <div class="metric-card"><div class="m-label">FX</div><div class="m-value" id="val-fx">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-fx"></div></div></div>
+        <div class="metric-card"><div class="m-label">Beat Hit</div><div class="m-value" id="val-beat">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-beat"></div></div></div>
+        <div class="metric-card"><div class="m-label">Progress</div><div class="m-value" id="val-prog">0%</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-prog"></div></div></div>
+        <div class="metric-card dyn-card">
+            <div class="m-label">Dynamics</div>
+            <div class="m-value dyn-text" id="val-dyn">IDLE</div>
+            <div class="m-bar-bg"><div class="m-bar-fill dyn-fill" id="bar-dyn"></div></div>
         </div>
       </div>
+      
       <div class="bottom-toolbar">
         <button id="toggle-metrics" class="metrics-toggle" aria-expanded="true">
-          <span class="metrics-toggle-icon">v</span>
           <span>Metrics</span>
+          <svg class="metrics-toggle-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
         </button>
       </div>
-      <div class="seek-container">
+
+      <div class="seek-container panel">
         <div class="time" id="time-current">0:00</div>
         <input type="range" class="main-seek" id="seek-bar" min="0" max="100" value="0" step="0.1" disabled>
         <div class="time" id="time-total">0:00</div>
