@@ -14,6 +14,10 @@ export class DashboardUI {
     private els: Record<string, HTMLElement>;
     private engine: AudioEngine;
 
+    // --- Új változók a UI zárolás funkcióhoz ---
+    private isUiLockedVisible = false;
+    private singleClickTimer: number | null = null;
+
     constructor(engine: AudioEngine) {
         this.engine = engine;
         this.els = {
@@ -161,11 +165,22 @@ export class DashboardUI {
             this.els.canvasContainer.focus();
 
             const now = window.performance.now();
+            
             if (now - this.lastSurfaceClickAt <= 320) {
+                // --- DUPLA KATTINTÁS (Play / Pause) ---
+                if (this.singleClickTimer !== null) {
+                    window.clearTimeout(this.singleClickTimer);
+                    this.singleClickTimer = null;
+                }
                 this.togglePlayback();
                 this.lastSurfaceClickAt = 0;
             } else {
+                // --- SZIMPLA KATTINTÁS (Késleltetve, hátha dupla lesz) ---
                 this.lastSurfaceClickAt = now;
+                this.singleClickTimer = window.setTimeout(() => {
+                    this.toggleUiLock(); // UI zárolása / feloldása
+                    this.singleClickTimer = null;
+                }, 350);
             }
         });
 
@@ -205,6 +220,19 @@ export class DashboardUI {
             let exitFS = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
             if(!doc.fullscreenElement) { reqFS?.call(docEl); } else { exitFS?.call(doc); }
         });
+    }
+
+    private toggleUiLock() {
+        this.isUiLockedVisible = !this.isUiLockedVisible;
+        
+        if (this.isUiLockedVisible) {
+            // ZÁROLVA: Ne tűnjön el soha
+            this.clearChromeHideTimer();
+            document.body.classList.remove('chrome-idle');
+        } else {
+            // FELOLDVA: Kezdje el ismét a visszaszámlálást
+            this.scheduleChromeHide();
+        }
     }
 
     private setTuningPanelOpen(isOpen: boolean) {
@@ -308,6 +336,12 @@ export class DashboardUI {
 
     private scheduleChromeHide() {
         this.clearChromeHideTimer();
+        
+        // Ha le van zárva az eltűnés, ne indítson időzítőt
+        if (this.isUiLockedVisible) {
+            return;
+        }
+
         this.chromeHideTimer = window.setTimeout(() => {
             if (this.isChromeHovered()) {
                 this.scheduleChromeHide();
@@ -527,7 +561,7 @@ export class DashboardUI {
         this.els.barDyn.style.width = (State.currentFrame.eRatio * 100) + "%";
 
         let isLowMode = State.currentFrame.state !== 'HIGH' && State.currentFrame.state !== 'IDLE';
-        let accentColor = isLowMode && State.isPlaying ? '#ff00aa' : '#00ffcc';
+        let accentColor = isLowMode && State.isPlaying ? '#ff00aa' : '#00e5ff';
         this.els.valDyn.style.color = accentColor; this.els.barDyn.style.background = accentColor;
 
         if (State.duration > 0) {
