@@ -4,7 +4,8 @@ import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
 import { drawClassicPlexusEffect } from './ClassicPlexusEffect';
 import { drawTemporalMusicEffect } from './TemporalMusicEffect';
-import { tuneAudioFrame, tuneAudioValue, tuneVisualFeatures } from '../config/visualTuning';
+import { applyTuningMorph, computeModulationBus, tuneAudioValue } from '../config/visualTuning';
+import { P5RendererBackend } from './P5RendererBackend';
 import type { DashboardUI } from '../ui/DashboardUI';
 import type { AudioEngine } from '../audio/AudioEngine';
 import type { VisualCueKind } from '../types';
@@ -15,6 +16,7 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
         let shockwaves: Shockwave[] = [];
         let currentEventIdx = 0;
         let currentCueIdx = 0;
+        const backend = new P5RendererBackend(p);
 
         p.setup = () => {
             p.createCanvas(p.windowWidth, p.windowHeight).parent(containerId);
@@ -41,6 +43,8 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
         });
 
         p.draw = () => {
+            applyTuningMorph(State.visualTuning, State.targetTuning, State.targetTuning.transitionSpeed);
+
             let ct = engine.getCurrentTime();
             State.currentTime = ct;
 
@@ -81,12 +85,21 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
                 State.activePatternId = null;
             }
 
+            State.modulation = computeModulationBus(
+                State.currentFrame,
+                State.currentFeatures,
+                State.beatDecay,
+                State.cueDecay,
+                State.visualTuning
+            );
+            applyDramaturgyBoost();
+
             if (p.frameCount % 4 === 0) ui.updateDashboard();
 
             if (State.visualMode === 'temporal') {
-                drawTemporalMusicEffect(p, particles, shockwaves);
+                drawTemporalMusicEffect(backend, particles, shockwaves);
             } else {
-                drawClassicPlexusEffect(p, particles, shockwaves);
+                drawClassicPlexusEffect(backend, particles, shockwaves);
             }
         };
 
@@ -96,10 +109,10 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
 
 function publishCurrentAnalysisFrame(frameIdx: number) {
     if (frameIdx >= 0 && frameIdx < State.frames.length) {
-        State.currentFrame = tuneAudioFrame(State.frames[frameIdx], State.visualTuning);
+        State.currentFrame = State.frames[frameIdx];
     }
     if (frameIdx >= 0 && frameIdx < State.trackAnalysis.features.length) {
-        State.currentFeatures = tuneVisualFeatures(State.trackAnalysis.features[frameIdx], State.visualTuning);
+        State.currentFeatures = State.trackAnalysis.features[frameIdx];
     }
 }
 
@@ -121,8 +134,24 @@ function resetTransientVisualState() {
     State.beatDecay = 0;
     State.snareFlash = 0;
     State.cueDecay = 0;
+    State.modulation = {
+        kineticTension: 0,
+        lowFrequencyDrive: 0,
+        spectralChaos: 0,
+        rhythmicImpulse: 0,
+        macroMomentum: 0
+    };
     State.activeCueKind = null;
     State.activePatternId = null;
+}
+
+function applyDramaturgyBoost() {
+    if (!State.trackAnalysis.buildupConfidence.length) return;
+
+    const frameIdx = Math.floor(State.currentTime * State.sampleRate / State.hopSize);
+    const buildup = State.trackAnalysis.buildupConfidence[frameIdx] || 0;
+    State.modulation.kineticTension = Math.min(1, State.modulation.kineticTension + buildup * 0.18);
+    State.modulation.macroMomentum = Math.max(State.modulation.macroMomentum, buildup * 0.35);
 }
 
 function cueTypeToShockwave(kind: VisualCueKind): number {
