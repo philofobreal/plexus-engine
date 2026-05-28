@@ -94,6 +94,23 @@ export interface TrackSection {
     energy: number;
     density: number;
     dominantFeature: VisualCueKind | 'rhythm';
+    avgRms: number;
+    peakRms: number;
+}
+
+export interface BarAnalysis {
+    index: number;
+    start: number;
+    end: number;
+    energy: number;
+    density: number;
+    avgRms: number;
+    peakRms: number;
+    bass: number;
+    mid: number;
+    treble: number;
+    state: Extract<AutoState, 'HIGH' | 'LOW'>;
+    dominantFeature: VisualCueKind | 'rhythm';
 }
 
 export interface PatternOccurrence {
@@ -131,6 +148,7 @@ export interface TensionTrends {
 
 export interface TrackAnalysis {
     duration: number;
+    bars: BarAnalysis[];
     sections: TrackSection[];
     patterns: MusicPattern[];
     cues: VisualCueEvent[];

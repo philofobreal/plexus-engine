@@ -6,6 +6,7 @@ const ANALYSIS_ALGORITHM_VERSION = 2;
 const EMPTY_FEATURES: VisualFeatureFrame = { melody: 0, vocal: 0, fx: 0, density: 0, brightness: 0, tension: 0 };
 const EMPTY_TRACK_ANALYSIS: TrackAnalysis = {
     duration: 0,
+    bars: [],
     sections: [],
     patterns: [],
     cues: [],
@@ -60,7 +61,7 @@ export class AudioEngine {
         State.bpm = 0;
         State.frames = [];
         State.events = [];
-        State.trackAnalysis = { ...EMPTY_TRACK_ANALYSIS, sections: [], patterns: [], cues: [], significantMoments: [], features: [] };
+        State.trackAnalysis = { ...EMPTY_TRACK_ANALYSIS, bars: [], sections: [], patterns: [], cues: [], significantMoments: [], features: [] };
         State.hopSize = 1024;
         State.currentFrame = { e: 0, b: 0, m: 0, t: 0, state: 'IDLE', eRatio: 0 };
         State.currentFeatures = { ...EMPTY_FEATURES };
@@ -117,7 +118,7 @@ export class AudioEngine {
                     State.bpm = e.data.bpm;
                     State.frames = e.data.frames;
                     State.events = e.data.events;
-                    State.trackAnalysis = e.data.trackAnalysis;
+                    State.trackAnalysis = normalizeTrackAnalysis(e.data.trackAnalysis);
                     State.hopSize = e.data.hopSize;
                     if (this.onAnalysisComplete) this.onAnalysisComplete();
                     return;
@@ -210,4 +211,31 @@ export class AudioEngine {
         if (!State.isPlaying || !this.ctx) return this.pausedAt;
         return this.playOffset + (this.ctx.currentTime - this.playStartTime);
     }
+}
+
+function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis): TrackAnalysis {
+    return {
+        ...EMPTY_TRACK_ANALYSIS,
+        ...trackAnalysis,
+        bars: (trackAnalysis.bars || []).map(bar => ({
+            ...bar,
+            avgRms: bar.avgRms ?? 0,
+            peakRms: bar.peakRms ?? 0,
+            bass: bar.bass ?? 0,
+            mid: bar.mid ?? 0,
+            treble: bar.treble ?? 0
+        })),
+        sections: (trackAnalysis.sections || []).map(section => ({
+            ...section,
+            avgRms: section.avgRms ?? 0,
+            peakRms: section.peakRms ?? 0
+        })),
+        patterns: trackAnalysis.patterns || [],
+        cues: trackAnalysis.cues || [],
+        significantMoments: trackAnalysis.significantMoments || [],
+        features: trackAnalysis.features || [],
+        buildupConfidence: trackAnalysis.buildupConfidence || [],
+        tensionTrends: trackAnalysis.tensionTrends || EMPTY_TRACK_ANALYSIS.tensionTrends,
+        featureHopSize: trackAnalysis.featureHopSize || EMPTY_TRACK_ANALYSIS.featureHopSize
+    };
 }

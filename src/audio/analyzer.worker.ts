@@ -3,6 +3,7 @@ import type {
     AudioFrame,
     BeatEvent,
     AnalysisResult,
+    BarAnalysis,
     TrackAnalysis,
     TrackSection,
     TrackSectionLabel,
@@ -18,7 +19,8 @@ export function computeDramaturgyAnalysis(
     featureFrames: VisualFeatureFrame[],
     frames: AudioFrame[],
     hopSize: number,
-    sampleRate: number
+    sampleRate: number,
+    alignmentFrameCount?: number
 ): { buildupConfidence: number[], tensionTrends: TensionTrends } {
     const count = Math.min(featureFrames.length, frames.length);
     const pressure = new Array<number>(count);
@@ -52,7 +54,15 @@ export function computeDramaturgyAnalysis(
         }
     }
 
-    const segmentFrames = Math.max(windowSize * 4, 1);
+    if (alignmentFrameCount && alignmentFrameCount > 0) {
+        for (let startIdx = 0; startIdx < count; startIdx += alignmentFrameCount) {
+            const endIdx = Math.min(count, startIdx + alignmentFrameCount);
+            const barValue = averageRange(buildupConfidence, startIdx, endIdx);
+            for (let i = startIdx; i < endIdx; i++) buildupConfidence[i] = barValue;
+        }
+    }
+
+    const segmentFrames = Math.max(alignmentFrameCount || windowSize * 4, 1);
     const segments: TensionTrends['segments'] = [];
     for (let startIdx = 0; startIdx < count; startIdx += segmentFrames) {
         const endIdx = Math.min(count, startIdx + segmentFrames);
@@ -170,10 +180,15 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
         let rawHighT = new Float32Array(totalFrames);
         let flatnessT = new Float32Array(totalFrames);
         let centroidT = new Float32Array(totalFrames);
+        let harmonicStabilityT = new Float32Array(totalFrames);
+        let transientRatioT = new Float32Array(totalFrames);
+        let pitchConfidenceT = new Float32Array(totalFrames);
+        let formantRatioT = new Float32Array(totalFrames);
 
         let re = new Float32Array(N);
         let im = new Float32Array(N);
         let prevMag = new Float32Array(N / 2);
+        const binHz = sampleRate / N;
 
         for (let i = 0; i < totalFrames; i++) {
             let start = i * hopSize; 
@@ -191,20 +206,43 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
 
             let sumMag = 0, sumFreqMag = 0, sumLogMag = 0;
             let currentFlux = 0, eB = 0, eM = 0, eH = 0;
+            let stableEnergy = 0, transientEnergy = 0, formantLow = 0, formantHigh = 0;
+            let hpsBest = 0, hpsSum = 0;
 
             for (let k = 1; k < N / 2; k++) {
                 let mag = Math.sqrt(re[k] * re[k] + im[k] * im[k]);
+                let freq = k * binHz;
                 sumMag += mag;
                 sumFreqMag += k * mag;
                 sumLogMag += Math.log(mag + 1e-6);
 
                 let fluxDiff = Math.max(0, mag - prevMag[k]);
                 currentFlux += fluxDiff;
+                stableEnergy += Math.min(mag, prevMag[k]);
+                transientEnergy += fluxDiff;
                 prevMag[k] = mag;
 
                 if (k <= 6) eB += mag;
                 else if (k <= 93) eM += mag;
                 else if (k <= 465) eH += mag;
+
+                if (freq >= 300 && freq <= 1000) formantLow += mag;
+                if (freq >= 2000 && freq <= 4000) formantHigh += mag;
+            }
+
+            for (let k = Math.max(2, Math.ceil(80 / binHz)); k <= Math.min(Math.floor(2000 / binHz), Math.floor((N / 2 - 1) / 4)); k++) {
+                let score = 0;
+                let weight = 0;
+                for (let harmonic = 1; harmonic <= 4; harmonic++) {
+                    let harmonicBin = k * harmonic;
+                    let harmonicWeight = 1 / harmonic;
+                    let mag = Math.sqrt(re[harmonicBin] * re[harmonicBin] + im[harmonicBin] * im[harmonicBin]);
+                    score += mag * harmonicWeight;
+                    weight += harmonicWeight;
+                }
+                let normalizedScore = score / Math.max(weight, 1e-6);
+                hpsBest = Math.max(hpsBest, normalizedScore);
+                hpsSum += normalizedScore;
             }
             fluxT[i] = currentFlux;
 
@@ -215,6 +253,10 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
             
             centroidT[i] = sumMag > 0 ? (sumFreqMag / sumMag) / 512 : 0;
             flatnessT[i] = sumMag > 0 ? Math.exp(sumLogMag / 511) / (sumMag / 511) : 0;
+            harmonicStabilityT[i] = (stableEnergy + transientEnergy) > 0 ? stableEnergy / (stableEnergy + transientEnergy) : 0;
+            transientRatioT[i] = sumMag > 0 ? transientEnergy / sumMag : 0;
+            pitchConfidenceT[i] = hpsSum > 0 ? clamp01((hpsBest / (hpsSum / Math.max(1, Math.floor(2000 / binHz) - Math.ceil(80 / binHz)))) * 0.22) : 0;
+            formantRatioT[i] = formantLow > 0 ? formantHigh / (formantLow + 1e-6) : 0;
         }
 
         // --- 3. Thresholds and macro blocks ---
@@ -249,17 +291,43 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
         }
 
         let secondsPerBeat = 60 / estimatedBPM;
-        let blockFrames = Math.floor((secondsPerBeat * 16) * sampleRate / hopSize);
-        if (blockFrames < 10) blockFrames = 100;
+        let secondsPerBar = secondsPerBeat * 4;
+        let barFrames = Math.max(1, Math.round(secondsPerBar * sampleRate / hopSize));
         
-        let blocks: {startIdx: number, endIdx: number, avgE: number}[] = [];
-        for (let i = 0; i < totalFrames; i += blockFrames) {
-            let sumE = 0; let actualSize = Math.min(blockFrames, totalFrames - i);
-            for (let j = i; j < i + actualSize; j++) sumE += rmsT[j];
-            blocks.push({ startIdx: i, endIdx: i + actualSize, avgE: sumE / actualSize });
+        let barBlocks: Array<{
+            index: number;
+            startIdx: number;
+            endIdx: number;
+            avgE: number;
+            peakE: number;
+            avgBass: number;
+            avgMid: number;
+            avgHigh: number;
+        }> = [];
+        for (let startIdx = 0, barIndex = 0; startIdx < totalFrames; startIdx += barFrames, barIndex++) {
+            let endIdx = Math.min(totalFrames, startIdx + barFrames);
+            let sumE = 0, peakE = 0, sumBass = 0, sumMid = 0, sumHigh = 0;
+            let actualSize = Math.max(1, endIdx - startIdx);
+            for (let j = startIdx; j < endIdx; j++) {
+                sumE += rmsT[j];
+                peakE = Math.max(peakE, rmsT[j]);
+                sumBass += rawBassT[j];
+                sumMid += rawMidT[j];
+                sumHigh += rawHighT[j];
+            }
+            barBlocks.push({
+                index: barIndex,
+                startIdx,
+                endIdx,
+                avgE: sumE / actualSize,
+                peakE,
+                avgBass: sumBass / actualSize,
+                avgMid: sumMid / actualSize,
+                avgHigh: sumHigh / actualSize
+            });
         }
-        let gMinAvgE = Math.min(...blocks.map(b => b.avgE));
-        let gMaxAvgE = Math.max(...blocks.map(b => b.avgE));
+        let gMinAvgE = Math.min(...barBlocks.map(b => b.avgE));
+        let gMaxAvgE = Math.max(...barBlocks.map(b => b.avgE));
 
 
         // --- 4. Pass 2: smoothing and state machine ---
@@ -281,13 +349,19 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
             let rawBass = rawBassT[i];
             let rawMid = rawMidT[i];
             let rawHigh = rawHighT[i];
+            let harmonicStability = harmonicStabilityT[i];
+            let transientRatio = transientRatioT[i];
+            let pitchConfidence = pitchConfidenceT[i];
+            let formantRatio = formantRatioT[i];
 
-            let tonalFactor = 1.0 - Math.min(1.0, flatness * 1.8);
+            let tonalFactor = clamp01((1.0 - Math.min(1.0, flatness * 1.8)) * 0.72 + harmonicStability * 0.28);
             let noiseFactor = Math.min(1.0, flatness * 2.5);
+            let pitchedTransient = clamp01(pitchConfidence * Math.max(0, rawMid - 0.12) * Math.min(1, transientRatio * 4));
+            let vocalFormant = clamp01((1 - Math.abs(formantRatio - 0.55) / 0.55) * rawMid * (1 - rawBass * 1.2));
             
-            let melodyTarget = tonalFactor * Math.max(0, rawMid - 0.2) * 1.5;
-            let vocalTarget = tonalFactor * rawMid * (1.0 - rawBass * 1.5);
-            let fxTarget = noiseFactor * rawHigh * 1.5 + normFlux * 0.3;
+            let melodyTarget = tonalFactor * Math.max(0, rawMid - 0.2) * 1.35 + pitchedTransient * 1.4;
+            let vocalTarget = tonalFactor * vocalFormant * 1.55;
+            let fxTarget = noiseFactor * rawHigh * 1.45 + normFlux * 0.18 * (1 - pitchConfidence);
             let brightnessTarget = centroid * 3.0;
 
             // Strong smoothing prevents jitter in render-facing signals.
@@ -305,9 +379,9 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
 
             featureFrames[i] = { melody: sMelody, vocal: sVocal, fx: sFx, density: sDensity, brightness: sBrightness, tension: sTension };
 
-            // Macro state machine uses smoothed live energy for overrides.
-            let blockIdx = Math.floor(i / blockFrames);
-            let b = blocks[blockIdx];
+            // Macro state machine is bar-aligned; only local safety overrides react inside a bar.
+            let blockIdx = Math.min(barBlocks.length - 1, Math.floor(i / barFrames));
+            let b = barBlocks[blockIdx];
             let energyRatio = (gMaxAvgE - gMinAvgE) > 0 ? (b.avgE - gMinAvgE) / (gMaxAvgE - gMinAvgE) : 0;
             
             let state: AudioFrame['state'] = energyRatio >= 0.45 ? 'HIGH' : 'LOW';
@@ -340,27 +414,89 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
             return sum / count;
         }
 
-        let trackSections: TrackSection[] = blocks.map((block, idx) => {
-            let energy = (gMaxAvgE - gMinAvgE) > 0 ? (block.avgE - gMinAvgE) / (gMaxAvgE - gMinAvgE) : 0;
-            let density = averageFeature(block.startIdx, block.endIdx, f => f.density);
-            let tension = averageFeature(block.startIdx, block.endIdx, f => f.tension);
-            let label: TrackSectionLabel = 'verse';
-            
-            if (idx === 0 && energy < 0.5) label = 'intro';
-            else if (idx === blocks.length - 1 && energy < 0.5) label = 'outro';
-            else if (energy > 0.72 && density > 0.48) label = 'peak';
-            else if (energy > 0.58 && tension > 0.58) label = 'drop';
-            else if (energy > 0.42 && tension > 0.5) label = 'build';
-            else if (energy < 0.28) label = 'break';
-
-            let melody = averageFeature(block.startIdx, block.endIdx, f => f.melody);
-            let vocal = averageFeature(block.startIdx, block.endIdx, f => f.vocal);
-            let fx = averageFeature(block.startIdx, block.endIdx, f => f.fx);
+        function dominantFeature(startIdx: number, endIdx: number): VisualCueKind | 'rhythm' {
+            let melody = averageFeature(startIdx, endIdx, f => f.melody);
+            let vocal = averageFeature(startIdx, endIdx, f => f.vocal);
+            let fx = averageFeature(startIdx, endIdx, f => f.fx);
+            let density = averageFeature(startIdx, endIdx, f => f.density);
             let maxF = Math.max(melody, vocal, fx, density);
-            let dom: VisualCueKind | 'rhythm' = maxF === vocal ? 'vocal' : maxF === melody ? 'melody' : maxF === fx ? 'fx' : 'rhythm';
+            return maxF === vocal ? 'vocal' : maxF === melody ? 'melody' : maxF === fx ? 'fx' : 'rhythm';
+        }
 
-            return { start: block.startIdx * hopSize / sampleRate, end: block.endIdx * hopSize / sampleRate, label, energy, density, dominantFeature: dom };
+        function labelForRange(startIdx: number, endIdx: number, rangeIndex: number, rangeCount: number, energy: number, density: number, tension: number): TrackSectionLabel {
+            if (rangeIndex === 0 && energy < 0.5) return 'intro';
+            if (rangeIndex === rangeCount - 1 && energy < 0.5) return 'outro';
+            if (energy > 0.72 && density > 0.48) return 'peak';
+            if (energy > 0.58 && tension > 0.58) return 'drop';
+            if (energy > 0.42 && tension > 0.5) return 'build';
+            if (energy < 0.28) return 'break';
+            if (averageFeature(startIdx, endIdx, f => f.vocal) > 0.46) return 'verse';
+            return 'verse';
+        }
+
+        function rmsStats(startIdx: number, endIdx: number) {
+            let sum = 0;
+            let peak = 0;
+            let count = Math.max(1, endIdx - startIdx);
+            for (let i = startIdx; i < endIdx && i < rmsT.length; i++) {
+                sum += rmsT[i];
+                peak = Math.max(peak, rmsT[i]);
+            }
+            return {
+                avgRms: clamp01((sum / count) / typRms),
+                peakRms: clamp01(peak / typRms)
+            };
+        }
+
+        let barAnalyses: BarAnalysis[] = barBlocks.map((bar) => {
+            let energy = (gMaxAvgE - gMinAvgE) > 0 ? (bar.avgE - gMinAvgE) / (gMaxAvgE - gMinAvgE) : 0;
+            let density = averageFeature(bar.startIdx, bar.endIdx, f => f.density);
+            let rms = rmsStats(bar.startIdx, bar.endIdx);
+            return {
+                index: bar.index,
+                start: bar.startIdx * hopSize / sampleRate,
+                end: bar.endIdx * hopSize / sampleRate,
+                energy,
+                density,
+                avgRms: rms.avgRms,
+                peakRms: rms.peakRms,
+                bass: clamp01(bar.avgBass),
+                mid: clamp01(bar.avgMid),
+                treble: clamp01(bar.avgHigh),
+                state: energy >= 0.45 ? 'HIGH' : 'LOW',
+                dominantFeature: dominantFeature(bar.startIdx, bar.endIdx)
+            };
         });
+
+        let phraseBars = 4;
+        let phraseCount = Math.max(1, Math.ceil(barBlocks.length / phraseBars));
+        let trackSections: TrackSection[] = [];
+        for (let phraseIndex = 0; phraseIndex < phraseCount; phraseIndex++) {
+            let phraseStartBar = phraseIndex * phraseBars;
+            let phraseEndBar = Math.min(barBlocks.length, phraseStartBar + phraseBars);
+            let firstBar = barBlocks[phraseStartBar];
+            let lastBar = barBlocks[phraseEndBar - 1];
+            if (!firstBar || !lastBar) continue;
+
+            let avgEnergy = averageRange(barAnalyses.map(bar => bar.energy), phraseStartBar, phraseEndBar);
+            let startIdx = firstBar.startIdx;
+            let endIdx = lastBar.endIdx;
+            let density = averageFeature(startIdx, endIdx, f => f.density);
+            let tension = averageFeature(startIdx, endIdx, f => f.tension);
+            let label = labelForRange(startIdx, endIdx, phraseIndex, phraseCount, avgEnergy, density, tension);
+            let rms = rmsStats(startIdx, endIdx);
+
+            trackSections.push({
+                start: firstBar.startIdx * hopSize / sampleRate,
+                end: lastBar.endIdx * hopSize / sampleRate,
+                label,
+                energy: avgEnergy,
+                density,
+                dominantFeature: dominantFeature(startIdx, endIdx),
+                avgRms: rms.avgRms,
+                peakRms: rms.peakRms
+            });
+        }
 
         let visualCues: VisualCueEvent[] = [];
         let lastCueTimes: Record<VisualCueKind, number> = { melody: -999, vocal: -999, fx: -999, impact: -999, break: -999, pattern: -999 };
@@ -409,10 +545,11 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
 
         visualCues.sort((a, b) => a.time - b.time);
 
-        const dramaturgy = computeDramaturgyAnalysis(featureFrames, outFrames, hopSize, sampleRate);
+        const dramaturgy = computeDramaturgyAnalysis(featureFrames, outFrames, hopSize, sampleRate, barFrames);
 
         const trackAnalysis: TrackAnalysis = {
             duration: channel.length / sampleRate,
+            bars: barAnalyses,
             sections: trackSections,
             patterns: musicPatterns,
             cues: visualCues,

@@ -12,6 +12,7 @@ const emptyFeatures: VisualFeatureFrame = {
 
 const emptyTrackAnalysis: TrackAnalysis = {
     duration: 0,
+    bars: [],
     sections: [],
     patterns: [],
     cues: [],
