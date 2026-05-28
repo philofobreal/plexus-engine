@@ -4,12 +4,35 @@
 
 ## 1. Vezetoi Osszefoglalo
 
-A **Plexus Engine** bongeszoben futo, hardvergyorsitott, reaktiv audio-vizualizacios motor. A rendszer fo elve a lejatszas elotti offline analizis: a hangfajl betoltesekor egy Web Worker kiszamolja a zenei es vizualis idovonalat, lejatszas kozben pedig a renderer csak az aktualis idoponthoz tartozo elore szamolt frame-eket, beat es cue esemenyeket fogyasztja.
+A **Plexus Engine** egy bongeszoben futo, hardvergyorsitott, audio-first generativ vizualizacios motor es eloadoi hangszer (visual instrument). A rendszer alapelve a lejatszas elotti offline zeneanalizis, amely zeneszerkezeti kontextust (szekciok, feszultseggorbek, mintak es cue esemenyek) hoz letre. Lejatszas kozben a renderelo szal nem vegez valos ideju DSP szamitasokat; egy absztrakt modulacios buszon keresztul fogyasztja a normalizalt zenei szandekot, biztositva a stabil szinpadi es produkcios teljesitmenyt.
 
 Az aktualis implementacio ket vizualis modot tart fenn:
 
 * `classic`: az eredeti Plexus reszecskehalo, kozponti glow, beat shockwave es polygon flash viselkedes.
 * `temporal`: ugyanarra az offline analizisre epulo, teljes track-szintu zenei kontextust hasznalo mod, amely section, feature, cue es pattern adatokat hasznal folyamatos vizualis modulaciora.
+
+## 1.1. Termekvizio Es Celcsoport
+
+A Plexus Engine elsodleges celcsoportja az **elektronikus zeneszek, producerek, DJ-k es live act eloadok**, akik sajat szamaikhoz szeretnenek azonnal generalt, zeneileg intelligens es eloben testreszabhato vizualis kiseretet.
+
+A szoftver pozicionalasa:
+
+> **Plexus Engine:** browser-based audio-reactive visual engine for musicians who want instant generative visuals from their own tracks.
+
+### Miert Nem Klasszikus VJ Szoftver Vagy Streamer Overlay?
+
+1. **Zenei kontextus-vezerelt (Audio-First):** Nem egyszeru clip-launcher vagy OBS widget, hanem zeneszerkezeti esemenyekre (melody, vocal, FX, buildup, drop) reagalo vizualis hangszer.
+2. **Offline track-analizis:** Felismeri a dal dramaturgiai ivet (intro, build, drop, break, peak, outro), es a feszultseggorbet elore anticipalva vezerli a reszecskek es sokszogek dinamikajat.
+3. **Produkcios es eloadoi fokusz:** A UI es a Tuning Layer a gyors preset-valtast, az atmenetek folytonossagat (morphing) es a tiszta stream kimenetet szolgalja.
+
+### Jovobeli Termekutvonal
+
+A fejlesztesek fokuszaban nem ujabb grafikai effektek, hanem az **eloadoi munkafolyamat es integracio (preset + export + performance workflow)** tamogatasa all:
+
+* Elo vizualis presetek exportalasa, mentese es betoltese (Preset Management).
+* Megoszthato shareable URL konfiguraciok generalasa.
+* OBS-barat, chroma-key es transzparens hatterrel rendelkezo tiszta kimeneti modok.
+* MIDI mapping es hardveres BPM szinkronizacio tamogatasa a jovoben.
 
 ## 2. Altalanos Architektura Es Adataramlas
 

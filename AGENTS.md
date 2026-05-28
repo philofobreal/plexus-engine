@@ -6,7 +6,9 @@ The active project root is `plexus-engine/`. The sibling `v0.1/` and `v0.2/` dir
 
 ## Mission
 
-Plexus Engine is a modular TypeScript realtime audio visualization system. Changes must preserve deterministic playback, offline analysis, safe worker communication, stable module ownership, and predictable rendering performance.
+Plexus Engine is a modular, browser-based, audio-reactive visual engine and performance instrument designed specifically for electronic musicians, producers, and live act performers who want instant, highly-customizable generative visuals derived from their own tracks. Unlike classic VJ clip-launchers or generic streamer overlays, Plexus Engine is built on offline track-structure awareness (sections, buildup confidence, cues, patterns) and a normalized modulation bus, translating zene-dramaturgia directly into generative GPU-accelerated motion.
+
+All modifications must preserve deterministic playback, offline analysis, safe worker communication, stable module ownership, and predictable rendering performance.
 
 Optimize all work for:
 
