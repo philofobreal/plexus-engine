@@ -6,10 +6,32 @@ interface VisualPresetManifest {
     presets?: string[];
 }
 
+interface TimelineViewport {
+    start: number;
+    end: number;
+    duration: number;
+}
+
 export class DashboardUI {
     private isDraggingSlider = false;
+    private isResizingTimeline = false;
+    private isPanningTimeline = false;
+    private isSeekingTimeline = false;
     private lastSurfaceClickAt = 0;
     private chromeHideTimer: number | null = null;
+    private timelineResizeFrame: number | null = null;
+    private timelineResizeStartY = 0;
+    private timelineResizeStartHeight = 0;
+    private lastExpandedTimelineHeight = 220;
+    private timelineZoomLevel = 1;
+    private timelineScrollOffsetTime = 0;
+    private timelinePanStartX = 0;
+    private timelinePanStartOffset = 0;
+    private timelinePointerDownX = 0;
+    private timelinePointerDownY = 0;
+    private timelineDidDrag = false;
+    private timelineTooltip: HTMLDivElement;
+    private scrubTime: number | null = null;
     private tuningDragOffset = { x: 0, y: 0 };
     private els: Record<string, HTMLElement>;
     private engine: AudioEngine;
@@ -39,6 +61,7 @@ export class DashboardUI {
             copyConfigStatus: document.getElementById('copy-config-status')!,
             metricsGrid: document.getElementById('metrics-grid')!,
             dramaturgyTimeline: document.getElementById('dramaturgy-timeline')!,
+            timelineResizeHandle: document.getElementById('timeline-resize-handle')!,
             toggleTimelineZoom: document.getElementById('toggle-timeline-zoom')!,
             seekBar: document.getElementById('seek-bar')!,
             bpmBadge: document.getElementById('bpm-badge')!,
@@ -83,6 +106,7 @@ export class DashboardUI {
 
         this.initBindings();
         this.initVisualTuningControls();
+        this.timelineTooltip = this.createTimelineTooltip();
         this.initDramaturgyTimeline();
         this.syncLoopUi();
         this.applyPresentationModeFromUrl();
@@ -112,6 +136,7 @@ export class DashboardUI {
             this.els.timeCur.innerText = "0:00";
             this.els.timeTot.innerText = "0:00";
             this.els.bpmBadge.style.display = "none";
+            this.resetTimelineView();
             this.clearDramaturgyTimeline();
 
             this.engine.onAnalysisComplete = () => {
@@ -214,13 +239,17 @@ export class DashboardUI {
         seek.addEventListener('input', (e) => {
             if (State.duration > 0) {
                 let seekTime = (parseFloat((e.target as HTMLInputElement).value) / 100) * State.duration;
-                this.els.timeCur.innerText = this.formatTime(seekTime);
-                this.engine.seek(seekTime);
-                this.drawDramaturgyTimeline();
+                this.setScrubTime(seekTime);
             }
         });
-        seek.addEventListener('change', () => this.isDraggingSlider = false);
-        seek.addEventListener('touchend', () => this.isDraggingSlider = false);
+        seek.addEventListener('change', () => {
+            this.commitScrubTime();
+            this.isDraggingSlider = false;
+        });
+        seek.addEventListener('touchend', () => {
+            this.commitScrubTime();
+            this.isDraggingSlider = false;
+        });
 
         this.els.fsBtn.addEventListener('click', () => {
             let doc = window.document as any;
@@ -273,31 +302,330 @@ export class DashboardUI {
         this.els.toggleLoop.innerText = State.loopPlayback ? 'Loop' : 'Once';
     }
 
+    private createTimelineTooltip() {
+        const tooltip = document.createElement('div');
+        tooltip.id = 'timeline-tooltip';
+        tooltip.className = 'timeline-tooltip is-hidden';
+        document.body.appendChild(tooltip);
+        return tooltip;
+    }
+
     private initDramaturgyTimeline() {
         const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
         const zoomButton = this.els.toggleTimelineZoom as HTMLButtonElement;
-        const wrapper = canvas.parentElement;
-
-        canvas.addEventListener('click', (event) => {
-            if (State.duration <= 0) return;
-
-            const rect = canvas.getBoundingClientRect();
-            if (rect.width <= 0) return;
-
-            const clickX = event.clientX - rect.left;
-            const ratio = Math.min(1, Math.max(0, clickX / rect.width));
-            this.engine.seek(ratio * State.duration);
-            this.drawDramaturgyTimeline();
-        });
+        const resizeHandle = this.els.timelineResizeHandle;
+        const wrapper = canvas.parentElement as HTMLElement | null;
 
         zoomButton.addEventListener('click', () => {
-            wrapper?.classList.toggle('is-expanded');
-            const isExpanded = Boolean(wrapper?.classList.contains('is-expanded'));
-            zoomButton.setAttribute('aria-pressed', isExpanded ? 'true' : 'false');
+            if (!wrapper) return;
+            this.toggleTimelineOverlay(wrapper, zoomButton);
             this.animateTimelineResize();
         });
 
-        window.addEventListener('resize', () => this.drawDramaturgyTimeline());
+        canvas.addEventListener('pointerdown', (event) => {
+            if (State.duration <= 0) return;
+            const rect = canvas.getBoundingClientRect();
+            if (rect.width <= 0) return;
+
+            this.timelinePointerDownX = event.clientX;
+            this.timelinePointerDownY = event.clientY;
+            this.timelineDidDrag = false;
+
+            const isPanAction = event.button === 1 || event.shiftKey;
+            if (isPanAction) {
+                this.isPanningTimeline = true;
+                this.timelinePanStartX = event.clientX;
+                this.timelinePanStartOffset = this.timelineScrollOffsetTime;
+                canvas.classList.add('is-panning');
+            } else if (event.button === 0) {
+                this.isSeekingTimeline = true;
+                this.seekTimelineFromPointer(event, rect);
+            } else {
+                return;
+            }
+            canvas.setPointerCapture(event.pointerId);
+            event.preventDefault();
+        });
+
+        canvas.addEventListener('pointermove', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            if (rect.width <= 0) return;
+
+            if (this.isPanningTimeline) {
+                const dragDistance = Math.abs(event.clientX - this.timelinePointerDownX) + Math.abs(event.clientY - this.timelinePointerDownY);
+                this.timelineDidDrag = this.timelineDidDrag || dragDistance > 3;
+                const visibleDuration = this.getTimelineVisibleDuration();
+                const deltaSeconds = ((event.clientX - this.timelinePanStartX) / rect.width) * visibleDuration;
+                this.timelineScrollOffsetTime = this.clampTimelineScroll(this.timelinePanStartOffset - deltaSeconds);
+                this.requestTimelineDraw();
+            } else if (this.isSeekingTimeline) {
+                this.timelineDidDrag = true;
+                this.seekTimelineFromPointer(event, rect);
+            }
+
+            this.updateTimelineTooltip(event, rect);
+        });
+
+        const endTimelinePointer = (event: PointerEvent) => {
+            if (this.isSeekingTimeline && !this.timelineDidDrag) {
+                const rect = canvas.getBoundingClientRect();
+                this.seekTimelineFromPointer(event, rect);
+            }
+            if (this.isSeekingTimeline) {
+                this.commitScrubTime();
+            }
+            this.isPanningTimeline = false;
+            this.isSeekingTimeline = false;
+            this.timelineDidDrag = false;
+            canvas.classList.remove('is-panning');
+            if (canvas.hasPointerCapture(event.pointerId)) {
+                canvas.releasePointerCapture(event.pointerId);
+            }
+        };
+        canvas.addEventListener('pointerup', endTimelinePointer);
+        canvas.addEventListener('pointercancel', endTimelinePointer);
+        canvas.addEventListener('pointerleave', () => {
+            if (!this.isPanningTimeline && !this.isSeekingTimeline) this.hideTimelineTooltip();
+        });
+
+        canvas.addEventListener('wheel', (event) => {
+            this.zoomTimelineFromWheel(event);
+        }, { passive: false });
+
+        resizeHandle.addEventListener('pointerdown', (event) => {
+            if (!wrapper) return;
+            if (wrapper.classList.contains('is-fullscreen-overlay')) return;
+            this.isResizingTimeline = true;
+            this.timelineResizeStartY = event.clientY;
+            this.timelineResizeStartHeight = this.getTimelineHeight(wrapper);
+            wrapper.classList.add('is-resizing');
+            resizeHandle.setPointerCapture(event.pointerId);
+            event.preventDefault();
+        });
+
+        resizeHandle.addEventListener('pointermove', (event) => {
+            if (!this.isResizingTimeline || !wrapper) return;
+            const delta = this.timelineResizeStartY - event.clientY;
+            const nextHeight = this.clampTimelineHeight(this.timelineResizeStartHeight + delta);
+            this.setTimelineHeight(wrapper, nextHeight, false);
+            if (nextHeight > 40) this.lastExpandedTimelineHeight = nextHeight;
+            zoomButton.setAttribute('aria-pressed', nextHeight > 40 ? 'true' : 'false');
+        });
+
+        const endResize = (event: PointerEvent) => {
+            if (!this.isResizingTimeline || !wrapper) return;
+            this.isResizingTimeline = false;
+            wrapper.classList.remove('is-resizing');
+            const isExpanded = this.getTimelineHeight(wrapper) > 40;
+            wrapper.classList.toggle('is-expanded', isExpanded);
+            zoomButton.setAttribute('aria-pressed', isExpanded ? 'true' : 'false');
+            if (resizeHandle.hasPointerCapture(event.pointerId)) {
+                resizeHandle.releasePointerCapture(event.pointerId);
+            }
+            this.requestTimelineDraw();
+        };
+        resizeHandle.addEventListener('pointerup', endResize);
+        resizeHandle.addEventListener('pointercancel', endResize);
+
+        window.addEventListener('resize', () => {
+            this.timelineScrollOffsetTime = this.clampTimelineScroll(this.timelineScrollOffsetTime);
+            this.drawDramaturgyTimeline();
+        });
+    }
+
+    private toggleTimelineOverlay(wrapper: HTMLElement, zoomButton: HTMLButtonElement) {
+        const isFullscreen = wrapper.classList.contains('is-fullscreen-overlay');
+        if (isFullscreen) {
+            wrapper.classList.remove('is-fullscreen-overlay');
+            wrapper.parentElement?.classList.remove('timeline-overlay-active');
+            document.body.classList.remove('timeline-overlay-open');
+            this.setTimelineHeight(wrapper, this.lastExpandedTimelineHeight, true);
+            zoomButton.setAttribute('aria-pressed', 'false');
+            zoomButton.setAttribute('aria-label', 'Open timeline overlay');
+            zoomButton.title = 'Open Timeline';
+            this.hideTimelineTooltip();
+            return;
+        }
+
+        const currentHeight = this.getTimelineHeight(wrapper);
+        if (currentHeight > 40) this.lastExpandedTimelineHeight = currentHeight;
+        wrapper.style.height = '';
+        wrapper.classList.add('is-expanded', 'is-fullscreen-overlay');
+        wrapper.parentElement?.classList.add('timeline-overlay-active');
+        document.body.classList.add('timeline-overlay-open');
+        zoomButton.setAttribute('aria-pressed', 'true');
+        zoomButton.setAttribute('aria-label', 'Close timeline overlay');
+        zoomButton.title = 'Close Timeline';
+        this.requestTimelineDraw();
+    }
+
+    private seekTimelineFromPointer(event: PointerEvent, rect: DOMRect) {
+        if (State.duration <= 0 || rect.width <= 0) return;
+        const mouseX = Math.min(rect.width, Math.max(0, event.clientX - rect.left));
+        const seekTime = this.getTimelineTimeAtX(mouseX, rect.width);
+        this.setScrubTime(seekTime);
+    }
+
+    private setScrubTime(time: number) {
+        this.scrubTime = this.clamp(time, 0, State.duration);
+        this.els.timeCur.innerText = this.formatTime(this.scrubTime);
+        if (State.duration > 0) {
+            (this.els.seekBar as HTMLInputElement).value = ((this.scrubTime / State.duration) * 100).toString();
+        }
+        this.requestTimelineDraw();
+    }
+
+    private commitScrubTime() {
+        if (this.scrubTime === null) return;
+        const targetTime = this.scrubTime;
+        this.scrubTime = null;
+        this.engine.seek(targetTime);
+        this.requestTimelineDraw();
+    }
+
+    private zoomTimelineFromWheel(event: WheelEvent) {
+        if (State.duration <= 0) return;
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width <= 0) return;
+
+        event.preventDefault();
+        const mouseX = Math.min(rect.width, Math.max(0, event.clientX - rect.left));
+        const mouseTime = this.getTimelineTimeAtX(mouseX, rect.width);
+        const zoomFactor = event.deltaY < 0 ? 1.18 : 1 / 1.18;
+        this.timelineZoomLevel = this.clamp(this.timelineZoomLevel * zoomFactor, 1, 16);
+
+        const newVisibleDuration = this.getTimelineVisibleDuration();
+        this.timelineScrollOffsetTime = this.clampTimelineScroll(mouseTime - (mouseX / rect.width) * newVisibleDuration);
+        if (this.timelineZoomLevel <= 1.01) this.timelineScrollOffsetTime = 0;
+        this.requestTimelineDraw();
+        this.updateTimelineTooltip(event, rect);
+    }
+
+    private getTimelineVisibleDuration() {
+        if (State.duration <= 0) return 0;
+        return State.duration / this.timelineZoomLevel;
+    }
+
+    private getTimelineViewport(): TimelineViewport {
+        const duration = this.getTimelineVisibleDuration();
+        this.timelineScrollOffsetTime = this.clampTimelineScroll(this.timelineScrollOffsetTime);
+        return {
+            start: this.timelineScrollOffsetTime,
+            end: Math.min(State.duration, this.timelineScrollOffsetTime + duration),
+            duration
+        };
+    }
+
+    private clampTimelineScroll(offset: number) {
+        if (State.duration <= 0) return 0;
+        const visibleDuration = this.getTimelineVisibleDuration();
+        return this.clamp(offset, 0, Math.max(0, State.duration - visibleDuration));
+    }
+
+    private getTimelineTimeAtX(x: number, width: number) {
+        const viewport = this.getTimelineViewport();
+        return this.clamp(viewport.start + (x / Math.max(1, width)) * viewport.duration, 0, State.duration);
+    }
+
+    private getTimelineXAtTime(time: number, width: number, viewport: TimelineViewport) {
+        return ((time - viewport.start) / Math.max(0.001, viewport.duration)) * width;
+    }
+
+    private followTimelinePlayhead() {
+        if (!State.isPlaying || State.duration <= 0 || this.timelineZoomLevel <= 1.05) return;
+        const viewport = this.getTimelineViewport();
+        const relativePosition = (State.currentTime - viewport.start) / Math.max(0.001, viewport.duration);
+        if (relativePosition > 0.75 || relativePosition < 0.15) {
+            this.timelineScrollOffsetTime = this.clampTimelineScroll(State.currentTime - viewport.duration * 0.5);
+        }
+    }
+
+    private updateTimelineTooltip(event: MouseEvent, rect: DOMRect) {
+        if (State.duration <= 0 || rect.width <= 0) {
+            this.hideTimelineTooltip();
+            return;
+        }
+
+        const mouseX = Math.min(rect.width, Math.max(0, event.clientX - rect.left));
+        const hoverTime = this.getTimelineTimeAtX(mouseX, rect.width);
+        const viewport = this.getTimelineViewport();
+        const cueTolerance = Math.max(0.05, viewport.duration * 0.015);
+        const section = State.trackAnalysis.sections.find(item => hoverTime >= item.start && hoverTime <= item.end);
+        const bar = State.trackAnalysis.bars.find(item => hoverTime >= item.start && hoverTime <= item.end);
+        const cue = State.trackAnalysis.significantMoments.find(item => Math.abs(item.time - hoverTime) <= cueTolerance);
+        const trend = State.trackAnalysis.tensionTrends.segments.find(item => hoverTime >= item.start && hoverTime <= item.end);
+        const buildupValue = this.getBuildupValueAtTime(hoverTime);
+
+        const lines: string[] = [`${this.formatTime(hoverTime)} | Zoom ${this.timelineZoomLevel.toFixed(1)}x`];
+        if (section) {
+            lines.push(`${section.label.toUpperCase()} | Energy ${Math.round(section.energy * 100)}% | ${section.dominantFeature}`);
+        }
+        if (bar) {
+            lines.push(`Bar ${bar.index + 1} | ${bar.state} | RMS ${this.formatDb(bar.avgRms)} | B/M/T ${Math.round(bar.bass * 100)}/${Math.round(bar.mid * 100)}/${Math.round(bar.treble * 100)}%`);
+        }
+        if (trend) {
+            lines.push(`Tension ${trend.direction.toUpperCase()} | ${Math.round(trend.confidence * 100)}% confidence`);
+        }
+        lines.push(`Buildup ${Math.round(buildupValue * 100)}%`);
+        if (cue) {
+            lines.push(`${cue.kind.toUpperCase()} cue | ${Math.round(cue.confidence * 100)}% confidence`);
+        }
+
+        this.timelineTooltip.textContent = lines.join('\n');
+        this.timelineTooltip.style.left = `${this.clamp(event.clientX + 14, 8, Math.max(8, window.innerWidth - 320))}px`;
+        this.timelineTooltip.style.top = `${this.clamp(event.clientY + 14, 8, Math.max(8, window.innerHeight - 110))}px`;
+        this.timelineTooltip.classList.remove('is-hidden');
+    }
+
+    private hideTimelineTooltip() {
+        this.timelineTooltip.classList.add('is-hidden');
+    }
+
+    private resetTimelineView() {
+        this.timelineZoomLevel = 1;
+        this.timelineScrollOffsetTime = 0;
+        this.scrubTime = null;
+        this.hideTimelineTooltip();
+    }
+
+    private getBuildupValueAtTime(time: number) {
+        const buildup = State.trackAnalysis.buildupConfidence;
+        if (!buildup.length || State.duration <= 0) return 0;
+        const index = Math.min(buildup.length - 1, Math.max(0, Math.floor((time / State.duration) * buildup.length)));
+        return buildup[index] || 0;
+    }
+
+    private formatDb(value: number) {
+        return `${(20 * Math.log10(Math.max(0.0001, value))).toFixed(1)}dB`;
+    }
+
+    private clamp(value: number, min: number, max: number) {
+        return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
+    }
+
+    private getTimelineHeight(wrapper: HTMLElement) {
+        return wrapper.getBoundingClientRect().height || 28;
+    }
+
+    private clampTimelineHeight(height: number) {
+        return Math.min(400, Math.max(24, height));
+    }
+
+    private setTimelineHeight(wrapper: HTMLElement, height: number, animate: boolean) {
+        const nextHeight = this.clampTimelineHeight(height);
+        wrapper.classList.toggle('is-expanded', nextHeight > 40);
+        wrapper.style.height = `${nextHeight}px`;
+        wrapper.classList.toggle('is-resizing', !animate && this.isResizingTimeline);
+        this.requestTimelineDraw();
+    }
+
+    private requestTimelineDraw() {
+        if (this.timelineResizeFrame !== null) return;
+        this.timelineResizeFrame = window.requestAnimationFrame(() => {
+            this.timelineResizeFrame = null;
+            this.drawDramaturgyTimeline();
+        });
     }
 
     private animateTimelineResize() {
@@ -330,11 +658,16 @@ export class DashboardUI {
 
         if (State.duration <= 0) return;
 
-        this.drawTimelineSections(ctx, rect.width, rect.height);
-        this.drawTimelineBuildup(ctx, rect.width, rect.height);
-        this.drawTimelineTrends(ctx, rect.width, rect.height);
-        this.drawTimelineCueMarkers(ctx, rect.width, rect.height);
-        this.drawTimelinePlayhead(ctx, rect.width, rect.height);
+        this.followTimelinePlayhead();
+        const viewport = this.getTimelineViewport();
+        this.drawTimelineBackground(ctx, rect.width, rect.height);
+        this.drawTimelineSections(ctx, rect.width, rect.height, viewport);
+        this.drawTimelineGridlines(ctx, rect.width, rect.height, viewport);
+        this.drawTimelineRms(ctx, rect.width, rect.height, viewport);
+        this.drawTimelineBuildup(ctx, rect.width, rect.height, viewport);
+        this.drawTimelineTrends(ctx, rect.width, rect.height, viewport);
+        this.drawTimelineCueMarkers(ctx, rect.width, rect.height, viewport);
+        this.drawTimelinePlayhead(ctx, rect.width, rect.height, viewport);
     }
 
     private clearDramaturgyTimeline() {
@@ -344,89 +677,212 @@ export class DashboardUI {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    private drawTimelineSections(ctx: CanvasRenderingContext2D, width: number, height: number) {
-        ctx.font = '8px Inter, sans-serif';
+    private drawTimelineBackground(ctx: CanvasRenderingContext2D, width: number, height: number) {
+        const gradient = ctx.createLinearGradient(0, 0, 0, height);
+        gradient.addColorStop(0, 'rgba(255,255,255,0.045)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0.18)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+    }
+
+    private drawTimelineSections(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
+        ctx.font = '10px Inter, sans-serif';
         ctx.textBaseline = 'top';
+        let labelRight = -Infinity;
 
         for (const section of State.trackAnalysis.sections) {
-            const startX = (section.start / State.duration) * width;
-            const endX = (section.end / State.duration) * width;
+            if (section.end < viewport.start || section.start > viewport.end) continue;
+            const startX = this.getTimelineXAtTime(section.start, width, viewport);
+            const endX = this.getTimelineXAtTime(section.end, width, viewport);
             const blockWidth = Math.max(1, endX - startX);
             ctx.fillStyle = this.getSectionColor(section.label);
-            ctx.fillRect(startX, 0, blockWidth, height);
+            ctx.fillRect(Math.max(0, startX), 0, Math.min(width, endX) - Math.max(0, startX), height);
+            ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(startX + 0.5, 0);
+            ctx.lineTo(startX + 0.5, height);
+            ctx.stroke();
 
-            if (blockWidth >= 28) {
-                ctx.fillStyle = 'rgba(255,255,255,0.42)';
-                ctx.fillText(section.label.toUpperCase(), startX + 4, 5);
+            const label = section.label.toUpperCase();
+            const labelWidth = ctx.measureText(label).width;
+            const labelX = Math.max(0, startX) + 6;
+            if (blockWidth >= labelWidth + 12 && labelX > labelRight + 8 && labelX + labelWidth < width && height >= 46) {
+                ctx.fillStyle = 'rgba(255,255,255,0.58)';
+                ctx.fillText(label, labelX, 7);
+                labelRight = labelX + labelWidth;
             }
         }
     }
 
-    private drawTimelineBuildup(ctx: CanvasRenderingContext2D, width: number, height: number) {
+    private drawTimelineGridlines(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
+        if (State.bpm <= 0 || State.duration <= 0) return;
+        const secondsPerBar = (60 / State.bpm) * 4;
+        if (!Number.isFinite(secondsPerBar) || secondsPerBar <= 0) return;
+
+        ctx.save();
+        ctx.setLineDash([2, 5]);
+        ctx.strokeStyle = 'rgba(255,255,255,0.13)';
+        ctx.lineWidth = 1;
+        const firstBarTime = Math.max(0, Math.floor(viewport.start / secondsPerBar) * secondsPerBar);
+        for (let time = firstBarTime; time <= viewport.end; time += secondsPerBar) {
+            const x = Math.round(this.getTimelineXAtTime(time, width, viewport)) + 0.5;
+            ctx.beginPath();
+            ctx.moveTo(x, height >= 48 ? 18 : 0);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    private drawTimelineRms(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
+        const bars = State.trackAnalysis.bars;
+        if (!bars.length) return;
+
+        const topPad = height >= 52 ? 18 : 4;
+        const bottomPad = 5;
+        const graphHeight = Math.max(8, height - topPad - bottomPad);
+
+        ctx.beginPath();
+        let hasPath = false;
+        for (const bar of bars) {
+            if (bar.end < viewport.start || bar.start > viewport.end) continue;
+            const midTime = (bar.start + bar.end) * 0.5;
+            const x = this.getTimelineXAtTime(midTime, width, viewport);
+            const y = topPad + graphHeight * (1 - Math.min(1, bar.avgRms));
+            if (!hasPath) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+            hasPath = true;
+        }
+        ctx.strokeStyle = 'rgba(213, 84, 172, 0.55)';
+        ctx.lineWidth = height >= 72 ? 1.25 : 1;
+        if (hasPath) ctx.stroke();
+
+        for (const bar of bars) {
+            if (bar.end < viewport.start || bar.start > viewport.end) continue;
+            const startX = this.getTimelineXAtTime(bar.start, width, viewport);
+            const endX = this.getTimelineXAtTime(bar.end, width, viewport);
+            const peakHeight = Math.max(1, bar.peakRms * graphHeight * 0.28);
+            const clippedStartX = Math.max(0, startX);
+            const clippedEndX = Math.min(width, endX);
+            ctx.fillStyle = bar.state === 'HIGH' ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.032)';
+            ctx.fillRect(clippedStartX, height - bottomPad - peakHeight, Math.max(1, clippedEndX - clippedStartX), peakHeight);
+        }
+    }
+
+    private drawTimelineBuildup(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
         const buildup = State.trackAnalysis.buildupConfidence;
         if (!buildup.length) return;
+        const topPad = height >= 52 ? 18 : 4;
+        const bottomPad = 5;
+        const graphHeight = Math.max(8, height - topPad - bottomPad);
 
         ctx.beginPath();
         ctx.moveTo(0, height);
         for (let x = 0; x <= width; x++) {
-            const frameIdx = Math.min(buildup.length - 1, Math.floor((x / width) * buildup.length));
+            const time = viewport.start + (x / Math.max(1, width)) * viewport.duration;
+            const frameIdx = Math.min(buildup.length - 1, Math.max(0, Math.floor((time / State.duration) * buildup.length)));
             const value = buildup[frameIdx] || 0;
-            const y = height - value * (height - 10);
+            const y = topPad + graphHeight * (1 - value);
             ctx.lineTo(x, y);
         }
-        ctx.lineTo(width, height);
+        ctx.lineTo(width, height - bottomPad);
         ctx.closePath();
-        ctx.fillStyle = 'rgba(0, 229, 255, 0.17)';
+        const fill = ctx.createLinearGradient(0, topPad, 0, height);
+        fill.addColorStop(0, 'rgba(0, 229, 255, 0.24)');
+        fill.addColorStop(1, 'rgba(0, 229, 255, 0.025)');
+        ctx.fillStyle = fill;
         ctx.fill();
 
         ctx.beginPath();
         for (let x = 0; x <= width; x++) {
-            const frameIdx = Math.min(buildup.length - 1, Math.floor((x / width) * buildup.length));
+            const time = viewport.start + (x / Math.max(1, width)) * viewport.duration;
+            const frameIdx = Math.min(buildup.length - 1, Math.max(0, Math.floor((time / State.duration) * buildup.length)));
             const value = buildup[frameIdx] || 0;
-            const y = height - value * (height - 10);
+            const y = topPad + graphHeight * (1 - value);
             if (x === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
         }
-        ctx.strokeStyle = 'rgba(0, 229, 255, 0.7)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.82)';
+        ctx.lineWidth = height >= 72 ? 1.5 : 1;
         ctx.stroke();
     }
 
-    private drawTimelineTrends(ctx: CanvasRenderingContext2D, width: number, height: number) {
+    private drawTimelineTrends(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
         for (const trend of State.trackAnalysis.tensionTrends.segments) {
-            const startX = (trend.start / State.duration) * width;
-            const endX = (trend.end / State.duration) * width;
+            if (trend.end < viewport.start || trend.start > viewport.end) continue;
+            const startX = this.getTimelineXAtTime(trend.start, width, viewport);
+            const endX = this.getTimelineXAtTime(trend.end, width, viewport);
             ctx.strokeStyle = this.getTrendColor(trend.direction);
             ctx.lineWidth = Math.max(1, 1 + trend.confidence * 2);
             ctx.beginPath();
-            ctx.moveTo(startX, height - 3);
-            ctx.lineTo(endX, height - 3);
+            ctx.moveTo(Math.max(0, startX), height - 3);
+            ctx.lineTo(Math.min(width, endX), height - 3);
             ctx.stroke();
         }
     }
 
-    private drawTimelineCueMarkers(ctx: CanvasRenderingContext2D, width: number, height: number) {
-        for (const cue of State.trackAnalysis.cues) {
-            if (cue.kind !== 'impact' && cue.kind !== 'break' && cue.kind !== 'pattern') continue;
+    private drawTimelineCueMarkers(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
+        const significant = State.trackAnalysis.significantMoments.length
+            ? State.trackAnalysis.significantMoments
+            : State.trackAnalysis.cues.filter(cue => cue.kind === 'impact' || cue.kind === 'break');
+        let labelRight = -Infinity;
 
-            const x = (cue.time / State.duration) * width;
-            ctx.strokeStyle = this.getCueColor(cue.kind);
-            ctx.lineWidth = cue.kind === 'pattern' ? 1 : 1.5;
+        for (const cue of significant) {
+            if (cue.kind !== 'impact' && cue.kind !== 'break') continue;
+            if (cue.time < viewport.start || cue.time > viewport.end) continue;
+
+            const x = this.getTimelineXAtTime(cue.time, width, viewport);
+            const color = this.getCueColor(cue.kind);
+            ctx.fillStyle = color;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(x, cue.kind === 'pattern' ? height * 0.35 : height * 0.18);
-            ctx.lineTo(x, height);
+            ctx.moveTo(x, 2);
+            ctx.lineTo(x - 4, 10);
+            ctx.lineTo(x + 4, 10);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.globalAlpha = 0.45;
+            ctx.beginPath();
+            ctx.moveTo(x + 0.5, 10);
+            ctx.lineTo(x + 0.5, height);
             ctx.stroke();
+            ctx.globalAlpha = 1;
+
+            const label = cue.kind === 'impact' ? 'IMPACT' : 'BREAK';
+            ctx.font = '9px Inter, sans-serif';
+            const labelWidth = ctx.measureText(label).width;
+            if (height >= 72 && x + 7 > labelRight + 8 && x + 7 + labelWidth < width) {
+                ctx.fillStyle = 'rgba(255,255,255,0.64)';
+                ctx.fillText(label, x + 7, 5);
+                labelRight = x + 7 + labelWidth;
+            }
         }
     }
 
-    private drawTimelinePlayhead(ctx: CanvasRenderingContext2D, width: number, height: number) {
-        const playheadX = (State.currentTime / State.duration) * width;
-        ctx.strokeStyle = '#00e5ff';
-        ctx.lineWidth = 2;
+    private drawTimelinePlayhead(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
+        const currentTimeToDraw = this.scrubTime !== null ? this.scrubTime : State.currentTime;
+        if (currentTimeToDraw < viewport.start || currentTimeToDraw > viewport.end) return;
+        const playheadX = this.getTimelineXAtTime(currentTimeToDraw, width, viewport);
+        ctx.strokeStyle = this.scrubTime !== null ? 'rgba(255, 220, 120, 0.98)' : 'rgba(255,255,255,0.94)';
+        ctx.lineWidth = 1;
+        ctx.shadowColor = this.scrubTime !== null ? '#ffd66f' : '#00e5ff';
+        ctx.shadowBlur = 8;
         ctx.beginPath();
-        ctx.moveTo(playheadX, 0);
-        ctx.lineTo(playheadX, height);
+        ctx.moveTo(playheadX + 0.5, 0);
+        ctx.lineTo(playheadX + 0.5, height);
         ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        ctx.fillStyle = this.scrubTime !== null ? '#ffd66f' : '#00e5ff';
+        ctx.beginPath();
+        ctx.moveTo(playheadX, 1);
+        ctx.lineTo(playheadX - 4, 8);
+        ctx.lineTo(playheadX + 4, 8);
+        ctx.closePath();
+        ctx.fill();
     }
 
     private getSectionColor(label: string): string {
@@ -735,7 +1191,7 @@ export class DashboardUI {
     }
 
     updateDashboard() {
-        if (!this.isDraggingSlider) {
+        if (!this.isDraggingSlider && this.scrubTime === null) {
             const progress = State.duration > 0 ? (State.currentTime / State.duration) * 100 : 0;
             (this.els.seekBar as HTMLInputElement).value = progress.toString();
             this.els.timeCur.innerText = this.formatTime(State.currentTime);

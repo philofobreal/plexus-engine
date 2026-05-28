@@ -104,6 +104,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           </button>
         </div>
         <div class="timeline-wrapper">
+          <div id="timeline-resize-handle" class="timeline-resize-handle" aria-hidden="true"></div>
           <canvas id="dramaturgy-timeline" class="dramaturgy-timeline" aria-label="Dramaturgy timeline"></canvas>
         </div>
         <div class="seek-row">
