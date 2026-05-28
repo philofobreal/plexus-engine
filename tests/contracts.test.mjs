@@ -141,7 +141,7 @@ test('visual effects expose live tuning controls and copyable config', () => {
   assert.match(main, /id="visual-tuning-controls"/);
   assert.match(main, /id="copy-visual-config"/);
   assert.match(ui, /data-tuning-key="\$\{control\.key\}"/);
-  assert.match(ui, /State\.visualTuning\[key\] = value/);
+  assert.match(ui, /State\.targetTuning\[key\] = value/);
   assert.match(ui, /loadVisualPresetList/);
   assert.match(ui, /loadVisualPreset\(fileName/);
   assert.match(ui, /syncVisualTuningControls/);
@@ -166,7 +166,7 @@ test('visual tuning presets are read from public json files and remain backward 
   assert.match(config, /const next = cloneDefaultVisualTuning\(\)/);
   assert.match(config, /source\?\.\[key\]/);
   assert.match(ui, /visual-tuning-presets\/\$\{encodeURIComponent\(fileName\)\}/);
-  assert.match(ui, /Object\.assign\(State\.visualTuning, normalizeVisualTuningConfig/);
+  assert.match(ui, /Object\.assign\(State\.targetTuning, normalizeVisualTuningConfig/);
 });
 
 test('visual tuning controls cover circle, line, polygon, particle, and temporal parameters', () => {
