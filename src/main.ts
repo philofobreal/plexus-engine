@@ -83,7 +83,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div class="metric-card"><div class="m-label">Beat Hit</div><div class="m-value" id="val-beat">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-beat"></div></div></div>
         <div class="metric-card"><div class="m-label">Progress</div><div class="m-value" id="val-prog">0%</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-prog"></div></div></div>
         <div class="metric-card dyn-card">
-            <div class="m-label">Dynamics</div>
+            <div class="m-label">Music Block & Dynamics</div>
             <div class="m-value dyn-text" id="val-dyn">IDLE</div>
             <div class="m-bar-bg"><div class="m-bar-fill dyn-fill" id="bar-dyn"></div></div>
         </div>
@@ -97,9 +97,20 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       </div>
 
       <div class="seek-container panel">
-        <div class="time" id="time-current">0:00</div>
-        <input type="range" class="main-seek" id="seek-bar" min="0" max="100" value="0" step="0.1" disabled>
-        <div class="time" id="time-total">0:00</div>
+        <div class="timeline-header-row">
+          <span class="timeline-title">Track Dramaturgy</span>
+          <button id="toggle-timeline-zoom" class="btn-icon-mini" title="Zoom Timeline" aria-pressed="false" aria-label="Zoom timeline">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+          </button>
+        </div>
+        <div class="timeline-wrapper">
+          <canvas id="dramaturgy-timeline" class="dramaturgy-timeline" aria-label="Dramaturgy timeline"></canvas>
+        </div>
+        <div class="seek-row">
+          <div class="time" id="time-current">0:00</div>
+          <input type="range" class="main-seek" id="seek-bar" min="0" max="100" value="0" step="0.1" disabled>
+          <div class="time" id="time-total">0:00</div>
+        </div>
       </div>
     </div>
   </div>

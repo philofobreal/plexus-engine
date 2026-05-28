@@ -38,6 +38,8 @@ export class DashboardUI {
             copyVisualConfig: document.getElementById('copy-visual-config')!,
             copyConfigStatus: document.getElementById('copy-config-status')!,
             metricsGrid: document.getElementById('metrics-grid')!,
+            dramaturgyTimeline: document.getElementById('dramaturgy-timeline')!,
+            toggleTimelineZoom: document.getElementById('toggle-timeline-zoom')!,
             seekBar: document.getElementById('seek-bar')!,
             bpmBadge: document.getElementById('bpm-badge')!,
             timeCur: document.getElementById('time-current')!,
@@ -76,11 +78,14 @@ export class DashboardUI {
             (this.els.centerPlayBtn as HTMLButtonElement).disabled = true;
             (this.els.seekBar as HTMLInputElement).disabled = true;
             (this.els.upload as HTMLInputElement).disabled = false;
+            this.clearDramaturgyTimeline();
         };
 
         this.initBindings();
         this.initVisualTuningControls();
+        this.initDramaturgyTimeline();
         this.syncLoopUi();
+        this.applyPresentationModeFromUrl();
         this.initChromeAutoHide();
         void this.loadVisualPresetList();
     }
@@ -107,6 +112,7 @@ export class DashboardUI {
             this.els.timeCur.innerText = "0:00";
             this.els.timeTot.innerText = "0:00";
             this.els.bpmBadge.style.display = "none";
+            this.clearDramaturgyTimeline();
 
             this.engine.onAnalysisComplete = () => {
                 if (State.bpm > 0) {
@@ -120,6 +126,7 @@ export class DashboardUI {
                 (this.els.upload as HTMLInputElement).disabled = false;
                 this.els.timeTot.innerText = this.formatTime(State.duration);
                 this.setPlaybackUi(false);
+                this.drawDramaturgyTimeline();
             };
 
             try {
@@ -130,6 +137,7 @@ export class DashboardUI {
                 (this.els.centerPlayBtn as HTMLButtonElement).disabled = true;
                 (this.els.seekBar as HTMLInputElement).disabled = true;
                 (this.els.upload as HTMLInputElement).disabled = false;
+                this.clearDramaturgyTimeline();
             }
         });
 
@@ -208,6 +216,7 @@ export class DashboardUI {
                 let seekTime = (parseFloat((e.target as HTMLInputElement).value) / 100) * State.duration;
                 this.els.timeCur.innerText = this.formatTime(seekTime);
                 this.engine.seek(seekTime);
+                this.drawDramaturgyTimeline();
             }
         });
         seek.addEventListener('change', () => this.isDraggingSlider = false);
@@ -230,8 +239,8 @@ export class DashboardUI {
             this.clearChromeHideTimer();
             document.body.classList.remove('chrome-idle');
         } else {
-            // FELOLDVA: Kezdje el ismét a visszaszámlálást
-            this.scheduleChromeHide();
+            // FELOLDVA: szándékos háttérkattintás után gyors vizuális visszajelzés kell.
+            this.scheduleChromeHide(400);
         }
     }
 
@@ -262,6 +271,197 @@ export class DashboardUI {
         this.els.toggleLoop.classList.toggle('is-active', State.loopPlayback);
         this.els.toggleLoop.setAttribute('aria-pressed', State.loopPlayback ? 'true' : 'false');
         this.els.toggleLoop.innerText = State.loopPlayback ? 'Loop' : 'Once';
+    }
+
+    private initDramaturgyTimeline() {
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        const zoomButton = this.els.toggleTimelineZoom as HTMLButtonElement;
+        const wrapper = canvas.parentElement;
+
+        canvas.addEventListener('click', (event) => {
+            if (State.duration <= 0) return;
+
+            const rect = canvas.getBoundingClientRect();
+            if (rect.width <= 0) return;
+
+            const clickX = event.clientX - rect.left;
+            const ratio = Math.min(1, Math.max(0, clickX / rect.width));
+            this.engine.seek(ratio * State.duration);
+            this.drawDramaturgyTimeline();
+        });
+
+        zoomButton.addEventListener('click', () => {
+            wrapper?.classList.toggle('is-expanded');
+            const isExpanded = Boolean(wrapper?.classList.contains('is-expanded'));
+            zoomButton.setAttribute('aria-pressed', isExpanded ? 'true' : 'false');
+            this.animateTimelineResize();
+        });
+
+        window.addEventListener('resize', () => this.drawDramaturgyTimeline());
+    }
+
+    private animateTimelineResize() {
+        let frames = 0;
+        const redraw = () => {
+            this.drawDramaturgyTimeline();
+            frames++;
+            if (frames < 20) window.requestAnimationFrame(redraw);
+        };
+        window.requestAnimationFrame(redraw);
+    }
+
+    private drawDramaturgyTimeline() {
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const ratio = window.devicePixelRatio || 1;
+        const targetWidth = Math.max(1, Math.floor(rect.width * ratio));
+        const targetHeight = Math.max(1, Math.floor(rect.height * ratio));
+        if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+        }
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        ctx.clearRect(0, 0, rect.width, rect.height);
+
+        if (State.duration <= 0) return;
+
+        this.drawTimelineSections(ctx, rect.width, rect.height);
+        this.drawTimelineBuildup(ctx, rect.width, rect.height);
+        this.drawTimelineTrends(ctx, rect.width, rect.height);
+        this.drawTimelineCueMarkers(ctx, rect.width, rect.height);
+        this.drawTimelinePlayhead(ctx, rect.width, rect.height);
+    }
+
+    private clearDramaturgyTimeline() {
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    private drawTimelineSections(ctx: CanvasRenderingContext2D, width: number, height: number) {
+        ctx.font = '8px Inter, sans-serif';
+        ctx.textBaseline = 'top';
+
+        for (const section of State.trackAnalysis.sections) {
+            const startX = (section.start / State.duration) * width;
+            const endX = (section.end / State.duration) * width;
+            const blockWidth = Math.max(1, endX - startX);
+            ctx.fillStyle = this.getSectionColor(section.label);
+            ctx.fillRect(startX, 0, blockWidth, height);
+
+            if (blockWidth >= 28) {
+                ctx.fillStyle = 'rgba(255,255,255,0.42)';
+                ctx.fillText(section.label.toUpperCase(), startX + 4, 5);
+            }
+        }
+    }
+
+    private drawTimelineBuildup(ctx: CanvasRenderingContext2D, width: number, height: number) {
+        const buildup = State.trackAnalysis.buildupConfidence;
+        if (!buildup.length) return;
+
+        ctx.beginPath();
+        ctx.moveTo(0, height);
+        for (let x = 0; x <= width; x++) {
+            const frameIdx = Math.min(buildup.length - 1, Math.floor((x / width) * buildup.length));
+            const value = buildup[frameIdx] || 0;
+            const y = height - value * (height - 10);
+            ctx.lineTo(x, y);
+        }
+        ctx.lineTo(width, height);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(0, 229, 255, 0.17)';
+        ctx.fill();
+
+        ctx.beginPath();
+        for (let x = 0; x <= width; x++) {
+            const frameIdx = Math.min(buildup.length - 1, Math.floor((x / width) * buildup.length));
+            const value = buildup[frameIdx] || 0;
+            const y = height - value * (height - 10);
+            if (x === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.7)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+
+    private drawTimelineTrends(ctx: CanvasRenderingContext2D, width: number, height: number) {
+        for (const trend of State.trackAnalysis.tensionTrends.segments) {
+            const startX = (trend.start / State.duration) * width;
+            const endX = (trend.end / State.duration) * width;
+            ctx.strokeStyle = this.getTrendColor(trend.direction);
+            ctx.lineWidth = Math.max(1, 1 + trend.confidence * 2);
+            ctx.beginPath();
+            ctx.moveTo(startX, height - 3);
+            ctx.lineTo(endX, height - 3);
+            ctx.stroke();
+        }
+    }
+
+    private drawTimelineCueMarkers(ctx: CanvasRenderingContext2D, width: number, height: number) {
+        for (const cue of State.trackAnalysis.cues) {
+            if (cue.kind !== 'impact' && cue.kind !== 'break' && cue.kind !== 'pattern') continue;
+
+            const x = (cue.time / State.duration) * width;
+            ctx.strokeStyle = this.getCueColor(cue.kind);
+            ctx.lineWidth = cue.kind === 'pattern' ? 1 : 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x, cue.kind === 'pattern' ? height * 0.35 : height * 0.18);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+        }
+    }
+
+    private drawTimelinePlayhead(ctx: CanvasRenderingContext2D, width: number, height: number) {
+        const playheadX = (State.currentTime / State.duration) * width;
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(playheadX, 0);
+        ctx.lineTo(playheadX, height);
+        ctx.stroke();
+    }
+
+    private getSectionColor(label: string): string {
+        switch (label) {
+            case 'intro': return 'rgba(0, 150, 255, 0.10)';
+            case 'outro': return 'rgba(160, 160, 160, 0.08)';
+            case 'build': return 'rgba(255, 170, 0, 0.14)';
+            case 'drop': return 'rgba(255, 0, 170, 0.17)';
+            case 'peak': return 'rgba(0, 229, 255, 0.16)';
+            case 'break': return 'rgba(120, 0, 255, 0.10)';
+            default: return 'rgba(255, 255, 255, 0.035)';
+        }
+    }
+
+    private getTrendColor(direction: string): string {
+        if (direction === 'rising') return 'rgba(255, 170, 0, 0.9)';
+        if (direction === 'falling') return 'rgba(120, 0, 255, 0.75)';
+        return 'rgba(255, 255, 255, 0.22)';
+    }
+
+    private getCueColor(kind: string): string {
+        if (kind === 'impact') return 'rgba(255, 255, 255, 0.78)';
+        if (kind === 'break') return 'rgba(120, 0, 255, 0.9)';
+        return 'rgba(255, 0, 170, 0.58)';
+    }
+
+    private applyPresentationModeFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('presentation') !== 'true') return;
+
+        State.uiVisible = false;
+        document.body.classList.add('presentation-mode', 'chrome-idle');
+        this.els.toggleMetrics.setAttribute('aria-expanded', 'false');
+        this.els.metricsGrid.classList.add('is-hidden');
+        this.setTuningPanelOpen(false);
     }
 
     private seekRelative(deltaSeconds: number) {
@@ -311,7 +511,7 @@ export class DashboardUI {
     }
 
     private initChromeAutoHide() {
-        const interactiveChrome = [this.els.tuningPanel, this.els.metricsGrid, this.els.toggleMetrics, this.els.seekBar];
+        const interactiveChrome = [this.els.tuningPanel, this.els.metricsGrid, this.els.toggleMetrics, this.els.seekBar, this.els.dramaturgyTimeline];
         const reveal = () => this.revealChromeTemporarily();
 
         window.addEventListener('mousemove', reveal);
@@ -330,11 +530,12 @@ export class DashboardUI {
     }
 
     private revealChromeTemporarily() {
+        if (!State.uiVisible) return;
         document.body.classList.remove('chrome-idle');
         this.scheduleChromeHide();
     }
 
-    private scheduleChromeHide() {
+    private scheduleChromeHide(delay = 2600) {
         this.clearChromeHideTimer();
         
         // Ha le van zárva az eltűnés, ne indítson időzítőt
@@ -344,11 +545,11 @@ export class DashboardUI {
 
         this.chromeHideTimer = window.setTimeout(() => {
             if (this.isChromeHovered()) {
-                this.scheduleChromeHide();
+                this.scheduleChromeHide(2600);
                 return;
             }
             document.body.classList.add('chrome-idle');
-        }, 2600);
+        }, delay);
     }
 
     private clearChromeHideTimer() {
@@ -385,7 +586,7 @@ export class DashboardUI {
             const row = document.createElement('label');
             row.className = 'tuning-control';
             const valueId = `visual-tuning-value-${control.key}`;
-            const value = State.visualTuning[control.key];
+            const value = State.targetTuning[control.key];
             row.innerHTML = `
                 <span class="tuning-label">${control.label}</span>
                 <input
@@ -408,7 +609,7 @@ export class DashboardUI {
             if (!key) return;
 
             const value = Number(input.value);
-            State.visualTuning[key] = value;
+            State.targetTuning[key] = value;
             const control = visualTuningControls.find(item => item.key === key);
             const output = document.getElementById(`visual-tuning-value-${key}`);
             if (output) output.textContent = this.formatTuningValue(value, control?.unit);
@@ -455,7 +656,7 @@ export class DashboardUI {
             const response = await fetch(this.presetUrl(fileName), { cache: 'no-store' });
             if (!response.ok) throw new Error(`Preset ${response.status}`);
 
-            Object.assign(State.visualTuning, normalizeVisualTuningConfig(await response.json()));
+            Object.assign(State.targetTuning, normalizeVisualTuningConfig(await response.json()));
             this.syncVisualTuningControls();
         } catch {
             this.els.copyConfigStatus.innerText = `Could not load ${fileName}`;
@@ -471,7 +672,7 @@ export class DashboardUI {
 
     private syncVisualTuningControls() {
         for (const control of visualTuningControls) {
-            const value = State.visualTuning[control.key];
+            const value = State.targetTuning[control.key];
             const input = this.els.tuningControls.querySelector<HTMLInputElement>(`input[data-tuning-key="${control.key}"]`);
             const output = document.getElementById(`visual-tuning-value-${control.key}`);
             if (input) input.value = value.toString();
@@ -501,7 +702,7 @@ export class DashboardUI {
     private async copyVisualConfig() {
         const payload = JSON.stringify({
             version: 1,
-            visualTuning: State.visualTuning
+            visualTuning: State.targetTuning
         }, null, 2);
 
         try {
@@ -572,5 +773,7 @@ export class DashboardUI {
             this.els.valProg.innerText = "0%";
             this.els.barProg.style.width = "0%";
         }
+
+        this.drawDramaturgyTimeline();
     }
 }
