@@ -71,10 +71,6 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
                 }
             } else {
                 decayCurrentAnalysisFrame();
-                if (!State.isPlaying) currentEventIdx = State.events.findIndex(e => e.time >= engine.pausedAt);
-                if (currentEventIdx === -1) currentEventIdx = State.events.length;
-                if (!State.isPlaying) currentCueIdx = State.trackAnalysis.cues.findIndex(e => e.time >= engine.pausedAt);
-                if (currentCueIdx === -1) currentCueIdx = State.trackAnalysis.cues.length;
             }
 
             State.beatDecay *= 0.88;
