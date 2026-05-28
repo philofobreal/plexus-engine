@@ -10,6 +10,9 @@ export type VisualMode = 'classic' | 'temporal';
 
 export interface VisualTuningConfig {
     audioSensitivity: number;
+    transitionSpeed: number;
+    chromaKeyMode: number;
+    performanceMode: number;
     backgroundRed: number;
     backgroundGreen: number;
     backgroundBlue: number;
@@ -43,6 +46,14 @@ export interface VisualTuningConfig {
     temporalRingSpeed: number;
     temporalNetworkDistance: number;
     temporalPolygonAlpha: number;
+}
+
+export interface ModulationState {
+    kineticTension: number;
+    lowFrequencyDrive: number;
+    spectralChaos: number;
+    rhythmicImpulse: number;
+    macroMomentum: number;
 }
 
 export interface AudioFrame {
@@ -102,6 +113,22 @@ export interface MusicPattern {
     averageDensity: number;
 }
 
+export interface TensionTrendSegment {
+    start: number;
+    end: number;
+    startValue: number;
+    endValue: number;
+    direction: 'rising' | 'falling' | 'stable';
+    confidence: number;
+}
+
+export interface TensionTrends {
+    globalSlope: number;
+    peakTime: number;
+    peakValue: number;
+    segments: TensionTrendSegment[];
+}
+
 export interface TrackAnalysis {
     duration: number;
     sections: TrackSection[];
@@ -109,6 +136,8 @@ export interface TrackAnalysis {
     cues: VisualCueEvent[];
     significantMoments: VisualCueEvent[];
     features: VisualFeatureFrame[];
+    buildupConfidence: number[];
+    tensionTrends: TensionTrends;
     featureHopSize: number;
 }
 

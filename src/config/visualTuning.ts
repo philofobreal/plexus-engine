@@ -1,4 +1,4 @@
-import type { AudioFrame, VisualFeatureFrame, VisualTuningConfig } from '../types';
+import type { AudioFrame, ModulationState, VisualFeatureFrame, VisualTuningConfig } from '../types';
 
 export type VisualTuningKey = keyof VisualTuningConfig;
 
@@ -14,6 +14,9 @@ export interface VisualTuningControl {
 
 export const defaultVisualTuning: VisualTuningConfig = {
     audioSensitivity: 1,
+    transitionSpeed: 0.08,
+    chromaKeyMode: 0,
+    performanceMode: 0,
     backgroundRed: 8,
     backgroundGreen: 5,
     backgroundBlue: 14,
@@ -51,6 +54,9 @@ export const defaultVisualTuning: VisualTuningConfig = {
 
 export const visualTuningControls: VisualTuningControl[] = [
     { key: 'audioSensitivity', label: 'Music sensitivity', group: 'Audio', min: 0.1, max: 4, step: 0.05, unit: 'x' },
+    { key: 'transitionSpeed', label: 'Morph speed', group: 'Audio', min: 0.01, max: 1, step: 0.01, unit: 'x' },
+    { key: 'chromaKeyMode', label: 'Chroma mode', group: 'Background', min: 0, max: 2, step: 1 },
+    { key: 'performanceMode', label: 'Low latency', group: 'Background', min: 0, max: 1, step: 1 },
     { key: 'backgroundRed', label: 'Background red', group: 'Background', min: 0, max: 255, step: 1 },
     { key: 'backgroundGreen', label: 'Background green', group: 'Background', min: 0, max: 255, step: 1 },
     { key: 'backgroundBlue', label: 'Background blue', group: 'Background', min: 0, max: 255, step: 1 },
@@ -141,8 +147,116 @@ export function tuneVisualFeatures(features: VisualFeatureFrame, tuning: VisualT
     };
 }
 
+export function computeModulationBus(
+    frame: AudioFrame,
+    features: VisualFeatureFrame,
+    beatDecay: number,
+    cueDecay: number,
+    tuning: VisualTuningConfig
+): ModulationState {
+    const sensitivity = getAudioSensitivity(tuning);
+
+    return {
+        kineticTension: scaleUnit(
+            features.vocal * 0.28 +
+            features.melody * 0.22 +
+            features.tension * 0.32 +
+            cueDecay * 0.18,
+            sensitivity
+        ),
+        lowFrequencyDrive: scaleUnit(
+            frame.b * 0.62 +
+            features.density * 0.24 +
+            frame.e * 0.14,
+            sensitivity
+        ),
+        spectralChaos: scaleUnit(
+            frame.t * 0.42 +
+            features.fx * 0.36 +
+            features.brightness * 0.22,
+            sensitivity
+        ),
+        rhythmicImpulse: scaleUnit(
+            Math.max(beatDecay, cueDecay * 0.65),
+            sensitivity
+        ),
+        macroMomentum: scaleUnit(
+            frame.eRatio * 0.58 +
+            frame.e * 0.24 +
+            features.density * 0.18,
+            sensitivity
+        )
+    };
+}
+
+export function applyTuningMorph(
+    current: VisualTuningConfig,
+    target: VisualTuningConfig,
+    transitionSpeed = target.transitionSpeed
+): VisualTuningConfig {
+    const speed = clamp01(Number.isFinite(transitionSpeed) ? transitionSpeed : defaultVisualTuning.transitionSpeed);
+
+    for (const key of Object.keys(defaultVisualTuning) as VisualTuningKey[]) {
+        const currentValue = current[key];
+        const targetValue = target[key];
+        if (typeof currentValue !== 'number' || typeof targetValue !== 'number') continue;
+
+        if (speed >= 1) {
+            current[key] = targetValue;
+            continue;
+        }
+
+        const next = currentValue + (targetValue - currentValue) * speed;
+        current[key] = clampBetween(next, currentValue, targetValue);
+    }
+
+    return current;
+}
+
+export interface BackgroundClearStyle {
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+}
+
+export function getBackgroundClearStyle(tuning: VisualTuningConfig, flash = 0): BackgroundClearStyle {
+    if (tuning.chromaKeyMode === 2) {
+        return { r: 0, g: 0, b: 0, a: 0 };
+    }
+
+    if (tuning.chromaKeyMode === 1) {
+        return { r: 0, g: 255, b: 0, a: 255 };
+    }
+
+    return {
+        r: Math.min(tuning.backgroundRed + flash, 255),
+        g: Math.min(tuning.backgroundGreen + flash, 255),
+        b: Math.min(tuning.backgroundBlue + flash, 255),
+        a: 255
+    };
+}
+
+export function shouldUseExpensiveGlow(tuning: VisualTuningConfig): boolean {
+    return tuning.performanceMode < 0.5 && tuning.chromaKeyMode === 0;
+}
+
 function getAudioSensitivity(tuning: VisualTuningConfig): number {
     return Number.isFinite(tuning.audioSensitivity) ? tuning.audioSensitivity : 1;
+}
+
+function scaleUnit(value: number, sensitivity: number): number {
+    return clamp01(value * sensitivity);
+}
+
+function clamp01(value: number): number {
+    return Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
+}
+
+function clampBetween(value: number, a: number, b: number): number {
+    const min = Math.min(a, b);
+    const max = Math.max(a, b);
+    return Math.min(max, Math.max(min, value));
 }
 
 export function hueToRgb(hue: number, saturation = 0.72, lightness = 0.68): [number, number, number] {
