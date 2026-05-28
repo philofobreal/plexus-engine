@@ -18,12 +18,19 @@ export class Particle {
     update(energy: number, bass: number, beat: number, isPlaying: boolean) {
         let cx = this.p.width / 2; 
         let cy = this.p.height / 2;
+        let dx = cx - this.pos.x;
+        let dy = cy - this.pos.y;
+        let distSq = dx * dx + dy * dy;
+        let maxRadius = Math.max(this.p.width, this.p.height) * 0.45;
+        let maxRadiusSq = maxRadius * maxRadius;
         
-        if (this.p.dist(this.pos.x, this.pos.y, cx, cy) > Math.max(this.p.width, this.p.height) * 0.45) {
-            let angleToCenter = this.p.atan2(cy - this.pos.y, cx - this.pos.x);
-            this.vel.x += this.p.cos(angleToCenter) * State.visualTuning.particleBoundaryPull; 
-            this.vel.y += this.p.sin(angleToCenter) * State.visualTuning.particleBoundaryPull;
-            this.vel.normalize(); 
+        if (distSq > maxRadiusSq) {
+            let dist = Math.sqrt(distSq);
+            if (dist > 0) {
+                this.vel.x += (dx / dist) * State.visualTuning.particleBoundaryPull; 
+                this.vel.y += (dy / dist) * State.visualTuning.particleBoundaryPull;
+                this.vel.normalize(); 
+            }
         }
         
         let speed = isPlaying

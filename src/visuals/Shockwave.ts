@@ -2,6 +2,7 @@ import p5 from 'p5';
 import { hueToRgb } from '../config/visualTuning';
 import { State } from '../state/store';
 import type { AutoState } from '../types';
+import type { VisualRendererBackend } from './RendererBackend';
 
 export class Shockwave {
     r: number;
@@ -9,10 +10,9 @@ export class Shockwave {
     thickness: number;
     speed: number;
     color: number[];
-    private p: p5;
 
-    constructor(p: p5, intensity: number, mode: AutoState, type: number) {
-        this.p = p;         let isLowMode = mode.startsWith('LOW');
+    constructor(_p: p5, intensity: number, mode: AutoState, type: number) {
+        let isLowMode = mode.startsWith('LOW');
         let modeBoost = isLowMode ? 1.3 : 1.0; 
         let colorHue = State.visualTuning.circleHue;
 
@@ -53,10 +53,10 @@ export class Shockwave {
         this.alpha -= State.visualTuning.shockwaveDecay; 
     }
 
-    draw(cx: number, cy: number) {
-        this.p.noFill(); 
-        this.p.stroke(this.color[0], this.color[1], this.color[2], Math.min(this.alpha, 255));
-        this.p.strokeWeight(this.thickness); 
-        this.p.circle(cx, cy, this.r * 2);
+    draw(backend: VisualRendererBackend, cx: number, cy: number) {
+        backend.noFill(); 
+        backend.stroke(this.color[0], this.color[1], this.color[2], Math.min(this.alpha, 255));
+        backend.strokeWeight(this.thickness); 
+        backend.circle(cx, cy, this.r * 2);
     }
 }
