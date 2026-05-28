@@ -53,7 +53,7 @@ test('worker contract includes request id, hop size, success, and error messages
   assert.match(types, /export interface AnalysisRequest[\s\S]*requestId: number;/);
   assert.match(types, /export interface AnalysisResult[\s\S]*requestId: number;[\s\S]*hopSize: number;/);
   assert.match(types, /export interface AnalysisResult[\s\S]*trackAnalysis: TrackAnalysis;/);
-  assert.match(types, /export interface TrackAnalysis[\s\S]*sections: TrackSection\[\];[\s\S]*patterns: MusicPattern\[\];[\s\S]*cues: VisualCueEvent\[\];[\s\S]*features: VisualFeatureFrame\[\];/);
+  assert.match(types, /export interface TrackAnalysis[\s\S]*bars: BarAnalysis\[\];[\s\S]*sections: TrackSection\[\];[\s\S]*patterns: MusicPattern\[\];[\s\S]*cues: VisualCueEvent\[\];[\s\S]*features: VisualFeatureFrame\[\];/);
   assert.match(types, /export interface AnalysisErrorMessage[\s\S]*errorCode: string;[\s\S]*message: string;/);
   assert.match(worker, /type:\s*'analysis_done'/);
   assert.match(worker, /type:\s*'analysis_error'/);
@@ -71,10 +71,12 @@ test('visual track analysis is precomputed and exposed through shared state', ()
   assert.match(worker, /const windowMultiplier = new Float32Array\(N\)/);
   assert.match(worker, /windowMultiplier\[i\] = 0\.5 \* \(1 - Math\.cos/);
   assert.match(worker, /function processFFT\(real: Float32Array, imag: Float32Array\)/);
-  assert.match(worker, /let tonalFactor = 1\.0 - Math\.min\(1\.0, flatness \* 1\.8\)/);
+  assert.match(worker, /let tonalFactor = clamp01\(\(1\.0 - Math\.min\(1\.0, flatness \* 1\.8\)\) \* 0\.72 \+ harmonicStability \* 0\.28\)/);
   assert.match(worker, /let noiseFactor = Math\.min\(1\.0, flatness \* 2\.5\)/);
+  assert.match(worker, /let pitchedTransient = clamp01/);
+  assert.match(worker, /let vocalFormant = clamp01/);
   assert.match(audio, /ANALYSIS_ALGORITHM_VERSION = 2/);
-  assert.match(audio, /State\.trackAnalysis = e\.data\.trackAnalysis/);
+  assert.match(audio, /State\.trackAnalysis = normalizeTrackAnalysis\(e\.data\.trackAnalysis\)/);
   assert.match(store, /currentFeatures/);
   assert.match(renderer, /State\.trackAnalysis\.cues/);
   assert.match(renderer, /State\.trackAnalysis\.features/);
@@ -195,13 +197,15 @@ test('visual tuning controls cover circle, line, polygon, particle, and temporal
   }
 });
 
-test('analysis thresholds match the V0.2 macro-dynamics ACs', () => {
+test('analysis thresholds use bar-aligned macro dynamics with live safety overrides', () => {
   const worker = read('src/audio/analyzer.worker.ts');
 
   assert.match(worker, /energyRatio\s*>=\s*0\.45\s*\?\s*'HIGH'\s*:\s*'LOW'/);
   assert.match(worker, /sE\s*<\s*0\.35/);
   assert.match(worker, /sE\s*>\s*0\.95/);
-  assert.match(worker, /blockFrames\s*=\s*Math\.floor\(\(secondsPerBeat\s*\*\s*16\)\s*\*\s*sampleRate\s*\/\s*hopSize\)/);
+  assert.match(worker, /let secondsPerBar = secondsPerBeat \* 4/);
+  assert.match(worker, /let barFrames = Math\.max\(1, Math\.round\(secondsPerBar \* sampleRate \/ hopSize\)\)/);
+  assert.match(worker, /state: energy >= 0\.45 \? 'HIGH' : 'LOW'/);
 });
 
 test('analysis worker uses spectral FFT features instead of legacy crossover filters', () => {
@@ -285,7 +289,9 @@ test('playback seek and stop keep canonical time and visual sync callbacks align
   assert.match(audio, /emitPositionChanged\(clampedTime\)/);
   assert.match(renderer, /addPositionChangedListener\(syncEventIndex\)/);
   assert.match(renderer, /State\.events\.findIndex\(e => e\.time >= time\)/);
-  assert.match(ui, /this\.engine\.seek\(seekTime\)/);
+  assert.doesNotMatch(renderer, /engine\.pausedAt[\s\S]*findIndex/);
+  assert.match(ui, /commitScrubTime/);
+  assert.match(ui, /this\.engine\.seek\(targetTime\)/);
   assert.match(ui, /setPlaybackUi\(false\)/);
 });
 
