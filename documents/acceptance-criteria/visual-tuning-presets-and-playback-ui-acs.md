@@ -54,7 +54,7 @@ This document captures the accepted behavior for the current visual tuning and p
 
 - **VT-5.1 Full width:** The seekbar spans the available window width responsively.
 - **VT-5.2 Visual style:** The seekbar uses the same minimal rectangular visual language as metric value cards.
-- **VT-5.3 Interaction:** Dragging or clicking the seekbar continues to seek accurately through the audio engine.
+- **VT-5.3 Interaction:** Dragging or clicking the seekbar updates the visible scrub position immediately, but audio seeking is committed through the audio engine only when the interaction ends.
 
 ## VT-6 Playback Surface
 
@@ -91,7 +91,14 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-9.2 Preset switching:** Switching presets after audio load must not reset playback state or require reloading the track.
 - **VT-9.3 Contract tests:** The shared tuning and worker contracts must remain covered by automated tests.
 - **VT-9.4 Build:** The TypeScript build must pass after changes to state, UI, audio, or visual contracts.
-- **VT-9.5 Decode failure UI:** If browser-level audio decoding or file loading fails before worker analysis can complete, the UI must show a file-load error, keep playback and seek controls disabled, and re-enable file selection.
+- **VT-9.5 Interactive dramaturgy timeline:** The seekbar chrome includes a compact canvas timeline that visualizes precomputed `TrackAnalysis` data without runtime audio analysis. `drawTimelineGridlines` must draw BPM-derived bar lines; sections, RMS, buildup, tension trends, significant cues, and the playhead must be layered clearly and remain readable in compact, resized, and overlay modes.
+- **VT-9.6 Decode failure UI:** If browser-level audio decoding or file loading fails before worker analysis can complete, the UI must show a file-load error, keep playback and seek controls disabled, and re-enable file selection.
+- **VT-9.7 Resizable timeline panel:** The timeline can be resized from its top handle. The resize path clamps height to safe bounds, redraws through the throttled timeline draw path, preserves HDPI canvas sharpness, and remembers the last expanded height for returning from overlay mode.
+- **VT-9.8 Fullscreen overlay structure:** Opening the timeline overlay applies `.timeline-overlay-active` to the full `.seek-container`, `.is-fullscreen-overlay` to `.timeline-wrapper`, and `body.timeline-overlay-open` to the document body. The overlay fills the viewport above other UI, hides unrelated chrome, and closes back to the prior seekbar position and height.
+- **VT-9.9 HTML tooltip interaction:** Hovering the timeline displays the `#timeline-tooltip` HTML element near the pointer. The tooltip reports the current time and zoom, matching section, bar index and state, RMS, B/M/T values, buildup pressure, tension trend, and nearby cue data where available.
+- **VT-9.10 DAW-style zoom and pan:** Mouse-wheel interaction zooms the timeline from `1x` to `16x` around the pointer. Normal left click or drag always scrubs/seeks the playhead, including when zoomed. Shift-drag or middle-button drag pans the visible viewport. During playback, a zoomed viewport follows the playhead when it leaves the `15%..75%` visible range.
+- **VT-9.11 Scrub buffering performance line:** Timeline and seekbar dragging must not call `AudioEngine.seek()` repeatedly. UI drag updates `scrubTime`, the visible time, the seekbar value, and a yellow scrub playhead through the throttled draw path. A single final audio seek is committed on `pointerup`, `pointercancel`, `change`, or equivalent touch-end interaction.
+- **VT-9.12 Renderer hot-path optimization:** The p5 render loop must not run O(N) `findIndex` searches over beat events or cue arrays while paused, stopped, or at natural track end. Visual event indexes are synchronized only through the event-driven `syncEventIndex` callback registered with `addPositionChangedListener`.
 
 ## VT-10 Render And Stream Output
 
@@ -99,4 +106,4 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-10.2 Chroma key modes:** `chromaKeyMode` supports normal background, green chroma background, and transparent clearing for overlay capture.
 - **VT-10.3 Low-latency mode:** `performanceMode` disables expensive glow paths such as radial gradient drawing.
 - **VT-10.4 Presentation URL:** Loading the app with `?presentation=true` hides UI chrome by setting the shared UI visibility state to false.
-- **VT-10.5 Expanded timeline size:** The dramaturgy timeline zoom control expands the timeline to `220px` high on desktop and `172px` high on mobile while preserving playback state and timeline seek behavior.
+- **VT-10.5 Timeline inspection modes:** The dramaturgy timeline supports compact, manually resized, and fullscreen overlay inspection modes. The existing expanded CSS height remains a fallback sizing state, but the top-right timeline control opens and closes the fullscreen overlay instead of performing audio or playback work.

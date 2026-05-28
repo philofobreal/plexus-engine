@@ -22,6 +22,10 @@ The visual tuning surface had grown from a small debugging panel into a user-fac
 - Responsive metrics and seekbar chrome.
 - Idle fading of UI chrome, including cursor hiding.
 - Smooth parameter transitions that avoid abrupt visual jumps during live performance.
+- A track dramaturgy timeline that can expose offline `TrackAnalysis` data with DAW-style inspection controls.
+- A fullscreen timeline overlay that must escape the seekbar row cleanly without covering controls incorrectly.
+- A performance issue near the end of long tracks where paused/stopped rendering repeatedly scanned large event and cue arrays with `findIndex()`.
+- A scrubbing performance issue where pointer and slider movement could call `AudioEngine.seek()` many times per second, repeatedly rebuilding Web Audio source nodes and flooding the canvas redraw path.
 
 The app is a static Vite browser app, so it cannot enumerate files in a public directory without a manifest or a backend endpoint.
 
@@ -41,6 +45,16 @@ Keep playback ownership in `AudioEngine`. UI input dispatches play, pause, seek,
 
 Move VJ chrome behavior into `DashboardUI`: top controls, metrics toggle, panel visibility, dragging, keyboard shortcuts, and idle auto-hide are DOM concerns. Visual renderers only consume state and draw.
 
+Render the dramaturgy timeline as a canvas projection of precomputed `TrackAnalysis`: sections, BPM-derived bar gridlines, bar RMS, buildup, tension trends, cue markers, and playhead state. Use a DOM tooltip (`#timeline-tooltip`) for hover details instead of drawing hover text into the canvas.
+
+Separate scrubbing from committed audio seeking. `DashboardUI` buffers in-progress drag targets in `scrubTime`, updates the visible time/seekbar/playhead, and commits one `AudioEngine.seek()` call through `commitScrubTime()` when the gesture ends.
+
+Keep timeline zoom and pan local to the UI layer with `timelineZoomLevel` and `timelineScrollOffsetTime`. Wheel zoom changes the visible duration around the pointer, normal left drag scrubs, and Shift-drag or middle-button drag pans.
+
+Use a two-level fullscreen overlay structure: `.seek-container.timeline-overlay-active` becomes the fixed viewport shell, `.timeline-wrapper.is-fullscreen-overlay` becomes the absolute canvas surface, and `body.timeline-overlay-open` hides unrelated chrome.
+
+Keep visual event index synchronization event-driven. `PlexusRenderer` registers `syncEventIndex` through `AudioEngine.addPositionChangedListener()` and does not run redundant O(N) `findIndex()` scans from the paused/stopped draw path.
+
 ## Consequences
 
 Positive:
@@ -53,6 +67,10 @@ Positive:
 - Effects become easier to evolve because animation inputs are decoupled from analyzer implementation details.
 - UI chrome can be refined independently from p5 visual effects.
 - Loop mode stays aligned with audio source-node lifecycle.
+- Timeline inspection scales from compact to resized to fullscreen without changing playback ownership.
+- DOM-based hover details remain readable and avoid text-heavy canvas redraw work on pointer movement.
+- Dragging the seekbar or timeline no longer floods Web Audio with repeated source-node rebuilds.
+- Paused or ended playback near the end of long tracks avoids frame-by-frame linear scans over large event/cue arrays.
 
 Tradeoffs:
 
@@ -60,6 +78,9 @@ Tradeoffs:
 - Preset names are file-name based; richer metadata would require extending the manifest or JSON schema.
 - RGB background tuning is explicit and simple, but less compact than a color picker.
 - Auto-hide behavior is intentionally owned by the UI layer, so new top-level chrome must opt into the same CSS/DOM classes.
+- The timeline has more local UI state (`scrubTime`, zoom level, scroll offset, pan/seek flags), so tests must guard interaction semantics.
+- In-progress scrub is visual until release; this is intentional for performance, but it means audio preview during drag is not currently supported.
+- The fullscreen timeline relies on coordinated classes across the seek container, wrapper, and body; future layout changes must preserve that contract.
 
 ## Alternatives Considered
 
@@ -68,6 +89,9 @@ Tradeoffs:
 - **Changing analyzer output for sensitivity:** Rejected because sensitivity is a live visual preference, not a change to offline music analysis.
 - **Writing UI controls directly to live tuning:** Rejected because large jumps in particle speed, glow intensity, or line weight are visually disruptive during live playback.
 - **Persisting presets in local storage only:** Rejected because the user explicitly wanted named JSON files collected in a directory.
+- **Canvas-only tooltip text:** Rejected because hover details are easier to position, style, and throttle as DOM without forcing complex canvas text redraw logic.
+- **Audio seek on every drag event:** Rejected because pointer and input events can arrive far above frame rate and can overload Web Audio node lifecycle.
+- **Frame-by-frame index repair in the draw loop:** Rejected because the linear scan cost grows toward the end of tracks and duplicates the event-driven position listener.
 
 ## Implementation References
 

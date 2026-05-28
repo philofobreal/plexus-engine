@@ -62,6 +62,24 @@ Implemented capabilities:
 
 Single click no longer pauses playback. Pause follows the same double-click behavior as play.
 
+## Track Dramaturgy Timeline
+
+The seekbar area includes a professional inspection timeline for precomputed `TrackAnalysis` data. It is a UI projection layer only; it does not run DSP or music analysis while drawing.
+
+Implemented capabilities:
+
+- `drawTimelineGridlines()` draws BPM-derived four-beat bar boundaries.
+- Section blocks, bar RMS/peak pressure, the `buildupConfidence` curve, `tensionTrends`, significant cue markers, and the playhead are drawn as separate canvas layers.
+- `TrackAnalysis.bars` provides bar index, `HIGH`/`LOW` state, RMS, bass, mid, treble, density, energy, and dominant-feature values for timeline visualization.
+- The top resize handle lets the user manually change timeline height outside overlay mode; height changes use a throttled redraw path and preserve HDPI canvas sharpness.
+- The top-right timeline control opens a fullscreen overlay. The `.seek-container` receives `.timeline-overlay-active`, the `.timeline-wrapper` receives `.is-fullscreen-overlay`, and `body` receives `.timeline-overlay-open`, so the timeline fills the viewport while unrelated chrome is hidden.
+- Hovering the canvas shows the DOM-based `#timeline-tooltip` with time, zoom, section, bar, RMS/B/M/T, buildup, trend, and nearby cue information.
+- Mouse wheel zooms the timeline between `1x` and `16x` around the pointer. The visible viewport is described by `timelineScrollOffsetTime` and `State.duration / timelineZoomLevel`.
+- Normal left click or drag always scrubs/seeks, including in zoomed view. Shift-drag or middle-button drag pans the viewport.
+- While playing in zoomed view, the viewport follows the playhead when the playhead leaves the `15%..75%` range of the visible timeline.
+
+Scrubbing is buffered for performance. Pointer and slider drag update `private scrubTime: number | null`, the visible time label, the seekbar value, and a yellow playhead. The Web Audio graph is not rebuilt during drag. `commitScrubTime()` performs one final `AudioEngine.seek()` call when the interaction ends.
+
 ## Metrics And Chrome
 
 The dashboard chrome was simplified for performance use and VJ-style presentation.
@@ -89,7 +107,7 @@ The feature is split across these runtime layers:
 - `src/config/visualTuning.ts`: defaults, control metadata, preset normalization, audio-sensitivity helpers.
 - `src/types/index.ts`: persisted tuning and playback state contracts.
 - `src/state/store.ts`: shared runtime state for tuning, visual mode, playback loop mode, and chrome behavior.
-- `src/ui/DashboardUI.ts`: DOM controls, preset loading, panel visibility, dragging, playback shortcuts, metrics projection, and auto-hide behavior.
+- `src/ui/DashboardUI.ts`: DOM controls, preset loading, panel visibility, dragging, playback shortcuts, metrics projection, timeline overlay/zoom/pan/scrub behavior, tooltip projection, and auto-hide behavior.
 - `src/audio/AudioEngine.ts`: loop-on-end playback behavior.
 - `src/visuals/`: render usage of tuning values, background color, and sensitivity-scaled audio data.
 
@@ -102,3 +120,12 @@ Beat event types are assigned by the analyzer worker from smoothed visual-featur
 - Type 3 is emitted when smoothed fx presence is greater than `0.6`.
 - Type 2 is emitted when fx does not pass that threshold and smoothed density is greater than `0.7`.
 - Type 1 is the fallback for all other accepted beat peaks.
+
+The analyzer also publishes BPM-aligned `BarAnalysis` entries and RMS fields on `TrackSection`. Older payloads are normalized by `AudioEngine.normalizeTrackAnalysis()` so missing bar/RMS fields fall back safely instead of breaking the UI.
+
+## Performance Details
+
+Two interaction hot paths are explicitly guarded:
+
+- The paused/stopped p5 draw path does not run `findIndex()` over event or cue arrays each frame. Beat and cue indexes are synchronized through `AudioEngine.addPositionChangedListener(syncEventIndex)`, so linear scans happen only on actual position changes.
+- Seekbar and timeline drag do not call `AudioEngine.seek()` repeatedly. They update `scrubTime` and redraw visual feedback through `requestTimelineDraw()`, then commit one audio seek when the gesture ends.
