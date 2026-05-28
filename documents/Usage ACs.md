@@ -58,6 +58,7 @@
 ## 8. Memória- és Állapotmenedzsment
 *   **AC 8.1 - Zombi Node-ok elkerülése:** Pause/Stop esetén, vagy a zene beletekerésekor a meglévő `AudioBufferSourceNode` `onended` eseménykezelője nullázódik, a node leáll és leválasztódik (`disconnect()`), hogy a Garbage Collector azonnal takaríthassa.
 *   **AC 8.2 - Objektum újrahasznosítás:** A `particles` tömb a futás kezdetekor egyszer inicializálódik (75 elem). Futás közben a kód nem hoz létre (`new Particle()`) és nem töröl részecskéket, megelőzve a memóriatöredezést. A `Shockwaves` tömb dinamikusan ürül (`splice`), amint egy hullám alfája $\le$ 0.
+*   **AC 8.7 - Fast background unpin feedback:** A visual-surface single click that unpins UI chrome schedules hiding with a fast `400ms` delay. Normal inactivity, hover leave, and focus-out paths keep the standard `2600ms` delay.
 ---
 ### 💡 Aktuális TypeScript modulok:
 A kód a fenti kategóriákat az alábbi modulokra bontja:
@@ -73,3 +74,16 @@ A kód a fenti kategóriákat az alábbi modulokra bontja:
 *   **AC 5.5 - Visual music analysis output:** The worker output includes `trackAnalysis` with per-frame visual features, section structure, significant moments, recurring `MusicPattern` entries, and cue events. Playback and rendering may read this data, but must not perform audio analysis in the render loop.
 *   **AC 1.5 - Decode failure UI:** If the selected file cannot be decoded by the browser audio stack, playback and seek remain disabled, the file picker is re-enabled, and the dashboard shows a file-load error instead of entering a partially playable state.
 *   **AC 3.6 - Beat event classification:** After spectral-flux peak picking, the worker classifies beat events from smoothed feature context: `type: 3` when smoothed fx presence is greater than `0.6`, `type: 2` when fx does not pass that threshold and smoothed density is greater than `0.7`, and `type: 1` otherwise.
+
+## 9. Stream & OBS Integration
+
+*   **AC 5.6 - Dramaturgy output:** The worker output includes `buildupConfidence` and `tensionTrends`. These values are deterministic for identical input and may be used by rendering to raise pre-drop tension without doing DSP in the render loop.
+*   **AC 7.4 - Render backend boundary:** `ClassicPlexusEffect` and `TemporalMusicEffect` drawing commands go through `VisualRendererBackend`. Direct p5 drawing is allowed only in the p5 backend adapter or p5-owned primitives.
+*   **AC 7.5 - Modulation bus:** Visual animation strength is driven by `State.modulation`: `kineticTension`, `lowFrequencyDrive`, `spectralChaos`, `rhythmicImpulse`, and `macroMomentum`.
+*   **AC 9.1 - Chroma key background:** `chromaKeyMode` controls output background behavior: normal tuned RGB, green chroma-key, or transparent clearing.
+*   **AC 9.2 - Low latency rendering:** `performanceMode` disables radial-gradient glow work and chroma modes skip glow paths to reduce capture latency and CPU load.
+*   **AC 9.3 - Presentation URL:** `?presentation=true` hides UI chrome automatically by setting `State.uiVisible` to false and applying presentation CSS.
+*   **AC 9.4 - Overlay safety:** Stream-specific modes must not alter playback timing, worker analysis, or beat/cue event indexing.
+*   **AC 9.5 - Interactive Dramaturgy Timeline:** The seekbar chrome includes a compact canvas timeline that visualizes precomputed `TrackAnalysis` data. Section blocks use distinct colors (`intro` blue, `verse` neutral, `build` amber, `drop` magenta, `peak` cyan, `break` violet), `buildupConfidence` appears as a cyan wave, `tensionTrends` appear as directional guide strokes, and important cue types appear as vertical markers. The playhead is updated from `State.currentTime / State.duration` with no runtime music analysis, and clicking the timeline seeks through `AudioEngine.seek()`.
+*   **AC 9.6 - Expandable Dramaturgy Timeline:** The timeline has a `Track Dramaturgy` zoom control that toggles a larger timeline view without changing playback state. The expanded view uses doubled inspection height (`220px` on desktop, `172px` on mobile) and the canvas redraws during the transition so the expanded view remains sharp.
+*   **AC 9.7 - Render Hot-Path Optimization:** Particle boundary pull uses squared-distance checks and vector normalization instead of p5 distance and angle trigonometry. The p5 backend caches repeated fill, stroke, and stroke-weight state changes while preserving `noStroke`/`noFill` behavior.

@@ -36,6 +36,8 @@ Stop and redesign if a change introduces any pattern below.
 - Async work inside `draw()`.
 - DOM updates every frame when throttling is sufficient.
 - Replacing squared-distance checks with unconditional square roots in hot loops.
+- Direct p5 drawing calls inside effect modules. All effect drawing must go through `VisualRendererBackend`; p5-specific calls belong in backend adapters or p5-owned primitives.
+- Reading raw analyzer fields for animation intensity when an equivalent `State.modulation` signal exists.
 
 ## Documentation Anti-Patterns
 

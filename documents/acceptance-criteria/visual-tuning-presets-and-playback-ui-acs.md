@@ -21,6 +21,9 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-2.5 Global background:** Background red, green, and blue controls can produce black, the existing dark background, and pure white.
 - **VT-2.6 Music sensitivity:** A single `Music sensitivity` slider scales the already-established audio and visual feature values up or down.
 - **VT-2.7 Analyzer isolation:** Music sensitivity must not re-run or mutate offline audio analysis results.
+- **VT-2.8 Modulation range:** The modulation bus must clamp `kineticTension`, `lowFrequencyDrive`, `spectralChaos`, `rhythmicImpulse`, and `macroMomentum` to `0.0..1.0`.
+- **VT-2.9 Sensitivity scaling:** `audioSensitivity` scales modulation bus outputs linearly until a value reaches the normalized upper bound.
+- **VT-2.10 Morphing target:** Sliders and preset selection write to `State.targetTuning`; the renderer interpolates `State.visualTuning` toward that target during draw.
 
 ## VT-3 Presets
 
@@ -80,6 +83,7 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-8.5 Cursor hide:** The mouse cursor is hidden while the chrome is in the idle-hidden state.
 - **VT-8.6 UI pinning:** A single click on the visual background, after the double-click detection window expires, toggles a pinned chrome state that keeps the UI visible and disables idle auto-hide.
 - **VT-8.7 UI unpinning:** A subsequent single click on the visual background restores the normal idle auto-hide behavior.
+- **VT-8.8 Fast unpin feedback:** When that subsequent single click unpins the chrome, the hide timer uses a fast `400ms` delay. Standard inactivity and hover/focus recovery continue to use the normal `2600ms` delay.
 
 ## VT-9 Regression Requirements
 
@@ -88,3 +92,11 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-9.3 Contract tests:** The shared tuning and worker contracts must remain covered by automated tests.
 - **VT-9.4 Build:** The TypeScript build must pass after changes to state, UI, audio, or visual contracts.
 - **VT-9.5 Decode failure UI:** If browser-level audio decoding or file loading fails before worker analysis can complete, the UI must show a file-load error, keep playback and seek controls disabled, and re-enable file selection.
+
+## VT-10 Render And Stream Output
+
+- **VT-10.1 Render backend boundary:** Effect modules must draw through `VisualRendererBackend`; direct p5 drawing calls belong in `P5RendererBackend` or p5-owned primitives.
+- **VT-10.2 Chroma key modes:** `chromaKeyMode` supports normal background, green chroma background, and transparent clearing for overlay capture.
+- **VT-10.3 Low-latency mode:** `performanceMode` disables expensive glow paths such as radial gradient drawing.
+- **VT-10.4 Presentation URL:** Loading the app with `?presentation=true` hides UI chrome by setting the shared UI visibility state to false.
+- **VT-10.5 Expanded timeline size:** The dramaturgy timeline zoom control expands the timeline to `220px` high on desktop and `172px` high on mobile while preserving playback state and timeline seek behavior.

@@ -19,8 +19,8 @@ A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus m
 2. **UI Layer (`src/ui/DashboardUI.ts`, `src/style.css`):** kezeli a fajlfeltoltest, play/pause/seek/loop vezerlest, visual mode valasztast, preset betoltest, tuning panelt, metrics panelt, auto-hide chrome-ot es a dashboard frissitest.
 3. **Audio Engine (`src/audio/AudioEngine.ts`):** felelos a hangfajlok dekodolasaert, a `AudioBufferSourceNode` eletciklusert, a kanonikus idoszamitasert, a seek/end resetert, a worker request id kezelesert, a stale worker eredmenyek eldobasaert es a worker terminalasaert.
 4. **Analysis Engine (`src/audio/analyzer.worker.ts`):** dedikalt Web Worker. 1024 mintas Hann-windowed FFT pipeline-t hasznal, spektralis fluxust, relativ savenergiakat, centroidot es flatness erteket szamol, majd `AudioFrame`, `BeatEvent` es `TrackAnalysis` kimenetet publikal.
-5. **Shared contracts/state (`src/types/index.ts`, `src/state/store.ts`):** tarolja a megosztott tipusokat, az elfogadott analizis eredmenyeket, a vizualis modot, loop allapotot, aktualis frame-et, cue allapotokat es tuning konfiguraciot.
-6. **Render Engine (`src/visuals/`):** p5 canvas renderer, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `ClassicPlexusEffect.ts` / `TemporalMusicEffect.ts` modokat kezeli.
+5. **Shared contracts/state (`src/types/index.ts`, `src/state/store.ts`):** tarolja a megosztott tipusokat, az elfogadott analizis eredmenyeket, a vizualis modot, loop allapotot, aktualis frame-et, cue allapotokat, modulacios buszt, elo tuningot es target tuningot.
+6. **Render Engine (`src/visuals/`):** p5 canvas renderer backend adapterrel, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `ClassicPlexusEffect.ts` / `TemporalMusicEffect.ts` modokat kezeli.
 
 ## 3. Funkcionalis Specifikacio
 
@@ -49,6 +49,8 @@ A worker a spektralis fluxus csucsai alapjan `BeatEvent` esemenyeket general. A 
 
 A pattern detektalas determinisztikus section signature-okbol tortenik. A pattern cue-k opcion ellenorizheto `patternId` mezovel hivatkoznak a megfelelo `MusicPattern` elemre.
 
+A dramaturgiai motor a density, tension, RMS energia es blokk energia iranyvaltozasabol `buildupConfidence` gorbet es `tensionTrends` segmentumokat szamol. A renderer ezt a gorbet a modulacios busz `kineticTension` komponensebe keveri, igy a rendszer a dropok es csucspontok elott finoman novelheti a vizualis feszultseget.
+
 ### 3.4. BPM Detektalas Es Kijelzes
 
 A worker 70 es 180 BPM kozotti histogram alapjan becsul BPM-et. A UI-ban a BPM a metrics panel normal metrikakartyajakent jelenik meg; a fejlec csak a betoltott audio fajl nevet mutatja.
@@ -73,6 +75,14 @@ A UI-ban a legacy `Bass`, `Mid`, `Treble` cimkek tovabbra is lathatok, de ezek a
 ### 4.2. Plexus Halo Optimalizalas
 
 A classic es temporal renderer tovabbra is negyzetes tavolsagellenorzest hasznal hot loopban. A gyokvonas csak akkor tortenik meg, amikor a pontok mar biztosan a maximum tavolsagon belul vannak. A particle pool 75 elemre inicializalodik setupkor, normal draw loopban nem jonnek letre uj `Particle` peldanyok.
+
+Az effekt modulok `VisualRendererBackend` interfeszen keresztul rajzolnak. A p5-specifikus hivasokat a `P5RendererBackend` adapter tartalmazza, igy a scene logika mock backenddel tesztelheto es kesobb WebGPU/shader backend fele mozgathato.
+
+### 4.2.1. Modulacios Busz Es Parameter Morphing
+
+`computeModulationBus()` az aktualis `AudioFrame`, `VisualFeatureFrame`, beat decay, cue decay es tuning alapjan ot normalizalt jelet allit elo: `kineticTension`, `lowFrequencyDrive`, `spectralChaos`, `rhythmicImpulse`, `macroMomentum`. A keplet minden kimenetet `0.0..1.0` tartomanyba szorit es `audioSensitivity` alapjan skalaz.
+
+`State.visualTuning` az elo, interpolalt allapot. `State.targetTuning` a presetek es UI csuszkak celallapota. A render ciklus elejen az elo tuning a `transitionSpeed` szerint kozelit a celhoz, tulcsuszas nelkul.
 
 ### 4.3. Idoszinkronizacio
 
@@ -121,7 +131,12 @@ Natural end eseten `Loop` modban a lejatszas 0:00-rol ujraindul. `Once` modban a
 ### ADR-005: Visual Tuning Presets Es Playback UI Chrome
 
 * **Dontes:** a tuning defaultok es kontroll metadata a `src/config/visualTuning.ts` fajlban vannak. A presetek `public/visual-tuning-presets/` alatt JSON fajlok, listazasuk `index.json` manifestbol tortenik.
-* **Indoklas:** statikus Vite app nem tud megbizhatoan public konyvtarat listazni runtime-ban backend vagy manifest nelkul.
+* **Indoklas:** statikus Vite app nem tud megbizhatoan public konyvtarat listazni runtime-ban backend vagy manifest nelkul. A target tuning es morphing a live UX resze, mert az eles preset valtasok nem ugorhatnak hirtelen.
+
+### ADR-006: Render Backend Boundary
+
+* **Dontes:** effekt modulok csak `VisualRendererBackend`-en keresztul adhatnak ki rajzolasi parancsot.
+* **Indoklas:** ez levagja az effekt logikat a p5 konkret API-jarol es elokesziti a WebGPU/shader backend lehetoseget.
 
 ## 6. Aktualis TypeScript Struktura
 
@@ -141,6 +156,8 @@ src/
 |   `-- DashboardUI.ts
 |-- visuals/
 |   |-- PlexusRenderer.ts
+|   |-- RendererBackend.ts
+|   |-- P5RendererBackend.ts
 |   |-- ClassicPlexusEffect.ts
 |   |-- TemporalMusicEffect.ts
 |   |-- Particle.ts
@@ -173,6 +190,14 @@ export interface AudioFrame {
     t: number;
     state: 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
     eRatio: number;
+}
+
+export interface ModulationState {
+    kineticTension: number;
+    lowFrequencyDrive: number;
+    spectralChaos: number;
+    rhythmicImpulse: number;
+    macroMomentum: number;
 }
 
 export interface AnalysisRequest {
@@ -214,3 +239,4 @@ Az aktualis contract tesztek a `tests/contracts.test.mjs` fajlban vannak. Lefedi
 * stale worker result vedelmet,
 * seek/stop idoszinkront,
 * loop mode, metrics toggle, draggable tuning es auto-hide chrome UI szerzodest.
+* modulacios busz, morphing, dramaturgy, renderer boundary es stream profil viselkedest.

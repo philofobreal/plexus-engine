@@ -12,7 +12,7 @@ The app is a Vite TypeScript project with explicit runtime layers:
 - Shared mutable state: `src/state/`
 - Shared static contracts: `src/types/`
 - DOM controls and dashboard projection: `src/ui/`
-- p5 canvas rendering: `src/visuals/`
+- p5 canvas rendering and backend adaptation: `src/visuals/`
 
 ## Dependency And Module Boundary Map
 
@@ -22,7 +22,9 @@ Allowed dependency directions:
 - `src/audio/` may import `src/state/`, `src/types/`, and worker modules.
 - `src/audio/analyzer.worker.ts` may import types only.
 - `src/ui/` may import `src/audio/`, `src/state/`, and types.
-- `src/visuals/` may import p5, `src/state/`, visual classes, and types.
+- `src/visuals/P5RendererBackend.ts`, `Particle.ts`, `Shockwave.ts`, and `PlexusRenderer.ts` may import p5.
+- Effect modules under `src/visuals/` must draw through `VisualRendererBackend` rather than direct p5 APIs.
+- `src/visuals/` may import `src/state/`, visual classes, config helpers, renderer backend contracts, and types.
 - `src/state/` may import types only.
 - `src/types/` must not import app runtime modules.
 
@@ -35,6 +37,8 @@ Forbidden dependency directions:
 - Types to runtime modules.
 
 Mode-specific visual implementations should live in separate files under `src/visuals/`. The renderer entrypoint may orchestrate playback synchronization and delegate drawing, but it should not accumulate multiple full effect implementations inline.
+
+`VisualRendererBackend` is the render boundary for effect modules. The p5 implementation lives in `P5RendererBackend`; future WebGPU, shader, or mock backends must implement the same draw-command contract.
 
 ## Lifecycle Ownership
 
@@ -56,8 +60,10 @@ Every shared state field needs a clear owner:
 
 - Audio owns duration, sample rate, play state, timing, analysis result publication, and accepted worker metadata.
 - Visuals own render-derived decay values and visual-only transient state.
+- Visuals own `State.modulation`, derived from accepted frame/features plus transient beat/cue decays.
 - UI owns DOM projection and user input dispatch.
 - Visual mode selection is user input owned by UI and stored in shared state as an explicit render-facing setting.
+- UI owns `State.targetTuning` writes from sliders and presets; visuals own interpolation into `State.visualTuning`.
 - State module owns shape and initialization defaults.
 
 When ownership is ambiguous, add a small explicit API or handoff contract instead of adding hidden direct writes.
