@@ -10,8 +10,97 @@ import type {
     VisualCueKind,
     VisualFeatureFrame,
     MusicPattern,
-    PatternOccurrence
+    PatternOccurrence,
+    TensionTrends
 } from '../types';
+
+export function computeDramaturgyAnalysis(
+    featureFrames: VisualFeatureFrame[],
+    frames: AudioFrame[],
+    hopSize: number,
+    sampleRate: number
+): { buildupConfidence: number[], tensionTrends: TensionTrends } {
+    const count = Math.min(featureFrames.length, frames.length);
+    const pressure = new Array<number>(count);
+
+    for (let i = 0; i < count; i++) {
+        const feature = featureFrames[i];
+        const frame = frames[i];
+        pressure[i] = clampUnit(
+            feature.tension * 0.34 +
+            feature.density * 0.28 +
+            frame.e * 0.22 +
+            frame.eRatio * 0.16
+        );
+    }
+
+    const windowSize = Math.max(4, Math.floor(sampleRate / hopSize));
+    const buildupConfidence = new Array<number>(count);
+    for (let i = 0; i < count; i++) {
+        const previous = averageRange(pressure, Math.max(0, i - windowSize), i);
+        const current = averageRange(pressure, Math.max(0, i - Math.floor(windowSize / 2)), i + 1);
+        const slope = current - previous;
+        buildupConfidence[i] = clampUnit(slope * 4 + current * 0.18);
+    }
+
+    let peakValue = 0;
+    let peakIndex = 0;
+    for (let i = 0; i < pressure.length; i++) {
+        if (pressure[i] > peakValue) {
+            peakValue = pressure[i];
+            peakIndex = i;
+        }
+    }
+
+    const segmentFrames = Math.max(windowSize * 4, 1);
+    const segments: TensionTrends['segments'] = [];
+    for (let startIdx = 0; startIdx < count; startIdx += segmentFrames) {
+        const endIdx = Math.min(count, startIdx + segmentFrames);
+        const startValue = pressure[startIdx] || 0;
+        const endValue = pressure[Math.max(startIdx, endIdx - 1)] || 0;
+        const delta = endValue - startValue;
+        const direction = Math.abs(delta) < 0.03 ? 'stable' : delta > 0 ? 'rising' : 'falling';
+        segments.push({
+            start: startIdx * hopSize / sampleRate,
+            end: endIdx * hopSize / sampleRate,
+            startValue,
+            endValue,
+            direction,
+            confidence: clampUnit(Math.abs(delta) * 2.5)
+        });
+    }
+
+    const first = pressure[0] || 0;
+    const last = pressure[pressure.length - 1] || first;
+
+    return {
+        buildupConfidence,
+        tensionTrends: {
+            globalSlope: clampSigned(last - first),
+            peakTime: peakIndex * hopSize / sampleRate,
+            peakValue,
+            segments
+        }
+    };
+}
+
+function averageRange(values: number[], start: number, end: number) {
+    let sum = 0;
+    let count = 0;
+    for (let i = start; i < end && i < values.length; i++) {
+        sum += values[i];
+        count++;
+    }
+    return count > 0 ? sum / count : 0;
+}
+
+function clampUnit(value: number) {
+    return Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
+}
+
+function clampSigned(value: number) {
+    return Math.min(1, Math.max(-1, Number.isFinite(value) ? value : 0));
+}
 
 self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
     try {
@@ -320,6 +409,8 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
 
         visualCues.sort((a, b) => a.time - b.time);
 
+        const dramaturgy = computeDramaturgyAnalysis(featureFrames, outFrames, hopSize, sampleRate);
+
         const trackAnalysis: TrackAnalysis = {
             duration: channel.length / sampleRate,
             sections: trackSections,
@@ -327,6 +418,8 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
             cues: visualCues,
             significantMoments: visualCues.filter(cue => cue.kind === 'impact' || cue.kind === 'break').slice(0, 32),
             features: featureFrames,
+            buildupConfidence: dramaturgy.buildupConfidence,
+            tensionTrends: dramaturgy.tensionTrends,
             featureHopSize: hopSize
         };
 
