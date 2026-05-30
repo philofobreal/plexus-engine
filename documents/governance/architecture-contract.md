@@ -61,6 +61,7 @@ Every shared state field needs a clear owner:
 - Audio owns duration, sample rate, play state, timing, analysis result publication, and accepted worker metadata.
 - Visuals own render-derived decay values and visual-only transient state.
 - Visuals own `State.modulation`, derived from accepted frame/features plus transient beat/cue decays.
+- `State.modulation` must keep a stable object reference during rendering. Visuals update it through `writeModulationBus(State.modulation, ...)`, and transient reset must zero its fields in place instead of assigning `State.modulation = { ... }`.
 - UI owns DOM projection and user input dispatch.
 - Visual mode selection is user input owned by UI and stored in shared state as an explicit render-facing setting.
 - UI owns `State.targetTuning` writes from sliders and presets; visuals own interpolation into `State.visualTuning`.

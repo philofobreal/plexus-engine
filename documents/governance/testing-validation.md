@@ -16,6 +16,7 @@ Build-level changes:
 - Run `bun run build` from `plexus-engine/`, or the package-manager equivalent if Bun is unavailable.
 - If package-manager shims are unavailable on PATH, use the Codex bundled Node executable with local `node_modules` entrypoints for `tsc`, Vite, and Node test runs.
 - When using the bundled Node fallback, report the exact commands run and why the fallback was used.
+- For renderer, UI, or performance-contract changes, include TypeScript checking, a production Vite build, Node tests, and `git diff --check` in the handoff whenever practical. A Vite chunk-size warning is informational unless the task is specifically about bundle splitting or load performance.
 
 Audio playback changes:
 

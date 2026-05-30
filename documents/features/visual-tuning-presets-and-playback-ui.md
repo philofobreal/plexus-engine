@@ -80,6 +80,8 @@ Implemented capabilities:
 
 Scrubbing is buffered for performance. Pointer and slider drag update `private scrubTime: number | null`, the visible time label, the seekbar value, and a yellow playhead. The Web Audio graph is not rebuilt during drag. `commitScrubTime()` performs one final `AudioEngine.seek()` call when the interaction ends.
 
+Dashboard refresh does not automatically redraw the timeline canvas. `updateDashboard()` asks `requestDashboardTimelineDraw()` to decide whether a redraw is visible. Redraw is allowed when `TrackAnalysis` changes, the canvas size changes, zoom or scroll changes, scrub state changes, or the playhead has moved by at least one visible pixel (`viewport.duration / Math.max(1, rect.width)`). This keeps frequent dashboard text updates from repainting dense timeline layers unnecessarily.
+
 ## Metrics And Chrome
 
 The dashboard chrome was simplified for performance use and VJ-style presentation.
@@ -129,3 +131,7 @@ Two interaction hot paths are explicitly guarded:
 
 - The paused/stopped p5 draw path does not run `findIndex()` over event or cue arrays each frame. Beat and cue indexes are synchronized through `AudioEngine.addPositionChangedListener(syncEventIndex)`, so linear scans happen only on actual position changes.
 - Seekbar and timeline drag do not call `AudioEngine.seek()` repeatedly. They update `scrubTime` and redraw visual feedback through `requestTimelineDraw()`, then commit one audio seek when the gesture ends.
+- The render loop writes modulation through `writeModulationBus(State.modulation, ...)` so the modulation object reference stays stable. `computeModulationBus()` remains a compatibility helper for fresh-object callers, and transient reset zeros the existing modulation fields in place.
+- Hot color conversion uses `hueToRgbInto()` with module-owned RGB tuples. `hueToRgb()` remains available as an allocating compatibility wrapper, but classic and temporal draw paths avoid new RGB arrays in per-frame loops. Temporal mechanism ring drawing receives numeric RGB components instead of a shared color array reference.
+- `P5RendererBackend` skips redundant `fill()`, `stroke()`, and `strokeWeight()` calls by comparing numeric cached components. String keys are avoided in the draw-state cache, while `noFill()` and `noStroke()` still force the next matching fill or stroke call to reactivate p5 state.
+- Expensive radial glow is limited to active playback and still respects `performanceMode`, green-screen chroma key, and transparent chroma key. Paused-loaded render targets run at `30 FPS`; no-audio idle targets run at `15 FPS`; playing targets run at `60 FPS`.
