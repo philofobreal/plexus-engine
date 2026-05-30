@@ -107,3 +107,21 @@ test('timeline and seekbar scrub visually before committing a single audio seek'
   assert.match(ui, /const currentTimeToDraw = this\.scrubTime !== null \? this\.scrubTime : State\.currentTime/);
   assert.match(ui, /if \(!this\.isDraggingSlider && this\.scrubTime === null\)/);
 });
+
+test('dashboard timeline redraw is throttled by visible playhead and layout changes', () => {
+  const ui = read('src/ui/DashboardUI.ts');
+
+  assert.match(ui, /private requestDashboardTimelineDraw\(\)/);
+  assert.match(ui, /private shouldDrawTimelineForDashboard\(rect: DOMRect\)/);
+  assert.match(ui, /this\.lastTimelineAnalysisRef !== State\.trackAnalysis/);
+  assert.match(ui, /this\.lastTimelineDrawWidth !== rect\.width/);
+  assert.match(ui, /this\.lastTimelineDrawHeight !== rect\.height/);
+  assert.match(ui, /this\.lastTimelineDrawZoom !== this\.timelineZoomLevel/);
+  assert.match(ui, /this\.lastTimelineDrawScroll !== this\.timelineScrollOffsetTime/);
+  assert.match(ui, /this\.lastTimelineDrawScrubTime !== this\.scrubTime/);
+  assert.match(ui, /visibleSecondsPerPixel = viewport\.duration \/ Math\.max\(1, rect\.width\)/);
+  assert.match(ui, /Math\.abs\(State\.currentTime - this\.lastTimelineDrawTime\) >= visibleSecondsPerPixel/);
+  assert.match(ui, /this\.requestDashboardTimelineDraw\(\)/);
+  const updateDashboardBody = ui.slice(ui.indexOf('    updateDashboard() {'));
+  assert.doesNotMatch(updateDashboardBody.slice(0, updateDashboardBody.indexOf('\n    }\n}')), /this\.drawDramaturgyTimeline\(\)/);
+});

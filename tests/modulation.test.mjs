@@ -43,3 +43,36 @@ test('audioSensitivity linearly scales modulation values until clamped', () => {
     assert.equal(Number(double[key].toFixed(6)), Number((normal[key] * 2).toFixed(6)));
   }
 });
+
+test('writeModulationBus mutates and returns the caller-owned modulation object', () => {
+  const { computeModulationBus, writeModulationBus, defaultVisualTuning } = loadVisualTuningModule();
+  const frame = { e: 0.7, b: 0.5, m: 0.25, t: 0.9, state: 'HIGH', eRatio: 1.1 };
+  const features = { melody: 0.8, vocal: 0.4, fx: 0.7, density: 0.6, brightness: 0.9, tension: 0.5 };
+  const target = {
+    kineticTension: -1,
+    lowFrequencyDrive: -1,
+    spectralChaos: -1,
+    rhythmicImpulse: -1,
+    macroMomentum: -1
+  };
+  const expected = computeModulationBus(frame, features, 0.3, 0.2, defaultVisualTuning);
+
+  const returned = writeModulationBus(target, frame, features, 0.3, 0.2, defaultVisualTuning);
+
+  assert.equal(returned, target);
+  assert.deepEqual({ ...target }, { ...expected });
+});
+
+test('hueToRgbInto matches hueToRgb, returns the provided tuple, and normalizes hue', () => {
+  const { hueToRgb, hueToRgbInto } = loadVisualTuningModule();
+  const target = [0, 0, 0];
+
+  const returned = hueToRgbInto(target, -30);
+
+  assert.equal(returned, target);
+  assert.deepEqual(Array.from(target), Array.from(hueToRgb(-30)));
+  assert.deepEqual(Array.from(target), Array.from(hueToRgb(330)));
+
+  hueToRgbInto(target, 390, 80, 45);
+  assert.deepEqual(Array.from(target), Array.from(hueToRgb(30, 80, 45)));
+});
