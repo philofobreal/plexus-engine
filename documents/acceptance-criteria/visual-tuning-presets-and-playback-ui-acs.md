@@ -47,8 +47,8 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-4.4 Metrics toggle:** A compact metrics toggle is placed above the seekbar, not in the top-right control group.
 - **VT-4.5 Metrics layout:** Metrics use the original card-like grid layout and adapt by viewport width.
 - **VT-4.6 Cue removal:** The cue metrics block is not displayed.
-- **VT-4.7 Music block size:** `Music Block & Dynamics` occupies one metrics grid unit.
-- **VT-4.8 Legacy frame labels:** The visible `Bass`, `Mid`, and `Treble` metric labels may remain for continuity, but they project the current `AudioFrame.b`, `AudioFrame.m`, and `AudioFrame.t` values. In the accepted worker contract those are density, melody-presence, and fx-presence projections.
+- **VT-4.7 Dynamics state size:** `Dynamics State` occupies one metrics grid unit.
+- **VT-4.8 Frame projection labels:** The visible `Density`, `Melody Presence`, and `FX Presence` metric labels project the current `AudioFrame.b`, `AudioFrame.m`, and `AudioFrame.t` values. In the accepted worker contract those fields remain legacy compatibility projections for density, melody presence, and fx presence.
 
 ## VT-5 Seekbar
 
@@ -95,7 +95,7 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-9.6 Decode failure UI:** If browser-level audio decoding or file loading fails before worker analysis can complete, the UI must show a file-load error, keep playback and seek controls disabled, and re-enable file selection.
 - **VT-9.7 Resizable timeline panel:** The timeline can be resized from its top handle. The resize path clamps height to safe bounds, redraws through the throttled timeline draw path, preserves HDPI canvas sharpness, and remembers the last expanded height for returning from overlay mode.
 - **VT-9.8 Fullscreen overlay structure:** Opening the timeline overlay applies `.timeline-overlay-active` to the full `.seek-container`, `.is-fullscreen-overlay` to `.timeline-wrapper`, and `body.timeline-overlay-open` to the document body. The overlay fills the viewport above other UI, hides unrelated chrome, and closes back to the prior seekbar position and height.
-- **VT-9.9 HTML tooltip interaction:** Hovering the timeline displays the `#timeline-tooltip` HTML element near the pointer. The tooltip reports the current time and zoom, matching section, bar index and state, RMS, B/M/T values, buildup pressure, tension trend, and nearby cue data where available.
+- **VT-9.9 HTML tooltip interaction:** Hovering the timeline displays the `#timeline-tooltip` HTML element near the pointer. The tooltip reports the current time and zoom, matching section, bar index and state, RMS, BarAnalysis bass/mid/treble spectral-band ratios, buildup pressure, tension trend, and nearby cue data where available.
 - **VT-9.10 DAW-style zoom and pan:** Mouse-wheel interaction zooms the timeline from `1x` to `16x` around the pointer. Normal left click or drag always scrubs/seeks the playhead, including when zoomed. Shift-drag or middle-button drag pans the visible viewport. During playback, a zoomed viewport follows the playhead when it leaves the `15%..75%` visible range.
 - **VT-9.11 Scrub buffering performance line:** Timeline and seekbar dragging must not call `AudioEngine.seek()` repeatedly. UI drag updates `scrubTime`, the visible time, the seekbar value, and a yellow scrub playhead through the throttled draw path. A single final audio seek is committed on `pointerup`, `pointercancel`, `change`, or equivalent touch-end interaction.
 - **VT-9.12 Renderer hot-path optimization:** The p5 render loop must not run O(N) `findIndex` searches over beat events or cue arrays while paused, stopped, or at natural track end. Visual event indexes are synchronized only through the event-driven `syncEventIndex` callback registered with `addPositionChangedListener`.

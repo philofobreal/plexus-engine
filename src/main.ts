@@ -74,16 +74,16 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div class="metrics-grid" id="metrics-grid">
         <div class="metric-card bpm-card"><div class="m-label">BPM</div><div class="m-value bpm-badge" id="bpm-badge">--</div><div class="m-bar-bg"><div class="m-bar-fill" style="width:100%;"></div></div></div>
         <div class="metric-card"><div class="m-label">Energy</div><div class="m-value" id="val-energy">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-energy"></div></div></div>
-        <div class="metric-card"><div class="m-label">Bass</div><div class="m-value" id="val-bass">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-bass"></div></div></div>
-        <div class="metric-card"><div class="m-label">Mid</div><div class="m-value" id="val-mid">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-mid"></div></div></div>
-        <div class="metric-card"><div class="m-label">Treble</div><div class="m-value" id="val-treble">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-treble"></div></div></div>
+        <div class="metric-card"><div class="m-label">Density</div><div class="m-value" id="val-bass">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-bass"></div></div></div>
+        <div class="metric-card"><div class="m-label">Melody Presence</div><div class="m-value" id="val-mid">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-mid"></div></div></div>
+        <div class="metric-card"><div class="m-label">FX Presence</div><div class="m-value" id="val-treble">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-treble"></div></div></div>
         <div class="metric-card"><div class="m-label">Melody</div><div class="m-value" id="val-melody">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-melody"></div></div></div>
         <div class="metric-card"><div class="m-label">Vocal</div><div class="m-value" id="val-vocal">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-vocal"></div></div></div>
         <div class="metric-card"><div class="m-label">FX</div><div class="m-value" id="val-fx">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-fx"></div></div></div>
-        <div class="metric-card"><div class="m-label">Beat Hit</div><div class="m-value" id="val-beat">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-beat"></div></div></div>
+        <div class="metric-card"><div class="m-label">Beat Impulse</div><div class="m-value" id="val-beat">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-beat"></div></div></div>
         <div class="metric-card"><div class="m-label">Progress</div><div class="m-value" id="val-prog">0%</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-prog"></div></div></div>
         <div class="metric-card dyn-card">
-            <div class="m-label">Music Block & Dynamics</div>
+            <div class="m-label">Dynamics State</div>
             <div class="m-value dyn-text" id="val-dyn">IDLE</div>
             <div class="m-bar-bg"><div class="m-bar-fill dyn-fill" id="bar-dyn"></div></div>
         </div>

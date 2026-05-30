@@ -70,7 +70,7 @@ export class AudioEngine {
         State.activePatternId = null;
         State.cueDecay = 0;
         State.beatDecay = 0;
-        State.snareFlash = 0;
+        State.denseImpactFlash = 0;
     }
 
     private terminateActiveWorker() {

@@ -73,7 +73,7 @@ Implemented capabilities:
 - `TrackAnalysis.bars` provides bar index, `HIGH`/`LOW` state, RMS, bass, mid, treble, density, energy, and dominant-feature values for timeline visualization.
 - The top resize handle lets the user manually change timeline height outside overlay mode; height changes use a throttled redraw path and preserve HDPI canvas sharpness.
 - The top-right timeline control opens a fullscreen overlay. The `.seek-container` receives `.timeline-overlay-active`, the `.timeline-wrapper` receives `.is-fullscreen-overlay`, and `body` receives `.timeline-overlay-open`, so the timeline fills the viewport while unrelated chrome is hidden.
-- Hovering the canvas shows the DOM-based `#timeline-tooltip` with time, zoom, section, bar, RMS/B/M/T, buildup, trend, and nearby cue information.
+- Hovering the canvas shows the DOM-based `#timeline-tooltip` with time, zoom, section, bar, RMS and BarAnalysis bass/mid/treble spectral-band ratios, buildup, trend, and nearby cue information.
 - Mouse wheel zooms the timeline between `1x` and `16x` around the pointer. The visible viewport is described by `timelineScrollOffsetTime` and `State.duration / timelineZoomLevel`.
 - Normal left click or drag always scrubs/seeks, including in zoomed view. Shift-drag or middle-button drag pans the viewport.
 - While playing in zoomed view, the viewport follows the playhead when the playhead leaves the `15%..75%` range of the visible timeline.
@@ -91,11 +91,11 @@ Implemented capabilities:
 - The top panel shows the loaded audio file name only.
 - Analysis-completion details such as sample count, section count, or cue count are not shown in the header.
 - BPM is shown as a metrics value instead of in the title panel.
-- The legacy `Bass`, `Mid`, and `Treble` metric labels display the render-facing `AudioFrame.b`, `AudioFrame.m`, and `AudioFrame.t` values. In the current worker contract those values are smoothed density, melody-presence, and fx-presence projections, not raw crossover bands.
+- The dashboard metric labels are `Density`, `Melody Presence`, and `FX Presence` for the render-facing `AudioFrame.b`, `AudioFrame.m`, and `AudioFrame.t` values. Those fields remain legacy compatibility projections, not raw crossover bands.
 - The metrics panel can be expanded or collapsed from a compact control above the seekbar.
 - The metrics grid uses the original card-style layout and responds to viewport width.
 - The cue metric card was removed.
-- `Music Block & Dynamics` was renamed to English and occupies one grid unit.
+- `Dynamics State` occupies one grid unit.
 - The seekbar is a minimal rectangular full-width control aligned with the metrics visual style.
 - The top controls, bottom playback section, and open panels fade out after user inactivity.
 - Pointer, keyboard, touch, and mouse activity reveal the chrome again.
@@ -119,9 +119,9 @@ Browser-level file loading and `AudioContext.decodeAudioData` failures are surfa
 
 Beat event types are assigned by the analyzer worker from smoothed visual-feature context after spectral-flux peak picking:
 
-- Type 3 is emitted when smoothed fx presence is greater than `0.6`.
-- Type 2 is emitted when fx does not pass that threshold and smoothed density is greater than `0.7`.
-- Type 1 is the fallback for all other accepted beat peaks.
+- Type 3 is the `fx/high-transient hit`, emitted when smoothed fx presence is greater than `0.6`.
+- Type 2 is the `dense impact hit`, emitted when fx does not pass that threshold and smoothed density is greater than `0.7`.
+- Type 1 is the `default spectral-flux hit`, used for all other accepted beat peaks.
 
 The analyzer also publishes BPM-aligned `BarAnalysis` entries and RMS fields on `TrackSection`. Older payloads are normalized by `AudioEngine.normalizeTrackAnalysis()` so missing bar/RMS fields fall back safely instead of breaking the UI.
 

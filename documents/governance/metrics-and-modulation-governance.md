@@ -90,7 +90,7 @@ Preferred:
 - Tension
 - Buildup
 
-Legacy labels may remain only if explicitly marked as legacy projections in code, docs, and tests.
+The dashboard now uses the preferred labels above. The internal `AudioFrame.b/m/t` fields remain only as explicitly documented legacy compatibility projections in code, docs, and tests.
 
 ## Ownership Rules
 
@@ -140,7 +140,7 @@ Example:
 AudioFrame.b
 source: worker spectral/context features
 meaning: smoothed density projection
-consumer: legacy dashboard, classic renderer compatibility
+consumer: dashboard Density metric, renderer compatibility
 status: legacy projection, not canonical bass
 ```
 
@@ -186,12 +186,12 @@ Production metrics should not show modulation-bus values unless the label clearl
 
 ## Current Risk Areas
 
-The following are known unstable or ambiguous until audited and refactored:
+The following remain compatibility or audit areas:
 
 1. `AudioFrame.b`
 2. `AudioFrame.m`
 3. `AudioFrame.t`
-4. dashboard `Bass/Mid/Treble` labels
+4. historical references to dashboard `Bass/Mid/Treble` labels in older docs or acceptance notes
 5. duplication between `AudioFrame.m/t` and `VisualFeatureFrame.melody/fx`
 6. use of `bass/mid/treble` inside `BarAnalysis`
 7. mapping from musical features into `State.modulation`

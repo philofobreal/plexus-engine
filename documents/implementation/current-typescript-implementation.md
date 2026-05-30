@@ -45,9 +45,9 @@ The accepted worker failure payload is:
 
 `trackAnalysis` is the offline visual-music layer. It contains bar-level dynamics, section-level structure, recurring temporal patterns, visual cue events, significant moments, per-frame feature vectors for melody, vocal, fx, density, brightness, and tension, plus dramaturgical `buildupConfidence` and `tensionTrends`. Effects should read these precomputed values from shared state during playback instead of running analysis in the render loop.
 
-The analyzer worker derives these values from a fixed 1024-sample FFT pipeline. Each frame is Hann-windowed before the FFT, then the worker calculates spectral flux, relative bass/mid/high magnitude bands, spectral centroid, and spectral flatness. Harmonic stability, pitched transient confidence, and a simple vocal formant ratio separate melody, vocal, and fx projections more reliably than raw band ratios alone. The render-facing `AudioFrame` values are smoothed projections of those spectral features: `e` is normalized RMS energy, `b` is density, `m` is melody presence, and `t` is fx presence. Beat events are selected from spectral-flux peaks and classified from the smoothed density/fx context: fx presence above `0.6` emits type 3, otherwise density above `0.7` emits type 2, and all other accepted peaks emit type 1.
+The analyzer worker derives these values from a fixed 1024-sample FFT pipeline. Each frame is Hann-windowed before the FFT, then the worker calculates spectral flux, relative bass/mid/high magnitude bands, spectral centroid, and spectral flatness. Harmonic stability, pitched transient confidence, and a simple vocal formant ratio separate melody, vocal, and fx projections more reliably than raw band ratios alone. The render-facing `AudioFrame` values are smoothed compatibility projections of those spectral features: `e` is normalized RMS energy, `b` is a legacy field containing density projection rather than bass, `m` is a legacy field containing melody-presence projection rather than mid band, and `t` is a legacy field containing FX-presence projection rather than treble. Beat events are selected from spectral-flux peaks and classified from the smoothed density/fx context: fx presence above `0.6` emits type 3, otherwise density above `0.7` emits type 2, and all other accepted peaks emit type 1.
 
-Bar analysis is derived from BPM-aligned four-beat windows. Each `BarAnalysis` entry stores `start`, `end`, `energy`, `density`, `avgRms`, `peakRms`, bass/mid/treble ratios, macro `HIGH`/`LOW` state, and dominant feature. `TrackSection` entries also carry `avgRms` and `peakRms`. `AudioEngine.normalizeTrackAnalysis()` backfills these fields for older analysis payloads or presets that do not yet contain the expanded contract.
+Bar analysis is derived from BPM-aligned four-beat windows. Each `BarAnalysis` entry stores `start`, `end`, `energy`, `density`, `avgRms`, `peakRms`, BarAnalysis bass/mid/treble spectral-band ratios, macro `HIGH`/`LOW` state, and dominant feature. `TrackSection` entries also carry `avgRms` and `peakRms`. `AudioEngine.normalizeTrackAnalysis()` backfills these fields for older analysis payloads or presets that do not yet contain the expanded contract.
 
 Recurring temporal patterns are detected heuristically from full-track section signatures. The worker groups similar section-level energy, density, label, and dominant-feature signatures, publishes repeated groups as `MusicPattern` entries, and emits `pattern` cue events for each occurrence so effects can react when a known musical shape returns.
 
@@ -58,7 +58,7 @@ The dramaturgy engine builds a normalized pressure curve from `feature.tension *
 `State.modulation` is the render-facing music abstraction:
 
 - `kineticTension`: vocal, melody, tension, cue, and dramaturgy pressure.
-- `lowFrequencyDrive`: density, bass-like frame drive, and energy.
+- `lowFrequencyDrive`: density/energy-driven animation signal.
 - `spectralChaos`: fx, brightness, and high transient pressure.
 - `rhythmicImpulse`: beat and cue decay impulses.
 - `macroMomentum`: block-level energy and long-form momentum.
@@ -90,7 +90,7 @@ The top-right timeline control opens a fullscreen inspection overlay rather than
 
 Zoom and pan are local UI viewport transforms. `timelineZoomLevel` is clamped from `1` to `16`; `timelineScrollOffsetTime` stores the visible window start in seconds. The visible duration is `State.duration / timelineZoomLevel`, time-to-x mapping is `((time - viewport.start) / viewport.duration) * width`, and x-to-time mapping is `viewport.start + (x / width) * viewport.duration`. Wheel zoom keeps the cursor's time stable by recalculating `timelineScrollOffsetTime` after the zoom change. Normal left drag always scrubs/seeks; Shift-drag or middle-button drag pans. During playback, `followTimelinePlayhead()` recenters the viewport when the playhead leaves the `15%..75%` visible range.
 
-Timeline hover uses a DOM tooltip instead of canvas text. `#timeline-tooltip` is positioned next to the pointer and reports the hovered time, zoom, section, bar state and RMS/B/M/T data, buildup pressure, tension trend, and nearby cue where available. Keeping the tooltip in HTML avoids redrawing text-heavy canvas overlays on every pointer move.
+Timeline hover uses a DOM tooltip instead of canvas text. `#timeline-tooltip` is positioned next to the pointer and reports the hovered time, zoom, section, bar state, RMS, BarAnalysis bass/mid/treble spectral-band ratios, buildup pressure, tension trend, and nearby cue where available. Keeping the tooltip in HTML avoids redrawing text-heavy canvas overlays on every pointer move.
 
 ## Performance Notes
 
@@ -120,10 +120,10 @@ Detailed documentation:
 ## AC Clarifications
 
 - **AC 1.2 - Loading state:** Selecting a new file must stop playback, invalidate previous analysis, terminate any active worker, disable `Play` and `Seek`, reset visible playback position to `0:00`, and re-enable controls only after an accepted analysis result.
-- **AC 1.3 / VT-7 - End state:** In `Loop` mode, natural track end resets the current source and immediately starts playback from `0:00`. In `Once` mode, natural track end resets playback time, seek bar, `Play` label, active strategy text, beat decay, snare flash, cue decay, and visual event indexes.
+- **AC 1.3 / VT-7 - End state:** In `Loop` mode, natural track end resets the current source and immediately starts playback from `0:00`. In `Once` mode, natural track end resets playback time, seek bar, `Play` label, active strategy text, beat decay, dense impact flash, cue decay, and visual event indexes.
 - **AC 1.4 - Seek:** Finished seeking must use the audio engine `seek()` path so playback offset, visible time, paused time, source-node lifecycle, and visual beat-event index are aligned in one transition. In-progress pointer or slider dragging must use `scrubTime` and must not call `seek()` repeatedly.
 - **AC 1.5 - Decode failure UI:** Browser-level audio decode or file-load failures must leave `Play` and `Seek` disabled, re-enable file selection, and show a file-load error in the dashboard.
-- **AC 3.6 - Beat event classification:** Beat type classification is part of the analyzer contract: smoothed fx presence greater than `0.6` maps to type 3, otherwise smoothed density greater than `0.7` maps to type 2, and the fallback maps to type 1.
+- **AC 3.6 - Beat event classification:** Beat type classification is part of the analyzer contract: smoothed fx presence greater than `0.6` maps to type 3 (`fx/high-transient hit`), otherwise smoothed density greater than `0.7` maps to type 2 (`dense impact hit`), and the fallback maps to type 1 (`default spectral-flux hit`).
 - **AC 5.2 - Analyzer bands:** The current worker uses Hann-windowed FFT spectral features rather than the older IIR crossover wording from the prototype.
 - **AC 5.4 - Worker output:** The worker success payload includes `type`, `requestId`, `bpm`, `frames`, `events`, `hopSize`, and `trackAnalysis`. The worker may also emit typed failure payloads with `type`, `requestId`, `errorCode`, and `message`.
 - **AC 8.1 - Worker and source cleanup:** New file loads must terminate superseded workers and ignore stale worker messages. Audio samples sent to the worker must be an explicit copy when playback still depends on the decoded `AudioBuffer`.

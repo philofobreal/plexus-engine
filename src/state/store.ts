@@ -59,7 +59,7 @@ export const State = {
     activePatternId: null as string | null,
     cueDecay: 0,
     beatDecay: 0,
-    snareFlash: 0,
+    denseImpactFlash: 0,
     modulation: { ...emptyModulation } as ModulationState,
     visualTuning: cloneDefaultVisualTuning(),
     targetTuning: cloneDefaultVisualTuning()

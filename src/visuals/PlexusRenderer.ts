@@ -8,7 +8,7 @@ import { applyTuningMorph, tuneAudioValue, writeModulationBus } from '../config/
 import { P5RendererBackend } from './P5RendererBackend';
 import type { DashboardUI } from '../ui/DashboardUI';
 import type { AudioEngine } from '../audio/AudioEngine';
-import type { VisualCueKind } from '../types';
+import type { AudioFrame, VisualCueKind, VisualFeatureFrame } from '../types';
 
 export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine: AudioEngine) {
     new p5((p: p5) => {
@@ -62,7 +62,7 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
                 while (currentEventIdx < State.events.length && ct >= State.events[currentEventIdx].time) {
                     let ev = State.events[currentEventIdx];
                     State.beatDecay = 1.0;
-                    if (ev.type === 2) State.snareFlash = 1.0;
+                    if (ev.type === 2) State.denseImpactFlash = 1.0;
                     shockwaves.push(new Shockwave(p, tuneAudioValue(ev.intensity, State.visualTuning), State.currentFrame.state, ev.type));
                     currentEventIdx++;
                 }
@@ -81,7 +81,7 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
             }
 
             State.beatDecay *= 0.88;
-            State.snareFlash *= 0.85;
+            State.denseImpactFlash *= 0.85;
             State.cueDecay *= 0.9;
             if (State.cueDecay < 0.02) {
                 State.activeCueKind = null;
@@ -113,11 +113,29 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
 
 function publishCurrentAnalysisFrame(frameIdx: number) {
     if (frameIdx >= 0 && frameIdx < State.frames.length) {
-        State.currentFrame = State.frames[frameIdx];
+        copyAudioFrame(State.frames[frameIdx], State.currentFrame);
     }
     if (frameIdx >= 0 && frameIdx < State.trackAnalysis.features.length) {
-        State.currentFeatures = State.trackAnalysis.features[frameIdx];
+        copyVisualFeatures(State.trackAnalysis.features[frameIdx], State.currentFeatures);
     }
+}
+
+function copyAudioFrame(source: AudioFrame, target: AudioFrame) {
+    target.e = source.e;
+    target.b = source.b;
+    target.m = source.m;
+    target.t = source.t;
+    target.state = source.state;
+    target.eRatio = source.eRatio;
+}
+
+function copyVisualFeatures(source: VisualFeatureFrame, target: VisualFeatureFrame) {
+    target.melody = source.melody;
+    target.vocal = source.vocal;
+    target.fx = source.fx;
+    target.density = source.density;
+    target.brightness = source.brightness;
+    target.tension = source.tension;
 }
 
 function decayCurrentAnalysisFrame() {
@@ -136,7 +154,7 @@ function decayCurrentAnalysisFrame() {
 
 function resetTransientVisualState() {
     State.beatDecay = 0;
-    State.snareFlash = 0;
+    State.denseImpactFlash = 0;
     State.cueDecay = 0;
     State.modulation.kineticTension = 0;
     State.modulation.lowFrequencyDrive = 0;

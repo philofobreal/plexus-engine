@@ -77,7 +77,7 @@ function drawPolygonalNetwork(backend: VisualRendererBackend, particles: Particl
                             (p2.pos.x - p3.pos.x)**2 + (p2.pos.y - p3.pos.y)**2 < maxDistSq * 0.6 * State.visualTuning.polygonSize) {
                             polysDrawn++;
                             let baseAlpha = Math.min(10 + (State.modulation.rhythmicImpulse * 40), 50) * State.visualTuning.polygonAlpha;
-                            let finalPolyAlpha = baseAlpha + (State.snareFlash * 150 * State.visualTuning.polygonFlash);
+                            let finalPolyAlpha = baseAlpha + (State.denseImpactFlash * 150 * State.visualTuning.polygonFlash);
                             backend.fill(polygonColor[0], polygonColor[1], polygonColor[2], finalPolyAlpha); backend.noStroke();
                             backend.triangle(p1.pos.x, p1.pos.y, p2.pos.x, p2.pos.y, p3.pos.x, p3.pos.y);
                             break;

@@ -1,7 +1,7 @@
 export interface BeatEvent {
     time: number;
     intensity: number;
-    type: 1 | 2 | 3; // 1: Kick, 2: Snare/Drop, 3: Hi-hat
+    type: 1 | 2 | 3; // 1: default spectral-flux hit, 2: dense impact hit, 3: fx/high-transient hit
 }
 
 export type AutoState = 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
@@ -57,9 +57,13 @@ export interface ModulationState {
 }
 
 export interface AudioFrame {
+    /** Normalized RMS energy. */
     e: number;
+    /** Legacy compatibility field: density projection, not bass. */
     b: number;
+    /** Legacy compatibility field: melody-presence projection, not mid band. */
     m: number;
+    /** Legacy compatibility field: FX-presence projection, not treble. */
     t: number;
     state: AutoState;
     eRatio: number;

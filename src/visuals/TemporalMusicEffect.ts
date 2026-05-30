@@ -90,7 +90,7 @@ function drawTemporalPolygonNetwork(backend: VisualRendererBackend, particles: P
     let maxDist = (104 + State.modulation.lowFrequencyDrive * 34 + density * 54 + resonance.strength * 24) * State.visualTuning.temporalNetworkDistance;
     let maxDistSq = maxDist * maxDist;
     let lineLimit = 4 + Math.floor(density * 3 + resonance.strength * 2);
-    let polyLimit = 1 + Math.floor(Math.max(density, State.snareFlash) * 2);
+    let polyLimit = 1 + Math.floor(Math.max(density, State.denseImpactFlash) * 2);
     const polygonDistanceFactor = maxDistSq * 0.55 * State.visualTuning.polygonSize;
     hueToRgbInto(lineColor, State.visualTuning.lineHue + melody * 45 + fx * 30, 0.68, 0.72);
     hueToRgbInto(polygonColor, State.visualTuning.polygonHue + vocal * 40 + fx * 70, 0.7, 0.68);
@@ -129,7 +129,7 @@ function drawTemporalPolygonNetwork(backend: VisualRendererBackend, particles: P
                         if ((p1.pos.x - p3.pos.x)**2 + (p1.pos.y - p3.pos.y)**2 < polygonDistanceFactor &&
                             (p2.pos.x - p3.pos.x)**2 + (p2.pos.y - p3.pos.y)**2 < polygonDistanceFactor) {
                             polysDrawn++;
-                            let alpha = Math.min(8 + density * 28 + resonance.strength * 22 + State.snareFlash * 105 * State.visualTuning.polygonFlash, 135) * State.visualTuning.temporalPolygonAlpha * State.visualTuning.polygonAlpha;
+                            let alpha = Math.min(8 + density * 28 + resonance.strength * 22 + State.denseImpactFlash * 105 * State.visualTuning.polygonFlash, 135) * State.visualTuning.temporalPolygonAlpha * State.visualTuning.polygonAlpha;
                             backend.fill(polygonColor[0] + melody * 24, polygonColor[1], polygonColor[2], alpha);
                             backend.noStroke();
                             backend.triangle(p1.pos.x, p1.pos.y, p2.pos.x, p2.pos.y, p3.pos.x, p3.pos.y);

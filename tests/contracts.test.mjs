@@ -59,6 +59,70 @@ test('worker contract includes request id, hop size, success, and error messages
   assert.match(worker, /type:\s*'analysis_error'/);
 });
 
+test('BeatEvent type comments use semantic hit labels, not instrument names', () => {
+  const types = read('src/types/index.ts');
+
+  assert.match(types, /type: 1 \| 2 \| 3; \/\/ 1: default spectral-flux hit, 2: dense impact hit, 3: fx\/high-transient hit/);
+  assert.doesNotMatch(types, /Kick/);
+  assert.doesNotMatch(types, /Snare/);
+  assert.doesNotMatch(types, /Hi-hat/);
+});
+
+test('active docs use semantic BeatEvent and dashboard metric labels', () => {
+  const activeDocs = [
+    'documents/acceptance-criteria/usage-acs.md',
+    'documents/features/visual-tuning-presets-and-playback-ui.md',
+    'documents/acceptance-criteria/visual-tuning-presets-and-playback-ui-acs.md',
+    'documents/audits/metrics-audit-matrix.md',
+    'documents/metrics/metrics-source-audit.md',
+    'documents/implementation/current-typescript-implementation.md'
+  ].map(read).join('\n');
+
+  assert.match(activeDocs, /default spectral-flux hit/);
+  assert.match(activeDocs, /dense impact hit/);
+  assert.match(activeDocs, /fx\/high-transient hit/);
+  assert.match(activeDocs, /denseImpactFlash/);
+  assert.match(activeDocs, /Density/);
+  assert.match(activeDocs, /Melody Presence/);
+  assert.match(activeDocs, /FX Presence/);
+  assert.match(activeDocs, /Beat Impulse/);
+  assert.match(activeDocs, /Dynamics State/);
+  assert.doesNotMatch(activeDocs, /Kick|Snare|Hi-Hat|Hi-hat|Snare\/Drop|Snare\/Clap/);
+  assert.doesNotMatch(activeDocs, /Beat Hit|Music Block & Dynamics|legacy Bass|legacy Mid|legacy Treble/);
+});
+
+test('active docs are free of mojibake and resolved-risk headings', () => {
+  const activeDocs = [
+    'documents/acceptance-criteria/usage-acs.md',
+    'documents/features/visual-tuning-presets-and-playback-ui.md',
+    'documents/acceptance-criteria/visual-tuning-presets-and-playback-ui-acs.md',
+    'documents/audits/metrics-audit-matrix.md',
+    'documents/metrics/metrics-source-audit.md',
+    'documents/implementation/current-typescript-implementation.md'
+  ].map(read).join('\n');
+
+  assert.doesNotMatch(activeDocs, /Ă|Â|â|đ|ď|Ž|Ť/);
+  assert.doesNotMatch(activeDocs, /Beat types are overnamed/);
+  assert.doesNotMatch(activeDocs, /bass-like frame drive/);
+  assert.match(activeDocs, /Beat type labels are resolved/);
+  assert.match(activeDocs, /density\/energy-driven animation signal/);
+});
+
+test('active docs allow bass mid treble only as BarAnalysis spectral-band ratios', () => {
+  const activeDocs = [
+    'documents/acceptance-criteria/usage-acs.md',
+    'documents/features/visual-tuning-presets-and-playback-ui.md',
+    'documents/acceptance-criteria/visual-tuning-presets-and-playback-ui-acs.md',
+    'documents/audits/metrics-audit-matrix.md',
+    'documents/metrics/metrics-source-audit.md',
+    'documents/implementation/current-typescript-implementation.md'
+  ].map(read).join('\n');
+
+  assert.match(activeDocs, /BarAnalysis bass\/mid\/treble spectral-band ratios/);
+  assert.match(activeDocs, /`BarAnalysis\.bass`|`TrackAnalysis\.bars\[\]\.bass`/);
+  assert.doesNotMatch(activeDocs, /dashboard Bass|dashboard Mid|dashboard Treble|Dashboard `Bass`|Dashboard `Mid`|Dashboard `Treble`/);
+});
+
 test('visual track analysis is precomputed and exposed through shared state', () => {
   const worker = read('src/audio/analyzer.worker.ts');
   const audio = read('src/audio/AudioEngine.ts');
@@ -223,6 +287,15 @@ test('analysis worker uses spectral FFT features instead of legacy crossover fil
   assert.doesNotMatch(worker, /filterMidHigh/);
 });
 
+test('AudioFrame documents legacy compatibility projections', () => {
+  const types = read('src/types/index.ts');
+
+  assert.match(types, /export interface AudioFrame[\s\S]*Normalized RMS energy\.[\s\S]*e: number;/);
+  assert.match(types, /export interface AudioFrame[\s\S]*Legacy compatibility field: density projection, not bass\.[\s\S]*b: number;/);
+  assert.match(types, /export interface AudioFrame[\s\S]*Legacy compatibility field: melody-presence projection, not mid band\.[\s\S]*m: number;/);
+  assert.match(types, /export interface AudioFrame[\s\S]*Legacy compatibility field: FX-presence projection, not treble\.[\s\S]*t: number;/);
+});
+
 test('analysis worker produces deterministic spectral analysis payloads', () => {
   const sampleRate = 44_100;
   const totalSamples = 1024 * 64;
@@ -295,6 +368,36 @@ test('playback seek and stop keep canonical time and visual sync callbacks align
   assert.match(ui, /setPlaybackUi\(false\)/);
 });
 
+test('renderer keeps accepted worker results immutable while decaying render copies', () => {
+  const renderer = read('src/visuals/PlexusRenderer.ts');
+
+  assert.match(renderer, /copyAudioFrame\(State\.frames\[frameIdx\], State\.currentFrame\)/);
+  assert.match(renderer, /copyVisualFeatures\(State\.trackAnalysis\.features\[frameIdx\], State\.currentFeatures\)/);
+  assert.doesNotMatch(renderer, /State\.currentFrame\s*=\s*State\.frames\[frameIdx\]/);
+  assert.doesNotMatch(renderer, /State\.currentFeatures\s*=\s*State\.trackAnalysis\.features\[frameIdx\]/);
+  assert.match(renderer, /function decayCurrentAnalysisFrame\(\)[\s\S]*State\.currentFrame\.e \*= 0\.9/);
+  assert.match(renderer, /function copyAudioFrame\(source: AudioFrame, target: AudioFrame\)/);
+  assert.match(renderer, /function copyVisualFeatures\(source: VisualFeatureFrame, target: VisualFeatureFrame\)/);
+});
+
+test('dense impact flash preserves former type 2 visual behavior', () => {
+  const state = read('src/state/store.ts');
+  const audio = read('src/audio/AudioEngine.ts');
+  const renderer = read('src/visuals/PlexusRenderer.ts');
+  const classic = read('src/visuals/ClassicPlexusEffect.ts');
+  const temporal = read('src/visuals/TemporalMusicEffect.ts');
+
+  assert.match(state, /denseImpactFlash: 0/);
+  assert.match(audio, /State\.denseImpactFlash = 0/);
+  assert.match(renderer, /if \(ev\.type === 2\) State\.denseImpactFlash = 1\.0/);
+  assert.match(renderer, /State\.denseImpactFlash \*= 0\.85/);
+  assert.match(renderer, /State\.denseImpactFlash = 0/);
+  assert.match(classic, /State\.denseImpactFlash \* 150 \* State\.visualTuning\.polygonFlash/);
+  assert.match(temporal, /Math\.max\(density, State\.denseImpactFlash\)/);
+  assert.match(temporal, /State\.denseImpactFlash \* 105 \* State\.visualTuning\.polygonFlash/);
+  assert.doesNotMatch(state + audio + renderer + classic + temporal, /snareFlash/);
+});
+
 test('player UI supports background controls, metrics toggle, draggable tuning, and loop mode', () => {
   const main = read('src/main.ts');
   const state = read('src/state/store.ts');
@@ -307,7 +410,16 @@ test('player UI supports background controls, metrics toggle, draggable tuning, 
   assert.match(main, /id="toggle-metrics"/);
   assert.match(main, /class="bottom-toolbar"/);
   assert.match(main, /id="metrics-grid"/);
-  assert.match(main, /Music Block & Dynamics/);
+  assert.match(main, /Density/);
+  assert.match(main, /Melody Presence/);
+  assert.match(main, /FX Presence/);
+  assert.match(main, /Beat Impulse/);
+  assert.match(main, /Dynamics State/);
+  assert.doesNotMatch(main, /<div class="m-label">Bass<\/div>/);
+  assert.doesNotMatch(main, /<div class="m-label">Mid<\/div>/);
+  assert.doesNotMatch(main, /<div class="m-label">Treble<\/div>/);
+  assert.doesNotMatch(main, /Beat Hit/);
+  assert.doesNotMatch(main, /Music Block & Dynamics/);
   assert.match(main, /id="visual-preset-list"[\s\S]*id="toggle-loop"/);
   assert.doesNotMatch(main, /id="toggle-loop"[\s\S]*id="toggle-metrics"[\s\S]*id="toggle-tuning-panel"/);
   assert.match(state, /loopPlayback: true/);
