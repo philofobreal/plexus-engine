@@ -32,6 +32,13 @@ export class DashboardUI {
     private timelineDidDrag = false;
     private timelineTooltip: HTMLDivElement;
     private scrubTime: number | null = null;
+    private lastTimelineAnalysisRef: unknown = null;
+    private lastTimelineDrawTime = -Infinity;
+    private lastTimelineDrawWidth = 0;
+    private lastTimelineDrawHeight = 0;
+    private lastTimelineDrawZoom = 1;
+    private lastTimelineDrawScroll = 0;
+    private lastTimelineDrawScrubTime: number | null = null;
     private tuningDragOffset = { x: 0, y: 0 };
     private els: Record<string, HTMLElement>;
     private engine: AudioEngine;
@@ -628,6 +635,37 @@ export class DashboardUI {
         });
     }
 
+    private requestDashboardTimelineDraw() {
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        const rect = canvas.getBoundingClientRect();
+        if (!this.shouldDrawTimelineForDashboard(rect)) return;
+        this.rememberTimelineDrawState(rect);
+        this.requestTimelineDraw();
+    }
+
+    private shouldDrawTimelineForDashboard(rect: DOMRect) {
+        if (rect.width <= 0 || rect.height <= 0) return false;
+        if (State.duration <= 0) return this.lastTimelineDrawWidth !== rect.width || this.lastTimelineDrawHeight !== rect.height;
+        if (this.lastTimelineAnalysisRef !== State.trackAnalysis) return true;
+        if (this.lastTimelineDrawWidth !== rect.width || this.lastTimelineDrawHeight !== rect.height) return true;
+        if (this.lastTimelineDrawZoom !== this.timelineZoomLevel || this.lastTimelineDrawScroll !== this.timelineScrollOffsetTime) return true;
+        if (this.lastTimelineDrawScrubTime !== this.scrubTime) return true;
+
+        const viewport = this.getTimelineViewport();
+        const visibleSecondsPerPixel = viewport.duration / Math.max(1, rect.width);
+        return Math.abs(State.currentTime - this.lastTimelineDrawTime) >= visibleSecondsPerPixel;
+    }
+
+    private rememberTimelineDrawState(rect: DOMRect) {
+        this.lastTimelineAnalysisRef = State.trackAnalysis;
+        this.lastTimelineDrawTime = State.currentTime;
+        this.lastTimelineDrawWidth = rect.width;
+        this.lastTimelineDrawHeight = rect.height;
+        this.lastTimelineDrawZoom = this.timelineZoomLevel;
+        this.lastTimelineDrawScroll = this.timelineScrollOffsetTime;
+        this.lastTimelineDrawScrubTime = this.scrubTime;
+    }
+
     private animateTimelineResize() {
         let frames = 0;
         const redraw = () => {
@@ -656,7 +694,10 @@ export class DashboardUI {
         ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
         ctx.clearRect(0, 0, rect.width, rect.height);
 
-        if (State.duration <= 0) return;
+        if (State.duration <= 0) {
+            this.rememberTimelineDrawState(rect);
+            return;
+        }
 
         this.followTimelinePlayhead();
         const viewport = this.getTimelineViewport();
@@ -668,6 +709,7 @@ export class DashboardUI {
         this.drawTimelineTrends(ctx, rect.width, rect.height, viewport);
         this.drawTimelineCueMarkers(ctx, rect.width, rect.height, viewport);
         this.drawTimelinePlayhead(ctx, rect.width, rect.height, viewport);
+        this.rememberTimelineDrawState(rect);
     }
 
     private clearDramaturgyTimeline() {
@@ -1230,6 +1272,6 @@ export class DashboardUI {
             this.els.barProg.style.width = "0%";
         }
 
-        this.drawDramaturgyTimeline();
+        this.requestDashboardTimelineDraw();
     }
 }
