@@ -1,8 +1,14 @@
-import { getBackgroundClearStyle, hueToRgb, shouldUseExpensiveGlow } from '../config/visualTuning';
+import { getBackgroundClearStyle, hueToRgbInto, shouldUseExpensiveGlow } from '../config/visualTuning';
 import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
 import type { VisualRendererBackend } from './RendererBackend';
+
+const glowColor: [number, number, number] = [0, 0, 0];
+const coreColor: [number, number, number] = [0, 0, 0];
+const lineColor: [number, number, number] = [0, 0, 0];
+const polygonColor: [number, number, number] = [0, 0, 0];
+const nodeColor: [number, number, number] = [0, 0, 0];
 
 export function drawClassicPlexusEffect(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[]) {
     let bgFlash = State.modulation.rhythmicImpulse * 12;
@@ -31,25 +37,25 @@ function drawCenterDynamics(backend: VisualRendererBackend, shockwaves: Shockwav
     let isLowMode = State.currentFrame.state.startsWith('LOW');
     let glowRadius = Math.max(backend.width, backend.height) * (0.3 + State.modulation.lowFrequencyDrive * 0.3) * State.visualTuning.circleSize;
 
-    let [glowR, glowG, glowB] = hueToRgb(State.visualTuning.circleBackgroundHue + (isLowMode ? 105 : 0), 0.74, 0.5);
+    hueToRgbInto(glowColor, State.visualTuning.circleBackgroundHue + (isLowMode ? 105 : 0), 0.74, 0.5);
     let glowAlpha = Math.min((0.3 + State.modulation.lowFrequencyDrive * 0.4) * State.visualTuning.circleBackgroundAlpha, 1);
-    if (shouldUseExpensiveGlow(State.visualTuning)) {
-        backend.radialGlow(cx, cy, glowRadius, [glowR, glowG, glowB], glowAlpha);
+    if (State.isPlaying && shouldUseExpensiveGlow(State.visualTuning)) {
+        backend.radialGlow(cx, cy, glowRadius, glowColor, glowAlpha);
     }
 
     let coreRadius = (8 + State.modulation.rhythmicImpulse * 40) * State.visualTuning.circleSize;
-    let [coreR, coreG, coreB] = hueToRgb(State.visualTuning.circleHue, 0.28, 0.9);
+    hueToRgbInto(coreColor, State.visualTuning.circleHue, 0.28, 0.9);
     backend.noStroke();
-    backend.fill(coreR, coreG, coreB, (80 + State.modulation.rhythmicImpulse * 175) * State.visualTuning.circleAlpha);
+    backend.fill(coreColor[0], coreColor[1], coreColor[2], (80 + State.modulation.rhythmicImpulse * 175) * State.visualTuning.circleAlpha);
     backend.circle(cx, cy, coreRadius);
 }
 
 function drawPolygonalNetwork(backend: VisualRendererBackend, particles: Particle[]) {
     let maxDist = (State.isPlaying ? 130 + (State.modulation.lowFrequencyDrive * 50) : 80) * State.visualTuning.lineDistance;
     let maxDistSq = maxDist * maxDist;
-    let [lineR, lineG, lineB] = hueToRgb(State.visualTuning.lineHue);
-    let [polyR, polyG, polyB] = hueToRgb(State.visualTuning.polygonHue, 0.58, 0.82);
-    let [nodeR, nodeG, nodeB] = hueToRgb(State.visualTuning.circleHue, 0.35, 0.92);
+    hueToRgbInto(lineColor, State.visualTuning.lineHue);
+    hueToRgbInto(polygonColor, State.visualTuning.polygonHue, 0.58, 0.82);
+    hueToRgbInto(nodeColor, State.visualTuning.circleHue, 0.35, 0.92);
 
     for (let i = 0; i < particles.length; i++) {
         let p1 = particles[i]; let linesDrawn = 0, polysDrawn = 0;
@@ -60,7 +66,7 @@ function drawPolygonalNetwork(backend: VisualRendererBackend, particles: Particl
             if (dist12Sq < maxDistSq) {
                 linesDrawn++; let d12 = Math.sqrt(dist12Sq);
                 let lineAlpha = (linearMap(d12, 0, maxDist, 180, 0) + (State.modulation.rhythmicImpulse * 75)) * State.visualTuning.lineAlpha;
-                backend.stroke(lineR - State.modulation.spectralChaos * 25, lineG, lineB, lineAlpha);
+                backend.stroke(lineColor[0] - State.modulation.spectralChaos * 25, lineColor[1], lineColor[2], lineAlpha);
                 backend.strokeWeight((0.5 + State.modulation.rhythmicImpulse * 2) * State.visualTuning.lineWeight);
                 backend.line(p1.pos.x, p1.pos.y, p2.pos.x, p2.pos.y);
 
@@ -72,7 +78,7 @@ function drawPolygonalNetwork(backend: VisualRendererBackend, particles: Particl
                             polysDrawn++;
                             let baseAlpha = Math.min(10 + (State.modulation.rhythmicImpulse * 40), 50) * State.visualTuning.polygonAlpha;
                             let finalPolyAlpha = baseAlpha + (State.snareFlash * 150 * State.visualTuning.polygonFlash);
-                            backend.fill(polyR, polyG, polyB, finalPolyAlpha); backend.noStroke();
+                            backend.fill(polygonColor[0], polygonColor[1], polygonColor[2], finalPolyAlpha); backend.noStroke();
                             backend.triangle(p1.pos.x, p1.pos.y, p2.pos.x, p2.pos.y, p3.pos.x, p3.pos.y);
                             break;
                         }
@@ -81,7 +87,7 @@ function drawPolygonalNetwork(backend: VisualRendererBackend, particles: Particl
             }
             if (linesDrawn > 6) break;
         }
-        backend.noStroke(); backend.fill(nodeR, nodeG, nodeB, (120 + State.modulation.rhythmicImpulse * 135) * State.visualTuning.circleAlpha);
+        backend.noStroke(); backend.fill(nodeColor[0], nodeColor[1], nodeColor[2], (120 + State.modulation.rhythmicImpulse * 135) * State.visualTuning.circleAlpha);
         backend.circle(p1.pos.x, p1.pos.y, (2 + State.modulation.rhythmicImpulse * 4) * State.visualTuning.circleSize);
     }
 }

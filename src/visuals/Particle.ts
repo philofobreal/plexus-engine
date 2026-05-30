@@ -40,6 +40,7 @@ export class Particle {
             let heading = this.vel.heading() + this.p.random(-State.visualTuning.particleBassTurn, State.visualTuning.particleBassTurn) * bass;
             this.vel.set(this.p.cos(heading), this.p.sin(heading));
         }
-        this.pos.add(p5.Vector.mult(this.vel, speed));
+        this.pos.x += this.vel.x * speed;
+        this.pos.y += this.vel.y * speed;
     }
 }

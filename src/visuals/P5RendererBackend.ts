@@ -3,8 +3,14 @@ import type { VisualRendererBackend } from './RendererBackend';
 
 export class P5RendererBackend implements VisualRendererBackend {
     private readonly p: p5;
-    private lastStrokeColor = '';
-    private lastFillColor = '';
+    private lastStrokeR = NaN;
+    private lastStrokeG = NaN;
+    private lastStrokeB = NaN;
+    private lastStrokeA = NaN;
+    private lastFillR = NaN;
+    private lastFillG = NaN;
+    private lastFillB = NaN;
+    private lastFillA = NaN;
     private lastStrokeWeight = -1;
     private strokeActive = true;
     private fillActive = true;
@@ -44,19 +50,23 @@ export class P5RendererBackend implements VisualRendererBackend {
     }
 
     fill(r: number, g: number, b: number, a = 255) {
-        const key = `${r},${g},${b},${a}`;
-        if (!this.fillActive || this.lastFillColor !== key) {
+        if (!this.fillActive || this.lastFillR !== r || this.lastFillG !== g || this.lastFillB !== b || this.lastFillA !== a) {
             this.p.fill(r, g, b, a);
-            this.lastFillColor = key;
+            this.lastFillR = r;
+            this.lastFillG = g;
+            this.lastFillB = b;
+            this.lastFillA = a;
             this.fillActive = true;
         }
     }
 
     stroke(r: number, g: number, b: number, a = 255) {
-        const key = `${r},${g},${b},${a}`;
-        if (!this.strokeActive || this.lastStrokeColor !== key) {
+        if (!this.strokeActive || this.lastStrokeR !== r || this.lastStrokeG !== g || this.lastStrokeB !== b || this.lastStrokeA !== a) {
             this.p.stroke(r, g, b, a);
-            this.lastStrokeColor = key;
+            this.lastStrokeR = r;
+            this.lastStrokeG = g;
+            this.lastStrokeB = b;
+            this.lastStrokeA = a;
             this.strokeActive = true;
         }
     }
