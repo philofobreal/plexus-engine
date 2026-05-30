@@ -52,6 +52,8 @@ export const defaultVisualTuning: VisualTuningConfig = {
     temporalPolygonAlpha: 1
 };
 
+const visualTuningKeys = Object.keys(defaultVisualTuning) as VisualTuningKey[];
+
 export const visualTuningControls: VisualTuningControl[] = [
     { key: 'audioSensitivity', label: 'Music sensitivity', group: 'Audio', min: 0.1, max: 4, step: 0.05, unit: 'x' },
     { key: 'transitionSpeed', label: 'Morph speed', group: 'Audio', min: 0.01, max: 1, step: 0.01, unit: 'x' },
@@ -100,7 +102,7 @@ export function normalizeVisualTuningConfig(payload: unknown): VisualTuningConfi
     const source = getVisualTuningSource(payload);
     const next = cloneDefaultVisualTuning();
 
-    for (const key of Object.keys(defaultVisualTuning) as VisualTuningKey[]) {
+    for (const key of visualTuningKeys) {
         const value = source?.[key];
         if (typeof value === 'number' && Number.isFinite(value)) {
             next[key] = value;
@@ -154,39 +156,62 @@ export function computeModulationBus(
     cueDecay: number,
     tuning: VisualTuningConfig
 ): ModulationState {
+    return writeModulationBus(
+        {
+            kineticTension: 0,
+            lowFrequencyDrive: 0,
+            spectralChaos: 0,
+            rhythmicImpulse: 0,
+            macroMomentum: 0
+        },
+        frame,
+        features,
+        beatDecay,
+        cueDecay,
+        tuning
+    );
+}
+
+export function writeModulationBus(
+    target: ModulationState,
+    frame: AudioFrame,
+    features: VisualFeatureFrame,
+    beatDecay: number,
+    cueDecay: number,
+    tuning: VisualTuningConfig
+): ModulationState {
     const sensitivity = getAudioSensitivity(tuning);
 
-    return {
-        kineticTension: scaleUnit(
-            features.vocal * 0.28 +
-            features.melody * 0.22 +
-            features.tension * 0.32 +
-            cueDecay * 0.18,
-            sensitivity
-        ),
-        lowFrequencyDrive: scaleUnit(
-            frame.b * 0.62 +
-            features.density * 0.24 +
-            frame.e * 0.14,
-            sensitivity
-        ),
-        spectralChaos: scaleUnit(
-            frame.t * 0.42 +
-            features.fx * 0.36 +
-            features.brightness * 0.22,
-            sensitivity
-        ),
-        rhythmicImpulse: scaleUnit(
-            Math.max(beatDecay, cueDecay * 0.65),
-            sensitivity
-        ),
-        macroMomentum: scaleUnit(
-            frame.eRatio * 0.58 +
-            frame.e * 0.24 +
-            features.density * 0.18,
-            sensitivity
-        )
-    };
+    target.kineticTension = scaleUnit(
+        features.vocal * 0.28 +
+        features.melody * 0.22 +
+        features.tension * 0.32 +
+        cueDecay * 0.18,
+        sensitivity
+    );
+    target.lowFrequencyDrive = scaleUnit(
+        frame.b * 0.62 +
+        features.density * 0.24 +
+        frame.e * 0.14,
+        sensitivity
+    );
+    target.spectralChaos = scaleUnit(
+        frame.t * 0.42 +
+        features.fx * 0.36 +
+        features.brightness * 0.22,
+        sensitivity
+    );
+    target.rhythmicImpulse = scaleUnit(
+        Math.max(beatDecay, cueDecay * 0.65),
+        sensitivity
+    );
+    target.macroMomentum = scaleUnit(
+        frame.eRatio * 0.58 +
+        frame.e * 0.24 +
+        features.density * 0.18,
+        sensitivity
+    );
+    return target;
 }
 
 export function applyTuningMorph(
@@ -196,7 +221,7 @@ export function applyTuningMorph(
 ): VisualTuningConfig {
     const speed = clamp01(Number.isFinite(transitionSpeed) ? transitionSpeed : defaultVisualTuning.transitionSpeed);
 
-    for (const key of Object.keys(defaultVisualTuning) as VisualTuningKey[]) {
+    for (const key of visualTuningKeys) {
         const currentValue = current[key];
         const targetValue = target[key];
         if (typeof currentValue !== 'number' || typeof targetValue !== 'number') continue;
@@ -260,6 +285,10 @@ function clampBetween(value: number, a: number, b: number): number {
 }
 
 export function hueToRgb(hue: number, saturation = 0.72, lightness = 0.68): [number, number, number] {
+    return hueToRgbInto([0, 0, 0], hue, saturation, lightness);
+}
+
+export function hueToRgbInto(target: [number, number, number], hue: number, saturation = 0.72, lightness = 0.68): [number, number, number] {
     let h = ((hue % 360) + 360) % 360 / 360;
     let q = lightness < 0.5 ? lightness * (1 + saturation) : lightness + saturation - lightness * saturation;
     let p = 2 * lightness - q;
@@ -272,9 +301,8 @@ export function hueToRgb(hue: number, saturation = 0.72, lightness = 0.68): [num
         return p;
     };
 
-    return [
-        Math.round(convert(h + 1 / 3) * 255),
-        Math.round(convert(h) * 255),
-        Math.round(convert(h - 1 / 3) * 255)
-    ];
+    target[0] = Math.round(convert(h + 1 / 3) * 255);
+    target[1] = Math.round(convert(h) * 255);
+    target[2] = Math.round(convert(h - 1 / 3) * 255);
+    return target;
 }

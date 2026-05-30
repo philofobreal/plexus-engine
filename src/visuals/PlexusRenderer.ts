@@ -4,7 +4,7 @@ import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
 import { drawClassicPlexusEffect } from './ClassicPlexusEffect';
 import { drawTemporalMusicEffect } from './TemporalMusicEffect';
-import { applyTuningMorph, computeModulationBus, tuneAudioValue } from '../config/visualTuning';
+import { applyTuningMorph, tuneAudioValue, writeModulationBus } from '../config/visualTuning';
 import { P5RendererBackend } from './P5RendererBackend';
 import type { DashboardUI } from '../ui/DashboardUI';
 import type { AudioEngine } from '../audio/AudioEngine';
@@ -16,6 +16,7 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
         let shockwaves: Shockwave[] = [];
         let currentEventIdx = 0;
         let currentCueIdx = 0;
+        let currentTargetFrameRate = 60;
         const backend = new P5RendererBackend(p);
 
         p.setup = () => {
@@ -43,6 +44,12 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
         });
 
         p.draw = () => {
+            const targetFrameRate = State.isPlaying ? 60 : State.duration > 0 ? 30 : 15;
+            if (currentTargetFrameRate !== targetFrameRate) {
+                currentTargetFrameRate = targetFrameRate;
+                p.frameRate(targetFrameRate);
+            }
+
             applyTuningMorph(State.visualTuning, State.targetTuning, State.targetTuning.transitionSpeed);
 
             let ct = engine.getCurrentTime();
@@ -81,7 +88,8 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
                 State.activePatternId = null;
             }
 
-            State.modulation = computeModulationBus(
+            writeModulationBus(
+                State.modulation,
                 State.currentFrame,
                 State.currentFeatures,
                 State.beatDecay,
@@ -130,13 +138,11 @@ function resetTransientVisualState() {
     State.beatDecay = 0;
     State.snareFlash = 0;
     State.cueDecay = 0;
-    State.modulation = {
-        kineticTension: 0,
-        lowFrequencyDrive: 0,
-        spectralChaos: 0,
-        rhythmicImpulse: 0,
-        macroMomentum: 0
-    };
+    State.modulation.kineticTension = 0;
+    State.modulation.lowFrequencyDrive = 0;
+    State.modulation.spectralChaos = 0;
+    State.modulation.rhythmicImpulse = 0;
+    State.modulation.macroMomentum = 0;
     State.activeCueKind = null;
     State.activePatternId = null;
 }
