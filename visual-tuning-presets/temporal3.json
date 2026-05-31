@@ -5,7 +5,7 @@
     "particleEnergySpeed": 8,
     "particleBeatSpeed": 20,
     "particleBoundaryPull": 0.05,
-    "particleBassTurn": 0.1,
+    "particleActivityTurn": 0.1,
     "shockwaveRadius": 0.2,
     "shockwaveSpeed": 0.25,
     "shockwaveAlpha": 1,
