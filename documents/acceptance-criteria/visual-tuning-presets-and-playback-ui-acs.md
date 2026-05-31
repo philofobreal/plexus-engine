@@ -43,12 +43,13 @@ This document captures the accepted behavior for the current visual tuning and p
 
 - **VT-4.1 Track metadata:** The header shows only the audio file title after load.
 - **VT-4.2 No analysis chatter:** The header does not show completion text, sample count, section count, cue count, or similar analysis internals.
-- **VT-4.3 BPM location:** BPM appears in the metrics panel as a normal metrics value.
+- **VT-4.3 BPM location:** BPM appears in the `#bpm-header-badge` next to the loaded track title, not as a metric card.
 - **VT-4.4 Metrics toggle:** A compact metrics toggle is placed above the seekbar, not in the top-right control group.
 - **VT-4.5 Metrics layout:** Metrics use the original card-like grid layout and adapt by viewport width.
 - **VT-4.6 Cue removal:** The cue metrics block is not displayed.
 - **VT-4.7 Dynamics state size:** `Dynamics State` occupies one metrics grid unit.
-- **VT-4.8 Frame projection labels:** The visible `Density`, `Melody Presence`, and `FX Presence` metric labels project the current `AudioFrame.b`, `AudioFrame.m`, and `AudioFrame.t` values. In the accepted worker contract those fields remain legacy compatibility projections for density, melody presence, and fx presence.
+- **VT-4.8 Frame projection labels:** The visible `Density` and `Melody Presence` metric labels project the current `AudioFrame.b` and `AudioFrame.m` values. `AudioFrame.t` remains a legacy fx-presence compatibility projection for modulation, but the duplicate fx-presence dashboard entry has been removed in favor of the canonical `FX` feature card.
+- **VT-4.9 Removed metric cards:** BPM, Progress, and FX Presence are not present in the metrics grid. BPM is handled by the header badge, Progress by the seekbar/time display, and FX Presence by the canonical `FX` card.
 
 ## VT-5 Seekbar
 
@@ -91,7 +92,7 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-9.2 Preset switching:** Switching presets after audio load must not reset playback state or require reloading the track.
 - **VT-9.3 Contract tests:** The shared tuning and worker contracts must remain covered by automated tests.
 - **VT-9.4 Build:** The TypeScript build must pass after changes to state, UI, audio, or visual contracts.
-- **VT-9.5 Interactive dramaturgy timeline:** The seekbar chrome includes a compact canvas timeline that visualizes precomputed `TrackAnalysis` data without runtime audio analysis. `drawTimelineGridlines` must draw BPM-derived bar lines; sections, RMS, buildup, tension trends, significant cues, and the playhead must be layered clearly and remain readable in compact, resized, and overlay modes.
+- **VT-9.5 Interactive dramaturgy timeline:** The seekbar chrome includes a compact canvas timeline that visualizes precomputed `TrackAnalysis` data without runtime audio analysis. `drawTimelineGridlines` must draw BPM-derived bar lines; sections, RMS, buildup, spectral pivot regions, tension trends, significant cues, and the playhead must be layered clearly and remain readable in compact, resized, and overlay modes.
 - **VT-9.6 Decode failure UI:** If browser-level audio decoding or file loading fails before worker analysis can complete, the UI must show a file-load error, keep playback and seek controls disabled, and re-enable file selection.
 - **VT-9.7 Resizable timeline panel:** The timeline can be resized from its top handle. The resize path clamps height to safe bounds, redraws through the throttled timeline draw path, preserves HDPI canvas sharpness, and remembers the last expanded height for returning from overlay mode.
 - **VT-9.8 Fullscreen overlay structure:** Opening the timeline overlay applies `.timeline-overlay-active` to the full `.seek-container`, `.is-fullscreen-overlay` to `.timeline-wrapper`, and `body.timeline-overlay-open` to the document body. The overlay fills the viewport above other UI, hides unrelated chrome, and closes back to the prior seekbar position and height.
@@ -99,6 +100,8 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-9.10 DAW-style zoom and pan:** Mouse-wheel interaction zooms the timeline from `1x` to `16x` around the pointer. Normal left click or drag always scrubs/seeks the playhead, including when zoomed. Shift-drag or middle-button drag pans the visible viewport. During playback, a zoomed viewport follows the playhead when it leaves the `15%..75%` visible range.
 - **VT-9.11 Scrub buffering performance line:** Timeline and seekbar dragging must not call `AudioEngine.seek()` repeatedly. UI drag updates `scrubTime`, the visible time, the seekbar value, and a yellow scrub playhead through the throttled draw path. A single final audio seek is committed on `pointerup`, `pointercancel`, `change`, or equivalent touch-end interaction.
 - **VT-9.12 Renderer hot-path optimization:** The p5 render loop must not run O(N) `findIndex` searches over beat events or cue arrays while paused, stopped, or at natural track end. Visual event indexes are synchronized only through the event-driven `syncEventIndex` callback registered with `addPositionChangedListener`.
+- **VT-9.13 Section sensitivity overrides:** Timeline section lines store `State.sectionOverrides["section-N"].sensitivity`, map vertical position linearly to `0.1..4.0`, and display overridden values with `S:x.xx` labels.
+- **VT-9.14 Spectral Pivot and Drop Anticipation overlays:** The timeline draws `spectralPivot` active regions with a magenta dotted overlay and draws the configured `dropAnticipation` look-ahead window as a magenta suspense gradient.
 
 ## VT-10 Render And Stream Output
 

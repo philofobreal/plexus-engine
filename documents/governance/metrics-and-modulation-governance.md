@@ -84,13 +84,13 @@ Preferred:
 
 - Density
 - Melody Presence
-- FX Presence
+- FX
 - Energy
 - Vocal
 - Tension
 - Buildup
 
-The dashboard now uses the preferred labels above. The internal `AudioFrame.b/m/t` fields remain only as explicitly documented legacy compatibility projections in code, docs, and tests.
+The dashboard now uses the preferred labels above. The internal `AudioFrame.b/m/t` fields remain only as explicitly documented legacy compatibility projections in code, docs, and tests; `AudioFrame.t` is not projected as a separate dashboard card.
 
 ## Ownership Rules
 

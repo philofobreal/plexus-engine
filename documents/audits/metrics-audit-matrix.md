@@ -23,7 +23,7 @@ The highest-risk area is:
 AudioFrame.b / AudioFrame.m / AudioFrame.t
 ```
 
-These are render-facing legacy compatibility projections. The dashboard now labels them as Density, Melody Presence, and FX Presence.
+These are render-facing legacy compatibility projections. The dashboard now labels `AudioFrame.b` and `AudioFrame.m` as Density and Melody Presence. `AudioFrame.t` remains an fx-presence compatibility projection for renderer/modulation use, but it is no longer shown as a separate dashboard card.
 
 ## Audit Matrix
 
@@ -32,7 +32,7 @@ These are render-facing legacy compatibility projections. The dashboard now labe
 | `AudioFrame.e` | AudioFrame | worker | normalized RMS energy | dashboard, renderer, modulation | Low | Keep as `Energy` |
 | `AudioFrame.b` | AudioFrame | worker | smoothed density projection | dashboard Density, renderer | Medium | Keep field as documented legacy compatibility projection |
 | `AudioFrame.m` | AudioFrame | worker | smoothed melody-presence projection | dashboard Melody Presence, renderer | Medium | Keep field as documented legacy compatibility projection |
-| `AudioFrame.t` | AudioFrame | worker | smoothed FX-presence projection | dashboard FX Presence, renderer | Medium | Keep field as documented legacy compatibility projection |
+| `AudioFrame.t` | AudioFrame | worker | smoothed fx-presence projection | renderer/modulation | Medium | Keep field as documented legacy compatibility projection |
 | `AudioFrame.state` | AudioFrame | worker | macro dynamic state: IDLE/HIGH/LOW/LOW_DROP/LOW_OVERLOAD | dashboard, renderer | Medium | Keep; improve tooltip and block-state docs |
 | `AudioFrame.eRatio` | AudioFrame | worker | block-level relative energy ratio | dashboard dynamics, dramaturgy | Medium | Keep; expose as `Block Energy Ratio` only in debug/advanced UI |
 | `BeatEvent.time` | Event | worker | accepted beat/impact timestamp | renderer event index | Low | Keep |
@@ -58,18 +58,16 @@ These are render-facing legacy compatibility projections. The dashboard now labe
 | `State.modulation.macroMomentum` | Modulation | visuals | long-form/block momentum | renderer | Medium | Keep; debug only |
 | Dashboard `Density` | UI | DashboardUI | displays `AudioFrame.b` | user-facing metrics | Low | Keep |
 | Dashboard `Melody Presence` | UI | DashboardUI | displays `AudioFrame.m` | user-facing metrics | Low | Keep |
-| Dashboard `FX Presence` | UI | DashboardUI | displays `AudioFrame.t` | user-facing metrics | Low | Keep |
 | Dashboard `Vocal` | UI | DashboardUI | feature-frame vocal | user-facing metrics | Medium | Keep but mark as heuristic |
 | Dashboard `FX` | UI | DashboardUI | feature-frame fx | user-facing metrics | Medium | Keep; distinguish from `AudioFrame.t` projection |
 | Dashboard `Beat Impulse` | UI/render transient | visuals/UI | transient beat decay, not worker scalar | user-facing metrics | Low | Keep |
-| Dashboard `Progress` | UI/playback | AudioEngine/UI | currentTime / duration | user-facing metrics | Low | Keep |
 | Dashboard `Dynamics State` | UI | worker/UI | state + eRatio | user-facing metrics | Low | Keep |
 
 ## Immediate Findings
 
 ### 1. Dashboard projection labels are fixed
 
-The dashboard now uses Density, Melody Presence, and FX Presence for `AudioFrame.b/m/t`.
+The dashboard now uses Density and Melody Presence for `AudioFrame.b/m`; the canonical FX card uses `VisualFeatureFrame.fx`, while `AudioFrame.t` stays internal to renderer/modulation compatibility.
 
 ### 2. Beat type labels are resolved
 
@@ -96,7 +94,7 @@ The modulation bus should remain an animation abstraction, not a metrics source.
 
 ## Current UI Labels
 
-The active dashboard labels, in source order, are BPM, Dynamics State, Energy, Density, Melody Presence, FX Presence, Vocal, FX, Beat Impulse, and Progress. The previous duplicate Melody card has been removed.
+The active dashboard labels, in source order, are Dynamics State, Energy, Density, Melody Presence, Vocal, FX, and Beat Impulse. BPM moved to the header badge and progress remains represented by the seekbar time display.
 
 ## Remaining Refactor Order
 

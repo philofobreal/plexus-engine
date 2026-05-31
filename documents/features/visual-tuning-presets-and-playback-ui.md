@@ -88,14 +88,15 @@ The dashboard chrome was simplified for performance use and VJ-style presentatio
 
 Implemented capabilities:
 
-- The top panel shows the loaded audio file name only.
+- The top panel shows the loaded audio file name and a compact BPM header badge.
 - Analysis-completion details such as sample count, section count, or cue count are not shown in the header.
-- BPM is shown as a metrics value instead of in the title panel.
-- The dashboard metric labels are `Density`, `Melody Presence`, and `FX Presence` for the render-facing `AudioFrame.b`, `AudioFrame.m`, and `AudioFrame.t` values. Those fields remain legacy compatibility projections, not raw crossover bands.
+- BPM is shown as a BPM header badge instead of a metric card.
+- The dashboard metric labels are `Density`, `Melody Presence`, `Vocal`, `FX`, and `Beat Impulse`; BPM moved to the header badge, progress moved to the seekbar time display, and fx-presence duplication is covered by the canonical `VisualFeatureFrame.fx` metric.
+- `AudioFrame.b`, `AudioFrame.m`, and `AudioFrame.t` remain legacy compatibility projections, not raw crossover bands. `AudioFrame.t` remains available to the modulation bus but is no longer a separate dashboard card.
 - The metrics panel can be expanded or collapsed from a compact control above the seekbar.
 - The metrics grid uses the original card-style layout and responds to viewport width.
 - The cue metric card was removed.
-- `Dynamics State` occupies one grid unit.
+- `Dynamics State` occupies one grid unit and its bar is labeled `Section Energy`.
 - The seekbar is a minimal rectangular full-width control aligned with the metrics visual style.
 - The top controls, bottom playback section, and open panels fade out after user inactivity.
 - Pointer, keyboard, touch, and mouse activity reveal the chrome again.
@@ -108,8 +109,8 @@ The feature is split across these runtime layers:
 
 - `src/config/visualTuning.ts`: defaults, control metadata, preset normalization, audio-sensitivity helpers.
 - `src/types/index.ts`: persisted tuning and playback state contracts.
-- `src/state/store.ts`: shared runtime state for tuning, visual mode, playback loop mode, and chrome behavior.
-- `src/ui/DashboardUI.ts`: DOM controls, preset loading, panel visibility, dragging, playback shortcuts, metrics projection, timeline overlay/zoom/pan/scrub behavior, tooltip projection, and auto-hide behavior.
+- `src/state/store.ts`: shared runtime state for tuning, section sensitivity overrides, visual mode, playback loop mode, and chrome behavior.
+- `src/ui/DashboardUI.ts`: DOM controls, preset loading, panel visibility, dragging, playback shortcuts, metrics projection, section sensitivity lines, spectral pivot overlay, timeline overlay/zoom/pan/scrub behavior, tooltip projection, and auto-hide behavior.
 - `src/audio/AudioEngine.ts`: loop-on-end playback behavior.
 - `src/visuals/`: render usage of tuning values, background color, and sensitivity-scaled audio data.
 

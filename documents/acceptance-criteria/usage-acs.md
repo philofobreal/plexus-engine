@@ -13,8 +13,8 @@
 ## 2. Macro Dynamics State
 
 * **AC 2.1 - Block segmentation:** The system identifies the current musical dynamics block from beat-aligned windows and uses the block's relative energy (`0.0..1.0`) as the macro dynamics basis.
-* **AC 2.2 - HIGH state:** If block-relative energy is at least `0.45`, the system enters `HIGH`. The dashboard displays `HIGH`, and accepted precomputed beat events are rendered normally.
-* **AC 2.3 - LOW state:** If block-relative energy is below `0.45`, the system enters `LOW`. The dashboard displays `LOW`, and quieter visual responses are restrained by the current energy context.
+* **AC 2.2 - HIGH state:** If block-relative energy is at least the analyzer-derived adaptive threshold, the system enters `HIGH`. The dashboard displays `HIGH`, and accepted precomputed beat events are rendered normally.
+* **AC 2.3 - LOW state:** If block-relative energy is below the analyzer-derived adaptive threshold, the system enters `LOW`. The dashboard displays `LOW`, and quieter visual responses are restrained by the current energy context.
 * **AC 2.4 - Drop and overload overrides:** While in `HIGH`, current energy below `0.35` forces `LOW [DROP]`; current energy above `0.95` forces `LOW [OVERLOAD]` to protect the visual output from noisy overload.
 
 ## 3. Visual Reactions And Plexus Engine
@@ -31,9 +31,9 @@
 
 ## 4. Dashboard
 
-* **AC 4.1 - Realtime metrics:** During playback, dashboard metric cards show BPM, Dynamics State, Energy, Density, Melody Presence, FX Presence, Vocal, FX, Beat Impulse, and Progress in that order. `AudioFrame.b/m/t` remain legacy compatibility fields for density, melody-presence, and fx-presence projections; they are not spectral-band dashboard labels. Melody Presence is the dashboard-facing melody metric; `VisualFeatureFrame.melody` remains the internal canonical feature signal for track analysis, cues, modulation, and temporal rendering.
+* **AC 4.1 - Realtime metrics:** During playback, dashboard metric cards show Dynamics State, Energy, Density, Melody Presence, Vocal, FX, and Beat Impulse in that order. `AudioFrame.b/m/t` remain legacy compatibility fields for density, melody-presence, and fx-presence projections; `AudioFrame.t` is not displayed as a separate metric card. Melody Presence is the dashboard-facing melody metric; `VisualFeatureFrame.melody` remains the internal canonical feature signal for track analysis, cues, modulation, and temporal rendering.
 * **AC 4.2 - Performance-conscious updates:** DOM text and bar widths update only every fourth render frame (`frameCount % 4 === 0`), keeping dashboard refresh near 15 FPS while playback renders at a higher cadence.
-* **AC 4.3 - BPM display:** After successful analysis, calculated BPM appears as a metric card. The header shows only the loaded audio file name.
+* **AC 4.3 - BPM header badge:** After successful analysis, calculated BPM appears in the `#bpm-header-badge` next to the loaded audio file name. BPM is not part of the metrics grid.
 * **AC 4.4 - Responsive layout:** The tuning panel, metrics grid, and seekbar adapt to viewport width. The p5 canvas fills the window and resizes on `windowResized`.
 
 ## 5. Offline Analysis
@@ -41,9 +41,9 @@
 * **AC 5.1 - Worker analysis:** Audio analysis runs in a dedicated Web Worker so large files do not block the main UI thread.
 * **AC 5.2 - FFT spectral analysis:** The worker runs a 1024-sample Hann-windowed FFT. Analysis computes relative low/mid/high spectral-band ratios, spectral flux, centroid, and flatness. Visual and beat-event outputs are derived from these spectral features, not IIR crossover filters.
 * **AC 5.3 - Two-pass analysis:** First, the worker computes RMS energy, spectral flux, relative band energy, centroid, and flatness, then derives beat-aligned macro dynamics blocks. Second, it smooths spectral features into the `AudioFrame` timeline, `VisualFeatureFrame` sequence, `BeatEvent` events, sections, cues, and recurring music patterns.
-* **AC 5.4 - Worker output:** A success message includes `type: 'analysis_done'`, `requestId`, `bpm`, `frames` as `Array<AudioFrame>`, `events` as `Array<BeatEvent>`, `hopSize`, and `trackAnalysis`. Failure messages include `type: 'analysis_error'`, `requestId`, `errorCode`, and `message`.
+* **AC 5.4 - Worker output:** A success message includes `type: 'analysis_done'`, `requestId`, `bpm`, `adaptiveThreshold`, `frames` as `Array<AudioFrame>`, `events` as `Array<BeatEvent>`, `hopSize`, and `trackAnalysis`. Failure messages include `type: 'analysis_error'`, `requestId`, `errorCode`, and `message`.
 * **AC 5.5 - Visual music analysis output:** `trackAnalysis` includes per-frame visual features, section structure, significant moments, recurring `MusicPattern` entries, and cue events. Playback and rendering may read this data but must not perform audio analysis in the render loop.
-* **AC 5.6 - Dramaturgy output:** Worker output includes deterministic `buildupConfidence` and `tensionTrends` values that rendering may use to raise pre-drop tension without doing DSP in the render loop.
+* **AC 5.6 - Dramaturgy output:** Worker output includes deterministic `buildupConfidence`, `spectralPivot`, and `tensionTrends` values that rendering may use to raise pre-drop tension without doing DSP in the render loop. Spectral Pivot applies only above the absolute `sE > 0.04` noise gate and writes exact zeroes to delicate metrics below that gate.
 
 ## 6. Audio Rendering
 
@@ -70,7 +70,7 @@
 * **AC 9.2 - Low latency rendering:** `performanceMode` disables radial-gradient glow work, and chroma modes skip glow paths to reduce capture latency and CPU load.
 * **AC 9.3 - Presentation URL:** Loading the app with `?presentation=true` hides UI chrome automatically by setting `State.uiVisible` to false and applying presentation CSS.
 * **AC 9.4 - Overlay safety:** Stream-specific modes must not alter playback timing, worker analysis, or beat/cue event indexing.
-* **AC 9.5 - Interactive dramaturgy timeline:** The seekbar chrome includes a canvas timeline that visualizes precomputed `TrackAnalysis` only. It renders BPM-derived bar lines, section blocks, `buildupConfidence`, `tensionTrends`, RMS/bar dynamics, significant cue markers, and the playhead without runtime music analysis.
+* **AC 9.5 - Interactive dramaturgy timeline:** The seekbar chrome includes a canvas timeline that visualizes precomputed `TrackAnalysis` only. It renders BPM-derived bar lines, section blocks, `buildupConfidence`, `spectralPivot` active regions, `tensionTrends`, RMS/bar dynamics, significant cue markers, and the playhead without runtime music analysis.
 * **AC 9.6 - Resizable dramaturgy timeline:** The timeline has a top resize handle. Dragging it changes timeline height inside safe bounds, uses the throttled canvas redraw path, preserves HDPI sharpness, and stores the last expanded height for later restore.
 * **AC 9.7 - Canvas backend hot-path optimization:** Particle boundary pull uses squared-distance checks and vector normalization instead of p5 distance and angle trigonometry. The p5 backend caches repeated fill, stroke, and stroke-weight state changes while preserving `noStroke` and `noFill` behavior.
 * **AC 9.8 - Fullscreen overlay structure:** Opening the timeline overlay applies `.timeline-overlay-active` to `.seek-container`, `.is-fullscreen-overlay` to `.timeline-wrapper`, and `body.timeline-overlay-open` to the document body. The timeline fills the viewport above other UI, hides unrelated chrome, and closes back to its previous bottom position and stored height.
@@ -78,3 +78,5 @@
 * **AC 9.10 - DAW-style zoom and pan:** Mouse wheel zooms the timeline from `1x` to `16x` around the cursor. Normal left click or drag always scrubs/seeks the playhead. Shift-drag or middle-button drag pans the visible viewport. During playback, zoomed view follows the playhead when it leaves the `15%..75%` viewport range.
 * **AC 9.11 - Scrub buffering:** Timeline and seekbar dragging must not repeatedly call the audio engine. Dragging updates `scrubTime`, visible time, seekbar value, and a yellow scrub playhead through `requestTimelineDraw()`. A single final audio seek is committed on pointer or touch release.
 * **AC 9.12 - Renderer hot-path index sync:** `PlexusRenderer.ts` must not run O(N) `findIndex` searches over `State.events` or `State.trackAnalysis.cues` from the paused/stopped draw path. Beat and cue indexes are synchronized by the event-driven `syncEventIndex` callback registered through `addPositionChangedListener`.
+* **AC 9.13 - Section sensitivity overrides:** Dragging a section line on the dramaturgy timeline stores `State.sectionOverrides["section-N"].sensitivity` in the `0.1..4.0` range and labels overridden lines as `S:x.xx`. During the draw frame, `PlexusRenderer` temporarily applies the active section sensitivity over the global `audioSensitivity`, then restores the global value before the frame ends.
+* **AC 9.14 - Drop anticipation:** When `dropAnticipation` is greater than zero, the renderer samples the future frame at `currentTime + dropAnticipation`. Future `LOW` and `LOW_DROP` states dampen `kineticTension` and `densityDrive`, while the timeline shows the look-ahead window as a magenta suspense band.
