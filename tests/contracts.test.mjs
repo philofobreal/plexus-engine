@@ -38,7 +38,8 @@ function runAnalyzerWorker(samples, sampleRate = 44_100) {
       requestId: 42,
       algorithmVersion: 2,
       samples: samples.buffer,
-      sampleRate
+      sampleRate,
+      phraseSize: 8
     }
   });
 
@@ -51,9 +52,10 @@ test('worker contract includes request id, hop size, success, and error messages
   const worker = read('src/audio/analyzer.worker.ts');
 
   assert.match(types, /export interface AnalysisRequest[\s\S]*requestId: number;/);
-  assert.match(types, /export interface AnalysisResult[\s\S]*requestId: number;[\s\S]*hopSize: number;/);
+  assert.match(types, /export interface AnalysisRequest[\s\S]*phraseSize: number;/);
+  assert.match(types, /export interface AnalysisResult[\s\S]*requestId: number;[\s\S]*adaptiveThreshold: number;[\s\S]*hopSize: number;/);
   assert.match(types, /export interface AnalysisResult[\s\S]*trackAnalysis: TrackAnalysis;/);
-  assert.match(types, /export interface TrackAnalysis[\s\S]*bars: BarAnalysis\[\];[\s\S]*sections: TrackSection\[\];[\s\S]*patterns: MusicPattern\[\];[\s\S]*cues: VisualCueEvent\[\];[\s\S]*features: VisualFeatureFrame\[\];/);
+  assert.match(types, /export interface TrackAnalysis[\s\S]*bars: BarAnalysis\[\];[\s\S]*sections: TrackSection\[\];[\s\S]*patterns: MusicPattern\[\];[\s\S]*cues: VisualCueEvent\[\];[\s\S]*features: VisualFeatureFrame\[\];[\s\S]*spectralPivot: number\[\];/);
   assert.match(types, /export interface AnalysisErrorMessage[\s\S]*errorCode: string;[\s\S]*message: string;/);
   assert.match(worker, /type:\s*'analysis_done'/);
   assert.match(worker, /type:\s*'analysis_error'/);
@@ -85,9 +87,12 @@ test('active docs use semantic BeatEvent and dashboard metric labels', () => {
   assert.match(activeDocs, /denseImpactFlash/);
   assert.match(activeDocs, /Density/);
   assert.match(activeDocs, /Melody Presence/);
-  assert.match(activeDocs, /FX Presence/);
+  assert.match(activeDocs, /Vocal/);
+  assert.match(activeDocs, /FX/);
   assert.match(activeDocs, /Beat Impulse/);
   assert.match(activeDocs, /Dynamics State/);
+  assert.match(activeDocs, /BPM header badge/);
+  assert.doesNotMatch(activeDocs, /FX Presence metric card|Progress card|BPM metric card|BPM appears in the metrics panel|calculated BPM appears as a metric card/);
   assert.doesNotMatch(activeDocs, /Kick|Snare|Hi-Hat|Hi-hat|Snare\/Drop|Snare\/Clap/);
   assert.doesNotMatch(activeDocs, /Beat Hit|Music Block & Dynamics|legacy Bass|legacy Mid|legacy Treble/);
 });
@@ -280,12 +285,14 @@ test('visual tuning controls cover circle, line, polygon, particle, and temporal
 test('analysis thresholds use bar-aligned macro dynamics with live safety overrides', () => {
   const worker = read('src/audio/analyzer.worker.ts');
 
-  assert.match(worker, /energyRatio\s*>=\s*0\.45\s*\?\s*'HIGH'\s*:\s*'LOW'/);
+  assert.match(worker, /const adaptiveThreshold = Math\.min\(0\.6, Math\.max\(0\.3, normalizedMedian\)\)/);
+  assert.match(worker, /energyRatio\s*>=\s*adaptiveThreshold\s*\?\s*'HIGH'\s*:\s*'LOW'/);
   assert.match(worker, /sE\s*<\s*0\.35/);
   assert.match(worker, /sE\s*>\s*0\.95/);
   assert.match(worker, /let secondsPerBar = secondsPerBeat \* 4/);
   assert.match(worker, /let barFrames = Math\.max\(1, Math\.round\(secondsPerBar \* sampleRate \/ hopSize\)\)/);
-  assert.match(worker, /state: energy >= 0\.45 \? 'HIGH' : 'LOW'/);
+  assert.match(worker, /state: energy >= adaptiveThreshold \? 'HIGH' : 'LOW'/);
+  assert.match(worker, /adaptiveThreshold, frames: outFrames/);
 });
 
 test('analysis worker uses spectral FFT features instead of legacy crossover filters', () => {
@@ -297,10 +304,53 @@ test('analysis worker uses spectral FFT features instead of legacy crossover fil
   assert.match(worker, /centroidT\[i\] = sumMag > 0 \? \(sumFreqMag \/ sumMag\) \/ 512 : 0/);
   assert.match(worker, /flatnessT\[i\] = sumMag > 0 \? Math\.exp\(sumLogMag \/ 511\) \/ \(sumMag \/ 511\) : 0/);
   assert.match(worker, /sVocal \+= \(clamp01\(vocalTarget\) - sVocal\) \* 0\.1/);
-  assert.match(worker, /outFrames\[i\] = \{ e: sE, b: sDensity, m: sMelody, t: sFx, state: state, eRatio: energyRatio \}/);
+  assert.match(worker, /sFxPresence \+= \(rawHigh - sFxPresence\) \* 0\.15/);
+  assert.match(worker, /outFrames\[i\] = \{ e: sE, b: sDensity, m: sMelody, t: sFxPresence, state: state, eRatio: energyRatio \}/);
   assert.doesNotMatch(worker, /a_bass/);
   assert.doesNotMatch(worker, /filterLow/);
   assert.doesNotMatch(worker, /filterMidHigh/);
+});
+
+test('spectral pivot and noise gate are encoded in analyzer output contract', () => {
+  const worker = read('src/audio/analyzer.worker.ts');
+  const types = read('src/types/index.ts');
+  const audio = read('src/audio/AudioEngine.ts');
+  const ui = read('src/ui/DashboardUI.ts');
+
+  assert.match(types, /export interface TrackAnalysis[\s\S]*spectralPivot: number\[\];/);
+  assert.match(audio, /spectralPivot: trackAnalysis\.spectralPivot \|\| \[\]/);
+  assert.match(worker, /const spectralPivot = new Array<number>\(totalFrames\)\.fill\(0\)/);
+  assert.match(worker, /if \(sE > 0\.04 && eRatio < 0\.55 && \(buildup > 0\.1 \|\| state === 'LOW_DROP'\)\)/);
+  assert.match(worker, /const compensation = \(1\.0 - eRatio\) \* Math\.max\(buildup, 0\.25\)/);
+  assert.match(worker, /const melodyGate = Math\.max\(0, featureFrames\[i\]\.melody - 0\.05\) \* 1\.1/);
+  assert.match(worker, /const maxCeiling = Math\.min\(1\.0, 0\.35 \+ eRatio \* 0\.65 \+ buildup \* 0\.40\)/);
+  assert.match(worker, /featureFrames\[i\]\.melody = Math\.min\(maxCeiling, featureFrames\[i\]\.melody \* \(1\.0 \+ compensation \* 1\.5 \* melodyGate\)\)/);
+  assert.match(worker, /featureFrames\[i\]\.vocal = Math\.min\(maxCeiling, featureFrames\[i\]\.vocal \* \(1\.0 \+ compensation \* 1\.5 \* vocalGate\)\)/);
+  assert.match(worker, /featureFrames\[i\]\.fx = Math\.min\(maxCeiling, featureFrames\[i\]\.fx \* \(1\.0 \+ compensation \* 2\.2 \* fxGate\)\)/);
+  assert.match(worker, /spectralPivot\[i\] = Math\.min\(1\.0, compensation \* Math\.max\(melodyGate, vocalGate, fxGate, 0\.25\)\)/);
+  assert.match(worker, /else if \(sE <= 0\.04\)[\s\S]*featureFrames\[i\]\.melody = 0;[\s\S]*featureFrames\[i\]\.vocal = 0;[\s\S]*featureFrames\[i\]\.fx = 0;[\s\S]*featureFrames\[i\]\.tension = 0;[\s\S]*outFrames\[i\]\.m = 0;[\s\S]*outFrames\[i\]\.t = 0;[\s\S]*spectralPivot\[i\] = 0;/);
+  assert.match(ui, /pivotVal > 0\.05/);
+  assert.match(ui, /rgba\(213, 84, 172, 0\.95\)/);
+  assert.match(ui, /ctx\.setLineDash\(\[1, 4\]\)/);
+});
+
+test('drop anticipation look-ahead dampens modulation and is shown on the timeline', () => {
+  const config = read('src/config/visualTuning.ts');
+  const renderer = read('src/visuals/PlexusRenderer.ts');
+  const ui = read('src/ui/DashboardUI.ts');
+
+  assert.match(config, /dropAnticipation: 0\.0/);
+  assert.match(config, /key: 'dropAnticipation'[\s\S]*min: 0\.0[\s\S]*max: 5\.0/);
+  assert.match(renderer, /applyDropAnticipation\(ct\)/);
+  assert.match(renderer, /const futureTime = currentTime \+ anticipation/);
+  assert.match(renderer, /const futureIdx = Math\.floor\(futureTime \* State\.sampleRate \/ State\.hopSize\)/);
+  assert.match(renderer, /futureFrame\.state !== 'LOW' && futureFrame\.state !== 'LOW_DROP'/);
+  assert.match(renderer, /const scale = futureFrame\.state === 'LOW_DROP' \? 0\.72 : 0\.86/);
+  assert.match(renderer, /State\.modulation\.kineticTension \*= scale/);
+  assert.match(renderer, /State\.modulation\.densityDrive \*= scale/);
+  assert.match(ui, /State\.visualTuning\.dropAnticipation > 0/);
+  assert.match(ui, /const anticipationWidth = \(State\.visualTuning\.dropAnticipation \/ Math\.max\(0\.001, viewport\.duration\)\) \* width/);
+  assert.match(ui, /rgba\(213, 84, 172, 0\.18\)/);
 });
 
 test('AudioFrame documents legacy compatibility projections', () => {
@@ -333,6 +383,7 @@ test('analysis worker produces deterministic spectral analysis payloads', () => 
   assert.equal(first.hopSize, 1024);
   assert.equal(first.frames.length, totalSamples / 1024);
   assert.equal(first.trackAnalysis.features.length, first.frames.length);
+  assert.equal(first.trackAnalysis.spectralPivot.length, first.frames.length);
   assert.equal(first.trackAnalysis.featureHopSize, 1024);
   assert.ok(first.bpm >= 70 && first.bpm <= 180);
   assert.ok(first.events.length > 0);
@@ -353,6 +404,10 @@ test('analysis worker produces deterministic spectral analysis payloads', () => 
     assert.ok(feature.density >= 0 && feature.density <= 1);
     assert.ok(feature.brightness >= 0 && feature.brightness <= 1);
     assert.ok(feature.tension >= 0 && feature.tension <= 1);
+  }
+
+  for (const pivot of first.trackAnalysis.spectralPivot) {
+    assert.ok(pivot >= 0 && pivot <= 1);
   }
 });
 
@@ -426,7 +481,12 @@ test('player UI supports background controls, metrics toggle, draggable tuning, 
   assert.match(main, /id="toggle-metrics"/);
   assert.match(main, /class="bottom-toolbar"/);
   assert.match(main, /id="metrics-grid"/);
-  assert.match(main, /<div class="metric-card bpm-card" data-metric-key="bpm"[\s\S]*BPM[\s\S]*<div class="metric-card dyn-card" data-metric-key="dynamicsState"[\s\S]*Dynamics State[\s\S]*data-metric-key="energy"[\s\S]*Energy[\s\S]*data-metric-key="density"[\s\S]*Density[\s\S]*data-metric-key="melodyPresence"[\s\S]*Melody Presence[\s\S]*data-metric-key="fxPresence"[\s\S]*FX Presence[\s\S]*data-metric-key="vocal"[\s\S]*Vocal[\s\S]*data-metric-key="fx"[\s\S]*FX[\s\S]*data-metric-key="beatImpulse"[\s\S]*Beat Impulse[\s\S]*data-metric-key="progress"[\s\S]*Progress/);
+  assert.match(main, /id="bpm-header-badge"[\s\S]*-- BPM/);
+  assert.doesNotMatch(main, /class="metric-card bpm-card"/);
+  assert.doesNotMatch(main, /data-metric-key="bpm"/);
+  assert.doesNotMatch(main, /data-metric-key="progress"/);
+  assert.match(main, /<div class="metric-card dyn-card" data-metric-key="dynamicsState"[\s\S]*Dynamics State[\s\S]*Section Energy[\s\S]*data-metric-key="energy"[\s\S]*Energy[\s\S]*data-metric-key="density"[\s\S]*Density[\s\S]*data-metric-key="melodyPresence"[\s\S]*Melody Presence[\s\S]*data-metric-key="vocal"[\s\S]*Vocal[\s\S]*data-metric-key="fx"[\s\S]*FX[\s\S]*data-metric-key="beatImpulse"[\s\S]*Beat Impulse/);
+  assert.doesNotMatch(main, /data-metric-key="fxPresence"/);
   assert.doesNotMatch(main, /<div class="m-label">Melody<\/div>/);
   assert.doesNotMatch(main, /id="val-melody"/);
   assert.doesNotMatch(main, /id="bar-melody"/);
@@ -452,7 +512,7 @@ test('player UI supports background controls, metrics toggle, draggable tuning, 
   assert.match(css, /\.metrics-toggle/);
   assert.match(css, /body\.chrome-idle \.top-row/);
   assert.match(css, /\.m-bar-fill[\s\S]*background: #ffffff/);
-  assert.match(css, /\.bpm-card \.m-bar-fill,\s*\.dyn-card \.m-bar-fill[\s\S]*background: var\(--accent\)/);
+  assert.match(css, /\.dyn-card \.m-bar-fill[\s\S]*background: var\(--accent\)/);
   assert.doesNotMatch(css, /\.default-card \.m-bar-fill/);
   assert.doesNotMatch(css, /royalblue/);
   assert.doesNotMatch(main, /m-bar-fill[^>]*style="background/);
@@ -468,6 +528,25 @@ test('player UI supports background controls, metrics toggle, draggable tuning, 
   assert.doesNotMatch(main, /id="val-cue"/);
 });
 
+test('dramaturgy section overrides drive music sensitivity, not threshold gates', () => {
+  const state = read('src/state/store.ts');
+  const audio = read('src/audio/AudioEngine.ts');
+  const renderer = read('src/visuals/PlexusRenderer.ts');
+  const ui = read('src/ui/DashboardUI.ts');
+
+  assert.match(state, /sectionOverrides: \{\} as Record<string, \{ sensitivity: number \}>/);
+  assert.match(audio, /State\.sectionOverrides = \{\}/);
+  assert.match(renderer, /const originalGlobalSensitivity = State\.visualTuning\.audioSensitivity/);
+  assert.match(renderer, /State\.visualTuning\.audioSensitivity = activeSensitivity/);
+  assert.match(renderer, /State\.visualTuning\.audioSensitivity = originalGlobalSensitivity/);
+  assert.doesNotMatch(renderer, /override\.threshold/);
+  assert.match(ui, /const sensVal = 0\.1 \+ normVal \* 3\.9/);
+  assert.match(ui, /State\.sectionOverrides\[key\] = \{ sensitivity: sensVal \}/);
+  assert.match(ui, /ctx\.fillText\(`S:\$\{sensVal\.toFixed\(2\)\}`/);
+  assert.doesNotMatch(ui, /thresholdVal/);
+  assert.doesNotMatch(ui, /override\.threshold/);
+});
+
 test('dashboard metric cards are backed by metadata and a shared delegated tooltip', () => {
   const main = read('src/main.ts');
   const ui = read('src/ui/DashboardUI.ts');
@@ -476,16 +555,13 @@ test('dashboard metric cards are backed by metadata and a shared delegated toolt
   const metricCardCount = (main.match(/class="metric-card/g) || []).length;
   const metricKeys = [...main.matchAll(/data-metric-key="([^"]+)"/g)].map(match => match[1]);
   assert.deepEqual(metricKeys, [
-    'bpm',
     'dynamicsState',
     'energy',
     'density',
     'melodyPresence',
-    'fxPresence',
     'vocal',
     'fx',
-    'beatImpulse',
-    'progress'
+    'beatImpulse'
   ]);
   assert.equal(metricKeys.length, metricCardCount);
   assert.equal(new Set(metricKeys).size, metricKeys.length);
@@ -495,6 +571,10 @@ test('dashboard metric cards are backed by metadata and a shared delegated toolt
   }
 
   assert.match(metadata, /export interface MetricMetadata/);
+  assert.match(main, /id="bpm-header-badge"/);
+  assert.doesNotMatch(metadata, /bpm: \{/);
+  assert.doesNotMatch(metadata, /progress: \{/);
+  assert.doesNotMatch(metadata, /fxPresence: \{/);
   assert.match(ui, /private createDashboardMetricTooltip\(\)/);
   assert.match(ui, /tooltip\.id = 'dashboard-metric-tooltip'/);
   assert.equal((ui.match(/createDashboardMetricTooltip\(\)/g) || []).length, 2);
