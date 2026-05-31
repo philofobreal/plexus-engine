@@ -55,9 +55,21 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
             let ct = engine.getCurrentTime();
             State.currentTime = ct;
 
+            const sections = State.trackAnalysis.sections;
+            const sectionIdx = sections.findIndex(s => ct >= s.start && ct < s.end);
+            let activeSensitivity = State.visualTuning.audioSensitivity;
+            if (sectionIdx !== -1) {
+                const override = State.sectionOverrides[`section-${sectionIdx}`];
+                if (override) activeSensitivity = override.sensitivity;
+            }
+
+            const originalGlobalSensitivity = State.visualTuning.audioSensitivity;
+            State.visualTuning.audioSensitivity = activeSensitivity;
+
             if (State.isPlaying && State.frames.length > 0) {
                 let frameIdx = Math.floor(ct * State.sampleRate / State.hopSize);
                 publishCurrentAnalysisFrame(frameIdx);
+                applyDynamicThresholds();
 
                 while (currentEventIdx < State.events.length && ct >= State.events[currentEventIdx].time) {
                     let ev = State.events[currentEventIdx];
@@ -96,6 +108,8 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
                 State.cueDecay,
                 State.visualTuning
             );
+            applyStateDampening();
+            applyDropAnticipation(ct);
             applyDramaturgyBoost();
 
             if (p.frameCount % 4 === 0) ui.updateDashboard();
@@ -105,6 +119,8 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
             } else {
                 drawClassicPlexusEffect(backend, particles, shockwaves);
             }
+
+            State.visualTuning.audioSensitivity = originalGlobalSensitivity;
         };
 
         p.windowResized = () => p.resizeCanvas(p.windowWidth, p.windowHeight);
@@ -136,6 +152,45 @@ function copyVisualFeatures(source: VisualFeatureFrame, target: VisualFeatureFra
     target.density = source.density;
     target.brightness = source.brightness;
     target.tension = source.tension;
+}
+
+function applyDynamicThresholds() {
+    const frame = State.currentFrame;
+    const dynamicsThreshold = State.visualTuning.dynamicsThreshold;
+    const dropThreshold = State.visualTuning.dropThreshold;
+
+    frame.state = frame.eRatio >= dynamicsThreshold ? 'HIGH' : 'LOW';
+    if (frame.state === 'HIGH') {
+        if (frame.e < dropThreshold) frame.state = 'LOW_DROP';
+        else if (frame.e > 0.95) frame.state = 'LOW_OVERLOAD';
+    }
+}
+
+function applyStateDampening() {
+    if (!State.currentFrame.state.startsWith('LOW')) return;
+    State.modulation.densityDrive *= 0.15;
+    State.modulation.kineticTension *= 0.20;
+    State.modulation.macroMomentum *= 0.10;
+
+    // Dampen active feature copies so direct reads in Temporal mode scale down instantly.
+    State.currentFeatures.melody *= 0.20;
+    State.currentFeatures.vocal *= 0.20;
+    State.currentFeatures.fx *= 0.15;
+}
+
+function applyDropAnticipation(currentTime: number) {
+    const anticipation = State.visualTuning.dropAnticipation;
+    if (anticipation <= 0 || !State.isPlaying || State.frames.length === 0) return;
+
+    const futureTime = currentTime + anticipation;
+    const futureIdx = Math.floor(futureTime * State.sampleRate / State.hopSize);
+    if (futureIdx < 0 || futureIdx >= State.frames.length) return;
+    const futureFrame = State.frames[futureIdx];
+    if (!futureFrame || (futureFrame.state !== 'LOW' && futureFrame.state !== 'LOW_DROP')) return;
+
+    const scale = futureFrame.state === 'LOW_DROP' ? 0.72 : 0.86;
+    State.modulation.kineticTension *= scale;
+    State.modulation.densityDrive *= scale;
 }
 
 function decayCurrentAnalysisFrame() {

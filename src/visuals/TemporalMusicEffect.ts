@@ -56,7 +56,7 @@ function getPatternResonance(time: number): PatternResonance {
 
 function drawTemporalBackground(backend: VisualRendererBackend, cx: number, cy: number, resonance: PatternResonance, section: TrackSection | null) {
     let bgPulse = State.modulation.rhythmicImpulse * 10 + State.cueDecay * 6;
-    let sectionEnergy = section?.energy || State.modulation.macroMomentum;
+    let sectionEnergy = section ? tuneAudioValue(section.energy, State.visualTuning) : State.modulation.macroMomentum;
     const clear = getBackgroundClearStyle(State.visualTuning, bgPulse);
     backend.background(
         Math.min(clear.r + State.modulation.spectralChaos * 10, 255),
@@ -82,8 +82,8 @@ function updateTemporalParticles(particles: Particle[], resonance: PatternResona
 
 function drawTemporalPolygonNetwork(backend: VisualRendererBackend, particles: Particle[], resonance: PatternResonance) {
     let density = State.modulation.densityDrive;
-    let melody = State.currentFeatures.melody;
-    let vocal = State.currentFeatures.vocal;
+    let melody = tuneAudioValue(State.currentFeatures.melody, State.visualTuning);
+    let vocal = tuneAudioValue(State.currentFeatures.vocal, State.visualTuning);
     let fx = State.modulation.spectralChaos;
     let tension = State.modulation.kineticTension;
 
@@ -157,7 +157,7 @@ function drawCenterMechanisms(
     resonance: PatternResonance,
     section: TrackSection | null
 ) {
-    let sectionEnergy = section?.energy || State.modulation.macroMomentum;
+    let sectionEnergy = section ? tuneAudioValue(section.energy, State.visualTuning) : State.modulation.macroMomentum;
     setMechanismRingColor(State.visualTuning.circleHue);
     drawMechanismRing(backend, cx, cy, {
         radius: (24 + State.modulation.densityDrive * 46 + State.modulation.rhythmicImpulse * 32) * State.visualTuning.temporalRingSize,
@@ -171,8 +171,9 @@ function drawCenterMechanisms(
         phase: backend.frameCount * 0.02 * State.visualTuning.temporalRingSpeed
     });
 
-    if (State.currentFeatures.melody > 0.08) {
-        let melodyDrive = Math.max(State.currentFeatures.melody, State.modulation.kineticTension);
+    const melodyVal = tuneAudioValue(State.currentFeatures.melody, State.visualTuning);
+    if (melodyVal > 0.08) {
+        let melodyDrive = Math.max(melodyVal, State.modulation.kineticTension);
         setMechanismRingColor(State.visualTuning.circleHue + 25);
         drawMechanismRing(backend, cx, cy, {
             radius: (74 + melodyDrive * 70) * State.visualTuning.temporalRingSize,
@@ -187,8 +188,9 @@ function drawCenterMechanisms(
         });
     }
 
-    if (State.currentFeatures.vocal > 0.08) {
-        let vocalDrive = Math.max(State.currentFeatures.vocal, State.modulation.kineticTension * 0.82);
+    const vocalVal = tuneAudioValue(State.currentFeatures.vocal, State.visualTuning);
+    if (vocalVal > 0.08) {
+        let vocalDrive = Math.max(vocalVal, State.modulation.kineticTension * 0.82);
         setMechanismRingColor(State.visualTuning.circleHue + 125);
         drawMechanismRing(backend, cx, cy, {
             radius: (106 + vocalDrive * 78) * State.visualTuning.temporalRingSize,
@@ -203,8 +205,9 @@ function drawCenterMechanisms(
         });
     }
 
-    if (State.currentFeatures.fx > 0.08) {
-        let fxDrive = Math.max(State.currentFeatures.fx, State.modulation.spectralChaos);
+    const fxVal = tuneAudioValue(State.currentFeatures.fx, State.visualTuning);
+    if (fxVal > 0.08) {
+        let fxDrive = Math.max(fxVal, State.modulation.spectralChaos);
         setMechanismRingColor(State.visualTuning.circleHue + 80);
         drawMechanismRing(backend, cx, cy, {
             radius: (52 + fxDrive * 82 + State.modulation.spectralChaos * 28) * State.visualTuning.temporalRingSize,
