@@ -170,15 +170,39 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(1.3); }
   background: var(--panel-bg); border: 1px solid var(--panel-border); 
   border-radius: 12px; padding: 16px; backdrop-filter: var(--blur-amount);
 }
+.metric-card:focus-visible {
+  outline: 1px solid rgba(0,229,255,0.75);
+  outline-offset: 2px;
+}
 .m-label { font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; margin-bottom: 8px;}
 .m-value { font-size: 1.25rem; font-weight: 700; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
 .bpm-badge { color: var(--accent); }
 .dyn-text { color: var(--accent); font-size: 1.1rem; }
 
 /* Progressziós sávok a metrikákban */
-.m-bar-bg { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
-.m-bar-fill { height: 100%; width: 0%; background: var(--text-main); transition: width 0.1s linear; }
-.bpm-card .m-bar-fill, .dyn-card .m-bar-fill { background: var(--accent); }
+.m-bar-bg {
+  height: 4px;
+  background: rgba(255,255,255,0.16);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.m-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: #ffffff;
+  border-radius: inherit;
+  opacity: 1;
+  box-shadow: 0 0 8px rgba(255,255,255,0.55);
+  transition: width 0.1s linear;
+}
+.bpm-card .m-bar-fill,
+.dyn-card .m-bar-fill {
+  background: white;
+}
+.default-card .m-bar-fill {  
+  background: royalblue;
+}
 
 /* Bottom Toolbar (Kinyitó gomb) */
 .bottom-toolbar { display: flex; justify-content: center; }
@@ -288,6 +312,36 @@ body.timeline-overlay-open .bottom-section {
 }
 .timeline-tooltip.is-hidden {
   opacity: 0;
+}
+.metric-tooltip {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  max-width: min(260px, calc(100vw - 32px));
+  white-space: pre-line;
+  background: rgba(8, 5, 14, 0.95);
+  border: 1px solid rgba(0,229,255,0.62);
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: var(--text-main);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.42), 0 0 18px rgba(0,229,255,0.14);
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition: opacity 0.15s ease;
+}
+.metric-tooltip.is-hidden {
+  opacity: 0;
+}
+.copy-fallback-input {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 .seek-row {
   display: flex; align-items: center; gap: 16px; width: 100%;

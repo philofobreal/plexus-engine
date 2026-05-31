@@ -1,14 +1,14 @@
-# Metrics Audit Matrix
+﻿# Metrics Audit Matrix
 
 This document audits the current Plexus Engine metric chain:
 
 ```text
 analyzer.worker.ts
-→ AudioFrame / TrackAnalysis
-→ State
-→ DashboardUI
-→ State.modulation
-→ visual renderers
+-> AudioFrame / TrackAnalysis
+-> State
+-> DashboardUI
+-> State.modulation
+-> visual renderers
 ```
 
 ## Summary
@@ -38,7 +38,7 @@ These are render-facing legacy compatibility projections. The dashboard now labe
 | `BeatEvent.time` | Event | worker | accepted beat/impact timestamp | renderer event index | Low | Keep |
 | `BeatEvent.intensity` | Event | worker | peak strength / event intensity | shockwaves, modulation | Medium | Keep; document normalization range |
 | `BeatEvent.type` | Event | worker | classified hit type from fx/density context | shockwaves | Low | Keep semantic labels: default spectral-flux hit, dense impact hit, fx/high-transient hit |
-| `VisualFeatureFrame.melody` | TrackAnalysis | worker | canonical melody feature | temporal renderer, dashboard | Medium | Make canonical melody metric |
+| `VisualFeatureFrame.melody` | TrackAnalysis | worker | canonical melody feature | temporal renderer, cues, modulation | Medium | Keep as internal/canonical feature signal |
 | `VisualFeatureFrame.vocal` | TrackAnalysis | worker | vocal/formant-like feature | temporal renderer, dashboard | Medium | Keep; document as heuristic, not stem separation |
 | `VisualFeatureFrame.fx` | TrackAnalysis | worker | FX/noise/transient feature | temporal renderer, dashboard | Medium | Make canonical FX metric |
 | `VisualFeatureFrame.density` | TrackAnalysis | worker | canonical musical density feature | temporal renderer, timeline | Medium | Make canonical density metric |
@@ -52,14 +52,13 @@ These are render-facing legacy compatibility projections. The dashboard now labe
 | `TrackAnalysis.buildupConfidence[]` | TrackAnalysis | worker | rising pressure confidence | timeline, modulation | Low | Keep |
 | `TrackAnalysis.tensionTrends` | TrackAnalysis | worker | long-form rising/falling/stable tension segments | timeline | Low | Keep |
 | `State.modulation.kineticTension` | Modulation | visuals | visual tension control signal | renderer | Medium | Keep; do not show as musical metric |
-| `State.modulation.lowFrequencyDrive` | Modulation | visuals | density/energy-driven animation signal | renderer | Medium | Keep; avoid user-facing name unless debug |
+| `State.modulation.densityDrive` | Modulation | visuals | density/energy-driven animation signal | renderer | Medium | Keep; avoid user-facing name unless debug |
 | `State.modulation.spectralChaos` | Modulation | visuals | brightness/fx/chaos animation signal | renderer | Medium | Keep; debug only |
 | `State.modulation.rhythmicImpulse` | Modulation | visuals | beat/cue impulse decay | renderer | Low | Keep |
 | `State.modulation.macroMomentum` | Modulation | visuals | long-form/block momentum | renderer | Medium | Keep; debug only |
 | Dashboard `Density` | UI | DashboardUI | displays `AudioFrame.b` | user-facing metrics | Low | Keep |
 | Dashboard `Melody Presence` | UI | DashboardUI | displays `AudioFrame.m` | user-facing metrics | Low | Keep |
 | Dashboard `FX Presence` | UI | DashboardUI | displays `AudioFrame.t` | user-facing metrics | Low | Keep |
-| Dashboard `Melody` | UI | DashboardUI | likely feature-frame melody | user-facing metrics | Medium | Ensure source is `VisualFeatureFrame.melody` |
 | Dashboard `Vocal` | UI | DashboardUI | feature-frame vocal | user-facing metrics | Medium | Keep but mark as heuristic |
 | Dashboard `FX` | UI | DashboardUI | feature-frame fx | user-facing metrics | Medium | Keep; distinguish from `AudioFrame.t` projection |
 | Dashboard `Beat Impulse` | UI/render transient | visuals/UI | transient beat decay, not worker scalar | user-facing metrics | Low | Keep |
@@ -84,7 +83,7 @@ Preferred labels:
 
 ### 3. `AudioFrame` and `VisualFeatureFrame` overlap
 
-`AudioFrame.m/t` and `VisualFeatureFrame.melody/fx` are related but not identical in contract terms.
+`AudioFrame.m/t` and `VisualFeatureFrame.melody/fx` are related but not identical in contract terms. Melody Presence is the dashboard-facing melody metric; `VisualFeatureFrame.melody` remains internal/canonical for track analysis, cues, modulation, and temporal rendering.
 
 Refactor direction:
 
@@ -97,7 +96,7 @@ The modulation bus should remain an animation abstraction, not a metrics source.
 
 ## Current UI Labels
 
-The active dashboard labels are Density, Melody Presence, FX Presence, Beat Impulse, Progress, and Dynamics State.
+The active dashboard labels, in source order, are BPM, Dynamics State, Energy, Density, Melody Presence, FX Presence, Vocal, FX, Beat Impulse, and Progress. The previous duplicate Melody card has been removed.
 
 ## Remaining Refactor Order
 

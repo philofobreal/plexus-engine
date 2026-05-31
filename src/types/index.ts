@@ -20,7 +20,7 @@ export interface VisualTuningConfig {
     particleEnergySpeed: number;
     particleBeatSpeed: number;
     particleBoundaryPull: number;
-    particleBassTurn: number;
+    particleActivityTurn: number;
     shockwaveRadius: number;
     shockwaveSpeed: number;
     shockwaveAlpha: number;
@@ -50,7 +50,7 @@ export interface VisualTuningConfig {
 
 export interface ModulationState {
     kineticTension: number;
-    lowFrequencyDrive: number;
+    densityDrive: number;
     spectralChaos: number;
     rhythmicImpulse: number;
     macroMomentum: number;

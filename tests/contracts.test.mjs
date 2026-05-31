@@ -74,6 +74,7 @@ test('active docs use semantic BeatEvent and dashboard metric labels', () => {
     'documents/features/visual-tuning-presets-and-playback-ui.md',
     'documents/acceptance-criteria/visual-tuning-presets-and-playback-ui-acs.md',
     'documents/audits/metrics-audit-matrix.md',
+    'documents/governance/metrics-and-modulation-governance.md',
     'documents/metrics/metrics-source-audit.md',
     'documents/implementation/current-typescript-implementation.md'
   ].map(read).join('\n');
@@ -97,11 +98,17 @@ test('active docs are free of mojibake and resolved-risk headings', () => {
     'documents/features/visual-tuning-presets-and-playback-ui.md',
     'documents/acceptance-criteria/visual-tuning-presets-and-playback-ui-acs.md',
     'documents/audits/metrics-audit-matrix.md',
+    'documents/governance/metrics-and-modulation-governance.md',
     'documents/metrics/metrics-source-audit.md',
     'documents/implementation/current-typescript-implementation.md'
   ].map(read).join('\n');
+  const sourceComments = [
+    'src/main.ts',
+    'src/ui/DashboardUI.ts'
+  ].map(read).join('\n');
+  const checkedText = `${activeDocs}\n${sourceComments}`;
 
-  assert.doesNotMatch(activeDocs, /Ă|Â|â|đ|ď|Ž|Ť/);
+  assert.doesNotMatch(checkedText, /â†’|â€”|â€“|â€™|â€œ|â€ť|â€¦|Ă|Ĺ|Ä|Â|đ|ď|Ž|Ť|Ôćĺ|ÔÇö|├|┼|╜|╡|╢|�/);
   assert.doesNotMatch(activeDocs, /Beat types are overnamed/);
   assert.doesNotMatch(activeDocs, /bass-like frame drive/);
   assert.match(activeDocs, /Beat type labels are resolved/);
@@ -201,6 +208,9 @@ test('visual effects expose live tuning controls and copyable config', () => {
   assert.match(config, /export const defaultVisualTuning: VisualTuningConfig/);
   assert.match(config, /export const visualTuningControls: VisualTuningControl\[\]/);
   assert.match(config, /normalizeVisualTuningConfig/);
+  assert.match(config, /particleActivityTurn: 0\.1/);
+  assert.match(config, /label: 'Activity Turn'/);
+  assert.match(config, /particleBassTurn\?: unknown/);
   assert.match(state, /visualTuning: cloneDefaultVisualTuning\(\)/);
   assert.match(main, /id="toggle-tuning-panel"/);
   assert.match(main, /id="visual-preset-list"/);
@@ -217,6 +227,8 @@ test('visual effects expose live tuning controls and copyable config', () => {
   assert.match(temporal, /State\.visualTuning\.temporalRingSize/);
   assert.match(temporal, /State\.visualTuning\.temporalPolygonAlpha/);
   assert.match(particle, /State\.visualTuning\.particleEnergySpeed/);
+  assert.match(particle, /State\.visualTuning\.particleActivityTurn/);
+  assert.doesNotMatch(config + particle, /Bass turn/);
   assert.match(shockwave, /State\.visualTuning\.shockwaveSpeed/);
 });
 
@@ -229,8 +241,11 @@ test('visual tuning presets are read from public json files and remain backward 
   assert.ok(Array.isArray(manifest.presets));
   assert.ok(manifest.presets.includes('default.json'));
   assert.ok(preset.visualTuning);
+  assert.equal(preset.visualTuning.particleActivityTurn, 0.1);
+  assert.equal(preset.visualTuning.particleBassTurn, undefined);
   assert.match(config, /const next = cloneDefaultVisualTuning\(\)/);
   assert.match(config, /source\?\.\[key\]/);
+  assert.match(config, /legacySource\?\.particleBassTurn/);
   assert.match(ui, /visual-tuning-presets\/\$\{encodeURIComponent\(fileName\)\}/);
   assert.match(ui, /Object\.assign\(State\.targetTuning, normalizeVisualTuningConfig/);
 });
@@ -254,6 +269,7 @@ test('visual tuning controls cover circle, line, polygon, particle, and temporal
     'polygonAlpha',
     'polygonSize',
     'particleEnergySpeed',
+    'particleActivityTurn',
     'temporalRingSpeed',
     'temporalNetworkDistance'
   ]) {
@@ -410,11 +426,13 @@ test('player UI supports background controls, metrics toggle, draggable tuning, 
   assert.match(main, /id="toggle-metrics"/);
   assert.match(main, /class="bottom-toolbar"/);
   assert.match(main, /id="metrics-grid"/);
-  assert.match(main, /Density/);
-  assert.match(main, /Melody Presence/);
-  assert.match(main, /FX Presence/);
-  assert.match(main, /Beat Impulse/);
-  assert.match(main, /Dynamics State/);
+  assert.match(main, /<div class="metric-card bpm-card" data-metric-key="bpm"[\s\S]*BPM[\s\S]*<div class="metric-card dyn-card" data-metric-key="dynamicsState"[\s\S]*Dynamics State[\s\S]*data-metric-key="energy"[\s\S]*Energy[\s\S]*data-metric-key="density"[\s\S]*Density[\s\S]*data-metric-key="melodyPresence"[\s\S]*Melody Presence[\s\S]*data-metric-key="fxPresence"[\s\S]*FX Presence[\s\S]*data-metric-key="vocal"[\s\S]*Vocal[\s\S]*data-metric-key="fx"[\s\S]*FX[\s\S]*data-metric-key="beatImpulse"[\s\S]*Beat Impulse[\s\S]*data-metric-key="progress"[\s\S]*Progress/);
+  assert.doesNotMatch(main, /<div class="m-label">Melody<\/div>/);
+  assert.doesNotMatch(main, /id="val-melody"/);
+  assert.doesNotMatch(main, /id="bar-melody"/);
+  assert.doesNotMatch(ui, /valMelody/);
+  assert.doesNotMatch(ui, /barMelody/);
+  assert.doesNotMatch(ui, /currentFeatures\.melody\.toFixed/);
   assert.doesNotMatch(main, /<div class="m-label">Bass<\/div>/);
   assert.doesNotMatch(main, /<div class="m-label">Mid<\/div>/);
   assert.doesNotMatch(main, /<div class="m-label">Treble<\/div>/);
@@ -433,8 +451,60 @@ test('player UI supports background controls, metrics toggle, draggable tuning, 
   assert.match(css, /\.metrics-grid\.is-hidden/);
   assert.match(css, /\.metrics-toggle/);
   assert.match(css, /body\.chrome-idle \.top-row/);
+  assert.match(css, /\.m-bar-fill[\s\S]*background: #ffffff/);
+  assert.match(css, /\.bpm-card \.m-bar-fill,\s*\.dyn-card \.m-bar-fill[\s\S]*background: var\(--accent\)/);
+  assert.doesNotMatch(css, /\.default-card \.m-bar-fill/);
+  assert.doesNotMatch(css, /royalblue/);
+  assert.doesNotMatch(main, /m-bar-fill[^>]*style="background/);
+  assert.doesNotMatch(ui, /style\.background/);
+  assert.doesNotMatch(ui, /style\.backgroundColor/);
+  assert.doesNotMatch(ui, /style\.opacity/);
+  assert.doesNotMatch(ui, /style\.filter/);
+  assert.doesNotMatch(ui, /style\.mixBlendMode/);
+  assert.doesNotMatch(ui, /barDyn\.style\.background/);
   assert.match(ui, /initChromeAutoHide/);
   assert.match(css, /grid-template-columns: repeat\(auto-fit, minmax\(310px, 1fr\)\)/);
   assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(main, /id="val-cue"/);
+});
+
+test('dashboard metric cards are backed by metadata and a shared delegated tooltip', () => {
+  const main = read('src/main.ts');
+  const ui = read('src/ui/DashboardUI.ts');
+  const metadata = read('src/ui/metricMetadata.ts');
+
+  const metricCardCount = (main.match(/class="metric-card/g) || []).length;
+  const metricKeys = [...main.matchAll(/data-metric-key="([^"]+)"/g)].map(match => match[1]);
+  assert.deepEqual(metricKeys, [
+    'bpm',
+    'dynamicsState',
+    'energy',
+    'density',
+    'melodyPresence',
+    'fxPresence',
+    'vocal',
+    'fx',
+    'beatImpulse',
+    'progress'
+  ]);
+  assert.equal(metricKeys.length, metricCardCount);
+  assert.equal(new Set(metricKeys).size, metricKeys.length);
+
+  for (const key of metricKeys) {
+    assert.match(metadata, new RegExp(`${key}: \\{`));
+  }
+
+  assert.match(metadata, /export interface MetricMetadata/);
+  assert.match(ui, /private createDashboardMetricTooltip\(\)/);
+  assert.match(ui, /tooltip\.id = 'dashboard-metric-tooltip'/);
+  assert.equal((ui.match(/createDashboardMetricTooltip\(\)/g) || []).length, 2);
+  assert.match(ui, /this\.els\.metricsGrid\.addEventListener\('pointerover'/);
+  assert.match(ui, /this\.els\.metricsGrid\.addEventListener\('focusin'/);
+  assert.match(ui, /this\.els\.metricsGrid\.addEventListener\('keydown'/);
+  assert.match(ui, /event\.key === 'Escape'/);
+  assert.match(ui, /this\.els\.metricsGrid\.addEventListener\('click'/);
+
+  const updateDashboardSource = ui.match(/updateDashboard\(\) \{[\s\S]*?\n    \}\n\}/)?.[0] || '';
+  assert.doesNotMatch(updateDashboardSource, /dashboard-metric-tooltip|createDashboardMetricTooltip|document\.createElement/);
+  assert.doesNotMatch(ui, /requestAnimationFrame\([\s\S]{0,200}MetricTooltip|MetricTooltip[\s\S]{0,200}requestAnimationFrame/);
 });

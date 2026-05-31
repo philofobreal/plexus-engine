@@ -1,4 +1,4 @@
-# Current TypeScript Implementation
+﻿# Current TypeScript Implementation
 
 This document records the active `plexus-engine/` implementation and clarifies older V0.2 prototype wording.
 
@@ -43,7 +43,7 @@ The accepted worker failure payload is:
 
 `requestId` is required so stale worker results cannot overwrite newer loads. `hopSize` is part of the runtime contract because render synchronization derives frame indexes from playback time, sample rate, and hop size.
 
-`trackAnalysis` is the offline visual-music layer. It contains bar-level dynamics, section-level structure, recurring temporal patterns, visual cue events, significant moments, per-frame feature vectors for melody, vocal, fx, density, brightness, and tension, plus dramaturgical `buildupConfidence` and `tensionTrends`. Effects should read these precomputed values from shared state during playback instead of running analysis in the render loop.
+`trackAnalysis` is the offline visual-music layer. It contains bar-level dynamics, section-level structure, recurring temporal patterns, visual cue events, significant moments, per-frame feature vectors for melody, vocal, fx, density, brightness, and tension, plus dramaturgical `buildupConfidence` and `tensionTrends`. `VisualFeatureFrame.melody` remains the internal/canonical melody feature signal for track analysis, cues, modulation, and temporal rendering; the dashboard-facing melody metric is Melody Presence from the `AudioFrame.m` compatibility projection. Effects should read these precomputed values from shared state during playback instead of running analysis in the render loop.
 
 The analyzer worker derives these values from a fixed 1024-sample FFT pipeline. Each frame is Hann-windowed before the FFT, then the worker calculates spectral flux, relative bass/mid/high magnitude bands, spectral centroid, and spectral flatness. Harmonic stability, pitched transient confidence, and a simple vocal formant ratio separate melody, vocal, and fx projections more reliably than raw band ratios alone. The render-facing `AudioFrame` values are smoothed compatibility projections of those spectral features: `e` is normalized RMS energy, `b` is a legacy field containing density projection rather than bass, `m` is a legacy field containing melody-presence projection rather than mid band, and `t` is a legacy field containing FX-presence projection rather than treble. Beat events are selected from spectral-flux peaks and classified from the smoothed density/fx context: fx presence above `0.6` emits type 3, otherwise density above `0.7` emits type 2, and all other accepted peaks emit type 1.
 
@@ -58,7 +58,7 @@ The dramaturgy engine builds a normalized pressure curve from `feature.tension *
 `State.modulation` is the render-facing music abstraction:
 
 - `kineticTension`: vocal, melody, tension, cue, and dramaturgy pressure.
-- `lowFrequencyDrive`: density/energy-driven animation signal.
+- `densityDrive`: density/energy-driven animation signal.
 - `spectralChaos`: fx, brightness, and high transient pressure.
 - `rhythmicImpulse`: beat and cue decay impulses.
 - `macroMomentum`: block-level energy and long-form momentum.

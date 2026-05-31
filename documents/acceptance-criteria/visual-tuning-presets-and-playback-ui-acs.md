@@ -1,4 +1,4 @@
-# Visual Tuning, Presets, And Playback UI Acceptance Criteria
+﻿# Visual Tuning, Presets, And Playback UI Acceptance Criteria
 
 This document captures the accepted behavior for the current visual tuning and playback UI branch. It is additive to `../Usage ACs.md`.
 
@@ -21,7 +21,7 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-2.5 Global background:** Background red, green, and blue controls can produce black, the existing dark background, and pure white.
 - **VT-2.6 Music sensitivity:** A single `Music sensitivity` slider scales the already-established audio and visual feature values up or down.
 - **VT-2.7 Analyzer isolation:** Music sensitivity must not re-run or mutate offline audio analysis results.
-- **VT-2.8 Modulation range:** The modulation bus must clamp `kineticTension`, `lowFrequencyDrive`, `spectralChaos`, `rhythmicImpulse`, and `macroMomentum` to `0.0..1.0`.
+- **VT-2.8 Modulation range:** The modulation bus must clamp `kineticTension`, `densityDrive`, `spectralChaos`, `rhythmicImpulse`, and `macroMomentum` to `0.0..1.0`.
 - **VT-2.9 Sensitivity scaling:** `audioSensitivity` scales modulation bus outputs linearly until a value reaches the normalized upper bound.
 - **VT-2.10 Morphing target:** Sliders and preset selection write to `State.targetTuning`; the renderer interpolates `State.visualTuning` toward that target during draw.
 

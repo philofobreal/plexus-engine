@@ -1,4 +1,4 @@
-# Worker Immutability Audit
+﻿# Worker Immutability Audit
 
 ## Previous Behavior
 

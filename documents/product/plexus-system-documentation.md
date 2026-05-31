@@ -1,4 +1,4 @@
-# PLEXUS ENGINE - Atfogo Rendszerdokumentacio V0.2
+﻿# PLEXUS ENGINE - Atfogo Rendszerdokumentacio V0.2
 
 > **Aktualis statusz:** ez a fo rendszerdokumentacio a `plexus-engine/` TypeScript/Vite kodbazis aktualis allapotat irja le. A korabbi single-file HTML prototipus es IIR-alapu DSP megfogalmazasok torteneti hatternek szamitanak, nem kanonikus implementacios szerzodesnek.
 
@@ -103,7 +103,7 @@ Az effekt modulok `VisualRendererBackend` interfeszen keresztul rajzolnak. A p5-
 
 ### 4.2.1. Modulacios Busz Es Parameter Morphing
 
-`computeModulationBus()` az aktualis `AudioFrame`, `VisualFeatureFrame`, beat decay, cue decay es tuning alapjan ot normalizalt jelet allit elo: `kineticTension`, `lowFrequencyDrive`, `spectralChaos`, `rhythmicImpulse`, `macroMomentum`. A keplet minden kimenetet `0.0..1.0` tartomanyba szorit es `audioSensitivity` alapjan skalaz.
+`computeModulationBus()` az aktualis `AudioFrame`, `VisualFeatureFrame`, beat decay, cue decay es tuning alapjan ot normalizalt jelet allit elo: `kineticTension`, `densityDrive`, `spectralChaos`, `rhythmicImpulse`, `macroMomentum`. A keplet minden kimenetet `0.0..1.0` tartomanyba szorit es `audioSensitivity` alapjan skalaz.
 
 `State.visualTuning` az elo, interpolalt allapot. `State.targetTuning` a presetek es UI csuszkak celallapota. A render ciklus elejen az elo tuning a `transitionSpeed` szerint kozelit a celhoz, tulcsuszas nelkul.
 
@@ -217,7 +217,7 @@ export interface AudioFrame {
 
 export interface ModulationState {
     kineticTension: number;
-    lowFrequencyDrive: number;
+    densityDrive: number;
     spectralChaos: number;
     rhythmicImpulse: number;
     macroMomentum: number;

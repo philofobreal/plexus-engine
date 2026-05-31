@@ -24,7 +24,7 @@ export const defaultVisualTuning: VisualTuningConfig = {
     particleEnergySpeed: 8,
     particleBeatSpeed: 20,
     particleBoundaryPull: 0.05,
-    particleBassTurn: 0.1,
+    particleActivityTurn: 0.1,
     shockwaveRadius: 1,
     shockwaveSpeed: 1,
     shockwaveAlpha: 1,
@@ -66,7 +66,7 @@ export const visualTuningControls: VisualTuningControl[] = [
     { key: 'particleEnergySpeed', label: 'Energy speed', group: 'Particles', min: 0, max: 80, step: 0.5 },
     { key: 'particleBeatSpeed', label: 'Beat impulse', group: 'Particles', min: 0, max: 180, step: 1 },
     { key: 'particleBoundaryPull', label: 'Center pull', group: 'Particles', min: 0, max: 1, step: 0.005 },
-    { key: 'particleBassTurn', label: 'Bass turn', group: 'Particles', min: 0, max: 2, step: 0.01 },
+    { key: 'particleActivityTurn', label: 'Activity Turn', group: 'Particles', min: 0, max: 2, step: 0.01 },
     { key: 'shockwaveRadius', label: 'Circle size', group: 'Circles', min: 0.05, max: 12, step: 0.05, unit: 'x' },
     { key: 'shockwaveSpeed', label: 'Circle speed', group: 'Circles', min: 0, max: 12, step: 0.05, unit: 'x' },
     { key: 'shockwaveAlpha', label: 'Circle opacity', group: 'Circles', min: 0, max: 5, step: 0.05, unit: 'x' },
@@ -101,11 +101,19 @@ export function cloneDefaultVisualTuning(): VisualTuningConfig {
 export function normalizeVisualTuningConfig(payload: unknown): VisualTuningConfig {
     const source = getVisualTuningSource(payload);
     const next = cloneDefaultVisualTuning();
+    const legacySource = source as (Partial<VisualTuningConfig> & { particleBassTurn?: unknown }) | null;
 
     for (const key of visualTuningKeys) {
         const value = source?.[key];
         if (typeof value === 'number' && Number.isFinite(value)) {
             next[key] = value;
+        }
+    }
+
+    if (source?.particleActivityTurn === undefined) {
+        const legacyParticleActivityTurn = legacySource?.particleBassTurn;
+        if (typeof legacyParticleActivityTurn === 'number' && Number.isFinite(legacyParticleActivityTurn)) {
+            next.particleActivityTurn = legacyParticleActivityTurn;
         }
     }
 
@@ -159,7 +167,7 @@ export function computeModulationBus(
     return writeModulationBus(
         {
             kineticTension: 0,
-            lowFrequencyDrive: 0,
+            densityDrive: 0,
             spectralChaos: 0,
             rhythmicImpulse: 0,
             macroMomentum: 0
@@ -189,7 +197,7 @@ export function writeModulationBus(
         cueDecay * 0.18,
         sensitivity
     );
-    target.lowFrequencyDrive = scaleUnit(
+    target.densityDrive = scaleUnit(
         frame.b * 0.62 +
         features.density * 0.24 +
         frame.e * 0.14,

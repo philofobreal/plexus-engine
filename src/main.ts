@@ -12,7 +12,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
   <div class="ui-wrapper" id="ui-layer">
     <div class="top-row">
-      <!-- Bal oldali Meta Panel -->
+      <!-- Left metadata panel -->
       <div class="panel meta-panel">
         <div class="brand">
           <div class="brand-dot"></div>
@@ -23,7 +23,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         </div>
       </div>
 
-      <!-- Jobb oldali Vezérlő Panel -->
+      <!-- Right control panel -->
       <div class="controls panel">
         <label class="file-upload btn-pill" for="audio-upload">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
@@ -69,24 +69,23 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div id="copy-config-status" class="copy-status" aria-live="polite"></div>
     </div>
 
-    <!-- Alsó szekció (Metrikák és Seekbar) -->
+    <!-- Bottom metrics and seekbar section -->
     <div class="bottom-section">
       <div class="metrics-grid" id="metrics-grid">
-        <div class="metric-card bpm-card"><div class="m-label">BPM</div><div class="m-value bpm-badge" id="bpm-badge">--</div><div class="m-bar-bg"><div class="m-bar-fill" style="width:100%;"></div></div></div>
-        <div class="metric-card"><div class="m-label">Energy</div><div class="m-value" id="val-energy">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-energy"></div></div></div>
-        <div class="metric-card"><div class="m-label">Density</div><div class="m-value" id="val-bass">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-bass"></div></div></div>
-        <div class="metric-card"><div class="m-label">Melody Presence</div><div class="m-value" id="val-mid">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-mid"></div></div></div>
-        <div class="metric-card"><div class="m-label">FX Presence</div><div class="m-value" id="val-treble">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-treble"></div></div></div>
-        <div class="metric-card"><div class="m-label">Melody</div><div class="m-value" id="val-melody">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-melody"></div></div></div>
-        <div class="metric-card"><div class="m-label">Vocal</div><div class="m-value" id="val-vocal">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-vocal"></div></div></div>
-        <div class="metric-card"><div class="m-label">FX</div><div class="m-value" id="val-fx">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-fx"></div></div></div>
-        <div class="metric-card"><div class="m-label">Beat Impulse</div><div class="m-value" id="val-beat">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-beat"></div></div></div>
-        <div class="metric-card"><div class="m-label">Progress</div><div class="m-value" id="val-prog">0%</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-prog"></div></div></div>
-        <div class="metric-card dyn-card">
+        <div class="metric-card bpm-card" data-metric-key="bpm" tabindex="0" aria-describedby="dashboard-metric-tooltip"><div class="m-label">BPM</div><div class="m-value bpm-badge" id="bpm-badge">--</div><div class="m-bar-bg"><div class="m-bar-fill" style="width:100%;"></div></div></div>
+        <div class="metric-card dyn-card" data-metric-key="dynamicsState" tabindex="0" aria-describedby="dashboard-metric-tooltip">
             <div class="m-label">Dynamics State</div>
             <div class="m-value dyn-text" id="val-dyn">IDLE</div>
             <div class="m-bar-bg"><div class="m-bar-fill dyn-fill" id="bar-dyn"></div></div>
         </div>
+        <div class="metric-card default-card" data-metric-key="energy" tabindex="0" aria-describedby="dashboard-metric-tooltip"><div class="m-label">Energy</div><div class="m-value" id="val-energy">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-energy"></div></div></div>
+        <div class="metric-card default-card" data-metric-key="density" tabindex="0" aria-describedby="dashboard-metric-tooltip"><div class="m-label">Density</div><div class="m-value" id="val-bass">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-bass"></div></div></div>
+        <div class="metric-card default-card" data-metric-key="melodyPresence" tabindex="0" aria-describedby="dashboard-metric-tooltip"><div class="m-label">Melody Presence</div><div class="m-value" id="val-mid">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-mid"></div></div></div>
+        <div class="metric-card default-card" data-metric-key="fxPresence" tabindex="0" aria-describedby="dashboard-metric-tooltip"><div class="m-label">FX Presence</div><div class="m-value" id="val-treble">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-treble"></div></div></div>
+        <div class="metric-card default-card" data-metric-key="vocal" tabindex="0" aria-describedby="dashboard-metric-tooltip"><div class="m-label">Vocal</div><div class="m-value" id="val-vocal">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-vocal"></div></div></div>
+        <div class="metric-card default-card" data-metric-key="fx" tabindex="0" aria-describedby="dashboard-metric-tooltip"><div class="m-label">FX</div><div class="m-value" id="val-fx">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-fx"></div></div></div>
+        <div class="metric-card default-card" data-metric-key="beatImpulse" tabindex="0" aria-describedby="dashboard-metric-tooltip"><div class="m-label">Beat Impulse</div><div class="m-value" id="val-beat">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-beat"></div></div></div>
+        <div class="metric-card default-card" data-metric-key="progress" tabindex="0" aria-describedby="dashboard-metric-tooltip"><div class="m-label">Progress</div><div class="m-value" id="val-prog">0%</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-prog"></div></div></div>
       </div>
       
       <div class="bottom-toolbar">

@@ -1,4 +1,4 @@
-# Visual Tuning, Presets, And Playback UI
+﻿# Visual Tuning, Presets, And Playback UI
 
 This feature document records the visual tuning and player-surface behavior in the active TypeScript implementation.
 

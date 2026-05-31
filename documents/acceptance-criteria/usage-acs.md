@@ -1,4 +1,4 @@
-# Usage And Functional Acceptance Criteria V0.2
+﻿# Usage And Functional Acceptance Criteria V0.2
 
 > **Current status:** This document describes the active TypeScript implementation. The `src/`, `public/visual-tuning-presets/`, and `tests/` directories are the implementation references.
 
@@ -31,7 +31,7 @@
 
 ## 4. Dashboard
 
-* **AC 4.1 - Realtime metrics:** During playback, dashboard metric cards show BPM, Energy, Density, Melody Presence, FX Presence, Melody, Vocal, FX, Beat Impulse, Progress, and Dynamics State. `AudioFrame.b/m/t` remain legacy compatibility fields for density, melody-presence, and fx-presence projections; they are not spectral-band dashboard labels.
+* **AC 4.1 - Realtime metrics:** During playback, dashboard metric cards show BPM, Dynamics State, Energy, Density, Melody Presence, FX Presence, Vocal, FX, Beat Impulse, and Progress in that order. `AudioFrame.b/m/t` remain legacy compatibility fields for density, melody-presence, and fx-presence projections; they are not spectral-band dashboard labels. Melody Presence is the dashboard-facing melody metric; `VisualFeatureFrame.melody` remains the internal canonical feature signal for track analysis, cues, modulation, and temporal rendering.
 * **AC 4.2 - Performance-conscious updates:** DOM text and bar widths update only every fourth render frame (`frameCount % 4 === 0`), keeping dashboard refresh near 15 FPS while playback renders at a higher cadence.
 * **AC 4.3 - BPM display:** After successful analysis, calculated BPM appears as a metric card. The header shows only the loaded audio file name.
 * **AC 4.4 - Responsive layout:** The tuning panel, metrics grid, and seekbar adapt to viewport width. The p5 canvas fills the window and resizes on `windowResized`.
@@ -56,7 +56,7 @@
 * **AC 7.2 - Network optimization:** Plexus distance checks use squared distance. `Math.sqrt()` is called only after a candidate pair is already known to be inside the connection threshold.
 * **AC 7.3 - Triangle drawing:** Triangle fills use direct `triangle(x1, y1, x2, y2, x3, y3)` drawing instead of expensive generic shape construction.
 * **AC 7.4 - Render backend boundary:** `ClassicPlexusEffect` and `TemporalMusicEffect` draw through `VisualRendererBackend`. Direct p5 drawing belongs in `P5RendererBackend` or p5-owned primitives.
-* **AC 7.5 - Modulation bus:** Visual animation strength is driven by `State.modulation`: `kineticTension`, `lowFrequencyDrive`, `spectralChaos`, `rhythmicImpulse`, and `macroMomentum`.
+* **AC 7.5 - Modulation bus:** Visual animation strength is driven by `State.modulation`: `kineticTension`, `densityDrive`, `spectralChaos`, `rhythmicImpulse`, and `macroMomentum`.
 
 ## 8. Memory And State Management
 

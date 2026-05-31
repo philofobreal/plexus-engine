@@ -1,4 +1,4 @@
-# ADR-001: Visual Tuning Presets And Playback UI Chrome
+﻿# ADR-001: Visual Tuning Presets And Playback UI Chrome
 
 ## Status
 
@@ -39,7 +39,7 @@ Keep the shared `State.visualTuning` object reference stable and introduce `Stat
 
 Implement music sensitivity as a render-time scale in the modulation bus over accepted audio frames and visual feature frames. Do not change analyzer output for this UI-level tuning.
 
-Add an abstract `State.modulation` bus so visual effects consume normalized musical intent (`kineticTension`, `lowFrequencyDrive`, `spectralChaos`, `rhythmicImpulse`, `macroMomentum`) instead of coupling every animation to raw analyzer fields.
+Add an abstract `State.modulation` bus so visual effects consume normalized musical intent (`kineticTension`, `densityDrive`, `spectralChaos`, `rhythmicImpulse`, `macroMomentum`) instead of coupling every animation to raw analyzer fields.
 
 Keep playback ownership in `AudioEngine`. UI input dispatches play, pause, seek, and loop changes, while the engine owns source-node lifecycle and natural-end behavior.
 

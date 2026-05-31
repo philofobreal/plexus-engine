@@ -65,9 +65,9 @@ function drawTemporalBackground(backend: VisualRendererBackend, cx: number, cy: 
         clear.a
     );
 
-    let radius = Math.max(backend.width, backend.height) * (0.28 + State.modulation.lowFrequencyDrive * 0.16 + State.modulation.kineticTension * 0.18) * State.visualTuning.circleSize;
+    let radius = Math.max(backend.width, backend.height) * (0.28 + State.modulation.densityDrive * 0.16 + State.modulation.kineticTension * 0.18) * State.visualTuning.circleSize;
     hueToRgbInto(glowColor, State.visualTuning.circleBackgroundHue + State.modulation.kineticTension * 70);
-    let glowAlpha = Math.min((0.22 + State.modulation.lowFrequencyDrive * 0.22 + resonance.strength * 0.12) * State.visualTuning.circleBackgroundAlpha, 1);
+    let glowAlpha = Math.min((0.22 + State.modulation.densityDrive * 0.22 + resonance.strength * 0.12) * State.visualTuning.circleBackgroundAlpha, 1);
     if (State.isPlaying && shouldUseExpensiveGlow(State.visualTuning)) {
         backend.radialGlow(cx, cy, radius, glowColor, glowAlpha);
     }
@@ -75,19 +75,19 @@ function drawTemporalBackground(backend: VisualRendererBackend, cx: number, cy: 
 
 function updateTemporalParticles(particles: Particle[], resonance: PatternResonance) {
     let energy = State.modulation.macroMomentum * 0.55 + resonance.strength * 0.18;
-    let movement = State.modulation.lowFrequencyDrive * 0.35 + State.modulation.kineticTension * 0.32 + State.modulation.spectralChaos * 0.24;
+    let movement = State.modulation.densityDrive * 0.35 + State.modulation.kineticTension * 0.32 + State.modulation.spectralChaos * 0.24;
     let impulse = Math.max(State.modulation.rhythmicImpulse * 0.65, State.cueDecay * 0.45, resonance.strength * 0.35);
     for (let pt of particles) pt.update(energy, movement, impulse, State.isPlaying);
 }
 
 function drawTemporalPolygonNetwork(backend: VisualRendererBackend, particles: Particle[], resonance: PatternResonance) {
-    let density = State.modulation.lowFrequencyDrive;
+    let density = State.modulation.densityDrive;
     let melody = State.currentFeatures.melody;
     let vocal = State.currentFeatures.vocal;
     let fx = State.modulation.spectralChaos;
     let tension = State.modulation.kineticTension;
 
-    let maxDist = (104 + State.modulation.lowFrequencyDrive * 34 + density * 54 + resonance.strength * 24) * State.visualTuning.temporalNetworkDistance;
+    let maxDist = (104 + State.modulation.densityDrive * 34 + density * 54 + resonance.strength * 24) * State.visualTuning.temporalNetworkDistance;
     let maxDistSq = maxDist * maxDist;
     let lineLimit = 4 + Math.floor(density * 3 + resonance.strength * 2);
     let polyLimit = 1 + Math.floor(Math.max(density, State.denseImpactFlash) * 2);
@@ -160,7 +160,7 @@ function drawCenterMechanisms(
     let sectionEnergy = section?.energy || State.modulation.macroMomentum;
     setMechanismRingColor(State.visualTuning.circleHue);
     drawMechanismRing(backend, cx, cy, {
-        radius: (24 + State.modulation.lowFrequencyDrive * 46 + State.modulation.rhythmicImpulse * 32) * State.visualTuning.temporalRingSize,
+        radius: (24 + State.modulation.densityDrive * 46 + State.modulation.rhythmicImpulse * 32) * State.visualTuning.temporalRingSize,
         deformation: State.modulation.rhythmicImpulse * 0.08,
         colorR: mechanismRingColor[0],
         colorG: mechanismRingColor[1],

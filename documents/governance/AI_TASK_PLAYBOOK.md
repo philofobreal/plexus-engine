@@ -1,4 +1,4 @@
-# AI Task Playbook
+﻿# AI Task Playbook
 
 Purpose: provide deterministic execution paths for common Plexus Engine tasks.
 

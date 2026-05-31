@@ -30,7 +30,7 @@ const emptyTrackAnalysis: TrackAnalysis = {
 
 const emptyModulation: ModulationState = {
     kineticTension: 0,
-    lowFrequencyDrive: 0,
+    densityDrive: 0,
     spectralChaos: 0,
     rhythmicImpulse: 0,
     macroMomentum: 0

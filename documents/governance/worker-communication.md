@@ -1,4 +1,4 @@
-# Worker Communication
+﻿# Worker Communication
 
 This document extends `../../AGENTS.md`. If there is a conflict, `AGENTS.md` is authoritative.
 

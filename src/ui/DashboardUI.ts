@@ -1,6 +1,7 @@
 import type { AudioEngine } from '../audio/AudioEngine';
 import { normalizeVisualTuningConfig, visualTuningControls, type VisualTuningKey } from '../config/visualTuning';
 import { State } from '../state/store';
+import { dashboardMetricMetadata, type DashboardMetricKey } from './metricMetadata';
 
 interface VisualPresetManifest {
     presets?: string[];
@@ -39,11 +40,13 @@ export class DashboardUI {
     private lastTimelineDrawZoom = 1;
     private lastTimelineDrawScroll = 0;
     private lastTimelineDrawScrubTime: number | null = null;
+    private metricTooltip: HTMLDivElement;
+    private activeMetricCard: HTMLElement | null = null;
     private tuningDragOffset = { x: 0, y: 0 };
     private els: Record<string, HTMLElement>;
     private engine: AudioEngine;
 
-    // --- Új változók a UI zárolás funkcióhoz ---
+    // UI visibility lock state.
     private isUiLockedVisible = false;
     private singleClickTimer: number | null = null;
 
@@ -82,8 +85,6 @@ export class DashboardUI {
             barM: document.getElementById('bar-mid')!,
             valT: document.getElementById('val-treble')!,
             barT: document.getElementById('bar-treble')!,
-            valMelody: document.getElementById('val-melody')!,
-            barMelody: document.getElementById('bar-melody')!,
             valVocal: document.getElementById('val-vocal')!,
             barVocal: document.getElementById('bar-vocal')!,
             valFx: document.getElementById('val-fx')!,
@@ -114,6 +115,8 @@ export class DashboardUI {
         this.initBindings();
         this.initVisualTuningControls();
         this.timelineTooltip = this.createTimelineTooltip();
+        this.metricTooltip = this.createDashboardMetricTooltip();
+        this.initDashboardMetricTooltips();
         this.initDramaturgyTimeline();
         this.syncLoopUi();
         this.applyPresentationModeFromUrl();
@@ -207,7 +210,7 @@ export class DashboardUI {
             const now = window.performance.now();
             
             if (now - this.lastSurfaceClickAt <= 320) {
-                // --- DUPLA KATTINTÁS (Play / Pause) ---
+                // Double click toggles playback.
                 if (this.singleClickTimer !== null) {
                     window.clearTimeout(this.singleClickTimer);
                     this.singleClickTimer = null;
@@ -215,10 +218,10 @@ export class DashboardUI {
                 this.togglePlayback();
                 this.lastSurfaceClickAt = 0;
             } else {
-                // --- SZIMPLA KATTINTÁS (Késleltetve, hátha dupla lesz) ---
+                // Single click is delayed so double click can take precedence.
                 this.lastSurfaceClickAt = now;
                 this.singleClickTimer = window.setTimeout(() => {
-                    this.toggleUiLock(); // UI zárolása / feloldása
+                    this.toggleUiLock(); // Lock or unlock the UI.
                     this.singleClickTimer = null;
                 }, 350);
             }
@@ -271,11 +274,11 @@ export class DashboardUI {
         this.isUiLockedVisible = !this.isUiLockedVisible;
         
         if (this.isUiLockedVisible) {
-            // ZÁROLVA: Ne tűnjön el soha
+            // Locked UI stays visible.
             this.clearChromeHideTimer();
             document.body.classList.remove('chrome-idle');
         } else {
-            // FELOLDVA: szándékos háttérkattintás után gyors vizuális visszajelzés kell.
+            // After intentional background unlock, hide quickly for visible feedback.
             this.scheduleChromeHide(400);
         }
     }
@@ -315,6 +318,104 @@ export class DashboardUI {
         tooltip.className = 'timeline-tooltip is-hidden';
         document.body.appendChild(tooltip);
         return tooltip;
+    }
+
+    private createDashboardMetricTooltip() {
+        const tooltip = document.createElement('div');
+        tooltip.id = 'dashboard-metric-tooltip';
+        tooltip.className = 'metric-tooltip is-hidden';
+        tooltip.setAttribute('role', 'tooltip');
+        document.body.appendChild(tooltip);
+        return tooltip;
+    }
+
+    private initDashboardMetricTooltips() {
+        const getMetricCard = (target: EventTarget | null): HTMLElement | null => {
+            const element = target instanceof Element ? target : null;
+            const card = element?.closest('[data-metric-key]') as HTMLElement | null;
+            return card && this.els.metricsGrid.contains(card) ? card : null;
+        };
+
+        this.els.metricsGrid.addEventListener('pointerover', (event) => {
+            if (event.pointerType === 'touch') return;
+            const card = getMetricCard(event.target);
+            if (card) this.showMetricTooltip(card);
+        });
+
+        this.els.metricsGrid.addEventListener('pointerout', (event) => {
+            if (!this.activeMetricCard) return;
+            const related = event.relatedTarget instanceof Node ? event.relatedTarget : null;
+            if (related && this.activeMetricCard.contains(related)) return;
+            this.hideMetricTooltip();
+        });
+
+        this.els.metricsGrid.addEventListener('focusin', (event) => {
+            const card = getMetricCard(event.target);
+            if (card) this.showMetricTooltip(card);
+        });
+
+        this.els.metricsGrid.addEventListener('focusout', (event) => {
+            const related = event.relatedTarget instanceof Node ? event.relatedTarget : null;
+            if (related && this.els.metricsGrid.contains(related)) return;
+            this.hideMetricTooltip();
+        });
+
+        this.els.metricsGrid.addEventListener('click', (event) => {
+            const card = getMetricCard(event.target);
+            if (!card) return;
+            if (this.activeMetricCard === card && !this.metricTooltip.classList.contains('is-hidden')) {
+                this.hideMetricTooltip();
+            } else {
+                this.showMetricTooltip(card);
+            }
+        });
+
+        this.els.metricsGrid.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                this.hideMetricTooltip();
+            }
+        });
+
+        document.addEventListener('pointerdown', (event) => {
+            if (!this.activeMetricCard) return;
+            const target = event.target instanceof Node ? event.target : null;
+            if (target && (this.activeMetricCard.contains(target) || this.metricTooltip.contains(target))) return;
+            this.hideMetricTooltip();
+        });
+    }
+
+    private showMetricTooltip(card: HTMLElement) {
+        const key = card.dataset.metricKey as DashboardMetricKey | undefined;
+        if (!key) return;
+
+        const metadata = dashboardMetricMetadata[key];
+        if (!metadata) return;
+
+        this.activeMetricCard = card;
+        this.metricTooltip.textContent = metadata.tooltip;
+        this.metricTooltip.classList.remove('is-hidden');
+        this.positionMetricTooltip(card);
+    }
+
+    private positionMetricTooltip(card: HTMLElement) {
+        const gap = 8;
+        const rect = card.getBoundingClientRect();
+        const tooltipRect = this.metricTooltip.getBoundingClientRect();
+        const maxLeft = window.innerWidth - tooltipRect.width - gap;
+        const left = Math.max(gap, Math.min(rect.left, maxLeft));
+        const aboveTop = rect.top - tooltipRect.height - gap;
+        const belowTop = rect.bottom + gap;
+        const top = aboveTop >= gap
+            ? aboveTop
+            : Math.min(belowTop, window.innerHeight - tooltipRect.height - gap);
+
+        this.metricTooltip.style.left = `${left}px`;
+        this.metricTooltip.style.top = `${Math.max(gap, top)}px`;
+    }
+
+    private hideMetricTooltip() {
+        this.activeMetricCard = null;
+        this.metricTooltip.classList.add('is-hidden');
     }
 
     private initDramaturgyTimeline() {
@@ -1036,7 +1137,7 @@ export class DashboardUI {
     private scheduleChromeHide(delay = 2600) {
         this.clearChromeHideTimer();
         
-        // Ha le van zárva az eltűnés, ne indítson időzítőt
+        // Do not start an idle timer while the UI is locked visible.
         if (this.isUiLockedVisible) {
             return;
         }
@@ -1224,8 +1325,7 @@ export class DashboardUI {
         const textArea = document.createElement('textarea');
         textArea.value = value;
         textArea.setAttribute('readonly', 'true');
-        textArea.style.position = 'fixed';
-        textArea.style.opacity = '0';
+        textArea.className = 'copy-fallback-input';
         document.body.appendChild(textArea);
         textArea.select();
         document.execCommand('copy');
@@ -1243,7 +1343,6 @@ export class DashboardUI {
         this.els.valB.innerText = State.currentFrame.b.toFixed(2); this.els.barB.style.width = (State.currentFrame.b * 100) + "%";
         this.els.valM.innerText = State.currentFrame.m.toFixed(2); this.els.barM.style.width = (State.currentFrame.m * 100) + "%";
         this.els.valT.innerText = State.currentFrame.t.toFixed(2); this.els.barT.style.width = (State.currentFrame.t * 100) + "%";
-        this.els.valMelody.innerText = State.currentFeatures.melody.toFixed(2); this.els.barMelody.style.width = (State.currentFeatures.melody * 100) + "%";
         this.els.valVocal.innerText = State.currentFeatures.vocal.toFixed(2); this.els.barVocal.style.width = (State.currentFeatures.vocal * 100) + "%";
         this.els.valFx.innerText = State.currentFeatures.fx.toFixed(2); this.els.barFx.style.width = (State.currentFeatures.fx * 100) + "%";
         this.els.valBeat.innerText = State.beatDecay.toFixed(2); this.els.barBeat.style.width = (State.beatDecay * 100) + "%";
@@ -1258,10 +1357,6 @@ export class DashboardUI {
 
         this.els.valDyn.innerText = dynText;
         this.els.barDyn.style.width = (State.currentFrame.eRatio * 100) + "%";
-
-        let isLowMode = State.currentFrame.state !== 'HIGH' && State.currentFrame.state !== 'IDLE';
-        let accentColor = isLowMode && State.isPlaying ? '#ff00aa' : '#00e5ff';
-        this.els.valDyn.style.color = accentColor; this.els.barDyn.style.background = accentColor;
 
         if (State.duration > 0) {
             let progPercent = (State.currentTime / State.duration) * 100;

@@ -57,7 +57,7 @@ test('renderer reuses modulation state and lowers frame rate while paused or idl
   assert.doesNotMatch(renderer, /State\.modulation = computeModulationBus/);
   assert.doesNotMatch(renderer, /State\.modulation = \{/);
   assert.match(renderer, /State\.modulation\.kineticTension = 0/);
-  assert.match(renderer, /State\.modulation\.lowFrequencyDrive = 0/);
+  assert.match(renderer, /State\.modulation\.densityDrive = 0/);
   assert.match(renderer, /State\.modulation\.spectralChaos = 0/);
   assert.match(renderer, /State\.modulation\.rhythmicImpulse = 0/);
   assert.match(renderer, /State\.modulation\.macroMomentum = 0/);

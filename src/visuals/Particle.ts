@@ -15,7 +15,7 @@ export class Particle {
         this.vel = this.p.createVector(this.p.random(-1, 1), this.p.random(-1, 1)).normalize();
     }
 
-    update(energy: number, bass: number, beat: number, isPlaying: boolean) {
+    update(energy: number, activity: number, beat: number, isPlaying: boolean) {
         let cx = this.p.width / 2; 
         let cy = this.p.height / 2;
         let dx = cx - this.pos.x;
@@ -36,8 +36,8 @@ export class Particle {
         let speed = isPlaying
             ? (energy * State.visualTuning.particleEnergySpeed) + (beat * State.visualTuning.particleBeatSpeed)
             : State.visualTuning.particleIdleSpeed; 
-        if (bass > 0.4) {
-            let heading = this.vel.heading() + this.p.random(-State.visualTuning.particleBassTurn, State.visualTuning.particleBassTurn) * bass;
+        if (activity > 0.4) {
+            let heading = this.vel.heading() + this.p.random(-State.visualTuning.particleActivityTurn, State.visualTuning.particleActivityTurn) * activity;
             this.vel.set(this.p.cos(heading), this.p.sin(heading));
         }
         this.pos.x += this.vel.x * speed;

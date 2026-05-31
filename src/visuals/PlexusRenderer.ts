@@ -157,7 +157,7 @@ function resetTransientVisualState() {
     State.denseImpactFlash = 0;
     State.cueDecay = 0;
     State.modulation.kineticTension = 0;
-    State.modulation.lowFrequencyDrive = 0;
+    State.modulation.densityDrive = 0;
     State.modulation.spectralChaos = 0;
     State.modulation.rhythmicImpulse = 0;
     State.modulation.macroMomentum = 0;

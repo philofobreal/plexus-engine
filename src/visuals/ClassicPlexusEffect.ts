@@ -19,7 +19,7 @@ export function drawClassicPlexusEffect(backend: VisualRendererBackend, particle
     for (let pt of particles) {
         pt.update(
             State.modulation.macroMomentum,
-            State.modulation.lowFrequencyDrive,
+            State.modulation.densityDrive,
             State.modulation.rhythmicImpulse,
             State.isPlaying
         );
@@ -35,10 +35,10 @@ function drawCenterDynamics(backend: VisualRendererBackend, shockwaves: Shockwav
     }
 
     let isLowMode = State.currentFrame.state.startsWith('LOW');
-    let glowRadius = Math.max(backend.width, backend.height) * (0.3 + State.modulation.lowFrequencyDrive * 0.3) * State.visualTuning.circleSize;
+    let glowRadius = Math.max(backend.width, backend.height) * (0.3 + State.modulation.densityDrive * 0.3) * State.visualTuning.circleSize;
 
     hueToRgbInto(glowColor, State.visualTuning.circleBackgroundHue + (isLowMode ? 105 : 0), 0.74, 0.5);
-    let glowAlpha = Math.min((0.3 + State.modulation.lowFrequencyDrive * 0.4) * State.visualTuning.circleBackgroundAlpha, 1);
+    let glowAlpha = Math.min((0.3 + State.modulation.densityDrive * 0.4) * State.visualTuning.circleBackgroundAlpha, 1);
     if (State.isPlaying && shouldUseExpensiveGlow(State.visualTuning)) {
         backend.radialGlow(cx, cy, glowRadius, glowColor, glowAlpha);
     }
@@ -51,7 +51,7 @@ function drawCenterDynamics(backend: VisualRendererBackend, shockwaves: Shockwav
 }
 
 function drawPolygonalNetwork(backend: VisualRendererBackend, particles: Particle[]) {
-    let maxDist = (State.isPlaying ? 130 + (State.modulation.lowFrequencyDrive * 50) : 80) * State.visualTuning.lineDistance;
+    let maxDist = (State.isPlaying ? 130 + (State.modulation.densityDrive * 50) : 80) * State.visualTuning.lineDistance;
     let maxDistSq = maxDist * maxDist;
     hueToRgbInto(lineColor, State.visualTuning.lineHue);
     hueToRgbInto(polygonColor, State.visualTuning.polygonHue, 0.58, 0.82);

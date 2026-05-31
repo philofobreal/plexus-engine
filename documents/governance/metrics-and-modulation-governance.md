@@ -1,4 +1,4 @@
-# Metrics And Modulation Governance
+﻿# Metrics And Modulation Governance
 
 This document extends `AGENTS.md`. If there is a conflict, `AGENTS.md` is authoritative.
 
@@ -21,7 +21,7 @@ A metric must not have multiple meanings.
 
 ## Metric Layers
 
-### Layer 1 — Raw Analysis
+### Layer 1 - Raw Analysis
 
 Owner: `src/audio/analyzer.worker.ts`
 
@@ -35,7 +35,7 @@ Examples:
 
 These values are DSP implementation details. They may feed projections, but they should not be treated as user-facing musical truth.
 
-### Layer 2 — Musical Features
+### Layer 2 - Musical Features
 
 Owner: `TrackAnalysis` / worker output contract
 
@@ -56,14 +56,14 @@ These values are the canonical musical interpretation layer.
 
 Dashboard metrics should primarily use this layer when the displayed label describes a musical concept.
 
-### Layer 3 — Render Projections
+### Layer 3 - Render Projections
 
 Owner: visual runtime / `State.modulation`
 
 Examples:
 
 - kineticTension
-- lowFrequencyDrive
+- densityDrive
 - spectralChaos
 - rhythmicImpulse
 - macroMomentum
@@ -152,12 +152,13 @@ Allowed:
 
 - canonical: `TrackAnalysis.features[i].melody`
 - projection: `AudioFrame.m` as legacy render-facing melody presence
+- dashboard: Melody Presence, sourced from `AudioFrame.m`
 
 Forbidden:
 
 - `AudioFrame.m`
 - `VisualFeatureFrame.melody`
-- `DashboardMelody`
+- duplicate dashboard `Melody`
 - renderer-local melody score
 
 all carrying different meanings without declared ownership.
@@ -192,7 +193,7 @@ The following remain compatibility or audit areas:
 2. `AudioFrame.m`
 3. `AudioFrame.t`
 4. historical references to dashboard `Bass/Mid/Treble` labels in older docs or acceptance notes
-5. duplication between `AudioFrame.m/t` and `VisualFeatureFrame.melody/fx`
+5. overlap between `AudioFrame.m/t` and `VisualFeatureFrame.melody/fx`; Melody Presence is the dashboard-facing melody metric, while `VisualFeatureFrame.melody` remains internal/canonical
 6. use of `bass/mid/treble` inside `BarAnalysis`
 7. mapping from musical features into `State.modulation`
 

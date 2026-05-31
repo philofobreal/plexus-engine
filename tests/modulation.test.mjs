@@ -50,7 +50,7 @@ test('writeModulationBus mutates and returns the caller-owned modulation object'
   const features = { melody: 0.8, vocal: 0.4, fx: 0.7, density: 0.6, brightness: 0.9, tension: 0.5 };
   const target = {
     kineticTension: -1,
-    lowFrequencyDrive: -1,
+    densityDrive: -1,
     spectralChaos: -1,
     rhythmicImpulse: -1,
     macroMomentum: -1
@@ -61,6 +61,22 @@ test('writeModulationBus mutates and returns the caller-owned modulation object'
 
   assert.equal(returned, target);
   assert.deepEqual({ ...target }, { ...expected });
+});
+
+test('visual tuning normalization maps legacy particleBassTurn payloads to particleActivityTurn', () => {
+  const { normalizeVisualTuningConfig, defaultVisualTuning } = loadVisualTuningModule();
+
+  const legacy = normalizeVisualTuningConfig({ visualTuning: { particleBassTurn: 0.73 } });
+  const canonical = normalizeVisualTuningConfig({
+    visualTuning: {
+      particleBassTurn: 0.73,
+      particleActivityTurn: 0.42
+    }
+  });
+
+  assert.equal(legacy.particleActivityTurn, 0.73);
+  assert.equal(canonical.particleActivityTurn, 0.42);
+  assert.equal(defaultVisualTuning.particleActivityTurn, 0.1);
 });
 
 test('hueToRgbInto matches hueToRgb, returns the provided tuple, and normalizes hue', () => {
