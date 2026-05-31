@@ -85,6 +85,19 @@ h1 { margin: 0; font-size: 1rem; font-weight: 700; letter-spacing: 1px; text-tra
   color: var(--text-muted); font-size: 0.85rem; font-weight: 500;
   max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.bpm-header-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0, 229, 255, 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-left: 10px;
+  font-variant-numeric: tabular-nums;
+}
 
 /* VEZÉRLŐK (TOP RIGHT) */
 .controls { 
@@ -178,6 +191,14 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(1.3); }
 .m-value { font-size: 1.25rem; font-weight: 700; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
 .bpm-badge { color: var(--accent); }
 .dyn-text { color: var(--accent); font-size: 1.1rem; }
+.m-sub-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
 
 /* Progressziós sávok a metrikákban */
 .m-bar-bg {

@@ -7,13 +7,6 @@ export interface MetricMetadata {
 }
 
 export const dashboardMetricMetadata = {
-    bpm: {
-        name: 'BPM',
-        description: 'Estimated tempo for the loaded track.',
-        source: 'Analysis worker tempo estimate',
-        range: '0..300 typical, -- before analysis',
-        tooltip: 'Estimated track tempo.\nNot a live beat detector.'
-    },
     energy: {
         name: 'Energy',
         description: 'Normalized RMS energy for the current frame.',
@@ -34,13 +27,6 @@ export const dashboardMetricMetadata = {
         source: 'AudioFrame.m / VisualFeatureFrame.melody',
         range: '0.00..1.00',
         tooltip: 'Tonal melody presence.\nNot a MIDI melody track.'
-    },
-    fxPresence: {
-        name: 'FX Presence',
-        description: 'Smoothed high-transient and noise-like FX presence.',
-        source: 'AudioFrame.t legacy FX projection',
-        range: '0.00..1.00',
-        tooltip: 'High-transient FX presence.\nNot a treble EQ meter.'
     },
     vocal: {
         name: 'Vocal',
@@ -63,19 +49,12 @@ export const dashboardMetricMetadata = {
         range: '0.00..1.00',
         tooltip: 'Decaying beat impulse.\nNot raw beat strength.'
     },
-    progress: {
-        name: 'Progress',
-        description: 'Playback position through the loaded track.',
-        source: 'State.currentTime / State.duration',
-        range: '0%..100%',
-        tooltip: 'Track playback progress.\nNot a musical section score.'
-    },
     dynamicsState: {
         name: 'Dynamics State',
         description: 'Current macro dynamics state from normalized energy ratio.',
         source: 'AudioFrame.state and AudioFrame.eRatio',
         range: 'IDLE, HIGH, LOW, LOW [DROP], LOW [OVERLOAD]',
-        tooltip: 'Macro energy state.\nNot genre or section label.'
+        tooltip: 'LOW: Csendesebb, építkező rész. A vizuál visszafogott, a vonalak vékonyabbak.\nHIGH: A szám fő része (Drop/Verze). Maximális vizuális mozgás és vonalsűrűség.\nLOW [DROP]: Hirtelen elnémulás vagy törés a fő részben. Vizuális villanás és felkészülés az újbóli robbanásra.\nLOW [OVERLOAD]: Extrém hangerő, túlvezérlés. A vizuális motor automatikusan tompítja a fényeket a szem kímélése érdekében.'
     }
 };
 
