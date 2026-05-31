@@ -15,6 +15,8 @@ interface TimelineViewport {
 
 export class DashboardUI {
     private isDraggingSlider = false;
+    private isDraggingThreshold = false;
+    private draggingSectionIdx: number | null = null;
     private isResizingTimeline = false;
     private isPanningTimeline = false;
     private isSeekingTimeline = false;
@@ -74,7 +76,7 @@ export class DashboardUI {
             timelineResizeHandle: document.getElementById('timeline-resize-handle')!,
             toggleTimelineZoom: document.getElementById('toggle-timeline-zoom')!,
             seekBar: document.getElementById('seek-bar')!,
-            bpmBadge: document.getElementById('bpm-badge')!,
+            bpmHeaderBadge: document.getElementById('bpm-header-badge')!,
             timeCur: document.getElementById('time-current')!,
             timeTot: document.getElementById('time-total')!,
             valE: document.getElementById('val-energy')!,
@@ -83,16 +85,12 @@ export class DashboardUI {
             barB: document.getElementById('bar-bass')!,
             valM: document.getElementById('val-mid')!,
             barM: document.getElementById('bar-mid')!,
-            valT: document.getElementById('val-treble')!,
-            barT: document.getElementById('bar-treble')!,
             valVocal: document.getElementById('val-vocal')!,
             barVocal: document.getElementById('bar-vocal')!,
             valFx: document.getElementById('val-fx')!,
             barFx: document.getElementById('bar-fx')!,
             valBeat: document.getElementById('val-beat')!,
             barBeat: document.getElementById('bar-beat')!,
-            valProg: document.getElementById('val-prog')!,
-            barProg: document.getElementById('bar-prog')!,
             valDyn: document.getElementById('val-dyn')!,
             barDyn: document.getElementById('bar-dyn')!
         };
@@ -145,14 +143,14 @@ export class DashboardUI {
             this.setPlaybackUi(false);
             this.els.timeCur.innerText = "0:00";
             this.els.timeTot.innerText = "0:00";
-            this.els.bpmBadge.style.display = "none";
+            this.els.bpmHeaderBadge.style.display = "none";
             this.resetTimelineView();
             this.clearDramaturgyTimeline();
 
             this.engine.onAnalysisComplete = () => {
                 if (State.bpm > 0) {
-                    this.els.bpmBadge.innerText = State.bpm + " BPM";
-                    this.els.bpmBadge.style.display = "inline-flex";
+                    this.els.bpmHeaderBadge.innerText = State.bpm + " BPM";
+                    this.els.bpmHeaderBadge.style.display = "inline-flex";
                 }
                 this.els.status.innerText = file.name;
                 (this.els.playBtn as HTMLButtonElement).disabled = false;
@@ -434,6 +432,32 @@ export class DashboardUI {
             if (State.duration <= 0) return;
             const rect = canvas.getBoundingClientRect();
             if (rect.width <= 0) return;
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+            const viewport = this.getTimelineViewport();
+            const hoverTime = this.getTimelineTimeAtX(mouseX, rect.width);
+            const sections = State.trackAnalysis.sections;
+            const sectionIdx = sections.findIndex(s => hoverTime >= s.start && hoverTime <= s.end);
+            const topPad = rect.height >= 52 ? 18 : 4;
+            const bottomPad = 5;
+            const graphHeight = Math.max(8, rect.height - topPad - bottomPad);
+
+            if (sectionIdx !== -1) {
+                const section = sections[sectionIdx];
+                const sectionStartX = this.getTimelineXAtTime(section.start, rect.width, viewport);
+                const sectionEndX = this.getTimelineXAtTime(section.end, rect.width, viewport);
+                const override = State.sectionOverrides[`section-${sectionIdx}`] || { sensitivity: State.visualTuning.audioSensitivity };
+                const normVal = (override.sensitivity - 0.1) / 3.9;
+                const yThreshold = topPad + graphHeight * (1 - normVal);
+
+                if (Math.abs(mouseY - yThreshold) < 12 && mouseX >= sectionStartX && mouseX <= sectionEndX) {
+                    this.draggingSectionIdx = sectionIdx;
+                    this.isDraggingThreshold = true;
+                    canvas.setPointerCapture(event.pointerId);
+                    event.preventDefault();
+                    return;
+                }
+            }
 
             this.timelinePointerDownX = event.clientX;
             this.timelinePointerDownY = event.clientY;
@@ -458,6 +482,37 @@ export class DashboardUI {
         canvas.addEventListener('pointermove', (event) => {
             const rect = canvas.getBoundingClientRect();
             if (rect.width <= 0) return;
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+            const topPad = rect.height >= 52 ? 18 : 4;
+            const bottomPad = 5;
+            const graphHeight = Math.max(8, rect.height - topPad - bottomPad);
+
+            if (this.isDraggingThreshold && this.draggingSectionIdx !== null) {
+                const normVal = this.clamp(1 - (mouseY - topPad) / graphHeight, 0.0, 1.0);
+                const sensVal = 0.1 + normVal * 3.9;
+                const key = `section-${this.draggingSectionIdx}`;
+                if (!State.sectionOverrides[key]) {
+                    State.sectionOverrides[key] = { sensitivity: sensVal };
+                } else {
+                    State.sectionOverrides[key].sensitivity = sensVal;
+                }
+                this.requestTimelineDraw();
+                return;
+            }
+
+            const hoverTime = this.getTimelineTimeAtX(mouseX, rect.width);
+            const sections = State.trackAnalysis.sections;
+            const sectionIdx = sections.findIndex(s => hoverTime >= s.start && hoverTime <= s.end);
+            let overLine = false;
+
+            if (sectionIdx !== -1) {
+                const override = State.sectionOverrides[`section-${sectionIdx}`] || { sensitivity: State.visualTuning.audioSensitivity };
+                const normVal = (override.sensitivity - 0.1) / 3.9;
+                const yThreshold = topPad + graphHeight * (1 - normVal);
+                overLine = Math.abs(mouseY - yThreshold) < 8;
+            }
+            canvas.style.cursor = overLine ? 'row-resize' : '';
 
             if (this.isPanningTimeline) {
                 const dragDistance = Math.abs(event.clientX - this.timelinePointerDownX) + Math.abs(event.clientY - this.timelinePointerDownY);
@@ -484,7 +539,10 @@ export class DashboardUI {
             }
             this.isPanningTimeline = false;
             this.isSeekingTimeline = false;
+            this.isDraggingThreshold = false;
+            this.draggingSectionIdx = null;
             this.timelineDidDrag = false;
+            canvas.style.cursor = '';
             canvas.classList.remove('is-panning');
             if (canvas.hasPointerCapture(event.pointerId)) {
                 canvas.releasePointerCapture(event.pointerId);
@@ -493,7 +551,53 @@ export class DashboardUI {
         canvas.addEventListener('pointerup', endTimelinePointer);
         canvas.addEventListener('pointercancel', endTimelinePointer);
         canvas.addEventListener('pointerleave', () => {
-            if (!this.isPanningTimeline && !this.isSeekingTimeline) this.hideTimelineTooltip();
+            if (!this.isPanningTimeline && !this.isSeekingTimeline && !this.isDraggingThreshold) {
+                canvas.style.cursor = '';
+                this.hideTimelineTooltip();
+            }
+        });
+
+        canvas.addEventListener('dblclick', (event) => {
+            if (State.duration <= 0) return;
+            const rect = canvas.getBoundingClientRect();
+            if (rect.width <= 0) return;
+
+            const mouseX = event.clientX - rect.left;
+            const hoverTime = this.getTimelineTimeAtX(mouseX, rect.width);
+            const sections = State.trackAnalysis.sections;
+            const sectionIdx = sections.findIndex(s => hoverTime >= s.start && hoverTime <= s.end);
+            if (sectionIdx === -1) return;
+
+            const section = sections[sectionIdx];
+            const duration = section.end - section.start;
+            if (duration <= 1.0) return;
+
+            const midTime = (section.start + section.end) * 0.5;
+            const sec1 = { ...section, end: midTime };
+            const sec2 = { ...section, start: midTime };
+            sections.splice(sectionIdx, 1, sec1, sec2);
+
+            const nextOverrides: Record<string, { sensitivity: number }> = {};
+            const oldKey = `section-${sectionIdx}`;
+            const oldOverride = State.sectionOverrides[oldKey];
+
+            for (const [key, value] of Object.entries(State.sectionOverrides)) {
+                const match = key.match(/^section-(\d+)$/);
+                if (!match) continue;
+                const idx = parseInt(match[1], 10);
+                if (idx < sectionIdx) {
+                    nextOverrides[key] = value;
+                } else if (idx > sectionIdx) {
+                    nextOverrides[`section-${idx + 1}`] = value;
+                }
+            }
+
+            const sensVal = oldOverride ? oldOverride.sensitivity : State.visualTuning.audioSensitivity;
+            nextOverrides[`section-${sectionIdx}`] = { sensitivity: sensVal };
+            nextOverrides[`section-${sectionIdx + 1}`] = { sensitivity: sensVal };
+
+            State.sectionOverrides = nextOverrides;
+            this.requestTimelineDraw();
         });
 
         canvas.addEventListener('wheel', (event) => {
@@ -949,6 +1053,84 @@ export class DashboardUI {
         ctx.strokeStyle = 'rgba(0, 229, 255, 0.82)';
         ctx.lineWidth = height >= 72 ? 1.5 : 1;
         ctx.stroke();
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(213, 84, 172, 0.95)';
+        ctx.lineWidth = height >= 72 ? 2.5 : 1.75;
+        ctx.setLineDash([1, 4]);
+        ctx.beginPath();
+        let isDrawing = false;
+        for (let x = 0; x <= width; x++) {
+            const time = viewport.start + (x / Math.max(1, width)) * viewport.duration;
+            const frameIdx = Math.min(buildup.length - 1, Math.max(0, Math.floor((time / State.duration) * buildup.length)));
+            const value = buildup[frameIdx] || 0;
+            const pivotVal = State.trackAnalysis.spectralPivot ? (State.trackAnalysis.spectralPivot[frameIdx] || 0) : 0;
+
+            if (pivotVal > 0.05) {
+                const y = topPad + graphHeight * (1 - value);
+                if (!isDrawing) {
+                    ctx.moveTo(x, y);
+                    isDrawing = true;
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            } else {
+                isDrawing = false;
+            }
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        const playheadX = this.getTimelineXAtTime(State.currentTime, width, viewport);
+        if (State.visualTuning.dropAnticipation > 0 && playheadX < width) {
+            const anticipationWidth = (State.visualTuning.dropAnticipation / Math.max(0.001, viewport.duration)) * width;
+            const endX = Math.min(width, playheadX + anticipationWidth);
+            const suspenseGrad = ctx.createLinearGradient(playheadX, 0, endX, 0);
+            suspenseGrad.addColorStop(0, 'rgba(213, 84, 172, 0.18)');
+            suspenseGrad.addColorStop(1, 'rgba(213, 84, 172, 0.01)');
+            ctx.fillStyle = suspenseGrad;
+            ctx.fillRect(playheadX, topPad, endX - playheadX, graphHeight);
+        }
+
+        const sections = State.trackAnalysis.sections;
+        for (let i = 0; i < sections.length; i++) {
+            const section = sections[i];
+            if (section.end < viewport.start || section.start > viewport.end) continue;
+
+            const startX = this.getTimelineXAtTime(section.start, width, viewport);
+            const endX = this.getTimelineXAtTime(section.end, width, viewport);
+            const override = State.sectionOverrides[`section-${i}`];
+            const isOverridden = Boolean(override);
+            const sensVal = override ? override.sensitivity : State.visualTuning.audioSensitivity;
+            const normVal = (sensVal - 0.1) / 3.9;
+            const yThreshold = topPad + graphHeight * (1 - normVal);
+
+            ctx.save();
+            if (isOverridden) {
+                ctx.strokeStyle = 'rgba(0, 229, 255, 0.85)';
+                ctx.lineWidth = 1.75;
+                ctx.setLineDash([]);
+            } else {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+                ctx.lineWidth = 1.25;
+                ctx.setLineDash([3, 3]);
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(Math.max(0, startX), yThreshold);
+            ctx.lineTo(Math.min(width, endX), yThreshold);
+            ctx.stroke();
+
+            if (isOverridden && endX - startX > 45) {
+                const tagX = Math.max(0, startX) + 4;
+                ctx.fillStyle = 'rgba(0, 229, 255, 0.95)';
+                ctx.fillRect(tagX, yThreshold - 12, 34, 10);
+                ctx.fillStyle = '#000000';
+                ctx.font = '7px monospace';
+                ctx.fillText(`S:${sensVal.toFixed(2)}`, tagX + 2, yThreshold - 4);
+            }
+            ctx.restore();
+        }
     }
 
     private drawTimelineTrends(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
@@ -1342,7 +1524,6 @@ export class DashboardUI {
         this.els.valE.innerText = State.currentFrame.e.toFixed(2); this.els.barE.style.width = (State.currentFrame.e * 100) + "%";
         this.els.valB.innerText = State.currentFrame.b.toFixed(2); this.els.barB.style.width = (State.currentFrame.b * 100) + "%";
         this.els.valM.innerText = State.currentFrame.m.toFixed(2); this.els.barM.style.width = (State.currentFrame.m * 100) + "%";
-        this.els.valT.innerText = State.currentFrame.t.toFixed(2); this.els.barT.style.width = (State.currentFrame.t * 100) + "%";
         this.els.valVocal.innerText = State.currentFeatures.vocal.toFixed(2); this.els.barVocal.style.width = (State.currentFeatures.vocal * 100) + "%";
         this.els.valFx.innerText = State.currentFeatures.fx.toFixed(2); this.els.barFx.style.width = (State.currentFeatures.fx * 100) + "%";
         this.els.valBeat.innerText = State.beatDecay.toFixed(2); this.els.barBeat.style.width = (State.beatDecay * 100) + "%";
@@ -1358,13 +1539,11 @@ export class DashboardUI {
         this.els.valDyn.innerText = dynText;
         this.els.barDyn.style.width = (State.currentFrame.eRatio * 100) + "%";
 
-        if (State.duration > 0) {
-            let progPercent = (State.currentTime / State.duration) * 100;
-            this.els.valProg.innerText = Math.floor(progPercent) + "%";
-            this.els.barProg.style.width = progPercent + "%";
+        if (State.bpm > 0) {
+            this.els.bpmHeaderBadge.innerText = State.bpm + " BPM";
+            this.els.bpmHeaderBadge.style.display = "inline-flex";
         } else {
-            this.els.valProg.innerText = "0%";
-            this.els.barProg.style.width = "0%";
+            this.els.bpmHeaderBadge.style.display = "none";
         }
 
         this.requestDashboardTimelineDraw();
