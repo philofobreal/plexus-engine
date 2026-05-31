@@ -19,6 +19,7 @@ const emptyTrackAnalysis: TrackAnalysis = {
     significantMoments: [],
     features: [],
     buildupConfidence: [],
+    spectralPivot: [],
     tensionTrends: {
         globalSlope: 0,
         peakTime: 0,
@@ -46,6 +47,7 @@ export const State = {
     frames: [] as AudioFrame[],
     events: [] as BeatEvent[],
     trackAnalysis: emptyTrackAnalysis as TrackAnalysis,
+    sectionOverrides: {} as Record<string, { sensitivity: number }>,
     hopSize: 1024,
     sampleRate: 44100,
 

@@ -15,6 +15,10 @@ export interface VisualTuningControl {
 export const defaultVisualTuning: VisualTuningConfig = {
     audioSensitivity: 1,
     transitionSpeed: 0.08,
+    dynamicsThreshold: 0.45,
+    dropThreshold: 0.35,
+    dropAnticipation: 0.0,
+    phraseSize: 4,
     chromaKeyMode: 0,
     performanceMode: 0,
     backgroundRed: 8,
@@ -57,6 +61,10 @@ const visualTuningKeys = Object.keys(defaultVisualTuning) as VisualTuningKey[];
 export const visualTuningControls: VisualTuningControl[] = [
     { key: 'audioSensitivity', label: 'Music sensitivity', group: 'Audio', min: 0.1, max: 4, step: 0.05, unit: 'x' },
     { key: 'transitionSpeed', label: 'Morph speed', group: 'Audio', min: 0.01, max: 1, step: 0.01, unit: 'x' },
+    { key: 'dynamicsThreshold', label: 'Dynamics Threshold', group: 'Audio', min: 0.1, max: 0.9, step: 0.02 },
+    { key: 'dropThreshold', label: 'Drop Threshold', group: 'Audio', min: 0.1, max: 0.9, step: 0.02 },
+    { key: 'dropAnticipation', label: 'Drop Anticipation', group: 'Audio', min: 0.0, max: 5.0, step: 0.1, unit: 's' },
+    { key: 'phraseSize', label: 'Phrase Size', group: 'Audio', min: 4, max: 32, step: 4, unit: ' bars' },
     { key: 'chromaKeyMode', label: 'Chroma mode', group: 'Background', min: 0, max: 2, step: 1 },
     { key: 'performanceMode', label: 'Low latency', group: 'Background', min: 0, max: 1, step: 1 },
     { key: 'backgroundRed', label: 'Background red', group: 'Background', min: 0, max: 255, step: 1 },

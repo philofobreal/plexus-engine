@@ -11,6 +11,10 @@ export type VisualMode = 'classic' | 'temporal';
 export interface VisualTuningConfig {
     audioSensitivity: number;
     transitionSpeed: number;
+    dynamicsThreshold: number;
+    dropThreshold: number;
+    dropAnticipation: number;
+    phraseSize: number;
     chromaKeyMode: number;
     performanceMode: number;
     backgroundRed: number;
@@ -159,6 +163,7 @@ export interface TrackAnalysis {
     significantMoments: VisualCueEvent[];
     features: VisualFeatureFrame[];
     buildupConfidence: number[];
+    spectralPivot: number[];
     tensionTrends: TensionTrends;
     featureHopSize: number;
 }
@@ -166,6 +171,7 @@ export interface TrackAnalysis {
 export interface AnalysisResult {
     requestId: number;
     bpm: number;
+    adaptiveThreshold: number;
     frames: AudioFrame[];
     events: BeatEvent[];
     hopSize: number;
@@ -177,6 +183,7 @@ export interface AnalysisRequest {
     algorithmVersion: number;
     samples: ArrayBuffer;
     sampleRate: number;
+    phraseSize: number;
 }
 
 export interface AnalysisSuccessMessage extends AnalysisResult {
