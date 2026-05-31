@@ -117,6 +117,8 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
         const requestId = e.data.requestId;
         const channel = new Float32Array(e.data.samples);
         const sampleRate = e.data.sampleRate;
+        const requestedPhraseSize = Number.isFinite(e.data.phraseSize) ? e.data.phraseSize : 8;
+        const phraseSize = Math.min(32, Math.max(4, Math.round(requestedPhraseSize / 4) * 4));
         const hopSize = 1024; 
         const totalFrames = Math.floor(channel.length / hopSize);
         const N = hopSize;
@@ -328,6 +330,10 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
         }
         let gMinAvgE = Math.min(...barBlocks.map(b => b.avgE));
         let gMaxAvgE = Math.max(...barBlocks.map(b => b.avgE));
+        const sortedEnergies = barBlocks.map(b => b.avgE).sort((a, b) => a - b);
+        const medianEnergy = sortedEnergies[Math.floor(sortedEnergies.length / 2)] || 0.45;
+        const normalizedMedian = (gMaxAvgE - gMinAvgE) > 0 ? (medianEnergy - gMinAvgE) / (gMaxAvgE - gMinAvgE) : 0.45;
+        const adaptiveThreshold = Math.min(0.6, Math.max(0.3, normalizedMedian));
 
 
         // --- 4. Pass 2: smoothing and state machine ---
@@ -335,7 +341,7 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
         let outEvents: BeatEvent[] = [];
         let featureFrames: VisualFeatureFrame[] = new Array(totalFrames);
         
-        let sE=0, sB=0, sM=0, sT=0; 
+        let sE=0, sB=0, sM=0, sT=0, sFxPresence = 0; 
         let sMelody=0, sVocal=0, sFx=0, sDensity=0, sBrightness=0, sTension=0;
         let lastBeatTime = 0;
 
@@ -369,6 +375,7 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
             sB += (rawBass - sB) * 0.2;
             sM += (rawMid - sM) * 0.2;
             sT += (rawHigh - sT) * 0.2;
+            sFxPresence += (rawHigh - sFxPresence) * 0.15;
 
             sMelody += (clamp01(melodyTarget) - sMelody) * 0.1;
             sVocal += (clamp01(vocalTarget) - sVocal) * 0.1;
@@ -384,7 +391,7 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
             let b = barBlocks[blockIdx];
             let energyRatio = (gMaxAvgE - gMinAvgE) > 0 ? (b.avgE - gMinAvgE) / (gMaxAvgE - gMinAvgE) : 0;
             
-            let state: AudioFrame['state'] = energyRatio >= 0.45 ? 'HIGH' : 'LOW';
+            let state: AudioFrame['state'] = energyRatio >= adaptiveThreshold ? 'HIGH' : 'LOW';
             
             if (state === 'HIGH') {
                 if (sE < 0.35) state = 'LOW_DROP';
@@ -392,7 +399,7 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
             }
 
             // Store smoothed, stable values on the playback timeline.
-            outFrames[i] = { e: sE, b: sDensity, m: sMelody, t: sFx, state: state, eRatio: energyRatio };
+            outFrames[i] = { e: sE, b: sDensity, m: sMelody, t: sFxPresence, state: state, eRatio: energyRatio };
 
             // Peak picking for beat events.
             let reqScore = state === 'HIGH' ? 0.3 : 0.4;
@@ -463,12 +470,12 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
                 bass: clamp01(bar.avgBass),
                 mid: clamp01(bar.avgMid),
                 treble: clamp01(bar.avgHigh),
-                state: energy >= 0.45 ? 'HIGH' : 'LOW',
+                state: energy >= adaptiveThreshold ? 'HIGH' : 'LOW',
                 dominantFeature: dominantFeature(bar.startIdx, bar.endIdx)
             };
         });
 
-        let phraseBars = 4;
+        let phraseBars = phraseSize;
         let phraseCount = Math.max(1, Math.ceil(barBlocks.length / phraseBars));
         let trackSections: TrackSection[] = [];
         for (let phraseIndex = 0; phraseIndex < phraseCount; phraseIndex++) {
@@ -545,7 +552,48 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
 
         visualCues.sort((a, b) => a.time - b.time);
 
-        const dramaturgy = computeDramaturgyAnalysis(featureFrames, outFrames, hopSize, sampleRate, barFrames);
+        const dramaturgy = computeDramaturgyAnalysis(featureFrames, outFrames, hopSize, sampleRate, barFrames * phraseBars);
+        const spectralPivot = new Array<number>(totalFrames).fill(0);
+
+        // --- 6. Post-processing: Dramatic feature compensation (Spectral Pivot) ---
+        for (let i = 0; i < totalFrames; i++) {
+            const eRatio = outFrames[i].eRatio;
+            const buildup = dramaturgy.buildupConfidence[i] || 0;
+            const state = outFrames[i].state;
+            const sE = outFrames[i].e;
+
+            // Apply compensation and gate only above the noise gate.
+            if (sE > 0.04 && eRatio < 0.55 && (buildup > 0.1 || state === 'LOW_DROP')) {
+                const compensation = (1.0 - eRatio) * Math.max(buildup, 0.25);
+                const melodyGate = Math.max(0, featureFrames[i].melody - 0.05) * 1.1;
+                const vocalGate = Math.max(0, featureFrames[i].vocal - 0.05) * 1.1;
+                const fxGate = Math.max(0, featureFrames[i].fx - 0.05) * 1.1;
+                const maxCeiling = Math.min(1.0, 0.35 + eRatio * 0.65 + buildup * 0.40);
+
+                if (melodyGate > 0) {
+                    featureFrames[i].melody = Math.min(maxCeiling, featureFrames[i].melody * (1.0 + compensation * 1.5 * melodyGate));
+                }
+                if (vocalGate > 0) {
+                    featureFrames[i].vocal = Math.min(maxCeiling, featureFrames[i].vocal * (1.0 + compensation * 1.5 * vocalGate));
+                }
+                if (fxGate > 0) {
+                    featureFrames[i].fx = Math.min(maxCeiling, featureFrames[i].fx * (1.0 + compensation * 2.2 * fxGate));
+                }
+
+                featureFrames[i].tension = Math.min(maxCeiling, featureFrames[i].tension * (1.0 + compensation * 1.2));
+                outFrames[i].m = featureFrames[i].melody;
+                spectralPivot[i] = Math.min(1.0, compensation * Math.max(melodyGate, vocalGate, fxGate, 0.25));
+            } else if (sE <= 0.04) {
+                // Below absolute noise gate: force exact silence on delicate metrics.
+                featureFrames[i].melody = 0;
+                featureFrames[i].vocal = 0;
+                featureFrames[i].fx = 0;
+                featureFrames[i].tension = 0;
+                outFrames[i].m = 0;
+                outFrames[i].t = 0;
+                spectralPivot[i] = 0;
+            }
+        }
 
         const trackAnalysis: TrackAnalysis = {
             duration: channel.length / sampleRate,
@@ -556,11 +604,12 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
             significantMoments: visualCues.filter(cue => cue.kind === 'impact' || cue.kind === 'break').slice(0, 32),
             features: featureFrames,
             buildupConfidence: dramaturgy.buildupConfidence,
+            spectralPivot,
             tensionTrends: dramaturgy.tensionTrends,
             featureHopSize: hopSize
         };
 
-        const result: AnalysisResult = { requestId, bpm: estimatedBPM, frames: outFrames, events: outEvents, hopSize: hopSize, trackAnalysis };
+        const result: AnalysisResult = { requestId, bpm: estimatedBPM, adaptiveThreshold, frames: outFrames, events: outEvents, hopSize: hopSize, trackAnalysis };
         self.postMessage({ type: 'analysis_done', ...result });
     } catch (error) {
         self.postMessage({

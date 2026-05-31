@@ -13,6 +13,7 @@ const EMPTY_TRACK_ANALYSIS: TrackAnalysis = {
     significantMoments: [],
     features: [],
     buildupConfidence: [],
+    spectralPivot: [],
     tensionTrends: {
         globalSlope: 0,
         peakTime: 0,
@@ -61,7 +62,8 @@ export class AudioEngine {
         State.bpm = 0;
         State.frames = [];
         State.events = [];
-        State.trackAnalysis = { ...EMPTY_TRACK_ANALYSIS, bars: [], sections: [], patterns: [], cues: [], significantMoments: [], features: [] };
+        State.trackAnalysis = { ...EMPTY_TRACK_ANALYSIS, bars: [], sections: [], patterns: [], cues: [], significantMoments: [], features: [], spectralPivot: [] };
+        State.sectionOverrides = {};
         State.hopSize = 1024;
         State.currentFrame = { e: 0, b: 0, m: 0, t: 0, state: 'IDLE', eRatio: 0 };
         State.currentFeatures = { ...EMPTY_FEATURES };
@@ -106,7 +108,8 @@ export class AudioEngine {
                 requestId,
                 algorithmVersion: ANALYSIS_ALGORITHM_VERSION,
                 samples: analysisSamples.buffer,
-                sampleRate: State.sampleRate
+                sampleRate: State.sampleRate,
+                phraseSize: State.targetTuning.phraseSize
             }, [analysisSamples.buffer]);
 
             worker.onmessage = (e: MessageEvent<AnalysisWorkerMessage>) => {
@@ -116,6 +119,8 @@ export class AudioEngine {
 
                 if (e.data.type === 'analysis_done') {
                     State.bpm = e.data.bpm;
+                    State.targetTuning.dynamicsThreshold = e.data.adaptiveThreshold;
+                    State.visualTuning.dynamicsThreshold = e.data.adaptiveThreshold;
                     State.frames = e.data.frames;
                     State.events = e.data.events;
                     State.trackAnalysis = normalizeTrackAnalysis(e.data.trackAnalysis);
@@ -235,6 +240,7 @@ function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis): TrackAnalysis {
         significantMoments: trackAnalysis.significantMoments || [],
         features: trackAnalysis.features || [],
         buildupConfidence: trackAnalysis.buildupConfidence || [],
+        spectralPivot: trackAnalysis.spectralPivot || [],
         tensionTrends: trackAnalysis.tensionTrends || EMPTY_TRACK_ANALYSIS.tensionTrends,
         featureHopSize: trackAnalysis.featureHopSize || EMPTY_TRACK_ANALYSIS.featureHopSize
     };
