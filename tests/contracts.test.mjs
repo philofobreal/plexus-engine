@@ -514,9 +514,8 @@ test('player UI supports background controls, metrics toggle, draggable tuning, 
   assert.match(css, /\.metrics-toggle/);
   assert.match(css, /body\.chrome-idle \.top-row/);
   assert.match(css, /\.m-bar-fill[\s\S]*background: #ffffff/);
-  assert.match(css, /\.dyn-card \.m-bar-fill[\s\S]*background: var\(--accent\)/);
-  assert.doesNotMatch(css, /\.default-card \.m-bar-fill/);
-  assert.doesNotMatch(css, /royalblue/);
+  assert.match(css, /\.dyn-card \.m-bar-fill[\s\S]*background: white/);
+  assert.match(css, /\.default-card \.m-bar-fill[\s\S]*background: royalblue/);
   assert.doesNotMatch(main, /m-bar-fill[^>]*style="background/);
   assert.doesNotMatch(ui, /style\.background/);
   assert.doesNotMatch(ui, /style\.backgroundColor/);

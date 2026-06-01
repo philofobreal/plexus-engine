@@ -225,7 +225,10 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(1.3); }
 }
 .bpm-card .m-bar-fill,
 .dyn-card .m-bar-fill {
-  background: var(--accent);
+  background: white;
+}
+.default-card .m-bar-fill {
+  background: royalblue;
 }
 
 /* Bottom Toolbar (Kinyitó gomb) */
