@@ -558,6 +558,8 @@ test('dramaturgy section overrides drive music sensitivity, not threshold gates'
   assert.doesNotMatch(ui, /if \(!State\.isPlaying \|\| State\.duration <= 0\) return;/);
   assert.match(ui, /void this\.loadVisualPreset\(override\.preset\)/);
   assert.match(ui, /timelinePresetBrush/);
+  assert.match(ui, /ctx\.textBaseline = 'middle';[\s\S]*ctx\.fillText\(`S:\$\{sensVal\.toFixed\(2\)\}`/);
+  assert.match(ui, /ctx\.textBaseline = 'middle';[\s\S]*ctx\.fillText\(presetLabel/);
   assert.match(ui, /ctx\.fillText\(`S:\$\{sensVal\.toFixed\(2\)\}`/);
   assert.doesNotMatch(ui, /thresholdVal/);
   assert.doesNotMatch(ui, /override\.threshold/);

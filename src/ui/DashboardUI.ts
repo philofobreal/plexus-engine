@@ -1322,22 +1322,25 @@ export class DashboardUI {
 
             if (isOverridden && endX - startX > 45) {
                 const tagX = Math.max(0, startX) + 4;
+                const tagY = this.clamp(yThreshold - 14, topPad + 2, height - 28);
                 ctx.fillStyle = 'rgba(0, 229, 255, 0.95)';
-                ctx.fillRect(tagX, yThreshold - 12, 34, 10);
+                ctx.fillRect(tagX, tagY, 34, 10);
                 ctx.fillStyle = '#000000';
                 ctx.font = '7px monospace';
-                ctx.fillText(`S:${sensVal.toFixed(2)}`, tagX + 2, yThreshold - 4);
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`S:${sensVal.toFixed(2)}`, tagX + 2, tagY + 5);
             }
             if (override?.preset && endX - startX > 58) {
                 const presetLabel = `P:${this.formatPresetName(override.preset)}`;
                 const labelWidth = Math.min(Math.ceil(ctx.measureText(presetLabel).width) + 8, Math.max(46, endX - startX - 8));
                 const tagX = Math.max(0, startX) + 4;
-                const tagY = Math.min(height - 17, Math.max(topPad + 2, yThreshold + 5));
+                const tagY = this.clamp(yThreshold + 5, topPad + 14, height - 14);
                 ctx.fillStyle = 'rgba(213, 84, 172, 0.92)';
                 ctx.fillRect(tagX, tagY, labelWidth, 11);
                 ctx.fillStyle = '#000000';
                 ctx.font = '7px monospace';
-                ctx.fillText(presetLabel, tagX + 3, tagY + 8, labelWidth - 6);
+                ctx.textBaseline = 'middle';
+                ctx.fillText(presetLabel, tagX + 3, tagY + 5.5, labelWidth - 6);
             }
             ctx.restore();
         }
