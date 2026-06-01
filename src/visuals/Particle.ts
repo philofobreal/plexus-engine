@@ -33,9 +33,9 @@ export class Particle {
             }
         }
         
-        let speed = isPlaying
+        let speed = (isPlaying
             ? (energy * State.visualTuning.particleEnergySpeed) + (beat * State.visualTuning.particleBeatSpeed)
-            : State.visualTuning.particleIdleSpeed; 
+            : State.visualTuning.particleIdleSpeed) * State.playbackFade;
         if (activity > 0.4) {
             let heading = this.vel.heading() + this.p.random(-State.visualTuning.particleActivityTurn, State.visualTuning.particleActivityTurn) * activity;
             this.vel.set(this.p.cos(heading), this.p.sin(heading));

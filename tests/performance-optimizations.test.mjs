@@ -12,6 +12,7 @@ test('particle boundary pull avoids p5 distance and trigonometry in the hot path
   assert.match(particle, /let maxRadiusSq = maxRadius \* maxRadius/);
   assert.match(particle, /if \(distSq > maxRadiusSq\)/);
   assert.match(particle, /this\.vel\.x \+= \(dx \/ dist\) \* State\.visualTuning\.particleBoundaryPull/);
+  assert.match(particle, /\* State\.playbackFade/);
   assert.match(particle, /this\.pos\.x \+= this\.vel\.x \* speed/);
   assert.match(particle, /this\.pos\.y \+= this\.vel\.y \* speed/);
   assert.doesNotMatch(particle, /this\.p\.dist/);
@@ -52,7 +53,10 @@ test('visual hot paths reuse per-frame color buffers and avoid repeated loop col
 
 test('renderer reuses modulation state and lowers frame rate while paused or idle', () => {
   const renderer = read('src/visuals/PlexusRenderer.ts');
+  const state = read('src/state/store.ts');
 
+  assert.match(state, /playbackFade: 0\.0/);
+  assert.match(state, /rotationPhase: 0/);
   assert.match(renderer, /writeModulationBus\(/);
   assert.doesNotMatch(renderer, /State\.modulation = computeModulationBus/);
   assert.doesNotMatch(renderer, /State\.modulation = \{/);
@@ -63,6 +67,22 @@ test('renderer reuses modulation state and lowers frame rate while paused or idl
   assert.match(renderer, /State\.modulation\.macroMomentum = 0/);
   assert.match(renderer, /State\.isPlaying \? 60 : State\.duration > 0 \? 30 : 15/);
   assert.match(renderer, /p\.frameRate\(targetFrameRate\)/);
+  assert.match(renderer, /const fadeStep = 1 \/ targetFrameRate/);
+  assert.match(renderer, /State\.playbackFade = Math\.min\(1\.0, State\.playbackFade \+ fadeStep\)/);
+  assert.match(renderer, /State\.playbackFade = Math\.max\(0\.0, State\.playbackFade - fadeStep\)/);
+  assert.match(renderer, /State\.rotationPhase \+= State\.playbackFade/);
+});
+
+test('temporal ring phases use playback-driven rotation phase instead of frame count', () => {
+  const temporal = read('src/visuals/TemporalMusicEffect.ts');
+
+  assert.match(temporal, /State\.rotationPhase \* 0\.02 \* State\.visualTuning\.temporalRingSpeed/);
+  assert.match(temporal, /State\.rotationPhase \* 0\.008 \* State\.visualTuning\.temporalRingSpeed/);
+  assert.match(temporal, /State\.rotationPhase \* 0\.006 \* State\.visualTuning\.temporalRingSpeed/);
+  assert.match(temporal, /-State\.rotationPhase \* 0\.018 \* State\.visualTuning\.temporalRingSpeed/);
+  assert.match(temporal, /resonance\.phase \* Math\.PI \* 2 \+ State\.rotationPhase \* 0\.004 \* State\.visualTuning\.temporalRingSpeed/);
+  assert.doesNotMatch(temporal, /phase: backend\.frameCount/);
+  assert.doesNotMatch(temporal, /\+ backend\.frameCount/);
 });
 
 test('temporal mechanism rings pass numeric RGB components without sharing color array references', () => {

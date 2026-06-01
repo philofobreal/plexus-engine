@@ -50,6 +50,14 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
                 p.frameRate(targetFrameRate);
             }
 
+            const fadeStep = 1 / targetFrameRate;
+            if (State.isPlaying) {
+                State.playbackFade = Math.min(1.0, State.playbackFade + fadeStep);
+            } else {
+                State.playbackFade = Math.max(0.0, State.playbackFade - fadeStep);
+            }
+            State.rotationPhase += State.playbackFade;
+
             applyTuningMorph(State.visualTuning, State.targetTuning, State.targetTuning.transitionSpeed);
 
             let ct = engine.getCurrentTime();
@@ -168,14 +176,15 @@ function applyDynamicThresholds() {
 
 function applyStateDampening() {
     if (!State.currentFrame.state.startsWith('LOW')) return;
-    State.modulation.densityDrive *= 0.15;
-    State.modulation.kineticTension *= 0.20;
-    State.modulation.macroMomentum *= 0.10;
+    const restraint = State.visualTuning.breakRestraint;
+    State.modulation.densityDrive *= 0.15 * restraint;
+    State.modulation.kineticTension *= 0.20 * restraint;
+    State.modulation.macroMomentum *= 0.10 * restraint;
 
     // Dampen active feature copies so direct reads in Temporal mode scale down instantly.
-    State.currentFeatures.melody *= 0.20;
-    State.currentFeatures.vocal *= 0.20;
-    State.currentFeatures.fx *= 0.15;
+    State.currentFeatures.melody *= 0.20 * restraint;
+    State.currentFeatures.vocal *= 0.20 * restraint;
+    State.currentFeatures.fx *= 0.15 * restraint;
 }
 
 function applyDropAnticipation(currentTime: number) {
@@ -188,7 +197,8 @@ function applyDropAnticipation(currentTime: number) {
     const futureFrame = State.frames[futureIdx];
     if (!futureFrame || (futureFrame.state !== 'LOW' && futureFrame.state !== 'LOW_DROP')) return;
 
-    const scale = futureFrame.state === 'LOW_DROP' ? 0.72 : 0.86;
+    const damp = State.visualTuning.dropDampening;
+    const scale = futureFrame.state === 'LOW_DROP' ? 0.72 * damp : 0.86 * damp;
     State.modulation.kineticTension *= scale;
     State.modulation.densityDrive *= scale;
 }
@@ -225,8 +235,9 @@ function applyDramaturgyBoost() {
 
     const frameIdx = Math.floor(State.currentTime * State.sampleRate / State.hopSize);
     const buildup = State.trackAnalysis.buildupConfidence[frameIdx] || 0;
-    State.modulation.kineticTension = Math.min(1, State.modulation.kineticTension + buildup * 0.18);
-    State.modulation.macroMomentum = Math.max(State.modulation.macroMomentum, buildup * 0.35);
+    const intensity = State.visualTuning.buildupIntensity;
+    State.modulation.kineticTension = Math.min(1, State.modulation.kineticTension + buildup * 0.18 * intensity);
+    State.modulation.macroMomentum = Math.max(State.modulation.macroMomentum, buildup * 0.35 * intensity);
 }
 
 function cueTypeToShockwave(kind: VisualCueKind): number {

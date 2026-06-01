@@ -168,7 +168,7 @@ function drawCenterMechanisms(
         alpha: (48 + State.modulation.rhythmicImpulse * 125) * State.visualTuning.temporalRingAlpha,
         weight: (1.6 + State.modulation.rhythmicImpulse * 2.2) * State.visualTuning.circleLineWeight,
         lobes: 6,
-        phase: backend.frameCount * 0.02 * State.visualTuning.temporalRingSpeed
+        phase: State.rotationPhase * 0.02 * State.visualTuning.temporalRingSpeed
     });
 
     const melodyVal = tuneAudioValue(State.currentFeatures.melody, State.visualTuning);
@@ -184,7 +184,7 @@ function drawCenterMechanisms(
             alpha: (30 + melodyDrive * 78) * State.visualTuning.temporalRingAlpha,
             weight: (0.9 + melodyDrive * 1.2) * State.visualTuning.circleLineWeight,
             lobes: 5,
-            phase: backend.frameCount * 0.008 * State.visualTuning.temporalRingSpeed
+            phase: State.rotationPhase * 0.008 * State.visualTuning.temporalRingSpeed
         });
     }
 
@@ -201,7 +201,7 @@ function drawCenterMechanisms(
             alpha: (24 + vocalDrive * 70) * State.visualTuning.temporalRingAlpha,
             weight: (1.2 + vocalDrive * 1.4) * State.visualTuning.circleLineWeight,
             lobes: 4,
-            phase: backend.frameCount * 0.006 * State.visualTuning.temporalRingSpeed
+            phase: State.rotationPhase * 0.006 * State.visualTuning.temporalRingSpeed
         });
     }
 
@@ -218,7 +218,7 @@ function drawCenterMechanisms(
             alpha: (24 + fxDrive * 92) * State.visualTuning.temporalRingAlpha,
             weight: (0.8 + fxDrive * 1.6) * State.visualTuning.circleLineWeight,
             lobes: 9,
-            phase: -backend.frameCount * 0.018 * State.visualTuning.temporalRingSpeed
+            phase: -State.rotationPhase * 0.018 * State.visualTuning.temporalRingSpeed
         });
     }
 
@@ -233,7 +233,7 @@ function drawCenterMechanisms(
             alpha: (18 + resonance.strength * 86) * State.visualTuning.temporalRingAlpha,
             weight: (1 + resonance.strength * 1.6) * State.visualTuning.circleLineWeight,
             lobes: 3 + ((resonance.pattern?.occurrences.length || 0) % 4),
-            phase: resonance.phase * Math.PI * 2 + backend.frameCount * 0.004 * State.visualTuning.temporalRingSpeed
+            phase: resonance.phase * Math.PI * 2 + State.rotationPhase * 0.004 * State.visualTuning.temporalRingSpeed
         });
     }
 
