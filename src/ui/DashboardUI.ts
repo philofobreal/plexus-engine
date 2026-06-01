@@ -42,6 +42,13 @@ export class DashboardUI {
     private lastTimelineDrawZoom = 1;
     private lastTimelineDrawScroll = 0;
     private lastTimelineDrawScrubTime: number | null = null;
+    private waveformCacheCanvas: HTMLCanvasElement | null = null;
+    private lastWaveformAnalysisRef: unknown = null;
+    private lastWaveformWidth = 0;
+    private lastWaveformHeight = 0;
+    private lastWaveformZoom = 1;
+    private lastWaveformScroll = 0;
+    private lastTriggeredSectionIdx = -1;
     private metricTooltip: HTMLDivElement;
     private activeMetricCard: HTMLElement | null = null;
     private tuningDragOffset = { x: 0, y: 0 };
@@ -74,6 +81,9 @@ export class DashboardUI {
             metricsGrid: document.getElementById('metrics-grid')!,
             dramaturgyTimeline: document.getElementById('dramaturgy-timeline')!,
             timelineResizeHandle: document.getElementById('timeline-resize-handle')!,
+            timelineDrawTarget: document.getElementById('timeline-draw-target')!,
+            timelinePresetBrush: document.getElementById('timeline-preset-brush')!,
+            toggleTimelineDraw: document.getElementById('toggle-timeline-draw')!,
             toggleTimelineZoom: document.getElementById('toggle-timeline-zoom')!,
             seekBar: document.getElementById('seek-bar')!,
             bpmHeaderBadge: document.getElementById('bpm-header-badge')!,
@@ -99,6 +109,11 @@ export class DashboardUI {
             this.setPlaybackUi(false);
             (this.els.seekBar as HTMLInputElement).value = "0";
             this.updateDashboard();
+        });
+
+        this.engine.addPositionChangedListener(() => {
+            this.lastTriggeredSectionIdx = -1;
+            this.triggerSectionPresetAutomation();
         });
 
         this.engine.onAnalysisError = (message) => {
@@ -239,6 +254,16 @@ export class DashboardUI {
             }
         });
 
+        window.addEventListener('keydown', (event) => {
+            if (event.code !== 'KeyD' || this.isEditableEventTarget(event.target)) return;
+            event.preventDefault();
+            this.setTimelineDrawMode(!State.drawModeActive);
+        });
+
+        this.els.timelineDrawTarget.addEventListener('change', () => {
+            this.syncTimelineDrawControls();
+        });
+
         this.initTuningPanelDrag();
 
         const seek = this.els.seekBar as HTMLInputElement;
@@ -284,6 +309,29 @@ export class DashboardUI {
     private setTuningPanelOpen(isOpen: boolean) {
         this.els.tuningPanel.classList.toggle('is-hidden', !isOpen);
         this.els.toggleTuningPanel.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+
+    private setTimelineDrawMode(isActive: boolean) {
+        State.drawModeActive = isActive;
+        if (!isActive) State.isDrawingEnvelope = false;
+        this.els.toggleTimelineDraw.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        this.els.toggleTimelineDraw.classList.toggle('is-active', isActive);
+        this.els.dramaturgyTimeline.classList.toggle('draw-active', isActive);
+        this.syncTimelineDrawControls();
+    }
+
+    private syncTimelineDrawControls() {
+        const drawTarget = this.els.timelineDrawTarget as HTMLSelectElement;
+        const presetBrush = this.els.timelinePresetBrush as HTMLSelectElement;
+        const isPresetBrush = drawTarget.value === 'preset';
+        drawTarget.classList.toggle('is-hidden', !State.drawModeActive);
+        presetBrush.classList.toggle('is-hidden', !State.drawModeActive || !isPresetBrush);
+        this.els.toggleTimelineDraw.title = isPresetBrush ? 'Draw Preset Automation (D)' : 'Draw Sensitivity Envelope (D)';
+    }
+
+    private isEditableEventTarget(target: EventTarget | null) {
+        if (!(target instanceof HTMLElement)) return false;
+        return Boolean(target.closest('input, select, textarea, [contenteditable="true"]'));
     }
 
     private togglePlayback() {
@@ -419,8 +467,13 @@ export class DashboardUI {
     private initDramaturgyTimeline() {
         const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
         const zoomButton = this.els.toggleTimelineZoom as HTMLButtonElement;
+        const drawButton = this.els.toggleTimelineDraw as HTMLButtonElement;
         const resizeHandle = this.els.timelineResizeHandle;
         const wrapper = canvas.parentElement as HTMLElement | null;
+
+        drawButton.addEventListener('click', () => {
+            this.setTimelineDrawMode(!State.drawModeActive);
+        });
 
         zoomButton.addEventListener('click', () => {
             if (!wrapper) return;
@@ -432,6 +485,17 @@ export class DashboardUI {
             if (State.duration <= 0) return;
             const rect = canvas.getBoundingClientRect();
             if (rect.width <= 0) return;
+            if (State.drawModeActive && event.button === 0) {
+                State.isDrawingEnvelope = true;
+                this.isSeekingTimeline = false;
+                this.isPanningTimeline = false;
+                this.isDraggingThreshold = false;
+                this.draggingSectionIdx = null;
+                canvas.setPointerCapture(event.pointerId);
+                this.drawAutomationAtPointer(event, rect);
+                event.preventDefault();
+                return;
+            }
             const mouseX = event.clientX - rect.left;
             const mouseY = event.clientY - rect.top;
             const viewport = this.getTimelineViewport();
@@ -482,6 +546,12 @@ export class DashboardUI {
         canvas.addEventListener('pointermove', (event) => {
             const rect = canvas.getBoundingClientRect();
             if (rect.width <= 0) return;
+            if (State.isDrawingEnvelope) {
+                this.drawAutomationAtPointer(event, rect);
+                this.updateTimelineTooltip(event, rect);
+                event.preventDefault();
+                return;
+            }
             const mouseX = event.clientX - rect.left;
             const mouseY = event.clientY - rect.top;
             const topPad = rect.height >= 52 ? 18 : 4;
@@ -530,6 +600,9 @@ export class DashboardUI {
         });
 
         const endTimelinePointer = (event: PointerEvent) => {
+            if (State.isDrawingEnvelope) {
+                State.isDrawingEnvelope = false;
+            }
             if (this.isSeekingTimeline && !this.timelineDidDrag) {
                 const rect = canvas.getBoundingClientRect();
                 this.seekTimelineFromPointer(event, rect);
@@ -551,7 +624,7 @@ export class DashboardUI {
         canvas.addEventListener('pointerup', endTimelinePointer);
         canvas.addEventListener('pointercancel', endTimelinePointer);
         canvas.addEventListener('pointerleave', () => {
-            if (!this.isPanningTimeline && !this.isSeekingTimeline && !this.isDraggingThreshold) {
+            if (!State.isDrawingEnvelope && !this.isPanningTimeline && !this.isSeekingTimeline && !this.isDraggingThreshold) {
                 canvas.style.cursor = '';
                 this.hideTimelineTooltip();
             }
@@ -573,30 +646,7 @@ export class DashboardUI {
             if (duration <= 1.0) return;
 
             const midTime = (section.start + section.end) * 0.5;
-            const sec1 = { ...section, end: midTime };
-            const sec2 = { ...section, start: midTime };
-            sections.splice(sectionIdx, 1, sec1, sec2);
-
-            const nextOverrides: Record<string, { sensitivity: number }> = {};
-            const oldKey = `section-${sectionIdx}`;
-            const oldOverride = State.sectionOverrides[oldKey];
-
-            for (const [key, value] of Object.entries(State.sectionOverrides)) {
-                const match = key.match(/^section-(\d+)$/);
-                if (!match) continue;
-                const idx = parseInt(match[1], 10);
-                if (idx < sectionIdx) {
-                    nextOverrides[key] = value;
-                } else if (idx > sectionIdx) {
-                    nextOverrides[`section-${idx + 1}`] = value;
-                }
-            }
-
-            const sensVal = oldOverride ? oldOverride.sensitivity : State.visualTuning.audioSensitivity;
-            nextOverrides[`section-${sectionIdx}`] = { sensitivity: sensVal };
-            nextOverrides[`section-${sectionIdx + 1}`] = { sensitivity: sensVal };
-
-            State.sectionOverrides = nextOverrides;
+            this.splitTimelineSection(sectionIdx, midTime, hoverTime);
             this.requestTimelineDraw();
         });
 
@@ -744,6 +794,95 @@ export class DashboardUI {
         return ((time - viewport.start) / Math.max(0.001, viewport.duration)) * width;
     }
 
+    private drawAutomationAtPointer(event: PointerEvent, rect: DOMRect) {
+        if (State.duration <= 0 || rect.width <= 0) return;
+        const mouseX = Math.min(rect.width, Math.max(0, event.clientX - rect.left));
+        const mouseY = Math.min(rect.height, Math.max(0, event.clientY - rect.top));
+        const hoverTime = this.getTimelineTimeAtX(mouseX, rect.width);
+        const sections = State.trackAnalysis.sections;
+        let sectionIdx = sections.findIndex(s => hoverTime >= s.start && hoverTime <= s.end);
+        if (sectionIdx === -1) return;
+
+        const section = sections[sectionIdx];
+        const secondsPerBar = State.bpm > 0 ? (60 / State.bpm) * 4 : 0;
+        if (secondsPerBar > 0 && section.end - section.start > secondsPerBar) {
+            const splitTime = this.getNearestBarSplitTime(hoverTime, section.start, section.end, secondsPerBar);
+            if (splitTime !== null) {
+                sectionIdx = this.splitTimelineSection(sectionIdx, splitTime, hoverTime);
+            }
+        }
+
+        const drawTarget = (this.els.timelineDrawTarget as HTMLSelectElement).value;
+        if (drawTarget === 'preset') {
+            const presetName = (this.els.timelinePresetBrush as HTMLSelectElement).value;
+            if (presetName) this.setSectionPresetOverride(sectionIdx, presetName);
+        } else {
+            const topPad = rect.height >= 52 ? 18 : 4;
+            const bottomPad = 5;
+            const graphHeight = Math.max(8, rect.height - topPad - bottomPad);
+            const normVal = this.clamp(1 - (mouseY - topPad) / graphHeight, 0.0, 1.0);
+            this.setSectionSensitivityOverride(sectionIdx, 0.1 + normVal * 3.9);
+        }
+        this.requestTimelineDraw();
+    }
+
+    private getNearestBarSplitTime(time: number, sectionStart: number, sectionEnd: number, secondsPerBar: number) {
+        if (!Number.isFinite(secondsPerBar) || secondsPerBar <= 0) return null;
+        const splitTime = Math.round(time / secondsPerBar) * secondsPerBar;
+        const minGap = Math.min(0.1, secondsPerBar * 0.05);
+        if (splitTime <= sectionStart + minGap || splitTime >= sectionEnd - minGap) return null;
+        return this.clamp(splitTime, sectionStart, sectionEnd);
+    }
+
+    private splitTimelineSection(sectionIdx: number, splitTime: number, focusTime: number) {
+        const sections = State.trackAnalysis.sections;
+        const section = sections[sectionIdx];
+        if (!section) return sectionIdx;
+        if (splitTime <= section.start || splitTime >= section.end) return sectionIdx;
+
+        const oldKey = `section-${sectionIdx}`;
+        const oldOverride = State.sectionOverrides[oldKey];
+        const sensVal = oldOverride ? oldOverride.sensitivity : State.visualTuning.audioSensitivity;
+        const sec1 = { ...section, end: splitTime };
+        const sec2 = { ...section, start: splitTime };
+        sections.splice(sectionIdx, 1, sec1, sec2);
+
+        const nextOverrides: typeof State.sectionOverrides = {};
+        for (const [key, value] of Object.entries(State.sectionOverrides)) {
+            const match = key.match(/^section-(\d+)$/);
+            if (!match) continue;
+            const idx = parseInt(match[1], 10);
+            if (idx < sectionIdx) {
+                nextOverrides[key] = value;
+            } else if (idx > sectionIdx) {
+                nextOverrides[`section-${idx + 1}`] = value;
+            }
+        }
+
+        nextOverrides[`section-${sectionIdx}`] = { sensitivity: sensVal, preset: oldOverride?.preset };
+        nextOverrides[`section-${sectionIdx + 1}`] = { sensitivity: sensVal, preset: oldOverride?.preset };
+        State.sectionOverrides = nextOverrides;
+        return focusTime >= splitTime ? sectionIdx + 1 : sectionIdx;
+    }
+
+    private setSectionSensitivityOverride(sectionIdx: number, sensitivity: number) {
+        const key = `section-${sectionIdx}`;
+        if (!State.sectionOverrides[key]) {
+            State.sectionOverrides[key] = { sensitivity };
+        } else {
+            State.sectionOverrides[key].sensitivity = sensitivity;
+        }
+    }
+
+    private setSectionPresetOverride(sectionIdx: number, preset: string) {
+        const key = `section-${sectionIdx}`;
+        if (!State.sectionOverrides[key]) {
+            State.sectionOverrides[key] = { sensitivity: State.visualTuning.audioSensitivity, preset };
+        } else {
+            State.sectionOverrides[key].preset = preset;
+        }
+    }
+
     private followTimelinePlayhead() {
         if (!State.isPlaying || State.duration <= 0 || this.timelineZoomLevel <= 1.05) return;
         const viewport = this.getTimelineViewport();
@@ -798,6 +937,7 @@ export class DashboardUI {
         this.timelineZoomLevel = 1;
         this.timelineScrollOffsetTime = 0;
         this.scrubTime = null;
+        this.lastTriggeredSectionIdx = -1;
         this.hideTimelineTooltip();
     }
 
@@ -909,6 +1049,7 @@ export class DashboardUI {
         this.drawTimelineBackground(ctx, rect.width, rect.height);
         this.drawTimelineSections(ctx, rect.width, rect.height, viewport);
         this.drawTimelineGridlines(ctx, rect.width, rect.height, viewport);
+        this.drawTimelineWaveform(ctx, rect.width, rect.height, viewport);
         this.drawTimelineRms(ctx, rect.width, rect.height, viewport);
         this.drawTimelineBuildup(ctx, rect.width, rect.height, viewport);
         this.drawTimelineTrends(ctx, rect.width, rect.height, viewport);
@@ -980,6 +1121,64 @@ export class DashboardUI {
             ctx.stroke();
         }
         ctx.restore();
+    }
+
+    private drawTimelineWaveform(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
+        if (!State.frames.length) return;
+
+        const topPad = height >= 52 ? 18 : 4;
+        const bottomPad = 5;
+        const graphHeight = Math.max(8, height - topPad - bottomPad);
+
+        if (!this.waveformCacheCanvas) {
+            this.waveformCacheCanvas = document.createElement('canvas');
+        }
+
+        // Keep the waveform cache at 1x resolution. This avoids high-DPI fill-rate
+        // spikes during zoom/pan while preserving a soft background waveform.
+        const cacheWidth = Math.max(1, Math.floor(width));
+        const cacheHeight = Math.max(1, Math.floor(height));
+        const isCacheValid =
+            this.lastWaveformAnalysisRef === State.trackAnalysis &&
+            this.lastWaveformWidth === width &&
+            this.lastWaveformHeight === height &&
+            this.lastWaveformZoom === this.timelineZoomLevel &&
+            this.lastWaveformScroll === this.timelineScrollOffsetTime &&
+            this.waveformCacheCanvas.width === cacheWidth &&
+            this.waveformCacheCanvas.height === cacheHeight;
+
+        if (!isCacheValid) {
+            this.lastWaveformAnalysisRef = State.trackAnalysis;
+            this.lastWaveformWidth = width;
+            this.lastWaveformHeight = height;
+            this.lastWaveformZoom = this.timelineZoomLevel;
+            this.lastWaveformScroll = this.timelineScrollOffsetTime;
+            this.waveformCacheCanvas.width = cacheWidth;
+            this.waveformCacheCanvas.height = cacheHeight;
+
+            const cacheCtx = this.waveformCacheCanvas.getContext('2d');
+            if (cacheCtx) {
+                cacheCtx.setTransform(1, 0, 0, 1, 0, 0);
+                cacheCtx.clearRect(0, 0, width, height);
+
+                const centerY = topPad + graphHeight / 2;
+                cacheCtx.fillStyle = 'rgba(255, 255, 255, 0.11)';
+                const step = 3;
+                const barWidth = 1.5;
+
+                for (let x = 0; x < width; x += step) {
+                    const time = viewport.start + (x / Math.max(1, width)) * viewport.duration;
+                    const frameIdx = Math.floor((time * State.sampleRate) / State.hopSize);
+                    if (frameIdx < 0 || frameIdx >= State.frames.length) continue;
+
+                    const e = State.frames[frameIdx].e;
+                    const halfHeight = e * (graphHeight / 2) * 0.95;
+                    cacheCtx.fillRect(x, centerY - halfHeight, barWidth, Math.max(1, halfHeight * 2));
+                }
+            }
+        }
+
+        ctx.drawImage(this.waveformCacheCanvas, 0, 0);
     }
 
     private drawTimelineRms(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
@@ -1128,6 +1327,17 @@ export class DashboardUI {
                 ctx.fillStyle = '#000000';
                 ctx.font = '7px monospace';
                 ctx.fillText(`S:${sensVal.toFixed(2)}`, tagX + 2, yThreshold - 4);
+            }
+            if (override?.preset && endX - startX > 58) {
+                const presetLabel = `P:${this.formatPresetName(override.preset)}`;
+                const labelWidth = Math.min(Math.ceil(ctx.measureText(presetLabel).width) + 8, Math.max(46, endX - startX - 8));
+                const tagX = Math.max(0, startX) + 4;
+                const tagY = Math.min(height - 17, Math.max(topPad + 2, yThreshold + 5));
+                ctx.fillStyle = 'rgba(213, 84, 172, 0.92)';
+                ctx.fillRect(tagX, tagY, labelWidth, 11);
+                ctx.fillStyle = '#000000';
+                ctx.font = '7px monospace';
+                ctx.fillText(presetLabel, tagX + 3, tagY + 8, labelWidth - 6);
             }
             ctx.restore();
         }
@@ -1368,8 +1578,13 @@ export class DashboardUI {
             row.className = 'tuning-control';
             const valueId = `visual-tuning-value-${control.key}`;
             const value = State.targetTuning[control.key];
-            row.innerHTML = `
-                <span class="tuning-label">${control.label}</span>
+            const controlMarkup = control.options
+                ? `
+                <select data-tuning-key="${control.key}" aria-label="${control.label}">
+                    ${control.options.map(option => `<option value="${option.value}"${option.value === value ? ' selected' : ''}>${this.escapeHtml(option.label)}</option>`).join('')}
+                </select>
+                `
+                : `
                 <input
                     type="range"
                     min="${control.min}"
@@ -1379,13 +1594,17 @@ export class DashboardUI {
                     data-tuning-key="${control.key}"
                     aria-label="${control.label}"
                 >
-                <output id="${valueId}" class="tuning-value">${this.formatTuningValue(value, control.unit)}</output>
+                `;
+            row.innerHTML = `
+                <span class="tuning-label">${control.label}</span>
+                ${controlMarkup}
+                <output id="${valueId}" class="tuning-value">${this.formatControlValue(value, control)}</output>
             `;
             group.appendChild(row);
         }
 
-        container.addEventListener('input', (event) => {
-            const input = event.target as HTMLInputElement;
+        const updateTuningValue = (event: Event) => {
+            const input = event.target as HTMLInputElement | HTMLSelectElement;
             const key = input.dataset.tuningKey as VisualTuningKey | undefined;
             if (!key) return;
 
@@ -1393,8 +1612,10 @@ export class DashboardUI {
             State.targetTuning[key] = value;
             const control = visualTuningControls.find(item => item.key === key);
             const output = document.getElementById(`visual-tuning-value-${key}`);
-            if (output) output.textContent = this.formatTuningValue(value, control?.unit);
-        });
+            if (output && control) output.textContent = this.formatControlValue(value, control);
+        };
+        container.addEventListener('input', updateTuningValue);
+        container.addEventListener('change', updateTuningValue);
 
         this.els.copyVisualConfig.addEventListener('click', () => {
             this.copyVisualConfig();
@@ -1423,12 +1644,19 @@ export class DashboardUI {
             select.innerHTML = presets.length
                 ? presets.map(fileName => `<option value="${this.escapeHtml(fileName)}">${this.escapeHtml(this.formatPresetName(fileName))}</option>`).join('')
                 : `<option value="">No presets</option>`;
+            this.els.timelinePresetBrush.innerHTML = select.innerHTML;
             const defaultPreset = presets.find(fileName => fileName.toLowerCase() === 'default.json');
-            if (defaultPreset) select.value = defaultPreset;
+            if (defaultPreset) {
+                select.value = defaultPreset;
+                (this.els.timelinePresetBrush as HTMLSelectElement).value = defaultPreset;
+            }
             select.disabled = presets.length === 0;
+            (this.els.timelinePresetBrush as HTMLSelectElement).disabled = presets.length === 0;
         } catch {
             select.innerHTML = `<option value="">No preset index</option>`;
+            this.els.timelinePresetBrush.innerHTML = `<option value="">No preset index</option>`;
             select.disabled = true;
+            (this.els.timelinePresetBrush as HTMLSelectElement).disabled = true;
         }
     }
 
@@ -1437,7 +1665,7 @@ export class DashboardUI {
             const response = await fetch(this.presetUrl(fileName), { cache: 'no-store' });
             if (!response.ok) throw new Error(`Preset ${response.status}`);
 
-            Object.assign(State.targetTuning, normalizeVisualTuningConfig(await response.json()));
+            this.applyPerformancePreset(await response.json());
             this.syncVisualTuningControls();
         } catch {
             this.els.copyConfigStatus.innerText = `Could not load ${fileName}`;
@@ -1451,13 +1679,50 @@ export class DashboardUI {
         return `${import.meta.env.BASE_URL}visual-tuning-presets/${encodeURIComponent(fileName)}`;
     }
 
+    private applyPerformancePreset(payload: unknown) {
+        Object.assign(State.targetTuning, normalizeVisualTuningConfig(payload, State.targetTuning));
+        if (!payload || typeof payload !== 'object') return;
+
+        const preset = payload as {
+            visualMode?: unknown;
+            morphProfile?: { durationSec?: unknown; curve?: unknown };
+            dramaturgyProfile?: {
+                buildupIntensity?: unknown;
+                dropDampening?: unknown;
+                breakRestraint?: unknown;
+                vocalHighlight?: unknown;
+                fxChaos?: unknown;
+            };
+        };
+        if (preset.visualMode === 'classic' || preset.visualMode === 'temporal') {
+            State.visualMode = preset.visualMode;
+            (this.els.visualMode as HTMLSelectElement).value = State.visualMode;
+        }
+        if (preset.morphProfile) {
+            if (typeof preset.morphProfile.durationSec === 'number') State.targetTuning.morphDurationSec = preset.morphProfile.durationSec;
+            if (preset.morphProfile.curve === 'linear') State.targetTuning.morphCurveValue = 0;
+            else if (preset.morphProfile.curve === 'easeInOut') State.targetTuning.morphCurveValue = 1;
+            else if (preset.morphProfile.curve === 'exponential') State.targetTuning.morphCurveValue = 2;
+        }
+        if (preset.dramaturgyProfile) {
+            const profile = preset.dramaturgyProfile;
+            if (typeof profile.buildupIntensity === 'number') State.targetTuning.buildupIntensity = profile.buildupIntensity;
+            if (typeof profile.dropDampening === 'number') State.targetTuning.dropDampening = profile.dropDampening;
+            if (typeof profile.breakRestraint === 'number') State.targetTuning.breakRestraint = profile.breakRestraint;
+            if (typeof profile.vocalHighlight === 'number') State.targetTuning.vocalHighlight = profile.vocalHighlight;
+            if (typeof profile.fxChaos === 'number') State.targetTuning.fxChaos = profile.fxChaos;
+        }
+    }
+
     private syncVisualTuningControls() {
         for (const control of visualTuningControls) {
             const value = State.targetTuning[control.key];
             const input = this.els.tuningControls.querySelector<HTMLInputElement>(`input[data-tuning-key="${control.key}"]`);
+            const select = this.els.tuningControls.querySelector<HTMLSelectElement>(`select[data-tuning-key="${control.key}"]`);
             const output = document.getElementById(`visual-tuning-value-${control.key}`);
             if (input) input.value = value.toString();
-            if (output) output.textContent = this.formatTuningValue(value, control.unit);
+            if (select) select.value = value.toString();
+            if (output) output.textContent = this.formatControlValue(value, control);
         }
     }
 
@@ -1480,10 +1745,29 @@ export class DashboardUI {
         return `${value.toFixed(decimals)}${unit || ""}`;
     }
 
+    private formatControlValue(value: number, control: { unit?: string; options?: Array<{ value: number; label: string }> }) {
+        const option = control.options?.find(item => item.value === value);
+        return option ? option.label : this.formatTuningValue(value, control.unit);
+    }
+
     private async copyVisualConfig() {
         const payload = JSON.stringify({
-            version: 1,
-            visualTuning: State.targetTuning
+            version: 2,
+            name: 'Current Performance',
+            visualMode: State.visualMode,
+            visualTuning: State.targetTuning,
+            morphProfile: {
+                durationSec: State.targetTuning.morphDurationSec,
+                curve: this.getMorphCurveName(State.targetTuning.morphCurveValue),
+                preserveEnergy: true
+            },
+            dramaturgyProfile: {
+                buildupIntensity: State.targetTuning.buildupIntensity,
+                dropDampening: State.targetTuning.dropDampening,
+                breakRestraint: State.targetTuning.breakRestraint,
+                vocalHighlight: State.targetTuning.vocalHighlight,
+                fxChaos: State.targetTuning.fxChaos
+            }
         }, null, 2);
 
         try {
@@ -1503,6 +1787,13 @@ export class DashboardUI {
         }, 1600);
     }
 
+    private getMorphCurveName(value: number) {
+        const curve = Math.round(Number.isFinite(value) ? value : 1);
+        if (curve <= 0) return 'linear';
+        if (curve >= 2) return 'exponential';
+        return 'easeInOut';
+    }
+
     private copyTextFallback(value: string) {
         const textArea = document.createElement('textarea');
         textArea.value = value;
@@ -1514,7 +1805,22 @@ export class DashboardUI {
         textArea.remove();
     }
 
+    private triggerSectionPresetAutomation() {
+        if (State.duration <= 0) return;
+        const sections = State.trackAnalysis.sections;
+        const sectionIdx = sections.findIndex(section => State.currentTime >= section.start && State.currentTime < section.end);
+        if (sectionIdx === this.lastTriggeredSectionIdx) return;
+
+        this.lastTriggeredSectionIdx = sectionIdx;
+        if (sectionIdx === -1) return;
+
+        const override = State.sectionOverrides[`section-${sectionIdx}`];
+        if (override?.preset) void this.loadVisualPreset(override.preset);
+    }
+
     updateDashboard() {
+        this.triggerSectionPresetAutomation();
+
         if (!this.isDraggingSlider && this.scrubTime === null) {
             const progress = State.duration > 0 ? (State.currentTime / State.duration) * 100 : 0;
             (this.els.seekBar as HTMLInputElement).value = progress.toString();

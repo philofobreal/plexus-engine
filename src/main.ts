@@ -97,9 +97,21 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div class="seek-container panel">
         <div class="timeline-header-row">
           <span class="timeline-title">Track Dramaturgy</span>
-          <button id="toggle-timeline-zoom" class="btn-icon-mini" title="Zoom Timeline" aria-pressed="false" aria-label="Zoom timeline">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-          </button>
+          <div class="timeline-actions">
+            <select id="timeline-draw-target" class="timeline-select is-hidden" aria-label="Draw target">
+              <option value="sensitivity">Sensitivity (S)</option>
+              <option value="preset">Preset (P)</option>
+            </select>
+            <select id="timeline-preset-brush" class="timeline-select is-hidden" aria-label="Preset brush">
+              <option value="">No presets</option>
+            </select>
+            <button id="toggle-timeline-draw" class="btn-icon-mini" title="Draw Envelope (D)" aria-pressed="false" aria-label="Draw envelope mode">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+            </button>
+            <button id="toggle-timeline-zoom" class="btn-icon-mini" title="Zoom Timeline" aria-pressed="false" aria-label="Zoom timeline">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+          </div>
         </div>
         <div class="timeline-wrapper">
           <div id="timeline-resize-handle" class="timeline-resize-handle" aria-hidden="true"></div>

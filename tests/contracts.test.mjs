@@ -248,11 +248,12 @@ test('visual tuning presets are read from public json files and remain backward 
   assert.ok(preset.visualTuning);
   assert.equal(preset.visualTuning.particleActivityTurn, 0.1);
   assert.equal(preset.visualTuning.particleBassTurn, undefined);
-  assert.match(config, /const next = cloneDefaultVisualTuning\(\)/);
+  assert.match(config, /normalizeVisualTuningConfig\(payload: unknown, current\?: VisualTuningConfig\)/);
+  assert.match(config, /const next = current \? \{ \.\.\.current \} : cloneDefaultVisualTuning\(\)/);
   assert.match(config, /source\?\.\[key\]/);
   assert.match(config, /legacySource\?\.particleBassTurn/);
   assert.match(ui, /visual-tuning-presets\/\$\{encodeURIComponent\(fileName\)\}/);
-  assert.match(ui, /Object\.assign\(State\.targetTuning, normalizeVisualTuningConfig/);
+  assert.match(ui, /Object\.assign\(State\.targetTuning, normalizeVisualTuningConfig\(payload, State\.targetTuning\)\)/);
 });
 
 test('visual tuning controls cover circle, line, polygon, particle, and temporal parameters', () => {
@@ -345,7 +346,8 @@ test('drop anticipation look-ahead dampens modulation and is shown on the timeli
   assert.match(renderer, /const futureTime = currentTime \+ anticipation/);
   assert.match(renderer, /const futureIdx = Math\.floor\(futureTime \* State\.sampleRate \/ State\.hopSize\)/);
   assert.match(renderer, /futureFrame\.state !== 'LOW' && futureFrame\.state !== 'LOW_DROP'/);
-  assert.match(renderer, /const scale = futureFrame\.state === 'LOW_DROP' \? 0\.72 : 0\.86/);
+  assert.match(renderer, /const damp = State\.visualTuning\.dropDampening/);
+  assert.match(renderer, /const scale = futureFrame\.state === 'LOW_DROP' \? 0\.72 \* damp : 0\.86 \* damp/);
   assert.match(renderer, /State\.modulation\.kineticTension \*= scale/);
   assert.match(renderer, /State\.modulation\.densityDrive \*= scale/);
   assert.match(ui, /State\.visualTuning\.dropAnticipation > 0/);
@@ -534,14 +536,29 @@ test('dramaturgy section overrides drive music sensitivity, not threshold gates'
   const renderer = read('src/visuals/PlexusRenderer.ts');
   const ui = read('src/ui/DashboardUI.ts');
 
-  assert.match(state, /sectionOverrides: \{\} as Record<string, \{ sensitivity: number \}>/);
+  assert.match(state, /sectionOverrides: \{\} as Record<string, SectionOverride>/);
+  assert.match(read('src/types/index.ts'), /export interface SectionOverride[\s\S]*sensitivity: number;[\s\S]*preset\?: string;/);
+  assert.match(state, /drawModeActive: false/);
+  assert.match(state, /isDrawingEnvelope: false/);
   assert.match(audio, /State\.sectionOverrides = \{\}/);
   assert.match(renderer, /const originalGlobalSensitivity = State\.visualTuning\.audioSensitivity/);
   assert.match(renderer, /State\.visualTuning\.audioSensitivity = activeSensitivity/);
   assert.match(renderer, /State\.visualTuning\.audioSensitivity = originalGlobalSensitivity/);
   assert.doesNotMatch(renderer, /override\.threshold/);
   assert.match(ui, /const sensVal = 0\.1 \+ normVal \* 3\.9/);
-  assert.match(ui, /State\.sectionOverrides\[key\] = \{ sensitivity: sensVal \}/);
+  assert.match(ui, /drawAutomationAtPointer/);
+  assert.match(ui, /State\.isDrawingEnvelope = true/);
+  assert.match(ui, /getNearestBarSplitTime/);
+  assert.match(ui, /splitTimelineSection/);
+  assert.match(ui, /State\.sectionOverrides\[key\] = \{ sensitivity \}/);
+  assert.match(ui, /setSectionPresetOverride/);
+  assert.match(ui, /State\.sectionOverrides\[key\] = \{ sensitivity: State\.visualTuning\.audioSensitivity, preset \}/);
+  assert.match(ui, /this\.engine\.addPositionChangedListener\(\(\) => \{[\s\S]*this\.lastTriggeredSectionIdx = -1;[\s\S]*this\.triggerSectionPresetAutomation\(\);[\s\S]*\}\);/);
+  assert.match(ui, /triggerSectionPresetAutomation/);
+  assert.match(ui, /if \(State\.duration <= 0\) return;/);
+  assert.doesNotMatch(ui, /if \(!State\.isPlaying \|\| State\.duration <= 0\) return;/);
+  assert.match(ui, /void this\.loadVisualPreset\(override\.preset\)/);
+  assert.match(ui, /timelinePresetBrush/);
   assert.match(ui, /ctx\.fillText\(`S:\$\{sensVal\.toFixed\(2\)\}`/);
   assert.doesNotMatch(ui, /thresholdVal/);
   assert.doesNotMatch(ui, /override\.threshold/);
@@ -587,4 +604,25 @@ test('dashboard metric cards are backed by metadata and a shared delegated toolt
   const updateDashboardSource = ui.match(/updateDashboard\(\) \{[\s\S]*?\n    \}\n\}/)?.[0] || '';
   assert.doesNotMatch(updateDashboardSource, /dashboard-metric-tooltip|createDashboardMetricTooltip|document\.createElement/);
   assert.doesNotMatch(ui, /requestAnimationFrame\([\s\S]{0,200}MetricTooltip|MetricTooltip[\s\S]{0,200}requestAnimationFrame/);
+});
+
+test('dramaturgy timeline draws the audio waveform from precomputed frame energy', () => {
+  const ui = read('src/ui/DashboardUI.ts');
+
+  assert.match(ui, /drawTimelineWaveform/);
+  assert.match(ui, /waveformCacheCanvas: HTMLCanvasElement \| null = null/);
+  assert.match(ui, /document\.createElement\('canvas'\)/);
+  assert.match(ui, /lastWaveformAnalysisRef === State\.trackAnalysis/);
+  assert.match(ui, /lastWaveformZoom === this\.timelineZoomLevel/);
+  assert.match(ui, /lastWaveformScroll === this\.timelineScrollOffsetTime/);
+  assert.match(ui, /State\.frames/);
+  assert.match(ui, /State\.sampleRate/);
+  assert.match(ui, /State\.hopSize/);
+  assert.match(ui, /centerY\s*-\s*halfHeight/);
+  assert.match(ui, /const step = 3/);
+  assert.match(ui, /const barWidth = 1\.5/);
+  assert.match(ui, /cacheCtx\.fillRect\(/);
+  assert.doesNotMatch(ui, /cacheCtx\.stroke\(\)/);
+  assert.match(ui, /ctx\.drawImage\(this\.waveformCacheCanvas, 0, 0\)/);
+  assert.match(ui, /this\.drawTimelineGridlines\(ctx, rect\.width, rect\.height, viewport\);[\s\S]*this\.drawTimelineWaveform\(ctx, rect\.width, rect\.height, viewport\);[\s\S]*this\.drawTimelineRms\(ctx, rect\.width, rect\.height, viewport\);/);
 });
