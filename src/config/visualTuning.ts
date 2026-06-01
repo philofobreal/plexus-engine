@@ -10,6 +10,7 @@ export interface VisualTuningControl {
     max: number;
     step: number;
     unit?: string;
+    options?: Array<{ value: number; label: string }>;
 }
 
 export const defaultVisualTuning: VisualTuningConfig = {
@@ -53,10 +54,17 @@ export const defaultVisualTuning: VisualTuningConfig = {
     temporalRingAlpha: 1,
     temporalRingSpeed: 1,
     temporalNetworkDistance: 1,
-    temporalPolygonAlpha: 1
+    temporalPolygonAlpha: 1,
+    morphDurationSec: 3.0,
+    morphCurveValue: 1,
+    buildupIntensity: 1.0,
+    dropDampening: 1.0,
+    breakRestraint: 1.0,
+    vocalHighlight: 1.0,
+    fxChaos: 1.0
 };
 
-const visualTuningKeys = Object.keys(defaultVisualTuning) as VisualTuningKey[];
+export const visualTuningKeys = Object.keys(defaultVisualTuning) as VisualTuningKey[];
 
 export const visualTuningControls: VisualTuningControl[] = [
     { key: 'audioSensitivity', label: 'Music sensitivity', group: 'Audio', min: 0.1, max: 4, step: 0.05, unit: 'x' },
@@ -65,6 +73,25 @@ export const visualTuningControls: VisualTuningControl[] = [
     { key: 'dropThreshold', label: 'Drop Threshold', group: 'Audio', min: 0.1, max: 0.9, step: 0.02 },
     { key: 'dropAnticipation', label: 'Drop Anticipation', group: 'Audio', min: 0.0, max: 5.0, step: 0.1, unit: 's' },
     { key: 'phraseSize', label: 'Phrase Size', group: 'Audio', min: 4, max: 32, step: 4, unit: ' bars' },
+    { key: 'morphDurationSec', label: 'Morph duration', group: 'Audio', min: 0.2, max: 30, step: 0.2, unit: 's' },
+    {
+        key: 'morphCurveValue',
+        label: 'Morph curve',
+        group: 'Audio',
+        min: 0,
+        max: 2,
+        step: 1,
+        options: [
+            { value: 0, label: 'Linear' },
+            { value: 1, label: 'Ease In Out' },
+            { value: 2, label: 'Exponential' }
+        ]
+    },
+    { key: 'buildupIntensity', label: 'Buildup reaction', group: 'Audio', min: 0, max: 2, step: 0.05, unit: 'x' },
+    { key: 'dropDampening', label: 'Drop dampening', group: 'Audio', min: 0, max: 2, step: 0.05, unit: 'x' },
+    { key: 'breakRestraint', label: 'Break restraint', group: 'Audio', min: 0, max: 2, step: 0.05, unit: 'x' },
+    { key: 'vocalHighlight', label: 'Vocal highlight', group: 'Audio', min: 0, max: 2, step: 0.05, unit: 'x' },
+    { key: 'fxChaos', label: 'FX chaos', group: 'Audio', min: 0, max: 2, step: 0.05, unit: 'x' },
     { key: 'chromaKeyMode', label: 'Chroma mode', group: 'Background', min: 0, max: 2, step: 1 },
     { key: 'performanceMode', label: 'Low latency', group: 'Background', min: 0, max: 1, step: 1 },
     { key: 'backgroundRed', label: 'Background red', group: 'Background', min: 0, max: 255, step: 1 },
@@ -106,9 +133,9 @@ export function cloneDefaultVisualTuning(): VisualTuningConfig {
     return { ...defaultVisualTuning };
 }
 
-export function normalizeVisualTuningConfig(payload: unknown): VisualTuningConfig {
+export function normalizeVisualTuningConfig(payload: unknown, current?: VisualTuningConfig): VisualTuningConfig {
     const source = getVisualTuningSource(payload);
-    const next = cloneDefaultVisualTuning();
+    const next = current ? { ...current } : cloneDefaultVisualTuning();
     const legacySource = source as (Partial<VisualTuningConfig> & { particleBassTurn?: unknown }) | null;
 
     for (const key of visualTuningKeys) {
@@ -197,9 +224,11 @@ export function writeModulationBus(
     tuning: VisualTuningConfig
 ): ModulationState {
     const sensitivity = getAudioSensitivity(tuning);
+    const vocalHighlight = getProfileScale(tuning.vocalHighlight);
+    const fxChaos = getProfileScale(tuning.fxChaos);
 
     target.kineticTension = scaleUnit(
-        features.vocal * 0.28 +
+        features.vocal * 0.28 * vocalHighlight +
         features.melody * 0.22 +
         features.tension * 0.32 +
         cueDecay * 0.18,
@@ -213,7 +242,7 @@ export function writeModulationBus(
     );
     target.spectralChaos = scaleUnit(
         frame.t * 0.42 +
-        features.fx * 0.36 +
+        features.fx * 0.36 * fxChaos +
         features.brightness * 0.22,
         sensitivity
     );
@@ -235,7 +264,7 @@ export function applyTuningMorph(
     target: VisualTuningConfig,
     transitionSpeed = target.transitionSpeed
 ): VisualTuningConfig {
-    const speed = clamp01(Number.isFinite(transitionSpeed) ? transitionSpeed : defaultVisualTuning.transitionSpeed);
+    const speed = getCurvedMorphStep(target, transitionSpeed);
 
     for (const key of visualTuningKeys) {
         const currentValue = current[key];
@@ -252,6 +281,21 @@ export function applyTuningMorph(
     }
 
     return current;
+}
+
+function getCurvedMorphStep(target: VisualTuningConfig, transitionSpeed: number): number {
+    const rawSpeed = Number.isFinite(transitionSpeed) ? transitionSpeed : defaultVisualTuning.transitionSpeed;
+    const duration = Number.isFinite(target.morphDurationSec) ? Math.max(0.2, target.morphDurationSec) : defaultVisualTuning.morphDurationSec;
+    const durationScale = defaultVisualTuning.morphDurationSec / duration;
+    const normalized = clamp01(rawSpeed * durationScale);
+    return applyMorphCurve(normalized, target.morphCurveValue);
+}
+
+function applyMorphCurve(t: number, curveValue: number): number {
+    const curve = Math.round(Number.isFinite(curveValue) ? curveValue : defaultVisualTuning.morphCurveValue);
+    if (curve <= 0) return t;
+    if (curve >= 2) return t === 0 ? 0 : Math.pow(2, 10 * t - 10);
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
 export interface BackgroundClearStyle {
@@ -284,6 +328,10 @@ export function shouldUseExpensiveGlow(tuning: VisualTuningConfig): boolean {
 
 function getAudioSensitivity(tuning: VisualTuningConfig): number {
     return Number.isFinite(tuning.audioSensitivity) ? tuning.audioSensitivity : 1;
+}
+
+function getProfileScale(value: number): number {
+    return Number.isFinite(value) ? value : 1;
 }
 
 function scaleUnit(value: number, sensitivity: number): number {

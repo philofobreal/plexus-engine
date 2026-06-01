@@ -8,6 +8,22 @@ export type AutoState = 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
 
 export type VisualMode = 'classic' | 'temporal';
 
+export type MorphCurve = 'linear' | 'easeInOut' | 'exponential';
+
+export interface MorphProfile {
+    durationSec: number;
+    curve: MorphCurve;
+    preserveEnergy: boolean;
+}
+
+export interface DramaturgyProfile {
+    buildupIntensity: number;
+    dropDampening: number;
+    breakRestraint: number;
+    vocalHighlight: number;
+    fxChaos: number;
+}
+
 export interface VisualTuningConfig {
     audioSensitivity: number;
     transitionSpeed: number;
@@ -50,6 +66,27 @@ export interface VisualTuningConfig {
     temporalRingSpeed: number;
     temporalNetworkDistance: number;
     temporalPolygonAlpha: number;
+    morphDurationSec: number;
+    morphCurveValue: number;
+    buildupIntensity: number;
+    dropDampening: number;
+    breakRestraint: number;
+    vocalHighlight: number;
+    fxChaos: number;
+}
+
+export interface PerformancePreset {
+    version: 2;
+    name: string;
+    visualMode: VisualMode;
+    visualTuning: VisualTuningConfig;
+    morphProfile: MorphProfile;
+    dramaturgyProfile: DramaturgyProfile;
+}
+
+export interface SectionOverride {
+    sensitivity: number;
+    preset?: string;
 }
 
 export interface ModulationState {

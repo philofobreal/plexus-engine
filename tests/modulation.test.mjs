@@ -79,6 +79,24 @@ test('visual tuning normalization maps legacy particleBassTurn payloads to parti
   assert.equal(defaultVisualTuning.particleActivityTurn, 0.1);
 });
 
+test('visual tuning normalization preserves current values for missing preset keys', () => {
+  const { normalizeVisualTuningConfig, defaultVisualTuning } = loadVisualTuningModule();
+  const current = {
+    ...defaultVisualTuning,
+    morphDurationSec: 12,
+    morphCurveValue: 2,
+    buildupIntensity: 1.6,
+    audioSensitivity: 2.4
+  };
+
+  const normalized = normalizeVisualTuningConfig({ visualTuning: { audioSensitivity: 0.8 } }, current);
+
+  assert.equal(normalized.audioSensitivity, 0.8);
+  assert.equal(normalized.morphDurationSec, 12);
+  assert.equal(normalized.morphCurveValue, 2);
+  assert.equal(normalized.buildupIntensity, 1.6);
+});
+
 test('hueToRgbInto matches hueToRgb, returns the provided tuple, and normalizes hue', () => {
   const { hueToRgb, hueToRgbInto } = loadVisualTuningModule();
   const target = [0, 0, 0];

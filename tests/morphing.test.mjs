@@ -25,7 +25,7 @@ test('morphing moves current tuning values toward target tuning', () => {
 
   applyTuningMorph(current, target, target.transitionSpeed);
 
-  assert.equal(current.audioSensitivity, 1.5);
+  assert.equal(current.audioSensitivity, 1.25);
   assert.ok(current.audioSensitivity > 1);
   assert.ok(current.audioSensitivity < 3);
 });
