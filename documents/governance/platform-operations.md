@@ -12,11 +12,17 @@ Use this file for practical platform behavior that affects repeatability in Code
 - If a parallel shell read fails because of Windows sandbox process setup, retry the same read as a single targeted command before escalating.
 - Do not treat unrelated dirty worktree entries outside `plexus-engine/` as part of this project.
 
-## Runtime Discovery
+## Runtime Discovery and Execution Policy
 
-- First try the project package manager command documented by the repo.
-- If `bun` is unavailable, try the package-manager equivalent.
-- If `bun`, `npm`, or other package-manager shims are unavailable on PATH, use the Codex bundled Node executable with local project entrypoints:
+- Bun is the authoritative and mandatory default package manager, compiler, and runner for this repository.
+- Avoid using plain `npm`, `npx`, or package-manager-equivalent commands unless specifically requested.
+- Always execute scripts and tests through the commands declared in `package.json`:
+  - Developer environment: `bun run dev`
+  - Tests: `bun run test`
+  - Production build: `bun run build`
+  - Deploy: `bun run deploy`
+- If Bun is temporarily blocked or unavailable in the local sandbox shell, fall back only to the bundled runtime tools documented under local `node_modules` paths, and report the fallback.
+- If `bun` is unavailable on PATH and fallback is required, use the Codex bundled Node executable with local project entrypoints:
 
 ```powershell
 & '<bundled-node>\node.exe' 'node_modules\typescript\bin\tsc'

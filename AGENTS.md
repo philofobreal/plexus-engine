@@ -107,7 +107,8 @@ Single-agent ownership required:
 - Any visual-only change requires render smoke validation.
 - Any worker algorithm change requires deterministic fixture-style validation where practical.
 - Any governance-only change must verify references, inheritance, and absence of contradictory policy.
-- If `bun` or `npm` are not available on PATH, use the Codex bundled Node runtime directly with local `node_modules` entrypoints and report that fallback.
+- Every build check, test execution, dependency installation, or script run performed by an agent MUST use Bun (`bun run build`, `bun run test`, etc.) and the exact entrypoints defined in `package.json`.
+- If `bun` is not available on PATH, use the Codex bundled Node runtime directly with local `node_modules` entrypoints and report that fallback.
 - Before reporting completion, state what validation was run and what was not run.
 
 ## Dependency Policy
