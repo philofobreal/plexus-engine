@@ -80,3 +80,17 @@
 * **AC 9.12 - Renderer hot-path index sync:** `PlexusRenderer.ts` must not run O(N) `findIndex` searches over `State.events` or `State.trackAnalysis.cues` from the paused/stopped draw path. Beat and cue indexes are synchronized by the event-driven `syncEventIndex` callback registered through `addPositionChangedListener`.
 * **AC 9.13 - Section sensitivity overrides:** Dragging a section line on the dramaturgy timeline stores `State.sectionOverrides["section-N"].sensitivity` in the `0.1..4.0` range and labels overridden lines as `S:x.xx`. During the draw frame, `PlexusRenderer` temporarily applies the active section sensitivity over the global `audioSensitivity`, then restores the global value before the frame ends.
 * **AC 9.14 - Drop anticipation:** When `dropAnticipation` is greater than zero, the renderer samples the future frame at `currentTime + dropAnticipation`. Future `LOW` and `LOW_DROP` states dampen `kineticTension` and `densityDrive`, while the timeline shows the look-ahead window as a magenta suspense band.
+
+## 10. Performance Preset, Draw Mode, And Automation Scheduler
+
+* **AC 10.1 - Performance Preset Contract:** `PerformancePreset`, `MorphProfile`, and `DramaturgyProfile` are typed contracts. Preset normalization is sticky: omitted tuning fields preserve the current value when available and otherwise fall back to the typed defaults. The morph profile exposes duration and curve values used by live tuning interpolation.
+* **AC 10.2 - Envelope Draw Mode:** The dramaturgy timeline includes a draw target selector and draw toggle. When draw mode is active, pointer drawing writes the selected automation lane at the playhead position without committing repeated audio seeks.
+* **AC 10.3 - Snap-to-Grid Splitting:** Timeline section edits snap to the BPM-derived bar grid. Splitting a section produces deterministic section boundaries and keeps section override data addressable by section key.
+* **AC 10.4 - Preset Painting:** The timeline preset brush can paint section-level preset tags. Painted sections are marked with `P:<preset>` labels and store the preset reference in `State.sectionOverrides`.
+* **AC 10.5 - VJ Playhead Scheduler:** Section preset automation is evaluated from the canonical audio position, including seek and paused position changes. Crossing into a painted section applies the section preset once through the normal preset morph path instead of relying on draw-loop polling only.
+
+## 11. Playback Motion Fade-out And Offscreen Waveform Cache
+
+* **AC 11.1 - Graceful Slowdown (Playback Fade):** When playback stops, visual motion fades through `State.playbackFade` instead of freezing immediately. Particle velocity and temporal rotation consume this fade so the canvas settles naturally while audio ownership remains in `AudioEngine`.
+* **AC 11.2 - Low-DPI Waveform Caching:** The dramaturgy timeline waveform is rendered into a reusable low-DPI offscreen canvas keyed by analysis data, visible dimensions, zoom, and scroll offset. Cache misses rebuild the waveform; cache hits blit the existing bitmap.
+* **AC 11.3 - Pathless GPU Rasterization:** Waveform drawing uses vertical bar `fillRect` calls and `drawImage` blitting instead of building large canvas paths each frame. Runtime music analysis is still forbidden in the timeline draw path; the waveform reads only precomputed `AudioFrame.e` values.

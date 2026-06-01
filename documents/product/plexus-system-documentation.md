@@ -107,6 +107,14 @@ Az effekt modulok `VisualRendererBackend` interfeszen keresztul rajzolnak. A p5-
 
 `State.visualTuning` az elo, interpolalt allapot. `State.targetTuning` a presetek es UI csuszkak celallapota. A render ciklus elejen az elo tuning a `transitionSpeed` szerint kozelit a celhoz, tulcsuszas nelkul.
 
+### 4.2.2. Playback Fade Es Timeline Waveform Cache
+
+`State.playbackFade` render-facing mozgasi szorzo. Lejatszas kozben az ertek 1 fele kozelit, stop/pause utan pedig fokozatosan csokken. A `Particle` mozgas es a `TemporalMusicEffect` rotacios fazisa ezt fogyasztja, igy a vizual nem fagy be hirtelen, mikozben az audio source node eletciklus tovabbra is az `AudioEngine` tulajdona.
+
+`State.rotationPhase` valtja ki a p5 frame count alapu temporal forgast. A fazis csak a renderer allapotabol es a playback fade-bol kovetkezik, ezert a temporal mod nem lesz kozvetlenul fuggve a canvas backend frame szamlalojatol.
+
+A dramaturgiai timeline waveformja nem minden frame-ben epit nagy canvas pathot. A `DashboardUI` egy ujrahasznalt offscreen canvasba rajzolja a lathato tartomany energiasavjait az elore szamolt `AudioFrame.e` ertekekbol, majd `drawImage` hivasal bliteli a bitmapet a timeline-ra. A cache kulcsa az analizis referencia, a timeline merete, a zoom es a scroll offset; ezek valtozasakor a waveform ujraepul.
+
 ### 4.3. Idoszinkronizacio
 
 Az elfogadott kanonikus playback ido formula:
@@ -155,11 +163,17 @@ Natural end eseten `Loop` modban a lejatszas 0:00-rol ujraindul. `Once` modban a
 
 * **Dontes:** a tuning defaultok es kontroll metadata a `src/config/visualTuning.ts` fajlban vannak. A presetek `public/visual-tuning-presets/` alatt JSON fajlok, listazasuk `index.json` manifestbol tortenik.
 * **Indoklas:** statikus Vite app nem tud megbizhatoan public konyvtarat listazni runtime-ban backend vagy manifest nelkul. A target tuning es morphing a live UX resze, mert az eles preset valtasok nem ugorhatnak hirtelen.
+* **Kiterjesztes:** a performance preset szerzodes resze a morph profil es dramaturgiai profil. A partial preset normalizalas sticky modon megorzi a hianyzo aktualis ertekeket, a timeline pedig draw mode, section override es preset painting adatokat irhat a `State.sectionOverrides` objektumba.
 
 ### ADR-006: Render Backend Boundary
 
 * **Dontes:** effekt modulok csak `VisualRendererBackend`-en keresztul adhatnak ki rajzolasi parancsot.
 * **Indoklas:** ez levagja az effekt logikat a p5 konkret API-jarol es elokesziti a WebGPU/shader backend lehetoseget.
+
+### ADR-007: Playback Motion Fade Es Waveform Cache
+
+* **Dontes:** stop/pause utan a vizualis mozgas `State.playbackFade` alapjan lassul, a temporal forgasi fazis pedig `State.rotationPhase` allapotbol jon. A timeline waveform alacsony DPI-s offscreen canvas cache-bol kerul blitelesre.
+* **Indoklas:** a vizualis folytonossag nem lazithatja fel a Web Audio source node eletciklusat, es a timeline waveform koltseget cache invalidaciohoz kell kotni a frame-enkenti nagy canvas path epites helyett.
 
 ## 6. Aktualis TypeScript Struktura
 
@@ -263,3 +277,4 @@ Az aktualis contract tesztek a `tests/contracts.test.mjs` fajlban vannak. Lefedi
 * seek/stop idoszinkront,
 * loop mode, metrics toggle, draggable tuning es auto-hide chrome UI szerzodest.
 * modulacios busz, morphing, dramaturgy, renderer boundary es stream profil viselkedest.
+* performance preset szerzodest, sticky preset normalizalast, timeline draw/preset paint interakciokat, playback fade-et es waveform cache optimalizaciot.

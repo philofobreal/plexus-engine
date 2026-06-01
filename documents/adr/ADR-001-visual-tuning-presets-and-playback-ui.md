@@ -55,6 +55,13 @@ Use a two-level fullscreen overlay structure: `.seek-container.timeline-overlay-
 
 Keep visual event index synchronization event-driven. `PlexusRenderer` registers `syncEventIndex` through `AudioEngine.addPositionChangedListener()` and does not run redundant O(N) `findIndex()` scans from the paused/stopped draw path.
 
+## Decisions Extended (2026-06-02)
+
+- **Performance Presets & Sticky Normalization:** Extend the tuning contract with typed `PerformancePreset`, `MorphProfile`, and `DramaturgyProfile` data. `normalizeVisualTuningConfig` keeps missing payload fields sticky against the current tuning object when possible, then falls back to defaults. This allows older JSON presets and partial section presets to remain usable while newer live-performance fields are introduced.
+- **Envelope Drawing & Automation:** Keep timeline draw mode, section sensitivity overrides, and preset painting in `DashboardUI`. The timeline writes section automation and preset tags against `State.sectionOverrides`, while playback position listeners trigger preset automation from canonical audio time. This keeps editing and scheduling in the UI/playback boundary instead of moving automation into visual effects.
+- **Playback Fade-out & Resource Conservation:** Add `State.playbackFade` and `State.rotationPhase` as render-facing motion continuity state. Particles and temporal rotation consume these values so stopping playback creates a controlled visual slowdown without keeping audio nodes alive or deriving timing from p5 frame count.
+- **GPU-accelerated Low-DPI Waveform Blitting:** Render the dramaturgy waveform into a reusable low-DPI offscreen canvas and blit it into the visible timeline. The cache is invalidated by analysis reference, dimensions, zoom, and scroll offset. The waveform uses bar-based `fillRect` rasterization over precomputed `AudioFrame.e` values to avoid large per-frame canvas paths.
+
 ## Consequences
 
 Positive:
@@ -71,6 +78,10 @@ Positive:
 - DOM-based hover details remain readable and avoid text-heavy canvas redraw work on pointer movement.
 - Dragging the seekbar or timeline no longer floods Web Audio with repeated source-node rebuilds.
 - Paused or ended playback near the end of long tracks avoids frame-by-frame linear scans over large event/cue arrays.
+- Partial and older performance presets can coexist with new tuning fields without destructive resets.
+- Section preset painting and envelope drawing are schedulable from playback position events, including seek and paused inspection paths.
+- Playback stop feels visually continuous while Web Audio source-node lifecycle remains strict.
+- Timeline waveform redraw cost is bounded by cache invalidation instead of normal frame cadence.
 
 Tradeoffs:
 
@@ -81,6 +92,9 @@ Tradeoffs:
 - The timeline has more local UI state (`scrubTime`, zoom level, scroll offset, pan/seek flags), so tests must guard interaction semantics.
 - In-progress scrub is visual until release; this is intentional for performance, but it means audio preview during drag is not currently supported.
 - The fullscreen timeline relies on coordinated classes across the seek container, wrapper, and body; future layout changes must preserve that contract.
+- Sticky preset normalization makes the current tuning state part of partial-preset semantics, so tests must cover both current-aware and default-only normalization.
+- Draw mode adds more timeline interaction modes, so pointer handling must keep seek, pan, resize, draw, and preset paint paths explicitly separated.
+- The waveform cache must be invalidated whenever timeline scale or analysis data changes; stale cache keys would show incorrect waveform placement.
 
 ## Alternatives Considered
 
@@ -92,6 +106,8 @@ Tradeoffs:
 - **Canvas-only tooltip text:** Rejected because hover details are easier to position, style, and throttle as DOM without forcing complex canvas text redraw logic.
 - **Audio seek on every drag event:** Rejected because pointer and input events can arrive far above frame rate and can overload Web Audio node lifecycle.
 - **Frame-by-frame index repair in the draw loop:** Rejected because the linear scan cost grows toward the end of tracks and duplicates the event-driven position listener.
+- **Immediate visual freeze on pause/stop:** Rejected because it makes playback state transitions feel abrupt and encourages renderer timing hacks. A render-facing fade keeps motion continuity separate from audio lifecycle.
+- **Drawing waveform paths directly on every timeline frame:** Rejected because long tracks and high zoom levels create excessive canvas path work. Cached bar rasterization keeps redraw cost predictable.
 
 ## Implementation References
 
