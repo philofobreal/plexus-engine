@@ -8,9 +8,10 @@ param(
 $ErrorActionPreference = "Stop"
 
 $IncludeExtensions = @(
-    ".ts", ".tsx", ".js", ".jsx",
+    ".ts", ".tsx", ".mts", ".cts",
+    ".js", ".jsx", ".mjs", ".cjs",
     ".css", ".scss", ".html",
-    ".json", ".md",
+    ".json", ".md", ".mdx",
     ".svg",
     ".ps1", ".sh",
     ".yml", ".yaml"
@@ -55,8 +56,73 @@ function Should-IncludeFile {
     return $true
 }
 
+function Get-SourceLineCount {
+    param([System.IO.FileInfo]$File)
+
+    $lineCount = 0
+    $reader = [System.IO.File]::OpenText($File.FullName)
+
+    try {
+        while ($null -ne $reader.ReadLine()) {
+            $lineCount++
+        }
+    } finally {
+        $reader.Close()
+    }
+
+    return $lineCount
+}
+
+function Get-FileCategory {
+    param([System.IO.FileInfo]$File)
+
+    $ext = $File.Extension.ToLower()
+
+    if (@(".ts", ".tsx", ".mts", ".cts") -contains $ext) {
+        return "TypeScript"
+    }
+
+    if (@(".js", ".jsx", ".mjs", ".cjs") -contains $ext) {
+        return "JavaScript"
+    }
+
+    if (@(".md", ".mdx") -contains $ext) {
+        return "Dokumentacio"
+    }
+
+    return "Egyeb"
+}
+
+function Format-Kb {
+    param([long]$Bytes)
+    return "{0:N1}" -f ($Bytes / 1KB)
+}
+
+function Write-Separator {
+    Write-Host ""
+    Write-Host "============================================================" -ForegroundColor DarkGray
+}
+
+function Write-StatRow {
+    param(
+        [string]$Label,
+        [int]$Files,
+        [int]$Lines,
+        [long]$Bytes
+    )
+
+    $kb = Format-Kb $Bytes
+    Write-Host ("{0,-16} {1,8} fajl {2,10} sor {3,10} KB" -f $Label, $Files, $Lines, $kb)
+}
+
 $RootPath = Resolve-Path $Root
 $OutputPath = Join-Path $RootPath $Output
+
+Write-Separator
+Write-Host "Plexus source export inditasa" -ForegroundColor Cyan
+Write-Host "Gyoker:  $RootPath"
+Write-Host "Kimenet: $OutputPath"
+Write-Host "Forras:  $(if ($UseGit) { 'git ls-files' } else { 'fajlrendszer' })"
 
 if (Test-Path $OutputPath) {
     Remove-Item $OutputPath -Force
@@ -67,7 +133,10 @@ if (Test-Path $OutputPath) {
 
 if ($UseGit) {
     $files = git -C $RootPath ls-files | ForEach-Object {
-        Get-Item (Join-Path $RootPath $_)
+        $path = Join-Path $RootPath $_
+        if (Test-Path $path) {
+            Get-Item $path
+        }
     } | Where-Object {
         Should-IncludeFile $_
     }
@@ -77,25 +146,78 @@ if ($UseGit) {
     }
 }
 
-$files = $files | Sort-Object FullName
+$files = @($files | Sort-Object FullName)
+$fileStats = @{}
+$totals = @{
+    TypeScript = @{ Files = 0; Lines = 0; Bytes = 0L }
+    JavaScript = @{ Files = 0; Lines = 0; Bytes = 0L }
+    Dokumentacio = @{ Files = 0; Lines = 0; Bytes = 0L }
+    Egyeb = @{ Files = 0; Lines = 0; Bytes = 0L }
+    Osszesen = @{ Files = 0; Lines = 0; Bytes = 0L }
+}
+
+foreach ($file in $files) {
+    $lineCount = Get-SourceLineCount $file
+    $category = Get-FileCategory $file
+    $bytes = $file.Length
+
+    $fileStats[$file.FullName] = @{
+        Lines = $lineCount
+        Bytes = $bytes
+        Category = $category
+    }
+
+    $totals[$category].Files++
+    $totals[$category].Lines += $lineCount
+    $totals[$category].Bytes += $bytes
+
+    $totals.Osszesen.Files++
+    $totals.Osszesen.Lines += $lineCount
+    $totals.Osszesen.Bytes += $bytes
+}
+
+"`n## Osszesites`n" | Out-File $OutputPath -Append -Encoding UTF8
+"| Kategoria | Fajlok | Sorok | Meret KB |" | Out-File $OutputPath -Append -Encoding UTF8
+"|---|---:|---:|---:|" | Out-File $OutputPath -Append -Encoding UTF8
+foreach ($category in @("TypeScript", "JavaScript", "Dokumentacio", "Egyeb", "Osszesen")) {
+    $stat = $totals[$category]
+    "| $category | $($stat.Files) | $($stat.Lines) | $(Format-Kb $stat.Bytes) |" | Out-File $OutputPath -Append -Encoding UTF8
+}
 
 "`n## Project Structure`n" | Out-File $OutputPath -Append -Encoding UTF8
 
 foreach ($file in $files) {
     $relative = Resolve-Path $file.FullName -Relative
-    "- $relative" | Out-File $OutputPath -Append -Encoding UTF8
+    $stat = $fileStats[$file.FullName]
+    $kb = Format-Kb $stat.Bytes
+    "- $relative ($($stat.Category), $($stat.Lines) sor, $kb KB)" | Out-File $OutputPath -Append -Encoding UTF8
 }
 
 foreach ($file in $files) {
     $relative = Resolve-Path $file.FullName -Relative
     $ext = $file.Extension.TrimStart(".").ToLower()
+    $stat = $fileStats[$file.FullName]
+    $kb = Format-Kb $stat.Bytes
 
     "`n---`n" | Out-File $OutputPath -Append -Encoding UTF8
     "## $relative`n" | Out-File $OutputPath -Append -Encoding UTF8
+    "Kategoria: $($stat.Category)  " | Out-File $OutputPath -Append -Encoding UTF8
+    "Sorok: $($stat.Lines)  " | Out-File $OutputPath -Append -Encoding UTF8
+    "Meret: $kb KB`n" | Out-File $OutputPath -Append -Encoding UTF8
     "````$ext" | Out-File $OutputPath -Append -Encoding UTF8
     Get-Content $file.FullName -Raw | Out-File $OutputPath -Append -Encoding UTF8
     "````" | Out-File $OutputPath -Append -Encoding UTF8
 }
 
-Write-Host "Kész: $OutputPath"
-Write-Host "Fájlok száma: $($files.Count)"
+Write-Separator
+Write-Host "Export kesz" -ForegroundColor Green
+Write-Host "Kimeneti fajl: $OutputPath"
+Write-Separator
+Write-Host "Osszesites" -ForegroundColor Cyan
+Write-StatRow "TypeScript" $totals.TypeScript.Files $totals.TypeScript.Lines $totals.TypeScript.Bytes
+Write-StatRow "JavaScript" $totals.JavaScript.Files $totals.JavaScript.Lines $totals.JavaScript.Bytes
+Write-StatRow "Dokumentacio" $totals.Dokumentacio.Files $totals.Dokumentacio.Lines $totals.Dokumentacio.Bytes
+Write-StatRow "Egyeb" $totals.Egyeb.Files $totals.Egyeb.Lines $totals.Egyeb.Bytes
+Write-Host "------------------------------------------------------------" -ForegroundColor DarkGray
+Write-StatRow "Osszesen" $totals.Osszesen.Files $totals.Osszesen.Lines $totals.Osszesen.Bytes
+Write-Separator
