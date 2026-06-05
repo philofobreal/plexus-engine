@@ -14,6 +14,12 @@ The app is a Vite TypeScript project with explicit runtime layers:
 - DOM controls and dashboard projection: `src/ui/`
 - p5 canvas rendering and backend adaptation: `src/visuals/`
 
+The UI layer has an explicit internal shape:
+
+- `src/ui/DashboardUI.ts` is the facade/orchestrator. It owns DOM control wiring, playback input dispatch, timeline interaction state, `State` writes, and `AudioEngine` calls. It composes the timeline submodules but must not accumulate raw pointer normalization or low-level canvas drawing logic.
+- `src/ui/GestureEngine.ts` is the deep interaction module. It normalizes pointer, wheel, mouse, and touch events into stable semantic callbacks (`onStart`, `onMove`, `onEnd`, `onHover`, `onZoom`, `onDoubleClick`) and has no knowledge of music sections, playback state, presets, or rendering.
+- `src/ui/TimelineCanvas.ts` is the deep declarative timeline renderer. It renders from a `RenderState` payload, owns HDPI canvas sizing and waveform offscreen cache internals, and must not read global `State` directly or handle user input.
+
 ## Dependency And Module Boundary Map
 
 Allowed dependency directions:
@@ -22,6 +28,9 @@ Allowed dependency directions:
 - `src/audio/` may import `src/state/`, `src/types/`, and worker modules.
 - `src/audio/analyzer.worker.ts` may import types only.
 - `src/ui/` may import `src/audio/`, `src/state/`, and types.
+- Within `src/ui/`, `DashboardUI.ts` may compose `GestureEngine.ts` and `TimelineCanvas.ts`; those submodules must stay independent from each other.
+- `GestureEngine.ts` may depend on DOM event and geometry APIs plus shared callback types, but must not import `src/state/`, `src/audio/`, `src/visuals/`, or timeline rendering modules.
+- `TimelineCanvas.ts` may depend on canvas APIs and shared render types, but must not import `src/state/`, `src/audio/`, `src/visuals/`, or gesture modules.
 - `src/visuals/P5RendererBackend.ts`, `Particle.ts`, `Shockwave.ts`, and `PlexusRenderer.ts` may import p5.
 - Effect modules under `src/visuals/` must draw through `VisualRendererBackend` rather than direct p5 APIs.
 - `src/visuals/` may import `src/state/`, visual classes, config helpers, renderer backend contracts, and types.
@@ -34,6 +43,7 @@ Forbidden dependency directions:
 - State to UI, audio engine, renderer, worker, DOM, or p5.
 - Renderer to UI implementation details except through an explicit composition boundary.
 - UI to worker internals or DSP algorithms.
+- Gesture or timeline renderer submodules to application-level state ownership. Gesture input stays generic; timeline rendering receives data through `RenderState`.
 - Types to runtime modules.
 
 Mode-specific visual implementations should live in separate files under `src/visuals/`. The renderer entrypoint may orchestrate playback synchronization and delegate drawing, but it should not accumulate multiple full effect implementations inline.

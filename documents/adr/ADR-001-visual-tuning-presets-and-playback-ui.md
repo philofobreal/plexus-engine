@@ -49,7 +49,7 @@ Render the dramaturgy timeline as a canvas projection of precomputed `TrackAnaly
 
 Separate scrubbing from committed audio seeking. `DashboardUI` buffers in-progress drag targets in `scrubTime`, updates the visible time/seekbar/playhead, and commits one `AudioEngine.seek()` call through `commitScrubTime()` when the gesture ends.
 
-Keep timeline zoom and pan local to the UI layer with `timelineZoomLevel` and `timelineScrollOffsetTime`. Wheel zoom changes the visible duration around the pointer, normal left drag scrubs, and Shift-drag or middle-button drag pans.
+Store timeline zoom and pan in shared state as `State.zoom` and `State.pan`. `DashboardUI` still owns the user interaction semantics, but the canonical viewport values live in the same state surface consumed by the declarative timeline renderer. This keeps timeline redraw throttling, playhead following, and render synchronization aligned around one source of truth instead of private UI-only fields.
 
 Use a two-level fullscreen overlay structure: `.seek-container.timeline-overlay-active` becomes the fixed viewport shell, `.timeline-wrapper.is-fullscreen-overlay` becomes the absolute canvas surface, and `body.timeline-overlay-open` hides unrelated chrome.
 
@@ -60,7 +60,7 @@ Keep visual event index synchronization event-driven. `PlexusRenderer` registers
 - **Performance Presets & Sticky Normalization:** Extend the tuning contract with typed `PerformancePreset`, `MorphProfile`, and `DramaturgyProfile` data. `normalizeVisualTuningConfig` keeps missing payload fields sticky against the current tuning object when possible, then falls back to defaults. This allows older JSON presets and partial section presets to remain usable while newer live-performance fields are introduced.
 - **Envelope Drawing & Automation:** Keep timeline draw mode, section sensitivity overrides, and preset painting in `DashboardUI`. The timeline writes section automation and preset tags against `State.sectionOverrides`, while playback position listeners trigger preset automation from canonical audio time. This keeps editing and scheduling in the UI/playback boundary instead of moving automation into visual effects.
 - **Playback Fade-out & Resource Conservation:** Add `State.playbackFade` and `State.rotationPhase` as render-facing motion continuity state. Particles and temporal rotation consume these values so stopping playback creates a controlled visual slowdown without keeping audio nodes alive or deriving timing from p5 frame count.
-- **GPU-accelerated Low-DPI Waveform Blitting:** Render the dramaturgy waveform into a reusable low-DPI offscreen canvas and blit it into the visible timeline. The cache is invalidated by analysis reference, dimensions, zoom, and scroll offset. The waveform uses bar-based `fillRect` rasterization over precomputed `AudioFrame.e` values to avoid large per-frame canvas paths.
+- **GPU-accelerated Low-DPI Waveform Blitting:** Render the dramaturgy waveform inside `TimelineCanvas` into a reusable low-DPI offscreen canvas and blit it into the visible timeline. The cache is invalidated by source waveform data, visible dimensions, and viewport state (`State.zoom` / `State.pan`). The waveform uses bar-based `fillRect` rasterization over precomputed audio-derived amplitudes, with `AudioFrame.e` as fallback, to avoid large per-frame canvas paths.
 
 ## Consequences
 
@@ -89,7 +89,7 @@ Tradeoffs:
 - Preset names are file-name based; richer metadata would require extending the manifest or JSON schema.
 - RGB background tuning is explicit and simple, but less compact than a color picker.
 - Auto-hide behavior is intentionally owned by the UI layer, so new top-level chrome must opt into the same CSS/DOM classes.
-- The timeline has more local UI state (`scrubTime`, zoom level, scroll offset, pan/seek flags), so tests must guard interaction semantics.
+- The timeline has coordinated UI interaction state (`scrubTime`, pan/seek/draw flags) plus shared viewport state (`State.zoom`, `State.pan`), so tests must guard both interaction semantics and state handoff to `TimelineCanvas`.
 - In-progress scrub is visual until release; this is intentional for performance, but it means audio preview during drag is not currently supported.
 - The fullscreen timeline relies on coordinated classes across the seek container, wrapper, and body; future layout changes must preserve that contract.
 - Sticky preset normalization makes the current tuning state part of partial-preset semantics, so tests must cover both current-aware and default-only normalization.
@@ -115,6 +115,8 @@ Tradeoffs:
 - `src/types/index.ts`
 - `src/state/store.ts`
 - `src/ui/DashboardUI.ts`
+- `src/ui/GestureEngine.ts`
+- `src/ui/TimelineCanvas.ts`
 - `src/audio/AudioEngine.ts`
 - `src/visuals/ClassicPlexusEffect.ts`
 - `src/visuals/TemporalMusicEffect.ts`

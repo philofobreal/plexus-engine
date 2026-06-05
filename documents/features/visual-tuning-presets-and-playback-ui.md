@@ -74,13 +74,13 @@ Implemented capabilities:
 - The top resize handle lets the user manually change timeline height outside overlay mode; height changes use a throttled redraw path and preserve HDPI canvas sharpness.
 - The top-right timeline control opens a fullscreen overlay. The `.seek-container` receives `.timeline-overlay-active`, the `.timeline-wrapper` receives `.is-fullscreen-overlay`, and `body` receives `.timeline-overlay-open`, so the timeline fills the viewport while unrelated chrome is hidden.
 - Hovering the canvas shows the DOM-based `#timeline-tooltip` with time, zoom, section, bar, RMS and BarAnalysis bass/mid/treble spectral-band ratios, buildup, trend, and nearby cue information.
-- Mouse wheel zooms the timeline between `1x` and `16x` around the pointer. The visible viewport is described by `timelineScrollOffsetTime` and `State.duration / timelineZoomLevel`.
+- Mouse wheel zooms the timeline between `1x` and `16x` around the pointer. The canonical visible viewport is described by shared `State.pan` and `State.duration / State.zoom`, with `DashboardUI` translating normalized gesture input into those state values.
 - Normal left click or drag always scrubs/seeks, including in zoomed view. Shift-drag or middle-button drag pans the viewport.
 - While playing in zoomed view, the viewport follows the playhead when the playhead leaves the `15%..75%` range of the visible timeline.
 
 Scrubbing is buffered for performance. Pointer and slider drag update `private scrubTime: number | null`, the visible time label, the seekbar value, and a yellow playhead. The Web Audio graph is not rebuilt during drag. `commitScrubTime()` performs one final `AudioEngine.seek()` call when the interaction ends.
 
-Dashboard refresh does not automatically redraw the timeline canvas. `updateDashboard()` asks `requestDashboardTimelineDraw()` to decide whether a redraw is visible. Redraw is allowed when `TrackAnalysis` changes, the canvas size changes, zoom or scroll changes, scrub state changes, or the playhead has moved by at least one visible pixel (`viewport.duration / Math.max(1, rect.width)`). This keeps frequent dashboard text updates from repainting dense timeline layers unnecessarily.
+Dashboard refresh does not automatically redraw the timeline canvas. `updateDashboard()` asks `requestDashboardTimelineDraw()` to decide whether a redraw is visible. Redraw is allowed when `TrackAnalysis` changes, the canvas size changes, `State.zoom` or `State.pan` changes, scrub state changes, or the playhead has moved by at least one visible pixel. This keeps frequent dashboard text updates from repainting dense timeline layers unnecessarily.
 
 ## Metrics And Chrome
 
@@ -110,7 +110,9 @@ The feature is split across these runtime layers:
 - `src/config/visualTuning.ts`: defaults, control metadata, preset normalization, audio-sensitivity helpers.
 - `src/types/index.ts`: persisted tuning and playback state contracts.
 - `src/state/store.ts`: shared runtime state for tuning, section sensitivity overrides, visual mode, playback loop mode, and chrome behavior.
-- `src/ui/DashboardUI.ts`: DOM controls, preset loading, panel visibility, dragging, playback shortcuts, metrics projection, section sensitivity lines, spectral pivot overlay, timeline overlay/zoom/pan/scrub behavior, tooltip projection, and auto-hide behavior.
+- `src/ui/DashboardUI.ts`: facade/orchestrator for DOM controls, preset loading, panel visibility, dragging, playback shortcuts, metrics projection, timeline interaction state, `State` writes, and `AudioEngine` handoff. It coordinates the timeline submodules instead of directly owning raw gesture normalization or canvas drawing.
+- `src/ui/GestureEngine.ts`: generic deep input-normalization module for mouse, wheel, pointer-like drag, hover, double-click, touch, and pinch zoom input. It emits normalized semantic callbacks and has no knowledge of playback, sections, presets, or rendering.
+- `src/ui/TimelineCanvas.ts`: declarative timeline renderer. It consumes `RenderState`, owns HDPI canvas sizing, section/cue/playhead drawing, sensitivity and preset labels, spectral overlays, and waveform offscreen caching.
 - `src/audio/AudioEngine.ts`: loop-on-end playback behavior.
 - `src/visuals/`: render usage of tuning values, background color, and sensitivity-scaled audio data.
 
@@ -131,7 +133,7 @@ The analyzer also publishes BPM-aligned `BarAnalysis` entries and RMS fields on 
 Two interaction hot paths are explicitly guarded:
 
 - The paused/stopped p5 draw path does not run `findIndex()` over event or cue arrays each frame. Beat and cue indexes are synchronized through `AudioEngine.addPositionChangedListener(syncEventIndex)`, so linear scans happen only on actual position changes.
-- Seekbar and timeline drag do not call `AudioEngine.seek()` repeatedly. They update `scrubTime` and redraw visual feedback through `requestTimelineDraw()`, then commit one audio seek when the gesture ends.
+- Seekbar and timeline drag do not call `AudioEngine.seek()` repeatedly. Timeline drag input is normalized by `GestureEngine`; `DashboardUI` updates `scrubTime` and redraws visual feedback through `TimelineCanvas` via `requestTimelineDraw()`, then commits one audio seek when the gesture ends.
 - The render loop writes modulation through `writeModulationBus(State.modulation, ...)` so the modulation object reference stays stable. `computeModulationBus()` remains a compatibility helper for fresh-object callers, and transient reset zeros the existing modulation fields in place.
 - Hot color conversion uses `hueToRgbInto()` with module-owned RGB tuples. `hueToRgb()` remains available as an allocating compatibility wrapper, but classic and temporal draw paths avoid new RGB arrays in per-frame loops. Temporal mechanism ring drawing receives numeric RGB components instead of a shared color array reference.
 - `P5RendererBackend` skips redundant `fill()`, `stroke()`, and `strokeWeight()` calls by comparing numeric cached components. String keys are avoided in the draw-state cache, while `noFill()` and `noStroke()` still force the next matching fill or stroke call to reactivate p5 state.
