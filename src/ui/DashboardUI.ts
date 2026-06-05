@@ -1,16 +1,13 @@
 import type { AudioEngine } from '../audio/AudioEngine';
 import { normalizeVisualTuningConfig, visualTuningControls, type VisualTuningKey } from '../config/visualTuning';
 import { State } from '../state/store';
+import type { RenderState } from '../types';
+import { GestureEngine } from './GestureEngine';
 import { dashboardMetricMetadata, type DashboardMetricKey } from './metricMetadata';
+import { TimelineCanvas } from './TimelineCanvas';
 
 interface VisualPresetManifest {
     presets?: string[];
-}
-
-interface TimelineViewport {
-    start: number;
-    end: number;
-    duration: number;
 }
 
 export class DashboardUI {
@@ -26,14 +23,6 @@ export class DashboardUI {
     private timelineResizeStartY = 0;
     private timelineResizeStartHeight = 0;
     private lastExpandedTimelineHeight = 220;
-    private timelineZoomLevel = 1;
-    private timelineScrollOffsetTime = 0;
-    private timelinePanStartX = 0;
-    private timelinePanStartOffset = 0;
-    private timelinePointerDownX = 0;
-    private timelinePointerDownY = 0;
-    private timelineDidDrag = false;
-    private timelineTooltip: HTMLDivElement;
     private scrubTime: number | null = null;
     private lastTimelineAnalysisRef: unknown = null;
     private lastTimelineDrawTime = -Infinity;
@@ -42,18 +31,15 @@ export class DashboardUI {
     private lastTimelineDrawZoom = 1;
     private lastTimelineDrawScroll = 0;
     private lastTimelineDrawScrubTime: number | null = null;
-    private waveformCacheCanvas: HTMLCanvasElement | null = null;
-    private lastWaveformAnalysisRef: unknown = null;
-    private lastWaveformWidth = 0;
-    private lastWaveformHeight = 0;
-    private lastWaveformZoom = 1;
-    private lastWaveformScroll = 0;
     private lastTriggeredSectionIdx = -1;
     private metricTooltip: HTMLDivElement;
     private activeMetricCard: HTMLElement | null = null;
     private tuningDragOffset = { x: 0, y: 0 };
     private els: Record<string, HTMLElement>;
     private engine: AudioEngine;
+    private timelineCanvas!: TimelineCanvas;
+    private gestureEngine!: GestureEngine;
+    private timelineResizeObserver: ResizeObserver | null = null;
 
     // UI visibility lock state.
     private isUiLockedVisible = false;
@@ -127,7 +113,6 @@ export class DashboardUI {
 
         this.initBindings();
         this.initVisualTuningControls();
-        this.timelineTooltip = this.createTimelineTooltip();
         this.metricTooltip = this.createDashboardMetricTooltip();
         this.initDashboardMetricTooltips();
         this.initDramaturgyTimeline();
@@ -174,6 +159,8 @@ export class DashboardUI {
                 (this.els.upload as HTMLInputElement).disabled = false;
                 this.els.timeTot.innerText = this.formatTime(State.duration);
                 this.setPlaybackUi(false);
+                const buffer = this.engine.getAudioBuffer();
+                if (buffer) this.timelineCanvas.setAudioBuffer(buffer);
                 this.drawDramaturgyTimeline();
             };
 
@@ -358,14 +345,6 @@ export class DashboardUI {
         this.els.toggleLoop.innerText = State.loopPlayback ? 'Loop' : 'Once';
     }
 
-    private createTimelineTooltip() {
-        const tooltip = document.createElement('div');
-        tooltip.id = 'timeline-tooltip';
-        tooltip.className = 'timeline-tooltip is-hidden';
-        document.body.appendChild(tooltip);
-        return tooltip;
-    }
-
     private createDashboardMetricTooltip() {
         const tooltip = document.createElement('div');
         tooltip.id = 'dashboard-metric-tooltip';
@@ -471,6 +450,16 @@ export class DashboardUI {
         const resizeHandle = this.els.timelineResizeHandle;
         const wrapper = canvas.parentElement as HTMLElement | null;
 
+        this.timelineCanvas = new TimelineCanvas(canvas);
+        this.gestureEngine = new GestureEngine(canvas, {
+            onStart: (focusX, focusY, button, shiftKey) => this.startTimelineInteraction(focusX, focusY, button, shiftKey),
+            onMove: (focusX, focusY, deltaX) => this.moveTimelineInteraction(focusX, focusY, deltaX),
+            onEnd: () => this.endTimelineInteraction(),
+            onZoom: (delta, focusX) => this.zoomTimeline(delta, focusX),
+            onHover: (focusX, focusY) => this.hoverTimeline(focusX, focusY),
+            onDoubleClick: (focusX) => this.splitTimelineAtPercent(focusX)
+        });
+
         drawButton.addEventListener('click', () => {
             this.setTimelineDrawMode(!State.drawModeActive);
         });
@@ -481,182 +470,8 @@ export class DashboardUI {
             this.animateTimelineResize();
         });
 
-        canvas.addEventListener('pointerdown', (event) => {
-            if (State.duration <= 0) return;
-            const rect = canvas.getBoundingClientRect();
-            if (rect.width <= 0) return;
-            if (State.drawModeActive && event.button === 0) {
-                State.isDrawingEnvelope = true;
-                this.isSeekingTimeline = false;
-                this.isPanningTimeline = false;
-                this.isDraggingThreshold = false;
-                this.draggingSectionIdx = null;
-                canvas.setPointerCapture(event.pointerId);
-                this.drawAutomationAtPointer(event, rect);
-                event.preventDefault();
-                return;
-            }
-            const mouseX = event.clientX - rect.left;
-            const mouseY = event.clientY - rect.top;
-            const viewport = this.getTimelineViewport();
-            const hoverTime = this.getTimelineTimeAtX(mouseX, rect.width);
-            const sections = State.trackAnalysis.sections;
-            const sectionIdx = sections.findIndex(s => hoverTime >= s.start && hoverTime <= s.end);
-            const topPad = rect.height >= 52 ? 18 : 4;
-            const bottomPad = 5;
-            const graphHeight = Math.max(8, rect.height - topPad - bottomPad);
-
-            if (sectionIdx !== -1) {
-                const section = sections[sectionIdx];
-                const sectionStartX = this.getTimelineXAtTime(section.start, rect.width, viewport);
-                const sectionEndX = this.getTimelineXAtTime(section.end, rect.width, viewport);
-                const override = State.sectionOverrides[`section-${sectionIdx}`] || { sensitivity: State.visualTuning.audioSensitivity };
-                const normVal = (override.sensitivity - 0.1) / 3.9;
-                const yThreshold = topPad + graphHeight * (1 - normVal);
-
-                if (Math.abs(mouseY - yThreshold) < 12 && mouseX >= sectionStartX && mouseX <= sectionEndX) {
-                    this.draggingSectionIdx = sectionIdx;
-                    this.isDraggingThreshold = true;
-                    canvas.setPointerCapture(event.pointerId);
-                    event.preventDefault();
-                    return;
-                }
-            }
-
-            this.timelinePointerDownX = event.clientX;
-            this.timelinePointerDownY = event.clientY;
-            this.timelineDidDrag = false;
-
-            const isPanAction = event.button === 1 || event.shiftKey;
-            if (isPanAction) {
-                this.isPanningTimeline = true;
-                this.timelinePanStartX = event.clientX;
-                this.timelinePanStartOffset = this.timelineScrollOffsetTime;
-                canvas.classList.add('is-panning');
-            } else if (event.button === 0) {
-                this.isSeekingTimeline = true;
-                this.seekTimelineFromPointer(event, rect);
-            } else {
-                return;
-            }
-            canvas.setPointerCapture(event.pointerId);
-            event.preventDefault();
-        });
-
-        canvas.addEventListener('pointermove', (event) => {
-            const rect = canvas.getBoundingClientRect();
-            if (rect.width <= 0) return;
-            if (State.isDrawingEnvelope) {
-                this.drawAutomationAtPointer(event, rect);
-                this.updateTimelineTooltip(event, rect);
-                event.preventDefault();
-                return;
-            }
-            const mouseX = event.clientX - rect.left;
-            const mouseY = event.clientY - rect.top;
-            const topPad = rect.height >= 52 ? 18 : 4;
-            const bottomPad = 5;
-            const graphHeight = Math.max(8, rect.height - topPad - bottomPad);
-
-            if (this.isDraggingThreshold && this.draggingSectionIdx !== null) {
-                const normVal = this.clamp(1 - (mouseY - topPad) / graphHeight, 0.0, 1.0);
-                const sensVal = 0.1 + normVal * 3.9;
-                const key = `section-${this.draggingSectionIdx}`;
-                if (!State.sectionOverrides[key]) {
-                    State.sectionOverrides[key] = { sensitivity: sensVal };
-                } else {
-                    State.sectionOverrides[key].sensitivity = sensVal;
-                }
-                this.requestTimelineDraw();
-                return;
-            }
-
-            const hoverTime = this.getTimelineTimeAtX(mouseX, rect.width);
-            const sections = State.trackAnalysis.sections;
-            const sectionIdx = sections.findIndex(s => hoverTime >= s.start && hoverTime <= s.end);
-            let overLine = false;
-
-            if (sectionIdx !== -1) {
-                const override = State.sectionOverrides[`section-${sectionIdx}`] || { sensitivity: State.visualTuning.audioSensitivity };
-                const normVal = (override.sensitivity - 0.1) / 3.9;
-                const yThreshold = topPad + graphHeight * (1 - normVal);
-                overLine = Math.abs(mouseY - yThreshold) < 8;
-            }
-            canvas.style.cursor = overLine ? 'row-resize' : '';
-
-            if (this.isPanningTimeline) {
-                const dragDistance = Math.abs(event.clientX - this.timelinePointerDownX) + Math.abs(event.clientY - this.timelinePointerDownY);
-                this.timelineDidDrag = this.timelineDidDrag || dragDistance > 3;
-                const visibleDuration = this.getTimelineVisibleDuration();
-                const deltaSeconds = ((event.clientX - this.timelinePanStartX) / rect.width) * visibleDuration;
-                this.timelineScrollOffsetTime = this.clampTimelineScroll(this.timelinePanStartOffset - deltaSeconds);
-                this.requestTimelineDraw();
-            } else if (this.isSeekingTimeline) {
-                this.timelineDidDrag = true;
-                this.seekTimelineFromPointer(event, rect);
-            }
-
-            this.updateTimelineTooltip(event, rect);
-        });
-
-        const endTimelinePointer = (event: PointerEvent) => {
-            if (State.isDrawingEnvelope) {
-                State.isDrawingEnvelope = false;
-            }
-            if (this.isSeekingTimeline && !this.timelineDidDrag) {
-                const rect = canvas.getBoundingClientRect();
-                this.seekTimelineFromPointer(event, rect);
-            }
-            if (this.isSeekingTimeline) {
-                this.commitScrubTime();
-            }
-            this.isPanningTimeline = false;
-            this.isSeekingTimeline = false;
-            this.isDraggingThreshold = false;
-            this.draggingSectionIdx = null;
-            this.timelineDidDrag = false;
-            canvas.style.cursor = '';
-            canvas.classList.remove('is-panning');
-            if (canvas.hasPointerCapture(event.pointerId)) {
-                canvas.releasePointerCapture(event.pointerId);
-            }
-        };
-        canvas.addEventListener('pointerup', endTimelinePointer);
-        canvas.addEventListener('pointercancel', endTimelinePointer);
-        canvas.addEventListener('pointerleave', () => {
-            if (!State.isDrawingEnvelope && !this.isPanningTimeline && !this.isSeekingTimeline && !this.isDraggingThreshold) {
-                canvas.style.cursor = '';
-                this.hideTimelineTooltip();
-            }
-        });
-
-        canvas.addEventListener('dblclick', (event) => {
-            if (State.duration <= 0) return;
-            const rect = canvas.getBoundingClientRect();
-            if (rect.width <= 0) return;
-
-            const mouseX = event.clientX - rect.left;
-            const hoverTime = this.getTimelineTimeAtX(mouseX, rect.width);
-            const sections = State.trackAnalysis.sections;
-            const sectionIdx = sections.findIndex(s => hoverTime >= s.start && hoverTime <= s.end);
-            if (sectionIdx === -1) return;
-
-            const section = sections[sectionIdx];
-            const duration = section.end - section.start;
-            if (duration <= 1.0) return;
-
-            const midTime = (section.start + section.end) * 0.5;
-            this.splitTimelineSection(sectionIdx, midTime, hoverTime);
-            this.requestTimelineDraw();
-        });
-
-        canvas.addEventListener('wheel', (event) => {
-            this.zoomTimelineFromWheel(event);
-        }, { passive: false });
-
         resizeHandle.addEventListener('pointerdown', (event) => {
-            if (!wrapper) return;
-            if (wrapper.classList.contains('is-fullscreen-overlay')) return;
+            if (!wrapper || wrapper.classList.contains('is-fullscreen-overlay')) return;
             this.isResizingTimeline = true;
             this.timelineResizeStartY = event.clientY;
             this.timelineResizeStartHeight = this.getTimelineHeight(wrapper);
@@ -689,10 +504,14 @@ export class DashboardUI {
         resizeHandle.addEventListener('pointerup', endResize);
         resizeHandle.addEventListener('pointercancel', endResize);
 
-        window.addEventListener('resize', () => {
-            this.timelineScrollOffsetTime = this.clampTimelineScroll(this.timelineScrollOffsetTime);
-            this.drawDramaturgyTimeline();
-        });
+        if (typeof ResizeObserver !== 'undefined') {
+            this.timelineResizeObserver = new ResizeObserver(() => {
+                State.pan = this.clampTimelinePan(State.pan);
+                this.timelineCanvas.resize();
+                this.requestTimelineDraw();
+            });
+            this.timelineResizeObserver.observe(wrapper || canvas);
+        }
     }
 
     private toggleTimelineOverlay(wrapper: HTMLElement, zoomButton: HTMLButtonElement) {
@@ -705,7 +524,6 @@ export class DashboardUI {
             zoomButton.setAttribute('aria-pressed', 'false');
             zoomButton.setAttribute('aria-label', 'Open timeline overlay');
             zoomButton.title = 'Open Timeline';
-            this.hideTimelineTooltip();
             return;
         }
 
@@ -721,11 +539,106 @@ export class DashboardUI {
         this.requestTimelineDraw();
     }
 
-    private seekTimelineFromPointer(event: PointerEvent, rect: DOMRect) {
-        if (State.duration <= 0 || rect.width <= 0) return;
-        const mouseX = Math.min(rect.width, Math.max(0, event.clientX - rect.left));
-        const seekTime = this.getTimelineTimeAtX(mouseX, rect.width);
-        this.setScrubTime(seekTime);
+    private startTimelineInteraction(focusX: number, focusY: number, button: number, shiftKey: boolean) {
+        if (State.duration <= 0) return false;
+
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        if (State.drawModeActive && button === 0) {
+            State.isDrawingEnvelope = true;
+            this.isSeekingTimeline = false;
+            this.isPanningTimeline = false;
+            this.isDraggingThreshold = false;
+            this.draggingSectionIdx = null;
+            canvas.style.cursor = '';
+            this.drawAutomationAtPointer(focusX, focusY);
+            return true;
+        }
+
+        const thresholdHit = this.getTimelineThresholdHit(focusX, focusY, 12);
+        if (button === 0 && thresholdHit) {
+            this.draggingSectionIdx = thresholdHit.sectionIdx;
+            this.isDraggingThreshold = true;
+            this.isSeekingTimeline = false;
+            this.isPanningTimeline = false;
+            canvas.style.cursor = 'row-resize';
+            return true;
+        }
+
+        if (button === 1 || shiftKey) {
+            this.isPanningTimeline = true;
+            this.isSeekingTimeline = false;
+            this.isDraggingThreshold = false;
+            canvas.classList.add('is-panning');
+            return true;
+        }
+
+        if (button === 0) {
+            this.isSeekingTimeline = true;
+            this.isPanningTimeline = false;
+            this.isDraggingThreshold = false;
+            this.setScrubTime(this.getTimelineTimeAtPercent(focusX));
+            return true;
+        }
+
+        return false;
+    }
+
+    private moveTimelineInteraction(focusX: number, focusY: number, deltaX: number) {
+        if (State.isDrawingEnvelope) {
+            this.drawAutomationAtPointer(focusX, focusY);
+            return;
+        }
+
+        if (this.isDraggingThreshold && this.draggingSectionIdx !== null) {
+            const metrics = this.getTimelineGraphMetrics();
+            if (!metrics) return;
+            const mouseY = focusY * metrics.rect.height;
+            const normVal = this.clamp(1 - (mouseY - metrics.topPad) / metrics.graphHeight, 0.0, 1.0);
+            const sensVal = 0.1 + normVal * 3.9;
+            const key = `section-${this.draggingSectionIdx}`;
+            if (!State.sectionOverrides[key]) {
+                State.sectionOverrides[key] = { sensitivity: sensVal };
+            } else {
+                State.sectionOverrides[key].sensitivity = sensVal;
+            }
+            this.requestTimelineDraw();
+            return;
+        }
+
+        if (this.isPanningTimeline) {
+            this.panTimeline(deltaX);
+            return;
+        }
+
+        if (this.isSeekingTimeline) {
+            this.setScrubTime(this.getTimelineTimeAtPercent(focusX));
+        }
+    }
+
+    private endTimelineInteraction() {
+        if (State.isDrawingEnvelope) {
+            State.isDrawingEnvelope = false;
+        }
+        if (this.isSeekingTimeline) {
+            this.commitScrubTime();
+        }
+
+        this.isDraggingThreshold = false;
+        this.draggingSectionIdx = null;
+        this.isPanningTimeline = false;
+        this.isSeekingTimeline = false;
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        canvas.classList.remove('is-panning');
+        canvas.style.cursor = '';
+    }
+
+    private hoverTimeline(focusX: number, focusY: number) {
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        if (State.duration <= 0 || State.drawModeActive) {
+            canvas.style.cursor = '';
+            return;
+        }
+        canvas.style.cursor = this.getTimelineThresholdHit(focusX, focusY, 12) ? 'row-resize' : '';
     }
 
     private setScrubTime(time: number) {
@@ -741,66 +654,51 @@ export class DashboardUI {
         if (this.scrubTime === null) return;
         const targetTime = this.scrubTime;
         this.scrubTime = null;
+        State.currentTime = targetTime;
         this.engine.seek(targetTime);
         this.requestTimelineDraw();
     }
 
-    private zoomTimelineFromWheel(event: WheelEvent) {
+    private zoomTimeline(delta: number, focusX: number) {
         if (State.duration <= 0) return;
-        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
-        const rect = canvas.getBoundingClientRect();
-        if (rect.width <= 0) return;
-
-        event.preventDefault();
-        const mouseX = Math.min(rect.width, Math.max(0, event.clientX - rect.left));
-        const mouseTime = this.getTimelineTimeAtX(mouseX, rect.width);
-        const zoomFactor = event.deltaY < 0 ? 1.18 : 1 / 1.18;
-        this.timelineZoomLevel = this.clamp(this.timelineZoomLevel * zoomFactor, 1, 16);
-
-        const newVisibleDuration = this.getTimelineVisibleDuration();
-        this.timelineScrollOffsetTime = this.clampTimelineScroll(mouseTime - (mouseX / rect.width) * newVisibleDuration);
-        if (this.timelineZoomLevel <= 1.01) this.timelineScrollOffsetTime = 0;
+        const normalizedFocus = this.clamp(focusX, 0, 1);
+        const focusTime = this.getTimelineTimeAtPercent(normalizedFocus);
+        const zoomFactor = delta > 0 ? 1.18 : 1 / 1.18;
+        State.zoom = this.clamp(State.zoom * zoomFactor, 1, 16);
+        const nextVisibleDuration = this.getTimelineVisibleDuration();
+        State.pan = this.clampTimelinePan(focusTime - normalizedFocus * nextVisibleDuration);
+        if (State.zoom <= 1.01) State.pan = 0;
         this.requestTimelineDraw();
-        this.updateTimelineTooltip(event, rect);
     }
 
-    private getTimelineVisibleDuration() {
-        if (State.duration <= 0) return 0;
-        return State.duration / this.timelineZoomLevel;
-    }
-
-    private getTimelineViewport(): TimelineViewport {
-        const duration = this.getTimelineVisibleDuration();
-        this.timelineScrollOffsetTime = this.clampTimelineScroll(this.timelineScrollOffsetTime);
-        return {
-            start: this.timelineScrollOffsetTime,
-            end: Math.min(State.duration, this.timelineScrollOffsetTime + duration),
-            duration
-        };
-    }
-
-    private clampTimelineScroll(offset: number) {
-        if (State.duration <= 0) return 0;
+    private panTimeline(deltaX: number) {
+        if (State.duration <= 0) return;
         const visibleDuration = this.getTimelineVisibleDuration();
-        return this.clamp(offset, 0, Math.max(0, State.duration - visibleDuration));
+        const deltaSeconds = deltaX * visibleDuration;
+        State.pan = this.clampTimelinePan(State.pan - deltaSeconds);
+        this.requestTimelineDraw();
     }
 
-    private getTimelineTimeAtX(x: number, width: number) {
-        const viewport = this.getTimelineViewport();
-        return this.clamp(viewport.start + (x / Math.max(1, width)) * viewport.duration, 0, State.duration);
-    }
-
-    private getTimelineXAtTime(time: number, width: number, viewport: TimelineViewport) {
-        return ((time - viewport.start) / Math.max(0.001, viewport.duration)) * width;
-    }
-
-    private drawAutomationAtPointer(event: PointerEvent, rect: DOMRect) {
-        if (State.duration <= 0 || rect.width <= 0) return;
-        const mouseX = Math.min(rect.width, Math.max(0, event.clientX - rect.left));
-        const mouseY = Math.min(rect.height, Math.max(0, event.clientY - rect.top));
-        const hoverTime = this.getTimelineTimeAtX(mouseX, rect.width);
+    private splitTimelineAtPercent(timePercent: number) {
+        if (State.duration <= 0) return;
+        const hoverTime = this.getTimelineTimeAtPercent(timePercent);
         const sections = State.trackAnalysis.sections;
-        let sectionIdx = sections.findIndex(s => hoverTime >= s.start && hoverTime <= s.end);
+        const sectionIdx = sections.findIndex(section => hoverTime >= section.start && hoverTime <= section.end);
+        if (sectionIdx === -1) return;
+
+        const section = sections[sectionIdx];
+        const splitTime = this.clamp(hoverTime, section.start + 0.1, section.end - 0.1);
+        if (splitTime <= section.start || splitTime >= section.end) return;
+
+        this.splitTimelineSection(sectionIdx, splitTime, hoverTime);
+        this.requestTimelineDraw();
+    }
+
+    private drawAutomationAtPointer(focusX: number, focusY: number) {
+        if (State.duration <= 0) return;
+        const hoverTime = this.getTimelineTimeAtPercent(focusX);
+        const sections = State.trackAnalysis.sections;
+        let sectionIdx = sections.findIndex(section => hoverTime >= section.start && hoverTime <= section.end);
         if (sectionIdx === -1) return;
 
         const section = sections[sectionIdx];
@@ -817,11 +715,12 @@ export class DashboardUI {
             const presetName = (this.els.timelinePresetBrush as HTMLSelectElement).value;
             if (presetName) this.setSectionPresetOverride(sectionIdx, presetName);
         } else {
-            const topPad = rect.height >= 52 ? 18 : 4;
-            const bottomPad = 5;
-            const graphHeight = Math.max(8, rect.height - topPad - bottomPad);
-            const normVal = this.clamp(1 - (mouseY - topPad) / graphHeight, 0.0, 1.0);
-            this.setSectionSensitivityOverride(sectionIdx, 0.1 + normVal * 3.9);
+            const metrics = this.getTimelineGraphMetrics();
+            if (!metrics) return;
+            const mouseY = focusY * metrics.rect.height;
+            const normVal = this.clamp(1 - (mouseY - metrics.topPad) / metrics.graphHeight, 0.0, 1.0);
+            const sensVal = 0.1 + normVal * 3.9;
+            this.setSectionSensitivityOverride(sectionIdx, sensVal);
         }
         this.requestTimelineDraw();
     }
@@ -842,25 +741,22 @@ export class DashboardUI {
 
         const oldKey = `section-${sectionIdx}`;
         const oldOverride = State.sectionOverrides[oldKey];
-        const sensVal = oldOverride ? oldOverride.sensitivity : State.visualTuning.audioSensitivity;
-        const sec1 = { ...section, end: splitTime };
-        const sec2 = { ...section, start: splitTime };
-        sections.splice(sectionIdx, 1, sec1, sec2);
+        const sensitivity = oldOverride ? oldOverride.sensitivity : State.visualTuning.audioSensitivity;
+        const first = { ...section, end: splitTime };
+        const second = { ...section, start: splitTime };
+        sections.splice(sectionIdx, 1, first, second);
 
         const nextOverrides: typeof State.sectionOverrides = {};
         for (const [key, value] of Object.entries(State.sectionOverrides)) {
             const match = key.match(/^section-(\d+)$/);
             if (!match) continue;
             const idx = parseInt(match[1], 10);
-            if (idx < sectionIdx) {
-                nextOverrides[key] = value;
-            } else if (idx > sectionIdx) {
-                nextOverrides[`section-${idx + 1}`] = value;
-            }
+            if (idx < sectionIdx) nextOverrides[key] = value;
+            else if (idx > sectionIdx) nextOverrides[`section-${idx + 1}`] = value;
         }
 
-        nextOverrides[`section-${sectionIdx}`] = { sensitivity: sensVal, preset: oldOverride?.preset };
-        nextOverrides[`section-${sectionIdx + 1}`] = { sensitivity: sensVal, preset: oldOverride?.preset };
+        nextOverrides[`section-${sectionIdx}`] = { sensitivity, preset: oldOverride?.preset };
+        nextOverrides[`section-${sectionIdx + 1}`] = { sensitivity, preset: oldOverride?.preset };
         State.sectionOverrides = nextOverrides;
         return focusTime >= splitTime ? sectionIdx + 1 : sectionIdx;
     }
@@ -883,77 +779,68 @@ export class DashboardUI {
         }
     }
 
+    private getTimelineThresholdHit(focusX: number, focusY: number, tolerancePx: number) {
+        const metrics = this.getTimelineGraphMetrics();
+        if (!metrics) return null;
+
+        const hoverTime = this.getTimelineTimeAtPercent(focusX);
+        const sectionIdx = State.trackAnalysis.sections.findIndex(section => hoverTime >= section.start && hoverTime <= section.end);
+        if (sectionIdx === -1) return null;
+
+        const override = State.sectionOverrides[`section-${sectionIdx}`] || { sensitivity: State.visualTuning.audioSensitivity };
+        const normVal = this.clamp((override.sensitivity - 0.1) / 3.9, 0.0, 1.0);
+        const yThreshold = metrics.topPad + metrics.graphHeight * (1 - normVal);
+        const mouseY = focusY * metrics.rect.height;
+        return Math.abs(mouseY - yThreshold) <= tolerancePx ? { sectionIdx, yThreshold } : null;
+    }
+
+    private getTimelineGraphMetrics() {
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return null;
+
+        const topPad = rect.height >= 52 ? 18 : 4;
+        const bottomPad = 5;
+        const graphHeight = Math.max(8, rect.height - topPad - bottomPad);
+        return { rect, topPad, graphHeight };
+    }
+
     private followTimelinePlayhead() {
-        if (!State.isPlaying || State.duration <= 0 || this.timelineZoomLevel <= 1.05) return;
-        const viewport = this.getTimelineViewport();
-        const relativePosition = (State.currentTime - viewport.start) / Math.max(0.001, viewport.duration);
+        if (!State.isPlaying || State.duration <= 0 || State.zoom <= 1.05) return;
+        const viewportStart = this.clampTimelinePan(State.pan);
+        const visibleDuration = this.getTimelineVisibleDuration();
+        const relativePosition = (State.currentTime - viewportStart) / Math.max(0.001, visibleDuration);
         if (relativePosition > 0.75 || relativePosition < 0.15) {
-            this.timelineScrollOffsetTime = this.clampTimelineScroll(State.currentTime - viewport.duration * 0.5);
+            State.pan = this.clampTimelinePan(State.currentTime - visibleDuration * 0.5);
         }
-    }
-
-    private updateTimelineTooltip(event: MouseEvent, rect: DOMRect) {
-        if (State.duration <= 0 || rect.width <= 0) {
-            this.hideTimelineTooltip();
-            return;
-        }
-
-        const mouseX = Math.min(rect.width, Math.max(0, event.clientX - rect.left));
-        const hoverTime = this.getTimelineTimeAtX(mouseX, rect.width);
-        const viewport = this.getTimelineViewport();
-        const cueTolerance = Math.max(0.05, viewport.duration * 0.015);
-        const section = State.trackAnalysis.sections.find(item => hoverTime >= item.start && hoverTime <= item.end);
-        const bar = State.trackAnalysis.bars.find(item => hoverTime >= item.start && hoverTime <= item.end);
-        const cue = State.trackAnalysis.significantMoments.find(item => Math.abs(item.time - hoverTime) <= cueTolerance);
-        const trend = State.trackAnalysis.tensionTrends.segments.find(item => hoverTime >= item.start && hoverTime <= item.end);
-        const buildupValue = this.getBuildupValueAtTime(hoverTime);
-
-        const lines: string[] = [`${this.formatTime(hoverTime)} | Zoom ${this.timelineZoomLevel.toFixed(1)}x`];
-        if (section) {
-            lines.push(`${section.label.toUpperCase()} | Energy ${Math.round(section.energy * 100)}% | ${section.dominantFeature}`);
-        }
-        if (bar) {
-            lines.push(`Bar ${bar.index + 1} | ${bar.state} | RMS ${this.formatDb(bar.avgRms)} | B/M/T ${Math.round(bar.bass * 100)}/${Math.round(bar.mid * 100)}/${Math.round(bar.treble * 100)}%`);
-        }
-        if (trend) {
-            lines.push(`Tension ${trend.direction.toUpperCase()} | ${Math.round(trend.confidence * 100)}% confidence`);
-        }
-        lines.push(`Buildup ${Math.round(buildupValue * 100)}%`);
-        if (cue) {
-            lines.push(`${cue.kind.toUpperCase()} cue | ${Math.round(cue.confidence * 100)}% confidence`);
-        }
-
-        this.timelineTooltip.textContent = lines.join('\n');
-        this.timelineTooltip.style.left = `${this.clamp(event.clientX + 14, 8, Math.max(8, window.innerWidth - 320))}px`;
-        this.timelineTooltip.style.top = `${this.clamp(event.clientY + 14, 8, Math.max(8, window.innerHeight - 110))}px`;
-        this.timelineTooltip.classList.remove('is-hidden');
-    }
-
-    private hideTimelineTooltip() {
-        this.timelineTooltip.classList.add('is-hidden');
     }
 
     private resetTimelineView() {
-        this.timelineZoomLevel = 1;
-        this.timelineScrollOffsetTime = 0;
+        State.zoom = 1;
+        State.pan = 0;
         this.scrubTime = null;
         this.lastTriggeredSectionIdx = -1;
-        this.hideTimelineTooltip();
-    }
-
-    private getBuildupValueAtTime(time: number) {
-        const buildup = State.trackAnalysis.buildupConfidence;
-        if (!buildup.length || State.duration <= 0) return 0;
-        const index = Math.min(buildup.length - 1, Math.max(0, Math.floor((time / State.duration) * buildup.length)));
-        return buildup[index] || 0;
-    }
-
-    private formatDb(value: number) {
-        return `${(20 * Math.log10(Math.max(0.0001, value))).toFixed(1)}dB`;
     }
 
     private clamp(value: number, min: number, max: number) {
         return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
+    }
+
+    private getTimelineVisibleDuration() {
+        if (State.duration <= 0) return 0;
+        return State.duration / this.clamp(State.zoom, 1, 16);
+    }
+
+    private getTimelineTimeAtPercent(percent: number) {
+        const visibleDuration = this.getTimelineVisibleDuration();
+        State.pan = this.clampTimelinePan(State.pan);
+        return this.clamp(State.pan + this.clamp(percent, 0, 1) * visibleDuration, 0, State.duration);
+    }
+
+    private clampTimelinePan(offset: number) {
+        if (State.duration <= 0) return 0;
+        const visibleDuration = this.getTimelineVisibleDuration();
+        return this.clamp(offset, 0, Math.max(0, State.duration - visibleDuration));
     }
 
     private getTimelineHeight(wrapper: HTMLElement) {
@@ -969,6 +856,7 @@ export class DashboardUI {
         wrapper.classList.toggle('is-expanded', nextHeight > 40);
         wrapper.style.height = `${nextHeight}px`;
         wrapper.classList.toggle('is-resizing', !animate && this.isResizingTimeline);
+        this.timelineCanvas.resize();
         this.requestTimelineDraw();
     }
 
@@ -993,11 +881,10 @@ export class DashboardUI {
         if (State.duration <= 0) return this.lastTimelineDrawWidth !== rect.width || this.lastTimelineDrawHeight !== rect.height;
         if (this.lastTimelineAnalysisRef !== State.trackAnalysis) return true;
         if (this.lastTimelineDrawWidth !== rect.width || this.lastTimelineDrawHeight !== rect.height) return true;
-        if (this.lastTimelineDrawZoom !== this.timelineZoomLevel || this.lastTimelineDrawScroll !== this.timelineScrollOffsetTime) return true;
+        if (this.lastTimelineDrawZoom !== State.zoom || this.lastTimelineDrawScroll !== State.pan) return true;
         if (this.lastTimelineDrawScrubTime !== this.scrubTime) return true;
 
-        const viewport = this.getTimelineViewport();
-        const visibleSecondsPerPixel = viewport.duration / Math.max(1, rect.width);
+        const visibleSecondsPerPixel = this.getTimelineVisibleDuration() / Math.max(1, rect.width);
         return Math.abs(State.currentTime - this.lastTimelineDrawTime) >= visibleSecondsPerPixel;
     }
 
@@ -1006,8 +893,8 @@ export class DashboardUI {
         this.lastTimelineDrawTime = State.currentTime;
         this.lastTimelineDrawWidth = rect.width;
         this.lastTimelineDrawHeight = rect.height;
-        this.lastTimelineDrawZoom = this.timelineZoomLevel;
-        this.lastTimelineDrawScroll = this.timelineScrollOffsetTime;
+        this.lastTimelineDrawZoom = State.zoom;
+        this.lastTimelineDrawScroll = State.pan;
         this.lastTimelineDrawScrubTime = this.scrubTime;
     }
 
@@ -1022,431 +909,49 @@ export class DashboardUI {
     }
 
     private drawDramaturgyTimeline() {
-        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
-        const rect = canvas.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height <= 0) return;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        const ratio = window.devicePixelRatio || 1;
-        const targetWidth = Math.max(1, Math.floor(rect.width * ratio));
-        const targetHeight = Math.max(1, Math.floor(rect.height * ratio));
-        if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
-            canvas.width = targetWidth;
-            canvas.height = targetHeight;
-        }
-        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-        ctx.clearRect(0, 0, rect.width, rect.height);
-
-        if (State.duration <= 0) {
-            this.rememberTimelineDrawState(rect);
-            return;
-        }
-
         this.followTimelinePlayhead();
-        const viewport = this.getTimelineViewport();
-        this.drawTimelineBackground(ctx, rect.width, rect.height);
-        this.drawTimelineSections(ctx, rect.width, rect.height, viewport);
-        this.drawTimelineGridlines(ctx, rect.width, rect.height, viewport);
-        this.drawTimelineWaveform(ctx, rect.width, rect.height, viewport);
-        this.drawTimelineRms(ctx, rect.width, rect.height, viewport);
-        this.drawTimelineBuildup(ctx, rect.width, rect.height, viewport);
-        this.drawTimelineTrends(ctx, rect.width, rect.height, viewport);
-        this.drawTimelineCueMarkers(ctx, rect.width, rect.height, viewport);
-        this.drawTimelinePlayhead(ctx, rect.width, rect.height, viewport);
-        this.rememberTimelineDrawState(rect);
+        this.timelineCanvas.render(this.getRenderState());
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        this.rememberTimelineDrawState(canvas.getBoundingClientRect());
     }
 
     private clearDramaturgyTimeline() {
-        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        this.timelineCanvas.render({ ...this.getRenderState(), duration: 0, currentTime: 0, scrubTime: null });
     }
 
-    private drawTimelineBackground(ctx: CanvasRenderingContext2D, width: number, height: number) {
-        const gradient = ctx.createLinearGradient(0, 0, 0, height);
-        gradient.addColorStop(0, 'rgba(255,255,255,0.045)');
-        gradient.addColorStop(1, 'rgba(0,0,0,0.18)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, width, height);
+    private getRenderState(): RenderState {
+        return {
+            currentTime: State.currentTime,
+            duration: State.duration,
+            zoom: State.zoom,
+            pan: State.pan,
+            bpm: State.bpm,
+            sampleRate: State.sampleRate,
+            hopSize: State.hopSize,
+            frames: State.frames,
+            sections: State.trackAnalysis.sections,
+            bars: State.trackAnalysis.bars,
+            cues: State.trackAnalysis.cues,
+            significantMoments: State.trackAnalysis.significantMoments,
+            buildupConfidence: State.trackAnalysis.buildupConfidence,
+            spectralPivot: State.trackAnalysis.spectralPivot,
+            tensionTrends: State.trackAnalysis.tensionTrends,
+            sectionOverrides: State.sectionOverrides,
+            audioSensitivity: State.visualTuning.audioSensitivity,
+            dropAnticipation: State.visualTuning.dropAnticipation,
+            scrubTime: this.scrubTime
+        };
     }
 
-    private drawTimelineSections(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
-        ctx.font = '10px Inter, sans-serif';
-        ctx.textBaseline = 'top';
-        let labelRight = -Infinity;
-
-        for (const section of State.trackAnalysis.sections) {
-            if (section.end < viewport.start || section.start > viewport.end) continue;
-            const startX = this.getTimelineXAtTime(section.start, width, viewport);
-            const endX = this.getTimelineXAtTime(section.end, width, viewport);
-            const blockWidth = Math.max(1, endX - startX);
-            ctx.fillStyle = this.getSectionColor(section.label);
-            ctx.fillRect(Math.max(0, startX), 0, Math.min(width, endX) - Math.max(0, startX), height);
-            ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(startX + 0.5, 0);
-            ctx.lineTo(startX + 0.5, height);
-            ctx.stroke();
-
-            const label = section.label.toUpperCase();
-            const labelWidth = ctx.measureText(label).width;
-            const labelX = Math.max(0, startX) + 6;
-            if (blockWidth >= labelWidth + 12 && labelX > labelRight + 8 && labelX + labelWidth < width && height >= 46) {
-                ctx.fillStyle = 'rgba(255,255,255,0.58)';
-                ctx.fillText(label, labelX, 7);
-                labelRight = labelX + labelWidth;
-            }
+    destroy() {
+        this.gestureEngine.destroy();
+        this.timelineResizeObserver?.disconnect();
+        if (this.timelineResizeFrame !== null) {
+            window.cancelAnimationFrame(this.timelineResizeFrame);
+            this.timelineResizeFrame = null;
         }
+        this.clearChromeHideTimer();
     }
-
-    private drawTimelineGridlines(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
-        if (State.bpm <= 0 || State.duration <= 0) return;
-        const secondsPerBar = (60 / State.bpm) * 4;
-        if (!Number.isFinite(secondsPerBar) || secondsPerBar <= 0) return;
-
-        ctx.save();
-        ctx.setLineDash([2, 5]);
-        ctx.strokeStyle = 'rgba(255,255,255,0.13)';
-        ctx.lineWidth = 1;
-        const firstBarTime = Math.max(0, Math.floor(viewport.start / secondsPerBar) * secondsPerBar);
-        for (let time = firstBarTime; time <= viewport.end; time += secondsPerBar) {
-            const x = Math.round(this.getTimelineXAtTime(time, width, viewport)) + 0.5;
-            ctx.beginPath();
-            ctx.moveTo(x, height >= 48 ? 18 : 0);
-            ctx.lineTo(x, height);
-            ctx.stroke();
-        }
-        ctx.restore();
-    }
-
-    private drawTimelineWaveform(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
-        if (!State.frames.length) return;
-
-        const topPad = height >= 52 ? 18 : 4;
-        const bottomPad = 5;
-        const graphHeight = Math.max(8, height - topPad - bottomPad);
-
-        if (!this.waveformCacheCanvas) {
-            this.waveformCacheCanvas = document.createElement('canvas');
-        }
-
-        // Keep the waveform cache at 1x resolution. This avoids high-DPI fill-rate
-        // spikes during zoom/pan while preserving a soft background waveform.
-        const cacheWidth = Math.max(1, Math.floor(width));
-        const cacheHeight = Math.max(1, Math.floor(height));
-        const isCacheValid =
-            this.lastWaveformAnalysisRef === State.trackAnalysis &&
-            this.lastWaveformWidth === width &&
-            this.lastWaveformHeight === height &&
-            this.lastWaveformZoom === this.timelineZoomLevel &&
-            this.lastWaveformScroll === this.timelineScrollOffsetTime &&
-            this.waveformCacheCanvas.width === cacheWidth &&
-            this.waveformCacheCanvas.height === cacheHeight;
-
-        if (!isCacheValid) {
-            this.lastWaveformAnalysisRef = State.trackAnalysis;
-            this.lastWaveformWidth = width;
-            this.lastWaveformHeight = height;
-            this.lastWaveformZoom = this.timelineZoomLevel;
-            this.lastWaveformScroll = this.timelineScrollOffsetTime;
-            this.waveformCacheCanvas.width = cacheWidth;
-            this.waveformCacheCanvas.height = cacheHeight;
-
-            const cacheCtx = this.waveformCacheCanvas.getContext('2d');
-            if (cacheCtx) {
-                cacheCtx.setTransform(1, 0, 0, 1, 0, 0);
-                cacheCtx.clearRect(0, 0, width, height);
-
-                const centerY = topPad + graphHeight / 2;
-                cacheCtx.fillStyle = 'rgba(255, 255, 255, 0.11)';
-                const step = 3;
-                const barWidth = 1.5;
-
-                for (let x = 0; x < width; x += step) {
-                    const time = viewport.start + (x / Math.max(1, width)) * viewport.duration;
-                    const frameIdx = Math.floor((time * State.sampleRate) / State.hopSize);
-                    if (frameIdx < 0 || frameIdx >= State.frames.length) continue;
-
-                    const e = State.frames[frameIdx].e;
-                    const halfHeight = e * (graphHeight / 2) * 0.95;
-                    cacheCtx.fillRect(x, centerY - halfHeight, barWidth, Math.max(1, halfHeight * 2));
-                }
-            }
-        }
-
-        ctx.drawImage(this.waveformCacheCanvas, 0, 0);
-    }
-
-    private drawTimelineRms(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
-        const bars = State.trackAnalysis.bars;
-        if (!bars.length) return;
-
-        const topPad = height >= 52 ? 18 : 4;
-        const bottomPad = 5;
-        const graphHeight = Math.max(8, height - topPad - bottomPad);
-
-        ctx.beginPath();
-        let hasPath = false;
-        for (const bar of bars) {
-            if (bar.end < viewport.start || bar.start > viewport.end) continue;
-            const midTime = (bar.start + bar.end) * 0.5;
-            const x = this.getTimelineXAtTime(midTime, width, viewport);
-            const y = topPad + graphHeight * (1 - Math.min(1, bar.avgRms));
-            if (!hasPath) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-            hasPath = true;
-        }
-        ctx.strokeStyle = 'rgba(213, 84, 172, 0.55)';
-        ctx.lineWidth = height >= 72 ? 1.25 : 1;
-        if (hasPath) ctx.stroke();
-
-        for (const bar of bars) {
-            if (bar.end < viewport.start || bar.start > viewport.end) continue;
-            const startX = this.getTimelineXAtTime(bar.start, width, viewport);
-            const endX = this.getTimelineXAtTime(bar.end, width, viewport);
-            const peakHeight = Math.max(1, bar.peakRms * graphHeight * 0.28);
-            const clippedStartX = Math.max(0, startX);
-            const clippedEndX = Math.min(width, endX);
-            ctx.fillStyle = bar.state === 'HIGH' ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.032)';
-            ctx.fillRect(clippedStartX, height - bottomPad - peakHeight, Math.max(1, clippedEndX - clippedStartX), peakHeight);
-        }
-    }
-
-    private drawTimelineBuildup(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
-        const buildup = State.trackAnalysis.buildupConfidence;
-        if (!buildup.length) return;
-        const topPad = height >= 52 ? 18 : 4;
-        const bottomPad = 5;
-        const graphHeight = Math.max(8, height - topPad - bottomPad);
-
-        ctx.beginPath();
-        ctx.moveTo(0, height);
-        for (let x = 0; x <= width; x++) {
-            const time = viewport.start + (x / Math.max(1, width)) * viewport.duration;
-            const frameIdx = Math.min(buildup.length - 1, Math.max(0, Math.floor((time / State.duration) * buildup.length)));
-            const value = buildup[frameIdx] || 0;
-            const y = topPad + graphHeight * (1 - value);
-            ctx.lineTo(x, y);
-        }
-        ctx.lineTo(width, height - bottomPad);
-        ctx.closePath();
-        const fill = ctx.createLinearGradient(0, topPad, 0, height);
-        fill.addColorStop(0, 'rgba(0, 229, 255, 0.24)');
-        fill.addColorStop(1, 'rgba(0, 229, 255, 0.025)');
-        ctx.fillStyle = fill;
-        ctx.fill();
-
-        ctx.beginPath();
-        for (let x = 0; x <= width; x++) {
-            const time = viewport.start + (x / Math.max(1, width)) * viewport.duration;
-            const frameIdx = Math.min(buildup.length - 1, Math.max(0, Math.floor((time / State.duration) * buildup.length)));
-            const value = buildup[frameIdx] || 0;
-            const y = topPad + graphHeight * (1 - value);
-            if (x === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.strokeStyle = 'rgba(0, 229, 255, 0.82)';
-        ctx.lineWidth = height >= 72 ? 1.5 : 1;
-        ctx.stroke();
-
-        ctx.save();
-        ctx.strokeStyle = 'rgba(213, 84, 172, 0.95)';
-        ctx.lineWidth = height >= 72 ? 2.5 : 1.75;
-        ctx.setLineDash([1, 4]);
-        ctx.beginPath();
-        let isDrawing = false;
-        for (let x = 0; x <= width; x++) {
-            const time = viewport.start + (x / Math.max(1, width)) * viewport.duration;
-            const frameIdx = Math.min(buildup.length - 1, Math.max(0, Math.floor((time / State.duration) * buildup.length)));
-            const value = buildup[frameIdx] || 0;
-            const pivotVal = State.trackAnalysis.spectralPivot ? (State.trackAnalysis.spectralPivot[frameIdx] || 0) : 0;
-
-            if (pivotVal > 0.05) {
-                const y = topPad + graphHeight * (1 - value);
-                if (!isDrawing) {
-                    ctx.moveTo(x, y);
-                    isDrawing = true;
-                } else {
-                    ctx.lineTo(x, y);
-                }
-            } else {
-                isDrawing = false;
-            }
-        }
-        ctx.stroke();
-        ctx.restore();
-
-        const playheadX = this.getTimelineXAtTime(State.currentTime, width, viewport);
-        if (State.visualTuning.dropAnticipation > 0 && playheadX < width) {
-            const anticipationWidth = (State.visualTuning.dropAnticipation / Math.max(0.001, viewport.duration)) * width;
-            const endX = Math.min(width, playheadX + anticipationWidth);
-            const suspenseGrad = ctx.createLinearGradient(playheadX, 0, endX, 0);
-            suspenseGrad.addColorStop(0, 'rgba(213, 84, 172, 0.18)');
-            suspenseGrad.addColorStop(1, 'rgba(213, 84, 172, 0.01)');
-            ctx.fillStyle = suspenseGrad;
-            ctx.fillRect(playheadX, topPad, endX - playheadX, graphHeight);
-        }
-
-        const sections = State.trackAnalysis.sections;
-        for (let i = 0; i < sections.length; i++) {
-            const section = sections[i];
-            if (section.end < viewport.start || section.start > viewport.end) continue;
-
-            const startX = this.getTimelineXAtTime(section.start, width, viewport);
-            const endX = this.getTimelineXAtTime(section.end, width, viewport);
-            const override = State.sectionOverrides[`section-${i}`];
-            const isOverridden = Boolean(override);
-            const sensVal = override ? override.sensitivity : State.visualTuning.audioSensitivity;
-            const normVal = (sensVal - 0.1) / 3.9;
-            const yThreshold = topPad + graphHeight * (1 - normVal);
-
-            ctx.save();
-            if (isOverridden) {
-                ctx.strokeStyle = 'rgba(0, 229, 255, 0.85)';
-                ctx.lineWidth = 1.75;
-                ctx.setLineDash([]);
-            } else {
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-                ctx.lineWidth = 1.25;
-                ctx.setLineDash([3, 3]);
-            }
-
-            ctx.beginPath();
-            ctx.moveTo(Math.max(0, startX), yThreshold);
-            ctx.lineTo(Math.min(width, endX), yThreshold);
-            ctx.stroke();
-
-            if (isOverridden && endX - startX > 45) {
-                const tagX = Math.max(0, startX) + 4;
-                const tagY = this.clamp(yThreshold - 14, topPad + 2, height - 28);
-                ctx.fillStyle = 'rgba(0, 229, 255, 0.95)';
-                ctx.fillRect(tagX, tagY, 34, 10);
-                ctx.fillStyle = '#000000';
-                ctx.font = '7px monospace';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(`S:${sensVal.toFixed(2)}`, tagX + 2, tagY + 5);
-            }
-            if (override?.preset && endX - startX > 58) {
-                const presetLabel = `P:${this.formatPresetName(override.preset)}`;
-                const labelWidth = Math.min(Math.ceil(ctx.measureText(presetLabel).width) + 8, Math.max(46, endX - startX - 8));
-                const tagX = Math.max(0, startX) + 4;
-                const tagY = this.clamp(yThreshold + 5, topPad + 14, height - 14);
-                ctx.fillStyle = 'rgba(213, 84, 172, 0.92)';
-                ctx.fillRect(tagX, tagY, labelWidth, 11);
-                ctx.fillStyle = '#000000';
-                ctx.font = '7px monospace';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(presetLabel, tagX + 3, tagY + 5.5, labelWidth - 6);
-            }
-            ctx.restore();
-        }
-    }
-
-    private drawTimelineTrends(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
-        for (const trend of State.trackAnalysis.tensionTrends.segments) {
-            if (trend.end < viewport.start || trend.start > viewport.end) continue;
-            const startX = this.getTimelineXAtTime(trend.start, width, viewport);
-            const endX = this.getTimelineXAtTime(trend.end, width, viewport);
-            ctx.strokeStyle = this.getTrendColor(trend.direction);
-            ctx.lineWidth = Math.max(1, 1 + trend.confidence * 2);
-            ctx.beginPath();
-            ctx.moveTo(Math.max(0, startX), height - 3);
-            ctx.lineTo(Math.min(width, endX), height - 3);
-            ctx.stroke();
-        }
-    }
-
-    private drawTimelineCueMarkers(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
-        const significant = State.trackAnalysis.significantMoments.length
-            ? State.trackAnalysis.significantMoments
-            : State.trackAnalysis.cues.filter(cue => cue.kind === 'impact' || cue.kind === 'break');
-        let labelRight = -Infinity;
-
-        for (const cue of significant) {
-            if (cue.kind !== 'impact' && cue.kind !== 'break') continue;
-            if (cue.time < viewport.start || cue.time > viewport.end) continue;
-
-            const x = this.getTimelineXAtTime(cue.time, width, viewport);
-            const color = this.getCueColor(cue.kind);
-            ctx.fillStyle = color;
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(x, 2);
-            ctx.lineTo(x - 4, 10);
-            ctx.lineTo(x + 4, 10);
-            ctx.closePath();
-            ctx.fill();
-
-            ctx.globalAlpha = 0.45;
-            ctx.beginPath();
-            ctx.moveTo(x + 0.5, 10);
-            ctx.lineTo(x + 0.5, height);
-            ctx.stroke();
-            ctx.globalAlpha = 1;
-
-            const label = cue.kind === 'impact' ? 'IMPACT' : 'BREAK';
-            ctx.font = '9px Inter, sans-serif';
-            const labelWidth = ctx.measureText(label).width;
-            if (height >= 72 && x + 7 > labelRight + 8 && x + 7 + labelWidth < width) {
-                ctx.fillStyle = 'rgba(255,255,255,0.64)';
-                ctx.fillText(label, x + 7, 5);
-                labelRight = x + 7 + labelWidth;
-            }
-        }
-    }
-
-    private drawTimelinePlayhead(ctx: CanvasRenderingContext2D, width: number, height: number, viewport: TimelineViewport) {
-        const currentTimeToDraw = this.scrubTime !== null ? this.scrubTime : State.currentTime;
-        if (currentTimeToDraw < viewport.start || currentTimeToDraw > viewport.end) return;
-        const playheadX = this.getTimelineXAtTime(currentTimeToDraw, width, viewport);
-        ctx.strokeStyle = this.scrubTime !== null ? 'rgba(255, 220, 120, 0.98)' : 'rgba(255,255,255,0.94)';
-        ctx.lineWidth = 1;
-        ctx.shadowColor = this.scrubTime !== null ? '#ffd66f' : '#00e5ff';
-        ctx.shadowBlur = 8;
-        ctx.beginPath();
-        ctx.moveTo(playheadX + 0.5, 0);
-        ctx.lineTo(playheadX + 0.5, height);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-
-        ctx.fillStyle = this.scrubTime !== null ? '#ffd66f' : '#00e5ff';
-        ctx.beginPath();
-        ctx.moveTo(playheadX, 1);
-        ctx.lineTo(playheadX - 4, 8);
-        ctx.lineTo(playheadX + 4, 8);
-        ctx.closePath();
-        ctx.fill();
-    }
-
-    private getSectionColor(label: string): string {
-        switch (label) {
-            case 'intro': return 'rgba(0, 150, 255, 0.10)';
-            case 'outro': return 'rgba(160, 160, 160, 0.08)';
-            case 'build': return 'rgba(255, 170, 0, 0.14)';
-            case 'drop': return 'rgba(255, 0, 170, 0.17)';
-            case 'peak': return 'rgba(0, 229, 255, 0.16)';
-            case 'break': return 'rgba(120, 0, 255, 0.10)';
-            default: return 'rgba(255, 255, 255, 0.035)';
-        }
-    }
-
-    private getTrendColor(direction: string): string {
-        if (direction === 'rising') return 'rgba(255, 170, 0, 0.9)';
-        if (direction === 'falling') return 'rgba(120, 0, 255, 0.75)';
-        return 'rgba(255, 255, 255, 0.22)';
-    }
-
-    private getCueColor(kind: string): string {
-        if (kind === 'impact') return 'rgba(255, 255, 255, 0.78)';
-        if (kind === 'break') return 'rgba(120, 0, 255, 0.9)';
-        return 'rgba(255, 0, 170, 0.58)';
-    }
-
     private applyPresentationModeFromUrl() {
         const params = new URLSearchParams(window.location.search);
         if (params.get('presentation') !== 'true') return;

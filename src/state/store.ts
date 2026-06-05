@@ -55,6 +55,8 @@ export const State = {
     visualMode: 'classic' as VisualMode,
     loopPlayback: true,
     uiVisible: true,
+    zoom: 1,
+    pan: 0,
     drawModeActive: false,
     isDrawingEnvelope: false,
     playbackFade: 0.0,

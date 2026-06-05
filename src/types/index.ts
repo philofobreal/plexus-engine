@@ -205,6 +205,37 @@ export interface TrackAnalysis {
     featureHopSize: number;
 }
 
+export interface GestureCallbacks {
+    onStart?: (focusX: number, focusY: number, button: number, shiftKey: boolean) => boolean | void;
+    onMove?: (focusX: number, focusY: number, deltaX: number, deltaY: number) => void;
+    onEnd?: () => void;
+    onZoom?: (delta: number, focusX: number) => void;
+    onHover?: (focusX: number, focusY: number) => void;
+    onDoubleClick?: (focusX: number, focusY: number) => void;
+}
+
+export interface RenderState {
+    currentTime: number;
+    duration: number;
+    zoom: number;
+    pan: number;
+    bpm: number;
+    sampleRate: number;
+    hopSize: number;
+    frames: AudioFrame[];
+    sections: TrackSection[];
+    bars: BarAnalysis[];
+    cues: VisualCueEvent[];
+    significantMoments: VisualCueEvent[];
+    buildupConfidence: number[];
+    spectralPivot: number[];
+    tensionTrends: TensionTrends;
+    sectionOverrides: Record<string, SectionOverride>;
+    audioSensitivity: number;
+    dropAnticipation: number;
+    scrubTime?: number | null;
+}
+
 export interface AnalysisResult {
     requestId: number;
     bpm: number;
