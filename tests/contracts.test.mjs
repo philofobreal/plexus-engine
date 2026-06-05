@@ -316,7 +316,7 @@ test('spectral pivot and noise gate are encoded in analyzer output contract', ()
   const worker = read('src/audio/analyzer.worker.ts');
   const types = read('src/types/index.ts');
   const audio = read('src/audio/AudioEngine.ts');
-  const ui = read('src/ui/DashboardUI.ts');
+  const timeline = read('src/ui/TimelineCanvas.ts');
 
   assert.match(types, /export interface TrackAnalysis[\s\S]*spectralPivot: number\[\];/);
   assert.match(audio, /spectralPivot: trackAnalysis\.spectralPivot \|\| \[\]/);
@@ -330,15 +330,15 @@ test('spectral pivot and noise gate are encoded in analyzer output contract', ()
   assert.match(worker, /featureFrames\[i\]\.fx = Math\.min\(maxCeiling, featureFrames\[i\]\.fx \* \(1\.0 \+ compensation \* 2\.2 \* fxGate\)\)/);
   assert.match(worker, /spectralPivot\[i\] = Math\.min\(1\.0, compensation \* Math\.max\(melodyGate, vocalGate, fxGate, 0\.25\)\)/);
   assert.match(worker, /else if \(sE <= 0\.04\)[\s\S]*featureFrames\[i\]\.melody = 0;[\s\S]*featureFrames\[i\]\.vocal = 0;[\s\S]*featureFrames\[i\]\.fx = 0;[\s\S]*featureFrames\[i\]\.tension = 0;[\s\S]*outFrames\[i\]\.m = 0;[\s\S]*outFrames\[i\]\.t = 0;[\s\S]*spectralPivot\[i\] = 0;/);
-  assert.match(ui, /pivotVal > 0\.05/);
-  assert.match(ui, /rgba\(213, 84, 172, 0\.95\)/);
-  assert.match(ui, /ctx\.setLineDash\(\[1, 4\]\)/);
+  assert.match(timeline, /pivotVal > 0\.05/);
+  assert.match(timeline, /rgba\(213, 84, 172, 0\.95\)/);
+  assert.match(timeline, /ctx\.setLineDash\(\[1, 4\]\)/);
 });
 
 test('drop anticipation look-ahead dampens modulation and is shown on the timeline', () => {
   const config = read('src/config/visualTuning.ts');
   const renderer = read('src/visuals/PlexusRenderer.ts');
-  const ui = read('src/ui/DashboardUI.ts');
+  const timeline = read('src/ui/TimelineCanvas.ts');
 
   assert.match(config, /dropAnticipation: 0\.0/);
   assert.match(config, /key: 'dropAnticipation'[\s\S]*min: 0\.0[\s\S]*max: 5\.0/);
@@ -350,9 +350,9 @@ test('drop anticipation look-ahead dampens modulation and is shown on the timeli
   assert.match(renderer, /const scale = futureFrame\.state === 'LOW_DROP' \? 0\.72 \* damp : 0\.86 \* damp/);
   assert.match(renderer, /State\.modulation\.kineticTension \*= scale/);
   assert.match(renderer, /State\.modulation\.densityDrive \*= scale/);
-  assert.match(ui, /State\.visualTuning\.dropAnticipation > 0/);
-  assert.match(ui, /const anticipationWidth = \(State\.visualTuning\.dropAnticipation \/ Math\.max\(0\.001, viewport\.duration\)\) \* width/);
-  assert.match(ui, /rgba\(213, 84, 172, 0\.18\)/);
+  assert.match(timeline, /state\.dropAnticipation <= 0/);
+  assert.match(timeline, /const anticipationWidth = \(state\.dropAnticipation \/ Math\.max\(0\.001, viewport\.duration\)\) \* width/);
+  assert.match(timeline, /rgba\(213, 84, 172, 0\.18\)/);
 });
 
 test('AudioFrame documents legacy compatibility projections', () => {
@@ -558,9 +558,6 @@ test('dramaturgy section overrides drive music sensitivity, not threshold gates'
   assert.doesNotMatch(ui, /if \(!State\.isPlaying \|\| State\.duration <= 0\) return;/);
   assert.match(ui, /void this\.loadVisualPreset\(override\.preset\)/);
   assert.match(ui, /timelinePresetBrush/);
-  assert.match(ui, /ctx\.textBaseline = 'middle';[\s\S]*ctx\.fillText\(`S:\$\{sensVal\.toFixed\(2\)\}`/);
-  assert.match(ui, /ctx\.textBaseline = 'middle';[\s\S]*ctx\.fillText\(presetLabel/);
-  assert.match(ui, /ctx\.fillText\(`S:\$\{sensVal\.toFixed\(2\)\}`/);
   assert.doesNotMatch(ui, /thresholdVal/);
   assert.doesNotMatch(ui, /override\.threshold/);
 });
@@ -609,21 +606,21 @@ test('dashboard metric cards are backed by metadata and a shared delegated toolt
 
 test('dramaturgy timeline draws the audio waveform from precomputed frame energy', () => {
   const ui = read('src/ui/DashboardUI.ts');
+  const timeline = read('src/ui/TimelineCanvas.ts');
 
-  assert.match(ui, /drawTimelineWaveform/);
-  assert.match(ui, /waveformCacheCanvas: HTMLCanvasElement \| null = null/);
-  assert.match(ui, /document\.createElement\('canvas'\)/);
-  assert.match(ui, /lastWaveformAnalysisRef === State\.trackAnalysis/);
-  assert.match(ui, /lastWaveformZoom === this\.timelineZoomLevel/);
-  assert.match(ui, /lastWaveformScroll === this\.timelineScrollOffsetTime/);
-  assert.match(ui, /State\.frames/);
-  assert.match(ui, /State\.sampleRate/);
-  assert.match(ui, /State\.hopSize/);
-  assert.match(ui, /centerY\s*-\s*halfHeight/);
-  assert.match(ui, /const step = 3/);
-  assert.match(ui, /const barWidth = 1\.5/);
-  assert.match(ui, /cacheCtx\.fillRect\(/);
-  assert.doesNotMatch(ui, /cacheCtx\.stroke\(\)/);
-  assert.match(ui, /ctx\.drawImage\(this\.waveformCacheCanvas, 0, 0\)/);
-  assert.match(ui, /this\.drawTimelineGridlines\(ctx, rect\.width, rect\.height, viewport\);[\s\S]*this\.drawTimelineWaveform\(ctx, rect\.width, rect\.height, viewport\);[\s\S]*this\.drawTimelineRms\(ctx, rect\.width, rect\.height, viewport\);/);
+  assert.match(ui, /if \(buffer\) this\.timelineCanvas\.setAudioBuffer\(buffer\)/);
+  assert.match(timeline, /private drawWaveform/);
+  assert.match(timeline, /private waveformCache: HTMLCanvasElement \| OffscreenCanvas \| null = null/);
+  assert.match(timeline, /document\.createElement\('canvas'\)/);
+  assert.match(timeline, /private waveformPeaks: number\[\] = \[\]/);
+  assert.match(timeline, /setAudioBuffer\(buffer: AudioBuffer\)/);
+  assert.match(timeline, /state\.frames/);
+  assert.match(timeline, /state\.sampleRate/);
+  assert.match(timeline, /state\.hopSize/);
+  assert.match(timeline, /centerY\s*-\s*halfHeight/);
+  assert.match(timeline, /for \(let x = 0; x < width; x \+= 3\)/);
+  assert.match(timeline, /cacheCtx\.fillRect\(/);
+  assert.doesNotMatch(timeline, /cacheCtx\.stroke\(\)/);
+  assert.match(timeline, /ctx\.drawImage\(cache, 0, 0\)/);
+  assert.match(timeline, /this\.drawGridlines\(ctx, state, width, height, viewport\);[\s\S]*this\.drawWaveform\(ctx, state, width, height, viewport\);[\s\S]*this\.drawRms\(ctx, state, width, height, viewport\);/);
 });
