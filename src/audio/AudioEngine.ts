@@ -48,6 +48,10 @@ export class AudioEngine {
         this.positionChangedListeners.push(listener);
     }
 
+    getAudioBuffer(): AudioBuffer | null {
+        return this.buffer;
+    }
+
     private emitPlaybackEnded() {
         if (this.onPlaybackEnded) this.onPlaybackEnded();
         for (const listener of this.playbackEndedListeners) listener();
