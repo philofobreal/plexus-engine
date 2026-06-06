@@ -196,7 +196,7 @@ export class TimelineCanvas {
 
         if (cache && key !== this.lastWaveformCacheKey) {
             this.lastWaveformCacheKey = key;
-            const cacheCtx = cache.getContext('2d');
+            const cacheCtx = cache.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
             if (!cacheCtx) return;
             cacheCtx.setTransform(1, 0, 0, 1, 0, 0);
             cacheCtx.clearRect(0, 0, width, height);

@@ -102,6 +102,19 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div class="timeline-header-row">
           <span class="timeline-title">Track Dramaturgy</span>
           <div class="timeline-actions">
+            <select id="export-resolution" class="timeline-select" aria-label="Export resolution">
+              <option value="720p">720p</option>
+              <option value="1080p">1080p</option>
+              <option value="4K">4K</option>
+            </select>
+            <select id="export-aspect" class="timeline-select" aria-label="Export aspect ratio">
+              <option value="16:9">16:9</option>
+              <option value="9:16">9:16</option>
+              <option value="1:1">1:1</option>
+            </select>
+            <button id="export-video-btn" class="timeline-export-btn" disabled>Export</button>
+            <button id="stop-export-btn" class="timeline-export-btn is-hidden" disabled>Stop</button>
+            <button id="cancel-export-btn" class="timeline-export-btn is-hidden" disabled>Cancel</button>
             <select id="timeline-draw-target" class="timeline-select is-hidden" aria-label="Draw target">
               <option value="sensitivity">Sensitivity (S)</option>
               <option value="preset">Preset (P)</option>

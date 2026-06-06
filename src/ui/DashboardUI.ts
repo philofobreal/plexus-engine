@@ -1,5 +1,6 @@
 import type { AudioEngine } from '../audio/AudioEngine';
 import { normalizeVisualTuningConfig, visualTuningControls, type VisualTuningKey } from '../config/visualTuning';
+import { WebMExporter, type ExportConfig } from '../export/WebMExporter';
 import { State } from '../state/store';
 import type { RenderState, VisualMode } from '../types';
 import { GestureEngine } from './GestureEngine';
@@ -42,6 +43,9 @@ export class DashboardUI {
     private timelineCanvas!: TimelineCanvas;
     private gestureEngine!: GestureEngine;
     private timelineResizeObserver: ResizeObserver | null = null;
+    private exportP5Instance: any = null;
+    private exportCanvas: HTMLCanvasElement | null = null;
+    private currentExporter: WebMExporter | null = null;
 
     // UI visibility lock state.
     private isUiLockedVisible = false;
@@ -73,6 +77,11 @@ export class DashboardUI {
             timelinePresetBrush: document.getElementById('timeline-preset-brush')!,
             toggleTimelineDraw: document.getElementById('toggle-timeline-draw')!,
             toggleTimelineZoom: document.getElementById('toggle-timeline-zoom')!,
+            exportResolution: document.getElementById('export-resolution')!,
+            exportAspect: document.getElementById('export-aspect')!,
+            exportVideoBtn: document.getElementById('export-video-btn')!,
+            stopExportBtn: document.getElementById('stop-export-btn')!,
+            cancelExportBtn: document.getElementById('cancel-export-btn')!,
             seekBar: document.getElementById('seek-bar')!,
             bpmHeaderBadge: document.getElementById('bpm-header-badge')!,
             timeCur: document.getElementById('time-current')!,
@@ -109,6 +118,7 @@ export class DashboardUI {
             (this.els.playBtn as HTMLButtonElement).disabled = true;
             (this.els.centerPlayBtn as HTMLButtonElement).disabled = true;
             (this.els.seekBar as HTMLInputElement).disabled = true;
+            (this.els.exportVideoBtn as HTMLButtonElement).disabled = true;
             (this.els.upload as HTMLInputElement).disabled = false;
             this.clearDramaturgyTimeline();
         };
@@ -174,6 +184,7 @@ export class DashboardUI {
                 (this.els.playBtn as HTMLButtonElement).disabled = false;
                 (this.els.centerPlayBtn as HTMLButtonElement).disabled = false;
                 (this.els.seekBar as HTMLInputElement).disabled = false;
+                (this.els.exportVideoBtn as HTMLButtonElement).disabled = !this.canExport();
                 (this.els.upload as HTMLInputElement).disabled = false;
                 this.els.timeTot.innerText = this.formatTime(State.duration);
                 this.setPlaybackUi(false);
@@ -189,6 +200,7 @@ export class DashboardUI {
                 (this.els.playBtn as HTMLButtonElement).disabled = true;
                 (this.els.centerPlayBtn as HTMLButtonElement).disabled = true;
                 (this.els.seekBar as HTMLInputElement).disabled = true;
+                (this.els.exportVideoBtn as HTMLButtonElement).disabled = true;
                 (this.els.upload as HTMLInputElement).disabled = false;
                 this.clearDramaturgyTimeline();
             }
@@ -201,6 +213,21 @@ export class DashboardUI {
         this.els.centerPlayBtn.addEventListener('click', () => {
             this.togglePlayback();
             this.els.canvasContainer.focus();
+        });
+
+        this.els.exportVideoBtn.addEventListener('click', () => {
+            void this.startVideoExport();
+        });
+
+        this.els.stopExportBtn.addEventListener('click', () => {
+            this.currentExporter?.stopAndSave();
+            (this.els.stopExportBtn as HTMLButtonElement).disabled = true;
+            (this.els.exportVideoBtn as HTMLButtonElement).innerText = 'Finalizing...';
+        });
+
+        this.els.cancelExportBtn.addEventListener('click', () => {
+            this.currentExporter?.cancelExport();
+            this.resetExportUi();
         });
 
         (this.els.visualMode as HTMLSelectElement).addEventListener('change', (e) => {
@@ -223,6 +250,7 @@ export class DashboardUI {
         });
 
         this.els.canvasContainer.addEventListener('click', () => {
+            if (State.isExporting) return;
             this.els.canvasContainer.focus();
 
             const now = window.performance.now();
@@ -246,6 +274,7 @@ export class DashboardUI {
         });
 
         this.els.canvasContainer.addEventListener('keydown', (event) => {
+            if (State.isExporting) return;
             if (document.activeElement !== this.els.canvasContainer) return;
             if (event.code === 'Space') {
                 event.preventDefault();
@@ -260,6 +289,7 @@ export class DashboardUI {
         });
 
         window.addEventListener('keydown', (event) => {
+            if (State.isExporting) return;
             if (event.code !== 'KeyD' || this.isEditableEventTarget(event.target)) return;
             event.preventDefault();
             this.setTimelineDrawMode(!State.drawModeActive);
@@ -311,6 +341,12 @@ export class DashboardUI {
         }
     }
 
+    setExportTarget(p5Instance: any, canvas: HTMLCanvasElement) {
+        this.exportP5Instance = p5Instance;
+        this.exportCanvas = canvas;
+        (this.els.exportVideoBtn as HTMLButtonElement).disabled = !this.canExport();
+    }
+
     private setTuningPanelOpen(isOpen: boolean) {
         this.els.tuningPanel.classList.toggle('is-hidden', !isOpen);
         this.els.toggleTuningPanel.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
@@ -349,6 +385,89 @@ export class DashboardUI {
             this.engine.play();
             this.setPlaybackUi(true);
         }
+    }
+
+    private async startVideoExport() {
+        if (!this.canExport() || this.currentExporter) return;
+        if (State.isPlaying) {
+            this.engine.stop(false);
+            this.setPlaybackUi(false);
+        }
+
+        const exportButton = this.els.exportVideoBtn as HTMLButtonElement;
+        const cancelButton = this.els.cancelExportBtn as HTMLButtonElement;
+        const config = this.getExportConfig();
+        const exporter = new WebMExporter(this.exportP5Instance, this.exportCanvas!, this.engine);
+        this.currentExporter = exporter;
+        this.setExportUiActive(true);
+
+        try {
+            const blob = await exporter.startExport({ ...config, trackName: this.els.status.innerText }, (progress) => {
+                exportButton.innerText = `Exporting: ${Math.round(progress * 100)}%`;
+            });
+            this.downloadBlob(blob, 'plexus-visual.webm');
+        } catch (error) {
+            if (!String(error instanceof Error ? error.message : error).includes('cancelled')) {
+                this.els.status.innerText = "Hiba: export sikertelen";
+            }
+        } finally {
+            if (this.currentExporter === exporter) this.currentExporter = null;
+            cancelButton.classList.add('is-hidden');
+            this.resetExportUi();
+        }
+    }
+
+    private canExport() {
+        return State.duration > 0 && Boolean(this.exportP5Instance && this.exportCanvas);
+    }
+
+    private getExportConfig(): ExportConfig {
+        const resolution = (this.els.exportResolution as HTMLSelectElement).value as ExportConfig['resolution'];
+        const aspectRatio = (this.els.exportAspect as HTMLSelectElement).value as ExportConfig['aspectRatio'];
+            return { resolution, aspectRatio, fps: 60 };
+    }
+
+    private setExportUiActive(isActive: boolean) {
+        (this.els.playBtn as HTMLButtonElement).disabled = isActive;
+        (this.els.centerPlayBtn as HTMLButtonElement).disabled = isActive;
+        (this.els.seekBar as HTMLInputElement).disabled = isActive;
+        (this.els.upload as HTMLInputElement).disabled = isActive;
+        (this.els.exportResolution as HTMLSelectElement).disabled = isActive;
+        (this.els.exportAspect as HTMLSelectElement).disabled = isActive;
+        (this.els.exportVideoBtn as HTMLButtonElement).disabled = isActive;
+        (this.els.stopExportBtn as HTMLButtonElement).disabled = !isActive;
+        (this.els.cancelExportBtn as HTMLButtonElement).disabled = !isActive;
+        this.els.stopExportBtn.classList.toggle('is-hidden', !isActive);
+        this.els.cancelExportBtn.classList.toggle('is-hidden', !isActive);
+    }
+
+    private resetExportUi() {
+        const canExport = this.canExport();
+        (this.els.playBtn as HTMLButtonElement).disabled = State.duration <= 0;
+        (this.els.centerPlayBtn as HTMLButtonElement).disabled = State.duration <= 0;
+        (this.els.seekBar as HTMLInputElement).disabled = State.duration <= 0;
+        (this.els.upload as HTMLInputElement).disabled = false;
+        (this.els.exportResolution as HTMLSelectElement).disabled = false;
+        (this.els.exportAspect as HTMLSelectElement).disabled = false;
+        (this.els.exportVideoBtn as HTMLButtonElement).disabled = !canExport;
+        (this.els.exportVideoBtn as HTMLButtonElement).innerText = 'Export';
+        (this.els.stopExportBtn as HTMLButtonElement).disabled = true;
+        this.els.stopExportBtn.classList.add('is-hidden');
+        (this.els.cancelExportBtn as HTMLButtonElement).disabled = true;
+        this.els.cancelExportBtn.classList.add('is-hidden');
+    }
+
+    private downloadBlob(blob: Blob, filename: string) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 1000);
     }
 
     private setPlaybackUi(isPlaying: boolean) {
@@ -998,6 +1117,8 @@ export class DashboardUI {
 
     private getRenderState(): RenderState {
         return {
+            isExporting: State.isExporting,
+            exportTime: State.exportTime,
             currentTime: State.currentTime,
             duration: State.duration,
             zoom: State.zoom,
