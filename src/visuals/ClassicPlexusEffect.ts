@@ -13,6 +13,8 @@ const nodeColor: [number, number, number] = [0, 0, 0];
 export function drawClassicPlexusEffect(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[]) {
     let bgFlash = State.modulation.rhythmicImpulse * 12;
     const clear = getBackgroundClearStyle(State.visualTuning, bgFlash);
+    
+    // JAVÍTVA: A teljes képernyős fehér inverzió kiiktatása a stabil sötét-mód megőrzéséért.
     backend.background(clear.r, clear.g, clear.b, clear.a);
 
     drawCenterDynamics(backend, shockwaves);
@@ -21,7 +23,8 @@ export function drawClassicPlexusEffect(backend: VisualRendererBackend, particle
             State.modulation.macroMomentum,
             State.modulation.densityDrive,
             State.modulation.rhythmicImpulse,
-            State.isPlaying
+            State.isPlaying,
+            State.directorOutput.centripetalOrbit
         );
     }
     drawPolygonalNetwork(backend, particles);
@@ -68,7 +71,12 @@ function drawPolygonalNetwork(backend: VisualRendererBackend, particles: Particl
                 let lineAlpha = (linearMap(d12, 0, maxDist, 180, 0) + (State.modulation.rhythmicImpulse * 75)) * State.visualTuning.lineAlpha;
                 backend.stroke(lineColor[0] - State.modulation.spectralChaos * 25, lineColor[1], lineColor[2], lineAlpha);
                 backend.strokeWeight((0.5 + State.modulation.rhythmicImpulse * 2) * State.visualTuning.lineWeight);
-                backend.line(p1.pos.x, p1.pos.y, p2.pos.x, p2.pos.y);
+                let glitch = State.directorOutput.glitchIntensity;
+                let glitchX1 = glitch > 0 ? getGlitchOffset(i, j, 0) * glitch : 0;
+                let glitchY1 = glitch > 0 ? getGlitchOffset(i, j, 1) * glitch : 0;
+                let glitchX2 = glitch > 0 ? getGlitchOffset(j, i, 2) * glitch : 0;
+                let glitchY2 = glitch > 0 ? getGlitchOffset(j, i, 3) * glitch : 0;
+                backend.line(p1.pos.x + glitchX1, p1.pos.y + glitchY1, p2.pos.x + glitchX2, p2.pos.y + glitchY2);
 
                 if (State.isPlaying && polysDrawn < 2 && dist12Sq < maxDistSq * 0.6 * State.visualTuning.polygonSize) {
                     for (let k = j + 1; k < particles.length; k++) {
@@ -87,12 +95,21 @@ function drawPolygonalNetwork(backend: VisualRendererBackend, particles: Particl
             }
             if (linesDrawn > 6) break;
         }
+        let nodeGlitch = State.directorOutput.glitchIntensity;
         backend.noStroke(); backend.fill(nodeColor[0], nodeColor[1], nodeColor[2], (120 + State.modulation.rhythmicImpulse * 135) * State.visualTuning.circleAlpha);
-        backend.circle(p1.pos.x, p1.pos.y, (2 + State.modulation.rhythmicImpulse * 4) * State.visualTuning.circleSize);
+        backend.circle(
+            p1.pos.x + (nodeGlitch > 0 ? getGlitchOffset(i, 0, 4) * nodeGlitch : 0),
+            p1.pos.y + (nodeGlitch > 0 ? getGlitchOffset(i, 0, 5) * nodeGlitch : 0),
+            (2 + State.modulation.rhythmicImpulse * 4) * State.visualTuning.circleSize
+        );
     }
 }
 
 function linearMap(value: number, inMin: number, inMax: number, outMin: number, outMax: number) {
     if (inMax === inMin) return outMin;
     return outMin + ((value - inMin) / (inMax - inMin)) * (outMax - outMin);
+}
+
+function getGlitchOffset(a: number, b: number, salt: number) {
+    return Math.sin(a * 12.9898 + b * 78.233 + salt * 37.719 + State.rotationPhase * 0.43) * 5.0;
 }

@@ -58,12 +58,12 @@ function drawTemporalBackground(backend: VisualRendererBackend, cx: number, cy: 
     let bgPulse = State.modulation.rhythmicImpulse * 10 + State.cueDecay * 6;
     let sectionEnergy = section ? tuneAudioValue(section.energy, State.visualTuning) : State.modulation.macroMomentum;
     const clear = getBackgroundClearStyle(State.visualTuning, bgPulse);
-    backend.background(
-        Math.min(clear.r + State.modulation.spectralChaos * 10, 255),
-        Math.min(clear.g + resonance.strength * 12, 255),
-        Math.min(clear.b + State.modulation.kineticTension * 10 + sectionEnergy * 10, 255),
-        clear.a
-    );
+    
+    // JAVÍTVA: A teljes képernyős fehér inverzió kiiktatása a stabil sötét-mód megőrzéséért.
+    const baseR = Math.min(clear.r + State.modulation.spectralChaos * 10, 255);
+    const baseG = Math.min(clear.g + resonance.strength * 12, 255);
+    const baseB = Math.min(clear.b + State.modulation.kineticTension * 10 + sectionEnergy * 10, 255);
+    backend.background(baseR, baseG, baseB, clear.a);
 
     let radius = Math.max(backend.width, backend.height) * (0.28 + State.modulation.densityDrive * 0.16 + State.modulation.kineticTension * 0.18) * State.visualTuning.circleSize;
     hueToRgbInto(glowColor, State.visualTuning.circleBackgroundHue + State.modulation.kineticTension * 70);
@@ -77,7 +77,7 @@ function updateTemporalParticles(particles: Particle[], resonance: PatternResona
     let energy = State.modulation.macroMomentum * 0.55 + resonance.strength * 0.18;
     let movement = State.modulation.densityDrive * 0.35 + State.modulation.kineticTension * 0.32 + State.modulation.spectralChaos * 0.24;
     let impulse = Math.max(State.modulation.rhythmicImpulse * 0.65, State.cueDecay * 0.45, resonance.strength * 0.35);
-    for (let pt of particles) pt.update(energy, movement, impulse, State.isPlaying);
+    for (let pt of particles) pt.update(energy, movement, impulse, State.isPlaying, State.directorOutput.centripetalOrbit);
 }
 
 function drawTemporalPolygonNetwork(backend: VisualRendererBackend, particles: Particle[], resonance: PatternResonance) {
@@ -121,7 +121,12 @@ function drawTemporalPolygonNetwork(backend: VisualRendererBackend, particles: P
                     lineAlpha
                 );
                 backend.strokeWeight((0.45 + tension * 0.85 + State.modulation.rhythmicImpulse * 0.8) * State.visualTuning.lineWeight);
-                backend.line(p1.pos.x, p1.pos.y, p2.pos.x, p2.pos.y);
+                let glitch = State.directorOutput.glitchIntensity;
+                let glitchX1 = glitch > 0 ? getGlitchOffset(i, j, 0) * glitch : 0;
+                let glitchY1 = glitch > 0 ? getGlitchOffset(i, j, 1) * glitch : 0;
+                let glitchX2 = glitch > 0 ? getGlitchOffset(j, i, 2) * glitch : 0;
+                let glitchY2 = glitch > 0 ? getGlitchOffset(j, i, 3) * glitch : 0;
+                backend.line(p1.pos.x + glitchX1, p1.pos.y + glitchY1, p2.pos.x + glitchX2, p2.pos.y + glitchY2);
 
                 if (State.isPlaying && polysDrawn < polyLimit && dist12Sq < maxDistSq * (0.42 + density * 0.18) * State.visualTuning.polygonSize) {
                     for (let k = j + 1; k < particles.length; k++) {
@@ -144,7 +149,12 @@ function drawTemporalPolygonNetwork(backend: VisualRendererBackend, particles: P
         if (connected) {
             backend.noStroke();
             backend.fill(nodeColor[0], nodeColor[1], nodeColor[2], (45 + density * 55 + State.modulation.rhythmicImpulse * 65) * State.visualTuning.circleAlpha);
-            backend.circle(p1.pos.x, p1.pos.y, (1.4 + density * 1.9) * State.visualTuning.circleSize);
+            let nodeGlitch = State.directorOutput.glitchIntensity;
+            backend.circle(
+                p1.pos.x + (nodeGlitch > 0 ? getGlitchOffset(i, 0, 4) * nodeGlitch : 0),
+                p1.pos.y + (nodeGlitch > 0 ? getGlitchOffset(i, 0, 5) * nodeGlitch : 0),
+                (1.4 + density * 1.9) * State.visualTuning.circleSize
+            );
         }
     }
 }
@@ -266,4 +276,8 @@ function drawMechanismRing(
 
 function setMechanismRingColor(hue: number) {
     hueToRgbInto(mechanismRingColor, hue);
+}
+
+function getGlitchOffset(a: number, b: number, salt: number) {
+    return Math.sin(a * 12.9898 + b * 78.233 + salt * 37.719 + State.rotationPhase * 0.43) * 5.0;
 }

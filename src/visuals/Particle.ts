@@ -15,7 +15,7 @@ export class Particle {
         this.vel = this.p.createVector(this.p.random(-1, 1), this.p.random(-1, 1)).normalize();
     }
 
-    update(energy: number, activity: number, beat: number, isPlaying: boolean) {
+    update(energy: number, activity: number, beat: number, isPlaying: boolean, centripetalOrbit = 0) {
         let cx = this.p.width / 2; 
         let cy = this.p.height / 2;
         let dx = cx - this.pos.x;
@@ -31,6 +31,18 @@ export class Particle {
                 this.vel.y += (dy / dist) * State.visualTuning.particleBoundaryPull;
                 this.vel.normalize(); 
             }
+        }
+
+        if (centripetalOrbit > 0 && distSq > 0.0001) {
+            let dist = Math.sqrt(distSq);
+            let orbitForce = centripetalOrbit * 0.15;
+            let inwardX = dx / dist;
+            let inwardY = dy / dist;
+            let tangentX = -inwardY;
+            let tangentY = inwardX;
+            this.vel.x += inwardX * orbitForce + tangentX * orbitForce;
+            this.vel.y += inwardY * orbitForce + tangentY * orbitForce;
+            this.vel.normalize();
         }
         
         let speed = (isPlaying

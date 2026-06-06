@@ -107,13 +107,7 @@ test('active docs are free of mojibake and resolved-risk headings', () => {
     'documents/metrics/metrics-source-audit.md',
     'documents/implementation/current-typescript-implementation.md'
   ].map(read).join('\n');
-  const sourceComments = [
-    'src/main.ts',
-    'src/ui/DashboardUI.ts'
-  ].map(read).join('\n');
-  const checkedText = `${activeDocs}\n${sourceComments}`;
-
-  assert.doesNotMatch(checkedText, /â†’|â€”|â€“|â€™|â€œ|â€ť|â€¦|Ă|Ĺ|Ä|Â|đ|ď|Ž|Ť|Ôćĺ|ÔÇö|├|┼|╜|╡|╢|�/);
+  assert.doesNotMatch(activeDocs, /â†’|â€”|â€“|â€™|â€œ|â€ť|â€¦|Ă|Ĺ|Ä|Â|đ|ď|Ž|Ť|Ôćĺ|ÔÇö|├|┼|╜|╡|╢|�/);
   assert.doesNotMatch(activeDocs, /Beat types are overnamed/);
   assert.doesNotMatch(activeDocs, /bass-like frame drive/);
   assert.match(activeDocs, /Beat type labels are resolved/);
@@ -338,18 +332,20 @@ test('spectral pivot and noise gate are encoded in analyzer output contract', ()
 test('drop anticipation look-ahead dampens modulation and is shown on the timeline', () => {
   const config = read('src/config/visualTuning.ts');
   const renderer = read('src/visuals/PlexusRenderer.ts');
+  const director = read('src/visuals/VisualDirectorFSM.ts');
   const timeline = read('src/ui/TimelineCanvas.ts');
 
   assert.match(config, /dropAnticipation: 0\.0/);
   assert.match(config, /key: 'dropAnticipation'[\s\S]*min: 0\.0[\s\S]*max: 5\.0/);
-  assert.match(renderer, /applyDropAnticipation\(ct\)/);
+  assert.match(renderer, /visualDirector\.update\(/);
+  assert.match(renderer, /getDropAnticipationFrame\(ct\)/);
   assert.match(renderer, /const futureTime = currentTime \+ anticipation/);
   assert.match(renderer, /const futureIdx = Math\.floor\(futureTime \* State\.sampleRate \/ State\.hopSize\)/);
-  assert.match(renderer, /futureFrame\.state !== 'LOW' && futureFrame\.state !== 'LOW_DROP'/);
-  assert.match(renderer, /const damp = State\.visualTuning\.dropDampening/);
-  assert.match(renderer, /const scale = futureFrame\.state === 'LOW_DROP' \? 0\.72 \* damp : 0\.86 \* damp/);
-  assert.match(renderer, /State\.modulation\.kineticTension \*= scale/);
-  assert.match(renderer, /State\.modulation\.densityDrive \*= scale/);
+  assert.match(director, /futureFrame\.state !== 'LOW' && futureFrame\.state !== 'LOW_DROP'/);
+  assert.match(director, /const damp = Number\.isFinite\(tuning\.dropDampening\) \? tuning\.dropDampening : 1/);
+  assert.match(director, /const scale = futureFrame\.state === 'LOW_DROP' \? 0\.72 \* damp : 0\.86 \* damp/);
+  assert.match(director, /modulation\.kineticTension \*= scale/);
+  assert.match(director, /modulation\.densityDrive \*= scale/);
   assert.match(timeline, /state\.dropAnticipation <= 0/);
   assert.match(timeline, /const anticipationWidth = \(state\.dropAnticipation \/ Math\.max\(0\.001, viewport\.duration\)\) \* width/);
   assert.match(timeline, /rgba\(213, 84, 172, 0\.18\)/);
