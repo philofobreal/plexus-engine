@@ -64,6 +64,13 @@ Keep visual event index synchronization event-driven. `PlexusRenderer` registers
 - **Playback Fade-out & Resource Conservation:** Add `State.playbackFade` and `State.rotationPhase` as render-facing motion continuity state. Particles and temporal rotation consume these values so stopping playback creates a controlled visual slowdown without keeping audio nodes alive or deriving timing from p5 frame count.
 - **GPU-accelerated Low-DPI Waveform Blitting:** Render the dramaturgy waveform inside `TimelineCanvas` into a reusable low-DPI offscreen canvas and blit it into the visible timeline. The cache is invalidated by source waveform data, visible dimensions, and viewport state (`State.zoom` / `State.pan`). The waveform uses bar-based `fillRect` rasterization over precomputed audio-derived amplitudes, with `AudioFrame.e` as fallback, to avoid large per-frame canvas paths.
 
+## Decisions Extended (2026-06-06)
+
+- **Visual Identity Registry:** Introduce `VisualIdentity` as the stable style contract and `StyleRegistry` as the deep registry module. `PlexusRenderer` receives a registry instance and delegates drawing through `StyleRegistry.get(State.visualMode).draw(...)`, removing hard-coded mode branches from the draw loop.
+- **Built-in Style Set:** Extend `VisualMode` to `classic`, `temporal`, `dark-techno`, `organic-ambient`, and `cyberpunk`. The new identities keep their own color, movement, and polygon/network rules behind the same backend-only draw contract.
+- **Preset Mode Compatibility:** Treat `visualMode` in performance presets as optional. Known style ids update both `State.visualMode` and the visual-mode select; missing or unknown ids are ignored for backward compatibility. Unknown registry lookup at render time falls back to `classic`.
+- **Deterministic Style Harness:** Add `tests/styles-deterministic.test.mjs` to run every built-in identity against five genre-specific mock track profiles without a browser or real p5 instance. The harness verifies no crashes and deterministic backend call counts across repeated 60-frame simulations.
+
 ## Consequences
 
 Positive:
@@ -88,6 +95,9 @@ Positive:
 - Section preset painting and envelope drawing are schedulable from playback position events, including seek and paused inspection paths.
 - Playback stop feels visually continuous while Web Audio source-node lifecycle remains strict.
 - Timeline waveform redraw cost is bounded by cache invalidation instead of normal frame cadence.
+- Visual identities can be added without changing `PlexusRenderer` branching logic.
+- Invalid or future preset visual mode values no longer crash rendering because style lookup falls back to `classic`.
+- New visual styles receive deterministic, browser-free smoke coverage through mock backend tests.
 
 Tradeoffs:
 
@@ -102,6 +112,7 @@ Tradeoffs:
 - Draw mode adds more timeline interaction modes, so pointer handling must keep seek, pan, resize, draw, and preset paint paths explicitly separated.
 - The waveform cache must be invalidated whenever timeline scale or analysis data changes; stale cache keys would show incorrect waveform placement.
 - The director adds a separate render-facing state contract beside `AudioFrame.state`, so future changes must keep worker frame compatibility and `DirectorOutput` semantics documented together.
+- `StyleRegistry` centralizes built-in style registration, so tests and docs must be updated when a built-in identity is added or removed.
 
 ## Alternatives Considered
 
@@ -127,6 +138,11 @@ Tradeoffs:
 - `src/audio/AudioEngine.ts`
 - `src/visuals/ClassicPlexusEffect.ts`
 - `src/visuals/TemporalMusicEffect.ts`
+- `src/visuals/DarkTechnoIdentity.ts`
+- `src/visuals/OrganicAmbientIdentity.ts`
+- `src/visuals/CyberpunkIdentity.ts`
+- `src/visuals/VisualIdentity.ts`
+- `src/visuals/StyleRegistry.ts`
 - `src/visuals/PlexusRenderer.ts`
 - `src/visuals/VisualDirectorFSM.ts`
 - `src/visuals/RendererBackend.ts`

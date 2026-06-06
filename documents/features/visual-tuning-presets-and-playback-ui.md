@@ -38,6 +38,7 @@ Implemented capabilities:
 - The selector defaults to `default.json` when available instead of showing a placeholder.
 - Selecting a preset immediately loads its tuning values.
 - Old preset files remain valid because missing parameters are filled from defaults.
+- Presets may include a `visualMode` field. Known built-in values (`classic`, `temporal`, `dark-techno`, `organic-ambient`, `cyberpunk`) update both `State.visualMode` and the visual mode select. Missing or unknown mode values are ignored so older or external presets do not break loading.
 - Preset loading does not show transient success messages that would resize or shift the panel.
 - The `Copy config` button exports the current tuning state as preset-compatible JSON with a `version` field and a `visualTuning` payload.
 - Copy feedback is intentionally transient and confined to the tuning panel status area so it does not shift layout. Preset-load failures may use the same status area for short-lived diagnostic text.
@@ -115,6 +116,7 @@ The feature is split across these runtime layers:
 - `src/ui/TimelineCanvas.ts`: declarative timeline renderer. It consumes `RenderState`, owns HDPI canvas sizing, section/cue/playhead drawing, sensitivity and preset labels, spectral overlays, and waveform offscreen caching.
 - `src/audio/AudioEngine.ts`: loop-on-end playback behavior.
 - `src/visuals/`: render usage of tuning values, background color, and sensitivity-scaled audio data.
+- `src/visuals/VisualIdentity.ts` and `src/visuals/StyleRegistry.ts`: the visual style contract and registry/factory used by the renderer and UI-selected mode state.
 
 ## Analysis And Error Handling Details
 
@@ -135,6 +137,7 @@ Two interaction hot paths are explicitly guarded:
 - The paused/stopped p5 draw path does not run `findIndex()` over event or cue arrays each frame. Beat and cue indexes are synchronized through `AudioEngine.addPositionChangedListener(syncEventIndex)`, so linear scans happen only on actual position changes.
 - Seekbar and timeline drag do not call `AudioEngine.seek()` repeatedly. Timeline drag input is normalized by `GestureEngine`; `DashboardUI` updates `scrubTime` and redraws visual feedback through `TimelineCanvas` via `requestTimelineDraw()`, then commits one audio seek when the gesture ends.
 - The render loop writes modulation through `writeModulationBus(State.modulation, ...)` so the modulation object reference stays stable. `computeModulationBus()` remains a compatibility helper for fresh-object callers, and transient reset zeros the existing modulation fields in place.
-- Hot color conversion uses `hueToRgbInto()` with module-owned RGB tuples. `hueToRgb()` remains available as an allocating compatibility wrapper, but classic and temporal draw paths avoid new RGB arrays in per-frame loops. Temporal mechanism ring drawing receives numeric RGB components instead of a shared color array reference.
+- Hot color conversion uses `hueToRgbInto()` with identity-owned RGB tuples. `hueToRgb()` remains available as an allocating compatibility wrapper, but visual identity draw paths avoid new RGB arrays in per-frame loops where practical. Temporal mechanism ring drawing receives numeric RGB components instead of a shared color array reference.
+- Browser-free visual identity regression coverage lives in `tests/styles-deterministic.test.mjs`. It renders every registered built-in style through a mock backend over five genre reference profiles and verifies no crashes plus deterministic draw-call counts.
 - `P5RendererBackend` skips redundant `fill()`, `stroke()`, and `strokeWeight()` calls by comparing numeric cached components. String keys are avoided in the draw-state cache, while `noFill()` and `noStroke()` still force the next matching fill or stroke call to reactivate p5 state.
 - Expensive radial glow is limited to active playback and still respects `performanceMode`, green-screen chroma key, and transparent chroma key. Paused-loaded render targets run at `30 FPS`; no-audio idle targets run at `15 FPS`; playing targets run at `60 FPS`.

@@ -38,6 +38,7 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-3.9 Quiet success:** Successful preset loads do not display transient success text that shifts the UI.
 - **VT-3.10 Error visibility:** Failed manifest or preset loads may show an error state long enough to diagnose the problem.
 - **VT-3.11 Transient status scope:** Transient status text is allowed for copy feedback and preset-load failures when it is placed in an existing fixed-size or non-shifting status area and clears itself after a short timeout.
+- **VT-3.12 Visual mode compatibility:** Presets may include `visualMode`. Values matching a supported visual identity update `State.visualMode` and the `#visual-mode` select. Missing or unsupported values must not fail the preset load.
 
 ## VT-4 Header And Metrics
 
@@ -102,6 +103,7 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-9.12 Renderer hot-path optimization:** The p5 render loop must not run O(N) `findIndex` searches over beat events or cue arrays while paused, stopped, or at natural track end. Visual event indexes are synchronized only through the event-driven `syncEventIndex` callback registered with `addPositionChangedListener`.
 - **VT-9.13 Section sensitivity overrides:** Timeline section lines store `State.sectionOverrides["section-N"].sensitivity`, map vertical position linearly to `0.1..4.0`, and display overridden values with `S:x.xx` labels.
 - **VT-9.14 Spectral Pivot and Drop Anticipation overlays:** The timeline draws `spectralPivot` active regions with a magenta dotted overlay and draws the configured `dropAnticipation` look-ahead window as a magenta suspense gradient.
+- **VT-9.15 Visual identity deterministic smoke:** Built-in visual identities must be covered by browser-free mock-render tests over multiple genre profiles. The test must assert no crashes and deterministic backend draw-call counts for repeated runs.
 
 ## VT-10 Render And Stream Output
 
@@ -110,3 +112,6 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-10.3 Low-latency mode:** `performanceMode` disables expensive glow paths such as radial gradient drawing.
 - **VT-10.4 Presentation URL:** Loading the app with `?presentation=true` hides UI chrome by setting the shared UI visibility state to false.
 - **VT-10.5 Timeline inspection modes:** The dramaturgy timeline supports compact, manually resized, and fullscreen overlay inspection modes. The existing expanded CSS height remains a fallback sizing state, but the top-right timeline control opens and closes the fullscreen overlay instead of performing audio or playback work.
+- **VT-10.6 Visual identity registry:** `PlexusRenderer` must select styles through `StyleRegistry.get(State.visualMode)` and delegate to `VisualIdentity.draw(...)`, not through hard-coded mode branches.
+- **VT-10.7 Built-in visual modes:** The UI must expose `classic`, `temporal`, `dark-techno`, `organic-ambient`, and `cyberpunk` in `#visual-mode`.
+- **VT-10.8 Style fallback:** Unknown style ids resolved through the registry must fall back to `classic` so invalid or future preset values cannot crash rendering.

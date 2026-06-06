@@ -6,10 +6,13 @@
 
 A **Plexus Engine** egy bongeszoben futo, hardvergyorsitott, audio-first generativ vizualizacios motor es eloadoi hangszer (visual instrument). A rendszer alapelve a lejatszas elotti offline zeneanalizis, amely zeneszerkezeti kontextust (szekciok, feszultseggorbek, mintak es cue esemenyek) hoz letre. Lejatszas kozben a renderelo szal nem vegez valos ideju DSP szamitasokat; egy absztrakt modulacios buszon keresztul fogyasztja a normalizalt zenei szandekot, biztositva a stabil szinpadi es produkcios teljesitmenyt.
 
-Az aktualis implementacio ket vizualis modot tart fenn:
+Az aktualis implementacio ot regisztralt vizualis identitast tart fenn a `VisualIdentity` / `StyleRegistry` architekturan keresztul:
 
 * `classic`: az eredeti Plexus reszecskehalo, kozponti glow, beat shockwave es polygon flash viselkedes.
 * `temporal`: ugyanarra az offline analizisre epulo, teljes track-szintu zenei kontextust hasznalo mod, amely section, feature, cue es pattern adatokat hasznal folyamatos vizualis modulaciora.
+* `dark-techno`: szigoru monokrom, minimal ipari stilus eles feher/szurke vonalakkal es ritka strobe-szeru polygon flash viselkedessel.
+* `organic-ambient`: lassu, folyekony, pasztell zold/kek/foldszinu stilus, amely eles halozati vonalak helyett puha reszecske-glow retegeket hasznal.
+* `cyberpunk`: nagy kontrasztu neon magenta/cian stilus kromatikus aberracio-szeru kettos vonalrajzolassal es determinisztikus glitch offsetekkel.
 
 ## 1.1. Termekvizio Es Celcsoport
 
@@ -36,14 +39,14 @@ A fejlesztesek fokuszaban nem ujabb grafikai effektek, hanem az **eloadoi munkaf
 
 ## 2. Altalanos Architektura Es Adataramlas
 
-A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus modulhatarokat a `documents/governance/architecture-contract.md` es a `documents/current-typescript-implementation.md` tartja naprakeszen.
+A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus modulhatarokat a `documents/governance/architecture-contract.md` es a `documents/implementation/current-typescript-implementation.md` tartja naprakeszen.
 
 1. **Composition (`src/main.ts`):** letrehozza a DOM shellt, az `AudioEngine` peldanyt, a `DashboardUI` peldanyt es a p5 renderert.
 2. **UI Layer (`src/ui/DashboardUI.ts`, `src/style.css`):** kezeli a fajlfeltoltest, play/pause/seek/loop vezerlest, visual mode valasztast, preset betoltest, tuning panelt, metrics panelt, auto-hide chrome-ot es a dashboard frissitest.
 3. **Audio Engine (`src/audio/AudioEngine.ts`):** felelos a hangfajlok dekodolasaert, a `AudioBufferSourceNode` eletciklusert, a kanonikus idoszamitasert, a seek/end resetert, a worker request id kezelesert, a stale worker eredmenyek eldobasaert es a worker terminalasaert.
 4. **Analysis Engine (`src/audio/analyzer.worker.ts`):** dedikalt Web Worker. 1024 mintas Hann-windowed FFT pipeline-t hasznal, spektralis fluxust, relativ savenergiakat, centroidot es flatness erteket szamol, majd `AudioFrame`, `BeatEvent` es `TrackAnalysis` kimenetet publikal.
 5. **Shared contracts/state (`src/types/index.ts`, `src/state/store.ts`):** tarolja a megosztott tipusokat, az elfogadott analizis eredmenyeket, a vizualis modot, loop allapotot, aktualis frame-et, cue allapotokat, modulacios buszt, elo tuningot es target tuningot.
-6. **Render Engine (`src/visuals/`):** p5 canvas renderer backend adapterrel, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `ClassicPlexusEffect.ts` / `TemporalMusicEffect.ts` modokat kezeli. A zene-dramaturgiai allapotszabalyozast a `VisualDirectorFSM.ts` modul vegzi, majd `DirectorOutput` formaban ad render-facing jeleket az effekt moduloknak.
+6. **Render Engine (`src/visuals/`):** p5 canvas renderer backend adapterrel, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `StyleRegistry`-bol lekert `VisualIdentity` implementaciokat kezeli. A zene-dramaturgiai allapotszabalyozast a `VisualDirectorFSM.ts` modul vegzi, majd `DirectorOutput` formaban ad render-facing jeleket az identitasoknak.
 
 ## 3. Funkcionalis Specifikacio
 
@@ -97,7 +100,7 @@ A dramaturgiai motor a density, tension, RMS energia es blokk energia iranyvalto
 
 ### 3.4. BPM Detektalas Es Kijelzes
 
-A worker 70 es 180 BPM kozotti histogram alapjan becsul BPM-et. A UI-ban a BPM a metrics panel normal metrikakartyajakent jelenik meg; a fejlec csak a betoltott audio fajl nevet mutatja.
+A worker 70 es 180 BPM kozotti histogram alapjan becsul BPM-et. A UI-ban a BPM kompakt fejlec badge-kent jelenik meg a betoltott audio fajl neve mellett; a metrics grid nem tartalmaz kulon BPM kartyat.
 
 ## 4. Technikai Es Algoritmikus Specifikaciok
 
@@ -118,7 +121,7 @@ A UI-ban a legacy `Bass`, `Mid`, `Treble` cimkek tovabbra is lathatok, de ezek a
 
 ### 4.2. Plexus Halo Optimalizalas
 
-A classic es temporal renderer tovabbra is negyzetes tavolsagellenorzest hasznal hot loopban. A gyokvonas csak akkor tortenik meg, amikor a pontok mar biztosan a maximum tavolsagon belul vannak. A particle pool 75 elemre inicializalodik setupkor, normal draw loopban nem jonnek letre uj `Particle` peldanyok.
+A visual identity implementaciok negyzetes tavolsagellenorzest hasznalnak hot loopban, amikor reszecske-kapcsolatokat vizsgalnak. A gyokvonas csak akkor tortenik meg, amikor a pontok mar biztosan a maximum tavolsagon belul vannak. A particle pool 75 elemre inicializalodik setupkor, normal draw loopban nem jonnek letre uj `Particle` peldanyok.
 
 Az effekt modulok `VisualRendererBackend` interfeszen keresztul rajzolnak. A p5-specifikus hivasokat a `P5RendererBackend` adapter tartalmazza, igy a scene logika mock backenddel tesztelheto es kesobb WebGPU/shader backend fele mozgathato.
 
@@ -179,8 +182,9 @@ Natural end eseten `Loop` modban a lejatszas 0:00-rol ujraindul. `Once` modban a
 
 ### ADR-004: Selectable Visual Modes
 
-* **Dontes:** a `State.visualMode` `classic` vagy `temporal` lehet. A valasztas UI tulajdon, a rendererek csak fogyasztjak.
-* **Indoklas:** az uj temporal viselkedes tesztelheto es visszafordithato marad az eredeti visual language torlese nelkul.
+* **Dontes:** a `State.visualMode` ot bepitett azonosito egyike lehet: `classic`, `temporal`, `dark-techno`, `organic-ambient`, `cyberpunk`. A valasztas UI tulajdon, a renderer pedig `StyleRegistry.get(State.visualMode)` utan a kivalasztott `VisualIdentity.draw()` metodusnak delegalt.
+* **Indoklas:** az egyes vizualis nyelvek mely modulokban rejthetik el a sajat szinelmeleti, mozgasdinamikai es sokszog-rajzolasi szabalyaikat, mikozben a renderer orchestration es a p5 backend-hatar stabil marad.
+* **Fallback:** ismeretlen stilus ID eseten a registry `classic` identitast ad vissza, igy regi vagy hibas presetek nem torik el a renderelest.
 
 ### ADR-005: Visual Tuning Presets Es Playback UI Chrome
 
@@ -217,10 +221,15 @@ src/
 |-- visuals/
 |   |-- PlexusRenderer.ts
 |   |-- VisualDirectorFSM.ts
+|   |-- VisualIdentity.ts
+|   |-- StyleRegistry.ts
 |   |-- RendererBackend.ts
 |   |-- P5RendererBackend.ts
 |   |-- ClassicPlexusEffect.ts
 |   |-- TemporalMusicEffect.ts
+|   |-- DarkTechnoIdentity.ts
+|   |-- OrganicAmbientIdentity.ts
+|   |-- CyberpunkIdentity.ts
 |   |-- Particle.ts
 |   `-- Shockwave.ts
 `-- style.css
@@ -304,6 +313,7 @@ Az aktualis contract tesztek a `tests/contracts.test.mjs` fajlban vannak. Lefedi
 * recurring temporal pattern detektalast,
 * visual mode valasztast,
 * visual tuning defaultokat, kontrollokat es preset kompatibilitast,
+* visual identity registryt, UI mode integraciot es preset `visualMode` kompatibilitast,
 * FFT alapu analizist az IIR crossover megkozelites helyett,
 * playback data copy-vs-transfer policyt,
 * stale worker result vedelmet,
@@ -311,3 +321,4 @@ Az aktualis contract tesztek a `tests/contracts.test.mjs` fajlban vannak. Lefedi
 * loop mode, metrics toggle, draggable tuning es auto-hide chrome UI szerzodest.
 * modulacios busz, morphing, dramaturgy, renderer boundary es stream profil viselkedest.
 * performance preset szerzodest, sticky preset normalizalast, timeline draw/preset paint interakciokat, playback fade-et es waveform cache optimalizaciot.
+* ot visual identity determinisztikus, bongeszo- es p5-fuggetlen mock render futasat ot zenei referenciaprofilon keresztul (`tests/styles-deterministic.test.mjs`).

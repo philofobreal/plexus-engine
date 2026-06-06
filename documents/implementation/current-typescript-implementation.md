@@ -12,7 +12,7 @@ The maintained app is a Vite + TypeScript project, not a single-file HTML protot
 4. **Shared contracts:** `src/types/index.ts` defines audio frames, beat events, visual track analysis, analysis requests, success messages, and error messages.
 5. **Shared runtime state:** `src/state/store.ts` stores accepted analysis results, visual feature state, the abstract modulation bus, live visual tuning, target visual tuning, and render-facing state.
 6. **UI projection:** `src/ui/DashboardUI.ts` owns controls, visual mode selection, enabled/disabled states, dashboard text, seek display, dramaturgy timeline drawing, and error projection.
-7. **Visual rendering:** `src/visuals/` owns p5 rendering, particle lifecycle, shockwave lifecycle, beat-event consumption, visual cue consumption, and effect-mode delegation. `PlexusRenderer.ts` adapts p5 through `P5RendererBackend`, while `ClassicPlexusEffect.ts` and `TemporalMusicEffect.ts` draw through `VisualRendererBackend`.
+7. **Visual rendering:** `src/visuals/` owns p5 rendering, particle lifecycle, shockwave lifecycle, beat-event consumption, visual cue consumption, visual identity registration, and effect-mode delegation. `PlexusRenderer.ts` adapts p5 through `P5RendererBackend` and delegates drawing to the current `VisualIdentity` from `StyleRegistry`. Built-in identities draw through `VisualRendererBackend`.
 8. **Visual director:** `src/visuals/VisualDirectorFSM.ts` is the deep state-control module for render-time music dramaturgy. It owns dynamic thresholds, LOW-state dampening, drop anticipation, buildup boost, glitch decay, hysteresis, and transition cooldown behavior.
 
 ## Worker Contract
@@ -62,7 +62,7 @@ The dramaturgy engine builds a normalized pressure curve from `feature.tension *
 - `glitchIntensity`: exponentially decaying LOW_DROP glitch envelope.
 - `invertBackground`: background inversion flag; currently false to avoid full-screen strobe behavior.
 
-During `GLITCH_LOW_DROP`, `glitchIntensity` starts at `1.0` and decays with `Math.exp(-elapsed * 4.0)`. Classic and temporal line/node drawing multiply this envelope by deterministic coordinate offsets from `Math.sin(a * 12.9898 + b * 78.233 + salt * 37.719 + State.rotationPhase * 0.43) * 5.0`. The offset is deterministic for the same particle indexes, salt, and rotation phase, so export output remains reproducible without random glitch jitter.
+During `GLITCH_LOW_DROP`, `glitchIntensity` starts at `1.0` and decays with `Math.exp(-elapsed * 4.0)`. Classic, temporal, and cyberpunk glitch-style drawing derives coordinate offsets from deterministic index/salt/phase formulas instead of random jitter. The offset is deterministic for the same particle indexes, salt, and rotation phase, so export output remains reproducible.
 
 ## Modulation Bus And Morphing
 
@@ -78,14 +78,21 @@ During `GLITCH_LOW_DROP`, `glitchIntensity` starts at `1.0` and decays with `Mat
 
 `State.visualTuning` is the live interpolated tuning. `State.targetTuning` is the selected destination. Presets and sliders write to `targetTuning`; `PlexusRenderer.draw()` calls `applyTuningMorph()` before frame publication so numeric tuning values move toward their targets without overshooting. Section overrides store `State.sectionOverrides["section-N"].sensitivity` and temporarily replace the live `audioSensitivity` for the active section only during the current draw frame; the original global sensitivity is restored before the frame ends. Tuning normalization and morphing iterate a module-level `visualTuningKeys` list instead of rebuilding `Object.keys(defaultVisualTuning)` in hot paths. This keeps preset changes stage-safe during live playback.
 
-## Visual Modes
+## Visual Identities
 
-The renderer supports two selectable visual modes through `State.visualMode`:
+The renderer supports five selectable visual identities through `State.visualMode`:
 
 - `classic`: preserves the original Plexus particle network, center glow, beat shockwaves, and polygon flash behavior.
 - `temporal`: keeps the same particle and shockwave primitives but re-composes them around full-track analysis. It does not draw pattern detections as bar-aligned labels and avoids unrelated decorative wave/ellipse motifs. Instead, `trackAnalysis` continuously modulates polygon color, movement, density, connection sensitivity, background tone, and central mechanism rings for beat, melody, vocal, fx, and pattern resonance.
+- `dark-techno`: strict monochrome industrial style with sharp white/gray line work, sparse high-brightness strobe polygon flashes, and no radial glow usage.
+- `organic-ambient`: slow, fluid, pastel green/blue/earth-tone style that avoids sharp network lines and draws soft particle glow fields instead.
+- `cyberpunk`: high-contrast neon magenta/cyan style with chromatic-aberration line offsets and deterministic high-tension glitch coordinate shifts.
 
-Mode selection belongs to UI projection. `src/visuals/PlexusRenderer.ts` only synchronizes playback/analysis state and delegates to the selected effect file; no audio analysis may run in either visual mode.
+The common contract is `src/visuals/VisualIdentity.ts`. `src/visuals/StyleRegistry.ts` keeps identities in a private `Map`, exposes `register()` and `get()`, and provides `createDefaultStyleRegistry()` for application composition. Unknown style ids fall back to `classic`; missing `classic` registration is treated as a composition error.
+
+Mode selection belongs to UI projection. `src/main.ts` exposes all five style ids in `#visual-mode`, and `DashboardUI` validates selected/preset-loaded ids before writing `State.visualMode`. Presets remain backward-compatible: missing or unknown `visualMode` fields do not break loading, while known style ids update both shared state and the select element.
+
+`src/visuals/PlexusRenderer.ts` only synchronizes playback/analysis state and delegates to the selected identity; no audio analysis may run in a visual identity.
 
 ## Visual Tuning And Playback UI
 
@@ -113,9 +120,10 @@ Recent hot-path optimizations:
 - Timeline and seekbar scrubbing no longer rebuild Web Audio source nodes on every pointer or input event. The UI buffers the drag target in `scrubTime`, redraws visual feedback through `requestAnimationFrame`, and commits one final `AudioEngine.seek()` when the gesture ends.
 - `Particle.update()` now checks boundary distance with squared distance, uses vector normalization for center pull, and updates position with direct component math (`pos.x += vel.x * speed`, `pos.y += vel.y * speed`) instead of allocating through `p5.Vector.mult()`.
 - `P5RendererBackend` caches fill color, stroke color, and stroke weight so repeated identical p5 state changes are skipped. The cache compares numeric RGBA components (`lastFillR/G/B/A`, `lastStrokeR/G/B/A`) instead of allocating string keys. It still tracks `noStroke()` and `noFill()` activation state so a later identical stroke/fill call re-enables drawing correctly.
-- Hot render paths should use `hueToRgbInto(target, hue, saturation, lightness)` with caller-owned RGB tuples. `hueToRgb()` remains a compatibility wrapper for non-hot callers. Temporal mechanism rings pass numeric `colorR/colorG/colorB` components across the `drawMechanismRing()` boundary to avoid shared array reference hazards.
+- Hot render paths should use `hueToRgbInto(target, hue, saturation, lightness)` with caller-owned RGB tuples. `hueToRgb()` remains a compatibility wrapper for non-hot callers. Visual identity color buffers are identity-owned private fields rather than unmanaged module-level writable state. Temporal mechanism rings pass numeric `colorR/colorG/colorB` components across the `drawMechanismRing()` boundary to avoid shared array reference hazards.
 - `writeModulationBus()` updates the existing `State.modulation` object in the render loop. `computeModulationBus()` remains available when a fresh modulation object is required outside that hot path.
 - Classic and temporal radial glow now require both `State.isPlaying` and `shouldUseExpensiveGlow(State.visualTuning)`, so paused, idle, performance-mode, chroma, and transparent-background paths avoid radial gradient construction.
+- Dark Techno intentionally never calls `radialGlow`. Organic Ambient intentionally uses radial glow as its primary fog field and should therefore be evaluated with performance mode/chroma constraints in render smoke checks.
 - `DashboardUI.updateDashboard()` no longer causes an unconditional dramaturgy timeline redraw. Timeline redraw is throttled to visible changes in analysis, size, zoom, scroll, scrub state, or playhead movement of at least one visible pixel.
 - Playback remains render/main-thread limited during draw. `TrackAnalysis` is still produced offline by the worker and read during playback as accepted precomputed state; the cleanup reduces allocation, garbage collection, Canvas state churn, and paused/idle render load rather than moving analysis work.
 - UI chrome intentionally separates fast user-requested hide feedback (`400ms` after background unpin) from passive idle hiding (`2600ms`) so normal interaction stays forgiving while explicit hide feels immediate.
@@ -125,6 +133,7 @@ Validation for these rendering and UI performance contracts should include TypeS
 Detailed documentation:
 
 - Feature record: `documents/features/visual-tuning-presets-and-playback-ui.md`
+- Visual identity record: `documents/features/visual-identities.md`
 - Acceptance criteria: `documents/acceptance-criteria/visual-tuning-presets-and-playback-ui-acs.md`
 - Architecture decision: `documents/adr/ADR-001-visual-tuning-presets-and-playback-ui.md`
 

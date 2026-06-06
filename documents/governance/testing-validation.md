@@ -37,6 +37,7 @@ Visual changes:
 
 - Run a render smoke check in a browser when practical.
 - Confirm canvas is nonblank, particles remain bounded, shockwaves expire, and the draw loop does not allocate unbounded persistent objects.
+- For visual identity or style-registry changes, run the browser-free deterministic style harness (`node --test tests/styles-deterministic.test.mjs`) or explain why it was not applicable.
 - If in-app browser automation cannot reach a transient local dev server, verify server startup and HTTP status with a short-lived shell job, then report browser smoke as not completed.
 
 UI changes:

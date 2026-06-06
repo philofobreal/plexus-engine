@@ -52,7 +52,7 @@ You can currently:
 - tune the look live
 - load JSON visual presets
 - copy/export visual tuning config
-- view realtime music metrics such as BPM, energy, melody, vocal, FX, beat hit, progress, and dynamics
+- view realtime music metrics such as energy, density, melody presence, vocal, FX, beat impulse, dynamics, and the header BPM badge
 - use presentation-oriented UI behavior where the chrome can fade away during performance
 
 ## Visual modes
@@ -64,6 +64,18 @@ The original Plexus look: particles, connected lines, central glow, beat shockwa
 ### Temporal
 
 A more music-aware mode that uses full-track analysis to shape motion, density, color behavior, cue reactions, pattern resonance, and long-form tension.
+
+### Dark Techno
+
+A strict monochrome industrial mode with sharp white/gray line work and sparse strobe-like polygon flashes.
+
+### Organic Ambient
+
+A slow, fluid mode with soft pastel green, blue, and earth-tone glow fields instead of hard network lines.
+
+### Cyberpunk
+
+A high-contrast neon magenta/cyan mode with chromatic-aberration line offsets and deterministic glitch motion under high tension.
 
 ## Why it exists
 

@@ -32,7 +32,7 @@ Allowed dependency directions:
 - `GestureEngine.ts` may depend on DOM event and geometry APIs plus shared callback types, but must not import `src/state/`, `src/audio/`, `src/visuals/`, or timeline rendering modules.
 - `TimelineCanvas.ts` may depend on canvas APIs and shared render types, but must not import `src/state/`, `src/audio/`, `src/visuals/`, or gesture modules.
 - `src/visuals/P5RendererBackend.ts`, `Particle.ts`, `Shockwave.ts`, and `PlexusRenderer.ts` may import p5.
-- Effect modules under `src/visuals/` must draw through `VisualRendererBackend` rather than direct p5 APIs.
+- Effect modules and visual identity modules under `src/visuals/` must draw through `VisualRendererBackend` rather than direct p5 APIs.
 - `src/visuals/` may import `src/state/`, visual classes, config helpers, renderer backend contracts, and types.
 - `src/state/` may import types only.
 - `src/types/` must not import app runtime modules.
@@ -46,7 +46,9 @@ Forbidden dependency directions:
 - Gesture or timeline renderer submodules to application-level state ownership. Gesture input stays generic; timeline rendering receives data through `RenderState`.
 - Types to runtime modules.
 
-Mode-specific visual implementations should live in separate files under `src/visuals/`. The renderer entrypoint may orchestrate playback synchronization and delegate drawing, but it should not accumulate multiple full effect implementations inline.
+Mode-specific visual implementations should live in separate `VisualIdentity` implementations under `src/visuals/`. The renderer entrypoint may orchestrate playback synchronization and delegate drawing, but it must not accumulate multiple full effect implementations inline or hard-code visual-mode drawing branches.
+
+`StyleRegistry` is the deep style-management module. It may hide registered identities behind a private map and expose only simple registration/lookup methods. Application composition should create a registry instance and pass it into the renderer; modules must not rely on a writable unmanaged global registry.
 
 `VisualRendererBackend` is the render boundary for effect modules. The p5 implementation lives in `P5RendererBackend`; future WebGPU, shader, or mock backends must implement the same draw-command contract.
 
@@ -73,7 +75,7 @@ Every shared state field needs a clear owner:
 - Visuals own `State.modulation`, derived from accepted frame/features plus transient beat/cue decays.
 - `State.modulation` must keep a stable object reference during rendering. Visuals update it through `writeModulationBus(State.modulation, ...)`, and transient reset must zero its fields in place instead of assigning `State.modulation = { ... }`.
 - UI owns DOM projection and user input dispatch.
-- Visual mode selection is user input owned by UI and stored in shared state as an explicit render-facing setting.
+- Visual mode selection is user input owned by UI and stored in shared state as an explicit render-facing setting. Preset loading may update this field only after validating the selected id against the supported `VisualMode` union.
 - UI owns `State.targetTuning` writes from sliders and presets; visuals own interpolation into `State.visualTuning`.
 - State module owns shape and initialization defaults.
 
