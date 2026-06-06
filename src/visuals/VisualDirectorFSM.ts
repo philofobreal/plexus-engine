@@ -12,7 +12,6 @@ export class VisualDirectorFSM {
     private glitchIntensity = 0;
     private lastUpdateTime = 0;
     private lastStateTransitionTime = 0;
-    private transitionEnergy = 0; // JAVÍTVA: Eltároljuk az állapotváltás pillanatában lévő energiát
     
     // Állapotgép stabilitás
     private readonly MIN_STATE_DURATION = 0.15; // 150ms cooldown az állapotváltásokra
@@ -34,7 +33,6 @@ export class VisualDirectorFSM {
             this.lastUpdateTime = currentTime;
             this.currentState = 'IDLE';
             this.glitchIntensity = 0;
-            this.transitionEnergy = 0;
         }
 
         // 2. Minden logikai réteg futtatása minden egyes frame-ben
@@ -106,7 +104,6 @@ export class VisualDirectorFSM {
         if (nextState !== this.currentState) {
             // Átmenetkor lementjük az utolsó stabil állapot energiáját
             if (nextState === 'GLITCH_LOW_DROP') {
-                this.transitionEnergy = frame.e; 
                 this.glitchIntensity = 1.0;
             }
             this.currentState = nextState;

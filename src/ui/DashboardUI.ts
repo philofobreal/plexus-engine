@@ -607,10 +607,6 @@ export class DashboardUI {
         return false;
     }
 
-    private handleGestureEngineHover(focusX: number, focusY: number) {
-        this.hoverTimeline(focusX, focusY);
-    }
-
     private moveTimelineInteraction(focusX: number, focusY: number, deltaX: number) {
         if (State.isDrawingEnvelope) {
             this.drawAutomationAtPointer(focusX, focusY);
