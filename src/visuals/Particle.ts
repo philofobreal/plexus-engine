@@ -16,6 +16,7 @@ export class Particle {
     }
 
     update(energy: number, activity: number, beat: number, isPlaying: boolean, centripetalOrbit = 0) {
+        const effectivePlaying = isPlaying || State.isExporting;
         let cx = this.p.width / 2; 
         let cy = this.p.height / 2;
         let dx = cx - this.pos.x;
@@ -45,7 +46,7 @@ export class Particle {
             this.vel.normalize();
         }
         
-        let speed = (isPlaying
+        let speed = (effectivePlaying
             ? (energy * State.visualTuning.particleEnergySpeed) + (beat * State.visualTuning.particleBeatSpeed)
             : State.visualTuning.particleIdleSpeed) * State.playbackFade;
         if (activity > 0.4) {

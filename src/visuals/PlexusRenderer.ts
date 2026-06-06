@@ -21,9 +21,11 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
         const visualDirector = new VisualDirectorFSM();
 
         p.setup = () => {
-            p.createCanvas(p.windowWidth, p.windowHeight).parent(containerId);
+            const renderer = p.createCanvas(p.windowWidth, p.windowHeight);
+            renderer.parent(containerId);
             p.frameRate(60);
             for (let i = 0; i < 75; i++) particles.push(new Particle(p));
+            ui.setExportTarget(p, (renderer as unknown as { elt: HTMLCanvasElement }).elt);
         };
 
         const syncEventIndex = (time: number) => {
@@ -52,7 +54,7 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
             }
 
             const fadeStep = 1 / targetFrameRate;
-            if (State.isPlaying) {
+            if (State.isPlaying || State.isExporting) {
                 State.playbackFade = Math.min(1.0, State.playbackFade + fadeStep);
             } else {
                 State.playbackFade = Math.max(0.0, State.playbackFade - fadeStep);
@@ -61,7 +63,7 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
 
             applyTuningMorph(State.visualTuning, State.targetTuning, State.targetTuning.transitionSpeed);
 
-            let ct = engine.getCurrentTime();
+            let ct = State.isExporting ? State.exportTime : engine.getCurrentTime();
             State.currentTime = ct;
 
             const sections = State.trackAnalysis.sections;
@@ -75,7 +77,7 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
             const originalGlobalSensitivity = State.visualTuning.audioSensitivity;
             State.visualTuning.audioSensitivity = activeSensitivity;
 
-            if (State.isPlaying && State.frames.length > 0) {
+            if ((State.isPlaying || State.isExporting) && State.frames.length > 0) {
                 let frameIdx = Math.floor(ct * State.sampleRate / State.hopSize);
                 publishCurrentAnalysisFrame(frameIdx);
 
@@ -172,7 +174,7 @@ function copyVisualFeatures(source: VisualFeatureFrame, target: VisualFeatureFra
 
 function getDropAnticipationFrame(currentTime: number): AudioFrame | undefined {
     const anticipation = State.visualTuning.dropAnticipation;
-    if (anticipation <= 0 || !State.isPlaying || State.frames.length === 0) return undefined;
+    if (anticipation <= 0 || (!State.isPlaying && !State.isExporting) || State.frames.length === 0) return undefined;
 
     const futureTime = currentTime + anticipation;
     const futureIdx = Math.floor(futureTime * State.sampleRate / State.hopSize);
