@@ -28,6 +28,8 @@
   * Type 3 (`fx/high-transient hit`): thin, fast, green-tinted shockwave.
 * **AC 3.5 - Visual mode selection:** The user can switch between `Classic` and `Temporal` visual modes without reloading the audio file. Classic preserves the Plexus network behavior. Temporal uses the same playback and precomputed analysis data for continuous visual modulation.
 * **AC 3.6 - Beat event classification:** After spectral-flux peak picking, the worker classifies beat events from smoothed feature context: type 3 when smoothed fx presence is greater than `0.6`, type 2 when fx does not pass that threshold and smoothed density is greater than `0.7`, and type 1 otherwise.
+* **AC 3.7 - Buildup centripetal orbit:** During `BUILDUP`, `State.directorOutput.centripetalOrbit` applies a centripetal orbit force that drives particles into spiral motion around the center.
+* **AC 3.8 - LOW_DROP glitch offset:** During `GLITCH_LOW_DROP`, exponentially decaying `State.directorOutput.glitchIntensity` applies deterministic coordinate offsets while drawing lines and nodes.
 
 ## 4. Dashboard
 
@@ -88,6 +90,7 @@
 * **AC 10.3 - Snap-to-Grid Splitting:** Timeline section edits snap to the BPM-derived bar grid. Splitting a section produces deterministic section boundaries and keeps section override data addressable by section key.
 * **AC 10.4 - Preset Painting:** The timeline preset brush can paint section-level preset tags. Painted sections are marked with `P:<preset>` labels and store the preset reference in `State.sectionOverrides`.
 * **AC 10.5 - VJ Playhead Scheduler:** Section preset automation is evaluated from the canonical audio position, including seek and paused position changes. Crossing into a painted section applies the section preset once through the normal preset morph path instead of relying on draw-loop polling only.
+* **AC 10.6 - FSM transition stability:** `VisualDirectorFSM` state transitions apply at least a 150ms `MIN_STATE_DURATION` cooldown and hysteresis to prevent dense jitter or state vibration.
 
 ## 11. Playback Motion Fade-out And Offscreen Waveform Cache
 

@@ -13,6 +13,7 @@ The maintained app is a Vite + TypeScript project, not a single-file HTML protot
 5. **Shared runtime state:** `src/state/store.ts` stores accepted analysis results, visual feature state, the abstract modulation bus, live visual tuning, target visual tuning, and render-facing state.
 6. **UI projection:** `src/ui/DashboardUI.ts` owns controls, visual mode selection, enabled/disabled states, dashboard text, seek display, dramaturgy timeline drawing, and error projection.
 7. **Visual rendering:** `src/visuals/` owns p5 rendering, particle lifecycle, shockwave lifecycle, beat-event consumption, visual cue consumption, and effect-mode delegation. `PlexusRenderer.ts` adapts p5 through `P5RendererBackend`, while `ClassicPlexusEffect.ts` and `TemporalMusicEffect.ts` draw through `VisualRendererBackend`.
+8. **Visual director:** `src/visuals/VisualDirectorFSM.ts` is the deep state-control module for render-time music dramaturgy. It owns dynamic thresholds, LOW-state dampening, drop anticipation, buildup boost, glitch decay, hysteresis, and transition cooldown behavior.
 
 ## Worker Contract
 
@@ -52,7 +53,16 @@ Bar analysis is derived from BPM-aligned four-beat windows. Each `BarAnalysis` e
 
 Recurring temporal patterns are detected heuristically from full-track section signatures. The worker groups similar section-level energy, density, label, and dominant-feature signatures, publishes repeated groups as `MusicPattern` entries, and emits `pattern` cue events for each occurrence so effects can react when a known musical shape returns.
 
-The dramaturgy engine builds a normalized pressure curve from `feature.tension * 0.34 + feature.density * 0.28 + frame.e * 0.22 + frame.eRatio * 0.16`. A rolling comparison between recent and previous pressure windows produces `buildupConfidence`; section-like trend segments publish rising, falling, or stable directions. Spectral Pivot is an offline post-process that boosts melody, vocal, fx, and tension only when `sE > 0.04`, `eRatio < 0.55`, and buildup or `LOW_DROP` tension is present. Below the `sE <= 0.04` noise gate, delicate features, `AudioFrame.m`, `AudioFrame.t`, and `spectralPivot` are forced to exact zero. `PlexusRenderer` blends the current buildup value into `State.modulation.kineticTension` before drawing, so pre-drop tension can influence visuals without adding analysis work to `draw()`.
+The dramaturgy engine builds a normalized pressure curve from `feature.tension * 0.34 + feature.density * 0.28 + frame.e * 0.22 + frame.eRatio * 0.16`. A rolling comparison between recent and previous pressure windows produces `buildupConfidence`; section-like trend segments publish rising, falling, or stable directions. Spectral Pivot is an offline post-process that boosts melody, vocal, fx, and tension only when `sE > 0.04`, `eRatio < 0.55`, and buildup or `LOW_DROP` tension is present. Below the `sE <= 0.04` noise gate, delicate features, `AudioFrame.m`, `AudioFrame.t`, and `spectralPivot` are forced to exact zero.
+
+`PlexusRenderer` now delegates render-time macro decisions to `VisualDirectorFSM`. The director reads the accepted frame copy, current feature copy, `buildupConfidence`, `spectralPivot`, tuning, modulation bus, and optional future frame for drop anticipation. It writes a `DirectorOutput` snapshot into `State.directorOutput`:
+
+- `state`: `IDLE`, `INTRO_BREAK`, `BUILDUP`, `DROP`, or `GLITCH_LOW_DROP`.
+- `centripetalOrbit`: normalized buildup orbit force used by particles.
+- `glitchIntensity`: exponentially decaying LOW_DROP glitch envelope.
+- `invertBackground`: background inversion flag; currently false to avoid full-screen strobe behavior.
+
+During `GLITCH_LOW_DROP`, `glitchIntensity` starts at `1.0` and decays with `Math.exp(-elapsed * 4.0)`. Classic and temporal line/node drawing multiply this envelope by deterministic coordinate offsets from `Math.sin(a * 12.9898 + b * 78.233 + salt * 37.719 + State.rotationPhase * 0.43) * 5.0`. The offset is deterministic for the same particle indexes, salt, and rotation phase, so export output remains reproducible without random glitch jitter.
 
 ## Modulation Bus And Morphing
 

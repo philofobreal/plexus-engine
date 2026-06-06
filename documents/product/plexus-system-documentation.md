@@ -43,7 +43,7 @@ A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus m
 3. **Audio Engine (`src/audio/AudioEngine.ts`):** felelos a hangfajlok dekodolasaert, a `AudioBufferSourceNode` eletciklusert, a kanonikus idoszamitasert, a seek/end resetert, a worker request id kezelesert, a stale worker eredmenyek eldobasaert es a worker terminalasaert.
 4. **Analysis Engine (`src/audio/analyzer.worker.ts`):** dedikalt Web Worker. 1024 mintas Hann-windowed FFT pipeline-t hasznal, spektralis fluxust, relativ savenergiakat, centroidot es flatness erteket szamol, majd `AudioFrame`, `BeatEvent` es `TrackAnalysis` kimenetet publikal.
 5. **Shared contracts/state (`src/types/index.ts`, `src/state/store.ts`):** tarolja a megosztott tipusokat, az elfogadott analizis eredmenyeket, a vizualis modot, loop allapotot, aktualis frame-et, cue allapotokat, modulacios buszt, elo tuningot es target tuningot.
-6. **Render Engine (`src/visuals/`):** p5 canvas renderer backend adapterrel, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `ClassicPlexusEffect.ts` / `TemporalMusicEffect.ts` modokat kezeli.
+6. **Render Engine (`src/visuals/`):** p5 canvas renderer backend adapterrel, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `ClassicPlexusEffect.ts` / `TemporalMusicEffect.ts` modokat kezeli. A zene-dramaturgiai allapotszabalyozast a `VisualDirectorFSM.ts` modul vegzi, majd `DirectorOutput` formaban ad render-facing jeleket az effekt moduloknak.
 
 ## 3. Funkcionalis Specifikacio
 
@@ -65,6 +65,27 @@ A worker a BPM becslesbol 16 beat hosszu blokkokat kepez. A blokk relativ energi
 * `LOW`: ha a blokk energia aranya `0.45` alatt van.
 * `LOW_DROP`: ha HIGH blokkban a simitott pillanatnyi energia `0.35` ala esik.
 * `LOW_OVERLOAD`: ha a simitott pillanatnyi energia `0.95` fole megy.
+
+Lejatszas kozben a render-facing allapotokat nem kozvetlenul a worker `AudioFrame.state` mezoi jelentik. A `VisualDirectorFSM` a kompatibilis frame allapot, a `buildupConfidence`, a `spectralPivot`, a visual tuning es a modulacios busz alapjan `DirectorState` erteket allit elo:
+
+* `IDLE`: reset, seek vagy kezdeti allapot.
+* `INTRO_BREAK`: visszafogott LOW jellegu szakasz, amely csillapitja a modulacios buszt es a finom feature jeleket.
+* `BUILDUP`: emelkedo dramaturgiai feszultseg, amely novelheti a `kineticTension` es `macroMomentum` jeleket.
+* `DROP`: normal magas energias render allapot.
+* `GLITCH_LOW_DROP`: LOW_DROP vagy overload jellegu atmenet, amely glitch kimenetet ad a renderereknek.
+
+Az FSM kimenete a `DirectorOutput` szerzodes:
+
+```ts
+interface DirectorOutput {
+  state: DirectorState;
+  centripetalOrbit: number;
+  glitchIntensity: number;
+  invertBackground: boolean;
+}
+```
+
+A `LOW_DROP` igy tovabbra is worker/frame kompatibilitasi allapot marad, mig a vizualis effekt dontes `GLITCH_LOW_DROP` formaban jelenik meg a director kimeneten.
 
 ### 3.3. Beat, Cue Es Pattern Kimenetek
 
@@ -106,6 +127,8 @@ Az effekt modulok `VisualRendererBackend` interfeszen keresztul rajzolnak. A p5-
 `computeModulationBus()` az aktualis `AudioFrame`, `VisualFeatureFrame`, beat decay, cue decay es tuning alapjan ot normalizalt jelet allit elo: `kineticTension`, `densityDrive`, `spectralChaos`, `rhythmicImpulse`, `macroMomentum`. A keplet minden kimenetet `0.0..1.0` tartomanyba szorit es `audioSensitivity` alapjan skalaz.
 
 `State.visualTuning` az elo, interpolalt allapot. `State.targetTuning` a presetek es UI csuszkak celallapota. A render ciklus elejen az elo tuning a `transitionSpeed` szerint kozelit a celhoz, tulcsuszas nelkul.
+
+A `buildupConfidence` mar nem csak kozvetlen modulacios erosites. A `VisualDirectorFSM` `BUILDUP` allapotban `centripetalOrbit` erteket publikal a `State.directorOutput` mezobe. A particle update ezt az erteket befele mutato es tangencialis komponensre bontja, igy a buildup fazis spiral jellegu, centripetalis mozgasba rendezi a reszecskeket.
 
 ### 4.2.2. Playback Fade Es Timeline Waveform Cache
 
@@ -193,6 +216,7 @@ src/
 |   `-- DashboardUI.ts
 |-- visuals/
 |   |-- PlexusRenderer.ts
+|   |-- VisualDirectorFSM.ts
 |   |-- RendererBackend.ts
 |   |-- P5RendererBackend.ts
 |   |-- ClassicPlexusEffect.ts
@@ -235,6 +259,15 @@ export interface ModulationState {
     spectralChaos: number;
     rhythmicImpulse: number;
     macroMomentum: number;
+}
+
+export type DirectorState = 'IDLE' | 'INTRO_BREAK' | 'BUILDUP' | 'DROP' | 'GLITCH_LOW_DROP';
+
+export interface DirectorOutput {
+    state: DirectorState;
+    centripetalOrbit: number;
+    glitchIntensity: number;
+    invertBackground: boolean;
 }
 
 export interface AnalysisRequest {

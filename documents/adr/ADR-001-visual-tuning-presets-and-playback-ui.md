@@ -41,6 +41,8 @@ Implement music sensitivity as a render-time scale in the modulation bus over ac
 
 Add an abstract `State.modulation` bus so visual effects consume normalized musical intent (`kineticTension`, `densityDrive`, `spectralChaos`, `rhythmicImpulse`, `macroMomentum`) instead of coupling every animation to raw analyzer fields.
 
+Move render-time dramaturgy state control into `src/visuals/VisualDirectorFSM.ts`. The class owns dynamic thresholds, state dampening, drop anticipation, and buildup boost as a deep visual module. `PlexusRenderer` computes the current frame and modulation inputs, calls the director, and publishes the resulting `State.directorOutput` for effect modules to consume.
+
 Keep playback ownership in `AudioEngine`. UI input dispatches play, pause, seek, and loop changes, while the engine owns source-node lifecycle and natural-end behavior.
 
 Move VJ chrome behavior into `DashboardUI`: top controls, metrics toggle, panel visibility, dragging, keyboard shortcuts, and idle auto-hide are DOM concerns. Visual renderers only consume state and draw.
@@ -72,6 +74,10 @@ Positive:
 - Renderers receive sensitivity-adjusted values without adding analyzer coupling.
 - Live parameter changes and preset changes are smooth enough for performance use.
 - Effects become easier to evolve because animation inputs are decoupled from analyzer implementation details.
+- The renderer loop is decoupled from the macro-dramaturgy state machine; it delegates state decisions to `VisualDirectorFSM` and consumes `DirectorOutput`.
+- Music-dramaturgy logic is separately testable through deterministic `VisualDirectorFSM` unit tests.
+- `GLITCH_LOW_DROP` animations use a deterministic, exponentially decaying `glitchIntensity`, which keeps video export behavior reproducible for the same playback state.
+- State changes use a 150ms `MIN_STATE_DURATION` cooldown and hysteresis margin to reduce dense state jitter.
 - UI chrome can be refined independently from p5 visual effects.
 - Loop mode stays aligned with audio source-node lifecycle.
 - Timeline inspection scales from compact to resized to fullscreen without changing playback ownership.
@@ -95,6 +101,7 @@ Tradeoffs:
 - Sticky preset normalization makes the current tuning state part of partial-preset semantics, so tests must cover both current-aware and default-only normalization.
 - Draw mode adds more timeline interaction modes, so pointer handling must keep seek, pan, resize, draw, and preset paint paths explicitly separated.
 - The waveform cache must be invalidated whenever timeline scale or analysis data changes; stale cache keys would show incorrect waveform placement.
+- The director adds a separate render-facing state contract beside `AudioFrame.state`, so future changes must keep worker frame compatibility and `DirectorOutput` semantics documented together.
 
 ## Alternatives Considered
 
@@ -121,6 +128,7 @@ Tradeoffs:
 - `src/visuals/ClassicPlexusEffect.ts`
 - `src/visuals/TemporalMusicEffect.ts`
 - `src/visuals/PlexusRenderer.ts`
+- `src/visuals/VisualDirectorFSM.ts`
 - `src/visuals/RendererBackend.ts`
 - `src/visuals/P5RendererBackend.ts`
 - `public/visual-tuning-presets/`
