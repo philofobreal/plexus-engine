@@ -62,7 +62,15 @@ export class TimelineCanvas {
         if (width <= 0 || height <= 0) return;
 
         const ctx = this.ctx;
-        ctx.clearRect(0, 0, width, height);
+
+        // JAVÍTVA: Biztonságos és tökéletes High-DPI canvas ürítés az identitás-mátrix ideiglenes
+        // visszaállításával és a fizikai backing store egész értékeinek használatával.
+        // Ezzel elkerüljük az al-pixel kerekítési hibákból adódó alfa-csatorna felhalmozódást.
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.restore();
+
         this.drawBackground(ctx, width, height);
 
         if (state.duration <= 0) return;

@@ -11,6 +11,8 @@ interface VisualPresetManifest {
 }
 
 export class DashboardUI {
+    private presetCache = new Map<string, unknown>();
+    private timelineTooltip: HTMLDivElement; // JAVÍTVA: Timeline tooltip példányhelye
     private isDraggingSlider = false;
     private isDraggingThreshold = false;
     private draggingSectionIdx: number | null = null;
@@ -114,12 +116,28 @@ export class DashboardUI {
         this.initBindings();
         this.initVisualTuningControls();
         this.metricTooltip = this.createDashboardMetricTooltip();
+        this.timelineTooltip = this.createTimelineTooltip(); // JAVÍTVA: Timeline tooltip példányosítása
         this.initDashboardMetricTooltips();
         this.initDramaturgyTimeline();
         this.syncLoopUi();
         this.applyPresentationModeFromUrl();
         this.initChromeAutoHide();
         void this.loadVisualPresetList();
+    }
+
+    private createTimelineTooltip() {
+        let tooltip = document.getElementById('timeline-tooltip') as HTMLDivElement | null;
+        if (!tooltip) {
+            tooltip = document.createElement('div');
+            tooltip.id = 'timeline-tooltip';
+            tooltip.className = 'timeline-tooltip is-hidden';
+            document.body.appendChild(tooltip);
+        }
+        return tooltip;
+    }
+
+    private hideTimelineTooltip() {
+        this.timelineTooltip.classList.add('is-hidden');
     }
 
     private formatTime(seconds: number): string {
@@ -512,6 +530,11 @@ export class DashboardUI {
             });
             this.timelineResizeObserver.observe(wrapper || canvas);
         }
+
+        // JAVÍTVA: Robusztus leiratkozási biztosítékok a timeline elhagyásakor (ipari sztenderd)
+        canvas.addEventListener('pointerleave', () => this.hideTimelineTooltip());
+        canvas.addEventListener('mouseleave', () => this.hideTimelineTooltip());
+        window.addEventListener('blur', () => this.hideTimelineTooltip());
     }
 
     private toggleTimelineOverlay(wrapper: HTMLElement, zoomButton: HTMLButtonElement) {
@@ -540,6 +563,7 @@ export class DashboardUI {
     }
 
     private startTimelineInteraction(focusX: number, focusY: number, button: number, shiftKey: boolean) {
+        this.hideTimelineTooltip(); // JAVÍTVA: Azonnali elrejtés interakció kezdetekor
         if (State.duration <= 0) return false;
 
         const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
@@ -581,6 +605,10 @@ export class DashboardUI {
         }
 
         return false;
+    }
+
+    private handleGestureEngineHover(focusX: number, focusY: number) {
+        this.hoverTimeline(focusX, focusY);
     }
 
     private moveTimelineInteraction(focusX: number, focusY: number, deltaX: number) {
@@ -630,15 +658,68 @@ export class DashboardUI {
         const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
         canvas.classList.remove('is-panning');
         canvas.style.cursor = '';
+        this.hideTimelineTooltip(); // JAVÍTVA: Elrejtés interakció után
     }
 
     private hoverTimeline(focusX: number, focusY: number) {
         const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
-        if (State.duration <= 0 || State.drawModeActive) {
+        if (State.duration <= 0) {
             canvas.style.cursor = '';
+            this.hideTimelineTooltip();
             return;
         }
+
+        if (State.drawModeActive) {
+            canvas.style.cursor = 'cell';
+            this.hideTimelineTooltip();
+            return;
+        }
+
+        // JAVÍTVA: Elrejtjük a tooltipet, ha aktív csúszka-húzás, seekelés, átméretezés vagy panelés zajlik
+        if (this.isSeekingTimeline || this.isDraggingThreshold || this.isPanningTimeline || this.isResizingTimeline) {
+            this.hideTimelineTooltip();
+            return;
+        }
+
         canvas.style.cursor = this.getTimelineThresholdHit(focusX, focusY, 12) ? 'row-resize' : '';
+
+        // JAVÍTVA: Tooltip adatok dinamikus összeállítása egerezéskor
+        const hoverTime = this.getTimelineTimeAtPercent(focusX);
+        const bars = State.trackAnalysis.bars;
+        const bar = bars.find(b => hoverTime >= b.start && hoverTime <= b.end);
+        const sections = State.trackAnalysis.sections;
+        const section = sections.find(s => hoverTime >= s.start && hoverTime <= s.end);
+
+        let content = `Idő: ${this.formatTime(hoverTime)} (Zoom: ${State.zoom.toFixed(1)}x)`;
+        if (section) {
+            content += `\nSzekció: ${section.label.toUpperCase()} (${section.dominantFeature})`;
+        }
+        if (bar) {
+            content += `\nÜtem: #${bar.index + 1} [${bar.state}] | RMS: ${bar.avgRms.toFixed(2)}`;
+            content += `\nBass: ${bar.bass.toFixed(2)} | Mid: ${bar.mid.toFixed(2)} | Treble: ${bar.treble.toFixed(2)}`;
+        }
+
+        const frameIdx = Math.floor(hoverTime * State.sampleRate / State.hopSize);
+        const buildup = State.trackAnalysis.buildupConfidence[frameIdx] || 0;
+        if (buildup > 0.01) {
+            content += `\nBuildup: ${(buildup * 100).toFixed(0)}%`;
+        }
+
+        // Tooltip pozicionálása a kurzor mellé
+        const rect = canvas.getBoundingClientRect();
+        const tooltipX = rect.left + focusX * rect.width + 15;
+        const tooltipY = rect.top + focusY * rect.height + 15;
+
+        this.timelineTooltip.textContent = content;
+        this.timelineTooltip.classList.remove('is-hidden');
+        
+        // viewport korlátok között tartás
+        const tooltipRect = this.timelineTooltip.getBoundingClientRect();
+        const left = Math.min(tooltipX, window.innerWidth - tooltipRect.width - 15);
+        const top = Math.min(tooltipY, window.innerHeight - tooltipRect.height - 15);
+
+        this.timelineTooltip.style.left = `${left}px`;
+        this.timelineTooltip.style.top = `${top}px`;
     }
 
     private setScrubTime(time: number) {
@@ -1170,10 +1251,17 @@ export class DashboardUI {
 
     private async loadVisualPreset(fileName: string) {
         try {
-            const response = await fetch(this.presetUrl(fileName), { cache: 'no-store' });
-            if (!response.ok) throw new Error(`Preset ${response.status}`);
+            let presetData = this.presetCache.get(fileName);
+            
+            // Ha mĂ©g nincs a memĂłriĂˇban, letĂ¶ltjĂĽk egyszer, majd elmentjĂĽk
+            if (!presetData) {
+                const response = await fetch(this.presetUrl(fileName), { cache: 'no-store' });
+                if (!response.ok) throw new Error(`Preset ${response.status}`);
+                presetData = await response.json();
+                this.presetCache.set(fileName, presetData);
+            }
 
-            this.applyPerformancePreset(await response.json());
+            this.applyPerformancePreset(presetData);
             this.syncVisualTuningControls();
         } catch {
             this.els.copyConfigStatus.innerText = `Could not load ${fileName}`;

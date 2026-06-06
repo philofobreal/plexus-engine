@@ -271,6 +271,13 @@ export function applyTuningMorph(
         const targetValue = target[key];
         if (typeof currentValue !== 'number' || typeof targetValue !== 'number') continue;
 
+        // JAVÍTVA: A diszkrét (egész) beállításokat ne interpoláljuk, hanem azonnal pattintsuk be,
+        // különben a lebegőpontos értékek érvénytelenítik a háttér és a teljesítmény-mód feltételeit.
+        if (key === 'chromaKeyMode' || key === 'performanceMode' || key === 'phraseSize' || key === 'morphCurveValue') {
+            current[key] = targetValue;
+            continue;
+        }
+
         if (speed >= 1) {
             current[key] = targetValue;
             continue;
