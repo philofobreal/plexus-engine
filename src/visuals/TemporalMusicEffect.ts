@@ -4,6 +4,7 @@ import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
 import type { MusicPattern, PatternOccurrence, TrackSection } from '../types';
 import type { VisualRendererBackend } from './RendererBackend';
+import type { VisualIdentity } from './VisualIdentity';
 
 interface PatternResonance {
     pattern: MusicPattern | null;
@@ -12,23 +13,40 @@ interface PatternResonance {
     phase: number;
 }
 
-const glowColor: [number, number, number] = [0, 0, 0];
-const lineColor: [number, number, number] = [0, 0, 0];
-const polygonColor: [number, number, number] = [0, 0, 0];
-const nodeColor: [number, number, number] = [0, 0, 0];
-const mechanismRingColor: [number, number, number] = [0, 0, 0];
-
-export function drawTemporalMusicEffect(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[]) {
-    let cx = backend.width / 2;
-    let cy = backend.height / 2;
-    let section = getCurrentSection(State.currentTime);
-    let resonance = getPatternResonance(State.currentTime);
-
-    drawTemporalBackground(backend, cx, cy, resonance, section);
-    updateTemporalParticles(particles, resonance);
-    drawTemporalPolygonNetwork(backend, particles, resonance);
-    drawCenterMechanisms(backend, shockwaves, cx, cy, resonance, section);
+interface TemporalColorBuffers {
+    glowColor: [number, number, number];
+    lineColor: [number, number, number];
+    polygonColor: [number, number, number];
+    nodeColor: [number, number, number];
+    mechanismRingColor: [number, number, number];
 }
+
+class TemporalMusicIdentity implements VisualIdentity {
+    readonly id = 'temporal';
+    readonly name = 'Temporal';
+
+    private readonly colors: TemporalColorBuffers = {
+        glowColor: [0, 0, 0],
+        lineColor: [0, 0, 0],
+        polygonColor: [0, 0, 0],
+        nodeColor: [0, 0, 0],
+        mechanismRingColor: [0, 0, 0]
+    };
+
+    draw(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[]) {
+        let cx = backend.width / 2;
+        let cy = backend.height / 2;
+        let section = getCurrentSection(State.currentTime);
+        let resonance = getPatternResonance(State.currentTime);
+
+        drawTemporalBackground(backend, cx, cy, resonance, section, this.colors);
+        updateTemporalParticles(particles, resonance);
+        drawTemporalPolygonNetwork(backend, particles, resonance, this.colors);
+        drawCenterMechanisms(backend, shockwaves, cx, cy, resonance, section, this.colors);
+    }
+}
+
+export const temporalMusicIdentity: VisualIdentity = new TemporalMusicIdentity();
 
 function getCurrentSection(time: number): TrackSection | null {
     return State.trackAnalysis.sections.find(section => time >= section.start && time < section.end) || null;
@@ -54,7 +72,7 @@ function getPatternResonance(time: number): PatternResonance {
     return best;
 }
 
-function drawTemporalBackground(backend: VisualRendererBackend, cx: number, cy: number, resonance: PatternResonance, section: TrackSection | null) {
+function drawTemporalBackground(backend: VisualRendererBackend, cx: number, cy: number, resonance: PatternResonance, section: TrackSection | null, colors: TemporalColorBuffers) {
     let bgPulse = State.modulation.rhythmicImpulse * 10 + State.cueDecay * 6;
     let sectionEnergy = section ? tuneAudioValue(section.energy, State.visualTuning) : State.modulation.macroMomentum;
     const clear = getBackgroundClearStyle(State.visualTuning, bgPulse);
@@ -66,10 +84,10 @@ function drawTemporalBackground(backend: VisualRendererBackend, cx: number, cy: 
     backend.background(baseR, baseG, baseB, clear.a);
 
     let radius = Math.max(backend.width, backend.height) * (0.28 + State.modulation.densityDrive * 0.16 + State.modulation.kineticTension * 0.18) * State.visualTuning.circleSize;
-    hueToRgbInto(glowColor, State.visualTuning.circleBackgroundHue + State.modulation.kineticTension * 70);
+    hueToRgbInto(colors.glowColor, State.visualTuning.circleBackgroundHue + State.modulation.kineticTension * 70);
     let glowAlpha = Math.min((0.22 + State.modulation.densityDrive * 0.22 + resonance.strength * 0.12) * State.visualTuning.circleBackgroundAlpha, 1);
     if (State.isPlaying && shouldUseExpensiveGlow(State.visualTuning)) {
-        backend.radialGlow(cx, cy, radius, glowColor, glowAlpha);
+        backend.radialGlow(cx, cy, radius, colors.glowColor, glowAlpha);
     }
 }
 
@@ -80,7 +98,7 @@ function updateTemporalParticles(particles: Particle[], resonance: PatternResona
     for (let pt of particles) pt.update(energy, movement, impulse, State.isPlaying, State.directorOutput.centripetalOrbit);
 }
 
-function drawTemporalPolygonNetwork(backend: VisualRendererBackend, particles: Particle[], resonance: PatternResonance) {
+function drawTemporalPolygonNetwork(backend: VisualRendererBackend, particles: Particle[], resonance: PatternResonance, colors: TemporalColorBuffers) {
     let density = State.modulation.densityDrive;
     let melody = tuneAudioValue(State.currentFeatures.melody, State.visualTuning);
     let vocal = tuneAudioValue(State.currentFeatures.vocal, State.visualTuning);
@@ -92,9 +110,9 @@ function drawTemporalPolygonNetwork(backend: VisualRendererBackend, particles: P
     let lineLimit = 4 + Math.floor(density * 3 + resonance.strength * 2);
     let polyLimit = 1 + Math.floor(Math.max(density, State.denseImpactFlash) * 2);
     const polygonDistanceFactor = maxDistSq * 0.55 * State.visualTuning.polygonSize;
-    hueToRgbInto(lineColor, State.visualTuning.lineHue + melody * 45 + fx * 30, 0.68, 0.72);
-    hueToRgbInto(polygonColor, State.visualTuning.polygonHue + vocal * 40 + fx * 70, 0.7, 0.68);
-    hueToRgbInto(nodeColor, State.visualTuning.circleHue, 0.35, 0.9);
+    hueToRgbInto(colors.lineColor, State.visualTuning.lineHue + melody * 45 + fx * 30, 0.68, 0.72);
+    hueToRgbInto(colors.polygonColor, State.visualTuning.polygonHue + vocal * 40 + fx * 70, 0.7, 0.68);
+    hueToRgbInto(colors.nodeColor, State.visualTuning.circleHue, 0.35, 0.9);
 
     for (let i = 0; i < particles.length; i++) {
         let p1 = particles[i];
@@ -115,9 +133,9 @@ function drawTemporalPolygonNetwork(backend: VisualRendererBackend, particles: P
                 let closeness = 1 - d12 / maxDist;
                 let lineAlpha = (closeness * (92 + density * 54 + resonance.strength * 52) + State.modulation.rhythmicImpulse * 38) * State.visualTuning.lineAlpha;
                 backend.stroke(
-                    lineColor[0],
-                    lineColor[1],
-                    lineColor[2] - tension * 18 + vocal * 18,
+                    colors.lineColor[0],
+                    colors.lineColor[1],
+                    colors.lineColor[2] - tension * 18 + vocal * 18,
                     lineAlpha
                 );
                 backend.strokeWeight((0.45 + tension * 0.85 + State.modulation.rhythmicImpulse * 0.8) * State.visualTuning.lineWeight);
@@ -135,7 +153,7 @@ function drawTemporalPolygonNetwork(backend: VisualRendererBackend, particles: P
                             (p2.pos.x - p3.pos.x)**2 + (p2.pos.y - p3.pos.y)**2 < polygonDistanceFactor) {
                             polysDrawn++;
                             let alpha = Math.min(8 + density * 28 + resonance.strength * 22 + State.denseImpactFlash * 105 * State.visualTuning.polygonFlash, 135) * State.visualTuning.temporalPolygonAlpha * State.visualTuning.polygonAlpha;
-                            backend.fill(polygonColor[0] + melody * 24, polygonColor[1], polygonColor[2], alpha);
+                            backend.fill(colors.polygonColor[0] + melody * 24, colors.polygonColor[1], colors.polygonColor[2], alpha);
                             backend.noStroke();
                             backend.triangle(p1.pos.x, p1.pos.y, p2.pos.x, p2.pos.y, p3.pos.x, p3.pos.y);
                             break;
@@ -148,7 +166,7 @@ function drawTemporalPolygonNetwork(backend: VisualRendererBackend, particles: P
 
         if (connected) {
             backend.noStroke();
-            backend.fill(nodeColor[0], nodeColor[1], nodeColor[2], (45 + density * 55 + State.modulation.rhythmicImpulse * 65) * State.visualTuning.circleAlpha);
+            backend.fill(colors.nodeColor[0], colors.nodeColor[1], colors.nodeColor[2], (45 + density * 55 + State.modulation.rhythmicImpulse * 65) * State.visualTuning.circleAlpha);
             let nodeGlitch = State.directorOutput.glitchIntensity;
             backend.circle(
                 p1.pos.x + (nodeGlitch > 0 ? getGlitchOffset(i, 0, 4) * nodeGlitch : 0),
@@ -165,16 +183,17 @@ function drawCenterMechanisms(
     cx: number,
     cy: number,
     resonance: PatternResonance,
-    section: TrackSection | null
+    section: TrackSection | null,
+    colors: TemporalColorBuffers
 ) {
     let sectionEnergy = section ? tuneAudioValue(section.energy, State.visualTuning) : State.modulation.macroMomentum;
-    setMechanismRingColor(State.visualTuning.circleHue);
+    setMechanismRingColor(State.visualTuning.circleHue, colors);
     drawMechanismRing(backend, cx, cy, {
         radius: (24 + State.modulation.densityDrive * 46 + State.modulation.rhythmicImpulse * 32) * State.visualTuning.temporalRingSize,
         deformation: State.modulation.rhythmicImpulse * 0.08,
-        colorR: mechanismRingColor[0],
-        colorG: mechanismRingColor[1],
-        colorB: mechanismRingColor[2],
+        colorR: colors.mechanismRingColor[0],
+        colorG: colors.mechanismRingColor[1],
+        colorB: colors.mechanismRingColor[2],
         alpha: (48 + State.modulation.rhythmicImpulse * 125) * State.visualTuning.temporalRingAlpha,
         weight: (1.6 + State.modulation.rhythmicImpulse * 2.2) * State.visualTuning.circleLineWeight,
         lobes: 6,
@@ -184,13 +203,13 @@ function drawCenterMechanisms(
     const melodyVal = tuneAudioValue(State.currentFeatures.melody, State.visualTuning);
     if (melodyVal > 0.08) {
         let melodyDrive = Math.max(melodyVal, State.modulation.kineticTension);
-        setMechanismRingColor(State.visualTuning.circleHue + 25);
+        setMechanismRingColor(State.visualTuning.circleHue + 25, colors);
         drawMechanismRing(backend, cx, cy, {
             radius: (74 + melodyDrive * 70) * State.visualTuning.temporalRingSize,
             deformation: melodyDrive * 0.085,
-            colorR: mechanismRingColor[0],
-            colorG: mechanismRingColor[1],
-            colorB: mechanismRingColor[2],
+            colorR: colors.mechanismRingColor[0],
+            colorG: colors.mechanismRingColor[1],
+            colorB: colors.mechanismRingColor[2],
             alpha: (30 + melodyDrive * 78) * State.visualTuning.temporalRingAlpha,
             weight: (0.9 + melodyDrive * 1.2) * State.visualTuning.circleLineWeight,
             lobes: 5,
@@ -201,13 +220,13 @@ function drawCenterMechanisms(
     const vocalVal = tuneAudioValue(State.currentFeatures.vocal, State.visualTuning);
     if (vocalVal > 0.08) {
         let vocalDrive = Math.max(vocalVal, State.modulation.kineticTension * 0.82);
-        setMechanismRingColor(State.visualTuning.circleHue + 125);
+        setMechanismRingColor(State.visualTuning.circleHue + 125, colors);
         drawMechanismRing(backend, cx, cy, {
             radius: (106 + vocalDrive * 78) * State.visualTuning.temporalRingSize,
             deformation: vocalDrive * 0.055,
-            colorR: mechanismRingColor[0],
-            colorG: mechanismRingColor[1],
-            colorB: mechanismRingColor[2],
+            colorR: colors.mechanismRingColor[0],
+            colorG: colors.mechanismRingColor[1],
+            colorB: colors.mechanismRingColor[2],
             alpha: (24 + vocalDrive * 70) * State.visualTuning.temporalRingAlpha,
             weight: (1.2 + vocalDrive * 1.4) * State.visualTuning.circleLineWeight,
             lobes: 4,
@@ -218,13 +237,13 @@ function drawCenterMechanisms(
     const fxVal = tuneAudioValue(State.currentFeatures.fx, State.visualTuning);
     if (fxVal > 0.08) {
         let fxDrive = Math.max(fxVal, State.modulation.spectralChaos);
-        setMechanismRingColor(State.visualTuning.circleHue + 80);
+        setMechanismRingColor(State.visualTuning.circleHue + 80, colors);
         drawMechanismRing(backend, cx, cy, {
             radius: (52 + fxDrive * 82 + State.modulation.spectralChaos * 28) * State.visualTuning.temporalRingSize,
             deformation: fxDrive * 0.15,
-            colorR: mechanismRingColor[0],
-            colorG: mechanismRingColor[1],
-            colorB: mechanismRingColor[2],
+            colorR: colors.mechanismRingColor[0],
+            colorG: colors.mechanismRingColor[1],
+            colorB: colors.mechanismRingColor[2],
             alpha: (24 + fxDrive * 92) * State.visualTuning.temporalRingAlpha,
             weight: (0.8 + fxDrive * 1.6) * State.visualTuning.circleLineWeight,
             lobes: 9,
@@ -233,13 +252,13 @@ function drawCenterMechanisms(
     }
 
     if (resonance.strength > 0.05) {
-        setMechanismRingColor(State.visualTuning.circleHue + 160);
+        setMechanismRingColor(State.visualTuning.circleHue + 160, colors);
         drawMechanismRing(backend, cx, cy, {
             radius: (138 + resonance.strength * 96 + sectionEnergy * 32) * State.visualTuning.temporalRingSize,
             deformation: resonance.strength * 0.065,
-            colorR: mechanismRingColor[0],
-            colorG: mechanismRingColor[1],
-            colorB: mechanismRingColor[2],
+            colorR: colors.mechanismRingColor[0],
+            colorG: colors.mechanismRingColor[1],
+            colorB: colors.mechanismRingColor[2],
             alpha: (18 + resonance.strength * 86) * State.visualTuning.temporalRingAlpha,
             weight: (1 + resonance.strength * 1.6) * State.visualTuning.circleLineWeight,
             lobes: 3 + ((resonance.pattern?.occurrences.length || 0) % 4),
@@ -274,8 +293,8 @@ function drawMechanismRing(
     backend.endShape();
 }
 
-function setMechanismRingColor(hue: number) {
-    hueToRgbInto(mechanismRingColor, hue);
+function setMechanismRingColor(hue: number, colors: TemporalColorBuffers) {
+    hueToRgbInto(colors.mechanismRingColor, hue);
 }
 
 function getGlitchOffset(a: number, b: number, salt: number) {

@@ -2,16 +2,15 @@ import p5 from 'p5';
 import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
-import { drawClassicPlexusEffect } from './ClassicPlexusEffect';
-import { drawTemporalMusicEffect } from './TemporalMusicEffect';
 import { applyTuningMorph, tuneAudioValue, writeModulationBus } from '../config/visualTuning';
 import { P5RendererBackend } from './P5RendererBackend';
 import type { DashboardUI } from '../ui/DashboardUI';
 import type { AudioEngine } from '../audio/AudioEngine';
 import type { AudioFrame, VisualCueKind, VisualFeatureFrame } from '../types';
 import { VisualDirectorFSM } from './VisualDirectorFSM';
+import type { StyleRegistry } from './StyleRegistry';
 
-export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine: AudioEngine) {
+export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine: AudioEngine, styleRegistry: StyleRegistry) {
     new p5((p: p5) => {
         let particles: Particle[] = [];
         let shockwaves: Shockwave[] = [];
@@ -134,11 +133,8 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
 
             if (p.frameCount % 4 === 0) ui.updateDashboard();
 
-            if (State.visualMode === 'temporal') {
-                drawTemporalMusicEffect(backend, particles, shockwaves);
-            } else {
-                drawClassicPlexusEffect(backend, particles, shockwaves);
-            }
+            const visualIdentity = styleRegistry.get(State.visualMode);
+            visualIdentity.draw(backend, particles, shockwaves);
 
             State.visualTuning.audioSensitivity = originalGlobalSensitivity;
         };

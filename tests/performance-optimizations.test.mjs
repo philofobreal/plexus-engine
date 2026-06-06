@@ -45,9 +45,10 @@ test('visual hot paths reuse per-frame color buffers and avoid repeated loop col
   const temporal = read('src/visuals/TemporalMusicEffect.ts');
 
   assert.match(config, /export function hueToRgbInto/);
-  assert.match(classic, /const lineColor: \[number, number, number\]/);
-  assert.match(classic, /hueToRgbInto\(lineColor, State\.visualTuning\.lineHue\)/);
-  assert.match(temporal, /hueToRgbInto\(lineColor, State\.visualTuning\.lineHue \+ melody \* 45 \+ fx \* 30/);
+  assert.match(classic, /private readonly lineColor: \[number, number, number\]/);
+  assert.match(classic, /hueToRgbInto\(this\.lineColor, State\.visualTuning\.lineHue\)/);
+  assert.match(temporal, /private readonly colors: TemporalColorBuffers/);
+  assert.match(temporal, /hueToRgbInto\(colors\.lineColor, State\.visualTuning\.lineHue \+ melody \* 45 \+ fx \* 30/);
   assert.match(temporal, /const polygonDistanceFactor = maxDistSq \* 0\.55 \* State\.visualTuning\.polygonSize/);
 });
 
@@ -90,8 +91,8 @@ test('temporal mechanism rings pass numeric RGB components without sharing color
 
   assert.match(temporal, /opts: \{ radius: number, deformation: number, colorR: number, colorG: number, colorB: number/);
   assert.match(temporal, /backend\.stroke\(opts\.colorR, opts\.colorG, opts\.colorB, opts\.alpha\)/);
-  assert.match(temporal, /setMechanismRingColor\(State\.visualTuning\.circleHue/);
-  assert.match(temporal, /colorR: mechanismRingColor\[0\]/);
+  assert.match(temporal, /setMechanismRingColor\(State\.visualTuning\.circleHue, colors\)/);
+  assert.match(temporal, /colorR: colors\.mechanismRingColor\[0\]/);
   assert.doesNotMatch(temporal, /color:\s*hueToRgbInto\(ringColor/);
   assert.doesNotMatch(temporal, /color:\s*hueToRgbInto\(mechanismRingColor/);
   assert.doesNotMatch(temporal, /color: number\[\]/);

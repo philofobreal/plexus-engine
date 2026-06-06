@@ -6,7 +6,7 @@ export interface BeatEvent {
 
 export type AutoState = 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
 
-export type VisualMode = 'classic' | 'temporal';
+export type VisualMode = 'classic' | 'temporal' | 'dark-techno' | 'organic-ambient' | 'cyberpunk';
 
 export type MorphCurve = 'linear' | 'easeInOut' | 'exponential';
 

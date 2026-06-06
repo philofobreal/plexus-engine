@@ -1,7 +1,7 @@
 import type { AudioEngine } from '../audio/AudioEngine';
 import { normalizeVisualTuningConfig, visualTuningControls, type VisualTuningKey } from '../config/visualTuning';
 import { State } from '../state/store';
-import type { RenderState } from '../types';
+import type { RenderState, VisualMode } from '../types';
 import { GestureEngine } from './GestureEngine';
 import { dashboardMetricMetadata, type DashboardMetricKey } from './metricMetadata';
 import { TimelineCanvas } from './TimelineCanvas';
@@ -205,7 +205,7 @@ export class DashboardUI {
 
         (this.els.visualMode as HTMLSelectElement).addEventListener('change', (e) => {
             const mode = (e.target as HTMLSelectElement).value;
-            State.visualMode = mode === 'temporal' ? 'temporal' : 'classic';
+            if (isVisualMode(mode)) State.visualMode = mode;
         });
 
         this.els.toggleTuningPanel.addEventListener('click', () => {
@@ -1286,7 +1286,7 @@ export class DashboardUI {
                 fxChaos?: unknown;
             };
         };
-        if (preset.visualMode === 'classic' || preset.visualMode === 'temporal') {
+        if (typeof preset.visualMode === 'string' && isVisualMode(preset.visualMode)) {
             State.visualMode = preset.visualMode;
             (this.els.visualMode as HTMLSelectElement).value = State.visualMode;
         }
@@ -1446,4 +1446,12 @@ export class DashboardUI {
 
         this.requestDashboardTimelineDraw();
     }
+}
+
+function isVisualMode(value: string): value is VisualMode {
+    return value === 'classic' ||
+        value === 'temporal' ||
+        value === 'dark-techno' ||
+        value === 'organic-ambient' ||
+        value === 'cyberpunk';
 }

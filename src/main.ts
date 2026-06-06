@@ -2,6 +2,7 @@ import './style.css';
 import { AudioEngine } from './audio/AudioEngine';
 import { DashboardUI } from './ui/DashboardUI';
 import { startPlexusRenderer } from './visuals/PlexusRenderer';
+import { createDefaultStyleRegistry } from './visuals/StyleRegistry';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="canvas-container" tabindex="0" aria-label="Visual playback surface"></div>
@@ -38,6 +39,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <select id="visual-mode" class="mode-select">
             <option value="classic">Classic</option>
             <option value="temporal">Temporal</option>
+            <option value="dark-techno">Dark Techno</option>
+            <option value="organic-ambient">Organic Ambient</option>
+            <option value="cyberpunk">Cyberpunk</option>
           </select>
         </div>
 
@@ -129,5 +133,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
 const engine = new AudioEngine();
 const ui = new DashboardUI(engine);
+const styleRegistry = createDefaultStyleRegistry();
 
-startPlexusRenderer('canvas-container', ui, engine);
+startPlexusRenderer('canvas-container', ui, engine, styleRegistry);
