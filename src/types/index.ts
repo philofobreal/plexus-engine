@@ -97,6 +97,15 @@ export interface ModulationState {
     macroMomentum: number;
 }
 
+export type DirectorState = 'IDLE' | 'INTRO_BREAK' | 'BUILDUP' | 'DROP' | 'GLITCH_LOW_DROP';
+
+export interface DirectorOutput {
+    state: DirectorState;
+    centripetalOrbit: number;
+    glitchIntensity: number;
+    invertBackground: boolean;
+}
+
 export interface AudioFrame {
     /** Normalized RMS energy. */
     e: number;

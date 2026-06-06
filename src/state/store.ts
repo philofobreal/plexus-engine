@@ -1,5 +1,5 @@
 import { cloneDefaultVisualTuning } from '../config/visualTuning';
-import type { AudioFrame, BeatEvent, ModulationState, SectionOverride, TrackAnalysis, VisualFeatureFrame, VisualCueKind, VisualMode } from '../types';
+import type { AudioFrame, BeatEvent, DirectorOutput, ModulationState, SectionOverride, TrackAnalysis, VisualFeatureFrame, VisualCueKind, VisualMode } from '../types';
 
 const emptyFeatures: VisualFeatureFrame = {
     melody: 0,
@@ -37,6 +37,13 @@ const emptyModulation: ModulationState = {
     macroMomentum: 0
 };
 
+const emptyDirectorOutput: DirectorOutput = {
+    state: 'IDLE',
+    centripetalOrbit: 0,
+    glitchIntensity: 0,
+    invertBackground: false
+};
+
 export const State = {
     isPlaying: false,
     duration: 0,
@@ -69,6 +76,7 @@ export const State = {
     beatDecay: 0,
     denseImpactFlash: 0,
     modulation: { ...emptyModulation } as ModulationState,
+    directorOutput: { ...emptyDirectorOutput } as DirectorOutput,
     visualTuning: cloneDefaultVisualTuning(),
     targetTuning: cloneDefaultVisualTuning()
 };
