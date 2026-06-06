@@ -46,6 +46,8 @@ const emptyDirectorOutput: DirectorOutput = {
 
 export const State = {
     isPlaying: false,
+    isExporting: false,
+    exportTime: 0,
     duration: 0,
     currentTime: 0,
     bpm: 0,

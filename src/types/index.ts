@@ -224,6 +224,8 @@ export interface GestureCallbacks {
 }
 
 export interface RenderState {
+    isExporting: boolean;
+    exportTime: number;
     currentTime: number;
     duration: number;
     zoom: number;
