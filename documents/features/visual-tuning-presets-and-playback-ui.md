@@ -83,6 +83,26 @@ Scrubbing is buffered for performance. Pointer and slider drag update `private s
 
 Dashboard refresh does not automatically redraw the timeline canvas. `updateDashboard()` asks `requestDashboardTimelineDraw()` to decide whether a redraw is visible. Redraw is allowed when `TrackAnalysis` changes, the canvas size changes, `State.zoom` or `State.pan` changes, scrub state changes, or the playhead has moved by at least one visible pixel. This keeps frequent dashboard text updates from repainting dense timeline layers unnecessarily.
 
+## Offline WebM Export
+
+The timeline action bar includes a compact export workflow for creating WebM renders of the current visual performance.
+
+Implemented capabilities:
+
+- Resolution selector: `720p`, `1080p`, `4K`.
+- Aspect selector: `16:9`, `9:16`, `1:1`.
+- `Export` starts a fixed-60-FPS offline render.
+- `Stop` finalizes and downloads a partial WebM from the frames encoded so far.
+- `Cancel` aborts and discards the partial output.
+- Export progress is displayed on the export button as a percentage.
+- Successful output downloads as `plexus-visual.webm`.
+- The exported video contains a top-left Plexus metadata card with brand label, track name, BPM badge, and beat-reactive cyan pulse.
+- When browser WebCodecs audio support is available, the export worker writes an Opus audio track from the loaded `AudioBuffer`; otherwise the export remains video-only.
+
+Export disables playback and editing interactions while active. Canvas click, canvas keyboard controls, and global envelope-drawing shortcuts return immediately when `State.isExporting` is true.
+
+Download URLs are revoked after a short delay rather than immediately after synthetic link click, because some browsers need time to enqueue the Blob resource.
+
 ## Metrics And Chrome
 
 The dashboard chrome was simplified for performance use and VJ-style presentation.
@@ -114,6 +134,8 @@ The feature is split across these runtime layers:
 - `src/ui/DashboardUI.ts`: facade/orchestrator for DOM controls, preset loading, panel visibility, dragging, playback shortcuts, metrics projection, timeline interaction state, `State` writes, and `AudioEngine` handoff. It coordinates the timeline submodules instead of directly owning raw gesture normalization or canvas drawing.
 - `src/ui/GestureEngine.ts`: generic deep input-normalization module for mouse, wheel, pointer-like drag, hover, double-click, touch, and pinch zoom input. It emits normalized semantic callbacks and has no knowledge of playback, sections, presets, or rendering.
 - `src/ui/TimelineCanvas.ts`: declarative timeline renderer. It consumes `RenderState`, owns HDPI canvas sizing, section/cue/playhead drawing, sensitivity and preset labels, spectral overlays, and waveform offscreen caching.
+- `src/export/WebMExporter.ts`: deep main-thread export module. It owns offline time stepping, p5 loop suppression, canvas resize/restore, metadata card drawing, `VideoFrame` capture, audio slicing, stop/cancel behavior, and worker dispatch.
+- `src/export/export.worker.ts`: dependency-free WebCodecs and WebM muxing worker. It owns VP8/VP9 video encoding, optional Opus audio encoding, and EBML/WebM byte layout.
 - `src/audio/AudioEngine.ts`: loop-on-end playback behavior.
 - `src/visuals/`: render usage of tuning values, background color, and sensitivity-scaled audio data.
 - `src/visuals/VisualIdentity.ts` and `src/visuals/StyleRegistry.ts`: the visual style contract and registry/factory used by the renderer and UI-selected mode state.

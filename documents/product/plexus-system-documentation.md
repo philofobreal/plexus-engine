@@ -26,13 +26,14 @@ A szoftver pozicionalasa:
 
 1. **Zenei kontextus-vezerelt (Audio-First):** Nem egyszeru clip-launcher vagy OBS widget, hanem zeneszerkezeti esemenyekre (melody, vocal, FX, buildup, drop) reagalo vizualis hangszer.
 2. **Offline track-analizis:** Felismeri a dal dramaturgiai ivet (intro, build, drop, break, peak, outro), es a feszultseggorbet elore anticipalva vezerli a reszecskek es sokszogek dinamikajat.
-3. **Produkcios es eloadoi fokusz:** A UI es a Tuning Layer a gyors preset-valtast, az atmenetek folytonossagat (morphing) es a tiszta stream kimenetet szolgalja.
+3. **Produkcios es eloadoi fokusz:** A UI, a Tuning Layer es az offline WebM export a gyors preset-valtast, az atmenetek folytonossagat (morphing), a tiszta stream kimenetet es a megoszthato video-renderelest szolgalja.
 
 ### Jovobeli Termekutvonal
 
 A fejlesztesek fokuszaban nem ujabb grafikai effektek, hanem az **eloadoi munkafolyamat es integracio (preset + export + performance workflow)** tamogatasa all:
 
 * Elo vizualis presetek exportalasa, mentese es betoltese (Preset Management).
+* Bongeszoben futo, worker-alapu offline WebM export vizjelkartyaval es optionalis Opus hangsavval.
 * Megoszthato shareable URL konfiguraciok generalasa.
 * OBS-barat, chroma-key es transzparens hatterrel rendelkezo tiszta kimeneti modok.
 * MIDI mapping es hardveres BPM szinkronizacio tamogatasa a jovoben.
@@ -47,6 +48,7 @@ A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus m
 4. **Analysis Engine (`src/audio/analyzer.worker.ts`):** dedikalt Web Worker. 1024 mintas Hann-windowed FFT pipeline-t hasznal, spektralis fluxust, relativ savenergiakat, centroidot es flatness erteket szamol, majd `AudioFrame`, `BeatEvent` es `TrackAnalysis` kimenetet publikal.
 5. **Shared contracts/state (`src/types/index.ts`, `src/state/store.ts`):** tarolja a megosztott tipusokat, az elfogadott analizis eredmenyeket, a vizualis modot, loop allapotot, aktualis frame-et, cue allapotokat, modulacios buszt, elo tuningot es target tuningot.
 6. **Render Engine (`src/visuals/`):** p5 canvas renderer backend adapterrel, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `StyleRegistry`-bol lekert `VisualIdentity` implementaciokat kezeli. A zene-dramaturgiai allapotszabalyozast a `VisualDirectorFSM.ts` modul vegzi, majd `DirectorOutput` formaban ad render-facing jeleket az identitasoknak.
+7. **Offline Export (`src/export/`):** a `WebMExporter` a fo szalon vezerli az offline idohurkot, a p5 canvas atmeretezeset, a `VideoFrame` elkapast, az audio buffer szeletelest es a vizjelkartyat. Az `export.worker.ts` WebCodecs `VideoEncoder`/optionalis `AudioEncoder` hasznalataval es pure TypeScript EBML/WebM muxerrel allit elo Blob-ot.
 
 ## 3. Funkcionalis Specifikacio
 
@@ -163,6 +165,33 @@ Az `AudioBufferSourceNode` one-shot objektum. Pause, stop, seek, replacement vag
 
 Natural end eseten `Loop` modban a lejatszas 0:00-rol ujraindul. `Once` modban az engine reseteli az idot es playback ended callbacket kuld a UI/render retegnek.
 
+### 4.5. Offline WebM Export
+
+Az export nem a live audio orat hasznalja. A `State.isExporting` es `State.exportTime` mezok az offline render clock szerzodes reszei. Export kozben a renderer az alabbi idoforrast hasznalja:
+
+```ts
+let ct = State.isExporting ? State.exportTime : engine.getCurrentTime();
+```
+
+A `WebMExporter.startExport()` kozvetlenul `p5Instance.noLoop()` hivasra valt, majd frame-enkent allitja a `State.exportTime` erteket es `p5Instance.redraw()` hivasal kenyszeriti ki a rajzolast. Cleanup soran visszaallitja a canvas meretet, `State.isExporting = false`, `State.exportTime = 0`, majd `p5Instance.loop()` kovetkezik. A renderer nem pollolja az export allapotot es nem birtokolja az export loop/no-loop lifecycle-t.
+
+Az export hurok sorrendje kifejezett szerzodes:
+
+1. `State.exportTime = i / fps`
+2. `p5Instance.redraw()`
+3. `drawMetadataCard(width, height)`
+4. `new VideoFrame(canvas, { timestamp })`
+5. `await nextAnimationFrame()`
+6. worker `encode_frame`
+
+Ez garantalja, hogy a bal felso zenei informacios kartya/vizjel benne legyen az elkapott kepkockaban, mielott a bongeszo ujabb feladatban puffert cserelhetne vagy torolhetne. Canvas resize utan az exporter egy kulon animation frame-et var az elso frame elott, hogy a p5/bongeszo backing store stabil legyen.
+
+A metadata kartya tartalma: sotet rounded panel, ritmusra pulzalo cian pont (`State.beatDecay`), `PLEXUS ENGINE` felirat, a betoltott track neve es optionalis BPM badge. A track nev tul hosszu esetben `...` suffixszel vagodik. A rajzolas `ctx.save()` / `ctx.restore()` parban tortenik.
+
+Ha a betoltott `AudioBuffer` elerheto, az exporter frame-enkent ketcsatornas planar `Float32Array` hangszeletet kuld a workernek. A worker megprobal Opus `AudioEncoder`-t inicializalni; ha ez nem elerheto, video-only exporttal folytatja. A WebM muxer video trackje 1-es (`0x81`), audio trackje 2-es (`0x82`) SimpleBlock track id-t hasznal.
+
+Az UI export kozben letiltja a playback/seek/file input utakat es blokkolja a canvas click/keydown, illetve global drawing shortcut interakciokat. A `Stop` reszleges Blob mentest indit: megszakitja a frame hurkot, de lefuttatja a worker `finalize_export` agat. A `Cancel` eldobja a folyamatot. Letolteskor az object URL visszavonasa 1000 ms kesleltetessel tortenik.
+
 ## 5. ADR Osszefoglalo
 
 ### ADR-001: Nativ Web Audio API vs. p5.sound
@@ -216,6 +245,9 @@ src/
 |   `-- store.ts
 |-- types/
 |   `-- index.ts
+|-- export/
+|   |-- WebMExporter.ts
+|   `-- export.worker.ts
 |-- ui/
 |   `-- DashboardUI.ts
 |-- visuals/
@@ -302,6 +334,13 @@ export interface AnalysisErrorMessage {
     errorCode: string;
     message: string;
 }
+
+export interface RenderState {
+    isExporting: boolean;
+    exportTime: number;
+    currentTime: number;
+    duration: number;
+}
 ```
 
 ## 8. Validacio Es Tesztek
@@ -322,3 +361,4 @@ Az aktualis contract tesztek a `tests/contracts.test.mjs` fajlban vannak. Lefedi
 * modulacios busz, morphing, dramaturgy, renderer boundary es stream profil viselkedest.
 * performance preset szerzodest, sticky preset normalizalast, timeline draw/preset paint interakciokat, playback fade-et es waveform cache optimalizaciot.
 * ot visual identity determinisztikus, bongeszo- es p5-fuggetlen mock render futasat ot zenei referenciaprofilon keresztul (`tests/styles-deterministic.test.mjs`).
+* offline WebM export lifecycle-t, p5 `noLoop()`/`loop()` tulajdonlast, renderer polling tilalmat, resize-settle sorrendet, vizjel kartya rajzolast es `stopAndSave()` reszleges Blob lezarast (`tests/export-deterministic.test.mjs`).

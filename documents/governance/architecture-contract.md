@@ -12,6 +12,7 @@ The app is a Vite TypeScript project with explicit runtime layers:
 - Shared mutable state: `src/state/`
 - Shared static contracts: `src/types/`
 - DOM controls and dashboard projection: `src/ui/`
+- Offline export orchestration and encoding: `src/export/`
 - p5 canvas rendering and backend adaptation: `src/visuals/`
 
 The UI layer has an explicit internal shape:
@@ -28,6 +29,9 @@ Allowed dependency directions:
 - `src/audio/` may import `src/state/`, `src/types/`, and worker modules.
 - `src/audio/analyzer.worker.ts` may import types only.
 - `src/ui/` may import `src/audio/`, `src/state/`, and types.
+- `src/ui/DashboardUI.ts` may import `src/export/WebMExporter.ts` to orchestrate user-triggered exports, but it must treat the exporter as a black-box workflow module.
+- `src/export/WebMExporter.ts` may import `src/state/` and its worker module. It may receive `AudioEngine` through construction and use only the public `getAudioBuffer()` surface.
+- `src/export/export.worker.ts` must remain dependency-free from DOM, p5, UI, audio engine, renderer, and shared mutable state. It may use worker globals, WebCodecs, `Blob`, typed arrays, and local pure TypeScript EBML helpers.
 - Within `src/ui/`, `DashboardUI.ts` may compose `GestureEngine.ts` and `TimelineCanvas.ts`; those submodules must stay independent from each other.
 - `GestureEngine.ts` may depend on DOM event and geometry APIs plus shared callback types, but must not import `src/state/`, `src/audio/`, `src/visuals/`, or timeline rendering modules.
 - `TimelineCanvas.ts` may depend on canvas APIs and shared render types, but must not import `src/state/`, `src/audio/`, `src/visuals/`, or gesture modules.
@@ -43,6 +47,8 @@ Forbidden dependency directions:
 - State to UI, audio engine, renderer, worker, DOM, or p5.
 - Renderer to UI implementation details except through an explicit composition boundary.
 - UI to worker internals or DSP algorithms.
+- Export worker to application runtime modules.
+- Renderer-owned polling for export loop state. Export loop/no-loop ownership belongs to `WebMExporter`.
 - Gesture or timeline renderer submodules to application-level state ownership. Gesture input stays generic; timeline rendering receives data through `RenderState`.
 - Types to runtime modules.
 
@@ -57,6 +63,8 @@ Mode-specific visual implementations should live in separate `VisualIdentity` im
 - File decode and analysis request creation belong to audio.
 - Worker compute lifecycle belongs to audio plus worker; publication of accepted results belongs to audio.
 - Playback start, pause, seek, stop, and end belong to audio.
+- Offline export frame timing, p5 loop suppression, export canvas resize/restore, `VideoFrame` capture, audio slicing, watermark drawing, and stop/cancel semantics belong to `src/export/WebMExporter.ts`.
+- WebM byte layout, WebCodecs encoder lifecycle, and muxing belong to `src/export/export.worker.ts`.
 - Event consumption for visual effects belongs to visuals, but event index reset rules are part of the playback synchronization contract.
 - DOM enable/disable states and dashboard text belong to UI.
 
@@ -77,6 +85,7 @@ Every shared state field needs a clear owner:
 - UI owns DOM projection and user input dispatch.
 - Visual mode selection is user input owned by UI and stored in shared state as an explicit render-facing setting. Preset loading may update this field only after validating the selected id against the supported `VisualMode` union.
 - UI owns `State.targetTuning` writes from sliders and presets; visuals own interpolation into `State.visualTuning`.
+- `State.isExporting` and `State.exportTime` are export-owned render clock fields. `WebMExporter` writes them during offline export; `PlexusRenderer` and timeline/dashboard projections consume them. Export must reset both fields in cleanup.
 - State module owns shape and initialization defaults.
 
 When ownership is ambiguous, add a small explicit API or handoff contract instead of adding hidden direct writes.

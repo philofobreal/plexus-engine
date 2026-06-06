@@ -14,6 +14,7 @@ The maintained app is a Vite + TypeScript project, not a single-file HTML protot
 6. **UI projection:** `src/ui/DashboardUI.ts` owns controls, visual mode selection, enabled/disabled states, dashboard text, seek display, dramaturgy timeline drawing, and error projection.
 7. **Visual rendering:** `src/visuals/` owns p5 rendering, particle lifecycle, shockwave lifecycle, beat-event consumption, visual cue consumption, visual identity registration, and effect-mode delegation. `PlexusRenderer.ts` adapts p5 through `P5RendererBackend` and delegates drawing to the current `VisualIdentity` from `StyleRegistry`. Built-in identities draw through `VisualRendererBackend`.
 8. **Visual director:** `src/visuals/VisualDirectorFSM.ts` is the deep state-control module for render-time music dramaturgy. It owns dynamic thresholds, LOW-state dampening, drop anticipation, buildup boost, glitch decay, hysteresis, and transition cooldown behavior.
+9. **Offline export:** `src/export/WebMExporter.ts` owns the main-thread offline export loop and `src/export/export.worker.ts` owns WebCodecs encoding plus pure TypeScript WebM muxing.
 
 ## Worker Contract
 
@@ -48,6 +49,16 @@ The accepted worker failure payload is:
 `trackAnalysis` is the offline visual-music layer. It contains bar-level dynamics, section-level structure, recurring temporal patterns, visual cue events, significant moments, per-frame feature vectors for melody, vocal, fx, density, brightness, and tension, plus dramaturgical `buildupConfidence`, `spectralPivot`, and `tensionTrends`. `VisualFeatureFrame.melody` remains the internal/canonical melody feature signal for track analysis, cues, modulation, and temporal rendering; the dashboard-facing melody metric is Melody Presence from the `AudioFrame.m` compatibility projection. Effects should read these precomputed values from shared state during playback instead of running analysis in the render loop.
 
 The analyzer worker derives these values from a fixed 1024-sample FFT pipeline. Each frame is Hann-windowed before the FFT, then the worker calculates spectral flux, relative bass/mid/high magnitude bands, spectral centroid, and spectral flatness. Harmonic stability, pitched transient confidence, and a simple vocal formant ratio separate melody, vocal, and fx projections more reliably than raw band ratios alone. The render-facing `AudioFrame` values are smoothed compatibility projections of those spectral features: `e` is normalized RMS energy, `b` is a legacy field containing density projection rather than bass, `m` is a legacy field containing melody-presence projection rather than mid band, and `t` is a legacy field containing FX-presence projection rather than treble. Beat events are selected from spectral-flux peaks and classified from the smoothed density/fx context: fx presence above `0.6` emits type 3, otherwise density above `0.7` emits type 2, and all other accepted peaks emit type 1.
+
+The export worker is separate from the analyzer worker. It accepts:
+
+- `start_export`: width, height, fps, sample rate, optional bitrate and codec, and audio availability.
+- `encode_frame`: transferable `VideoFrame`, timestamp, and optional transferable stereo planar `Float32Array` audio payload.
+- `finalize_export`: flush encoders and return `{ type: 'export_done', blob }`.
+
+It uses WebCodecs `VideoEncoder` with VP9 by default (`vp09.00.10.08`) and optional VP8. Default bitrate scales from lower-resolution exports through roughly 6 Mbps at 1080p and 20 Mbps at 4K. When audio is available and the browser supports it, the worker configures `AudioEncoder` with Opus, source sample rate, and two channels. Missing `AudioEncoder` or `AudioData` is non-fatal: the worker posts an audio warning and continues video-only.
+
+`WebMMuxer` is local to `src/export/export.worker.ts`. It writes EBML header, Segment, Info, Tracks, Clusters, and SimpleBlock elements without external packages. Video track number is 1; audio track number is 2 with `A_OPUS` metadata and an OpusHead private header.
 
 Bar analysis is derived from BPM-aligned four-beat windows. Each `BarAnalysis` entry stores `start`, `end`, `energy`, `density`, `avgRms`, `peakRms`, BarAnalysis bass/mid/treble spectral-band ratios, macro `HIGH`/`LOW` state, and dominant feature. `TrackSection` entries also carry `avgRms` and `peakRms`. `AudioEngine.normalizeTrackAnalysis()` backfills these fields for older analysis payloads or presets that do not yet contain the expanded contract.
 
@@ -106,6 +117,10 @@ Timeline scrubbing is intentionally separated from audio seeking. `DashboardUI` 
 
 The top-right timeline control opens a fullscreen inspection overlay rather than performing a small height toggle. Overlay mode applies `.timeline-overlay-active` to the `.seek-container`, `.is-fullscreen-overlay` to `.timeline-wrapper`, and `body.timeline-overlay-open` to the page. The two-level structure makes the full seek container the fixed viewport shell while the wrapper becomes the absolute drawing surface. Closing the overlay restores the previous bottom placement and the last manually expanded height. The resize handle remains available outside overlay mode for compact-to-expanded manual inspection.
 
+The timeline action bar also contains the offline WebM export controls. `#export-resolution` selects `720p`, `1080p`, or `4K`; `#export-aspect` selects `16:9`, `9:16`, or `1:1`; `#export-video-btn` starts export after analysis; `#stop-export-btn` finalizes a partial WebM; and `#cancel-export-btn` aborts without saving. Export progress is shown on the export button label. The active file name from `#status-text` becomes the exported metadata-card track name.
+
+During export, `DashboardUI` disables playback, seek, upload, and export selectors, then ignores canvas click, canvas keydown, and the global drawing shortcut while `State.isExporting` is true. This prevents playback or envelope state changes from racing the offline frame loop.
+
 Zoom and pan are local UI viewport transforms. `timelineZoomLevel` is clamped from `1` to `16`; `timelineScrollOffsetTime` stores the visible window start in seconds. The visible duration is `State.duration / timelineZoomLevel`, time-to-x mapping is `((time - viewport.start) / viewport.duration) * width`, and x-to-time mapping is `viewport.start + (x / width) * viewport.duration`. Wheel zoom keeps the cursor's time stable by recalculating `timelineScrollOffsetTime` after the zoom change. Normal left drag always scrubs/seeks; Shift-drag or middle-button drag pans. During playback, `followTimelinePlayhead()` recenters the viewport when the playhead leaves the `15%..75%` visible range.
 
 Timeline hover uses a DOM tooltip instead of canvas text. `#timeline-tooltip` is positioned next to the pointer and reports the hovered time, zoom, section, bar state, RMS, BarAnalysis bass/mid/treble spectral-band ratios, buildup pressure, tension trend, and nearby cue where available. Keeping the tooltip in HTML avoids redrawing text-heavy canvas overlays on every pointer move.
@@ -127,12 +142,15 @@ Recent hot-path optimizations:
 - `DashboardUI.updateDashboard()` no longer causes an unconditional dramaturgy timeline redraw. Timeline redraw is throttled to visible changes in analysis, size, zoom, scroll, scrub state, or playhead movement of at least one visible pixel.
 - Playback remains render/main-thread limited during draw. `TrackAnalysis` is still produced offline by the worker and read during playback as accepted precomputed state; the cleanup reduces allocation, garbage collection, Canvas state churn, and paused/idle render load rather than moving analysis work.
 - UI chrome intentionally separates fast user-requested hide feedback (`400ms` after background unpin) from passive idle hiding (`2600ms`) so normal interaction stays forgiving while explicit hide feels immediate.
+- Offline export captures frames immediately after p5 redraw plus metadata-card drawing and before yielding to `requestAnimationFrame`. This protects the watermark from browser buffer swaps or canvas clears. The exporter still yields after capture so the UI can update progress and respond to stop/cancel.
+- Object URLs for exported WebM downloads are revoked after a `1000ms` timeout rather than synchronously after link removal, giving the browser download queue time to claim the Blob.
 
 Validation for these rendering and UI performance contracts should include TypeScript checking, Vite build, Node tests, and `git diff --check`. On Windows setups where package-manager shims such as `npm` are not on `PATH`, use the local `node_modules` entrypoints through the Codex bundled Node executable and report the exact fallback commands. The current Vite production build may still report a non-fatal chunk-size warning.
 
 Detailed documentation:
 
 - Feature record: `documents/features/visual-tuning-presets-and-playback-ui.md`
+- Offline export record: `documents/features/offline-webm-export.md`
 - Visual identity record: `documents/features/visual-identities.md`
 - Acceptance criteria: `documents/acceptance-criteria/visual-tuning-presets-and-playback-ui-acs.md`
 - Architecture decision: `documents/adr/ADR-001-visual-tuning-presets-and-playback-ui.md`

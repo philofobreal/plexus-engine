@@ -52,6 +52,7 @@ You can currently:
 - tune the look live
 - load JSON visual presets
 - copy/export visual tuning config
+- export browser-native WebM video with an embedded Plexus metadata card and optional Opus audio when supported
 - view realtime music metrics such as energy, density, melody presence, vocal, FX, beat impulse, dynamics, and the header BPM badge
 - use presentation-oriented UI behavior where the chrome can fade away during performance
 
@@ -103,7 +104,7 @@ The stronger path is:
 - OBS / stream-friendly output
 - live tuning and smooth preset morphing
 - eventually MIDI / controller / BPM-sync workflows
-- later: stronger export, collaboration, and WebGPU-oriented rendering
+- later: collaboration, controller mapping, and WebGPU-oriented rendering
 
 ## Tech stack
 
@@ -112,6 +113,7 @@ The stronger path is:
 - p5.js
 - Web Audio API
 - Web Worker based offline analysis
+- WebCodecs based offline WebM export worker
 - static deployment via GitHub Pages
 
 ## Development
