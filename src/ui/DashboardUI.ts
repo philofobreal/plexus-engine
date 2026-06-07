@@ -1,8 +1,9 @@
 import type { AudioEngine } from '../audio/AudioEngine';
+import { generatePerformancePlan } from '../automation/performancePlanGenerator';
 import { normalizeVisualTuningConfig, visualTuningControls, type VisualTuningKey } from '../config/visualTuning';
 import { WebMExporter, type ExportConfig } from '../export/WebMExporter';
 import { State } from '../state/store';
-import type { RenderState, VisualMode } from '../types';
+import type { MorphCurve, PerformanceAutomationPlan, PerformanceAutomationPoint, RenderState, TimelineLayers, VisualMode } from '../types';
 import { GestureEngine } from './GestureEngine';
 import { dashboardMetricMetadata, type DashboardMetricKey } from './metricMetadata';
 import { TimelineCanvas } from './TimelineCanvas';
@@ -15,8 +16,6 @@ export class DashboardUI {
     private presetCache = new Map<string, unknown>();
     private timelineTooltip: HTMLDivElement; // JAVÍTVA: Timeline tooltip példányhelye
     private isDraggingSlider = false;
-    private isDraggingThreshold = false;
-    private draggingSectionIdx: number | null = null;
     private isResizingTimeline = false;
     private isPanningTimeline = false;
     private isSeekingTimeline = false;
@@ -34,7 +33,16 @@ export class DashboardUI {
     private lastTimelineDrawZoom = 1;
     private lastTimelineDrawScroll = 0;
     private lastTimelineDrawScrubTime: number | null = null;
-    private lastTriggeredSectionIdx = -1;
+    private lastTriggeredAutomationPointId: string | null = null;
+    private selectedAutomationPoint: PerformanceAutomationPoint | null = null;
+    private hoveredPoint: PerformanceAutomationPoint | null = null;
+    private hoveredHandleType: 'start' | 'end' | 'sensitivity' | 'curve' | null = null;
+    private draggingAutomationPoint: PerformanceAutomationPoint | null = null;
+    private draggingSensitivityPoint: PerformanceAutomationPoint | null = null;
+    private draggingFullZone: PerformanceAutomationPoint | null = null;
+    private dragStartOffsetSec = 0;
+    private resizingMorphPoint: PerformanceAutomationPoint | null = null;
+    private timelineDragShiftKey = false;
     private metricTooltip: HTMLDivElement;
     private activeMetricCard: HTMLElement | null = null;
     private tuningDragOffset = { x: 0, y: 0 };
@@ -76,7 +84,20 @@ export class DashboardUI {
             timelineDrawTarget: document.getElementById('timeline-draw-target')!,
             timelinePresetBrush: document.getElementById('timeline-preset-brush')!,
             toggleTimelineDraw: document.getElementById('toggle-timeline-draw')!,
+            toggleTimelineSnap: document.getElementById('toggle-timeline-snap')!,
+            toggleTimelineFollow: document.getElementById('toggle-timeline-follow')!,
             toggleTimelineZoom: document.getElementById('toggle-timeline-zoom')!,
+            layerToggleWaveform: document.getElementById('layer-toggle-waveform')!,
+            layerToggleRms: document.getElementById('layer-toggle-rms')!,
+            layerToggleBuildup: document.getElementById('layer-toggle-buildup')!,
+            layerToggleAutomation: document.getElementById('layer-toggle-automation')!,
+            automationInspector: document.getElementById('automation-inspector')!,
+            inspectorTime: document.getElementById('inspector-time')!,
+            inspectorPreset: document.getElementById('inspector-preset')!,
+            inspectorDuration: document.getElementById('inspector-duration')!,
+            inspectorCurve: document.getElementById('inspector-curve')!,
+            inspectorAddBtn: document.getElementById('inspector-add-btn')!,
+            inspectorDeleteBtn: document.getElementById('inspector-delete-btn')!,
             exportResolution: document.getElementById('export-resolution')!,
             exportAspect: document.getElementById('export-aspect')!,
             exportVideoBtn: document.getElementById('export-video-btn')!,
@@ -109,8 +130,8 @@ export class DashboardUI {
         });
 
         this.engine.addPositionChangedListener(() => {
-            this.lastTriggeredSectionIdx = -1;
-            this.triggerSectionPresetAutomation();
+            this.lastTriggeredAutomationPointId = null;
+            this.triggerPerformanceAutomation();
         });
 
         this.engine.onAnalysisError = (message) => {
@@ -130,6 +151,8 @@ export class DashboardUI {
         this.initDashboardMetricTooltips();
         this.initDramaturgyTimeline();
         this.syncLoopUi();
+        this.syncTimelineSnapControl();
+        this.syncTimelineFollowControl();
         this.applyPresentationModeFromUrl();
         this.initChromeAutoHide();
         void this.loadVisualPresetList();
@@ -187,6 +210,10 @@ export class DashboardUI {
                 (this.els.exportVideoBtn as HTMLButtonElement).disabled = !this.canExport();
                 (this.els.upload as HTMLInputElement).disabled = false;
                 this.els.timeTot.innerText = this.formatTime(State.duration);
+                const plan = generatePerformancePlan(State.trackAnalysis, State.availablePresets, State.duration);
+                State.performancePlan = plan;
+                State.editedPerformancePlan = JSON.parse(JSON.stringify(plan));
+                void this.preloadPresetsForPlan(plan);
                 this.setPlaybackUi(false);
                 const buffer = this.engine.getAudioBuffer();
                 if (buffer) this.timelineCanvas.setAudioBuffer(buffer);
@@ -290,14 +317,30 @@ export class DashboardUI {
 
         window.addEventListener('keydown', (event) => {
             if (State.isExporting) return;
-            if (event.code !== 'KeyD' || this.isEditableEventTarget(event.target)) return;
-            event.preventDefault();
-            this.setTimelineDrawMode(!State.drawModeActive);
+            if (this.isEditableEventTarget(event.target)) return;
+            if (event.code === 'KeyD') {
+                event.preventDefault();
+                this.setTimelineDrawMode(!State.drawModeActive);
+            } else if (event.code === 'KeyS') {
+                event.preventDefault();
+                this.toggleTimelineSnapMode();
+            } else if (event.code === 'KeyF') {
+                event.preventDefault();
+                this.toggleTimelineFollowMode();
+            }
         });
 
         this.els.timelineDrawTarget.addEventListener('change', () => {
             this.syncTimelineDrawControls();
         });
+        this.els.toggleTimelineSnap.addEventListener('click', () => {
+            this.toggleTimelineSnapMode();
+        });
+        this.els.toggleTimelineFollow.addEventListener('click', () => {
+            this.toggleTimelineFollowMode();
+        });
+        this.initAutomationInspectorControls();
+        this.initTimelineLayerControls();
 
         this.initTuningPanelDrag();
 
@@ -365,9 +408,104 @@ export class DashboardUI {
         const drawTarget = this.els.timelineDrawTarget as HTMLSelectElement;
         const presetBrush = this.els.timelinePresetBrush as HTMLSelectElement;
         const isPresetBrush = drawTarget.value === 'preset';
-        drawTarget.classList.toggle('is-hidden', !State.drawModeActive);
-        presetBrush.classList.toggle('is-hidden', !State.drawModeActive || !isPresetBrush);
+        drawTarget.disabled = !State.drawModeActive;
+        drawTarget.style.opacity = State.drawModeActive ? '1' : '0.35';
+        drawTarget.style.pointerEvents = State.drawModeActive ? 'auto' : 'none';
+
+        const enablePresetBrush = State.drawModeActive && isPresetBrush;
+        presetBrush.disabled = !enablePresetBrush;
+        presetBrush.style.opacity = enablePresetBrush ? '1' : '0.35';
+        presetBrush.style.pointerEvents = enablePresetBrush ? 'auto' : 'none';
         this.els.toggleTimelineDraw.title = isPresetBrush ? 'Draw Preset Automation (D)' : 'Draw Sensitivity Envelope (D)';
+    }
+
+    private toggleTimelineSnapMode() {
+        State.snapToGrid = !State.snapToGrid;
+        this.syncTimelineSnapControl();
+    }
+
+    private syncTimelineSnapControl() {
+        this.els.toggleTimelineSnap.classList.toggle('is-active', State.snapToGrid);
+        this.els.toggleTimelineSnap.setAttribute('aria-pressed', State.snapToGrid ? 'true' : 'false');
+    }
+
+    private toggleTimelineFollowMode() {
+        State.followPlayhead = !State.followPlayhead;
+        this.syncTimelineFollowControl();
+    }
+
+    private syncTimelineFollowControl() {
+        this.els.toggleTimelineFollow.classList.toggle('is-active', State.followPlayhead);
+        this.els.toggleTimelineFollow.setAttribute('aria-pressed', State.followPlayhead ? 'true' : 'false');
+    }
+
+    private initAutomationInspectorControls() {
+        this.els.inspectorPreset.addEventListener('change', () => {
+            if (!this.selectedAutomationPoint) return;
+            this.selectedAutomationPoint.preset = (this.els.inspectorPreset as HTMLSelectElement).value;
+            this.requestTimelineDraw();
+        });
+
+        this.els.inspectorDuration.addEventListener('input', () => {
+            if (!this.selectedAutomationPoint) return;
+            const value = parseFloat((this.els.inspectorDuration as HTMLInputElement).value);
+            this.selectedAutomationPoint.morphDurationSec = this.constrainMorphDuration(
+                this.selectedAutomationPoint, value
+            );
+            this.requestTimelineDraw();
+        });
+
+        this.els.inspectorCurve.addEventListener('change', () => {
+            if (!this.selectedAutomationPoint) return;
+            const value = (this.els.inspectorCurve as HTMLSelectElement).value;
+            if (!this.isMorphCurve(value)) return;
+            this.selectedAutomationPoint.morphCurve = value;
+            this.requestTimelineDraw();
+        });
+
+        this.els.inspectorAddBtn.addEventListener('click', () => {
+            this.createAutomationPointAtTime(State.currentTime);
+        });
+
+        this.els.inspectorDeleteBtn.addEventListener('click', () => {
+            const point = this.selectedAutomationPoint;
+            if (!point || !State.editedPerformancePlan) return;
+            State.editedPerformancePlan.points = State.editedPerformancePlan.points.filter(candidate => candidate !== point);
+            this.selectedAutomationPoint = null;
+            this.draggingAutomationPoint = null;
+            this.hideAutomationInspector();
+            this.requestTimelineDraw();
+        });
+    }
+
+    private initTimelineLayerControls() {
+        const controls: Array<[keyof TimelineLayers, HTMLElement]> = [
+            ['waveform', this.els.layerToggleWaveform],
+            ['rms', this.els.layerToggleRms],
+            ['buildup', this.els.layerToggleBuildup],
+            ['automation', this.els.layerToggleAutomation]
+        ];
+
+        for (const [layer, button] of controls) {
+            this.syncTimelineLayerButton(button, State.timelineLayers[layer]);
+            button.addEventListener('click', () => {
+                State.timelineLayers[layer] = !State.timelineLayers[layer];
+                this.syncTimelineLayerButton(button, State.timelineLayers[layer]);
+                this.requestTimelineDraw();
+            });
+        }
+    }
+
+    private syncTimelineLayerButton(button: HTMLElement, active: boolean) {
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+
+    private setTimelineHover(point: PerformanceAutomationPoint | null, handleType: 'start' | 'end' | 'sensitivity' | 'curve' | null) {
+        if (this.hoveredPoint?.id === point?.id && this.hoveredHandleType === handleType) return;
+        this.hoveredPoint = point;
+        this.hoveredHandleType = handleType;
+        this.requestTimelineDraw();
     }
 
     private isEditableEventTarget(target: EventTarget | null) {
@@ -594,7 +732,7 @@ export class DashboardUI {
             onEnd: () => this.endTimelineInteraction(),
             onZoom: (delta, focusX) => this.zoomTimeline(delta, focusX),
             onHover: (focusX, focusY) => this.hoverTimeline(focusX, focusY),
-            onDoubleClick: (focusX) => this.splitTimelineAtPercent(focusX)
+            onDoubleClick: (focusX, focusY) => this.doubleClickTimeline(focusX, focusY)
         });
 
         drawButton.addEventListener('click', () => {
@@ -651,9 +789,13 @@ export class DashboardUI {
         }
 
         // JAVÍTVA: Robusztus leiratkozási biztosítékok a timeline elhagyásakor (ipari sztenderd)
-        canvas.addEventListener('pointerleave', () => this.hideTimelineTooltip());
-        canvas.addEventListener('mouseleave', () => this.hideTimelineTooltip());
-        window.addEventListener('blur', () => this.hideTimelineTooltip());
+        const clearTimelineHover = () => {
+            this.setTimelineHover(null, null);
+            this.hideTimelineTooltip();
+        };
+        canvas.addEventListener('pointerleave', clearTimelineHover);
+        canvas.addEventListener('mouseleave', clearTimelineHover);
+        window.addEventListener('blur', clearTimelineHover);
     }
 
     private toggleTimelineOverlay(wrapper: HTMLElement, zoomButton: HTMLButtonElement) {
@@ -690,36 +832,117 @@ export class DashboardUI {
             State.isDrawingEnvelope = true;
             this.isSeekingTimeline = false;
             this.isPanningTimeline = false;
-            this.isDraggingThreshold = false;
-            this.draggingSectionIdx = null;
             canvas.style.cursor = '';
             this.drawAutomationAtPointer(focusX, focusY);
             return true;
         }
 
-        const thresholdHit = this.getTimelineThresholdHit(focusX, focusY, 12);
-        if (button === 0 && thresholdHit) {
-            this.draggingSectionIdx = thresholdHit.sectionIdx;
-            this.isDraggingThreshold = true;
+        this.timelineDragShiftKey = shiftKey;
+        if (button === 0 && this.hoveredPoint && this.hoveredHandleType) {
+            const point = this.selectEditableAutomationPoint(this.hoveredPoint);
+            this.selectedAutomationPoint = point;
+            this.draggingAutomationPoint = !point.locked && this.hoveredHandleType === 'start' ? point : null;
+            this.resizingMorphPoint = !point.locked && this.hoveredHandleType === 'end' ? point : null;
+            this.draggingSensitivityPoint = !point.locked && this.hoveredHandleType === 'sensitivity' ? point : null;
+            this.draggingFullZone = !point.locked && this.hoveredHandleType === 'curve' ? point : null;
+            if (this.draggingFullZone) this.dragStartOffsetSec = this.getTimelineTimeAtPercent(focusX) - point.time;
             this.isSeekingTimeline = false;
             this.isPanningTimeline = false;
-            canvas.style.cursor = 'row-resize';
+            this.showAutomationInspector(point);
             return true;
+        }
+
+        const morphHandlePoint = button === 0 ? this.getAutomationMorphHandleHit(focusX, focusY, 6) : null;
+        if (morphHandlePoint) {
+            const point = this.selectEditableAutomationPoint(morphHandlePoint);
+            this.selectedAutomationPoint = point;
+            this.resizingMorphPoint = point.locked ? null : point;
+            this.draggingAutomationPoint = null;
+            this.draggingSensitivityPoint = null;
+            this.draggingFullZone = null;
+            this.isSeekingTimeline = false;
+            this.isPanningTimeline = false;
+            this.showAutomationInspector(point);
+            return true;
+        }
+
+        const startHandlePoint = button === 0 ? this.getAutomationPointHit(focusX, focusY, 8) : null;
+        if (startHandlePoint) {
+            const point = this.selectEditableAutomationPoint(startHandlePoint);
+            this.selectedAutomationPoint = point;
+            this.draggingAutomationPoint = point.locked ? null : point;
+            this.draggingSensitivityPoint = null;
+            this.draggingFullZone = null;
+            this.resizingMorphPoint = null;
+            this.isSeekingTimeline = false;
+            this.isPanningTimeline = false;
+            this.showAutomationInspector(point);
+            return true;
+        }
+
+        const sensitivityPoint = button === 0 ? this.getAutomationSensitivityHit(focusX, focusY) : null;
+        if (sensitivityPoint) {
+            const point = this.selectEditableAutomationPoint(sensitivityPoint);
+            this.selectedAutomationPoint = point;
+            this.draggingSensitivityPoint = point.locked ? null : point;
+            this.draggingAutomationPoint = null;
+            this.draggingFullZone = null;
+            this.resizingMorphPoint = null;
+            this.isSeekingTimeline = false;
+            this.isPanningTimeline = false;
+            this.showAutomationInspector(point);
+            return true;
+        }
+
+        const zoneMovePoint = button === 0 ? this.getAutomationZoneMoveHit(focusX, focusY) : null;
+        if (zoneMovePoint) {
+            const point = this.selectEditableAutomationPoint(zoneMovePoint);
+            this.selectedAutomationPoint = point;
+            this.draggingFullZone = point.locked ? null : point;
+            this.draggingAutomationPoint = null;
+            this.draggingSensitivityPoint = null;
+            this.resizingMorphPoint = null;
+            this.isSeekingTimeline = false;
+            this.isPanningTimeline = false;
+            this.showAutomationInspector(point);
+            return true;
+        }
+
+        const automationPoint = button === 0 ? this.getAutomationPointHit(focusX, focusY, 10) : null;
+        if (automationPoint) {
+            const point = this.selectEditableAutomationPoint(automationPoint);
+            this.selectedAutomationPoint = point;
+            this.draggingAutomationPoint = point.locked ? null : point;
+            this.draggingSensitivityPoint = null;
+            this.draggingFullZone = null;
+            this.resizingMorphPoint = null;
+            this.isSeekingTimeline = false;
+            this.isPanningTimeline = false;
+            this.showAutomationInspector(point);
+            return true;
+        }
+
+        if (button === 0 && this.isAutomationLaneHit(focusY)) {
+            this.selectedAutomationPoint = null;
+            this.draggingAutomationPoint = null;
+            this.draggingSensitivityPoint = null;
+            this.draggingFullZone = null;
+            this.resizingMorphPoint = null;
+            this.hideAutomationInspector();
         }
 
         if (button === 1 || shiftKey) {
             this.isPanningTimeline = true;
             this.isSeekingTimeline = false;
-            this.isDraggingThreshold = false;
             canvas.classList.add('is-panning');
             return true;
         }
 
         if (button === 0) {
+            this.timelineDragShiftKey = shiftKey;
             this.isSeekingTimeline = true;
             this.isPanningTimeline = false;
-            this.isDraggingThreshold = false;
-            this.setScrubTime(this.getTimelineTimeAtPercent(focusX));
+            this.setScrubTime(this.getSnappedTimelineTimeAtPercent(focusX, shiftKey));
             return true;
         }
 
@@ -727,24 +950,42 @@ export class DashboardUI {
     }
 
     private moveTimelineInteraction(focusX: number, focusY: number, deltaX: number) {
-        if (State.isDrawingEnvelope) {
-            this.drawAutomationAtPointer(focusX, focusY);
+        if (this.draggingAutomationPoint) {
+            const rawTime = this.getSnappedTimelineTimeAtPercent(focusX, this.timelineDragShiftKey);
+            const newTime = this.constrainPointTime(this.draggingAutomationPoint, rawTime);
+            this.draggingAutomationPoint.time = newTime;
+            this.els.inspectorTime.innerText = this.formatTime(newTime);
+            this.requestTimelineDraw();
             return;
         }
 
-        if (this.isDraggingThreshold && this.draggingSectionIdx !== null) {
-            const metrics = this.getTimelineGraphMetrics();
-            if (!metrics) return;
-            const mouseY = focusY * metrics.rect.height;
-            const normVal = this.clamp(1 - (mouseY - metrics.topPad) / metrics.graphHeight, 0.0, 1.0);
-            const sensVal = 0.1 + normVal * 3.9;
-            const key = `section-${this.draggingSectionIdx}`;
-            if (!State.sectionOverrides[key]) {
-                State.sectionOverrides[key] = { sensitivity: sensVal };
-            } else {
-                State.sectionOverrides[key].sensitivity = sensVal;
-            }
+        if (this.draggingSensitivityPoint) {
+            this.draggingSensitivityPoint.intensity = this.getAutomationIntensityAtPercent(focusY);
             this.requestTimelineDraw();
+            return;
+        }
+
+        if (this.draggingFullZone) {
+            const rawTime = this.getSnappedTimelineTimeAtPercent(focusX, this.timelineDragShiftKey) - this.dragStartOffsetSec;
+            const newTime = this.constrainPointTime(this.draggingFullZone, rawTime);
+            this.draggingFullZone.time = newTime;
+            this.els.inspectorTime.innerText = this.formatTime(newTime);
+            this.requestTimelineDraw();
+            return;
+        }
+
+        if (this.resizingMorphPoint) {
+            const rawEnd = this.getTimelineTimeAtPercent(focusX);
+            const rawDuration = rawEnd - this.resizingMorphPoint.time;
+            const newDuration = this.constrainMorphDuration(this.resizingMorphPoint, rawDuration);
+            this.resizingMorphPoint.morphDurationSec = newDuration;
+            (this.els.inspectorDuration as HTMLInputElement).value = newDuration.toFixed(1);
+            this.requestTimelineDraw();
+            return;
+        }
+
+        if (State.isDrawingEnvelope) {
+            this.drawAutomationAtPointer(focusX, focusY);
             return;
         }
 
@@ -754,11 +995,21 @@ export class DashboardUI {
         }
 
         if (this.isSeekingTimeline) {
-            this.setScrubTime(this.getTimelineTimeAtPercent(focusX));
+            this.setScrubTime(this.getSnappedTimelineTimeAtPercent(focusX, this.timelineDragShiftKey));
         }
     }
 
     private endTimelineInteraction() {
+        if (this.draggingAutomationPoint || this.draggingSensitivityPoint || this.draggingFullZone || this.resizingMorphPoint) {
+            this.draggingAutomationPoint = null;
+            this.draggingSensitivityPoint = null;
+            this.draggingFullZone = null;
+            this.resizingMorphPoint = null;
+            this.timelineDragShiftKey = false;
+            State.editedPerformancePlan?.points.sort((a, b) => a.time - b.time);
+            this.requestTimelineDraw();
+        }
+
         if (State.isDrawingEnvelope) {
             State.isDrawingEnvelope = false;
         }
@@ -766,8 +1017,6 @@ export class DashboardUI {
             this.commitScrubTime();
         }
 
-        this.isDraggingThreshold = false;
-        this.draggingSectionIdx = null;
         this.isPanningTimeline = false;
         this.isSeekingTimeline = false;
         const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
@@ -776,27 +1025,359 @@ export class DashboardUI {
         this.hideTimelineTooltip(); // JAVÍTVA: Elrejtés interakció után
     }
 
+    private getAutomationPointHit(focusX: number, _focusY: number, tolerancePx: number): PerformanceAutomationPoint | null {
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.height < 80) return null;
+
+        const points = (State.editedPerformancePlan ?? State.performancePlan)?.points;
+        if (!points?.length) return null;
+
+        const x = focusX * rect.width;
+        let closestPoint: PerformanceAutomationPoint | null = null;
+        let closestDistance = tolerancePx;
+        for (const point of points) {
+            const pointX = this.getTimelineXForTime(point.time, rect.width);
+            const distance = Math.abs(pointX - x);
+            if (distance <= closestDistance) {
+                closestPoint = point;
+                closestDistance = distance;
+            }
+        }
+
+        return closestPoint;
+    }
+
+    private getAutomationMorphHandleHit(focusX: number, focusY: number, tolerancePx: number): PerformanceAutomationPoint | null {
+        if (!this.isAutomationLaneHit(focusY)) return null;
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.height < 80) return null;
+
+        const points = (State.editedPerformancePlan ?? State.performancePlan)?.points;
+        if (!points?.length) return null;
+
+        const x = focusX * rect.width;
+        let closestPoint: PerformanceAutomationPoint | null = null;
+        let closestDistance = tolerancePx;
+        for (const point of points) {
+            const handleX = this.getTimelineXForTime(point.time + point.morphDurationSec, rect.width);
+            const distance = Math.abs(handleX - x);
+            if (distance <= closestDistance) {
+                closestPoint = point;
+                closestDistance = distance;
+            }
+        }
+
+        return closestPoint;
+    }
+
+    private getAutomationSensitivityHit(focusX: number, focusY: number): PerformanceAutomationPoint | null {
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.height < 80) return null;
+        const points = this.getSortedAutomationPoints();
+        if (!points.length) return null;
+
+        const x = focusX * rect.width;
+        const y = focusY * rect.height;
+        const { topPad, graphBottom } = this.getAutomationGraphMetrics(rect.height);
+        for (let i = 0; i < points.length; i++) {
+            const point = points[i];
+            const zoneStart = this.getTimelineXForTime(point.time, rect.width);
+            const zoneEnd = i + 1 < points.length ? this.getTimelineXForTime(points[i + 1].time, rect.width) : rect.width;
+            const lineY = this.getAutomationYForIntensity(point.intensity, topPad, graphBottom);
+            if (x >= zoneStart && x <= zoneEnd && Math.abs(y - lineY) <= 8) return point;
+        }
+        return null;
+    }
+
+    private getAutomationZoneMoveHit(focusX: number, focusY: number): PerformanceAutomationPoint | null {
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.height < 80) return null;
+        const points = this.getSortedAutomationPoints();
+        if (!points.length) return null;
+
+        const x = focusX * rect.width;
+        const y = focusY * rect.height;
+        const { topPad } = this.getAutomationGraphMetrics(rect.height);
+        if (y < topPad || y > topPad + 14) return null;
+        for (let i = 0; i < points.length; i++) {
+            const zoneStart = this.getTimelineXForTime(points[i].time, rect.width);
+            const zoneEnd = i + 1 < points.length ? this.getTimelineXForTime(points[i + 1].time, rect.width) : rect.width;
+            if (x >= zoneStart && x <= zoneEnd) return points[i];
+        }
+        return null;
+    }
+
+    private getAutomationCurveHit(focusX: number, focusY: number): PerformanceAutomationPoint | null {
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.height < 80) return null;
+        const points = this.getSortedAutomationPoints();
+        if (!points.length) return null;
+
+        const x = focusX * rect.width;
+        const y = focusY * rect.height;
+        const { topPad, graphBottom } = this.getAutomationGraphMetrics(rect.height);
+        if (y < topPad || y > graphBottom) return null;
+
+        for (const point of points) {
+            const startX = this.getTimelineXForTime(point.time, rect.width);
+            const endX = this.getTimelineXForTime(point.time + point.morphDurationSec, rect.width);
+            if (endX <= startX || x < startX || x > endX) continue;
+            return point;
+        }
+        return null;
+    }
+
+    private getSortedAutomationPoints(): PerformanceAutomationPoint[] {
+        const points = (State.editedPerformancePlan ?? State.performancePlan)?.points ?? [];
+        return [...points].sort((a, b) => a.time - b.time);
+    }
+
+    private isAutomationLaneHit(focusY: number) {
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.height < 80) return false;
+        const { topPad, graphBottom } = this.getAutomationGraphMetrics(rect.height);
+        const y = focusY * rect.height;
+        return y >= topPad && y <= graphBottom;
+    }
+
+    private doubleClickTimeline(focusX: number, focusY: number) {
+        if (this.isAutomationLaneHit(focusY)) {
+            this.createAutomationPointAtTime(this.getTimelineTimeAtPercent(focusX));
+        }
+    }
+
+    private createAutomationPointAtTime(time: number): PerformanceAutomationPoint | null {
+        if (State.duration <= 0) return null;
+        const plan = this.ensureEditedPerformancePlan();
+        if (!plan) return null;
+
+        const pointTime = this.clamp(time, 0, State.duration);
+
+        // Refuse to create inside an existing zone — the cursor is inside a morph area.
+        for (const existing of plan.points) {
+            if (pointTime >= existing.time && pointTime < existing.time + existing.morphDurationSec) {
+                return null;
+            }
+        }
+
+        // Cap the morph duration so the new zone does not reach the next point.
+        const defaultDuration = State.targetTuning.morphDurationSec;
+        let allowedDuration = defaultDuration;
+        for (const existing of plan.points) {
+            if (existing.time > pointTime) {
+                allowedDuration = Math.min(allowedDuration, existing.time - pointTime);
+                break; // sorted after push+sort; pre-scan finds the next point
+            }
+        }
+        // Also cap against all points in one pass (plan may not be sorted yet).
+        for (const existing of plan.points) {
+            if (existing.time > pointTime) {
+                allowedDuration = Math.min(allowedDuration, existing.time - pointTime);
+            }
+        }
+        allowedDuration = Math.max(0.1, allowedDuration);
+
+        const sectionIdx = Math.max(0, State.trackAnalysis.sections.findIndex(section => pointTime >= section.start && pointTime <= section.end));
+        const section = State.trackAnalysis.sections[sectionIdx];
+        const preset = this.getSelectedAutomationPreset();
+        const point: PerformanceAutomationPoint = {
+            id: `manual-${Date.now().toString(36)}-${Math.round(pointTime * 1000).toString(36)}`,
+            time: pointTime,
+            sectionId: section ? `${sectionIdx}:${section.label}:${pointTime.toFixed(3).replace('.', '-')}` : `manual:${pointTime.toFixed(3).replace('.', '-')}`,
+            preset,
+            confidence: 1,
+            intensity: this.getDefaultAutomationIntensity(),
+            reason: 'manual',
+            morphDurationSec: allowedDuration,
+            morphCurve: this.getMorphCurveName(State.targetTuning.morphCurveValue)
+        };
+
+        plan.points.push(point);
+        plan.points.sort((a, b) => a.time - b.time);
+        this.selectedAutomationPoint = point;
+        this.showAutomationInspector(point);
+        this.requestTimelineDraw();
+        return point;
+    }
+
+    private ensureEditedPerformancePlan() {
+        const plan: PerformanceAutomationPlan = State.editedPerformancePlan
+            ?? (State.performancePlan ? JSON.parse(JSON.stringify(State.performancePlan)) : { version: 1, source: 'edited', points: [] });
+        plan.source = 'edited';
+        State.editedPerformancePlan = plan;
+        return plan;
+    }
+
+    private getSelectedAutomationPreset() {
+        const brush = (this.els.timelinePresetBrush as HTMLSelectElement).value;
+        const selected = brush || (this.els.presetList as HTMLSelectElement).value || State.availablePresets[0] || 'default.json';
+        return selected;
+    }
+
+    private getNearestEditableAutomationPoint(time: number, toleranceSec: number): PerformanceAutomationPoint | null {
+        const plan = this.ensureEditedPerformancePlan();
+        let nearestPoint: PerformanceAutomationPoint | null = null;
+        let nearestDistance = toleranceSec;
+        for (const point of plan.points) {
+            const distance = Math.abs(point.time - time);
+            if (distance <= nearestDistance) {
+                nearestPoint = point;
+                nearestDistance = distance;
+            }
+        }
+        return nearestPoint;
+    }
+
+    private getDefaultAutomationIntensity() {
+        const sensitivity = State.visualTuning?.audioSensitivity;
+        return this.clamp(Number.isFinite(sensitivity) ? sensitivity : 1.0, 0.1, 4.0);
+    }
+
+    private getAutomationIntensityAtPercent(focusY: number) {
+        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
+        const rect = canvas.getBoundingClientRect();
+        const { topPad, graphHeight } = this.getAutomationGraphMetrics(rect.height);
+        const y = focusY * rect.height;
+        const normalized = this.clamp(1 - (y - topPad) / graphHeight, 0, 1);
+        return 0.1 + normalized * 3.9;
+    }
+
+    private getAutomationGraphMetrics(height: number) {
+        const topPad = height >= 52 ? 18 : 4;
+        const bottomPad = 5;
+        const graphBottom = height - bottomPad;
+        const graphHeight = Math.max(8, graphBottom - topPad);
+        return { topPad, bottomPad, graphBottom, graphHeight };
+    }
+
+    private getAutomationYForIntensity(intensity: number, topPad: number, graphBottom: number): number {
+        const normalized = this.clamp((intensity - 0.1) / 3.9, 0, 1);
+        return graphBottom - normalized * (graphBottom - topPad);
+    }
+
+
+    private getSnappedTimelineTimeAtPercent(focusX: number, shiftKey: boolean): number {
+        const time = this.getTimelineTimeAtPercent(focusX);
+        const shouldSnap = State.snapToGrid ? !shiftKey : shiftKey;
+        return shouldSnap ? this.snapTimeToNearestBar(time) : time;
+    }
+
+    private snapTimeToNearestBar(time: number): number {
+        const bars = State.trackAnalysis.bars;
+        if (!bars.length) return time;
+        let closest = bars[0];
+        let closestDistance = Math.abs(closest.start - time);
+        for (const bar of bars) {
+            const distance = Math.abs(bar.start - time);
+            if (distance < closestDistance) {
+                closest = bar;
+                closestDistance = distance;
+            }
+        }
+        return this.clamp(closest.start, 0, State.duration);
+    }
+
+    private selectEditableAutomationPoint(point: PerformanceAutomationPoint): PerformanceAutomationPoint {
+        if (!State.editedPerformancePlan && State.performancePlan) {
+            State.editedPerformancePlan = JSON.parse(JSON.stringify(State.performancePlan));
+        }
+        const editablePoint = State.editedPerformancePlan?.points.find(candidate => candidate.id === point.id);
+        return editablePoint ?? point;
+    }
+
+    private showAutomationInspector(point: PerformanceAutomationPoint) {
+        this.els.inspectorTime.innerText = this.formatTime(point.time);
+
+        const presetSelect = this.els.inspectorPreset as HTMLSelectElement;
+        const presetOptions = State.availablePresets.includes(point.preset)
+            ? State.availablePresets
+            : [point.preset, ...State.availablePresets];
+        presetSelect.innerHTML = presetOptions.length
+            ? presetOptions.map(fileName => `<option value="${this.escapeHtml(fileName)}">${this.escapeHtml(this.formatPresetName(fileName))}</option>`).join('')
+            : `<option value="${this.escapeHtml(point.preset)}">${this.escapeHtml(this.formatPresetName(point.preset))}</option>`;
+        presetSelect.value = point.preset;
+
+        (this.els.inspectorDuration as HTMLInputElement).value = point.morphDurationSec.toFixed(1);
+        (this.els.inspectorCurve as HTMLSelectElement).value = point.morphCurve;
+        this.els.automationInspector.style.opacity = '1';
+        this.els.automationInspector.style.pointerEvents = 'auto';
+        (this.els.inspectorPreset as HTMLSelectElement).disabled = false;
+        (this.els.inspectorDuration as HTMLInputElement).disabled = false;
+        (this.els.inspectorCurve as HTMLSelectElement).disabled = false;
+        (this.els.inspectorDeleteBtn as HTMLButtonElement).disabled = false;
+        (this.els.inspectorAddBtn as HTMLButtonElement).disabled = false;
+    }
+
+    private hideAutomationInspector() {
+        this.els.automationInspector.style.opacity = '0.35';
+        this.els.automationInspector.style.pointerEvents = 'none';
+        (this.els.inspectorPreset as HTMLSelectElement).disabled = true;
+        (this.els.inspectorDuration as HTMLInputElement).disabled = true;
+        (this.els.inspectorCurve as HTMLSelectElement).disabled = true;
+        (this.els.inspectorDeleteBtn as HTMLButtonElement).disabled = true;
+        (this.els.inspectorAddBtn as HTMLButtonElement).disabled = true;
+        this.els.inspectorTime.innerText = '0:00';
+    }
+
+    private getTimelineXForTime(time: number, width: number) {
+        const visibleDuration = this.getTimelineVisibleDuration();
+        State.pan = this.clampTimelinePan(State.pan);
+        return ((time - State.pan) / Math.max(0.001, visibleDuration)) * width;
+    }
+
+    private isMorphCurve(value: unknown): value is MorphCurve {
+        return value === 'linear' || value === 'easeInOut' || value === 'exponential';
+    }
+
     private hoverTimeline(focusX: number, focusY: number) {
         const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
         if (State.duration <= 0) {
             canvas.style.cursor = '';
+            this.setTimelineHover(null, null);
             this.hideTimelineTooltip();
             return;
         }
 
         if (State.drawModeActive) {
             canvas.style.cursor = 'cell';
+            this.setTimelineHover(null, null);
             this.hideTimelineTooltip();
             return;
         }
 
         // JAVÍTVA: Elrejtjük a tooltipet, ha aktív csúszka-húzás, seekelés, átméretezés vagy panelés zajlik
-        if (this.isSeekingTimeline || this.isDraggingThreshold || this.isPanningTimeline || this.isResizingTimeline) {
+        if (this.isSeekingTimeline || this.isPanningTimeline || this.isResizingTimeline) {
+            this.setTimelineHover(null, null);
             this.hideTimelineTooltip();
             return;
         }
 
-        canvas.style.cursor = this.getTimelineThresholdHit(focusX, focusY, 12) ? 'row-resize' : '';
+        const startPoint = this.getAutomationPointHit(focusX, focusY, 8);
+        const endPoint = this.getAutomationMorphHandleHit(focusX, focusY, 6);
+        const sensitivityPoint = this.getAutomationSensitivityHit(focusX, focusY);
+        const curvePoint = this.getAutomationCurveHit(focusX, focusY);
+        if (startPoint) {
+            canvas.style.cursor = 'ew-resize';
+            this.setTimelineHover(startPoint, 'start');
+        } else if (endPoint) {
+            canvas.style.cursor = 'col-resize';
+            this.setTimelineHover(endPoint, 'end');
+        } else if (sensitivityPoint) {
+            canvas.style.cursor = 'ns-resize';
+            this.setTimelineHover(sensitivityPoint, 'sensitivity');
+        } else if (curvePoint) {
+            canvas.style.cursor = 'move';
+            this.setTimelineHover(curvePoint, 'curve');
+        } else {
+            canvas.style.cursor = '';
+            this.setTimelineHover(null, null);
+        }
 
         // JAVÍTVA: Tooltip adatok dinamikus összeállítása egerezéskor
         const hoverTime = this.getTimelineTimeAtPercent(focusX);
@@ -875,134 +1456,41 @@ export class DashboardUI {
         this.requestTimelineDraw();
     }
 
-    private splitTimelineAtPercent(timePercent: number) {
-        if (State.duration <= 0) return;
-        const hoverTime = this.getTimelineTimeAtPercent(timePercent);
-        const sections = State.trackAnalysis.sections;
-        const sectionIdx = sections.findIndex(section => hoverTime >= section.start && hoverTime <= section.end);
-        if (sectionIdx === -1) return;
-
-        const section = sections[sectionIdx];
-        const splitTime = this.clamp(hoverTime, section.start + 0.1, section.end - 0.1);
-        if (splitTime <= section.start || splitTime >= section.end) return;
-
-        this.splitTimelineSection(sectionIdx, splitTime, hoverTime);
-        this.requestTimelineDraw();
-    }
-
     private drawAutomationAtPointer(focusX: number, focusY: number) {
         if (State.duration <= 0) return;
+        const MIN_DRAW_DISTANCE_SEC = 2.0;
         const hoverTime = this.getTimelineTimeAtPercent(focusX);
-        const sections = State.trackAnalysis.sections;
-        let sectionIdx = sections.findIndex(section => hoverTime >= section.start && hoverTime <= section.end);
-        if (sectionIdx === -1) return;
-
-        const section = sections[sectionIdx];
-        const secondsPerBar = State.bpm > 0 ? (60 / State.bpm) * 4 : 0;
-        if (secondsPerBar > 0 && section.end - section.start > secondsPerBar) {
-            const splitTime = this.getNearestBarSplitTime(hoverTime, section.start, section.end, secondsPerBar);
-            if (splitTime !== null) {
-                sectionIdx = this.splitTimelineSection(sectionIdx, splitTime, hoverTime);
-            }
-        }
-
         const drawTarget = (this.els.timelineDrawTarget as HTMLSelectElement).value;
+        const existingPoint = this.getNearestEditableAutomationPoint(hoverTime, MIN_DRAW_DISTANCE_SEC);
+        const presetName = this.getSelectedAutomationPreset();
+
+        if (existingPoint && !existingPoint.locked) {
+            if (drawTarget === 'preset') {
+                existingPoint.preset = presetName;
+            } else {
+                existingPoint.intensity = this.getAutomationIntensityAtPercent(focusY);
+            }
+            this.selectedAutomationPoint = existingPoint;
+            this.showAutomationInspector(existingPoint);
+            this.requestTimelineDraw();
+            return;
+        }
+
         if (drawTarget === 'preset') {
-            const presetName = (this.els.timelinePresetBrush as HTMLSelectElement).value;
-            if (presetName) this.setSectionPresetOverride(sectionIdx, presetName);
-        } else {
-            const metrics = this.getTimelineGraphMetrics();
-            if (!metrics) return;
-            const mouseY = focusY * metrics.rect.height;
-            const normVal = this.clamp(1 - (mouseY - metrics.topPad) / metrics.graphHeight, 0.0, 1.0);
-            const sensVal = 0.1 + normVal * 3.9;
-            this.setSectionSensitivityOverride(sectionIdx, sensVal);
+            this.createAutomationPointAtTime(hoverTime);
+            return;
         }
+
+        const point = this.createAutomationPointAtTime(hoverTime);
+        if (!point || point.locked) return;
+        point.intensity = this.getAutomationIntensityAtPercent(focusY);
+        this.selectedAutomationPoint = point;
+        this.showAutomationInspector(point);
         this.requestTimelineDraw();
-    }
-
-    private getNearestBarSplitTime(time: number, sectionStart: number, sectionEnd: number, secondsPerBar: number) {
-        if (!Number.isFinite(secondsPerBar) || secondsPerBar <= 0) return null;
-        const splitTime = Math.round(time / secondsPerBar) * secondsPerBar;
-        const minGap = Math.min(0.1, secondsPerBar * 0.05);
-        if (splitTime <= sectionStart + minGap || splitTime >= sectionEnd - minGap) return null;
-        return this.clamp(splitTime, sectionStart, sectionEnd);
-    }
-
-    private splitTimelineSection(sectionIdx: number, splitTime: number, focusTime: number) {
-        const sections = State.trackAnalysis.sections;
-        const section = sections[sectionIdx];
-        if (!section) return sectionIdx;
-        if (splitTime <= section.start || splitTime >= section.end) return sectionIdx;
-
-        const oldKey = `section-${sectionIdx}`;
-        const oldOverride = State.sectionOverrides[oldKey];
-        const sensitivity = oldOverride ? oldOverride.sensitivity : State.visualTuning.audioSensitivity;
-        const first = { ...section, end: splitTime };
-        const second = { ...section, start: splitTime };
-        sections.splice(sectionIdx, 1, first, second);
-
-        const nextOverrides: typeof State.sectionOverrides = {};
-        for (const [key, value] of Object.entries(State.sectionOverrides)) {
-            const match = key.match(/^section-(\d+)$/);
-            if (!match) continue;
-            const idx = parseInt(match[1], 10);
-            if (idx < sectionIdx) nextOverrides[key] = value;
-            else if (idx > sectionIdx) nextOverrides[`section-${idx + 1}`] = value;
-        }
-
-        nextOverrides[`section-${sectionIdx}`] = { sensitivity, preset: oldOverride?.preset };
-        nextOverrides[`section-${sectionIdx + 1}`] = { sensitivity, preset: oldOverride?.preset };
-        State.sectionOverrides = nextOverrides;
-        return focusTime >= splitTime ? sectionIdx + 1 : sectionIdx;
-    }
-
-    private setSectionSensitivityOverride(sectionIdx: number, sensitivity: number) {
-        const key = `section-${sectionIdx}`;
-        if (!State.sectionOverrides[key]) {
-            State.sectionOverrides[key] = { sensitivity };
-        } else {
-            State.sectionOverrides[key].sensitivity = sensitivity;
-        }
-    }
-
-    private setSectionPresetOverride(sectionIdx: number, preset: string) {
-        const key = `section-${sectionIdx}`;
-        if (!State.sectionOverrides[key]) {
-            State.sectionOverrides[key] = { sensitivity: State.visualTuning.audioSensitivity, preset };
-        } else {
-            State.sectionOverrides[key].preset = preset;
-        }
-    }
-
-    private getTimelineThresholdHit(focusX: number, focusY: number, tolerancePx: number) {
-        const metrics = this.getTimelineGraphMetrics();
-        if (!metrics) return null;
-
-        const hoverTime = this.getTimelineTimeAtPercent(focusX);
-        const sectionIdx = State.trackAnalysis.sections.findIndex(section => hoverTime >= section.start && hoverTime <= section.end);
-        if (sectionIdx === -1) return null;
-
-        const override = State.sectionOverrides[`section-${sectionIdx}`] || { sensitivity: State.visualTuning.audioSensitivity };
-        const normVal = this.clamp((override.sensitivity - 0.1) / 3.9, 0.0, 1.0);
-        const yThreshold = metrics.topPad + metrics.graphHeight * (1 - normVal);
-        const mouseY = focusY * metrics.rect.height;
-        return Math.abs(mouseY - yThreshold) <= tolerancePx ? { sectionIdx, yThreshold } : null;
-    }
-
-    private getTimelineGraphMetrics() {
-        const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
-        const rect = canvas.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height <= 0) return null;
-
-        const topPad = rect.height >= 52 ? 18 : 4;
-        const bottomPad = 5;
-        const graphHeight = Math.max(8, rect.height - topPad - bottomPad);
-        return { rect, topPad, graphHeight };
     }
 
     private followTimelinePlayhead() {
-        if (!State.isPlaying || State.duration <= 0 || State.zoom <= 1.05) return;
+        if (!State.followPlayhead || !State.isPlaying || State.duration <= 0 || State.zoom <= 1.05) return;
         const viewportStart = this.clampTimelinePan(State.pan);
         const visibleDuration = this.getTimelineVisibleDuration();
         const relativePosition = (State.currentTime - viewportStart) / Math.max(0.001, visibleDuration);
@@ -1014,12 +1502,98 @@ export class DashboardUI {
     private resetTimelineView() {
         State.zoom = 1;
         State.pan = 0;
+        State.followPlayhead = true;
+        this.syncTimelineFollowControl();
         this.scrubTime = null;
-        this.lastTriggeredSectionIdx = -1;
+        this.lastTriggeredAutomationPointId = null;
+        this.selectedAutomationPoint = null;
+        this.draggingAutomationPoint = null;
+        this.draggingSensitivityPoint = null;
+        this.draggingFullZone = null;
+        this.resizingMorphPoint = null;
+        this.timelineDragShiftKey = false;
+        this.hideAutomationInspector();
     }
 
     private clamp(value: number, min: number, max: number) {
         return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
+    }
+
+    /**
+     * Clamps proposedTime so the moving point's zone [proposedTime, proposedTime + dur]
+     * does not overlap any other point's zone. Handles snap and non-snap identically
+     * because snapping is applied BEFORE this call (the raw snapped value is passed in).
+     *
+     * Edge cases handled:
+     * - Proposed position inside an existing zone: pushed to the nearest clear side.
+     * - Multiple zones on both sides: tightest constraint wins.
+     * - Zone duration larger than the available gap: clamped to minStart (point can't fit).
+     */
+    private constrainPointTime(
+        movingPoint: PerformanceAutomationPoint,
+        proposedTime: number
+    ): number {
+        const plan = State.editedPerformancePlan ?? State.performancePlan;
+        const dur = movingPoint.morphDurationSec;
+        const totalDur = State.duration;
+        if (!plan?.points.length) return this.clamp(proposedTime, 0, Math.max(0, totalDur - dur));
+
+        const others = plan.points
+            .filter(p => p.id !== movingPoint.id)
+            .sort((a, b) => a.time - b.time);
+
+        if (!others.length) return this.clamp(proposedTime, 0, Math.max(0, totalDur - dur));
+
+        let minStart = 0;       // P.time must be >= minStart
+        let maxEnd = totalDur;  // P.time + dur must be <= maxEnd
+
+        for (const other of others) {
+            const os = other.time;
+            const oe = other.time + other.morphDurationSec;
+
+            if (oe <= proposedTime) {
+                // Other zone is fully to the left of proposed start.
+                minStart = Math.max(minStart, oe);
+            } else if (os >= proposedTime + dur) {
+                // Other zone is fully to the right of proposed end.
+                maxEnd = Math.min(maxEnd, os);
+            } else {
+                // Overlap: find the nearest clean exit.
+                // Exit-left: place P just before other starts → P.end = os → P.start = os - dur
+                // Exit-right: place P just after other ends → P.start = oe
+                const distLeft = Math.abs(proposedTime - (os - dur));
+                const distRight = Math.abs(proposedTime - oe);
+                if (distLeft <= distRight) {
+                    maxEnd = Math.min(maxEnd, os);
+                } else {
+                    minStart = Math.max(minStart, oe);
+                }
+            }
+        }
+
+        const lo = minStart;
+        const hi = Math.max(lo, maxEnd - dur);
+        return this.clamp(proposedTime, lo, hi);
+    }
+
+    /**
+     * Caps proposedDuration so the resizing point's zone does not reach the next zone.
+     */
+    private constrainMorphDuration(
+        point: PerformanceAutomationPoint,
+        proposedDuration: number
+    ): number {
+        const plan = State.editedPerformancePlan ?? State.performancePlan;
+        if (!plan?.points.length) return this.clamp(proposedDuration, 0.1, 20);
+
+        let maxDuration = Math.min(20, Math.max(0.1, State.duration - point.time));
+        for (const other of plan.points) {
+            if (other.id !== point.id && other.time > point.time) {
+                maxDuration = Math.min(maxDuration, other.time - point.time);
+            }
+        }
+
+        return this.clamp(proposedDuration, 0.1, Math.max(0.1, maxDuration));
     }
 
     private getTimelineVisibleDuration() {
@@ -1117,6 +1691,7 @@ export class DashboardUI {
 
     private getRenderState(): RenderState {
         return {
+            isPlaying: State.isPlaying,
             isExporting: State.isExporting,
             exportTime: State.exportTime,
             currentTime: State.currentTime,
@@ -1134,7 +1709,13 @@ export class DashboardUI {
             buildupConfidence: State.trackAnalysis.buildupConfidence,
             spectralPivot: State.trackAnalysis.spectralPivot,
             tensionTrends: State.trackAnalysis.tensionTrends,
-            sectionOverrides: State.sectionOverrides,
+            performancePlan: State.editedPerformancePlan ?? State.performancePlan,
+            timelineLayers: State.timelineLayers,
+            snapToGrid: State.snapToGrid,
+            selectedPointId: this.selectedAutomationPoint?.id || null,
+            followPlayhead: State.followPlayhead,
+            hoveredPointId: this.hoveredPoint?.id || null,
+            hoveredHandleType: this.hoveredHandleType,
             audioSensitivity: State.visualTuning.audioSensitivity,
             dropAnticipation: State.visualTuning.dropAnticipation,
             scrubTime: this.scrubTime
@@ -1346,6 +1927,7 @@ export class DashboardUI {
             const presets = (manifest.presets || [])
                 .filter(fileName => /^[\w .-]+\.json$/i.test(fileName))
                 .filter(fileName => fileName.toLowerCase() !== 'index.json');
+            State.availablePresets = presets;
 
             select.innerHTML = presets.length
                 ? presets.map(fileName => `<option value="${this.escapeHtml(fileName)}">${this.escapeHtml(this.formatPresetName(fileName))}</option>`).join('')
@@ -1388,6 +1970,23 @@ export class DashboardUI {
         }
     }
 
+    private async preloadPresetsForPlan(plan: PerformanceAutomationPlan | null): Promise<void> {
+        if (!plan?.points.length) return;
+        const uniquePresets = [...new Set(plan.points.map(p => p.preset))];
+
+        await Promise.all(uniquePresets.map(async (preset) => {
+            if (this.presetCache.has(preset)) return;
+            try {
+                const response = await fetch(this.presetUrl(preset), { cache: 'no-store' });
+                if (!response.ok) throw new Error(`Preset ${response.status}`);
+                const payload = await response.json();
+                this.presetCache.set(preset, payload);
+            } catch {
+                // Preloading is opportunistic; loadVisualPreset still handles runtime failures.
+            }
+        }));
+    }
+
     private presetUrl(fileName: string) {
         return `${import.meta.env.BASE_URL}visual-tuning-presets/${encodeURIComponent(fileName)}`;
     }
@@ -1398,6 +1997,7 @@ export class DashboardUI {
 
         const preset = payload as {
             visualMode?: unknown;
+            performancePlan?: unknown;
             morphProfile?: { durationSec?: unknown; curve?: unknown };
             dramaturgyProfile?: {
                 buildupIntensity?: unknown;
@@ -1407,6 +2007,12 @@ export class DashboardUI {
                 fxChaos?: unknown;
             };
         };
+        if (this.isPerformanceAutomationPlan(preset.performancePlan)) {
+            State.performancePlan = preset.performancePlan;
+            State.editedPerformancePlan = JSON.parse(JSON.stringify(preset.performancePlan));
+            void this.preloadPresetsForPlan(preset.performancePlan);
+            this.lastTriggeredAutomationPointId = null;
+        }
         if (typeof preset.visualMode === 'string' && isVisualMode(preset.visualMode)) {
             State.visualMode = preset.visualMode;
             (this.els.visualMode as HTMLSelectElement).value = State.visualMode;
@@ -1425,6 +2031,39 @@ export class DashboardUI {
             if (typeof profile.vocalHighlight === 'number') State.targetTuning.vocalHighlight = profile.vocalHighlight;
             if (typeof profile.fxChaos === 'number') State.targetTuning.fxChaos = profile.fxChaos;
         }
+    }
+
+    private isPerformanceAutomationPlan(value: unknown): value is PerformanceAutomationPlan {
+        if (!value || typeof value !== 'object') return false;
+        const plan = value as { version?: unknown; source?: unknown; points?: unknown };
+        if (plan.version !== 1) return false;
+        if (plan.source !== 'auto' && plan.source !== 'edited') return false;
+        if (!Array.isArray(plan.points)) return false;
+
+        return plan.points.every(point => {
+            if (!point || typeof point !== 'object') return false;
+            const candidate = point as Record<string, unknown>;
+            return typeof candidate.id === 'string'
+                && typeof candidate.time === 'number'
+                && typeof candidate.sectionId === 'string'
+                && typeof candidate.preset === 'string'
+                && typeof candidate.confidence === 'number'
+                && typeof candidate.intensity === 'number'
+                && this.isPerformanceAutomationReason(candidate.reason)
+                && typeof candidate.morphDurationSec === 'number'
+                && this.isMorphCurve(candidate.morphCurve)
+                && (candidate.locked === undefined || typeof candidate.locked === 'boolean');
+        });
+    }
+
+    private isPerformanceAutomationReason(value: unknown): value is PerformanceAutomationPoint['reason'] {
+        return value === 'intro'
+            || value === 'build'
+            || value === 'drop'
+            || value === 'break'
+            || value === 'peak'
+            || value === 'harmonicShift'
+            || value === 'manual';
     }
 
     private syncVisualTuningControls() {
@@ -1480,7 +2119,8 @@ export class DashboardUI {
                 breakRestraint: State.targetTuning.breakRestraint,
                 vocalHighlight: State.targetTuning.vocalHighlight,
                 fxChaos: State.targetTuning.fxChaos
-            }
+            },
+            performancePlan: State.editedPerformancePlan ?? State.performancePlan
         }, null, 2);
 
         try {
@@ -1518,21 +2158,30 @@ export class DashboardUI {
         textArea.remove();
     }
 
-    private triggerSectionPresetAutomation() {
-        if (State.duration <= 0) return;
-        const sections = State.trackAnalysis.sections;
-        const sectionIdx = sections.findIndex(section => State.currentTime >= section.start && State.currentTime < section.end);
-        if (sectionIdx === this.lastTriggeredSectionIdx) return;
+    private triggerPerformanceAutomation(): void {
+        const plan = State.editedPerformancePlan ?? State.performancePlan;
+        if (!plan?.points.length) return;
 
-        this.lastTriggeredSectionIdx = sectionIdx;
-        if (sectionIdx === -1) return;
+        let activePoint: PerformanceAutomationPoint | null = null;
+        for (const point of plan.points) {
+            if (point.time > State.currentTime) break;
+            activePoint = point;
+        }
+        if (!activePoint || activePoint.id === this.lastTriggeredAutomationPointId) return;
 
-        const override = State.sectionOverrides[`section-${sectionIdx}`];
-        if (override?.preset) void this.loadVisualPreset(override.preset);
+        this.lastTriggeredAutomationPointId = activePoint.id;
+        State.targetTuning.audioSensitivity = activePoint.intensity;
+        State.targetTuning.morphDurationSec = activePoint.morphDurationSec;
+        State.targetTuning.morphCurveValue = activePoint.morphCurve === 'linear'
+            ? 0
+            : activePoint.morphCurve === 'exponential'
+                ? 2
+                : 1;
+        void this.loadVisualPreset(activePoint.preset);
     }
 
     updateDashboard() {
-        this.triggerSectionPresetAutomation();
+        this.triggerPerformanceAutomation();
 
         if (!this.isDraggingSlider && this.scrubTime === null) {
             const progress = State.duration > 0 ? (State.currentTime / State.duration) * 100 : 0;
