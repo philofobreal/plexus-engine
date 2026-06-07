@@ -67,7 +67,8 @@ export class AudioEngine {
         State.frames = [];
         State.events = [];
         State.trackAnalysis = { ...EMPTY_TRACK_ANALYSIS, bars: [], sections: [], patterns: [], cues: [], significantMoments: [], features: [], spectralPivot: [] };
-        State.sectionOverrides = {};
+        State.performancePlan = null;
+        State.editedPerformancePlan = null;
         State.hopSize = 1024;
         State.currentFrame = { e: 0, b: 0, m: 0, t: 0, state: 'IDLE', eRatio: 0 };
         State.currentFeatures = { ...EMPTY_FEATURES };
@@ -218,7 +219,8 @@ export class AudioEngine {
 
     getCurrentTime(): number {
         if (!State.isPlaying || !this.ctx) return this.pausedAt;
-        return this.playOffset + (this.ctx.currentTime - this.playStartTime);
+        const latency = (this.ctx.outputLatency || 0.02) + 0.01;
+        return Math.max(0, this.playOffset + (this.ctx.currentTime - this.playStartTime) - latency);
     }
 }
 

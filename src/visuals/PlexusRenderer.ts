@@ -66,17 +66,6 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
             let ct = State.isExporting ? State.exportTime : engine.getCurrentTime();
             State.currentTime = ct;
 
-            const sections = State.trackAnalysis.sections;
-            const sectionIdx = sections.findIndex(s => ct >= s.start && ct < s.end);
-            let activeSensitivity = State.visualTuning.audioSensitivity;
-            if (sectionIdx !== -1) {
-                const override = State.sectionOverrides[`section-${sectionIdx}`];
-                if (override) activeSensitivity = override.sensitivity;
-            }
-
-            const originalGlobalSensitivity = State.visualTuning.audioSensitivity;
-            State.visualTuning.audioSensitivity = activeSensitivity;
-
             if ((State.isPlaying || State.isExporting) && State.frames.length > 0) {
                 let frameIdx = Math.floor(ct * State.sampleRate / State.hopSize);
                 publishCurrentAnalysisFrame(frameIdx);
@@ -138,7 +127,6 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
             const visualIdentity = styleRegistry.get(State.visualMode);
             visualIdentity.draw(backend, particles, shockwaves);
 
-            State.visualTuning.audioSensitivity = originalGlobalSensitivity;
         };
 
         p.windowResized = () => p.resizeCanvas(p.windowWidth, p.windowHeight);
