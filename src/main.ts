@@ -102,6 +102,53 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div class="timeline-header-row">
           <span class="timeline-title">Track Dramaturgy</span>
           <div class="timeline-actions">
+            <!-- Layer visibility -->
+            <div class="timeline-layer-toggles" style="display: flex; gap: 4px;">
+              <button id="layer-toggle-waveform" class="layer-btn is-active" title="Toggle Waveform">W</button>
+              <button id="layer-toggle-rms" class="layer-btn" title="Toggle RMS">R</button>
+              <button id="layer-toggle-buildup" class="layer-btn" title="Toggle Buildup">B</button>
+              <button id="layer-toggle-automation" class="layer-btn is-active" title="Toggle Automation">A</button>
+            </div>
+            <div class="timeline-divider"></div>
+            <!-- Viewport behaviour -->
+            <button id="toggle-timeline-snap" class="btn-icon-mini is-active" title="Toggle Snap (S)" aria-pressed="true" aria-label="Toggle grid snapping">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 10a7 7 0 0 1 14 0v4a2 2 0 0 0 2 2h1a2 2 0 0 0-2-2V10a9 9 0 0 0-18 0v4a2 2 0 0 0-2 2h1a2 2 0 0 0 2-2V10z"/></svg>
+            </button>
+            <button id="toggle-timeline-follow" class="btn-icon-mini is-active" title="Toggle Playhead Follow (F)" aria-pressed="true" aria-label="Toggle playhead follow">F</button>
+            <div class="timeline-divider"></div>
+            <!-- Draw mode -->
+            <button id="toggle-timeline-draw" class="btn-icon-mini" title="Draw Envelope (D)" aria-pressed="false" aria-label="Draw envelope mode">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+            </button>
+            <select id="timeline-draw-target" class="timeline-select" aria-label="Draw target">
+              <option value="sensitivity">Sensitivity (S)</option>
+              <option value="preset">Preset (P)</option>
+            </select>
+            <select id="timeline-preset-brush" class="timeline-select" aria-label="Preset brush">
+              <option value="">No presets</option>
+            </select>
+            <div class="timeline-divider"></div>
+            <!-- Zoom / overlay -->
+            <button id="toggle-timeline-zoom" class="btn-icon-mini" title="Zoom Timeline" aria-pressed="false" aria-label="Zoom timeline">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <div class="timeline-divider"></div>
+            <!-- Automation inspector -->
+            <div id="automation-inspector" style="display: flex; gap: 8px; align-items: center; border: none; background: transparent; padding: 0; font-size: 0.75rem; opacity: 0.35; pointer-events: none;">
+              <span style="color: var(--accent); font-weight: 700; white-space: nowrap;">Point:</span>
+              <span id="inspector-time" style="font-family: monospace; min-width: 28px;">0:00</span>
+              <select id="inspector-preset" class="timeline-select" aria-label="Select Preset"></select>
+              <input type="number" id="inspector-duration" min="0.1" max="20" step="0.1" style="width: 44px; height: 24px; background: rgba(255,255,255,0.06); color: white; border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; text-align: center;" aria-label="Morph Duration">
+              <select id="inspector-curve" class="timeline-select" aria-label="Morph Curve">
+                <option value="linear">Linear</option>
+                <option value="easeInOut">Ease In Out</option>
+                <option value="exponential">Exponential</option>
+              </select>
+              <button id="inspector-add-btn" class="timeline-export-btn">+ Add</button>
+              <button id="inspector-delete-btn" class="timeline-export-btn" style="background: rgba(255, 0, 100, 0.1); color: #ff3b3b; border-color: rgba(255,0,100,0.28);">Delete</button>
+            </div>
+            <div class="timeline-divider"></div>
+            <!-- Export -->
             <select id="export-resolution" class="timeline-select" aria-label="Export resolution">
               <option value="720p">720p</option>
               <option value="1080p">1080p</option>
@@ -115,19 +162,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             <button id="export-video-btn" class="timeline-export-btn" disabled>Export</button>
             <button id="stop-export-btn" class="timeline-export-btn is-hidden" disabled>Stop</button>
             <button id="cancel-export-btn" class="timeline-export-btn is-hidden" disabled>Cancel</button>
-            <select id="timeline-draw-target" class="timeline-select is-hidden" aria-label="Draw target">
-              <option value="sensitivity">Sensitivity (S)</option>
-              <option value="preset">Preset (P)</option>
-            </select>
-            <select id="timeline-preset-brush" class="timeline-select is-hidden" aria-label="Preset brush">
-              <option value="">No presets</option>
-            </select>
-            <button id="toggle-timeline-draw" class="btn-icon-mini" title="Draw Envelope (D)" aria-pressed="false" aria-label="Draw envelope mode">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-            </button>
-            <button id="toggle-timeline-zoom" class="btn-icon-mini" title="Zoom Timeline" aria-pressed="false" aria-label="Zoom timeline">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-            </button>
           </div>
         </div>
         <div class="timeline-wrapper">
