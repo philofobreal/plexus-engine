@@ -152,6 +152,29 @@ test('visual track analysis is precomputed and exposed through shared state', ()
   assert.match(renderer, /State\.trackAnalysis\.features/);
 });
 
+test('performance automation contracts and state are exposed and reset', () => {
+  const types = read('src/types/index.ts');
+  const store = read('src/state/store.ts');
+  const audio = read('src/audio/AudioEngine.ts');
+  const ui = read('src/ui/DashboardUI.ts');
+
+  assert.match(types, /export type PerformanceAutomationReason = 'intro' \| 'build' \| 'drop' \| 'break' \| 'peak' \| 'harmonicShift' \| 'manual';/);
+  assert.match(types, /export interface PerformanceAutomationPoint[\s\S]*id: string;[\s\S]*time: number;[\s\S]*sectionId: string;[\s\S]*preset: string;[\s\S]*confidence: number;[\s\S]*intensity: number;[\s\S]*reason: PerformanceAutomationReason;[\s\S]*morphDurationSec: number;[\s\S]*morphCurve: 'linear' \| 'easeInOut' \| 'exponential';[\s\S]*locked\?: boolean;/);
+  assert.match(types, /export interface PerformanceAutomationPlan[\s\S]*version: 1;[\s\S]*source: 'auto' \| 'edited';[\s\S]*points: PerformanceAutomationPoint\[\];/);
+  assert.match(types, /export interface RenderState[\s\S]*performancePlan: PerformanceAutomationPlan \| null;/);
+  assert.match(store, /availablePresets: \[\] as string\[\]/);
+  assert.match(store, /performancePlan: null as PerformanceAutomationPlan \| null/);
+  assert.match(store, /editedPerformancePlan: null as PerformanceAutomationPlan \| null/);
+  assert.match(audio, /State\.performancePlan = null/);
+  assert.match(audio, /State\.editedPerformancePlan = null/);
+  assert.match(ui, /import \{ generatePerformancePlan \} from '\.\.\/automation\/performancePlanGenerator'/);
+  assert.match(ui, /State\.availablePresets = presets/);
+  assert.match(ui, /const plan = generatePerformancePlan\(State\.trackAnalysis, State\.availablePresets, State\.duration\)/);
+  assert.match(ui, /State\.performancePlan = plan/);
+  assert.match(ui, /State\.editedPerformancePlan = JSON\.parse\(JSON\.stringify\(plan\)\)/);
+  assert.match(ui, /performancePlan: State\.editedPerformancePlan \?\? State\.performancePlan/);
+});
+
 test('visual track analysis detects recurring temporal patterns', () => {
   const types = read('src/types/index.ts');
   const worker = read('src/audio/analyzer.worker.ts');
@@ -527,7 +550,8 @@ test('player UI supports background controls, metrics toggle, draggable tuning, 
   assert.doesNotMatch(main, /m-bar-fill[^>]*style="background/);
   assert.doesNotMatch(ui, /style\.background/);
   assert.doesNotMatch(ui, /style\.backgroundColor/);
-  assert.doesNotMatch(ui, /style\.opacity/);
+  assert.match(ui, /drawTarget\.style\.opacity = State\.drawModeActive \? '1' : '0\.35'/);
+  assert.match(ui, /presetBrush\.style\.opacity = enablePresetBrush \? '1' : '0\.35'/);
   assert.doesNotMatch(ui, /style\.filter/);
   assert.doesNotMatch(ui, /style\.mixBlendMode/);
   assert.doesNotMatch(ui, /barDyn\.style\.background/);
@@ -537,37 +561,69 @@ test('player UI supports background controls, metrics toggle, draggable tuning, 
   assert.doesNotMatch(main, /id="val-cue"/);
 });
 
-test('dramaturgy section overrides drive music sensitivity, not threshold gates', () => {
+test('timeline draw mode writes directly to performance automation points', () => {
   const state = read('src/state/store.ts');
   const audio = read('src/audio/AudioEngine.ts');
   const renderer = read('src/visuals/PlexusRenderer.ts');
   const ui = read('src/ui/DashboardUI.ts');
 
-  assert.match(state, /sectionOverrides: \{\} as Record<string, SectionOverride>/);
-  assert.match(read('src/types/index.ts'), /export interface SectionOverride[\s\S]*sensitivity: number;[\s\S]*preset\?: string;/);
+  assert.doesNotMatch(state, /sectionOverrides/);
+  assert.doesNotMatch(read('src/types/index.ts'), /export interface SectionOverride/);
   assert.match(state, /drawModeActive: false/);
   assert.match(state, /isDrawingEnvelope: false/);
-  assert.match(audio, /State\.sectionOverrides = \{\}/);
-  assert.match(renderer, /const originalGlobalSensitivity = State\.visualTuning\.audioSensitivity/);
-  assert.match(renderer, /State\.visualTuning\.audioSensitivity = activeSensitivity/);
-  assert.match(renderer, /State\.visualTuning\.audioSensitivity = originalGlobalSensitivity/);
-  assert.doesNotMatch(renderer, /override\.threshold/);
-  assert.match(ui, /const sensVal = 0\.1 \+ normVal \* 3\.9/);
+  assert.doesNotMatch(audio, /State\.sectionOverrides = \{\}/);
+  assert.doesNotMatch(renderer, /State\.sectionOverrides/);
   assert.match(ui, /drawAutomationAtPointer/);
   assert.match(ui, /State\.isDrawingEnvelope = true/);
-  assert.match(ui, /getNearestBarSplitTime/);
-  assert.match(ui, /splitTimelineSection/);
-  assert.match(ui, /State\.sectionOverrides\[key\] = \{ sensitivity \}/);
-  assert.match(ui, /setSectionPresetOverride/);
-  assert.match(ui, /State\.sectionOverrides\[key\] = \{ sensitivity: State\.visualTuning\.audioSensitivity, preset \}/);
-  assert.match(ui, /this\.engine\.addPositionChangedListener\(\(\) => \{[\s\S]*this\.lastTriggeredSectionIdx = -1;[\s\S]*this\.triggerSectionPresetAutomation\(\);[\s\S]*\}\);/);
-  assert.match(ui, /triggerSectionPresetAutomation/);
-  assert.match(ui, /if \(State\.duration <= 0\) return;/);
-  assert.doesNotMatch(ui, /if \(!State\.isPlaying \|\| State\.duration <= 0\) return;/);
-  assert.match(ui, /void this\.loadVisualPreset\(override\.preset\)/);
+  assert.match(ui, /const MIN_DRAW_DISTANCE_SEC = 2\.0/);
+  assert.match(ui, /const existingPoint = this\.getNearestEditableAutomationPoint\(hoverTime, MIN_DRAW_DISTANCE_SEC\)/);
+  assert.match(ui, /if \(existingPoint && !existingPoint\.locked\) \{[\s\S]*existingPoint\.preset = presetName;[\s\S]*existingPoint\.intensity = this\.getAutomationIntensityAtPercent\(focusY\);[\s\S]*return;/);
+  assert.match(ui, /point\.intensity = this\.getAutomationIntensityAtPercent\(focusY\)/);
+  assert.match(ui, /this\.createAutomationPointAtTime\(hoverTime\)/);
+  assert.match(ui, /State\.editedPerformancePlan\?\.points\.sort\(\(a, b\) => a\.time - b\.time\)/);
+  assert.match(ui, /this\.engine\.addPositionChangedListener\(\(\) => \{[\s\S]*this\.lastTriggeredAutomationPointId = null;[\s\S]*this\.triggerPerformanceAutomation\(\);[\s\S]*\}\);/);
+  assert.doesNotMatch(ui, /triggerSectionPresetAutomation/);
+  assert.doesNotMatch(ui, /splitTimelineSection/);
+  assert.doesNotMatch(ui, /State\.sectionOverrides/);
   assert.match(ui, /timelinePresetBrush/);
-  assert.doesNotMatch(ui, /thresholdVal/);
-  assert.doesNotMatch(ui, /override\.threshold/);
+});
+
+test('performance plan playback automation and preloading are wired to playback time', () => {
+  const ui = read('src/ui/DashboardUI.ts');
+
+  assert.match(ui, /private lastTriggeredAutomationPointId: string \| null = null/);
+  assert.match(ui, /private async preloadPresetsForPlan\(plan: PerformanceAutomationPlan \| null\): Promise<void>/);
+  assert.match(ui, /const uniquePresets = \[\.\.\.new Set\(plan\.points\.map\(p => p\.preset\)\)\]/);
+  assert.match(ui, /if \(this\.presetCache\.has\(preset\)\) return/);
+  assert.match(ui, /fetch\(this\.presetUrl\(preset\), \{ cache: 'no-store' \}\)/);
+  assert.match(ui, /this\.presetCache\.set\(preset, payload\)/);
+  assert.match(ui, /void this\.preloadPresetsForPlan\(plan\)/);
+  assert.match(ui, /this\.lastTriggeredAutomationPointId = null/);
+  assert.match(ui, /private triggerPerformanceAutomation\(\): void/);
+  assert.match(ui, /const plan = State\.editedPerformancePlan \?\? State\.performancePlan/);
+  assert.match(ui, /for \(const point of plan\.points\) \{[\s\S]*if \(point\.time > State\.currentTime\) break;[\s\S]*activePoint = point;[\s\S]*\}/);
+  assert.match(ui, /activePoint\.id === this\.lastTriggeredAutomationPointId/);
+  assert.match(ui, /this\.lastTriggeredAutomationPointId = activePoint\.id/);
+  assert.match(ui, /State\.targetTuning\.morphDurationSec = activePoint\.morphDurationSec/);
+  assert.match(ui, /State\.targetTuning\.morphCurveValue = activePoint\.morphCurve === 'linear'[\s\S]*\? 0[\s\S]*: activePoint\.morphCurve === 'exponential'[\s\S]*\? 2[\s\S]*: 1;/);
+  assert.match(ui, /void this\.loadVisualPreset\(activePoint\.preset\)/);
+  assert.match(ui, /updateDashboard\(\) \{[\s\S]*this\.triggerPerformanceAutomation\(\);/);
+  assert.doesNotMatch(ui, /updateDashboard\(\) \{[\s\S]*this\.triggerSectionPresetAutomation\(\);/);
+});
+
+test('visual config copy and preset apply serialize performance plans', () => {
+  const ui = read('src/ui/DashboardUI.ts');
+
+  assert.match(ui, /performancePlan: State\.editedPerformancePlan \?\? State\.performancePlan/);
+  assert.match(ui, /performancePlan\?: unknown/);
+  assert.match(ui, /if \(this\.isPerformanceAutomationPlan\(preset\.performancePlan\)\) \{[\s\S]*State\.performancePlan = preset\.performancePlan;[\s\S]*State\.editedPerformancePlan = JSON\.parse\(JSON\.stringify\(preset\.performancePlan\)\);[\s\S]*void this\.preloadPresetsForPlan\(preset\.performancePlan\);[\s\S]*this\.lastTriggeredAutomationPointId = null;[\s\S]*\}/);
+  assert.match(ui, /private isPerformanceAutomationPlan\(value: unknown\): value is PerformanceAutomationPlan/);
+  assert.match(ui, /plan\.version !== 1/);
+  assert.match(ui, /plan\.source !== 'auto' && plan\.source !== 'edited'/);
+  assert.match(ui, /Array\.isArray\(plan\.points\)/);
+  assert.match(ui, /typeof candidate\.intensity === 'number'/);
+  assert.match(ui, /this\.isPerformanceAutomationReason\(candidate\.reason\)/);
+  assert.match(ui, /this\.isMorphCurve\(candidate\.morphCurve\)/);
 });
 
 test('dashboard metric cards are backed by metadata and a shared delegated tooltip', () => {

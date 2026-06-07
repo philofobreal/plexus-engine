@@ -219,7 +219,7 @@ Az UI export kozben letiltja a playback/seek/file input utakat es blokkolja a ca
 
 * **Dontes:** a tuning defaultok es kontroll metadata a `src/config/visualTuning.ts` fajlban vannak. A presetek `public/visual-tuning-presets/` alatt JSON fajlok, listazasuk `index.json` manifestbol tortenik.
 * **Indoklas:** statikus Vite app nem tud megbizhatoan public konyvtarat listazni runtime-ban backend vagy manifest nelkul. A target tuning es morphing a live UX resze, mert az eles preset valtasok nem ugorhatnak hirtelen.
-* **Kiterjesztes:** a performance preset szerzodes resze a morph profil es dramaturgiai profil. A partial preset normalizalas sticky modon megorzi a hianyzo aktualis ertekeket, a timeline pedig draw mode, section override es preset painting adatokat irhat a `State.sectionOverrides` objektumba.
+* **Kiterjesztes:** a performance preset szerzodes resze a morph profil es dramaturgiai profil. A partial preset normalizalas sticky modon megorzi a hianyzo aktualis ertekeket. A `State.sectionOverrides` teljesen el lett tavolitva; az automatizalas egyseges `PerformanceAutomationPlan` formaban tarolodik a `State.performancePlan` (auto-generalalt) es `State.editedPerformancePlan` (szerkesztett) allomanyokban. A plan pontjai `PerformanceAutomationPoint` tipusuak: `id`, `time`, `sectionId`, `preset`, `confidence`, `intensity` (0.1-4.0), `reason`, `morphDurationSec`, `morphCurve` es opcionalis `locked` mezokkel. A `TimelineLayers` szerzodes (`waveform`, `rms`, `buildup`, `cues`, `automation` lathatosagi booleanok) vezererli az idovonal retegek megjeleneset.
 
 ### ADR-006: Render Backend Boundary
 

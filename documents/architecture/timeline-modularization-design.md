@@ -77,8 +77,8 @@ A `render(state)` deklarativ. A `RenderState` tartalmazza a kirajzolashoz szukse
 - audio frame-ek
 - szekciok, barok, cue-k es significant momentek
 - buildup confidence, spectral pivot es tension trendek
-- section override-ok
-- aktualis audio sensitivity es drop anticipation
+- automation plan pontok (`PerformanceAutomationPoint` tomb, `State.editedPerformancePlan`-bol)
+- aktualis audio sensitivity, drop anticipation es `TimelineLayers` lathatosagi allapot
 - opcionalis `scrubTime`
 
 A renderelo nem olvas kozvetlenul a globalis `State`-bol. Ez az informacio-elrejtes masik oldala: a `TimelineCanvas` nem tudja, honnan jon az adat, csak azt, hogyan kell azt vizualisan lekepzeni. Ez csokkenti a rejtett fuggosegeket es egyszerubbe teszi a tesztelest, mert a renderelo mockolt canvas-kontextussal es konstrualt `RenderState` objektummal is futtathato.
@@ -137,83 +137,63 @@ this.timelineCanvas.render(this.getRenderState());
 
 Ez tiszta facade viselkedes: a Dashboard osszegyujti az allapotot es tovabbitja a renderelonek. Az alacsony szintu pixelmunka a `TimelineCanvas`-ban marad.
 
-### Threshold Dragging
+### Automation Point Multi-Handle Dragging
 
-A threshold dragging egy alkalmazas-specifikus interakcio, ezert nem a `GestureEngine`-ben es nem a `TimelineCanvas`-ban van. A `GestureEngine` csak normalizalt `focusX` es `focusY` erteket ad. A `DashboardUI` forditja ezt zenei es UI-jelenteste.
+Az automation point dragging alkalmazas-specifikus interakcio, ezert nem a `GestureEngine`-ben es nem a `TimelineCanvas`-ban van. A `GestureEngine` csak normalizalt `focusX` es `focusY` erteket ad. A `DashboardUI` forditja ezt zenei es UI-jelentesse.
 
-Hover kozben a Dashboard:
+Minden `PerformanceAutomationPoint` zona negy draggelohetot tesz elerhetove:
 
-1. `focusX` alapjan kiszamolja a `hoverTime` erteket `getTimelineTimeAtPercent(focusX)` segitsegevel.
-2. Megkeresi azt a track szekciot, amelybe a hover ido esik.
-3. Kiszamolja a grafikon belso mereteit: `topPad`, `bottomPad`, `graphHeight`.
-4. A szekcio override ertekebol vagy globalis `audioSensitivity` ertekbol `normVal`-t kepez.
-5. Kiszamolja a cyan threshold vonal pixelmagassagat:
+1. **Zone Start handle (fuggoleges vonal):** a pont `time` mezojet mozgatja vizszintesen. Ha Snap aktiv (`#toggle-timeline-snap` / S gomb), a pozicio a `snapToNearestBar` segitsegevel a legkozelebbi bar startra illeszkodik; Shift lenyomasara az aktiv snap allapot ideiglenesen megfordul.
+2. **Zone End handle (morph veg fuggoleges vonal):** a `morphDurationSec` mezojet atmeretezo drag; a veg-handle jobbra huzasaval no a morph idotartam.
+3. **Sensitivity handle (vizszintes vonal a zonan belul):** a `focusY` ertekbol visszaszamolt uj `intensity` erteket irja:
 
 ```typescript
-yThreshold = topPad + graphHeight * (1 - normVal)
+const normVal = clamp(1 - (mouseY - zoneTop) / zoneHeight, 0, 1);
+const intensity = 0.1 + normVal * 3.9;
 ```
 
-6. Ha a kurzor Y pozicioja a vonaltol 12 pixelen belul van, `canvas.style.cursor = 'row-resize'`.
-
-Drag inditaskor, ha a pointer threshold kozeleben van, a Dashboard beallitja:
+4. **Curve Area slide (arnyalt gorbe terulet):** az egesz zonat (start es end egyutt) tolja vizszintesen. A drag inditasakor rogzitett `dragStartOffsetSec` megakadalyozza az uszast:
 
 ```typescript
-this.isDraggingThreshold = true;
-this.draggingSectionIdx = thresholdHit.sectionIdx;
+point.time = clampedTime - dragStartOffsetSec;
 ```
 
-Mozgas kozben a Dashboard a normalizalt `focusY` ertekbol visszaszamolja az uj sensitivity erteket:
+A `constrainPointTime` es `constrainMorphDuration` fuggvenyek matematikailag megakadalyozzak, hogy zonak atfedjenek a dragges es atmeretezesi muveletek soran. Meglevo zonan beluli duplakattintas le van tiltva; uj pont letrehozasakor a rendszer automatikusan levagja a rendelkezesre allo terjedelemre.
 
-```typescript
-const normVal = clamp(1 - (mouseY - topPad) / graphHeight, 0, 1);
-const sensVal = 0.1 + normVal * 3.9;
-```
+A `isDraggingThreshold` mezo es a `State.sectionOverrides` teljesen el lett tavolitva.
 
-Majd a megfelelo section override-ot frissiti:
+### Performance Automation Plan Szerkesztes
 
-```typescript
-State.sectionOverrides[key] = { sensitivity };
-```
+Az automation plan szerkesztese Dashboard-szintu uzleti logika. A `State.sectionOverrides` teljesen el lett tavolitva; az automatizalas helyette egyseges `PerformanceAutomationPlan` formaban el:
 
-vagy letezo override eseten csak a `sensitivity` mezot irja at. Ez az uzleti logika a Dashboardban marad, mert itt van meg a zenei szekcio es a globalis state kontextusa.
+- `State.performancePlan`: auto-generalalt plan (`source: 'auto'`)
+- `State.editedPerformancePlan`: felhasznalo altal szerkesztett valtozat (`source: 'edited'`)
 
-### Dramaturgy Automation es Preset Brushing
+Az elso manualis valtozas utan a plan `source` mezoje `'auto'`-rol `'edited'`-re valtozik, jelezve, hogy a felhasznalo atirta a generalalt allapotot.
 
-A draw mode szinten Dashboard-szintu uzleti logika. Ha `State.drawModeActive` igaz es bal gombbal indul az interakcio, a Dashboard:
-
-```typescript
-State.isDrawingEnvelope = true;
-this.drawAutomationAtPointer(focusX, focusY);
-```
-
-A `drawAutomationAtPointer` feladata, hogy a normalizalt pointerbol zenei muveletet hozzon letre:
+Uj pont letrehozasakor a Dashboard:
 
 1. `focusX` -> `hoverTime`
-2. `hoverTime` -> aktualis szekcio index
-3. BPM alapjan `secondsPerBar = (60 / State.bpm) * 4`
-4. Ha a szekcio eleg hosszu, megprobal bar-hatarra splitelni:
+2. `snapToNearestBar(hoverTime)` alkalmazasa, ha Snap aktiv
+3. `constrainPointTime` ellenorzi, hogy van-e eleg hely (minimalis `minGap` tavolsag)
+4. Uj `PerformanceAutomationPoint` letrehozasa `reason: 'manual'` cimkevel es a kivalasztott preset ertekevel
+
+A minimum tavolsagkozok (minGap) az ossz track idotartama alapjan aranyosan skalazodnak:
 
 ```typescript
-getNearestBarSplitTime(hoverTime, section.start, section.end, secondsPerBar)
+const minGap = clamp(duration / 30, 8.0, 32.0);
 ```
 
-5. Ha a split valid, a `splitTimelineSection` ket reszre bontja a szekciot, es atvezeti a `sectionOverrides` kulcsait, hogy a korabbi override-ok ne vesszenek el.
+Ez biztositja, hogy rovid trekkeken szuk, hosszu trekkeken tag legyen a minimalis zona-tavolsag.
 
-Ezutan a Dashboard a draw target alapjan dont:
+Az auto-generalalt plan ket menetben valaszt pontokat (Two-Pass Selection):
 
-- Ha `timelineDrawTarget === 'preset'`, akkor a `timelinePresetBrush` aktualis erteket alkalmazza `setSectionPresetOverride` segitsegevel.
-- Egyebkent sensitivity envelope rajzolas tortenik, ugyanazzal a `sensVal = 0.1 + normVal * 3.9` lekepezessel, mint threshold draggingnel.
+1. **Elso menet:** az elsodleges szekciohatarak abszolut elsobbseget elvezenek a masodlagos cue-kkal szemben.
+2. **Masodik menet:** masodlagos cue-k (`energiaDelta >= 0.15` vagy `avgRmsDelta >= 0.12`) toltenek ki a fennmarado, elegendo teru helyet.
 
-A preset brushing lenyege, hogy a rajzolasi mozdulat nem kozvetlenul vizualis objektumot hoz letre, hanem szekcio-szintu override-ot:
+A `splitTimelineSection` fuggveny, a `getNearestBarSplitTime` split-hatarozas es a `sectionOverrides` kulcs-atvezetes teljesen el lett tavolitva. A preset hivatkozas az editalt plan `PerformanceAutomationPoint.preset` mezojeben tarolodik.
 
-```typescript
-State.sectionOverrides[key] = {
-    sensitivity: State.visualTuning.audioSensitivity,
-    preset
-};
-```
-
-Rendereleskor a `TimelineCanvas` csak megjeleniti ezt az override-ot: cyan sensitivity cimke es magenta preset cimke formajaban. A preset betoltese es alkalmazasa tovabbra is a Dashboard/State/AudioEngine korul marad, nem a rendereloben.
+Rendereleskor a `TimelineCanvas` a `State.editedPerformancePlan` (vagy `State.performancePlan`) pontjait jeleníti meg: zona-kezdet, morph-veg, intensity vonal es preset-specifikus neon gorbekit formajaban. A preset betoltese es alkalmazasa tovabbra is a Dashboard/State/AudioEngine korul marad, nem a rendereloben.
 
 ## 5. Tesztelhetoseg es Karbantarthatosag
 
@@ -237,13 +217,13 @@ Ezzel tesztelheto, hogy:
 
 A `TimelineCanvas.test.mjs` mockolt canvas es 2D context mellett ellenorzi a renderelo lenyegi tulajdonsagait. A hullamforma RMS amplitudo bucketjei `AudioBuffer` mockbol szamolhatok, fizikai kepernyo nelkul. A renderelo invalid zoom es pan bemenetekre sem dob hibat, hanem belso clampelesen keresztul hatarok kozott tartja a viewportot.
 
-A `contracts.test.mjs` tovabbra is vedo szerepet tolt be. Kifejezetten ellenorzi, hogy a helyreallitott specialis idovonal-funkciok megvannak:
+A `contracts.test.mjs` tovabbra is vedo szerepet tolt be. Kifejezetten ellenorzi, hogy a Performance Automation Plan architektura szerzodesei megvannak:
 
-- `drawAutomationAtPointer`
-- `State.isDrawingEnvelope = true`
-- `getNearestBarSplitTime`
-- `splitTimelineSection`
-- `State.sectionOverrides[key] = { sensitivity }`
-- `setSectionPresetOverride`
+- `State.performancePlan` es `State.editedPerformancePlan` tipusos letezese
+- `PerformanceAutomationPoint` mezok: `id`, `time`, `sectionId`, `preset`, `confidence`, `intensity`, `reason`, `morphDurationSec`, `morphCurve`, opcionalis `locked`
+- `snapToNearestBar` mukodesre vonatkozo contract
+- `constrainPointTime` es `constrainMorphDuration` attfedes-vedelem
+- `minGap = clamp(duration / 30, 8.0, 32.0)` dinamikus pacing
+- `TimelineLayers` lathatosagi togglek: `waveform`, `rms`, `buildup`, `cues`, `automation`
 
 Ez a tesztelasi retegezodes osszhangban van az APoSD szemlelettel. A mely modulok kis interfeszeiket stabilan tartjak, belso komplexitasuk pedig celzottan tesztelheto. A Dashboard maradhat az alkalmazasi dontesek helye, de nem kell egyszerre input-engine-nek es canvas-renderernek is lennie. Ennek eredmenye kisebb regresszios felulet, tisztabb modulfuggosegek es alacsonyabb kognitiv terheles a jovo fejleszteseinel.
