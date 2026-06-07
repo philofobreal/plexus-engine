@@ -1,5 +1,5 @@
-import { cloneDefaultVisualTuning } from '../config/visualTuning';
-import type { AudioFrame, BeatEvent, DirectorOutput, ModulationState, SectionOverride, TrackAnalysis, VisualFeatureFrame, VisualCueKind, VisualMode } from '../types';
+import { cloneDefaultVisualTuning } from '../config/visualTuning.ts';
+import type { AudioFrame, BeatEvent, DirectorOutput, ModulationState, PerformanceAutomationPlan, TimelineLayers, TrackAnalysis, VisualFeatureFrame, VisualCueKind, VisualMode } from '../types';
 
 const emptyFeatures: VisualFeatureFrame = {
     melody: 0,
@@ -56,7 +56,9 @@ export const State = {
     frames: [] as AudioFrame[],
     events: [] as BeatEvent[],
     trackAnalysis: emptyTrackAnalysis as TrackAnalysis,
-    sectionOverrides: {} as Record<string, SectionOverride>,
+    availablePresets: [] as string[],
+    performancePlan: null as PerformanceAutomationPlan | null,
+    editedPerformancePlan: null as PerformanceAutomationPlan | null,
     hopSize: 1024,
     sampleRate: 44100,
 
@@ -64,6 +66,15 @@ export const State = {
     visualMode: 'classic' as VisualMode,
     loopPlayback: true,
     uiVisible: true,
+    timelineLayers: {
+        waveform: true,
+        rms: false,
+        buildup: false,
+        cues: true,
+        automation: true
+    } as TimelineLayers,
+    snapToGrid: true,
+    followPlayhead: true,
     zoom: 1,
     pan: 0,
     drawModeActive: false,

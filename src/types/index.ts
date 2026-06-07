@@ -84,9 +84,25 @@ export interface PerformancePreset {
     dramaturgyProfile: DramaturgyProfile;
 }
 
-export interface SectionOverride {
-    sensitivity: number;
-    preset?: string;
+export type PerformanceAutomationReason = 'intro' | 'build' | 'drop' | 'break' | 'peak' | 'harmonicShift' | 'manual';
+
+export interface PerformanceAutomationPoint {
+    id: string;
+    time: number;
+    sectionId: string;
+    preset: string;
+    confidence: number;
+    intensity: number;
+    reason: PerformanceAutomationReason;
+    morphDurationSec: number;
+    morphCurve: 'linear' | 'easeInOut' | 'exponential';
+    locked?: boolean;
+}
+
+export interface PerformanceAutomationPlan {
+    version: 1;
+    source: 'auto' | 'edited';
+    points: PerformanceAutomationPoint[];
 }
 
 export interface ModulationState {
@@ -214,6 +230,14 @@ export interface TrackAnalysis {
     featureHopSize: number;
 }
 
+export interface TimelineLayers {
+    waveform: boolean;
+    rms: boolean;
+    buildup: boolean;
+    cues: boolean;
+    automation: boolean;
+}
+
 export interface GestureCallbacks {
     onStart?: (focusX: number, focusY: number, button: number, shiftKey: boolean) => boolean | void;
     onMove?: (focusX: number, focusY: number, deltaX: number, deltaY: number) => void;
@@ -224,6 +248,7 @@ export interface GestureCallbacks {
 }
 
 export interface RenderState {
+    isPlaying?: boolean;
     isExporting: boolean;
     exportTime: number;
     currentTime: number;
@@ -241,7 +266,13 @@ export interface RenderState {
     buildupConfidence: number[];
     spectralPivot: number[];
     tensionTrends: TensionTrends;
-    sectionOverrides: Record<string, SectionOverride>;
+    performancePlan: PerformanceAutomationPlan | null;
+    timelineLayers: TimelineLayers;
+    snapToGrid: boolean;
+    selectedPointId: string | null;
+    followPlayhead: boolean;
+    hoveredPointId: string | null;
+    hoveredHandleType: 'start' | 'end' | 'sensitivity' | 'curve' | null;
     audioSensitivity: number;
     dropAnticipation: number;
     scrubTime?: number | null;
