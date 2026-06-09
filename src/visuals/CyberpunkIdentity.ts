@@ -21,17 +21,17 @@ class CyberpunkIdentity implements VisualIdentity {
         hueToRgbInto(this.cyan, 183, 1, 0.5);
         hueToRgbInto(this.violet, 276, 0.86, 0.62);
 
-        this.updateParticles(particles);
+        this.updateParticles(backend, particles);
         this.drawChromaticNetwork(backend, particles);
         this.drawNeonCore(backend, shockwaves);
     }
 
-    private updateParticles(particles: Particle[]) {
+    private updateParticles(backend: VisualRendererBackend, particles: Particle[]) {
         const energy = State.modulation.macroMomentum * 0.72 + State.cueDecay * 0.22;
         const movement = State.modulation.densityDrive * 0.62 + State.modulation.spectralChaos * 0.4;
         const impulse = Math.max(State.modulation.rhythmicImpulse, State.denseImpactFlash * 0.85);
         for (let pt of particles) {
-            pt.update(energy, movement, impulse, State.isPlaying, State.directorOutput.centripetalOrbit);
+            pt.update(energy, movement, impulse, State.isPlaying, State.directorOutput.centripetalOrbit, backend.width, backend.height);
         }
     }
 

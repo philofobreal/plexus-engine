@@ -22,17 +22,17 @@ class OrganicAmbientIdentity implements VisualIdentity {
             clear.a
         );
 
-        this.updateFlowingParticles(particles);
+        this.updateFlowingParticles(backend, particles);
         this.drawMistField(backend, particles);
         this.drawSoftCenter(backend, shockwaves);
     }
 
-    private updateFlowingParticles(particles: Particle[]) {
+    private updateFlowingParticles(backend: VisualRendererBackend, particles: Particle[]) {
         const energy = State.modulation.macroMomentum * 0.24 + tuneAudioValue(State.currentFeatures.melody, State.visualTuning) * 0.16;
         const movement = State.modulation.kineticTension * 0.14 + State.modulation.densityDrive * 0.1;
         const impulse = Math.max(State.cueDecay * 0.22, State.modulation.rhythmicImpulse * 0.12);
         for (let pt of particles) {
-            pt.update(energy, movement, impulse, State.isPlaying, State.directorOutput.centripetalOrbit * 0.22);
+            pt.update(energy, movement, impulse, State.isPlaying, State.directorOutput.centripetalOrbit * 0.22, backend.width, backend.height);
         }
     }
 

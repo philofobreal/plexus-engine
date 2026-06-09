@@ -13,16 +13,16 @@ class DarkTechnoIdentity implements VisualIdentity {
         const clear = getBackgroundClearStyle(State.visualTuning, State.modulation.rhythmicImpulse * 4);
         backend.background(Math.min(clear.r, 8), Math.min(clear.g, 8), Math.min(clear.b, 8), clear.a);
 
-        this.updateParticles(particles);
+        this.updateParticles(backend, particles);
         this.drawIndustrialNetwork(backend, particles);
         this.drawStrobeCore(backend, shockwaves);
     }
 
-    private updateParticles(particles: Particle[]) {
+    private updateParticles(backend: VisualRendererBackend, particles: Particle[]) {
         const impulse = Math.max(State.modulation.rhythmicImpulse * 1.45, State.denseImpactFlash);
         const movement = State.modulation.densityDrive * 0.55 + State.modulation.spectralChaos * 0.32;
         for (let pt of particles) {
-            pt.update(State.modulation.macroMomentum * 0.25, movement, impulse, State.isPlaying, 0);
+            pt.update(State.modulation.macroMomentum * 0.25, movement, impulse, State.isPlaying, 0, backend.width, backend.height);
         }
     }
 

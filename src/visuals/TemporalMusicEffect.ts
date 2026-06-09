@@ -40,7 +40,7 @@ class TemporalMusicIdentity implements VisualIdentity {
         let resonance = getPatternResonance(State.currentTime);
 
         drawTemporalBackground(backend, cx, cy, resonance, section, this.colors);
-        updateTemporalParticles(particles, resonance);
+        updateTemporalParticles(backend, particles, resonance);
         drawTemporalPolygonNetwork(backend, particles, resonance, this.colors);
         drawCenterMechanisms(backend, shockwaves, cx, cy, resonance, section, this.colors);
     }
@@ -91,11 +91,11 @@ function drawTemporalBackground(backend: VisualRendererBackend, cx: number, cy: 
     }
 }
 
-function updateTemporalParticles(particles: Particle[], resonance: PatternResonance) {
+function updateTemporalParticles(backend: VisualRendererBackend, particles: Particle[], resonance: PatternResonance) {
     let energy = State.modulation.macroMomentum * 0.55 + resonance.strength * 0.18;
     let movement = State.modulation.densityDrive * 0.35 + State.modulation.kineticTension * 0.32 + State.modulation.spectralChaos * 0.24;
     let impulse = Math.max(State.modulation.rhythmicImpulse * 0.65, State.cueDecay * 0.45, resonance.strength * 0.35);
-    for (let pt of particles) pt.update(energy, movement, impulse, State.isPlaying, State.directorOutput.centripetalOrbit);
+    for (let pt of particles) pt.update(energy, movement, impulse, State.isPlaying, State.directorOutput.centripetalOrbit, backend.width, backend.height);
 }
 
 function drawTemporalPolygonNetwork(backend: VisualRendererBackend, particles: Particle[], resonance: PatternResonance, colors: TemporalColorBuffers) {

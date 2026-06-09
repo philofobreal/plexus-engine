@@ -15,14 +15,22 @@ export class Particle {
         this.vel = this.p.createVector(this.p.random(-1, 1), this.p.random(-1, 1)).normalize();
     }
 
-    update(energy: number, activity: number, beat: number, isPlaying: boolean, centripetalOrbit = 0) {
+    update(
+        energy: number,
+        activity: number,
+        beat: number,
+        isPlaying: boolean,
+        centripetalOrbit = 0,
+        width = this.p.width,
+        height = this.p.height
+    ) {
         const effectivePlaying = isPlaying || State.isExporting;
-        let cx = this.p.width / 2; 
-        let cy = this.p.height / 2;
+        let cx = width / 2; 
+        let cy = height / 2;
         let dx = cx - this.pos.x;
         let dy = cy - this.pos.y;
         let distSq = dx * dx + dy * dy;
-        let maxRadius = Math.max(this.p.width, this.p.height) * 0.45;
+        let maxRadius = Math.max(width, height) * 0.45;
         let maxRadiusSq = maxRadius * maxRadius;
         
         if (distSq > maxRadiusSq) {

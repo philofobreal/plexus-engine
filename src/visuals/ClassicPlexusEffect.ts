@@ -28,7 +28,9 @@ class ClassicPlexusIdentity implements VisualIdentity {
                 State.modulation.densityDrive,
                 State.modulation.rhythmicImpulse,
                 State.isPlaying,
-                State.directorOutput.centripetalOrbit
+                State.directorOutput.centripetalOrbit,
+                backend.width,
+                backend.height
             );
         }
         this.drawPolygonalNetwork(backend, particles);
