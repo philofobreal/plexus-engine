@@ -78,6 +78,11 @@ export interface FrameEncodedResponse {
     audioBuffer?: Float32Array;
 }
 
+export interface QueueUpdateResponse {
+    type: 'queue_update';
+    size: number;
+}
+
 export interface ExportTelemetry {
     framesEncoded: number;
     encodedBytes: number;
@@ -104,4 +109,5 @@ export type ExportWorkerResponse =
     | ErrorResponse
     | AudioWarningResponse
     | FrameEncodedResponse
+    | QueueUpdateResponse
     | TelemetryResponse;

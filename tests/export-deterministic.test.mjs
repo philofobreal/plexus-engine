@@ -71,7 +71,7 @@ class ExportCapabilityDetector {
     postMessage(message) {
       this.messages.push(message);
       if (message.type === 'encode_frame') {
-        this.onmessage?.({ data: { type: 'frame_encoded', timestampUs: message.timestampUs } });
+        this.onmessage?.({ data: { type: 'queue_update', size: 0 } });
       }
       if (message.type === 'finalize_export') {
         this.onmessage?.({ data: { type: 'export_done', blob: new Blob(['webm']) } });

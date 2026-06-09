@@ -5,7 +5,6 @@ import type { ExportCapabilities, ExportConfig, ExportWorkerResponse } from './E
 import ExportWorker from './export.worker.ts?worker';
 import type p5 from 'p5';
 
-const MAX_IN_FLIGHT = 3;
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export class WebCodecsBackend implements ExportBackend {
@@ -18,6 +17,7 @@ export class WebCodecsBackend implements ExportBackend {
     private rejectExport: ((error: Error) => void) | null = null;
     private exportError: Error | null = null;
     private offscreenGraphics: p5.Graphics | null = null;
+    private workerQueueDepth = 0;
 
     constructor(
         p5Instance: any,
@@ -45,12 +45,9 @@ export class WebCodecsBackend implements ExportBackend {
         this.p5Instance.__plexusExportTarget = this.offscreenGraphics;
         const audioBuffer = this.audioEngine?.getAudioBuffer?.() as AudioBuffer | null | undefined;
         this.worker = new ExportWorker();
-        let inFlightFrames = 0;
 
         try {
-            const done = this.waitForExportDone(this.worker, () => {
-                inFlightFrames = Math.max(0, inFlightFrames - 1);
-            });
+            const done = this.waitForExportDone(this.worker);
             void done.catch(() => undefined);
             this.worker.postMessage({
                 type: 'start_export',
@@ -66,10 +63,11 @@ export class WebCodecsBackend implements ExportBackend {
             State.exportTime = 0;
 
             const totalFrames = Math.floor(State.duration * config.fps);
+            this.workerQueueDepth = 0;
             for (let i = 0; i < totalFrames; i++) {
                 if (this.cancelled || this.stoppedEarly || !this.offscreenGraphics) break;
 
-                while (inFlightFrames >= MAX_IN_FLIGHT && !this.exportError && !this.cancelled && !this.stoppedEarly) {
+                while (this.workerQueueDepth >= 2 && !this.exportError && !this.cancelled && !this.stoppedEarly) {
                     await sleep(2);
                 }
                 if (this.exportError) throw this.exportError;
@@ -100,7 +98,10 @@ export class WebCodecsBackend implements ExportBackend {
                     this.worker.postMessage({ type: 'encode_frame', bitmap, timestampUs }, [bitmap]);
                 }
 
-                inFlightFrames++;
+                this.workerQueueDepth++; // Optimistic increment until worker replies
+                if (i % 2 === 0) {
+                    await sleep(1); // Yield to browser event loop so UI doesn't freeze
+                }
 
                 onProgress(totalFrames > 0 ? i / totalFrames : 1);
             }
@@ -126,7 +127,7 @@ export class WebCodecsBackend implements ExportBackend {
         this.stoppedEarly = true;
     }
 
-    private waitForExportDone(worker: Worker, onFrameEncoded: () => void): Promise<Blob> {
+    private waitForExportDone(worker: Worker): Promise<Blob> {
         return new Promise((resolve, reject) => {
             this.rejectExport = reject;
             worker.onmessage = (event: MessageEvent<ExportWorkerResponse>) => {
@@ -137,8 +138,8 @@ export class WebCodecsBackend implements ExportBackend {
                     this.rejectExport = null;
                     this.exportError = new Error(event.data.message);
                     reject(this.exportError);
-                } else if (event.data.type === 'frame_encoded') {
-                    onFrameEncoded();
+                } else if (event.data.type === 'queue_update') {
+                    this.workerQueueDepth = (event.data as any).size;
                 } else if (event.data.type === 'export_telemetry') {
                     const telemetry = event.data.telemetry;
                     console.info(`[Telemetry] Frames: ${telemetry.framesEncoded}, Avg Encode: ${telemetry.avgEncodeTimeMs.toFixed(2)} ms, Queue: ${telemetry.queueDepth}`);

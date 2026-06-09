@@ -79,6 +79,7 @@ let framesEncodedCount = 0;
 let totalEncodedBytes = 0;
 let totalEncodeTimeMs = 0;
 let peakEncodeTimeMs = 0;
+let queueCheckInterval: ReturnType<typeof setInterval> | null = null;
 
 workerScope.onmessage = (event) => {
     void handleMessage(event.data);
@@ -96,6 +97,10 @@ async function handleMessage(message: ExportWorkerRequest) {
         }
         await finalizeExport();
     } catch (error) {
+        if (queueCheckInterval) {
+            clearInterval(queueCheckInterval);
+            queueCheckInterval = null;
+        }
         workerScope.postMessage({
             type: 'export_error',
             message: error instanceof Error ? error.message : String(error)
@@ -201,6 +206,13 @@ async function startExport(message: StartExportRequest) {
             });
         }
     }
+
+    if (queueCheckInterval) clearInterval(queueCheckInterval);
+    queueCheckInterval = setInterval(() => {
+        if (encoder) {
+            workerScope.postMessage({ type: 'queue_update', size: (encoder as any).encodeQueueSize || 0 });
+        }
+    }, 50);
 }
 
 function encodeFrame(message: EncodeFrameRequest) {
@@ -260,6 +272,10 @@ function postFrameEncoded(timestampUs: number, audioBuffer?: Float32Array): void
 }
 
 async function finalizeExport() {
+    if (queueCheckInterval) {
+        clearInterval(queueCheckInterval);
+        queueCheckInterval = null;
+    }
     if (!encoder || !muxer) throw new Error('Export encoder is not initialized.');
     if (!opfsFileHandle || !opfsAccessHandle) throw new Error('OPFS export file is not initialized.');
 
