@@ -1,7 +1,9 @@
 import type { AudioEngine } from '../audio/AudioEngine';
 import { generatePerformancePlan } from '../automation/performancePlanGenerator';
 import { normalizeVisualTuningConfig, visualTuningControls, type VisualTuningKey } from '../config/visualTuning';
+import { ExportCapabilityDetector } from '../export/ExportCapabilityDetector';
 import { WebMExporter, type ExportConfig } from '../export/WebMExporter';
+import type { ExportCapabilities } from '../export/ExportTypes';
 import { State } from '../state/store';
 import type { MorphCurve, PerformanceAutomationPlan, PerformanceAutomationPoint, RenderState, TimelineLayers, VisualMode } from '../types';
 import { GestureEngine } from './GestureEngine';
@@ -54,6 +56,7 @@ export class DashboardUI {
     private exportP5Instance: any = null;
     private exportCanvas: HTMLCanvasElement | null = null;
     private currentExporter: WebMExporter | null = null;
+    private exportCapabilities: ExportCapabilities | null = null;
 
     // UI visibility lock state.
     private isUiLockedVisible = false;
@@ -145,6 +148,7 @@ export class DashboardUI {
         };
 
         this.initBindings();
+        void this.initExportCapabilityUi();
         this.initVisualTuningControls();
         this.metricTooltip = this.createDashboardMetricTooltip();
         this.timelineTooltip = this.createTimelineTooltip(); // JAVÍTVA: Timeline tooltip példányosítása
@@ -371,6 +375,49 @@ export class DashboardUI {
         });
     }
 
+    private async initExportCapabilityUi(): Promise<void> {
+        const report = await ExportCapabilityDetector.detectCapabilities();
+        this.exportCapabilities = report;
+        this.applyExportCapabilityUi(report);
+    }
+
+    private applyExportCapabilityUi(report: ExportCapabilities): void {
+        const resolutionSelect = this.els.exportResolution as HTMLSelectElement;
+
+        if (report.preferredBackend === 'none') {
+            (this.els.exportVideoBtn as HTMLButtonElement).disabled = true;
+            this.els.status.innerText = report.warnings[0] || 'Video export is not supported in this browser.';
+        }
+
+        if (report.warnings.length > 0) {
+            const warning = document.createElement('div');
+            warning.className = 'export-capability-warning';
+            warning.style.color = '#ffd166';
+            warning.style.fontSize = '12px';
+            warning.style.marginTop = '6px';
+            warning.textContent = `\u26A0\uFE0F ${report.warnings.join(' ')}`;
+            this.els.exportVideoBtn.insertAdjacentElement('afterend', warning);
+            console.warn(report.warnings.join(' '));
+        }
+
+        if (!report.isMobile) return;
+
+        const fourKOption = Array.from(resolutionSelect.options).find(option => option.value === '4K');
+        if (fourKOption) {
+            fourKOption.disabled = true;
+            fourKOption.hidden = true;
+        }
+
+        const fullHdOption = Array.from(resolutionSelect.options).find(option => option.value === '1080p');
+        if (fullHdOption && !fullHdOption.textContent?.includes('Not recommended on mobile')) {
+            fullHdOption.textContent = `${fullHdOption.textContent || '1080p'} (Not recommended on mobile)`;
+        }
+
+        if (resolutionSelect.value === '4K') {
+            resolutionSelect.value = '1080p';
+        }
+    }
+
     private toggleUiLock() {
         this.isUiLockedVisible = !this.isUiLockedVisible;
         
@@ -526,7 +573,8 @@ export class DashboardUI {
     }
 
     private async startVideoExport() {
-        if (!this.canExport() || this.currentExporter) return;
+        const report = this.exportCapabilities ?? ExportCapabilityDetector.getReport();
+        if (!this.canExport() || report.preferredBackend === 'none' || this.currentExporter) return;
         if (State.isPlaying) {
             this.engine.stop(false);
             this.setPlaybackUi(false);
@@ -535,6 +583,7 @@ export class DashboardUI {
         const exportButton = this.els.exportVideoBtn as HTMLButtonElement;
         const cancelButton = this.els.cancelExportBtn as HTMLButtonElement;
         const config = this.getExportConfig();
+
         const exporter = new WebMExporter(this.exportP5Instance, this.exportCanvas!, this.engine);
         this.currentExporter = exporter;
         this.setExportUiActive(true);
@@ -556,7 +605,9 @@ export class DashboardUI {
     }
 
     private canExport() {
-        return State.duration > 0 && Boolean(this.exportP5Instance && this.exportCanvas);
+        return State.duration > 0
+            && Boolean(this.exportP5Instance && this.exportCanvas)
+            && this.exportCapabilities?.preferredBackend !== 'none';
     }
 
     private getExportConfig(): ExportConfig {

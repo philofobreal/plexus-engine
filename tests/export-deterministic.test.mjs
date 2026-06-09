@@ -6,9 +6,44 @@ import assert from 'node:assert/strict';
 import ts from 'typescript';
 
 function loadWebMExporter() {
-  const source = readFileSync(join(process.cwd(), 'src/export/WebMExporter.ts'), 'utf8')
+  const webcodecsRaw = readFileSync(join(process.cwd(), 'src/export/WebCodecsBackend.ts'), 'utf8');
+  const exporterRaw = readFileSync(join(process.cwd(), 'src/export/WebMExporter.ts'), 'utf8');
+  const webcodecsSource = webcodecsRaw
     .replace("import { State } from '../state/store';", '')
-    .replace("import ExportWorker from './export.worker.ts?worker';", '');
+    .replace("import type { ExportBackend } from './ExportBackend';", '')
+    .replace("import { ExportBackendRegistry, type ExportBackendFactory } from './ExportBackendRegistry';", '')
+    .replace("import type { ExportCapabilities, ExportConfig, ExportWorkerResponse } from './ExportTypes';", '')
+    .replace("import ExportWorker from './export.worker.ts?worker';", 'const ExportWorker = FakeWorker;')
+    .replace("import type p5 from 'p5';", '')
+    .replace(/export const WebCodecsBackendFactory[\s\S]*?ExportBackendRegistry\.register\(WebCodecsBackendFactory\);/, '');
+  const exporterStub = `
+class ExportBackendRegistry {
+  static getPreferred(p5Instance: any, canvas: HTMLCanvasElement, audioEngine: any, trackName: string) {
+    return new WebCodecsBackend(p5Instance, canvas, audioEngine, trackName);
+  }
+}
+
+class ExportCapabilityDetector {
+  static async detectCapabilities() {
+    return {
+      webcodecsSupported: true,
+      webcodecsCodecs: { vp9: true, vp8: true },
+      canExport4K: true,
+      isMobile: false,
+      preferredBackend: 'webcodecs',
+      warnings: []
+    };
+  }
+}
+`;
+  const exporterSource = exporterRaw
+    .replace("import type { ExportBackend } from './ExportBackend';", '')
+    .replace("import type { ExportConfig } from './ExportTypes';", '')
+    .replace("import { ExportCapabilityDetector } from './ExportCapabilityDetector';", '')
+    .replace("import { ExportBackendRegistry } from './ExportBackendRegistry';", '')
+    .replace("import './WebCodecsBackend';", '')
+    .replace("export type { ExportConfig } from './ExportTypes';", '');
+  const source = webcodecsSource + '\n' + exporterStub + '\n' + exporterSource;
 
   const transpiled = ts.transpileModule(source, {
     compilerOptions: {
@@ -35,6 +70,9 @@ function loadWebMExporter() {
     }
     postMessage(message) {
       this.messages.push(message);
+      if (message.type === 'encode_frame') {
+        this.onmessage?.({ data: { type: 'frame_encoded', timestampUs: message.timestampUs } });
+      }
       if (message.type === 'finalize_export') {
         this.onmessage?.({ data: { type: 'export_done', blob: new Blob(['webm']) } });
       }
@@ -47,9 +85,13 @@ function loadWebMExporter() {
   const events = [];
   const context = vm.createContext({
     State,
+    FakeWorker,
     ExportWorker: FakeWorker,
     Blob,
     VideoFrame: FakeVideoFrame,
+    createImageBitmap: async () => ({
+      close() {}
+    }),
     window: {
       requestAnimationFrame(callback) {
         events.push(['raf']);
@@ -59,6 +101,7 @@ function loadWebMExporter() {
     },
     exports: {}
   });
+  context.VideoEncoder = class FakeVideoEncoder {};
 
   vm.runInContext(transpiled, context);
   return { WebMExporter: context.exports.WebMExporter, State, events };
@@ -110,6 +153,18 @@ test('WebMExporter owns p5 loop state without renderer polling', async () => {
     },
     loop() {
       calls.push(['loop']);
+    },
+    createGraphics(width, height) {
+      calls.push(['createGraphics', width, height]);
+      return {
+        elt: createMockCanvas(drawnText, calls),
+        clear() {
+          calls.push(['clearGraphics']);
+        },
+        remove() {
+          calls.push(['removeGraphics']);
+        }
+      };
     }
   };
 
@@ -128,13 +183,12 @@ test('WebMExporter owns p5 loop state without renderer polling', async () => {
   assert.equal(drawnText.some((text) => String(text).startsWith('Long Deterministic Track Name')), true);
   assert.equal(drawnText.includes('128 BPM'), true);
   assert.equal(calls.findIndex(([name]) => name === 'noLoop') < calls.findIndex(([name]) => name === 'redraw'), true);
-  assert.equal(events.findIndex(([name]) => name === 'resizeCanvas') < events.findIndex(([name]) => name === 'raf'), true);
   assert.equal(events.findIndex(([name]) => name === 'raf') < events.findIndex(([name]) => name === 'redraw'), true);
-  assert.equal(calls.at(-1)[0], 'loop');
-  assert.deepEqual(calls.filter(([name]) => name === 'resizeCanvas'), [
-    ['resizeCanvas', 1280, 720],
-    ['resizeCanvas', 320, 180]
-  ]);
+  assert.equal(calls.some(([name]) => name === 'loop'), true);
+  assert.equal(calls.findIndex(([name]) => name === 'loop') < calls.findIndex(([name]) => name === 'removeGraphics'), true);
+  assert.deepEqual(calls.filter(([name]) => name === 'resizeCanvas'), []);
+  assert.deepEqual(calls.filter(([name]) => name === 'createGraphics'), [['createGraphics', 1280, 720]]);
+  assert.equal(calls.some(([name]) => name === 'removeGraphics'), true);
 });
 
 test('WebMExporter stopAndSave finalizes a partial WebM blob', async () => {
@@ -157,6 +211,16 @@ test('WebMExporter stopAndSave finalizes a partial WebM blob', async () => {
     },
     loop() {
       calls.push(['loop']);
+    },
+    createGraphics(width, height) {
+      calls.push(['createGraphics', width, height]);
+      return {
+        elt: createMockCanvas([], calls),
+        clear() {},
+        remove() {
+          calls.push(['removeGraphics']);
+        }
+      };
     }
   };
 
@@ -170,7 +234,10 @@ test('WebMExporter stopAndSave finalizes a partial WebM blob', async () => {
   assert.equal(blob.size, 4);
   assert.equal(progressCalls, 2);
   assert.equal(calls.filter(([name]) => name === 'redraw').length < 60, true);
-  assert.equal(calls.at(-1)[0], 'loop');
+  assert.equal(calls.some(([name]) => name === 'loop'), true);
+  assert.equal(calls.findIndex(([name]) => name === 'loop') < calls.findIndex(([name]) => name === 'removeGraphics'), true);
+  assert.deepEqual(calls.filter(([name]) => name === 'resizeCanvas'), []);
+  assert.equal(calls.some(([name]) => name === 'removeGraphics'), true);
 });
 
 test('PlexusRenderer does not poll export loop state', () => {
