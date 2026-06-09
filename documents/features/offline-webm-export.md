@@ -16,6 +16,7 @@ Implemented capabilities:
 - `Stop` finalizes and downloads a partial WebM from the frames encoded so far.
 - `Cancel` aborts the export and discards the partial output.
 - Object URLs created for download are revoked after a `1000ms` delay so the browser download queue can consume the Blob before the URL is released.
+- Export is strictly WebCodecs-only and does not use MediaRecorder fallbacks, guaranteeing deterministic, high-quality encoding results across all supported platforms.
 
 ## Runtime Ownership
 
@@ -42,6 +43,22 @@ Export is considered an active visual state:
 - `State.playbackFade` ramps toward `1.0` when `State.isPlaying || State.isExporting`.
 - `Particle.update()` treats `State.isExporting` as effective playback for particle speed.
 - Drop anticipation and frame/feature publication run during export just as they do during playback.
+
+## Memory Safety and Backpressure
+
+The main-thread export loop enforces hard backpressure against the hardware encoder to prevent Out-Of-Memory crashes, particularly on mobile devices.
+
+The worker posts `queue_update` telemetry messages whenever the WebCodecs encoder's internal queue depth changes. The main thread tracks this value as `workerQueueDepth` and blocks further p5 rendering with a hard spin-lock:
+
+```ts
+while (workerQueueDepth >= 2) {
+  await sleep(1);
+}
+```
+
+This loop yields to the browser event loop every iteration (`sleep(1)`), which serves two purposes: it prevents the tab from freezing under encoder backpressure, and it keeps the STOP button responsive so the user can abort immediately at any point during a long export.
+
+Additionally, the main loop yields `sleep(1)` every 2 frames unconditionally, ensuring the browser event loop is serviced regularly even when the encoder is keeping up.
 
 ## Frame Capture Ordering
 
@@ -99,9 +116,11 @@ If `AudioEncoder` or `AudioData` is unavailable, export continues in video-only 
 
 `src/export/export.worker.ts` handles:
 
-- `start_export`: configure `VideoEncoder`, optionally configure `AudioEncoder`, initialize `WebMMuxer`.
-- `encode_frame`: encode a transferable `VideoFrame`, optionally encode `AudioData` from planar audio.
-- `finalize_export`: flush encoders, finalize the WebM Blob, and post `export_done`.
+- `start_export`: configure `VideoEncoder`, optionally configure `AudioEncoder`, initialize `WebMMuxer`, and open an OPFS file via `FileSystemSyncAccessHandle`.
+- `encode_frame`: encode a transferable `VideoFrame`, optionally encode `AudioData` from planar audio, and write each completed muxer chunk synchronously to disk.
+- `finalize_export`: flush encoders, finalize the WebM container, close the sync handle, retrieve the completed file as a native `Blob` via `getFile()`, and post `export_done`.
+
+Encoded WebM chunks are written synchronously and directly to disk using the Origin Private File System (OPFS) `FileSystemSyncAccessHandle` API. Each chunk is discarded from RAM immediately after the write, eliminating the accumulation of large in-memory Blobs that previously caused OOM crashes on long exports or low-memory devices. At the end of export the final file is retrieved natively via `fileHandle.getFile()` without any in-memory reassembly.
 
 `WebMMuxer` is dependency-free TypeScript. It writes EBML, Segment, Info, Tracks, Cluster, and SimpleBlock structures. Video uses track 1 (`0x81`) with VP8/VP9 codec IDs. Audio uses track 2 (`0x82`) with `A_OPUS`, Opus private header, sample rate, and two channels.
 

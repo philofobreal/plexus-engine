@@ -31,7 +31,7 @@ Allowed dependency directions:
 - `src/ui/` may import `src/audio/`, `src/state/`, and types.
 - `src/ui/DashboardUI.ts` may import `src/export/WebMExporter.ts` to orchestrate user-triggered exports, but it must treat the exporter as a black-box workflow module.
 - `src/export/WebMExporter.ts` may import `src/state/` and its worker module. It may receive `AudioEngine` through construction and use only the public `getAudioBuffer()` surface.
-- `src/export/export.worker.ts` must remain dependency-free from DOM, p5, UI, audio engine, renderer, and shared mutable state. It may use worker globals, WebCodecs, `Blob`, typed arrays, and local pure TypeScript EBML helpers.
+- `src/export/export.worker.ts` must remain dependency-free from DOM, p5, UI, audio engine, renderer, and shared mutable state. It may use worker globals, WebCodecs, `Blob`, typed arrays, local pure TypeScript EBML helpers, and the Origin Private File System API (`navigator.storage.getDirectory()`) for direct-to-disk chunk streaming.
 - Within `src/ui/`, `DashboardUI.ts` may compose `GestureEngine.ts` and `TimelineCanvas.ts`; those submodules must stay independent from each other.
 - `GestureEngine.ts` may depend on DOM event and geometry APIs plus shared callback types, but must not import `src/state/`, `src/audio/`, `src/visuals/`, or timeline rendering modules.
 - `TimelineCanvas.ts` may depend on canvas APIs and shared render types, but must not import `src/state/`, `src/audio/`, `src/visuals/`, or gesture modules.
@@ -63,7 +63,7 @@ Mode-specific visual implementations should live in separate `VisualIdentity` im
 - File decode and analysis request creation belong to audio.
 - Worker compute lifecycle belongs to audio plus worker; publication of accepted results belongs to audio.
 - Playback start, pause, seek, stop, and end belong to audio.
-- Offline export frame timing, p5 loop suppression, export canvas resize/restore, `VideoFrame` capture, audio slicing, watermark drawing, and stop/cancel semantics belong to `src/export/WebMExporter.ts`.
+- Offline export frame timing, p5 loop suppression, export canvas resize/restore, `VideoFrame` capture, audio slicing, watermark drawing, hardware encoder queue synchronization, and stop/cancel semantics belong to `src/export/WebMExporter.ts`.
 - WebM byte layout, WebCodecs encoder lifecycle, and muxing belong to `src/export/export.worker.ts`.
 - Event consumption for visual effects belongs to visuals, but event index reset rules are part of the playback synchronization contract.
 - DOM enable/disable states and dashboard text belong to UI.

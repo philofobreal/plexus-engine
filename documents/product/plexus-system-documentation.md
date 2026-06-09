@@ -33,7 +33,7 @@ A szoftver pozicionalasa:
 A fejlesztesek fokuszaban nem ujabb grafikai effektek, hanem az **eloadoi munkafolyamat es integracio (preset + export + performance workflow)** tamogatasa all:
 
 * Elo vizualis presetek exportalasa, mentese es betoltese (Preset Management).
-* Bongeszoben futo, worker-alapu offline WebM export vizjelkartyaval es optionalis Opus hangsavval.
+* Bongeszoben futo, worker-alapu offline WebM export, amely OPFS (Origin Private File System) segitsegevel kozvetlenul lemezre streamel. Ez garantalja a mobil-biztos (OOM vedett) mukodest akar 4K felbontas eseten is.
 * Megoszthato shareable URL konfiguraciok generalasa.
 * OBS-barat, chroma-key es transzparens hatterrel rendelkezo tiszta kimeneti modok.
 * MIDI mapping es hardveres BPM szinkronizacio tamogatasa a jovoben.
@@ -48,7 +48,7 @@ A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus m
 4. **Analysis Engine (`src/audio/analyzer.worker.ts`):** dedikalt Web Worker. 1024 mintas Hann-windowed FFT pipeline-t hasznal, spektralis fluxust, relativ savenergiakat, centroidot es flatness erteket szamol, majd `AudioFrame`, `BeatEvent` es `TrackAnalysis` kimenetet publikal.
 5. **Shared contracts/state (`src/types/index.ts`, `src/state/store.ts`):** tarolja a megosztott tipusokat, az elfogadott analizis eredmenyeket, a vizualis modot, loop allapotot, aktualis frame-et, cue allapotokat, modulacios buszt, elo tuningot es target tuningot.
 6. **Render Engine (`src/visuals/`):** p5 canvas renderer backend adapterrel, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `StyleRegistry`-bol lekert `VisualIdentity` implementaciokat kezeli. A zene-dramaturgiai allapotszabalyozast a `VisualDirectorFSM.ts` modul vegzi, majd `DirectorOutput` formaban ad render-facing jeleket az identitasoknak.
-7. **Offline Export (`src/export/`):** a `WebMExporter` a fo szalon vezerli az offline idohurkot, a p5 canvas atmeretezeset, a `VideoFrame` elkapast, az audio buffer szeletelest es a vizjelkartyat. Az `export.worker.ts` WebCodecs `VideoEncoder`/optionalis `AudioEncoder` hasznalataval es pure TypeScript EBML/WebM muxerrel allit elo Blob-ot.
+7. **Offline Export (`src/export/`):** a `WebMExporter` a fo szalon vezerli az offline idohurkot, a p5 canvas atmeretezeset, a `VideoFrame` elkapast, az audio buffer szeletelest es a vizjelkartyat. Az `export.worker.ts` WebCodecs `VideoEncoder`/optionalis `AudioEncoder` hasznalataval es pure TypeScript EBML/WebM muxerrel allit elo Blob-ot. A fo szal szigoru hardver-encoder-sor alapu visszanyomast (backpressure) alkalmaz, es rendszeresen atveszi a vezerlest a bongeszoesemanyhurkoktol, hogy megelozze a felhasznaloi felulet lefagyasat es a memoriaosszeomlasat mobil eszkozokkel.
 
 ## 3. Funkcionalis Specifikacio
 
