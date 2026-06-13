@@ -98,22 +98,29 @@ test('timeline supports fullscreen overlay, zoom viewport, and pan tracking thro
 
 test('timeline and seekbar scrub through semantic callbacks and one audio seek path', () => {
   const ui = read('src/ui/DashboardUI.ts');
+  const playbackCtrl = read('src/ui/controllers/PlaybackController.ts');
   const gestures = read('src/ui/GestureEngine.ts');
   const timeline = read('src/ui/TimelineCanvas.ts');
 
+  // DashboardUI owns the scrub state and the single engine.seek call
   assert.match(ui, /private scrubTime: number \| null = null/);
   assert.match(ui, /private setScrubTime\(time: number\)/);
   assert.match(ui, /this\.scrubTime = this\.clamp\(time, 0, State\.duration\)/);
   assert.match(ui, /private commitScrubTime\(\)/);
   assert.match(ui, /const targetTime = this\.scrubTime/);
   assert.match(ui, /this\.engine\.seek\(targetTime\)/);
-  assert.match(ui, /seek\.addEventListener\('input'[\s\S]*this\.setScrubTime\(seekTime\)[\s\S]*\}\);/);
-  assert.doesNotMatch(ui, /seek\.addEventListener\('input'[\s\S]{0,320}this\.engine\.seek/);
-  assert.match(ui, /seek\.addEventListener\('change'[\s\S]*this\.commitScrubTime\(\)/);
+
+  // PlaybackController owns the DOM binding and delegates scrub via callbacks
+  assert.match(playbackCtrl, /seek\.addEventListener\('input'[\s\S]*this\.callbacks\.onSeekScrub\(seekTime\)[\s\S]*\}\);/);
+  assert.doesNotMatch(playbackCtrl, /seek\.addEventListener\('input'[\s\S]{0,320}this\.engine\.seek/);
+  assert.match(playbackCtrl, /seek\.addEventListener\('change'[\s\S]*this\.callbacks\.onSeekCommit\(\)/);
+
   assert.match(gestures, /this\.callbacks\.onStart\?\./);
   assert.match(gestures, /this\.callbacks\.onMove\?\./);
   assert.match(timeline, /const currentTimeToDraw = state\.scrubTime \?\? state\.currentTime/);
-  assert.match(ui, /if \(!this\.isDraggingSlider && this\.scrubTime === null\)/);
+
+  // DashboardUI uses playbackCtrl.isDraggingSlider to guard the update
+  assert.match(ui, /if \(!this\.playbackCtrl\.isDraggingSlider && this\.scrubTime === null\)/);
 });
 
 test('dashboard timeline redraw is throttled by visible playhead and layout changes', () => {

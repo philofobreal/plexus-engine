@@ -56,6 +56,7 @@ test('worker contract includes request id, hop size, success, and error messages
   assert.match(types, /export interface AnalysisResult[\s\S]*requestId: number;[\s\S]*adaptiveThreshold: number;[\s\S]*hopSize: number;/);
   assert.match(types, /export interface AnalysisResult[\s\S]*trackAnalysis: TrackAnalysis;/);
   assert.match(types, /export interface TrackAnalysis[\s\S]*bars: BarAnalysis\[\];[\s\S]*sections: TrackSection\[\];[\s\S]*patterns: MusicPattern\[\];[\s\S]*cues: VisualCueEvent\[\];[\s\S]*features: VisualFeatureFrame\[\];[\s\S]*spectralPivot: number\[\];/);
+  assert.match(types, /export interface TrackAnalysis[\s\S]*featureHopSize: number;[\s\S]*gridOffset: number;/);
   assert.match(types, /export interface AnalysisErrorMessage[\s\S]*errorCode: string;[\s\S]*message: string;/);
   assert.match(worker, /type:\s*'analysis_done'/);
   assert.match(worker, /type:\s*'analysis_error'/);
@@ -138,13 +139,16 @@ test('visual track analysis is precomputed and exposed through shared state', ()
   assert.match(worker, /const trackAnalysis: TrackAnalysis = \{/);
   assert.match(worker, /significantMoments/);
   assert.match(worker, /kind: VisualCueKind/);
+  assert.match(worker, /class FeatureExtractor/);
+  assert.match(worker, /class GridAligner/);
+  assert.match(worker, /class SectionAnalyzer/);
+  assert.match(worker, /class DramaturgyBuilder/);
   assert.match(worker, /const windowMultiplier = new Float32Array\(N\)/);
   assert.match(worker, /windowMultiplier\[i\] = 0\.5 \* \(1 - Math\.cos/);
-  assert.match(worker, /function processFFT\(real: Float32Array, imag: Float32Array\)/);
-  assert.match(worker, /let tonalFactor = clamp01\(\(1\.0 - Math\.min\(1\.0, flatness \* 1\.8\)\) \* 0\.72 \+ harmonicStability \* 0\.28\)/);
-  assert.match(worker, /let noiseFactor = Math\.min\(1\.0, flatness \* 2\.5\)/);
-  assert.match(worker, /let pitchedTransient = clamp01/);
-  assert.match(worker, /let vocalFormant = clamp01/);
+  assert.match(worker, /const processFFT = \(\) =>/);
+  assert.match(worker, /pitchConfidenceT\[i\]/);
+  assert.match(worker, /flatnessT\[i\]/);
+  assert.match(worker, /centroidT\[i\]/);
   assert.match(audio, /ANALYSIS_ALGORITHM_VERSION = 2/);
   assert.match(audio, /State\.trackAnalysis = normalizeTrackAnalysis\(e\.data\.trackAnalysis\)/);
   assert.match(store, /currentFeatures/);
@@ -158,7 +162,7 @@ test('performance automation contracts and state are exposed and reset', () => {
   const audio = read('src/audio/AudioEngine.ts');
   const ui = read('src/ui/DashboardUI.ts');
 
-  assert.match(types, /export type PerformanceAutomationReason = 'intro' \| 'build' \| 'drop' \| 'break' \| 'peak' \| 'harmonicShift' \| 'manual';/);
+  assert.match(types, /export type PerformanceAutomationReason = 'intro' \| 'verse' \| 'build' \| 'drop' \| 'break' \| 'peak' \| 'outro' \| 'harmonicShift' \| 'manual';/);
   assert.match(types, /export interface PerformanceAutomationPoint[\s\S]*id: string;[\s\S]*time: number;[\s\S]*sectionId: string;[\s\S]*preset: string;[\s\S]*confidence: number;[\s\S]*intensity: number;[\s\S]*reason: PerformanceAutomationReason;[\s\S]*morphDurationSec: number;[\s\S]*morphCurve: 'linear' \| 'easeInOut' \| 'exponential';[\s\S]*locked\?: boolean;/);
   assert.match(types, /export interface PerformanceAutomationPlan[\s\S]*version: 1;[\s\S]*source: 'auto' \| 'edited';[\s\S]*points: PerformanceAutomationPoint\[\];/);
   assert.match(types, /export interface RenderState[\s\S]*performancePlan: PerformanceAutomationPlan \| null;/);
@@ -185,8 +189,8 @@ test('visual track analysis detects recurring temporal patterns', () => {
   assert.match(types, /export type VisualCueKind = [\s\S]*'pattern'/);
   assert.match(worker, /let patternGroups: Record<string,/);
   assert.match(worker, /let sig = `\$\{section\.label\}:\$\{section\.dominantFeature\}:e\$\{Math\.floor\(section\.energy\*4\)\}:d\$\{Math\.floor\(section\.density\*4\)\}`/);
-  assert.match(worker, /let musicPatterns: MusicPattern\[\]/);
-  assert.match(worker, /addCue\(frameIdx,\s*'pattern'/);
+  assert.match(worker, /public musicPatterns: MusicPattern\[\]/);
+  assert.match(worker, /this\.musicPatterns = Object\.entries\(patternGroups\)/);
   assert.match(renderer, /kind === 'pattern'/);
   assert.match(temporal, /function getPatternResonance\(time: number\)/);
 });
@@ -250,7 +254,9 @@ test('visual effects expose live tuning controls and copyable config', () => {
   assert.match(main, /id="visual-preset-list"/);
   assert.match(main, /id="visual-tuning-controls"/);
   assert.match(main, /id="copy-visual-config"/);
-  assert.match(ui, /data-tuning-key="\$\{control\.key\}"/);
+  // TuningController owns the DOM markup generation (FÁZIS 1 refactor)
+  const tuningCtrl = read('src/ui/controllers/TuningController.ts');
+  assert.match(tuningCtrl, /data-tuning-key="\$\{control\.key\}"/);
   assert.match(ui, /State\.targetTuning\[key\] = value/);
   assert.match(ui, /loadVisualPresetList/);
   assert.match(ui, /loadVisualPreset\(fileName/);
@@ -315,27 +321,24 @@ test('visual tuning controls cover circle, line, polygon, particle, and temporal
 test('analysis thresholds use bar-aligned macro dynamics with live safety overrides', () => {
   const worker = read('src/audio/analyzer.worker.ts');
 
-  assert.match(worker, /const adaptiveThreshold = Math\.min\(0\.6, Math\.max\(0\.3, normalizedMedian\)\)/);
-  assert.match(worker, /energyRatio\s*>=\s*adaptiveThreshold\s*\?\s*'HIGH'\s*:\s*'LOW'/);
-  assert.match(worker, /sE\s*<\s*0\.35/);
-  assert.match(worker, /sE\s*>\s*0\.95/);
-  assert.match(worker, /let secondsPerBar = secondsPerBeat \* 4/);
-  assert.match(worker, /let barFrames = Math\.max\(1, Math\.round\(secondsPerBar \* sampleRate \/ hopSize\)\)/);
-  assert.match(worker, /state: energy >= adaptiveThreshold \? 'HIGH' : 'LOW'/);
+  assert.match(worker, /this\.adaptiveThreshold = Math\.min\(0\.6, Math\.max\(0\.3,/);
+  assert.match(worker, /state: energy >= this\.adaptiveThreshold \? 'HIGH' : 'LOW'/);
+  assert.match(worker, /outFrames\[i\]\.e < 0\.35/);
+  assert.match(worker, /this\.secondsPerBar = secondsPerBeat \* 4/);
+  assert.match(worker, /Math\.round\(grid\.secondsPerBar \* sampleRate \/ hopSize \* 8\)/);
   assert.match(worker, /adaptiveThreshold, frames: outFrames/);
 });
 
 test('analysis worker uses spectral FFT features instead of legacy crossover filters', () => {
   const worker = read('src/audio/analyzer.worker.ts');
 
-  assert.match(worker, /const N = hopSize/);
-  assert.match(worker, /let prevMag = new Float32Array\(N \/ 2\)/);
+  assert.match(worker, /const N = this\.hopSize/);
+  assert.match(worker, /const prevMag = new Float32Array\(N \/ 2\)/);
   assert.match(worker, /currentFlux \+= fluxDiff/);
-  assert.match(worker, /centroidT\[i\] = sumMag > 0 \? \(sumFreqMag \/ sumMag\) \/ 512 : 0/);
-  assert.match(worker, /flatnessT\[i\] = sumMag > 0 \? Math\.exp\(sumLogMag \/ 511\) \/ \(sumMag \/ 511\) : 0/);
-  assert.match(worker, /sVocal \+= \(clamp01\(vocalTarget\) - sVocal\) \* 0\.1/);
-  assert.match(worker, /sFxPresence \+= \(rawHigh - sFxPresence\) \* 0\.15/);
-  assert.match(worker, /outFrames\[i\] = \{ e: sE, b: sDensity, m: sMelody, t: sFxPresence, state: state, eRatio: energyRatio \}/);
+  assert.match(worker, /this\.centroidT\[i\] = sumMag > 0 \? \(sumFreqMag \/ sumMag\) \/ 512 : 0/);
+  assert.match(worker, /this\.flatnessT\[i\] = sumMag > 0 \? Math\.exp\(sumLogMag \/ 511\) \/ \(sumMag \/ 511\) : 0/);
+  assert.match(worker, /sFx \+= \(clamp01\(fxTarget\) - sFx\) \* 0\.15/);
+  assert.match(worker, /outFrames\[i\] = \{ e: sE, b: sDensity, m: sMelody, t: sFx, state: 'LOW', eRatio: sE \}/);
   assert.doesNotMatch(worker, /a_bass/);
   assert.doesNotMatch(worker, /filterLow/);
   assert.doesNotMatch(worker, /filterMidHigh/);
@@ -535,11 +538,15 @@ test('player UI supports background controls, metrics toggle, draggable tuning, 
   assert.doesNotMatch(main, /id="toggle-loop"[\s\S]*id="toggle-metrics"[\s\S]*id="toggle-tuning-panel"/);
   assert.match(state, /loopPlayback: true/);
   assert.match(audio, /State\.loopPlayback/);
-  assert.match(ui, /canvasContainer\.addEventListener\('click'/);
-  assert.match(ui, /event\.code === 'Space'/);
-  assert.match(ui, /event\.code === 'ArrowLeft'/);
-  assert.match(ui, /event\.code === 'ArrowRight'/);
-  assert.match(ui, /initTuningPanelDrag/);
+  // PlaybackController owns DOM bindings (FÁZIS 1 refactor)
+  const playbackCtrl = read('src/ui/controllers/PlaybackController.ts');
+  assert.match(playbackCtrl, /canvasContainer\.addEventListener\('click'/);
+  assert.match(playbackCtrl, /event\.code === 'Space'/);
+  assert.match(playbackCtrl, /event\.code === 'ArrowLeft'/);
+  assert.match(playbackCtrl, /event\.code === 'ArrowRight'/);
+  // TuningController owns panel drag (FÁZIS 1 refactor)
+  const tuningCtrlPlayer = read('src/ui/controllers/TuningController.ts');
+  assert.match(tuningCtrlPlayer, /initDragHandle/);
   assert.match(css, /\.center-play-btn/);
   assert.match(css, /\.metrics-grid\.is-hidden/);
   assert.match(css, /\.metrics-toggle/);

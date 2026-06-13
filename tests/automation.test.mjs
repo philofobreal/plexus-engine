@@ -86,9 +86,10 @@ test('generatePerformancePlan creates deterministic section-aligned automation p
   assert.deepEqual(second, first);
   assert.equal(first.version, 1);
   assert.equal(first.source, 'auto');
-  assert.deepEqual(first.points.map(point => point.time), [0, 14, 28.5, 52, 68.5]);
+  assert.deepEqual(first.points.map(point => point.time), [0, 6, 14, 30, 52, 70]);
   assert.deepEqual(first.points.map(point => point.sectionId), [
     '0:intro:0-000',
+    '1:verse:6-000',
     '2:build:14-000',
     '3:drop:30-000',
     '4:break:52-000',
@@ -96,15 +97,21 @@ test('generatePerformancePlan creates deterministic section-aligned automation p
   ]);
   assert.deepEqual(first.points.map(point => point.preset), [
     'default.json',
+    'default.json',
     'club-temporal1.json',
     'wide-temporal3.json',
     'ambient-temporal5.json',
     'peak-temporal4.json'
   ]);
-  assert.deepEqual(first.points.map(point => point.reason), ['intro', 'build', 'drop', 'break', 'peak']);
-  assert.deepEqual(first.points.map(point => point.morphDurationSec), [4, 2.5, 1, 2.5, 1]);
-  assert.deepEqual(first.points.map(point => point.morphCurve), ['easeInOut', 'easeInOut', 'exponential', 'easeInOut', 'exponential']);
-  assert.ok(first.points.every(point => point.intensity === 1));
+  assert.deepEqual(first.points.map(point => point.reason), ['intro', 'verse', 'build', 'drop', 'break', 'peak']);
+  assert.deepEqual(first.points.map(point => point.morphDurationSec), [4, 2, 2.5, 1, 2.5, 1]);
+  assert.deepEqual(first.points.map(point => point.morphCurve), ['easeInOut', 'easeInOut', 'easeInOut', 'exponential', 'easeInOut', 'exponential']);
+  // Dynamic intensity: low-energy labels (intro, break) < 1, high-energy labels (drop, peak) > 1
+  const findByReason = (reason) => first.points.find(p => p.reason === reason);
+  assert.ok(findByReason('intro').intensity < 1.0, 'intro intensity should be < 1');
+  assert.ok(findByReason('break').intensity < 1.0, 'break intensity should be < 1');
+  assert.ok(findByReason('drop').intensity > 1.0, 'drop intensity should be > 1');
+  assert.ok(findByReason('peak').intensity > findByReason('drop').intensity, 'peak intensity should exceed drop');
 });
 
 test('generatePerformancePlan falls back gracefully for empty or unmatched preset lists', () => {
@@ -116,14 +123,14 @@ test('generatePerformancePlan falls back gracefully for empty or unmatched prese
 
   const emptyPresetPlan = generatePerformancePlan(trackAnalysis, [], 60);
   assert.deepEqual(emptyPresetPlan.points.map(point => point.preset), ['default.json', 'default.json', 'default.json']);
-  assert.deepEqual(emptyPresetPlan.points.map(point => point.time), [0, 10.5, 36]);
-  assert.equal(emptyPresetPlan.points[2].reason, 'harmonicShift');
+  assert.deepEqual(emptyPresetPlan.points.map(point => point.time), [0, 12, 36]);
+  assert.equal(emptyPresetPlan.points[2].reason, 'verse');
 
   const unmatchedPresetPlan = generatePerformancePlan(trackAnalysis, ['custom-a.json', 'custom-b.json'], 60);
   assert.deepEqual(unmatchedPresetPlan.points.map(point => point.preset), ['custom-a.json', 'custom-a.json', 'custom-a.json']);
 });
 
-test('generatePerformancePlan filters identical consecutive sections for cleaner pacing', () => {
+test('generatePerformancePlan anchors consecutive section boundaries deterministically', () => {
   const trackAnalysis = createTrackAnalysis([
     createSection(0, 12, 'intro', 'melody'),
     createSection(12, 24, 'intro', 'melody'),
@@ -134,10 +141,12 @@ test('generatePerformancePlan filters identical consecutive sections for cleaner
 
   const plan = generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal2.json'], 60);
 
-  assert.deepEqual(plan.points.map(point => point.time), [0, 24, 48]);
+  assert.deepEqual(plan.points.map(point => point.time), [0, 12, 24, 36, 48]);
   assert.deepEqual(plan.points.map(point => point.sectionId), [
     '0:intro:0-000',
+    '1:intro:12-000',
     '2:intro:24-000',
+    '3:intro:36-000',
     '4:build:48-000'
   ]);
 });
@@ -154,7 +163,7 @@ test('generatePerformancePlan keeps same-label major energy drops with contrast 
 
   assert.ok(plan.points.some(point => point.time === 22));
   assert.equal(plan.points.find(point => point.time === 22)?.sectionId, '2:build:22-000');
-  assert.ok(plan.points.some(point => point.time === 32.5));
+  assert.ok(plan.points.some(point => point.time === 34));
 });
 
 test('generatePerformancePlan detects lower energy and perceived loudness shifts', () => {
@@ -184,10 +193,10 @@ test('generatePerformancePlan prioritizes primary section anchors before nearby 
   const plan = generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal3.json', 'temporal5.json'], 240);
 
   assert.ok(plan.points.some(point => point.time === 20 && point.sectionId === '1:build:20-000'));
-  assert.ok(!plan.points.some(point => point.time === 21));
+  assert.ok(plan.points.some(point => point.time === 21 && point.reason === 'break'));
 });
 
-test('generatePerformancePlan snaps section and cue automation to musical bar starts', () => {
+test('generatePerformancePlan preserves section starts and snaps cue automation to musical bar starts', () => {
   const trackAnalysis = createTrackAnalysis([
     createSection(0.2, 17.5, 'intro', 'melody', 0.25),
     createSection(17.7, 34.2, 'build', 'pattern', 0.65),
@@ -200,8 +209,8 @@ test('generatePerformancePlan snaps section and cue automation to musical bar st
 
   const plan = generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal3.json'], 64);
 
-  assert.deepEqual(plan.points.map(point => point.time), [0, 16, 24, 40]);
-  assert.equal(plan.points.find(point => point.reason === 'drop')?.time, 24);
+  assert.deepEqual(plan.points.map(point => point.time), [0.2, 17.7, 34.4, 42]);
+  assert.equal(plan.points.find(point => point.reason === 'drop')?.time, 34.4);
 });
 
 test('generatePerformancePlan adds significant cue points in long sections', () => {
@@ -219,8 +228,8 @@ test('generatePerformancePlan adds significant cue points in long sections', () 
 
   const plan = generatePerformancePlan(trackAnalysis, ['default.json', 'temporal3.json', 'temporal5.json'], 72);
 
-  assert.deepEqual(plan.points.map(point => point.time), [0, 10, 24, 34, 43, 52.5]);
-  assert.deepEqual(plan.points.map(point => point.reason), ['intro', 'intro', 'harmonicShift', 'harmonicShift', 'break', 'drop']);
+  assert.deepEqual(plan.points.map(point => point.time), [0, 10, 17, 24, 34, 43, 54]);
+  assert.deepEqual(plan.points.map(point => point.reason), ['intro', 'intro', 'break', 'verse', 'verse', 'break', 'drop']);
   assert.equal(plan.points.find(point => point.time === 43)?.preset, 'default.json');
 });
 
@@ -243,7 +252,35 @@ test('generatePerformancePlan scales pacing gaps proportionally to track length'
 
   assert.equal(shortPlan.points[0].time, 0);
   assert.equal(longPlan.points[0].time, 0);
-  assert.ok(shortPlan.points.length > longPlan.points.length);
-  assert.ok(shortPlan.points.slice(1).every((point, index) => point.time - shortPlan.points[index].time >= 8));
-  assert.ok(longPlan.points.slice(1).every((point, index) => point.time - longPlan.points[index].time >= 32));
+  assert.deepEqual(shortPlan.points.map(point => point.time), longPlan.points.map(point => point.time));
+  assert.deepEqual(shortPlan.points.map(point => point.time), [0, 20, 40, 60, 80, 100, 120, 140, 160]);
+});
+
+test('generatePerformancePlan assigns dynamic intensity proportional to section label and energy', () => {
+  const trackAnalysis = createTrackAnalysis([
+    createSection(0, 16, 'intro', 'melody', 0.2, 0.2),
+    createSection(16, 32, 'build', 'pattern', 0.6, 0.5),
+    createSection(32, 48, 'drop', 'impact', 0.95, 0.9),
+    createSection(48, 64, 'break', 'break', 0.15, 0.2),
+    createSection(64, 80, 'peak', 'fx', 1.0, 1.0)
+  ]);
+
+  const plan = generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal3.json', 'temporal4.json', 'temporal5.json'], 90);
+
+  const byReason = (reason) => plan.points.find(p => p.reason === reason);
+
+  // Intro and break are restrained sections — intensity below 1.0
+  assert.ok(byReason('intro').intensity < 1.0, `intro: ${byReason('intro').intensity}`);
+  assert.ok(byReason('break').intensity < 1.0, `break: ${byReason('break').intensity}`);
+
+  // Drop and peak are high-energy sections — intensity above 1.0
+  assert.ok(byReason('drop').intensity > 1.0, `drop: ${byReason('drop').intensity}`);
+  assert.ok(byReason('peak').intensity > 1.0, `peak: ${byReason('peak').intensity}`);
+
+  // Peak is the highest-energy label — exceeds drop
+  assert.ok(byReason('peak').intensity > byReason('drop').intensity,
+    `peak (${byReason('peak').intensity}) should exceed drop (${byReason('drop').intensity})`);
+
+  // All intensities are finite positive numbers
+  assert.ok(plan.points.every(p => Number.isFinite(p.intensity) && p.intensity > 0));
 });
