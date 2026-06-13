@@ -30,6 +30,19 @@ Current failure message fields:
 - `errorCode`.
 - `message`.
 
+## Analyzer Worker Structure
+
+`src/audio/analyzer.worker.ts` keeps the worker boundary as a typed message contract, but the analysis implementation is no longer a monolithic `onmessage` function. The message handler is a thin orchestration shell that constructs class-owned analysis steps, assembles the final `TrackAnalysis`, and posts a typed success or failure payload.
+
+Internal ownership:
+
+- `FeatureExtractor` owns sample-window processing, Hann-windowed FFT execution, RMS, spectral flux, bass/mid/high band ratios, centroid, flatness, pitch-confidence arrays, and typical RMS/flux maxima.
+- `GridAligner` owns BPM estimation, beat length, bar length, strongest-hit anchoring, downbeat search, and `gridOffset`.
+- `SectionAnalyzer` owns bar-block aggregation, adaptive threshold calculation, `BarAnalysis` output, section splitting, section labels, section RMS fields, and dominant-feature selection.
+- `DramaturgyBuilder` owns beat-event selection, visual cue emission, significant musical moment candidates, and recurring `MusicPattern` grouping from deterministic section signatures.
+
+The worker must remain dependency-free from DOM, p5, `AudioEngine`, UI, renderer modules, and shared mutable runtime state. New analysis behavior should be added to the owning class above or to a similarly focused worker-internal class, not by growing the message handler.
+
 ## Race Prevention
 
 Every load creates a new current request id. A worker response may update state only when its request id equals the current request id.
@@ -40,8 +53,17 @@ When a new file is selected:
 - Invalidate the previous request id.
 - Terminate any active worker.
 - Clear or quarantine old analysis results until the new result is accepted.
+- Reset `State.trackAnalysis` from a fresh deep copy of the empty analysis template. Do not assign the empty template object by reference; nested arrays and objects must not be shared between track loads.
 
 Stale success and stale failure messages must be ignored after worker cleanup.
+
+`AudioEngine.clearAnalysisState()` currently enforces reset isolation with deep-copy serialization:
+
+```ts
+State.trackAnalysis = JSON.parse(JSON.stringify(EMPTY_TRACK_ANALYSIS));
+```
+
+This is part of the memory-management contract. The empty `TrackAnalysis` object graph contains nested structures, including trend data, and reusing those object references can pollute later loads or make stale state appear current.
 
 ## Transfer And Copy Policy
 

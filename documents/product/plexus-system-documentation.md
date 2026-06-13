@@ -43,9 +43,9 @@ A fejlesztesek fokuszaban nem ujabb grafikai effektek, hanem az **eloadoi munkaf
 A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus modulhatarokat a `documents/governance/architecture-contract.md` es a `documents/implementation/current-typescript-implementation.md` tartja naprakeszen.
 
 1. **Composition (`src/main.ts`):** letrehozza a DOM shellt, az `AudioEngine` peldanyt, a `DashboardUI` peldanyt es a p5 renderert.
-2. **UI Layer (`src/ui/DashboardUI.ts`, `src/style.css`):** kezeli a fajlfeltoltest, play/pause/seek/loop vezerlest, visual mode valasztast, preset betoltest, tuning panelt, metrics panelt, auto-hide chrome-ot es a dashboard frissitest.
+2. **UI Layer (`src/ui/DashboardUI.ts`, `src/ui/controllers/`, `src/style.css`):** a `DashboardUI` mar facade/orchestrator szerepet tolt be, nem monolitikus DOM-binding osztaly. A konkret UI kotest a `PlaybackController`, `TuningController` es `ExportController` vegzi; ezek callbackeken keresztul delegalt szandekot adnak vissza a `DashboardUI`-nak.
 3. **Audio Engine (`src/audio/AudioEngine.ts`):** felelos a hangfajlok dekodolasaert, a `AudioBufferSourceNode` eletciklusert, a kanonikus idoszamitasert, a seek/end resetert, a worker request id kezelesert, a stale worker eredmenyek eldobasaert es a worker terminalasaert.
-4. **Analysis Engine (`src/audio/analyzer.worker.ts`):** dedikalt Web Worker. 1024 mintas Hann-windowed FFT pipeline-t hasznal, spektralis fluxust, relativ savenergiakat, centroidot es flatness erteket szamol, majd `AudioFrame`, `BeatEvent` es `TrackAnalysis` kimenetet publikal.
+4. **Analysis Engine (`src/audio/analyzer.worker.ts`):** dedikalt Web Worker. Nem monolitikus `onmessage` algoritmus: a feldolgozas `FeatureExtractor`, `GridAligner`, `SectionAnalyzer` es `DramaturgyBuilder` osztalyokra van bontva. 1024 mintas Hann-windowed FFT pipeline-t hasznal, spektralis fluxust, relativ savenergiakat, centroidot es flatness erteket szamol, majd `AudioFrame`, `BeatEvent` es `TrackAnalysis` kimenetet publikal.
 5. **Shared contracts/state (`src/types/index.ts`, `src/state/store.ts`):** tarolja a megosztott tipusokat, az elfogadott analizis eredmenyeket, a vizualis modot, loop allapotot, aktualis frame-et, cue allapotokat, modulacios buszt, elo tuningot es target tuningot.
 6. **Render Engine (`src/visuals/`):** p5 canvas renderer backend adapterrel, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `StyleRegistry`-bol lekert `VisualIdentity` implementaciokat kezeli. A zene-dramaturgiai allapotszabalyozast a `VisualDirectorFSM.ts` modul vegzi, majd `DirectorOutput` formaban ad render-facing jeleket az identitasoknak.
 7. **Offline Export (`src/export/`):** a `WebMExporter` a fo szalon vezerli az offline idohurkot, a p5 canvas atmeretezeset, a `VideoFrame` elkapast, az audio buffer szeletelest es a vizjelkartyat. Az `export.worker.ts` WebCodecs `VideoEncoder`/optionalis `AudioEncoder` hasznalataval es pure TypeScript EBML/WebM muxerrel allit elo Blob-ot. A fo szal szigoru hardver-encoder-sor alapu visszanyomast (backpressure) alkalmaz, es rendszeresen atveszi a vezerlest a bongeszoesemanyhurkoktol, hogy megelozze a felhasznaloi felulet lefagyasat es a memoriaosszeomlasat mobil eszkozokkel.
@@ -55,6 +55,14 @@ A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus m
 ### 3.1. Offline Globalis Analizis
 
 A zene betoltesekor a rendszer nem azonnal inditja a lejatszast. Az `AudioEngine` dekodolja a fajlt, explicit masolatot keszit az elso csatorna sample adataibol, majd ezt az `ArrayBuffer`-t kuldi a workernek. A lejatszashoz szukseges `AudioBuffer` a main thread tulajdonaban marad, igy az analizis transfer nem tudja veletlenul detached allapotba tenni a playback adatot.
+
+Uj track betoltesekor, hibaagakon es megszakitasnal az `AudioEngine.clearAnalysisState()` friss, deep copy-val allitja vissza a `State.trackAnalysis` ures allapotat:
+
+```ts
+State.trackAnalysis = JSON.parse(JSON.stringify(EMPTY_TRACK_ANALYSIS));
+```
+
+Ez memoria- es referencia-szigetelesi szerzodes. Az ures `TrackAnalysis` sablon beagyazott tomboket es objektumokat tartalmaz, ezert referencia szerinti hozzarendeles eseten egy kesobbi betoltes szennyezheti vagy orokolheti az elozo track nested allapotat.
 
 Lejatszas kozben a fo szal nem vegez audio analizist. A renderer az `AudioEngine.getCurrentTime()` alapjan frame indexet szamol:
 
@@ -109,6 +117,15 @@ A worker 70 es 180 BPM kozotti histogram alapjan becsul BPM-et. A UI-ban a BPM k
 ### 4.1. DSP A Workerben
 
 Az aktualis worker nem IIR crossover szuroket hasznal. A `src/audio/analyzer.worker.ts` 1024 mintas hop merettel dolgozik, minden frame-et Hann ablakkal sulyoz, majd FFT-n szamolja a spektralis jellemzoket.
+
+A worker belso felelossegei osztalyokra vannak bontva:
+
+* `FeatureExtractor`: Hann-windowed FFT, RMS, spectral flux, band ratio, centroid, flatness, pitch confidence es tipikus maximumok.
+* `GridAligner`: BPM becsles, beat/bar hossz, legerosebb tranziensek alapjan torteno anchor kereses es globalis `gridOffset`.
+* `SectionAnalyzer`: BPM-gridhez igazodott bar aggregacio, adaptive threshold, `BarAnalysis`, `TrackSection`, RMS mezok es dominans feature.
+* `DramaturgyBuilder`: `BeatEvent`, `VisualCueEvent`, significant moment es determinisztikus section signature alapu `MusicPattern` kimenetek.
+
+Az `onmessage` handler ennek megfeleloen csak belepesi es orchestration pont: letrehozza az analizis osztalyokat, osszerakja a `TrackAnalysis` payloadot, es typed success/error uzenetet posztol vissza.
 
 Az elfogadott render-facing kimenetek:
 
@@ -249,7 +266,13 @@ src/
 |   |-- WebMExporter.ts
 |   `-- export.worker.ts
 |-- ui/
-|   `-- DashboardUI.ts
+|   |-- DashboardUI.ts
+|   |-- GestureEngine.ts
+|   |-- TimelineCanvas.ts
+|   `-- controllers/
+|       |-- PlaybackController.ts
+|       |-- TuningController.ts
+|       `-- ExportController.ts
 |-- visuals/
 |   |-- PlexusRenderer.ts
 |   |-- VisualDirectorFSM.ts

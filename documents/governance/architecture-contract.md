@@ -17,7 +17,10 @@ The app is a Vite TypeScript project with explicit runtime layers:
 
 The UI layer has an explicit internal shape:
 
-- `src/ui/DashboardUI.ts` is the facade/orchestrator. It owns DOM control wiring, playback input dispatch, timeline interaction state, `State` writes, and `AudioEngine` calls. It composes the timeline submodules but must not accumulate raw pointer normalization or low-level canvas drawing logic.
+- `src/ui/DashboardUI.ts` is the facade/orchestrator. It owns cross-controller coordination, timeline interaction state, dashboard projection, preset/performance-plan handoff, `State` writes, and `AudioEngine` calls. It composes the focused controller classes and timeline submodules but must not re-accumulate all DOM listener code, raw pointer normalization, or low-level canvas drawing logic.
+- `src/ui/controllers/PlaybackController.ts` owns playback-surface DOM bindings: file selection, play/stop buttons, center play button, seekbar drag state, loop toggle, fullscreen button, canvas click/double-click handling, surface keyboard shortcuts, playback labels, time display, BPM badge, and playback enable/disable state. It delegates intent through callbacks and must not own Web Audio source lifecycle or analysis publication.
+- `src/ui/controllers/TuningController.ts` owns tuning and presentation-control DOM bindings: tuning-panel visibility and dragging, metadata-driven tuning controls, preset selector projection, preset brush selector, copy-config feedback, metrics toggle, and visual mode select. It delegates preset loading and state-changing decisions through callbacks and must not normalize preset payloads outside the established config helpers.
+- `src/ui/controllers/ExportController.ts` owns export-control DOM bindings: resolution/aspect selectors, capability warnings, export button state, progress labels, stop/cancel controls, and active export UI state. It delegates export workflow start/stop/cancel through callbacks and must not encode video, slice audio, or manage worker messages directly.
 - `src/ui/GestureEngine.ts` is the deep interaction module. It normalizes pointer, wheel, mouse, and touch events into stable semantic callbacks (`onStart`, `onMove`, `onEnd`, `onHover`, `onZoom`, `onDoubleClick`) and has no knowledge of music sections, playback state, presets, or rendering.
 - `src/ui/TimelineCanvas.ts` is the deep declarative timeline renderer. It renders from a `RenderState` payload, owns HDPI canvas sizing and waveform offscreen cache internals, and must not read global `State` directly or handle user input.
 
@@ -33,6 +36,8 @@ Allowed dependency directions:
 - `src/export/WebMExporter.ts` may import `src/state/` and its worker module. It may receive `AudioEngine` through construction and use only the public `getAudioBuffer()` surface.
 - `src/export/export.worker.ts` must remain dependency-free from DOM, p5, UI, audio engine, renderer, and shared mutable state. It may use worker globals, WebCodecs, `Blob`, typed arrays, local pure TypeScript EBML helpers, and the Origin Private File System API (`navigator.storage.getDirectory()`) for direct-to-disk chunk streaming.
 - Within `src/ui/`, `DashboardUI.ts` may compose `GestureEngine.ts` and `TimelineCanvas.ts`; those submodules must stay independent from each other.
+- Within `src/ui/`, `DashboardUI.ts` may compose focused controllers from `src/ui/controllers/`. Controllers may depend on DOM APIs, callback interfaces, and narrow state reads needed for UI projection, but they must delegate application decisions back to `DashboardUI`.
+- UI controllers must not import `src/audio/AudioEngine.ts`, analyzer workers, renderer modules, or export worker modules. Export UI may reference export capability/config types but must not perform export encoding or worker orchestration.
 - `GestureEngine.ts` may depend on DOM event and geometry APIs plus shared callback types, but must not import `src/state/`, `src/audio/`, `src/visuals/`, or timeline rendering modules.
 - `TimelineCanvas.ts` may depend on canvas APIs and shared render types, but must not import `src/state/`, `src/audio/`, `src/visuals/`, or gesture modules.
 - `src/visuals/P5RendererBackend.ts`, `Particle.ts`, `Shockwave.ts`, and `PlexusRenderer.ts` may import p5.
@@ -62,6 +67,7 @@ Mode-specific visual implementations should live in separate `VisualIdentity` im
 
 - File decode and analysis request creation belong to audio.
 - Worker compute lifecycle belongs to audio plus worker; publication of accepted results belongs to audio.
+- Analyzer worker internals are class-owned, not a monolithic `onmessage` function. `FeatureExtractor` owns FFT-derived feature extraction, `GridAligner` owns BPM/grid alignment, `SectionAnalyzer` owns bar and section analysis, and `DramaturgyBuilder` owns beats, cues, and recurring pattern output. The worker message handler should remain a thin orchestration and typed response boundary.
 - Playback start, pause, seek, stop, and end belong to audio.
 - Offline export frame timing, p5 loop suppression, export canvas resize/restore, `VideoFrame` capture, audio slicing, watermark drawing, hardware encoder queue synchronization, and stop/cancel semantics belong to `src/export/WebMExporter.ts`.
 - WebM byte layout, WebCodecs encoder lifecycle, and muxing belong to `src/export/export.worker.ts`.
@@ -79,6 +85,7 @@ Worker result payloads must be append-only unless a coordinated migration update
 Every shared state field needs a clear owner:
 
 - Audio owns duration, sample rate, play state, timing, analysis result publication, and accepted worker metadata.
+- Audio owns analysis reset isolation. Resetting `State.trackAnalysis` must create a fresh deep copy of the empty analysis template so nested arrays and objects cannot be shared across track loads.
 - Visuals own render-derived decay values and visual-only transient state.
 - Visuals own `State.modulation`, derived from accepted frame/features plus transient beat/cue decays.
 - `State.modulation` must keep a stable object reference during rendering. Visuals update it through `writeModulationBus(State.modulation, ...)`, and transient reset must zero its fields in place instead of assigning `State.modulation = { ... }`.

@@ -11,10 +11,11 @@ The maintained app is a Vite + TypeScript project, not a single-file HTML protot
 3. **Offline analysis:** `src/audio/analyzer.worker.ts` owns deterministic DSP analysis only and communicates through typed worker messages.
 4. **Shared contracts:** `src/types/index.ts` defines audio frames, beat events, visual track analysis, analysis requests, success messages, and error messages.
 5. **Shared runtime state:** `src/state/store.ts` stores accepted analysis results, visual feature state, the abstract modulation bus, live visual tuning, target visual tuning, and render-facing state.
-6. **UI projection:** `src/ui/DashboardUI.ts` owns controls, visual mode selection, enabled/disabled states, dashboard text, seek display, dramaturgy timeline drawing, and error projection.
-7. **Visual rendering:** `src/visuals/` owns p5 rendering, particle lifecycle, shockwave lifecycle, beat-event consumption, visual cue consumption, visual identity registration, and effect-mode delegation. `PlexusRenderer.ts` adapts p5 through `P5RendererBackend` and delegates drawing to the current `VisualIdentity` from `StyleRegistry`. Built-in identities draw through `VisualRendererBackend`.
-8. **Visual director:** `src/visuals/VisualDirectorFSM.ts` is the deep state-control module for render-time music dramaturgy. It owns dynamic thresholds, LOW-state dampening, drop anticipation, buildup boost, glitch decay, hysteresis, and transition cooldown behavior.
-9. **Offline export:** `src/export/WebMExporter.ts` owns the main-thread offline export loop and `src/export/export.worker.ts` owns WebCodecs encoding plus pure TypeScript WebM muxing.
+6. **UI facade:** `src/ui/DashboardUI.ts` is now a coordinator rather than a monolithic DOM binding class. It owns cross-cutting UI orchestration, timeline interaction state, dashboard projection, preset/performance-plan handoff, and calls into `AudioEngine`, shared `State`, timeline modules, and export workflows.
+7. **UI controllers:** `src/ui/controllers/PlaybackController.ts`, `src/ui/controllers/TuningController.ts`, and `src/ui/controllers/ExportController.ts` own their specific DOM element bindings, input listeners, enable/disable state, labels, and small UI state. They delegate intent back to `DashboardUI` through callback interfaces; they do not own audio playback, analysis, preset normalization, or export encoding.
+8. **Visual rendering:** `src/visuals/` owns p5 rendering, particle lifecycle, shockwave lifecycle, beat-event consumption, visual cue consumption, visual identity registration, and effect-mode delegation. `PlexusRenderer.ts` adapts p5 through `P5RendererBackend` and delegates drawing to the current `VisualIdentity` from `StyleRegistry`. Built-in identities draw through `VisualRendererBackend`.
+9. **Visual director:** `src/visuals/VisualDirectorFSM.ts` is the deep state-control module for render-time music dramaturgy. It owns dynamic thresholds, LOW-state dampening, drop anticipation, buildup boost, glitch decay, hysteresis, and transition cooldown behavior.
+10. **Offline export:** `src/export/WebMExporter.ts` owns the main-thread offline export loop and `src/export/export.worker.ts` owns WebCodecs encoding plus pure TypeScript WebM muxing.
 
 ## Worker Contract
 
@@ -48,7 +49,16 @@ The accepted worker failure payload is:
 
 `trackAnalysis` is the offline visual-music layer. It contains bar-level dynamics, section-level structure, recurring temporal patterns, visual cue events, significant moments, per-frame feature vectors for melody, vocal, fx, density, brightness, and tension, plus dramaturgical `buildupConfidence`, `spectralPivot`, and `tensionTrends`. `VisualFeatureFrame.melody` remains the internal/canonical melody feature signal for track analysis, cues, modulation, and temporal rendering; the dashboard-facing melody metric is Melody Presence from the `AudioFrame.m` compatibility projection. Effects should read these precomputed values from shared state during playback instead of running analysis in the render loop.
 
-The analyzer worker derives these values from a fixed 1024-sample FFT pipeline. Each frame is Hann-windowed before the FFT, then the worker calculates spectral flux, relative bass/mid/high magnitude bands, spectral centroid, and spectral flatness. Harmonic stability, pitched transient confidence, and a simple vocal formant ratio separate melody, vocal, and fx projections more reliably than raw band ratios alone. The render-facing `AudioFrame` values are smoothed compatibility projections of those spectral features: `e` is normalized RMS energy, `b` is a legacy field containing density projection rather than bass, `m` is a legacy field containing melody-presence projection rather than mid band, and `t` is a legacy field containing FX-presence projection rather than treble. Beat events are selected from spectral-flux peaks and classified from the smoothed density/fx context: fx presence above `0.6` emits type 3, otherwise density above `0.7` emits type 2, and all other accepted peaks emit type 1.
+The analyzer worker derives these values from a fixed 1024-sample FFT pipeline. The worker is no longer a single monolithic `onmessage` algorithm. Its entry point now constructs and coordinates four internal classes with explicit responsibilities:
+
+- `FeatureExtractor`: performs Hann-windowed FFT analysis and produces per-frame RMS, spectral flux, band ratios, centroid, flatness, pitch confidence, and typical maxima.
+- `GridAligner`: estimates BPM, projects a beat/bar grid, and publishes the global `gridOffset`.
+- `SectionAnalyzer`: converts feature and grid data into BPM-aligned `BarAnalysis` and `TrackSection` structures plus the adaptive energy threshold.
+- `DramaturgyBuilder`: emits `BeatEvent`, `VisualCueEvent`, and recurring `MusicPattern` outputs from extracted features, aligned sections, and frame states.
+
+`self.onmessage` is now only the worker entry point and orchestration shell: it validates the request payload shape implicitly through `AnalysisRequest`, builds the analysis objects, assembles `TrackAnalysis`, and posts the typed success or error payload. The DSP and dramaturgy responsibilities live inside the classes above.
+
+Each frame is Hann-windowed before the FFT, then the worker calculates spectral flux, relative bass/mid/high magnitude bands, spectral centroid, and spectral flatness. Harmonic stability, pitched transient confidence, and a simple vocal formant ratio separate melody, vocal, and fx projections more reliably than raw band ratios alone. The render-facing `AudioFrame` values are smoothed compatibility projections of those spectral features: `e` is normalized RMS energy, `b` is a legacy field containing density projection rather than bass, `m` is a legacy field containing melody-presence projection rather than mid band, and `t` is a legacy field containing FX-presence projection rather than treble. Beat events are selected from spectral-flux peaks and classified from the smoothed density/fx context: fx presence above `0.6` emits type 3, otherwise density above `0.7` emits type 2, and all other accepted peaks emit type 1.
 
 The export worker is separate from the analyzer worker. It accepts:
 
@@ -76,6 +86,16 @@ The dramaturgy engine builds a normalized pressure curve from `feature.tension *
 - `invertBackground`: background inversion flag; currently false to avoid full-screen strobe behavior.
 
 During `GLITCH_LOW_DROP`, `glitchIntensity` starts at `1.0` and decays with `Math.exp(-elapsed * 4.0)`. Classic, temporal, and cyberpunk glitch-style drawing derives coordinate offsets from deterministic index/salt/phase formulas instead of random jitter. The offset is deterministic for the same particle indexes, salt, and rotation phase, so export output remains reproducible.
+
+## Memory Management And State Reset
+
+`AudioEngine.clearAnalysisState()` resets accepted analysis state before new loads, errors, and cancellation paths. `State.frames` and `State.events` are replaced with fresh empty arrays, and `State.trackAnalysis` is reset with a deep-copy serialization of the empty `TrackAnalysis` template:
+
+```ts
+State.trackAnalysis = JSON.parse(JSON.stringify(EMPTY_TRACK_ANALYSIS));
+```
+
+The deep copy is intentional. The empty analysis template contains nested arrays and objects, including `tensionTrends`, so assigning the template by reference would allow reference pollution between track loads. Each reset must create an isolated `TrackAnalysis` object graph before the next worker result is accepted. Accepted worker results still pass through `AudioEngine.normalizeTrackAnalysis()` before publication so older or partial payloads receive deterministic defaults for expanded bar, section, spectral pivot, trend, feature-hop, and grid-offset fields.
 
 ## Modulation Bus And Morphing
 
@@ -109,7 +129,7 @@ Mode selection belongs to UI projection. `src/main.ts` exposes all five style id
 
 ## Visual Tuning And Playback UI
 
-The active implementation includes a metadata-driven visual tuning panel, JSON preset loading and copy export, surface-level playback controls, fullscreen presentation mode, OBS-oriented presentation URL mode, loop/once playback, responsive metrics, and idle-hiding UI chrome. A single visual-surface click pins or unpins the chrome after the double-click detection window, while double-click remains the play/pause gesture. Unpinning through that intentional background click uses a fast `400ms` hide delay; ordinary inactivity, hover leave, and focus-out paths continue to use the standard `2600ms` delay.
+The active implementation includes a metadata-driven visual tuning panel, JSON preset loading and copy export, surface-level playback controls, fullscreen presentation mode, OBS-oriented presentation URL mode, loop/once playback, responsive metrics, and idle-hiding UI chrome. The old monolithic `DashboardUI` surface has been split into a facade plus focused controllers: `PlaybackController` owns file/play/seek/loop/fullscreen/surface-key bindings, `TuningController` owns tuning controls, preset selectors, visual mode selection, metrics toggle, copy feedback, and tuning-panel dragging, and `ExportController` owns export capability projection, export selectors, progress labels, stop/cancel buttons, and active export UI state. `DashboardUI` remains the coordinator that translates controller callbacks into `AudioEngine`, `State`, preset, timeline, and exporter operations. A single visual-surface click pins or unpins the chrome after the double-click detection window, while double-click remains the play/pause gesture. Unpinning through that intentional background click uses a fast `400ms` hide delay; ordinary inactivity, hover leave, and focus-out paths continue to use the standard `2600ms` delay.
 
 For stream output, `chromaKeyMode` selects normal, green, or transparent background clearing. `performanceMode` disables radial-gradient glow work and chroma-key modes also skip those expensive glow paths. Expensive radial glow also requires `State.isPlaying`, so paused and idle views keep their static visual state without rebuilding radial gradients. `PlexusRenderer` lowers the p5 frame-rate target by playback state: playing runs at `60 FPS`, paused with a loaded track runs at `30 FPS`, and no-audio idle runs at `15 FPS`. The frame-rate call is issued only when the target changes, and this policy does not alter audio playback or offline analysis behavior. `?presentation=true` sets `State.uiVisible` to `false` and hides the UI chrome automatically.
 
