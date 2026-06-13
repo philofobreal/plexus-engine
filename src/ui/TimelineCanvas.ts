@@ -398,12 +398,15 @@ export class TimelineCanvas {
         const secondsPerBar = (60 / state.bpm) * 4;
         if (!Number.isFinite(secondsPerBar) || secondsPerBar <= 0) return;
 
+        const gridOffset = state.gridOffset || 0;
+
         ctx.save();
         ctx.setLineDash([2, 5]);
         ctx.strokeStyle = 'rgba(255,255,255,0.13)';
         ctx.lineWidth = 1;
-        const firstBarTime = Math.max(0, Math.floor(viewport.start / secondsPerBar) * secondsPerBar);
+        const firstBarTime = Math.floor((viewport.start - gridOffset) / secondsPerBar) * secondsPerBar + gridOffset;
         for (let time = firstBarTime; time <= viewport.end; time += secondsPerBar) {
+            if (time < viewport.start) continue;
             const x = Math.round(this.timeToX(time, width, viewport)) + 0.5;
             ctx.beginPath();
             ctx.moveTo(x, height >= 48 ? 18 : 0);
