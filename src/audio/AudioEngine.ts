@@ -14,13 +14,9 @@ const EMPTY_TRACK_ANALYSIS: TrackAnalysis = {
     features: [],
     buildupConfidence: [],
     spectralPivot: [],
-    tensionTrends: {
-        globalSlope: 0,
-        peakTime: 0,
-        peakValue: 0,
-        segments: []
-    },
-    featureHopSize: 1024
+    tensionTrends: { globalSlope: 0, peakTime: 0, peakValue: 0, segments: [] },
+    featureHopSize: 1024,
+    gridOffset: 0
 };
 
 export class AudioEngine {
@@ -40,17 +36,9 @@ export class AudioEngine {
     private playbackEndedListeners: Array<() => void> = [];
     private positionChangedListeners: Array<(time: number) => void> = [];
 
-    addPlaybackEndedListener(listener: () => void) {
-        this.playbackEndedListeners.push(listener);
-    }
-
-    addPositionChangedListener(listener: (time: number) => void) {
-        this.positionChangedListeners.push(listener);
-    }
-
-    getAudioBuffer(): AudioBuffer | null {
-        return this.buffer;
-    }
+    addPlaybackEndedListener(listener: () => void) { this.playbackEndedListeners.push(listener); }
+    addPositionChangedListener(listener: (time: number) => void) { this.positionChangedListeners.push(listener); }
+    getAudioBuffer(): AudioBuffer | null { return this.buffer; }
 
     private emitPlaybackEnded() {
         if (this.onPlaybackEnded) this.onPlaybackEnded();
@@ -66,7 +54,7 @@ export class AudioEngine {
         State.bpm = 0;
         State.frames = [];
         State.events = [];
-        State.trackAnalysis = { ...EMPTY_TRACK_ANALYSIS, bars: [], sections: [], patterns: [], cues: [], significantMoments: [], features: [], spectralPivot: [] };
+        State.trackAnalysis = JSON.parse(JSON.stringify(EMPTY_TRACK_ANALYSIS)); // Deep copy to prevent reference pollution
         State.performancePlan = null;
         State.editedPerformancePlan = null;
         State.hopSize = 1024;
@@ -119,7 +107,6 @@ export class AudioEngine {
 
             worker.onmessage = (e: MessageEvent<AnalysisWorkerMessage>) => {
                 if (e.data.requestId !== this.currentAnalysisRequestId) return;
-
                 this.terminateActiveWorker();
 
                 if (e.data.type === 'analysis_done') {
@@ -128,6 +115,7 @@ export class AudioEngine {
                     State.visualTuning.dynamicsThreshold = e.data.adaptiveThreshold;
                     State.frames = e.data.frames;
                     State.events = e.data.events;
+                    // Strict normalization mapping incoming generic objects to rigorous domain models
                     State.trackAnalysis = normalizeTrackAnalysis(e.data.trackAnalysis);
                     State.hopSize = e.data.hopSize;
                     if (this.onAnalysisComplete) this.onAnalysisComplete();
@@ -148,9 +136,7 @@ export class AudioEngine {
             if (requestId !== this.currentAnalysisRequestId) return;
             this.terminateActiveWorker();
             this.clearAnalysisState();
-            if (this.onAnalysisError) {
-                this.onAnalysisError(error instanceof Error ? error.message : 'Audio load failed');
-            }
+            if (this.onAnalysisError) this.onAnalysisError(error instanceof Error ? error.message : 'Audio load failed');
         }
     }
 
@@ -228,26 +214,11 @@ function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis): TrackAnalysis {
     return {
         ...EMPTY_TRACK_ANALYSIS,
         ...trackAnalysis,
-        bars: (trackAnalysis.bars || []).map(bar => ({
-            ...bar,
-            avgRms: bar.avgRms ?? 0,
-            peakRms: bar.peakRms ?? 0,
-            bass: bar.bass ?? 0,
-            mid: bar.mid ?? 0,
-            treble: bar.treble ?? 0
-        })),
-        sections: (trackAnalysis.sections || []).map(section => ({
-            ...section,
-            avgRms: section.avgRms ?? 0,
-            peakRms: section.peakRms ?? 0
-        })),
-        patterns: trackAnalysis.patterns || [],
-        cues: trackAnalysis.cues || [],
-        significantMoments: trackAnalysis.significantMoments || [],
-        features: trackAnalysis.features || [],
-        buildupConfidence: trackAnalysis.buildupConfidence || [],
+        bars: (trackAnalysis.bars || []).map(bar => ({ ...bar, avgRms: bar.avgRms ?? 0, peakRms: bar.peakRms ?? 0, bass: bar.bass ?? 0, mid: bar.mid ?? 0, treble: bar.treble ?? 0 })),
+        sections: (trackAnalysis.sections || []).map(section => ({ ...section, avgRms: section.avgRms ?? 0, peakRms: section.peakRms ?? 0 })),
         spectralPivot: trackAnalysis.spectralPivot || [],
         tensionTrends: trackAnalysis.tensionTrends || EMPTY_TRACK_ANALYSIS.tensionTrends,
-        featureHopSize: trackAnalysis.featureHopSize || EMPTY_TRACK_ANALYSIS.featureHopSize
+        featureHopSize: trackAnalysis.featureHopSize || 1024,
+        gridOffset: trackAnalysis.gridOffset || 0
     };
 }
