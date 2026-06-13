@@ -26,7 +26,8 @@ const emptyTrackAnalysis: TrackAnalysis = {
         peakValue: 0,
         segments: []
     },
-    featureHopSize: 1024
+    featureHopSize: 1024,
+    gridOffset: 0
 };
 
 const emptyModulation: ModulationState = {

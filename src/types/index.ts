@@ -84,7 +84,7 @@ export interface PerformancePreset {
     dramaturgyProfile: DramaturgyProfile;
 }
 
-export type PerformanceAutomationReason = 'intro' | 'build' | 'drop' | 'break' | 'peak' | 'harmonicShift' | 'manual';
+export type PerformanceAutomationReason = 'intro' | 'verse' | 'build' | 'drop' | 'break' | 'peak' | 'outro' | 'harmonicShift' | 'manual';
 
 export interface PerformanceAutomationPoint {
     id: string;
@@ -228,6 +228,7 @@ export interface TrackAnalysis {
     spectralPivot: number[];
     tensionTrends: TensionTrends;
     featureHopSize: number;
+    gridOffset: number;
 }
 
 export interface TimelineLayers {
@@ -276,6 +277,7 @@ export interface RenderState {
     audioSensitivity: number;
     dropAnticipation: number;
     scrubTime?: number | null;
+    gridOffset: number;
 }
 
 export interface AnalysisResult {
