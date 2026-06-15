@@ -4,15 +4,16 @@
 
 ## 1. Vezetoi Osszefoglalo
 
-A **Plexus Engine** egy bongeszoben futo, hardvergyorsitott, audio-first generativ vizualizacios motor es eloadoi hangszer (visual instrument). A rendszer alapelve a lejatszas elotti offline zeneanalizis, amely zeneszerkezeti kontextust (szekciok, feszultseggorbek, mintak es cue esemenyek) hoz letre. Lejatszas kozben a renderelo szal nem vegez valos ideju DSP szamitasokat; egy absztrakt modulacios buszon keresztul fogyasztja a normalizalt zenei szandekot, biztositva a stabil szinpadi es produkcios teljesitmenyt.
+A **Plexus Engine** egy bongeszoben futo, hardvergyorsitott, audio-first generativ vizualizacios motor es eloadoi hangszer (visual instrument). A rendszer alapelve a lejatszas elotti offline zeneanalizis, amely zeneszerkezeti kontextust (szekciok, feszultseggorbek, mintak es cue esemenyek) hoz letre. Lejatszas kozben a renderelo szal nem vegez valos ideju DSP szamitasokat; egy absztrakt modulacios buszon keresztul fogyasztja a normalizalt zenei szandekot, biztositva a stabil szinpadi es produkcios teljesitmenyt. Az aktualis rendszer audio fajlok mellett bongeszo altal tamogatott video fajlokat is be tud tolteni: a video kep muted backplate-kent fut a p5 canvas mogott, mikozben az audio tovabbra is a Web Audio / `AudioEngine` master clock szerint szol.
 
-Az aktualis implementacio ot regisztralt vizualis identitast tart fenn a `VisualIdentity` / `StyleRegistry` architekturan keresztul:
+Az aktualis implementacio hat regisztralt vizualis identitast tart fenn a `VisualIdentity` / `StyleRegistry` architekturan keresztul:
 
 * `classic`: az eredeti Plexus reszecskehalo, kozponti glow, beat shockwave es polygon flash viselkedes.
 * `temporal`: ugyanarra az offline analizisre epulo, teljes track-szintu zenei kontextust hasznalo mod, amely section, feature, cue es pattern adatokat hasznal folyamatos vizualis modulaciora.
 * `dark-techno`: szigoru monokrom, minimal ipari stilus eles feher/szurke vonalakkal es ritka strobe-szeru polygon flash viselkedessel.
 * `organic-ambient`: lassu, folyekony, pasztell zold/kek/foldszinu stilus, amely eles halozati vonalak helyett puha reszecske-glow retegeket hasznal.
 * `cyberpunk`: nagy kontrasztu neon magenta/cian stilus kromatikus aberracio-szeru kettos vonalrajzolassal es determinisztikus glitch offsetekkel.
+* `hero`: bal also playhead pontra szervezett, also horizontalis lane-en jobbrol balra mozgo event-dot vizual, ahol a dot poziciok determinisztikusan `event.time - State.currentTime` alapjan szamolodnak.
 
 ## 1.1. Termekvizio Es Celcsoport
 
@@ -26,7 +27,7 @@ A szoftver pozicionalasa:
 
 1. **Zenei kontextus-vezerelt (Audio-First):** Nem egyszeru clip-launcher vagy OBS widget, hanem zeneszerkezeti esemenyekre (melody, vocal, FX, buildup, drop) reagalo vizualis hangszer.
 2. **Offline track-analizis:** Felismeri a dal dramaturgiai ivet (intro, build, drop, break, peak, outro), es a feszultseggorbet elore anticipalva vezerli a reszecskek es sokszogek dinamikajat.
-3. **Produkcios es eloadoi fokusz:** A UI, a Tuning Layer es az offline WebM export a gyors preset-valtast, az atmenetek folytonossagat (morphing), a tiszta stream kimenetet es a megoszthato video-renderelest szolgalja.
+3. **Produkcios es eloadoi fokusz:** A UI, a Tuning Layer es az offline WebM export a gyors preset-valtast, az atmenetek folytonossagat (morphing), a tiszta stream kimenetet es a megoszthato video-renderelest szolgalja. Ha video fajl van betoltve, a rendszer a generativ reteg moge rendereli az eredeti video kepet, es exportkor kompozit WebM-et allit elo.
 
 ### Jovobeli Termekutvonal
 
@@ -48,13 +49,15 @@ A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus m
 4. **Analysis Engine (`src/audio/analyzer.worker.ts`):** dedikalt Web Worker. Nem monolitikus `onmessage` algoritmus: a feldolgozas `FeatureExtractor`, `GridAligner`, `SectionAnalyzer` es `DramaturgyBuilder` osztalyokra van bontva. 1024 mintas Hann-windowed FFT pipeline-t hasznal, spektralis fluxust, relativ savenergiakat, centroidot es flatness erteket szamol, majd `AudioFrame`, `BeatEvent` es `TrackAnalysis` kimenetet publikal.
 5. **Shared contracts/state (`src/types/index.ts`, `src/state/store.ts`):** tarolja a megosztott tipusokat, az elfogadott analizis eredmenyeket, a vizualis modot, loop allapotot, aktualis frame-et, cue allapotokat, modulacios buszt, elo tuningot es target tuningot.
 6. **Render Engine (`src/visuals/`):** p5 canvas renderer backend adapterrel, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `StyleRegistry`-bol lekert `VisualIdentity` implementaciokat kezeli. A zene-dramaturgiai allapotszabalyozast a `VisualDirectorFSM.ts` modul vegzi, majd `DirectorOutput` formaban ad render-facing jeleket az identitasoknak.
-7. **Offline Export (`src/export/`):** a `WebMExporter` a fo szalon vezerli az offline idohurkot, a p5 canvas atmeretezeset, a `VideoFrame` elkapast, az audio buffer szeletelest es a vizjelkartyat. Az `export.worker.ts` WebCodecs `VideoEncoder`/optionalis `AudioEncoder` hasznalataval es pure TypeScript EBML/WebM muxerrel allit elo Blob-ot. A fo szal szigoru hardver-encoder-sor alapu visszanyomast (backpressure) alkalmaz, es rendszeresen atveszi a vezerlest a bongeszoesemanyhurkoktol, hogy megelozze a felhasznaloi felulet lefagyasat es a memoriaosszeomlasat mobil eszkozokkel.
+7. **Offline Export (`src/export/`):** a `WebMExporter` a fo szalon vezerli az offline idohurkot, a p5 canvas atmeretezeset, a `VideoFrame` elkapast, az audio buffer szeletelest es a vizjelkartyat. Ha video backplate aktiv, az export frame-enkent megkeresi az eredeti video megfelelo kepkockajat, azt hatterkent kompozitalja, erre rajzolja a p5 generativ reteget, majd legfelulre a metadata kartyat. Az `export.worker.ts` WebCodecs `VideoEncoder`/optionalis `AudioEncoder` hasznalataval es pure TypeScript EBML/WebM muxerrel allit elo Blob-ot. A fo szal szigoru hardver-encoder-sor alapu visszanyomast (backpressure) alkalmaz, es rendszeresen atveszi a vezerlest a bongeszoesemanyhurkoktol, hogy megelozze a felhasznaloi felulet lefagyasat es a memoriaosszeomlasat mobil eszkozokkel.
 
 ## 3. Funkcionalis Specifikacio
 
 ### 3.1. Offline Globalis Analizis
 
-A zene betoltesekor a rendszer nem azonnal inditja a lejatszast. Az `AudioEngine` dekodolja a fajlt, explicit masolatot keszit az elso csatorna sample adataibol, majd ezt az `ArrayBuffer`-t kuldi a workernek. A lejatszashoz szukseges `AudioBuffer` a main thread tulajdonaban marad, igy az analizis transfer nem tudja veletlenul detached allapotba tenni a playback adatot.
+A zene vagy tamogatott video betoltesekor a rendszer nem azonnal inditja a lejatszast. Az `AudioEngine` dekodolja a fajl audio tartalmat, explicit masolatot keszit az elso csatorna sample adataibol, majd ezt az `ArrayBuffer`-t kuldi a workernek. A lejatszashoz szukseges `AudioBuffer` a main thread tulajdonaban marad, igy az analizis transfer nem tudja veletlenul detached allapotba tenni a playback adatot. Video fajloknal a UI 200 MB maximalis meretet ervenyesit, mielott a fajl `arrayBuffer()`/`decodeAudioData()` utvonalra kerulne.
+
+Ha video fajl kerul betoltesre, a `DashboardUI` kezeli a muted `<video>` backplate elemet es az object URL eletciklust. A video play/pause/seek/stop allapotai az `AudioEngine` master clock esemenyeit kovetik; a video elem sajat hangja mindig muted, hogy ne keletkezzen echo a Web Audio lejatszas mellett. A p5 canvas hattere ilyenkor automatikusan transzparensre valt, hogy a video hatter lathato maradjon.
 
 Uj track betoltesekor, hibaagakon es megszakitasnal az `AudioEngine.clearAnalysisState()` friss, deep copy-val allitja vissza a `State.trackAnalysis` ures allapotat:
 
@@ -195,11 +198,12 @@ A `WebMExporter.startExport()` kozvetlenul `p5Instance.noLoop()` hivasra valt, m
 Az export hurok sorrendje kifejezett szerzodes:
 
 1. `State.exportTime = i / fps`
-2. `p5Instance.redraw()`
-3. `drawMetadataCard(width, height)`
-4. `new VideoFrame(canvas, { timestamp })`
-5. `await nextAnimationFrame()`
-6. worker `encode_frame`
+2. aktiv video eseten `video.currentTime = State.exportTime`, majd `seeked` es szukseg szerint `loadeddata` varakozas
+3. `p5Instance.redraw()`
+4. video hatter, p5 overlay es metadata kartya kompozitalasa
+5. `new VideoFrame(canvas, { timestamp })`
+6. `await nextAnimationFrame()`
+7. worker `encode_frame`
 
 Ez garantalja, hogy a bal felso zenei informacios kartya/vizjel benne legyen az elkapott kepkockaban, mielott a bongeszo ujabb feladatban puffert cserelhetne vagy torolhetne. Canvas resize utan az exporter egy kulon animation frame-et var az elso frame elott, hogy a p5/bongeszo backing store stabil legyen.
 
@@ -228,7 +232,7 @@ Az UI export kozben letiltja a playback/seek/file input utakat es blokkolja a ca
 
 ### ADR-004: Selectable Visual Modes
 
-* **Dontes:** a `State.visualMode` ot bepitett azonosito egyike lehet: `classic`, `temporal`, `dark-techno`, `organic-ambient`, `cyberpunk`. A valasztas UI tulajdon, a renderer pedig `StyleRegistry.get(State.visualMode)` utan a kivalasztott `VisualIdentity.draw()` metodusnak delegalt.
+* **Dontes:** a `State.visualMode` hat bepitett azonosito egyike lehet: `classic`, `temporal`, `dark-techno`, `organic-ambient`, `cyberpunk`, `hero`. A valasztas UI tulajdon, a renderer pedig `StyleRegistry.get(State.visualMode)` utan a kivalasztott `VisualIdentity.draw()` metodusnak delegalt.
 * **Indoklas:** az egyes vizualis nyelvek mely modulokban rejthetik el a sajat szinelmeleti, mozgasdinamikai es sokszog-rajzolasi szabalyaikat, mikozben a renderer orchestration es a p5 backend-hatar stabil marad.
 * **Fallback:** ismeretlen stilus ID eseten a registry `classic` identitast ad vissza, igy regi vagy hibas presetek nem torik el a renderelest.
 
@@ -285,6 +289,7 @@ src/
 |   |-- DarkTechnoIdentity.ts
 |   |-- OrganicAmbientIdentity.ts
 |   |-- CyberpunkIdentity.ts
+|   |-- HeroEffectIdentity.ts
 |   |-- Particle.ts
 |   `-- Shockwave.ts
 `-- style.css
@@ -383,5 +388,5 @@ Az aktualis contract tesztek a `tests/contracts.test.mjs` fajlban vannak. Lefedi
 * loop mode, metrics toggle, draggable tuning es auto-hide chrome UI szerzodest.
 * modulacios busz, morphing, dramaturgy, renderer boundary es stream profil viselkedest.
 * performance preset szerzodest, sticky preset normalizalast, timeline draw/preset paint interakciokat, playback fade-et es waveform cache optimalizaciot.
-* ot visual identity determinisztikus, bongeszo- es p5-fuggetlen mock render futasat ot zenei referenciaprofilon keresztul (`tests/styles-deterministic.test.mjs`).
+* hat visual identity determinisztikus, bongeszo- es p5-fuggetlen mock render futasat ot zenei referenciaprofilon keresztul (`tests/styles-deterministic.test.mjs`).
 * offline WebM export lifecycle-t, p5 `noLoop()`/`loop()` tulajdonlast, renderer polling tilalmat, resize-settle sorrendet, vizjel kartya rajzolast es `stopAndSave()` reszleges Blob lezarast (`tests/export-deterministic.test.mjs`).

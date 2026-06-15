@@ -17,6 +17,7 @@ Implemented capabilities:
 - `Cancel` aborts the export and discards the partial output.
 - Object URLs created for download are revoked after a `1000ms` delay so the browser download queue can consume the Blob before the URL is released.
 - Export is strictly WebCodecs-only and does not use MediaRecorder fallbacks, guaranteeing deterministic, high-quality encoding results across all supported platforms.
+- When a video file is loaded, export composites the original video frames as the background layer, draws the p5 generative visual layer over it, and draws the metadata card on top.
 
 ## Runtime Ownership
 
@@ -65,15 +66,28 @@ Additionally, the main loop yields `sleep(1)` every 2 frames unconditionally, en
 The main-thread export loop captures the frame immediately after drawing and before yielding back to the browser:
 
 1. Set `State.exportTime`.
-2. Call `p5Instance.redraw()`.
-3. Draw the metadata card/watermark onto the export canvas.
-4. Create the `VideoFrame` from the canvas.
-5. Yield with `await nextAnimationFrame()`.
-6. Send the frame and optional audio payload to the worker.
+2. If a video backplate is active, set `video.currentTime = State.exportTime` and wait for the browser to expose the requested frame.
+3. Call `p5Instance.redraw()` to draw the transparent p5 visual layer.
+4. Composite video background, p5 overlay, and metadata card into the capture canvas.
+5. Create the `VideoFrame` from the composited canvas.
+6. Yield with `await nextAnimationFrame()`.
+7. Send the frame and optional audio payload to the worker.
 
 This ordering is intentional. It guarantees the metadata card is included in the captured frame before any browser buffer swap, canvas clear, or UI task can intervene.
 
 After `resizeCanvas(target.width, target.height)`, the exporter awaits one animation frame before the first render frame. This gives p5 and the browser time to settle the resized backing store.
+
+## Video Background Composition
+
+Video background export is deterministic and remains subordinate to the offline export clock. The exporter does not play the `<video>` element during export. For every frame it seeks the muted element to `State.exportTime`, awaits `seeked` when a seek is required, and waits for `loadeddata` when the browser has not yet made current frame data available. The export loop does not advance until the requested video frame is ready.
+
+The compositing order is:
+
+1. draw the decoded video frame into the export canvas using contain-style centering,
+2. draw the p5 graphics canvas over it,
+3. draw the metadata card/watermark last.
+
+When no video backplate is loaded, export keeps the original p5-only capture path.
 
 ## Metadata Card Watermark
 

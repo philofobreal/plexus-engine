@@ -4,11 +4,13 @@
 
 ## 1. Audio And Playback
 
-* **AC 1.1 - File loading:** The user can load `.mp3`, `.wav`, and other browser-supported audio files with the `Load` control.
+* **AC 1.1 - File loading:** The user can load `.mp3`, `.wav`, and other browser-supported audio files with the `Load` control. The same control also accepts browser-supported video containers such as `.mp4`, `.webm`, `.ogg/.ogv`, `.mov`, and `.mkv` when the browser can decode their audio track.
 * **AC 1.2 - Loading lock:** When a file is selected, playback stops, `Play` and seek controls are disabled, and the status text reports decoding and analysis progress.
 * **AC 1.3 - End state and loop:** When playback reaches the end threshold (`duration - 0.1s`), `Loop` mode restarts playback from `0:00`. In `Once` mode, playback stops, the seekbar returns to `0`, visual transient state (`beatDecay`, `denseImpactFlash`, cue state, event indexes) resets, and the UI returns to its idle playback state.
 * **AC 1.4 - Seek and scrub buffering:** Dragging the seekbar or dramaturgy timeline updates the visible time and playhead immediately, but the audio engine does not receive repeated `seek()` calls. The UI stores the target in `scrubTime` and commits one final `AudioEngine.seek()` when the pointer or touch interaction ends.
 * **AC 1.5 - Decode failure UI:** If selected audio cannot be decoded, playback and seek remain disabled, file selection is re-enabled, and the dashboard shows a file-load error instead of entering a partially playable state.
+* **AC 1.6 - Video file memory guard:** Video files larger than `200 MB` are rejected by the playback UI before the file is passed to `AudioEngine.loadFile()`. This prevents large video containers from being read through `File.arrayBuffer()` and decoded through `AudioContext.decodeAudioData`, which could otherwise trigger browser out-of-memory crashes.
+* **AC 1.7 - Video backplate lifecycle:** When a valid video file is loaded, the UI creates a managed muted `<video>` element behind the p5 canvas. The video element is synced to the `AudioEngine` master clock for play, pause, seek, stop, and loop transitions. Its audio remains muted because playback audio comes from Web Audio. Object URLs are revoked on replacement, reset, or failure.
 
 ## 2. Macro Dynamics State
 
@@ -59,6 +61,7 @@
 * **AC 7.3 - Triangle drawing:** Triangle fills use direct `triangle(x1, y1, x2, y2, x3, y3)` drawing instead of expensive generic shape construction.
 * **AC 7.4 - Render backend boundary:** `ClassicPlexusEffect` and `TemporalMusicEffect` draw through `VisualRendererBackend`. Direct p5 drawing belongs in `P5RendererBackend` or p5-owned primitives.
 * **AC 7.5 - Modulation bus:** Visual animation strength is driven by `State.modulation`: `kineticTension`, `densityDrive`, `spectralChaos`, `rhythmicImpulse`, and `macroMomentum`.
+* **AC 7.6 - Transparent video overlay:** When a video backplate is active, the p5 visual layer clears with a transparent background automatically so the muted video remains visible behind the generative graphics. Without an active video backplate, normal tuned background and chroma-key clearing behavior remains unchanged.
 
 ## 8. Memory And State Management
 

@@ -38,6 +38,7 @@ Unknown style ids fall back to the `classic` identity. If `classic` itself has n
 - `dark-techno`
 - `organic-ambient`
 - `cyberpunk`
+- `hero`
 
 There is no module-level writable global registry. The app composes a registry instance in `src/main.ts` and passes it to `startPlexusRenderer()`.
 
@@ -73,15 +74,23 @@ File: `src/visuals/CyberpunkIdentity.ts`
 
 High-contrast neon magenta and cyan identity. It simulates chromatic aberration by drawing connections twice with small offsets and uses deterministic high-tension glitch offsets during buildup/drop pressure.
 
+### Hero
+
+File: `src/visuals/HeroEffectIdentity.ts`
+
+A timeline-forward identity built around a fixed playhead dot near the lower-left area of the screen. Beat event dots travel right-to-left along a horizontal lane near the bottom of the viewport. Dot positions are not updated by velocity or retained per-dot state; each X coordinate is computed directly from `event.time - State.currentTime`, making the identity deterministic, stateless, scrub-safe, seek-safe, and offline-export safe.
+
+Hero reads `State.events` and renders only dots that are currently visible on the canvas. Events that have reached or just passed the playhead disappear or produce a localized flash. Dot size scales from `event.intensity` and `State.visualTuning.circleSize`. Type 1 events use the standard lane dot, type 2 dense impact events are larger and brighter, and type 3 fx/high-transient events are smaller, sharper, and magenta. The playhead and lane pulse from `State.modulation.rhythmicImpulse` / `State.beatDecay`.
+
 ## UI And Presets
 
 `State.visualMode` is a `VisualMode` union:
 
 ```ts
-'classic' | 'temporal' | 'dark-techno' | 'organic-ambient' | 'cyberpunk'
+'classic' | 'temporal' | 'dark-techno' | 'organic-ambient' | 'cyberpunk' | 'hero'
 ```
 
-The visual mode select in `src/main.ts` exposes all five values. `DashboardUI` validates mode ids through `isVisualMode()` before writing `State.visualMode`. Preset loading uses the same validation, so older presets without `visualMode` remain valid and newer presets that contain any registered built-in style update both `State.visualMode` and the select element.
+The visual mode select in `src/main.ts` exposes all six values. `DashboardUI` validates mode ids through `isVisualMode()` before writing `State.visualMode`. Preset loading uses the same validation, so older presets without `visualMode` remain valid and newer presets that contain any registered built-in style update both `State.visualMode` and the select element.
 
 ## Render Boundary And Performance Rules
 

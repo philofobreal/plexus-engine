@@ -24,6 +24,7 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-2.8 Modulation range:** The modulation bus must clamp `kineticTension`, `densityDrive`, `spectralChaos`, `rhythmicImpulse`, and `macroMomentum` to `0.0..1.0`.
 - **VT-2.9 Sensitivity scaling:** `audioSensitivity` scales modulation bus outputs linearly until a value reaches the normalized upper bound.
 - **VT-2.10 Morphing target:** Sliders and preset selection write to `State.targetTuning`; the renderer interpolates `State.visualTuning` toward that target during draw.
+- **VT-2.11 Hero lane placement:** The tuning panel exposes `heroLaneBottomOffset`, which controls the vertical placement of the Hero visual identity's horizontal event lane as a normalized distance from the bottom of the viewport.
 
 ## VT-3 Presets
 
@@ -113,5 +114,5 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-10.4 Presentation URL:** Loading the app with `?presentation=true` hides UI chrome by setting the shared UI visibility state to false.
 - **VT-10.5 Timeline inspection modes:** The dramaturgy timeline supports compact, manually resized, and fullscreen overlay inspection modes. The existing expanded CSS height remains a fallback sizing state, but the top-right timeline control opens and closes the fullscreen overlay instead of performing audio or playback work.
 - **VT-10.6 Visual identity registry:** `PlexusRenderer` must select styles through `StyleRegistry.get(State.visualMode)` and delegate to `VisualIdentity.draw(...)`, not through hard-coded mode branches.
-- **VT-10.7 Built-in visual modes:** The UI must expose `classic`, `temporal`, `dark-techno`, `organic-ambient`, and `cyberpunk` in `#visual-mode`.
+- **VT-10.7 Built-in visual modes:** The UI must expose `classic`, `temporal`, `dark-techno`, `organic-ambient`, `cyberpunk`, and `hero` in `#visual-mode`.
 - **VT-10.8 Style fallback:** Unknown style ids resolved through the registry must fall back to `classic` so invalid or future preset values cannot crash rendering.
