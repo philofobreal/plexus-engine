@@ -25,6 +25,8 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-2.9 Sensitivity scaling:** `audioSensitivity` scales modulation bus outputs linearly until a value reaches the normalized upper bound.
 - **VT-2.10 Morphing target:** Sliders and preset selection write to `State.targetTuning`; the renderer interpolates `State.visualTuning` toward that target during draw.
 - **VT-2.11 Hero lane placement:** The tuning panel exposes `heroLaneBottomOffset`, which controls the vertical placement of the Hero visual identity's horizontal event lane as a normalized distance from the bottom of the viewport.
+- **VT-2.12 Hero metronome tuning:** The tuning panel exposes `heroBeepVolume`, `heroBeepMode`, and `heroEventMode`. `heroBeepMode` uses discrete values `0=Off`, `1=Quarter`, `2=Off-beat`, `3=Triplets`, and `4=Syncopated`. `heroEventMode` uses discrete values for all audio events, audio drums only, or metronome beeps only.
+- **VT-2.13 Hero discrete morphing:** `heroBeepMode` and `heroEventMode` snap instantly during preset morphing and must not be interpolated through floating-point intermediate values. `heroBeepVolume` remains a continuous interpolated tuning value.
 
 ## VT-3 Presets
 
@@ -48,6 +50,7 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-4.3 BPM location:** BPM appears in the `#bpm-header-badge` next to the loaded track title, not as a metric card.
 - **VT-4.4 Metrics toggle:** A compact metrics toggle is placed above the seekbar, not in the top-right control group.
 - **VT-4.5 Metrics layout:** Metrics use the original card-like grid layout and adapt by viewport width.
+- **VT-4.5a Metrics default state:** The metrics grid is hidden by default on initial load. The metrics toggle starts with `aria-expanded="false"` and reveals the grid only after user interaction.
 - **VT-4.6 Cue removal:** The cue metrics block is not displayed.
 - **VT-4.7 Dynamics state size:** `Dynamics State` occupies one metrics grid unit.
 - **VT-4.8 Frame projection labels:** The visible `Density` and `Melody Presence` metric labels project the current `AudioFrame.b` and `AudioFrame.m` values. `AudioFrame.t` remains a legacy fx-presence compatibility projection for modulation, but the duplicate fx-presence dashboard entry has been removed in favor of the canonical `FX` feature card.

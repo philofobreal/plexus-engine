@@ -9,7 +9,7 @@
 * **AC 1.3 - End state and loop:** When playback reaches the end threshold (`duration - 0.1s`), `Loop` mode restarts playback from `0:00`. In `Once` mode, playback stops, the seekbar returns to `0`, visual transient state (`beatDecay`, `denseImpactFlash`, cue state, event indexes) resets, and the UI returns to its idle playback state.
 * **AC 1.4 - Seek and scrub buffering:** Dragging the seekbar or dramaturgy timeline updates the visible time and playhead immediately, but the audio engine does not receive repeated `seek()` calls. The UI stores the target in `scrubTime` and commits one final `AudioEngine.seek()` when the pointer or touch interaction ends.
 * **AC 1.5 - Decode failure UI:** If selected audio cannot be decoded, playback and seek remain disabled, file selection is re-enabled, and the dashboard shows a file-load error instead of entering a partially playable state.
-* **AC 1.6 - Video file memory guard:** Video files larger than `200 MB` are rejected by the playback UI before the file is passed to `AudioEngine.loadFile()`. This prevents large video containers from being read through `File.arrayBuffer()` and decoded through `AudioContext.decodeAudioData`, which could otherwise trigger browser out-of-memory crashes.
+* **AC 1.6 - Video file memory guard:** Video files are size-checked by the playback UI before the file is passed to `AudioEngine.loadFile()`. The limit is dynamic: `150 MB` on mobile devices to prevent iOS Safari out-of-memory crashes, and `600 MB` on desktop devices. Device class is verified through `ExportCapabilityDetector` before the user-facing error is shown.
 * **AC 1.7 - Video backplate lifecycle:** When a valid video file is loaded, the UI creates a managed muted `<video>` element behind the p5 canvas. The video element is synced to the `AudioEngine` master clock for play, pause, seek, stop, and loop transitions. Its audio remains muted because playback audio comes from Web Audio. Object URLs are revoked on replacement, reset, or failure.
 
 ## 2. Macro Dynamics State
@@ -94,6 +94,7 @@
 * **AC 10.4 - Preset Assignment via Automation Points:** Presets are assigned through `PerformanceAutomationPoint.preset` on the unified plan. Creating or editing a point with a selected preset writes the preset reference into `State.editedPerformancePlan` instead of any section-override map. The plan's `source` field transitions from `'auto'` to `'edited'` on the first manual change.
 * **AC 10.5 - VJ Playhead Scheduler:** Section preset automation is evaluated from the canonical audio position, including seek and paused position changes. Crossing into a painted section applies the section preset once through the normal preset morph path instead of relying on draw-loop polling only.
 * **AC 10.6 - FSM transition stability:** `VisualDirectorFSM` state transitions apply at least a 150ms `MIN_STATE_DURATION` cooldown and hysteresis to prevent dense jitter or state vibration.
+* **AC 10.7 - Clear automation:** The timeline action bar includes a clear automation button. Activating it must show a native `window.confirm` prompt before deleting automation. When confirmed, the edited `PerformanceAutomationPlan` is preserved as an edited plan with an empty `points` array, the automation inspector is hidden, and the timeline redraws.
 
 ## 11. Playback Motion Fade-out And Offscreen Waveform Cache
 

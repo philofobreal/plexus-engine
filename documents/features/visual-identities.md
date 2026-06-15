@@ -80,7 +80,9 @@ File: `src/visuals/HeroEffectIdentity.ts`
 
 A timeline-forward identity built around a fixed playhead dot near the lower-left area of the screen. Beat event dots travel right-to-left along a horizontal lane near the bottom of the viewport. Dot positions are not updated by velocity or retained per-dot state; each X coordinate is computed directly from `event.time - State.currentTime`, making the identity deterministic, stateless, scrub-safe, seek-safe, and offline-export safe.
 
-Hero reads `State.events` and renders only dots that are currently visible on the canvas. Events that have reached or just passed the playhead disappear or produce a localized flash. Dot size scales from `event.intensity` and `State.visualTuning.circleSize`. Type 1 events use the standard lane dot, type 2 dense impact events are larger and brighter, and type 3 fx/high-transient events are smaller, sharper, and magenta. The playhead and lane pulse from `State.modulation.rhythmicImpulse` / `State.beatDecay`.
+Hero reads `State.visualTuning.heroEventMode` to decide its event source. Mode `0` renders all audio events from `State.events`. Mode `1` renders audio drums only by filtering to BeatEvent type `2` and type `3`. Mode `2` renders metronome beeps only. Audio-event dots that have reached or just passed the playhead disappear or produce a localized flash. Dot size scales from `event.intensity` and `State.visualTuning.circleSize`. Type 1 events use the standard lane dot, type 2 dense impact events are larger and brighter, and type 3 fx/high-transient events are smaller, sharper, and magenta. The playhead and lane pulse from `State.modulation.rhythmicImpulse` / `State.beatDecay`.
+
+In metronome mode, Hero looks ahead mathematically into the timeline instead of reading rendered history. It calls `HeroMetronome.getBeepEventsInWindow(State.trackAnalysis, State.currentTime, State.currentTime + visibleSeconds)` to draw future events according to the active `PerformanceAutomationPlan` preset schedule. That helper resolves the scheduled preset's `heroBeepMode`, so upcoming dots reflect the automation plan before the playhead reaches them.
 
 ## UI And Presets
 

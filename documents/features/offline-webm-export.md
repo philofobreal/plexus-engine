@@ -17,7 +17,7 @@ Implemented capabilities:
 - `Cancel` aborts the export and discards the partial output.
 - Object URLs created for download are revoked after a `1000ms` delay so the browser download queue can consume the Blob before the URL is released.
 - Export is strictly WebCodecs-only and does not use MediaRecorder fallbacks, guaranteeing deterministic, high-quality encoding results across all supported platforms.
-- When a video file is loaded, export composites the original video frames as the background layer, draws the p5 generative visual layer over it, and draws the metadata card on top.
+- When a video file is loaded, export composites the original video frames as the background layer, draws the p5 generative visual layer over it, and optionally draws the metadata card on top.
 
 ## Runtime Ownership
 
@@ -68,12 +68,12 @@ The main-thread export loop captures the frame immediately after drawing and bef
 1. Set `State.exportTime`.
 2. If a video backplate is active, set `video.currentTime = State.exportTime` and wait for the browser to expose the requested frame.
 3. Call `p5Instance.redraw()` to draw the transparent p5 visual layer.
-4. Composite video background, p5 overlay, and metadata card into the capture canvas.
+4. Composite video background, p5 overlay, and optional metadata card into the capture canvas.
 5. Create the `VideoFrame` from the composited canvas.
 6. Yield with `await nextAnimationFrame()`.
 7. Send the frame and optional audio payload to the worker.
 
-This ordering is intentional. It guarantees the metadata card is included in the captured frame before any browser buffer swap, canvas clear, or UI task can intervene.
+This ordering is intentional. When the watermark is enabled, it guarantees the metadata card is included in the captured frame before any browser buffer swap, canvas clear, or UI task can intervene.
 
 After `resizeCanvas(target.width, target.height)`, the exporter awaits one animation frame before the first render frame. This gives p5 and the browser time to settle the resized backing store.
 
@@ -85,13 +85,13 @@ The compositing order is:
 
 1. draw the decoded video frame into the export canvas using contain-style centering,
 2. draw the p5 graphics canvas over it,
-3. draw the metadata card/watermark last.
+3. draw the optional metadata card/watermark last.
 
 When no video backplate is loaded, export keeps the original p5-only capture path.
 
 ## Metadata Card Watermark
 
-`WebMExporter.drawMetadataCard(width, height)` draws a high-resolution visual identity card in the upper-left corner of every exported frame.
+`WebMExporter.drawMetadataCard(width, height)` draws a high-resolution visual identity card in the upper-left corner of exported frames when the UI `#export-watermark` checkbox is enabled. The checkbox is off by default, so exports omit the Plexus metadata card unless the user explicitly opts in.
 
 The card includes:
 
@@ -113,6 +113,8 @@ For frame `i`, samples are copied as:
 2. right channel samples for the same interval.
 
 Mono input duplicates the left channel into the right channel. The planar buffer is transferred to the worker with `audioPlanar.buffer`.
+
+When the `Hero` visual mode is active and `heroBeepMode > 0`, the exporter also reads the corresponding `HeroMetronome` stem buffer and mixes the exact sample slice for the exported frame into `audioPlanar`. The mixed beep is scaled by `heroBeepVolume` and clamped to `[-1.0, 1.0]` before the planar buffer is transferred.
 
 The worker attempts to initialize WebCodecs `AudioEncoder` with Opus:
 

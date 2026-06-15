@@ -13,7 +13,7 @@ Az aktualis implementacio hat regisztralt vizualis identitast tart fenn a `Visua
 * `dark-techno`: szigoru monokrom, minimal ipari stilus eles feher/szurke vonalakkal es ritka strobe-szeru polygon flash viselkedessel.
 * `organic-ambient`: lassu, folyekony, pasztell zold/kek/foldszinu stilus, amely eles halozati vonalak helyett puha reszecske-glow retegeket hasznal.
 * `cyberpunk`: nagy kontrasztu neon magenta/cian stilus kromatikus aberracio-szeru kettos vonalrajzolassal es determinisztikus glitch offsetekkel.
-* `hero`: bal also playhead pontra szervezett, also horizontalis lane-en jobbrol balra mozgo event-dot vizual, ahol a dot poziciok determinisztikusan `event.time - State.currentTime` alapjan szamolodnak.
+* `hero`: bal also playhead pontra szervezett, also horizontalis lane-en jobbrol balra mozgo event-dot vizual, ahol a dot poziciok determinisztikusan `event.time - State.currentTime` alapjan szamolodnak. A mod sajat interaktiv metronomot is hasznalhat: a lane elore mutatja a `PerformanceAutomationPlan` altal utemezett beep ritmust.
 
 ## 1.1. Termekvizio Es Celcsoport
 
@@ -45,7 +45,7 @@ A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus m
 
 1. **Composition (`src/main.ts`):** letrehozza a DOM shellt, az `AudioEngine` peldanyt, a `DashboardUI` peldanyt es a p5 renderert.
 2. **UI Layer (`src/ui/DashboardUI.ts`, `src/ui/controllers/`, `src/style.css`):** a `DashboardUI` mar facade/orchestrator szerepet tolt be, nem monolitikus DOM-binding osztaly. A konkret UI kotest a `PlaybackController`, `TuningController` es `ExportController` vegzi; ezek callbackeken keresztul delegalt szandekot adnak vissza a `DashboardUI`-nak.
-3. **Audio Engine (`src/audio/AudioEngine.ts`):** felelos a hangfajlok dekodolasaert, a `AudioBufferSourceNode` eletciklusert, a kanonikus idoszamitasert, a seek/end resetert, a worker request id kezelesert, a stale worker eredmenyek eldobasaert es a worker terminalasaert.
+3. **Audio Engine (`src/audio/AudioEngine.ts`):** felelos a hangfajlok dekodolasaert, a `AudioBufferSourceNode` eletciklusert, a kanonikus idoszamitasert, a seek/end resetert, a worker request id kezelesert, a stale worker eredmenyek eldobasaert es a worker terminalasaert. A Hero metronomhoz negy szintetizalt beep stemet tart parhuzamosan szinkronban, es preset automatizalas alapjan sima gain crossfade-del valt koztuk.
 4. **Analysis Engine (`src/audio/analyzer.worker.ts`):** dedikalt Web Worker. Nem monolitikus `onmessage` algoritmus: a feldolgozas `FeatureExtractor`, `GridAligner`, `SectionAnalyzer` es `DramaturgyBuilder` osztalyokra van bontva. 1024 mintas Hann-windowed FFT pipeline-t hasznal, spektralis fluxust, relativ savenergiakat, centroidot es flatness erteket szamol, majd `AudioFrame`, `BeatEvent` es `TrackAnalysis` kimenetet publikal.
 5. **Shared contracts/state (`src/types/index.ts`, `src/state/store.ts`):** tarolja a megosztott tipusokat, az elfogadott analizis eredmenyeket, a vizualis modot, loop allapotot, aktualis frame-et, cue allapotokat, modulacios buszt, elo tuningot es target tuningot.
 6. **Render Engine (`src/visuals/`):** p5 canvas renderer backend adapterrel, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `StyleRegistry`-bol lekert `VisualIdentity` implementaciokat kezeli. A zene-dramaturgiai allapotszabalyozast a `VisualDirectorFSM.ts` modul vegzi, majd `DirectorOutput` formaban ad render-facing jeleket az identitasoknak.
@@ -55,7 +55,7 @@ A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus m
 
 ### 3.1. Offline Globalis Analizis
 
-A zene vagy tamogatott video betoltesekor a rendszer nem azonnal inditja a lejatszast. Az `AudioEngine` dekodolja a fajl audio tartalmat, explicit masolatot keszit az elso csatorna sample adataibol, majd ezt az `ArrayBuffer`-t kuldi a workernek. A lejatszashoz szukseges `AudioBuffer` a main thread tulajdonaban marad, igy az analizis transfer nem tudja veletlenul detached allapotba tenni a playback adatot. Video fajloknal a UI 200 MB maximalis meretet ervenyesit, mielott a fajl `arrayBuffer()`/`decodeAudioData()` utvonalra kerulne.
+A zene vagy tamogatott video betoltesekor a rendszer nem azonnal inditja a lejatszast. Az `AudioEngine` dekodolja a fajl audio tartalmat, explicit masolatot keszit az elso csatorna sample adataibol, majd ezt az `ArrayBuffer`-t kuldi a workernek. A lejatszashoz szukseges `AudioBuffer` a main thread tulajdonaban marad, igy az analizis transfer nem tudja veletlenul detached allapotba tenni a playback adatot. Video fajloknal a UI dinamikus meretlimitet ervenyesit, mielott a fajl `arrayBuffer()`/`decodeAudioData()` utvonalra kerulne: mobilon 150 MB, desktopon 600 MB.
 
 Ha video fajl kerul betoltesre, a `DashboardUI` kezeli a muted `<video>` backplate elemet es az object URL eletciklust. A video play/pause/seek/stop allapotai az `AudioEngine` master clock esemenyeit kovetik; a video elem sajat hangja mindig muted, hogy ne keletkezzen echo a Web Audio lejatszas mellett. A p5 canvas hattere ilyenkor automatikusan transzparensre valt, hogy a video hatter lathato maradjon.
 
@@ -154,6 +154,8 @@ Az effekt modulok `VisualRendererBackend` interfeszen keresztul rajzolnak. A p5-
 `State.visualTuning` az elo, interpolalt allapot. `State.targetTuning` a presetek es UI csuszkak celallapota. A render ciklus elejen az elo tuning a `transitionSpeed` szerint kozelit a celhoz, tulcsuszas nelkul.
 
 A `buildupConfidence` mar nem csak kozvetlen modulacios erosites. A `VisualDirectorFSM` `BUILDUP` allapotban `centripetalOrbit` erteket publikal a `State.directorOutput` mezobe. A particle update ezt az erteket befele mutato es tangencialis komponensre bontja, igy a buildup fazis spiral jellegu, centripetalis mozgasba rendezi a reszecskeket.
+
+A Hero mod interaktiv metronomja az "Interactive Stem Switching" technikat hasznalja. Az analizis utan a `HeroMetronome` negy mono stemet general a negy ritmusmodhoz (quarter, off-beat, triplet, syncopated). Lejatszas kozben az `AudioEngine` mind a negy stemet a fo audio source-szal azonos offsetrol inditja, a nem aktiv gainjeit nullan tartja, es `heroBeepMode` / `heroBeepVolume` alapjan siman atkeveri az aktiv stemet. Igy az automatizalt presetvaltas ritmusa hallhatoan es vizualisan is idoben marad.
 
 ### 4.2.2. Playback Fade Es Timeline Waveform Cache
 
