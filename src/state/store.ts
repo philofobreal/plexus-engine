@@ -1,5 +1,5 @@
 import { cloneDefaultVisualTuning } from '../config/visualTuning.ts';
-import type { AudioFrame, BeatEvent, DirectorOutput, ModulationState, PerformanceAutomationPlan, TimelineLayers, TrackAnalysis, VisualFeatureFrame, VisualCueKind, VisualMode } from '../types';
+import type { AudioFrame, BeatEvent, DirectorOutput, ModulationState, PerformanceAutomationPlan, TimelineLayers, TrackAnalysis, VisualFeatureFrame, VisualCueKind, VisualMode, VisualTuningConfig } from '../types';
 
 const emptyFeatures: VisualFeatureFrame = {
     melody: 0,
@@ -12,6 +12,7 @@ const emptyFeatures: VisualFeatureFrame = {
 
 const emptyTrackAnalysis: TrackAnalysis = {
     duration: 0,
+    bpm: 0,
     bars: [],
     sections: [],
     patterns: [],
@@ -58,6 +59,7 @@ export const State = {
     events: [] as BeatEvent[],
     trackAnalysis: emptyTrackAnalysis as TrackAnalysis,
     availablePresets: [] as string[],
+    preloadedPresets: {} as Record<string, Partial<VisualTuningConfig>>,
     performancePlan: null as PerformanceAutomationPlan | null,
     editedPerformancePlan: null as PerformanceAutomationPlan | null,
     hopSize: 1024,

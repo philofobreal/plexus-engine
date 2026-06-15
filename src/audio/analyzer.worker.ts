@@ -655,6 +655,7 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
 
         const trackAnalysis: TrackAnalysis = {
             duration: channel.length / sampleRate,
+            bpm: grid.estimatedBPM,
             bars: segmenter.barAnalyses,
             sections: segmenter.trackSections,
             patterns: cueBuilder.musicPatterns,

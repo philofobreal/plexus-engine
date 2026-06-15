@@ -1,11 +1,13 @@
 import AnalyzerWorker from './analyzer.worker.ts?worker';
 import { State } from '../state/store';
 import type { AnalysisWorkerMessage, TrackAnalysis, VisualFeatureFrame } from '../types';
+import { HeroMetronome } from './HeroMetronome';
 
 const ANALYSIS_ALGORITHM_VERSION = 2;
 const EMPTY_FEATURES: VisualFeatureFrame = { melody: 0, vocal: 0, fx: 0, density: 0, brightness: 0, tension: 0 };
 const EMPTY_TRACK_ANALYSIS: TrackAnalysis = {
     duration: 0,
+    bpm: 0,
     bars: [],
     sections: [],
     patterns: [],
@@ -23,6 +25,9 @@ export class AudioEngine {
     private ctx: AudioContext | null = null;
     private buffer: AudioBuffer | null = null;
     private source: AudioBufferSourceNode | null = null;
+    public beepBuffers: AudioBuffer[] = [];
+    private beepSources: AudioBufferSourceNode[] = [];
+    private beepGains: GainNode[] = [];
     private activeWorker: Worker | null = null;
     private currentAnalysisRequestId = 0;
 
@@ -56,6 +61,8 @@ export class AudioEngine {
     }
 
     private clearAnalysisState() {
+        this.stopBeepSources();
+        this.beepBuffers = [];
         State.duration = 0;
         State.bpm = 0;
         State.frames = [];
@@ -127,7 +134,9 @@ export class AudioEngine {
                     State.events = e.data.events;
                     // Strict normalization mapping incoming generic objects to rigorous domain models
                     State.trackAnalysis = normalizeTrackAnalysis(e.data.trackAnalysis);
+                    State.trackAnalysis.bpm = e.data.bpm;
                     State.hopSize = e.data.hopSize;
+                    this.beepBuffers = this.ctx ? HeroMetronome.generateStems(this.ctx, State.trackAnalysis) : [];
                     if (this.onAnalysisComplete) this.onAnalysisComplete();
                     return;
                 }
@@ -162,6 +171,7 @@ export class AudioEngine {
         this.source = this.ctx.createBufferSource();
         this.source.buffer = this.buffer;
         this.source.connect(this.ctx.destination);
+        this.startBeepSources(this.playOffset);
 
         this.source.onended = () => {
             if (this.getCurrentTime() >= State.duration - 0.1) {
@@ -176,9 +186,11 @@ export class AudioEngine {
         };
 
         this.source.start(0, this.playOffset);
+        for (const source of this.beepSources) source.start(0, this.playOffset);
         State.isPlaying = true;
         State.currentTime = this.playOffset;
         this.emitPositionChanged(this.playOffset);
+        this.syncMetronomeState(State.visualMode === 'hero', State.visualTuning.heroBeepMode, State.visualTuning.heroBeepVolume);
         this.emitPlaybackState('play', this.playOffset);
     }
 
@@ -203,6 +215,7 @@ export class AudioEngine {
             this.source.disconnect();
             this.source = null;
         }
+        this.stopBeepSources();
 
         State.isPlaying = false;
         if (reset) {
@@ -222,12 +235,53 @@ export class AudioEngine {
         const latency = (this.ctx.outputLatency || 0.02) + 0.01;
         return Math.max(0, this.playOffset + (this.ctx.currentTime - this.playStartTime) - latency);
     }
+
+    syncMetronomeState(isActive: boolean, beepMode: number, volume: number) {
+        if (!this.ctx || this.beepGains.length === 0) return;
+        const activeIndex = Math.round(Number.isFinite(beepMode) ? beepMode : 0) - 1;
+        const activeVolume = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 0));
+        for (let i = 0; i < this.beepGains.length; i++) {
+            const target = isActive && i === activeIndex ? activeVolume : 0.0;
+            this.beepGains[i].gain.setTargetAtTime(target, this.ctx.currentTime, 0.05);
+        }
+    }
+
+    private startBeepSources(_offset: number) {
+        if (!this.ctx) return;
+        this.stopBeepSources();
+        this.beepSources = [];
+        this.beepGains = [];
+        for (const buffer of this.beepBuffers) {
+            const source = this.ctx.createBufferSource();
+            const gain = this.ctx.createGain();
+            gain.gain.value = 0;
+            source.buffer = buffer;
+            source.connect(gain);
+            gain.connect(this.ctx.destination);
+            this.beepSources.push(source);
+            this.beepGains.push(gain);
+        }
+    }
+
+    private stopBeepSources() {
+        for (const source of this.beepSources) {
+            source.onended = null;
+            try { source.stop(); } catch(e){}
+            source.disconnect();
+        }
+        for (const gain of this.beepGains) {
+            gain.disconnect();
+        }
+        this.beepSources = [];
+        this.beepGains = [];
+    }
 }
 
 function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis): TrackAnalysis {
     return {
         ...EMPTY_TRACK_ANALYSIS,
         ...trackAnalysis,
+        bpm: trackAnalysis.bpm || State.bpm || 0,
         bars: (trackAnalysis.bars || []).map(bar => ({ ...bar, avgRms: bar.avgRms ?? 0, peakRms: bar.peakRms ?? 0, bass: bar.bass ?? 0, mid: bar.mid ?? 0, treble: bar.treble ?? 0 })),
         sections: (trackAnalysis.sections || []).map(section => ({ ...section, avgRms: section.avgRms ?? 0, peakRms: section.peakRms ?? 0 })),
         spectralPivot: trackAnalysis.spectralPivot || [],
