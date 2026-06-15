@@ -10,6 +10,7 @@ export interface ExportCallbacks {
 type ExportEls = {
     exportResolution: HTMLElement;
     exportAspect: HTMLElement;
+    exportWatermark: HTMLElement;
     exportVideoBtn: HTMLElement;
     stopExportBtn: HTMLElement;
     cancelExportBtn: HTMLElement;
@@ -67,6 +68,7 @@ export class ExportController {
     setExportActive(isActive: boolean): void {
         (this.els.exportResolution as HTMLSelectElement).disabled = isActive;
         (this.els.exportAspect as HTMLSelectElement).disabled = isActive;
+        (this.els.exportWatermark as HTMLInputElement).disabled = isActive;
         (this.els.exportVideoBtn as HTMLButtonElement).disabled = isActive;
         (this.els.stopExportBtn as HTMLButtonElement).disabled = !isActive;
         (this.els.cancelExportBtn as HTMLButtonElement).disabled = !isActive;
@@ -77,6 +79,7 @@ export class ExportController {
     resetExportUi(): void {
         (this.els.exportResolution as HTMLSelectElement).disabled = false;
         (this.els.exportAspect as HTMLSelectElement).disabled = false;
+        (this.els.exportWatermark as HTMLInputElement).disabled = false;
         (this.els.exportVideoBtn as HTMLButtonElement).disabled = !this.canExportFlag;
         (this.els.exportVideoBtn as HTMLButtonElement).innerText = 'Export';
         (this.els.stopExportBtn as HTMLButtonElement).disabled = true;
@@ -100,7 +103,8 @@ export class ExportController {
     getConfig(): ExportConfig {
         const resolution = (this.els.exportResolution as HTMLSelectElement).value as ExportConfig['resolution'];
         const aspectRatio = (this.els.exportAspect as HTMLSelectElement).value as ExportConfig['aspectRatio'];
-        return { resolution, aspectRatio, fps: 60 };
+        const watermark = (this.els.exportWatermark as HTMLInputElement).checked;
+        return { resolution, aspectRatio, fps: 60, watermark };
     }
 
     private initBindings(): void {

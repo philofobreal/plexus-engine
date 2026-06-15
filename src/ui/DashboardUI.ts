@@ -5,7 +5,7 @@ import { ExportCapabilityDetector } from '../export/ExportCapabilityDetector';
 import { WebMExporter, type ExportConfig } from '../export/WebMExporter';
 import type { ExportCapabilities } from '../export/ExportTypes';
 import { State } from '../state/store';
-import type { MorphCurve, PerformanceAutomationPlan, PerformanceAutomationPoint, RenderState, TimelineLayers, VisualMode } from '../types';
+import type { MorphCurve, PerformanceAutomationPlan, PerformanceAutomationPoint, RenderState, TimelineLayers, VisualMode, VisualTuningConfig } from '../types';
 import { GestureEngine } from './GestureEngine';
 import { dashboardMetricMetadata, type DashboardMetricKey } from './metricMetadata';
 import { TimelineCanvas } from './TimelineCanvas';
@@ -93,6 +93,7 @@ export class DashboardUI {
             timelineResizeHandle: document.getElementById('timeline-resize-handle')!,
             timelineDrawTarget: document.getElementById('timeline-draw-target')!,
             timelinePresetBrush: document.getElementById('timeline-preset-brush')!,
+            clearAutomationBtn: document.getElementById('clear-automation-btn')!,
             toggleTimelineDraw: document.getElementById('toggle-timeline-draw')!,
             toggleTimelineSnap: document.getElementById('toggle-timeline-snap')!,
             toggleTimelineFollow: document.getElementById('toggle-timeline-follow')!,
@@ -250,6 +251,7 @@ export class DashboardUI {
             {
                 exportResolution: this.els.exportResolution,
                 exportAspect: this.els.exportAspect,
+                exportWatermark: document.getElementById('export-watermark')!,
                 exportVideoBtn: this.els.exportVideoBtn,
                 stopExportBtn: this.els.stopExportBtn,
                 cancelExportBtn: this.els.cancelExportBtn,
@@ -433,8 +435,21 @@ export class DashboardUI {
         this.els.toggleTimelineFollow.addEventListener('click', () => {
             this.toggleTimelineFollowMode();
         });
+        this.els.clearAutomationBtn.addEventListener('click', () => {
+            this.clearAutomationWithConfirmation();
+        });
         this.initAutomationInspectorControls();
         this.initTimelineLayerControls();
+    }
+
+    private clearAutomationWithConfirmation(): void {
+        if (!window.confirm('Are you sure you want to delete all automation points? This cannot be undone.')) return;
+        const plan = this.ensureEditedPerformancePlan();
+        plan.points = [];
+        plan.source = 'edited';
+        this.hideAutomationInspector();
+        this.selectedAutomationPoint = null;
+        this.requestTimelineDraw();
     }
 
     private setTimelineDrawMode(isActive: boolean): void {
@@ -1582,6 +1597,7 @@ export class DashboardUI {
                 presetData = await response.json();
                 this.presetCache.set(fileName, presetData);
             }
+            this.cachePreloadedPreset(fileName, presetData);
             this.applyPerformancePreset(presetData);
             this.tuningCtrl.syncVisualTuningControls();
         } catch {
@@ -1593,18 +1609,25 @@ export class DashboardUI {
         if (!plan?.points.length) return;
         const uniquePresets = [...new Set(plan.points.map(p => p.preset))];
         await Promise.all(uniquePresets.map(async (preset) => {
-            if (this.presetCache.has(preset)) return;
+            if (this.presetCache.has(preset)) return this.cachePreloadedPreset(preset, this.presetCache.get(preset));
             try {
                 const response = await fetch(this.presetUrl(preset), { cache: 'no-store' });
                 if (!response.ok) throw new Error(`Preset ${response.status}`);
                 const payload = await response.json();
                 this.presetCache.set(preset, payload);
+                this.cachePreloadedPreset(preset, payload);
             } catch { /* opportunistic */ }
         }));
     }
 
     private presetUrl(fileName: string): string {
         return `${import.meta.env.BASE_URL}visual-tuning-presets/${encodeURIComponent(fileName)}`;
+    }
+
+    private cachePreloadedPreset(fileName: string, payload: unknown): void {
+        State.preloadedPresets[fileName] = (payload && typeof payload === 'object')
+            ? payload as Partial<VisualTuningConfig>
+            : {};
     }
 
     private applyPerformancePreset(payload: unknown): void {

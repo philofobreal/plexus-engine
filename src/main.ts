@@ -79,7 +79,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
     <!-- Bottom metrics and seekbar section -->
     <div class="bottom-section">
-      <div class="metrics-grid" id="metrics-grid">
+      <div class="metrics-grid is-hidden" id="metrics-grid">
         <div class="metric-card dyn-card" data-metric-key="dynamicsState" tabindex="0" aria-describedby="dashboard-metric-tooltip">
             <div class="m-label">Dynamics State</div>
             <div class="m-value dyn-text" id="val-dyn">IDLE</div>
@@ -95,7 +95,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       </div>
       
       <div class="bottom-toolbar">
-        <button id="toggle-metrics" class="metrics-toggle" aria-expanded="true">
+        <button id="toggle-metrics" class="metrics-toggle" aria-expanded="false">
           <span>Metrics</span>
           <svg class="metrics-toggle-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
         </button>
@@ -130,6 +130,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             <select id="timeline-preset-brush" class="timeline-select" aria-label="Preset brush">
               <option value="">No presets</option>
             </select>
+            <button id="clear-automation-btn" class="btn-icon-mini" title="Clear All Automation" aria-label="Clear all automation"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
             <div class="timeline-divider"></div>
             <!-- Zoom / overlay -->
             <button id="toggle-timeline-zoom" class="btn-icon-mini" title="Zoom Timeline" aria-pressed="false" aria-label="Zoom timeline">
@@ -162,6 +163,10 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
               <option value="9:16">9:16</option>
               <option value="1:1">1:1</option>
             </select>
+            <label class="timeline-checkbox" for="export-watermark">
+              <input type="checkbox" id="export-watermark">
+              <span>Watermark</span>
+            </label>
             <button id="export-video-btn" class="timeline-export-btn" disabled>Export</button>
             <button id="stop-export-btn" class="timeline-export-btn is-hidden" disabled>Stop</button>
             <button id="cancel-export-btn" class="timeline-export-btn is-hidden" disabled>Cancel</button>

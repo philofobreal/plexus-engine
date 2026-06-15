@@ -67,6 +67,9 @@ export interface VisualTuningConfig {
     temporalNetworkDistance: number;
     temporalPolygonAlpha: number;
     heroLaneBottomOffset: number;
+    heroBeepVolume: number;
+    heroBeepMode: number;
+    heroEventMode: number;
     morphDurationSec: number;
     morphCurveValue: number;
     buildupIntensity: number;
@@ -219,6 +222,7 @@ export interface TensionTrends {
 
 export interface TrackAnalysis {
     duration: number;
+    bpm: number;
     bars: BarAnalysis[];
     sections: TrackSection[];
     patterns: MusicPattern[];

@@ -1,6 +1,8 @@
 import { State } from '../../state/store';
+import { ExportCapabilityDetector } from '../../export/ExportCapabilityDetector';
 
-const MAX_VIDEO_FILE_BYTES = 200 * 1024 * 1024;
+const MOBILE_VIDEO_FILE_LIMIT_MB = 150;
+const DESKTOP_VIDEO_FILE_LIMIT_MB = 600;
 const VIDEO_FILE_EXTENSION_RE = /\.(mp4|m4v|webm|ogv|ogg|mov|mkv)$/i;
 
 export interface PlaybackCallbacks {
@@ -146,7 +148,7 @@ export class PlaybackController {
             const file = input.files?.[0];
             if (!file) return;
             if (this.isOversizedVideo(file)) {
-                this.onError(`Hiba: a videofajl tul nagy (maximum ${Math.round(MAX_VIDEO_FILE_BYTES / 1024 / 1024)} MB)`);
+                this.onError(`Hiba: a videofajl tul nagy (maximum ${this.getVideoFileLimitMb()} MB)`);
                 input.value = '';
                 return;
             }
@@ -245,10 +247,18 @@ export class PlaybackController {
     }
 
     private isOversizedVideo(file: File): boolean {
-        return this.isVideoFile(file) && file.size > MAX_VIDEO_FILE_BYTES;
+        return this.isVideoFile(file) && file.size > this.getVideoFileLimitBytes();
     }
 
     private isVideoFile(file: File): boolean {
         return file.type.startsWith('video/') || VIDEO_FILE_EXTENSION_RE.test(file.name);
+    }
+
+    private getVideoFileLimitBytes(): number {
+        return this.getVideoFileLimitMb() * 1024 * 1024;
+    }
+
+    private getVideoFileLimitMb(): number {
+        return ExportCapabilityDetector.isMobile() ? MOBILE_VIDEO_FILE_LIMIT_MB : DESKTOP_VIDEO_FILE_LIMIT_MB;
     }
 }

@@ -56,6 +56,9 @@ export const defaultVisualTuning: VisualTuningConfig = {
     temporalNetworkDistance: 1,
     temporalPolygonAlpha: 1,
     heroLaneBottomOffset: 0.2,
+    heroBeepVolume: 0.5,
+    heroBeepMode: 0,
+    heroEventMode: 2,
     morphDurationSec: 3.0,
     morphCurveValue: 1,
     buildupIntensity: 1.0,
@@ -128,7 +131,36 @@ export const visualTuningControls: VisualTuningControl[] = [
     { key: 'temporalRingSpeed', label: 'Ring speed', group: 'Temporal', min: 0, max: 12, step: 0.05, unit: 'x' },
     { key: 'temporalNetworkDistance', label: 'Temporal links', group: 'Temporal', min: 0.05, max: 8, step: 0.05, unit: 'x' },
     { key: 'temporalPolygonAlpha', label: 'Temporal polys', group: 'Temporal', min: 0, max: 5, step: 0.05, unit: 'x' },
-    { key: 'heroLaneBottomOffset', label: 'Lane from bottom', group: 'Hero', min: 0.05, max: 0.9, step: 0.01, unit: 'h' }
+    { key: 'heroLaneBottomOffset', label: 'Lane from bottom', group: 'Hero', min: 0.05, max: 0.9, step: 0.01, unit: 'h' },
+    { key: 'heroBeepVolume', label: 'Hero beep volume', group: 'Hero', min: 0, max: 1, step: 0.05 },
+    {
+        key: 'heroBeepMode',
+        label: 'Hero beep mode',
+        group: 'Hero',
+        min: 0,
+        max: 4,
+        step: 1,
+        options: [
+            { value: 0, label: 'Off' },
+            { value: 1, label: 'Quarter notes' },
+            { value: 2, label: 'Off-beats' },
+            { value: 3, label: 'Triplets' },
+            { value: 4, label: 'Syncopated' }
+        ]
+    },
+    {
+        key: 'heroEventMode',
+        label: 'Hero event mode',
+        group: 'Hero',
+        min: 0,
+        max: 2,
+        step: 1,
+        options: [
+            { value: 0, label: 'All audio events' },
+            { value: 1, label: 'Audio drums only' },
+            { value: 2, label: 'Metronome beeps only' }
+        ]
+    }
 ];
 
 export function cloneDefaultVisualTuning(): VisualTuningConfig {
@@ -138,7 +170,7 @@ export function cloneDefaultVisualTuning(): VisualTuningConfig {
 export function normalizeVisualTuningConfig(payload: unknown, current?: VisualTuningConfig): VisualTuningConfig {
     const source = getVisualTuningSource(payload);
     const next = current ? { ...current } : cloneDefaultVisualTuning();
-    const legacySource = source as (Partial<VisualTuningConfig> & { particleBassTurn?: unknown }) | null;
+    const legacySource = source as (Partial<VisualTuningConfig> & { particleBassTurn?: unknown; heroDrumsOnly?: unknown }) | null;
 
     for (const key of visualTuningKeys) {
         const value = source?.[key];
@@ -152,6 +184,12 @@ export function normalizeVisualTuningConfig(payload: unknown, current?: VisualTu
         if (typeof legacyParticleActivityTurn === 'number' && Number.isFinite(legacyParticleActivityTurn)) {
             next.particleActivityTurn = legacyParticleActivityTurn;
         }
+    }
+
+    if (source?.heroEventMode === undefined) {
+        const legacyHeroDrumsOnly = legacySource?.heroDrumsOnly;
+        if (legacyHeroDrumsOnly === 0) next.heroEventMode = 0;
+        else if (legacyHeroDrumsOnly === 1) next.heroEventMode = 1;
     }
 
     return next;
@@ -275,7 +313,8 @@ export function applyTuningMorph(
 
         // JAVÍTVA: A diszkrét (egész) beállításokat ne interpoláljuk, hanem azonnal pattintsuk be,
         // különben a lebegőpontos értékek érvénytelenítik a háttér és a teljesítmény-mód feltételeit.
-        if (key === 'chromaKeyMode' || key === 'performanceMode' || key === 'phraseSize' || key === 'morphCurveValue') {
+        if (key === 'chromaKeyMode' || key === 'performanceMode' || key === 'phraseSize'
+            || key === 'morphCurveValue' || key === 'heroEventMode' || key === 'heroBeepMode') {
             current[key] = targetValue;
             continue;
         }
