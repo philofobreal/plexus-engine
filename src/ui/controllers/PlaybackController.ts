@@ -1,5 +1,8 @@
 import { State } from '../../state/store';
 
+const MAX_VIDEO_FILE_BYTES = 200 * 1024 * 1024;
+const VIDEO_FILE_EXTENSION_RE = /\.(mp4|m4v|webm|ogv|ogg|mov|mkv)$/i;
+
 export interface PlaybackCallbacks {
     onFileSelected: (file: File) => void;
     onPlay: () => void;
@@ -139,8 +142,14 @@ export class PlaybackController {
 
     private initBindings(): void {
         (this.els.upload as HTMLInputElement).addEventListener('change', (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
+            const input = e.target as HTMLInputElement;
+            const file = input.files?.[0];
             if (!file) return;
+            if (this.isOversizedVideo(file)) {
+                this.onError(`Hiba: a videofajl tul nagy (maximum ${Math.round(MAX_VIDEO_FILE_BYTES / 1024 / 1024)} MB)`);
+                input.value = '';
+                return;
+            }
             this.callbacks.onFileSelected(file);
         });
 
@@ -233,5 +242,13 @@ export class PlaybackController {
     private isEditableTarget(target: EventTarget | null): boolean {
         if (!(target instanceof HTMLElement)) return false;
         return Boolean(target.closest('input, select, textarea, [contenteditable="true"]'));
+    }
+
+    private isOversizedVideo(file: File): boolean {
+        return this.isVideoFile(file) && file.size > MAX_VIDEO_FILE_BYTES;
+    }
+
+    private isVideoFile(file: File): boolean {
+        return file.type.startsWith('video/') || VIDEO_FILE_EXTENSION_RE.test(file.name);
     }
 }

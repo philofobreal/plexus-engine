@@ -35,9 +35,11 @@ export class AudioEngine {
     public onPlaybackEnded?: () => void;
     private playbackEndedListeners: Array<() => void> = [];
     private positionChangedListeners: Array<(time: number) => void> = [];
+    private playbackStateListeners: Array<(event: 'play' | 'pause' | 'stop' | 'seek', time: number) => void> = [];
 
     addPlaybackEndedListener(listener: () => void) { this.playbackEndedListeners.push(listener); }
     addPositionChangedListener(listener: (time: number) => void) { this.positionChangedListeners.push(listener); }
+    addPlaybackStateListener(listener: (event: 'play' | 'pause' | 'stop' | 'seek', time: number) => void) { this.playbackStateListeners.push(listener); }
     getAudioBuffer(): AudioBuffer | null { return this.buffer; }
 
     private emitPlaybackEnded() {
@@ -47,6 +49,10 @@ export class AudioEngine {
 
     private emitPositionChanged(time: number) {
         for (const listener of this.positionChangedListeners) listener(time);
+    }
+
+    private emitPlaybackState(event: 'play' | 'pause' | 'stop' | 'seek', time: number) {
+        for (const listener of this.playbackStateListeners) listener(event, time);
     }
 
     private clearAnalysisState() {
@@ -60,7 +66,11 @@ export class AudioEngine {
         State.hopSize = 1024;
         State.currentFrame = { e: 0, b: 0, m: 0, t: 0, state: 'IDLE', eRatio: 0 };
         State.currentFeatures = { ...EMPTY_FEATURES };
-        State.modulation = { kineticTension: 0, densityDrive: 0, spectralChaos: 0, rhythmicImpulse: 0, macroMomentum: 0 };
+        State.modulation.kineticTension = 0;
+        State.modulation.densityDrive = 0;
+        State.modulation.spectralChaos = 0;
+        State.modulation.rhythmicImpulse = 0;
+        State.modulation.macroMomentum = 0;
         State.activeCueKind = null;
         State.activePatternId = null;
         State.cueDecay = 0;
@@ -169,6 +179,7 @@ export class AudioEngine {
         State.isPlaying = true;
         State.currentTime = this.playOffset;
         this.emitPositionChanged(this.playOffset);
+        this.emitPlaybackState('play', this.playOffset);
     }
 
     seek(time: number) {
@@ -179,6 +190,7 @@ export class AudioEngine {
         this.pausedAt = clampedTime;
         State.currentTime = clampedTime;
         this.emitPositionChanged(clampedTime);
+        this.emitPlaybackState('seek', clampedTime);
 
         if (shouldResume) this.play(clampedTime);
     }
@@ -197,9 +209,11 @@ export class AudioEngine {
             this.pausedAt = 0;
             State.currentTime = 0;
             this.emitPositionChanged(0);
+            this.emitPlaybackState('stop', 0);
         } else {
             this.pausedAt = Math.max(0, Math.min(stoppedAt, State.duration));
             State.currentTime = this.pausedAt;
+            this.emitPlaybackState('pause', this.pausedAt);
         }
     }
 
