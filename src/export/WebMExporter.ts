@@ -11,15 +11,18 @@ export class WebMExporter {
     private readonly p5Instance: any;
     private readonly canvas: HTMLCanvasElement;
     private readonly audioEngine: any;
+    private readonly videoElement: HTMLVideoElement | null;
 
     constructor(
         p5Instance: any,
         canvas: HTMLCanvasElement,
-        audioEngine: any
+        audioEngine: any,
+        videoElement: HTMLVideoElement | null = null
     ) {
         this.p5Instance = p5Instance;
         this.canvas = canvas;
         this.audioEngine = audioEngine;
+        this.videoElement = videoElement;
     }
 
     async startExport(config: ExportConfig, onProgress: (progress: number) => void): Promise<Blob> {
@@ -45,6 +48,6 @@ export class WebMExporter {
 
     private async createBackend(trackName: string): Promise<ExportBackend> {
         const capabilities = await ExportCapabilityDetector.detectCapabilities();
-        return ExportBackendRegistry.getPreferred(this.p5Instance, this.canvas, this.audioEngine, trackName, capabilities);
+        return ExportBackendRegistry.getPreferred(this.p5Instance, this.canvas, this.audioEngine, trackName, capabilities, this.videoElement);
     }
 }

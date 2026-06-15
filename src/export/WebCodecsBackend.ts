@@ -5,7 +5,13 @@ import type { ExportCapabilities, ExportConfig, ExportWorkerResponse } from './E
 import ExportWorker from './export.worker.ts?worker';
 import type p5 from 'p5';
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise(resolve => {
+    if (typeof setTimeout === 'function') {
+        setTimeout(resolve, ms);
+    } else {
+        resolve(undefined);
+    }
+});
 
 export class WebCodecsBackend implements ExportBackend {
     private readonly p5Instance: any;
@@ -17,18 +23,22 @@ export class WebCodecsBackend implements ExportBackend {
     private rejectExport: ((error: Error) => void) | null = null;
     private exportError: Error | null = null;
     private offscreenGraphics: p5.Graphics | null = null;
+    private captureCanvas: HTMLCanvasElement | null = null;
     private workerQueueDepth = 0;
+    private readonly videoElement: HTMLVideoElement | null;
 
     constructor(
         p5Instance: any,
         canvas: HTMLCanvasElement,
         audioEngine: any,
-        trackName: string
+        trackName: string,
+        videoElement: HTMLVideoElement | null = null
     ) {
         void canvas;
         this.p5Instance = p5Instance;
         this.audioEngine = audioEngine;
         this.trackName = trackName;
+        this.videoElement = videoElement;
     }
 
     async start(config: ExportConfig, onProgress: (progress: number) => void): Promise<Blob> {
@@ -42,6 +52,11 @@ export class WebCodecsBackend implements ExportBackend {
 
         const target = getExportDimensions(config);
         this.offscreenGraphics = this.p5Instance.createGraphics(target.width, target.height);
+        if (typeof document !== 'undefined') {
+            this.captureCanvas = document.createElement('canvas');
+            this.captureCanvas.width = target.width;
+            this.captureCanvas.height = target.height;
+        }
         this.p5Instance.__plexusExportTarget = this.offscreenGraphics;
         const audioBuffer = this.audioEngine?.getAudioBuffer?.() as AudioBuffer | null | undefined;
         this.worker = new ExportWorker();
@@ -73,6 +88,7 @@ export class WebCodecsBackend implements ExportBackend {
                 if (this.exportError) throw this.exportError;
 
                 State.exportTime = i / config.fps;
+                await this.seekVideoFrame(State.exportTime);
                 this.renderOffscreenFrame();
 
                 await nextAnimationFrame();
@@ -80,9 +96,9 @@ export class WebCodecsBackend implements ExportBackend {
                     break;
                 }
 
-                this.drawMetadataCard(target.width, target.height);
+                const bitmapSource = this.prepareBitmapSource(target.width, target.height);
                 const timestampUs = Math.round((i * 1_000_000) / config.fps);
-                const bitmap = await globalThis.createImageBitmap((this.offscreenGraphics as p5.Graphics & { elt: HTMLCanvasElement }).elt);
+                const bitmap = await globalThis.createImageBitmap(bitmapSource);
 
                 const audioPayload = audioBuffer ? this.getPlanarAudioFrame(audioBuffer, i, config.fps) : null;
 
@@ -164,6 +180,7 @@ export class WebCodecsBackend implements ExportBackend {
             this.offscreenGraphics.remove();
             this.offscreenGraphics = null;
         }
+        this.captureCanvas = null;
     }
 
     private renderOffscreenFrame(): void {
@@ -172,9 +189,33 @@ export class WebCodecsBackend implements ExportBackend {
         this.p5Instance.redraw();
     }
 
-    private drawMetadataCard(width: number, height: number): void {
-        if (!this.offscreenGraphics) return;
-        const ctx = (this.offscreenGraphics as p5.Graphics & { elt: HTMLCanvasElement }).elt.getContext('2d');
+    private composeCaptureFrame(width: number, height: number): void {
+        if (!this.offscreenGraphics || !this.captureCanvas) return;
+        const ctx = this.captureCanvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, width, height);
+        if (this.videoElement && State.videoBackplateActive) {
+            this.drawVideoFrame(ctx, width, height);
+        }
+        ctx.drawImage((this.offscreenGraphics as p5.Graphics & { elt: HTMLCanvasElement }).elt, 0, 0, width, height);
+        this.drawMetadataCard(ctx, width, height);
+    }
+
+    private prepareBitmapSource(width: number, height: number): HTMLCanvasElement {
+        if (!this.offscreenGraphics) throw new Error('Export graphics target is unavailable.');
+        const overlayCanvas = (this.offscreenGraphics as p5.Graphics & { elt: HTMLCanvasElement }).elt;
+        if (this.captureCanvas) {
+            this.composeCaptureFrame(width, height);
+            return this.captureCanvas;
+        }
+
+        const ctx = overlayCanvas.getContext('2d');
+        if (ctx) this.drawMetadataCard(ctx, width, height);
+        return overlayCanvas;
+    }
+
+    private drawMetadataCard(ctx: CanvasRenderingContext2D, width: number, height: number): void {
         if (!ctx) return;
 
         ctx.save();
@@ -240,6 +281,89 @@ export class WebCodecsBackend implements ExportBackend {
         ctx.restore();
     }
 
+    private async seekVideoFrame(time: number): Promise<void> {
+        const video = this.videoElement;
+        if (!video || !State.videoBackplateActive) return;
+        video.muted = true;
+        video.pause();
+        await this.waitForVideoMetadata(video);
+
+        const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : State.duration;
+        const targetTime = Math.max(0, Math.min(time, Math.max(0, duration - 0.001)));
+        if (Math.abs(video.currentTime - targetTime) > 0.001 || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+            await new Promise<void>((resolve, reject) => {
+                const cleanup = () => {
+                    video.removeEventListener('seeked', onSeeked);
+                    video.removeEventListener('error', onError);
+                };
+                const onSeeked = () => {
+                    cleanup();
+                    resolve();
+                };
+                const onError = () => {
+                    cleanup();
+                    reject(new Error('Video seek failed during export.'));
+                };
+                video.addEventListener('seeked', onSeeked, { once: true });
+                video.addEventListener('error', onError, { once: true });
+                video.currentTime = targetTime;
+            });
+        }
+
+        await this.waitForVideoFrame(video);
+    }
+
+    private waitForVideoMetadata(video: HTMLVideoElement): Promise<void> {
+        if (video.readyState >= HTMLMediaElement.HAVE_METADATA) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+            const cleanup = () => {
+                video.removeEventListener('loadedmetadata', onLoadedMetadata);
+                video.removeEventListener('error', onError);
+            };
+            const onLoadedMetadata = () => {
+                cleanup();
+                resolve();
+            };
+            const onError = () => {
+                cleanup();
+                reject(new Error('Video metadata failed during export.'));
+            };
+            video.addEventListener('loadedmetadata', onLoadedMetadata, { once: true });
+            video.addEventListener('error', onError, { once: true });
+        });
+    }
+
+    private waitForVideoFrame(video: HTMLVideoElement): Promise<void> {
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+            const cleanup = () => {
+                video.removeEventListener('loadeddata', onLoadedData);
+                video.removeEventListener('error', onError);
+            };
+            const onLoadedData = () => {
+                cleanup();
+                resolve();
+            };
+            const onError = () => {
+                cleanup();
+                reject(new Error('Video frame failed during export.'));
+            };
+            video.addEventListener('loadeddata', onLoadedData, { once: true });
+            video.addEventListener('error', onError, { once: true });
+        });
+    }
+
+    private drawVideoFrame(ctx: CanvasRenderingContext2D, width: number, height: number): void {
+        const video = this.videoElement;
+        if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) return;
+        const scale = Math.min(width / video.videoWidth, height / video.videoHeight);
+        const drawWidth = video.videoWidth * scale;
+        const drawHeight = video.videoHeight * scale;
+        const x = (width - drawWidth) / 2;
+        const y = (height - drawHeight) / 2;
+        ctx.drawImage(video, x, y, drawWidth, drawHeight);
+    }
+
     private fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
         if (ctx.measureText(text).width <= maxWidth) return text;
         const suffix = '...';
@@ -293,8 +417,8 @@ export const WebCodecsBackendFactory: ExportBackendFactory = {
         }
         return typeof globalThis.VideoFrame !== 'undefined' && typeof globalThis.VideoEncoder !== 'undefined';
     },
-    create(p5Instance: any, canvas: HTMLCanvasElement, audioEngine: any, trackName: string): ExportBackend {
-        return new WebCodecsBackend(p5Instance, canvas, audioEngine, trackName);
+    create(p5Instance: any, canvas: HTMLCanvasElement, audioEngine: any, trackName: string, videoElement?: HTMLVideoElement | null): ExportBackend {
+        return new WebCodecsBackend(p5Instance, canvas, audioEngine, trackName, videoElement ?? null);
     }
 };
 
