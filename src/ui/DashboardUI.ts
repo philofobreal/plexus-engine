@@ -17,6 +17,8 @@ interface VisualPresetManifest {
     presets?: string[];
 }
 
+const VIDEO_FILE_EXTENSION_RE = /\.(mp4|m4v|webm|ogv|ogg|mov|mkv)$/i;
+
 export class DashboardUI {
     private presetCache = new Map<string, unknown>();
     private timelineTooltip: HTMLDivElement;
@@ -58,6 +60,8 @@ export class DashboardUI {
     private currentExporter: WebMExporter | null = null;
     private exportCapabilities: ExportCapabilities | null = null;
     private isUiLockedVisible = false;
+    private videoElement: HTMLVideoElement;
+    private videoObjectUrl: string | null = null;
 
     // Sub-controllers (FÁZIS 1)
     private playbackCtrl!: PlaybackController;
@@ -128,6 +132,9 @@ export class DashboardUI {
             valDyn: document.getElementById('val-dyn')!,
             barDyn: document.getElementById('bar-dyn')!
         };
+        this.videoElement = document.getElementById('video-backplate') as HTMLVideoElement;
+        this.videoElement.muted = true;
+        this.videoElement.playsInline = true;
 
         this.initControllers();
 
@@ -141,7 +148,12 @@ export class DashboardUI {
             this.triggerPerformanceAutomation();
         });
 
+        this.engine.addPlaybackStateListener((event, time) => {
+            this.syncVideoPlayback(event, time);
+        });
+
         this.engine.onAnalysisError = (message) => {
+            this.clearVideoBackplate();
             this.playbackCtrl.onError('Hiba: ' + message);
             (this.els.exportVideoBtn as HTMLButtonElement).disabled = true;
             this.clearDramaturgyTimeline();
@@ -255,6 +267,7 @@ export class DashboardUI {
 
     private async handleFileSelected(file: File): Promise<void> {
         this.engine.stop(true);
+        this.configureVideoBackplate(file);
         this.playbackCtrl.onFileLoadStart(file.name);
         this.exportCtrl.setCanExport(false);
         this.resetTimelineView();
@@ -275,6 +288,7 @@ export class DashboardUI {
         try {
             await this.engine.loadFile(file);
         } catch {
+            this.clearVideoBackplate();
             this.playbackCtrl.onError('Hiba: nem sikerult betolteni a fajlt');
             this.exportCtrl.setCanExport(false);
             this.clearDramaturgyTimeline();
@@ -301,7 +315,12 @@ export class DashboardUI {
         this.playbackCtrl.setUploadEnabled(false);
         this.exportCtrl.setExportActive(true);
 
-        const exporter = new WebMExporter(this.exportP5Instance, this.exportCanvas!, this.engine);
+        const exporter = new WebMExporter(
+            this.exportP5Instance,
+            this.exportCanvas!,
+            this.engine,
+            State.videoBackplateActive ? this.videoElement : null
+        );
         this.currentExporter = exporter;
 
         try {
@@ -1773,6 +1792,7 @@ export class DashboardUI {
 
     destroy(): void {
         this.gestureEngine.destroy();
+        this.clearVideoBackplate();
         this.timelineResizeObserver?.disconnect();
         if (this.timelineResizeFrame !== null) {
             window.cancelAnimationFrame(this.timelineResizeFrame);
@@ -1808,9 +1828,61 @@ export class DashboardUI {
     private formatPresetName(fileName: string): string {
         return fileName.replace(/\.json$/i, '');
     }
+
+    private configureVideoBackplate(file: File): void {
+        this.clearVideoBackplate();
+        if (!this.isVideoFile(file)) return;
+        const objectUrl = URL.createObjectURL(file);
+        this.videoObjectUrl = objectUrl;
+        this.videoElement.src = objectUrl;
+        try {
+            this.videoElement.currentTime = 0;
+        } catch {
+            // Metadata may not be available yet; playback/export sync will seek after it loads.
+        }
+        this.videoElement.muted = true;
+        this.videoElement.classList.add('is-active');
+        State.videoBackplateActive = true;
+    }
+
+    private clearVideoBackplate(): void {
+        this.videoElement.pause();
+        this.videoElement.removeAttribute('src');
+        this.videoElement.load();
+        this.videoElement.classList.remove('is-active');
+        State.videoBackplateActive = false;
+        if (this.videoObjectUrl) {
+            URL.revokeObjectURL(this.videoObjectUrl);
+            this.videoObjectUrl = null;
+        }
+    }
+
+    private syncVideoPlayback(event: 'play' | 'pause' | 'stop' | 'seek', time: number): void {
+        if (!State.videoBackplateActive) return;
+        this.videoElement.muted = true;
+        const clampedTime = this.clamp(time, 0, Math.max(0, this.videoElement.duration || State.duration));
+        if (Number.isFinite(clampedTime)) {
+            try {
+                if (Math.abs(this.videoElement.currentTime - clampedTime) > 0.08 || event === 'seek' || event === 'stop') {
+                    this.videoElement.currentTime = clampedTime;
+                }
+            } catch {
+                // Some browsers reject early seeks before metadata is ready; the next playback event will resync.
+            }
+        }
+        if (event === 'play') {
+            void this.videoElement.play().catch(() => undefined);
+        } else if (event === 'pause' || event === 'stop') {
+            this.videoElement.pause();
+        }
+    }
+
+    private isVideoFile(file: File): boolean {
+        return file.type.startsWith('video/') || VIDEO_FILE_EXTENSION_RE.test(file.name);
+    }
 }
 
 function isVisualMode(value: string): value is VisualMode {
     return value === 'classic' || value === 'temporal' || value === 'dark-techno'
-        || value === 'organic-ambient' || value === 'cyberpunk';
+        || value === 'organic-ambient' || value === 'cyberpunk' || value === 'hero';
 }

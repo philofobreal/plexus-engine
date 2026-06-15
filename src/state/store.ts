@@ -65,6 +65,7 @@ export const State = {
 
     // Real-time visualization state
     visualMode: 'classic' as VisualMode,
+    videoBackplateActive: false,
     loopPlayback: true,
     uiVisible: true,
     timelineLayers: {

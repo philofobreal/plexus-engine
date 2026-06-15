@@ -5,7 +5,9 @@ import { startPlexusRenderer } from './visuals/PlexusRenderer';
 import { createDefaultStyleRegistry } from './visuals/StyleRegistry';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div id="canvas-container" tabindex="0" aria-label="Visual playback surface"></div>
+  <div id="canvas-container" tabindex="0" aria-label="Visual playback surface">
+    <video id="video-backplate" class="video-backplate" muted playsinline preload="metadata"></video>
+  </div>
   
   <button id="center-play-btn" class="center-play-btn" disabled aria-label="Play">
     <svg viewBox="0 0 24 24" class="play-icon" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
@@ -31,7 +33,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
           Load
         </label>
-        <input type="file" id="audio-upload" class="file-input" accept="audio/*">
+        <input type="file" id="audio-upload" class="file-input" accept="audio/*,video/*,video/mp4,video/webm,video/ogg,video/quicktime,video/x-matroska">
         
         <button id="play-btn" class="std-btn btn-pill" disabled>Play</button>
         
@@ -42,6 +44,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             <option value="dark-techno">Dark Techno</option>
             <option value="organic-ambient">Organic Ambient</option>
             <option value="cyberpunk">Cyberpunk</option>
+            <option value="hero">Hero</option>
           </select>
         </div>
 

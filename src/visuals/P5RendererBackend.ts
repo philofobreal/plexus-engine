@@ -1,5 +1,6 @@
 import p5 from 'p5';
 import type { VisualRendererBackend } from './RendererBackend';
+import { State } from '../state/store';
 
 export class P5RendererBackend implements VisualRendererBackend {
     private readonly p: p5 | p5.Graphics;
@@ -56,6 +57,10 @@ export class P5RendererBackend implements VisualRendererBackend {
     }
 
     background(r: number, g: number, b: number, a = 255) {
+        if (State.videoBackplateActive) {
+            this.target.clear();
+            return;
+        }
         this.target.background(r, g, b, a);
     }
 
