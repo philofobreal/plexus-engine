@@ -1,4 +1,5 @@
 import { getBackgroundClearStyle } from '../config/visualTuning';
+import { HeroMetronome } from '../audio/HeroMetronome';
 import { State } from '../state/store';
 import type { BeatEvent } from '../types';
 import type { Particle } from './Particle';
@@ -21,9 +22,10 @@ class HeroEffectIdentity implements VisualIdentity {
         const playheadX = backend.width * 0.2;
         const laneY = backend.height * (1 - this.getBottomOffset());
         const pxPerSecond = Math.max(80, backend.width * 0.16);
+        const visibleSeconds = Math.max(0, (backend.width - playheadX) / pxPerSecond);
 
         this.drawLane(backend, playheadX, laneY, pulse);
-        this.drawEventDots(backend, playheadX, laneY, pxPerSecond);
+        this.drawEventDots(backend, playheadX, laneY, pxPerSecond, visibleSeconds);
         this.drawPlayhead(backend, playheadX, laneY, pulse);
     }
 
@@ -46,9 +48,22 @@ class HeroEffectIdentity implements VisualIdentity {
         backend.circle(playheadX, laneY, baseRadius);
     }
 
-    private drawEventDots(backend: VisualRendererBackend, playheadX: number, laneY: number, pxPerSecond: number): void {
+    private drawEventDots(
+        backend: VisualRendererBackend,
+        playheadX: number,
+        laneY: number,
+        pxPerSecond: number,
+        visibleSeconds: number
+    ): void {
+        const eventMode = this.getEventMode();
+        if (eventMode === 2) {
+            this.drawBeepEventDots(backend, playheadX, laneY, pxPerSecond, visibleSeconds);
+            return;
+        }
+
         for (let i = 0; i < State.events.length; i++) {
             const event = State.events[i];
+            if (eventMode === 1 && event.type === 1) continue;
             const deltaTime = event.time - State.currentTime;
             if (deltaTime <= 0) {
                 if (deltaTime > -0.12) this.drawHitFlash(backend, playheadX, laneY, event);
@@ -57,14 +72,35 @@ class HeroEffectIdentity implements VisualIdentity {
 
             const x = playheadX + deltaTime * pxPerSecond;
             if (x < 0 || x > backend.width) continue;
-            this.drawEventDot(backend, x, laneY, event);
+            this.drawEventDot(backend, x, laneY, event.type, event.intensity);
         }
     }
 
-    private drawEventDot(backend: VisualRendererBackend, x: number, laneY: number, event: BeatEvent): void {
-        const intensity = Math.max(0, Math.min(1, event.intensity));
-        const radius = this.getEventRadius(event, intensity);
-        const [r, g, b] = this.getEventColor(event);
+    private drawBeepEventDots(
+        backend: VisualRendererBackend,
+        playheadX: number,
+        laneY: number,
+        pxPerSecond: number,
+        visibleSeconds: number
+    ): void {
+        const events = HeroMetronome.getBeepEventsInWindow(
+            State.trackAnalysis,
+            State.currentTime,
+            State.currentTime + visibleSeconds
+        );
+        for (let i = 0; i < events.length; i++) {
+            const event = events[i];
+            const deltaTime = event.time - State.currentTime;
+            const x = playheadX + deltaTime * pxPerSecond;
+            if (x < 0 || x > backend.width) continue;
+            this.drawEventDot(backend, x, laneY, 2, event.intensity);
+        }
+    }
+
+    private drawEventDot(backend: VisualRendererBackend, x: number, laneY: number, type: BeatEvent['type'], rawIntensity: number): void {
+        const intensity = Math.max(0, Math.min(1, rawIntensity));
+        const radius = this.getEventRadius(type, intensity);
+        const [r, g, b] = this.getEventColor(type);
 
         backend.noStroke();
         backend.fill(r, g, b, 42 + intensity * 58);
@@ -72,7 +108,7 @@ class HeroEffectIdentity implements VisualIdentity {
         backend.fill(r, g, b, 150 + intensity * 95);
         backend.circle(x, laneY, radius);
 
-        if (event.type === 3) {
+        if (type === 3) {
             backend.stroke(r, g, b, 160 + intensity * 80);
             backend.strokeWeight(Math.max(1, 1.2 * State.visualTuning.lineWeight));
             backend.line(x - radius * 0.9, laneY, x + radius * 0.9, laneY);
@@ -84,27 +120,32 @@ class HeroEffectIdentity implements VisualIdentity {
         const intensity = Math.max(0, Math.min(1, event.intensity));
         const age = Math.max(0, Math.min(1, (State.currentTime - event.time) / 0.12));
         const alpha = (1 - age) * (80 + intensity * 120);
-        const radius = this.getEventRadius(event, intensity) * (2.2 + age * 1.8);
-        const [r, g, b] = this.getEventColor(event);
+        const radius = this.getEventRadius(event.type, intensity) * (2.2 + age * 1.8);
+        const [r, g, b] = this.getEventColor(event.type);
         backend.noStroke();
         backend.fill(r, g, b, alpha);
         backend.circle(playheadX, laneY, radius);
     }
 
-    private getEventRadius(event: BeatEvent, intensity: number): number {
-        const typeScale = event.type === 2 ? 1.6 : event.type === 3 ? 0.82 : 1;
+    private getEventRadius(type: BeatEvent['type'], intensity: number): number {
+        const typeScale = type === 2 ? 1.85 : type === 3 ? 0.72 : 1;
         return (5 + intensity * 8) * typeScale * State.visualTuning.circleSize;
     }
 
-    private getEventColor(event: BeatEvent): [number, number, number] {
-        if (event.type === 2) return this.denseImpactColor;
-        if (event.type === 3) return this.transientColor;
+    private getEventColor(type: BeatEvent['type']): [number, number, number] {
+        if (type === 2) return this.denseImpactColor;
+        if (type === 3) return this.transientColor;
         return this.defaultColor;
     }
 
     private getBottomOffset(): number {
         const value = State.visualTuning.heroLaneBottomOffset;
         return Math.max(0.05, Math.min(0.9, Number.isFinite(value) ? value : 0.2));
+    }
+
+    private getEventMode(): number {
+        const value = State.visualTuning.heroEventMode;
+        return Math.max(0, Math.min(2, Math.round(Number.isFinite(value) ? value : 2)));
     }
 }
 

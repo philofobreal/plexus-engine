@@ -8,6 +8,7 @@ export interface ExportConfig {
     aspectRatio: ExportAspectRatio;
     fps: number;
     trackName?: string;
+    watermark?: boolean;
 }
 
 export interface ExportCapabilities {

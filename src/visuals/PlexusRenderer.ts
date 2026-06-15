@@ -126,6 +126,7 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
 
             const visualIdentity = styleRegistry.get(State.visualMode);
             visualIdentity.draw(backend, particles, shockwaves);
+            engine.syncMetronomeState(State.visualMode === 'hero', State.visualTuning.heroBeepMode, State.visualTuning.heroBeepVolume);
 
         };
 

@@ -96,7 +96,7 @@ export class WebCodecsBackend implements ExportBackend {
                     break;
                 }
 
-                const bitmapSource = this.prepareBitmapSource(target.width, target.height);
+                const bitmapSource = this.prepareBitmapSource(target.width, target.height, config.watermark === true);
                 const timestampUs = Math.round((i * 1_000_000) / config.fps);
                 const bitmap = await globalThis.createImageBitmap(bitmapSource);
 
@@ -189,7 +189,7 @@ export class WebCodecsBackend implements ExportBackend {
         this.p5Instance.redraw();
     }
 
-    private composeCaptureFrame(width: number, height: number): void {
+    private composeCaptureFrame(width: number, height: number, watermark: boolean): void {
         if (!this.offscreenGraphics || !this.captureCanvas) return;
         const ctx = this.captureCanvas.getContext('2d');
         if (!ctx) return;
@@ -199,19 +199,19 @@ export class WebCodecsBackend implements ExportBackend {
             this.drawVideoFrame(ctx, width, height);
         }
         ctx.drawImage((this.offscreenGraphics as p5.Graphics & { elt: HTMLCanvasElement }).elt, 0, 0, width, height);
-        this.drawMetadataCard(ctx, width, height);
+        if (watermark) this.drawMetadataCard(ctx, width, height);
     }
 
-    private prepareBitmapSource(width: number, height: number): HTMLCanvasElement {
+    private prepareBitmapSource(width: number, height: number, watermark: boolean): HTMLCanvasElement {
         if (!this.offscreenGraphics) throw new Error('Export graphics target is unavailable.');
         const overlayCanvas = (this.offscreenGraphics as p5.Graphics & { elt: HTMLCanvasElement }).elt;
         if (this.captureCanvas) {
-            this.composeCaptureFrame(width, height);
+            this.composeCaptureFrame(width, height, watermark);
             return this.captureCanvas;
         }
 
         const ctx = overlayCanvas.getContext('2d');
-        if (ctx) this.drawMetadataCard(ctx, width, height);
+        if (ctx && watermark) this.drawMetadataCard(ctx, width, height);
         return overlayCanvas;
     }
 
@@ -387,8 +387,32 @@ export class WebCodecsBackend implements ExportBackend {
         const right = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : left;
         audioPlanar.set(left.subarray(start, end), 0);
         audioPlanar.set(right.subarray(start, end), audioSampleCount);
+        this.mixHeroBeepStem(audioPlanar, audioSampleCount, start, end);
         return { audioPlanar, audioSampleCount };
     }
+
+    private mixHeroBeepStem(audioPlanar: Float32Array, audioSampleCount: number, start: number, end: number): void {
+        if (State.visualMode !== 'hero') return;
+        const mode = Math.round(Number.isFinite(State.visualTuning.heroBeepMode) ? State.visualTuning.heroBeepMode : 0);
+        if (mode < 1 || mode > 4) return;
+        const volume = Math.max(0, Math.min(1, Number.isFinite(State.visualTuning.heroBeepVolume) ? State.visualTuning.heroBeepVolume : 0));
+        if (volume <= 0) return;
+        const beepBuffer = this.audioEngine?.beepBuffers?.[mode - 1] as AudioBuffer | undefined;
+        if (!beepBuffer) return;
+
+        const source = beepBuffer.getChannelData(0);
+        const sliceEnd = Math.min(end, source.length);
+        for (let sampleIndex = start; sampleIndex < sliceEnd; sampleIndex++) {
+            const beep = source[sampleIndex] * volume;
+            const frameOffset = sampleIndex - start;
+            audioPlanar[frameOffset] = clampAudio(audioPlanar[frameOffset] + beep);
+            audioPlanar[frameOffset + audioSampleCount] = clampAudio(audioPlanar[frameOffset + audioSampleCount] + beep);
+        }
+    }
+}
+
+function clampAudio(value: number): number {
+    return Math.max(-1, Math.min(1, value));
 }
 
 function getExportDimensions(config: ExportConfig) {
