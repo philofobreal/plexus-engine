@@ -171,6 +171,8 @@ Az automation plan szerkesztese Dashboard-szintu uzleti logika. A `State.section
 
 Az elso manualis valtozas utan a plan `source` mezoje `'auto'`-rol `'edited'`-re valtozik, jelezve, hogy a felhasznalo atirta a generalalt allapotot.
 
+Az auto-generalast a `generatePerformancePlan` Strategy Pattern szerint valasztja szet. A `Dramaturgy` strategia a zenei szekciokra es cue-kra epulo alapertelmezett generalas, a `Hero` strategia a szekciokat preset `heroBeepMode` ritmusokra kepezi le, a `Strict` strategia pedig figyelmen kivul hagyja a zenei szekciokat es a kivalasztott preseteket szigoruan a bar-grid szerint valtogatja. A `generatePerformancePlan` emiatt `async`: a `Hero` strategianak preset metadata-ra van szuksege, es ha egy preset meg nincs betoltve, a generator opportunisztikusan lekeri a JSON payloadot, hogy a `heroBeepMode` parameter alapjan helyesen tudjon mapelni.
+
 Uj pont letrehozasakor a Dashboard:
 
 1. `focusX` -> `hoverTime`

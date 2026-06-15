@@ -78,6 +78,7 @@ Implemented capabilities:
 - Mouse wheel zooms the timeline between `1x` and `16x` around the pointer. The canonical visible viewport is described by shared `State.pan` and `State.duration / State.zoom`, with `DashboardUI` translating normalized gesture input into those state values.
 - Normal left click or drag always scrubs/seeks, including in zoomed view. Shift-drag or middle-button drag pans the viewport.
 - While playing in zoomed view, the viewport follows the playhead when the playhead leaves the `15%..75%` range of the visible timeline.
+- Timeline generator controls include a Strategy selector and `Generate` button. When `Strict Alternating` is selected, a context-sensitive Strict Mode settings row appears for choosing 4 presets, the Bars/Preset interval, and Morph duration.
 
 Scrubbing is buffered for performance. Pointer and slider drag update `private scrubTime: number | null`, the visible time label, the seekbar value, and a yellow playhead. The Web Audio graph is not rebuilt during drag. `commitScrubTime()` performs one final `AudioEngine.seek()` call when the interaction ends.
 
