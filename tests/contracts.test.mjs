@@ -171,9 +171,9 @@ test('performance automation contracts and state are exposed and reset', () => {
   assert.match(store, /editedPerformancePlan: null as PerformanceAutomationPlan \| null/);
   assert.match(audio, /State\.performancePlan = null/);
   assert.match(audio, /State\.editedPerformancePlan = null/);
-  assert.match(ui, /import \{ generatePerformancePlan \} from '\.\.\/automation\/performancePlanGenerator'/);
+  assert.match(ui, /import \{ generatePerformancePlan.*\} from '\.\.\/automation\/performancePlanGenerator'/);
   assert.match(ui, /State\.availablePresets = presets/);
-  assert.match(ui, /const plan = generatePerformancePlan\(State\.trackAnalysis, State\.availablePresets, State\.duration\)/);
+  assert.match(ui, /await generatePerformancePlan\(State\.trackAnalysis, State\.availablePresets, State\.duration,/);
   assert.match(ui, /State\.performancePlan = plan/);
   assert.match(ui, /State\.editedPerformancePlan = JSON\.parse\(JSON\.stringify\(plan\)\)/);
   assert.match(ui, /performancePlan: State\.editedPerformancePlan \?\? State\.performancePlan/);

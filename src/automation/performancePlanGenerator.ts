@@ -30,15 +30,28 @@ const SECTION_INTENSITY: Record<TrackSectionLabel | 'default', number> = {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-export function generatePerformancePlan(
+export interface GeneratorOptions {
+    strategy: 'dramaturgy' | 'hero' | 'strict';
+    presetMetadata: Record<string, any>;
+    strictPresets: string[];
+    strictBars: number;
+    strictMorph: number;
+}
+
+export async function generatePerformancePlan(
     trackAnalysis: TrackAnalysis,
     availablePresets: string[],
-    duration: number
-): PerformanceAutomationPlan {
+    duration: number,
+    options: GeneratorOptions = { strategy: 'dramaturgy', presetMetadata: {}, strictPresets: [], strictBars: 8, strictMorph: 1.0 }
+): Promise<PerformanceAutomationPlan> {
+    if (options.strategy === 'strict') {
+        return generateStrictPlan(trackAnalysis, duration, options);
+    }
+
     const presets = availablePresets.filter(Boolean);
     const points: PerformanceAutomationPoint[] = [];
 
-    // Pass 1: MACRO STRUCTURE (Absolute Anchors). 
+    // Pass 1: MACRO STRUCTURE (Absolute Anchors).
     const pass1Points = generatePass1SectionAnchors(trackAnalysis, presets, duration);
     mergePoints(points, pass1Points, 0);
 
@@ -54,7 +67,100 @@ export function generatePerformancePlan(
     const pass4Points = generatePass4MicroCues(trackAnalysis, presets, duration);
     mergePoints(points, pass4Points, 2.0);
 
-    // Ensure strict chronological order
+    if (options.strategy === 'hero') {
+        await ensureHeroPresetsLoaded(presets, options.presetMetadata);
+        remapPresetsForHero(trackAnalysis, points, presets, options.presetMetadata);
+    }
+
+    return finalizePlan(points);
+}
+
+// ─── Strategy: Strict Alternating ─────────────────────────────────────────────
+
+function generateStrictPlan(
+    trackAnalysis: TrackAnalysis,
+    duration: number,
+    options: GeneratorOptions
+): PerformanceAutomationPlan {
+    const activePresets = options.strictPresets.filter(Boolean);
+    if (activePresets.length === 0) return { version: 1, source: 'auto', points: [] };
+
+    const bpm = trackAnalysis.bpm > 0 ? trackAnalysis.bpm : 120;
+    const secondsPerBar = (60 / bpm) * 4;
+    const stepSeconds = options.strictBars * secondsPerBar;
+    const gridOffset = trackAnalysis.gridOffset ?? 0;
+
+    const points: PerformanceAutomationPoint[] = [];
+    let i = 0;
+    for (let time = gridOffset; time < duration; time += stepSeconds) {
+        const t = Math.min(time, duration);
+        points.push({
+            id: `strict-${i}-${formatTimeForId(t)}`,
+            time: t,
+            sectionId: `manual:${formatTimeForId(t)}`,
+            preset: activePresets[i % activePresets.length],
+            confidence: 1,
+            intensity: 1.0,
+            reason: 'manual',
+            morphDurationSec: options.strictMorph,
+            morphCurve: 'easeInOut'
+        });
+        i++;
+    }
+
+    return finalizePlan(points);
+}
+
+// ─── Strategy: Hero Rhythm (preset remapping) ─────────────────────────────────
+
+async function ensureHeroPresetsLoaded(presets: string[], metadata: Record<string, any>): Promise<void> {
+    await Promise.all(presets.map(async (preset) => {
+        if (metadata[preset]) return;
+        try {
+            const baseUrl = (import.meta as any).env?.BASE_URL ?? '/';
+            const url = `${baseUrl}visual-tuning-presets/${encodeURIComponent(preset)}`;
+            const response = await fetch(url);
+            if (response.ok) metadata[preset] = await response.json();
+        } catch { /* opportunistic */ }
+    }));
+}
+
+function remapPresetsForHero(
+    trackAnalysis: TrackAnalysis,
+    points: PerformanceAutomationPoint[],
+    presets: string[],
+    metadata: Record<string, any>
+): void {
+    for (const point of points) {
+        const section = getSectionAt(trackAnalysis.sections, point.time);
+        if (!section) continue;
+        const mode = sectionLabelToHeroMode(section.label);
+        point.preset = getPresetForBeepMode(mode, presets, metadata);
+    }
+}
+
+function sectionLabelToHeroMode(label: TrackSectionLabel): number {
+    if (label === 'drop' || label === 'peak') return 4;
+    if (label === 'build') return 3;
+    if (label === 'verse') return 2;
+    return 1; // intro, outro, break
+}
+
+function getPresetForBeepMode(mode: number, presets: string[], metadata: Record<string, any>): string {
+    for (const preset of presets) {
+        const data = metadata[preset];
+        if (!data) continue;
+        const nested = data?.visualTuning;
+        const nestedMode = (nested && typeof nested === 'object') ? (nested as any).heroBeepMode : undefined;
+        const actualMode = nestedMode ?? data?.heroBeepMode;
+        if (typeof actualMode === 'number' && Math.round(actualMode) === mode) return preset;
+    }
+    return getFallbackPreset(presets);
+}
+
+// ─── Plan finalization (shared by all strategies) ─────────────────────────────
+
+function finalizePlan(points: PerformanceAutomationPoint[]): PerformanceAutomationPlan {
     points.sort((a, b) => a.time - b.time);
 
     // STRICT DEDUPLICATION PASS: Prevent Visual Engine Race Conditions

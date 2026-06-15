@@ -22,6 +22,10 @@ type TuningEls = {
     toggleMetrics: HTMLElement;
     metricsGrid: HTMLElement;
     visualMode: HTMLElement;
+    strictP1: HTMLElement;
+    strictP2: HTMLElement;
+    strictP3: HTMLElement;
+    strictP4: HTMLElement;
 };
 
 export class TuningController {
@@ -65,6 +69,14 @@ export class TuningController {
         }
         (this.els.presetList as HTMLSelectElement).disabled = presets.length === 0;
         (this.els.timelinePresetBrush as HTMLSelectElement).disabled = presets.length === 0;
+
+        const noneOption = `<option value="">(None)</option>`;
+        const strictHtml = noneOption + (presets.length
+            ? presets.map(f => `<option value="${this.escapeHtml(f)}">${this.escapeHtml(this.formatPresetName(f))}</option>`).join('')
+            : '');
+        for (const el of [this.els.strictP1, this.els.strictP2, this.els.strictP3, this.els.strictP4]) {
+            el.innerHTML = strictHtml;
+        }
     }
 
     showCopyStatus(text: string, clearAfterMs = 1600): void {

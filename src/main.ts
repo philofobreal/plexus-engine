@@ -132,6 +132,13 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             </select>
             <button id="clear-automation-btn" class="btn-icon-mini" title="Clear All Automation" aria-label="Clear all automation"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
             <div class="timeline-divider"></div>
+            <select id="generator-strategy" class="timeline-select" aria-label="Generation Strategy">
+              <option value="dramaturgy">Dramaturgy</option>
+              <option value="hero">Hero Rhythm</option>
+              <option value="strict">Strict Alternating</option>
+            </select>
+            <button id="generate-plan-btn" class="timeline-export-btn" style="color: #fff; border-color: #fff;">Generate</button>
+            <div class="timeline-divider"></div>
             <!-- Zoom / overlay -->
             <button id="toggle-timeline-zoom" class="btn-icon-mini" title="Zoom Timeline" aria-pressed="false" aria-label="Zoom timeline">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
@@ -171,6 +178,17 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             <button id="stop-export-btn" class="timeline-export-btn is-hidden" disabled>Stop</button>
             <button id="cancel-export-btn" class="timeline-export-btn is-hidden" disabled>Cancel</button>
           </div>
+        </div>
+        <div id="strict-generator-settings" class="timeline-header-row is-hidden" style="padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 8px;">
+          <span class="timeline-title" style="margin-right: 8px;">Strict Mode:</span>
+          <select id="strict-p1" class="timeline-select preset-select"></select>
+          <select id="strict-p2" class="timeline-select preset-select"></select>
+          <select id="strict-p3" class="timeline-select preset-select"></select>
+          <select id="strict-p4" class="timeline-select preset-select"></select>
+          <span class="timeline-title" style="margin-left: 8px; margin-right: 4px;">Bars/Preset:</span>
+          <input type="number" id="strict-bars" value="8" min="1" max="128" style="width: 40px; height: 24px; background: rgba(255,255,255,0.06); color: white; border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; text-align: center;">
+          <span class="timeline-title" style="margin-left: 8px; margin-right: 4px;">Morph (s):</span>
+          <input type="number" id="strict-morph" value="1.0" min="0.1" max="20" step="0.1" style="width: 40px; height: 24px; background: rgba(255,255,255,0.06); color: white; border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; text-align: center;">
         </div>
         <div class="timeline-wrapper">
           <div id="timeline-resize-handle" class="timeline-resize-handle" aria-hidden="true"></div>

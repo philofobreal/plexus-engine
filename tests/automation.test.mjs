@@ -63,7 +63,7 @@ function createCue(time, kind, confidence = 0.85) {
   };
 }
 
-test('generatePerformancePlan creates deterministic section-aligned automation plans', () => {
+test('generatePerformancePlan creates deterministic section-aligned automation plans', async () => {
   const trackAnalysis = createTrackAnalysis([
     createSection(0, 12, 'intro', 'melody', 0.3, 0.2),
     createSection(6, 14, 'verse', 'vocal', 0.4, 0.4),
@@ -80,8 +80,8 @@ test('generatePerformancePlan creates deterministic section-aligned automation p
     'ambient-temporal5.json'
   ];
 
-  const first = generatePerformancePlan(trackAnalysis, presets, 90);
-  const second = generatePerformancePlan(trackAnalysis, presets, 90);
+  const first = await generatePerformancePlan(trackAnalysis, presets, 90);
+  const second = await generatePerformancePlan(trackAnalysis, presets, 90);
 
   assert.deepEqual(second, first);
   assert.equal(first.version, 1);
@@ -114,23 +114,23 @@ test('generatePerformancePlan creates deterministic section-aligned automation p
   assert.ok(findByReason('peak').intensity > findByReason('drop').intensity, 'peak intensity should exceed drop');
 });
 
-test('generatePerformancePlan falls back gracefully for empty or unmatched preset lists', () => {
+test('generatePerformancePlan falls back gracefully for empty or unmatched preset lists', async () => {
   const trackAnalysis = createTrackAnalysis([
     createSection(0, 10, 'intro', 'melody'),
     createSection(12, 24, 'drop', 'impact'),
     createSection(36, 48, 'verse', 'vocal')
   ]);
 
-  const emptyPresetPlan = generatePerformancePlan(trackAnalysis, [], 60);
+  const emptyPresetPlan = await generatePerformancePlan(trackAnalysis, [], 60);
   assert.deepEqual(emptyPresetPlan.points.map(point => point.preset), ['default.json', 'default.json', 'default.json']);
   assert.deepEqual(emptyPresetPlan.points.map(point => point.time), [0, 12, 36]);
   assert.equal(emptyPresetPlan.points[2].reason, 'verse');
 
-  const unmatchedPresetPlan = generatePerformancePlan(trackAnalysis, ['custom-a.json', 'custom-b.json'], 60);
+  const unmatchedPresetPlan = await generatePerformancePlan(trackAnalysis, ['custom-a.json', 'custom-b.json'], 60);
   assert.deepEqual(unmatchedPresetPlan.points.map(point => point.preset), ['custom-a.json', 'custom-a.json', 'custom-a.json']);
 });
 
-test('generatePerformancePlan anchors consecutive section boundaries deterministically', () => {
+test('generatePerformancePlan anchors consecutive section boundaries deterministically', async () => {
   const trackAnalysis = createTrackAnalysis([
     createSection(0, 12, 'intro', 'melody'),
     createSection(12, 24, 'intro', 'melody'),
@@ -139,7 +139,7 @@ test('generatePerformancePlan anchors consecutive section boundaries determinist
     createSection(48, 60, 'build', 'pattern')
   ]);
 
-  const plan = generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal2.json'], 60);
+  const plan = await generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal2.json'], 60);
 
   assert.deepEqual(plan.points.map(point => point.time), [0, 12, 24, 36, 48]);
   assert.deepEqual(plan.points.map(point => point.sectionId), [
@@ -151,7 +151,7 @@ test('generatePerformancePlan anchors consecutive section boundaries determinist
   ]);
 });
 
-test('generatePerformancePlan keeps same-label major energy drops with contrast bypass pacing', () => {
+test('generatePerformancePlan keeps same-label major energy drops with contrast bypass pacing', async () => {
   const trackAnalysis = createTrackAnalysis([
     createSection(0, 10, 'intro', 'melody', 0.25),
     createSection(10, 20, 'build', 'pattern', 0.8),
@@ -159,14 +159,14 @@ test('generatePerformancePlan keeps same-label major energy drops with contrast 
     createSection(34, 44, 'drop', 'impact', 0.95)
   ]);
 
-  const plan = generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal3.json'], 240);
+  const plan = await generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal3.json'], 240);
 
   assert.ok(plan.points.some(point => point.time === 22));
   assert.equal(plan.points.find(point => point.time === 22)?.sectionId, '2:build:22-000');
   assert.ok(plan.points.some(point => point.time === 34));
 });
 
-test('generatePerformancePlan detects lower energy and perceived loudness shifts', () => {
+test('generatePerformancePlan detects lower energy and perceived loudness shifts', async () => {
   const energyShift = createTrackAnalysis([
     createSection(0, 12, 'intro', 'melody', 0.4),
     createSection(12, 24, 'intro', 'melody', 0.55)
@@ -176,11 +176,11 @@ test('generatePerformancePlan detects lower energy and perceived loudness shifts
     { ...createSection(12, 24, 'intro', 'melody', 0.45), avgRms: 0.53 }
   ]);
 
-  assert.deepEqual(generatePerformancePlan(energyShift, ['default.json'], 48).points.map(point => point.time), [0, 12]);
-  assert.deepEqual(generatePerformancePlan(loudnessShift, ['default.json'], 48).points.map(point => point.time), [0, 12]);
+  assert.deepEqual((await generatePerformancePlan(energyShift, ['default.json'], 48)).points.map(point => point.time), [0, 12]);
+  assert.deepEqual((await generatePerformancePlan(loudnessShift, ['default.json'], 48)).points.map(point => point.time), [0, 12]);
 });
 
-test('generatePerformancePlan prioritizes primary section anchors before nearby cue events', () => {
+test('generatePerformancePlan prioritizes primary section anchors before nearby cue events', async () => {
   const trackAnalysis = createTrackAnalysis([
     createSection(0, 20, 'intro', 'melody', 0.3),
     createSection(20, 40, 'build', 'pattern', 0.6),
@@ -190,13 +190,13 @@ test('generatePerformancePlan prioritizes primary section anchors before nearby 
     createCue(21, 'break', 1)
   ];
 
-  const plan = generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal3.json', 'temporal5.json'], 240);
+  const plan = await generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal3.json', 'temporal5.json'], 240);
 
   assert.ok(plan.points.some(point => point.time === 20 && point.sectionId === '1:build:20-000'));
   assert.ok(plan.points.some(point => point.time === 21 && point.reason === 'break'));
 });
 
-test('generatePerformancePlan preserves section starts and snaps cue automation to musical bar starts', () => {
+test('generatePerformancePlan preserves section starts and snaps cue automation to musical bar starts', async () => {
   const trackAnalysis = createTrackAnalysis([
     createSection(0.2, 17.5, 'intro', 'melody', 0.25),
     createSection(17.7, 34.2, 'build', 'pattern', 0.65),
@@ -207,13 +207,13 @@ test('generatePerformancePlan preserves section starts and snaps cue automation 
     createCue(41.2, 'impact')
   ];
 
-  const plan = generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal3.json'], 64);
+  const plan = await generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal3.json'], 64);
 
   assert.deepEqual(plan.points.map(point => point.time), [0.2, 17.7, 34.4, 42]);
   assert.equal(plan.points.find(point => point.reason === 'drop')?.time, 34.4);
 });
 
-test('generatePerformancePlan adds significant cue points in long sections', () => {
+test('generatePerformancePlan adds significant cue points in long sections', async () => {
   const trackAnalysis = createTrackAnalysis([
     createSection(0, 24, 'intro', 'melody'),
     createSection(24, 54, 'verse', 'melody'),
@@ -226,14 +226,14 @@ test('generatePerformancePlan adds significant cue points in long sections', () 
     createCue(43, 'break')
   ];
 
-  const plan = generatePerformancePlan(trackAnalysis, ['default.json', 'temporal3.json', 'temporal5.json'], 72);
+  const plan = await generatePerformancePlan(trackAnalysis, ['default.json', 'temporal3.json', 'temporal5.json'], 72);
 
   assert.deepEqual(plan.points.map(point => point.time), [0, 10, 17, 24, 34, 43, 54]);
   assert.deepEqual(plan.points.map(point => point.reason), ['intro', 'intro', 'break', 'verse', 'verse', 'break', 'drop']);
   assert.equal(plan.points.find(point => point.time === 43)?.preset, 'default.json');
 });
 
-test('generatePerformancePlan scales pacing gaps proportionally to track length', () => {
+test('generatePerformancePlan scales pacing gaps proportionally to track length', async () => {
   const sections = [
     createSection(0, 20, 'intro', 'melody', 0.2),
     createSection(20, 40, 'build', 'pattern', 0.5),
@@ -247,8 +247,8 @@ test('generatePerformancePlan scales pacing gaps proportionally to track length'
   ];
   const analysis = createTrackAnalysis(sections);
 
-  const shortPlan = generatePerformancePlan(analysis, ['default.json', 'temporal3.json', 'temporal5.json'], 240);
-  const longPlan = generatePerformancePlan(analysis, ['default.json', 'temporal3.json', 'temporal5.json'], 960);
+  const shortPlan = await generatePerformancePlan(analysis, ['default.json', 'temporal3.json', 'temporal5.json'], 240);
+  const longPlan = await generatePerformancePlan(analysis, ['default.json', 'temporal3.json', 'temporal5.json'], 960);
 
   assert.equal(shortPlan.points[0].time, 0);
   assert.equal(longPlan.points[0].time, 0);
@@ -256,7 +256,7 @@ test('generatePerformancePlan scales pacing gaps proportionally to track length'
   assert.deepEqual(shortPlan.points.map(point => point.time), [0, 20, 40, 60, 80, 100, 120, 140, 160]);
 });
 
-test('generatePerformancePlan assigns dynamic intensity proportional to section label and energy', () => {
+test('generatePerformancePlan assigns dynamic intensity proportional to section label and energy', async () => {
   const trackAnalysis = createTrackAnalysis([
     createSection(0, 16, 'intro', 'melody', 0.2, 0.2),
     createSection(16, 32, 'build', 'pattern', 0.6, 0.5),
@@ -265,7 +265,7 @@ test('generatePerformancePlan assigns dynamic intensity proportional to section 
     createSection(64, 80, 'peak', 'fx', 1.0, 1.0)
   ]);
 
-  const plan = generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal3.json', 'temporal4.json', 'temporal5.json'], 90);
+  const plan = await generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal3.json', 'temporal4.json', 'temporal5.json'], 90);
 
   const byReason = (reason) => plan.points.find(p => p.reason === reason);
 

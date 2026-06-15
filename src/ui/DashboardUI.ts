@@ -1,5 +1,5 @@
 import type { AudioEngine } from '../audio/AudioEngine';
-import { generatePerformancePlan } from '../automation/performancePlanGenerator';
+import { generatePerformancePlan, type GeneratorOptions } from '../automation/performancePlanGenerator';
 import { normalizeVisualTuningConfig } from '../config/visualTuning';
 import { ExportCapabilityDetector } from '../export/ExportCapabilityDetector';
 import { WebMExporter, type ExportConfig } from '../export/WebMExporter';
@@ -94,6 +94,15 @@ export class DashboardUI {
             timelineDrawTarget: document.getElementById('timeline-draw-target')!,
             timelinePresetBrush: document.getElementById('timeline-preset-brush')!,
             clearAutomationBtn: document.getElementById('clear-automation-btn')!,
+            generatorStrategy: document.getElementById('generator-strategy')!,
+            generatePlanBtn: document.getElementById('generate-plan-btn')!,
+            strictGeneratorSettings: document.getElementById('strict-generator-settings')!,
+            strictP1: document.getElementById('strict-p1')!,
+            strictP2: document.getElementById('strict-p2')!,
+            strictP3: document.getElementById('strict-p3')!,
+            strictP4: document.getElementById('strict-p4')!,
+            strictBars: document.getElementById('strict-bars')!,
+            strictMorph: document.getElementById('strict-morph')!,
             toggleTimelineDraw: document.getElementById('toggle-timeline-draw')!,
             toggleTimelineSnap: document.getElementById('toggle-timeline-snap')!,
             toggleTimelineFollow: document.getElementById('toggle-timeline-follow')!,
@@ -230,6 +239,10 @@ export class DashboardUI {
                 toggleMetrics: this.els.toggleMetrics,
                 metricsGrid: this.els.metricsGrid,
                 visualMode: this.els.visualMode,
+                strictP1: this.els.strictP1,
+                strictP2: this.els.strictP2,
+                strictP3: this.els.strictP3,
+                strictP4: this.els.strictP4,
             },
             {
                 onTuningChange: (key, value) => { State.targetTuning[key] = value; },
@@ -278,13 +291,15 @@ export class DashboardUI {
         this.engine.onAnalysisComplete = () => {
             this.playbackCtrl.onAnalysisComplete(State.duration, State.bpm, file.name);
             this.exportCtrl.setCanExport(this.canExport());
-            const plan = generatePerformancePlan(State.trackAnalysis, State.availablePresets, State.duration);
-            State.performancePlan = plan;
-            State.editedPerformancePlan = JSON.parse(JSON.stringify(plan));
-            void this.preloadPresetsForPlan(plan);
-            const buffer = this.engine.getAudioBuffer();
-            if (buffer) this.timelineCanvas.setAudioBuffer(buffer);
-            this.drawDramaturgyTimeline();
+            void (async () => {
+                const plan = await generatePerformancePlan(State.trackAnalysis, State.availablePresets, State.duration, this.buildGeneratorOptions());
+                State.performancePlan = plan;
+                State.editedPerformancePlan = JSON.parse(JSON.stringify(plan));
+                void this.preloadPresetsForPlan(plan);
+                const buffer = this.engine.getAudioBuffer();
+                if (buffer) this.timelineCanvas.setAudioBuffer(buffer);
+                this.drawDramaturgyTimeline();
+            })();
         };
 
         try {
@@ -438,8 +453,42 @@ export class DashboardUI {
         this.els.clearAutomationBtn.addEventListener('click', () => {
             this.clearAutomationWithConfirmation();
         });
+        this.els.generatorStrategy.addEventListener('change', () => {
+            const isStrict = (this.els.generatorStrategy as HTMLSelectElement).value === 'strict';
+            this.els.strictGeneratorSettings.classList.toggle('is-hidden', !isStrict);
+        });
+        this.els.generatePlanBtn.addEventListener('click', () => {
+            if (!window.confirm('Overwrite current automation plan?')) return;
+            void (async () => {
+                const plan = await generatePerformancePlan(State.trackAnalysis, State.availablePresets, State.duration, this.buildGeneratorOptions());
+                State.editedPerformancePlan = JSON.parse(JSON.stringify(plan));
+                this.requestTimelineDraw();
+            })();
+        });
         this.initAutomationInspectorControls();
         this.initTimelineLayerControls();
+    }
+
+    private buildGeneratorOptions(): GeneratorOptions {
+        const raw = (this.els.generatorStrategy as HTMLSelectElement).value;
+        const strategy: GeneratorOptions['strategy'] =
+            raw === 'hero' ? 'hero' : raw === 'strict' ? 'strict' : 'dramaturgy';
+        return {
+            strategy,
+            presetMetadata: State.preloadedPresets as Record<string, any>,
+            strictPresets: this.getStrictPresets(),
+            strictBars: Math.max(1, Math.min(128, parseInt((this.els.strictBars as HTMLInputElement).value, 10) || 8)),
+            strictMorph: Math.max(0.1, Math.min(20, parseFloat((this.els.strictMorph as HTMLInputElement).value) || 1.0))
+        };
+    }
+
+    private getStrictPresets(): string[] {
+        return [
+            (this.els.strictP1 as HTMLSelectElement).value,
+            (this.els.strictP2 as HTMLSelectElement).value,
+            (this.els.strictP3 as HTMLSelectElement).value,
+            (this.els.strictP4 as HTMLSelectElement).value,
+        ].filter(Boolean);
     }
 
     private clearAutomationWithConfirmation(): void {
