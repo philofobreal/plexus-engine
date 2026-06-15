@@ -5,7 +5,7 @@ export type VisualTuningKey = keyof VisualTuningConfig;
 export interface VisualTuningControl {
     key: VisualTuningKey;
     label: string;
-    group: 'Audio' | 'Background' | 'Particles' | 'Circles' | 'Lines' | 'Polygons' | 'Temporal';
+    group: 'Audio' | 'Background' | 'Particles' | 'Circles' | 'Lines' | 'Polygons' | 'Temporal' | 'Hero';
     min: number;
     max: number;
     step: number;
@@ -55,6 +55,7 @@ export const defaultVisualTuning: VisualTuningConfig = {
     temporalRingSpeed: 1,
     temporalNetworkDistance: 1,
     temporalPolygonAlpha: 1,
+    heroLaneBottomOffset: 0.2,
     morphDurationSec: 3.0,
     morphCurveValue: 1,
     buildupIntensity: 1.0,
@@ -126,7 +127,8 @@ export const visualTuningControls: VisualTuningControl[] = [
     { key: 'temporalRingAlpha', label: 'Ring opacity', group: 'Temporal', min: 0, max: 5, step: 0.05, unit: 'x' },
     { key: 'temporalRingSpeed', label: 'Ring speed', group: 'Temporal', min: 0, max: 12, step: 0.05, unit: 'x' },
     { key: 'temporalNetworkDistance', label: 'Temporal links', group: 'Temporal', min: 0.05, max: 8, step: 0.05, unit: 'x' },
-    { key: 'temporalPolygonAlpha', label: 'Temporal polys', group: 'Temporal', min: 0, max: 5, step: 0.05, unit: 'x' }
+    { key: 'temporalPolygonAlpha', label: 'Temporal polys', group: 'Temporal', min: 0, max: 5, step: 0.05, unit: 'x' },
+    { key: 'heroLaneBottomOffset', label: 'Lane from bottom', group: 'Hero', min: 0.05, max: 0.9, step: 0.01, unit: 'h' }
 ];
 
 export function cloneDefaultVisualTuning(): VisualTuningConfig {

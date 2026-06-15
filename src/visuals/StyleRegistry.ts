@@ -1,6 +1,7 @@
 import { classicPlexusIdentity } from './ClassicPlexusEffect';
 import { cyberpunkIdentity } from './CyberpunkIdentity';
 import { darkTechnoIdentity } from './DarkTechnoIdentity';
+import { heroEffectIdentity } from './HeroEffectIdentity';
 import { organicAmbientIdentity } from './OrganicAmbientIdentity';
 import { temporalMusicIdentity } from './TemporalMusicEffect';
 import type { VisualIdentity } from './VisualIdentity';
@@ -31,5 +32,6 @@ export function createDefaultStyleRegistry(): StyleRegistry {
     registry.register(darkTechnoIdentity);
     registry.register(organicAmbientIdentity);
     registry.register(cyberpunkIdentity);
+    registry.register(heroEffectIdentity);
     return registry;
 }

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import ts from 'typescript';
 
 const SRC_ROOT = join(process.cwd(), 'src');
-const STYLE_IDS = ['classic', 'temporal', 'dark-techno', 'organic-ambient', 'cyberpunk'];
+const STYLE_IDS = ['classic', 'temporal', 'dark-techno', 'organic-ambient', 'cyberpunk', 'hero'];
 const PHASES = ['INTRO', 'BUILDUP', 'DROP', 'BREAK'];
 
 function createSrcLoader() {
@@ -368,7 +368,13 @@ function applyState(State, profile, frameIndex) {
   State.sampleRate = 44100;
   State.hopSize = 1024;
   State.frames = profile.frames;
-  State.events = [];
+  State.events = [
+    { time: frameIndex - 0.05, intensity: 0.78, type: 2 },
+    { time: frameIndex + 0.7, intensity: 0.46, type: 1 },
+    { time: frameIndex + 1.4, intensity: 0.92, type: 2 },
+    { time: frameIndex + 2.3, intensity: 0.64, type: 3 },
+    { time: frameIndex + 4.8, intensity: 0.35, type: 1 }
+  ];
   State.trackAnalysis = profile.trackAnalysis;
   State.playbackFade = 1;
   State.rotationPhase = frameIndex;

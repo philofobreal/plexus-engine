@@ -6,7 +6,7 @@ export interface BeatEvent {
 
 export type AutoState = 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
 
-export type VisualMode = 'classic' | 'temporal' | 'dark-techno' | 'organic-ambient' | 'cyberpunk';
+export type VisualMode = 'classic' | 'temporal' | 'dark-techno' | 'organic-ambient' | 'cyberpunk' | 'hero';
 
 export type MorphCurve = 'linear' | 'easeInOut' | 'exponential';
 
@@ -66,6 +66,7 @@ export interface VisualTuningConfig {
     temporalRingSpeed: number;
     temporalNetworkDistance: number;
     temporalPolygonAlpha: number;
+    heroLaneBottomOffset: number;
     morphDurationSec: number;
     morphCurveValue: number;
     buildupIntensity: number;
