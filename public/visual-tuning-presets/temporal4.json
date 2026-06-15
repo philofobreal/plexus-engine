@@ -31,6 +31,7 @@
     "temporalRingAlpha": 0.6,
     "temporalRingSpeed": 2.45,
     "temporalNetworkDistance": 5.3,
-    "temporalPolygonAlpha": 2
+    "temporalPolygonAlpha": 2,
+    "heroBeepMode": 4
   }
 }

@@ -173,7 +173,8 @@ test('WebMExporter owns p5 loop state without renderer polling', async () => {
     resolution: '720p',
     aspectRatio: '16:9',
     fps: 60,
-    trackName: 'Long Deterministic Track Name'
+    trackName: 'Long Deterministic Track Name',
+    watermark: true
   }, () => {});
 
   assert.equal(blob.size, 4);
@@ -189,6 +190,33 @@ test('WebMExporter owns p5 loop state without renderer polling', async () => {
   assert.deepEqual(calls.filter(([name]) => name === 'resizeCanvas'), []);
   assert.deepEqual(calls.filter(([name]) => name === 'createGraphics'), [['createGraphics', 1280, 720]]);
   assert.equal(calls.some(([name]) => name === 'removeGraphics'), true);
+});
+
+test('WebMExporter omits metadata card when watermark is disabled', async () => {
+  const { WebMExporter } = loadWebMExporter();
+  const calls = [];
+  const drawnText = [];
+  const p5 = {
+    width: 320,
+    height: 180,
+    redraw() {
+      calls.push(['redraw']);
+    },
+    noLoop() {},
+    loop() {},
+    createGraphics() {
+      return {
+        elt: createMockCanvas(drawnText, calls),
+        clear() {},
+        remove() {}
+      };
+    }
+  };
+
+  const exporter = new WebMExporter(p5, createMockCanvas(drawnText, calls), { getAudioBuffer: () => null });
+  await exporter.startExport({ resolution: '720p', aspectRatio: '16:9', fps: 60 }, () => {});
+
+  assert.equal(drawnText.includes('PLEXUS ENGINE'), false);
 });
 
 test('WebMExporter stopAndSave finalizes a partial WebM blob', async () => {
