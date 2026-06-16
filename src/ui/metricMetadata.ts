@@ -17,14 +17,14 @@ export const dashboardMetricMetadata = {
     density: {
         name: 'Density',
         description: 'Smoothed spectral-flux density projection.',
-        source: 'AudioFrame.b legacy density projection',
+        source: 'AudioFrame.densityProj',
         range: '0.00..1.00',
         tooltip: 'Motion density from spectral flux.\nNot bass level.'
     },
     melodyPresence: {
         name: 'Melody Presence',
         description: 'Smoothed tonal/melodic presence projection.',
-        source: 'AudioFrame.m / VisualFeatureFrame.melody',
+        source: 'AudioFrame.melodyProj / VisualFeatureFrame.melody',
         range: '0.00..1.00',
         tooltip: 'Tonal melody presence.\nNot a MIDI melody track.'
     },

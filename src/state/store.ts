@@ -1,5 +1,5 @@
 import { cloneDefaultVisualTuning } from '../config/visualTuning.ts';
-import type { AudioFrame, BeatEvent, DirectorOutput, ModulationState, PerformanceAutomationPlan, TimelineLayers, TrackAnalysis, VisualFeatureFrame, VisualCueKind, VisualMode, VisualTuningConfig } from '../types';
+import type { AudioFrame, BeatEvent, DirectorOutput, ModulationState, PerformanceAutomationPlan, TimelineLayers, TrackAnalysis, VideoDominantColor, VisualFeatureFrame, VisualCueKind, VisualMode, VisualTuningConfig } from '../types';
 
 const emptyFeatures: VisualFeatureFrame = {
     melody: 0,
@@ -46,6 +46,12 @@ const emptyDirectorOutput: DirectorOutput = {
     invertBackground: false
 };
 
+const emptyVideoDominantColor: VideoDominantColor = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+
 export const State = {
     isPlaying: false,
     isExporting: false,
@@ -85,7 +91,7 @@ export const State = {
     isDrawingEnvelope: false,
     playbackFade: 0.0,
     rotationPhase: 0,
-    currentFrame: { e: 0, b: 0, m: 0, t: 0, state: 'IDLE', eRatio: 0 } as AudioFrame,
+    currentFrame: { e: 0, densityProj: 0, melodyProj: 0, fxProj: 0, state: 'IDLE', eRatio: 0 } as AudioFrame,
     currentFeatures: { ...emptyFeatures } as VisualFeatureFrame,
     activeCueKind: null as VisualCueKind | null,
     activePatternId: null as string | null,
@@ -94,6 +100,7 @@ export const State = {
     denseImpactFlash: 0,
     modulation: { ...emptyModulation } as ModulationState,
     directorOutput: { ...emptyDirectorOutput } as DirectorOutput,
+    videoDominantColor: { ...emptyVideoDominantColor } as VideoDominantColor,
     visualTuning: cloneDefaultVisualTuning(),
     targetTuning: cloneDefaultVisualTuning()
 };

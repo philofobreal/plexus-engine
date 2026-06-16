@@ -126,15 +126,21 @@ export interface DirectorOutput {
     invertBackground: boolean;
 }
 
+export interface VideoDominantColor {
+    r: number;
+    g: number;
+    b: number;
+}
+
 export interface AudioFrame {
     /** Normalized RMS energy. */
     e: number;
-    /** Legacy compatibility field: density projection, not bass. */
-    b: number;
-    /** Legacy compatibility field: melody-presence projection, not mid band. */
-    m: number;
-    /** Legacy compatibility field: FX-presence projection, not treble. */
-    t: number;
+    /** Smoothed spectral-flux density projection. */
+    densityProj: number;
+    /** Smoothed tonal melody-presence projection. */
+    melodyProj: number;
+    /** Smoothed FX/noise/transient projection. */
+    fxProj: number;
     state: AutoState;
     eRatio: number;
 }
@@ -281,6 +287,7 @@ export interface RenderState {
     hoveredHandleType: 'start' | 'end' | 'sensitivity' | 'curve' | null;
     audioSensitivity: number;
     dropAnticipation: number;
+    videoDominantColor: VideoDominantColor;
     scrubTime?: number | null;
     gridOffset: number;
 }

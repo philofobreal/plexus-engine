@@ -214,9 +214,9 @@ export function tuneAudioFrame(frame: AudioFrame, tuning: VisualTuningConfig): A
     return {
         ...frame,
         e: tuneAudioValue(frame.e, tuning),
-        b: tuneAudioValue(frame.b, tuning),
-        m: tuneAudioValue(frame.m, tuning),
-        t: tuneAudioValue(frame.t, tuning),
+        densityProj: tuneAudioValue(frame.densityProj, tuning),
+        melodyProj: tuneAudioValue(frame.melodyProj, tuning),
+        fxProj: tuneAudioValue(frame.fxProj, tuning),
         eRatio: tuneAudioValue(frame.eRatio, tuning)
     };
 }
@@ -275,13 +275,13 @@ export function writeModulationBus(
         sensitivity
     );
     target.densityDrive = scaleUnit(
-        frame.b * 0.62 +
+        frame.densityProj * 0.62 +
         features.density * 0.24 +
         frame.e * 0.14,
         sensitivity
     );
     target.spectralChaos = scaleUnit(
-        frame.t * 0.42 +
+        frame.fxProj * 0.42 +
         features.fx * 0.36 * fxChaos +
         features.brightness * 0.22,
         sensitivity
