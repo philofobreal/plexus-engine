@@ -62,6 +62,10 @@ export class DashboardUI {
     private isUiLockedVisible = false;
     private videoElement: HTMLVideoElement;
     private videoObjectUrl: string | null = null;
+    private videoSampleCanvas: HTMLCanvasElement | null = null;
+    private videoSampleCtx: CanvasRenderingContext2D | null = null;
+    private videoSampleTick = 0;
+    private videoRateSmoother = 1.0;
 
     // Sub-controllers (FÁZIS 1)
     private playbackCtrl!: PlaybackController;
@@ -145,6 +149,10 @@ export class DashboardUI {
         this.videoElement = document.getElementById('video-backplate') as HTMLVideoElement;
         this.videoElement.muted = true;
         this.videoElement.playsInline = true;
+        this.videoSampleCanvas = document.createElement('canvas');
+        this.videoSampleCanvas.width = 4;
+        this.videoSampleCanvas.height = 4;
+        this.videoSampleCtx = this.videoSampleCanvas.getContext('2d', { willReadFrequently: true });
 
         this.initControllers();
 
@@ -327,6 +335,7 @@ export class DashboardUI {
             this.engine.stop(false);
             this.playbackCtrl.setPlaybackUi(false);
         }
+        this.resetVideoPlaybackRate();
 
         this.playbackCtrl.setEnabled(false);
         this.playbackCtrl.setUploadEnabled(false);
@@ -1481,6 +1490,7 @@ export class DashboardUI {
             hoveredHandleType: this.hoveredHandleType,
             audioSensitivity: State.visualTuning.audioSensitivity,
             dropAnticipation: State.visualTuning.dropAnticipation,
+            videoDominantColor: State.videoDominantColor,
             scrubTime: this.scrubTime,
             gridOffset: State.trackAnalysis.gridOffset
         };
@@ -1832,6 +1842,7 @@ export class DashboardUI {
 
     updateDashboard() {
         this.triggerPerformanceAutomation();
+        this.updateReactiveVideoBackplate();
 
         if (!this.playbackCtrl.isDraggingSlider && this.scrubTime === null) {
             const progress = State.duration > 0 ? (State.currentTime / State.duration) * 100 : 0;
@@ -1840,8 +1851,8 @@ export class DashboardUI {
         }
 
         this.els.valE.innerText = State.currentFrame.e.toFixed(2); this.els.barE.style.width = (State.currentFrame.e * 100) + '%';
-        this.els.valB.innerText = State.currentFrame.b.toFixed(2); this.els.barB.style.width = (State.currentFrame.b * 100) + '%';
-        this.els.valM.innerText = State.currentFrame.m.toFixed(2); this.els.barM.style.width = (State.currentFrame.m * 100) + '%';
+        this.els.valB.innerText = State.currentFrame.densityProj.toFixed(2); this.els.barB.style.width = (State.currentFrame.densityProj * 100) + '%';
+        this.els.valM.innerText = State.currentFrame.melodyProj.toFixed(2); this.els.barM.style.width = (State.currentFrame.melodyProj * 100) + '%';
         this.els.valVocal.innerText = State.currentFeatures.vocal.toFixed(2); this.els.barVocal.style.width = (State.currentFeatures.vocal * 100) + '%';
         this.els.valFx.innerText = State.currentFeatures.fx.toFixed(2); this.els.barFx.style.width = (State.currentFeatures.fx * 100) + '%';
         this.els.valBeat.innerText = State.beatDecay.toFixed(2); this.els.barBeat.style.width = (State.beatDecay * 100) + '%';
@@ -1919,10 +1930,12 @@ export class DashboardUI {
 
     private clearVideoBackplate(): void {
         this.videoElement.pause();
+        this.resetVideoPlaybackRate();
         this.videoElement.removeAttribute('src');
         this.videoElement.load();
         this.videoElement.classList.remove('is-active');
         State.videoBackplateActive = false;
+        State.videoDominantColor = { r: 0, g: 0, b: 0 };
         if (this.videoObjectUrl) {
             URL.revokeObjectURL(this.videoObjectUrl);
             this.videoObjectUrl = null;
@@ -1946,6 +1959,58 @@ export class DashboardUI {
             void this.videoElement.play().catch(() => undefined);
         } else if (event === 'pause' || event === 'stop') {
             this.videoElement.pause();
+            this.resetVideoPlaybackRate();
+        }
+    }
+
+    private updateReactiveVideoBackplate(): void {
+        if (!State.videoBackplateActive) return;
+        this.updateVideoDominantColor();
+        if (State.isExporting) return;
+
+        const targetRate = State.isPlaying
+            ? this.clamp(0.88 + State.modulation.macroMomentum * 0.62 + State.modulation.rhythmicImpulse * 0.50, 0.5, 2.0)
+            : 1.0;
+        this.videoRateSmoother += (targetRate - this.videoRateSmoother) * 0.18;
+        const playbackRate = this.clamp(this.videoRateSmoother, 0.5, 2.0);
+        if (Math.abs(this.videoElement.playbackRate - playbackRate) > 0.01) {
+            this.videoElement.playbackRate = playbackRate;
+        }
+    }
+
+    private resetVideoPlaybackRate(): void {
+        this.videoRateSmoother = 1.0;
+        if (this.videoElement.playbackRate !== 1.0) {
+            this.videoElement.playbackRate = 1.0;
+        }
+    }
+
+    private updateVideoDominantColor(): void {
+        this.videoSampleTick++;
+        if (this.videoSampleTick % 3 !== 0) return;
+        if (this.videoElement.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+        if (this.videoElement.videoWidth <= 0 || this.videoElement.videoHeight <= 0) return;
+
+        const ctx = this.videoSampleCtx;
+        if (!ctx) return;
+
+        try {
+            ctx.drawImage(this.videoElement, 0, 0, 4, 4);
+            const pixels = ctx.getImageData(0, 0, 4, 4).data;
+            let r = 0, g = 0, b = 0;
+            const count = pixels.length / 4;
+            for (let i = 0; i < pixels.length; i += 4) {
+                r += pixels[i];
+                g += pixels[i + 1];
+                b += pixels[i + 2];
+            }
+            State.videoDominantColor = {
+                r: Math.round(r / count),
+                g: Math.round(g / count),
+                b: Math.round(b / count)
+            };
+        } catch {
+            // Cross-origin or not-yet-decoded frames can reject canvas reads; keep the last usable color.
         }
     }
 
