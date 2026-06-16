@@ -1,4 +1,4 @@
-﻿# Particle Activity Turn Audit
+# Particle Activity Turn Audit
 
 This audit records the migration from the legacy `particleBassTurn` tuning key to canonical `particleActivityTurn`. Runtime behavior, formulas, ranges, and default values are unchanged.
 
@@ -77,7 +77,7 @@ Turn gate source:
 
 ```ts
 scaleUnit(
-    frame.b * 0.62 +
+    frame.densityProj * 0.62 +
     features.density * 0.24 +
     frame.e * 0.14,
     sensitivity
@@ -86,7 +86,7 @@ scaleUnit(
 
 Actual source meanings:
 
-- `frame.b`: legacy density projection, not bass.
+- `frame.densityProj`: legacy density projection, not bass.
 - `features.density`: canonical density feature.
 - `frame.e`: normalized RMS energy.
 - `audioSensitivity`: scalar.
@@ -95,7 +95,7 @@ Classic conclusion:
 
 - The turn is density/energy-driven.
 - Bass is not a genuine source.
-- The only "bass" association is the stale name `frame.b`, but `AudioFrame.b` is documented as density projection.
+- The only "bass" association is the stale name `frame.densityProj`, but `AudioFrame.densityProj` is documented as density projection.
 
 ### Temporal Mode
 
@@ -130,9 +130,9 @@ Temporal conclusion:
 
 | Modulation signal | Formula | Relation to particle turn |
 |---|---|---|
-| `densityDrive` | `frame.b * 0.62 + features.density * 0.24 + frame.e * 0.14`, scaled and clamped | Classic turn gate; largest component of Temporal movement. |
+| `densityDrive` | `frame.densityProj * 0.62 + features.density * 0.24 + frame.e * 0.14`, scaled and clamped | Classic turn gate; largest component of Temporal movement. |
 | `kineticTension` | `features.vocal * 0.28 + features.melody * 0.22 + features.tension * 0.32 + cueDecay * 0.18`, plus dramaturgy boost | Temporal movement component. |
-| `spectralChaos` | `frame.t * 0.42 + features.fx * 0.36 + features.brightness * 0.22`, scaled and clamped | Temporal movement component. |
+| `spectralChaos` | `frame.fxProj * 0.42 + features.fx * 0.36 + features.brightness * 0.22`, scaled and clamped | Temporal movement component. |
 | `macroMomentum` | `frame.eRatio * 0.58 + frame.e * 0.24 + features.density * 0.18`, with buildup minimum | Particle speed input, not turn gate. |
 | `rhythmicImpulse` | `max(beatDecay, cueDecay * 0.65)`, scaled and clamped | Particle speed impulse input, not turn gate. |
 

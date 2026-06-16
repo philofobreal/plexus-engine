@@ -1,4 +1,4 @@
-﻿# Low Frequency Drive Migration Plan
+# Low Frequency Drive Migration Plan
 
 ## Scope
 
@@ -14,7 +14,7 @@ Current formula:
 
 ```ts
 target.densityDrive = scaleUnit(
-    frame.b * 0.62 +
+    frame.densityProj * 0.62 +
     features.density * 0.24 +
     frame.e * 0.14,
     sensitivity
@@ -23,7 +23,7 @@ target.densityDrive = scaleUnit(
 
 Inputs:
 
-- `frame.b`: legacy `AudioFrame` field containing the smoothed density projection, not bass.
+- `frame.densityProj`: legacy `AudioFrame` field containing the smoothed density projection, not bass.
 - `features.density`: canonical visual feature density signal from `TrackAnalysis.features[]`.
 - `frame.e`: normalized RMS energy.
 - `sensitivity`: `audioSensitivity`, applied through `scaleUnit()` and clamped to `0.0..1.0`.
@@ -83,7 +83,7 @@ The control is rendered dynamically by `DashboardUI` from `visualTuningControls`
 
 | File | Reference |
 |---|---|
-| `documents/metrics/metrics-source-audit.md` | Documents `densityDrive` as `scaleUnit(frame.b * 0.62 + features.density * 0.24 + frame.e * 0.14, sensitivity)` and flags the name as misleading. |
+| `documents/metrics/metrics-source-audit.md` | Documents `densityDrive` as `scaleUnit(frame.densityProj * 0.62 + features.density * 0.24 + frame.e * 0.14, sensitivity)` and flags the name as misleading. |
 | `documents/audits/metrics-audit-matrix.md` | Describes `State.modulation.densityDrive` as a density/energy-driven animation signal. |
 | `documents/implementation/current-typescript-implementation.md` | Defines `densityDrive` as a density/energy-driven animation signal. |
 | `documents/governance/metrics-and-modulation-governance.md` | Lists `densityDrive` as a modulation bus field. |
@@ -96,7 +96,7 @@ The control is rendered dynamically by `DashboardUI` from `visualTuningControls`
 
 `densityDrive` is not a low-frequency or bass-band signal. It is a renderer-facing animation drive composed mostly from density:
 
-- 62% `AudioFrame.b`, which is now documented as density projection, not bass.
+- 62% `AudioFrame.densityProj`, which is now documented as density projection, not bass.
 - 24% `VisualFeatureFrame.density`, the canonical density feature.
 - 14% normalized energy.
 
@@ -104,7 +104,7 @@ The runtime meaning is best described as a density/energy-driven animation signa
 
 ## Why The Current Name Is Misleading
 
-The name implies a low-frequency spectral band or bass-energy drive. The calculation does not primarily use raw low-band energy. `AudioFrame.b` is a legacy compatibility projection that carries smoothed density, and `features.density` is another density signal. Only the `BarAnalysis.bass` field remains a true low-band spectral ratio, and it is not part of this modulation formula.
+The name implies a low-frequency spectral band or bass-energy drive. The calculation does not primarily use raw low-band energy. `AudioFrame.densityProj` is a canonical projection that carries smoothed density, and `features.density` is another density signal. Only the `BarAnalysis.bass` field remains a true low-band spectral ratio, and it is not part of this modulation formula.
 
 The result is a naming mismatch:
 

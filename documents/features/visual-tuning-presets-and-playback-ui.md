@@ -1,4 +1,4 @@
-﻿# Visual Tuning, Presets, And Playback UI
+# Visual Tuning, Presets, And Playback UI
 
 This feature document records the visual tuning and player-surface behavior in the active TypeScript implementation.
 
@@ -114,7 +114,7 @@ Implemented capabilities:
 - Analysis-completion details such as sample count, section count, or cue count are not shown in the header.
 - BPM is shown as a BPM header badge instead of a metric card.
 - The dashboard metric labels are `Density`, `Melody Presence`, `Vocal`, `FX`, and `Beat Impulse`; BPM moved to the header badge, progress moved to the seekbar time display, and fx-presence duplication is covered by the canonical `VisualFeatureFrame.fx` metric.
-- `AudioFrame.b`, `AudioFrame.m`, and `AudioFrame.t` remain legacy compatibility projections, not raw crossover bands. `AudioFrame.t` remains available to the modulation bus but is no longer a separate dashboard card.
+- `AudioFrame.densityProj`, `AudioFrame.melodyProj`, and `AudioFrame.fxProj` remain canonical projections, not raw crossover bands. `AudioFrame.fxProj` remains available to the modulation bus but is no longer a separate dashboard card.
 - The metrics panel can be expanded or collapsed from a compact control above the seekbar.
 - The metrics grid uses the original card-style layout and responds to viewport width.
 - The cue metric card was removed.

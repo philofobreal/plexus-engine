@@ -1,4 +1,4 @@
-﻿# Current TypeScript Implementation
+# Current TypeScript Implementation
 
 This document records the active `plexus-engine/` implementation and clarifies older V0.2 prototype wording.
 
@@ -47,7 +47,7 @@ The accepted worker failure payload is:
 
 `requestId` is required so stale worker results cannot overwrite newer loads. `hopSize` is part of the runtime contract because render synchronization derives frame indexes from playback time, sample rate, and hop size.
 
-`trackAnalysis` is the offline visual-music layer. It contains bar-level dynamics, section-level structure, recurring temporal patterns, visual cue events, significant moments, per-frame feature vectors for melody, vocal, fx, density, brightness, and tension, plus dramaturgical `buildupConfidence`, `spectralPivot`, and `tensionTrends`. `VisualFeatureFrame.melody` remains the internal/canonical melody feature signal for track analysis, cues, modulation, and temporal rendering; the dashboard-facing melody metric is Melody Presence from the `AudioFrame.m` compatibility projection. Effects should read these precomputed values from shared state during playback instead of running analysis in the render loop.
+`trackAnalysis` is the offline visual-music layer. It contains bar-level dynamics, section-level structure, recurring temporal patterns, visual cue events, significant moments, per-frame feature vectors for melody, vocal, fx, density, brightness, and tension, plus dramaturgical `buildupConfidence`, `spectralPivot`, and `tensionTrends`. `VisualFeatureFrame.melody` remains the internal/canonical melody feature signal for track analysis, cues, modulation, and temporal rendering; the dashboard-facing melody metric is Melody Presence from the `AudioFrame.melodyProj` compatibility projection. Effects should read these precomputed values from shared state during playback instead of running analysis in the render loop.
 
 The analyzer worker derives these values from a fixed 1024-sample FFT pipeline. The worker is no longer a single monolithic `onmessage` algorithm. Its entry point now constructs and coordinates four internal classes with explicit responsibilities:
 
@@ -76,7 +76,7 @@ Bar analysis is derived from BPM-aligned four-beat windows. Each `BarAnalysis` e
 
 Recurring temporal patterns are detected heuristically from full-track section signatures. The worker groups similar section-level energy, density, label, and dominant-feature signatures, publishes repeated groups as `MusicPattern` entries, and emits `pattern` cue events for each occurrence so effects can react when a known musical shape returns.
 
-The dramaturgy engine builds a normalized pressure curve from `feature.tension * 0.34 + feature.density * 0.28 + frame.e * 0.22 + frame.eRatio * 0.16`. A rolling comparison between recent and previous pressure windows produces `buildupConfidence`; section-like trend segments publish rising, falling, or stable directions. Spectral Pivot is an offline post-process that boosts melody, vocal, fx, and tension only when `sE > 0.04`, `eRatio < 0.55`, and buildup or `LOW_DROP` tension is present. Below the `sE <= 0.04` noise gate, delicate features, `AudioFrame.m`, `AudioFrame.t`, and `spectralPivot` are forced to exact zero.
+The dramaturgy engine builds a normalized pressure curve from `feature.tension * 0.34 + feature.density * 0.28 + frame.e * 0.22 + frame.eRatio * 0.16`. A rolling comparison between recent and previous pressure windows produces `buildupConfidence`; section-like trend segments publish rising, falling, or stable directions. Spectral Pivot is an offline post-process that boosts melody, vocal, fx, and tension only when `sE > 0.04`, `eRatio < 0.55`, and buildup or `LOW_DROP` tension is present. Below the `sE <= 0.04` noise gate, delicate features, `AudioFrame.melodyProj`, `AudioFrame.fxProj`, and `spectralPivot` are forced to exact zero.
 
 `PlexusRenderer` now delegates render-time macro decisions to `VisualDirectorFSM`. The director reads the accepted frame copy, current feature copy, `buildupConfidence`, `spectralPivot`, tuning, modulation bus, and optional future frame for drop anticipation. It writes a `DirectorOutput` snapshot into `State.directorOutput`:
 

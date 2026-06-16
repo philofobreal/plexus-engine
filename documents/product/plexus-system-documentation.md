@@ -1,4 +1,4 @@
-﻿# PLEXUS ENGINE - Atfogo Rendszerdokumentacio V0.2
+# PLEXUS ENGINE - Atfogo Rendszerdokumentacio V0.2
 
 > **Aktualis statusz:** ez a fo rendszerdokumentacio a `plexus-engine/` TypeScript/Vite kodbazis aktualis allapotat irja le. A korabbi single-file HTML prototipus es IIR-alapu DSP megfogalmazasok torteneti hatternek szamitanak, nem kanonikus implementacios szerzodesnek.
 
@@ -133,9 +133,9 @@ Az `onmessage` handler ennek megfeleloen csak belepesi es orchestration pont: le
 Az elfogadott render-facing kimenetek:
 
 * `AudioFrame.e`: normalizalt RMS energia.
-* `AudioFrame.b`: simitott density projekcio.
-* `AudioFrame.m`: simitott melody-presence projekcio.
-* `AudioFrame.t`: simitott fx-presence projekcio.
+* `AudioFrame.densityProj`: simitott density projekcio.
+* `AudioFrame.melodyProj`: simitott melody-presence projekcio.
+* `AudioFrame.fxProj`: simitott fx-presence projekcio.
 * `AudioFrame.state`: `IDLE`, `HIGH`, `LOW`, `LOW_DROP` vagy `LOW_OVERLOAD`.
 * `AudioFrame.eRatio`: blokk-szintu energia arany.
 

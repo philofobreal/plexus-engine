@@ -1,4 +1,4 @@
-﻿# Visual Tuning, Presets, And Playback UI Acceptance Criteria
+# Visual Tuning, Presets, And Playback UI Acceptance Criteria
 
 This document captures the accepted behavior for the current visual tuning and playback UI branch. It is additive to `../Usage ACs.md`.
 
@@ -53,7 +53,7 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-4.5a Metrics default state:** The metrics grid is hidden by default on initial load. The metrics toggle starts with `aria-expanded="false"` and reveals the grid only after user interaction.
 - **VT-4.6 Cue removal:** The cue metrics block is not displayed.
 - **VT-4.7 Dynamics state size:** `Dynamics State` occupies one metrics grid unit.
-- **VT-4.8 Frame projection labels:** The visible `Density` and `Melody Presence` metric labels project the current `AudioFrame.b` and `AudioFrame.m` values. `AudioFrame.t` remains a legacy fx-presence compatibility projection for modulation, but the duplicate fx-presence dashboard entry has been removed in favor of the canonical `FX` feature card.
+- **VT-4.8 Frame projection labels:** The visible `Density` and `Melody Presence` metric labels project the current `AudioFrame.densityProj` and `AudioFrame.melodyProj` values. `AudioFrame.fxProj` remains the canonical fx-presence projection for modulation, but the duplicate fx-presence dashboard entry has been removed in favor of the canonical `FX` feature card.
 - **VT-4.9 Removed metric cards:** BPM, Progress, and FX Presence are not present in the metrics grid. BPM is handled by the header badge, Progress by the seekbar/time display, and FX Presence by the canonical `FX` card.
 
 ## VT-5 Seekbar

@@ -1,4 +1,4 @@
-﻿# Metrics And Modulation Governance
+# Metrics And Modulation Governance
 
 This document extends `AGENTS.md`. If there is a conflict, `AGENTS.md` is authoritative.
 
@@ -90,7 +90,7 @@ Preferred:
 - Tension
 - Buildup
 
-The dashboard now uses the preferred labels above. The internal `AudioFrame.b/m/t` fields remain only as explicitly documented legacy compatibility projections in code, docs, and tests; `AudioFrame.t` is not projected as a separate dashboard card.
+The dashboard now uses the preferred labels above. The internal `AudioFrame.densityProj/melodyProj/fxProj` fields remain only as explicitly documented canonical projections in code, docs, and tests; `AudioFrame.fxProj` is not projected as a separate dashboard card.
 
 ## Ownership Rules
 
@@ -137,7 +137,7 @@ A projection must declare:
 Example:
 
 ```text
-AudioFrame.b
+AudioFrame.densityProj
 source: worker spectral/context features
 meaning: smoothed density projection
 consumer: dashboard Density metric, renderer compatibility
@@ -151,12 +151,12 @@ A musical concept may have one canonical definition and multiple projections.
 Allowed:
 
 - canonical: `TrackAnalysis.features[i].melody`
-- projection: `AudioFrame.m` as legacy render-facing melody presence
-- dashboard: Melody Presence, sourced from `AudioFrame.m`
+- projection: `AudioFrame.melodyProj` as canonical render-facing melody presence
+- dashboard: Melody Presence, sourced from `AudioFrame.melodyProj`
 
 Forbidden:
 
-- `AudioFrame.m`
+- `AudioFrame.melodyProj`
 - `VisualFeatureFrame.melody`
 - duplicate dashboard `Melody`
 - renderer-local melody score
@@ -189,11 +189,11 @@ Production metrics should not show modulation-bus values unless the label clearl
 
 The following remain compatibility or audit areas:
 
-1. `AudioFrame.b`
-2. `AudioFrame.m`
-3. `AudioFrame.t`
+1. `AudioFrame.densityProj`
+2. `AudioFrame.melodyProj`
+3. `AudioFrame.fxProj`
 4. historical references to dashboard `Bass/Mid/Treble` labels in older docs or acceptance notes
-5. overlap between `AudioFrame.m/t` and `VisualFeatureFrame.melody/fx`; Melody Presence is the dashboard-facing melody metric, while `VisualFeatureFrame.melody` remains internal/canonical
+5. overlap between `AudioFrame.melodyProj/fxProj` and `VisualFeatureFrame.melody/fx`; Melody Presence is the dashboard-facing melody metric, while `VisualFeatureFrame.melody` remains internal/canonical
 6. use of `bass/mid/treble` inside `BarAnalysis`
 7. mapping from musical features into `State.modulation`
 

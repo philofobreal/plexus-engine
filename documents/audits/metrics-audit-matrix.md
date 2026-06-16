@@ -1,4 +1,4 @@
-﻿# Metrics Audit Matrix
+# Metrics Audit Matrix
 
 This document audits the current Plexus Engine metric chain:
 
@@ -20,19 +20,19 @@ The remaining issue is compatibility naming: several internal fields keep short 
 The highest-risk area is:
 
 ```text
-AudioFrame.b / AudioFrame.m / AudioFrame.t
+AudioFrame.densityProj / AudioFrame.melodyProj / AudioFrame.fxProj
 ```
 
-These are render-facing legacy compatibility projections. The dashboard now labels `AudioFrame.b` and `AudioFrame.m` as Density and Melody Presence. `AudioFrame.t` remains an fx-presence compatibility projection for renderer/modulation use, but it is no longer shown as a separate dashboard card.
+These are render-facing canonical projections. The dashboard now labels `AudioFrame.densityProj` and `AudioFrame.melodyProj` as Density and Melody Presence. `AudioFrame.fxProj` remains an fx-presence projection for renderer/modulation use, but it is no longer shown as a separate dashboard card.
 
 ## Audit Matrix
 
 | Field | Layer | Owner | Current meaning | Current consumer | Risk | Proposed action |
 |---|---|---|---|---|---|---|
 | `AudioFrame.e` | AudioFrame | worker | normalized RMS energy | dashboard, renderer, modulation | Low | Keep as `Energy` |
-| `AudioFrame.b` | AudioFrame | worker | smoothed density projection | dashboard Density, renderer | Medium | Keep field as documented legacy compatibility projection |
-| `AudioFrame.m` | AudioFrame | worker | smoothed melody-presence projection | dashboard Melody Presence, renderer | Medium | Keep field as documented legacy compatibility projection |
-| `AudioFrame.t` | AudioFrame | worker | smoothed fx-presence projection | renderer/modulation | Medium | Keep field as documented legacy compatibility projection |
+| `AudioFrame.densityProj` | AudioFrame | worker | smoothed density projection | dashboard Density, renderer | Medium | Keep field as documented canonical projection |
+| `AudioFrame.melodyProj` | AudioFrame | worker | smoothed melody-presence projection | dashboard Melody Presence, renderer | Medium | Keep field as documented canonical projection |
+| `AudioFrame.fxProj` | AudioFrame | worker | smoothed fx-presence projection | renderer/modulation | Medium | Keep field as documented canonical projection |
 | `AudioFrame.state` | AudioFrame | worker | macro dynamic state: IDLE/HIGH/LOW/LOW_DROP/LOW_OVERLOAD | dashboard, renderer | Medium | Keep; improve tooltip and block-state docs |
 | `AudioFrame.eRatio` | AudioFrame | worker | block-level relative energy ratio | dashboard dynamics, dramaturgy | Medium | Keep; expose as `Block Energy Ratio` only in debug/advanced UI |
 | `BeatEvent.time` | Event | worker | accepted beat/impact timestamp | renderer event index | Low | Keep |
@@ -56,10 +56,10 @@ These are render-facing legacy compatibility projections. The dashboard now labe
 | `State.modulation.spectralChaos` | Modulation | visuals | brightness/fx/chaos animation signal | renderer | Medium | Keep; debug only |
 | `State.modulation.rhythmicImpulse` | Modulation | visuals | beat/cue impulse decay | renderer | Low | Keep |
 | `State.modulation.macroMomentum` | Modulation | visuals | long-form/block momentum | renderer | Medium | Keep; debug only |
-| Dashboard `Density` | UI | DashboardUI | displays `AudioFrame.b` | user-facing metrics | Low | Keep |
-| Dashboard `Melody Presence` | UI | DashboardUI | displays `AudioFrame.m` | user-facing metrics | Low | Keep |
+| Dashboard `Density` | UI | DashboardUI | displays `AudioFrame.densityProj` | user-facing metrics | Low | Keep |
+| Dashboard `Melody Presence` | UI | DashboardUI | displays `AudioFrame.melodyProj` | user-facing metrics | Low | Keep |
 | Dashboard `Vocal` | UI | DashboardUI | feature-frame vocal | user-facing metrics | Medium | Keep but mark as heuristic |
-| Dashboard `FX` | UI | DashboardUI | feature-frame fx | user-facing metrics | Medium | Keep; distinguish from `AudioFrame.t` projection |
+| Dashboard `FX` | UI | DashboardUI | feature-frame fx | user-facing metrics | Medium | Keep; distinguish from `AudioFrame.fxProj` projection |
 | Dashboard `Beat Impulse` | UI/render transient | visuals/UI | transient beat decay, not worker scalar | user-facing metrics | Low | Keep |
 | Dashboard `Dynamics State` | UI | worker/UI | state + eRatio | user-facing metrics | Low | Keep |
 
@@ -67,7 +67,7 @@ These are render-facing legacy compatibility projections. The dashboard now labe
 
 ### 1. Dashboard projection labels are fixed
 
-The dashboard now uses Density and Melody Presence for `AudioFrame.b/m`; the canonical FX card uses `VisualFeatureFrame.fx`, while `AudioFrame.t` stays internal to renderer/modulation compatibility.
+The dashboard now uses Density and Melody Presence for `AudioFrame.densityProj/m`; the canonical FX card uses `VisualFeatureFrame.fx`, while `AudioFrame.fxProj` stays internal to renderer/modulation compatibility.
 
 ### 2. Beat type labels are resolved
 
@@ -81,7 +81,7 @@ Preferred labels:
 
 ### 3. `AudioFrame` and `VisualFeatureFrame` overlap
 
-`AudioFrame.m/t` and `VisualFeatureFrame.melody/fx` are related but not identical in contract terms. Melody Presence is the dashboard-facing melody metric; `VisualFeatureFrame.melody` remains internal/canonical for track analysis, cues, modulation, and temporal rendering.
+`AudioFrame.melodyProj/fxProj` and `VisualFeatureFrame.melody/fx` are related but not identical in contract terms. Melody Presence is the dashboard-facing melody metric; `VisualFeatureFrame.melody` remains internal/canonical for track analysis, cues, modulation, and temporal rendering.
 
 Refactor direction:
 
@@ -107,7 +107,7 @@ The active dashboard labels, in source order, are Dynamics State, Energy, Densit
 Add tests for:
 
 - dashboard label mapping
-- `AudioFrame.b/m/t` semantic documentation
+- `AudioFrame.densityProj/melodyProj/fxProj` semantic documentation
 - `audioSensitivity` not mutating analyzer output
 - modulation values clamped to `0.0..1.0`
 - beat type labels not claiming instrument certainty

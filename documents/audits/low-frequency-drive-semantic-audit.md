@@ -1,4 +1,4 @@
-﻿# Low Frequency Drive Semantic Audit
+# Low Frequency Drive Semantic Audit
 
 This audit traces the migrated `State.modulation.densityDrive` signal and related modulation/tuning signals across runtime code, presets, UI wiring, documentation, and tests. Runtime behavior and formulas remain unchanged from the former low-frequency-named signal.
 
@@ -22,7 +22,7 @@ Formula:
 
 ```ts
 target.densityDrive = scaleUnit(
-    frame.b * 0.62 +
+    frame.densityProj * 0.62 +
     features.density * 0.24 +
     frame.e * 0.14,
     sensitivity
@@ -39,12 +39,12 @@ Actual inputs:
 
 | Input | Source | Weight | Actual meaning | Low-frequency involvement |
 |---|---:|---:|---|---|
-| `frame.b` | `AudioFrame.b` | `0.62` | Legacy compatibility field containing the smoothed density projection. It is not bass. | No direct low-frequency content. |
+| `frame.densityProj` | `AudioFrame.densityProj` | `0.62` | Legacy compatibility field containing the smoothed density projection. It is not bass. | No direct low-frequency content. |
 | `features.density` | `VisualFeatureFrame.density` | `0.24` | Canonical visual density feature, derived from the same smoothed spectral-flux density path. | No direct low-frequency content. |
 | `frame.e` | `AudioFrame.e` | `0.14` | Normalized RMS energy. | Broadband energy, not low-frequency-specific. |
 | `audioSensitivity` | `VisualTuningConfig.audioSensitivity` | multiplier | User tuning scalar. | None. |
 
-Conclusion: density is the dominant source. `frame.b` and `features.density` account for `0.86` of the weighted formula, and `frame.b` is explicitly documented as density projection, not bass. Low frequencies are not genuinely involved in the published modulation formula except indirectly through any effect that low-band-heavy music may have on broadband energy or spectral flux.
+Conclusion: density is the dominant source. `frame.densityProj` and `features.density` account for `0.86` of the weighted formula, and `frame.densityProj` is explicitly documented as density projection, not bass. Low frequencies are not genuinely involved in the published modulation formula except indirectly through any effect that low-band-heavy music may have on broadband energy or spectral flux.
 
 ## Runtime Meaning
 
@@ -61,8 +61,8 @@ Related modulation signals:
 | Signal | Formula source | Runtime meaning | Relationship to `densityDrive` |
 |---|---|---|---|
 | `kineticTension` | `features.vocal * 0.28 + features.melody * 0.22 + features.tension * 0.32 + cueDecay * 0.18`, then dramaturgy boost | Vocal/melody/tension/cue pressure for motion, glow, line weight, and temporal rings. | Orthogonal pressure signal; blended with `densityDrive` in Temporal particle movement/background. |
-| `densityDrive` | `frame.b * 0.62 + features.density * 0.24 + frame.e * 0.14` | Density/energy-driven visual fullness and motion drive. | Misnamed; density is dominant. |
-| `spectralChaos` | `frame.t * 0.42 + features.fx * 0.36 + features.brightness * 0.22` | FX/brightness/high-transient control signal. | Blended with `densityDrive` and `kineticTension` for Temporal particle movement. |
+| `densityDrive` | `frame.densityProj * 0.62 + features.density * 0.24 + frame.e * 0.14` | Density/energy-driven visual fullness and motion drive. | Misnamed; density is dominant. |
+| `spectralChaos` | `frame.fxProj * 0.42 + features.fx * 0.36 + features.brightness * 0.22` | FX/brightness/high-transient control signal. | Blended with `densityDrive` and `kineticTension` for Temporal particle movement. |
 | `rhythmicImpulse` | `max(beatDecay, cueDecay * 0.65)` | Beat/cue impulse decay. | Often layered with `densityDrive` for line alpha, nodes, rings, and particle impulse. |
 | `macroMomentum` | `frame.eRatio * 0.58 + frame.e * 0.24 + features.density * 0.18`, then buildup minimum | Block-relative energy and long-form momentum. | Used as particle speed/section fallback; related by energy/density inputs but not a duplicate. |
 
@@ -134,7 +134,7 @@ Backward compatibility issue:
 Reasons:
 
 1. The dominant input is density.
-2. `AudioFrame.b` no longer means bass. It is a legacy compatibility field containing a density projection.
+2. `AudioFrame.densityProj` no longer means bass. It is a canonical projection field containing a density projection.
 3. `features.density` is the second-largest input and is canonical density.
 4. `frame.e` is broadband normalized energy, not low-frequency energy.
 5. True low-frequency spectral-band data exists only as `BarAnalysis.bass` for timeline/tooltip contexts and is not consumed by `writeModulationBus()`.
@@ -203,7 +203,7 @@ Best fit.
 
 Justification:
 
-- Matches the dominant formula sources: `frame.b` density projection plus `features.density`.
+- Matches the dominant formula sources: `frame.densityProj` density projection plus `features.density`.
 - Aligns with existing dashboard terminology: Density.
 - Aligns with Temporal effect local semantics, where the signal is already assigned to `density`.
 - Keeps the useful `Drive` suffix for renderer-facing animation intent.

@@ -1,4 +1,4 @@
-﻿# Usage And Functional Acceptance Criteria V0.2
+# Usage And Functional Acceptance Criteria V0.2
 
 > **Current status:** This document describes the active TypeScript implementation. The `src/`, `public/visual-tuning-presets/`, and `tests/` directories are the implementation references.
 
@@ -22,7 +22,7 @@
 ## 3. Visual Reactions And Plexus Engine
 
 * **AC 3.1 - Center pull:** Up to 75 particles move continuously from the current energy and modulation state. If a particle moves beyond roughly 45% of the visible radius from center, its velocity is gently turned back toward center.
-* **AC 3.2 - Distance network:** Lines are drawn only between particles closer than the current threshold. That threshold expands with the render-facing `AudioFrame.b` density projection.
+* **AC 3.2 - Distance network:** Lines are drawn only between particles closer than the current threshold. That threshold expands with the render-facing `AudioFrame.densityProj` density projection.
 * **AC 3.3 - Whiteout protection:** A node may emit at most 6 lines and participate in at most 2 triangle fills. Base triangle alpha must not exceed 50 out of 255. Dense impact events may briefly raise triangle alpha, but the flash decays quickly to avoid persistent whiteout.
 * **AC 3.4 - Shockwaves:** Accepted beat events create expanding shockwaves from the center.
   * Type 1 (`default spectral-flux hit`): thick, medium-speed, blue-tinted shockwave.
@@ -35,7 +35,7 @@
 
 ## 4. Dashboard
 
-* **AC 4.1 - Realtime metrics:** During playback, dashboard metric cards show Dynamics State, Energy, Density, Melody Presence, Vocal, FX, and Beat Impulse in that order. `AudioFrame.b/m/t` remain legacy compatibility fields for density, melody-presence, and fx-presence projections; `AudioFrame.t` is not displayed as a separate metric card. Melody Presence is the dashboard-facing melody metric; `VisualFeatureFrame.melody` remains the internal canonical feature signal for track analysis, cues, modulation, and temporal rendering.
+* **AC 4.1 - Realtime metrics:** During playback, dashboard metric cards show Dynamics State, Energy, Density, Melody Presence, Vocal, FX, and Beat Impulse in that order. `AudioFrame.densityProj/melodyProj/fxProj` remain canonical projection fields for density, melody-presence, and fx-presence projections; `AudioFrame.fxProj` is not displayed as a separate metric card. Melody Presence is the dashboard-facing melody metric; `VisualFeatureFrame.melody` remains the internal canonical feature signal for track analysis, cues, modulation, and temporal rendering.
 * **AC 4.2 - Performance-conscious updates:** DOM text and bar widths update only every fourth render frame (`frameCount % 4 === 0`), keeping dashboard refresh near 15 FPS while playback renders at a higher cadence.
 * **AC 4.3 - BPM header badge:** After successful analysis, calculated BPM appears in the `#bpm-header-badge` next to the loaded audio file name. BPM is not part of the metrics grid.
 * **AC 4.4 - Responsive layout:** The tuning panel, metrics grid, and seekbar adapt to viewport width. The p5 canvas fills the window and resizes on `windowResized`.

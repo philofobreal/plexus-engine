@@ -1,4 +1,4 @@
-﻿# Dashboard Metrics Metadata
+# Dashboard Metrics Metadata
 
 This document designs a metadata and tooltip system for dashboard and dashboard-adjacent music metrics. It is design-only and does not implement UI code.
 
@@ -82,11 +82,11 @@ How busy or active the current audio texture is.
 
 ## Technical Meaning
 
-Dashboard label for `AudioFrame.b`, a legacy compatibility field containing the smoothed density projection. It is primarily derived from normalized spectral flux, not raw bass.
+Dashboard label for `AudioFrame.densityProj`, a canonical projection field containing the smoothed density projection. It is primarily derived from normalized spectral flux, not raw bass.
 
 ## Source
 
-`src/audio/analyzer.worker.ts` produces `AudioFrame.b` as `sDensity`; `PlexusRenderer` copies it into `State.currentFrame.b`; `DashboardUI` displays it.
+`src/audio/analyzer.worker.ts` produces `AudioFrame.densityProj` as `sDensity`; `PlexusRenderer` copies it into `State.currentFrame.densityProj`; `DashboardUI` displays it.
 
 ## Range
 
@@ -111,11 +111,11 @@ How strongly the current frame resembles pitched melodic material.
 
 ## Technical Meaning
 
-Dashboard label for `AudioFrame.m`, a legacy compatibility field containing the smoothed melody-presence projection. It combines tonal mid energy and pitched transient confidence.
+Dashboard label for `AudioFrame.melodyProj`, a canonical projection field containing the smoothed melody-presence projection. It combines tonal mid energy and pitched transient confidence.
 
 ## Source
 
-`src/audio/analyzer.worker.ts` produces `AudioFrame.m` as `sMelody`; `PlexusRenderer` copies it into `State.currentFrame.m`; `DashboardUI` displays it.
+`src/audio/analyzer.worker.ts` produces `AudioFrame.melodyProj` as `sMelody`; `PlexusRenderer` copies it into `State.currentFrame.melodyProj`; `DashboardUI` displays it.
 
 ## Range
 
@@ -169,7 +169,7 @@ How much noise, transient, or effects-like texture is present.
 
 ## Technical Meaning
 
-`VisualFeatureFrame.fx`, a smoothed FX/noise/transient feature. It shares the same core derivation as `AudioFrame.t`/FX Presence but is part of the canonical feature frame.
+`VisualFeatureFrame.fx`, a smoothed FX/noise/transient feature. It shares the same core derivation as `AudioFrame.fxProj`/FX Presence but is part of the canonical feature frame.
 
 ## Source
 
@@ -327,14 +327,14 @@ const metricMetadata: Record<string, MetricMetadata> = {
   density: {
     name: 'Density',
     description: 'How busy or active the current audio texture is.',
-    source: 'State.currentFrame.b',
+    source: 'State.currentFrame.densityProj',
     range: '0.0..1.0',
     tooltip: 'Smoothed density projection from spectral change.\nNot bass or low-band energy.'
   },
   melodyPresence: {
     name: 'Melody Presence',
     description: 'How strongly the current frame resembles pitched melodic material.',
-    source: 'State.currentFrame.m',
+    source: 'State.currentFrame.melodyProj',
     range: '0.0..1.0',
     tooltip: 'Pitched melodic presence estimate.\nNot raw mid band or note detection.'
   },
