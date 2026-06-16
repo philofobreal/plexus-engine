@@ -1,8 +1,28 @@
 import './style.css';
 import { AudioEngine } from './audio/AudioEngine';
+import { featureFlags } from './config/featureFlags';
 import { DashboardUI } from './ui/DashboardUI';
 import { startPlexusRenderer } from './visuals/PlexusRenderer';
 import { createDefaultStyleRegistry } from './visuals/StyleRegistry';
+
+const visualModeOptions = [
+    { value: 'classic', label: 'Classic' },
+    { value: 'temporal', label: 'Temporal' },
+    { value: 'dark-techno', label: 'Dark Techno' },
+    { value: 'organic-ambient', label: 'Organic Ambient' },
+    { value: 'cyberpunk', label: 'Cyberpunk' },
+    ...(featureFlags.heroEffect ? [{ value: 'hero', label: 'Hero' }] : [])
+];
+
+const generatorStrategyOptions = [
+    { value: 'dramaturgy', label: 'Dramaturgy' },
+    ...(featureFlags.heroEffect ? [{ value: 'hero', label: 'Hero Rhythm' }] : []),
+    { value: 'strict', label: 'Strict Alternating' }
+];
+
+function renderOptions(options: Array<{ value: string; label: string }>): string {
+    return options.map(option => `<option value="${option.value}">${option.label}</option>`).join('');
+}
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="canvas-container" tabindex="0" aria-label="Visual playback surface">
@@ -39,12 +59,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         
         <div class="select-wrapper">
           <select id="visual-mode" class="mode-select">
-            <option value="classic">Classic</option>
-            <option value="temporal">Temporal</option>
-            <option value="dark-techno">Dark Techno</option>
-            <option value="organic-ambient">Organic Ambient</option>
-            <option value="cyberpunk">Cyberpunk</option>
-            <option value="hero">Hero</option>
+            ${renderOptions(visualModeOptions)}
           </select>
         </div>
 
@@ -133,9 +148,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             <button id="clear-automation-btn" class="btn-icon-mini" title="Clear All Automation" aria-label="Clear all automation"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
             <div class="timeline-divider"></div>
             <select id="generator-strategy" class="timeline-select" aria-label="Generation Strategy">
-              <option value="dramaturgy">Dramaturgy</option>
-              <option value="hero">Hero Rhythm</option>
-              <option value="strict">Strict Alternating</option>
+              ${renderOptions(generatorStrategyOptions)}
             </select>
             <button id="generate-plan-btn" class="timeline-export-btn" style="color: #fff; border-color: #fff;">Generate</button>
             <div class="timeline-divider"></div>

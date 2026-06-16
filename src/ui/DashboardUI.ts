@@ -1,5 +1,6 @@
 import type { AudioEngine } from '../audio/AudioEngine';
 import { generatePerformancePlan, type GeneratorOptions } from '../automation/performancePlanGenerator';
+import { featureFlags } from '../config/featureFlags';
 import { normalizeVisualTuningConfig } from '../config/visualTuning';
 import { ExportCapabilityDetector } from '../export/ExportCapabilityDetector';
 import { WebMExporter, type ExportConfig } from '../export/WebMExporter';
@@ -263,6 +264,7 @@ export class DashboardUI {
                 },
                 onVisualModeChange: (mode) => {
                     if (isVisualMode(mode)) State.visualMode = mode;
+                    else (this.els.visualMode as HTMLSelectElement).value = State.visualMode;
                 },
             }
         );
@@ -481,7 +483,11 @@ export class DashboardUI {
     private buildGeneratorOptions(): GeneratorOptions {
         const raw = (this.els.generatorStrategy as HTMLSelectElement).value;
         const strategy: GeneratorOptions['strategy'] =
-            raw === 'hero' ? 'hero' : raw === 'strict' ? 'strict' : 'dramaturgy';
+            raw === 'hero' && featureFlags.heroEffect ? 'hero' : raw === 'strict' ? 'strict' : 'dramaturgy';
+        if (raw === 'hero' && !featureFlags.heroEffect) {
+            (this.els.generatorStrategy as HTMLSelectElement).value = 'dramaturgy';
+            this.els.strictGeneratorSettings.classList.add('is-hidden');
+        }
         return {
             strategy,
             presetMetadata: State.preloadedPresets as Record<string, any>,
@@ -2021,5 +2027,6 @@ export class DashboardUI {
 
 function isVisualMode(value: string): value is VisualMode {
     return value === 'classic' || value === 'temporal' || value === 'dark-techno'
-        || value === 'organic-ambient' || value === 'cyberpunk' || value === 'hero';
+        || value === 'organic-ambient' || value === 'cyberpunk'
+        || (featureFlags.heroEffect && value === 'hero');
 }

@@ -1,4 +1,5 @@
 import AnalyzerWorker from './analyzer.worker.ts?worker';
+import { featureFlags } from '../config/featureFlags';
 import { State } from '../state/store';
 import type { AnalysisWorkerMessage, TrackAnalysis, VisualFeatureFrame } from '../types';
 import { HeroMetronome } from './HeroMetronome';
@@ -190,7 +191,7 @@ export class AudioEngine {
         State.isPlaying = true;
         State.currentTime = this.playOffset;
         this.emitPositionChanged(this.playOffset);
-        this.syncMetronomeState(State.visualMode === 'hero', State.visualTuning.heroBeepMode, State.visualTuning.heroBeepVolume);
+        this.syncMetronomeState(featureFlags.heroEffect && State.visualMode === 'hero', State.visualTuning.heroBeepMode, State.visualTuning.heroBeepVolume);
         this.emitPlaybackState('play', this.playOffset);
     }
 

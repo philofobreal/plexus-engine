@@ -10,6 +10,7 @@ import type {
     TrackSectionLabel,
     VisualCueEvent
 } from '../types';
+import { featureFlags } from '../config/featureFlags';
 
 // ─── Constants & Configuration ────────────────────────────────────────────────
 
@@ -46,7 +47,9 @@ export async function generatePerformancePlan(
     duration: number,
     options: GeneratorOptions = { strategy: 'dramaturgy', presetMetadata: {}, strictPresets: [], strictBars: 8, strictMorph: 1.0 }
 ): Promise<PerformanceAutomationPlan> {
-    if (options.strategy === 'strict') {
+    const strategy = options.strategy === 'hero' && !featureFlags.heroEffect ? 'dramaturgy' : options.strategy;
+
+    if (strategy === 'strict') {
         return generateStrictPlan(trackAnalysis, duration, options);
     }
 
@@ -69,7 +72,7 @@ export async function generatePerformancePlan(
     const pass4Points = generatePass4MicroCues(trackAnalysis, presets, duration, options.presetMetadata);
     mergePoints(points, pass4Points, 2.0);
 
-    if (options.strategy === 'hero') {
+    if (strategy === 'hero') {
         await ensureHeroPresetsLoaded(presets, options.presetMetadata);
         remapPresetsForHero(trackAnalysis, points, presets, options.presetMetadata);
     }

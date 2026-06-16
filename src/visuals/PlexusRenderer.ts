@@ -2,6 +2,7 @@ import p5 from 'p5';
 import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
+import { featureFlags } from '../config/featureFlags';
 import { applyTuningMorph, tuneAudioValue, writeModulationBus } from '../config/visualTuning';
 import { P5RendererBackend } from './P5RendererBackend';
 import type { DashboardUI } from '../ui/DashboardUI';
@@ -126,7 +127,7 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
 
             const visualIdentity = styleRegistry.get(State.visualMode);
             visualIdentity.draw(backend, particles, shockwaves);
-            engine.syncMetronomeState(State.visualMode === 'hero', State.visualTuning.heroBeepMode, State.visualTuning.heroBeepVolume);
+            engine.syncMetronomeState(featureFlags.heroEffect && State.visualMode === 'hero', State.visualTuning.heroBeepMode, State.visualTuning.heroBeepVolume);
 
         };
 

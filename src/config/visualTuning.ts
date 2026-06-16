@@ -1,4 +1,5 @@
 import type { AudioFrame, ModulationState, VisualFeatureFrame, VisualTuningConfig } from '../types';
+import { featureFlags } from './featureFlags';
 
 export type VisualTuningKey = keyof VisualTuningConfig;
 
@@ -70,7 +71,7 @@ export const defaultVisualTuning: VisualTuningConfig = {
 
 export const visualTuningKeys = Object.keys(defaultVisualTuning) as VisualTuningKey[];
 
-export const visualTuningControls: VisualTuningControl[] = [
+const allVisualTuningControls: VisualTuningControl[] = [
     { key: 'audioSensitivity', label: 'Music sensitivity', group: 'Audio', min: 0.1, max: 4, step: 0.05, unit: 'x' },
     { key: 'transitionSpeed', label: 'Morph speed', group: 'Audio', min: 0.01, max: 1, step: 0.01, unit: 'x' },
     { key: 'dynamicsThreshold', label: 'Dynamics Threshold', group: 'Audio', min: 0.1, max: 0.9, step: 0.02 },
@@ -162,6 +163,10 @@ export const visualTuningControls: VisualTuningControl[] = [
         ]
     }
 ];
+
+export const visualTuningControls: VisualTuningControl[] = featureFlags.heroEffect
+    ? allVisualTuningControls
+    : allVisualTuningControls.filter(control => control.group !== 'Hero');
 
 export function cloneDefaultVisualTuning(): VisualTuningConfig {
     return { ...defaultVisualTuning };
