@@ -141,7 +141,7 @@ AudioFrame.densityProj
 source: worker spectral/context features
 meaning: smoothed density projection
 consumer: dashboard Density metric, renderer compatibility
-status: legacy projection, not canonical bass
+status: canonical render-facing density projection, not bass
 ```
 
 ## Duplication Rules
@@ -189,13 +189,11 @@ Production metrics should not show modulation-bus values unless the label clearl
 
 The following remain compatibility or audit areas:
 
-1. `AudioFrame.densityProj`
-2. `AudioFrame.melodyProj`
-3. `AudioFrame.fxProj`
-4. historical references to dashboard `Bass/Mid/Treble` labels in older docs or acceptance notes
-5. overlap between `AudioFrame.melodyProj/fxProj` and `VisualFeatureFrame.melody/fx`; Melody Presence is the dashboard-facing melody metric, while `VisualFeatureFrame.melody` remains internal/canonical
-6. use of `bass/mid/treble` inside `BarAnalysis`
-7. mapping from musical features into `State.modulation`
+1. historical references to dashboard `Bass/Mid/Treble` labels in older docs or acceptance notes
+2. overlap between `AudioFrame.melodyProj/fxProj` and `VisualFeatureFrame.melody/fx`; Melody Presence is the dashboard-facing melody metric, while `VisualFeatureFrame.melody` remains internal/canonical
+3. use of `bass/mid/treble` inside `BarAnalysis`, where the names still mean raw spectral-band ratios for timeline/debug context
+4. mapping from musical features into `State.modulation`
+5. future consumers of `State.videoDominantColor`, which is currently a sampled video-context signal and not a musical metric
 
 ## Refactor Rule
 

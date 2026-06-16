@@ -38,8 +38,8 @@ Internal ownership:
 
 - `FeatureExtractor` owns sample-window processing, Hann-windowed FFT execution, RMS, spectral flux, bass/mid/high band ratios, centroid, flatness, pitch-confidence arrays, and typical RMS/flux maxima.
 - `GridAligner` owns BPM estimation, beat length, bar length, strongest-hit anchoring, downbeat search, and `gridOffset`.
-- `SectionAnalyzer` owns bar-block aggregation, adaptive threshold calculation, `BarAnalysis` output, section splitting, section labels, section RMS fields, and dominant-feature selection.
-- `DramaturgyBuilder` owns beat-event selection, visual cue emission, significant musical moment candidates, and recurring `MusicPattern` grouping from deterministic section signatures.
+- `SectionAnalyzer` owns bar-block aggregation, adaptive threshold calculation, `BarAnalysis` output, section splitting, evidence-based section-label scoring, section RMS fields, and dominant-feature selection.
+- `DramaturgyBuilder` owns beat-event selection, visual cue emission, significant musical moment candidates, and recurring `MusicPattern` grouping from deterministic fuzzy section similarity.
 
 The worker must remain dependency-free from DOM, p5, `AudioEngine`, UI, renderer modules, and shared mutable runtime state. New analysis behavior should be added to the owning class above or to a similarly focused worker-internal class, not by growing the message handler.
 
@@ -85,7 +85,7 @@ When the playback path still needs the decoded `AudioBuffer`, the default implem
 
 For the same input samples, sample rate, and algorithm version, worker output must be deterministic. Avoid nondeterministic time, random values, shared mutable globals, and environment-dependent thresholds.
 
-When recurring temporal patterns are emitted, they must be derived from deterministic section signatures or other deterministic full-track features. Pattern ids must be stable for one accepted worker result and must be referenced by cue events through optional `patternId` fields.
+When recurring temporal patterns are emitted, they must be derived from deterministic full-track features. The current implementation groups sections by Euclidean distance over energy, density, and dominant-feature evidence rather than exact string signatures. Pattern ids must be stable for one accepted worker result and must be referenced by cue events through optional `patternId` fields.
 
 ## Termination And Errors
 

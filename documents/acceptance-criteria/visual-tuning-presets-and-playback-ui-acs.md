@@ -42,6 +42,7 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-3.10 Error visibility:** Failed manifest or preset loads may show an error state long enough to diagnose the problem.
 - **VT-3.11 Transient status scope:** Transient status text is allowed for copy feedback and preset-load failures when it is placed in an existing fixed-size or non-shifting status area and clears itself after a short timeout.
 - **VT-3.12 Visual mode compatibility:** Presets may include `visualMode`. Values matching a supported visual identity update `State.visualMode` and the `#visual-mode` select. Missing or unsupported values must not fail the preset load.
+- **VT-3.13 Semantic automation preset mapping:** Performance-plan generation must prefer metadata scoring from preloaded preset JSON over hard-coded preset filenames when `GeneratorOptions.presetMetadata` is available. Custom preset names are valid automation targets when their tuning or dramaturgy parameters match the target section profile.
 
 ## VT-4 Header And Metrics
 
@@ -72,6 +73,8 @@ This document captures the accepted behavior for the current visual tuning and p
 - **VT-6.6 Keyboard seek:** `ArrowLeft` and `ArrowRight` seek backward and forward by five seconds when the visual surface is the active element.
 - **VT-6.7 Focus scope:** Playback keyboard shortcuts must not hijack typing or control interaction outside the visual surface.
 - **VT-6.8 Fullscreen toggle:** The fullscreen control toggles the document between normal and fullscreen presentation using the browser Fullscreen API, including vendor-prefixed fallbacks where needed.
+- **VT-6.9 Reactive video rate:** With a loaded video backplate, normal playback may modulate muted video playback rate from `State.modulation.macroMomentum` and `State.modulation.rhythmicImpulse`, clamped to `0.5x..2.0x`. Export, pause, stop, and clear paths must keep or restore deterministic `1.0x` behavior.
+- **VT-6.10 Video color sampling:** The dashboard video path must sample the current video frame through a low-resolution offscreen canvas and write averaged RGB into `State.videoDominantColor` without full-resolution frame reads.
 
 ## VT-7 Looping
 

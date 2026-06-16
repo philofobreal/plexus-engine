@@ -47,7 +47,7 @@ A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus m
 2. **UI Layer (`src/ui/DashboardUI.ts`, `src/ui/controllers/`, `src/style.css`):** a `DashboardUI` mar facade/orchestrator szerepet tolt be, nem monolitikus DOM-binding osztaly. A konkret UI kotest a `PlaybackController`, `TuningController` es `ExportController` vegzi; ezek callbackeken keresztul delegalt szandekot adnak vissza a `DashboardUI`-nak.
 3. **Audio Engine (`src/audio/AudioEngine.ts`):** felelos a hangfajlok dekodolasaert, a `AudioBufferSourceNode` eletciklusert, a kanonikus idoszamitasert, a seek/end resetert, a worker request id kezelesert, a stale worker eredmenyek eldobasaert es a worker terminalasaert. A Hero metronomhoz negy szintetizalt beep stemet tart parhuzamosan szinkronban, es preset automatizalas alapjan sima gain crossfade-del valt koztuk.
 4. **Analysis Engine (`src/audio/analyzer.worker.ts`):** dedikalt Web Worker. Nem monolitikus `onmessage` algoritmus: a feldolgozas `FeatureExtractor`, `GridAligner`, `SectionAnalyzer` es `DramaturgyBuilder` osztalyokra van bontva. 1024 mintas Hann-windowed FFT pipeline-t hasznal, spektralis fluxust, relativ savenergiakat, centroidot es flatness erteket szamol, majd `AudioFrame`, `BeatEvent` es `TrackAnalysis` kimenetet publikal.
-5. **Shared contracts/state (`src/types/index.ts`, `src/state/store.ts`):** tarolja a megosztott tipusokat, az elfogadott analizis eredmenyeket, a vizualis modot, loop allapotot, aktualis frame-et, cue allapotokat, modulacios buszt, elo tuningot es target tuningot.
+5. **Shared contracts/state (`src/types/index.ts`, `src/state/store.ts`):** tarolja a megosztott tipusokat, az elfogadott analizis eredmenyeket, a vizualis modot, loop allapotot, aktualis frame-et, cue allapotokat, modulacios buszt, `videoDominantColor`-t, elo tuningot es target tuningot.
 6. **Render Engine (`src/visuals/`):** p5 canvas renderer backend adapterrel, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `StyleRegistry`-bol lekert `VisualIdentity` implementaciokat kezeli. A zene-dramaturgiai allapotszabalyozast a `VisualDirectorFSM.ts` modul vegzi, majd `DirectorOutput` formaban ad render-facing jeleket az identitasoknak.
 7. **Offline Export (`src/export/`):** a `WebMExporter` a fo szalon vezerli az offline idohurkot, a p5 canvas atmeretezeset, a `VideoFrame` elkapast, az audio buffer szeletelest es a vizjelkartyat. Ha video backplate aktiv, az export frame-enkent megkeresi az eredeti video megfelelo kepkockajat, azt hatterkent kompozitalja, erre rajzolja a p5 generativ reteget, majd legfelulre a metadata kartyat. Az `export.worker.ts` WebCodecs `VideoEncoder`/optionalis `AudioEncoder` hasznalataval es pure TypeScript EBML/WebM muxerrel allit elo Blob-ot. A fo szal szigoru hardver-encoder-sor alapu visszanyomast (backpressure) alkalmaz, es rendszeresen atveszi a vezerlest a bongeszoesemanyhurkoktol, hogy megelozze a felhasznaloi felulet lefagyasat es a memoriaosszeomlasat mobil eszkozokkel.
 
@@ -57,7 +57,7 @@ A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus m
 
 A zene vagy tamogatott video betoltesekor a rendszer nem azonnal inditja a lejatszast. Az `AudioEngine` dekodolja a fajl audio tartalmat, explicit masolatot keszit az elso csatorna sample adataibol, majd ezt az `ArrayBuffer`-t kuldi a workernek. A lejatszashoz szukseges `AudioBuffer` a main thread tulajdonaban marad, igy az analizis transfer nem tudja veletlenul detached allapotba tenni a playback adatot. Video fajloknal a UI dinamikus meretlimitet ervenyesit, mielott a fajl `arrayBuffer()`/`decodeAudioData()` utvonalra kerulne: mobilon 150 MB, desktopon 600 MB.
 
-Ha video fajl kerul betoltesre, a `DashboardUI` kezeli a muted `<video>` backplate elemet es az object URL eletciklust. A video play/pause/seek/stop allapotai az `AudioEngine` master clock esemenyeit kovetik; a video elem sajat hangja mindig muted, hogy ne keletkezzen echo a Web Audio lejatszas mellett. A p5 canvas hattere ilyenkor automatikusan transzparensre valt, hogy a video hatter lathato maradjon.
+Ha video fajl kerul betoltesre, a `DashboardUI` kezeli a muted `<video>` backplate elemet es az object URL eletciklust. A video play/pause/seek/stop allapotai tovabbra is az `AudioEngine` master clock esemenyeit kovetik, de lejatszas kozben a `DashboardUI` finoman modositja a `video.playbackRate` erteket a `State.modulation.macroMomentum` es `State.modulation.rhythmicImpulse` alapjan, `0.5x..2.0x` kozott. Export inditasakor, pause/stop es clear utvonalakon a sebesseg visszaall `1.0x`-re, es export alatt a sebessegmodulacio nem fut. A video elem sajat hangja mindig muted, hogy ne keletkezzen echo a Web Audio lejatszas mellett. A p5 canvas hattere ilyenkor automatikusan transzparensre valt, hogy a video hatter lathato maradjon. A `DashboardUI` egy 4x4-es offscreen canvasba ritkitva mintat vesz az aktualis video frame-bol, atlagolja az RGB csatornakat, es a `State.videoDominantColor` mezobe irja a renderelok szamara elokeszitett dominans szint.
 
 Uj track betoltesekor, hibaagakon es megszakitasnal az `AudioEngine.clearAnalysisState()` friss, deep copy-val allitja vissza a `State.trackAnalysis` ures allapotat:
 
@@ -107,7 +107,7 @@ A `LOW_DROP` igy tovabbra is worker/frame kompatibilitasi allapot marad, mig a v
 
 A worker a spektralis fluxus csucsai alapjan `BeatEvent` esemenyeket general. A `TrackAnalysis` ezen felul section struktura, `VisualFeatureFrame` sorozat, visual cue esemenyek, significant moments es recurring `MusicPattern` bejegyzesek forrasa.
 
-A pattern detektalas determinisztikus section signature-okbol tortenik. A pattern cue-k opcion ellenorizheto `patternId` mezovel hivatkoznak a megfelelo `MusicPattern` elemre.
+A pattern detektalas determinisztikus, de mar nem egzakt string-signature egyezesre epul. A `DramaturgyBuilder` minden eleg hosszu sectiont vektoros jellemzokkel hasonlit a mar letrejott pattern csoportok centroidjahoz: energia, density es dominans feature. Az euklideszi tavolsag `matchThreshold` alatt ugyanabba a zenei motivumba sorolja a sectiont, majd frissiti a csoport centroidjat. Ez stabilabban fogja ossze az ismetlodo refrent vagy dropot akkor is, ha a masodik elofordulas energiaszintje kisse elter. A pattern cue-k opcion ellenorizheto `patternId` mezovel hivatkoznak a megfelelo `MusicPattern` elemre.
 
 A dramaturgiai motor a density, tension, RMS energia es blokk energia iranyvaltozasabol `buildupConfidence` gorbet es `tensionTrends` segmentumokat szamol. A renderer ezt a gorbet a modulacios busz `kineticTension` komponensebe keveri, igy a rendszer a dropok es csucspontok elott finoman novelheti a vizualis feszultseget.
 
@@ -125,8 +125,8 @@ A worker belso felelossegei osztalyokra vannak bontva:
 
 * `FeatureExtractor`: Hann-windowed FFT, RMS, spectral flux, band ratio, centroid, flatness, pitch confidence es tipikus maximumok.
 * `GridAligner`: BPM becsles, beat/bar hossz, legerosebb tranziensek alapjan torteno anchor kereses es globalis `gridOffset`.
-* `SectionAnalyzer`: BPM-gridhez igazodott bar aggregacio, adaptive threshold, `BarAnalysis`, `TrackSection`, RMS mezok es dominans feature.
-* `DramaturgyBuilder`: `BeatEvent`, `VisualCueEvent`, significant moment es determinisztikus section signature alapu `MusicPattern` kimenetek.
+* `SectionAnalyzer`: BPM-gridhez igazodott bar aggregacio, adaptive threshold, `BarAnalysis`, `TrackSection`, RMS mezok, dominans feature es evidence-based szekciocimkezes. A label dontes minden celcimkere pontszamot szamol energia, elozo section energiaja, density, bass/density kontextus, tension es dominans feature alapjan; gyenge evidencia eseten `verse` fallbacket hasznal.
+* `DramaturgyBuilder`: `BeatEvent`, `VisualCueEvent`, significant moment es fuzzy, euklideszi tavolsaggal csoportositott `MusicPattern` kimenetek.
 
 Az `onmessage` handler ennek megfeleloen csak belepesi es orchestration pont: letrehozza az analizis osztalyokat, osszerakja a `TrackAnalysis` payloadot, es typed success/error uzenetet posztol vissza.
 
@@ -139,7 +139,7 @@ Az elfogadott render-facing kimenetek:
 * `AudioFrame.state`: `IDLE`, `HIGH`, `LOW`, `LOW_DROP` vagy `LOW_OVERLOAD`.
 * `AudioFrame.eRatio`: blokk-szintu energia arany.
 
-A UI-ban a legacy `Bass`, `Mid`, `Treble` cimkek tovabbra is lathatok, de ezek az aktualis `b/m/t` projekciokat jelenitik meg, nem nyers crossover savokat.
+A UI-ban a korabbi `Bass`, `Mid`, `Treble` dashboard narrativak megszuntek. A metrics grid `Density`, `Melody Presence`, `Vocal`, `FX`, `Beat Impulse` es `Dynamics State` cimkeket hasznal. A BarAnalysis `bass/mid/treble` mezoi tovabbra is nyers spektralis savaranyok, de ezek csak timeline/debug kontextusban jelennek meg, nem az `AudioFrame` projekciok nevei.
 
 ### 4.2. Plexus Halo Optimalizalas
 
@@ -150,6 +150,8 @@ Az effekt modulok `VisualRendererBackend` interfeszen keresztul rajzolnak. A p5-
 ### 4.2.1. Modulacios Busz Es Parameter Morphing
 
 `computeModulationBus()` az aktualis `AudioFrame`, `VisualFeatureFrame`, beat decay, cue decay es tuning alapjan ot normalizalt jelet allit elo: `kineticTension`, `densityDrive`, `spectralChaos`, `rhythmicImpulse`, `macroMomentum`. A keplet minden kimenetet `0.0..1.0` tartomanyba szorit es `audioSensitivity` alapjan skalaz.
+
+A performance plan generator preset valasztasa metadata-alapu. `GeneratorOptions.presetMetadata` a UI altal elore betoltott preset JSON tartalmat kapja (`State.preloadedPresets`), a `choosePreset()` pedig eloszor a tuning es dramaturgiai metadata alapjan rangsorol: peldaul drop/peak szekcioknal a magas `particleEnergySpeed`, `particleBeatSpeed`, `polygonFlash`, `fxChaos` es alacsony `dropDampening`; build szekcioknal a `buildupIntensity` es temporal mozgasi parameterek; break/intro szekcioknal a visszafogott energia es `breakRestraint` erositik a pontszamot. Ha nincs hasznalhato metadata, a regi nev-hint fallback tovabbra is biztonsagi halo.
 
 `State.visualTuning` az elo, interpolalt allapot. `State.targetTuning` a presetek es UI csuszkak celallapota. A render ciklus elejen az elo tuning a `transitionSpeed` szerint kozelit a celhoz, tulcsuszas nelkul.
 

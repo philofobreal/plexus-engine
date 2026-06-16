@@ -71,6 +71,13 @@ Keep visual event index synchronization event-driven. `PlexusRenderer` registers
 - **Preset Mode Compatibility:** Treat `visualMode` in performance presets as optional. Known style ids update both `State.visualMode` and the visual-mode select; missing or unknown ids are ignored for backward compatibility. Unknown registry lookup at render time falls back to `classic`.
 - **Deterministic Style Harness:** Add `tests/styles-deterministic.test.mjs` to run every built-in identity against five genre-specific mock track profiles without a browser or real p5 instance. The harness verifies no crashes and deterministic backend call counts across repeated 60-frame simulations.
 
+## Decisions Extended (2026-06-16)
+
+- **Evidence-Based Section Labels:** `SectionAnalyzer` assigns section labels through deterministic confidence scoring across all supported labels instead of a rigid threshold chain. Energy, previous-section energy, density, bass/density context, tension, dominant feature, and section position contribute weighted evidence; weak evidence falls back to `verse`.
+- **Fuzzy Pattern Recognition:** `DramaturgyBuilder` groups recurring musical patterns by Euclidean distance over energy, density, and dominant-feature evidence. Pattern grouping no longer requires exact string-signature equality, so repeated choruses or drops remain grouped when their later occurrence has small energy or density variation.
+- **Semantic Preset Mapping:** `PerformancePlanGenerator` scores preloaded preset metadata from `State.preloadedPresets` / `GeneratorOptions.presetMetadata` before using legacy filename hints. Drop/peak, build, break/intro, vocal, melody, and fx sections are matched against tuning and dramaturgy parameters such as `particleEnergySpeed`, `particleBeatSpeed`, `dropDampening`, `buildupIntensity`, `breakRestraint`, `vocalHighlight`, and `fxChaos`.
+- **Reactive Video Backplate:** The muted video backplate remains synchronized to the `AudioEngine` master clock, but normal playback may modulate `video.playbackRate` from `macroMomentum` and `rhythmicImpulse` in the `0.5x..2.0x` range. `DashboardUI` also samples a 4x4 offscreen canvas from the current video frame and publishes averaged RGB into `State.videoDominantColor`. Export mode skips playback-rate modulation.
+
 ## Consequences
 
 Positive:
@@ -102,7 +109,7 @@ Positive:
 Tradeoffs:
 
 - `index.json` must be updated when adding or removing preset files.
-- Preset names are file-name based; richer metadata would require extending the manifest or JSON schema.
+- Preset display names remain file-name based, but performance-plan preset selection is metadata-aware when preset JSON payloads are preloaded. Sparse or legacy metadata still falls back to name hints, so tests must cover both paths.
 - RGB background tuning is explicit and simple, but less compact than a color picker.
 - Auto-hide behavior is intentionally owned by the UI layer, so new top-level chrome must opt into the same CSS/DOM classes.
 - The timeline has coordinated UI interaction state (`scrubTime`, pan/seek/draw flags) plus shared viewport state (`State.zoom`, `State.pan`), so tests must guard both interaction semantics and state handoff to `TimelineCanvas`.

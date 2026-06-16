@@ -45,6 +45,8 @@ Implemented capabilities:
 
 Preset JSON can be stored either as the raw tuning object or under a `visualTuning` property. Invalid or unknown fields are ignored.
 
+Performance-plan preset assignment is semantic when preset metadata is available. `GeneratorOptions.presetMetadata` receives the preloaded JSON payloads from `State.preloadedPresets`, and the generator scores tuning/dramaturgy values such as `particleEnergySpeed`, `particleBeatSpeed`, `dropDampening`, `buildupIntensity`, `breakRestraint`, `vocalHighlight`, and `fxChaos` against the target section. File-name hints remain a fallback for sparse or legacy metadata, but custom preset names work when their parameter profile matches the section.
+
 ## Playback Controls
 
 The central visual surface now behaves as the primary playback target.
@@ -125,14 +127,20 @@ Implemented capabilities:
 - Hovering or focusing visible chrome keeps it visible.
 - The cursor is hidden while the chrome is in the idle-hidden state.
 
+## Reactive Video Backplate
+
+When a supported video file is loaded, `DashboardUI` owns a muted `<video>` backplate behind the p5 canvas. Normal play, pause, seek, stop, loop, and clear paths keep it synchronized to the `AudioEngine` master clock. During non-export playback, the video playback rate is modulated from `State.modulation.macroMomentum` and `State.modulation.rhythmicImpulse`, clamped to `0.5x..2.0x`; reset paths restore `1.0x`, and export mode skips playback-rate modulation.
+
+The same UI path samples the current video frame through a 4x4 offscreen canvas and writes averaged RGB values into `State.videoDominantColor`. This keeps future visual identities able to consume video color context without full-resolution frame reads in the dashboard loop.
+
 ## Implementation Notes
 
 The feature is split across these runtime layers:
 
 - `src/config/visualTuning.ts`: defaults, control metadata, preset normalization, audio-sensitivity helpers.
 - `src/types/index.ts`: persisted tuning and playback state contracts.
-- `src/state/store.ts`: shared runtime state for tuning, section sensitivity overrides, visual mode, playback loop mode, and chrome behavior.
-- `src/ui/DashboardUI.ts`: facade/orchestrator for preset loading, performance-plan handoff, metrics projection, timeline interaction state, `State` writes, `AudioEngine` handoff, and controller coordination. It coordinates the controller and timeline submodules instead of directly owning every DOM binding, raw gesture normalization, or canvas drawing path.
+- `src/state/store.ts`: shared runtime state for tuning, section sensitivity overrides, visual mode, playback loop mode, `videoDominantColor`, and chrome behavior.
+- `src/ui/DashboardUI.ts`: facade/orchestrator for preset loading, metadata-aware performance-plan handoff, reactive video backplate sampling/playback-rate modulation, metrics projection, timeline interaction state, `State` writes, `AudioEngine` handoff, and controller coordination. It coordinates the controller and timeline submodules instead of directly owning every DOM binding, raw gesture normalization, or canvas drawing path.
 - `src/ui/controllers/PlaybackController.ts`: focused playback DOM controller for upload, play/stop, center-surface playback, seekbar drag state, loop, fullscreen, canvas click/double-click, keyboard shortcuts, time labels, BPM badge, and playback enable/disable state.
 - `src/ui/controllers/TuningController.ts`: focused tuning DOM controller for metadata-driven tuning controls, preset selectors, visual mode selection, metrics toggle, copy feedback, and tuning-panel dragging.
 - `src/ui/controllers/ExportController.ts`: focused export DOM controller for export selectors, capability warnings, progress labels, stop/cancel controls, and active export UI state.
