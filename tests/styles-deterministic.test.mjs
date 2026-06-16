@@ -167,7 +167,7 @@ function createShockwaves(frame) {
 }
 
 function audioFrame(e, density, melody, fx, state) {
-  return { e, b: density, m: melody, t: fx, state, eRatio: e };
+  return { e, densityProj: density, melodyProj: melody, fxProj: fx, state, eRatio: e };
 }
 
 function visualFeatures(melody, vocal, fx, density, brightness, tension) {
@@ -379,9 +379,9 @@ function applyState(State, profile, frameIndex) {
   State.playbackFade = 1;
   State.rotationPhase = frameIndex;
   State.currentFrame.e = frame.e;
-  State.currentFrame.b = frame.b;
-  State.currentFrame.m = frame.m;
-  State.currentFrame.t = frame.t;
+  State.currentFrame.densityProj = frame.densityProj;
+  State.currentFrame.melodyProj = frame.melodyProj;
+  State.currentFrame.fxProj = frame.fxProj;
   State.currentFrame.state = frame.state;
   State.currentFrame.eRatio = frame.eRatio;
   State.currentFeatures.melody = features.melody;

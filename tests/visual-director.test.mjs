@@ -4,9 +4,9 @@ import { VisualDirectorFSM } from '../src/visuals/VisualDirectorFSM.ts';
 
 const baseFrame = {
   e: 0.7,
-  b: 0.4,
-  m: 0.3,
-  t: 0.2,
+  densityProj: 0.4,
+  melodyProj: 0.3,
+  fxProj: 0.2,
   state: 'HIGH',
   eRatio: 0.7
 };

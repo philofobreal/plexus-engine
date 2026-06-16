@@ -130,6 +130,64 @@ test('generatePerformancePlan falls back gracefully for empty or unmatched prese
   assert.deepEqual(unmatchedPresetPlan.points.map(point => point.preset), ['custom-a.json', 'custom-a.json', 'custom-a.json']);
 });
 
+test('generatePerformancePlan scores custom preset metadata instead of relying on file names', async () => {
+  const trackAnalysis = createTrackAnalysis([
+    createSection(0, 16, 'build', 'pattern', 0.65, 0.7),
+    createSection(16, 32, 'drop', 'impact', 0.95, 0.9),
+    createSection(32, 48, 'break', 'break', 0.2, 0.25)
+  ]);
+  const presets = ['quiet-room.json', 'my-epic-drop.json', 'slow-burn-builder.json'];
+  const options = {
+    strategy: 'dramaturgy',
+    strictPresets: [],
+    strictBars: 8,
+    strictMorph: 1,
+    presetMetadata: {
+      'quiet-room.json': {
+        visualTuning: {
+          particleEnergySpeed: 4,
+          particleBeatSpeed: 8,
+          shockwaveRadius: 0.2,
+          temporalRingAlpha: 2
+        },
+        dramaturgyProfile: {
+          breakRestraint: 1.8,
+          dropDampening: 1.4
+        }
+      },
+      'my-epic-drop.json': {
+        visualTuning: {
+          particleEnergySpeed: 72,
+          particleBeatSpeed: 150,
+          polygonFlash: 4,
+          shockwaveSpeed: 9
+        },
+        dramaturgyProfile: {
+          dropDampening: 0.2,
+          fxChaos: 1.8
+        }
+      },
+      'slow-burn-builder.json': {
+        visualTuning: {
+          particleEnergySpeed: 36,
+          temporalRingSpeed: 9,
+          temporalNetworkDistance: 6
+        },
+        dramaturgyProfile: {
+          buildupIntensity: 1.9,
+          dropDampening: 1
+        }
+      }
+    }
+  };
+
+  const plan = await generatePerformancePlan(trackAnalysis, presets, 48, options);
+
+  assert.equal(plan.points.find(point => point.reason === 'build')?.preset, 'slow-burn-builder.json');
+  assert.equal(plan.points.find(point => point.reason === 'drop')?.preset, 'my-epic-drop.json');
+  assert.equal(plan.points.find(point => point.reason === 'break')?.preset, 'quiet-room.json');
+});
+
 test('generatePerformancePlan anchors consecutive section boundaries deterministically', async () => {
   const trackAnalysis = createTrackAnalysis([
     createSection(0, 12, 'intro', 'melody'),

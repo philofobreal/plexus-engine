@@ -41,9 +41,9 @@ function createRisingAnalysisFrames(count) {
     });
     frames.push({
       e: normalized,
-      b: normalized,
-      m: ramp * 0.5,
-      t: ramp * 0.6,
+      densityProj: normalized,
+      melodyProj: ramp * 0.5,
+      fxProj: ramp * 0.6,
       state: ramp > 0.5 ? 'HIGH' : 'LOW',
       eRatio: ramp
     });

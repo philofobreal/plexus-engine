@@ -20,7 +20,7 @@ function loadVisualTuningModule() {
 
 test('modulation bus keeps all outputs in the normalized range', () => {
   const { computeModulationBus, defaultVisualTuning } = loadVisualTuningModule();
-  const frame = { e: 3, b: 2, m: 0.4, t: 1.8, state: 'HIGH', eRatio: 1.5 };
+  const frame = { e: 3, densityProj: 2, melodyProj: 0.4, fxProj: 1.8, state: 'HIGH', eRatio: 1.5 };
   const features = { melody: 1.4, vocal: 1.2, fx: 2, density: 1.7, brightness: 1.3, tension: 1.6 };
   const modulation = computeModulationBus(frame, features, 1.8, 1.5, { ...defaultVisualTuning, audioSensitivity: 3 });
 
@@ -32,7 +32,7 @@ test('modulation bus keeps all outputs in the normalized range', () => {
 
 test('audioSensitivity linearly scales modulation values until clamped', () => {
   const { computeModulationBus, defaultVisualTuning } = loadVisualTuningModule();
-  const frame = { e: 0.1, b: 0.1, m: 0.1, t: 0.1, state: 'HIGH', eRatio: 0.1 };
+  const frame = { e: 0.1, densityProj: 0.1, melodyProj: 0.1, fxProj: 0.1, state: 'HIGH', eRatio: 0.1 };
   const features = { melody: 0.1, vocal: 0.1, fx: 0.1, density: 0.1, brightness: 0.1, tension: 0.1 };
   const half = computeModulationBus(frame, features, 0.1, 0.1, { ...defaultVisualTuning, audioSensitivity: 0.5 });
   const normal = computeModulationBus(frame, features, 0.1, 0.1, { ...defaultVisualTuning, audioSensitivity: 1 });
@@ -46,7 +46,7 @@ test('audioSensitivity linearly scales modulation values until clamped', () => {
 
 test('writeModulationBus mutates and returns the caller-owned modulation object', () => {
   const { computeModulationBus, writeModulationBus, defaultVisualTuning } = loadVisualTuningModule();
-  const frame = { e: 0.7, b: 0.5, m: 0.25, t: 0.9, state: 'HIGH', eRatio: 1.1 };
+  const frame = { e: 0.7, densityProj: 0.5, melodyProj: 0.25, fxProj: 0.9, state: 'HIGH', eRatio: 1.1 };
   const features = { melody: 0.8, vocal: 0.4, fx: 0.7, density: 0.6, brightness: 0.9, tension: 0.5 };
   const target = {
     kineticTension: -1,

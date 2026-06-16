@@ -165,8 +165,10 @@ test('performance automation contracts and state are exposed and reset', () => {
   assert.match(types, /export type PerformanceAutomationReason = 'intro' \| 'verse' \| 'build' \| 'drop' \| 'break' \| 'peak' \| 'outro' \| 'harmonicShift' \| 'manual';/);
   assert.match(types, /export interface PerformanceAutomationPoint[\s\S]*id: string;[\s\S]*time: number;[\s\S]*sectionId: string;[\s\S]*preset: string;[\s\S]*confidence: number;[\s\S]*intensity: number;[\s\S]*reason: PerformanceAutomationReason;[\s\S]*morphDurationSec: number;[\s\S]*morphCurve: 'linear' \| 'easeInOut' \| 'exponential';[\s\S]*locked\?: boolean;/);
   assert.match(types, /export interface PerformanceAutomationPlan[\s\S]*version: 1;[\s\S]*source: 'auto' \| 'edited';[\s\S]*points: PerformanceAutomationPoint\[\];/);
-  assert.match(types, /export interface RenderState[\s\S]*performancePlan: PerformanceAutomationPlan \| null;/);
+  assert.match(types, /export interface VideoDominantColor[\s\S]*r: number;[\s\S]*g: number;[\s\S]*b: number;/);
+  assert.match(types, /export interface RenderState[\s\S]*performancePlan: PerformanceAutomationPlan \| null;[\s\S]*videoDominantColor: VideoDominantColor;/);
   assert.match(store, /availablePresets: \[\] as string\[\]/);
+  assert.match(store, /videoDominantColor: \{ \.\.\.emptyVideoDominantColor \} as VideoDominantColor/);
   assert.match(store, /performancePlan: null as PerformanceAutomationPlan \| null/);
   assert.match(store, /editedPerformancePlan: null as PerformanceAutomationPlan \| null/);
   assert.match(audio, /State\.performancePlan = null/);
@@ -177,6 +179,7 @@ test('performance automation contracts and state are exposed and reset', () => {
   assert.match(ui, /State\.performancePlan = plan/);
   assert.match(ui, /State\.editedPerformancePlan = JSON\.parse\(JSON\.stringify\(plan\)\)/);
   assert.match(ui, /performancePlan: State\.editedPerformancePlan \?\? State\.performancePlan/);
+  assert.match(ui, /videoDominantColor: State\.videoDominantColor/);
 });
 
 test('visual track analysis detects recurring temporal patterns', () => {
@@ -187,10 +190,12 @@ test('visual track analysis detects recurring temporal patterns', () => {
 
   assert.match(types, /export interface MusicPattern[\s\S]*occurrences: PatternOccurrence\[\];/);
   assert.match(types, /export type VisualCueKind = [\s\S]*'pattern'/);
-  assert.match(worker, /let patternGroups: Record<string,/);
-  assert.match(worker, /let sig = `\$\{section\.label\}:\$\{section\.dominantFeature\}:e\$\{Math\.floor\(section\.energy\*4\)\}:d\$\{Math\.floor\(section\.density\*4\)\}`/);
+  assert.match(worker, /private sectionPatternDistance\(section: TrackSection, group:/);
+  assert.match(worker, /const featureDelta = section\.dominantFeature === group\.dominantFeature \? 0 : 0\.36/);
+  assert.match(worker, /const matchThreshold = 0\.32/);
+  assert.match(worker, /let patternGroups: Array<\{/);
   assert.match(worker, /public musicPatterns: MusicPattern\[\]/);
-  assert.match(worker, /this\.musicPatterns = Object\.entries\(patternGroups\)/);
+  assert.match(worker, /this\.musicPatterns = patternGroups/);
   assert.match(renderer, /kind === 'pattern'/);
   assert.match(temporal, /function getPatternResonance\(time: number\)/);
 });
@@ -338,7 +343,7 @@ test('analysis worker uses spectral FFT features instead of legacy crossover fil
   assert.match(worker, /this\.centroidT\[i\] = sumMag > 0 \? \(sumFreqMag \/ sumMag\) \/ 512 : 0/);
   assert.match(worker, /this\.flatnessT\[i\] = sumMag > 0 \? Math\.exp\(sumLogMag \/ 511\) \/ \(sumMag \/ 511\) : 0/);
   assert.match(worker, /sFx \+= \(clamp01\(fxTarget\) - sFx\) \* 0\.15/);
-  assert.match(worker, /outFrames\[i\] = \{ e: sE, b: sDensity, m: sMelody, t: sFx, state: 'LOW', eRatio: sE \}/);
+  assert.match(worker, /outFrames\[i\] = \{ e: sE, densityProj: sDensity, melodyProj: sMelody, fxProj: sFx, state: 'LOW', eRatio: sE \}/);
   assert.doesNotMatch(worker, /a_bass/);
   assert.doesNotMatch(worker, /filterLow/);
   assert.doesNotMatch(worker, /filterMidHigh/);
@@ -361,7 +366,7 @@ test('spectral pivot and noise gate are encoded in analyzer output contract', ()
   assert.match(worker, /featureFrames\[i\]\.vocal = Math\.min\(maxCeiling, featureFrames\[i\]\.vocal \* \(1\.0 \+ compensation \* 1\.5 \* vocalGate\)\)/);
   assert.match(worker, /featureFrames\[i\]\.fx = Math\.min\(maxCeiling, featureFrames\[i\]\.fx \* \(1\.0 \+ compensation \* 2\.2 \* fxGate\)\)/);
   assert.match(worker, /spectralPivot\[i\] = Math\.min\(1\.0, compensation \* Math\.max\(melodyGate, vocalGate, fxGate, 0\.25\)\)/);
-  assert.match(worker, /else if \(sE <= 0\.04\)[\s\S]*featureFrames\[i\]\.melody = 0;[\s\S]*featureFrames\[i\]\.vocal = 0;[\s\S]*featureFrames\[i\]\.fx = 0;[\s\S]*featureFrames\[i\]\.tension = 0;[\s\S]*outFrames\[i\]\.m = 0;[\s\S]*outFrames\[i\]\.t = 0;[\s\S]*spectralPivot\[i\] = 0;/);
+  assert.match(worker, /else if \(sE <= 0\.04\)[\s\S]*featureFrames\[i\]\.melody = 0;[\s\S]*featureFrames\[i\]\.vocal = 0;[\s\S]*featureFrames\[i\]\.fx = 0;[\s\S]*featureFrames\[i\]\.tension = 0;[\s\S]*outFrames\[i\]\.melodyProj = 0;[\s\S]*outFrames\[i\]\.fxProj = 0;[\s\S]*spectralPivot\[i\] = 0;/);
   assert.match(timeline, /pivotVal > 0\.05/);
   assert.match(timeline, /rgba\(213, 84, 172, 0\.95\)/);
   assert.match(timeline, /ctx\.setLineDash\(\[1, 4\]\)/);
@@ -389,13 +394,14 @@ test('drop anticipation look-ahead dampens modulation and is shown on the timeli
   assert.match(timeline, /rgba\(213, 84, 172, 0\.18\)/);
 });
 
-test('AudioFrame documents legacy compatibility projections', () => {
+test('AudioFrame uses semantic projection field names', () => {
   const types = read('src/types/index.ts');
 
   assert.match(types, /export interface AudioFrame[\s\S]*Normalized RMS energy\.[\s\S]*e: number;/);
-  assert.match(types, /export interface AudioFrame[\s\S]*Legacy compatibility field: density projection, not bass\.[\s\S]*b: number;/);
-  assert.match(types, /export interface AudioFrame[\s\S]*Legacy compatibility field: melody-presence projection, not mid band\.[\s\S]*m: number;/);
-  assert.match(types, /export interface AudioFrame[\s\S]*Legacy compatibility field: FX-presence projection, not treble\.[\s\S]*t: number;/);
+  assert.match(types, /export interface AudioFrame[\s\S]*Smoothed spectral-flux density projection\.[\s\S]*densityProj: number;/);
+  assert.match(types, /export interface AudioFrame[\s\S]*Smoothed tonal melody-presence projection\.[\s\S]*melodyProj: number;/);
+  assert.match(types, /export interface AudioFrame[\s\S]*Smoothed FX\/noise\/transient projection\.[\s\S]*fxProj: number;/);
+  assert.doesNotMatch(types, /Legacy compatibility field: density projection, not bass/);
 });
 
 test('analysis worker produces deterministic spectral analysis payloads', () => {
@@ -428,9 +434,9 @@ test('analysis worker produces deterministic spectral analysis payloads', () => 
 
   for (const frame of first.frames) {
     assert.ok(frame.e >= 0 && frame.e <= 1);
-    assert.ok(frame.b >= 0 && frame.b <= 1);
-    assert.ok(frame.m >= 0 && frame.m <= 1);
-    assert.ok(frame.t >= 0 && frame.t <= 1);
+    assert.ok(frame.densityProj >= 0 && frame.densityProj <= 1);
+    assert.ok(frame.melodyProj >= 0 && frame.melodyProj <= 1);
+    assert.ok(frame.fxProj >= 0 && frame.fxProj <= 1);
   }
 
   for (const feature of first.trackAnalysis.features) {
