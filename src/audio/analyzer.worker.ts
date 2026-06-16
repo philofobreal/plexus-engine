@@ -345,6 +345,112 @@ class SectionAnalyzer {
         this.hopSize = hopSize;
     }
 
+    private scoreSectionLabel(input: {
+        avgEnergy: number;
+        previousEnergy: number;
+        avgDensity: number;
+        avgBass: number;
+        tension: number;
+        dominantFeature: VisualCueKind | 'rhythm';
+        isFirstSection: boolean;
+        isLastSection: boolean;
+    }): TrackSectionLabel {
+        const confidenceFloor = 0.28;
+        const energyRise = clampUnit(Math.max(0, input.avgEnergy - input.previousEnergy) * 2.5);
+        const energyFall = clampUnit(Math.max(0, input.previousEnergy - input.avgEnergy) * 2.5);
+        const afterLowEnergy = this.scoreBelow(input.previousEnergy, 0.42, 0.28);
+        const afterHighEnergy = this.scoreAbove(input.previousEnergy, 0.58, 0.28);
+        const firstSection = input.isFirstSection ? 1 : 0;
+        const lastSection = input.isLastSection ? 1 : 0;
+        const featureAffinity = (features: Array<VisualCueKind | 'rhythm'>) => features.includes(input.dominantFeature) ? 1 : 0;
+
+        // Tune these weights instead of adding rigid threshold branches. Each factor is already normalized to 0..1.
+        const scores: Record<TrackSectionLabel, number> = {
+            intro: this.weightedScore([
+                [this.scoreBelow(input.avgEnergy, 0.42, 0.30), 0.32],
+                [this.scoreBelow(input.avgDensity, 0.45, 0.30), 0.20],
+                [this.scoreBelow(input.avgBass, 0.38, 0.28), 0.14],
+                [firstSection, 0.22],
+                [featureAffinity(['melody', 'vocal', 'rhythm']), 0.12]
+            ]),
+            verse: this.weightedScore([
+                [this.scoreNear(input.avgEnergy, 0.46, 0.34), 0.32],
+                [this.scoreNear(input.avgDensity, 0.50, 0.36), 0.24],
+                [this.scoreBelow(input.tension, 0.65, 0.36), 0.16],
+                [featureAffinity(['vocal', 'melody', 'rhythm']), 0.18],
+                [this.scoreNear(energyRise, 0.50, 0.36), 0.10]
+            ]),
+            build: this.weightedScore([
+                [this.scoreAbove(input.tension, 0.46, 0.34), 0.34],
+                [this.scoreAbove(input.avgDensity, 0.48, 0.34), 0.18],
+                [this.scoreNear(input.avgEnergy, 0.55, 0.34), 0.18],
+                [energyRise, 0.18],
+                [this.scoreBelow(input.avgBass, 0.50, 0.32), 0.12]
+            ]),
+            drop: this.weightedScore([
+                [this.scoreAbove(input.avgEnergy, 0.50, 0.30), 0.30],
+                [this.scoreAbove(input.avgBass, 0.34, 0.26), 0.20],
+                [this.scoreAbove(input.avgDensity, 0.50, 0.32), 0.18],
+                [energyRise * afterLowEnergy, 0.22],
+                [featureAffinity(['rhythm', 'impact', 'fx']), 0.10]
+            ]),
+            break: this.weightedScore([
+                [this.scoreBelow(input.avgEnergy, 0.48, 0.32), 0.30],
+                [this.scoreBelow(input.avgBass, 0.36, 0.28), 0.18],
+                [this.scoreBelow(input.avgDensity, 0.46, 0.32), 0.18],
+                [energyFall * afterHighEnergy, 0.22],
+                [featureAffinity(['break', 'melody', 'vocal']), 0.12]
+            ]),
+            peak: this.weightedScore([
+                [this.scoreAbove(input.avgEnergy, 0.62, 0.24), 0.34],
+                [this.scoreAbove(input.avgBass, 0.42, 0.24), 0.18],
+                [this.scoreAbove(input.avgDensity, 0.62, 0.26), 0.20],
+                [this.scoreAbove(input.tension, 0.56, 0.30), 0.16],
+                [featureAffinity(['fx', 'impact', 'rhythm']), 0.12]
+            ]),
+            outro: this.weightedScore([
+                [this.scoreBelow(input.avgEnergy, 0.42, 0.30), 0.30],
+                [this.scoreBelow(input.avgDensity, 0.44, 0.30), 0.18],
+                [this.scoreBelow(input.avgBass, 0.36, 0.28), 0.14],
+                [lastSection, 0.26],
+                [energyFall, 0.12]
+            ])
+        };
+
+        let bestLabel: TrackSectionLabel = 'verse';
+        let bestScore = scores.verse;
+        for (const label of ['intro', 'verse', 'build', 'drop', 'break', 'peak', 'outro'] as TrackSectionLabel[]) {
+            if (scores[label] > bestScore) {
+                bestLabel = label;
+                bestScore = scores[label];
+            }
+        }
+
+        return bestScore >= confidenceFloor ? bestLabel : 'verse';
+    }
+
+    private weightedScore(factors: Array<[number, number]>): number {
+        let weightedSum = 0;
+        let totalWeight = 0;
+        for (const [value, weight] of factors) {
+            weightedSum += clampUnit(value) * weight;
+            totalWeight += weight;
+        }
+        return totalWeight > 0 ? clampUnit(weightedSum / totalWeight) : 0;
+    }
+
+    private scoreAbove(value: number, knee: number, width: number): number {
+        return clampUnit((value - knee) / Math.max(width, 0.001));
+    }
+
+    private scoreBelow(value: number, knee: number, width: number): number {
+        return clampUnit((knee - value) / Math.max(width, 0.001));
+    }
+
+    private scoreNear(value: number, target: number, width: number): number {
+        return clampUnit(1 - Math.abs(value - target) / Math.max(width, 0.001));
+    }
+
     public calculate(visualFeatures: VisualFeatureFrame[]): void {
         const { totalFrames, rmsT, rawBassT, rawMidT, rawHighT, typRms } = this.features;
         const totalDuration = totalFrames * this.hopSize / this.sampleRate;
@@ -450,15 +556,19 @@ class SectionAnalyzer {
                 let avgBass = sumBass / lengthBars;
 
                 let tension = averageFeature(startIdx, endIdx, f => f.tension);
-
-                // FIXED LABELING WITH NO DEAD ZONES
-                let label: TrackSectionLabel = 'verse';
-                if (this.trackSections.length === 0 && avgEnergy < 0.4) label = 'intro';
-                else if (isLastBar && avgEnergy < 0.4) label = 'outro';
-                else if (avgEnergy >= 0.60 && avgBass >= 0.45) label = 'peak';
-                else if (avgEnergy >= 0.50 && avgBass >= 0.35) label = 'drop'; // Contiguous threshold
-                else if (avgEnergy < 0.45 && avgBass < 0.35) label = 'break';  // Eliminates dead zones
-                else if (tension > 0.50 && avgBass < 0.45) label = 'build';
+                let avgDensity = averageFeature(startIdx, endIdx, f => f.density);
+                let sectionDominantFeature = dominantFeature(startIdx, endIdx);
+                let previousEnergy = this.trackSections.length > 0 ? this.trackSections[this.trackSections.length - 1].energy : avgEnergy;
+                let label = this.scoreSectionLabel({
+                    avgEnergy,
+                    previousEnergy,
+                    avgDensity,
+                    avgBass,
+                    tension,
+                    dominantFeature: sectionDominantFeature,
+                    isFirstSection: this.trackSections.length === 0,
+                    isLastSection: isLastBar
+                });
 
                 let rms = {
                     avgRms: clamp01(avgEnergy),
@@ -470,8 +580,8 @@ class SectionAnalyzer {
                     end: endBar.endIdx * this.hopSize / this.sampleRate,
                     label,
                     energy: avgEnergy,
-                    density: averageFeature(startIdx, endIdx, f => f.density),
-                    dominantFeature: dominantFeature(startIdx, endIdx),
+                    density: avgDensity,
+                    dominantFeature: sectionDominantFeature,
                     avgRms: rms.avgRms,
                     peakRms: rms.peakRms
                 });
@@ -544,20 +654,65 @@ class DramaturgyBuilder {
         }
     }
 
+    private sectionPatternDistance(section: TrackSection, group: { centroidEnergy: number; centroidDensity: number; dominantFeature: VisualCueKind | 'rhythm' }): number {
+        const energyDelta = section.energy - group.centroidEnergy;
+        const densityDelta = section.density - group.centroidDensity;
+        const featureDelta = section.dominantFeature === group.dominantFeature ? 0 : 0.36;
+        return Math.sqrt(energyDelta * energyDelta + densityDelta * densityDelta + featureDelta * featureDelta);
+    }
+
+    private patternSignature(group: { sections: TrackSection[]; dominantFeature: VisualCueKind | 'rhythm'; centroidEnergy: number; centroidDensity: number }): string {
+        const label = group.sections[0]?.label || 'verse';
+        const energyBucket = Math.round(group.centroidEnergy * 10);
+        const densityBucket = Math.round(group.centroidDensity * 10);
+        return `${label}:${group.dominantFeature}:e${energyBucket}:d${densityBucket}`;
+    }
+
     private buildPatterns(): void {
-        let patternGroups: Record<string, { sections: TrackSection[], indexes: number[] }> = {};
+        const matchThreshold = 0.32;
+        let patternGroups: Array<{
+            sections: TrackSection[];
+            indexes: number[];
+            centroidEnergy: number;
+            centroidDensity: number;
+            dominantFeature: VisualCueKind | 'rhythm';
+        }> = [];
+
         for (let i = 0; i < this.segmenter.trackSections.length; i++) {
             let section = this.segmenter.trackSections[i];
             if (section.end - section.start < this.grid.secondsPerBar) continue;
-            let sig = `${section.label}:${section.dominantFeature}:e${Math.floor(section.energy*4)}:d${Math.floor(section.density*4)}`;
-            patternGroups[sig] = patternGroups[sig] || { sections: [], indexes: [] };
-            patternGroups[sig].sections.push(section);
-            patternGroups[sig].indexes.push(i);
+
+            let bestGroup: typeof patternGroups[number] | null = null;
+            let bestDistance = Infinity;
+            for (const group of patternGroups) {
+                const distance = this.sectionPatternDistance(section, group);
+                if (distance < bestDistance) {
+                    bestGroup = group;
+                    bestDistance = distance;
+                }
+            }
+
+            if (!bestGroup || bestDistance > matchThreshold) {
+                patternGroups.push({
+                    sections: [section],
+                    indexes: [i],
+                    centroidEnergy: section.energy,
+                    centroidDensity: section.density,
+                    dominantFeature: section.dominantFeature
+                });
+                continue;
+            }
+
+            bestGroup.sections.push(section);
+            bestGroup.indexes.push(i);
+            const count = bestGroup.sections.length;
+            bestGroup.centroidEnergy += (section.energy - bestGroup.centroidEnergy) / count;
+            bestGroup.centroidDensity += (section.density - bestGroup.centroidDensity) / count;
         }
 
-        this.musicPatterns = Object.entries(patternGroups)
-            .filter(([, group]) => group.sections.length >= 2)
-            .map(([signature, group], patternIdx) => {
+        this.musicPatterns = patternGroups
+            .filter(group => group.sections.length >= 2)
+            .map((group, patternIdx) => {
                 let occurrences: PatternOccurrence[] = group.sections.map((section, occurrenceIdx) => ({
                     start: section.start, end: section.end,
                     intensity: Math.min(1, Math.max(0, section.energy)),
@@ -566,7 +721,7 @@ class DramaturgyBuilder {
                 let averageEnergy = group.sections.reduce((sum, section) => sum + section.energy, 0) / group.sections.length;
                 let averageDensity = group.sections.reduce((sum, section) => sum + section.density, 0) / group.sections.length;
                 return {
-                    id: `pattern-${patternIdx}`, signature, label: group.sections[0].label,
+                    id: `pattern-${patternIdx}`, signature: this.patternSignature(group), label: group.sections[0].label,
                     dominantFeature: group.sections[0].dominantFeature, occurrences, averageEnergy, averageDensity
                 };
             });
@@ -606,7 +761,7 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
             sTension += (clamp01(sDensity * 0.5 + sBrightness * 0.5) - sTension) * 0.05;
 
             visualFeatures[i] = { melody: sMelody, vocal: sMelody * 0.8, fx: sFx, density: sDensity, brightness: sBrightness, tension: sTension };
-            outFrames[i] = { e: sE, b: sDensity, m: sMelody, t: sFx, state: 'LOW', eRatio: sE };
+            outFrames[i] = { e: sE, densityProj: sDensity, melodyProj: sMelody, fxProj: sFx, state: 'LOW', eRatio: sE };
         }
 
         const segmenter = new SectionAnalyzer(features, grid, sampleRate, hopSize);
@@ -642,11 +797,11 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
                 if (vocalGate > 0) featureFrames[i].vocal = Math.min(maxCeiling, featureFrames[i].vocal * (1.0 + compensation * 1.5 * vocalGate));
                 if (fxGate > 0) featureFrames[i].fx = Math.min(maxCeiling, featureFrames[i].fx * (1.0 + compensation * 2.2 * fxGate));
                 featureFrames[i].tension = Math.min(maxCeiling, featureFrames[i].tension * (1.0 + compensation * 1.2));
-                outFrames[i].m = featureFrames[i].melody;
+                outFrames[i].melodyProj = featureFrames[i].melody;
                 spectralPivot[i] = Math.min(1.0, compensation * Math.max(melodyGate, vocalGate, fxGate, 0.25));
             } else if (sE <= 0.04) {
                 featureFrames[i].melody = 0; featureFrames[i].vocal = 0; featureFrames[i].fx = 0; featureFrames[i].tension = 0;
-                outFrames[i].m = 0; outFrames[i].t = 0; spectralPivot[i] = 0;
+                outFrames[i].melodyProj = 0; outFrames[i].fxProj = 0; spectralPivot[i] = 0;
             }
         }
 
