@@ -5,7 +5,7 @@
 ## 1. Audio And Playback
 
 * **AC 1.1 - File loading:** The user can load `.mp3`, `.wav`, and other browser-supported audio files with the `Load` control. The same control also accepts browser-supported video containers such as `.mp4`, `.webm`, `.ogg/.ogv`, `.mov`, and `.mkv` when the browser can decode their audio track.
-* **AC 1.2 - Loading lock:** When a file is selected, playback stops, `Play` and seek controls are disabled, and the status text reports decoding and analysis progress.
+* **AC 1.2 - Loading lock and telemetry:** When a file is selected, playback stops, `Play` and seek controls are disabled, upload is temporarily disabled, and `#media-loader-overlay` becomes visible. The overlay text and `#media-loader-bar` must update from `AudioEngine.onProgress(progress, stage)`: native decode reports `Decoding audio...`, and worker FFT analysis reports `analysis_progress` telemetry through `Analyzing music...`. The progress bar must use real decode/worker progress values, not a fake elapsed-time estimate.
 * **AC 1.3 - End state and loop:** When playback reaches the end threshold (`duration - 0.1s`), `Loop` mode restarts playback from `0:00`. In `Once` mode, playback stops, the seekbar returns to `0`, visual transient state (`beatDecay`, `denseImpactFlash`, cue state, event indexes) resets, and the UI returns to its idle playback state.
 * **AC 1.4 - Seek and scrub buffering:** Dragging the seekbar or dramaturgy timeline updates the visible time and playhead immediately, but the audio engine does not receive repeated `seek()` calls. The UI stores the target in `scrubTime` and commits one final `AudioEngine.seek()` when the pointer or touch interaction ends.
 * **AC 1.5 - Decode failure UI:** If selected audio cannot be decoded, playback and seek remain disabled, file selection is re-enabled, and the dashboard shows a file-load error instead of entering a partially playable state.
@@ -13,6 +13,7 @@
 * **AC 1.7 - Video backplate lifecycle:** When a valid video file is loaded, the UI creates a managed muted `<video>` element behind the p5 canvas. The video element is synced to the `AudioEngine` master clock for play, pause, seek, stop, and loop transitions. Its audio remains muted because playback audio comes from Web Audio. Object URLs are revoked on replacement, reset, or failure.
 * **AC 1.8 - Reactive video backplate:** During normal playback with a video backplate, `DashboardUI` may modulate `video.playbackRate` from `State.modulation.macroMomentum` and `State.modulation.rhythmicImpulse`, clamped to `0.5x..2.0x`. Pause, stop, clear, and export-start paths reset playback rate to `1.0x`; export mode must not run playback-rate modulation.
 * **AC 1.9 - Video dominant color state:** When video frame data is available, the UI samples the muted backplate through a low-resolution offscreen canvas and publishes averaged RGB values to `State.videoDominantColor`. Sampling must not perform full-resolution frame reads.
+* **AC 1.10 - App boot loader minimum visibility:** On initial application boot, `#app-loader` remains visible until both app initialization has completed and at least `800ms` have elapsed from `bootStart`. The loader then fades out and is removed after its CSS transition. Fast initialization must not expose an unstyled or partially initialized UI flash.
 
 ## 2. Macro Dynamics State
 

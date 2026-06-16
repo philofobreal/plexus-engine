@@ -9,9 +9,9 @@ The maintained app is a Vite + TypeScript project, not a single-file HTML protot
 1. **Composition:** `src/main.ts` builds the DOM shell and wires subsystem instances.
 2. **Audio orchestration:** `src/audio/AudioEngine.ts` owns decode, source-node lifecycle, playback timing, seek/end reset, worker request ids, stale-result rejection, and worker termination.
 3. **Offline analysis:** `src/audio/analyzer.worker.ts` owns deterministic DSP analysis only and communicates through typed worker messages.
-4. **Shared contracts:** `src/types/index.ts` defines audio frames, beat events, visual track analysis, analysis requests, success messages, and error messages.
+4. **Shared contracts:** `src/types/index.ts` defines audio frames, beat events, visual track analysis, analysis requests, success messages, progress messages, and error messages.
 5. **Shared runtime state:** `src/state/store.ts` stores accepted analysis results, visual feature state, the abstract modulation bus, live visual tuning, target visual tuning, and render-facing state.
-6. **UI facade:** `src/ui/DashboardUI.ts` is now a coordinator rather than a monolithic DOM binding class. It owns cross-cutting UI orchestration, timeline interaction state, dashboard projection, preset/performance-plan handoff, and calls into `AudioEngine`, shared `State`, timeline modules, and export workflows.
+6. **UI facade:** `src/ui/DashboardUI.ts` is now a coordinator rather than a monolithic DOM binding class. It owns cross-cutting UI orchestration, timeline interaction state, dashboard projection, preset/performance-plan handoff, media-loader progress handoff, and calls into `AudioEngine`, shared `State`, timeline modules, and export workflows.
 7. **UI controllers:** `src/ui/controllers/PlaybackController.ts`, `src/ui/controllers/TuningController.ts`, and `src/ui/controllers/ExportController.ts` own their specific DOM element bindings, input listeners, enable/disable state, labels, and small UI state. They delegate intent back to `DashboardUI` through callback interfaces; they do not own audio playback, analysis, preset normalization, or export encoding.
 8. **Visual rendering:** `src/visuals/` owns p5 rendering, particle lifecycle, shockwave lifecycle, beat-event consumption, visual cue consumption, visual identity registration, and effect-mode delegation. `PlexusRenderer.ts` adapts p5 through `P5RendererBackend` and delegates drawing to the current `VisualIdentity` from `StyleRegistry`. Built-in identities draw through `VisualRendererBackend`.
 9. **Visual director:** `src/visuals/VisualDirectorFSM.ts` is the deep state-control module for render-time music dramaturgy. It owns dynamic thresholds, LOW-state dampening, drop anticipation, buildup boost, glitch decay, hysteresis, and transition cooldown behavior.
@@ -45,7 +45,22 @@ The accepted worker failure payload is:
 }
 ```
 
-`requestId` is required so stale worker results cannot overwrite newer loads. `hopSize` is part of the runtime contract because render synchronization derives frame indexes from playback time, sample rate, and hop size.
+The worker may also emit non-terminal progress telemetry while the FFT pass is running:
+
+```ts
+{
+  type: 'analysis_progress',
+  requestId: number,
+  progress: number,
+  stage: string
+}
+```
+
+`progress` is normalized `0.0..1.0` inside the analyzer worker. The current `FeatureExtractor.process()` reports only when progress has advanced by at least `0.02`, so the main thread receives bounded progress updates during heavy FFT work instead of a single terminal result. `stage` is currently posted as `Analyzing music...`.
+
+`requestId` is required so stale worker results cannot overwrite newer loads. `AudioEngine.loadFile()` checks the id before accepting progress, success, or error messages. `hopSize` is part of the runtime contract because render synchronization derives frame indexes from playback time, sample rate, and hop size.
+
+`AudioEngine` exposes the telemetry to UI code through `onProgress(progress, stage)`. Native decode reports `0.1` with `Decoding audio...`; worker progress is mapped into the `0.2..1.0` range with `0.2 + workerProgress * 0.8`. `DashboardUI` assigns this callback and delegates visual projection to `PlaybackController.updateProgress()`, which updates `#media-loader-text` and the width of `#media-loader-bar`. The progress bar therefore reflects decode plus real worker telemetry for audio and supported video loads; it is not driven by an estimated timer.
 
 `trackAnalysis` is the offline visual-music layer. It contains bar-level dynamics, section-level structure, recurring temporal patterns, visual cue events, significant moments, per-frame feature vectors for melody, vocal, fx, density, brightness, and tension, plus dramaturgical `buildupConfidence`, `spectralPivot`, and `tensionTrends`. `VisualFeatureFrame.melody` remains the internal/canonical melody feature signal for track analysis, cues, modulation, and temporal rendering; the dashboard-facing melody metric is Melody Presence from the canonical `AudioFrame.melodyProj` projection. Effects should read these precomputed values from shared state during playback instead of running analysis in the render loop.
 
@@ -131,7 +146,9 @@ Mode selection belongs to UI projection. `src/main.ts` exposes all five style id
 
 ## Visual Tuning And Playback UI
 
-The active implementation includes a metadata-driven visual tuning panel, JSON preset loading and copy export, surface-level playback controls, fullscreen presentation mode, OBS-oriented presentation URL mode, loop/once playback, responsive metrics, and idle-hiding UI chrome. The old monolithic `DashboardUI` surface has been split into a facade plus focused controllers: `PlaybackController` owns file/play/seek/loop/fullscreen/surface-key bindings, `TuningController` owns tuning controls, preset selectors, visual mode selection, metrics toggle, copy feedback, and tuning-panel dragging, and `ExportController` owns export capability projection, export selectors, progress labels, stop/cancel buttons, and active export UI state. `DashboardUI` remains the coordinator that translates controller callbacks into `AudioEngine`, `State`, preset, timeline, and exporter operations. A single visual-surface click pins or unpins the chrome after the double-click detection window, while double-click remains the play/pause gesture. Unpinning through that intentional background click uses a fast `400ms` hide delay; ordinary inactivity, hover leave, and focus-out paths continue to use the standard `2600ms` delay.
+The active implementation includes a metadata-driven visual tuning panel, JSON preset loading and copy export, surface-level playback controls, fullscreen presentation mode, OBS-oriented presentation URL mode, loop/once playback, responsive metrics, media-load progress overlay, and idle-hiding UI chrome. The old monolithic `DashboardUI` surface has been split into a facade plus focused controllers: `PlaybackController` owns file/play/seek/loop/fullscreen/surface-key bindings, media-loader visibility/progress projection, `TuningController` owns tuning controls, preset selectors, visual mode selection, metrics toggle, copy feedback, and tuning-panel dragging, and `ExportController` owns export capability projection, export selectors, progress labels, stop/cancel buttons, and active export UI state. `DashboardUI` remains the coordinator that translates controller callbacks into `AudioEngine`, `State`, preset, timeline, and exporter operations. A single visual-surface click pins or unpins the chrome after the double-click detection window, while double-click remains the play/pause gesture. Unpinning through that intentional background click uses a fast `400ms` hide delay; ordinary inactivity, hover leave, and focus-out paths continue to use the standard `2600ms` delay.
+
+Application boot uses a separate `#app-loader` overlay for FOUC protection. `src/main.ts` captures `bootStart` before composing the DOM shell, then waits for both renderer initialization and a minimum-delay promise. The delay promise uses `Math.max(0, 800 - (Date.now() - bootStart))`, so the loader remains visible for at least `800ms` from boot start even when JavaScript initialization completes faster. After `Promise.all([appReadyPromise, minDelayPromise])`, the loader receives `.fade-out` and is removed on `transitionend`.
 
 For stream output, `chromaKeyMode` selects normal, green, or transparent background clearing. `performanceMode` disables radial-gradient glow work and chroma-key modes also skip those expensive glow paths. Expensive radial glow also requires `State.isPlaying`, so paused and idle views keep their static visual state without rebuilding radial gradients. `PlexusRenderer` lowers the p5 frame-rate target by playback state: playing runs at `60 FPS`, paused with a loaded track runs at `30 FPS`, and no-audio idle runs at `15 FPS`. The frame-rate call is issued only when the target changes, and this policy does not alter audio playback or offline analysis behavior. `?presentation=true` sets `State.uiVisible` to `false` and hides the UI chrome automatically.
 
