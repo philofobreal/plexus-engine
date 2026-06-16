@@ -28,6 +28,8 @@ const SECTION_INTENSITY: Record<TrackSectionLabel | 'default', number> = {
     default: 1.0
 };
 
+type PresetMetadata = Record<string, any>;
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export interface GeneratorOptions {
@@ -52,19 +54,19 @@ export async function generatePerformancePlan(
     const points: PerformanceAutomationPoint[] = [];
 
     // Pass 1: MACRO STRUCTURE (Absolute Anchors).
-    const pass1Points = generatePass1SectionAnchors(trackAnalysis, presets, duration);
+    const pass1Points = generatePass1SectionAnchors(trackAnalysis, presets, duration, options.presetMetadata);
     mergePoints(points, pass1Points, 0);
 
     // Pass 2: DRAMATURGY (Tension & Buildups)
-    const pass2Points = generatePass2Dramaturgy(trackAnalysis, presets, duration);
+    const pass2Points = generatePass2Dramaturgy(trackAnalysis, presets, duration, options.presetMetadata);
     mergePoints(points, pass2Points, makeDynamicGap(duration, 'build'));
 
     // Pass 3: PATTERNS (Recurring motifs)
-    const pass3Points = generatePass3Patterns(trackAnalysis, presets, duration);
+    const pass3Points = generatePass3Patterns(trackAnalysis, presets, duration, options.presetMetadata);
     mergePoints(points, pass3Points, makeDynamicGap(duration, 'build'));
 
     // Pass 4: MICRO-CUES (Impacts, FX)
-    const pass4Points = generatePass4MicroCues(trackAnalysis, presets, duration);
+    const pass4Points = generatePass4MicroCues(trackAnalysis, presets, duration, options.presetMetadata);
     mergePoints(points, pass4Points, 2.0);
 
     if (options.strategy === 'hero') {
@@ -211,7 +213,8 @@ function finalizePlan(points: PerformanceAutomationPoint[]): PerformanceAutomati
 function generatePass1SectionAnchors(
     trackAnalysis: TrackAnalysis,
     presets: string[],
-    duration: number
+    duration: number,
+    presetMetadata: PresetMetadata
 ): PerformanceAutomationPoint[] {
     const points: PerformanceAutomationPoint[] = [];
 
@@ -220,13 +223,13 @@ function generatePass1SectionAnchors(
 
         // STRICT VJ RULE: Every single section gets an anchor point.
         const time = clampTime(section.start, duration);
-        points.push(createPoint(section, i, time, presets, duration, 100.0));
+        points.push(createPoint(section, i, time, presets, duration, presetMetadata, 100.0));
 
         if (section.end - section.start > LONG_SECTION_SEC) {
             const cues = getSignificantCuesInSection(trackAnalysis, section);
             for (let ci = 0; ci < cues.length; ci++) {
                 const cueTime = clampTime(snapToNearestBeat(cues[ci].time, trackAnalysis.bars), duration);
-                points.push(createCuePoint(section, i, { ...cues[ci], time: cueTime }, ci, presets, duration));
+                points.push(createCuePoint(section, i, { ...cues[ci], time: cueTime }, ci, presets, duration, presetMetadata));
             }
         }
     }
@@ -239,7 +242,8 @@ function generatePass1SectionAnchors(
 function generatePass2Dramaturgy(
     trackAnalysis: TrackAnalysis,
     presets: string[],
-    duration: number
+    duration: number,
+    presetMetadata: PresetMetadata
 ): PerformanceAutomationPoint[] {
     const points: PerformanceAutomationPoint[] = [];
     const { tensionTrends, buildupConfidence, sections } = trackAnalysis;
@@ -255,7 +259,7 @@ function generatePass2Dramaturgy(
             if (!section || section.label === 'break' || section.label === 'intro' || section.label === 'outro') continue;
 
             const si = sections.indexOf(section);
-            const point = createPoint(section, si, peakTime, presets, duration, scoreTensionPeak(curr));
+            const point = createPoint(section, si, peakTime, presets, duration, presetMetadata, scoreTensionPeak(curr));
             point.reason = 'harmonicShift';
             points.push(point);
         }
@@ -279,7 +283,7 @@ function generatePass2Dramaturgy(
             
             if (section) {
                 const si = sections.indexOf(section);
-                const point = createPoint(section, si, peakTime, presets, duration, 0.8);
+                const point = createPoint(section, si, peakTime, presets, duration, presetMetadata, 0.8);
                 point.reason = 'build';
                 points.push(point);
             }
@@ -294,7 +298,8 @@ function generatePass2Dramaturgy(
 function generatePass3Patterns(
     trackAnalysis: TrackAnalysis,
     presets: string[],
-    duration: number
+    duration: number,
+    presetMetadata: PresetMetadata
 ): PerformanceAutomationPoint[] {
     const points: PerformanceAutomationPoint[] = [];
     const patternPresetMap = new Map<string, string>();
@@ -303,8 +308,11 @@ function generatePass3Patterns(
         if (pattern.occurrences.length < PATTERN_MIN_OCCURRENCES) continue;
 
         if (!patternPresetMap.has(pattern.id)) {
+            const representativeSection = getSectionAt(trackAnalysis.sections, pattern.occurrences[0]?.start ?? 0);
             const hint = getPatternPresetHint(pattern);
-            patternPresetMap.set(pattern.id, findPreset(presets, [hint]) ?? getFallbackPreset(presets));
+            patternPresetMap.set(pattern.id, representativeSection
+                ? choosePreset(representativeSection, presets, presetMetadata)
+                : findPreset(presets, [hint]) ?? getFallbackPreset(presets));
         }
         const preset = patternPresetMap.get(pattern.id)!;
 
@@ -337,7 +345,8 @@ function generatePass3Patterns(
 function generatePass4MicroCues(
     trackAnalysis: TrackAnalysis,
     presets: string[],
-    duration: number
+    duration: number,
+    presetMetadata: PresetMetadata
 ): PerformanceAutomationPoint[] {
     const points: PerformanceAutomationPoint[] = [];
     const cues = trackAnalysis.significantMoments.length > 0 
@@ -355,7 +364,7 @@ function generatePass4MicroCues(
 
         const si = trackAnalysis.sections.indexOf(section);
         const profile = getMorphProfile(section);
-        const preset = choosePreset(section, presets);
+        const preset = choosePreset(section, presets, presetMetadata);
 
         points.push({
             id: `micro-${normalizeIdPart(cue.kind)}-${formatTimeForId(cueTime)}`,
@@ -409,14 +418,14 @@ function getSignificantCuesInSection(trackAnalysis: TrackAnalysis, section: Trac
 
 // ─── Point Factories ───────────────────────────────────────────────────────────
 
-function createPoint(section: TrackSection, sectionIndex: number, time: number, presets: string[], duration: number, score = 0): PerformanceAutomationPoint {
+function createPoint(section: TrackSection, sectionIndex: number, time: number, presets: string[], duration: number, presetMetadata: PresetMetadata, score = 0): PerformanceAutomationPoint {
     void duration;
     const profile = getMorphProfile(section);
     const point = {
         id: `performance-${sectionIndex}-${normalizeIdPart(section.label)}-${formatTimeForId(time)}`,
         time: time,
         sectionId: getSectionId(section, sectionIndex),
-        preset: choosePreset(section, presets),
+        preset: choosePreset(section, presets, presetMetadata),
         confidence: clamp01(Math.max(0.5, (section.energy + section.density) * 0.5)),
         intensity: computeIntensity(section),
         reason: getAutomationReason(section),
@@ -427,8 +436,8 @@ function createPoint(section: TrackSection, sectionIndex: number, time: number, 
     return point;
 }
 
-function createCuePoint(section: TrackSection, sectionIndex: number, cue: VisualCueEvent, cueIndex: number, presets: string[], duration: number): PerformanceAutomationPoint {
-    const point = createPoint(section, sectionIndex, cue.time, presets, duration, 5.0);
+function createCuePoint(section: TrackSection, sectionIndex: number, cue: VisualCueEvent, cueIndex: number, presets: string[], duration: number, presetMetadata: PresetMetadata): PerformanceAutomationPoint {
+    const point = createPoint(section, sectionIndex, cue.time, presets, duration, presetMetadata, 5.0);
     return {
         ...point,
         id: `performance-${sectionIndex}-${normalizeIdPart(cue.kind)}-cue-${cueIndex}-${formatTimeForId(point.time)}`,
@@ -445,7 +454,13 @@ function computeIntensity(section: TrackSection): number {
     return clamp(base * (0.7 + energyScale * 0.3), 0.3, 3.0);
 }
 
-function choosePreset(section: TrackSection, availablePresets: string[]): string {
+function choosePreset(section: TrackSection, availablePresets: string[], presetMetadata: PresetMetadata = {}): string {
+    const metadataRanked = getDominantFeaturePresetHints(section, availablePresets, presetMetadata);
+    if (metadataRanked.length > 0) return metadataRanked[0];
+    return choosePresetByLegacyHints(section, availablePresets);
+}
+
+function choosePresetByLegacyHints(section: TrackSection, availablePresets: string[]): string {
     const fallback = getFallbackPreset(availablePresets);
     switch (section.label) {
         case 'intro': case 'outro': return findPreset(availablePresets, ['default', 'temporal2']) ?? fallback;
@@ -453,7 +468,7 @@ function choosePreset(section: TrackSection, availablePresets: string[]): string
         case 'drop': return findPreset(availablePresets, ['temporal3', 'temporal4']) ?? fallback;
         case 'break': return findPreset(availablePresets, ['temporal5']) ?? fallback;
         case 'peak': return findPreset(availablePresets, ['temporal4']) ?? fallback;
-        default: return findPreset(availablePresets, getDominantFeaturePresetHints(section)) ?? fallback;
+        default: return findPreset(availablePresets, getLegacyDominantFeaturePresetHints(section)) ?? fallback;
     }
 }
 
@@ -463,11 +478,82 @@ function getPatternPresetHint(pattern: MusicPattern): string {
     return 'temporal1';
 }
 
-function getDominantFeaturePresetHints(section: TrackSection): string[] {
+function getDominantFeaturePresetHints(section: TrackSection, availablePresets: string[], presetMetadata: PresetMetadata): string[] {
+    return availablePresets
+        .map((preset, index) => ({ preset, index, score: scorePresetForSection(section, presetMetadata[preset]) }))
+        .filter(candidate => candidate.score !== null)
+        .sort((a, b) => b.score! - a.score! || a.index - b.index)
+        .map(candidate => candidate.preset);
+}
+
+function getLegacyDominantFeaturePresetHints(section: TrackSection): string[] {
     if (['melody', 'vocal'].includes(section.dominantFeature)) return ['temporal2', 'default'];
     if (['fx', 'impact'].includes(section.dominantFeature)) return ['temporal3', 'temporal4'];
     if (section.dominantFeature === 'break') return ['temporal5'];
     return ['default'];
+}
+
+function scorePresetForSection(section: TrackSection, metadata: any): number | null {
+    if (!metadata || typeof metadata !== 'object') return null;
+    const tuning = (metadata.visualTuning && typeof metadata.visualTuning === 'object') ? metadata.visualTuning : metadata;
+    const dramaturgy = (metadata.dramaturgyProfile && typeof metadata.dramaturgyProfile === 'object') ? metadata.dramaturgyProfile : {};
+    let score = 0;
+    let weight = 0;
+
+    const add = (value: unknown, max: number, factorWeight: number, transform: (normalized: number) => number = normalized => normalized) => {
+        if (typeof value !== 'number' || !Number.isFinite(value)) return;
+        score += clamp01(transform(clamp01(value / max))) * factorWeight;
+        weight += factorWeight;
+    };
+    const addDrama = (key: string, factorWeight: number, transform?: (normalized: number) => number) => add(dramaturgy[key], 2, factorWeight, transform);
+    const addTuning = (key: string, max: number, factorWeight: number, transform?: (normalized: number) => number) => add(tuning[key], max, factorWeight, transform);
+
+    if (section.label === 'drop' || section.label === 'peak') {
+        addTuning('particleEnergySpeed', 80, section.label === 'peak' ? 0.30 : 0.28);
+        addTuning('particleBeatSpeed', 180, 0.18);
+        addTuning('polygonFlash', 5, 0.12);
+        addTuning('temporalRingSpeed', 12, section.label === 'peak' ? 0.16 : 0.10);
+        addDrama('dropDampening', section.label === 'peak' ? 0.12 : 0.20, normalized => 1 - normalized);
+        addDrama('fxChaos', section.label === 'peak' ? 0.12 : 0.10);
+    } else if (section.label === 'build') {
+        addDrama('buildupIntensity', 0.32);
+        addTuning('temporalRingSpeed', 12, 0.18);
+        addTuning('temporalNetworkDistance', 8, 0.14);
+        addTuning('particleEnergySpeed', 80, 0.16);
+        addDrama('dropDampening', 0.10);
+    } else if (section.label === 'break') {
+        addDrama('breakRestraint', 0.32);
+        addTuning('particleEnergySpeed', 80, 0.18, normalized => 1 - normalized);
+        addTuning('particleBeatSpeed', 180, 0.16, normalized => 1 - normalized);
+        addTuning('temporalRingAlpha', 5, 0.12);
+        addTuning('shockwaveRadius', 12, 0.10, normalized => 1 - normalized);
+    } else if (section.label === 'intro' || section.label === 'outro') {
+        addTuning('particleEnergySpeed', 80, 0.24, normalized => 1 - normalized);
+        addTuning('particleBeatSpeed', 180, 0.18, normalized => 1 - normalized);
+        addTuning('polygonFlash', 5, 0.12, normalized => 1 - normalized);
+        addDrama('breakRestraint', 0.14);
+        addDrama('vocalHighlight', 0.10);
+    } else {
+        addTuning('particleEnergySpeed', 80, 0.16, normalized => 1 - Math.abs(normalized - 0.45) / 0.45);
+        addTuning('temporalRingAlpha', 5, 0.14);
+        addDrama('vocalHighlight', 0.16);
+        addDrama('breakRestraint', 0.08);
+    }
+
+    if (['melody', 'vocal'].includes(section.dominantFeature)) {
+        addDrama('vocalHighlight', section.dominantFeature === 'vocal' ? 0.22 : 0.16);
+        addTuning('lineAlpha', 5, 0.08);
+        addTuning('temporalRingAlpha', 5, 0.08);
+    } else if (['fx', 'impact'].includes(section.dominantFeature)) {
+        addDrama('fxChaos', 0.22);
+        addTuning('polygonFlash', 5, 0.10);
+        addTuning('shockwaveSpeed', 12, 0.08);
+    } else if (section.dominantFeature === 'break') {
+        addDrama('breakRestraint', 0.18);
+        addTuning('particleEnergySpeed', 80, 0.08, normalized => 1 - normalized);
+    }
+
+    return weight > 0 ? score / weight : null;
 }
 
 function findPreset(availablePresets: string[], hints: string[]): string | null {
