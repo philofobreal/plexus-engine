@@ -138,7 +138,7 @@ class FeatureExtractor {
         this.pitchConfidenceT = new Float32Array(this.totalFrames);
     }
 
-    public process(): void {
+    public process(onProgress?: (p: number) => void): void {
         const N = this.hopSize;
         const cosTable = new Float32Array(N / 2);
         const sinTable = new Float32Array(N / 2);
@@ -155,6 +155,7 @@ class FeatureExtractor {
         const re = new Float32Array(N);
         const im = new Float32Array(N);
         const prevMag = new Float32Array(N / 2);
+        let lastReportedProgress = -1;
         const processFFT = () => {
             let j = 0;
             for (let i = 0; i < N - 1; i++) {
@@ -218,6 +219,14 @@ class FeatureExtractor {
             this.centroidT[i] = sumMag > 0 ? (sumFreqMag / sumMag) / 512 : 0;
             this.flatnessT[i] = sumMag > 0 ? Math.exp(sumLogMag / 511) / (sumMag / 511) : 0;
             this.pitchConfidenceT[i] = Math.min(1, Math.max(0, 1 - this.flatnessT[i]));
+
+            if (onProgress && this.totalFrames > 0) {
+                const p = (i + 1) / this.totalFrames;
+                if (p - lastReportedProgress >= 0.02) {
+                    onProgress(p);
+                    lastReportedProgress = p;
+                }
+            }
         }
 
         const getTypicalMax = (arr: Float32Array) => {
@@ -738,7 +747,9 @@ self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
         const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
         const features = new FeatureExtractor(channel, sampleRate, hopSize);
-        features.process();
+        features.process((p) => {
+            self.postMessage({ type: 'analysis_progress', requestId, progress: p, stage: 'Analyzing music...' });
+        });
 
         const grid = new GridAligner(features, sampleRate, hopSize);
         grid.calculate();

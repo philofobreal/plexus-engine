@@ -1,3 +1,147 @@
+/* ─── MEDIA LOADER OVERLAY ─────────────────────────────────── */
+.media-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 3, 8, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+#media-loader-overlay.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  display: flex !important;
+}
+
+.media-loader-box {
+  background: rgba(8, 5, 14, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 22px 28px;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.media-loader-text {
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.65);
+  text-align: center;
+}
+
+.media-loader-track {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.media-loader-bar {
+  height: 100%;
+  width: 0%;
+  background: #00e5ff;
+  border-radius: 3px;
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.5);
+  transition: width 0.1s linear;
+}
+/* ─────────────────────────────────────────────────────────── */
+
+/* ─── APP BOOT LOADER ──────────────────────────────────────── */
+#app-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #050308;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.6s ease;
+}
+
+#app-loader.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.loader-logo {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loader-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #00e5ff;
+  box-shadow: 0 0 12px #00e5ff, 0 0 28px rgba(0, 229, 255, 0.35);
+}
+
+.loader-pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid #00e5ff;
+  animation: loader-pulse 1.6s ease-out infinite;
+}
+
+@keyframes loader-pulse {
+  0%   { transform: scale(0.55); opacity: 1; }
+  100% { transform: scale(1.9);  opacity: 0; }
+}
+
+.loader-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.loader-progress {
+  width: 160px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.loader-progress-bar {
+  height: 100%;
+  width: 55%;
+  background: #00e5ff;
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.55);
+  animation: loader-slide 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes loader-slide {
+  0%   { transform: translateX(-110%); }
+  100% { transform: translateX(295%);  }
+}
+/* ─────────────────────────────────────────────────────────── */
+
 :root {
   /* Színpaletta */
   --accent: #00e5ff;

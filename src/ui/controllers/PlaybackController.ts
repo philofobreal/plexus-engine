@@ -31,6 +31,9 @@ type PlaybackEls = {
     timeCur: HTMLElement;
     timeTot: HTMLElement;
     bpmHeaderBadge: HTMLElement;
+    mediaLoaderOverlay: HTMLElement;
+    mediaLoaderText: HTMLElement;
+    mediaLoaderBar: HTMLElement;
 };
 
 export class PlaybackController {
@@ -98,9 +101,18 @@ export class PlaybackController {
         this.els.timeCur.innerText = '0:00';
         this.els.timeTot.innerText = '0:00';
         this.els.bpmHeaderBadge.style.display = 'none';
+        this.els.mediaLoaderBar.style.width = '0%';
+        this.els.mediaLoaderText.innerText = 'Loading...';
+        this.els.mediaLoaderOverlay.classList.remove('is-hidden');
+    }
+
+    updateProgress(progress: number, stage: string): void {
+        this.els.mediaLoaderText.innerText = stage;
+        this.els.mediaLoaderBar.style.width = (progress * 100) + '%';
     }
 
     onAnalysisComplete(duration: number, bpm: number, fileName: string): void {
+        this.els.mediaLoaderOverlay.classList.add('is-hidden');
         if (bpm > 0) {
             this.els.bpmHeaderBadge.innerText = bpm + ' BPM';
             this.els.bpmHeaderBadge.style.display = 'inline-flex';
@@ -115,6 +127,7 @@ export class PlaybackController {
     }
 
     onError(message: string): void {
+        this.els.mediaLoaderOverlay.classList.add('is-hidden');
         this.els.status.innerText = message;
         (this.els.playBtn as HTMLButtonElement).disabled = true;
         (this.els.centerPlayBtn as HTMLButtonElement).disabled = true;

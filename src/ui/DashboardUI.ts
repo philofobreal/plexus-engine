@@ -145,7 +145,10 @@ export class DashboardUI {
             valBeat: document.getElementById('val-beat')!,
             barBeat: document.getElementById('bar-beat')!,
             valDyn: document.getElementById('val-dyn')!,
-            barDyn: document.getElementById('bar-dyn')!
+            barDyn: document.getElementById('bar-dyn')!,
+            mediaLoaderOverlay: document.getElementById('media-loader-overlay')!,
+            mediaLoaderText: document.getElementById('media-loader-text')!,
+            mediaLoaderBar: document.getElementById('media-loader-bar')!,
         };
         this.videoElement = document.getElementById('video-backplate') as HTMLVideoElement;
         this.videoElement.muted = true;
@@ -170,6 +173,10 @@ export class DashboardUI {
         this.engine.addPlaybackStateListener((event, time) => {
             this.syncVideoPlayback(event, time);
         });
+
+        this.engine.onProgress = (progress, stage) => {
+            this.playbackCtrl.updateProgress(progress, stage);
+        };
 
         this.engine.onAnalysisError = (message) => {
             this.clearVideoBackplate();
@@ -208,6 +215,9 @@ export class DashboardUI {
                 timeCur: this.els.timeCur,
                 timeTot: this.els.timeTot,
                 bpmHeaderBadge: this.els.bpmHeaderBadge,
+                mediaLoaderOverlay: this.els.mediaLoaderOverlay,
+                mediaLoaderText: this.els.mediaLoaderText,
+                mediaLoaderBar: this.els.mediaLoaderBar,
             },
             {
                 onFileSelected: (file) => { void this.handleFileSelected(file); },

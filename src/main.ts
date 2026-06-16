@@ -1,4 +1,6 @@
 import './style.css';
+
+const bootStart = Date.now();
 import { AudioEngine } from './audio/AudioEngine';
 import { featureFlags } from './config/featureFlags';
 import { DashboardUI } from './ui/DashboardUI';
@@ -32,6 +34,15 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <button id="center-play-btn" class="center-play-btn" disabled aria-label="Play">
     <svg viewBox="0 0 24 24" class="play-icon" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
   </button>
+
+  <div id="media-loader-overlay" class="media-loader is-hidden">
+    <div class="media-loader-box">
+      <div id="media-loader-text" class="media-loader-text">Loading...</div>
+      <div class="media-loader-track">
+        <div id="media-loader-bar" class="media-loader-bar"></div>
+      </div>
+    </div>
+  </div>
 
   <div class="ui-wrapper" id="ui-layer">
     <div class="top-row">
@@ -221,4 +232,20 @@ const engine = new AudioEngine();
 const ui = new DashboardUI(engine);
 const styleRegistry = createDefaultStyleRegistry();
 
-startPlexusRenderer('canvas-container', ui, engine, styleRegistry);
+const appReadyPromise = new Promise<void>(resolve => {
+  startPlexusRenderer('canvas-container', ui, engine, styleRegistry);
+  resolve();
+});
+
+const minDelayPromise = new Promise<void>(resolve => {
+  const remaining = Math.max(0, 800 - (Date.now() - bootStart));
+  setTimeout(resolve, remaining);
+});
+
+Promise.all([appReadyPromise, minDelayPromise]).then(() => {
+  const loader = document.getElementById('app-loader');
+  if (loader) {
+    loader.classList.add('fade-out');
+    loader.addEventListener('transitionend', () => loader.remove(), { once: true });
+  }
+});

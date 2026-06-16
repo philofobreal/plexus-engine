@@ -38,6 +38,7 @@ export class AudioEngine {
 
     public onAnalysisComplete?: () => void;
     public onAnalysisError?: (message: string) => void;
+    public onProgress?: (progress: number, stage: string) => void;
     public onPlaybackEnded?: () => void;
     private playbackEndedListeners: Array<() => void> = [];
     private positionChangedListeners: Array<(time: number) => void> = [];
@@ -108,6 +109,8 @@ export class AudioEngine {
             State.duration = this.buffer.duration;
             State.sampleRate = this.buffer.sampleRate;
 
+            if (this.onProgress) this.onProgress(0.1, 'Decoding audio...');
+
             const worker = new AnalyzerWorker();
             this.activeWorker = worker;
 
@@ -125,6 +128,12 @@ export class AudioEngine {
 
             worker.onmessage = (e: MessageEvent<AnalysisWorkerMessage>) => {
                 if (e.data.requestId !== this.currentAnalysisRequestId) return;
+
+                if (e.data.type === 'analysis_progress') {
+                    if (this.onProgress) this.onProgress(0.2 + e.data.progress * 0.8, e.data.stage);
+                    return;
+                }
+
                 this.terminateActiveWorker();
 
                 if (e.data.type === 'analysis_done') {

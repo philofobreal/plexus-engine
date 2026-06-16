@@ -321,4 +321,11 @@ export interface AnalysisErrorMessage {
     message: string;
 }
 
-export type AnalysisWorkerMessage = AnalysisSuccessMessage | AnalysisErrorMessage;
+export interface AnalysisProgressMessage {
+    type: 'analysis_progress';
+    requestId: number;
+    progress: number;
+    stage: string;
+}
+
+export type AnalysisWorkerMessage = AnalysisSuccessMessage | AnalysisErrorMessage | AnalysisProgressMessage;
