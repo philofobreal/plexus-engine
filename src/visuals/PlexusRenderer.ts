@@ -145,9 +145,9 @@ function publishCurrentAnalysisFrame(frameIdx: number) {
 
 function copyAudioFrame(source: AudioFrame, target: AudioFrame) {
     target.e = source.e;
-    target.b = source.b;
-    target.m = source.m;
-    target.t = source.t;
+    target.densityProj = source.densityProj;
+    target.melodyProj = source.melodyProj;
+    target.fxProj = source.fxProj;
     target.state = source.state;
     target.eRatio = source.eRatio;
 }
@@ -173,9 +173,9 @@ function getDropAnticipationFrame(currentTime: number): AudioFrame | undefined {
 
 function decayCurrentAnalysisFrame() {
     State.currentFrame.e *= 0.9;
-    State.currentFrame.b *= 0.9;
-    State.currentFrame.m *= 0.9;
-    State.currentFrame.t *= 0.9;
+    State.currentFrame.densityProj *= 0.9;
+    State.currentFrame.melodyProj *= 0.9;
+    State.currentFrame.fxProj *= 0.9;
     State.currentFrame.eRatio *= 0.9;
     State.currentFeatures.melody *= 0.9;
     State.currentFeatures.vocal *= 0.9;
