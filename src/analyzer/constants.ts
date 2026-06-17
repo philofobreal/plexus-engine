@@ -1,0 +1,3 @@
+export const ANALYSIS_ALGORITHM_VERSION = 2;
+export const DEFAULT_ANALYSIS_HOP_SIZE = 1024;
+
