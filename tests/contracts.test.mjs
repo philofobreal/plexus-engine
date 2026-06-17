@@ -1,22 +1,61 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, normalize } from 'node:path';
 import vm from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
 
 const root = process.cwd();
+const SRC_ROOT = join(root, 'src');
 const read = (path) => readFileSync(join(root, path), 'utf8');
 const normalizePayload = (payload) => JSON.parse(JSON.stringify(payload));
 
-function runAnalyzerWorker(samples, sampleRate = 44_100) {
-  const workerSource = read('src/audio/analyzer.worker.ts');
-  const transpiled = ts.transpileModule(workerSource, {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2022
+function createSrcLoader(extraContext = {}) {
+  const moduleCache = new Map();
+
+  function resolvePath(request, parentPath) {
+    if (!request.startsWith('.')) throw new Error(`Unsupported import in test loader: ${request}`);
+    const base = normalize(join(dirname(parentPath), request));
+    if (base.endsWith('.ts')) return base;
+    try {
+      readFileSync(`${base}.ts`, 'utf8');
+      return `${base}.ts`;
+    } catch {
+      return join(base, 'index.ts');
     }
-  }).outputText;
+  }
+
+  function load(filePath) {
+    if (moduleCache.has(filePath)) return moduleCache.get(filePath).exports;
+
+    const source = readFileSync(filePath, 'utf8');
+    const transpiled = ts.transpileModule(source, {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2022
+      }
+    }).outputText;
+
+    const module = { exports: {} };
+    moduleCache.set(filePath, module);
+    const context = vm.createContext({
+      exports: module.exports,
+      module,
+      require: (request) => load(resolvePath(request, filePath)),
+      Float32Array,
+      Math,
+      Number,
+      Error,
+      ...extraContext
+    });
+    vm.runInContext(transpiled, context, { filename: filePath });
+    return module.exports;
+  }
+
+  return (entryPath) => load(join(SRC_ROOT, entryPath));
+}
+
+function runAnalyzerWorker(samples, sampleRate = 44_100) {
   const messages = [];
   const self = {
     onmessage: undefined,
@@ -24,14 +63,8 @@ function runAnalyzerWorker(samples, sampleRate = 44_100) {
       messages.push(message);
     }
   };
-  const context = vm.createContext({
-    self,
-    exports: {},
-    Float32Array,
-    Math
-  });
-
-  vm.runInContext(transpiled, context);
+  const loadSrcModule = createSrcLoader({ self });
+  loadSrcModule('audio/analyzer.worker.ts');
   assert.equal(typeof self.onmessage, 'function');
   self.onmessage({
     data: {
@@ -43,8 +76,10 @@ function runAnalyzerWorker(samples, sampleRate = 44_100) {
     }
   });
 
-  assert.equal(messages.length, 1);
-  return messages[0];
+  const done = messages.find(message => message.type === 'analysis_done');
+  assert.ok(done);
+  assert.ok(messages.some(message => message.type === 'analysis_progress'));
+  return done;
 }
 
 test('worker contract includes request id, hop size, success, and error messages', () => {
@@ -132,25 +167,25 @@ test('active docs allow bass mid treble only as BarAnalysis spectral-band ratios
 
 test('visual track analysis is precomputed and exposed through shared state', () => {
   const worker = read('src/audio/analyzer.worker.ts');
+  const analyzer = read('src/analyzer/analyzeAudio.ts');
+  const featureExtractor = read('src/analyzer/FeatureExtractor.ts');
   const audio = read('src/audio/AudioEngine.ts');
   const store = read('src/state/store.ts');
   const renderer = read('src/visuals/PlexusRenderer.ts');
 
-  assert.match(worker, /const trackAnalysis: TrackAnalysis = \{/);
-  assert.match(worker, /significantMoments/);
-  assert.match(worker, /kind: VisualCueKind/);
-  assert.match(worker, /class FeatureExtractor/);
-  assert.match(worker, /class GridAligner/);
-  assert.match(worker, /class SectionAnalyzer/);
-  assert.match(worker, /class DramaturgyBuilder/);
-  assert.match(worker, /const windowMultiplier = new Float32Array\(N\)/);
-  assert.match(worker, /windowMultiplier\[i\] = 0\.5 \* \(1 - Math\.cos/);
-  assert.match(worker, /const processFFT = \(\) =>/);
-  assert.match(worker, /pitchConfidenceT\[i\]/);
-  assert.match(worker, /flatnessT\[i\]/);
-  assert.match(worker, /centroidT\[i\]/);
-  assert.match(audio, /ANALYSIS_ALGORITHM_VERSION = 2/);
-  assert.match(audio, /State\.trackAnalysis = normalizeTrackAnalysis\(e\.data\.trackAnalysis\)/);
+  assert.match(worker, /analyzeAudio/);
+  assert.match(analyzer, /const trackAnalysis: TrackAnalysis = \{/);
+  assert.match(analyzer, /significantMoments/);
+  assert.match(analyzer, /DramaturgyBuilder/);
+  assert.match(featureExtractor, /export class FeatureExtractor/);
+  assert.match(featureExtractor, /const windowMultiplier = new Float32Array\(N\)/);
+  assert.match(featureExtractor, /windowMultiplier\[i\] = 0\.5 \* \(1 - Math\.cos/);
+  assert.match(featureExtractor, /const processFFT = \(\) =>/);
+  assert.match(featureExtractor, /pitchConfidenceT\[i\]/);
+  assert.match(featureExtractor, /flatnessT\[i\]/);
+  assert.match(featureExtractor, /centroidT\[i\]/);
+  assert.match(audio, /ANALYSIS_ALGORITHM_VERSION/);
+  assert.match(audio, /State\.trackAnalysis = normalizeTrackAnalysis\(e\.data\.trackAnalysis, State\.bpm\)/);
   assert.match(store, /currentFeatures/);
   assert.match(renderer, /State\.trackAnalysis\.cues/);
   assert.match(renderer, /State\.trackAnalysis\.features/);
@@ -184,18 +219,18 @@ test('performance automation contracts and state are exposed and reset', () => {
 
 test('visual track analysis detects recurring temporal patterns', () => {
   const types = read('src/types/index.ts');
-  const worker = read('src/audio/analyzer.worker.ts');
+  const dramaturgyBuilder = read('src/analyzer/DramaturgyBuilder.ts');
   const renderer = read('src/visuals/PlexusRenderer.ts');
   const temporal = read('src/visuals/TemporalMusicEffect.ts');
 
   assert.match(types, /export interface MusicPattern[\s\S]*occurrences: PatternOccurrence\[\];/);
   assert.match(types, /export type VisualCueKind = [\s\S]*'pattern'/);
-  assert.match(worker, /private sectionPatternDistance\(section: TrackSection, group:/);
-  assert.match(worker, /const featureDelta = section\.dominantFeature === group\.dominantFeature \? 0 : 0\.36/);
-  assert.match(worker, /const matchThreshold = 0\.32/);
-  assert.match(worker, /let patternGroups: Array<\{/);
-  assert.match(worker, /public musicPatterns: MusicPattern\[\]/);
-  assert.match(worker, /this\.musicPatterns = patternGroups/);
+  assert.match(dramaturgyBuilder, /private sectionPatternDistance\(section: TrackSection, group:/);
+  assert.match(dramaturgyBuilder, /const featureDelta = section\.dominantFeature === group\.dominantFeature \? 0 : 0\.36/);
+  assert.match(dramaturgyBuilder, /const matchThreshold = 0\.32/);
+  assert.match(dramaturgyBuilder, /let patternGroups: Array<\{/);
+  assert.match(dramaturgyBuilder, /public musicPatterns: MusicPattern\[\]/);
+  assert.match(dramaturgyBuilder, /this\.musicPatterns = patternGroups/);
   assert.match(renderer, /kind === 'pattern'/);
   assert.match(temporal, /function getPatternResonance\(time: number\)/);
 });
@@ -324,49 +359,52 @@ test('visual tuning controls cover circle, line, polygon, particle, and temporal
 });
 
 test('analysis thresholds use bar-aligned macro dynamics with live safety overrides', () => {
-  const worker = read('src/audio/analyzer.worker.ts');
+  const analyzer = read('src/analyzer/analyzeAudio.ts');
+  const gridAligner = read('src/analyzer/GridAligner.ts');
+  const sectionAnalyzer = read('src/analyzer/SectionAnalyzer.ts');
 
-  assert.match(worker, /this\.adaptiveThreshold = Math\.min\(0\.6, Math\.max\(0\.3,/);
-  assert.match(worker, /state: energy >= this\.adaptiveThreshold \? 'HIGH' : 'LOW'/);
-  assert.match(worker, /outFrames\[i\]\.e < 0\.35/);
-  assert.match(worker, /this\.secondsPerBar = secondsPerBeat \* 4/);
-  assert.match(worker, /Math\.round\(grid\.secondsPerBar \* sampleRate \/ hopSize \* 8\)/);
-  assert.match(worker, /adaptiveThreshold, frames: outFrames/);
+  assert.match(sectionAnalyzer, /this\.adaptiveThreshold = Math\.min\(0\.6, Math\.max\(0\.3,/);
+  assert.match(sectionAnalyzer, /state: energy >= this\.adaptiveThreshold \? 'HIGH' : 'LOW'/);
+  assert.match(analyzer, /outFrames\[i\]\.e < 0\.35/);
+  assert.match(gridAligner, /this\.secondsPerBar = secondsPerBeat \* 4/);
+  assert.match(analyzer, /Math\.round\(grid\.secondsPerBar \* sampleRate \/ hopSize \* 8\)/);
+  assert.match(analyzer, /adaptiveThreshold: segmenter\.adaptiveThreshold, frames: outFrames/);
 });
 
 test('analysis worker uses spectral FFT features instead of legacy crossover filters', () => {
-  const worker = read('src/audio/analyzer.worker.ts');
+  const analyzer = read('src/analyzer/analyzeAudio.ts');
+  const featureExtractor = read('src/analyzer/FeatureExtractor.ts');
 
-  assert.match(worker, /const N = this\.hopSize/);
-  assert.match(worker, /const prevMag = new Float32Array\(N \/ 2\)/);
-  assert.match(worker, /currentFlux \+= fluxDiff/);
-  assert.match(worker, /this\.centroidT\[i\] = sumMag > 0 \? \(sumFreqMag \/ sumMag\) \/ 512 : 0/);
-  assert.match(worker, /this\.flatnessT\[i\] = sumMag > 0 \? Math\.exp\(sumLogMag \/ 511\) \/ \(sumMag \/ 511\) : 0/);
-  assert.match(worker, /sFx \+= \(clamp01\(fxTarget\) - sFx\) \* 0\.15/);
-  assert.match(worker, /outFrames\[i\] = \{ e: sE, densityProj: sDensity, melodyProj: sMelody, fxProj: sFx, state: 'LOW', eRatio: sE \}/);
-  assert.doesNotMatch(worker, /a_bass/);
-  assert.doesNotMatch(worker, /filterLow/);
-  assert.doesNotMatch(worker, /filterMidHigh/);
+  assert.match(featureExtractor, /const N = this\.hopSize/);
+  assert.match(featureExtractor, /const prevMag = new Float32Array\(N \/ 2\)/);
+  assert.match(featureExtractor, /currentFlux \+= fluxDiff/);
+  assert.match(featureExtractor, /this\.centroidT\[i\] = sumMag > 0 \? \(sumFreqMag \/ sumMag\) \/ 512 : 0/);
+  assert.match(featureExtractor, /this\.flatnessT\[i\] = sumMag > 0 \? Math\.exp\(sumLogMag \/ 511\) \/ \(sumMag \/ 511\) : 0/);
+  assert.match(analyzer, /sFx \+= \(clamp01\(fxTarget\) - sFx\) \* 0\.15/);
+  assert.match(analyzer, /outFrames\[i\] = \{ e: sE, densityProj: sDensity, melodyProj: sMelody, fxProj: sFx, state: 'LOW', eRatio: sE \}/);
+  assert.doesNotMatch(featureExtractor + analyzer, /a_bass/);
+  assert.doesNotMatch(featureExtractor + analyzer, /filterLow/);
+  assert.doesNotMatch(featureExtractor + analyzer, /filterMidHigh/);
 });
 
 test('spectral pivot and noise gate are encoded in analyzer output contract', () => {
-  const worker = read('src/audio/analyzer.worker.ts');
+  const analyzer = read('src/analyzer/analyzeAudio.ts');
+  const normalization = read('src/analyzer/normalizeAnalysisResult.ts');
   const types = read('src/types/index.ts');
-  const audio = read('src/audio/AudioEngine.ts');
   const timeline = read('src/ui/TimelineCanvas.ts');
 
   assert.match(types, /export interface TrackAnalysis[\s\S]*spectralPivot: number\[\];/);
-  assert.match(audio, /spectralPivot: trackAnalysis\.spectralPivot \|\| \[\]/);
-  assert.match(worker, /const spectralPivot = new Array<number>\(totalFrames\)\.fill\(0\)/);
-  assert.match(worker, /if \(sE > 0\.04 && eRatio < 0\.55 && \(buildup > 0\.1 \|\| state === 'LOW_DROP'\)\)/);
-  assert.match(worker, /const compensation = \(1\.0 - eRatio\) \* Math\.max\(buildup, 0\.25\)/);
-  assert.match(worker, /const melodyGate = Math\.max\(0, featureFrames\[i\]\.melody - 0\.05\) \* 1\.1/);
-  assert.match(worker, /const maxCeiling = Math\.min\(1\.0, 0\.35 \+ eRatio \* 0\.65 \+ buildup \* 0\.40\)/);
-  assert.match(worker, /featureFrames\[i\]\.melody = Math\.min\(maxCeiling, featureFrames\[i\]\.melody \* \(1\.0 \+ compensation \* 1\.5 \* melodyGate\)\)/);
-  assert.match(worker, /featureFrames\[i\]\.vocal = Math\.min\(maxCeiling, featureFrames\[i\]\.vocal \* \(1\.0 \+ compensation \* 1\.5 \* vocalGate\)\)/);
-  assert.match(worker, /featureFrames\[i\]\.fx = Math\.min\(maxCeiling, featureFrames\[i\]\.fx \* \(1\.0 \+ compensation \* 2\.2 \* fxGate\)\)/);
-  assert.match(worker, /spectralPivot\[i\] = Math\.min\(1\.0, compensation \* Math\.max\(melodyGate, vocalGate, fxGate, 0\.25\)\)/);
-  assert.match(worker, /else if \(sE <= 0\.04\)[\s\S]*featureFrames\[i\]\.melody = 0;[\s\S]*featureFrames\[i\]\.vocal = 0;[\s\S]*featureFrames\[i\]\.fx = 0;[\s\S]*featureFrames\[i\]\.tension = 0;[\s\S]*outFrames\[i\]\.melodyProj = 0;[\s\S]*outFrames\[i\]\.fxProj = 0;[\s\S]*spectralPivot\[i\] = 0;/);
+  assert.match(normalization, /spectralPivot: trackAnalysis\.spectralPivot \|\| \[\]/);
+  assert.match(analyzer, /const spectralPivot = new Array<number>\(totalFrames\)\.fill\(0\)/);
+  assert.match(analyzer, /if \(sE > 0\.04 && eRatio < 0\.55 && \(buildup > 0\.1 \|\| state === 'LOW_DROP'\)\)/);
+  assert.match(analyzer, /const compensation = \(1\.0 - eRatio\) \* Math\.max\(buildup, 0\.25\)/);
+  assert.match(analyzer, /const melodyGate = Math\.max\(0, featureFrames\[i\]\.melody - 0\.05\) \* 1\.1/);
+  assert.match(analyzer, /const maxCeiling = Math\.min\(1\.0, 0\.35 \+ eRatio \* 0\.65 \+ buildup \* 0\.40\)/);
+  assert.match(analyzer, /featureFrames\[i\]\.melody = Math\.min\(maxCeiling, featureFrames\[i\]\.melody \* \(1\.0 \+ compensation \* 1\.5 \* melodyGate\)\)/);
+  assert.match(analyzer, /featureFrames\[i\]\.vocal = Math\.min\(maxCeiling, featureFrames\[i\]\.vocal \* \(1\.0 \+ compensation \* 1\.5 \* vocalGate\)\)/);
+  assert.match(analyzer, /featureFrames\[i\]\.fx = Math\.min\(maxCeiling, featureFrames\[i\]\.fx \* \(1\.0 \+ compensation \* 2\.2 \* fxGate\)\)/);
+  assert.match(analyzer, /spectralPivot\[i\] = Math\.min\(1\.0, compensation \* Math\.max\(melodyGate, vocalGate, fxGate, 0\.25\)\)/);
+  assert.match(analyzer, /else if \(sE <= 0\.04\)[\s\S]*featureFrames\[i\]\.melody = 0;[\s\S]*featureFrames\[i\]\.vocal = 0;[\s\S]*featureFrames\[i\]\.fx = 0;[\s\S]*featureFrames\[i\]\.tension = 0;[\s\S]*outFrames\[i\]\.melodyProj = 0;[\s\S]*outFrames\[i\]\.fxProj = 0;[\s\S]*spectralPivot\[i\] = 0;/);
   assert.match(timeline, /pivotVal > 0\.05/);
   assert.match(timeline, /rgba\(213, 84, 172, 0\.95\)/);
   assert.match(timeline, /ctx\.setLineDash\(\[1, 4\]\)/);

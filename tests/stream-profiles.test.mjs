@@ -13,7 +13,15 @@ function loadVisualTuningModule() {
       target: ts.ScriptTarget.ES2022
     }
   }).outputText;
-  const context = vm.createContext({ exports: {}, Math, Number });
+  const context = vm.createContext({
+    exports: {},
+    require(request) {
+      if (request === './featureFlags') return { featureFlags: { heroEffect: false } };
+      throw new Error(`Unsupported import in test loader: ${request}`);
+    },
+    Math,
+    Number
+  });
   vm.runInContext(transpiled, context);
   return context.exports;
 }

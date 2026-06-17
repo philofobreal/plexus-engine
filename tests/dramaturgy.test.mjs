@@ -1,27 +1,57 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, normalize } from 'node:path';
 import vm from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
 
-function loadAnalyzerModule() {
-  const source = readFileSync(join(process.cwd(), 'src/audio/analyzer.worker.ts'), 'utf8');
-  const transpiled = ts.transpileModule(source, {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2022
+const SRC_ROOT = join(process.cwd(), 'src');
+
+function createSrcLoader() {
+  const moduleCache = new Map();
+
+  function resolvePath(request, parentPath) {
+    if (!request.startsWith('.')) throw new Error(`Unsupported import in test loader: ${request}`);
+    const base = normalize(join(dirname(parentPath), request));
+    if (base.endsWith('.ts')) return base;
+    try {
+      readFileSync(`${base}.ts`, 'utf8');
+      return `${base}.ts`;
+    } catch {
+      return join(base, 'index.ts');
     }
-  }).outputText;
-  const context = vm.createContext({
-    exports: {},
-    self: { onmessage: undefined, postMessage() {} },
-    Float32Array,
-    Math,
-    Number
-  });
-  vm.runInContext(transpiled, context);
-  return context.exports;
+  }
+
+  function load(filePath) {
+    if (moduleCache.has(filePath)) return moduleCache.get(filePath).exports;
+
+    const source = readFileSync(filePath, 'utf8');
+    const transpiled = ts.transpileModule(source, {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2022
+      }
+    }).outputText;
+
+    const module = { exports: {} };
+    moduleCache.set(filePath, module);
+    const context = vm.createContext({
+      exports: module.exports,
+      module,
+      require: (request) => load(resolvePath(request, filePath)),
+      Float32Array,
+      Math,
+      Number
+    });
+    vm.runInContext(transpiled, context, { filename: filePath });
+    return module.exports;
+  }
+
+  return (entryPath) => load(join(SRC_ROOT, entryPath));
+}
+
+function loadAnalyzerModule() {
+  return createSrcLoader()('analyzer/DramaturgyBuilder.ts');
 }
 
 function createRisingAnalysisFrames(count) {
