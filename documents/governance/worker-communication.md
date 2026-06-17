@@ -32,14 +32,21 @@ Current failure message fields:
 
 ## Analyzer Worker Structure
 
-`src/audio/analyzer.worker.ts` keeps the worker boundary as a typed message contract, but the analysis implementation is no longer a monolithic `onmessage` function. The message handler is a thin orchestration shell that constructs class-owned analysis steps, assembles the final `TrackAnalysis`, and posts a typed success or failure payload.
+`src/audio/analyzer.worker.ts` keeps the worker boundary as a typed message contract, but the analysis implementation is no longer a monolithic `onmessage` function. The message handler is a thin boundary shell that forwards samples into `analyzeAudio()`, relays progress, and posts a typed success or failure payload. The analyzer core now runs as a data-oriented pipeline:
+
+`FeatureExtractor -> GridAligner -> FeatureNormalizer -> FeatureClassifier -> TemporalSmoother -> SectionAnalyzer -> DramaturgyBuilder / BeatEventClassifier -> SpectralPivot`.
 
 Internal ownership:
 
-- `FeatureExtractor` owns sample-window processing, Hann-windowed FFT execution, RMS, spectral flux, bass/mid/high band ratios, centroid, flatness, pitch-confidence arrays, and typical RMS/flux maxima.
+- `FeatureExtractor` owns sample-window processing, Hann-windowed FFT execution, RMS, spectral flux, bass/mid/high band ratios, centroid, flatness, pitch-confidence, Zero Crossing Rate, spectral rolloff, spectral crest arrays, and typical RMS/flux maxima.
 - `GridAligner` owns BPM estimation, beat length, bar length, strongest-hit anchoring, downbeat search, and `gridOffset`.
+- `FeatureNormalizer` owns allocation of normalized `Float32Array` views from raw analyzer arrays and precomputed typical maxima. It must not sort or recompute percentiles in the orchestration path.
+- `FeatureClassifier` owns semantic frame scoring for melody, vocal, FX, density, brightness, and tension from normalized vectors and extracted DSP features such as ZCR, spectral crest, flatness, rolloff, and band ratios.
+- `TemporalSmoother` owns EMA smoothing for classifier outputs and starts from the first input value to avoid artificial fade-in at track start.
 - `SectionAnalyzer` owns bar-block aggregation, adaptive threshold calculation, `BarAnalysis` output, section splitting, evidence-based section-label scoring, section RMS fields, and dominant-feature selection.
-- `DramaturgyBuilder` owns beat-event selection, visual cue emission, significant musical moment candidates, and recurring `MusicPattern` grouping from deterministic fuzzy section similarity.
+- `DramaturgyBuilder` owns visual cue emission, significant musical moment candidates, and recurring `MusicPattern` grouping from deterministic fuzzy section similarity.
+- `BeatEventClassifier` owns accepted beat peak classification and the mapping from internal semantic hit kinds to the public `1 | 2 | 3` beat-event type contract.
+- `SpectralPivot` owns the offline buildup/LOW_DROP compensation pass and the absolute `sE <= 0.04` noise gate that zeroes delicate feature projections.
 
 The worker must remain dependency-free from DOM, p5, `AudioEngine`, UI, renderer modules, and shared mutable runtime state. New analysis behavior should be added to the owning class above or to a similarly focused worker-internal class, not by growing the message handler.
 

@@ -123,14 +123,19 @@ A worker 70 es 180 BPM kozotti histogram alapjan becsul BPM-et. A UI-ban a BPM k
 
 Az aktualis worker nem IIR crossover szuroket hasznal. A `src/audio/analyzer.worker.ts` 1024 mintas hop merettel dolgozik, minden frame-et Hann ablakkal sulyoz, majd FFT-n szamolja a spektralis jellemzoket.
 
-A worker belso felelossegei osztalyokra vannak bontva:
+A worker belso felelossegei adat-orientalt pipeline-ba vannak bontva:
 
-* `FeatureExtractor`: Hann-windowed FFT, RMS, spectral flux, band ratio, centroid, flatness, pitch confidence es tipikus maximumok.
-* `GridAligner`: BPM becsles, beat/bar hossz, legerosebb tranziensek alapjan torteno anchor kereses es globalis `gridOffset`.
-* `SectionAnalyzer`: BPM-gridhez igazodott bar aggregacio, adaptive threshold, `BarAnalysis`, `TrackSection`, RMS mezok, dominans feature es evidence-based szekciocimkezes. A label dontes minden celcimkere pontszamot szamol energia, elozo section energiaja, density, bass/density kontextus, tension es dominans feature alapjan; gyenge evidencia eseten `verse` fallbacket hasznal.
-* `DramaturgyBuilder`: `BeatEvent`, `VisualCueEvent`, significant moment es fuzzy, euklideszi tavolsaggal csoportositott `MusicPattern` kimenetek.
+1. `FeatureExtractor`: Hann-windowed FFT, RMS, spectral flux, bass/mid/high band ratio, centroid, flatness, pitch confidence, Zero Crossing Rate, 85% spectral rolloff, spectral crest es tipikus RMS/flux maximumok.
+2. `GridAligner`: BPM becsles, beat/bar hossz, legerosebb tranziensek alapjan torteno anchor kereses es globalis `gridOffset`.
+3. `FeatureNormalizer`: mar kiszamolt tipikus maximumokkal normalizalja a nyers `Float32Array` jeleket; nem vegez masodik sortolast az orchestratorban.
+4. `FeatureClassifier`: normalizalt vektorokbol szamolja a semantic feature jeleket (`melodyRaw`, `vocalRaw`, `fxRaw`, `densityRaw`, `brightnessRaw`, `tensionRaw`). A melody/vocal/fx szetvalasztas ZCR-t, spectral crestet, flatnesst, rolloffot es savaranyokat hasznal.
+5. `TemporalSmoother`: EMA simitast alkalmaz a classifier kimeneteire, az elso input ertekrol inditva, fals track-eleji fade-in nelkul.
+6. `SectionAnalyzer`: BPM-gridhez igazodott bar aggregacio, adaptive threshold, `BarAnalysis`, `TrackSection`, RMS mezok, dominans feature es evidence-based szekciocimkezes. A label dontes minden celcimkere pontszamot szamol energia, elozo section energiaja, density, bass/density kontextus, tension es dominans feature alapjan; gyenge evidencia eseten `verse` fallbacket hasznal.
+7. `DramaturgyBuilder`: `VisualCueEvent`, significant moment es fuzzy, euklideszi tavolsaggal csoportositott `MusicPattern` kimenetek; a beat event tipusbesorolast a `BeatEventClassifier` vegzi.
+8. `BeatEventClassifier`: elfogadott spectral-flux peak-eket osztalyoz bass ratio, ZCR, rolloff, high-band context es normalizalt flux alapjan, majd visszater a publikus `1 | 2 | 3` beat type szerzodessel.
+9. `SpectralPivot`: offline post-process, amely a buildup/LOW_DROP kompenzaciot es a `sE <= 0.04` zajzarat kezeli; mutalja a feature/frame tomboket es visszaadja a `spectralPivot` tombot.
 
-Az `onmessage` handler ennek megfeleloen csak belepesi es orchestration pont: letrehozza az analizis osztalyokat, osszerakja a `TrackAnalysis` payloadot, es typed success/error uzenetet posztol vissza.
+Az `src/analyzer/analyzeAudio.ts` orkesztrator ennek megfeleloen mar inline matematikatol mentes: peldanyositja es sorba rendezi a pipeline lepeseket, osszerakja a `TrackAnalysis` payloadot, majd visszaadja a typed `AnalysisResult` objektumot. A `src/audio/analyzer.worker.ts` tovabbra is csak worker boundary: bemeneti uzenetet olvas, `analyzeAudio()`-t hiv, progress/success/error uzenetet posztol vissza.
 
 Az elfogadott render-facing kimenetek:
 
