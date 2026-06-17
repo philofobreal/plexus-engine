@@ -36,7 +36,8 @@ These documents extend this file and must not override it:
 
 - `src/main.ts` composes the app, creates subsystem instances, and wires startup.
 - `src/audio/` owns file decode, `AudioContext`, playback lifecycle, source nodes, timing, and worker invocation.
-- `src/audio/analyzer.worker.ts` owns offline analysis only. It must not depend on DOM, p5, UI, shared mutable runtime state, or browser main-thread objects other than worker APIs.
+- `src/analyzer/` owns deterministic offline DSP, grid alignment, section analysis, dramaturgy, headless `analyzeAudio()`, and canonical analysis normalization. It must remain environment-independent and must not import Worker, DOM, p5, UI, renderer, playback, or shared mutable runtime state.
+- `src/audio/analyzer.worker.ts` is a thin Web Worker adapter around `src/analyzer/analyzeAudio()`. It owns only request destructuring, progress forwarding, success posting, and error message formatting.
 - `src/state/` owns the shared state shape and documented mutation semantics.
 - `src/visuals/` owns p5 rendering, particle lifecycle, shockwaves, and visual consumption of precomputed events.
 - `src/ui/` owns DOM binding, controls, dashboard projection, and user-facing state display.

@@ -8,7 +8,7 @@ The maintained app is a Vite + TypeScript project, not a single-file HTML protot
 
 1. **Composition:** `src/main.ts` builds the DOM shell and wires subsystem instances.
 2. **Audio orchestration:** `src/audio/AudioEngine.ts` owns decode, source-node lifecycle, playback timing, seek/end reset, worker request ids, stale-result rejection, and worker termination.
-3. **Offline analysis:** `src/audio/analyzer.worker.ts` owns deterministic DSP analysis only and communicates through typed worker messages.
+3. **Offline analysis:** `src/analyzer/` owns deterministic, environment-independent DSP analysis and exposes headless `analyzeAudio()`. `src/audio/analyzer.worker.ts` is only the Web Worker adapter that communicates through typed worker messages.
 4. **Shared contracts:** `src/types/index.ts` defines audio frames, beat events, visual track analysis, analysis requests, success messages, progress messages, and error messages.
 5. **Shared runtime state:** `src/state/store.ts` stores accepted analysis results, visual feature state, the abstract modulation bus, live visual tuning, target visual tuning, and render-facing state.
 6. **UI facade:** `src/ui/DashboardUI.ts` is now a coordinator rather than a monolithic DOM binding class. It owns cross-cutting UI orchestration, timeline interaction state, dashboard projection, preset/performance-plan handoff, media-loader progress handoff, and calls into `AudioEngine`, shared `State`, timeline modules, and export workflows.
@@ -56,7 +56,7 @@ The worker may also emit non-terminal progress telemetry while the FFT pass is r
 }
 ```
 
-`progress` is normalized `0.0..1.0` inside the analyzer worker. The current `FeatureExtractor.process()` reports only when progress has advanced by at least `0.02`, so the main thread receives bounded progress updates during heavy FFT work instead of a single terminal result. `stage` is currently posted as `Analyzing music...`.
+`progress` is normalized `0.0..1.0` inside the analyzer core. The current `FeatureExtractor.process()` reports only when progress has advanced by at least `0.02`, so the main thread receives bounded progress updates during heavy FFT work instead of a single terminal result. The worker adapter forwards the core progress callback as `analysis_progress`; `stage` is currently `Analyzing music...`.
 
 `requestId` is required so stale worker results cannot overwrite newer loads. `AudioEngine.loadFile()` checks the id before accepting progress, success, or error messages. `hopSize` is part of the runtime contract because render synchronization derives frame indexes from playback time, sample rate, and hop size.
 
@@ -64,16 +64,16 @@ The worker may also emit non-terminal progress telemetry while the FFT pass is r
 
 `trackAnalysis` is the offline visual-music layer. It contains bar-level dynamics, section-level structure, recurring temporal patterns, visual cue events, significant moments, per-frame feature vectors for melody, vocal, fx, density, brightness, and tension, plus dramaturgical `buildupConfidence`, `spectralPivot`, and `tensionTrends`. `VisualFeatureFrame.melody` remains the internal/canonical melody feature signal for track analysis, cues, modulation, and temporal rendering; the dashboard-facing melody metric is Melody Presence from the canonical `AudioFrame.melodyProj` projection. Effects should read these precomputed values from shared state during playback instead of running analysis in the render loop.
 
-The analyzer worker derives these values from a fixed 1024-sample FFT pipeline. The worker is no longer a single monolithic `onmessage` algorithm. Its entry point now constructs and coordinates four internal classes with explicit responsibilities:
+The headless analyzer derives these values from a fixed 1024-sample FFT pipeline in `src/analyzer/`. `analyzeAudio()` is the single orchestration implementation and coordinates reusable classes with explicit responsibilities:
 
 - `FeatureExtractor`: performs Hann-windowed FFT analysis and produces per-frame RMS, spectral flux, band ratios, centroid, flatness, pitch confidence, and typical maxima.
 - `GridAligner`: estimates BPM, projects a beat/bar grid, and publishes the global `gridOffset`.
 - `SectionAnalyzer`: converts feature and grid data into BPM-aligned `BarAnalysis` and `TrackSection` structures, adaptive energy threshold, RMS statistics, dominant feature, and evidence-based section labels.
 - `DramaturgyBuilder`: emits `BeatEvent`, `VisualCueEvent`, and recurring `MusicPattern` outputs from extracted features, aligned sections, and frame states, using fuzzy vector similarity for pattern grouping.
 
-`self.onmessage` is now only the worker entry point and orchestration shell: it validates the request payload shape implicitly through `AnalysisRequest`, builds the analysis objects, assembles `TrackAnalysis`, and posts the typed success or error payload. The DSP and dramaturgy responsibilities live inside the classes above.
+`src/analyzer/analyzeAudio.ts` builds the analysis objects, applies Spectral Pivot post-processing, assembles `TrackAnalysis`, and returns the `AnalysisResult`. `self.onmessage` in `src/audio/analyzer.worker.ts` is only the worker boundary: it reads `AnalysisRequest`, calls `analyzeAudio()`, forwards progress, and posts the typed success or error payload. No DSP, scoring, threshold, or dramaturgy logic should live in the worker adapter.
 
-Each frame is Hann-windowed before the FFT, then the worker calculates spectral flux, relative bass/mid/high magnitude bands, spectral centroid, and spectral flatness. Harmonic stability, pitched transient confidence, and a simple vocal formant ratio separate melody, vocal, and fx projections more reliably than raw band ratios alone. The render-facing `AudioFrame` values are semantic projections of those spectral features: `e` is normalized RMS energy, `densityProj` is smoothed spectral-flux density, `melodyProj` is smoothed tonal melody presence, and `fxProj` is smoothed FX/noise/transient pressure. Beat events are selected from spectral-flux peaks and classified from the smoothed density/fx context: fx presence above `0.6` emits type 3, otherwise density above `0.7` emits type 2, and all other accepted peaks emit type 1.
+Each frame is Hann-windowed before the FFT, then `FeatureExtractor` calculates spectral flux, relative bass/mid/high magnitude bands, spectral centroid, and spectral flatness. Harmonic stability, pitched transient confidence, and a simple vocal formant ratio separate melody, vocal, and fx projections more reliably than raw band ratios alone. The render-facing `AudioFrame` values are semantic projections of those spectral features: `e` is normalized RMS energy, `densityProj` is smoothed spectral-flux density, `melodyProj` is smoothed tonal melody presence, and `fxProj` is smoothed FX/noise/transient pressure. Beat events are selected from spectral-flux peaks and classified from the smoothed density/fx context: fx presence above `0.6` emits type 3, otherwise density above `0.7` emits type 2, and all other accepted peaks emit type 1.
 
 The export worker is separate from the analyzer worker. It accepts:
 
@@ -87,7 +87,7 @@ Rather than accumulating encoded chunks in memory, the worker writes directly to
 
 `WebMMuxer` is local to `src/export/export.worker.ts`. It writes EBML header, Segment, Info, Tracks, Clusters, and SimpleBlock elements without external packages. Video track number is 1; audio track number is 2 with `A_OPUS` metadata and an OpusHead private header.
 
-Bar analysis is derived from BPM-aligned four-beat windows. Each `BarAnalysis` entry stores `start`, `end`, `energy`, `density`, `avgRms`, `peakRms`, BarAnalysis bass/mid/treble spectral-band ratios, macro `HIGH`/`LOW` state, and dominant feature. `TrackSection` entries also carry `avgRms` and `peakRms`. `AudioEngine.normalizeTrackAnalysis()` backfills these fields for older analysis payloads or presets that do not yet contain the expanded contract.
+Bar analysis is derived from BPM-aligned four-beat windows. Each `BarAnalysis` entry stores `start`, `end`, `energy`, `density`, `avgRms`, `peakRms`, BarAnalysis bass/mid/treble spectral-band ratios, macro `HIGH`/`LOW` state, and dominant feature. `TrackSection` entries also carry `avgRms` and `peakRms`. `normalizeTrackAnalysis()` in `src/analyzer/normalizeAnalysisResult.ts` backfills these fields for older analysis payloads or presets that do not yet contain the expanded contract.
 
 `SectionAnalyzer` no longer assigns labels through a single rigid threshold chain. For every candidate label (`intro`, `verse`, `build`, `drop`, `break`, `peak`, `outro`) it computes a normalized weighted confidence score from average section energy, previous section energy, density, bass/density context, tension, dominant feature, and first/last-section position. The highest score wins when it clears the confidence floor; otherwise the section falls back to `verse`. This keeps segmentation deterministic while making labels less brittle across genres and mastering differences.
 
@@ -112,7 +112,7 @@ During `GLITCH_LOW_DROP`, `glitchIntensity` starts at `1.0` and decays with `Mat
 State.trackAnalysis = JSON.parse(JSON.stringify(EMPTY_TRACK_ANALYSIS));
 ```
 
-The deep copy is intentional. The empty analysis template contains nested arrays and objects, including `tensionTrends`, so assigning the template by reference would allow reference pollution between track loads. Each reset must create an isolated `TrackAnalysis` object graph before the next worker result is accepted. Accepted worker results still pass through `AudioEngine.normalizeTrackAnalysis()` before publication so older or partial payloads receive deterministic defaults for expanded bar, section, spectral pivot, trend, feature-hop, and grid-offset fields.
+The deep copy is intentional. The empty analysis template contains nested arrays and objects, including `tensionTrends`, so assigning the template by reference would allow reference pollution between track loads. Each reset must create an isolated `TrackAnalysis` object graph before the next worker result is accepted. Accepted worker results still pass through analyzer-owned `normalizeTrackAnalysis()` before publication so older or partial payloads receive deterministic defaults for expanded bar, section, spectral pivot, trend, feature-hop, and grid-offset fields. `AudioEngine` owns the deep-copy protection and runtime reset, while `src/analyzer/` owns the canonical analysis shape.
 
 ## Modulation Bus And Morphing
 
