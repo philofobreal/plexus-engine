@@ -1,26 +1,11 @@
 import AnalyzerWorker from './analyzer.worker.ts?worker';
+import { ANALYSIS_ALGORITHM_VERSION, EMPTY_TRACK_ANALYSIS, normalizeTrackAnalysis } from '../analyzer';
 import { featureFlags } from '../config/featureFlags';
 import { State } from '../state/store';
-import type { AnalysisWorkerMessage, TrackAnalysis, VisualFeatureFrame } from '../types';
+import type { AnalysisWorkerMessage, VisualFeatureFrame } from '../types';
 import { HeroMetronome } from './HeroMetronome';
 
-const ANALYSIS_ALGORITHM_VERSION = 2;
 const EMPTY_FEATURES: VisualFeatureFrame = { melody: 0, vocal: 0, fx: 0, density: 0, brightness: 0, tension: 0 };
-const EMPTY_TRACK_ANALYSIS: TrackAnalysis = {
-    duration: 0,
-    bpm: 0,
-    bars: [],
-    sections: [],
-    patterns: [],
-    cues: [],
-    significantMoments: [],
-    features: [],
-    buildupConfidence: [],
-    spectralPivot: [],
-    tensionTrends: { globalSlope: 0, peakTime: 0, peakValue: 0, segments: [] },
-    featureHopSize: 1024,
-    gridOffset: 0
-};
 
 export class AudioEngine {
     private ctx: AudioContext | null = null;
@@ -143,7 +128,7 @@ export class AudioEngine {
                     State.frames = e.data.frames;
                     State.events = e.data.events;
                     // Strict normalization mapping incoming generic objects to rigorous domain models
-                    State.trackAnalysis = normalizeTrackAnalysis(e.data.trackAnalysis);
+                    State.trackAnalysis = normalizeTrackAnalysis(e.data.trackAnalysis, State.bpm);
                     State.trackAnalysis.bpm = e.data.bpm;
                     State.hopSize = e.data.hopSize;
                     this.beepBuffers = this.ctx ? HeroMetronome.generateStems(this.ctx, State.trackAnalysis) : [];
@@ -285,18 +270,4 @@ export class AudioEngine {
         this.beepSources = [];
         this.beepGains = [];
     }
-}
-
-function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis): TrackAnalysis {
-    return {
-        ...EMPTY_TRACK_ANALYSIS,
-        ...trackAnalysis,
-        bpm: trackAnalysis.bpm || State.bpm || 0,
-        bars: (trackAnalysis.bars || []).map(bar => ({ ...bar, avgRms: bar.avgRms ?? 0, peakRms: bar.peakRms ?? 0, bass: bar.bass ?? 0, mid: bar.mid ?? 0, treble: bar.treble ?? 0 })),
-        sections: (trackAnalysis.sections || []).map(section => ({ ...section, avgRms: section.avgRms ?? 0, peakRms: section.peakRms ?? 0 })),
-        spectralPivot: trackAnalysis.spectralPivot || [],
-        tensionTrends: trackAnalysis.tensionTrends || EMPTY_TRACK_ANALYSIS.tensionTrends,
-        featureHopSize: trackAnalysis.featureHopSize || 1024,
-        gridOffset: trackAnalysis.gridOffset || 0
-    };
 }

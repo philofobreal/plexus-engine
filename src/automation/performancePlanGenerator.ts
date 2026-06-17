@@ -10,7 +10,7 @@ import type {
     TrackSectionLabel,
     VisualCueEvent
 } from '../types';
-import { featureFlags } from '../config/featureFlags';
+import { featureFlags } from '../config/featureFlags.ts';
 
 // ─── Constants & Configuration ────────────────────────────────────────────────
 
