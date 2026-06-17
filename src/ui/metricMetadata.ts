@@ -30,17 +30,17 @@ export const dashboardMetricMetadata = {
     },
     vocal: {
         name: 'Vocal',
-        description: 'Formant-weighted vocal presence estimate.',
+        description: 'Mid-band formant estimate gated by low Zero Crossing Rate and tonal crest.',
         source: 'VisualFeatureFrame.vocal',
         range: '0.00..1.00',
-        tooltip: 'Vocal-formant presence.\nNot lyric or voice ID.'
+        tooltip: 'Vocal-formant presence from low-ZCR tonal content.\nNot lyric or voice ID.'
     },
     fx: {
         name: 'FX',
-        description: 'Noise, brightness, and transient FX feature estimate.',
+        description: 'Noise, brightness, and transient estimate from Zero Crossing Rate, rolloff, and flatness.',
         source: 'VisualFeatureFrame.fx',
         range: '0.00..1.00',
-        tooltip: 'FX/noise feature strength.\nNot the FX Presence projection.'
+        tooltip: 'FX/noise strength from ZCR and spectral rolloff.\nNot the FX Presence projection.'
     },
     beatImpulse: {
         name: 'Beat Impulse',
