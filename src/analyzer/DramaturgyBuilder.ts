@@ -1,4 +1,5 @@
 import type { AudioFrame, BeatEvent, MusicPattern, PatternOccurrence, TensionTrends, TrackSection, VisualCueEvent, VisualCueKind, VisualFeatureFrame } from '../types';
+import { classifyBeat, mapToPublicType } from './BeatEventClassifier';
 import { FeatureExtractor } from './FeatureExtractor';
 import { GridAligner } from './GridAligner';
 import { SectionAnalyzer } from './SectionAnalyzer';
@@ -116,7 +117,7 @@ export class DramaturgyBuilder {
             if (normFlux > 0.35 && this.features.fluxT[i] > this.features.fluxT[i - 1] && this.features.fluxT[i] > this.features.fluxT[i + 1]) {
                 let time = i * this.hopSize / this.sampleRate;
                 if (time - lastBeatTime > minGap) {
-                    let type: 1|2|3 = this.features.rawHighT[i] > 0.55 ? 3 : this.features.rawBassT[i] > 0.35 ? 2 : 1;
+                    let type: 1|2|3 = mapToPublicType(classifyBeat(i, this.features));
                     this.events.push({ time, intensity: Math.min(normFlux, 1.0), type });
                     lastBeatTime = time;
                 }

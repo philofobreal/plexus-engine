@@ -10,6 +10,9 @@ export class FeatureExtractor {
     public centroidT: Float32Array;
     public flatnessT: Float32Array;
     public pitchConfidenceT: Float32Array;
+    public zcrT: Float32Array;
+    public spectralRolloffT: Float32Array;
+    public spectralCrestT: Float32Array;
     public typRms: number = 0;
     public typFlux: number = 0;
 
@@ -26,6 +29,9 @@ export class FeatureExtractor {
         this.centroidT = new Float32Array(this.totalFrames);
         this.flatnessT = new Float32Array(this.totalFrames);
         this.pitchConfidenceT = new Float32Array(this.totalFrames);
+        this.zcrT = new Float32Array(this.totalFrames);
+        this.spectralRolloffT = new Float32Array(this.totalFrames);
+        this.spectralCrestT = new Float32Array(this.totalFrames);
     }
 
     public process(onProgress?: (p: number) => void): void {
@@ -45,6 +51,7 @@ export class FeatureExtractor {
         const re = new Float32Array(N);
         const im = new Float32Array(N);
         const prevMag = new Float32Array(N / 2);
+        const mags = new Float32Array(N / 2);
         let lastReportedProgress = -1;
         const processFFT = () => {
             let j = 0;
@@ -72,24 +79,32 @@ export class FeatureExtractor {
         for (let i = 0; i < this.totalFrames; i++) {
             let start = i * this.hopSize;
             let sumE = 0;
+            let zeroCrossings = 0;
+            let prevSample = this.channel[start] || 0;
             for (let j = 0; j < this.hopSize; j++) {
                 let sample = this.channel[start + j] || 0;
                 sumE += sample * sample;
+                if (j > 0 && ((prevSample < 0 && sample >= 0) || (prevSample >= 0 && sample < 0))) zeroCrossings++;
+                prevSample = sample;
                 re[j] = sample * windowMultiplier[j];
                 im[j] = 0;
             }
             this.rmsT[i] = Math.sqrt(sumE / this.hopSize);
+            this.zcrT[i] = zeroCrossings / Math.max(1, this.hopSize - 1);
 
             processFFT();
 
             let sumMag = 0, sumFreqMag = 0, sumLogMag = 0;
             let currentFlux = 0, eB = 0, eM = 0, eH = 0;
+            let maxMag = 0;
 
             for (let k = 1; k < N / 2; k++) {
                 let mag = Math.sqrt(re[k] * re[k] + im[k] * im[k]);
+                mags[k] = mag;
                 sumMag += mag;
                 sumFreqMag += k * mag;
                 sumLogMag += Math.log(mag + 1e-6);
+                if (mag > maxMag) maxMag = mag;
 
                 let fluxDiff = Math.max(0, mag - prevMag[k]);
                 currentFlux += fluxDiff;
@@ -100,15 +115,30 @@ export class FeatureExtractor {
                 else if (k <= 465) eH += mag;
             }
 
+            const rolloffTarget = sumMag * 0.85;
+            let cumulativeMag = 0;
+            let rolloffBin = 0;
+            if (sumMag > 0) {
+                for (let k = 1; k < N / 2; k++) {
+                    cumulativeMag += mags[k];
+                    if (cumulativeMag >= rolloffTarget) {
+                        rolloffBin = k;
+                        break;
+                    }
+                }
+            }
+
             this.fluxT[i] = currentFlux;
             let totalBand = eB + eM + eH + 1e-6;
             this.rawBassT[i] = eB / totalBand;
             this.rawMidT[i] = eM / totalBand;
             this.rawHighT[i] = eH / totalBand;
-            
+
             this.centroidT[i] = sumMag > 0 ? (sumFreqMag / sumMag) / 512 : 0;
             this.flatnessT[i] = sumMag > 0 ? Math.exp(sumLogMag / 511) / (sumMag / 511) : 0;
             this.pitchConfidenceT[i] = Math.min(1, Math.max(0, 1 - this.flatnessT[i]));
+            this.spectralRolloffT[i] = rolloffBin / 512;
+            this.spectralCrestT[i] = sumMag > 0 ? maxMag / (sumMag / 511) : 0;
 
             if (onProgress && this.totalFrames > 0) {
                 const p = (i + 1) / this.totalFrames;
