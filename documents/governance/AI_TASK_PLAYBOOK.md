@@ -12,7 +12,7 @@ Read in order:
 
 Validation:
 - Verify metric ownership.
-- Verify metric source (worker vs realtime).
+- Verify metric source (`src/analyzer/` offline core vs realtime render state).
 - Verify dashboard label matches actual calculation.
 - Verify no metric is derived twice.
 
@@ -24,18 +24,23 @@ Deliverables:
 
 ---
 
-## 2. Worker Algorithm Change
+## 2. Analyzer Algorithm Change
 
 Read:
-1. worker-communication.md
-2. architecture-contract.md
+1. architecture-contract.md
+2. worker-communication.md
 3. realtime-audio-safety.md
+4. ADR-002-headless-analyzer-core.md
 
 Required checks:
+- `src/analyzer/` remains the DSP and dramaturgy source of truth
+- `src/audio/analyzer.worker.ts` remains a thin message adapter
+- Node.js execution through `analyzeAudio()` still works without Worker APIs
 - requestId safety
 - cancellation safety
 - deterministic output
 - schema compatibility
+- no DSP, scoring, BPM, dramaturgy threshold, worker protocol, or AudioEngine public API drift
 
 ---
 

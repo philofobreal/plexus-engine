@@ -8,7 +8,8 @@ The app is a Vite TypeScript project with explicit runtime layers:
 
 - Composition: `src/main.ts`
 - Audio playback and analysis orchestration: `src/audio/`
-- Offline worker analysis: `src/audio/analyzer.worker.ts`
+- Offline analyzer core: `src/analyzer/`
+- Offline analyzer worker adapter: `src/audio/analyzer.worker.ts`
 - Shared mutable state: `src/state/`
 - Shared static contracts: `src/types/`
 - DOM controls and dashboard projection: `src/ui/`
@@ -29,8 +30,9 @@ The UI layer has an explicit internal shape:
 Allowed dependency directions:
 
 - `main.ts` may import audio, UI, visuals, CSS, and shared types.
-- `src/audio/` may import `src/state/`, `src/types/`, and worker modules.
-- `src/audio/analyzer.worker.ts` may import types only.
+- `src/audio/` may import `src/state/`, `src/types/`, `src/analyzer/`, and worker modules.
+- `src/analyzer/` may import `src/types/` and analyzer-local modules only. It must remain environment-independent and must not import Worker APIs, DOM, p5, UI, renderer modules, `AudioEngine`, or shared mutable runtime state.
+- `src/audio/analyzer.worker.ts` may import `src/analyzer/` and `src/types/` only. It must remain a message adapter around `analyzeAudio()`.
 - `src/ui/` may import `src/audio/`, `src/state/`, and types.
 - `src/ui/DashboardUI.ts` may import `src/export/WebMExporter.ts` to orchestrate user-triggered exports, but it must treat the exporter as a black-box workflow module.
 - `src/export/WebMExporter.ts` may import `src/state/` and its worker module. It may receive `AudioEngine` through construction and use only the public `getAudioBuffer()` surface.
@@ -48,7 +50,8 @@ Allowed dependency directions:
 
 Forbidden dependency directions:
 
-- Worker to DOM, p5, UI, renderer, audio engine, or shared mutable state.
+- Analyzer core to Worker APIs, DOM, p5, UI, renderer, audio engine, or shared mutable state.
+- Worker adapter to DOM, p5, UI, renderer, audio engine, shared mutable state, or duplicated analyzer logic.
 - State to UI, audio engine, renderer, worker, DOM, or p5.
 - Renderer to UI implementation details except through an explicit composition boundary.
 - UI to worker internals or DSP algorithms.
@@ -67,7 +70,8 @@ Mode-specific visual implementations should live in separate `VisualIdentity` im
 
 - File decode and analysis request creation belong to audio.
 - Worker compute lifecycle belongs to audio plus worker; publication of accepted results belongs to audio.
-- Analyzer worker internals are class-owned, not a monolithic `onmessage` function. `FeatureExtractor` owns FFT-derived feature extraction, `GridAligner` owns BPM/grid alignment, `SectionAnalyzer` owns bar and section analysis, and `DramaturgyBuilder` owns beats, cues, and recurring pattern output. The worker message handler should remain a thin orchestration and typed response boundary.
+- Analyzer computation belongs to `src/analyzer/`, not to the worker. `analyzeAudio()` is the single offline analysis orchestration implementation. `FeatureExtractor` owns FFT-derived feature extraction, `GridAligner` owns BPM/grid alignment, `SectionAnalyzer` owns bar and section analysis, and `DramaturgyBuilder` owns beats, cues, and recurring pattern output.
+- The analyzer worker message handler is a thin typed response boundary. It destructures `AnalysisRequest`, calls `analyzeAudio()`, forwards progress, posts success, and formats errors. It must not contain DSP, scoring, threshold, BPM detection, dramaturgy, Spectral Pivot, or result-normalization logic.
 - Playback start, pause, seek, stop, and end belong to audio.
 - Offline export frame timing, p5 loop suppression, export canvas resize/restore, `VideoFrame` capture, audio slicing, watermark drawing, hardware encoder queue synchronization, and stop/cancel semantics belong to `src/export/WebMExporter.ts`.
 - WebM byte layout, WebCodecs encoder lifecycle, and muxing belong to `src/export/export.worker.ts`.
@@ -86,6 +90,7 @@ Every shared state field needs a clear owner:
 
 - Audio owns duration, sample rate, play state, timing, analysis result publication, and accepted worker metadata.
 - Audio owns analysis reset isolation. Resetting `State.trackAnalysis` must create a fresh deep copy of the empty analysis template so nested arrays and objects cannot be shared across track loads.
+- Analyzer owns canonical `TrackAnalysis` normalization and the empty analysis template. Analyzer normalization must accept explicit fallback context, such as `fallbackBpm`, instead of reading shared runtime state.
 - Visuals own render-derived decay values and visual-only transient state.
 - Visuals own `State.modulation`, derived from accepted frame/features plus transient beat/cue decays.
 - `State.modulation` must keep a stable object reference during rendering. Visuals update it through `writeModulationBus(State.modulation, ...)`, and transient reset must zero its fields in place instead of assigning `State.modulation = { ... }`.
