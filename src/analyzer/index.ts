@@ -1,9 +1,13 @@
 export { analyzeAudio } from './analyzeAudio';
+export { classifyBeat, mapToPublicType } from './BeatEventClassifier';
 export { ANALYSIS_ALGORITHM_VERSION, DEFAULT_ANALYSIS_HOP_SIZE } from './constants';
 export { computeDramaturgyAnalysis, DramaturgyBuilder } from './DramaturgyBuilder';
+export { FeatureClassifier } from './FeatureClassifier';
 export { FeatureExtractor } from './FeatureExtractor';
+export { normalizeArray } from './FeatureNormalizer';
 export { GridAligner } from './GridAligner';
 export { EMPTY_TRACK_ANALYSIS, normalizeTrackAnalysis } from './normalizeAnalysisResult';
 export { SectionAnalyzer } from './SectionAnalyzer';
+export { applySpectralPivot } from './SpectralPivot';
+export { applyEMA } from './TemporalSmoother';
 export type { AnalyzerOptions, AnalyzeAudioInput } from './types';
-
