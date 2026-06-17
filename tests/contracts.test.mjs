@@ -374,14 +374,27 @@ test('analysis thresholds use bar-aligned macro dynamics with live safety overri
 test('analysis worker uses spectral FFT features instead of legacy crossover filters', () => {
   const analyzer = read('src/analyzer/analyzeAudio.ts');
   const featureExtractor = read('src/analyzer/FeatureExtractor.ts');
+  const normalizer = read('src/analyzer/FeatureNormalizer.ts');
 
   assert.match(featureExtractor, /const N = this\.hopSize/);
   assert.match(featureExtractor, /const prevMag = new Float32Array\(N \/ 2\)/);
+  assert.match(featureExtractor, /const mags = new Float32Array\(N \/ 2\)/);
   assert.match(featureExtractor, /currentFlux \+= fluxDiff/);
+  assert.match(featureExtractor, /mags\[k\] = mag/);
+  assert.match(featureExtractor, /cumulativeMag \+= mags\[k\]/);
+  assert.doesNotMatch(featureExtractor, /cumulativeMag \+= Math\.sqrt/);
   assert.match(featureExtractor, /this\.centroidT\[i\] = sumMag > 0 \? \(sumFreqMag \/ sumMag\) \/ 512 : 0/);
   assert.match(featureExtractor, /this\.flatnessT\[i\] = sumMag > 0 \? Math\.exp\(sumLogMag \/ 511\) \/ \(sumMag \/ 511\) : 0/);
-  assert.match(analyzer, /sFx \+= \(clamp01\(fxTarget\) - sFx\) \* 0\.15/);
-  assert.match(analyzer, /outFrames\[i\] = \{ e: sE, densityProj: sDensity, melodyProj: sMelody, fxProj: sFx, state: 'LOW', eRatio: sE \}/);
+  assert.match(featureExtractor, /this\.zcrT\[i\] = zeroCrossings \/ Math\.max\(1, this\.hopSize - 1\)/);
+  assert.match(featureExtractor, /this\.spectralRolloffT\[i\] = rolloffBin \/ 512/);
+  assert.match(featureExtractor, /this\.spectralCrestT\[i\] = sumMag > 0 \? maxMag \/ \(sumMag \/ 511\) : 0/);
+  assert.match(normalizer, /export function normalizeArray\(input: Float32Array, typMax: number\): Float32Array/);
+  assert.doesNotMatch(normalizer, /\.sort\(/);
+  assert.match(analyzer, /const normRms = normalizeArray\(features\.rmsT, features\.typRms\)/);
+  assert.match(analyzer, /const normFlux = normalizeArray\(features\.fluxT, features\.typFlux\)/);
+  assert.match(analyzer, /const classifier = new FeatureClassifier\(\{/);
+  assert.match(analyzer, /const fx = applyEMA\(classified\.fxRaw, 0\.15\)/);
+  assert.match(analyzer, /outFrames\[i\] = \{ e: energy\[i\], densityProj: density\[i\], melodyProj: melody\[i\], fxProj: fx\[i\], state: 'LOW', eRatio: energy\[i\] \}/);
   assert.doesNotMatch(featureExtractor + analyzer, /a_bass/);
   assert.doesNotMatch(featureExtractor + analyzer, /filterLow/);
   assert.doesNotMatch(featureExtractor + analyzer, /filterMidHigh/);
@@ -389,22 +402,25 @@ test('analysis worker uses spectral FFT features instead of legacy crossover fil
 
 test('spectral pivot and noise gate are encoded in analyzer output contract', () => {
   const analyzer = read('src/analyzer/analyzeAudio.ts');
+  const spectralPivot = read('src/analyzer/SpectralPivot.ts');
   const normalization = read('src/analyzer/normalizeAnalysisResult.ts');
   const types = read('src/types/index.ts');
   const timeline = read('src/ui/TimelineCanvas.ts');
 
   assert.match(types, /export interface TrackAnalysis[\s\S]*spectralPivot: number\[\];/);
   assert.match(normalization, /spectralPivot: trackAnalysis\.spectralPivot \|\| \[\]/);
-  assert.match(analyzer, /const spectralPivot = new Array<number>\(totalFrames\)\.fill\(0\)/);
-  assert.match(analyzer, /if \(sE > 0\.04 && eRatio < 0\.55 && \(buildup > 0\.1 \|\| state === 'LOW_DROP'\)\)/);
-  assert.match(analyzer, /const compensation = \(1\.0 - eRatio\) \* Math\.max\(buildup, 0\.25\)/);
-  assert.match(analyzer, /const melodyGate = Math\.max\(0, featureFrames\[i\]\.melody - 0\.05\) \* 1\.1/);
-  assert.match(analyzer, /const maxCeiling = Math\.min\(1\.0, 0\.35 \+ eRatio \* 0\.65 \+ buildup \* 0\.40\)/);
-  assert.match(analyzer, /featureFrames\[i\]\.melody = Math\.min\(maxCeiling, featureFrames\[i\]\.melody \* \(1\.0 \+ compensation \* 1\.5 \* melodyGate\)\)/);
-  assert.match(analyzer, /featureFrames\[i\]\.vocal = Math\.min\(maxCeiling, featureFrames\[i\]\.vocal \* \(1\.0 \+ compensation \* 1\.5 \* vocalGate\)\)/);
-  assert.match(analyzer, /featureFrames\[i\]\.fx = Math\.min\(maxCeiling, featureFrames\[i\]\.fx \* \(1\.0 \+ compensation \* 2\.2 \* fxGate\)\)/);
-  assert.match(analyzer, /spectralPivot\[i\] = Math\.min\(1\.0, compensation \* Math\.max\(melodyGate, vocalGate, fxGate, 0\.25\)\)/);
-  assert.match(analyzer, /else if \(sE <= 0\.04\)[\s\S]*featureFrames\[i\]\.melody = 0;[\s\S]*featureFrames\[i\]\.vocal = 0;[\s\S]*featureFrames\[i\]\.fx = 0;[\s\S]*featureFrames\[i\]\.tension = 0;[\s\S]*outFrames\[i\]\.melodyProj = 0;[\s\S]*outFrames\[i\]\.fxProj = 0;[\s\S]*spectralPivot\[i\] = 0;/);
+  assert.match(analyzer, /const spectralPivot = applySpectralPivot\(featureFrames, outFrames, dramaturgy\.buildupConfidence, totalFrames\)/);
+  assert.match(spectralPivot, /export function applySpectralPivot\(/);
+  assert.match(spectralPivot, /const spectralPivot = new Array<number>\(totalFrames\)\.fill\(0\)/);
+  assert.match(spectralPivot, /if \(sE > 0\.04 && eRatio < 0\.55 && \(buildup > 0\.1 \|\| state === 'LOW_DROP'\)\)/);
+  assert.match(spectralPivot, /const compensation = \(1\.0 - eRatio\) \* Math\.max\(buildup, 0\.25\)/);
+  assert.match(spectralPivot, /const melodyGate = Math\.max\(0, featureFrames\[i\]\.melody - 0\.05\) \* 1\.1/);
+  assert.match(spectralPivot, /const maxCeiling = Math\.min\(1\.0, 0\.35 \+ eRatio \* 0\.65 \+ buildup \* 0\.40\)/);
+  assert.match(spectralPivot, /featureFrames\[i\]\.melody = Math\.min\(maxCeiling, featureFrames\[i\]\.melody \* \(1\.0 \+ compensation \* 1\.5 \* melodyGate\)\)/);
+  assert.match(spectralPivot, /featureFrames\[i\]\.vocal = Math\.min\(maxCeiling, featureFrames\[i\]\.vocal \* \(1\.0 \+ compensation \* 1\.5 \* vocalGate\)\)/);
+  assert.match(spectralPivot, /featureFrames\[i\]\.fx = Math\.min\(maxCeiling, featureFrames\[i\]\.fx \* \(1\.0 \+ compensation \* 2\.2 \* fxGate\)\)/);
+  assert.match(spectralPivot, /spectralPivot\[i\] = Math\.min\(1\.0, compensation \* Math\.max\(melodyGate, vocalGate, fxGate, 0\.25\)\)/);
+  assert.match(spectralPivot, /else if \(sE <= 0\.04\)[\s\S]*featureFrames\[i\]\.melody = 0;[\s\S]*featureFrames\[i\]\.vocal = 0;[\s\S]*featureFrames\[i\]\.fx = 0;[\s\S]*featureFrames\[i\]\.tension = 0;[\s\S]*outFrames\[i\]\.melodyProj = 0;[\s\S]*outFrames\[i\]\.fxProj = 0;[\s\S]*spectralPivot\[i\] = 0;/);
   assert.match(timeline, /pivotVal > 0\.05/);
   assert.match(timeline, /rgba\(213, 84, 172, 0\.95\)/);
   assert.match(timeline, /ctx\.setLineDash\(\[1, 4\]\)/);

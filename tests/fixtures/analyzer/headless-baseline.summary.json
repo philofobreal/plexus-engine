@@ -17,7 +17,7 @@
     "barCount": 2,
     "sectionCount": 2,
     "patternCount": 0,
-    "cueCount": 0,
+    "cueCount": 2,
     "significantMomentCount": 0,
     "featureCount": 96,
     "buildupCount": 96,
@@ -26,42 +26,41 @@
     "gridOffset": 0,
     "duration": 2.229116,
     "firstFrame": {
-      "e": 0.199374,
-      "densityProj": 0.15,
-      "melodyProj": 0.011367,
-      "fxProj": 0.033034,
+      "e": 0.996872,
+      "densityProj": 1,
+      "melodyProj": 0.501793,
+      "fxProj": 0.195312,
       "state": "LOW",
       "eRatio": 0
     },
     "midFrame": {
-      "e": 0.496739,
-      "densityProj": 0.081419,
-      "melodyProj": 0.215898,
-      "fxProj": 0.013616,
+      "e": 0.496756,
+      "densityProj": 0.081767,
+      "melodyProj": 0.500107,
+      "fxProj": 0.046914,
       "state": "LOW",
       "eRatio": 0
     },
     "firstEvent": {
       "time": 0.487619,
       "intensity": 0.469704,
-      "type": 2
+      "type": 1
     },
     "firstSection": {
       "start": 0,
       "end": 1.950476,
       "label": "intro",
       "energy": 0,
-      "density": 0.065365,
-      "dominantFeature": "melody",
+      "density": 0.132825,
+      "dominantFeature": "vocal",
       "avgRms": 0,
       "peakRms": 1
     },
     "tensionTrends": {
-      "globalSlope": 0.217827,
-      "peakTime": 1.996916,
-      "peakValue": 0.360981,
+      "globalSlope": -0.421888,
+      "peakTime": 0,
+      "peakValue": 0.730203,
       "segmentCount": 1
     }
   }
 }
-
