@@ -16,6 +16,14 @@ interface MetricMetadata {
 
 Implementation note: `description` should be user-facing. Technical details, negative definitions, and longer source notes should live in the metadata registry or documentation, not in the tooltip string.
 
+## Signal-Integrity Calibration Context
+
+Dashboard music metrics are downstream of the offline `SpectralCalibration -> FeatureExtractor -> FeatureClassifier` pipeline. Calibration uses a bounded two-pass approach: a fast RMS/flux scan selects candidate calibration windows, then target FFT analysis runs only on those selected windows. The calibration confidence object measures signal quality, not musical source type.
+
+`signalToNoise` estimates how clearly spectral peaks stand above the noise floor. Low values reduce mid/presence false positives in the Vocal metric. `spectralStability` estimates how consistent the frequency distribution is across selected windows. High values can support Melody Presence when mid bands are concentrated; low values can support FX when high-frequency bands are active.
+
+Classifier limits: Vocal means strictly mid/presence dominance, FX means transient/high-frequency presence, and Melody Presence is tonal/mid-band presence. These are deterministic DSP heuristics, not AI/ML stem separation.
+
 ## BPM
 
 ## User Description
@@ -111,7 +119,7 @@ How strongly the current frame resembles pitched melodic material.
 
 ## Technical Meaning
 
-Dashboard label for `AudioFrame.melodyProj`, a canonical projection field containing the smoothed melody-presence projection. It combines tonal mid energy and pitched transient confidence.
+Dashboard label for `AudioFrame.melodyProj`, a canonical projection field containing the smoothed melody-presence projection. It combines tonal mid-band concentration, crest, flatness, and calibration `spectralStability`. High signal-integrity stability can boost this projection when mid bands are concentrated; noisy low-integrity spectra are penalized.
 
 ## Source
 
@@ -126,6 +134,7 @@ Dashboard label for `AudioFrame.melodyProj`, a canonical projection field contai
 - Not raw mid-band energy.
 - Not melody extraction or note detection.
 - Not separate from vocals with stem-level accuracy.
+- Not an AI/ML stem separator.
 
 ## Tooltip Text
 
@@ -136,11 +145,11 @@ Not raw mid band or note detection.
 
 ## User Description
 
-How strongly the current frame resembles vocal or formant-like content.
+How strongly the current frame shows mid/presence dominance.
 
 ## Technical Meaning
 
-`VisualFeatureFrame.vocal`, a heuristic feature derived from tonal factor and formant-ratio energy around vocal-like spectral regions.
+`VisualFeatureFrame.vocal`, a mid/presence dominance heuristic derived from low-mid, mid, and presence energy with tonal and ZCR context. Calibration `signalToNoise` heavily penalizes this score when noisy material could masquerade as presence energy.
 
 ## Source
 
@@ -152,24 +161,26 @@ How strongly the current frame resembles vocal or formant-like content.
 
 ## Common Misinterpretations
 
+- Strictly mid/presence dominance.
 - Not vocal stem separation.
 - Not lyric or voice detection.
+- Not an AI/ML stem separator.
 - Can respond to synths or instruments with vocal-like formants.
 
 ## Tooltip Text
 
-Vocal/formant-like feature estimate.
-Not stem separation.
+Mid/presence dominance estimate.
+Not voice detection or stem separation.
 
 ## FX
 
 ## User Description
 
-How much noise, transient, or effects-like texture is present.
+How much transient or high-frequency texture is present.
 
 ## Technical Meaning
 
-`VisualFeatureFrame.fx`, a smoothed FX/noise/transient feature. It shares the same core derivation as `AudioFrame.fxProj`/FX Presence but is part of the canonical feature frame.
+`VisualFeatureFrame.fx`, a smoothed transient/high-frequency presence feature. It shares the same core derivation as `AudioFrame.fxProj`/FX Presence but is part of the canonical feature frame. Low calibration `spectralStability` can boost this score when high-frequency bands are active, because chaotic high-band spectra are more likely to be transient/noise texture.
 
 ## Source
 
@@ -181,14 +192,15 @@ How much noise, transient, or effects-like texture is present.
 
 ## Common Misinterpretations
 
-- Not raw treble.
+- Transient/high-frequency presence, not raw treble.
 - Not an effects bus or plugin signal.
+- Not an AI/ML stem separator.
 - Can respond to noisy percussion and high transients.
 
 ## Tooltip Text
 
-Noise, FX, and transient feature estimate.
-Not raw treble.
+Transient/high-frequency presence estimate.
+Not raw treble or an effects bus.
 
 ## Tension
 
@@ -340,17 +352,17 @@ const metricMetadata: Record<string, MetricMetadata> = {
   },
   vocal: {
     name: 'Vocal',
-    description: 'How strongly the current frame resembles vocal or formant-like content.',
+    description: 'How strongly the current frame shows mid/presence dominance.',
     source: 'State.currentFeatures.vocal',
     range: '0.0..1.0',
-    tooltip: 'Vocal/formant-like feature estimate.\nNot stem separation.'
+    tooltip: 'Mid/presence dominance estimate.\nNot voice detection or stem separation.'
   },
   fx: {
     name: 'FX',
-    description: 'How much noise, transient, or effects-like texture is present.',
+    description: 'How much transient or high-frequency texture is present.',
     source: 'State.currentFeatures.fx',
     range: '0.0..1.0',
-    tooltip: 'Noise, FX, and transient feature estimate.\nNot raw treble.'
+    tooltip: 'Transient/high-frequency presence estimate.\nNot raw treble or an effects bus.'
   },
   tension: {
     name: 'Tension',
