@@ -6,6 +6,16 @@ import assert from 'node:assert/strict';
 import ts from 'typescript';
 
 const SRC_ROOT = join(process.cwd(), 'src');
+const BAND_KEYS = ['sub', 'bass', 'lowMid', 'mid', 'presence', 'brilliance', 'air'];
+const SAFETY_RANGES_HZ = {
+  sub: { min: 20, max: 70 },
+  bass: { min: 50, max: 220 },
+  lowMid: { min: 140, max: 650 },
+  mid: { min: 400, max: 2600 },
+  presence: { min: 1600, max: 6200 },
+  brilliance: { min: 4200, max: 13000 },
+  air: { min: 9000, max: 16000 }
+};
 
 function createSrcLoader() {
   const moduleCache = new Map();
@@ -68,6 +78,33 @@ function noiseBuffer(sampleRate, fftSize, frames = 6) {
   }
   void sampleRate;
   return samples;
+}
+
+function dynamicSineWithSilence(sampleRate, fftSize, frames = 12) {
+  const samples = new Float32Array(fftSize * frames);
+  for (let frame = 0; frame < frames; frame++) {
+    if (frame % 3 === 2) continue;
+    const frameStart = frame * fftSize;
+    for (let i = 0; i < fftSize; i++) {
+      const sampleIndex = frameStart + i;
+      samples[sampleIndex] = Math.sin(2 * Math.PI * 440 * (sampleIndex / sampleRate)) * 0.75;
+    }
+  }
+  return samples;
+}
+
+function assertStrictBands(calibration) {
+  let previousMax = 0;
+  for (const key of BAND_KEYS) {
+    const band = calibration.bandsHz[key];
+    assert.ok(Number.isFinite(band.min), `${key} finite min`);
+    assert.ok(Number.isFinite(band.max), `${key} finite max`);
+    assert.ok(band.min >= 0, `${key} non-negative min`);
+    assert.ok(band.min >= previousMax, `${key} ordered`);
+    assert.ok(band.min < band.max, `${key} min < max`);
+    assert.ok(band.max <= calibration.nyquist, `${key} max <= nyquist`);
+    previousMax = band.max;
+  }
 }
 
 function extract(samples, sampleRate, fftSize = 1024) {
@@ -165,19 +202,118 @@ test('SpectralCalibration produces valid deterministic adaptive output and defau
   const second = estimateSpectralCalibration(samples, 44_100, 1024);
 
   assert.deepEqual(second, first);
-  assert.ok(first.confidence > 0);
-  let previousMax = 0;
-  for (const key of ['sub', 'bass', 'lowMid', 'mid', 'presence', 'brilliance', 'air']) {
-    const band = first.bandsHz[key];
-    assert.ok(band.min < band.max, `${key} min < max`);
-    assert.ok(band.min >= previousMax || Math.abs(band.min - previousMax) < 1e-9, `${key} ordered`);
-    assert.ok(band.max <= first.nyquist, `${key} clamped`);
-    previousMax = band.max;
+  assert.ok(first.confidence.overall > 0);
+  assertStrictBands(first);
+  for (const key of BAND_KEYS) {
+    assert.ok(first.centersHz[key] >= SAFETY_RANGES_HZ[key].min, `${key} center >= safety min`);
+    assert.ok(first.centersHz[key] <= SAFETY_RANGES_HZ[key].max, `${key} center <= safety max`);
   }
 
   const silence = JSON.parse(JSON.stringify(estimateSpectralCalibration(new Float32Array(1024 * 3), 44_100, 1024)));
-  assert.equal(silence.confidence, 0);
+  assert.deepEqual(silence.confidence, {
+    overall: 0,
+    signalToNoise: 0,
+    spectralStability: 0,
+    dynamicRangeConfidence: 0
+  });
   assert.deepEqual(silence.bandsHz.bass, { min: 60, max: 180 });
+});
+
+test('SpectralCalibration falls back to strict static bands for zero input', () => {
+  const { estimateSpectralCalibration } = createSrcLoader()('analyzer/SpectralCalibration.ts');
+  const calibration = estimateSpectralCalibration(new Float32Array(1024 * 12), 44_100, 1024);
+
+  assert.equal(calibration.confidence.overall, 0);
+  assertStrictBands(calibration);
+  assert.deepEqual(JSON.parse(JSON.stringify(calibration.bandsHz.bass)), { min: 60, max: 180 });
+});
+
+test('SpectralCalibration keeps bands valid at extremely low sample rates', () => {
+  const { estimateSpectralCalibration } = createSrcLoader()('analyzer/SpectralCalibration.ts');
+  const calibration = estimateSpectralCalibration(sineBuffer(8, 100, 1024, 12, 0.7), 100, 1024);
+
+  assert.equal(calibration.nyquist, 50);
+  assertStrictBands(calibration);
+});
+
+test('SpectralCalibration clamps fallback and adaptive bands to Nyquist limits', () => {
+  const { estimateSpectralCalibration } = createSrcLoader()('analyzer/SpectralCalibration.ts');
+  const lowNyquist = estimateSpectralCalibration(sineBuffer(900, 12_000, 1024, 24, 0.7), 12_000, 1024);
+  const fullRange = estimateSpectralCalibration(sineBuffer(12_000, 48_000, 1024, 24, 0.7), 48_000, 1024);
+
+  assertStrictBands(lowNyquist);
+  assertStrictBands(fullRange);
+  for (const key of BAND_KEYS) {
+    assert.ok(lowNyquist.bandsHz[key].max <= lowNyquist.nyquist);
+    assert.ok(fullRange.bandsHz[key].max <= fullRange.nyquist);
+  }
+});
+
+test('SpectralCalibration confidence reports silence as zero signal integrity', () => {
+  const { estimateSpectralCalibration } = createSrcLoader()('analyzer/SpectralCalibration.ts');
+  const calibration = estimateSpectralCalibration(new Float32Array(1024 * 16), 44_100, 1024);
+
+  assert.deepEqual(JSON.parse(JSON.stringify(calibration.confidence)), {
+    overall: 0,
+    signalToNoise: 0,
+    spectralStability: 0,
+    dynamicRangeConfidence: 0
+  });
+});
+
+test('SpectralCalibration confidence treats white noise as spectrally stable with low dynamic range', () => {
+  const { estimateSpectralCalibration } = createSrcLoader()('analyzer/SpectralCalibration.ts');
+  const calibration = estimateSpectralCalibration(noiseBuffer(44_100, 1024, 80), 44_100, 1024);
+
+  assert.ok(calibration.confidence.spectralStability > 0.85);
+  assert.ok(calibration.confidence.dynamicRangeConfidence < 0.3);
+});
+
+test('SpectralCalibration confidence detects amplitude variance in dynamic tracks', () => {
+  const { estimateSpectralCalibration } = createSrcLoader()('analyzer/SpectralCalibration.ts');
+  const calibration = estimateSpectralCalibration(dynamicSineWithSilence(44_100, 1024, 90), 44_100, 1024);
+
+  assert.ok(calibration.confidence.dynamicRangeConfidence > 0.65);
+});
+
+test('collectCalibrationWindowStarts captures transient burst in long silence', () => {
+  const { collectCalibrationWindowStarts } = createSrcLoader()('analyzer/SpectralCalibration.ts');
+  const sampleRate = 44_100;
+  const fftSize = 1024;
+  const burstStart = fftSize * 43 + 137;
+  const samples = new Float32Array(fftSize * 120);
+
+  for (let i = 0; i < 384; i++) {
+    const sampleIndex = burstStart + i;
+    samples[sampleIndex] = Math.sin(2 * Math.PI * 880 * (sampleIndex / sampleRate)) * 0.9;
+  }
+
+  const starts = collectCalibrationWindowStarts(samples, sampleRate, fftSize, 8);
+  assert.ok(starts.length <= 8);
+  assert.ok(
+    starts.some(start => start <= burstStart && burstStart < start + fftSize),
+    `expected one selected window to cover burst at ${burstStart}, got ${starts.join(',')}`
+  );
+});
+
+test('collectCalibrationWindowStarts is bounded, sorted, unique, and valid', () => {
+  const { collectCalibrationWindowStarts } = createSrcLoader()('analyzer/SpectralCalibration.ts');
+  const sampleRate = 48_000;
+  const fftSize = 1024;
+  const maxWindows = 5;
+  const samples = noiseBuffer(sampleRate, fftSize, 300);
+  const starts = collectCalibrationWindowStarts(samples, sampleRate, fftSize, maxWindows);
+  const maxStart = samples.length - fftSize;
+
+  assert.ok(starts.length <= maxWindows);
+  assert.equal(new Set(starts).size, starts.length);
+  for (let i = 1; i < starts.length; i++) {
+    assert.ok(starts[i] > starts[i - 1]);
+  }
+  for (const start of starts) {
+    assert.ok(start >= 0);
+    assert.ok(start <= maxStart);
+  }
 });
 
 test('FeatureClassifier clamps outputs, handles silence, and separates tonal/noise fixtures', () => {
@@ -199,7 +335,8 @@ test('FeatureClassifier clamps outputs, handles silence, and separates tonal/noi
     flatness: new Float32Array([input.flatness ?? 0.2]),
     zcr: new Float32Array([input.zcr ?? 0.02]),
     rolloff: new Float32Array([input.rolloff ?? 0.3]),
-    crest: new Float32Array([input.crest ?? 5])
+    crest: new Float32Array([input.crest ?? 5]),
+    calibration: input.calibration
   }).classifyFrames();
 
   const noise = classifyOne({ flatness: 0.92, zcr: 0.2, brilliance: 0.35, air: 0.25, high: 0.6, rolloff: 0.85, centroid: 0.7 });
@@ -222,4 +359,41 @@ test('FeatureClassifier clamps outputs, handles silence, and separates tonal/noi
   for (const values of Object.values(decodeNoise)) {
     assert.equal(values[0], 0);
   }
+});
+
+test('FeatureClassifier suppresses melody and vocal false positives on high-noise low-confidence input', () => {
+  const { FeatureClassifier } = createSrcLoader()('analyzer/FeatureClassifier.ts');
+  const lowQualityCalibration = {
+    confidence: {
+      overall: 0.18,
+      signalToNoise: 0.08,
+      spectralStability: 0.18,
+      dynamicRangeConfidence: 0.2
+    }
+  };
+
+  const output = new FeatureClassifier({
+    rms: new Float32Array([0.85]),
+    rawRms: new Float32Array([0.85]),
+    flux: new Float32Array([0.7]),
+    sub: new Float32Array([0.05]),
+    bass: new Float32Array([0.1]),
+    lowMid: new Float32Array([0.62]),
+    mid: new Float32Array([0.78]),
+    presence: new Float32Array([0.8]),
+    brilliance: new Float32Array([0.72]),
+    air: new Float32Array([0.65]),
+    high: new Float32Array([0.78]),
+    centroid: new Float32Array([0.8]),
+    flatness: new Float32Array([0.92]),
+    zcr: new Float32Array([0.22]),
+    rolloff: new Float32Array([0.9]),
+    crest: new Float32Array([2.5]),
+    calibration: lowQualityCalibration
+  }).classifyFrames();
+
+  assert.ok(output.melodyRaw[0] < 0.35);
+  assert.ok(output.vocalRaw[0] < 0.35);
+  assert.ok(output.fxRaw[0] > output.melodyRaw[0]);
+  assert.ok(output.fxRaw[0] > output.vocalRaw[0]);
 });
