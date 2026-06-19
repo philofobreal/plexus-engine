@@ -1,9 +1,62 @@
+import type { SpectralCalibration } from './SpectralCalibration';
+import { FFT } from './math/FFT';
+
+export interface FrequencyBand {
+    min: number;
+    max: number;
+}
+
+export type FrequencyBandKey = 'sub' | 'bass' | 'lowMid' | 'mid' | 'presence' | 'brilliance' | 'air';
+
+export type FrequencyBands = Record<FrequencyBandKey, FrequencyBand>;
+
+export const DEFAULT_FREQUENCY_BANDS_HZ: FrequencyBands = {
+    sub: { min: 20, max: 60 },
+    bass: { min: 60, max: 180 },
+    lowMid: { min: 180, max: 500 },
+    mid: { min: 500, max: 2000 },
+    presence: { min: 2000, max: 5000 },
+    brilliance: { min: 5000, max: 12000 },
+    air: { min: 12000, max: 16000 }
+};
+
+const EPSILON = 1e-6;
+
+function sanitizeBand(band: FrequencyBand, nyquist: number): FrequencyBand {
+    const min = Math.min(Math.max(0, band.min), nyquist);
+    const max = Math.min(Math.max(min, band.max), nyquist);
+    return { min, max };
+}
+
+function cloneBandsForNyquist(bands: FrequencyBands, nyquist: number): FrequencyBands {
+    return {
+        sub: sanitizeBand(bands.sub, nyquist),
+        bass: sanitizeBand(bands.bass, nyquist),
+        lowMid: sanitizeBand(bands.lowMid, nyquist),
+        mid: sanitizeBand(bands.mid, nyquist),
+        presence: sanitizeBand(bands.presence, nyquist),
+        brilliance: sanitizeBand(bands.brilliance, nyquist),
+        air: sanitizeBand(bands.air, nyquist)
+    };
+}
+
 export class FeatureExtractor {
     private channel: Float32Array;
+    private sampleRate: number;
     private hopSize: number;
+    private nyquist: number;
+    private binHz: number;
+    private bandsHz: FrequencyBands;
     public totalFrames: number;
     public rmsT: Float32Array;
     public fluxT: Float32Array;
+    public subT: Float32Array;
+    public bassT: Float32Array;
+    public lowMidT: Float32Array;
+    public midT: Float32Array;
+    public presenceT: Float32Array;
+    public brillianceT: Float32Array;
+    public airT: Float32Array;
     public rawBassT: Float32Array;
     public rawMidT: Float32Array;
     public rawHighT: Float32Array;
@@ -16,13 +69,23 @@ export class FeatureExtractor {
     public typRms: number = 0;
     public typFlux: number = 0;
 
-    constructor(channel: Float32Array, sampleRate: number, hopSize: number) {
-        void sampleRate;
+    constructor(channel: Float32Array, sampleRate: number, hopSize: number, calibration?: SpectralCalibration) {
         this.channel = channel;
+        this.sampleRate = sampleRate;
         this.hopSize = hopSize;
+        this.nyquist = this.sampleRate / 2;
+        this.binHz = this.sampleRate / hopSize;
+        this.bandsHz = cloneBandsForNyquist(calibration?.bandsHz ?? DEFAULT_FREQUENCY_BANDS_HZ, this.nyquist);
         this.totalFrames = Math.floor(channel.length / hopSize);
         this.rmsT = new Float32Array(this.totalFrames);
         this.fluxT = new Float32Array(this.totalFrames);
+        this.subT = new Float32Array(this.totalFrames);
+        this.bassT = new Float32Array(this.totalFrames);
+        this.lowMidT = new Float32Array(this.totalFrames);
+        this.midT = new Float32Array(this.totalFrames);
+        this.presenceT = new Float32Array(this.totalFrames);
+        this.brillianceT = new Float32Array(this.totalFrames);
+        this.airT = new Float32Array(this.totalFrames);
         this.rawBassT = new Float32Array(this.totalFrames);
         this.rawMidT = new Float32Array(this.totalFrames);
         this.rawHighT = new Float32Array(this.totalFrames);
@@ -36,45 +99,12 @@ export class FeatureExtractor {
 
     public process(onProgress?: (p: number) => void): void {
         const N = this.hopSize;
-        const cosTable = new Float32Array(N / 2);
-        const sinTable = new Float32Array(N / 2);
-        for (let i = 0; i < N / 2; i++) {
-            cosTable[i] = Math.cos((2 * Math.PI * i) / N);
-            sinTable[i] = Math.sin((-2 * Math.PI * i) / N);
-        }
-
-        const windowMultiplier = new Float32Array(N);
-        for (let i = 0; i < N; i++) {
-            windowMultiplier[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (N - 1)));
-        }
-
-        const re = new Float32Array(N);
-        const im = new Float32Array(N);
+        const fft = new FFT(N);
+        const re = fft.re;
+        const im = fft.im;
         const prevMag = new Float32Array(N / 2);
         const mags = new Float32Array(N / 2);
         let lastReportedProgress = -1;
-        const processFFT = () => {
-            let j = 0;
-            for (let i = 0; i < N - 1; i++) {
-                if (i < j) { let tr = re[j], ti = im[j]; re[j] = re[i]; im[j] = im[i]; re[i] = tr; im[i] = ti; }
-                let k = N >> 1;
-                while (k <= j) { j -= k; k >>= 1; }
-                j += k;
-            }
-            for (let size = 2; size <= N; size *= 2) {
-                let halfsize = size / 2;
-                let tablestep = N / size;
-                for (let i = 0; i < N; i += size) {
-                    for (let j = i, k = 0; j < i + halfsize; j++, k += tablestep) {
-                        let c = cosTable[k], s = sinTable[k];
-                        let tr = re[j + halfsize] * c - im[j + halfsize] * s;
-                        let ti = re[j + halfsize] * s + im[j + halfsize] * c;
-                        re[j + halfsize] = re[j] - tr; im[j + halfsize] = im[j] - ti;
-                        re[j] += tr; im[j] += ti;
-                    }
-                }
-            }
-        };
 
         for (let i = 0; i < this.totalFrames; i++) {
             let start = i * this.hopSize;
@@ -86,33 +116,41 @@ export class FeatureExtractor {
                 sumE += sample * sample;
                 if (j > 0 && ((prevSample < 0 && sample >= 0) || (prevSample >= 0 && sample < 0))) zeroCrossings++;
                 prevSample = sample;
-                re[j] = sample * windowMultiplier[j];
+                re[j] = sample * fft.window[j];
                 im[j] = 0;
             }
             this.rmsT[i] = Math.sqrt(sumE / this.hopSize);
             this.zcrT[i] = zeroCrossings / Math.max(1, this.hopSize - 1);
 
-            processFFT();
+            fft.transform();
 
             let sumMag = 0, sumFreqMag = 0, sumLogMag = 0;
-            let currentFlux = 0, eB = 0, eM = 0, eH = 0;
+            let currentFlux = 0, eSub = 0, eBass = 0, eLowMid = 0, eMid = 0, ePresence = 0, eBrilliance = 0, eAir = 0;
             let maxMag = 0;
+            let activeBins = 0;
 
             for (let k = 1; k < N / 2; k++) {
                 let mag = Math.sqrt(re[k] * re[k] + im[k] * im[k]);
                 mags[k] = mag;
+                const hz = k * this.binHz;
+                const fluxDiff = Math.max(0, mag - prevMag[k]);
+                prevMag[k] = mag;
+                if (hz > this.nyquist) continue;
+                activeBins++;
                 sumMag += mag;
-                sumFreqMag += k * mag;
-                sumLogMag += Math.log(mag + 1e-6);
+                sumFreqMag += hz * mag;
+                sumLogMag += Math.log(mag + EPSILON);
                 if (mag > maxMag) maxMag = mag;
 
-                let fluxDiff = Math.max(0, mag - prevMag[k]);
                 currentFlux += fluxDiff;
-                prevMag[k] = mag;
 
-                if (k <= 6) eB += mag;
-                else if (k <= 93) eM += mag;
-                else if (k <= 465) eH += mag;
+                if (hz >= this.bandsHz.sub.min && hz < this.bandsHz.sub.max) eSub += mag;
+                else if (hz >= this.bandsHz.bass.min && hz < this.bandsHz.bass.max) eBass += mag;
+                else if (hz >= this.bandsHz.lowMid.min && hz < this.bandsHz.lowMid.max) eLowMid += mag;
+                else if (hz >= this.bandsHz.mid.min && hz < this.bandsHz.mid.max) eMid += mag;
+                else if (hz >= this.bandsHz.presence.min && hz < this.bandsHz.presence.max) ePresence += mag;
+                else if (hz >= this.bandsHz.brilliance.min && hz < this.bandsHz.brilliance.max) eBrilliance += mag;
+                else if (hz >= this.bandsHz.air.min && hz <= this.bandsHz.air.max) eAir += mag;
             }
 
             const rolloffTarget = sumMag * 0.85;
@@ -129,16 +167,24 @@ export class FeatureExtractor {
             }
 
             this.fluxT[i] = currentFlux;
-            let totalBand = eB + eM + eH + 1e-6;
-            this.rawBassT[i] = eB / totalBand;
-            this.rawMidT[i] = eM / totalBand;
-            this.rawHighT[i] = eH / totalBand;
+            let totalBand = eSub + eBass + eLowMid + eMid + ePresence + eBrilliance + eAir + EPSILON;
+            this.subT[i] = eSub / totalBand;
+            this.bassT[i] = eBass / totalBand;
+            this.lowMidT[i] = eLowMid / totalBand;
+            this.midT[i] = eMid / totalBand;
+            this.presenceT[i] = ePresence / totalBand;
+            this.brillianceT[i] = eBrilliance / totalBand;
+            this.airT[i] = eAir / totalBand;
+            this.rawBassT[i] = (eSub + eBass) / totalBand;
+            this.rawMidT[i] = (eLowMid + eMid + ePresence) / totalBand;
+            this.rawHighT[i] = (eBrilliance + eAir) / totalBand;
 
-            this.centroidT[i] = sumMag > 0 ? (sumFreqMag / sumMag) / 512 : 0;
-            this.flatnessT[i] = sumMag > 0 ? Math.exp(sumLogMag / 511) / (sumMag / 511) : 0;
+            const meanMag = activeBins > 0 ? sumMag / activeBins : 0;
+            this.centroidT[i] = sumMag > 0 && this.nyquist > 0 ? (sumFreqMag / sumMag) / this.nyquist : 0;
+            this.flatnessT[i] = sumMag > 0 && meanMag > 0 ? Math.exp(sumLogMag / Math.max(1, activeBins)) / meanMag : 0;
             this.pitchConfidenceT[i] = Math.min(1, Math.max(0, 1 - this.flatnessT[i]));
-            this.spectralRolloffT[i] = rolloffBin / 512;
-            this.spectralCrestT[i] = sumMag > 0 ? maxMag / (sumMag / 511) : 0;
+            this.spectralRolloffT[i] = this.nyquist > 0 ? Math.min(1, (rolloffBin * this.binHz) / this.nyquist) : 0;
+            this.spectralCrestT[i] = sumMag > 0 && meanMag > 0 ? maxMag / meanMag : 0;
 
             if (onProgress && this.totalFrames > 0) {
                 const p = (i + 1) / this.totalFrames;
