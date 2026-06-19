@@ -10,6 +10,18 @@
   "summary": {
     "requestId": 9001,
     "bpm": 123,
+    "bpmConfidence": 0.213848,
+    "gridConfidence": 0.337053,
+    "downbeatConfidence": 0.256617,
+    "tempoCandidateCount": 5,
+    "topTempoCandidate": {
+      "bpm": 123,
+      "score": 1,
+      "intervalSec": 0.487805,
+      "peakCount": 2,
+      "isHalfTime": false,
+      "isDoubleTime": false
+    },
     "adaptiveThreshold": 0.6,
     "hopSize": 1024,
     "frameCount": 96,
@@ -24,20 +36,24 @@
     "spectralPivotCount": 96,
     "featureHopSize": 1024,
     "gridOffset": 0,
+    "trackBpmConfidence": 0.213848,
+    "trackGridConfidence": 0.337053,
+    "trackDownbeatConfidence": 0.256617,
+    "trackTempoCandidateCount": 5,
     "duration": 2.229116,
     "firstFrame": {
       "e": 0.996872,
       "densityProj": 1,
-      "melodyProj": 0.358191,
-      "fxProj": 0.135066,
+      "melodyProj": 0.347833,
+      "fxProj": 0.151396,
       "state": "LOW",
       "eRatio": 0
     },
     "midFrame": {
       "e": 0.496756,
       "densityProj": 0.081767,
-      "melodyProj": 0.525982,
-      "fxProj": 0.006678,
+      "melodyProj": 0.523013,
+      "fxProj": 0.007878,
       "state": "LOW",
       "eRatio": 0
     },

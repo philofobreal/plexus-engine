@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
+import { generatePerformancePlan } from '../src/automation/performancePlanGenerator.ts';
 
 const SRC_ROOT = join(process.cwd(), 'src');
 
@@ -102,4 +103,43 @@ test('dramaturgy analysis is deterministic for identical input', () => {
   const second = computeDramaturgyAnalysis(features, frames, 1024, 44_100);
 
   assert.deepEqual(second, first);
+});
+
+test('critically low grid and bpm confidence keeps dramaturgy cue timing energy-reactive', async () => {
+  const baseAnalysis = {
+    duration: 16,
+    bpm: 120,
+    bpmConfidence: 0.95,
+    gridConfidence: 0.92,
+    downbeatConfidence: 0.9,
+    tempoCandidates: [{ bpm: 120, score: 1, intervalSec: 0.5, peakCount: 12, isHalfTime: false, isDoubleTime: false }],
+    bars: [
+      { index: 0, start: 0, end: 2, energy: 0.4, density: 0.4, avgRms: 0.4, peakRms: 0.5, bass: 0.3, mid: 0.3, treble: 0.3, state: 'LOW', dominantFeature: 'rhythm' },
+      { index: 1, start: 2, end: 4, energy: 0.9, density: 0.8, avgRms: 0.8, peakRms: 0.9, bass: 0.8, mid: 0.5, treble: 0.4, state: 'HIGH', dominantFeature: 'impact' }
+    ],
+    sections: [
+      { start: 0, end: 16, label: 'drop', energy: 0.88, density: 0.82, dominantFeature: 'impact', avgRms: 0.8, peakRms: 0.95 }
+    ],
+    patterns: [],
+    cues: [{ time: 2.26, duration: 0.5, intensity: 1, confidence: 0.96, kind: 'impact' }],
+    significantMoments: [{ time: 2.26, duration: 0.5, intensity: 1, confidence: 0.96, kind: 'impact' }],
+    features: [],
+    buildupConfidence: [],
+    spectralPivot: [],
+    tensionTrends: { globalSlope: 0, peakTime: 0, peakValue: 0, segments: [] },
+    featureHopSize: 1024,
+    gridOffset: 0
+  };
+
+  const aligned = await generatePerformancePlan(baseAnalysis, ['default.json'], 16);
+  const reactive = await generatePerformancePlan({ ...baseAnalysis, bpmConfidence: 0.12, gridConfidence: 0.12 }, ['default.json'], 16);
+  const alignedMicro = aligned.points.find(point => point.id.startsWith('micro-impact'));
+  const reactiveMicro = reactive.points.find(point => point.id.startsWith('micro-impact'));
+
+  assert.ok(alignedMicro);
+  assert.ok(reactiveMicro);
+  assert.equal(alignedMicro.time, 2.5);
+  assert.equal(reactiveMicro.time, 2.26);
+  assert.equal(reactiveMicro.timingMode, 'energy-reactive');
+  assert.ok(reactiveMicro.confidence < alignedMicro.confidence);
 });
