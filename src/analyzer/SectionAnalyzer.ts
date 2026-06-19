@@ -128,13 +128,18 @@ export class SectionAnalyzer {
     public calculate(visualFeatures: VisualFeatureFrame[]): void {
         const { totalFrames, rmsT, rawBassT, rawMidT, rawHighT, typRms } = this.features;
         const totalDuration = totalFrames * this.hopSize / this.sampleRate;
-        
-        let firstBarStart = this.grid.gridOffset;
-        while (firstBarStart > 0) firstBarStart -= this.grid.secondsPerBar;
+        // Fall back to energy boundaries only when the tempo grid is critically unusable.
+        const useEnergyReactiveBoundaries = this.grid.gridConfidence < 0.15 && this.grid.bpmConfidence < 0.20;
+        const analysisStepSec = useEnergyReactiveBoundaries
+            ? Math.min(4, Math.max(1, totalDuration / 24))
+            : this.grid.secondsPerBar;
+
+        let firstBarStart = useEnergyReactiveBoundaries ? 0 : this.grid.gridOffset;
+        while (firstBarStart > 0) firstBarStart -= analysisStepSec;
 
         let barBlocks = [];
-        for (let startSec = firstBarStart, barIndex = 0; startSec < totalDuration; startSec += this.grid.secondsPerBar, barIndex++) {
-            let endSec = startSec + this.grid.secondsPerBar;
+        for (let startSec = firstBarStart, barIndex = 0; startSec < totalDuration; startSec += analysisStepSec, barIndex++) {
+            let endSec = startSec + analysisStepSec;
             let startIdx = Math.max(0, Math.floor(startSec * this.sampleRate / this.hopSize));
             let endIdx = Math.min(totalFrames, Math.floor(endSec * this.sampleRate / this.hopSize));
             if (startIdx >= totalFrames) break;
@@ -212,14 +217,22 @@ export class SectionAnalyzer {
             let isExplosion = nextBar && (nextBar.energy - currentBar.energy > 0.3);
 
             let forceCut = isBassDrop || isEnergyDrop || isExplosion;
-            let isAllowedCutPoint = (lengthBars % 8 === 0) || forceCut;
-            let maxPhraseCut = lengthBars >= 16;
+            let isAllowedCutPoint = useEnergyReactiveBoundaries
+                ? forceCut || lengthBars >= 4
+                : (lengthBars % 8 === 0) || forceCut;
+            let maxPhraseCut = useEnergyReactiveBoundaries ? lengthBars >= 8 : lengthBars >= 16;
 
             if (maxPhraseCut || isAllowedCutPoint || isLastBar) {
                 let startBar = barBlocks[currentSectionStartIdx];
                 let endBar = barBlocks[i];
                 let startIdx = startBar.startIdx;
-                let endIdx = endBar.endIdx; // STRICT GRID. No micro-snapping.
+                let endIdx = useEnergyReactiveBoundaries
+                    ? this.findEnergyReactiveBoundary(endBar.endIdx, Math.max(2, Math.floor((endBar.endIdx - endBar.startIdx) * 0.45)))
+                    : endBar.endIdx; // STRICT GRID. No micro-snapping.
+                if (this.trackSections.length > 0 && useEnergyReactiveBoundaries) {
+                    startIdx = Math.floor(this.trackSections[this.trackSections.length - 1].end * this.sampleRate / this.hopSize);
+                }
+                endIdx = Math.max(startIdx + 1, Math.min(totalFrames, endIdx));
 
                 let sumEnergy = 0, sumBass = 0;
                 for(let k = currentSectionStartIdx; k <= i; k++) {
@@ -250,8 +263,8 @@ export class SectionAnalyzer {
                 };
 
                 this.trackSections.push({
-                    start: startBar.startIdx * this.hopSize / this.sampleRate,
-                    end: endBar.endIdx * this.hopSize / this.sampleRate,
+                    start: startIdx * this.hopSize / this.sampleRate,
+                    end: endIdx * this.hopSize / this.sampleRate,
                     label,
                     energy: avgEnergy,
                     density: avgDensity,
@@ -263,6 +276,29 @@ export class SectionAnalyzer {
                 currentSectionStartIdx = i + 1;
             }
         }
+    }
+
+    private findEnergyReactiveBoundary(centerIdx: number, radiusFrames: number): number {
+        const { totalFrames, rmsT, fluxT } = this.features;
+        const start = Math.max(1, centerIdx - radiusFrames);
+        const end = Math.min(totalFrames - 2, centerIdx + radiusFrames);
+        let bestIdx = Math.max(1, Math.min(totalFrames - 1, centerIdx));
+        let bestScore = -Infinity;
+
+        for (let i = start; i <= end; i++) {
+            const prev = rmsT[i - 1] || 0;
+            const next = rmsT[i + 1] || 0;
+            const energyEdge = Math.abs(next - prev);
+            const localFlux = fluxT[i] || 0;
+            const centerPenalty = Math.abs(i - centerIdx) / Math.max(1, radiusFrames);
+            const score = energyEdge * 0.65 + localFlux * 0.35 - centerPenalty * 0.08;
+            if (score > bestScore) {
+                bestScore = score;
+                bestIdx = i;
+            }
+        }
+
+        return bestIdx;
     }
 }
 

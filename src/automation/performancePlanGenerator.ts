@@ -226,13 +226,13 @@ function generatePass1SectionAnchors(
 
         // STRICT VJ RULE: Every single section gets an anchor point.
         const time = clampTime(section.start, duration);
-        points.push(createPoint(section, i, time, presets, duration, presetMetadata, 100.0));
+        points.push(createPoint(section, i, time, presets, duration, presetMetadata, 100.0, trackAnalysis));
 
         if (section.end - section.start > LONG_SECTION_SEC) {
             const cues = getSignificantCuesInSection(trackAnalysis, section);
             for (let ci = 0; ci < cues.length; ci++) {
-                const cueTime = clampTime(snapToNearestBeat(cues[ci].time, trackAnalysis.bars), duration);
-                points.push(createCuePoint(section, i, { ...cues[ci], time: cueTime }, ci, presets, duration, presetMetadata));
+                const cueTime = clampTime(resolveDramaturgyTime(cues[ci].time, trackAnalysis), duration);
+                points.push(createCuePoint(section, i, { ...cues[ci], time: cueTime }, ci, presets, duration, presetMetadata, trackAnalysis));
             }
         }
     }
@@ -256,13 +256,13 @@ function generatePass2Dramaturgy(
         const next = tensionTrends.segments[i + 1];
         
         if (curr.direction === 'rising' && next.direction !== 'rising' && curr.endValue >= 0.6) {
-            const peakTime = clampTime(snapToNearestBeat(curr.end, trackAnalysis.bars), duration);
+            const peakTime = clampTime(resolveDramaturgyTime(curr.end, trackAnalysis), duration);
             const section = getSectionAt(sections, peakTime);
             
             if (!section || section.label === 'break' || section.label === 'intro' || section.label === 'outro') continue;
 
             const si = sections.indexOf(section);
-            const point = createPoint(section, si, peakTime, presets, duration, presetMetadata, scoreTensionPeak(curr));
+            const point = createPoint(section, si, peakTime, presets, duration, presetMetadata, scoreTensionPeak(curr), trackAnalysis);
             point.reason = 'harmonicShift';
             points.push(point);
         }
@@ -281,12 +281,12 @@ function generatePass2Dramaturgy(
             highBuildupStart = t;
         } else if (inHighBuildup && conf < BUILDUP_PEAK_THRESHOLD) {
             inHighBuildup = false;
-            const peakTime = clampTime(snapToNearestBeat(highBuildupStart, trackAnalysis.bars), duration);
+            const peakTime = clampTime(resolveDramaturgyTime(highBuildupStart, trackAnalysis), duration);
             const section = getSectionAt(sections, peakTime);
             
             if (section) {
                 const si = sections.indexOf(section);
-                const point = createPoint(section, si, peakTime, presets, duration, presetMetadata, 0.8);
+                const point = createPoint(section, si, peakTime, presets, duration, presetMetadata, 0.8, trackAnalysis);
                 point.reason = 'build';
                 points.push(point);
             }
@@ -320,7 +320,7 @@ function generatePass3Patterns(
         const preset = patternPresetMap.get(pattern.id)!;
 
         for (const occ of pattern.occurrences) {
-            const occTime = clampTime(snapToNearestBeat(occ.start, trackAnalysis.bars), duration);
+            const occTime = clampTime(resolveDramaturgyTime(occ.start, trackAnalysis), duration);
             const section = getSectionAt(trackAnalysis.sections, occTime);
             if (!section) continue;
 
@@ -331,7 +331,9 @@ function generatePass3Patterns(
                 time: occTime,
                 sectionId: getSectionId(section, si),
                 preset,
-                confidence: clamp01(occ.confidence),
+                confidence: clampAnalysisConfidence(occ.confidence, trackAnalysis),
+                analysisConfidence: getAnalysisConfidence(trackAnalysis),
+                timingMode: getTimingMode(trackAnalysis),
                 intensity: computeIntensity(section),
                 reason: 'harmonicShift',
                 morphDurationSec: profile.morphDurationSec,
@@ -360,7 +362,7 @@ function generatePass4MicroCues(
         if (cue.kind !== 'impact' && cue.kind !== 'fx') continue;
         if (cue.confidence < 0.75 && cue.intensity < 0.75) continue;
 
-        const cueTime = clampTime(snapToNearestBeat(cue.time, trackAnalysis.bars), duration);
+        const cueTime = clampTime(resolveDramaturgyTime(cue.time, trackAnalysis), duration);
         const section = getSectionAt(trackAnalysis.sections, cueTime);
         
         if (!section || ['break', 'intro', 'outro', 'build'].includes(section.label)) continue;
@@ -374,7 +376,9 @@ function generatePass4MicroCues(
             time: cueTime,
             sectionId: getSectionId(section, si),
             preset,
-            confidence: clamp01(cue.confidence),
+            confidence: clampAnalysisConfidence(cue.confidence, trackAnalysis),
+            analysisConfidence: getAnalysisConfidence(trackAnalysis),
+            timingMode: getTimingMode(trackAnalysis),
             intensity: computeIntensity(section) * (cue.kind === 'impact' ? 1.2 : 1.0),
             reason: cue.kind === 'impact' ? 'drop' : 'harmonicShift',
             morphDurationSec: Math.min(profile.morphDurationSec, 1.5),
@@ -421,7 +425,7 @@ function getSignificantCuesInSection(trackAnalysis: TrackAnalysis, section: Trac
 
 // ─── Point Factories ───────────────────────────────────────────────────────────
 
-function createPoint(section: TrackSection, sectionIndex: number, time: number, presets: string[], duration: number, presetMetadata: PresetMetadata, score = 0): PerformanceAutomationPoint {
+function createPoint(section: TrackSection, sectionIndex: number, time: number, presets: string[], duration: number, presetMetadata: PresetMetadata, score = 0, trackAnalysis?: TrackAnalysis): PerformanceAutomationPoint {
     void duration;
     const profile = getMorphProfile(section);
     const point = {
@@ -429,7 +433,9 @@ function createPoint(section: TrackSection, sectionIndex: number, time: number, 
         time: time,
         sectionId: getSectionId(section, sectionIndex),
         preset: choosePreset(section, presets, presetMetadata),
-        confidence: clamp01(Math.max(0.5, (section.energy + section.density) * 0.5)),
+        confidence: clampAnalysisConfidence(Math.max(0.5, (section.energy + section.density) * 0.5), trackAnalysis),
+        analysisConfidence: getAnalysisConfidence(trackAnalysis),
+        timingMode: getTimingMode(trackAnalysis),
         intensity: computeIntensity(section),
         reason: getAutomationReason(section),
         morphDurationSec: profile.morphDurationSec,
@@ -439,12 +445,12 @@ function createPoint(section: TrackSection, sectionIndex: number, time: number, 
     return point;
 }
 
-function createCuePoint(section: TrackSection, sectionIndex: number, cue: VisualCueEvent, cueIndex: number, presets: string[], duration: number, presetMetadata: PresetMetadata): PerformanceAutomationPoint {
-    const point = createPoint(section, sectionIndex, cue.time, presets, duration, presetMetadata, 5.0);
+function createCuePoint(section: TrackSection, sectionIndex: number, cue: VisualCueEvent, cueIndex: number, presets: string[], duration: number, presetMetadata: PresetMetadata, trackAnalysis?: TrackAnalysis): PerformanceAutomationPoint {
+    const point = createPoint(section, sectionIndex, cue.time, presets, duration, presetMetadata, 5.0, trackAnalysis);
     return {
         ...point,
         id: `performance-${sectionIndex}-${normalizeIdPart(cue.kind)}-cue-${cueIndex}-${formatTimeForId(point.time)}`,
-        confidence: clamp01(Math.max(point.confidence, cue.confidence)),
+        confidence: clampAnalysisConfidence(Math.max(point.confidence, cue.confidence), trackAnalysis),
         reason: cue.kind === 'break' ? 'break' : point.reason
     };
 }
@@ -590,6 +596,31 @@ function snapToNearestBeat(time: number, bars: BarAnalysis[]): number {
     const firstBar = bars[0].start;
     const beatIndex = Math.round((time - firstBar) / secondsPerBeat);
     return firstBar + beatIndex * secondsPerBeat;
+}
+
+function resolveDramaturgyTime(time: number, trackAnalysis: TrackAnalysis): number {
+    return shouldUseGridTiming(trackAnalysis) ? snapToNearestBeat(time, trackAnalysis.bars) : time;
+}
+
+function shouldUseGridTiming(trackAnalysis?: TrackAnalysis): boolean {
+    const gridConf = trackAnalysis?.gridConfidence ?? 1;
+    const bpmConf = trackAnalysis?.bpmConfidence ?? 1;
+    // Trust the grid unless both timing and tempo evidence are critically low.
+    return gridConf >= 0.15 || bpmConf >= 0.20;
+}
+
+function getTimingMode(trackAnalysis?: TrackAnalysis): PerformanceAutomationPoint['timingMode'] {
+    return shouldUseGridTiming(trackAnalysis) ? 'bar-aligned' : 'energy-reactive';
+}
+
+function getAnalysisConfidence(trackAnalysis?: TrackAnalysis): number {
+    if (!trackAnalysis) return 1;
+    return clamp01(Math.min(trackAnalysis.bpmConfidence ?? 0, trackAnalysis.gridConfidence ?? 0));
+}
+
+function clampAnalysisConfidence(confidence: number, trackAnalysis?: TrackAnalysis): number {
+    if (!trackAnalysis) return clamp01(confidence);
+    return clamp01(confidence * (0.55 + getAnalysisConfidence(trackAnalysis) * 0.45));
 }
 
 function getSectionId(section: TrackSection, index: number): string { return `${index}:${normalizeIdPart(section.label)}:${formatTimeForId(section.start)}`; }
