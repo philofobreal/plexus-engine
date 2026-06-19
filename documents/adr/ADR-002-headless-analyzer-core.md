@@ -29,8 +29,8 @@ The analyzer core now owns:
 
 - `analyzeAudio()` as the single orchestration pipeline.
 - `FeatureExtractor` for Hann-windowed FFT features.
-- `GridAligner` for BPM and bar-grid alignment.
-- `SectionAnalyzer` for bar and section analysis.
+- `GridAligner` for BPM, tempo candidates, half/double-time ambiguity annotation, bar-grid alignment, and tempo/grid/downbeat confidence.
+- `SectionAnalyzer` for bar and section analysis, including energy-reactive fallback when both grid and BPM confidence are critically low.
 - `DramaturgyBuilder` and `computeDramaturgyAnalysis()` for beat events, visual cues, recurring patterns, buildup confidence, tension trends, and dramaturgy data.
 - `normalizeTrackAnalysis()` and `EMPTY_TRACK_ANALYSIS` as canonical analysis normalization.
 - Analyzer constants such as `ANALYSIS_ALGORITHM_VERSION` and the default hop size.
@@ -49,12 +49,16 @@ Positive:
 - The worker protocol is easier to protect because the worker no longer owns business logic.
 - `AudioEngine` remains focused on Web Audio, worker invocation, stale-result protection, and runtime publication.
 - Canonical `TrackAnalysis` normalization now lives with the analyzer domain while `AudioEngine` keeps memory-safety reset ownership.
+- Tempo confidence and alternate tempo candidates can be validated in headless tests without browser-worker setup.
+- Critically low-confidence material can publish conservative BPM/grid/downbeat evidence and use energy-reactive section boundaries instead of over-trusting a weak bar grid.
 
 Tradeoffs:
 
 - Analyzer changes now span several focused files instead of one monolithic worker file.
 - Tests and governance must distinguish analyzer-core changes from worker-adapter changes.
 - Any future dependency added under `src/analyzer/` must be compatible with browser and Node.js execution.
+- Confidence fields are now part of the append-only analyzer contract; schema fixtures, normalizers, empty state, worker consumers, and mocks must be kept in sync.
+- The low-transient evidence cap is intentionally conservative and kick/low-transient oriented. It should not be described as universal rhythm confidence for every genre or source type.
 
 ## Alternatives Considered
 
@@ -76,4 +80,3 @@ Tradeoffs:
 - `tests/analyzer-parity.test.mjs`
 - `tests/contracts.test.mjs`
 - `tests/dramaturgy.test.mjs`
-

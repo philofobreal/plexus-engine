@@ -18,6 +18,11 @@ Current analysis success message fields:
 - `type: 'analysis_done'`.
 - `requestId`.
 - `bpm`.
+- `bpmConfidence`.
+- `gridConfidence`.
+- `downbeatConfidence`.
+- `tempoCandidates`.
+- `adaptiveThreshold`.
 - `frames`.
 - `events`.
 - `hopSize`.
@@ -40,16 +45,20 @@ Internal ownership:
 
 - `SpectralCalibration` owns deterministic track-level pre-pass estimation of Hz band centers and safety-clamped band ranges, with default-band fallback for low-confidence input.
 - `FeatureExtractor` owns sample-window processing, Hann-windowed FFT execution, RMS, spectral flux, Hz-based band ratios, centroid, flatness, pitch-confidence, Zero Crossing Rate, spectral rolloff, spectral crest arrays, and typical RMS/flux maxima.
-- `GridAligner` owns BPM estimation, beat length, bar length, strongest-hit anchoring, downbeat search, and `gridOffset`.
+- `GridAligner` owns BPM estimation, ordered tempo-candidate generation, half/double-time ambiguity annotation, beat length, bar length, strongest-hit anchoring, downbeat search, `gridOffset`, and BPM/grid/downbeat confidence.
 - `FeatureNormalizer` owns allocation of normalized `Float32Array` views from raw analyzer arrays and precomputed typical maxima. It must not sort or recompute percentiles in the orchestration path.
 - `FeatureClassifier` owns semantic frame scoring for melody, vocal, FX, density, brightness, and tension from normalized vectors and extracted DSP features such as ZCR, spectral crest, flatness, rolloff, and Hz band ratios. Melody and vocal are spectral heuristics, not stem separation.
 - `TemporalSmoother` owns EMA smoothing for classifier outputs and starts from the first input value to avoid artificial fade-in at track start.
-- `SectionAnalyzer` owns bar-block aggregation, adaptive threshold calculation, `BarAnalysis` output, section splitting, evidence-based section-label scoring, section RMS fields, and dominant-feature selection.
+- `SectionAnalyzer` owns bar-block aggregation, adaptive threshold calculation, `BarAnalysis` output, section splitting, critically low tempo/grid energy-reactive boundary fallback, evidence-based section-label scoring, section RMS fields, and dominant-feature selection.
 - `DramaturgyBuilder` owns visual cue emission, significant musical moment candidates, and recurring `MusicPattern` grouping from deterministic fuzzy section similarity.
 - `BeatEventClassifier` owns accepted beat peak classification and the mapping from internal semantic hit kinds to the public `1 | 2 | 3` beat-event type contract.
 - `SpectralPivot` owns the offline buildup/LOW_DROP compensation pass and the absolute `sE <= 0.04` noise gate that zeroes delicate feature projections.
 
 The worker must remain dependency-free from DOM, p5, `AudioEngine`, UI, renderer modules, and shared mutable runtime state. New analysis behavior should be added to the owning class above or to a similarly focused worker-internal class, not by growing the message handler.
+
+Tempo confidence is part of the worker result contract, not UI-only metadata. Root `AnalysisResult` and nested `TrackAnalysis` payloads must both carry `bpmConfidence`, `gridConfidence`, `downbeatConfidence`, and `tempoCandidates`. If candidates exist, root `bpm` must equal `tempoCandidates[0].bpm`. Normalization for legacy or partial payloads must provide deterministic fallbacks: confidence values default to `0` and `tempoCandidates` defaults to an empty array.
+
+The confidence fields are evidence signals with explicit limits. `bpmConfidence` must not be raised merely because the grid was derived from that same BPM estimate. Downbeat confidence must be capped by weak BPM/grid evidence. The current low-transient evidence cap is intentionally named and documented as kick-transient evidence; do not treat it as a universal rhythm-confidence measure for bass-light material, and do not apply it as a multiplier to timing-only grid confidence.
 
 ## Race Prevention
 
@@ -94,6 +103,8 @@ When the playback path still needs the decoded `AudioBuffer`, the default implem
 For the same input samples, sample rate, and algorithm version, worker output must be deterministic. Avoid nondeterministic time, random values, shared mutable globals, and environment-dependent thresholds.
 
 When recurring temporal patterns are emitted, they must be derived from deterministic full-track features. The current implementation groups sections by Euclidean distance over energy, density, and dominant-feature evidence rather than exact string signatures. Pattern ids must be stable for one accepted worker result and must be referenced by cue events through optional `patternId` fields.
+
+Tempo candidates must also be deterministic. Half/double-time resolution may reorder only close-score aliases such as 85/170 or 64/128; it must not hide a clearly dominant candidate. Negative fixtures such as ambient, noise, spoken material, random clicks, and sparse one- or two-onset input should keep BPM/grid/downbeat confidence low.
 
 ## Termination And Errors
 

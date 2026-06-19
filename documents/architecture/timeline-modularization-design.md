@@ -81,6 +81,8 @@ A `render(state)` deklarativ. A `RenderState` tartalmazza a kirajzolashoz szukse
 - aktualis audio sensitivity, drop anticipation es `TimelineLayers` lathatosagi allapot
 - opcionalis `scrubTime`
 
+Az analyzer tempo confidence mezoi (`bpmConfidence`, `gridConfidence`, `downbeatConfidence`, `tempoCandidates`) nem kerulnek kulon `RenderState` mezokbe. A timeline a mar elfogadott `TrackAnalysis` adatszerkezetet rajzolja; analyzer debug ertekek csak explicit debug UI-n keresztul jelenhetnek meg.
+
 A renderelo nem olvas kozvetlenul a globalis `State`-bol. Ez az informacio-elrejtes masik oldala: a `TimelineCanvas` nem tudja, honnan jon az adat, csak azt, hogyan kell azt vizualisan lekepzeni. Ez csokkenti a rejtett fuggosegeket es egyszerubbe teszi a tesztelest, mert a renderelo mockolt canvas-kontextussal es konstrualt `RenderState` objektummal is futtathato.
 
 A modul belso allapota minimalis es renderelesi jellegu:
@@ -173,6 +175,8 @@ Az elso manualis valtozas utan a plan `source` mezoje `'auto'`-rol `'edited'`-re
 
 Az auto-generalast a `generatePerformancePlan` Strategy Pattern szerint valasztja szet. A `Dramaturgy` strategia a zenei szekciokra es cue-kra epulo alapertelmezett generalas, a `Hero` strategia a szekciokat preset `heroBeepMode` ritmusokra kepezi le, a `Strict` strategia pedig figyelmen kivul hagyja a zenei szekciokat es a kivalasztott preseteket szigoruan a bar-grid szerint valtogatja. A `generatePerformancePlan` emiatt `async`: a `Hero` strategianak preset metadata-ra van szuksege, es ha egy preset meg nincs betoltve, a generator opportunisztikusan lekeri a JSON payloadot, hogy a `heroBeepMode` parameter alapjan helyesen tudjon mapelni.
 
+Kritikusan alacsony grid es BPM confidence eseten a dramaturgiai generator nem kezeli a bar gridet eros idozitesi igazsagkent. Az auto pontok opcionalis `timingMode` mezoje `bar-aligned` vagy `energy-reactive` lehet, az `analysisConfidence` pedig az analyzer BPM/grid evidenciaja alapjan skalazza a pont megbizhatosagat.
+
 Uj pont letrehozasakor a Dashboard:
 
 1. `focusX` -> `hoverTime`
@@ -223,6 +227,7 @@ A `contracts.test.mjs` tovabbra is vedo szerepet tolt be. Kifejezetten ellenorzi
 
 - `State.performancePlan` es `State.editedPerformancePlan` tipusos letezese
 - `PerformanceAutomationPoint` mezok: `id`, `time`, `sectionId`, `preset`, `confidence`, `intensity`, `reason`, `morphDurationSec`, `morphCurve`, opcionalis `locked`
+- opcionalis `PerformanceAutomationPoint` analyzer mezok: `analysisConfidence`, `timingMode`
 - `snapToNearestBar` mukodesre vonatkozo contract
 - `constrainPointTime` es `constrainMorphDuration` attfedes-vedelem
 - `minGap = clamp(duration / 30, 8.0, 32.0)` dinamikus pacing

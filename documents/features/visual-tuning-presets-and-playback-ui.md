@@ -47,6 +47,8 @@ Preset JSON can be stored either as the raw tuning object or under a `visualTuni
 
 Performance-plan preset assignment is semantic when preset metadata is available. `GeneratorOptions.presetMetadata` receives the preloaded JSON payloads from `State.preloadedPresets`, and the generator scores tuning/dramaturgy values such as `particleEnergySpeed`, `particleBeatSpeed`, `dropDampening`, `buildupIntensity`, `breakRestraint`, `vocalHighlight`, and `fxChaos` against the target section. File-name hints remain a fallback for sparse or legacy metadata, but custom preset names work when their parameter profile matches the section.
 
+Generated automation points may carry `analysisConfidence` and `timingMode`. `timingMode: 'bar-aligned'` means the generator uses the analyzed bar grid; `timingMode: 'energy-reactive'` means both grid and BPM confidence were critically low, so dramaturgy timing avoids strict beat snapping. Point confidence is scaled by the analyzer confidence so low-confidence schedules remain editable and visually inspectable without pretending to be precise bar-grid events.
+
 ## Playback Controls
 
 The central visual surface now behaves as the primary playback target.
@@ -74,9 +76,10 @@ Implemented capabilities:
 - `drawTimelineGridlines()` draws BPM-derived four-beat bar boundaries.
 - Section blocks, bar RMS/peak pressure, the `buildupConfidence` curve, `tensionTrends`, significant cue markers, and the playhead are drawn as separate canvas layers.
 - `TrackAnalysis.bars` provides bar index, `HIGH`/`LOW` state, RMS, bass, mid, treble, density, energy, and dominant-feature values for timeline visualization.
+- If analyzer grid and BPM confidence are both critically low, the upstream sectioning may come from energy-reactive time windows rather than strict BPM bars. The timeline still renders the accepted `TrackAnalysis.bars` and `TrackSection` payload; it must not re-run sectioning or infer confidence on its own.
 - The top resize handle lets the user manually change timeline height outside overlay mode; height changes use a throttled redraw path and preserve HDPI canvas sharpness.
 - The top-right timeline control opens a fullscreen overlay. The `.seek-container` receives `.timeline-overlay-active`, the `.timeline-wrapper` receives `.is-fullscreen-overlay`, and `body` receives `.timeline-overlay-open`, so the timeline fills the viewport while unrelated chrome is hidden.
-- Hovering the canvas shows the DOM-based `#timeline-tooltip` with time, zoom, section, bar, RMS and BarAnalysis bass/mid/treble spectral-band ratios, buildup, trend, and nearby cue information.
+- Hovering the canvas shows the DOM-based `#timeline-tooltip` with time, zoom, section, bar, RMS and BarAnalysis bass/mid/treble spectral-band ratios, buildup, trend, and nearby cue information. BPM/grid/downbeat confidence and alternate tempo candidates are appended only when `featureFlags.analyzerDebugOverlay` is enabled, so analyzer internals stay out of the default user-facing tooltip.
 - Mouse wheel zooms the timeline between `1x` and `16x` around the pointer. The canonical visible viewport is described by shared `State.pan` and `State.duration / State.zoom`, with `DashboardUI` translating normalized gesture input into those state values.
 - Normal left click or drag always scrubs/seeks, including in zoomed view. Shift-drag or middle-button drag pans the viewport.
 - While playing in zoomed view, the viewport follows the playhead when the playhead leaves the `15%..75%` range of the visible timeline.
@@ -162,7 +165,7 @@ Beat event types are assigned by the analyzer worker from smoothed visual-featur
 - Type 2 is the `dense impact hit`, emitted when fx does not pass that threshold and smoothed density is greater than `0.7`.
 - Type 1 is the `default spectral-flux hit`, used for all other accepted beat peaks.
 
-The analyzer also publishes BPM-aligned `BarAnalysis` entries and RMS fields on `TrackSection`. Older payloads are normalized by `AudioEngine.normalizeTrackAnalysis()` so missing bar/RMS fields fall back safely instead of breaking the UI.
+The analyzer publishes `BarAnalysis` entries, RMS fields on `TrackSection`, and tempo confidence metadata on `TrackAnalysis`. Normal tracks remain BPM-aligned; only critically low grid and BPM confidence can make section boundaries energy-reactive. Older payloads are normalized by `AudioEngine.normalizeTrackAnalysis()` so missing bar/RMS/confidence/candidate fields fall back safely instead of breaking the UI.
 
 ## Performance Details
 

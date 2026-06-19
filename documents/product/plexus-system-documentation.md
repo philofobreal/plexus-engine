@@ -46,7 +46,7 @@ A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus m
 1. **Composition (`src/main.ts`):** letrehozza a DOM shellt, az `AudioEngine` peldanyt, a `DashboardUI` peldanyt es a p5 renderert. A kezdeti `#app-loader` eltavolitasat csak akkor inditja, ha a renderer inicializacioja befejezodott es a `bootStart` ota legalabb 800ms eltelt.
 2. **UI Layer (`src/ui/DashboardUI.ts`, `src/ui/controllers/`, `src/style.css`):** a `DashboardUI` mar facade/orchestrator szerepet tolt be, nem monolitikus DOM-binding osztaly. A konkret UI kotest a `PlaybackController`, `TuningController` es `ExportController` vegzi; ezek callbackeken keresztul delegalt szandekot adnak vissza a `DashboardUI`-nak. A media loader overlay es progress bar vizualis frissiteset a `PlaybackController` vegzi.
 3. **Audio Engine (`src/audio/AudioEngine.ts`):** felelos a hangfajlok dekodolasaert, a `AudioBufferSourceNode` eletciklusert, a kanonikus idoszamitasert, a seek/end resetert, a worker request id kezelesert, a stale worker eredmenyek eldobasaert es a worker terminalasaert. Az `onProgress(progress, stage)` callbacken keresztul a decode fazist es a worker progress telemetriat is tovabbitja a UI-nak. A Hero metronomhoz negy szintetizalt beep stemet tart parhuzamosan szinkronban, es preset automatizalas alapjan sima gain crossfade-del valt koztuk.
-4. **Analysis Engine (`src/audio/analyzer.worker.ts`):** dedikalt Web Worker. Nem monolitikus `onmessage` algoritmus: a feldolgozas `SpectralCalibration`, `FeatureExtractor`, `GridAligner`, `SectionAnalyzer` es `DramaturgyBuilder` osztalyokra van bontva. 1024 mintas Hann-windowed FFT pipeline-t hasznal, spektralis fluxust, Hz-alapu relativ savenergiakat, centroidot es flatness erteket szamol, majd `AudioFrame`, `BeatEvent` es `TrackAnalysis` kimenetet publikal. A nehez FFT ciklus alatt `analysis_progress` uzenetekkel folyamatos telemetriat is kuld a fo szalnak.
+4. **Analysis Engine (`src/audio/analyzer.worker.ts`):** dedikalt Web Worker. Nem monolitikus `onmessage` algoritmus: a feldolgozas `SpectralCalibration`, `FeatureExtractor`, `GridAligner`, `SectionAnalyzer` es `DramaturgyBuilder` osztalyokra van bontva. 1024 mintas Hann-windowed FFT pipeline-t hasznal, spektralis fluxust, Hz-alapu relativ savenergiakat, centroidot es flatness erteket szamol, majd `AudioFrame`, `BeatEvent` es `TrackAnalysis` kimenetet publikal. A tempo kimenet mar nem csak scalar BPM: a worker confidence mezoket es rendezett `tempoCandidates` listat is ad, gyenge grid esetben pedig a sectioning energia-reaktiv fallbacket hasznalhat. A nehez FFT ciklus alatt `analysis_progress` uzenetekkel folyamatos telemetriat is kuld a fo szalnak.
 5. **Shared contracts/state (`src/types/index.ts`, `src/state/store.ts`):** tarolja a megosztott tipusokat, az elfogadott analizis eredmenyeket, a vizualis modot, loop allapotot, aktualis frame-et, cue allapotokat, modulacios buszt, `videoDominantColor`-t, elo tuningot es target tuningot.
 6. **Render Engine (`src/visuals/`):** p5 canvas renderer backend adapterrel, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `StyleRegistry`-bol lekert `VisualIdentity` implementaciokat kezeli. A zene-dramaturgiai allapotszabalyozast a `VisualDirectorFSM.ts` modul vegzi, majd `DirectorOutput` formaban ad render-facing jeleket az identitasoknak.
 7. **Offline Export (`src/export/`):** a `WebMExporter` a fo szalon vezerli az offline idohurkot, a p5 canvas atmeretezeset, a `VideoFrame` elkapast, az audio buffer szeletelest es a vizjelkartyat. Ha video backplate aktiv, az export frame-enkent megkeresi az eredeti video megfelelo kepkockajat, azt hatterkent kompozitalja, erre rajzolja a p5 generativ reteget, majd legfelulre a metadata kartyat. Az `export.worker.ts` WebCodecs `VideoEncoder`/optionalis `AudioEncoder` hasznalataval es pure TypeScript EBML/WebM muxerrel allit elo Blob-ot. A fo szal szigoru hardver-encoder-sor alapu visszanyomast (backpressure) alkalmaz, es rendszeresen atveszi a vezerlest a bongeszoesemanyhurkoktol, hogy megelozze a felhasznaloi felulet lefagyasat es a memoriaosszeomlasat mobil eszkozokkel.
@@ -115,7 +115,16 @@ A dramaturgiai motor a density, tension, RMS energia es blokk energia iranyvalto
 
 ### 3.4. BPM Detektalas Es Kijelzes
 
-A worker 70 es 180 BPM kozotti histogram alapjan becsul BPM-et. A UI-ban a BPM kompakt fejlec badge-kent jelenik meg a betoltott audio fajl neve mellett; a metrics grid nem tartalmaz kulon BPM kartyat.
+A worker 70 es 180 BPM kozotti intervallum-hisztogram alapjan becsul BPM-et, majd rendezett `TempoCandidate` listat publikal. A top-level `bpm` mindig a `tempoCandidates[0].bpm` erteke, ha van candidate. A candidate struktura `bpm`, `score`, `intervalSec`, `peakCount`, `isHalfTime` es `isDoubleTime` mezokkel jelzi a fo es alternativ tempokat, beleertve a half/double-time aliasokat.
+
+A tempo confidence mezok a root `AnalysisResult` es a `TrackAnalysis` reszen is megjelennek:
+
+* `bpmConfidence`: BPM hisztogram dominancia es support, interval-evidence es kick-transient evidence cappelve.
+* `gridConfidence`: onset-grid illeszkedes es timing error alapjan becsult grid megbizhatosag; nem low-end transient hangeron mulik, de gyenge BPM evidencia mellett konzervativ capet kap.
+* `downbeatConfidence`: downbeat dominancia, de BPM/grid evidencia altal cappelve.
+* `tempoCandidates`: rendezett alternativ tempo lista.
+
+A low/kick-transient evidence cap szandekosan nem altalanos ritmus-confidence: low/kick transient supportot mer, ezert bass-light vagy magas tartomanyu ritmusoknal konzervativan viselkedhet. A downbeat confidence nem lehet magas, ha a BPM vagy grid confidence alacsony. A UI-ban a BPM kompakt fejlec badge-kent jelenik meg a betoltott audio fajl neve mellett; a metrics grid nem tartalmaz kulon BPM kartyat. A BPM/grid/downbeat confidence es alternativ tempo debug tooltip csak `featureFlags.analyzerDebugOverlay` alatt jelenik meg.
 
 ## 4. Technikai Es Algoritmikus Specifikaciok
 
@@ -125,16 +134,16 @@ Az aktualis worker nem IIR crossover szuroket hasznal. A `src/audio/analyzer.wor
 
 A worker belso felelossegei adat-orientalt pipeline-ba vannak bontva:
 
-1. `SpectralCalibration`: determinisztikus pre-pass, amely track-szintu spektralis kozeppontokat es safety range-en beluli Hz savokat becsul, alacsony confidence eseten default savokra esik vissza.
+1. `SpectralCalibration`: determinisztikus pre-pass, amely track-szintu spektralis kozeppontokat, safety range-en beluli Hz savokat es lightweight musical profile hintet becsul, alacsony confidence eseten default savokra esik vissza.
 2. `FeatureExtractor`: Hann-windowed FFT, RMS, spectral flux, Hz-alapu sub/bass/lowMid/mid/presence/brilliance/air band ratio, centroid, flatness, pitch confidence, Zero Crossing Rate, 85% spectral rolloff, spectral crest es tipikus RMS/flux maximumok.
-3. `GridAligner`: BPM becsles, beat/bar hossz, legerosebb tranziensek alapjan torteno anchor kereses es globalis `gridOffset`.
+3. `GridAligner`: BPM becsles, rendezett tempo candidate-ek, half/double-time ambiguity jeloles, beat/bar hossz, legerosebb tranziensek alapjan torteno anchor kereses, globalis `gridOffset`, valamint BPM/grid/downbeat confidence.
 4. `FeatureNormalizer`: mar kiszamolt tipikus maximumokkal normalizalja a nyers `Float32Array` jeleket; nem vegez masodik sortolast az orchestratorban.
-5. `FeatureClassifier`: normalizalt vektorokbol szamolja a semantic feature jeleket (`melodyRaw`, `vocalRaw`, `fxRaw`, `densityRaw`, `brightnessRaw`, `tensionRaw`). A melody es vocal ertekek spektralis heurisztikak, nem stem separation; ZCR-t, spectral crestet, flatnesst, rolloffot es Hz savaranyokat hasznalnak.
+5. `FeatureClassifier`: normalizalt vektorokbol szamolja a semantic feature jeleket (`melodyRaw`, `vocalRaw`, `fxRaw`, `densityRaw`, `brightnessRaw`, `tensionRaw`). A melody es vocal ertekek spektralis heurisztikak, nem stem separation; ZCR-t, spectral crestet, flatnesst, rolloffot, Hz savaranyokat es kis sulyu `SpectralCalibrationMusicalProfile` hintet hasznalnak.
 6. `TemporalSmoother`: EMA simitast alkalmaz a classifier kimeneteire, az elso input ertekrol inditva, fals track-eleji fade-in nelkul.
-7. `SectionAnalyzer`: BPM-gridhez igazodott bar aggregacio, adaptive threshold, `BarAnalysis`, `TrackSection`, RMS mezok, dominans feature es evidence-based szekciocimkezes. A label dontes minden celcimkere pontszamot szamol energia, elozo section energiaja, density, bass/density kontextus, tension es dominans feature alapjan; gyenge evidencia eseten `verse` fallbacket hasznal.
-7. `DramaturgyBuilder`: `VisualCueEvent`, significant moment es fuzzy, euklideszi tavolsaggal csoportositott `MusicPattern` kimenetek; a beat event tipusbesorolast a `BeatEventClassifier` vegzi.
-8. `BeatEventClassifier`: elfogadott spectral-flux peak-eket osztalyoz bass ratio, ZCR, rolloff, high-band context es normalizalt flux alapjan, majd visszater a publikus `1 | 2 | 3` beat type szerzodessel.
-9. `SpectralPivot`: offline post-process, amely a buildup/LOW_DROP kompenzaciot es a `sE <= 0.04` zajzarat kezeli; mutalja a feature/frame tomboket es visszaadja a `spectralPivot` tombot.
+7. `SectionAnalyzer`: normal esetben BPM-gridhez igazodott bar aggregacio, kritikusan alacsony `gridConfidence` es `bpmConfidence` eseten energia-reaktiv time-window fallback; adaptive threshold, `BarAnalysis`, `TrackSection`, RMS mezok, dominans feature es evidence-based szekciocimkezes. A label dontes minden celcimkere pontszamot szamol energia, elozo section energiaja, density, bass/density kontextus, tension es dominans feature alapjan; gyenge evidencia eseten `verse` fallbacket hasznal.
+8. `DramaturgyBuilder`: `VisualCueEvent`, significant moment es fuzzy, euklideszi tavolsaggal csoportositott `MusicPattern` kimenetek; a beat event tipusbesorolast a `BeatEventClassifier` vegzi.
+9. `BeatEventClassifier`: elfogadott spectral-flux peak-eket osztalyoz bass ratio, ZCR, rolloff, high-band context es normalizalt flux alapjan, majd visszater a publikus `1 | 2 | 3` beat type szerzodessel.
+10. `SpectralPivot`: offline post-process, amely a buildup/LOW_DROP kompenzaciot es a `sE <= 0.04` zajzarat kezeli; mutalja a feature/frame tomboket es visszaadja a `spectralPivot` tombot.
 
 Az `src/analyzer/analyzeAudio.ts` orkesztrator ennek megfeleloen mar inline matematikatol mentes: peldanyositja es sorba rendezi a pipeline lepeseket, osszerakja a `TrackAnalysis` payloadot, majd visszaadja a typed `AnalysisResult` objektumot. A `src/audio/analyzer.worker.ts` tovabbra is csak worker boundary: bemeneti uzenetet olvas, `analyzeAudio()`-t hiv, progress/success/error uzenetet posztol vissza.
 
@@ -240,7 +249,8 @@ Az UI export kozben letiltja a playback/seek/file input utakat es blokkolja a ca
 ### ADR-003: Worker Schema Es TrackAnalysis
 
 * **Dontes:** a worker success payload `type`, `requestId`, `bpm`, `frames`, `events`, `hopSize` es `trackAnalysis` mezoket tartalmaz.
-* **Indoklas:** a `trackAnalysis` append-only szerzodeskent boviti a legacy frame/event kimenetet, hogy az uj visual mode-ok gazdagabb zenei kontextust kapjanak.
+* **Kiterjesztes:** a worker success payload resze az `adaptiveThreshold`, a tempo contract resze pedig a `bpmConfidence`, `gridConfidence`, `downbeatConfidence` es `tempoCandidates` root es `TrackAnalysis` szinten. Ha candidate letezik, `bpm === tempoCandidates[0].bpm`. Regi payload normalizalasnal a confidence mezok `0`, a candidate lista ures tomb.
+* **Indoklas:** a `trackAnalysis` append-only szerzodeskent boviti a legacy frame/event kimenetet, hogy az uj visual mode-ok gazdagabb zenei kontextust kapjanak, es a downstream reteg ne kezelje ugy a gyenge tempo-grid becslest, mintha biztos lenne.
 
 ### ADR-004: Selectable Visual Modes
 
@@ -362,6 +372,11 @@ export interface AnalysisSuccessMessage {
     type: 'analysis_done';
     requestId: number;
     bpm: number;
+    bpmConfidence: number;
+    gridConfidence: number;
+    downbeatConfidence: number;
+    tempoCandidates: TempoCandidate[];
+    adaptiveThreshold: number;
     frames: AudioFrame[];
     events: BeatEvent[];
     hopSize: number;
@@ -380,6 +395,15 @@ export interface RenderState {
     exportTime: number;
     currentTime: number;
     duration: number;
+}
+
+export interface TempoCandidate {
+    bpm: number;
+    score: number;
+    intervalSec: number;
+    peakCount: number;
+    isHalfTime: boolean;
+    isDoubleTime: boolean;
 }
 ```
 

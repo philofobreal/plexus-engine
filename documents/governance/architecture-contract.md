@@ -70,7 +70,7 @@ Mode-specific visual implementations should live in separate `VisualIdentity` im
 
 - File decode and analysis request creation belong to audio.
 - Worker compute lifecycle belongs to audio plus worker; publication of accepted results belongs to audio.
-- Analyzer computation belongs to `src/analyzer/`, not to the worker. `analyzeAudio()` is the single offline analysis orchestration implementation. `FeatureExtractor` owns FFT-derived feature extraction, `GridAligner` owns BPM/grid alignment, `SectionAnalyzer` owns bar and section analysis, and `DramaturgyBuilder` owns beats, cues, and recurring pattern output.
+- Analyzer computation belongs to `src/analyzer/`, not to the worker. `analyzeAudio()` is the single offline analysis orchestration implementation. `FeatureExtractor` owns FFT-derived feature extraction, `GridAligner` owns BPM/grid alignment, ordered tempo candidates, half/double-time ambiguity annotation, and tempo confidence, `SectionAnalyzer` owns bar and section analysis including critically low tempo/grid energy-reactive fallback, and `DramaturgyBuilder` owns beats, cues, and recurring pattern output.
 - The analyzer worker message handler is a thin typed response boundary. It destructures `AnalysisRequest`, calls `analyzeAudio()`, forwards progress, posts success, and formats errors. It must not contain DSP, scoring, threshold, BPM detection, dramaturgy, Spectral Pivot, or result-normalization logic.
 - Playback start, pause, seek, stop, and end belong to audio.
 - Offline export frame timing, p5 loop suppression, export canvas resize/restore, `VideoFrame` capture, audio slicing, watermark drawing, hardware encoder queue synchronization, and stop/cancel semantics belong to `src/export/WebMExporter.ts`.
@@ -82,7 +82,7 @@ Mode-specific visual implementations should live in separate `VisualIdentity` im
 
 Shared interfaces must live in `src/types/`. When a schema crosses a worker boundary, define both request and response types before wiring runtime behavior.
 
-Worker result payloads must be append-only unless a coordinated migration updates every consumer. Optional fields are acceptable only when consumers define deterministic defaults.
+Worker result payloads must be append-only unless a coordinated migration updates every consumer. Optional fields are acceptable only when consumers define deterministic defaults. Required analyzer contract additions must update `AnalysisResult`, `TrackAnalysis`, normalization, empty-state templates, schema fixtures, worker consumers, and mock states in the same change.
 
 ## State Authority
 
@@ -90,11 +90,13 @@ Every shared state field needs a clear owner:
 
 - Audio owns duration, sample rate, play state, timing, analysis result publication, and accepted worker metadata.
 - Audio owns analysis reset isolation. Resetting `State.trackAnalysis` must create a fresh deep copy of the empty analysis template so nested arrays and objects cannot be shared across track loads.
-- Analyzer owns canonical `TrackAnalysis` normalization and the empty analysis template. Analyzer normalization must accept explicit fallback context, such as `fallbackBpm`, instead of reading shared runtime state.
+- Analyzer owns canonical `TrackAnalysis` normalization and the empty analysis template. Analyzer normalization must accept explicit fallback context, such as `fallbackBpm`, instead of reading shared runtime state. Legacy analyzer payloads without confidence metadata must normalize to confidence `0` and `tempoCandidates: []`.
+- Analyzer confidence metadata belongs under `TrackAnalysis` and root `AnalysisResult`. It must not be duplicated into `RenderState` unless a renderer-owned use case is introduced and documented.
 - Visuals own render-derived decay values and visual-only transient state.
 - Visuals own `State.modulation`, derived from accepted frame/features plus transient beat/cue decays.
 - `State.modulation` must keep a stable object reference during rendering. Visuals update it through `writeModulationBus(State.modulation, ...)`, and transient reset must zero its fields in place instead of assigning `State.modulation = { ... }`.
 - UI owns DOM projection and user input dispatch.
+- UI may expose analyzer confidence and alternate tempo candidates only through explicitly gated debug surfaces such as `featureFlags.analyzerDebugOverlay`; these fields are not default user-facing dashboard metrics.
 - Visual mode selection is user input owned by UI and stored in shared state as an explicit render-facing setting. Preset loading may update this field only after validating the selected id against the supported `VisualMode` union.
 - UI owns `State.targetTuning` writes from sliders and presets; visuals own interpolation into `State.visualTuning`.
 - `State.isExporting` and `State.exportTime` are export-owned render clock fields. `WebMExporter` writes them during offline export; `PlexusRenderer` and timeline/dashboard projections consume them. Export must reset both fields in cleanup.
