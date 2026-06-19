@@ -93,6 +93,28 @@ function dynamicSineWithSilence(sampleRate, fftSize, frames = 12) {
   return samples;
 }
 
+function mixedSineBuffer(partials, sampleRate, fftSize, frames = 80) {
+  const samples = new Float32Array(fftSize * frames);
+  for (let i = 0; i < samples.length; i++) {
+    let value = 0;
+    for (const [frequency, amplitude] of partials) {
+      value += Math.sin(2 * Math.PI * frequency * (i / sampleRate)) * amplitude;
+    }
+    samples[i] = value;
+  }
+  return samples;
+}
+
+function transientBurstBuffer(sampleRate, fftSize, frames = 120) {
+  const samples = new Float32Array(fftSize * frames);
+  const burstStart = fftSize * 45 + 123;
+  for (let i = 0; i < 512; i++) {
+    const sampleIndex = burstStart + i;
+    samples[sampleIndex] = Math.sin(2 * Math.PI * 1200 * (sampleIndex / sampleRate)) * 0.95;
+  }
+  return samples;
+}
+
 function assertStrictBands(calibration) {
   let previousMax = 0;
   for (const key of BAND_KEYS) {
@@ -274,6 +296,47 @@ test('SpectralCalibration confidence detects amplitude variance in dynamic track
   const calibration = estimateSpectralCalibration(dynamicSineWithSilence(44_100, 1024, 90), 44_100, 1024);
 
   assert.ok(calibration.confidence.dynamicRangeConfidence > 0.65);
+});
+
+test('SpectralCalibration musical profile detects bass-heavy low end', () => {
+  const { estimateSpectralCalibration } = createSrcLoader()('analyzer/SpectralCalibration.ts');
+  const calibration = estimateSpectralCalibration(sineBuffer(80, 44_100, 1024, 80), 44_100, 1024);
+
+  assert.ok(calibration.musicalProfile?.lowEnd > 0.75);
+});
+
+test('SpectralCalibration musical profile detects tonal mid sine', () => {
+  const { estimateSpectralCalibration } = createSrcLoader()('analyzer/SpectralCalibration.ts');
+  const calibration = estimateSpectralCalibration(sineBuffer(1000, 44_100, 1024, 80), 44_100, 1024);
+
+  assert.ok(calibration.musicalProfile?.tonal > 0.75);
+});
+
+test('SpectralCalibration musical profile detects vocal-like mid presence body', () => {
+  const { estimateSpectralCalibration } = createSrcLoader()('analyzer/SpectralCalibration.ts');
+  const samples = mixedSineBuffer([
+    [260, 0.3],
+    [900, 0.35],
+    [2800, 0.25]
+  ], 44_100, 1024, 80);
+  const calibration = estimateSpectralCalibration(samples, 44_100, 1024);
+
+  assert.ok(calibration.musicalProfile?.vocalLike > 0.55);
+  assert.ok(calibration.musicalProfile?.midBody > 0.75);
+});
+
+test('SpectralCalibration musical profile detects noisy highs', () => {
+  const { estimateSpectralCalibration } = createSrcLoader()('analyzer/SpectralCalibration.ts');
+  const calibration = estimateSpectralCalibration(noiseBuffer(44_100, 1024, 80), 44_100, 1024);
+
+  assert.ok(calibration.musicalProfile?.noisyHighs > 0.75);
+});
+
+test('SpectralCalibration musical profile detects transient-rich bursts', () => {
+  const { estimateSpectralCalibration } = createSrcLoader()('analyzer/SpectralCalibration.ts');
+  const calibration = estimateSpectralCalibration(transientBurstBuffer(44_100, 1024), 44_100, 1024);
+
+  assert.ok(calibration.musicalProfile?.transientRich > 0.75);
 });
 
 test('collectCalibrationWindowStarts captures transient burst in long silence', () => {

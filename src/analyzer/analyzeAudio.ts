@@ -94,6 +94,10 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     const trackAnalysis: TrackAnalysis = {
         duration: channel.length / sampleRate,
         bpm: grid.estimatedBPM,
+        bpmConfidence: grid.bpmConfidence,
+        gridConfidence: grid.gridConfidence,
+        downbeatConfidence: grid.downbeatConfidence,
+        tempoCandidates: grid.tempoCandidates,
         bars: segmenter.barAnalyses,
         sections: segmenter.trackSections,
         patterns: cueBuilder.musicPatterns,
@@ -107,5 +111,14 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
         gridOffset: grid.gridOffset
     };
 
-    return { requestId, bpm: grid.estimatedBPM, adaptiveThreshold: segmenter.adaptiveThreshold, frames: outFrames, events: cueBuilder.events, hopSize, trackAnalysis };
+    return {
+        requestId,
+        bpm: grid.estimatedBPM,
+        bpmConfidence: grid.bpmConfidence,
+        gridConfidence: grid.gridConfidence,
+        downbeatConfidence: grid.downbeatConfidence,
+        tempoCandidates: grid.tempoCandidates,
+        adaptiveThreshold: segmenter.adaptiveThreshold, frames: outFrames, events: cueBuilder.events, hopSize,
+        trackAnalysis
+    };
 }

@@ -8,6 +8,15 @@ export interface SpectralCalibrationConfidence {
     dynamicRangeConfidence: number;
 }
 
+export interface SpectralCalibrationMusicalProfile {
+    lowEnd: number;
+    tonal: number;
+    vocalLike: number;
+    noisyHighs: number;
+    transientRich: number;
+    midBody: number;
+}
+
 export interface SpectralCalibration {
     sampleRate: number;
     nyquist: number;
@@ -15,6 +24,7 @@ export interface SpectralCalibration {
     centersHz: Record<FrequencyBandKey, number>;
     bandsHz: FrequencyBands;
     confidence: SpectralCalibrationConfidence;
+    musicalProfile?: SpectralCalibrationMusicalProfile;
 }
 
 const BAND_KEYS: FrequencyBandKey[] = ['sub', 'bass', 'lowMid', 'mid', 'presence', 'brilliance', 'air'];
@@ -303,7 +313,53 @@ function buildConfidence(envelope: Float32Array, rmsValues: number[], windowMagn
     };
 }
 
-function fftMagnitudeEnvelope(samples: Float32Array, sampleRate: number, fftSize: number): { envelope: Float32Array; confidence: SpectralCalibrationConfidence } {
+function sumEnvelopeRange(envelope: Float32Array, sampleRate: number, range: FrequencyBand): number {
+    const binHz = sampleRate / Math.max(1, envelope.length * 2);
+    const startBin = Math.max(1, Math.ceil(range.min / binHz));
+    const endBin = Math.min(envelope.length - 1, Math.floor(range.max / binHz));
+    let sum = 0;
+    for (let k = startBin; k <= endBin; k++) sum += envelope[k];
+    return sum;
+}
+
+function buildMusicalProfile(envelope: Float32Array, sampleRate: number, confidence: SpectralCalibrationConfidence): SpectralCalibrationMusicalProfile {
+    let total = 0;
+    for (let k = 1; k < envelope.length; k++) total += envelope[k];
+    if (total <= EPSILON) {
+        return {
+            lowEnd: 0,
+            tonal: 0,
+            vocalLike: 0,
+            noisyHighs: 0,
+            transientRich: 0,
+            midBody: 0
+        };
+    }
+
+    const sub = sumEnvelopeRange(envelope, sampleRate, DEFAULT_FREQUENCY_BANDS_HZ.sub) / total;
+    const bass = sumEnvelopeRange(envelope, sampleRate, DEFAULT_FREQUENCY_BANDS_HZ.bass) / total;
+    const lowMid = sumEnvelopeRange(envelope, sampleRate, DEFAULT_FREQUENCY_BANDS_HZ.lowMid) / total;
+    const mid = sumEnvelopeRange(envelope, sampleRate, DEFAULT_FREQUENCY_BANDS_HZ.mid) / total;
+    const presence = sumEnvelopeRange(envelope, sampleRate, DEFAULT_FREQUENCY_BANDS_HZ.presence) / total;
+    const brilliance = sumEnvelopeRange(envelope, sampleRate, DEFAULT_FREQUENCY_BANDS_HZ.brilliance) / total;
+    const air = sumEnvelopeRange(envelope, sampleRate, DEFAULT_FREQUENCY_BANDS_HZ.air) / total;
+    const lowRatio = sub + bass;
+    const midRatio = lowMid + mid;
+    const vocalRatio = lowMid * 0.25 + mid * 0.45 + presence * 0.35;
+    const highRatio = brilliance + air;
+    const broadNoiseHint = (1 - confidence.signalToNoise) * 0.55 + (1 - confidence.spectralStability) * 0.20;
+
+    return {
+        lowEnd: clamp(lowRatio * 2.2, 0, 1),
+        tonal: clamp(confidence.signalToNoise * 0.55 + confidence.spectralStability * 0.35 - highRatio * 0.20, 0, 1),
+        vocalLike: clamp(vocalRatio * 1.75 - lowRatio * 0.35 - highRatio * 0.20, 0, 1),
+        noisyHighs: clamp(highRatio * 1.85 + broadNoiseHint, 0, 1),
+        transientRich: clamp(confidence.dynamicRangeConfidence * 1.15, 0, 1),
+        midBody: clamp(midRatio * 1.65, 0, 1)
+    };
+}
+
+function fftMagnitudeEnvelope(samples: Float32Array, sampleRate: number, fftSize: number): { envelope: Float32Array; confidence: SpectralCalibrationConfidence; musicalProfile?: SpectralCalibrationMusicalProfile } {
     const binCount = Math.floor(fftSize / 2);
     const envelope = new Float32Array(binCount);
     const fft = new FFT(fftSize);
@@ -329,7 +385,12 @@ function fftMagnitudeEnvelope(samples: Float32Array, sampleRate: number, fftSize
     if (windows === 0) return { envelope, confidence: { ...ZERO_CONFIDENCE } };
     for (let k = 0; k < envelope.length; k++) envelope[k] /= windows;
 
-    return { envelope, confidence: buildConfidence(envelope, rmsValues, windowMagnitudes) };
+    const confidence = buildConfidence(envelope, rmsValues, windowMagnitudes);
+    return {
+        envelope,
+        confidence,
+        musicalProfile: buildMusicalProfile(envelope, sampleRate, confidence)
+    };
 }
 
 function findPeakCenter(envelope: Float32Array, sampleRate: number, range: FrequencyBand, fallback: FrequencyBand): number {
@@ -390,7 +451,7 @@ export function estimateSpectralCalibration(samples: Float32Array, sampleRate: n
     const fallback = createDefaultCalibration(sampleRate, fftSize, { ...ZERO_CONFIDENCE });
     if (samples.length < fftSize || sampleRate <= 0 || fftSize <= 0) return fallback;
 
-    const { envelope, confidence } = fftMagnitudeEnvelope(samples, sampleRate, fftSize);
+    const { envelope, confidence, musicalProfile } = fftMagnitudeEnvelope(samples, sampleRate, fftSize);
     if (confidence.overall < MIN_CONFIDENCE) return createDefaultCalibration(sampleRate, fftSize, confidence);
 
     const centersHz = { ...fallback.centersHz };
@@ -408,6 +469,7 @@ export function estimateSpectralCalibration(samples: Float32Array, sampleRate: n
         fftSize,
         centersHz,
         bandsHz: buildAdaptiveBands(centersHz, nyquist),
-        confidence
+        confidence,
+        musicalProfile
     };
 }

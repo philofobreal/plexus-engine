@@ -13,3 +13,12 @@ test('single click unpinning schedules fast chrome hide feedback', () => {
   assert.match(ui, /this\.scheduleChromeHide\(2600\)/);
   assert.match(ui, /}, delay\)/);
 });
+
+test('analyzer confidence tooltip is gated behind debug overlay flag', () => {
+  const ui = read('src/ui/DashboardUI.ts');
+  const flags = read('src/config/featureFlags.ts');
+
+  assert.match(flags, /analyzerDebugOverlay: false/);
+  assert.match(ui, /featureFlags\.analyzerDebugOverlay && \(analysis\.bpmConfidence > 0/);
+  assert.match(ui, /BPM conf:/);
+});

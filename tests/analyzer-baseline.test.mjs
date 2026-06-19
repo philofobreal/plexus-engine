@@ -107,6 +107,8 @@ function validateSchema(value, node, path = '$') {
     assert.ok(Number.isFinite(value), `${path} must be finite`);
   } else if (node.type === 'string') {
     assert.equal(typeof value, 'string', `${path} must be string`);
+  } else if (node.type === 'boolean') {
+    assert.equal(typeof value, 'boolean', `${path} must be boolean`);
   }
 
   if (node.enum) assert.ok(node.enum.includes(value), `${path} must be one of ${node.enum.join(', ')}`);
@@ -123,6 +125,11 @@ function summarize(result) {
   return {
     requestId: result.requestId,
     bpm: result.bpm,
+    bpmConfidence: round(result.bpmConfidence),
+    gridConfidence: round(result.gridConfidence),
+    downbeatConfidence: round(result.downbeatConfidence),
+    tempoCandidateCount: result.tempoCandidates.length,
+    topTempoCandidate: result.tempoCandidates[0] ? summarizeTempoCandidate(result.tempoCandidates[0]) : null,
     adaptiveThreshold: round(result.adaptiveThreshold),
     hopSize: result.hopSize,
     frameCount: result.frames.length,
@@ -137,6 +144,10 @@ function summarize(result) {
     spectralPivotCount: result.trackAnalysis.spectralPivot.length,
     featureHopSize: result.trackAnalysis.featureHopSize,
     gridOffset: round(result.trackAnalysis.gridOffset),
+    trackBpmConfidence: round(result.trackAnalysis.bpmConfidence),
+    trackGridConfidence: round(result.trackAnalysis.gridConfidence),
+    trackDownbeatConfidence: round(result.trackAnalysis.downbeatConfidence),
+    trackTempoCandidateCount: result.trackAnalysis.tempoCandidates.length,
     duration: round(result.trackAnalysis.duration),
     firstFrame: summarizeFrame(result.frames[0]),
     midFrame: summarizeFrame(result.frames[midIndex]),
@@ -148,6 +159,17 @@ function summarize(result) {
       peakValue: round(result.trackAnalysis.tensionTrends.peakValue),
       segmentCount: result.trackAnalysis.tensionTrends.segments.length
     }
+  };
+}
+
+function summarizeTempoCandidate(candidate) {
+  return {
+    bpm: candidate.bpm,
+    score: round(candidate.score),
+    intervalSec: round(candidate.intervalSec),
+    peakCount: candidate.peakCount,
+    isHalfTime: candidate.isHalfTime,
+    isDoubleTime: candidate.isDoubleTime
   };
 }
 
@@ -208,5 +230,9 @@ test('analyzeAudio output matches schema and baseline summary', () => {
 
   const result = analyzeAudio({ samples, sampleRate, options: { requestId, algorithmVersion, phraseSize } });
   validateSchema(result, schema);
+  assert.ok(result.tempoCandidates.length > 0);
+  assert.ok(result.bpmConfidence >= 0 && result.bpmConfidence <= 1);
+  assert.equal(result.bpm, result.tempoCandidates[0].bpm);
+  assert.ok(result.gridConfidence >= 0 && result.gridConfidence <= 1);
   assertAlmostDeepEqual(summarize(result), baseline.summary);
 });

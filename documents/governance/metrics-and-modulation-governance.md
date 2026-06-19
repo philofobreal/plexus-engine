@@ -48,6 +48,8 @@ Examples:
 - brightness
 - tension
 - buildup confidence
+- BPM, grid, and downbeat confidence
+- tempo candidates
 - sections
 - cues
 - recurring patterns
@@ -55,6 +57,8 @@ Examples:
 These values are the canonical musical interpretation layer.
 
 Dashboard metrics should primarily use this layer when the displayed label describes a musical concept.
+
+Tempo confidence fields are analyzer evidence, not user-facing certainty labels. They may be shown in a gated analyzer debug overlay, used by sectioning, or used to scale automation confidence, but they should not become default metric cards without a product-level UX decision.
 
 ### Layer 3 - Render Projections
 
@@ -99,12 +103,14 @@ Worker owns:
 - raw DSP measurements
 - normalized worker output generation
 - deterministic analysis results
+- tempo candidates and BPM/grid/downbeat confidence
 
 `TrackAnalysis` owns:
 
 - musical interpretation
 - section/bar/cue/pattern context
 - feature-frame meaning
+- nested tempo confidence metadata for accepted analysis payloads
 
 `State.modulation` owns:
 
@@ -117,6 +123,7 @@ UI owns:
 - labels
 - dashboard grouping
 - tooltips
+- gating analyzer debug metadata behind explicit feature flags
 
 Renderer owns:
 

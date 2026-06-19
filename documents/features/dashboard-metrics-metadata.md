@@ -24,6 +24,8 @@ Dashboard music metrics are downstream of the offline `SpectralCalibration -> Fe
 
 Classifier limits: Vocal means strictly mid/presence dominance, FX means transient/high-frequency presence, and Melody Presence is tonal/mid-band presence. These are deterministic DSP heuristics, not AI/ML stem separation.
 
+`SpectralCalibrationMusicalProfile` adds broad track-level hints (`lowEnd`, `tonal`, `vocalLike`, `noisyHighs`, `transientRich`, `midBody`) for the classifier. These hints only bias the same deterministic metrics and should not be exposed as user-facing source labels.
+
 ## BPM
 
 ## User Description
@@ -32,11 +34,11 @@ Estimated tempo of the loaded track.
 
 ## Technical Meaning
 
-Worker-estimated beats per minute from accepted spectral-flux peak intervals. The estimator counts rounded intervals in the 70..180 BPM range and falls back to `120` when detection is insufficient.
+Worker-estimated beats per minute from accepted spectral-flux peak intervals. The estimator builds ordered `TempoCandidate` values in the 70..180 BPM range, resolves close half/double-time aliases, and falls back to `120` when detection is insufficient. When candidates exist, the displayed BPM is the top candidate: `AnalysisResult.bpm === AnalysisResult.tempoCandidates[0].bpm`.
 
 ## Source
 
-`src/audio/analyzer.worker.ts` produces `AnalysisResult.bpm`; `AudioEngine` accepts it into `State.bpm`; `DashboardUI` displays it.
+`src/audio/analyzer.worker.ts` produces `AnalysisResult.bpm`, `bpmConfidence`, `gridConfidence`, `downbeatConfidence`, and `tempoCandidates`; `AudioEngine` accepts the BPM into `State.bpm`; `DashboardUI` displays the BPM badge. Confidence and alternate tempo candidates are debug metadata, not default dashboard cards.
 
 ## Range
 
@@ -47,6 +49,7 @@ Nominally `70..180 BPM` from the estimator, with fallback `120 BPM`.
 - Not a DAW-grade tempo map.
 - Not a live beat clock.
 - Does not represent local tempo changes.
+- Confidence fields are internal analyzer evidence and should not be presented as user-facing certainty by default.
 
 ## Tooltip Text
 
@@ -325,8 +328,8 @@ const metricMetadata: Record<string, MetricMetadata> = {
   bpm: {
     name: 'BPM',
     description: 'Estimated tempo of the loaded track.',
-    source: 'AnalysisResult.bpm from analyzer worker',
-    range: '70..180 BPM, fallback 120',
+    source: 'AnalysisResult.bpm from analyzer worker; debug confidence/candidates from AnalysisResult and TrackAnalysis',
+    range: '70..180 BPM, fallback 120; confidence 0.0..1.0',
     tooltip: 'Estimated track tempo from offline beat analysis.\nNot a live tempo map.'
   },
   energy: {

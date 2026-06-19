@@ -1329,6 +1329,15 @@ export class DashboardUI {
         const bar = bars.find(b => hoverTime >= b.start && hoverTime <= b.end);
         const section = State.trackAnalysis.sections.find(s => hoverTime >= s.start && hoverTime <= s.end);
         let content = `Idő: ${this.formatTime(hoverTime)} (Zoom: ${State.zoom.toFixed(1)}x)`;
+        const analysis = State.trackAnalysis;
+        if (featureFlags.analyzerDebugOverlay && (analysis.bpmConfidence > 0 || analysis.gridConfidence > 0 || analysis.downbeatConfidence > 0)) {
+            content += `\nBPM conf: ${this.formatPercent(analysis.bpmConfidence)} | Grid: ${this.formatPercent(analysis.gridConfidence)} | Downbeat: ${this.formatPercent(analysis.downbeatConfidence)}`;
+            const alternatives = analysis.tempoCandidates
+                .filter(candidate => candidate.bpm !== analysis.bpm)
+                .slice(0, 2)
+                .map(candidate => `${candidate.bpm} BPM ${this.formatPercent(candidate.score)}`);
+            if (alternatives.length) content += `\nAlt tempo: ${alternatives.join(', ')}`;
+        }
         if (section) content += `\nSzekció: ${section.label.toUpperCase()} (${section.dominantFeature})`;
         if (bar) {
             content += `\nÜtem: #${bar.index + 1} [${bar.state}] | RMS: ${bar.avgRms.toFixed(2)}`;
@@ -1764,6 +1773,8 @@ export class DashboardUI {
                 && this.isPerformanceAutomationReason(candidate.reason)
                 && typeof candidate.morphDurationSec === 'number'
                 && this.isMorphCurve(candidate.morphCurve)
+                && (candidate.analysisConfidence === undefined || typeof candidate.analysisConfidence === 'number')
+                && (candidate.timingMode === undefined || candidate.timingMode === 'bar-aligned' || candidate.timingMode === 'energy-reactive')
                 && (candidate.locked === undefined || typeof candidate.locked === 'boolean');
         });
     }
@@ -1911,6 +1922,10 @@ export class DashboardUI {
         const min = Math.floor(seconds / 60);
         const sec = Math.floor(seconds % 60);
         return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+    }
+
+    private formatPercent(value: number): string {
+        return `${Math.round(this.clamp(value, 0, 1) * 100)}%`;
     }
 
     private getMorphCurveName(value: number): MorphCurve {

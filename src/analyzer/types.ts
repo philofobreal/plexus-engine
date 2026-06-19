@@ -1,4 +1,4 @@
-import type { AnalysisResult, AudioFrame, TrackAnalysis } from '../types';
+import type { AnalysisResult, AudioFrame, TempoCandidate, TrackAnalysis } from '../types';
 
 export interface AnalyzerOptions {
     algorithmVersion?: number;
@@ -14,5 +14,4 @@ export interface AnalyzeAudioInput {
     onProgress?: (progress: number, stage: string) => void;
 }
 
-export type { AnalysisResult, AudioFrame, TrackAnalysis };
-
+export type { AnalysisResult, AudioFrame, TempoCandidate, TrackAnalysis };

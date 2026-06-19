@@ -45,6 +45,13 @@ export class FeatureClassifier {
         const spectralStability = clampUnit(confidence?.spectralStability ?? 0.5);
         const dynamicRangeConfidence = clampUnit(confidence?.dynamicRangeConfidence ?? 0.5);
         const lowSignalIntegrity = (1 - signalToNoise) * calibrationEffect;
+        const musicalProfile = this.input.calibration?.musicalProfile;
+        const lowEndHint = clampUnit(musicalProfile?.lowEnd ?? 0);
+        const tonalHint = clampUnit(musicalProfile?.tonal ?? 0);
+        const vocalLikeHint = clampUnit(musicalProfile?.vocalLike ?? 0);
+        const noisyHighsHint = clampUnit(musicalProfile?.noisyHighs ?? 0);
+        const transientRichHint = clampUnit(musicalProfile?.transientRich ?? 0);
+        const midBodyHint = clampUnit(musicalProfile?.midBody ?? 0);
         const vocalPresenceWeight = (0.22 + calibrationConfidence * 0.03) * (0.4 + signalToNoise * 0.6);
         const vocalAirPenalty = 0.10 + calibrationConfidence * 0.02 + lowSignalIntegrity * 0.08;
 
@@ -69,6 +76,10 @@ export class FeatureClassifier {
             const melodicBand = clampUnit(mid * 0.42 + presence * 0.22 + lowMid * 0.16 + brilliance * 0.08 - bass * 0.10 - sub * 0.15);
             const midConcentration = clampUnit(mid * 0.42 + lowMid * 0.24 + presence * 0.18 - sub * 0.16 - bass * 0.14 - highRatio * 0.24 - flatness * 0.10);
             const chaoticHighBoost = (1 - spectralStability) * highRatio * (0.18 + dynamicRangeConfidence * 0.08) * calibrationEffect;
+            const profileFxBoost = (noisyHighsHint * highRatio * 0.025 + transientRichHint * flux * 0.02) * calibrationEffect;
+            const profileMelodyBoost = (tonalHint * midConcentration * 0.025 + midBodyHint * melodicBand * 0.02) * calibrationEffect;
+            const profileVocalBoost = vocalLikeHint * (lowMid + mid + presence) * 0.02 * calibrationEffect;
+            const profileLowEndPenalty = lowEndHint * (0.015 + bass * 0.01 + sub * 0.01) * calibrationEffect;
             const melodyStabilityBoost = spectralStability * midConcentration * (0.14 + signalToNoise * 0.08) * calibrationEffect;
             const melodyNoisePenalty = lowSignalIntegrity * (flatness * 0.18 + highRatio * 0.10);
             const vocalNoisePenalty = lowSignalIntegrity * (0.26 + presence * 0.24 + flatness * 0.22 + highRatio * 0.18);
@@ -76,9 +87,9 @@ export class FeatureClassifier {
 
             densityRaw[i] = clampUnit(flux) * silenceGate;
             brightnessRaw[i] = clampUnit(centroid * 2.15 + rolloff * 0.18 + brilliance * 0.22 + air * 0.30) * silenceGate;
-            fxRaw[i] = clampUnit(highRatio * 0.42 + zcr * 0.26 + flatness * 0.24 + rolloff * 0.08 + chaoticHighBoost - tonal * 0.08) * silenceGate;
-            melodyRaw[i] = clampUnit(melodicBand * 0.58 + tonal * 0.24 + crest * 0.18 + melodyStabilityBoost - zcr * 0.14 - flatness * 0.08 - melodyNoisePenalty) * silenceGate;
-            vocalRaw[i] = clampUnit(lowMid * 0.26 + mid * 0.34 + presence * vocalPresenceWeight + tonal * 0.22 - zcr * 0.20 - air * vocalAirPenalty - sub * 0.18 - vocalNoisePenalty) * silenceGate;
+            fxRaw[i] = clampUnit(highRatio * 0.42 + zcr * 0.26 + flatness * 0.24 + rolloff * 0.08 + chaoticHighBoost + profileFxBoost - tonal * 0.08) * silenceGate;
+            melodyRaw[i] = clampUnit(melodicBand * 0.58 + tonal * 0.24 + crest * 0.18 + melodyStabilityBoost + profileMelodyBoost - zcr * 0.14 - flatness * 0.08 - melodyNoisePenalty - profileLowEndPenalty) * silenceGate;
+            vocalRaw[i] = clampUnit(lowMid * 0.26 + mid * 0.34 + presence * vocalPresenceWeight + tonal * 0.22 + profileVocalBoost - zcr * 0.20 - air * vocalAirPenalty - sub * 0.18 - vocalNoisePenalty - profileLowEndPenalty) * silenceGate;
             tensionRaw[i] = clampUnit(densityRaw[i] * 0.5 + brightnessRaw[i] * 0.5);
         }
 

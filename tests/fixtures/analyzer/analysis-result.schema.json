@@ -7,6 +7,10 @@
   "required": [
     "requestId",
     "bpm",
+    "bpmConfidence",
+    "gridConfidence",
+    "downbeatConfidence",
+    "tempoCandidates",
     "adaptiveThreshold",
     "frames",
     "events",
@@ -16,6 +20,10 @@
   "properties": {
     "requestId": { "type": "number" },
     "bpm": { "type": "number" },
+    "bpmConfidence": { "type": "number" },
+    "gridConfidence": { "type": "number" },
+    "downbeatConfidence": { "type": "number" },
+    "tempoCandidates": { "type": "array", "items": { "$ref": "#/$defs/tempoCandidate" } },
     "adaptiveThreshold": { "type": "number" },
     "frames": { "type": "array", "items": { "$ref": "#/$defs/audioFrame" } },
     "events": { "type": "array", "items": { "$ref": "#/$defs/beatEvent" } },
@@ -68,6 +76,19 @@
         "time": { "type": "number" },
         "intensity": { "type": "number" },
         "type": { "type": "number", "enum": [1, 2, 3] }
+      }
+    },
+    "tempoCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bpm", "score", "intervalSec", "peakCount", "isHalfTime", "isDoubleTime"],
+      "properties": {
+        "bpm": { "type": "number" },
+        "score": { "type": "number" },
+        "intervalSec": { "type": "number" },
+        "peakCount": { "type": "number" },
+        "isHalfTime": { "type": "boolean" },
+        "isDoubleTime": { "type": "boolean" }
       }
     },
     "visualFeatureFrame": {
@@ -185,6 +206,10 @@
       "required": [
         "duration",
         "bpm",
+        "bpmConfidence",
+        "gridConfidence",
+        "downbeatConfidence",
+        "tempoCandidates",
         "bars",
         "sections",
         "patterns",
@@ -200,6 +225,10 @@
       "properties": {
         "duration": { "type": "number" },
         "bpm": { "type": "number" },
+        "bpmConfidence": { "type": "number" },
+        "gridConfidence": { "type": "number" },
+        "downbeatConfidence": { "type": "number" },
+        "tempoCandidates": { "type": "array", "items": { "$ref": "#/$defs/tempoCandidate" } },
         "bars": { "type": "array", "items": { "$ref": "#/$defs/barAnalysis" } },
         "sections": { "type": "array", "items": { "$ref": "#/$defs/trackSection" } },
         "patterns": { "type": "array", "items": { "$ref": "#/$defs/musicPattern" } },
@@ -215,4 +244,3 @@
     }
   }
 }
-

@@ -13,6 +13,10 @@ const emptyFeatures: VisualFeatureFrame = {
 const emptyTrackAnalysis: TrackAnalysis = {
     duration: 0,
     bpm: 0,
+    bpmConfidence: 0,
+    gridConfidence: 0,
+    downbeatConfidence: 0,
+    tempoCandidates: [],
     bars: [],
     sections: [],
     patterns: [],

@@ -4,6 +4,15 @@ export interface BeatEvent {
     type: 1 | 2 | 3; // 1: default spectral-flux hit, 2: dense impact hit, 3: fx/high-transient hit
 }
 
+export interface TempoCandidate {
+    bpm: number;
+    score: number;
+    intervalSec: number;
+    peakCount: number;
+    isHalfTime: boolean;
+    isDoubleTime: boolean;
+}
+
 export type AutoState = 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
 
 export type VisualMode = 'classic' | 'temporal' | 'dark-techno' | 'organic-ambient' | 'cyberpunk' | 'hero';
@@ -96,6 +105,8 @@ export interface PerformanceAutomationPoint {
     sectionId: string;
     preset: string;
     confidence: number;
+    analysisConfidence?: number;
+    timingMode?: 'bar-aligned' | 'energy-reactive';
     intensity: number;
     reason: PerformanceAutomationReason;
     morphDurationSec: number;
@@ -229,6 +240,10 @@ export interface TensionTrends {
 export interface TrackAnalysis {
     duration: number;
     bpm: number;
+    bpmConfidence: number;
+    gridConfidence: number;
+    downbeatConfidence: number;
+    tempoCandidates: TempoCandidate[];
     bars: BarAnalysis[];
     sections: TrackSection[];
     patterns: MusicPattern[];
@@ -295,6 +310,10 @@ export interface RenderState {
 export interface AnalysisResult {
     requestId: number;
     bpm: number;
+    bpmConfidence: number;
+    gridConfidence: number;
+    downbeatConfidence: number;
+    tempoCandidates: TempoCandidate[];
     adaptiveThreshold: number;
     frames: AudioFrame[];
     events: BeatEvent[];
