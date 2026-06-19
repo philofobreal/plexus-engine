@@ -79,19 +79,56 @@ function extract(samples, sampleRate, fftSize = 1024) {
 }
 
 test('FeatureExtractor classifies fixed Hz sine bands across sample rates', () => {
+  const cases = [
+    {
+      frequency: 80,
+      assertBand: (extractor, i, sampleRate) => {
+        assert.ok(extractor.rawBassT[i] > extractor.rawMidT[i], `${sampleRate} 80Hz bass should exceed mid`);
+        assert.ok(extractor.rawBassT[i] > extractor.rawHighT[i], `${sampleRate} 80Hz bass should exceed high`);
+      }
+    },
+    {
+      frequency: 1000,
+      assertBand: (extractor, i, sampleRate) => {
+        assert.ok(extractor.midT[i] > extractor.bassT[i], `${sampleRate} 1000Hz mid should exceed bass`);
+        assert.ok(extractor.midT[i] > extractor.brillianceT[i], `${sampleRate} 1000Hz mid should exceed brilliance`);
+      }
+    },
+    {
+      frequency: 8000,
+      assertBand: (extractor, i, sampleRate) => {
+        assert.ok(extractor.brillianceT[i] > extractor.midT[i], `${sampleRate} 8000Hz brilliance should exceed mid`);
+        assert.ok(extractor.rawHighT[i] > extractor.rawBassT[i], `${sampleRate} 8000Hz high should exceed bass`);
+      }
+    }
+  ];
+
   for (const sampleRate of [44_100, 48_000]) {
-    const { extractor, i } = extract(sineBuffer(80, sampleRate, 1024), sampleRate);
-    assert.ok(extractor.rawBassT[i] > extractor.rawMidT[i], `${sampleRate} bass should exceed mid`);
-    assert.ok(extractor.rawBassT[i] > extractor.rawHighT[i], `${sampleRate} bass should exceed high`);
+    for (const testCase of cases) {
+      const { extractor, i } = extract(sineBuffer(testCase.frequency, sampleRate, 1024), sampleRate);
+      testCase.assertBand(extractor, i, sampleRate);
+    }
   }
+});
 
-  const mid = extract(sineBuffer(1000, 44_100, 1024), 44_100);
-  assert.ok(mid.extractor.rawMidT[mid.i] > mid.extractor.rawBassT[mid.i]);
-  assert.ok(mid.extractor.rawMidT[mid.i] > mid.extractor.rawHighT[mid.i]);
+test('FeatureExtractor splits presence energy into legacy mid and high compatibility bands', () => {
+  const { extractor, i } = extract(sineBuffer(3000, 44_100, 1024), 44_100);
 
-  const brilliance = extract(sineBuffer(8000, 44_100, 1024), 44_100);
-  assert.ok(brilliance.extractor.brillianceT[brilliance.i] > brilliance.extractor.midT[brilliance.i]);
-  assert.ok(brilliance.extractor.rawHighT[brilliance.i] > brilliance.extractor.rawBassT[brilliance.i]);
+  assert.ok(extractor.presenceT[i] > extractor.midT[i], '3000Hz should primarily land in presence');
+  assert.ok(extractor.presenceT[i] > extractor.brillianceT[i], '3000Hz should not be treated as brilliance');
+  assert.ok(extractor.rawHighT[i] > 0.25, 'presence should contribute materially to rawHighT');
+  assert.ok(extractor.rawMidT[i] > 0.25, 'presence should still contribute materially to rawMidT');
+  assert.ok(extractor.rawHighT[i] > extractor.rawMidT[i] * 0.35, 'presence must not be swallowed entirely by rawMidT');
+});
+
+test('analyzeAudio passes clean classifier bands without mid/presence double-counting', () => {
+  const source = readFileSync(join(SRC_ROOT, 'analyzer', 'analyzeAudio.ts'), 'utf8');
+
+  assert.match(source, /bass: features\.bassT/);
+  assert.match(source, /mid: features\.midT/);
+  assert.match(source, /presence: features\.presenceT/);
+  assert.doesNotMatch(source, /bass: features\.rawBassT/);
+  assert.doesNotMatch(source, /mid: features\.rawMidT/);
 });
 
 test('FeatureExtractor avoids hard-coded FFT bin limits', () => {

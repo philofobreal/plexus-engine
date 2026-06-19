@@ -175,9 +175,13 @@ export class FeatureExtractor {
             this.presenceT[i] = ePresence / totalBand;
             this.brillianceT[i] = eBrilliance / totalBand;
             this.airT[i] = eAir / totalBand;
-            this.rawBassT[i] = (eSub + eBass) / totalBand;
-            this.rawMidT[i] = (eLowMid + eMid + ePresence) / totalBand;
-            this.rawHighT[i] = (eBrilliance + eAir) / totalBand;
+            const rawBass = eSub + eBass;
+            const rawMid = eLowMid + eMid + ePresence * 0.5;
+            const rawHigh = ePresence * 0.5 + eBrilliance + eAir;
+            const totalCompat = rawBass + rawMid + rawHigh + EPSILON;
+            this.rawBassT[i] = rawBass / totalCompat;
+            this.rawMidT[i] = rawMid / totalCompat;
+            this.rawHighT[i] = rawHigh / totalCompat;
 
             const meanMag = activeBins > 0 ? sumMag / activeBins : 0;
             this.centroidT[i] = sumMag > 0 && this.nyquist > 0 ? (sumFreqMag / sumMag) / this.nyquist : 0;

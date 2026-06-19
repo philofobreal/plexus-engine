@@ -17,7 +17,7 @@
     "barCount": 3,
     "sectionCount": 2,
     "patternCount": 0,
-    "cueCount": 2,
+    "cueCount": 0,
     "significantMomentCount": 0,
     "featureCount": 96,
     "buildupCount": 96,
@@ -28,16 +28,16 @@
     "firstFrame": {
       "e": 0.996872,
       "densityProj": 1,
-      "melodyProj": 0.385321,
-      "fxProj": 0.091449,
+      "melodyProj": 0.336608,
+      "fxProj": 0.09517,
       "state": "HIGH",
       "eRatio": 1
     },
     "midFrame": {
       "e": 0.496756,
       "densityProj": 0.081767,
-      "melodyProj": 0.6877,
-      "fxProj": 0.004142,
+      "melodyProj": 0.475998,
+      "fxProj": 0.004354,
       "state": "LOW",
       "eRatio": 0
     },
