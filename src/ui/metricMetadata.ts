@@ -23,17 +23,17 @@ export const dashboardMetricMetadata = {
     },
     melodyPresence: {
         name: 'Melody Presence',
-        description: 'Smoothed tonal/melodic presence projection.',
+        description: 'Smoothed spectral heuristic for tonal melodic presence.',
         source: 'AudioFrame.melodyProj / VisualFeatureFrame.melody',
         range: '0.00..1.00',
-        tooltip: 'Tonal melody presence.\nNot a MIDI melody track.'
+        tooltip: 'Spectral melody-presence heuristic.\nNot melody extraction or stem separation.'
     },
     vocal: {
         name: 'Vocal',
-        description: 'Mid-band formant estimate gated by low Zero Crossing Rate and tonal crest.',
+        description: 'Spectral vocal/formant heuristic gated by tonal and low-noise evidence.',
         source: 'VisualFeatureFrame.vocal',
         range: '0.00..1.00',
-        tooltip: 'Vocal-formant presence from low-ZCR tonal content.\nNot lyric or voice ID.'
+        tooltip: 'Vocal/formant-like spectral heuristic.\nNot vocal stem separation.'
     },
     fx: {
         name: 'FX',

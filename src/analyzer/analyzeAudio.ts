@@ -7,6 +7,7 @@ import { normalizeArray } from './FeatureNormalizer';
 import { GridAligner } from './GridAligner';
 import { SectionAnalyzer } from './SectionAnalyzer';
 import { applySpectralPivot } from './SpectralPivot';
+import { estimateSpectralCalibration } from './SpectralCalibration';
 import { applyEMA } from './TemporalSmoother';
 import type { AnalyzeAudioInput } from './types';
 
@@ -16,7 +17,8 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     const hopSize = options?.hopSize ?? DEFAULT_ANALYSIS_HOP_SIZE;
     const requestId = options?.requestId ?? 0;
 
-    const features = new FeatureExtractor(channel, sampleRate, hopSize);
+    const calibration = estimateSpectralCalibration(channel, sampleRate, hopSize);
+    const features = new FeatureExtractor(channel, sampleRate, hopSize, calibration);
     features.process((p) => {
         onProgress?.(p, 'Analyzing music...');
     });
@@ -28,15 +30,22 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     const normFlux = normalizeArray(features.fluxT, features.typFlux);
     const classifier = new FeatureClassifier({
         rms: normRms,
+        rawRms: features.rmsT,
         flux: normFlux,
+        sub: features.subT,
         bass: features.rawBassT,
+        lowMid: features.lowMidT,
         mid: features.rawMidT,
+        presence: features.presenceT,
+        brilliance: features.brillianceT,
+        air: features.airT,
         high: features.rawHighT,
         centroid: features.centroidT,
         flatness: features.flatnessT,
         zcr: features.zcrT,
         rolloff: features.spectralRolloffT,
-        crest: features.spectralCrestT
+        crest: features.spectralCrestT,
+        calibration
     });
     const classified = classifier.classifyFrames();
     const energy = applyEMA(normRms, 0.2);
