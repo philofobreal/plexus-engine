@@ -682,7 +682,9 @@ export class TimelineCanvas {
             ctx.strokeStyle = 'rgba(255, 176, 32, 0.85)';
             ctx.lineWidth = 1;
             ctx.beginPath();
-            for (let x = 0; x <= width; x++) {
+            const maxSamples = 1500;
+            const step = Math.max(1, Math.ceil(width / maxSamples));
+            for (let x = 0; x <= width; x += step) {
                 const time = viewport.start + (x / Math.max(1, width)) * viewport.duration;
                 const idx = Math.min(curve.length - 1, Math.max(0, Math.floor((time / state.duration) * curve.length)));
                 const value = curve[idx] || 0;

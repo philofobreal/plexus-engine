@@ -365,7 +365,7 @@ export interface SectionBoundaryCandidate {
 // Append-only novelty extensions on TrackAnalysis (alongside the existing timing/section model):
 //   noveltyCurve?:        number[]                     // per-frame 0..1; time = i * featureHopSize / sampleRate
 //   noveltyPeaks?:        NoveltyPoint[]               // sparse labeled peaks (the curve itself carries no reasons)
-//   boundaryCandidates?:  SectionBoundaryCandidate[]   // one per realized internal section boundary
+//   boundaryCandidates?:  SectionBoundaryCandidate[]   // realized internal section boundaries only; no track-start candidate
 // TrackSection and VisualCueEvent additionally carry an optional `reasons?: AnalysisReason[]`.
 
 export interface ModulationState {

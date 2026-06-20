@@ -42,16 +42,16 @@ function createMockContext() {
   };
 }
 
-function createMockCanvas() {
+function createMockCanvas(width = 200, height = 80) {
   const context = createMockContext();
   return {
     context,
     width: 0,
     height: 0,
-    clientWidth: 200,
-    clientHeight: 80,
+    clientWidth: width,
+    clientHeight: height,
     getBoundingClientRect() {
-      return { width: 200, height: 80 };
+      return { width, height };
     },
     getContext() {
       return context;
@@ -234,4 +234,23 @@ test('analyzer debug overlay is strictly gated by declarative render state', () 
   assert.equal(countKind(on, 'stroke') > countKind(off, 'stroke'), true, 'novelty curve adds a stroke when on');
   assert.equal(countKind(on, 'fill') > countKind(off, 'fill'), true, 'candidate dots add fill calls when on');
   assertFiniteDrawCoordinates(on, ['moveTo', 'lineTo', 'arc']);
+});
+
+test('analyzer debug overlay caps novelty curve sampling on wide timelines', () => {
+  const wideCanvas = createMockCanvas(4000, 120);
+  const curve = Array.from({ length: 4096 }, (_, i) => (i % 128) / 127);
+
+  new TimelineCanvas(wideCanvas).render({
+    isExporting: false, exportTime: 0, currentTime: 0, duration: 120, zoom: 1, pan: 0, bpm: 120,
+    sampleRate: 44100, hopSize: 1024, frames: [], sections: [], bars: [], cues: [], significantMoments: [],
+    buildupConfidence: [], spectralPivot: [], tensionTrends: { globalSlope: 0, peakTime: 0, peakValue: 0, segments: [] },
+    noveltyCurve: curve,
+    boundaryCandidates: [],
+    showAnalyzerDebugOverlay: true,
+    performancePlan: null, audioSensitivity: 1, dropAnticipation: 0, scrubTime: null
+  });
+
+  const lineToCount = wideCanvas.context.calls.filter(call => call[0] === 'lineTo').length;
+  assert.ok(lineToCount <= 1500, `wide debug overlay should cap lineTo calls, got ${lineToCount}`);
+  assertFiniteDrawCoordinates(wideCanvas.context.calls, ['moveTo', 'lineTo']);
 });
