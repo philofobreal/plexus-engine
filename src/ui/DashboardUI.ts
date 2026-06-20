@@ -1522,6 +1522,7 @@ export class DashboardUI {
             tensionTrends: State.trackAnalysis.tensionTrends,
             noveltyCurve: State.trackAnalysis.noveltyCurve,
             boundaryCandidates: State.trackAnalysis.boundaryCandidates,
+            showAnalyzerDebugOverlay: featureFlags.analyzerDebugOverlay,
             performancePlan: State.editedPerformancePlan ?? State.performancePlan,
             timelineLayers: State.timelineLayers,
             snapToGrid: State.snapToGrid,

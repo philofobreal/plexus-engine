@@ -1,4 +1,3 @@
-import { featureFlags } from '../config/featureFlags.ts';
 import type { RenderState, TimelineLayers, TrackSectionLabel } from '../types';
 
 interface TimelineViewport {
@@ -86,8 +85,9 @@ export class TimelineCanvas {
         if (layers.buildup) this.drawBuildup(ctx, state, width, height, viewport);
         this.drawTrends(ctx, state, width, height, viewport);
         if (layers.cues) this.drawCueMarkers(ctx, state, width, height, viewport);
-        // Developer-only analyzer overlay; strictly gated so normal mode adds no draw calls.
-        if (featureFlags.analyzerDebugOverlay) this.drawAnalyzerDebug(ctx, state, width, height, viewport);
+        // Developer-only analyzer overlay; gated by declarative state so normal mode adds no draw
+        // calls and the renderer does not read global configuration.
+        if (state.showAnalyzerDebugOverlay) this.drawAnalyzerDebug(ctx, state, width, height, viewport);
         this.drawPlayhead(ctx, state, width, height, viewport);
     }
 

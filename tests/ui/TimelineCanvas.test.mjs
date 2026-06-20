@@ -9,7 +9,6 @@ globalThis.document = {
 };
 
 const { TimelineCanvas } = await import('../../src/ui/TimelineCanvas.ts');
-const { featureFlags } = await import('../../src/config/featureFlags.ts');
 
 function createMockContext() {
   const calls = [];
@@ -193,8 +192,8 @@ test('TimelineCanvas renders performance automation plan lane with viewport scal
   assert.ok(calls.some(call => call[0] === 'fillText' && call[1] === '...' && call[2] === 106 && call[3] === 22));
 });
 
-test('analyzer debug overlay is strictly gated behind the feature flag', () => {
-  const baseState = {
+test('analyzer debug overlay is strictly gated by declarative render state', () => {
+  const baseState = (showAnalyzerDebugOverlay) => ({
     isExporting: false, exportTime: 0, currentTime: 0, duration: 20, zoom: 1, pan: 0, bpm: 120,
     sampleRate: 44100, hopSize: 1024, frames: [], sections: [], bars: [], cues: [], significantMoments: [],
     buildupConfidence: [], spectralPivot: [], tensionTrends: { globalSlope: 0, peakTime: 0, peakValue: 0, segments: [] },
@@ -206,21 +205,27 @@ test('analyzer debug overlay is strictly gated behind the feature flag', () => {
     boundaryCandidates: [
       { time: 10, confidence: 0.9, timingMode: 'novelty', reasons: ['novelty-peak'] }
     ],
+    showAnalyzerDebugOverlay,
     performancePlan: null, audioSensitivity: 1, dropAnticipation: 0, scrubTime: null
-  };
+  });
 
-  const wasEnabled = featureFlags.analyzerDebugOverlay;
-  try {
-    featureFlags.analyzerDebugOverlay = false;
-    const offCanvas = createMockCanvas();
-    new TimelineCanvas(offCanvas).render(baseState);
-    assert.ok(!offCanvas.context.calls.some(call => call[0] === 'arc'), 'no candidate dots when flag is off');
+  const countKind = (calls, kind) => calls.filter(call => call[0] === kind).length;
 
-    featureFlags.analyzerDebugOverlay = true;
-    const onCanvas = createMockCanvas();
-    new TimelineCanvas(onCanvas).render(baseState);
-    assert.ok(onCanvas.context.calls.some(call => call[0] === 'arc'), 'candidate dots drawn when flag is on');
-  } finally {
-    featureFlags.analyzerDebugOverlay = wasEnabled;
-  }
+  const offCanvas = createMockCanvas();
+  new TimelineCanvas(offCanvas).render(baseState(false));
+  const off = offCanvas.context.calls;
+
+  const onCanvas = createMockCanvas();
+  new TimelineCanvas(onCanvas).render(baseState(true));
+  const on = onCanvas.context.calls;
+
+  // Flag OFF: the overlay must add zero draw work of any kind it owns (curve strokes + candidate dots).
+  assert.equal(countKind(off, 'arc'), 0, 'no candidate dots when overlay is off');
+  assert.equal(on.length > off.length, true, 'overlay must add draw calls only when enabled');
+
+  // Flag ON: the novelty curve (lineTo + stroke) and the boundary-candidate dot (arc + fill) appear.
+  assert.equal(countKind(on, 'arc') >= 1, true, 'candidate dots drawn when overlay is on');
+  assert.equal(countKind(on, 'lineTo') > countKind(off, 'lineTo'), true, 'novelty curve adds lineTo calls when on');
+  assert.equal(countKind(on, 'stroke') > countKind(off, 'stroke'), true, 'novelty curve adds a stroke when on');
+  assert.equal(countKind(on, 'fill') > countKind(off, 'fill'), true, 'candidate dots add fill calls when on');
 });

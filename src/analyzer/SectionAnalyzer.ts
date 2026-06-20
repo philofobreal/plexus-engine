@@ -177,9 +177,9 @@ export class SectionAnalyzer {
         // Fall back to energy boundaries only when the tempo grid is critically unusable.
         const useEnergyReactiveBoundaries = this.grid.gridConfidence < 0.15 && this.grid.bpmConfidence < 0.20;
 
-        // Surface the novelty-derived candidate boundaries: snapped to bars when the grid is
-        // trusted, left at their raw novelty time (and flagged low-grid) when it is not.
-        this.boundaryCandidates = noveltyPeaks.map(peak => this.toBoundaryCandidate(peak, useEnergyReactiveBoundaries));
+        // Every realized internal section boundary becomes a candidate carrying how it was placed
+        // (bar-aligned / novelty / energy-reactive), so the surfaced set matches the actual cuts.
+        const candidates: SectionBoundaryCandidate[] = [];
         const analysisStepSec = useEnergyReactiveBoundaries
             ? Math.min(4, Math.max(1, totalDuration / 24))
             : this.grid.secondsPerBar;
@@ -278,6 +278,9 @@ export class SectionAnalyzer {
                 let startIdx = startBar.startIdx;
                 const boundary = this.resolveBoundary(endBar, useEnergyReactiveBoundaries, isLastBar);
                 let endIdx = boundary.endIdx;
+                // The final section must always run to the end of the track: a novelty/energy snap
+                // must never truncate the last section before the real track end.
+                if (isLastBar) endIdx = totalFrames;
                 if (this.trackSections.length > 0 && useEnergyReactiveBoundaries) {
                     startIdx = Math.floor(this.trackSections[this.trackSections.length - 1].end * this.sampleRate / this.hopSize);
                 }
@@ -346,9 +349,21 @@ export class SectionAnalyzer {
                     reasons: this.dedup([...boundary.reasons, ...scored.reasons])
                 });
 
+                // Surface the boundary itself (an internal cut, not the track-end edge) as a candidate.
+                if (!isLastBar) {
+                    candidates.push({
+                        time: endIdx * this.hopSize / this.sampleRate,
+                        confidence: boundary.confidence,
+                        timingMode: boundary.timingMode,
+                        reasons: boundary.reasons.slice()
+                    });
+                }
+
                 currentSectionStartIdx = i + 1;
             }
         }
+
+        this.boundaryCandidates = this.dedupCandidatesByTime(candidates);
     }
 
     // Decides the frame index for a section's trailing boundary and explains the decision.
@@ -358,7 +373,7 @@ export class SectionAnalyzer {
         endBar: { startIdx: number; endIdx: number },
         useEnergyReactiveBoundaries: boolean,
         isLastBar: boolean
-    ): { endIdx: number; timingMode: SectionBoundaryCandidate['timingMode']; reasons: AnalysisReason[] } {
+    ): { endIdx: number; timingMode: SectionBoundaryCandidate['timingMode']; reasons: AnalysisReason[]; confidence: number } {
         const secondsPerFrame = this.hopSize / this.sampleRate;
 
         if (!useEnergyReactiveBoundaries) {
@@ -367,7 +382,7 @@ export class SectionAnalyzer {
             const near = this.nearestPeak(endIdx * secondsPerFrame, this.grid.secondsPerBar * 0.5);
             if (near) for (const r of near.reasons) if (!reasons.includes(r)) reasons.push(r);
             if (isLastBar) reasons.push('section-position');
-            return { endIdx, timingMode: 'bar-aligned', reasons };
+            return { endIdx, timingMode: 'bar-aligned', reasons, confidence: clampUnit(this.grid.gridConfidence) };
         }
 
         const radiusFrames = Math.max(2, Math.floor((endBar.endIdx - endBar.startIdx) * 0.45));
@@ -377,7 +392,7 @@ export class SectionAnalyzer {
 
         if (peak) {
             const endIdx = Math.round(peak.time / secondsPerFrame);
-            return { endIdx, timingMode: 'novelty', reasons: this.dedup(['low-grid-confidence', ...peak.reasons]) };
+            return { endIdx, timingMode: 'novelty', reasons: this.dedup(['low-grid-confidence', ...peak.reasons]), confidence: clampUnit(peak.value) };
         }
 
         const endIdx = this.findEnergyReactiveBoundary(endBar.endIdx, radiusFrames);
@@ -385,31 +400,22 @@ export class SectionAnalyzer {
         const direction = this.energyDirectionReason(endIdx);
         if (direction) reasons.push(direction);
         if (isLastBar) reasons.push('section-position');
-        return { endIdx, timingMode: 'energy-reactive', reasons };
+        return { endIdx, timingMode: 'energy-reactive', reasons, confidence: 0.35 };
     }
 
-    private toBoundaryCandidate(peak: NoveltyPoint, useEnergyReactiveBoundaries: boolean): SectionBoundaryCandidate {
-        if (useEnergyReactiveBoundaries) {
-            return {
-                time: peak.time,
-                confidence: clampUnit(peak.value),
-                timingMode: 'novelty',
-                reasons: this.dedup([...peak.reasons, 'low-grid-confidence'])
-            };
+    // Collapse boundary candidates that land on (nearly) the same time, keeping the most confident.
+    private dedupCandidatesByTime(candidates: SectionBoundaryCandidate[]): SectionBoundaryCandidate[] {
+        const sorted = [...candidates].sort((a, b) => a.time - b.time);
+        const out: SectionBoundaryCandidate[] = [];
+        for (const candidate of sorted) {
+            const last = out[out.length - 1];
+            if (last && Math.abs(last.time - candidate.time) < 0.05) {
+                if (candidate.confidence > last.confidence) out[out.length - 1] = candidate;
+            } else {
+                out.push(candidate);
+            }
         }
-        return {
-            time: this.snapToBar(peak.time),
-            confidence: clampUnit(peak.value * this.grid.gridConfidence),
-            timingMode: 'bar-aligned',
-            reasons: peak.reasons.length ? peak.reasons.slice() : ['novelty-peak']
-        };
-    }
-
-    private snapToBar(time: number): number {
-        const spb = this.grid.secondsPerBar;
-        if (!(spb > 0)) return time;
-        const offset = this.grid.gridOffset || 0;
-        return offset + Math.round((time - offset) / spb) * spb;
+        return out;
     }
 
     private nearestPeak(time: number, radiusSec: number, minValue = 0): NoveltyPoint | null {

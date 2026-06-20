@@ -375,6 +375,7 @@ export interface RenderState {
     tensionTrends: TensionTrends;
     noveltyCurve?: NoveltyPoint[];
     boundaryCandidates?: SectionBoundaryCandidate[];
+    showAnalyzerDebugOverlay?: boolean;
     performancePlan: PerformanceAutomationPlan | null;
     timelineLayers: TimelineLayers;
     snapToGrid: boolean;
