@@ -1,3 +1,4 @@
+import { featureFlags } from '../config/featureFlags.ts';
 import type { RenderState, TimelineLayers, TrackSectionLabel } from '../types';
 
 interface TimelineViewport {
@@ -85,6 +86,8 @@ export class TimelineCanvas {
         if (layers.buildup) this.drawBuildup(ctx, state, width, height, viewport);
         this.drawTrends(ctx, state, width, height, viewport);
         if (layers.cues) this.drawCueMarkers(ctx, state, width, height, viewport);
+        // Developer-only analyzer overlay; strictly gated so normal mode adds no draw calls.
+        if (featureFlags.analyzerDebugOverlay) this.drawAnalyzerDebug(ctx, state, width, height, viewport);
         this.drawPlayhead(ctx, state, width, height, viewport);
     }
 
@@ -657,6 +660,55 @@ export class TimelineCanvas {
                 ctx.fillText(label, x + 7, 5);
                 labelRight = x + 7 + labelWidth;
             }
+        }
+    }
+
+    // Developer overlay: the deterministic novelty curve as a thin amber line plus small dots at
+    // each boundary candidate. Reads precomputed analysis only — no per-frame math in the loop.
+    private drawAnalyzerDebug(
+        ctx: CanvasRenderingContext2D,
+        state: RenderState,
+        width: number,
+        height: number,
+        viewport: TimelineViewport
+    ): void {
+        const topPad = height >= 52 ? 18 : 4;
+        const bottomPad = 5;
+        const graphHeight = Math.max(8, height - topPad - bottomPad);
+
+        const curve = state.noveltyCurve;
+        if (curve && curve.length && state.duration > 0) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 176, 32, 0.85)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let x = 0; x <= width; x++) {
+                const time = viewport.start + (x / Math.max(1, width)) * viewport.duration;
+                const idx = Math.min(curve.length - 1, Math.max(0, Math.floor((time / state.duration) * curve.length)));
+                const value = curve[idx]?.value || 0;
+                const y = topPad + graphHeight * (1 - value);
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        const candidates = state.boundaryCandidates;
+        if (candidates && candidates.length) {
+            ctx.save();
+            const dotY = height - bottomPad - 2;
+            for (const candidate of candidates) {
+                if (candidate.time < viewport.start || candidate.time > viewport.end) continue;
+                const x = this.timeToX(candidate.time, width, viewport);
+                ctx.fillStyle = candidate.timingMode === 'novelty'
+                    ? 'rgba(255, 120, 0, 0.92)'
+                    : 'rgba(255, 200, 64, 0.92)';
+                ctx.beginPath();
+                ctx.arc(x, dotY, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
         }
     }
 

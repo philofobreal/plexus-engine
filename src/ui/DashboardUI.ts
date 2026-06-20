@@ -1343,6 +1343,16 @@ export class DashboardUI {
             if (alternatives.length) content += `\nAlt tempo: ${alternatives.join(', ')}`;
         }
         if (section) content += `\nSzekció: ${section.label.toUpperCase()} (${section.dominantFeature})`;
+        if (featureFlags.analyzerDebugOverlay) {
+            if (section?.reasons?.length) content += `\nOkok: ${section.reasons.join(', ')}`;
+            const nearbyCue = [...analysis.significantMoments, ...analysis.cues]
+                .filter(cue => cue.reasons?.length)
+                .reduce<{ cue: typeof analysis.cues[number]; distance: number } | null>((closest, cue) => {
+                    const distance = Math.abs(cue.time - hoverTime);
+                    return distance <= 1.5 && (!closest || distance < closest.distance) ? { cue, distance } : closest;
+                }, null);
+            if (nearbyCue) content += `\nCue ${nearbyCue.cue.kind.toUpperCase()}: ${nearbyCue.cue.reasons!.join(', ')}`;
+        }
         if (bar) {
             content += `\nÜtem: #${bar.index + 1} [${bar.state}] | RMS: ${bar.avgRms.toFixed(2)}`;
             content += `\nBass: ${bar.bass.toFixed(2)} | Mid: ${bar.mid.toFixed(2)} | Treble: ${bar.treble.toFixed(2)}`;
@@ -1510,6 +1520,8 @@ export class DashboardUI {
             buildupConfidence: State.trackAnalysis.buildupConfidence,
             spectralPivot: State.trackAnalysis.spectralPivot,
             tensionTrends: State.trackAnalysis.tensionTrends,
+            noveltyCurve: State.trackAnalysis.noveltyCurve,
+            boundaryCandidates: State.trackAnalysis.boundaryCandidates,
             performancePlan: State.editedPerformancePlan ?? State.performancePlan,
             timelineLayers: State.timelineLayers,
             snapToGrid: State.snapToGrid,

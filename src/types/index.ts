@@ -373,6 +373,8 @@ export interface RenderState {
     buildupConfidence: number[];
     spectralPivot: number[];
     tensionTrends: TensionTrends;
+    noveltyCurve?: NoveltyPoint[];
+    boundaryCandidates?: SectionBoundaryCandidate[];
     performancePlan: PerformanceAutomationPlan | null;
     timelineLayers: TimelineLayers;
     snapToGrid: boolean;

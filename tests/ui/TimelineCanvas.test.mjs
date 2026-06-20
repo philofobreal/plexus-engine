@@ -9,6 +9,7 @@ globalThis.document = {
 };
 
 const { TimelineCanvas } = await import('../../src/ui/TimelineCanvas.ts');
+const { featureFlags } = await import('../../src/config/featureFlags.ts');
 
 function createMockContext() {
   const calls = [];
@@ -190,4 +191,36 @@ test('TimelineCanvas renders performance automation plan lane with viewport scal
   assert.ok(calls.some(call => call[0] === 'rect' && call[1] === 100 && call[2] === 18 && call[3] === 100 && call[4] === 14));
   assert.ok(calls.some(call => call[0] === 'clip'));
   assert.ok(calls.some(call => call[0] === 'fillText' && call[1] === '...' && call[2] === 106 && call[3] === 22));
+});
+
+test('analyzer debug overlay is strictly gated behind the feature flag', () => {
+  const baseState = {
+    isExporting: false, exportTime: 0, currentTime: 0, duration: 20, zoom: 1, pan: 0, bpm: 120,
+    sampleRate: 44100, hopSize: 1024, frames: [], sections: [], bars: [], cues: [], significantMoments: [],
+    buildupConfidence: [], spectralPivot: [], tensionTrends: { globalSlope: 0, peakTime: 0, peakValue: 0, segments: [] },
+    noveltyCurve: [
+      { time: 0, value: 0.1, reasons: [] },
+      { time: 10, value: 0.9, reasons: ['novelty-peak'] },
+      { time: 20, value: 0.2, reasons: [] }
+    ],
+    boundaryCandidates: [
+      { time: 10, confidence: 0.9, timingMode: 'novelty', reasons: ['novelty-peak'] }
+    ],
+    performancePlan: null, audioSensitivity: 1, dropAnticipation: 0, scrubTime: null
+  };
+
+  const wasEnabled = featureFlags.analyzerDebugOverlay;
+  try {
+    featureFlags.analyzerDebugOverlay = false;
+    const offCanvas = createMockCanvas();
+    new TimelineCanvas(offCanvas).render(baseState);
+    assert.ok(!offCanvas.context.calls.some(call => call[0] === 'arc'), 'no candidate dots when flag is off');
+
+    featureFlags.analyzerDebugOverlay = true;
+    const onCanvas = createMockCanvas();
+    new TimelineCanvas(onCanvas).render(baseState);
+    assert.ok(onCanvas.context.calls.some(call => call[0] === 'arc'), 'candidate dots drawn when flag is on');
+  } finally {
+    featureFlags.analyzerDebugOverlay = wasEnabled;
+  }
 });
