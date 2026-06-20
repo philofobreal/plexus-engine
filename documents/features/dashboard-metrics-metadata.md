@@ -34,7 +34,7 @@ Estimated tempo of the loaded track.
 
 ## Technical Meaning
 
-Worker-estimated beats per minute from accepted spectral-flux peak intervals. The estimator builds ordered `TempoCandidate` values in the 70..180 BPM range, resolves close half/double-time aliases, and falls back to `120` when detection is insufficient. When candidates exist, the displayed BPM is the top candidate: `AnalysisResult.bpm === AnalysisResult.tempoCandidates[0].bpm`.
+Worker-estimated beats per minute from autocorrelation/comb-filter analysis of the onset envelope (`TempoEstimator`). The estimator builds ordered `TempoCandidate` values in the 70..185 BPM range, resolves close half/double-time aliases (preferring the actual beat rate when the fast grid is fully covered), and falls back to `120` when detection is insufficient. When candidates exist, the displayed BPM is the top candidate: `AnalysisResult.bpm === AnalysisResult.tempoCandidates[0].bpm`.
 
 ## Source
 
@@ -42,7 +42,7 @@ Worker-estimated beats per minute from accepted spectral-flux peak intervals. Th
 
 ## Range
 
-Nominally `70..180 BPM` from the estimator, with fallback `120 BPM`.
+Nominally `70..185 BPM` from the estimator, with fallback `120 BPM`.
 
 ## Common Misinterpretations
 
@@ -329,7 +329,7 @@ const metricMetadata: Record<string, MetricMetadata> = {
     name: 'BPM',
     description: 'Estimated tempo of the loaded track.',
     source: 'AnalysisResult.bpm from analyzer worker; debug confidence/candidates from AnalysisResult and TrackAnalysis',
-    range: '70..180 BPM, fallback 120; confidence 0.0..1.0',
+    range: '70..185 BPM, fallback 120; confidence 0.0..1.0',
     tooltip: 'Estimated track tempo from offline beat analysis.\nNot a live tempo map.'
   },
   energy: {

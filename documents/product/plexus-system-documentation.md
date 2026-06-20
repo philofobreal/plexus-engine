@@ -115,14 +115,15 @@ A dramaturgiai motor a density, tension, RMS energia es blokk energia iranyvalto
 
 ### 3.4. BPM Detektalas Es Kijelzes
 
-A worker 70 es 180 BPM kozotti intervallum-hisztogram alapjan becsul BPM-et, majd rendezett `TempoCandidate` listat publikal. A top-level `bpm` mindig a `tempoCandidates[0].bpm` erteke, ha van candidate. A candidate struktura `bpm`, `score`, `intervalSec`, `peakCount`, `isHalfTime` es `isDoubleTime` mezokkel jelzi a fo es alternativ tempokat, beleertve a half/double-time aliasokat.
+A worker 70 es 185 BPM kozott becsul tempot az onset envelope autokorrelacios/comb-filter elemzesevel (`TempoEstimator`), majd rendezett `TempoCandidate` listat publikal. A top-level `bpm` mindig a `tempoCandidates[0].bpm` erteke, ha van candidate. A candidate struktura `bpm`, `score`, `intervalSec`, `peakCount`, `isHalfTime` es `isDoubleTime` mezokkel jelzi a fo es alternativ tempokat, beleertve a half/double-time aliasokat. A `GridAligner` ezen felul kozzeteszi az autoritativ zenei gridet (`beats`, `barStarts`, `gridOffset`), a `tempo`/`alternativeTempos` ertekeket es az egyesitett `timingConfidence` modellt is.
 
 A tempo confidence mezok a root `AnalysisResult` es a `TrackAnalysis` reszen is megjelennek:
 
-* `bpmConfidence`: BPM hisztogram dominancia es support, interval-evidence es kick-transient evidence cappelve.
+* `bpmConfidence`: autokorrelacios tempo salience es beat-onset illeszkedes, onset-szam evidence es kick-transient evidence (RMS rise x bass) altal cappelve.
 * `gridConfidence`: onset-grid illeszkedes es timing error alapjan becsult grid megbizhatosag; nem low-end transient hangeron mulik, de gyenge BPM evidencia mellett konzervativ capet kap.
 * `downbeatConfidence`: downbeat dominancia, de BPM/grid evidencia altal cappelve.
 * `tempoCandidates`: rendezett alternativ tempo lista.
+* `timingConfidence`: egyesitett `{ tempo, beat, grid, overall }` modell (`0..1` komponensenkent); az `overall` a harom komponens kevereke, es nem haladja meg a legerosebbet.
 
 A low/kick-transient evidence cap szandekosan nem altalanos ritmus-confidence: low/kick transient supportot mer, ezert bass-light vagy magas tartomanyu ritmusoknal konzervativan viselkedhet. A downbeat confidence nem lehet magas, ha a BPM vagy grid confidence alacsony. A UI-ban a BPM kompakt fejlec badge-kent jelenik meg a betoltott audio fajl neve mellett; a metrics grid nem tartalmaz kulon BPM kartyat. A BPM/grid/downbeat confidence es alternativ tempo debug tooltip csak `featureFlags.analyzerDebugOverlay` alatt jelenik meg.
 
@@ -136,13 +137,13 @@ A worker belso felelossegei adat-orientalt pipeline-ba vannak bontva:
 
 1. `SpectralCalibration`: determinisztikus pre-pass, amely track-szintu spektralis kozeppontokat, safety range-en beluli Hz savokat es lightweight musical profile hintet becsul, alacsony confidence eseten default savokra esik vissza.
 2. `FeatureExtractor`: Hann-windowed FFT, RMS, spectral flux, Hz-alapu sub/bass/lowMid/mid/presence/brilliance/air band ratio, centroid, flatness, pitch confidence, Zero Crossing Rate, 85% spectral rolloff, spectral crest es tipikus RMS/flux maximumok.
-3. `GridAligner`: BPM becsles, rendezett tempo candidate-ek, half/double-time ambiguity jeloles, beat/bar hossz, legerosebb tranziensek alapjan torteno anchor kereses, globalis `gridOffset`, valamint BPM/grid/downbeat confidence.
+3. `GridAligner`: az egyetlen autoritativ idozitesi motor. Pipeline: onset envelope -> `TempoEstimator` (autokorrelacios/comb tempo candidate-ek) -> half/double feloldas -> `BeatTracker` (dinamikus programozasu beat tracking) -> bar/downbeat illesztes. Kimenete a rendezett tempo candidate-ek, a zenei grid (`beats`, `barStarts`, `gridOffset`), a `tempo`/`alternativeTempos`, az egyesitett `timingConfidence` es a legacy BPM/grid/downbeat confidence. A `TempoEstimator` es a `BeatTracker` determinisztikus, tiszta `Float32Array`/`Math` modulok; a `BeatTracker` a gridet csendes/breakdown szakaszokon at is extrapolalja.
 4. `FeatureNormalizer`: mar kiszamolt tipikus maximumokkal normalizalja a nyers `Float32Array` jeleket; nem vegez masodik sortolast az orchestratorban.
 5. `FeatureClassifier`: normalizalt vektorokbol szamolja a semantic feature jeleket (`melodyRaw`, `vocalRaw`, `fxRaw`, `densityRaw`, `brightnessRaw`, `tensionRaw`). A melody es vocal ertekek spektralis heurisztikak, nem stem separation; ZCR-t, spectral crestet, flatnesst, rolloffot, Hz savaranyokat es kis sulyu `SpectralCalibrationMusicalProfile` hintet hasznalnak.
 6. `TemporalSmoother`: EMA simitast alkalmaz a classifier kimeneteire, az elso input ertekrol inditva, fals track-eleji fade-in nelkul.
 7. `SectionAnalyzer`: normal esetben BPM-gridhez igazodott bar aggregacio, kritikusan alacsony `gridConfidence` es `bpmConfidence` eseten energia-reaktiv time-window fallback; adaptive threshold, `BarAnalysis`, `TrackSection`, RMS mezok, dominans feature es evidence-based szekciocimkezes. A label dontes minden celcimkere pontszamot szamol energia, elozo section energiaja, density, bass/density kontextus, tension es dominans feature alapjan; gyenge evidencia eseten `verse` fallbacket hasznal.
-8. `DramaturgyBuilder`: `VisualCueEvent`, significant moment es fuzzy, euklideszi tavolsaggal csoportositott `MusicPattern` kimenetek; a beat event tipusbesorolast a `BeatEventClassifier` vegzi.
-9. `BeatEventClassifier`: elfogadott spectral-flux peak-eket osztalyoz bass ratio, ZCR, rolloff, high-band context es normalizalt flux alapjan, majd visszater a publikus `1 | 2 | 3` beat type szerzodessel.
+8. `DramaturgyBuilder`: `VisualCueEvent`, significant moment es fuzzy, euklideszi tavolsaggal csoportositott `MusicPattern` kimenetek. A `BeatEvent`-ek az autoritativ `GridAligner.beats`-bol szarmaznak, nem onallo peak-pickerbol; a csendes/extrapolalt beateket (ahol nincs erdemi onset energia) vizualis eventkent elnyomja, igy a breakdown nem araszt el a renderert fantom villanasokkal, mikozben a grid maga atfedi a csendet.
+9. `BeatEventClassifier`: egy beatet a beat frame-en mert bass ratio, ZCR, rolloff es high-band context alapjan sorol be belso hit tipusba, majd visszater a publikus `1 | 2 | 3` beat type szerzodessel.
 10. `SpectralPivot`: offline post-process, amely a buildup/LOW_DROP kompenzaciot es a `sE <= 0.04` zajzarat kezeli; mutalja a feature/frame tomboket es visszaadja a `spectralPivot` tombot.
 
 Az `src/analyzer/analyzeAudio.ts` orkesztrator ennek megfeleloen mar inline matematikatol mentes: peldanyositja es sorba rendezi a pipeline lepeseket, osszerakja a `TrackAnalysis` payloadot, majd visszaadja a typed `AnalysisResult` objektumot. A `src/audio/analyzer.worker.ts` tovabbra is csak worker boundary: bemeneti uzenetet olvas, `analyzeAudio()`-t hiv, progress/success/error uzenetet posztol vissza.
@@ -249,7 +250,7 @@ Az UI export kozben letiltja a playback/seek/file input utakat es blokkolja a ca
 ### ADR-003: Worker Schema Es TrackAnalysis
 
 * **Dontes:** a worker success payload `type`, `requestId`, `bpm`, `frames`, `events`, `hopSize` es `trackAnalysis` mezoket tartalmaz.
-* **Kiterjesztes:** a worker success payload resze az `adaptiveThreshold`, a tempo contract resze pedig a `bpmConfidence`, `gridConfidence`, `downbeatConfidence` es `tempoCandidates` root es `TrackAnalysis` szinten. Ha candidate letezik, `bpm === tempoCandidates[0].bpm`. Regi payload normalizalasnal a confidence mezok `0`, a candidate lista ures tomb.
+* **Kiterjesztes:** a worker success payload resze az `adaptiveThreshold`, a tempo contract resze pedig a `bpmConfidence`, `gridConfidence`, `downbeatConfidence` es `tempoCandidates` root es `TrackAnalysis` szinten. Ha candidate letezik, `bpm === tempoCandidates[0].bpm`. Az autoritativ idozitesi modell publikus contract mezokent jelenik meg: root szinten `beats`, `barStarts` es `timingConfidence`, a `TrackAnalysis`-en pedig a teljes modell (`tempo`, `tempoConfidence`, `beats`, `beatConfidence`, `barStarts`, `alternativeTempos`, `timingConfidence`). Regi payload normalizalasnal a confidence mezok `0`, a candidate/grid listak ures tombok, a `timingConfidence` pedig nulla komponensekkel toltodik.
 * **Indoklas:** a `trackAnalysis` append-only szerzodeskent boviti a legacy frame/event kimenetet, hogy az uj visual mode-ok gazdagabb zenei kontextust kapjanak, es a downstream reteg ne kezelje ugy a gyenge tempo-grid becslest, mintha biztos lenne.
 
 ### ADR-004: Selectable Visual Modes
@@ -380,6 +381,9 @@ export interface AnalysisSuccessMessage {
     frames: AudioFrame[];
     events: BeatEvent[];
     hopSize: number;
+    beats: number[];
+    barStarts: number[];
+    timingConfidence: TimingConfidence;
     trackAnalysis: TrackAnalysis;
 }
 

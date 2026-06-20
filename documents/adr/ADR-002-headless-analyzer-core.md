@@ -29,9 +29,11 @@ The analyzer core now owns:
 
 - `analyzeAudio()` as the single orchestration pipeline.
 - `FeatureExtractor` for Hann-windowed FFT features.
-- `GridAligner` for BPM, tempo candidates, half/double-time ambiguity annotation, bar-grid alignment, and tempo/grid/downbeat confidence.
+- `GridAligner` as the single authoritative timing engine: it runs `FeatureExtractor` onset envelope -> `TempoEstimator` -> half/double resolution -> `BeatTracker` -> bar/downbeat alignment, producing tempo candidates, the musical grid (`beats`, `barStarts`, `gridOffset`), and the unified `timingConfidence` plus the legacy tempo/grid/downbeat confidence fields.
+- `TempoEstimator` for deterministic autocorrelation/comb-filter tempo estimation (70-185 BPM) over the onset envelope.
+- `BeatTracker` for deterministic dynamic-programming beat tracking that extrapolates the musical grid through silent/breakdown regions.
 - `SectionAnalyzer` for bar and section analysis, including energy-reactive fallback when both grid and BPM confidence are critically low.
-- `DramaturgyBuilder` and `computeDramaturgyAnalysis()` for beat events, visual cues, recurring patterns, buildup confidence, tension trends, and dramaturgy data.
+- `DramaturgyBuilder` and `computeDramaturgyAnalysis()` for visual cues, recurring patterns, buildup confidence, tension trends, and dramaturgy data, and for beat events derived from the authoritative `GridAligner.beats` (extrapolated silent beats are suppressed as visual events).
 - `normalizeTrackAnalysis()` and `EMPTY_TRACK_ANALYSIS` as canonical analysis normalization.
 - Analyzer constants such as `ANALYSIS_ALGORITHM_VERSION` and the default hop size.
 
@@ -71,6 +73,8 @@ Tradeoffs:
 - `src/analyzer/`
 - `src/analyzer/analyzeAudio.ts`
 - `src/analyzer/FeatureExtractor.ts`
+- `src/analyzer/TempoEstimator.ts`
+- `src/analyzer/BeatTracker.ts`
 - `src/analyzer/GridAligner.ts`
 - `src/analyzer/SectionAnalyzer.ts`
 - `src/analyzer/DramaturgyBuilder.ts`
@@ -78,5 +82,8 @@ Tradeoffs:
 - `src/audio/analyzer.worker.ts`
 - `src/audio/AudioEngine.ts`
 - `tests/analyzer-parity.test.mjs`
+- `tests/analyzer-golden.test.mjs`
+- `tests/analyzer-verification.test.mjs`
+- `tests/analyzer-dsp.test.mjs`
 - `tests/contracts.test.mjs`
 - `tests/dramaturgy.test.mjs`
