@@ -81,7 +81,7 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     }
 
     const novelty = new NoveltyAnalyzer(visualFeatures, outFrames, hopSize, sampleRate);
-    const noveltyCurve = novelty.computeCurve();
+    const noveltyCurve = novelty.getCurveValues();
     const noveltyPeaks = novelty.getPeaks();
 
     const segmenter = new SectionAnalyzer(features, grid, sampleRate, hopSize);
@@ -122,6 +122,7 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
         spectralPivot,
         tensionTrends: dramaturgy.tensionTrends,
         noveltyCurve,
+        noveltyPeaks,
         boundaryCandidates: segmenter.boundaryCandidates,
         featureHopSize: hopSize,
         gridOffset: grid.gridOffset,

@@ -171,6 +171,11 @@ export class SectionAnalyzer {
     }
 
     public calculate(visualFeatures: VisualFeatureFrame[], noveltyPeaks: NoveltyPoint[] = []): void {
+        // Explicit reset: these are public mutable fields, so never assume a fresh instance.
+        this.barAnalyses = [];
+        this.trackSections = [];
+        this.boundaryCandidates = [];
+        this.adaptiveThreshold = 0.5;
         this.noveltyPeaks = noveltyPeaks;
         const { totalFrames, rmsT, rawBassT, rawMidT, rawHighT, typRms } = this.features;
         const totalDuration = totalFrames * this.hopSize / this.sampleRate;

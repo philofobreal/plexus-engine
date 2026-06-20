@@ -251,7 +251,7 @@ Az UI export kozben letiltja a playback/seek/file input utakat es blokkolja a ca
 ### ADR-003: Worker Schema Es TrackAnalysis
 
 * **Dontes:** a worker success payload `type`, `requestId`, `bpm`, `frames`, `events`, `hopSize` es `trackAnalysis` mezoket tartalmaz.
-* **Kiterjesztes:** a worker success payload resze az `adaptiveThreshold`, a tempo contract resze pedig a `bpmConfidence`, `gridConfidence`, `downbeatConfidence` es `tempoCandidates` root es `TrackAnalysis` szinten. Ha candidate letezik, `bpm === tempoCandidates[0].bpm`. Az autoritativ idozitesi modell publikus contract mezokent jelenik meg: root szinten `beats`, `barStarts` es `timingConfidence`, a `TrackAnalysis`-en pedig a teljes modell (`tempo`, `tempoConfidence`, `beats`, `beatConfidence`, `barStarts`, `alternativeTempos`, `timingConfidence`). Regi payload normalizalasnal a confidence mezok `0`, a candidate/grid listak ures tombok, a `timingConfidence` pedig nulla komponensekkel toltodik. Append-only modon tovabbi opcionalis mezok kerultek a `TrackAnalysis`-re: `noveltyCurve` (`Array<NoveltyPoint>`) es `boundaryCandidates` (`Array<SectionBoundaryCandidate>`), valamint a `TrackSection`/`VisualCueEvent` opcionalis `reasons` (`AnalysisReason[]`) mezoje; regi mentesek/exportok normalizalasakor ezek ures tombre esnek vissza.
+* **Kiterjesztes:** a worker success payload resze az `adaptiveThreshold`, a tempo contract resze pedig a `bpmConfidence`, `gridConfidence`, `downbeatConfidence` es `tempoCandidates` root es `TrackAnalysis` szinten. Ha candidate letezik, `bpm === tempoCandidates[0].bpm`. Az autoritativ idozitesi modell publikus contract mezokent jelenik meg: root szinten `beats`, `barStarts` es `timingConfidence`, a `TrackAnalysis`-en pedig a teljes modell (`tempo`, `tempoConfidence`, `beats`, `beatConfidence`, `barStarts`, `alternativeTempos`, `timingConfidence`). Regi payload normalizalasnal a confidence mezok `0`, a candidate/grid listak ures tombok, a `timingConfidence` pedig nulla komponensekkel toltodik. Append-only modon tovabbi opcionalis mezok kerultek a `TrackAnalysis`-re: `noveltyCurve` (per-frame `number[]`, 0..1), `noveltyPeaks` (`Array<NoveltyPoint>`, a reason taxonomiat csak ezek a sparse csucsok hordozzak), es `boundaryCandidates` (`Array<SectionBoundaryCandidate>`), valamint a `TrackSection`/`VisualCueEvent` opcionalis `reasons` (`AnalysisReason[]`) mezoje; regi mentesek/exportok normalizalasakor ezek ures tombre esnek vissza.
 * **Indoklas:** a `trackAnalysis` append-only szerzodeskent boviti a legacy frame/event kimenetet, hogy az uj visual mode-ok gazdagabb zenei kontextust kapjanak, es a downstream reteg ne kezelje ugy a gyenge tempo-grid becslest, mintha biztos lenne.
 
 ### ADR-004: Selectable Visual Modes
@@ -338,13 +338,35 @@ export interface BeatEvent {
 }
 
 export interface AudioFrame {
-    e: number;
-    b: number;
-    m: number;
-    t: number;
+    e: number;                    // normalized RMS energy
+    densityProj: number;          // smoothed spectral-flux density projection
+    melodyProj: number;           // smoothed tonal melody-presence projection
+    fxProj: number;               // smoothed FX/noise/transient projection
+    perceptualSpectrum: number[]; // 24-band track-relative balance, log 20 Hz..16 kHz
     state: 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
     eRatio: number;
 }
+
+// Explanatory taxonomy for WHY a boundary/label/cue was chosen (append-only union).
+export type AnalysisReason =
+    | 'bar-aligned' | 'energy-rise' | 'energy-drop' | 'density-rise' | 'bass-return'
+    | 'bass-drop' | 'high-transient' | 'percussive-onset' | 'after-buildup'
+    | 'low-grid-confidence' | 'novelty-peak' | 'section-position' | 'weak-evidence-fallback';
+
+export interface NoveltyPoint { time: number; value: number; reasons: AnalysisReason[]; }
+
+export interface SectionBoundaryCandidate {
+    time: number;
+    confidence: number;
+    timingMode: 'bar-aligned' | 'energy-reactive' | 'novelty';
+    reasons: AnalysisReason[];
+}
+
+// Append-only novelty extensions on TrackAnalysis (alongside the existing timing/section model):
+//   noveltyCurve?:        number[]                     // per-frame 0..1; time = i * featureHopSize / sampleRate
+//   noveltyPeaks?:        NoveltyPoint[]               // sparse labeled peaks (the curve itself carries no reasons)
+//   boundaryCandidates?:  SectionBoundaryCandidate[]   // one per realized internal section boundary
+// TrackSection and VisualCueEvent additionally carry an optional `reasons?: AnalysisReason[]`.
 
 export interface ModulationState {
     kineticTension: number;
@@ -368,6 +390,7 @@ export interface AnalysisRequest {
     algorithmVersion: number;
     samples: ArrayBuffer;
     sampleRate: number;
+    phraseSize: number;
 }
 
 export interface AnalysisSuccessMessage {
@@ -400,6 +423,10 @@ export interface RenderState {
     exportTime: number;
     currentTime: number;
     duration: number;
+    // ... viewport (zoom/pan), frames, sections, bars, cues, plan, layers, hover/selection ...
+    noveltyCurve?: number[];                       // per-frame novelty values for the debug overlay
+    boundaryCandidates?: SectionBoundaryCandidate[];
+    showAnalyzerDebugOverlay?: boolean;            // declarative gate for the analyzer debug overlay
 }
 
 export interface TempoCandidate {

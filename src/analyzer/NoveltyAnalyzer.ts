@@ -6,11 +6,14 @@ import { clampUnit } from './utils';
  *
  * Works exclusively from precomputed offline frames (no realtime FFT, no audio buffer access):
  * it contrasts a trailing feature window against a leading feature window and reports how much
- * the musical surface changed at each frame. The result is a normalized 0..1 novelty curve plus
- * a sparse set of labeled peaks that SectionAnalyzer can snap section boundaries to.
+ * the musical surface changed at each frame. The result is a normalized 0..1 novelty curve (a
+ * plain `number[]`, one value per frame) plus a sparse set of labeled peaks that SectionAnalyzer
+ * can snap section boundaries to.
  *
  * The contrast window is time-based (not bar-based) so the curve stays meaningful for beatless or
- * low-grid-confidence material where no reliable bar grid exists.
+ * low-grid-confidence material. Window means use per-channel prefix sums (O(1) per frame), and the
+ * curve is tapered over the first/last window where the trailing/leading windows are truncated, so
+ * track-edge fade-ins do not register as spurious novelty peaks / section boundaries.
  */
 
 interface NoveltyChannels {
@@ -23,8 +26,10 @@ interface NoveltyChannels {
     tension: Float32Array;
 }
 
+type ChannelKey = keyof NoveltyChannels;
+
 // Structural channels (energy / bass / density) dominate; timbral channels nudge.
-const CHANNEL_WEIGHTS = {
+const CHANNEL_WEIGHTS: Record<ChannelKey, number> = {
     e: 1.0,
     density: 0.9,
     bass: 1.0,
@@ -32,7 +37,8 @@ const CHANNEL_WEIGHTS = {
     melody: 0.5,
     brightness: 0.5,
     tension: 0.5
-} as const;
+};
+const CHANNEL_KEYS = Object.keys(CHANNEL_WEIGHTS) as ChannelKey[];
 
 const CONTRAST_WINDOW_SEC = 0.7;
 const DELTA_REASON_THRESHOLD = 0.08;
@@ -54,7 +60,9 @@ export class NoveltyAnalyzer {
     private readonly totalFrames: number;
     private readonly windowFrames: number;
 
-    private curve: NoveltyPoint[] | null = null;
+    private values: Float32Array | null = null;
+    private channels: NoveltyChannels | null = null;
+    private prefix: Record<ChannelKey, Float64Array> | null = null;
 
     constructor(visualFeatures: VisualFeatureFrame[], audioFrames: AudioFrame[], hopSize: number, sampleRate: number) {
         this.visualFeatures = visualFeatures;
@@ -104,65 +112,74 @@ export class NoveltyAnalyzer {
         return sum / bandCount;
     }
 
-    private windowMean(channel: Float32Array, from: number, to: number): number {
-        const start = Math.max(0, from);
-        const end = Math.min(this.totalFrames, to);
-        if (end <= start) return channel[Math.max(0, Math.min(this.totalFrames - 1, from))] || 0;
-        let sum = 0;
-        for (let i = start; i < end; i++) sum += channel[i];
-        return sum / (end - start);
+    // prefix[i] = sum of channel[0..i-1]; window mean over [from,to) is then O(1).
+    private buildPrefix(channel: Float32Array): Float64Array {
+        const prefix = new Float64Array(channel.length + 1);
+        for (let i = 0; i < channel.length; i++) prefix[i + 1] = prefix[i] + channel[i];
+        return prefix;
     }
 
-    /** Full per-frame novelty curve, normalized 0..1, with reasons attached only on local peaks. */
-    public computeCurve(): NoveltyPoint[] {
-        if (this.curve) return this.curve;
+    private windowMean(key: ChannelKey, from: number, to: number): number {
+        const start = Math.max(0, from);
+        const end = Math.min(this.totalFrames, to);
+        if (end <= start) {
+            const ch = this.channels![key];
+            return ch[Math.max(0, Math.min(this.totalFrames - 1, from))] || 0;
+        }
+        const prefix = this.prefix![key];
+        return (prefix[end] - prefix[start]) / (end - start);
+    }
+
+    // Builds (and caches) the normalized novelty curve plus the channel/prefix tables it derives.
+    private compute(): Float32Array {
+        if (this.values) return this.values;
         const n = this.totalFrames;
-        const curve: NoveltyPoint[] = new Array(n);
         if (n === 0) {
-            this.curve = curve;
-            return curve;
+            this.values = new Float32Array(0);
+            return this.values;
         }
 
-        const channels = this.buildChannels();
+        this.channels = this.buildChannels();
+        this.prefix = {} as Record<ChannelKey, Float64Array>;
+        for (const key of CHANNEL_KEYS) this.prefix[key] = this.buildPrefix(this.channels[key]);
+
         const w = this.windowFrames;
         const raw = new Float32Array(n);
-
-        // Per-frame trailing-vs-leading window contrast magnitude (weighted Euclidean distance).
         for (let i = 0; i < n; i++) {
             let sumSq = 0;
-            for (const key of Object.keys(CHANNEL_WEIGHTS) as Array<keyof NoveltyChannels>) {
-                const ch = channels[key];
-                const trail = this.windowMean(ch, i - w, i);
-                const lead = this.windowMean(ch, i, i + w);
+            for (const key of CHANNEL_KEYS) {
+                const trail = this.windowMean(key, i - w, i);
+                const lead = this.windowMean(key, i, i + w);
                 const weighted = (lead - trail) * CHANNEL_WEIGHTS[key];
                 sumSq += weighted * weighted;
             }
             raw[i] = Math.sqrt(sumSq);
         }
 
-        // Light smoothing then robust normalization against the 98th percentile (outlier-safe).
+        // Light smoothing, robust normalization (98th percentile), then an edge taper over the
+        // first/last window where the contrast windows are truncated and unreliable.
         const smoothed = smooth(raw, 2);
         const norm = robustMax(smoothed);
+        const values = new Float32Array(n);
         for (let i = 0; i < n; i++) {
-            curve[i] = { time: this.frameTime(i), value: clampUnit(smoothed[i] / norm), reasons: [] };
+            const taper = clampUnit(Math.min(i, n - 1 - i) / w);
+            values[i] = clampUnit(smoothed[i] / norm) * taper;
         }
-
-        // Attach reasons on local maxima above threshold.
-        for (let i = 0; i < n; i++) {
-            if (!isLocalMax(curve, i, w) || curve[i].value < PEAK_THRESHOLD) continue;
-            curve[i].reasons = this.reasonsAt(channels, i, w);
-        }
-
-        this.curve = curve;
-        return curve;
+        this.values = values;
+        return values;
     }
 
-    private reasonsAt(channels: NoveltyChannels, i: number, w: number): AnalysisReason[] {
-        const delta = (ch: Float32Array) => this.windowMean(ch, i, i + w) - this.windowMean(ch, i - w, i);
-        const de = delta(channels.e);
-        const dDensity = delta(channels.density);
-        const dBass = delta(channels.bass);
-        const dFx = delta(channels.fx);
+    /** Full per-frame novelty curve as plain numbers (one value per analysis frame, 0..1). */
+    public getCurveValues(): number[] {
+        return Array.from(this.compute());
+    }
+
+    private reasonsAt(i: number, w: number): AnalysisReason[] {
+        const delta = (key: ChannelKey) => this.windowMean(key, i, i + w) - this.windowMean(key, i - w, i);
+        const de = delta('e');
+        const dDensity = delta('density');
+        const dBass = delta('bass');
+        const dFx = delta('fx');
 
         const reasons: AnalysisReason[] = ['novelty-peak'];
         if (de > DELTA_REASON_THRESHOLD) reasons.push('energy-rise');
@@ -174,28 +191,31 @@ export class NoveltyAnalyzer {
         return reasons;
     }
 
-    /** Sparse, time-sorted novelty peaks for downstream boundary snapping (Task 4 consumer). */
+    /** Sparse, time-sorted novelty peaks (with reasons) for downstream boundary snapping. */
     public getPeaks(options: NoveltyPeakOptions = {}): NoveltyPoint[] {
-        const curve = this.computeCurve();
+        const values = this.compute();
         const minValue = options.minValue ?? PEAK_THRESHOLD;
         const minSpacingFrames = Math.max(1, Math.round((options.minSpacingSec ?? CONTRAST_WINDOW_SEC) * this.sampleRate / this.hopSize));
         const w = this.windowFrames;
 
-        const candidates: Array<{ index: number; point: NoveltyPoint }> = [];
-        for (let i = 0; i < curve.length; i++) {
-            if (curve[i].value >= minValue && isLocalMax(curve, i, w)) candidates.push({ index: i, point: curve[i] });
+        // Ignore the first/last window: there the trailing/leading contrast windows are truncated,
+        // so a track-edge fade-in/out must not register as a peak (and thus as a section boundary).
+        const edge = values.length > this.windowFrames * 3 ? this.windowFrames : 0;
+        const candidates: number[] = [];
+        for (let i = edge; i < values.length - edge; i++) {
+            if (values[i] >= minValue && isLocalMax(values, i, w)) candidates.push(i);
         }
         // Greedy strongest-first suppression so close peaks collapse to the most salient one.
-        candidates.sort((a, b) => b.point.value - a.point.value);
-        const chosen: Array<{ index: number; point: NoveltyPoint }> = [];
-        for (const candidate of candidates) {
-            if (chosen.every(c => Math.abs(c.index - candidate.index) >= minSpacingFrames)) chosen.push(candidate);
+        candidates.sort((a, b) => values[b] - values[a]);
+        const chosen: number[] = [];
+        for (const index of candidates) {
+            if (chosen.every(c => Math.abs(c - index) >= minSpacingFrames)) chosen.push(index);
         }
-        chosen.sort((a, b) => a.index - b.index);
-        return chosen.map(c => ({
-            time: c.point.time,
-            value: c.point.value,
-            reasons: c.point.reasons.length ? c.point.reasons : (['novelty-peak'] as AnalysisReason[])
+        chosen.sort((a, b) => a - b);
+        return chosen.map(index => ({
+            time: this.frameTime(index),
+            value: values[index],
+            reasons: this.reasonsAt(index, w)
         }));
     }
 }
@@ -223,12 +243,12 @@ function robustMax(values: Float32Array): number {
     return Math.max(p98, 1e-6);
 }
 
-function isLocalMax(curve: NoveltyPoint[], i: number, radius: number): boolean {
+function isLocalMax(values: Float32Array, i: number, radius: number): boolean {
     const start = Math.max(0, i - radius);
-    const end = Math.min(curve.length - 1, i + radius);
+    const end = Math.min(values.length - 1, i + radius);
     for (let j = start; j <= end; j++) {
         if (j === i) continue;
-        if (curve[j].value > curve[i].value) return false;
+        if (values[j] > values[i]) return false;
     }
     return true;
 }

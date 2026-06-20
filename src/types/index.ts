@@ -323,7 +323,10 @@ export interface TrackAnalysis {
     buildupConfidence: number[];
     spectralPivot: number[];
     tensionTrends: TensionTrends;
-    noveltyCurve?: NoveltyPoint[];
+    /** Per-frame novelty curve (one value per analysis frame, 0..1); time = index * featureHopSize / sampleRate. */
+    noveltyCurve?: number[];
+    /** Sparse labeled novelty peaks (carry the reason taxonomy; the per-frame curve does not). */
+    noveltyPeaks?: NoveltyPoint[];
     boundaryCandidates?: SectionBoundaryCandidate[];
     featureHopSize: number;
     gridOffset: number;
@@ -373,7 +376,7 @@ export interface RenderState {
     buildupConfidence: number[];
     spectralPivot: number[];
     tensionTrends: TensionTrends;
-    noveltyCurve?: NoveltyPoint[];
+    noveltyCurve?: number[];
     boundaryCandidates?: SectionBoundaryCandidate[];
     showAnalyzerDebugOverlay?: boolean;
     performancePlan: PerformanceAutomationPlan | null;

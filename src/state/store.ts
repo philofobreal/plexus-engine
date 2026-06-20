@@ -32,6 +32,7 @@ const emptyTrackAnalysis: TrackAnalysis = {
         segments: []
     },
     noveltyCurve: [],
+    noveltyPeaks: [],
     boundaryCandidates: [],
     featureHopSize: 1024,
     gridOffset: 0,

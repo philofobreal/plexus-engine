@@ -1345,7 +1345,8 @@ export class DashboardUI {
         if (section) content += `\nSzekció: ${section.label.toUpperCase()} (${section.dominantFeature})`;
         if (featureFlags.analyzerDebugOverlay) {
             if (section?.reasons?.length) content += `\nOkok: ${section.reasons.join(', ')}`;
-            const nearbyCue = [...analysis.significantMoments, ...analysis.cues]
+            // significantMoments are a subset of cues (same object refs), so iterate cues only.
+            const nearbyCue = analysis.cues
                 .filter(cue => cue.reasons?.length)
                 .reduce<{ cue: typeof analysis.cues[number]; distance: number } | null>((closest, cue) => {
                     const distance = Math.abs(cue.time - hoverTime);

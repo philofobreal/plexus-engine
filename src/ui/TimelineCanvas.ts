@@ -685,7 +685,7 @@ export class TimelineCanvas {
             for (let x = 0; x <= width; x++) {
                 const time = viewport.start + (x / Math.max(1, width)) * viewport.duration;
                 const idx = Math.min(curve.length - 1, Math.max(0, Math.floor((time / state.duration) * curve.length)));
-                const value = curve[idx]?.value || 0;
+                const value = curve[idx] || 0;
                 const y = topPad + graphHeight * (1 - value);
                 if (x === 0) ctx.moveTo(x, y);
                 else ctx.lineTo(x, y);

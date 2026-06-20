@@ -127,5 +127,33 @@ for (const fixture of SEMANTIC_FIXTURES) {
       sections.map(s => [s.start, s.label]),
       `${fixture.id}: section segmentation is not deterministic`
     );
+
+    // (f) timing-mode honesty: a trusted grid yields only bar-aligned candidates; an untrusted
+    // grid yields only novelty/energy-reactive ones (never a false bar-aligned claim).
+    const trustedGrid = result.gridConfidence >= 0.15 || result.bpmConfidence >= 0.20;
+    for (const candidate of result.trackAnalysis.boundaryCandidates) {
+      if (trustedGrid) {
+        assert.equal(candidate.timingMode, 'bar-aligned', `${fixture.id}: trusted-grid candidate must be bar-aligned, got ${candidate.timingMode}`);
+      } else {
+        assert.ok(candidate.timingMode === 'novelty' || candidate.timingMode === 'energy-reactive', `${fixture.id}: untrusted-grid candidate must be novelty/energy-reactive, got ${candidate.timingMode}`);
+      }
+    }
+
+    // (g) a novelty peak supports the structural drop arrival
+    if (gt.expectedDropTime != null) {
+      const tol = Math.max(2.0, gt.dropTolerance ?? 2.0);
+      assert.ok(
+        result.trackAnalysis.noveltyPeaks.some(p => Math.abs(p.time - gt.expectedDropTime) <= tol),
+        `${fixture.id}: no novelty peak within ${tol}s of drop ${gt.expectedDropTime}; ` +
+          `peaks @ ${result.trackAnalysis.noveltyPeaks.map(p => p.time.toFixed(1)).join(', ')}`
+      );
+    }
   });
 }
+
+test('semantic: structured tracks expose more novelty peaks than beatless beds', () => {
+  const peakCount = (id) => analyzeAudio(buildFixtureInput(SEMANTIC_FIXTURES.find(f => f.id === id))).trackAnalysis.noveltyPeaks.length;
+  const ambient = peakCount('ambient-no-grid');
+  const structured = peakCount('long-breakdown-house');
+  assert.ok(ambient < structured, `ambient peak count ${ambient} should be < structured ${structured}`);
+});
