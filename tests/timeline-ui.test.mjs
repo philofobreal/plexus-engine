@@ -138,5 +138,6 @@ test('dashboard timeline redraw is throttled by visible playhead and layout chan
   assert.match(ui, /Math\.abs\(State\.currentTime - this\.lastTimelineDrawTime\) >= visibleSecondsPerPixel/);
   assert.match(ui, /this\.requestDashboardTimelineDraw\(\)/);
   const updateDashboardBody = ui.slice(ui.indexOf('    updateDashboard() {'));
-  assert.doesNotMatch(updateDashboardBody.slice(0, updateDashboardBody.indexOf('\n    }\n}')), /this\.drawDramaturgyTimeline\(\)/);
+  const updateDashboardEnd = updateDashboardBody.match(/\r?\n    \}\r?\n\}/);
+  assert.doesNotMatch(updateDashboardBody.slice(0, updateDashboardEnd ? updateDashboardEnd.index : updateDashboardBody.length), /this\.drawDramaturgyTimeline\(\)/);
 });
