@@ -5,6 +5,7 @@ import { FeatureClassifier } from './FeatureClassifier';
 import { FeatureExtractor, PERCEPTUAL_SPECTRUM_BAND_COUNT, PERCEPTUAL_SPECTRUM_MAX_HZ, PERCEPTUAL_SPECTRUM_MIN_HZ } from './FeatureExtractor';
 import { normalizeArray } from './FeatureNormalizer';
 import { GridAligner } from './GridAligner';
+import { NoveltyAnalyzer } from './NoveltyAnalyzer';
 import { SectionAnalyzer } from './SectionAnalyzer';
 import { applySpectralPivot } from './SpectralPivot';
 import { estimateSpectralCalibration } from './SpectralCalibration';
@@ -79,8 +80,12 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
         };
     }
 
+    const novelty = new NoveltyAnalyzer(visualFeatures, outFrames, hopSize, sampleRate);
+    const noveltyCurve = novelty.getCurveValues();
+    const noveltyPeaks = novelty.getPeaks();
+
     const segmenter = new SectionAnalyzer(features, grid, sampleRate, hopSize);
-    segmenter.calculate(visualFeatures);
+    segmenter.calculate(visualFeatures, noveltyPeaks);
 
     for (let i = 0; i < features.totalFrames; i++) {
         let time = i * hopSize / sampleRate;
@@ -97,7 +102,7 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     const featureFrames = visualFeatures;
     const spectralPivot = applySpectralPivot(featureFrames, outFrames, dramaturgy.buildupConfidence, totalFrames);
 
-    const cueBuilder = new DramaturgyBuilder(features, grid, segmenter, sampleRate, hopSize);
+    const cueBuilder = new DramaturgyBuilder(features, grid, segmenter, sampleRate, hopSize, noveltyPeaks);
     cueBuilder.calculate(featureFrames, outFrames);
 
     const trackAnalysis: TrackAnalysis = {
@@ -116,6 +121,9 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
         buildupConfidence: dramaturgy.buildupConfidence,
         spectralPivot,
         tensionTrends: dramaturgy.tensionTrends,
+        noveltyCurve,
+        noveltyPeaks,
+        boundaryCandidates: segmenter.boundaryCandidates,
         featureHopSize: hopSize,
         gridOffset: grid.gridOffset,
         tempo: grid.tempo,

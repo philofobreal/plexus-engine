@@ -141,10 +141,11 @@ A worker belso felelossegei adat-orientalt pipeline-ba vannak bontva:
 4. `FeatureNormalizer`: mar kiszamolt tipikus maximumokkal normalizalja a nyers `Float32Array` jeleket; nem vegez masodik sortolast az orchestratorban.
 5. `FeatureClassifier`: normalizalt vektorokbol szamolja a semantic feature jeleket (`melodyRaw`, `vocalRaw`, `fxRaw`, `densityRaw`, `brightnessRaw`, `tensionRaw`). A melody es vocal ertekek spektralis heurisztikak, nem stem separation; ZCR-t, spectral crestet, flatnesst, rolloffot, Hz savaranyokat es kis sulyu `SpectralCalibrationMusicalProfile` hintet hasznalnak.
 6. `TemporalSmoother`: EMA simitast alkalmaz a classifier kimeneteire, az elso input ertekrol inditva, fals track-eleji fade-in nelkul.
-7. `SectionAnalyzer`: normal esetben BPM-gridhez igazodott bar aggregacio, kritikusan alacsony `gridConfidence` es `bpmConfidence` eseten energia-reaktiv time-window fallback; adaptive threshold, `BarAnalysis`, `TrackSection`, RMS mezok, dominans feature es evidence-based szekciocimkezes. A label dontes minden celcimkere pontszamot szamol energia, elozo section energiaja, density, bass/density kontextus, tension es dominans feature alapjan; gyenge evidencia eseten `verse` fallbacket hasznal.
-8. `DramaturgyBuilder`: `VisualCueEvent`, significant moment es fuzzy, euklideszi tavolsaggal csoportositott `MusicPattern` kimenetek. A `BeatEvent`-ek az autoritativ `GridAligner.beats`-bol szarmaznak, nem onallo peak-pickerbol; a csendes/extrapolalt beateket (ahol nincs erdemi onset energia) vizualis eventkent elnyomja, igy a breakdown nem araszt el a renderert fantom villanasokkal, mikozben a grid maga atfedi a csendet.
-9. `BeatEventClassifier`: egy beatet a beat frame-en mert bass ratio, ZCR, rolloff es high-band context alapjan sorol be belso hit tipusba, majd visszater a publikus `1 | 2 | 3` beat type szerzodessel.
-10. `SpectralPivot`: offline post-process, amely a buildup/LOW_DROP kompenzaciot es a `sE <= 0.04` zajzarat kezeli; mutalja a feature/frame tomboket es visszaadja a `spectralPivot` tombot.
+7. `NoveltyAnalyzer`: determinisztikus, grid-fuggetlen valtozas-evidencia detektor. Kizarolag a mar kiszamolt `VisualFeatureFrame`/`AudioFrame` adatokbol dolgozik (nincs realtime FFT, nincs audio buffer olvasas, nincs render-loop matek), idoalapu trailing-vs-leading feature-ablak kontraszttal szamol egy normalizalt `0..1` `noveltyCurve` gorbet. A curve pontjai csak szamok; az `AnalysisReason` taxonomy (`energy-rise`, `energy-drop`, `density-rise`, `bass-return`, `bass-drop`, `high-transient`, `novelty-peak`) kizarolag a sparse `noveltyPeaks` listan szereplo lokalis csucsokon jelenik meg, amelyet a section-hatar snapeles fogyaszt.
+8. `SectionAnalyzer`: normal esetben BPM-gridhez igazodott bar aggregacio, kritikusan alacsony `gridConfidence` es `bpmConfidence` eseten energia-reaktiv time-window fallback; adaptive threshold, `BarAnalysis`, `TrackSection`, RMS mezok, dominans feature es evidence-based szekciocimkezes. A novelty csucsokbol `boundaryCandidates` listat publikal (megbizhato grid eseten barhoz snapelt `bar-aligned`, kulonben `novelty`/`energy-reactive` `timingMode`), es minden szekciot `reasons` tombbel annotal. A label dontes tobb-idotavu kontrasztot hasznal: a `drop` cimke a megelozo 4-8 bar-hoz kepesti magas energiaju erkezest kovetel (buildup vagy break utan, valodi elozmeny-kontextussal), igy a csendes intro utani elso groove es a sima hangos verse nem sul el dropkent; gyenge evidencia eseten `verse` fallback. A szigoru-grid hatarpoziciok valtozatlanok maradnak, igy a regresszios masterek nem driftelnek.
+9. `DramaturgyBuilder`: `VisualCueEvent`, significant moment es fuzzy, euklideszi tavolsaggal csoportositott `MusicPattern` kimenetek. A `BeatEvent`-ek az autoritativ `GridAligner.beats`-bol szarmaznak, nem onallo peak-pickerbol; a csendes/extrapolalt beateket (ahol nincs erdemi onset energia) vizualis eventkent elnyomja, igy a breakdown nem araszt el a renderert fantom villanasokkal, mikozben a grid maga atfedi a csendet. Az impact/break significant moment cue-k a legkozelebbi novelty csucsbol kapnak `reasons` taxonomiat.
+10. `BeatEventClassifier`: egy beatet a beat frame-en mert bass ratio, ZCR, rolloff es high-band context alapjan sorol be belso hit tipusba, majd visszater a publikus `1 | 2 | 3` beat type szerzodessel.
+11. `SpectralPivot`: offline post-process, amely a buildup/LOW_DROP kompenzaciot es a `sE <= 0.04` zajzarat kezeli; mutalja a feature/frame tomboket es visszaadja a `spectralPivot` tombot.
 
 Az `src/analyzer/analyzeAudio.ts` orkesztrator ennek megfeleloen mar inline matematikatol mentes: peldanyositja es sorba rendezi a pipeline lepeseket, osszerakja a `TrackAnalysis` payloadot, majd visszaadja a typed `AnalysisResult` objektumot. A `src/audio/analyzer.worker.ts` tovabbra is csak worker boundary: bemeneti uzenetet olvas, `analyzeAudio()`-t hiv, progress/success/error uzenetet posztol vissza.
 
@@ -250,7 +251,7 @@ Az UI export kozben letiltja a playback/seek/file input utakat es blokkolja a ca
 ### ADR-003: Worker Schema Es TrackAnalysis
 
 * **Dontes:** a worker success payload `type`, `requestId`, `bpm`, `frames`, `events`, `hopSize` es `trackAnalysis` mezoket tartalmaz.
-* **Kiterjesztes:** a worker success payload resze az `adaptiveThreshold`, a tempo contract resze pedig a `bpmConfidence`, `gridConfidence`, `downbeatConfidence` es `tempoCandidates` root es `TrackAnalysis` szinten. Ha candidate letezik, `bpm === tempoCandidates[0].bpm`. Az autoritativ idozitesi modell publikus contract mezokent jelenik meg: root szinten `beats`, `barStarts` es `timingConfidence`, a `TrackAnalysis`-en pedig a teljes modell (`tempo`, `tempoConfidence`, `beats`, `beatConfidence`, `barStarts`, `alternativeTempos`, `timingConfidence`). Regi payload normalizalasnal a confidence mezok `0`, a candidate/grid listak ures tombok, a `timingConfidence` pedig nulla komponensekkel toltodik.
+* **Kiterjesztes:** a worker success payload resze az `adaptiveThreshold`, a tempo contract resze pedig a `bpmConfidence`, `gridConfidence`, `downbeatConfidence` es `tempoCandidates` root es `TrackAnalysis` szinten. Ha candidate letezik, `bpm === tempoCandidates[0].bpm`. Az autoritativ idozitesi modell publikus contract mezokent jelenik meg: root szinten `beats`, `barStarts` es `timingConfidence`, a `TrackAnalysis`-en pedig a teljes modell (`tempo`, `tempoConfidence`, `beats`, `beatConfidence`, `barStarts`, `alternativeTempos`, `timingConfidence`). Regi payload normalizalasnal a confidence mezok `0`, a candidate/grid listak ures tombok, a `timingConfidence` pedig nulla komponensekkel toltodik. Append-only modon tovabbi opcionalis mezok kerultek a `TrackAnalysis`-re: `noveltyCurve` (per-frame `number[]`, 0..1), `noveltyPeaks` (`Array<NoveltyPoint>`, a reason taxonomiat csak ezek a sparse csucsok hordozzak), es `boundaryCandidates` (`Array<SectionBoundaryCandidate>`), valamint a `TrackSection`/`VisualCueEvent` opcionalis `reasons` (`AnalysisReason[]`) mezoje; regi mentesek/exportok normalizalasakor ezek ures tombre esnek vissza.
 * **Indoklas:** a `trackAnalysis` append-only szerzodeskent boviti a legacy frame/event kimenetet, hogy az uj visual mode-ok gazdagabb zenei kontextust kapjanak, es a downstream reteg ne kezelje ugy a gyenge tempo-grid becslest, mintha biztos lenne.
 
 ### ADR-004: Selectable Visual Modes
@@ -263,7 +264,7 @@ Az UI export kozben letiltja a playback/seek/file input utakat es blokkolja a ca
 
 * **Dontes:** a tuning defaultok es kontroll metadata a `src/config/visualTuning.ts` fajlban vannak. A presetek `public/visual-tuning-presets/` alatt JSON fajlok, listazasuk `index.json` manifestbol tortenik.
 * **Indoklas:** statikus Vite app nem tud megbizhatoan public konyvtarat listazni runtime-ban backend vagy manifest nelkul. A target tuning es morphing a live UX resze, mert az eles preset valtasok nem ugorhatnak hirtelen.
-* **Kiterjesztes:** a performance preset szerzodes resze a morph profil es dramaturgiai profil. A partial preset normalizalas sticky modon megorzi a hianyzo aktualis ertekeket. A `State.sectionOverrides` teljesen el lett tavolitva; az automatizalas egyseges `PerformanceAutomationPlan` formaban tarolodik a `State.performancePlan` (auto-generalalt) es `State.editedPerformancePlan` (szerkesztett) allomanyokban. A plan pontjai `PerformanceAutomationPoint` tipusuak: `id`, `time`, `sectionId`, `preset`, `confidence`, `intensity` (0.1-4.0), `reason`, `morphDurationSec`, `morphCurve` es opcionalis `locked` mezokkel. A `TimelineLayers` szerzodes (`waveform`, `rms`, `buildup`, `cues`, `automation` lathatosagi booleanok) vezererli az idovonal retegek megjeleneset.
+* **Kiterjesztes:** a performance preset szerzodes resze a morph profil es dramaturgiai profil. A partial preset normalizalas sticky modon megorzi a hianyzo aktualis ertekeket. A `State.sectionOverrides` teljesen el lett tavolitva; az automatizalas egyseges `PerformanceAutomationPlan` formaban tarolodik a `State.performancePlan` (auto-generalalt) es `State.editedPerformancePlan` (szerkesztett) allomanyokban. A plan pontjai `PerformanceAutomationPoint` tipusuak: `id`, `time`, `sectionId`, `preset`, `confidence`, `intensity` (0.1-4.0), `reason`, `morphDurationSec`, `morphCurve`, opcionalis `analysisConfidence`, `timingMode` (`bar-aligned` | `novelty` | `energy-reactive`) es opcionalis `locked` mezokkel. A `TimelineLayers` szerzodes (`waveform`, `rms`, `buildup`, `cues`, `automation` lathatosagi booleanok) vezererli az idovonal retegek megjeleneset.
 
 ### ADR-006: Render Backend Boundary
 
@@ -337,13 +338,35 @@ export interface BeatEvent {
 }
 
 export interface AudioFrame {
-    e: number;
-    b: number;
-    m: number;
-    t: number;
+    e: number;                    // normalized RMS energy
+    densityProj: number;          // smoothed spectral-flux density projection
+    melodyProj: number;           // smoothed tonal melody-presence projection
+    fxProj: number;               // smoothed FX/noise/transient projection
+    perceptualSpectrum: number[]; // 24-band track-relative balance, log 20 Hz..16 kHz
     state: 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
     eRatio: number;
 }
+
+// Explanatory taxonomy for WHY a boundary/label/cue was chosen (append-only union).
+export type AnalysisReason =
+    | 'bar-aligned' | 'energy-rise' | 'energy-drop' | 'density-rise' | 'bass-return'
+    | 'bass-drop' | 'high-transient' | 'percussive-onset' | 'after-buildup'
+    | 'low-grid-confidence' | 'novelty-peak' | 'section-position' | 'weak-evidence-fallback';
+
+export interface NoveltyPoint { time: number; value: number; reasons: AnalysisReason[]; }
+
+export interface SectionBoundaryCandidate {
+    time: number;
+    confidence: number;
+    timingMode: 'bar-aligned' | 'energy-reactive' | 'novelty';
+    reasons: AnalysisReason[];
+}
+
+// Append-only novelty extensions on TrackAnalysis (alongside the existing timing/section model):
+//   noveltyCurve?:        number[]                     // per-frame 0..1; time = i * featureHopSize / sampleRate
+//   noveltyPeaks?:        NoveltyPoint[]               // sparse labeled peaks (the curve itself carries no reasons)
+//   boundaryCandidates?:  SectionBoundaryCandidate[]   // realized internal section boundaries only; no track-start candidate
+// TrackSection and VisualCueEvent additionally carry an optional `reasons?: AnalysisReason[]`.
 
 export interface ModulationState {
     kineticTension: number;
@@ -367,6 +390,7 @@ export interface AnalysisRequest {
     algorithmVersion: number;
     samples: ArrayBuffer;
     sampleRate: number;
+    phraseSize: number;
 }
 
 export interface AnalysisSuccessMessage {
@@ -399,6 +423,10 @@ export interface RenderState {
     exportTime: number;
     currentTime: number;
     duration: number;
+    // ... viewport (zoom/pan), frames, sections, bars, cues, plan, layers, hover/selection ...
+    noveltyCurve?: number[];                       // per-frame novelty values for the debug overlay
+    boundaryCandidates?: SectionBoundaryCandidate[];
+    showAnalyzerDebugOverlay?: boolean;            // declarative gate for the analyzer debug overlay
 }
 
 export interface TempoCandidate {

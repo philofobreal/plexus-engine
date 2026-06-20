@@ -327,18 +327,78 @@ test('generatePerformancePlan assigns dynamic intensity proportional to section 
 
   const byReason = (reason) => plan.points.find(p => p.reason === reason);
 
-  // Intro and break are restrained sections — intensity below 1.0
+  // Intro and break are restrained sections - intensity below 1.0
   assert.ok(byReason('intro').intensity < 1.0, `intro: ${byReason('intro').intensity}`);
   assert.ok(byReason('break').intensity < 1.0, `break: ${byReason('break').intensity}`);
 
-  // Drop and peak are high-energy sections — intensity above 1.0
+  // Drop and peak are high-energy sections - intensity above 1.0
   assert.ok(byReason('drop').intensity > 1.0, `drop: ${byReason('drop').intensity}`);
   assert.ok(byReason('peak').intensity > 1.0, `peak: ${byReason('peak').intensity}`);
 
-  // Peak is the highest-energy label — exceeds drop
+  // Peak is the highest-energy label - exceeds drop
   assert.ok(byReason('peak').intensity > byReason('drop').intensity,
     `peak (${byReason('peak').intensity}) should exceed drop (${byReason('drop').intensity})`);
 
   // All intensities are finite positive numbers
   assert.ok(plan.points.every(p => Number.isFinite(p.intensity) && p.intensity > 0));
+});
+
+test('weak-grid sections produce novelty timing mode and damped confidence', async () => {
+  // A beatless/low-grid track: section boundaries came from novelty, not bars.
+  const weak = createTrackAnalysis([
+    { ...createSection(0, 20, 'verse', 'melody', 0.4, 0.4), reasons: ['low-grid-confidence', 'novelty-peak'] },
+    { ...createSection(20, 45, 'drop', 'impact', 0.9, 0.8), reasons: ['low-grid-confidence', 'novelty-peak', 'energy-rise'] }
+  ]);
+  weak.bpm = 0;
+  weak.bpmConfidence = 0.1;
+  weak.gridConfidence = 0.1;
+  weak.timingConfidence = { tempo: 0.1, beat: 0.1, grid: 0.1, overall: 0.1 };
+  weak.boundaryCandidates = [
+    { time: 20, confidence: 0.9, timingMode: 'novelty', reasons: ['low-grid-confidence', 'novelty-peak', 'energy-rise'] }
+  ];
+
+  const strong = createTrackAnalysis([
+    { ...createSection(0, 20, 'verse', 'melody', 0.4, 0.4), reasons: ['bar-aligned'] },
+    { ...createSection(20, 45, 'drop', 'impact', 0.9, 0.8), reasons: ['bar-aligned', 'energy-rise'] }
+  ]);
+  strong.bpm = 124;
+  strong.bpmConfidence = 0.92;
+  strong.gridConfidence = 0.9;
+  strong.timingConfidence = { tempo: 0.9, beat: 0.9, grid: 0.9, overall: 0.9 };
+
+  const weakPlan = await generatePerformancePlan(weak, ['default.json'], 45);
+  const strongPlan = await generatePerformancePlan(strong, ['default.json'], 45);
+
+  const weakDrop = weakPlan.points.find(p => p.reason === 'drop');
+  const strongDrop = strongPlan.points.find(p => p.reason === 'drop');
+  assert.ok(weakDrop && strongDrop);
+
+  // Novelty-driven boundary on an untrusted grid is flagged 'novelty', never bar-aligned.
+  assert.equal(weakDrop.timingMode, 'novelty');
+  assert.equal(strongDrop.timingMode, 'bar-aligned');
+
+  // Critically low overall timing confidence damps the automation point confidence.
+  assert.ok(weakDrop.confidence < strongDrop.confidence,
+    `weak drop confidence ${weakDrop.confidence} should be < strong ${strongDrop.confidence}`);
+  assert.ok((weakDrop.analysisConfidence ?? 1) <= 0.2);
+});
+
+test('weak-grid automation timing mode follows the section start boundary candidate', async () => {
+  const weak = createTrackAnalysis([
+    { ...createSection(0, 20, 'verse', 'melody', 0.4, 0.4), reasons: ['low-grid-confidence', 'novelty-peak'] },
+    { ...createSection(20, 45, 'drop', 'impact', 0.9, 0.8), reasons: ['low-grid-confidence', 'weak-evidence-fallback'] }
+  ]);
+  weak.bpm = 0;
+  weak.bpmConfidence = 0.1;
+  weak.gridConfidence = 0.1;
+  weak.timingConfidence = { tempo: 0.1, beat: 0.1, grid: 0.1, overall: 0.1 };
+  weak.boundaryCandidates = [
+    { time: 20, confidence: 0.9, timingMode: 'novelty', reasons: ['low-grid-confidence', 'novelty-peak', 'energy-rise'] },
+    { time: 45, confidence: 0.35, timingMode: 'energy-reactive', reasons: ['low-grid-confidence', 'weak-evidence-fallback'] }
+  ];
+
+  const plan = await generatePerformancePlan(weak, ['default.json'], 45);
+  const drop = plan.points.find(p => p.reason === 'drop');
+  assert.ok(drop);
+  assert.equal(drop.timingMode, 'novelty');
 });

@@ -21,13 +21,13 @@ Do not commit mojibake or mixed encodings.
 Preferred hierarchy:
 
 AGENTS.md
-â”śâ”€ architecture-contract.md
-â”śâ”€ realtime-audio-safety.md
-â”śâ”€ worker-communication.md
-â”śâ”€ platform-operations.md
-â”śâ”€ anti-patterns.md
-â”śâ”€ testing-validation.md
-â””â”€ AI_TASK_PLAYBOOK.md
+- architecture-contract.md
+- realtime-audio-safety.md
+- worker-communication.md
+- platform-operations.md
+- anti-patterns.md
+- testing-validation.md
+- AI_TASK_PLAYBOOK.md
 
 ## Review Trigger
 

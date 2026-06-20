@@ -64,6 +64,45 @@
       "type": "string",
       "enum": ["melody", "vocal", "fx", "impact", "break", "pattern"]
     },
+    "analysisReason": {
+      "type": "string",
+      "enum": [
+        "bar-aligned",
+        "energy-rise",
+        "energy-drop",
+        "density-rise",
+        "bass-return",
+        "bass-drop",
+        "high-transient",
+        "percussive-onset",
+        "after-buildup",
+        "low-grid-confidence",
+        "novelty-peak",
+        "section-position",
+        "weak-evidence-fallback"
+      ]
+    },
+    "noveltyPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["time", "value", "reasons"],
+      "properties": {
+        "time": { "type": "number" },
+        "value": { "type": "number" },
+        "reasons": { "type": "array", "items": { "$ref": "#/$defs/analysisReason" } }
+      }
+    },
+    "sectionBoundaryCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["time", "confidence", "timingMode", "reasons"],
+      "properties": {
+        "time": { "type": "number" },
+        "confidence": { "type": "number" },
+        "timingMode": { "type": "string", "enum": ["bar-aligned", "energy-reactive", "novelty"] },
+        "reasons": { "type": "array", "items": { "$ref": "#/$defs/analysisReason" } }
+      }
+    },
     "dominantFeature": {
       "type": "string",
       "enum": ["melody", "vocal", "fx", "impact", "break", "pattern", "rhythm"]
@@ -137,7 +176,8 @@
         "intensity": { "type": "number" },
         "confidence": { "type": "number" },
         "kind": { "$ref": "#/$defs/visualCueKind" },
-        "patternId": { "type": "string" }
+        "patternId": { "type": "string" },
+        "reasons": { "type": "array", "items": { "$ref": "#/$defs/analysisReason" } }
       }
     },
     "trackSection": {
@@ -152,7 +192,8 @@
         "density": { "type": "number" },
         "dominantFeature": { "$ref": "#/$defs/dominantFeature" },
         "avgRms": { "type": "number" },
-        "peakRms": { "type": "number" }
+        "peakRms": { "type": "number" },
+        "reasons": { "type": "array", "items": { "$ref": "#/$defs/analysisReason" } }
       }
     },
     "barAnalysis": {
@@ -268,6 +309,9 @@
         "buildupConfidence": { "type": "array", "items": { "type": "number" } },
         "spectralPivot": { "type": "array", "items": { "type": "number" } },
         "tensionTrends": { "$ref": "#/$defs/tensionTrends" },
+        "noveltyCurve": { "type": "array", "items": { "type": "number" } },
+        "noveltyPeaks": { "type": "array", "items": { "$ref": "#/$defs/noveltyPoint" } },
+        "boundaryCandidates": { "type": "array", "items": { "$ref": "#/$defs/sectionBoundaryCandidate" } },
         "featureHopSize": { "type": "number" },
         "gridOffset": { "type": "number" },
         "tempo": { "type": "number" },

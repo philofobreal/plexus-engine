@@ -1,15 +1,20 @@
-import type { BarAnalysis, TrackSection, TrackSectionLabel, VisualCueKind, VisualFeatureFrame } from '../types';
+import type { AnalysisReason, BarAnalysis, NoveltyPoint, SectionBoundaryCandidate, TrackSection, TrackSectionLabel, VisualCueKind, VisualFeatureFrame } from '../types';
 import { FeatureExtractor } from './FeatureExtractor';
 import { GridAligner } from './GridAligner';
 import { clampUnit } from './utils';
+
+// A novelty peak must clear this to actively drive (snap) an energy-reactive boundary.
+const NOVELTY_SNAP_THRESHOLD = 0.3;
 
 export class SectionAnalyzer {
     private features: FeatureExtractor;
     private grid: GridAligner;
     private sampleRate: number;
     private hopSize: number;
+    private noveltyPeaks: NoveltyPoint[] = [];
     public barAnalyses: BarAnalysis[] = [];
     public trackSections: TrackSection[] = [];
+    public boundaryCandidates: SectionBoundaryCandidate[] = [];
     public adaptiveThreshold: number = 0.5;
 
     constructor(features: FeatureExtractor, grid: GridAligner, sampleRate: number, hopSize: number) {
@@ -22,21 +27,42 @@ export class SectionAnalyzer {
     private scoreSectionLabel(input: {
         avgEnergy: number;
         previousEnergy: number;
+        precedingEnergy: number;
+        precedingBass: number;
         avgDensity: number;
         avgBass: number;
         tension: number;
         dominantFeature: VisualCueKind | 'rhythm';
         isFirstSection: boolean;
         isLastSection: boolean;
-    }): TrackSectionLabel {
+        precededByBuildup: boolean;
+        precededByBreak: boolean;
+        precededByContext: boolean;
+    }): { label: TrackSectionLabel; reasons: AnalysisReason[] } {
         const confidenceFloor = 0.28;
         const energyRise = clampUnit(Math.max(0, input.avgEnergy - input.previousEnergy) * 2.5);
         const energyFall = clampUnit(Math.max(0, input.previousEnergy - input.avgEnergy) * 2.5);
-        const afterLowEnergy = this.scoreBelow(input.previousEnergy, 0.42, 0.28);
         const afterHighEnergy = this.scoreAbove(input.previousEnergy, 0.58, 0.28);
         const firstSection = input.isFirstSection ? 1 : 0;
         const lastSection = input.isLastSection ? 1 : 0;
         const featureAffinity = (features: Array<VisualCueKind | 'rhythm'>) => features.includes(input.dominantFeature) ? 1 : 0;
+
+        // Multi-timeframe contrast: a drop is a high-energy ARRIVAL out of a quieter run of bars
+        // (a break or a buildup), not merely a loud passage. Contrast against the preceding 4-8
+        // bars plus an explicit buildup/break arrival bonus prevents a loud verse from reading as
+        // a drop, while a real post-breakdown/post-buildup drop scores strongly.
+        const dropContrast = clampUnit(Math.max(0, input.avgEnergy - input.precedingEnergy) * 2.2);
+        const afterLowContext = this.scoreBelow(input.precedingEnergy, 0.45, 0.30);
+        const bassReturn = clampUnit(Math.max(0, input.avgBass - input.precedingBass) * 2.2);
+        // The energy-contrast arrival only counts once a real "before" exists (more than just the
+        // intro), so the first groove out of a quiet intro is not mistaken for a drop. An explicit
+        // preceding buildup or break section is itself sufficient prior context.
+        const earlyDamp = input.precededByContext ? 1 : 0;
+        const dropArrival = clampUnit(
+            (input.precededByBuildup ? 0.6 : 0) +
+            (input.precededByBreak ? 0.5 : 0) +
+            dropContrast * afterLowContext * earlyDamp
+        );
 
         // Tune these weights instead of adding rigid threshold branches. Each factor is already normalized to 0..1.
         const scores: Record<TrackSectionLabel, number> = {
@@ -62,10 +88,10 @@ export class SectionAnalyzer {
                 [this.scoreBelow(input.avgBass, 0.50, 0.32), 0.12]
             ]),
             drop: this.weightedScore([
-                [this.scoreAbove(input.avgEnergy, 0.50, 0.30), 0.30],
-                [this.scoreAbove(input.avgBass, 0.34, 0.26), 0.20],
-                [this.scoreAbove(input.avgDensity, 0.50, 0.32), 0.18],
-                [energyRise * afterLowEnergy, 0.22],
+                [this.scoreAbove(input.avgEnergy, 0.52, 0.30), 0.24],
+                [this.scoreAbove(input.avgBass, 0.34, 0.26), 0.18],
+                [this.scoreAbove(input.avgDensity, 0.50, 0.32), 0.14],
+                [dropArrival, 0.34],
                 [featureAffinity(['rhythm', 'impact', 'fx']), 0.10]
             ]),
             break: this.weightedScore([
@@ -100,7 +126,26 @@ export class SectionAnalyzer {
             }
         }
 
-        return bestScore >= confidenceFloor ? bestLabel : 'verse';
+        const label = bestScore >= confidenceFloor ? bestLabel : 'verse';
+
+        // Justify the chosen label with the contrast evidence that drove it.
+        const reasons: AnalysisReason[] = [];
+        if (label === 'drop') {
+            if (input.precededByBuildup) reasons.push('after-buildup');
+            if (input.precededByBreak || afterLowContext > 0.5) reasons.push('energy-rise');
+            if (bassReturn > 0.2) reasons.push('bass-return');
+        } else if (label === 'build') {
+            reasons.push('energy-rise');
+            if (this.scoreAbove(input.tension, 0.46, 0.34) > 0.5) reasons.push('density-rise');
+        } else if (label === 'break') {
+            reasons.push('energy-drop');
+            if (input.avgBass < input.precedingBass - 0.1) reasons.push('bass-drop');
+        } else if (label === 'peak') {
+            if (energyRise > 0.3) reasons.push('energy-rise');
+        }
+        if (input.isFirstSection || input.isLastSection) reasons.push('section-position');
+
+        return { label, reasons };
     }
 
     private weightedScore(factors: Array<[number, number]>): number {
@@ -125,11 +170,21 @@ export class SectionAnalyzer {
         return clampUnit(1 - Math.abs(value - target) / Math.max(width, 0.001));
     }
 
-    public calculate(visualFeatures: VisualFeatureFrame[]): void {
+    public calculate(visualFeatures: VisualFeatureFrame[], noveltyPeaks: NoveltyPoint[] = []): void {
+        // Explicit reset: these are public mutable fields, so never assume a fresh instance.
+        this.barAnalyses = [];
+        this.trackSections = [];
+        this.boundaryCandidates = [];
+        this.adaptiveThreshold = 0.5;
+        this.noveltyPeaks = noveltyPeaks;
         const { totalFrames, rmsT, rawBassT, rawMidT, rawHighT, typRms } = this.features;
         const totalDuration = totalFrames * this.hopSize / this.sampleRate;
         // Fall back to energy boundaries only when the tempo grid is critically unusable.
         const useEnergyReactiveBoundaries = this.grid.gridConfidence < 0.15 && this.grid.bpmConfidence < 0.20;
+
+        // Every realized internal section boundary becomes a candidate carrying how it was placed
+        // (bar-aligned / novelty / energy-reactive), so the surfaced set matches the actual cuts.
+        const candidates: SectionBoundaryCandidate[] = [];
         const analysisStepSec = useEnergyReactiveBoundaries
             ? Math.min(4, Math.max(1, totalDuration / 24))
             : this.grid.secondsPerBar;
@@ -226,9 +281,11 @@ export class SectionAnalyzer {
                 let startBar = barBlocks[currentSectionStartIdx];
                 let endBar = barBlocks[i];
                 let startIdx = startBar.startIdx;
-                let endIdx = useEnergyReactiveBoundaries
-                    ? this.findEnergyReactiveBoundary(endBar.endIdx, Math.max(2, Math.floor((endBar.endIdx - endBar.startIdx) * 0.45)))
-                    : endBar.endIdx; // STRICT GRID. No micro-snapping.
+                const boundary = this.resolveBoundary(endBar, useEnergyReactiveBoundaries, isLastBar);
+                let endIdx = boundary.endIdx;
+                // The final section must always run to the end of the track: a novelty/energy snap
+                // must never truncate the last section before the real track end.
+                if (isLastBar) endIdx = totalFrames;
                 if (this.trackSections.length > 0 && useEnergyReactiveBoundaries) {
                     startIdx = Math.floor(this.trackSections[this.trackSections.length - 1].end * this.sampleRate / this.hopSize);
                 }
@@ -246,16 +303,39 @@ export class SectionAnalyzer {
                 let avgDensity = averageFeature(startIdx, endIdx, f => f.density);
                 let sectionDominantFeature = dominantFeature(startIdx, endIdx);
                 let previousEnergy = this.trackSections.length > 0 ? this.trackSections[this.trackSections.length - 1].energy : avgEnergy;
-                let label = this.scoreSectionLabel({
+                const previousSection = this.trackSections.length > 0 ? this.trackSections[this.trackSections.length - 1] : null;
+                // Multi-bar lookback: the preceding 4-8 bars before this section, for drop contrast.
+                const lookbackStart = Math.max(0, currentSectionStartIdx - 8);
+                let precedingEnergy = avgEnergy;
+                let precedingBass = avgBass;
+                if (currentSectionStartIdx > 0) {
+                    let sumPrevE = 0, sumPrevBass = 0, prevCount = 0;
+                    for (let k = lookbackStart; k < currentSectionStartIdx; k++) {
+                        sumPrevE += this.barAnalyses[k].energy;
+                        sumPrevBass += this.barAnalyses[k].bass;
+                        prevCount++;
+                    }
+                    if (prevCount > 0) { precedingEnergy = sumPrevE / prevCount; precedingBass = sumPrevBass / prevCount; }
+                }
+                const precededByContext = this.trackSections.length >= 2;
+                const precededByBuildup = previousSection?.label === 'build';
+                const precededByBreak = previousSection?.label === 'break' || (precedingEnergy < 0.30 && precededByContext);
+                const scored = this.scoreSectionLabel({
                     avgEnergy,
                     previousEnergy,
+                    precedingEnergy,
+                    precedingBass,
                     avgDensity,
                     avgBass,
                     tension,
                     dominantFeature: sectionDominantFeature,
                     isFirstSection: this.trackSections.length === 0,
-                    isLastSection: isLastBar
+                    isLastSection: isLastBar,
+                    precededByBuildup,
+                    precededByBreak,
+                    precededByContext
                 });
+                let label = scored.label;
 
                 let rms = {
                     avgRms: clamp01(avgEnergy),
@@ -270,12 +350,106 @@ export class SectionAnalyzer {
                     density: avgDensity,
                     dominantFeature: sectionDominantFeature,
                     avgRms: rms.avgRms,
-                    peakRms: rms.peakRms
+                    peakRms: rms.peakRms,
+                    reasons: this.dedup([...boundary.reasons, ...scored.reasons])
                 });
+
+                // Surface the boundary itself (an internal cut, not the track-end edge) as a candidate.
+                if (!isLastBar) {
+                    candidates.push({
+                        time: endIdx * this.hopSize / this.sampleRate,
+                        confidence: boundary.confidence,
+                        timingMode: boundary.timingMode,
+                        reasons: boundary.reasons.slice()
+                    });
+                }
 
                 currentSectionStartIdx = i + 1;
             }
         }
+
+        this.boundaryCandidates = this.dedupCandidatesByTime(candidates);
+    }
+
+    // Decides the frame index for a section's trailing boundary and explains the decision.
+    // STRICT GRID stays bit-identical to the previous behavior (no boundary movement); only the
+    // novelty-aware ENERGY-REACTIVE path may snap a boundary onto a strong novelty peak.
+    private resolveBoundary(
+        endBar: { startIdx: number; endIdx: number },
+        useEnergyReactiveBoundaries: boolean,
+        isLastBar: boolean
+    ): { endIdx: number; timingMode: SectionBoundaryCandidate['timingMode']; reasons: AnalysisReason[]; confidence: number } {
+        const secondsPerFrame = this.hopSize / this.sampleRate;
+
+        if (!useEnergyReactiveBoundaries) {
+            const endIdx = endBar.endIdx; // STRICT GRID. No micro-snapping.
+            const reasons: AnalysisReason[] = ['bar-aligned'];
+            const near = this.nearestPeak(endIdx * secondsPerFrame, this.grid.secondsPerBar * 0.5);
+            if (near) for (const r of near.reasons) if (!reasons.includes(r)) reasons.push(r);
+            if (isLastBar) reasons.push('section-position');
+            return { endIdx, timingMode: 'bar-aligned', reasons, confidence: clampUnit(this.grid.gridConfidence) };
+        }
+
+        const radiusFrames = Math.max(2, Math.floor((endBar.endIdx - endBar.startIdx) * 0.45));
+        const candidateTime = endBar.endIdx * secondsPerFrame;
+        const radiusSec = radiusFrames * secondsPerFrame;
+        const peak = this.nearestPeak(candidateTime, radiusSec, NOVELTY_SNAP_THRESHOLD);
+
+        if (peak) {
+            const endIdx = Math.round(peak.time / secondsPerFrame);
+            return { endIdx, timingMode: 'novelty', reasons: this.dedup(['low-grid-confidence', ...peak.reasons]), confidence: clampUnit(peak.value) };
+        }
+
+        const endIdx = this.findEnergyReactiveBoundary(endBar.endIdx, radiusFrames);
+        const reasons: AnalysisReason[] = ['low-grid-confidence', 'weak-evidence-fallback'];
+        const direction = this.energyDirectionReason(endIdx);
+        if (direction) reasons.push(direction);
+        if (isLastBar) reasons.push('section-position');
+        return { endIdx, timingMode: 'energy-reactive', reasons, confidence: 0.35 };
+    }
+
+    // Collapse boundary candidates that land on (nearly) the same time, keeping the most confident.
+    private dedupCandidatesByTime(candidates: SectionBoundaryCandidate[]): SectionBoundaryCandidate[] {
+        const sorted = [...candidates].sort((a, b) => a.time - b.time);
+        const out: SectionBoundaryCandidate[] = [];
+        for (const candidate of sorted) {
+            const last = out[out.length - 1];
+            if (last && Math.abs(last.time - candidate.time) < 0.05) {
+                if (candidate.confidence > last.confidence) out[out.length - 1] = candidate;
+            } else {
+                out.push(candidate);
+            }
+        }
+        return out;
+    }
+
+    private nearestPeak(time: number, radiusSec: number, minValue = 0): NoveltyPoint | null {
+        let best: NoveltyPoint | null = null;
+        let bestDistance = Infinity;
+        for (const peak of this.noveltyPeaks) {
+            if (peak.value < minValue) continue;
+            const distance = Math.abs(peak.time - time);
+            if (distance <= radiusSec && distance < bestDistance) {
+                bestDistance = distance;
+                best = peak;
+            }
+        }
+        return best;
+    }
+
+    private energyDirectionReason(frameIndex: number): AnalysisReason | null {
+        const { rmsT, totalFrames } = this.features;
+        const before = rmsT[Math.max(0, frameIndex - 2)] ?? 0;
+        const after = rmsT[Math.min(totalFrames - 1, frameIndex + 2)] ?? 0;
+        if (after - before > 0.05) return 'energy-rise';
+        if (before - after > 0.05) return 'energy-drop';
+        return null;
+    }
+
+    private dedup(reasons: AnalysisReason[]): AnalysisReason[] {
+        const out: AnalysisReason[] = [];
+        for (const r of reasons) if (!out.includes(r)) out.push(r);
+        return out;
     }
 
     private findEnergyReactiveBoundary(centerIdx: number, radiusFrames: number): number {
@@ -301,4 +475,4 @@ export class SectionAnalyzer {
         return bestIdx;
     }
 }
-
+

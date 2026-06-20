@@ -42,16 +42,16 @@ function createMockContext() {
   };
 }
 
-function createMockCanvas() {
+function createMockCanvas(width = 200, height = 80) {
   const context = createMockContext();
   return {
     context,
     width: 0,
     height: 0,
-    clientWidth: 200,
-    clientHeight: 80,
+    clientWidth: width,
+    clientHeight: height,
     getBoundingClientRect() {
-      return { width: 200, height: 80 };
+      return { width, height };
     },
     getContext() {
       return context;
@@ -68,6 +68,15 @@ function createMockAudioBuffer(samples) {
       return samples;
     }
   };
+}
+
+function assertFiniteDrawCoordinates(calls, kinds) {
+  for (const call of calls) {
+    if (!kinds.includes(call[0])) continue;
+    for (const coordinate of call.slice(1)) {
+      assert.equal(Number.isFinite(coordinate), true, `${call[0]} received invalid coordinate: ${coordinate}`);
+    }
+  }
 }
 
 test('TimelineCanvas computes cached RMS waveform amplitudes from an AudioBuffer', () => {
@@ -190,4 +199,58 @@ test('TimelineCanvas renders performance automation plan lane with viewport scal
   assert.ok(calls.some(call => call[0] === 'rect' && call[1] === 100 && call[2] === 18 && call[3] === 100 && call[4] === 14));
   assert.ok(calls.some(call => call[0] === 'clip'));
   assert.ok(calls.some(call => call[0] === 'fillText' && call[1] === '...' && call[2] === 106 && call[3] === 22));
+});
+
+test('analyzer debug overlay is strictly gated by declarative render state', () => {
+  const baseState = (showAnalyzerDebugOverlay) => ({
+    isExporting: false, exportTime: 0, currentTime: 0, duration: 20, zoom: 1, pan: 0, bpm: 120,
+    sampleRate: 44100, hopSize: 1024, frames: [], sections: [], bars: [], cues: [], significantMoments: [],
+    buildupConfidence: [], spectralPivot: [], tensionTrends: { globalSlope: 0, peakTime: 0, peakValue: 0, segments: [] },
+    noveltyCurve: [0.1, 0.9, 0.2],
+    boundaryCandidates: [
+      { time: 10, confidence: 0.9, timingMode: 'novelty', reasons: ['novelty-peak'] }
+    ],
+    showAnalyzerDebugOverlay,
+    performancePlan: null, audioSensitivity: 1, dropAnticipation: 0, scrubTime: null
+  });
+
+  const countKind = (calls, kind) => calls.filter(call => call[0] === kind).length;
+
+  const offCanvas = createMockCanvas();
+  new TimelineCanvas(offCanvas).render(baseState(false));
+  const off = offCanvas.context.calls;
+
+  const onCanvas = createMockCanvas();
+  new TimelineCanvas(onCanvas).render(baseState(true));
+  const on = onCanvas.context.calls;
+
+  // Flag OFF: the overlay must add zero draw work of any kind it owns (curve strokes + candidate dots).
+  assert.equal(countKind(off, 'arc'), 0, 'no candidate dots when overlay is off');
+  assert.equal(on.length > off.length, true, 'overlay must add draw calls only when enabled');
+
+  // Flag ON: the novelty curve (lineTo + stroke) and the boundary-candidate dot (arc + fill) appear.
+  assert.equal(countKind(on, 'arc') >= 1, true, 'candidate dots drawn when overlay is on');
+  assert.equal(countKind(on, 'lineTo') > countKind(off, 'lineTo'), true, 'novelty curve adds lineTo calls when on');
+  assert.equal(countKind(on, 'stroke') > countKind(off, 'stroke'), true, 'novelty curve adds a stroke when on');
+  assert.equal(countKind(on, 'fill') > countKind(off, 'fill'), true, 'candidate dots add fill calls when on');
+  assertFiniteDrawCoordinates(on, ['moveTo', 'lineTo', 'arc']);
+});
+
+test('analyzer debug overlay caps novelty curve sampling on wide timelines', () => {
+  const wideCanvas = createMockCanvas(4000, 120);
+  const curve = Array.from({ length: 4096 }, (_, i) => (i % 128) / 127);
+
+  new TimelineCanvas(wideCanvas).render({
+    isExporting: false, exportTime: 0, currentTime: 0, duration: 120, zoom: 1, pan: 0, bpm: 120,
+    sampleRate: 44100, hopSize: 1024, frames: [], sections: [], bars: [], cues: [], significantMoments: [],
+    buildupConfidence: [], spectralPivot: [], tensionTrends: { globalSlope: 0, peakTime: 0, peakValue: 0, segments: [] },
+    noveltyCurve: curve,
+    boundaryCandidates: [],
+    showAnalyzerDebugOverlay: true,
+    performancePlan: null, audioSensitivity: 1, dropAnticipation: 0, scrubTime: null
+  });
+
+  const lineToCount = wideCanvas.context.calls.filter(call => call[0] === 'lineTo').length;
+  assert.ok(lineToCount <= 1500, `wide debug overlay should cap lineTo calls, got ${lineToCount}`);
+  assertFiniteDrawCoordinates(wideCanvas.context.calls, ['moveTo', 'lineTo']);
 });

@@ -719,11 +719,11 @@ test('perceptual spectrum dashboard metric uses precomputed 24-band analyzer out
   assert.match(css, /\.spectrum-card \{[\s\S]*display: flex;[\s\S]*flex-direction: column/);
   assert.match(css, /\.mini-spectrum \{[\s\S]*flex: 1 1 68px/);
 
-  const updateDashboardSource = ui.match(/updateDashboard\(\) \{[\s\S]*?\n    \}\n\n    private drawPerceptualSpectrum/)?.[0] || '';
+  const updateDashboardSource = ui.match(/updateDashboard\(\) \{[\s\S]*?\r?\n    \}\r?\n\r?\n    private drawPerceptualSpectrum/)?.[0] || '';
   assert.doesNotMatch(updateDashboardSource, /FFT|new Analyzer|FeatureExtractor|analyzeAudio|getByteFrequencyData|frequencyBinCount/);
   assert.doesNotMatch(ui, /new FFT|getByteFrequencyData|frequencyBinCount/);
 
-  const drawSpectrumSource = ui.match(/private drawPerceptualSpectrum\(values: number\[\]\): void \{[\s\S]*?\n    \}\n\n    private initPerceptualSpectrumCanvas/)?.[0] || '';
+  const drawSpectrumSource = ui.match(/private drawPerceptualSpectrum\(values: number\[\]\): void \{[\s\S]*?\r?\n    \}\r?\n\r?\n    private initPerceptualSpectrumCanvas/)?.[0] || '';
   assert.doesNotMatch(drawSpectrumSource, /royalblue|rgba\(65,\s*105,\s*225|i >= 12 && i <= 17|presence/i);
   assert.match(drawSpectrumSource, /rgba\(232, 232, 226/);
 });
@@ -831,7 +831,7 @@ test('dashboard metric cards are backed by metadata and a shared delegated toolt
   assert.match(ui, /event\.key === 'Escape'/);
   assert.match(ui, /this\.els\.metricsGrid\.addEventListener\('click'/);
 
-  const updateDashboardSource = ui.match(/updateDashboard\(\) \{[\s\S]*?\n    \}\n\}/)?.[0] || '';
+  const updateDashboardSource = ui.match(/updateDashboard\(\) \{[\s\S]*?\r?\n    \}\r?\n\}/)?.[0] || '';
   assert.doesNotMatch(updateDashboardSource, /dashboard-metric-tooltip|createDashboardMetricTooltip|document\.createElement/);
   assert.doesNotMatch(ui, /requestAnimationFrame\([\s\S]{0,200}MetricTooltip|MetricTooltip[\s\S]{0,200}requestAnimationFrame/);
 });

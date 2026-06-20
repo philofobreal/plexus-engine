@@ -12,7 +12,7 @@ import type {
 } from '../types';
 import { featureFlags } from '../config/featureFlags.ts';
 
-// ─── Constants & Configuration ────────────────────────────────────────────────
+// Constants & Configuration
 
 const LONG_SECTION_SEC = 16.0;
 const BUILDUP_PEAK_THRESHOLD = 0.85;
@@ -31,7 +31,7 @@ const SECTION_INTENSITY: Record<TrackSectionLabel | 'default', number> = {
 
 type PresetMetadata = Record<string, any>;
 
-// ─── Public API ───────────────────────────────────────────────────────────────
+// Public API
 
 export interface GeneratorOptions {
     strategy: 'dramaturgy' | 'hero' | 'strict';
@@ -80,7 +80,7 @@ export async function generatePerformancePlan(
     return finalizePlan(points);
 }
 
-// ─── Strategy: Strict Alternating ─────────────────────────────────────────────
+// Strategy: Strict Alternating
 
 function generateStrictPlan(
     trackAnalysis: TrackAnalysis,
@@ -116,7 +116,7 @@ function generateStrictPlan(
     return finalizePlan(points);
 }
 
-// ─── Strategy: Hero Rhythm (preset remapping) ─────────────────────────────────
+// Strategy: Hero Rhythm (preset remapping)
 
 async function ensureHeroPresetsLoaded(presets: string[], metadata: Record<string, any>): Promise<void> {
     await Promise.all(presets.map(async (preset) => {
@@ -163,7 +163,7 @@ function getPresetForBeepMode(mode: number, presets: string[], metadata: Record<
     return getFallbackPreset(presets);
 }
 
-// ─── Plan finalization (shared by all strategies) ─────────────────────────────
+// Plan finalization (shared by all strategies)
 
 function finalizePlan(points: PerformanceAutomationPoint[]): PerformanceAutomationPlan {
     points.sort((a, b) => a.time - b.time);
@@ -211,7 +211,7 @@ function finalizePlan(points: PerformanceAutomationPoint[]): PerformanceAutomati
     return { version: 1, source: 'auto', points: cleanPoints };
 }
 
-// ─── Pass 1: Section Anchors (The Foundation) ─────────────────────────────────
+// Pass 1: Section Anchors (The Foundation)
 
 function generatePass1SectionAnchors(
     trackAnalysis: TrackAnalysis,
@@ -240,7 +240,7 @@ function generatePass1SectionAnchors(
     return points;
 }
 
-// ─── Pass 2: Dramaturgy (Tension) ─────────────────────────────────────────────
+// Pass 2: Dramaturgy (Tension)
 
 function generatePass2Dramaturgy(
     trackAnalysis: TrackAnalysis,
@@ -296,7 +296,7 @@ function generatePass2Dramaturgy(
     return points;
 }
 
-// ─── Pass 3: Pattern-based points ─────────────────────────────────────────────
+// Pass 3: Pattern-based points
 
 function generatePass3Patterns(
     trackAnalysis: TrackAnalysis,
@@ -333,7 +333,7 @@ function generatePass3Patterns(
                 preset,
                 confidence: clampAnalysisConfidence(occ.confidence, trackAnalysis),
                 analysisConfidence: getAnalysisConfidence(trackAnalysis),
-                timingMode: getTimingMode(trackAnalysis),
+                timingMode: getSectionTimingMode(section, trackAnalysis),
                 intensity: computeIntensity(section),
                 reason: 'harmonicShift',
                 morphDurationSec: profile.morphDurationSec,
@@ -345,7 +345,7 @@ function generatePass3Patterns(
     return points;
 }
 
-// ─── Pass 4: Micro-cues ────────────────────────────────────────────────────────
+// Pass 4: Micro-cues
 
 function generatePass4MicroCues(
     trackAnalysis: TrackAnalysis,
@@ -378,7 +378,7 @@ function generatePass4MicroCues(
             preset,
             confidence: clampAnalysisConfidence(cue.confidence, trackAnalysis),
             analysisConfidence: getAnalysisConfidence(trackAnalysis),
-            timingMode: getTimingMode(trackAnalysis),
+            timingMode: getSectionTimingMode(section, trackAnalysis),
             intensity: computeIntensity(section) * (cue.kind === 'impact' ? 1.2 : 1.0),
             reason: cue.kind === 'impact' ? 'drop' : 'harmonicShift',
             morphDurationSec: Math.min(profile.morphDurationSec, 1.5),
@@ -389,7 +389,7 @@ function generatePass4MicroCues(
     return points;
 }
 
-// ─── Core Logic Helpers ────────────────────────────────────────────────────────
+// Core Logic Helpers
 
 function mergePoints(target: PerformanceAutomationPoint[], candidates: PerformanceAutomationPoint[], minGap: number): void {
     const sorted = [...candidates].sort((a, b) => ((b as any)._score || 0) - ((a as any)._score || 0));
@@ -423,7 +423,7 @@ function getSignificantCuesInSection(trackAnalysis: TrackAnalysis, section: Trac
         .sort((a, b) => a.time - b.time);
 }
 
-// ─── Point Factories ───────────────────────────────────────────────────────────
+// Point Factories
 
 function createPoint(section: TrackSection, sectionIndex: number, time: number, presets: string[], duration: number, presetMetadata: PresetMetadata, score = 0, trackAnalysis?: TrackAnalysis): PerformanceAutomationPoint {
     void duration;
@@ -435,7 +435,7 @@ function createPoint(section: TrackSection, sectionIndex: number, time: number, 
         preset: choosePreset(section, presets, presetMetadata),
         confidence: clampAnalysisConfidence(Math.max(0.5, (section.energy + section.density) * 0.5), trackAnalysis),
         analysisConfidence: getAnalysisConfidence(trackAnalysis),
-        timingMode: getTimingMode(trackAnalysis),
+        timingMode: getSectionTimingMode(section, trackAnalysis),
         intensity: computeIntensity(section),
         reason: getAutomationReason(section),
         morphDurationSec: profile.morphDurationSec,
@@ -455,7 +455,7 @@ function createCuePoint(section: TrackSection, sectionIndex: number, cue: Visual
     };
 }
 
-// ─── Semantic Mapping ─────────────────────────────────────────────────────────
+// Semantic Mapping
 
 function computeIntensity(section: TrackSection): number {
     const base = SECTION_INTENSITY[section.label] ?? SECTION_INTENSITY.default;
@@ -587,7 +587,7 @@ function getAutomationReason(section: TrackSection): PerformanceAutomationReason
     return ['melody', 'vocal'].includes(section.dominantFeature) ? 'harmonicShift' : 'manual';
 }
 
-// ─── Mathematical Utilities ───────────────────────────────────────────────────
+// Mathematical Utilities
 
 function snapToNearestBeat(time: number, bars: BarAnalysis[]): number {
     if (bars.length < 2) return time;
@@ -609,18 +609,33 @@ function shouldUseGridTiming(trackAnalysis?: TrackAnalysis): boolean {
     return gridConf >= 0.15 || bpmConf >= 0.20;
 }
 
-function getTimingMode(trackAnalysis?: TrackAnalysis): PerformanceAutomationPoint['timingMode'] {
-    return shouldUseGridTiming(trackAnalysis) ? 'bar-aligned' : 'energy-reactive';
+// Per-section timing mode: under a trusted grid every anchor is bar-aligned. When the grid is too
+// weak to trust, use the accepted boundary candidate at the section start so the point describes
+// how its own timestamp was anchored: novelty peak or raw energy fallback.
+function getSectionTimingMode(section: TrackSection, trackAnalysis?: TrackAnalysis): PerformanceAutomationPoint['timingMode'] {
+    if (shouldUseGridTiming(trackAnalysis)) return 'bar-aligned';
+    const startBoundary = trackAnalysis?.boundaryCandidates?.find(candidate => Math.abs(candidate.time - section.start) < 0.05);
+    if (startBoundary) return startBoundary.timingMode;
+    if (section.start <= 0.05) return 'energy-reactive';
+    return section.reasons?.includes('novelty-peak') ? 'novelty' : 'energy-reactive';
 }
 
 function getAnalysisConfidence(trackAnalysis?: TrackAnalysis): number {
     if (!trackAnalysis) return 1;
-    return clamp01(Math.min(trackAnalysis.bpmConfidence ?? 0, trackAnalysis.gridConfidence ?? 0));
+    const evidence = Math.min(trackAnalysis.bpmConfidence ?? 0, trackAnalysis.gridConfidence ?? 0);
+    const overall = trackAnalysis.timingConfidence?.overall ?? evidence;
+    return clamp01(Math.min(evidence, overall));
 }
 
 function clampAnalysisConfidence(confidence: number, trackAnalysis?: TrackAnalysis): number {
     if (!trackAnalysis) return clamp01(confidence);
-    return clamp01(confidence * (0.55 + getAnalysisConfidence(trackAnalysis) * 0.45));
+    const analysisConfidence = getAnalysisConfidence(trackAnalysis);
+    let scaled = confidence * (0.55 + analysisConfidence * 0.45);
+    // Critically weak authoritative timing model: damp harder so beatless/ambient tracks do not
+    // surface automation points that look as confident as bar-locked ones.
+    const overall = trackAnalysis.timingConfidence?.overall ?? analysisConfidence;
+    if (overall < 0.2) scaled *= 0.6;
+    return clamp01(scaled);
 }
 
 function getSectionId(section: TrackSection, index: number): string { return `${index}:${normalizeIdPart(section.label)}:${formatTimeForId(section.start)}`; }
