@@ -159,6 +159,144 @@ export const GOLDEN_FIXTURES = [
     renderEdm({ id: 'breakdown-124', requestId: 7009, bpm: 124, sampleRate: 44100, durationSec: 9, offsetSec: 0.22, pattern: FOUR_ON_FLOOR, subFreq: 53, seed: 0x9999, silenceWindow: [3.5, 5.5] })
 ];
 
+// --- arrangement renderer (multi-phase tracks for dramaturgy verification) -----------
+
+// Renders a structured track from a list of phases (intro / breakdown / buildup / drop)
+// so the section + dramaturgy analyzers have real structural contrast to discover.
+// Each phase: { kind, bars, pattern?, gain?, sub? }. `silent` phases drop percussion to an
+// ambient pad (a breakdown); `buildup` phases ramp gain across their bars and add a riser.
+function renderArrangement({ id, requestId, bpm, sampleRate, offsetSec, seed, subFreq, phases, strictTempo, allowedBpmError, groundTruth }) {
+    const beatSec = 60 / bpm;
+    const sixteenth = beatSec / 4;
+    const barSec = beatSec * 4;
+    const totalBars = phases.reduce((n, p) => n + p.bars, 0);
+    const durationSec = offsetSec + totalBars * barSec + 0.25;
+    const samples = new Float32Array(Math.ceil(durationSec * sampleRate));
+    const noise = makeNoise(seed);
+
+    // expand phases into a per-bar lookup carrying the position within the phase (for ramps)
+    const phaseByBar = [];
+    for (const p of phases) for (let b = 0; b < p.bars; b++) phaseByBar.push({ p, i: b });
+
+    let bar = 0;
+    for (let barStart = offsetSec; bar < totalBars; barStart += barSec, bar++) {
+        const { p, i } = phaseByBar[bar];
+        if (p.kind === 'silent') {
+            addTone(samples, sampleRate, barStart, barStart + barSec, 220, 0.045);
+            addTone(samples, sampleRate, barStart, barStart + barSec, 110, 0.03);
+            continue;
+        }
+        // buildup ramps gain from ~0.4 to ~1.0 across its bars and rides a rising tone
+        const ramp = p.kind === 'buildup' ? 0.4 + 0.6 * (i / Math.max(1, p.bars - 1)) : 1;
+        const g = (p.gain ?? 1) * ramp;
+        if (p.kind === 'buildup') {
+            const riseFreq = 200 + 600 * (i / Math.max(1, p.bars - 1));
+            addTone(samples, sampleRate, barStart, barStart + barSec, riseFreq, 0.04 * ramp);
+        }
+        if (subFreq && p.sub !== false) addTone(samples, sampleRate, barStart, barStart + barSec, subFreq, 0.07 * g);
+        addKick(samples, sampleRate, barStart, 0.55 * g);
+        for (const s of (p.pattern.kick || [])) addKick(samples, sampleRate, barStart + s * sixteenth, (s === 0 ? 1.15 : 0.9) * g);
+        for (const s of (p.pattern.snare || [])) addNoiseHit(samples, sampleRate, barStart + s * sixteenth, 0.34 * g, 0.11, noise, 0.55);
+        for (const s of (p.pattern.hat || [])) addNoiseHit(samples, sampleRate, barStart + s * sixteenth, 0.10 * g, 0.03, noise, 0.92);
+    }
+    softClip(samples);
+
+    const beats = [];
+    for (let t = offsetSec; t < durationSec - beatSec * 0.25; t += beatSec) beats.push(Number(t.toFixed(6)));
+    const bars = [];
+    for (let t = offsetSec; t < durationSec - barSec * 0.25; t += barSec) bars.push(Number(t.toFixed(6)));
+
+    return {
+        id,
+        requestId,
+        sampleRate,
+        build: () => samples.slice(),
+        groundTruth: {
+            expectedBpm: bpm,
+            allowedBpmError: allowedBpmError ?? 4,
+            strictTempo: strictTempo ?? false,
+            expectedBeatPositions: beats,
+            allowedBeatTolerance: 0.05,
+            expectedBarStarts: bars,
+            allowedBarTolerance: 0.08,
+            gridless: false,
+            ...groundTruth
+        }
+    };
+}
+
+// Renders a beatless ambient bed (two slow movements, a 0.05 Hz swell, no transients) so the
+// analyzer cannot lock a tempo grid and must fall back to novelty/energy boundaries.
+function renderAmbient({ id, requestId, sampleRate, durationSec, seed, groundTruth }) {
+    const samples = new Float32Array(Math.floor(durationSec * sampleRate));
+    const noise = makeNoise(seed);
+    // movement 1: low drone for the first ~55%
+    addTone(samples, sampleRate, 0, durationSec, 55, 0.05);
+    addTone(samples, sampleRate, 0, durationSec * 0.55, 110, 0.04);
+    // movement 2: brighter, fuller pad enters around the midpoint
+    addTone(samples, sampleRate, durationSec * 0.45, durationSec, 220, 0.06);
+    addTone(samples, sampleRate, durationSec * 0.45, durationSec, 330, 0.04);
+    for (let i = 0; i < samples.length; i++) {
+        const t = i / sampleRate;
+        const swell = 0.5 + 0.5 * Math.sin(2 * Math.PI * 0.05 * t); // slow 0.05 Hz amplitude LFO
+        samples[i] *= 0.6 + 0.4 * swell;
+        samples[i] += noise() * 0.004; // subtle air, no transients
+    }
+    softClip(samples);
+
+    return {
+        id,
+        requestId,
+        sampleRate,
+        build: () => samples.slice(),
+        groundTruth: {
+            gridless: true,
+            expectedDropTime: null,
+            ...groundTruth
+        }
+    };
+}
+
+// Trap halftime feel: snare on beat 3 (slot 8) at 140 BPM, so the perceived pulse is ~70 while
+// the hat grid runs at 140. Drives the half/double metric logic plus a clear breakdown->drop.
+const TRAP_FULL = { kick: [0, 7], snare: [8], hat: [0, 2, 4, 6, 10, 12, 14, 3, 11] };
+const TRAP_INTRO = { kick: [0], snare: [8], hat: [0, 4, 8, 12] };
+const HOUSE_ROLL = { kick: [0, 4, 8, 12], snare: [0, 2, 4, 6, 8, 10, 12, 14], hat: [2, 6, 10, 14] };
+
+// Dramaturgy/semantic fixtures: exercised by a tolerant, range-based verification block (not the
+// strict beat-grid loop and not the golden snapshot regression), so they survive intentional
+// section/dramaturgy algorithm changes in later tasks.
+export const SEMANTIC_FIXTURES = [
+    renderAmbient({
+        id: 'ambient-no-grid', requestId: 7101, sampleRate: 44100, durationSec: 20, seed: 0xa1b2,
+        groundTruth: { expectedSectionCountRange: [1, 6], maxGridConfidence: 0.6 }
+    }),
+    renderArrangement({
+        id: 'halftime-trap-140', requestId: 7102, bpm: 140, sampleRate: 44100, offsetSec: 0.15, seed: 0xc3d4, subFreq: 41,
+        allowedBpmError: 4,
+        phases: [
+            { kind: 'intro', bars: 2, pattern: TRAP_INTRO, gain: 0.6 },
+            { kind: 'main', bars: 4, pattern: TRAP_FULL, gain: 1.0 },
+            { kind: 'silent', bars: 2 },
+            { kind: 'drop', bars: 4, pattern: TRAP_FULL, gain: 1.1 }
+        ],
+        // drop arrives after intro(2) + main(4) + breakdown(2) = 8 bars @ 1.7143s + 0.15 offset
+        groundTruth: { expectedSectionCountRange: [3, 8], expectedDropTime: 13.86, dropTolerance: 1.5 }
+    }),
+    renderArrangement({
+        id: 'long-breakdown-house', requestId: 7103, bpm: 124, sampleRate: 44100, offsetSec: 0.22, seed: 0xe5f6, subFreq: 53,
+        allowedBpmError: 4,
+        phases: [
+            { kind: 'intro', bars: 4, pattern: FOUR_ON_FLOOR, gain: 0.8 },
+            { kind: 'silent', bars: 6 },
+            { kind: 'buildup', bars: 2, pattern: HOUSE_ROLL, gain: 0.9 },
+            { kind: 'drop', bars: 6, pattern: FOUR_ON_FLOOR, gain: 1.1 }
+        ],
+        // drop arrives after intro(4) + breakdown(6) + buildup(2) = 12 bars @ 1.9355s + 0.22 offset
+        groundTruth: { expectedSectionCountRange: [3, 8], expectedDropTime: 23.45, dropTolerance: 2.5 }
+    })
+];
+
 export function buildFixtureInput(fixture) {
     return {
         samples: fixture.build(),

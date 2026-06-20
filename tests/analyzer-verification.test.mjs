@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
 
-import { GOLDEN_FIXTURES, buildFixtureInput, coverage, isMetricMatch } from './fixtures/golden-fixtures.mjs';
+import { GOLDEN_FIXTURES, SEMANTIC_FIXTURES, buildFixtureInput, coverage, isMetricMatch } from './fixtures/golden-fixtures.mjs';
 
 const SRC_ROOT = join(process.cwd(), 'src');
 
@@ -74,5 +74,58 @@ for (const fixture of GOLDEN_FIXTURES) {
     for (const key of ['tempo', 'beat', 'grid', 'overall']) {
       assert.ok(tc[key] >= 0 && tc[key] <= 1, `${fixture.id}: timingConfidence.${key} out of range`);
     }
+  });
+}
+
+// Semantic/dramaturgy suite: structural correctness (section count, drop arrival, grid-vs-novelty
+// fallback) asserted as ranges so it stays meaningful through later section/dramaturgy changes.
+for (const fixture of SEMANTIC_FIXTURES) {
+  test(`semantic: ${fixture.id}`, () => {
+    const gt = fixture.groundTruth;
+    const result = analyzeAudio(buildFixtureInput(fixture));
+    const sections = result.trackAnalysis.sections;
+
+    // (a) section segmentation produces a musically plausible number of sections
+    const [minSections, maxSections] = gt.expectedSectionCountRange;
+    assert.ok(
+      sections.length >= minSections && sections.length <= maxSections,
+      `${fixture.id}: section count ${sections.length} outside [${minSections}, ${maxSections}]`
+    );
+
+    // (b) beatless beds must not pretend to have a confident tempo grid
+    if (gt.gridless) {
+      assert.ok(
+        result.gridConfidence <= gt.maxGridConfidence,
+        `${fixture.id}: gridConfidence ${result.gridConfidence.toFixed(3)} > ${gt.maxGridConfidence} for a beatless track`
+      );
+    }
+
+    // (c) a structural high-energy arrival (drop/peak/build) lands near the known drop time
+    if (gt.expectedDropTime != null) {
+      const tol = gt.dropTolerance ?? 2.0;
+      const arrival = sections.find(s =>
+        (s.label === 'drop' || s.label === 'peak' || s.label === 'build') &&
+        Math.abs(s.start - gt.expectedDropTime) <= tol
+      );
+      assert.ok(
+        arrival,
+        `${fixture.id}: no drop/peak/build section within ${tol}s of expected drop ${gt.expectedDropTime}; ` +
+          `got ${sections.map(s => `${s.label}@${s.start.toFixed(2)}`).join(', ')}`
+      );
+    }
+
+    // (d) timing confidence stays a coherent unit-range model
+    const tc = result.timingConfidence;
+    for (const key of ['tempo', 'beat', 'grid', 'overall']) {
+      assert.ok(tc[key] >= 0 && tc[key] <= 1, `${fixture.id}: timingConfidence.${key} out of range`);
+    }
+
+    // (e) determinism: identical input yields identical section boundaries
+    const repeat = analyzeAudio(buildFixtureInput(fixture));
+    assert.deepEqual(
+      repeat.trackAnalysis.sections.map(s => [s.start, s.label]),
+      sections.map(s => [s.start, s.label]),
+      `${fixture.id}: section segmentation is not deterministic`
+    );
   });
 }
