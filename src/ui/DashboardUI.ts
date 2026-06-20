@@ -56,6 +56,8 @@ export class DashboardUI {
     private timelineCanvas!: TimelineCanvas;
     private gestureEngine!: GestureEngine;
     private timelineResizeObserver: ResizeObserver | null = null;
+    private spectrumResizeObserver: ResizeObserver | null = null;
+    private spectrumPeakHold = new Array(24).fill(0);
     private exportP5Instance: any = null;
     private exportCanvas: HTMLCanvasElement | null = null;
     private currentExporter: WebMExporter | null = null;
@@ -146,6 +148,7 @@ export class DashboardUI {
             barBeat: document.getElementById('bar-beat')!,
             valDyn: document.getElementById('val-dyn')!,
             barDyn: document.getElementById('bar-dyn')!,
+            perceptualSpectrumCanvas: document.getElementById('perceptual-spectrum-canvas')!,
             mediaLoaderOverlay: document.getElementById('media-loader-overlay')!,
             mediaLoaderText: document.getElementById('media-loader-text')!,
             mediaLoaderBar: document.getElementById('media-loader-bar')!,
@@ -189,6 +192,7 @@ export class DashboardUI {
         this.metricTooltip = this.createDashboardMetricTooltip();
         this.timelineTooltip = this.createTimelineTooltip();
         this.initDashboardMetricTooltips();
+        this.initPerceptualSpectrumCanvas();
         this.initDramaturgyTimeline();
         this.initTimelineControls();
         this.playbackCtrl.syncLoopUi();
@@ -1883,6 +1887,7 @@ export class DashboardUI {
         this.els.valVocal.innerText = State.currentFeatures.vocal.toFixed(2); this.els.barVocal.style.width = (State.currentFeatures.vocal * 100) + '%';
         this.els.valFx.innerText = State.currentFeatures.fx.toFixed(2); this.els.barFx.style.width = (State.currentFeatures.fx * 100) + '%';
         this.els.valBeat.innerText = State.beatDecay.toFixed(2); this.els.barBeat.style.width = (State.beatDecay * 100) + '%';
+        this.drawPerceptualSpectrum(State.currentFrame.perceptualSpectrum);
 
         let dynText = 'IDLE';
         if (State.isPlaying) {
@@ -1898,12 +1903,67 @@ export class DashboardUI {
         this.requestDashboardTimelineDraw();
     }
 
+    private drawPerceptualSpectrum(values: number[]): void {
+        const canvas = this.els.perceptualSpectrumCanvas as HTMLCanvasElement;
+        this.resizePerceptualSpectrumCanvas(canvas);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        const width = canvas.clientWidth || 1;
+        const height = canvas.clientHeight || 1;
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+        const columnCount = 24;
+        const gap = 3;
+        const columnWidth = Math.max(1, Math.floor((width - gap * (columnCount - 1)) / columnCount));
+        for (let i = 0; i < columnCount; i++) {
+            const value = this.clamp(values?.[i] ?? 0, 0, 1);
+            if (value > this.spectrumPeakHold[i]) this.spectrumPeakHold[i] = value;
+            else this.spectrumPeakHold[i] = Math.max(value, this.spectrumPeakHold[i] - 0.024);
+
+            const barHeight = Math.max(2, value * (height - 4));
+            const x = i * (columnWidth + gap);
+            const y = height - barHeight;
+            const alpha = 0.32 + value * 0.58;
+            ctx.fillStyle = `rgba(232, 232, 226, ${alpha.toFixed(3)})`;
+            ctx.fillRect(x, y, columnWidth, barHeight);
+
+            const peakY = Math.max(1, height - this.spectrumPeakHold[i] * (height - 4));
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.86)';
+            ctx.fillRect(x, peakY, columnWidth, 1.5);
+        }
+    }
+
+    private initPerceptualSpectrumCanvas(): void {
+        const canvas = this.els.perceptualSpectrumCanvas as HTMLCanvasElement;
+        const card = canvas.closest('.spectrum-card') as HTMLElement | null;
+        this.resizePerceptualSpectrumCanvas(canvas);
+        if (typeof ResizeObserver === 'undefined') return;
+        this.spectrumResizeObserver = new ResizeObserver(() => {
+            this.resizePerceptualSpectrumCanvas(canvas);
+            this.drawPerceptualSpectrum(State.currentFrame.perceptualSpectrum);
+        });
+        this.spectrumResizeObserver.observe(card ?? canvas);
+    }
+
+    private resizePerceptualSpectrumCanvas(canvas: HTMLCanvasElement): void {
+        const rect = canvas.getBoundingClientRect();
+        const cssWidth = Math.max(1, Math.round(rect.width || canvas.clientWidth || 144));
+        const cssHeight = Math.max(1, Math.round(rect.height || canvas.clientHeight || 72));
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        const targetWidth = Math.round(cssWidth * dpr);
+        const targetHeight = Math.round(cssHeight * dpr);
+        if (canvas.width !== targetWidth) canvas.width = targetWidth;
+        if (canvas.height !== targetHeight) canvas.height = targetHeight;
+    }
+
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
     destroy(): void {
         this.gestureEngine.destroy();
         this.clearVideoBackplate();
         this.timelineResizeObserver?.disconnect();
+        this.spectrumResizeObserver?.disconnect();
         if (this.timelineResizeFrame !== null) {
             window.cancelAnimationFrame(this.timelineResizeFrame);
             this.timelineResizeFrame = null;

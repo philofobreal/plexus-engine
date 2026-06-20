@@ -53,7 +53,7 @@ You can currently:
 - load JSON visual presets
 - copy/export visual tuning config
 - export browser-native WebM video with an embedded Plexus metadata card and optional Opus audio when supported
-- view realtime music metrics such as energy, density, spectral melody-presence and vocal/formant heuristics, FX, beat impulse, dynamics, and the header BPM badge
+- view realtime music metrics such as energy, density, spectral melody-presence and vocal/formant heuristics, FX, beat impulse, dynamics, the header BPM badge, and a 24-band logarithmic Spectrum Balance visualization from the offline analyzer
 - use presentation-oriented UI behavior where the chrome can fade away during performance
 
 ## Visual modes

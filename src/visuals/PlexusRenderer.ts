@@ -149,6 +149,7 @@ function copyAudioFrame(source: AudioFrame, target: AudioFrame) {
     target.densityProj = source.densityProj;
     target.melodyProj = source.melodyProj;
     target.fxProj = source.fxProj;
+    target.perceptualSpectrum = source.perceptualSpectrum;
     target.state = source.state;
     target.eRatio = source.eRatio;
 }
@@ -177,6 +178,7 @@ function decayCurrentAnalysisFrame() {
     State.currentFrame.densityProj *= 0.9;
     State.currentFrame.melodyProj *= 0.9;
     State.currentFrame.fxProj *= 0.9;
+    State.currentFrame.perceptualSpectrum = State.currentFrame.perceptualSpectrum.map(value => value * 0.9);
     State.currentFrame.eRatio *= 0.9;
     State.currentFeatures.melody *= 0.9;
     State.currentFeatures.vocal *= 0.9;

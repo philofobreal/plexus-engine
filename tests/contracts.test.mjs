@@ -393,6 +393,11 @@ test('analysis worker uses spectral FFT features instead of legacy crossover fil
   assert.match(featureExtractor, /const N = this\.hopSize/);
   assert.match(featureExtractor, /const prevMag = new Float32Array\(N \/ 2\)/);
   assert.match(featureExtractor, /const mags = new Float32Array\(N \/ 2\)/);
+  assert.match(featureExtractor, /public perceptualSpectrumT: Float32Array\[\]/);
+  assert.match(featureExtractor, /public perceptualSpectrumEffectiveBinCount: Float32Array/);
+  assert.match(featureExtractor, /createLogBandBoundaries\(/);
+  assert.match(featureExtractor, /this\.addPerceptualSpectrumBinEnergy\(perceptualFramePower, hz, mag \* mag\)/);
+  assert.match(featureExtractor, /Math\.sqrt\(\s*perceptualFramePower\[bandIndex\] \/ Math\.max\(this\.perceptualSpectrumEffectiveBinCount\[bandIndex\], 1e-3\)\s*\)/);
   assert.match(featureExtractor, /currentFlux \+= fluxDiff/);
   assert.match(featureExtractor, /const fluxDiff = Math\.max\(0, mag - prevMag\[k\]\);\s+prevMag\[k\] = mag;\s+if \(hz > this\.nyquist\) continue;/);
   assert.match(featureExtractor, /mags\[k\] = mag/);
@@ -412,7 +417,10 @@ test('analysis worker uses spectral FFT features instead of legacy crossover fil
   assert.match(analyzer, /const normFlux = normalizeArray\(features\.fluxT, features\.typFlux\)/);
   assert.match(analyzer, /const classifier = new FeatureClassifier\(\{/);
   assert.match(analyzer, /const fx = applyEMA\(classified\.fxRaw, 0\.15\)/);
-  assert.match(analyzer, /outFrames\[i\] = \{ e: energy\[i\], densityProj: density\[i\], melodyProj: melody\[i\], fxProj: fx\[i\], state: 'LOW', eRatio: energy\[i\] \}/);
+  assert.match(analyzer, /const perceptualSpectrum = buildPerceptualSpectrum\(features\)/);
+  assert.match(analyzer, /outFrames\[i\] = \{[\s\S]*e: energy\[i\],[\s\S]*densityProj: density\[i\],[\s\S]*melodyProj: melody\[i\],[\s\S]*fxProj: fx\[i\],[\s\S]*perceptualSpectrum: perceptualSpectrum\[i\],[\s\S]*state: 'LOW',[\s\S]*eRatio: energy\[i\][\s\S]*\}/);
+  assert.match(analyzer, /features\.perceptualSpectrumT\[bandIndex\]/);
+  assert.doesNotMatch(analyzer, /getCoarseBandValue/);
   assert.doesNotMatch(featureExtractor + analyzer, /a_bass/);
   assert.doesNotMatch(featureExtractor + analyzer, /filterLow/);
   assert.doesNotMatch(featureExtractor + analyzer, /filterMidHigh/);
@@ -509,6 +517,8 @@ test('analysis worker produces deterministic spectral analysis payloads', () => 
     assert.ok(frame.densityProj >= 0 && frame.densityProj <= 1);
     assert.ok(frame.melodyProj >= 0 && frame.melodyProj <= 1);
     assert.ok(frame.fxProj >= 0 && frame.fxProj <= 1);
+    assert.equal(frame.perceptualSpectrum.length, 24);
+    for (const band of frame.perceptualSpectrum) assert.ok(band >= 0 && band <= 1);
   }
 
   for (const feature of first.trackAnalysis.features) {
@@ -599,7 +609,7 @@ test('player UI supports background controls, metrics toggle, draggable tuning, 
   assert.doesNotMatch(main, /class="metric-card bpm-card"/);
   assert.doesNotMatch(main, /data-metric-key="bpm"/);
   assert.doesNotMatch(main, /data-metric-key="progress"/);
-  assert.match(main, /<div class="metric-card dyn-card" data-metric-key="dynamicsState"[\s\S]*Dynamics State[\s\S]*Section Energy[\s\S]*data-metric-key="energy"[\s\S]*Energy[\s\S]*data-metric-key="density"[\s\S]*Density[\s\S]*data-metric-key="melodyPresence"[\s\S]*Melody Presence[\s\S]*data-metric-key="vocal"[\s\S]*Vocal[\s\S]*data-metric-key="fx"[\s\S]*FX[\s\S]*data-metric-key="beatImpulse"[\s\S]*Beat Impulse/);
+  assert.match(main, /<div class="metric-card dyn-card" data-metric-key="dynamicsState"[\s\S]*Dynamics State[\s\S]*Section Energy[\s\S]*data-metric-key="energy"[\s\S]*Energy[\s\S]*data-metric-key="density"[\s\S]*Density[\s\S]*data-metric-key="melodyPresence"[\s\S]*Melody Presence[\s\S]*data-metric-key="vocal"[\s\S]*Vocal[\s\S]*data-metric-key="fx"[\s\S]*FX[\s\S]*data-metric-key="beatImpulse"[\s\S]*Beat Impulse[\s\S]*data-metric-key="perceptualSpectrum"[\s\S]*Spectrum Balance/);
   assert.doesNotMatch(main, /data-metric-key="fxPresence"/);
   assert.doesNotMatch(main, /<div class="m-label">Melody<\/div>/);
   assert.doesNotMatch(main, /id="val-melody"/);
@@ -644,6 +654,78 @@ test('player UI supports background controls, metrics toggle, draggable tuning, 
   assert.match(css, /grid-template-columns: repeat\(auto-fit, minmax\(310px, 1fr\)\)/);
   assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(main, /id="val-cue"/);
+});
+
+test('perceptual spectrum dashboard metric uses precomputed 24-band analyzer output', () => {
+  const main = read('src/main.ts');
+  const types = read('src/types/index.ts');
+  const analyzer = read('src/analyzer/analyzeAudio.ts');
+  const featureExtractor = read('src/analyzer/FeatureExtractor.ts');
+  const ui = read('src/ui/DashboardUI.ts');
+  const metadata = read('src/ui/metricMetadata.ts');
+  const css = read('src/style.css');
+
+  const metricKeys = [...main.matchAll(/data-metric-key="([^"]+)"/g)].map(match => match[1]);
+  assert.deepEqual(metricKeys, [
+    'dynamicsState',
+    'energy',
+    'density',
+    'melodyPresence',
+    'vocal',
+    'fx',
+    'beatImpulse',
+    'perceptualSpectrum'
+  ]);
+  assert.match(main, /data-metric-key="perceptualSpectrum"/);
+  assert.match(main, /id="perceptual-spectrum-canvas"/);
+  assert.match(main, /data-column-count="24"/);
+  assert.match(metadata, /perceptualSpectrum: \{/);
+  assert.match(metadata, /name: 'Spectrum Balance'/);
+  assert.match(metadata, /Track-relative compensated spectrum/);
+  assert.match(metadata, /Bass\/sub is visually lifted; no realtime FFT/);
+  assert.match(types, /perceptualSpectrum: number\[\];/);
+  assert.match(featureExtractor, /export const PERCEPTUAL_SPECTRUM_BAND_COUNT = 24/);
+  assert.match(featureExtractor, /export const PERCEPTUAL_SPECTRUM_MIN_HZ = 20/);
+  assert.match(featureExtractor, /export const PERCEPTUAL_SPECTRUM_MAX_HZ = 16000/);
+  assert.match(featureExtractor, /const bandMin = this\.perceptualSpectrumBoundariesHz\[bandIndex\]/);
+  assert.match(featureExtractor, /const bandMax = this\.perceptualSpectrumBoundariesHz\[bandIndex \+ 1\]/);
+  assert.match(featureExtractor, /Math\.min\(binMax, bandMax\) - Math\.max\(binMin, bandMin\)/);
+  assert.match(featureExtractor, /addPerceptualSpectrumBinEnergy/);
+  assert.match(featureExtractor, /power \* \(overlap \/ binWidth\)/);
+  assert.match(featureExtractor, /computePerceptualSpectrumEffectiveBinCount/);
+  assert.match(analyzer, /Math\.pow\(PERCEPTUAL_SPECTRUM_MAX_HZ \/ PERCEPTUAL_SPECTRUM_MIN_HZ, position\)/);
+  assert.match(analyzer, /function inversePerceptualCompensation\(hz: number\)/);
+  assert.match(analyzer, /bassCompensation/);
+  assert.match(analyzer, /presenceControl/);
+  assert.match(analyzer, /highControl/);
+  assert.match(analyzer, /getTypicalBandLevel/);
+  assert.match(analyzer, /typicalBands\[bandIndex\]/);
+  assert.match(analyzer, /typicalBands\[bandIndex\] = getTypicalBandLevel\(features\.perceptualSpectrumT\[bandIndex\]\)/);
+  assert.doesNotMatch(analyzer, /getTypicalBandLevel\(features\.perceptualSpectrumT\[bandIndex\],/);
+  assert.match(analyzer, /shaped \* inversePerceptualCompensation\(hz\)/);
+  assert.match(analyzer, /smoothLowPerceptualBands\(values\)/);
+  assert.doesNotMatch(analyzer, /subRollOff|presenceBoost/);
+  assert.doesNotMatch(analyzer, /perceptualSpectrum[\s\S]{0,120}(subT|bassT|lowMidT|midT|presenceT|brillianceT|airT)/);
+  assert.match(ui, /drawPerceptualSpectrum\(State\.currentFrame\.perceptualSpectrum\)/);
+  assert.match(ui, /const columnCount = 24/);
+  assert.match(ui, /private spectrumPeakHold = new Array\(24\)\.fill\(0\)/);
+  assert.match(ui, /value > this\.spectrumPeakHold\[i\]/);
+  assert.match(ui, /this\.spectrumPeakHold\[i\] - 0\.024/);
+  assert.match(ui, /ResizeObserver/);
+  assert.match(ui, /canvas\.width = targetWidth/);
+  assert.match(ui, /canvas\.height = targetHeight/);
+  assert.match(ui, /window\.devicePixelRatio/);
+  assert.match(ui, /ctx\.setTransform\(dpr, 0, 0, dpr, 0, 0\)/);
+  assert.match(css, /\.spectrum-card \{[\s\S]*display: flex;[\s\S]*flex-direction: column/);
+  assert.match(css, /\.mini-spectrum \{[\s\S]*flex: 1 1 68px/);
+
+  const updateDashboardSource = ui.match(/updateDashboard\(\) \{[\s\S]*?\n    \}\n\n    private drawPerceptualSpectrum/)?.[0] || '';
+  assert.doesNotMatch(updateDashboardSource, /FFT|new Analyzer|FeatureExtractor|analyzeAudio|getByteFrequencyData|frequencyBinCount/);
+  assert.doesNotMatch(ui, /new FFT|getByteFrequencyData|frequencyBinCount/);
+
+  const drawSpectrumSource = ui.match(/private drawPerceptualSpectrum\(values: number\[\]\): void \{[\s\S]*?\n    \}\n\n    private initPerceptualSpectrumCanvas/)?.[0] || '';
+  assert.doesNotMatch(drawSpectrumSource, /royalblue|rgba\(65,\s*105,\s*225|i >= 12 && i <= 17|presence/i);
+  assert.match(drawSpectrumSource, /rgba\(232, 232, 226/);
 });
 
 test('timeline draw mode writes directly to performance automation points', () => {
@@ -725,7 +807,8 @@ test('dashboard metric cards are backed by metadata and a shared delegated toolt
     'melodyPresence',
     'vocal',
     'fx',
-    'beatImpulse'
+    'beatImpulse',
+    'perceptualSpectrum'
   ]);
   assert.equal(metricKeys.length, metricCardCount);
   assert.equal(new Set(metricKeys).size, metricKeys.length);

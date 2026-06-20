@@ -76,6 +76,18 @@ Tradeoffs:
 - **Duplicate analyzer logic for Node.js:** Rejected because duplicated DSP and dramaturgy logic would risk output drift.
 - **Move analysis into AudioEngine:** Rejected because playback lifecycle and analysis computation need separate ownership, and AudioEngine must not become the DSP owner.
 
+## Implementation Note: Perceptual Spectrum
+
+The headless analyzer output schema was extended with `AudioFrame.perceptualSpectrum: number[]`. This field is a 24-element array produced by `buildPerceptualSpectrum()` in `src/analyzer/analyzeAudio.ts` and is part of the offline analyzer output — not a realtime or render-loop computation.
+
+The pipeline remains headless and environment-independent:
+
+- `FeatureExtractor` accumulates `perceptualSpectrumT` and `perceptualSpectrumEffectiveBinCount` during the same FFT pass used for all other spectral features. No additional audio decoding or worker spawning is required.
+- `analyzeAudio.buildPerceptualSpectrum()` applies track-relative normalization, effective-bin normalization, simplified inverse perceptual compensation, and low-band smoothing — all deterministic and environment-agnostic.
+- The dashboard (`DashboardUI`) is a consumer only. It draws the precomputed values but does not analyze audio.
+
+Schema compatibility requirements: `src/types/index.ts` `AudioFrame` interface, `tests/fixtures/analyzer/analysis-result.schema.json` `audioFrame` schema (now requires `perceptualSpectrum` as a 24-element array), `normalizeAnalysisResult`, and both `State.currentFrame` and `AudioEngine.clearAnalysisState()` fallback initializers must all be kept in sync when extending this field.
+
 ## Implementation References
 
 - `src/analyzer/`

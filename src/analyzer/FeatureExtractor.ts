@@ -20,6 +20,10 @@ export const DEFAULT_FREQUENCY_BANDS_HZ: FrequencyBands = {
     air: { min: 12000, max: 16000 }
 };
 
+export const PERCEPTUAL_SPECTRUM_BAND_COUNT = 24;
+export const PERCEPTUAL_SPECTRUM_MIN_HZ = 20;
+export const PERCEPTUAL_SPECTRUM_MAX_HZ = 16000;
+
 const EPSILON = 1e-6;
 
 function sanitizeBand(band: FrequencyBand, nyquist: number): FrequencyBand {
@@ -40,6 +44,17 @@ function cloneBandsForNyquist(bands: FrequencyBands, nyquist: number): Frequency
     };
 }
 
+function createLogBandBoundaries(minHz: number, maxHz: number, bandCount: number, nyquist: number): number[] {
+    const safeMin = Math.max(0, Math.min(minHz, nyquist));
+    const safeMax = Math.max(safeMin, Math.min(maxHz, nyquist));
+    const ratio = safeMin > 0 && safeMax > safeMin ? safeMax / safeMin : 1;
+    const boundaries = new Array(bandCount + 1);
+    for (let i = 0; i <= bandCount; i++) {
+        boundaries[i] = ratio > 1 ? safeMin * Math.pow(ratio, i / bandCount) : safeMin;
+    }
+    return boundaries;
+}
+
 export class FeatureExtractor {
     private channel: Float32Array;
     private sampleRate: number;
@@ -47,6 +62,7 @@ export class FeatureExtractor {
     private nyquist: number;
     private binHz: number;
     private bandsHz: FrequencyBands;
+    private perceptualSpectrumBoundariesHz: number[];
     public totalFrames: number;
     public rmsT: Float32Array;
     public fluxT: Float32Array;
@@ -66,6 +82,8 @@ export class FeatureExtractor {
     public zcrT: Float32Array;
     public spectralRolloffT: Float32Array;
     public spectralCrestT: Float32Array;
+    public perceptualSpectrumT: Float32Array[];
+    public perceptualSpectrumEffectiveBinCount: Float32Array;
     // Multi-band half-wave-rectified spectral flux (raw, per band) plus normalized
     // onset/percussive envelopes. Additive outputs consumed by tempo/grid estimation;
     // the legacy single-band `fluxT` is left untouched for backward compatibility.
@@ -86,6 +104,12 @@ export class FeatureExtractor {
         this.nyquist = this.sampleRate / 2;
         this.binHz = this.sampleRate / hopSize;
         this.bandsHz = cloneBandsForNyquist(calibration?.bandsHz ?? DEFAULT_FREQUENCY_BANDS_HZ, this.nyquist);
+        this.perceptualSpectrumBoundariesHz = createLogBandBoundaries(
+            PERCEPTUAL_SPECTRUM_MIN_HZ,
+            PERCEPTUAL_SPECTRUM_MAX_HZ,
+            PERCEPTUAL_SPECTRUM_BAND_COUNT,
+            this.nyquist
+        );
         this.totalFrames = Math.floor(channel.length / hopSize);
         this.rmsT = new Float32Array(this.totalFrames);
         this.fluxT = new Float32Array(this.totalFrames);
@@ -105,6 +129,8 @@ export class FeatureExtractor {
         this.zcrT = new Float32Array(this.totalFrames);
         this.spectralRolloffT = new Float32Array(this.totalFrames);
         this.spectralCrestT = new Float32Array(this.totalFrames);
+        this.perceptualSpectrumT = Array.from({ length: PERCEPTUAL_SPECTRUM_BAND_COUNT }, () => new Float32Array(this.totalFrames));
+        this.perceptualSpectrumEffectiveBinCount = this.computePerceptualSpectrumEffectiveBinCount();
         this.fluxLowT = new Float32Array(this.totalFrames);
         this.fluxMidT = new Float32Array(this.totalFrames);
         this.fluxHighT = new Float32Array(this.totalFrames);
@@ -145,6 +171,7 @@ export class FeatureExtractor {
             let fluxLow = 0, fluxMid = 0, fluxHigh = 0;
             let maxMag = 0;
             let activeBins = 0;
+            const perceptualFramePower = new Float32Array(PERCEPTUAL_SPECTRUM_BAND_COUNT);
 
             for (let k = 1; k < N / 2; k++) {
                 let mag = Math.sqrt(re[k] * re[k] + im[k] * im[k]);
@@ -158,6 +185,8 @@ export class FeatureExtractor {
                 sumFreqMag += hz * mag;
                 sumLogMag += Math.log(mag + EPSILON);
                 if (mag > maxMag) maxMag = mag;
+
+                this.addPerceptualSpectrumBinEnergy(perceptualFramePower, hz, mag * mag);
 
                 currentFlux += fluxDiff;
                 // Split half-wave-rectified flux into low/mid/high onset bands so that
@@ -173,6 +202,12 @@ export class FeatureExtractor {
                 else if (hz >= this.bandsHz.presence.min && hz < this.bandsHz.presence.max) ePresence += mag;
                 else if (hz >= this.bandsHz.brilliance.min && hz < this.bandsHz.brilliance.max) eBrilliance += mag;
                 else if (hz >= this.bandsHz.air.min && hz <= this.bandsHz.air.max) eAir += mag;
+            }
+
+            for (let bandIndex = 0; bandIndex < PERCEPTUAL_SPECTRUM_BAND_COUNT; bandIndex++) {
+                this.perceptualSpectrumT[bandIndex][i] = Math.sqrt(
+                    perceptualFramePower[bandIndex] / Math.max(this.perceptualSpectrumEffectiveBinCount[bandIndex], 1e-3)
+                );
             }
 
             const rolloffTarget = sumMag * 0.85;
@@ -302,5 +337,39 @@ export class FeatureExtractor {
 
     private clampUnit(value: number): number {
         return Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
+    }
+
+    private addPerceptualSpectrumBinEnergy(target: Float32Array, hz: number, power: number): void {
+        const binMin = Math.max(0, hz - this.binHz * 0.5);
+        const binMax = Math.min(this.nyquist, hz + this.binHz * 0.5);
+        const binWidth = Math.max(EPSILON, binMax - binMin);
+        if (binMax < PERCEPTUAL_SPECTRUM_MIN_HZ || binMin > this.perceptualSpectrumBoundariesHz[PERCEPTUAL_SPECTRUM_BAND_COUNT]) return;
+
+        for (let bandIndex = 0; bandIndex < PERCEPTUAL_SPECTRUM_BAND_COUNT; bandIndex++) {
+            const overlap = this.getPerceptualBandBinOverlap(bandIndex, binMin, binMax);
+            if (overlap > 0) target[bandIndex] += power * (overlap / binWidth);
+        }
+    }
+
+    private computePerceptualSpectrumEffectiveBinCount(): Float32Array {
+        const counts = new Float32Array(PERCEPTUAL_SPECTRUM_BAND_COUNT);
+        for (let k = 1; k < this.hopSize / 2; k++) {
+            const hz = k * this.binHz;
+            const binMin = Math.max(0, hz - this.binHz * 0.5);
+            const binMax = Math.min(this.nyquist, hz + this.binHz * 0.5);
+            const binWidth = Math.max(EPSILON, binMax - binMin);
+            if (binMax < PERCEPTUAL_SPECTRUM_MIN_HZ || binMin > this.perceptualSpectrumBoundariesHz[PERCEPTUAL_SPECTRUM_BAND_COUNT]) continue;
+            for (let bandIndex = 0; bandIndex < PERCEPTUAL_SPECTRUM_BAND_COUNT; bandIndex++) {
+                const overlap = this.getPerceptualBandBinOverlap(bandIndex, binMin, binMax);
+                if (overlap > 0) counts[bandIndex] += overlap / binWidth;
+            }
+        }
+        return counts;
+    }
+
+    private getPerceptualBandBinOverlap(bandIndex: number, binMin: number, binMax: number): number {
+        const bandMin = this.perceptualSpectrumBoundariesHz[bandIndex];
+        const bandMax = this.perceptualSpectrumBoundariesHz[bandIndex + 1];
+        return Math.max(0, Math.min(binMax, bandMax) - Math.max(binMin, bandMin));
     }
 }

@@ -115,6 +115,35 @@ function transientBurstBuffer(sampleRate, fftSize, frames = 120) {
   return samples;
 }
 
+function kickBurstBuffer(frequency, sampleRate, fftSize, frames = 48) {
+  const samples = new Float32Array(fftSize * frames);
+  for (let frame = 0; frame < frames; frame += 4) {
+    const frameStart = frame * fftSize;
+    for (let i = 0; i < Math.min(384, fftSize); i++) {
+      const sampleIndex = frameStart + i;
+      const env = Math.exp(-i / 140);
+      samples[sampleIndex] = Math.sin(2 * Math.PI * frequency * (sampleIndex / sampleRate)) * env * 0.95;
+    }
+  }
+  return samples;
+}
+
+function pinkNoiseBuffer(sampleRate, fftSize, frames = 80) {
+  const samples = new Float32Array(fftSize * frames);
+  let seed = 23;
+  let b0 = 0, b1 = 0, b2 = 0;
+  for (let i = 0; i < samples.length; i++) {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    const white = (seed / 0xffffffff) * 2 - 1;
+    b0 = 0.99765 * b0 + white * 0.0990460;
+    b1 = 0.96300 * b1 + white * 0.2965164;
+    b2 = 0.57000 * b2 + white * 1.0526913;
+    samples[i] = (b0 + b1 + b2 + white * 0.1848) * 0.05;
+  }
+  void sampleRate;
+  return samples;
+}
+
 function assertStrictBands(calibration) {
   let previousMax = 0;
   for (const key of BAND_KEYS) {
@@ -135,6 +164,11 @@ function extract(samples, sampleRate, fftSize = 1024) {
   extractor.process();
   const i = Math.floor(extractor.totalFrames / 2);
   return { extractor, i };
+}
+
+function analyze(samples, sampleRate, fftSize = 1024) {
+  const { analyzeAudio } = createSrcLoader()('analyzer/analyzeAudio.ts');
+  return analyzeAudio({ samples, sampleRate, options: { hopSize: fftSize, requestId: 1 } });
 }
 
 test('FeatureExtractor classifies fixed Hz sine bands across sample rates', () => {
@@ -168,6 +202,68 @@ test('FeatureExtractor classifies fixed Hz sine bands across sample rates', () =
       testCase.assertBand(extractor, i, sampleRate);
     }
   }
+});
+
+test('FeatureExtractor builds independent 24-band logarithmic spectrum from FFT bins', () => {
+  const cases = [
+    { frequency: 60, minBand: 0, maxBand: 8, label: '60Hz low' },
+    { frequency: 1000, minBand: 10, maxBand: 16, label: '1000Hz mid' },
+    { frequency: 8000, minBand: 19, maxBand: 23, label: '8000Hz high' }
+  ];
+
+  for (const testCase of cases) {
+    const { extractor, i } = extract(sineBuffer(testCase.frequency, 44_100, 1024, 10), 44_100);
+    const spectrum = extractor.perceptualSpectrumT.map(band => band[i]);
+    const maxValue = Math.max(...spectrum);
+    const maxBand = spectrum.findIndex(value => value === maxValue);
+
+    assert.equal(spectrum.length, 24);
+    assert.ok(maxBand >= testCase.minBand && maxBand <= testCase.maxBand, `${testCase.label} peak band ${maxBand}`);
+    assert.ok(maxValue > 0, `${testCase.label} should produce spectrum energy`);
+
+    const aroundPeak = spectrum.slice(Math.max(0, maxBand - 2), Math.min(spectrum.length, maxBand + 3));
+    assert.ok(new Set(aroundPeak.map(value => value.toFixed(6))).size > 1, `${testCase.label} neighboring bands should not be identical`);
+  }
+});
+
+test('perceptual spectrum bands all receive effective FFT-bin contribution at 44.1kHz', () => {
+  const { extractor } = extract(noiseBuffer(44_100, 1024, 8), 44_100);
+
+  assert.equal(extractor.perceptualSpectrumEffectiveBinCount.length, 24);
+  for (let i = 0; i < extractor.perceptualSpectrumEffectiveBinCount.length; i++) {
+    assert.ok(extractor.perceptualSpectrumEffectiveBinCount[i] > 0, `band ${i} should have overlap contribution`);
+  }
+});
+
+test('perceptual spectrum keeps bass and sub movement readable after normalization', () => {
+  const sampleRate = 44_100;
+
+  const sub = analyze(sineBuffer(45, sampleRate, 1024, 48, 0.85), sampleRate);
+  const subFrame = sub.frames[Math.floor(sub.frames.length / 2)].perceptualSpectrum;
+  assert.ok(Math.max(...subFrame.slice(0, 7)) > 0.45, '45Hz sine should visibly raise low columns');
+
+  const kick = analyze(kickBurstBuffer(60, sampleRate, 1024), sampleRate);
+  const lowMax = new Array(8).fill(0);
+  for (const frame of kick.frames) {
+    frame.perceptualSpectrum.slice(0, 8).forEach((value, index) => {
+      lowMax[index] = Math.max(lowMax[index], value);
+    });
+  }
+  assert.ok(lowMax.filter(value => value > 0.18).length >= 3, `60Hz burst should raise multiple low/bass columns, got ${lowMax.join(',')}`);
+  assert.ok(new Set(lowMax.slice(0, 6).map(value => value.toFixed(3))).size > 2, 'low-band smoothing must not make low columns identical');
+
+  const bassline = analyze(sineBuffer(90, sampleRate, 1024, 48, 0.75), sampleRate);
+  const bassFrame = bassline.frames[Math.floor(bassline.frames.length / 2)].perceptualSpectrum;
+  assert.ok(Math.max(...bassFrame.slice(4, 10)) > 0.35, '90Hz bassline should remain readable in bass columns');
+});
+
+test('perceptual spectrum bandwidth normalization prevents high-band bin-count dominance', () => {
+  const result = analyze(pinkNoiseBuffer(44_100, 1024, 96), 44_100);
+  const frame = result.frames[Math.floor(result.frames.length / 2)].perceptualSpectrum;
+  const lowAvg = frame.slice(0, 8).reduce((sum, value) => sum + value, 0) / 8;
+  const highAvg = frame.slice(16, 24).reduce((sum, value) => sum + value, 0) / 8;
+
+  assert.ok(highAvg < lowAvg * 1.8, `high bands should not dominate by bin count alone: low=${lowAvg}, high=${highAvg}`);
 });
 
 test('FeatureExtractor splits presence energy into legacy mid and high compatibility bands', () => {

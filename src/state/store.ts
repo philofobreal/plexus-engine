@@ -102,7 +102,7 @@ export const State = {
     isDrawingEnvelope: false,
     playbackFade: 0.0,
     rotationPhase: 0,
-    currentFrame: { e: 0, densityProj: 0, melodyProj: 0, fxProj: 0, state: 'IDLE', eRatio: 0 } as AudioFrame,
+    currentFrame: { e: 0, densityProj: 0, melodyProj: 0, fxProj: 0, perceptualSpectrum: new Array(24).fill(0), state: 'IDLE', eRatio: 0 } as AudioFrame,
     currentFeatures: { ...emptyFeatures } as VisualFeatureFrame,
     activeCueKind: null as VisualCueKind | null,
     activePatternId: null as string | null,

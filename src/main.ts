@@ -118,6 +118,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div class="metric-card default-card" data-metric-key="vocal" tabindex="0" aria-describedby="dashboard-metric-tooltip"><div class="m-label">Vocal</div><div class="m-value" id="val-vocal">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-vocal"></div></div></div>
         <div class="metric-card default-card" data-metric-key="fx" tabindex="0" aria-describedby="dashboard-metric-tooltip"><div class="m-label">FX</div><div class="m-value" id="val-fx">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-fx"></div></div></div>
         <div class="metric-card default-card" data-metric-key="beatImpulse" tabindex="0" aria-describedby="dashboard-metric-tooltip"><div class="m-label">Beat Impulse</div><div class="m-value" id="val-beat">0.00</div><div class="m-bar-bg"><div class="m-bar-fill" id="bar-beat"></div></div></div>
+        <div class="metric-card spectrum-card" data-metric-key="perceptualSpectrum" tabindex="0" aria-describedby="dashboard-metric-tooltip"><div class="m-label">Spectrum Balance</div><canvas id="perceptual-spectrum-canvas" class="mini-spectrum" data-column-count="24" aria-label="24 band perceptual spectrum"></canvas></div>
       </div>
       
       <div class="bottom-toolbar">

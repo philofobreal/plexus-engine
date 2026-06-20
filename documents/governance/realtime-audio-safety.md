@@ -52,6 +52,12 @@ Seek must synchronously align:
 
 Track end must reset user-visible playback state, visual transient state, and event consumption state in one ordered transition.
 
+## Spectrum Balance And Realtime Safety
+
+Spectrum Balance (`AudioFrame.perceptualSpectrum`) does not violate the realtime work budget. `DashboardUI.drawPerceptualSpectrum()` reads only the precomputed `State.currentFrame.perceptualSpectrum` array. It does not create `AnalyserNode`, does not call `getByteFrequencyData()`, and does not run FFT work. The canvas render uses only array reads and 2D canvas drawing calls. `ResizeObserver` triggers `resizePerceptualSpectrumCanvas()` and a redraw from already-computed state — no audio analysis runs in that path.
+
+New dashboard metrics that display spectral data must follow the same rule: only precomputed `AudioFrame` or `TrackAnalysis` values may be drawn. Realtime FFT or `getByteFrequencyData` in `DashboardUI` is forbidden.
+
 ## Memory Safety
 
 Audio buffers used for playback must remain valid after analysis dispatch. If worker analysis uses transferable buffers, the implementation must document whether it copied or transferred data and why playback data cannot be detached.

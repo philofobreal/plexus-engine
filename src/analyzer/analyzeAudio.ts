@@ -2,7 +2,7 @@ import type { AnalysisResult, AudioFrame, TrackAnalysis, VisualFeatureFrame } fr
 import { DEFAULT_ANALYSIS_HOP_SIZE } from './constants';
 import { DramaturgyBuilder, computeDramaturgyAnalysis } from './DramaturgyBuilder';
 import { FeatureClassifier } from './FeatureClassifier';
-import { FeatureExtractor } from './FeatureExtractor';
+import { FeatureExtractor, PERCEPTUAL_SPECTRUM_BAND_COUNT, PERCEPTUAL_SPECTRUM_MAX_HZ, PERCEPTUAL_SPECTRUM_MIN_HZ } from './FeatureExtractor';
 import { normalizeArray } from './FeatureNormalizer';
 import { GridAligner } from './GridAligner';
 import { SectionAnalyzer } from './SectionAnalyzer';
@@ -55,6 +55,7 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     const fx = applyEMA(classified.fxRaw, 0.15);
     const brightness = applyEMA(classified.brightnessRaw, 0.1);
     const tension = applyEMA(classified.tensionRaw, 0.05);
+    const perceptualSpectrum = buildPerceptualSpectrum(features);
 
     let outFrames: AudioFrame[] = new Array(features.totalFrames);
     let visualFeatures: VisualFeatureFrame[] = new Array(features.totalFrames);
@@ -67,7 +68,15 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
             brightness: brightness[i],
             tension: tension[i]
         };
-        outFrames[i] = { e: energy[i], densityProj: density[i], melodyProj: melody[i], fxProj: fx[i], state: 'LOW', eRatio: energy[i] };
+        outFrames[i] = {
+            e: energy[i],
+            densityProj: density[i],
+            melodyProj: melody[i],
+            fxProj: fx[i],
+            perceptualSpectrum: perceptualSpectrum[i],
+            state: 'LOW',
+            eRatio: energy[i]
+        };
     }
 
     const segmenter = new SectionAnalyzer(features, grid, sampleRate, hopSize);
@@ -131,4 +140,67 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
         timingConfidence: grid.timingConfidence,
         trackAnalysis
     };
+}
+
+function buildPerceptualSpectrum(features: FeatureExtractor): number[][] {
+    const typicalBands = new Float32Array(PERCEPTUAL_SPECTRUM_BAND_COUNT);
+
+    for (let bandIndex = 0; bandIndex < PERCEPTUAL_SPECTRUM_BAND_COUNT; bandIndex++) {
+        typicalBands[bandIndex] = getTypicalBandLevel(features.perceptualSpectrumT[bandIndex]);
+    }
+
+    const frames = new Array(features.totalFrames);
+    for (let frameIndex = 0; frameIndex < features.totalFrames; frameIndex++) {
+        const values = new Array(PERCEPTUAL_SPECTRUM_BAND_COUNT);
+        for (let bandIndex = 0; bandIndex < PERCEPTUAL_SPECTRUM_BAND_COUNT; bandIndex++) {
+            const hz = getPerceptualBandCenterHz(bandIndex);
+            const floor = bandIndex < 8 ? 0.0035 : 0.008;
+            const normalized = (features.perceptualSpectrumT[bandIndex][frameIndex] || 0) / Math.max(typicalBands[bandIndex] * 1.18, floor);
+            const shaped = Math.pow(normalized / (normalized + 0.85), 0.72);
+            values[bandIndex] = clampUnit(shaped * inversePerceptualCompensation(hz));
+        }
+        smoothLowPerceptualBands(values);
+        frames[frameIndex] = values;
+    }
+    return frames;
+}
+
+function getPerceptualBandCenterHz(bandIndex: number): number {
+    const position = (bandIndex + 0.5) / PERCEPTUAL_SPECTRUM_BAND_COUNT;
+    return PERCEPTUAL_SPECTRUM_MIN_HZ * Math.pow(PERCEPTUAL_SPECTRUM_MAX_HZ / PERCEPTUAL_SPECTRUM_MIN_HZ, position);
+}
+
+function smoothLowPerceptualBands(values: number[]): void {
+    const original = values.slice(0, 6);
+    for (let i = 0; i < original.length; i++) {
+        const prev = original[Math.max(0, i - 1)];
+        const next = original[Math.min(original.length - 1, i + 1)];
+        values[i] = clampUnit(original[i] * 0.82 + ((prev + next) * 0.5) * 0.18);
+    }
+}
+
+function inversePerceptualCompensation(hz: number): number {
+    const logHz = Math.log2(Math.max(PERCEPTUAL_SPECTRUM_MIN_HZ, hz));
+    const presenceCenter = Math.log2(3200);
+    const bassCompensation = hz < 40 ? 1.36
+        : hz < 80 ? 1.28
+        : hz < 160 ? 1.18
+        : hz < 320 ? 1.08
+        : 1.0;
+    const presenceControl = 1 - 0.12 * Math.exp(-Math.pow((logHz - presenceCenter) / 0.95, 2));
+    const highControl = hz > 9000 ? Math.max(0.82, 1 - (hz - 9000) / 7000 * 0.16) : 1;
+    return bassCompensation * presenceControl * highControl;
+}
+
+function getTypicalBandLevel(input: Float32Array): number {
+    if (input.length === 0) return 0.006;
+    const sorted = new Float32Array(input);
+    sorted.sort();
+    const p88 = sorted[Math.floor(sorted.length * 0.88)] || 0;
+    const p98 = sorted[Math.floor(sorted.length * 0.98)] || 0;
+    return Math.max(p88, p98 * 0.35, 0.006);
+}
+
+function clampUnit(value: number): number {
+    return Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
 }

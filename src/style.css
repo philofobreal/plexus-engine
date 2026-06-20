@@ -392,6 +392,20 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(1.3); }
 .default-card .m-bar-fill {
   background: royalblue;
 }
+.spectrum-card {
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mini-spectrum {
+  display: block;
+  width: 100%;
+  min-height: 68px;
+  flex: 1 1 68px;
+  background: rgba(255,255,255,0.025);
+  border-radius: 4px;
+}
 
 /* Bottom Toolbar (Kinyitó gomb) */
 .bottom-toolbar { display: flex; justify-content: center; }

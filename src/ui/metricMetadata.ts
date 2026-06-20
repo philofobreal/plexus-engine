@@ -49,6 +49,13 @@ export const dashboardMetricMetadata = {
         range: '0.00..1.00',
         tooltip: 'Decaying visual pulse from accepted percussive beat events.\nNot BPM, raw bass, or drum stem detection.'
     },
+    perceptualSpectrum: {
+        name: 'Spectrum Balance',
+        description: 'Offline 24-band logarithmic FFT aggregation from 20Hz..16kHz with track-relative normalization and simplified inverse perceptual compensation.',
+        source: 'AudioFrame.perceptualSpectrum',
+        range: '24 normalized bands, 20 Hz..16 kHz',
+        tooltip: 'Track-relative compensated spectrum.\nBass/sub is visually lifted; no realtime FFT.'
+    },
     dynamicsState: {
         name: 'Dynamics State',
         description: 'Current macro dynamics state from normalized energy ratio.',

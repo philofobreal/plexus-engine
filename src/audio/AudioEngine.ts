@@ -58,7 +58,7 @@ export class AudioEngine {
         State.performancePlan = null;
         State.editedPerformancePlan = null;
         State.hopSize = 1024;
-        State.currentFrame = { e: 0, densityProj: 0, melodyProj: 0, fxProj: 0, state: 'IDLE', eRatio: 0 };
+        State.currentFrame = { e: 0, densityProj: 0, melodyProj: 0, fxProj: 0, perceptualSpectrum: new Array(24).fill(0), state: 'IDLE', eRatio: 0 };
         State.currentFeatures = { ...EMPTY_FEATURES };
         State.modulation.kineticTension = 0;
         State.modulation.densityDrive = 0;

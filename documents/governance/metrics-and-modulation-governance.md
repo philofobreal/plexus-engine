@@ -198,6 +198,17 @@ It may be displayed only in debug views.
 
 Production metrics should not show modulation-bus values unless the label clearly says that the value is visual modulation, not musical analysis.
 
+## Dashboard Visualization Rules
+
+Dashboard metrics that visualize spectral data must follow these rules:
+
+- Source data must come from a precomputed `AudioFrame` field or `TrackAnalysis` field.
+- `DashboardUI` must not create `AnalyserNode`, call `getByteFrequencyData()`, or perform any realtime FFT work.
+- New spectral visualization fields added to `AudioFrame` must be part of the offline worker/analyzer output and documented in the worker contract.
+- `AudioFrame` schema extensions require updating `src/types/index.ts`, `tests/fixtures/analyzer/analysis-result.schema.json`, `normalizeAnalysisResult`, and the empty-frame fallbacks in `src/state/store.ts` and `AudioEngine.clearAnalysisState()`.
+
+`AudioFrame.perceptualSpectrum` is the reference implementation of these rules: it is computed once in `analyzeAudio.buildPerceptualSpectrum()` and consumed only by `DashboardUI.drawPerceptualSpectrum()`. It is a dashboard-only visualization and is not used as a modulation source.
+
 ## Current Risk Areas
 
 The following remain compatibility or audit areas:

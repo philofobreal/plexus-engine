@@ -178,6 +178,8 @@ export interface AudioFrame {
     melodyProj: number;
     /** Smoothed FX/noise/transient projection. */
     fxProj: number;
+    /** Precomputed track-relative 24-band spectrum balance, logarithmic 20 Hz..16 kHz. */
+    perceptualSpectrum: number[];
     state: AutoState;
     eRatio: number;
 }

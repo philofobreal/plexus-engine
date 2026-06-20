@@ -323,6 +323,41 @@ Starts at `1.0` on a beat event and decays toward `0.0`. Display assumes `0.0..1
 Decaying visual pulse from accepted percussive beat events.
 Not BPM, raw bass, or drum stem detection.
 
+## Spectrum Balance
+
+## User Description
+
+24-column logarithmic spectral balance of the loaded track.
+
+## Technical Meaning
+
+`AudioFrame.perceptualSpectrum`, a precomputed 24-element array produced by the offline analyzer. Each element covers one logarithmically spaced band from 20 Hz to 16 kHz and is normalized to `0..1` using a track-relative baseline (p88/p98 of the per-band distribution) and effective-bin normalization to prevent low/sub bands from appearing sparse because few FFT bins fall there at 1024-sample resolution. A simplified inverse perceptual compensation is applied after normalization: bass/sub bands are visually lifted, presence is modestly controlled, and extreme high frequencies are very gently attenuated. The first six low bands receive very light adjacent smoothing to improve readability without making the columns identical.
+
+The dashboard draws a 24-column monochrome canvas that reads `State.currentFrame.perceptualSpectrum`. A per-column peak-hold marker (`spectrumPeakHold`) rises immediately and falls back at rate `0.024` per draw. This peak-hold is UI-only state; it is not part of the analyzer output.
+
+Spectrum Balance is a lightweight visualization. It is not a studio spectrum analyzer and does not claim psychoacoustic model accuracy, instrument detection, or stem separation.
+
+## Source
+
+`src/analyzer/FeatureExtractor.ts` accumulates `perceptualSpectrumT` and `perceptualSpectrumEffectiveBinCount` during FFT analysis. `src/analyzer/analyzeAudio.ts` calls `buildPerceptualSpectrum(features)` to produce `AudioFrame.perceptualSpectrum`. `PlexusRenderer.ts` copies the field into `State.currentFrame.perceptualSpectrum`. `DashboardUI.drawPerceptualSpectrum()` renders it to a `<canvas id="perceptual-spectrum-canvas">`.
+
+## Range
+
+`24 normalized bands, 20 Hz..16 kHz`, each value `0.0..1.0`.
+
+## Common Misinterpretations
+
+- Not a studio-grade or psychoacoustically accurate spectrum analyzer.
+- Not a realtime FFT; no `getByteFrequencyData` is used. All values are precomputed offline.
+- Not an instrument or stem detector.
+- Peak-hold markers are UI-only; they are not persisted in `AudioFrame` or analyzer output.
+- Low-band smoothing does not make columns identical — it only reduces visual noise in the sub/bass range.
+
+## Tooltip Text
+
+Track-relative compensated spectrum.
+Bass/sub is visually lifted; no realtime FFT.
+
 ## Registry Sketch
 
 ```ts
@@ -396,6 +431,13 @@ const metricMetadata: Record<string, MetricMetadata> = {
     source: 'State.beatDecay from consumed BeatEvent[]',
     range: '1.0 on hit, decays toward 0.0',
     tooltip: 'Decaying visual pulse from accepted percussive beat events.\nNot BPM, raw bass, or drum stem detection.'
+  },
+  perceptualSpectrum: {
+    name: 'Spectrum Balance',
+    description: 'Offline 24-band logarithmic FFT aggregation from 20Hz..16kHz with track-relative normalization and simplified inverse perceptual compensation.',
+    source: 'AudioFrame.perceptualSpectrum',
+    range: '24 normalized bands, 20 Hz..16 kHz',
+    tooltip: 'Track-relative compensated spectrum.\nBass/sub is visually lifted; no realtime FFT.'
   }
 };
 ```
