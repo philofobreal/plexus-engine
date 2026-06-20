@@ -296,15 +296,15 @@ Not a section label.
 
 ## User Description
 
-Recent beat impact currently driving visual pulse.
+Decaying visual pulse from accepted percussive beat events.
 
 ## Technical Meaning
 
-`State.beatDecay`, set to `1.0` when an accepted `BeatEvent` is consumed, then decayed each draw by `0.88`. It is a visual transient, not a worker scalar metric.
+`State.beatDecay`, set to `1.0` when an accepted `BeatEvent` is consumed, then decayed each draw by `0.88`. Accepted events come from offline percussive onset/transient evidence near the authoritative timing model, with sustained bass rejection. It is a visual transient, not a worker scalar metric.
 
 ## Source
 
-`src/audio/analyzer.worker.ts` produces `BeatEvent[]`; `PlexusRenderer` consumes events by playback time and writes `State.beatDecay`; `DashboardUI` displays it.
+`src/audio/analyzer.worker.ts` produces `BeatEvent[]` through the headless analyzer; `DramaturgyBuilder` accepts visual events from percussive onset evidence and `BeatEventClassifier` assigns a visual impact category. `PlexusRenderer` consumes events by playback time and writes `State.beatDecay`; `DashboardUI` displays it.
 
 ## Range
 
@@ -314,12 +314,14 @@ Starts at `1.0` on a beat event and decays toward `0.0`. Display assumes `0.0..1
 
 - Not beat strength directly from the worker.
 - Not BPM.
+- Not raw bass.
 - Not persistent rhythm density.
+- Not drum stem detection.
 
 ## Tooltip Text
 
-Decaying visual pulse from recent beat events.
-Not BPM or raw beat strength.
+Decaying visual pulse from accepted percussive beat events.
+Not BPM, raw bass, or drum stem detection.
 
 ## Registry Sketch
 
@@ -390,10 +392,10 @@ const metricMetadata: Record<string, MetricMetadata> = {
   },
   beatImpulse: {
     name: 'Beat Impulse',
-    description: 'Recent beat impact currently driving visual pulse.',
+    description: 'Decaying visual pulse from accepted percussive beat events.',
     source: 'State.beatDecay from consumed BeatEvent[]',
     range: '1.0 on hit, decays toward 0.0',
-    tooltip: 'Decaying visual pulse from recent beat events.\nNot BPM or raw beat strength.'
+    tooltip: 'Decaying visual pulse from accepted percussive beat events.\nNot BPM, raw bass, or drum stem detection.'
   }
 };
 ```

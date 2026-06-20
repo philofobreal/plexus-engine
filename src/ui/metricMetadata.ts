@@ -44,10 +44,10 @@ export const dashboardMetricMetadata = {
     },
     beatImpulse: {
         name: 'Beat Impulse',
-        description: 'Renderer beat-event decay used for visual impulses.',
-        source: 'State.beatDecay',
+        description: 'Renderer decay from accepted percussive BeatEvents.',
+        source: 'State.beatDecay from consumed BeatEvent[]',
         range: '0.00..1.00',
-        tooltip: 'Decaying beat impulse.\nNot raw beat strength.'
+        tooltip: 'Decaying visual pulse from accepted percussive beat events.\nNot BPM, raw bass, or drum stem detection.'
     },
     dynamicsState: {
         name: 'Dynamics State',

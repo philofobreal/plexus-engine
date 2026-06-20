@@ -41,6 +41,14 @@ Keep `src/audio/analyzer.worker.ts` as a thin adapter. It reads `AnalysisRequest
 
 Keep `AudioEngine` responsible for playback lifecycle, worker lifecycle, stale request rejection, runtime state reset, and deep-copy protections. Analyzer-owned normalization accepts injected context such as `fallbackBpm` instead of reading shared runtime state directly.
 
+## Decisions Extended: Percussive BeatEvents
+
+BeatEvent generation is part of the headless analyzer contract and remains offline/deterministic. `FeatureExtractor` exposes onset and sustain evidence (`onsetEnvT`, `percussiveT`, and `bassSustainT`) alongside the existing spectral features. `DramaturgyBuilder` derives accepted visual `BeatEvent` entries from the authoritative timing model gated by percussive onset/transient evidence. The authoritative grid may still span silent or weak regions, but extrapolated silent beats do not become visual events without local onset evidence.
+
+Sustained low-frequency energy is suppressed unless it is paired with sharp attack/transient evidence. Bass-heavy transient material can still be accepted; bass is a helper signal, not a standalone trigger. `BeatEventClassifier` maps accepted events back to the public `1 | 2 | 3` visual-impact schema without claiming source or stem certainty.
+
+No render-loop DSP is allowed for Beat Impulse. The renderer only consumes precomputed `BeatEvent[]`, sets `State.beatDecay` when an accepted event crosses the playhead, and lets that visual pulse decay.
+
 ## Consequences
 
 Positive:

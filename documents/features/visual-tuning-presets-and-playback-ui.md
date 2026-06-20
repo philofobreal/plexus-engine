@@ -159,11 +159,11 @@ The feature is split across these runtime layers:
 
 Browser-level file loading and `AudioContext.decodeAudioData` failures are surfaced through the dashboard as file-load errors. In that state playback and seek remain disabled, while file selection is re-enabled so the user can choose another track.
 
-Beat events are emitted on the authoritative musical grid (`GridAligner.beats`); extrapolated silent/breakdown beats are suppressed as visual events. Each emitted beat is typed by `BeatEventClassifier` from the spectral features at its beat frame:
+Beat events are accepted near the authoritative musical grid (`GridAligner.beats`) when percussive onset/transient evidence is present; extrapolated silent/breakdown beats are suppressed as visual events. Sustained low-frequency energy alone must not continuously generate BeatEvents, while bass-heavy transients remain eligible when paired with sharp local attack. Each accepted event is typed by `BeatEventClassifier` from the accepted peak context:
 
 - Type 3 is the `fx/high-transient hit`, for high-ZCR or high-rolloff/high-band transients.
-- Type 2 is the `dense impact hit`, for dense bass/flux impacts that are not high-transient.
-- Type 1 is the `default spectral-flux hit`, used for generic and kick-like impacts.
+- Type 2 is the `dense impact hit`, for dense accepted visual impacts that are not high-transient.
+- Type 1 is the `default spectral-flux hit`, used as the default visual impact category.
 
 The analyzer publishes `BarAnalysis` entries, RMS fields on `TrackSection`, and tempo confidence metadata on `TrackAnalysis`. Normal tracks remain BPM-aligned; only critically low grid and BPM confidence can make section boundaries energy-reactive. Older payloads are normalized by `AudioEngine.normalizeTrackAnalysis()` so missing bar/RMS/confidence/candidate fields fall back safely instead of breaking the UI.
 

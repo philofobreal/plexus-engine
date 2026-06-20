@@ -184,6 +184,12 @@ Every dashboard metric must have:
 
 If any of these are missing, the metric is provisional.
 
+## Beat Impulse And BeatEvent Semantics
+
+Beat Impulse documentation must describe `State.beatDecay` as a decaying visual pulse from consumed accepted percussive `BeatEvent` entries. It must not describe Beat Impulse as BPM, raw bass, raw beat strength, or instrument/stem detection.
+
+`BeatEvent` documentation must preserve the public visual schema (`time`, `intensity`, `type: 1 | 2 | 3`) while making clear that accepted events are percussive/transient visual events from offline analyzer evidence. Bass may contribute only when paired with sharp attack/percussive onset evidence; sustained or rolling bass alone must not be documented as a beat trigger. Future BeatEvent schema or classifier changes must preserve visual semantics and must not claim source separation or instrument certainty without a separate product and architecture decision.
+
 ## Modulation Bus Rules
 
 `State.modulation` is not a dashboard source of truth.
