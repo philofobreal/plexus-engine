@@ -188,6 +188,46 @@ export type VisualCueKind = 'melody' | 'vocal' | 'fx' | 'impact' | 'break' | 'pa
 
 export type TrackSectionLabel = 'intro' | 'verse' | 'build' | 'drop' | 'break' | 'peak' | 'outro';
 
+/**
+ * Explanatory taxonomy describing *why* the analyzer placed a boundary, label, or cue.
+ * Append-only: new evidence kinds may be added to the end of this union, never removed.
+ */
+export type AnalysisReason =
+    | 'bar-aligned'
+    | 'energy-rise'
+    | 'energy-drop'
+    | 'density-rise'
+    | 'bass-return'
+    | 'bass-drop'
+    | 'high-transient'
+    | 'percussive-onset'
+    | 'after-buildup'
+    | 'low-grid-confidence'
+    | 'novelty-peak'
+    | 'section-position'
+    | 'weak-evidence-fallback';
+
+/**
+ * A single point on the deterministic novelty curve. `value` is normalized 0..1 and
+ * expresses how much musical "change evidence" was detected at `time` (seconds).
+ */
+export interface NoveltyPoint {
+    time: number;
+    value: number;
+    reasons: AnalysisReason[];
+}
+
+/**
+ * A candidate section boundary surfaced by novelty/grid analysis before final selection.
+ * `timingMode` records how the boundary time was anchored.
+ */
+export interface SectionBoundaryCandidate {
+    time: number;
+    confidence: number;
+    timingMode: 'bar-aligned' | 'energy-reactive' | 'novelty';
+    reasons: AnalysisReason[];
+}
+
 export interface VisualFeatureFrame {
     melody: number;
     vocal: number;
@@ -204,6 +244,7 @@ export interface VisualCueEvent {
     confidence: number;
     kind: VisualCueKind;
     patternId?: string;
+    reasons?: AnalysisReason[];
 }
 
 export interface TrackSection {
@@ -215,6 +256,7 @@ export interface TrackSection {
     dominantFeature: VisualCueKind | 'rhythm';
     avgRms: number;
     peakRms: number;
+    reasons?: AnalysisReason[];
 }
 
 export interface BarAnalysis {
@@ -281,6 +323,8 @@ export interface TrackAnalysis {
     buildupConfidence: number[];
     spectralPivot: number[];
     tensionTrends: TensionTrends;
+    noveltyCurve?: NoveltyPoint[];
+    boundaryCandidates?: SectionBoundaryCandidate[];
     featureHopSize: number;
     gridOffset: number;
     // Authoritative musical timing model (single source of truth for downstream consumers).
