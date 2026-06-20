@@ -63,7 +63,7 @@ class HeroEffectIdentity implements VisualIdentity {
 
         for (let i = 0; i < State.events.length; i++) {
             const event = State.events[i];
-            if (eventMode === 1 && event.type === 1) continue;
+            if (eventMode === 1 && !this.isPercussiveAudioEvent(event)) continue;
             const deltaTime = event.time - State.currentTime;
             if (deltaTime <= 0) {
                 if (deltaTime > -0.12) this.drawHitFlash(backend, playheadX, laneY, event);
@@ -74,6 +74,10 @@ class HeroEffectIdentity implements VisualIdentity {
             if (x < 0 || x > backend.width) continue;
             this.drawEventDot(backend, x, laneY, event.type, event.intensity);
         }
+    }
+
+    private isPercussiveAudioEvent(event: BeatEvent): boolean {
+        return (event.type === 1 || event.type === 2) && event.intensity >= 0.12;
     }
 
     private drawBeepEventDots(

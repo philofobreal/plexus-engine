@@ -25,7 +25,7 @@
     "adaptiveThreshold": 0.6,
     "hopSize": 1024,
     "frameCount": 96,
-    "eventCount": 3,
+    "eventCount": 7,
     "barCount": 2,
     "sectionCount": 2,
     "patternCount": 0,
@@ -58,8 +58,8 @@
       "eRatio": 0
     },
     "firstEvent": {
-      "time": 0.743039,
-      "intensity": 0.811908,
+      "time": 0.487619,
+      "intensity": 0.491166,
       "type": 1
     },
     "firstSection": {

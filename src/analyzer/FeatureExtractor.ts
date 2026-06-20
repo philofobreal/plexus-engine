@@ -66,13 +66,15 @@ export class FeatureExtractor {
     public zcrT: Float32Array;
     public spectralRolloffT: Float32Array;
     public spectralCrestT: Float32Array;
-    // Multi-band half-wave-rectified spectral flux (raw, per band) plus a normalized
-    // combined onset envelope. Additive outputs consumed by tempo/grid estimation;
+    // Multi-band half-wave-rectified spectral flux (raw, per band) plus normalized
+    // onset/percussive envelopes. Additive outputs consumed by tempo/grid estimation;
     // the legacy single-band `fluxT` is left untouched for backward compatibility.
     public fluxLowT: Float32Array;
     public fluxMidT: Float32Array;
     public fluxHighT: Float32Array;
     public onsetEnvT: Float32Array;
+    public percussiveT: Float32Array;
+    public bassSustainT: Float32Array;
     public typRms: number = 0;
     public typFlux: number = 0;
     public typOnset: number = 0;
@@ -107,6 +109,8 @@ export class FeatureExtractor {
         this.fluxMidT = new Float32Array(this.totalFrames);
         this.fluxHighT = new Float32Array(this.totalFrames);
         this.onsetEnvT = new Float32Array(this.totalFrames);
+        this.percussiveT = new Float32Array(this.totalFrames);
+        this.bassSustainT = new Float32Array(this.totalFrames);
     }
 
     public process(onProgress?: (p: number) => void): void {
@@ -231,6 +235,10 @@ export class FeatureExtractor {
         // quiet hi-hat transient and a loud kick transient contribute comparably, then sum.
         // This yields a band-balanced "transient strength over time" curve for tempo/grid
         // estimation that is robust to spectral tilt and per-track mix differences.
+        //
+        // The percussive score is stricter than the tempo onset envelope: it requires
+        // transient/broadband evidence and RMS attack, then subtracts sustained low-end
+        // energy. That keeps rolling bass from entering the visual BeatEvent path.
         const typLow = getTypicalMax(this.fluxLowT);
         const typMid = getTypicalMax(this.fluxMidT);
         const typHigh = getTypicalMax(this.fluxHighT);
@@ -241,8 +249,58 @@ export class FeatureExtractor {
             // Low band weighted highest (kick is the primary metric anchor in EDM),
             // high band lowest (hats are dense and noisy).
             this.onsetEnvT[i] = low * 1.0 + mid * 0.7 + high * 0.4;
+
+            let previousRms = 0;
+            let previousCount = 0;
+            for (let j = Math.max(0, i - 4); j < i; j++) {
+                previousRms += this.rmsT[j] || 0;
+                previousCount++;
+            }
+            const previousAvgRms = previousCount > 0 ? previousRms / previousCount : (this.rmsT[i] || 0);
+            let futureRms = 0;
+            let futureCount = 0;
+            for (let j = i + 1; j <= Math.min(this.totalFrames - 1, i + 5); j++) {
+                futureRms += this.rmsT[j] || 0;
+                futureCount++;
+            }
+            const futureAvgRms = futureCount > 0 ? futureRms / futureCount : 0;
+            const rmsAttack = this.clampUnit(((this.rmsT[i] || 0) - previousAvgRms) / Math.max(this.typRms, EPSILON) * 2.8);
+            const broadFlux = this.clampUnit(this.fluxT[i] / Math.max(this.typFlux, EPSILON));
+            const bassFlux = this.clampUnit(low);
+            const midHighFlux = this.clampUnit(mid * 0.55 + high * 0.75);
+            const fluxTotal = (this.fluxLowT[i] || 0) + (this.fluxMidT[i] || 0) + (this.fluxHighT[i] || 0) + EPSILON;
+            const lowFluxShare = (this.fluxLowT[i] || 0) / fluxTotal;
+            const bassAttackFlux = bassFlux * (0.25 + rmsAttack * 0.75);
+            const bandFluxBalance = this.clampUnit(bassFlux * 0.34 + midHighFlux * 0.42 + broadFlux * 0.24);
+            const onsetSharpness = this.clampUnit(rmsAttack * 0.58 + broadFlux * 0.24 + midHighFlux * 0.18);
+            const transient = this.clampUnit(
+                onsetSharpness * 0.46 +
+                bandFluxBalance * 0.34 +
+                bassAttackFlux * 0.20
+            );
+            const sharpness = this.clampUnit(onsetSharpness * 0.72 + midHighFlux * 0.18 + bassAttackFlux * 0.10);
+            const bassSustain = this.clampUnit(
+                (this.rawBassT[i] || 0) *
+                this.clampUnit((this.rmsT[i] || 0) / Math.max(this.typRms, EPSILON)) *
+                Math.pow(1 - rmsAttack, 1.35)
+            );
+            const futureBassHold = this.clampUnit(
+                (this.rawBassT[i] || 0) *
+                lowFluxShare *
+                this.clampUnit((futureAvgRms / Math.max(this.rmsT[i] || 0, EPSILON) - 0.42) / 0.58)
+            );
+            const sustainedTonePenalty = bassSustain * (0.22 + (1 - rmsAttack) * 0.34) + futureBassHold * 0.62;
+            const pureLowTonePenalty = this.clampUnit(((this.rawBassT[i] || 0) - 0.80) / 0.20) *
+                this.clampUnit((lowFluxShare - 0.82) / 0.18) *
+                (1 - midHighFlux * 0.45);
+
+            this.bassSustainT[i] = Math.max(bassSustain, futureBassHold);
+            this.percussiveT[i] = this.clampUnit(transient * (0.66 + sharpness * 0.34) - sustainedTonePenalty - pureLowTonePenalty * 1.05);
         }
         this.typOnset = getTypicalMax(this.onsetEnvT);
     }
-}
 
+    private clampUnit(value: number): number {
+        return Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
+    }
+}
