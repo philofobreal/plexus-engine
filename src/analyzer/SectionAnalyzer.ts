@@ -1,15 +1,20 @@
-import type { BarAnalysis, TrackSection, TrackSectionLabel, VisualCueKind, VisualFeatureFrame } from '../types';
+import type { AnalysisReason, BarAnalysis, NoveltyPoint, SectionBoundaryCandidate, TrackSection, TrackSectionLabel, VisualCueKind, VisualFeatureFrame } from '../types';
 import { FeatureExtractor } from './FeatureExtractor';
 import { GridAligner } from './GridAligner';
 import { clampUnit } from './utils';
+
+// A novelty peak must clear this to actively drive (snap) an energy-reactive boundary.
+const NOVELTY_SNAP_THRESHOLD = 0.3;
 
 export class SectionAnalyzer {
     private features: FeatureExtractor;
     private grid: GridAligner;
     private sampleRate: number;
     private hopSize: number;
+    private noveltyPeaks: NoveltyPoint[] = [];
     public barAnalyses: BarAnalysis[] = [];
     public trackSections: TrackSection[] = [];
+    public boundaryCandidates: SectionBoundaryCandidate[] = [];
     public adaptiveThreshold: number = 0.5;
 
     constructor(features: FeatureExtractor, grid: GridAligner, sampleRate: number, hopSize: number) {
@@ -125,11 +130,16 @@ export class SectionAnalyzer {
         return clampUnit(1 - Math.abs(value - target) / Math.max(width, 0.001));
     }
 
-    public calculate(visualFeatures: VisualFeatureFrame[]): void {
+    public calculate(visualFeatures: VisualFeatureFrame[], noveltyPeaks: NoveltyPoint[] = []): void {
+        this.noveltyPeaks = noveltyPeaks;
         const { totalFrames, rmsT, rawBassT, rawMidT, rawHighT, typRms } = this.features;
         const totalDuration = totalFrames * this.hopSize / this.sampleRate;
         // Fall back to energy boundaries only when the tempo grid is critically unusable.
         const useEnergyReactiveBoundaries = this.grid.gridConfidence < 0.15 && this.grid.bpmConfidence < 0.20;
+
+        // Surface the novelty-derived candidate boundaries: snapped to bars when the grid is
+        // trusted, left at their raw novelty time (and flagged low-grid) when it is not.
+        this.boundaryCandidates = noveltyPeaks.map(peak => this.toBoundaryCandidate(peak, useEnergyReactiveBoundaries));
         const analysisStepSec = useEnergyReactiveBoundaries
             ? Math.min(4, Math.max(1, totalDuration / 24))
             : this.grid.secondsPerBar;
@@ -226,9 +236,8 @@ export class SectionAnalyzer {
                 let startBar = barBlocks[currentSectionStartIdx];
                 let endBar = barBlocks[i];
                 let startIdx = startBar.startIdx;
-                let endIdx = useEnergyReactiveBoundaries
-                    ? this.findEnergyReactiveBoundary(endBar.endIdx, Math.max(2, Math.floor((endBar.endIdx - endBar.startIdx) * 0.45)))
-                    : endBar.endIdx; // STRICT GRID. No micro-snapping.
+                const boundary = this.resolveBoundary(endBar, useEnergyReactiveBoundaries, isLastBar);
+                let endIdx = boundary.endIdx;
                 if (this.trackSections.length > 0 && useEnergyReactiveBoundaries) {
                     startIdx = Math.floor(this.trackSections[this.trackSections.length - 1].end * this.sampleRate / this.hopSize);
                 }
@@ -270,12 +279,103 @@ export class SectionAnalyzer {
                     density: avgDensity,
                     dominantFeature: sectionDominantFeature,
                     avgRms: rms.avgRms,
-                    peakRms: rms.peakRms
+                    peakRms: rms.peakRms,
+                    reasons: boundary.reasons
                 });
 
                 currentSectionStartIdx = i + 1;
             }
         }
+    }
+
+    // Decides the frame index for a section's trailing boundary and explains the decision.
+    // STRICT GRID stays bit-identical to the previous behavior (no boundary movement); only the
+    // novelty-aware ENERGY-REACTIVE path may snap a boundary onto a strong novelty peak.
+    private resolveBoundary(
+        endBar: { startIdx: number; endIdx: number },
+        useEnergyReactiveBoundaries: boolean,
+        isLastBar: boolean
+    ): { endIdx: number; timingMode: SectionBoundaryCandidate['timingMode']; reasons: AnalysisReason[] } {
+        const secondsPerFrame = this.hopSize / this.sampleRate;
+
+        if (!useEnergyReactiveBoundaries) {
+            const endIdx = endBar.endIdx; // STRICT GRID. No micro-snapping.
+            const reasons: AnalysisReason[] = ['bar-aligned'];
+            const near = this.nearestPeak(endIdx * secondsPerFrame, this.grid.secondsPerBar * 0.5);
+            if (near) for (const r of near.reasons) if (!reasons.includes(r)) reasons.push(r);
+            if (isLastBar) reasons.push('section-position');
+            return { endIdx, timingMode: 'bar-aligned', reasons };
+        }
+
+        const radiusFrames = Math.max(2, Math.floor((endBar.endIdx - endBar.startIdx) * 0.45));
+        const candidateTime = endBar.endIdx * secondsPerFrame;
+        const radiusSec = radiusFrames * secondsPerFrame;
+        const peak = this.nearestPeak(candidateTime, radiusSec, NOVELTY_SNAP_THRESHOLD);
+
+        if (peak) {
+            const endIdx = Math.round(peak.time / secondsPerFrame);
+            return { endIdx, timingMode: 'novelty', reasons: this.dedup(['low-grid-confidence', ...peak.reasons]) };
+        }
+
+        const endIdx = this.findEnergyReactiveBoundary(endBar.endIdx, radiusFrames);
+        const reasons: AnalysisReason[] = ['low-grid-confidence', 'weak-evidence-fallback'];
+        const direction = this.energyDirectionReason(endIdx);
+        if (direction) reasons.push(direction);
+        if (isLastBar) reasons.push('section-position');
+        return { endIdx, timingMode: 'energy-reactive', reasons };
+    }
+
+    private toBoundaryCandidate(peak: NoveltyPoint, useEnergyReactiveBoundaries: boolean): SectionBoundaryCandidate {
+        if (useEnergyReactiveBoundaries) {
+            return {
+                time: peak.time,
+                confidence: clampUnit(peak.value),
+                timingMode: 'novelty',
+                reasons: this.dedup([...peak.reasons, 'low-grid-confidence'])
+            };
+        }
+        return {
+            time: this.snapToBar(peak.time),
+            confidence: clampUnit(peak.value * this.grid.gridConfidence),
+            timingMode: 'bar-aligned',
+            reasons: peak.reasons.length ? peak.reasons.slice() : ['novelty-peak']
+        };
+    }
+
+    private snapToBar(time: number): number {
+        const spb = this.grid.secondsPerBar;
+        if (!(spb > 0)) return time;
+        const offset = this.grid.gridOffset || 0;
+        return offset + Math.round((time - offset) / spb) * spb;
+    }
+
+    private nearestPeak(time: number, radiusSec: number, minValue = 0): NoveltyPoint | null {
+        let best: NoveltyPoint | null = null;
+        let bestDistance = Infinity;
+        for (const peak of this.noveltyPeaks) {
+            if (peak.value < minValue) continue;
+            const distance = Math.abs(peak.time - time);
+            if (distance <= radiusSec && distance < bestDistance) {
+                bestDistance = distance;
+                best = peak;
+            }
+        }
+        return best;
+    }
+
+    private energyDirectionReason(frameIndex: number): AnalysisReason | null {
+        const { rmsT, totalFrames } = this.features;
+        const before = rmsT[Math.max(0, frameIndex - 2)] ?? 0;
+        const after = rmsT[Math.min(totalFrames - 1, frameIndex + 2)] ?? 0;
+        if (after - before > 0.05) return 'energy-rise';
+        if (before - after > 0.05) return 'energy-drop';
+        return null;
+    }
+
+    private dedup(reasons: AnalysisReason[]): AnalysisReason[] {
+        const out: AnalysisReason[] = [];
+        for (const r of reasons) if (!out.includes(r)) out.push(r);
+        return out;
     }
 
     private findEnergyReactiveBoundary(centerIdx: number, radiusFrames: number): number {
@@ -301,4 +401,4 @@ export class SectionAnalyzer {
         return bestIdx;
     }
 }
-
+
