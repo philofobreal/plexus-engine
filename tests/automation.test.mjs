@@ -342,3 +342,40 @@ test('generatePerformancePlan assigns dynamic intensity proportional to section 
   // All intensities are finite positive numbers
   assert.ok(plan.points.every(p => Number.isFinite(p.intensity) && p.intensity > 0));
 });
+
+test('weak-grid sections produce novelty timing mode and damped confidence', async () => {
+  // A beatless/low-grid track: section boundaries came from novelty, not bars.
+  const weak = createTrackAnalysis([
+    { ...createSection(0, 20, 'verse', 'melody', 0.4, 0.4), reasons: ['low-grid-confidence', 'novelty-peak'] },
+    { ...createSection(20, 45, 'drop', 'impact', 0.9, 0.8), reasons: ['low-grid-confidence', 'novelty-peak', 'energy-rise'] }
+  ]);
+  weak.bpm = 0;
+  weak.bpmConfidence = 0.1;
+  weak.gridConfidence = 0.1;
+  weak.timingConfidence = { tempo: 0.1, beat: 0.1, grid: 0.1, overall: 0.1 };
+
+  const strong = createTrackAnalysis([
+    { ...createSection(0, 20, 'verse', 'melody', 0.4, 0.4), reasons: ['bar-aligned'] },
+    { ...createSection(20, 45, 'drop', 'impact', 0.9, 0.8), reasons: ['bar-aligned', 'energy-rise'] }
+  ]);
+  strong.bpm = 124;
+  strong.bpmConfidence = 0.92;
+  strong.gridConfidence = 0.9;
+  strong.timingConfidence = { tempo: 0.9, beat: 0.9, grid: 0.9, overall: 0.9 };
+
+  const weakPlan = await generatePerformancePlan(weak, ['default.json'], 45);
+  const strongPlan = await generatePerformancePlan(strong, ['default.json'], 45);
+
+  const weakDrop = weakPlan.points.find(p => p.reason === 'drop');
+  const strongDrop = strongPlan.points.find(p => p.reason === 'drop');
+  assert.ok(weakDrop && strongDrop);
+
+  // Novelty-driven boundary on an untrusted grid is flagged 'novelty', never bar-aligned.
+  assert.equal(weakDrop.timingMode, 'novelty');
+  assert.equal(strongDrop.timingMode, 'bar-aligned');
+
+  // Critically low overall timing confidence damps the automation point confidence.
+  assert.ok(weakDrop.confidence < strongDrop.confidence,
+    `weak drop confidence ${weakDrop.confidence} should be < strong ${strongDrop.confidence}`);
+  assert.ok((weakDrop.analysisConfidence ?? 1) <= 0.2);
+});

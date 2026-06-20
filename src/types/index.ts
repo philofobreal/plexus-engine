@@ -132,7 +132,7 @@ export interface PerformanceAutomationPoint {
     preset: string;
     confidence: number;
     analysisConfidence?: number;
-    timingMode?: 'bar-aligned' | 'energy-reactive';
+    timingMode?: 'bar-aligned' | 'energy-reactive' | 'novelty';
     intensity: number;
     reason: PerformanceAutomationReason;
     morphDurationSec: number;

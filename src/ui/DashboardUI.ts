@@ -1790,7 +1790,7 @@ export class DashboardUI {
                 && typeof candidate.morphDurationSec === 'number'
                 && this.isMorphCurve(candidate.morphCurve)
                 && (candidate.analysisConfidence === undefined || typeof candidate.analysisConfidence === 'number')
-                && (candidate.timingMode === undefined || candidate.timingMode === 'bar-aligned' || candidate.timingMode === 'energy-reactive')
+                && (candidate.timingMode === undefined || candidate.timingMode === 'bar-aligned' || candidate.timingMode === 'energy-reactive' || candidate.timingMode === 'novelty')
                 && (candidate.locked === undefined || typeof candidate.locked === 'boolean');
         });
     }

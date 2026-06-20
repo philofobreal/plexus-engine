@@ -333,7 +333,7 @@ function generatePass3Patterns(
                 preset,
                 confidence: clampAnalysisConfidence(occ.confidence, trackAnalysis),
                 analysisConfidence: getAnalysisConfidence(trackAnalysis),
-                timingMode: getTimingMode(trackAnalysis),
+                timingMode: getSectionTimingMode(section, trackAnalysis),
                 intensity: computeIntensity(section),
                 reason: 'harmonicShift',
                 morphDurationSec: profile.morphDurationSec,
@@ -378,7 +378,7 @@ function generatePass4MicroCues(
             preset,
             confidence: clampAnalysisConfidence(cue.confidence, trackAnalysis),
             analysisConfidence: getAnalysisConfidence(trackAnalysis),
-            timingMode: getTimingMode(trackAnalysis),
+            timingMode: getSectionTimingMode(section, trackAnalysis),
             intensity: computeIntensity(section) * (cue.kind === 'impact' ? 1.2 : 1.0),
             reason: cue.kind === 'impact' ? 'drop' : 'harmonicShift',
             morphDurationSec: Math.min(profile.morphDurationSec, 1.5),
@@ -435,7 +435,7 @@ function createPoint(section: TrackSection, sectionIndex: number, time: number, 
         preset: choosePreset(section, presets, presetMetadata),
         confidence: clampAnalysisConfidence(Math.max(0.5, (section.energy + section.density) * 0.5), trackAnalysis),
         analysisConfidence: getAnalysisConfidence(trackAnalysis),
-        timingMode: getTimingMode(trackAnalysis),
+        timingMode: getSectionTimingMode(section, trackAnalysis),
         intensity: computeIntensity(section),
         reason: getAutomationReason(section),
         morphDurationSec: profile.morphDurationSec,
@@ -609,18 +609,31 @@ function shouldUseGridTiming(trackAnalysis?: TrackAnalysis): boolean {
     return gridConf >= 0.15 || bpmConf >= 0.20;
 }
 
-function getTimingMode(trackAnalysis?: TrackAnalysis): PerformanceAutomationPoint['timingMode'] {
-    return shouldUseGridTiming(trackAnalysis) ? 'bar-aligned' : 'energy-reactive';
+// Per-section timing mode: under a trusted grid every anchor is bar-aligned. When the grid is too
+// weak to trust, the section boundary was placed by the novelty/energy fallback, so the point is
+// flagged 'novelty' (a real change point drove it) or 'energy-reactive' (raw energy fallback) and
+// never pretends to sit on an exact bar.
+function getSectionTimingMode(section: TrackSection, trackAnalysis?: TrackAnalysis): PerformanceAutomationPoint['timingMode'] {
+    if (shouldUseGridTiming(trackAnalysis)) return 'bar-aligned';
+    return section.reasons?.includes('novelty-peak') ? 'novelty' : 'energy-reactive';
 }
 
 function getAnalysisConfidence(trackAnalysis?: TrackAnalysis): number {
     if (!trackAnalysis) return 1;
-    return clamp01(Math.min(trackAnalysis.bpmConfidence ?? 0, trackAnalysis.gridConfidence ?? 0));
+    const evidence = Math.min(trackAnalysis.bpmConfidence ?? 0, trackAnalysis.gridConfidence ?? 0);
+    const overall = trackAnalysis.timingConfidence?.overall ?? evidence;
+    return clamp01(Math.min(evidence, overall));
 }
 
 function clampAnalysisConfidence(confidence: number, trackAnalysis?: TrackAnalysis): number {
     if (!trackAnalysis) return clamp01(confidence);
-    return clamp01(confidence * (0.55 + getAnalysisConfidence(trackAnalysis) * 0.45));
+    const analysisConfidence = getAnalysisConfidence(trackAnalysis);
+    let scaled = confidence * (0.55 + analysisConfidence * 0.45);
+    // Critically weak authoritative timing model: damp harder so beatless/ambient tracks do not
+    // surface automation points that look as confident as bar-locked ones.
+    const overall = trackAnalysis.timingConfidence?.overall ?? analysisConfidence;
+    if (overall < 0.2) scaled *= 0.6;
+    return clamp01(scaled);
 }
 
 function getSectionId(section: TrackSection, index: number): string { return `${index}:${normalizeIdPart(section.label)}:${formatTimeForId(section.start)}`; }
