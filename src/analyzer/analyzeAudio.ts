@@ -102,7 +102,7 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     const featureFrames = visualFeatures;
     const spectralPivot = applySpectralPivot(featureFrames, outFrames, dramaturgy.buildupConfidence, totalFrames);
 
-    const cueBuilder = new DramaturgyBuilder(features, grid, segmenter, sampleRate, hopSize);
+    const cueBuilder = new DramaturgyBuilder(features, grid, segmenter, sampleRate, hopSize, noveltyPeaks);
     cueBuilder.calculate(featureFrames, outFrames);
 
     const trackAnalysis: TrackAnalysis = {

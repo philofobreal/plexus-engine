@@ -27,21 +27,42 @@ export class SectionAnalyzer {
     private scoreSectionLabel(input: {
         avgEnergy: number;
         previousEnergy: number;
+        precedingEnergy: number;
+        precedingBass: number;
         avgDensity: number;
         avgBass: number;
         tension: number;
         dominantFeature: VisualCueKind | 'rhythm';
         isFirstSection: boolean;
         isLastSection: boolean;
-    }): TrackSectionLabel {
+        precededByBuildup: boolean;
+        precededByBreak: boolean;
+        precededByContext: boolean;
+    }): { label: TrackSectionLabel; reasons: AnalysisReason[] } {
         const confidenceFloor = 0.28;
         const energyRise = clampUnit(Math.max(0, input.avgEnergy - input.previousEnergy) * 2.5);
         const energyFall = clampUnit(Math.max(0, input.previousEnergy - input.avgEnergy) * 2.5);
-        const afterLowEnergy = this.scoreBelow(input.previousEnergy, 0.42, 0.28);
         const afterHighEnergy = this.scoreAbove(input.previousEnergy, 0.58, 0.28);
         const firstSection = input.isFirstSection ? 1 : 0;
         const lastSection = input.isLastSection ? 1 : 0;
         const featureAffinity = (features: Array<VisualCueKind | 'rhythm'>) => features.includes(input.dominantFeature) ? 1 : 0;
+
+        // Multi-timeframe contrast: a drop is a high-energy ARRIVAL out of a quieter run of bars
+        // (a break or a buildup), not merely a loud passage. Contrast against the preceding 4-8
+        // bars plus an explicit buildup/break arrival bonus prevents a loud verse from reading as
+        // a drop, while a real post-breakdown/post-buildup drop scores strongly.
+        const dropContrast = clampUnit(Math.max(0, input.avgEnergy - input.precedingEnergy) * 2.2);
+        const afterLowContext = this.scoreBelow(input.precedingEnergy, 0.45, 0.30);
+        const bassReturn = clampUnit(Math.max(0, input.avgBass - input.precedingBass) * 2.2);
+        // The energy-contrast arrival only counts once a real "before" exists (more than just the
+        // intro), so the first groove out of a quiet intro is not mistaken for a drop. An explicit
+        // preceding buildup or break section is itself sufficient prior context.
+        const earlyDamp = input.precededByContext ? 1 : 0;
+        const dropArrival = clampUnit(
+            (input.precededByBuildup ? 0.6 : 0) +
+            (input.precededByBreak ? 0.5 : 0) +
+            dropContrast * afterLowContext * earlyDamp
+        );
 
         // Tune these weights instead of adding rigid threshold branches. Each factor is already normalized to 0..1.
         const scores: Record<TrackSectionLabel, number> = {
@@ -67,10 +88,10 @@ export class SectionAnalyzer {
                 [this.scoreBelow(input.avgBass, 0.50, 0.32), 0.12]
             ]),
             drop: this.weightedScore([
-                [this.scoreAbove(input.avgEnergy, 0.50, 0.30), 0.30],
-                [this.scoreAbove(input.avgBass, 0.34, 0.26), 0.20],
-                [this.scoreAbove(input.avgDensity, 0.50, 0.32), 0.18],
-                [energyRise * afterLowEnergy, 0.22],
+                [this.scoreAbove(input.avgEnergy, 0.52, 0.30), 0.24],
+                [this.scoreAbove(input.avgBass, 0.34, 0.26), 0.18],
+                [this.scoreAbove(input.avgDensity, 0.50, 0.32), 0.14],
+                [dropArrival, 0.34],
                 [featureAffinity(['rhythm', 'impact', 'fx']), 0.10]
             ]),
             break: this.weightedScore([
@@ -105,7 +126,26 @@ export class SectionAnalyzer {
             }
         }
 
-        return bestScore >= confidenceFloor ? bestLabel : 'verse';
+        const label = bestScore >= confidenceFloor ? bestLabel : 'verse';
+
+        // Justify the chosen label with the contrast evidence that drove it.
+        const reasons: AnalysisReason[] = [];
+        if (label === 'drop') {
+            if (input.precededByBuildup) reasons.push('after-buildup');
+            if (input.precededByBreak || afterLowContext > 0.5) reasons.push('energy-rise');
+            if (bassReturn > 0.2) reasons.push('bass-return');
+        } else if (label === 'build') {
+            reasons.push('energy-rise');
+            if (this.scoreAbove(input.tension, 0.46, 0.34) > 0.5) reasons.push('density-rise');
+        } else if (label === 'break') {
+            reasons.push('energy-drop');
+            if (input.avgBass < input.precedingBass - 0.1) reasons.push('bass-drop');
+        } else if (label === 'peak') {
+            if (energyRise > 0.3) reasons.push('energy-rise');
+        }
+        if (input.isFirstSection || input.isLastSection) reasons.push('section-position');
+
+        return { label, reasons };
     }
 
     private weightedScore(factors: Array<[number, number]>): number {
@@ -255,16 +295,39 @@ export class SectionAnalyzer {
                 let avgDensity = averageFeature(startIdx, endIdx, f => f.density);
                 let sectionDominantFeature = dominantFeature(startIdx, endIdx);
                 let previousEnergy = this.trackSections.length > 0 ? this.trackSections[this.trackSections.length - 1].energy : avgEnergy;
-                let label = this.scoreSectionLabel({
+                const previousSection = this.trackSections.length > 0 ? this.trackSections[this.trackSections.length - 1] : null;
+                // Multi-bar lookback: the preceding 4-8 bars before this section, for drop contrast.
+                const lookbackStart = Math.max(0, currentSectionStartIdx - 8);
+                let precedingEnergy = avgEnergy;
+                let precedingBass = avgBass;
+                if (currentSectionStartIdx > 0) {
+                    let sumPrevE = 0, sumPrevBass = 0, prevCount = 0;
+                    for (let k = lookbackStart; k < currentSectionStartIdx; k++) {
+                        sumPrevE += this.barAnalyses[k].energy;
+                        sumPrevBass += this.barAnalyses[k].bass;
+                        prevCount++;
+                    }
+                    if (prevCount > 0) { precedingEnergy = sumPrevE / prevCount; precedingBass = sumPrevBass / prevCount; }
+                }
+                const precededByContext = this.trackSections.length >= 2;
+                const precededByBuildup = previousSection?.label === 'build';
+                const precededByBreak = previousSection?.label === 'break' || (precedingEnergy < 0.30 && precededByContext);
+                const scored = this.scoreSectionLabel({
                     avgEnergy,
                     previousEnergy,
+                    precedingEnergy,
+                    precedingBass,
                     avgDensity,
                     avgBass,
                     tension,
                     dominantFeature: sectionDominantFeature,
                     isFirstSection: this.trackSections.length === 0,
-                    isLastSection: isLastBar
+                    isLastSection: isLastBar,
+                    precededByBuildup,
+                    precededByBreak,
+                    precededByContext
                 });
+                let label = scored.label;
 
                 let rms = {
                     avgRms: clamp01(avgEnergy),
@@ -280,7 +343,7 @@ export class SectionAnalyzer {
                     dominantFeature: sectionDominantFeature,
                     avgRms: rms.avgRms,
                     peakRms: rms.peakRms,
-                    reasons: boundary.reasons
+                    reasons: this.dedup([...boundary.reasons, ...scored.reasons])
                 });
 
                 currentSectionStartIdx = i + 1;

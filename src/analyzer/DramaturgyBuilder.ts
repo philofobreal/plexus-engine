@@ -1,4 +1,4 @@
-import type { AudioFrame, BeatEvent, MusicPattern, PatternOccurrence, TensionTrends, TrackSection, VisualCueEvent, VisualCueKind, VisualFeatureFrame } from '../types';
+import type { AnalysisReason, AudioFrame, BeatEvent, MusicPattern, NoveltyPoint, PatternOccurrence, TensionTrends, TrackSection, VisualCueEvent, VisualCueKind, VisualFeatureFrame } from '../types';
 import { classifyBeat, mapToPublicType } from './BeatEventClassifier';
 import { FeatureExtractor } from './FeatureExtractor';
 import { GridAligner } from './GridAligner';
@@ -91,16 +91,18 @@ export class DramaturgyBuilder {
     private segmenter: SectionAnalyzer;
     private sampleRate: number;
     private hopSize: number;
+    private noveltyPeaks: NoveltyPoint[];
     public events: BeatEvent[] = [];
     public cues: VisualCueEvent[] = [];
     public musicPatterns: MusicPattern[] = [];
 
-    constructor(features: FeatureExtractor, grid: GridAligner, segmenter: SectionAnalyzer, sampleRate: number, hopSize: number) {
+    constructor(features: FeatureExtractor, grid: GridAligner, segmenter: SectionAnalyzer, sampleRate: number, hopSize: number, noveltyPeaks: NoveltyPoint[] = []) {
         this.features = features;
         this.grid = grid;
         this.segmenter = segmenter;
         this.sampleRate = sampleRate;
         this.hopSize = hopSize;
+        this.noveltyPeaks = noveltyPeaks;
     }
 
     public calculate(featureFrames: VisualFeatureFrame[], outFrames: AudioFrame[]): void {
@@ -269,10 +271,14 @@ export class DramaturgyBuilder {
 
     private buildCues(featureFrames: VisualFeatureFrame[], outFrames: AudioFrame[]): void {
         const lastCueTimes: Record<VisualCueKind, number> = { melody: -999, vocal: -999, fx: -999, impact: -999, break: -999, pattern: -999 };
-        const addCue = (frameIdx: number, kind: VisualCueKind, intensity: number, confidence: number, minGap: number, duration: number) => {
+        const addCue = (frameIdx: number, kind: VisualCueKind, intensity: number, confidence: number, minGap: number, duration: number, reasons?: AnalysisReason[]) => {
             let time = frameIdx * this.hopSize / this.sampleRate;
             if (time - lastCueTimes[kind] < minGap) return;
-            this.cues.push({ time, duration, intensity: Math.min(1, Math.max(0, intensity)), confidence: Math.min(1, Math.max(0, confidence)), kind });
+            const cue: VisualCueEvent = { time, duration, intensity: Math.min(1, Math.max(0, intensity)), confidence: Math.min(1, Math.max(0, confidence)), kind };
+            // Significant-moment cues (impact/break) carry novelty-derived reasons for the debug
+            // overlay and automation weighting; lighter melodic/fx cues stay reason-free.
+            if (reasons) cue.reasons = this.reasonsForCue(time, reasons);
+            this.cues.push(cue);
             lastCueTimes[kind] = time;
         };
 
@@ -284,9 +290,27 @@ export class DramaturgyBuilder {
             if (f.melody > 0.52 && f.melody >= prev.melody && f.melody > next.melody) addCue(i, 'melody', f.melody, f.melody, 2.4, secondsPerBeat * 4);
             if (f.vocal > 0.48 && f.vocal >= prev.vocal && f.vocal > next.vocal) addCue(i, 'vocal', f.vocal, f.vocal, 3.2, secondsPerBeat * 8);
             if (f.fx > 0.62 && f.fx >= prev.fx && f.fx > next.fx) addCue(i, 'fx', f.fx, f.fx, 1.2, secondsPerBeat * 2);
-            if (f.density > 0.72 && outFrames[i].eRatio > 0.5) addCue(i, 'impact', f.density, 1.0, 1.8, secondsPerBeat);
-            if (outFrames[i].state === 'LOW_DROP' && outFrames[i - 1].state !== 'LOW_DROP') addCue(i, 'break', 1 - f.density * 0.5, 0.85, 4.0, secondsPerBeat * 8);
+            if (f.density > 0.72 && outFrames[i].eRatio > 0.5) addCue(i, 'impact', f.density, 1.0, 1.8, secondsPerBeat, ['high-transient', 'percussive-onset']);
+            if (outFrames[i].state === 'LOW_DROP' && outFrames[i - 1].state !== 'LOW_DROP') addCue(i, 'break', 1 - f.density * 0.5, 0.85, 4.0, secondsPerBeat * 8, ['energy-drop']);
         }
+    }
+
+    // Enrich a significant-moment cue with reasons from the nearest novelty peak (if any),
+    // keeping the kind-specific base reason so cues stay self-describing even without a peak.
+    private reasonsForCue(time: number, baseReasons: AnalysisReason[]): AnalysisReason[] {
+        const radiusSec = Math.max(0.25, this.grid.secondsPerBar * 0.5);
+        let nearest: NoveltyPoint | null = null;
+        let bestDistance = Infinity;
+        for (const peak of this.noveltyPeaks) {
+            const distance = Math.abs(peak.time - time);
+            if (distance <= radiusSec && distance < bestDistance) {
+                bestDistance = distance;
+                nearest = peak;
+            }
+        }
+        const reasons = [...baseReasons];
+        if (nearest) for (const r of nearest.reasons) if (!reasons.includes(r)) reasons.push(r);
+        return reasons;
     }
 
     private sectionPatternDistance(section: TrackSection, group: { centroidEnergy: number; centroidDensity: number; dominantFeature: VisualCueKind | 'rhythm' }): number {
