@@ -5,6 +5,7 @@ import { FeatureClassifier } from './FeatureClassifier';
 import { FeatureExtractor, PERCEPTUAL_SPECTRUM_BAND_COUNT, PERCEPTUAL_SPECTRUM_MAX_HZ, PERCEPTUAL_SPECTRUM_MIN_HZ } from './FeatureExtractor';
 import { normalizeArray } from './FeatureNormalizer';
 import { GridAligner } from './GridAligner';
+import { NoveltyAnalyzer } from './NoveltyAnalyzer';
 import { SectionAnalyzer } from './SectionAnalyzer';
 import { applySpectralPivot } from './SpectralPivot';
 import { estimateSpectralCalibration } from './SpectralCalibration';
@@ -79,6 +80,9 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
         };
     }
 
+    const novelty = new NoveltyAnalyzer(visualFeatures, outFrames, hopSize, sampleRate);
+    const noveltyCurve = novelty.computeCurve();
+
     const segmenter = new SectionAnalyzer(features, grid, sampleRate, hopSize);
     segmenter.calculate(visualFeatures);
 
@@ -116,6 +120,8 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
         buildupConfidence: dramaturgy.buildupConfidence,
         spectralPivot,
         tensionTrends: dramaturgy.tensionTrends,
+        noveltyCurve,
+        boundaryCandidates: [],
         featureHopSize: hopSize,
         gridOffset: grid.gridOffset,
         tempo: grid.tempo,
