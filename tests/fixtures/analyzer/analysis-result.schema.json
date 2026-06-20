@@ -15,6 +15,9 @@
     "frames",
     "events",
     "hopSize",
+    "beats",
+    "barStarts",
+    "timingConfidence",
     "trackAnalysis"
   ],
   "properties": {
@@ -28,9 +31,23 @@
     "frames": { "type": "array", "items": { "$ref": "#/$defs/audioFrame" } },
     "events": { "type": "array", "items": { "$ref": "#/$defs/beatEvent" } },
     "hopSize": { "type": "number" },
+    "beats": { "type": "array", "items": { "type": "number" } },
+    "barStarts": { "type": "array", "items": { "type": "number" } },
+    "timingConfidence": { "$ref": "#/$defs/timingConfidence" },
     "trackAnalysis": { "$ref": "#/$defs/trackAnalysis" }
   },
   "$defs": {
+    "timingConfidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tempo", "beat", "grid", "overall"],
+      "properties": {
+        "tempo": { "type": "number" },
+        "beat": { "type": "number" },
+        "grid": { "type": "number" },
+        "overall": { "type": "number" }
+      }
+    },
     "autoState": {
       "type": "string",
       "enum": ["IDLE", "HIGH", "LOW", "LOW_DROP", "LOW_OVERLOAD"]
@@ -220,7 +237,14 @@
         "spectralPivot",
         "tensionTrends",
         "featureHopSize",
-        "gridOffset"
+        "gridOffset",
+        "tempo",
+        "tempoConfidence",
+        "beats",
+        "beatConfidence",
+        "barStarts",
+        "alternativeTempos",
+        "timingConfidence"
       ],
       "properties": {
         "duration": { "type": "number" },
@@ -239,7 +263,14 @@
         "spectralPivot": { "type": "array", "items": { "type": "number" } },
         "tensionTrends": { "$ref": "#/$defs/tensionTrends" },
         "featureHopSize": { "type": "number" },
-        "gridOffset": { "type": "number" }
+        "gridOffset": { "type": "number" },
+        "tempo": { "type": "number" },
+        "tempoConfidence": { "type": "number" },
+        "beats": { "type": "array", "items": { "type": "number" } },
+        "beatConfidence": { "type": "number" },
+        "barStarts": { "type": "array", "items": { "type": "number" } },
+        "alternativeTempos": { "type": "array", "items": { "type": "number" } },
+        "timingConfidence": { "$ref": "#/$defs/timingConfidence" }
       }
     }
   }

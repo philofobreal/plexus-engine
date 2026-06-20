@@ -109,7 +109,33 @@ export class DramaturgyBuilder {
         this.buildPatterns();
     }
 
+    // Beat events are derived from the authoritative grid (GridAligner.beats), not from an
+    // independent peak-picker, so every downstream consumer shares one timing model. Each
+    // beat is typed/weighted from the spectral features at its nearest analysis frame.
+    //
+    // The DP beat tracker intentionally extrapolates the grid through silent breakdowns to
+    // keep musical timing continuous, but a silent beat has no transient to react to. We
+    // therefore suppress the *visual* event on beats whose local onset energy is negligible,
+    // so breakdowns do not flood the renderer with phantom beat flashes. The grid itself
+    // (grid.beats / grid.barStarts) still spans the silence.
     private buildBeatEvents(): void {
+        const beats = this.grid.beats;
+        if (beats.length > 0) {
+            const typFlux = this.features.typFlux || 1;
+            const fluxFloor = typFlux * 0.12;
+            for (const time of beats) {
+                const frame = Math.max(0, Math.min(this.features.totalFrames - 1, Math.round(time * this.sampleRate / this.hopSize)));
+                const localFlux = this.localPeakFlux(frame);
+                if (localFlux < fluxFloor) continue; // extrapolated beat in a silent/ambient region
+                const intensity = Math.min(1, Math.max(0.05, localFlux / typFlux));
+                const type: 1 | 2 | 3 = mapToPublicType(classifyBeat(frame, this.features));
+                this.events.push({ time, intensity, type });
+            }
+            return;
+        }
+
+        // Fallback only when the grid produced no beats (e.g. silence): degrade to a
+        // conservative flux peak-picker so visuals still receive transient events.
         const minGap = Math.max(0.1, (60 / this.grid.estimatedBPM) * 0.25);
         let lastBeatTime = -999;
         for (let i = 1; i < this.features.totalFrames - 1; i++) {
@@ -123,6 +149,16 @@ export class DramaturgyBuilder {
                 }
             }
         }
+    }
+
+    // Peak spectral flux within +/-2 frames of a beat, so a real transient near the beat is
+    // captured even if the grid frame is a sample off, while genuine silence reads as ~0.
+    private localPeakFlux(frame: number): number {
+        let peak = 0;
+        for (let i = frame - 2; i <= frame + 2; i++) {
+            if (i >= 0 && i < this.features.totalFrames) peak = Math.max(peak, this.features.fluxT[i] || 0);
+        }
+        return peak;
     }
 
     private buildCues(featureFrames: VisualFeatureFrame[], outFrames: AudioFrame[]): void {
@@ -220,4 +256,4 @@ export class DramaturgyBuilder {
             });
     }
 }
-
+

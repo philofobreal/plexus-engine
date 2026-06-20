@@ -32,7 +32,14 @@ const emptyTrackAnalysis: TrackAnalysis = {
         segments: []
     },
     featureHopSize: 1024,
-    gridOffset: 0
+    gridOffset: 0,
+    tempo: 0,
+    tempoConfidence: 0,
+    beats: [],
+    beatConfidence: 0,
+    barStarts: [],
+    alternativeTempos: [],
+    timingConfidence: { tempo: 0, beat: 0, grid: 0, overall: 0 }
 };
 
 const emptyModulation: ModulationState = {

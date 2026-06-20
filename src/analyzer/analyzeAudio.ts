@@ -108,7 +108,14 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
         spectralPivot,
         tensionTrends: dramaturgy.tensionTrends,
         featureHopSize: hopSize,
-        gridOffset: grid.gridOffset
+        gridOffset: grid.gridOffset,
+        tempo: grid.tempo,
+        tempoConfidence: grid.tempoConfidence,
+        beats: grid.beats,
+        beatConfidence: grid.beatConfidence,
+        barStarts: grid.barStarts,
+        alternativeTempos: grid.alternativeTempos,
+        timingConfidence: grid.timingConfidence
     };
 
     return {
@@ -119,6 +126,9 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
         downbeatConfidence: grid.downbeatConfidence,
         tempoCandidates: grid.tempoCandidates,
         adaptiveThreshold: segmenter.adaptiveThreshold, frames: outFrames, events: cueBuilder.events, hopSize,
+        beats: grid.beats,
+        barStarts: grid.barStarts,
+        timingConfidence: grid.timingConfidence,
         trackAnalysis
     };
 }

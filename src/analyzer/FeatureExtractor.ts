@@ -66,8 +66,16 @@ export class FeatureExtractor {
     public zcrT: Float32Array;
     public spectralRolloffT: Float32Array;
     public spectralCrestT: Float32Array;
+    // Multi-band half-wave-rectified spectral flux (raw, per band) plus a normalized
+    // combined onset envelope. Additive outputs consumed by tempo/grid estimation;
+    // the legacy single-band `fluxT` is left untouched for backward compatibility.
+    public fluxLowT: Float32Array;
+    public fluxMidT: Float32Array;
+    public fluxHighT: Float32Array;
+    public onsetEnvT: Float32Array;
     public typRms: number = 0;
     public typFlux: number = 0;
+    public typOnset: number = 0;
 
     constructor(channel: Float32Array, sampleRate: number, hopSize: number, calibration?: SpectralCalibration) {
         this.channel = channel;
@@ -95,6 +103,10 @@ export class FeatureExtractor {
         this.zcrT = new Float32Array(this.totalFrames);
         this.spectralRolloffT = new Float32Array(this.totalFrames);
         this.spectralCrestT = new Float32Array(this.totalFrames);
+        this.fluxLowT = new Float32Array(this.totalFrames);
+        this.fluxMidT = new Float32Array(this.totalFrames);
+        this.fluxHighT = new Float32Array(this.totalFrames);
+        this.onsetEnvT = new Float32Array(this.totalFrames);
     }
 
     public process(onProgress?: (p: number) => void): void {
@@ -126,6 +138,7 @@ export class FeatureExtractor {
 
             let sumMag = 0, sumFreqMag = 0, sumLogMag = 0;
             let currentFlux = 0, eSub = 0, eBass = 0, eLowMid = 0, eMid = 0, ePresence = 0, eBrilliance = 0, eAir = 0;
+            let fluxLow = 0, fluxMid = 0, fluxHigh = 0;
             let maxMag = 0;
             let activeBins = 0;
 
@@ -143,6 +156,11 @@ export class FeatureExtractor {
                 if (mag > maxMag) maxMag = mag;
 
                 currentFlux += fluxDiff;
+                // Split half-wave-rectified flux into low/mid/high onset bands so that
+                // kick transients and hi-hat transients are detected independently.
+                if (hz < 200) fluxLow += fluxDiff;
+                else if (hz < 2000) fluxMid += fluxDiff;
+                else fluxHigh += fluxDiff;
 
                 if (hz >= this.bandsHz.sub.min && hz < this.bandsHz.sub.max) eSub += mag;
                 else if (hz >= this.bandsHz.bass.min && hz < this.bandsHz.bass.max) eBass += mag;
@@ -167,6 +185,9 @@ export class FeatureExtractor {
             }
 
             this.fluxT[i] = currentFlux;
+            this.fluxLowT[i] = fluxLow;
+            this.fluxMidT[i] = fluxMid;
+            this.fluxHighT[i] = fluxHigh;
             let totalBand = eSub + eBass + eLowMid + eMid + ePresence + eBrilliance + eAir + EPSILON;
             this.subT[i] = eSub / totalBand;
             this.bassT[i] = eBass / totalBand;
@@ -205,6 +226,23 @@ export class FeatureExtractor {
         };
         this.typRms = getTypicalMax(this.rmsT);
         this.typFlux = getTypicalMax(this.fluxT);
+
+        // Combined onset envelope: normalize each band by its own typical level so that a
+        // quiet hi-hat transient and a loud kick transient contribute comparably, then sum.
+        // This yields a band-balanced "transient strength over time" curve for tempo/grid
+        // estimation that is robust to spectral tilt and per-track mix differences.
+        const typLow = getTypicalMax(this.fluxLowT);
+        const typMid = getTypicalMax(this.fluxMidT);
+        const typHigh = getTypicalMax(this.fluxHighT);
+        for (let i = 0; i < this.totalFrames; i++) {
+            const low = this.fluxLowT[i] / typLow;
+            const mid = this.fluxMidT[i] / typMid;
+            const high = this.fluxHighT[i] / typHigh;
+            // Low band weighted highest (kick is the primary metric anchor in EDM),
+            // high band lowest (hats are dense and noisy).
+            this.onsetEnvT[i] = low * 1.0 + mid * 0.7 + high * 0.4;
+        }
+        this.typOnset = getTypicalMax(this.onsetEnvT);
     }
 }
-
+

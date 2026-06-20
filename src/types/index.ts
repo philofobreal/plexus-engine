@@ -13,6 +13,32 @@ export interface TempoCandidate {
     isDoubleTime: boolean;
 }
 
+export interface TempoAnalysis {
+    bpm: number;
+    confidence: number;
+    alternativeTempos: number[];
+}
+
+export interface BeatAnalysis {
+    beats: number[];
+    confidence: number;
+}
+
+export interface TimingConfidence {
+    tempo: number;
+    beat: number;
+    grid: number;
+    overall: number;
+}
+
+export interface MusicalGrid {
+    bpm: number;
+    beatTimes: number[];
+    barStarts: number[];
+    offset: number;
+    confidence: number;
+}
+
 export type AutoState = 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
 
 export type VisualMode = 'classic' | 'temporal' | 'dark-techno' | 'organic-ambient' | 'cyberpunk' | 'hero';
@@ -255,6 +281,14 @@ export interface TrackAnalysis {
     tensionTrends: TensionTrends;
     featureHopSize: number;
     gridOffset: number;
+    // Authoritative musical timing model (single source of truth for downstream consumers).
+    tempo: number;
+    tempoConfidence: number;
+    beats: number[];
+    beatConfidence: number;
+    barStarts: number[];
+    alternativeTempos: number[];
+    timingConfidence: TimingConfidence;
 }
 
 export interface TimelineLayers {
@@ -318,6 +352,10 @@ export interface AnalysisResult {
     frames: AudioFrame[];
     events: BeatEvent[];
     hopSize: number;
+    // Authoritative timing model, mirrored at the top level for direct worker consumers.
+    beats: number[];
+    barStarts: number[];
+    timingConfidence: TimingConfidence;
     trackAnalysis: TrackAnalysis;
 }
 

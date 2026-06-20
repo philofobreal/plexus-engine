@@ -18,7 +18,14 @@ export const EMPTY_TRACK_ANALYSIS: TrackAnalysis = {
     spectralPivot: [],
     tensionTrends: { globalSlope: 0, peakTime: 0, peakValue: 0, segments: [] },
     featureHopSize: DEFAULT_ANALYSIS_HOP_SIZE,
-    gridOffset: 0
+    gridOffset: 0,
+    tempo: 0,
+    tempoConfidence: 0,
+    beats: [],
+    beatConfidence: 0,
+    barStarts: [],
+    alternativeTempos: [],
+    timingConfidence: { tempo: 0, beat: 0, grid: 0, overall: 0 }
 };
 
 export function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis, fallbackBpm = 0): TrackAnalysis {
@@ -35,6 +42,13 @@ export function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis, fallbackBpm
         spectralPivot: trackAnalysis.spectralPivot || [],
         tensionTrends: trackAnalysis.tensionTrends || EMPTY_TRACK_ANALYSIS.tensionTrends,
         featureHopSize: trackAnalysis.featureHopSize || DEFAULT_ANALYSIS_HOP_SIZE,
-        gridOffset: trackAnalysis.gridOffset || 0
+        gridOffset: trackAnalysis.gridOffset || 0,
+        tempo: trackAnalysis.tempo || trackAnalysis.bpm || fallbackBpm || 0,
+        tempoConfidence: trackAnalysis.tempoConfidence ?? 0,
+        beats: trackAnalysis.beats || [],
+        beatConfidence: trackAnalysis.beatConfidence ?? 0,
+        barStarts: trackAnalysis.barStarts || [],
+        alternativeTempos: trackAnalysis.alternativeTempos || [],
+        timingConfidence: trackAnalysis.timingConfidence || EMPTY_TRACK_ANALYSIS.timingConfidence
     };
 }
