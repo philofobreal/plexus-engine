@@ -12,7 +12,7 @@ import type {
 } from '../types';
 import { featureFlags } from '../config/featureFlags.ts';
 
-// ─── Constants & Configuration ────────────────────────────────────────────────
+// Constants & Configuration
 
 const LONG_SECTION_SEC = 16.0;
 const BUILDUP_PEAK_THRESHOLD = 0.85;
@@ -31,7 +31,7 @@ const SECTION_INTENSITY: Record<TrackSectionLabel | 'default', number> = {
 
 type PresetMetadata = Record<string, any>;
 
-// ─── Public API ───────────────────────────────────────────────────────────────
+// Public API
 
 export interface GeneratorOptions {
     strategy: 'dramaturgy' | 'hero' | 'strict';
@@ -80,7 +80,7 @@ export async function generatePerformancePlan(
     return finalizePlan(points);
 }
 
-// ─── Strategy: Strict Alternating ─────────────────────────────────────────────
+// Strategy: Strict Alternating
 
 function generateStrictPlan(
     trackAnalysis: TrackAnalysis,
@@ -116,7 +116,7 @@ function generateStrictPlan(
     return finalizePlan(points);
 }
 
-// ─── Strategy: Hero Rhythm (preset remapping) ─────────────────────────────────
+// Strategy: Hero Rhythm (preset remapping)
 
 async function ensureHeroPresetsLoaded(presets: string[], metadata: Record<string, any>): Promise<void> {
     await Promise.all(presets.map(async (preset) => {
@@ -163,7 +163,7 @@ function getPresetForBeepMode(mode: number, presets: string[], metadata: Record<
     return getFallbackPreset(presets);
 }
 
-// ─── Plan finalization (shared by all strategies) ─────────────────────────────
+// Plan finalization (shared by all strategies)
 
 function finalizePlan(points: PerformanceAutomationPoint[]): PerformanceAutomationPlan {
     points.sort((a, b) => a.time - b.time);
@@ -211,7 +211,7 @@ function finalizePlan(points: PerformanceAutomationPoint[]): PerformanceAutomati
     return { version: 1, source: 'auto', points: cleanPoints };
 }
 
-// ─── Pass 1: Section Anchors (The Foundation) ─────────────────────────────────
+// Pass 1: Section Anchors (The Foundation)
 
 function generatePass1SectionAnchors(
     trackAnalysis: TrackAnalysis,
@@ -240,7 +240,7 @@ function generatePass1SectionAnchors(
     return points;
 }
 
-// ─── Pass 2: Dramaturgy (Tension) ─────────────────────────────────────────────
+// Pass 2: Dramaturgy (Tension)
 
 function generatePass2Dramaturgy(
     trackAnalysis: TrackAnalysis,
@@ -296,7 +296,7 @@ function generatePass2Dramaturgy(
     return points;
 }
 
-// ─── Pass 3: Pattern-based points ─────────────────────────────────────────────
+// Pass 3: Pattern-based points
 
 function generatePass3Patterns(
     trackAnalysis: TrackAnalysis,
@@ -345,7 +345,7 @@ function generatePass3Patterns(
     return points;
 }
 
-// ─── Pass 4: Micro-cues ────────────────────────────────────────────────────────
+// Pass 4: Micro-cues
 
 function generatePass4MicroCues(
     trackAnalysis: TrackAnalysis,
@@ -389,7 +389,7 @@ function generatePass4MicroCues(
     return points;
 }
 
-// ─── Core Logic Helpers ────────────────────────────────────────────────────────
+// Core Logic Helpers
 
 function mergePoints(target: PerformanceAutomationPoint[], candidates: PerformanceAutomationPoint[], minGap: number): void {
     const sorted = [...candidates].sort((a, b) => ((b as any)._score || 0) - ((a as any)._score || 0));
@@ -423,7 +423,7 @@ function getSignificantCuesInSection(trackAnalysis: TrackAnalysis, section: Trac
         .sort((a, b) => a.time - b.time);
 }
 
-// ─── Point Factories ───────────────────────────────────────────────────────────
+// Point Factories
 
 function createPoint(section: TrackSection, sectionIndex: number, time: number, presets: string[], duration: number, presetMetadata: PresetMetadata, score = 0, trackAnalysis?: TrackAnalysis): PerformanceAutomationPoint {
     void duration;
@@ -455,7 +455,7 @@ function createCuePoint(section: TrackSection, sectionIndex: number, cue: Visual
     };
 }
 
-// ─── Semantic Mapping ─────────────────────────────────────────────────────────
+// Semantic Mapping
 
 function computeIntensity(section: TrackSection): number {
     const base = SECTION_INTENSITY[section.label] ?? SECTION_INTENSITY.default;
@@ -587,7 +587,7 @@ function getAutomationReason(section: TrackSection): PerformanceAutomationReason
     return ['melody', 'vocal'].includes(section.dominantFeature) ? 'harmonicShift' : 'manual';
 }
 
-// ─── Mathematical Utilities ───────────────────────────────────────────────────
+// Mathematical Utilities
 
 function snapToNearestBeat(time: number, bars: BarAnalysis[]): number {
     if (bars.length < 2) return time;
@@ -610,11 +610,13 @@ function shouldUseGridTiming(trackAnalysis?: TrackAnalysis): boolean {
 }
 
 // Per-section timing mode: under a trusted grid every anchor is bar-aligned. When the grid is too
-// weak to trust, the section boundary was placed by the novelty/energy fallback, so the point is
-// flagged 'novelty' (a real change point drove it) or 'energy-reactive' (raw energy fallback) and
-// never pretends to sit on an exact bar.
+// weak to trust, use the accepted boundary candidate at the section start so the point describes
+// how its own timestamp was anchored: novelty peak or raw energy fallback.
 function getSectionTimingMode(section: TrackSection, trackAnalysis?: TrackAnalysis): PerformanceAutomationPoint['timingMode'] {
     if (shouldUseGridTiming(trackAnalysis)) return 'bar-aligned';
+    const startBoundary = trackAnalysis?.boundaryCandidates?.find(candidate => Math.abs(candidate.time - section.start) < 0.05);
+    if (startBoundary) return startBoundary.timingMode;
+    if (section.start <= 0.05) return 'energy-reactive';
     return section.reasons?.includes('novelty-peak') ? 'novelty' : 'energy-reactive';
 }
 

@@ -70,6 +70,15 @@ function createMockAudioBuffer(samples) {
   };
 }
 
+function assertFiniteDrawCoordinates(calls, kinds) {
+  for (const call of calls) {
+    if (!kinds.includes(call[0])) continue;
+    for (const coordinate of call.slice(1)) {
+      assert.equal(Number.isFinite(coordinate), true, `${call[0]} received invalid coordinate: ${coordinate}`);
+    }
+  }
+}
+
 test('TimelineCanvas computes cached RMS waveform amplitudes from an AudioBuffer', () => {
   const canvas = new TimelineCanvas(createMockCanvas());
   canvas.setAudioBuffer(createMockAudioBuffer(new Float32Array([0, 0.25, -0.25, 1, -1, 0.5, -0.5, 0])));
@@ -197,11 +206,7 @@ test('analyzer debug overlay is strictly gated by declarative render state', () 
     isExporting: false, exportTime: 0, currentTime: 0, duration: 20, zoom: 1, pan: 0, bpm: 120,
     sampleRate: 44100, hopSize: 1024, frames: [], sections: [], bars: [], cues: [], significantMoments: [],
     buildupConfidence: [], spectralPivot: [], tensionTrends: { globalSlope: 0, peakTime: 0, peakValue: 0, segments: [] },
-    noveltyCurve: [
-      { time: 0, value: 0.1, reasons: [] },
-      { time: 10, value: 0.9, reasons: ['novelty-peak'] },
-      { time: 20, value: 0.2, reasons: [] }
-    ],
+    noveltyCurve: [0.1, 0.9, 0.2],
     boundaryCandidates: [
       { time: 10, confidence: 0.9, timingMode: 'novelty', reasons: ['novelty-peak'] }
     ],
@@ -228,4 +233,5 @@ test('analyzer debug overlay is strictly gated by declarative render state', () 
   assert.equal(countKind(on, 'lineTo') > countKind(off, 'lineTo'), true, 'novelty curve adds lineTo calls when on');
   assert.equal(countKind(on, 'stroke') > countKind(off, 'stroke'), true, 'novelty curve adds a stroke when on');
   assert.equal(countKind(on, 'fill') > countKind(off, 'fill'), true, 'candidate dots add fill calls when on');
+  assertFiniteDrawCoordinates(on, ['moveTo', 'lineTo', 'arc']);
 });

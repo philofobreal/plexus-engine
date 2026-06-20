@@ -175,7 +175,7 @@ Az elso manualis valtozas utan a plan `source` mezoje `'auto'`-rol `'edited'`-re
 
 Az auto-generalast a `generatePerformancePlan` Strategy Pattern szerint valasztja szet. A `Dramaturgy` strategia a zenei szekciokra es cue-kra epulo alapertelmezett generalas, a `Hero` strategia a szekciokat preset `heroBeepMode` ritmusokra kepezi le, a `Strict` strategia pedig figyelmen kivul hagyja a zenei szekciokat es a kivalasztott preseteket szigoruan a bar-grid szerint valtogatja. A `generatePerformancePlan` emiatt `async`: a `Hero` strategianak preset metadata-ra van szuksege, es ha egy preset meg nincs betoltve, a generator opportunisztikusan lekeri a JSON payloadot, hogy a `heroBeepMode` parameter alapjan helyesen tudjon mapelni.
 
-Kritikusan alacsony grid es BPM confidence eseten a dramaturgiai generator nem kezeli a bar gridet eros idozitesi igazsagkent. Az auto pontok opcionalis `timingMode` mezoje `bar-aligned` vagy `energy-reactive` lehet, az `analysisConfidence` pedig az analyzer BPM/grid evidenciaja alapjan skalazza a pont megbizhatosagat.
+Kritikusan alacsony grid es BPM confidence eseten a dramaturgiai generator nem kezeli a bar gridet eros idozitesi igazsagkent. Az auto pontok opcionalis `timingMode` mezoje `bar-aligned`, `novelty` vagy `energy-reactive` lehet: megbizhato grid alatt `bar-aligned`, gyenge gridnel pedig a section-start `boundaryCandidates` donti el, hogy novelty peak vagy nyers energia fallback helyezte-e el a pontot. Az `analysisConfidence` az analyzer timing evidenciaja alapjan skalazza a pont megbizhatosagat.
 
 Uj pont letrehozasakor a Dashboard:
 
@@ -199,7 +199,7 @@ Az auto-generalalt plan ket menetben valaszt pontokat (Two-Pass Selection):
 
 A `splitTimelineSection` fuggveny, a `getNearestBarSplitTime` split-hatarozas es a `sectionOverrides` kulcs-atvezetes teljesen el lett tavolitva. A preset hivatkozas az editalt plan `PerformanceAutomationPoint.preset` mezojeben tarolodik.
 
-Rendereleskor a `TimelineCanvas` a `State.editedPerformancePlan` (vagy `State.performancePlan`) pontjait jeleníti meg: zona-kezdet, morph-veg, intensity vonal es preset-specifikus neon gorbekit formajaban. A preset betoltese es alkalmazasa tovabbra is a Dashboard/State/AudioEngine korul marad, nem a rendereloben.
+Rendereleskor a `TimelineCanvas` a `State.editedPerformancePlan` (vagy `State.performancePlan`) pontjait jeleniti meg: zona-kezdet, morph-veg, intensity vonal es preset-specifikus neon gorbekit formajaban. A preset betoltese es alkalmazasa tovabbra is a Dashboard/State/AudioEngine korul marad, nem a rendereloben.
 
 ## 5. Tesztelhetoseg es Karbantarthatosag
 
@@ -227,7 +227,7 @@ A `contracts.test.mjs` tovabbra is vedo szerepet tolt be. Kifejezetten ellenorzi
 
 - `State.performancePlan` es `State.editedPerformancePlan` tipusos letezese
 - `PerformanceAutomationPoint` mezok: `id`, `time`, `sectionId`, `preset`, `confidence`, `intensity`, `reason`, `morphDurationSec`, `morphCurve`, opcionalis `locked`
-- opcionalis `PerformanceAutomationPoint` analyzer mezok: `analysisConfidence`, `timingMode`
+- opcionalis `PerformanceAutomationPoint` analyzer mezok: `analysisConfidence`, `timingMode` (`bar-aligned` | `novelty` | `energy-reactive`)
 - `snapToNearestBar` mukodesre vonatkozo contract
 - `constrainPointTime` es `constrainMorphDuration` attfedes-vedelem
 - `minGap = clamp(duration / 30, 8.0, 32.0)` dinamikus pacing
