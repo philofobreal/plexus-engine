@@ -244,7 +244,7 @@ export class TimelineCanvas {
                     ctx.shadowColor = colors.glow;
                     ctx.shadowBlur = 18;
                 }
-                const segmentCount = 15;
+                const segmentCount = Math.max(15, Math.ceil((morphEnd - morphStart) / 2));
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
                 ctx.moveTo(morphStart, topPad);
