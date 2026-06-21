@@ -10,7 +10,7 @@ export class TimelineCanvas {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D | null;
     private waveformCache: HTMLCanvasElement | OffscreenCanvas | null = null;
-    private waveformPeaks: number[] = [];
+    private waveformPeaks: Float32Array = new Float32Array(0);
     private lastWaveformCacheKey = '';
     private cssWidth = 0;
     private cssHeight = 0;
@@ -24,8 +24,10 @@ export class TimelineCanvas {
     setAudioBuffer(buffer: AudioBuffer): void {
         const channelCount = Math.max(1, buffer.numberOfChannels || 1);
         const sampleCount = Math.max(1, buffer.length || 1);
-        const bucketCount = Math.max(512, Math.min(4096, Math.ceil(buffer.duration * 80)));
-        const peaks: number[] = [];
+        
+        // Végig megtartjuk a 80Hz-es felbontást, maximálva 500,000 pontban (~1.7 óra limit).
+        const bucketCount = Math.max(512, Math.min(500000, Math.ceil(buffer.duration * 80)));
+        const peaks = new Float32Array(bucketCount);
 
         for (let bucket = 0; bucket < bucketCount; bucket++) {
             const start = Math.floor((bucket / bucketCount) * sampleCount);
@@ -42,14 +44,14 @@ export class TimelineCanvas {
                 }
             }
 
-            peaks.push(Math.min(1, Math.sqrt(sumSquares / Math.max(1, count))));
+            peaks[bucket] = Math.min(1, Math.sqrt(sumSquares / Math.max(1, count)));
         }
 
         this.waveformPeaks = peaks;
         this.invalidateWaveformCache();
     }
 
-    getWaveformPeaks(): readonly number[] {
+    getWaveformPeaks(): Float32Array {
         return this.waveformPeaks;
     }
 
@@ -802,8 +804,18 @@ export class TimelineCanvas {
 
     private sampleWaveform(time: number, state: RenderState): number {
         if (this.waveformPeaks.length) {
-            const index = this.clamp(Math.floor((time / Math.max(0.001, state.duration)) * this.waveformPeaks.length), 0, this.waveformPeaks.length - 1);
-            return this.waveformPeaks[index] || 0;
+            // Lineáris interpoláció (LERP)
+            // Kiszámoljuk az egzakt lebegőpontos indexet, és a két legközelebbi adatpont között
+            // százalékosan átmenetet (fade) képzünk, így eltűnik a "kockás" lépcső.
+            const exactIndex = (time / Math.max(0.001, state.duration)) * (this.waveformPeaks.length - 1);
+            const idx0 = this.clamp(Math.floor(exactIndex), 0, this.waveformPeaks.length - 1);
+            const idx1 = this.clamp(idx0 + 1, 0, this.waveformPeaks.length - 1);
+            const frac = exactIndex - idx0;
+            
+            const v0 = this.waveformPeaks[idx0] || 0;
+            const v1 = this.waveformPeaks[idx1] || 0;
+            
+            return v0 + (v1 - v0) * frac;
         }
 
         const frameIdx = Math.floor((time * state.sampleRate) / Math.max(1, state.hopSize));
