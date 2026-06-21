@@ -36,6 +36,7 @@
     "wormholeDepth": 2.0,
     "wormholeSpeed": 8.0,
     "wormholeWarp": 4.5,
+    "wormholeCurve": 1.0,
     "heroBeepMode": 4
   }
 }
