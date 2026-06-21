@@ -224,7 +224,7 @@ export class TimelineCanvas {
 
             const xMorphEnd = this.timeToX(point.time + point.morphDurationSec, width, viewport);
             
-            // JAVÍTVA: Ne vágjuk le a pontokat (Math.max/min) a görbe matek előtt, 
+            // Ne vágjuk le a pontokat (Math.max/min) a görbe matek előtt, 
             // mert az torzítja a spline kirajzolását, ha a pont kilóg a képernyőről.
             // A canvas natív clippingje megoldja a képernyőn kívüli részek levágását.
             const morphStart = x;
@@ -234,8 +234,9 @@ export class TimelineCanvas {
             const isHoveredPoint = point.id === state.hoveredPointId;
             const highlightCurve = (isHoveredPoint && state.hoveredHandleType === 'curve') || isSelectedPoint;
 
+            const colors = this.getAutomationColorSignature(point.preset);
+
             if (morphEnd > morphStart) {
-                const colors = this.getAutomationColorSignature(point.preset);
                 const gradient = ctx.createLinearGradient(morphStart, topPad, morphEnd, topPad);
                 gradient.addColorStop(0, highlightCurve ? this.withAlpha(colors.start, 0.28) : colors.start);
                 gradient.addColorStop(1, colors.end);
@@ -289,10 +290,16 @@ export class TimelineCanvas {
             }
 
             if (zoneWidth > 0) {
-                ctx.strokeStyle = '#ffd66f';
-                ctx.lineWidth = 2.5;
+                // DAW-stílusú területkitöltés az intenzitás vonal alatt
+                ctx.fillStyle = this.withAlpha(colors.start, 0.15);
+                ctx.fillRect(zoneLeft, y, zoneWidth, graphBottom - y);
+
+                // Az intenzitás vonala a preset színével
+                ctx.strokeStyle = colors.border;
+                ctx.lineWidth = 2.0;
+                
                 if (isHoveredPoint && state.hoveredHandleType === 'sensitivity') {
-                    ctx.shadowColor = '#ffd66f';
+                    ctx.shadowColor = colors.glow;
                     ctx.shadowBlur = 12;
                 }
                 ctx.beginPath();
@@ -302,8 +309,9 @@ export class TimelineCanvas {
                 ctx.shadowBlur = 0;
             }
 
-            ctx.fillStyle = '#ffd66f';
-            ctx.shadowColor = '#ffd66f';
+            // A fogantyú (diamond) átszínezése a preset színével
+            ctx.fillStyle = colors.border;
+            ctx.shadowColor = colors.glow;
             ctx.shadowBlur = state.isPlaying ? 7 : 0;
             ctx.beginPath();
             ctx.moveTo(x, y - 4);
