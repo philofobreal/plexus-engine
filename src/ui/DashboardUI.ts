@@ -62,7 +62,7 @@ export class DashboardUI {
     private exportCanvas: HTMLCanvasElement | null = null;
     private currentExporter: WebMExporter | null = null;
     private exportCapabilities: ExportCapabilities | null = null;
-    private isUiLockedVisible = false;
+    private isUiLockedVisible = true;
     private videoElement: HTMLVideoElement;
     private videoObjectUrl: string | null = null;
     private videoSampleCanvas: HTMLCanvasElement | null = null;
@@ -75,6 +75,8 @@ export class DashboardUI {
     private tuningCtrl!: TuningController;
     private exportCtrl!: ExportController;
 
+
+    private readonly autoHideTime = 400;
 
     constructor(engine: AudioEngine) {
         this.engine = engine;
@@ -439,7 +441,7 @@ export class DashboardUI {
             this.clearChromeHideTimer();
             document.body.classList.remove('chrome-idle');
         } else {
-            this.scheduleChromeHide(400);
+            this.scheduleChromeHide(this.autoHideTime);
         }
     }
 
@@ -1652,11 +1654,11 @@ export class DashboardUI {
         this.scheduleChromeHide();
     }
 
-    private scheduleChromeHide(delay = 2600): void {
+    private scheduleChromeHide(delay = this.autoHideTime+1000): void {
         this.clearChromeHideTimer();
         if (this.isUiLockedVisible) return;
         this.chromeHideTimer = window.setTimeout(() => {
-            if (this.isChromeHovered()) { this.scheduleChromeHide(2600); return; }
+            if (this.isChromeHovered()) { this.scheduleChromeHide(this.autoHideTime); return; }
             document.body.classList.add('chrome-idle');
         }, delay);
     }
