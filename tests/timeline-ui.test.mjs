@@ -77,6 +77,7 @@ test('dashboard wires GestureEngine and ResizeObserver around the timeline', () 
 
 test('timeline supports fullscreen overlay, zoom viewport, and pan tracking through state', () => {
   const ui = read('src/ui/DashboardUI.ts');
+  const timeline = read('src/ui/TimelineCanvas.ts');
   const state = read('src/state/store.ts');
   const css = read('src/style.css');
 
@@ -85,7 +86,10 @@ test('timeline supports fullscreen overlay, zoom viewport, and pan tracking thro
   assert.match(ui, /toggleTimelineOverlay/);
   assert.match(ui, /is-fullscreen-overlay/);
   assert.match(ui, /private zoomTimeline\(delta: number, focusX: number\)/);
-  assert.match(ui, /State\.zoom = this\.clamp\(State\.zoom \* zoomFactor, 1, 16\)/);
+  assert.match(ui, /const maxZoom = Math\.max\(16, State\.duration \/ 5\.0\)/);
+  assert.match(ui, /State\.zoom = this\.clamp\(State\.zoom \* zoomFactor, 1, maxZoom\)/);
+  assert.match(timeline, /const maxZoom = Math\.max\(16, state\.duration \/ 5\.0\)/);
+  assert.match(timeline, /const zoom = this\.clamp\(state\.zoom, 1, maxZoom\)/);
   assert.match(ui, /private panTimeline\(deltaX: number\)/);
   assert.match(ui, /State\.pan = this\.clampTimelinePan\(State\.pan - deltaSeconds\)/);
   assert.match(ui, /followTimelinePlayhead/);

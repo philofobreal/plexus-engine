@@ -844,8 +844,14 @@ test('dramaturgy timeline draws the audio waveform from precomputed frame energy
   assert.match(timeline, /private drawWaveform/);
   assert.match(timeline, /private waveformCache: HTMLCanvasElement \| OffscreenCanvas \| null = null/);
   assert.match(timeline, /document\.createElement\('canvas'\)/);
-  assert.match(timeline, /private waveformPeaks: number\[\] = \[\]/);
+  assert.match(timeline, /private waveformPeaks: Float32Array = new Float32Array\(0\)/);
   assert.match(timeline, /setAudioBuffer\(buffer: AudioBuffer\)/);
+  assert.match(timeline, /const bucketCount = Math\.max\(512, Math\.min\(500000, Math\.ceil\(buffer\.duration \* 80\)\)\)/);
+  assert.match(timeline, /const peaks = new Float32Array\(bucketCount\)/);
+  assert.match(timeline, /peaks\[bucket\] = Math\.min\(1, Math\.sqrt\(sumSquares \/ Math\.max\(1, count\)\)\)/);
+  assert.match(timeline, /this\.waveformPeaks = peaks/);
+  assert.match(timeline, /const exactIndex = \(time \/ Math\.max\(0\.001, state\.duration\)\) \* \(this\.waveformPeaks\.length - 1\)/);
+  assert.match(timeline, /return v0 \+ \(v1 - v0\) \* frac/);
   assert.match(timeline, /state\.frames/);
   assert.match(timeline, /state\.sampleRate/);
   assert.match(timeline, /state\.hopSize/);
