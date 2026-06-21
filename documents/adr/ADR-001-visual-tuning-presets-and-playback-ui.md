@@ -78,6 +78,14 @@ Keep visual event index synchronization event-driven. `PlexusRenderer` registers
 - **Semantic Preset Mapping:** `PerformancePlanGenerator` scores preloaded preset metadata from `State.preloadedPresets` / `GeneratorOptions.presetMetadata` before using legacy filename hints. Drop/peak, build, break/intro, vocal, melody, and fx sections are matched against tuning and dramaturgy parameters such as `particleEnergySpeed`, `particleBeatSpeed`, `dropDampening`, `buildupIntensity`, `breakRestraint`, `vocalHighlight`, and `fxChaos`.
 - **Reactive Video Backplate:** The muted video backplate remains synchronized to the `AudioEngine` master clock, but normal playback may modulate `video.playbackRate` from `macroMomentum` and `rhythmicImpulse` in the `0.5x..2.0x` range. `DashboardUI` also samples a 4x4 offscreen canvas from the current video frame and publishes averaged RGB into `State.videoDominantColor`. Export mode skips playback-rate modulation.
 
+## Decisions Extended (2026-06-21)
+
+- **Same-File Reload:** `PlaybackController` clears the upload input value after reading the selected file from the `change` event. This allows the same media file to be selected again and routed through the normal load path. The decision stays inside the DOM controller and does not alter `AudioEngine` ownership of decode, playback lifecycle, source nodes, request ids, or stale worker rejection.
+- **Locked-Visible Chrome Start:** Dashboard chrome starts locked visible. The visual-surface single-click gesture can unpin it into chrome auto-hide, using `400ms` for explicit unpin feedback and about `1400ms` for ordinary inactivity. Hovering or focusing chrome cancels the pending hide; if a timer expires while chrome is hovered, hiding is rescheduled instead of applied. This remains UI chrome behavior owned by `DashboardUI` and CSS.
+- **Dynamic Timeline Viewport Zoom:** `State.zoom` and `State.pan` remain the canonical timeline viewport state. `DashboardUI` and `TimelineCanvas` use the same max zoom calculation, `max(16, duration / 5.0)`, so long tracks can zoom beyond the old fixed `16x` cap while preserving at least about five visible seconds. User interaction semantics remain in `DashboardUI`; rendering consumes the clamped viewport declaratively in `TimelineCanvas`.
+- **Automation Rendering At Viewport Edges:** `TimelineCanvas` keeps partially visible automation zones visible at timeline viewport boundaries. Morph curve math uses unclipped x coordinates and relies on canvas clipping, so offscreen starts or ends do not distort `linear`, `easeInOut`, or `exponential` curves. Preset-derived colors mark automation zones, morph curves, intensity lines, and sensitivity handle state; the post-morph zone segment is dimmed. Curve segment count is at least `15` and grows with curve width. RMS/bar drawing includes a small offscreen time margin so lines remain visually continuous at viewport edges.
+- **Waveform Cache For Deep Zoom:** `TimelineCanvas.setAudioBuffer()` stores precomputed waveform peaks in a `Float32Array` with a target `80 Hz` bucket resolution and a `500000` bucket upper bound. Waveform sampling linearly interpolates adjacent buckets to avoid blocky deep-zoom output. This is still a cached waveform projection and fallback to precomputed `AudioFrame.e`; no runtime audio analysis or analyzer DSP behavior changes.
+
 ## Consequences
 
 Positive:
@@ -93,6 +101,7 @@ Positive:
 - `GLITCH_LOW_DROP` animations use a deterministic, exponentially decaying `glitchIntensity`, which keeps video export behavior reproducible for the same playback state.
 - State changes use a 150ms `MIN_STATE_DURATION` cooldown and hysteresis margin to reduce dense state jitter.
 - UI chrome can be refined independently from p5 visual effects.
+- File input reload behavior is isolated to `PlaybackController`, so same-file reload does not add playback lifecycle coupling to UI code.
 - Loop mode stays aligned with audio source-node lifecycle.
 - Timeline inspection scales from compact to resized to fullscreen without changing playback ownership.
 - DOM-based hover details remain readable and avoid text-heavy canvas redraw work on pointer movement.
@@ -102,6 +111,7 @@ Positive:
 - Performance automation points in `State.editedPerformancePlan` are schedulable from playback position events, including seek and paused inspection paths.
 - Playback stop feels visually continuous while Web Audio source-node lifecycle remains strict.
 - Timeline waveform redraw cost is bounded by cache invalidation instead of normal frame cadence.
+- Deep timeline zoom keeps the waveform and automation curves readable without moving audio analysis into the render path.
 - Visual identities can be added without changing `PlexusRenderer` branching logic.
 - Invalid or future preset visual mode values no longer crash rendering because style lookup falls back to `classic`.
 - New visual styles receive deterministic, browser-free smoke coverage through mock backend tests.
@@ -113,11 +123,13 @@ Tradeoffs:
 - RGB background tuning is explicit and simple, but less compact than a color picker.
 - Auto-hide behavior is intentionally owned by the UI layer, so new top-level chrome must opt into the same CSS/DOM classes.
 - The timeline has coordinated UI interaction state (`scrubTime`, pan/seek/draw flags) plus shared viewport state (`State.zoom`, `State.pan`), so tests must guard both interaction semantics and state handoff to `TimelineCanvas`.
+- Dynamic max zoom means tests should assert the shared `max(16, duration / 5.0)` rule rather than a fixed `16x` ceiling.
 - In-progress scrub is visual until release; this is intentional for performance, but it means audio preview during drag is not currently supported.
 - The fullscreen timeline relies on coordinated classes across the seek container, wrapper, and body; future layout changes must preserve that contract.
 - Sticky preset normalization makes the current tuning state part of partial-preset semantics, so tests must cover both current-aware and default-only normalization.
 - Draw mode adds more timeline interaction modes, so pointer handling must keep seek, pan, resize, draw, and preset paint paths explicitly separated.
 - The waveform cache must be invalidated whenever timeline scale or analysis data changes; stale cache keys would show incorrect waveform placement.
+- The waveform peak cache can be larger than the previous short fixed bucket array on long tracks, bounded by `500000` `Float32Array` entries.
 - The director adds a separate render-facing state contract beside `AudioFrame.state`, so future changes must keep worker frame compatibility and `DirectorOutput` semantics documented together.
 - `StyleRegistry` centralizes built-in style registration, so tests and docs must be updated when a built-in identity is added or removed.
 
@@ -133,6 +145,9 @@ Tradeoffs:
 - **Frame-by-frame index repair in the draw loop:** Rejected because the linear scan cost grows toward the end of tracks and duplicates the event-driven position listener.
 - **Immediate visual freeze on pause/stop:** Rejected because it makes playback state transitions feel abrupt and encourages renderer timing hacks. A render-facing fade keeps motion continuity separate from audio lifecycle.
 - **Drawing waveform paths directly on every timeline frame:** Rejected because long tracks and high zoom levels create excessive canvas path work. Cached bar rasterization keeps redraw cost predictable.
+- **Using clipped x coordinates for morph curve math:** Rejected because clipping the start/end before curve evaluation distorts partially visible automation zones at viewport edges. Canvas clipping should hide offscreen pixels after the real curve geometry is computed.
+- **Fixed `16x` timeline zoom ceiling:** Rejected because long tracks still showed too much time at max zoom. A dynamic ceiling keeps at least about five seconds visible while preserving `16x` as the minimum max zoom.
+- **Runtime waveform analysis during timeline zoom:** Rejected because timeline zoom is a UI projection concern. Precomputed `Float32Array` waveform peaks and interpolation provide deep-zoom readability without changing analyzer DSP or adding render-loop audio analysis.
 
 ## Implementation References
 

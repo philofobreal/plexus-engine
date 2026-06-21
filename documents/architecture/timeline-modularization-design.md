@@ -97,11 +97,23 @@ Ez nem alkalmazasi allapot, hanem teljesitmenyoptimalizalasi cache. A zenei igaz
 
 ### Offscreen Caching
 
-A hullamforma renderelese kulonosen erzekeny teljesitmenyre, mert zoom es pan kozben sokszor frissulhet. A `setAudioBuffer` elore kiszamolja a hullamforma RMS-jellegu amplitudo bucketjeit. A bucketek szama korlatozott: legalabb 512, legfeljebb 4096, es a track hossza alapjan skalazodik. Ez egyszeri CPU-munka az audio buffer betoltese utan.
+A hullamforma renderelese kulonosen erzekeny teljesitmenyre, mert zoom es pan kozben sokszor frissulhet. A `setAudioBuffer` elore kiszamolja a hullamforma RMS-jellegu amplitudo bucketjeit, es ezeket `Float32Array`-ben tarolja. A bucketek cel felbontasa 80 Hz: legalabb 512 bucket keszul, a felso korlat pedig 500000 pont. Ez egyszeri CPU-munka az audio buffer betoltese utan, es tovabbra sem jelent runtime audio analizist.
 
 A `drawWaveform` ezutan nem minden frame-ben szamolja ujra az audio mintakat. Ehelyett a renderelo egy memoriabeli canvasra rajzolja fel a hullamformat. Ha elerheto az `OffscreenCanvas`, azt hasznalja; kulonben egy lathatatlan `document.createElement('canvas')` cache a fallback. A cache ervenyesseget a `lastWaveformCacheKey` hatarozza meg, amely figyelembe veszi a meretet, viewportot es adatforras hosszat.
 
-Amikor a cache ervenyes, a lathato canvasra csak egy `drawImage(cache, 0, 0)` tortenik. Ez a CPU oldali ujraszamolast es a fill-rate terhelest csokkenti. Zoomolas es vonszolas soran a renderelo a viewportot ujraszamolja, de a hullamforma mintak feldolgozasa nem szivodik vissza a Dashboardba. A Dashboard csak `zoom` es `pan` ertekeket ad at a `RenderState`-ben.
+Amikor a cache ervenyes, a lathato canvasra csak egy `drawImage(cache, 0, 0)` tortenik. Ez a CPU oldali ujraszamolast es a fill-rate terhelest csokkenti. Zoomolas es vonszolas soran a renderelo a timeline viewportot ujraszamolja, de a hullamforma mintak feldolgozasa nem szivodik vissza a Dashboardba. A Dashboard csak `zoom` es `pan` ertekeket ad at a `RenderState`-ben. Mely zoomnal a `TimelineCanvas` linearis interpolacioval mintazza a `waveformPeaks` ket szomszedos bucketjet, igy a waveform cache nem lepcsos/kockas, hanem vizualisan folytonos marad. Ha audio-buffer alap peak cache nincs, a renderelo csak a mar elore szamolt `AudioFrame.e` ertekekre esik vissza.
+
+### Timeline Viewport Es Zoom
+
+A canonical timeline viewport state a `State.zoom` es `State.pan`. A `DashboardUI` birtokolja a user interaction szemantikat: wheel zoom, shift/middle-button pan, scrub buffering es playhead follow. A `TimelineCanvas` ugyanezt a viewport allapotot deklarativan fogyasztja, es sajat `getViewport()` belso fuggvenyevel clampeli.
+
+A maximum zoom nem fix 16x. Mindket tulajdonosi oldal ugyanazt a kepletet hasznalja:
+
+```typescript
+const maxZoom = Math.max(16, duration / 5.0);
+```
+
+Ez megorzi a korabbi 16x minimum plafont rovidebb trackeknel, de hosszu trackeknel tovabb engedi a zoomot ugy, hogy legalabb korulbelul 5 masodperc maradjon lathato. A `State.pan` tovabbra is masodpercben tarolja a lathato ablak kezdetet, es `clampTimelinePan()` nem engedi a viewportot a track eleje vagy vege utan csuszni.
 
 A `TimelineCanvas` tovabbi belso reszleteket is elrejt:
 
@@ -116,6 +128,9 @@ A `TimelineCanvas` tovabbi belso reszleteket is elrejt:
 - sensitivity es preset override jelolesek
 - cue markerek
 - scrub/playhead allapot
+- reszben lathato automation zone-ok megtartasa viewport szeleken
+- unclipped morph curve geometria canvas clippinggel
+- RMS/bar es waveform edge continuity
 
 ## 4. DashboardUI: A Tiszta Homlokzat
 
@@ -199,7 +214,7 @@ Az auto-generalalt plan ket menetben valaszt pontokat (Two-Pass Selection):
 
 A `splitTimelineSection` fuggveny, a `getNearestBarSplitTime` split-hatarozas es a `sectionOverrides` kulcs-atvezetes teljesen el lett tavolitva. A preset hivatkozas az editalt plan `PerformanceAutomationPoint.preset` mezojeben tarolodik.
 
-Rendereleskor a `TimelineCanvas` a `State.editedPerformancePlan` (vagy `State.performancePlan`) pontjait jeleniti meg: zona-kezdet, morph-veg, intensity vonal es preset-specifikus neon gorbekit formajaban. A preset betoltese es alkalmazasa tovabbra is a Dashboard/State/AudioEngine korul marad, nem a rendereloben.
+Rendereleskor a `TimelineCanvas` a `State.editedPerformancePlan` (vagy `State.performancePlan`) pontjait jeleniti meg: zona-kezdet, morph-veg, sensitivity handle/intensity vonal es preset-specifikus neon morph curve formajaban. A renderelo nem dobhat el olyan automation zone-t, amelynek csak egy resze latszik a timeline viewportban; skip csak akkor tortenhet, ha a teljes zona kivul van. A morph curve matek unclipped x koordinatakat hasznal, es a canvas clippingre tamaszkodik, mert az elore levagott x pontok torzitanak a viewport szeleken. A gorbe szegmensszam minimum 15, nagyobb gorbeszelessegnel dinamikusan no. A preset-szin signature jeloli a zonat, a gorbet, az intensity vonalat es a sensitivity handle hover/selection allapotat; a morph utani zonaszakasz halvanyitott. A preset betoltese es alkalmazasa tovabbra is a Dashboard/State/AudioEngine korul marad, nem a rendereloben.
 
 ## 5. Tesztelhetoseg es Karbantarthatosag
 

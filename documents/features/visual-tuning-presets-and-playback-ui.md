@@ -64,6 +64,7 @@ Implemented capabilities:
 - Playback loops by default.
 - A `Loop` / `Once` top-control toggle switches between endless repeat and one-shot playback.
 - The audio engine restarts from the beginning on natural end when loop mode is active.
+- After a file picker `change` event, `PlaybackController` clears the upload input value so the same local audio or video file can be selected again for reload. This does not change `AudioEngine` playback ownership.
 
 Single click no longer pauses playback. Pause follows the same double-click behavior as play.
 
@@ -80,10 +81,12 @@ Implemented capabilities:
 - The top resize handle lets the user manually change timeline height outside overlay mode; height changes use a throttled redraw path and preserve HDPI canvas sharpness.
 - The top-right timeline control opens a fullscreen overlay. The `.seek-container` receives `.timeline-overlay-active`, the `.timeline-wrapper` receives `.is-fullscreen-overlay`, and `body` receives `.timeline-overlay-open`, so the timeline fills the viewport while unrelated chrome is hidden.
 - Hovering the canvas shows the DOM-based `#timeline-tooltip` with time, zoom, section, bar, RMS and BarAnalysis bass/mid/treble spectral-band ratios, buildup, trend, and nearby cue information. BPM/grid/downbeat confidence, alternate tempo candidates, section/cue `reasons`, and the novelty debug overlay are appended or drawn only when `featureFlags.analyzerDebugOverlay` is enabled, so analyzer internals stay out of the default user-facing tooltip.
-- Mouse wheel zooms the timeline between `1x` and `16x` around the pointer. The canonical visible viewport is described by shared `State.pan` and `State.duration / State.zoom`, with `DashboardUI` translating normalized gesture input into those state values.
+- Mouse wheel zooms the timeline viewport around the pointer. The canonical visible viewport is described by shared `State.pan` and `State.duration / State.zoom`, with `DashboardUI` translating normalized gesture input into those state values. Max zoom is dynamic and shared with `TimelineCanvas`: `max(16, duration / 5.0)`, preserving at least about five visible seconds.
 - Normal left click or drag always scrubs/seeks, including in zoomed view. Shift-drag or middle-button drag pans the viewport.
 - While playing in zoomed view, the viewport follows the playhead when the playhead leaves the `15%..75%` range of the visible timeline.
 - Timeline generator controls include a Strategy selector and `Generate` button. When `Strict Alternating` is selected, a context-sensitive Strict Mode settings row appears for choosing 4 presets, the Bars/Preset interval, and Morph duration.
+- Automation zones remain visible when only partly inside the timeline viewport. Morph curve geometry uses unclipped x coordinates and canvas clipping; curve segment count starts at `15` and increases with curve width. Preset colors mark the automation zone, morph curve, intensity line, and sensitivity handle state, and the zone after the morph curve is dimmed.
+- The waveform is a precomputed `Float32Array` waveform cache owned by `TimelineCanvas`, targeting `80 Hz` buckets and capped at `500000` points. Deep zoom samples it with linear interpolation. It is a cached waveform projection, not runtime audio analysis.
 
 Scrubbing is buffered for performance. Pointer and slider drag update `private scrubTime: number | null`, the visible time label, the seekbar value, and a yellow playhead. The Web Audio graph is not rebuilt during drag. `commitScrubTime()` performs one final `AudioEngine.seek()` call when the interaction ends.
 
@@ -126,9 +129,11 @@ Implemented capabilities:
 - `Dynamics State` occupies one grid unit and its bar is labeled `Section Energy`.
 - The seekbar is a minimal rectangular full-width control aligned with the metrics visual style.
 - The top controls, bottom playback section, and open panels fade out after user inactivity.
+- The dashboard starts locked visible; chrome auto-hide starts only after the user unpins the chrome from the visual surface.
 - Pointer, keyboard, touch, and mouse activity reveal the chrome again.
 - Hovering or focusing visible chrome keeps it visible.
 - The cursor is hidden while the chrome is in the idle-hidden state.
+- Explicit unpin uses a fast `400ms` hide delay. Ordinary inactivity, hover leave, and focus-out use about `1400ms`, and hover-triggered timer expiry reschedules instead of hiding.
 
 ## Reactive Video Backplate
 
@@ -142,7 +147,7 @@ The feature is split across these runtime layers:
 
 - `src/config/visualTuning.ts`: defaults, control metadata, preset normalization, audio-sensitivity helpers.
 - `src/types/index.ts`: persisted tuning and playback state contracts.
-- `src/state/store.ts`: shared runtime state for tuning, section sensitivity overrides, visual mode, playback loop mode, `videoDominantColor`, and chrome behavior.
+- `src/state/store.ts`: shared runtime state for tuning, performance automation plans, visual mode, playback loop mode, `videoDominantColor`, timeline viewport (`State.zoom` / `State.pan`), and chrome behavior.
 - `src/ui/DashboardUI.ts`: facade/orchestrator for preset loading, metadata-aware performance-plan handoff, reactive video backplate sampling/playback-rate modulation, metrics projection, timeline interaction state, `State` writes, `AudioEngine` handoff, and controller coordination. It coordinates the controller and timeline submodules instead of directly owning every DOM binding, raw gesture normalization, or canvas drawing path.
 - `src/ui/controllers/PlaybackController.ts`: focused playback DOM controller for upload, play/stop, center-surface playback, seekbar drag state, loop, fullscreen, canvas click/double-click, keyboard shortcuts, time labels, BPM badge, and playback enable/disable state.
 - `src/ui/controllers/TuningController.ts`: focused tuning DOM controller for metadata-driven tuning controls, preset selectors, visual mode selection, metrics toggle, copy feedback, and tuning-panel dragging.

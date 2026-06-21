@@ -52,9 +52,11 @@ You can currently:
 - tune the look live
 - load JSON visual presets
 - copy/export visual tuning config
+- reselect the same local media file to reload it after the file picker closes
 - export browser-native WebM video with an embedded Plexus metadata card and optional Opus audio when supported
 - view realtime music metrics such as energy, density, spectral melody-presence and vocal/formant heuristics, FX, beat impulse, dynamics, the header BPM badge, and a 24-band logarithmic Spectrum Balance visualization from the offline analyzer
-- use presentation-oriented UI behavior where the chrome can fade away during performance
+- use presentation-oriented UI behavior where the chrome starts locked visible and can be unpinned into chrome auto-hide during performance
+- inspect the timeline viewport with zoom, pan, scrub buffering, automation zone rendering, morph curve handles, and a cached waveform projection
 
 ## Visual modes
 
