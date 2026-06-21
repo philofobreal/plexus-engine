@@ -159,6 +159,8 @@ export class PlaybackController {
         (this.els.upload as HTMLInputElement).addEventListener('change', (e) => {
             const input = e.target as HTMLInputElement;
             const file = input.files?.[0];
+            input.value = '';
+
             if (!file) return;
             if (this.isOversizedVideo(file)) {
                 this.onError(`Hiba: a videofajl tul nagy (maximum ${this.getVideoFileLimitMb()} MB)`);
