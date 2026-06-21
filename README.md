@@ -120,28 +120,36 @@ The stronger path is:
 
 ## Development
 
-Install dependencies:
+Install dependencies with the package manager available in your environment. Bun is preferred for project scripts when available:
 
 ```bash
-npm install
+bun install
 ```
 
 Run locally:
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 Build:
 
 ```bash
-npm run build
+bun run build
 ```
 
 Deploy to GitHub Pages:
 
 ```bash
-npm run deploy
+bun run deploy
+```
+
+If `bun` is not available on PATH in Codex Desktop or a Windows sandbox, use the bundled Node runtime with local project entrypoints instead of switching to global `npm`/`npx`. Discover the bundled Node path with the workspace dependency tool, then run:
+
+```powershell
+& '<bundled-node>\node.exe' .\node_modules\typescript\bin\tsc
+& '<bundled-node>\node.exe' .\node_modules\vite\bin\vite.js build
+& '<bundled-node>\node.exe' --test tests\*.test.mjs tests\ui\*.test.mjs
 ```
 
 ## Status

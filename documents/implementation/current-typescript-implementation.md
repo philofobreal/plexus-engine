@@ -228,7 +228,7 @@ Recent hot-path optimizations:
 - Offline export captures frames immediately after p5 redraw plus metadata-card drawing and before yielding to `requestAnimationFrame`. This protects the watermark from browser buffer swaps or canvas clears. The exporter still yields after capture so the UI can update progress and respond to stop/cancel.
 - Object URLs for exported WebM downloads are revoked after a `1000ms` timeout rather than synchronously after link removal, giving the browser download queue time to claim the Blob.
 
-Validation for these rendering and UI performance contracts should include TypeScript checking, Vite build, Node tests, and `git diff --check`. On Windows setups where package-manager shims such as `npm` are not on `PATH`, use the local `node_modules` entrypoints through the Codex bundled Node executable and report the exact fallback commands. The current Vite production build may still report a non-fatal chunk-size warning.
+Validation for these rendering and UI performance contracts should include TypeScript checking, Vite build, Node tests, and `git diff --check`. First try the Bun scripts declared in `package.json`. On Windows/Codex setups where `bun` is not on `PATH`, use the local `node_modules` entrypoints through the Codex bundled Node executable and report the exact fallback commands: `node.exe .\node_modules\typescript\bin\tsc`, `node.exe .\node_modules\vite\bin\vite.js build`, and `node.exe --test tests\*.test.mjs tests\ui\*.test.mjs`. The current Vite production build may still report a non-fatal chunk-size warning.
 
 Detailed documentation:
 

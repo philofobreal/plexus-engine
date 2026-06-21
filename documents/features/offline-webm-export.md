@@ -163,7 +163,9 @@ Export behavior is covered by `tests/export-deterministic.test.mjs`:
 Recommended validation after export changes:
 
 ```powershell
-node node_modules/typescript/bin/tsc
-node --test tests/*.test.mjs tests/ui/*.test.mjs
-node node_modules/vite/bin/vite.js build
+& '<bundled-node>\node.exe' .\node_modules\typescript\bin\tsc
+& '<bundled-node>\node.exe' --test tests\*.test.mjs tests\ui\*.test.mjs
+& '<bundled-node>\node.exe' .\node_modules\vite\bin\vite.js build
 ```
+
+Use this bundled Node form when Bun is unavailable on PATH. If Bun is available, the equivalent project-level commands remain `bun run test` and `bun run build`.

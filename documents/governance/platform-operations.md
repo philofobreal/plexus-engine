@@ -14,23 +14,28 @@ Use this file for practical platform behavior that affects repeatability in Code
 
 ## Runtime Discovery and Execution Policy
 
-- Bun is the authoritative and mandatory default package manager, compiler, and runner for this repository.
+- Bun is the preferred default package manager, compiler, and runner for this repository when it is available on `PATH`.
 - Avoid using plain `npm`, `npx`, or package-manager-equivalent commands unless specifically requested.
-- Always execute scripts and tests through the commands declared in `package.json`:
+- First try scripts and tests through the commands declared in `package.json`:
   - Developer environment: `bun run dev`
   - Tests: `bun run test`
   - Production build: `bun run build`
   - Deploy: `bun run deploy`
-- If Bun is temporarily blocked or unavailable in the local sandbox shell, fall back only to the bundled runtime tools documented under local `node_modules` paths, and report the fallback.
-- If `bun` is unavailable on PATH and fallback is required, use the Codex bundled Node executable with local project entrypoints:
+- If Bun is temporarily blocked or unavailable in the local sandbox shell, fall back to the Codex bundled Node executable with local project entrypoints. This is the recommended fallback in Codex Desktop on Windows when `bun` is not recognized.
+- Use the workspace dependency tool to discover the actual bundled Node path. Then run the local project entrypoints directly:
 
 ```powershell
 & '<bundled-node>\node.exe' 'node_modules\typescript\bin\tsc'
 & '<bundled-node>\node.exe' 'node_modules\vite\bin\vite.js' build
-& '<bundled-node>\node.exe' --test tests\*.test.mjs
+& '<bundled-node>\node.exe' --test tests\*.test.mjs tests\ui\*.test.mjs
 ```
 
-- Discover the bundled Node path with the Codex workspace dependency tool when available.
+- For targeted test runs, keep the same shape and list explicit test files:
+
+```powershell
+& '<bundled-node>\node.exe' --test tests\ui-interaction.test.mjs tests\timeline-ui.test.mjs tests\contracts.test.mjs
+```
+
 - Do not add dependencies just to make validation runnable when local `node_modules` and bundled Node are sufficient.
 
 ## Build And Test Execution
