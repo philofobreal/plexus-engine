@@ -63,7 +63,7 @@ export class TimelineCanvas {
 
         const ctx = this.ctx;
 
-        // JAVÍTVA: Biztonságos és tökéletes High-DPI canvas ürítés az identitás-mátrix ideiglenes
+        // Biztonságos és tökéletes High-DPI canvas ürítés az identitás-mátrix ideiglenes
         // visszaállításával és a fizikai backing store egész értékeinek használatával.
         // Ezzel elkerüljük az al-pixel kerekítési hibákból adódó alfa-csatorna felhalmozódást.
         ctx.save();
@@ -290,26 +290,47 @@ export class TimelineCanvas {
             }
 
             if (zoneWidth > 0) {
-                // DAW-stílusú területkitöltés az intenzitás vonal alatt
-                ctx.fillStyle = this.withAlpha(colors.start, 0.15);
-                ctx.fillRect(zoneLeft, y, zoneWidth, graphBottom - y);
+                const curveEnd = Math.max(zoneLeft, Math.min(zoneRight, morphEnd));
 
-                // Az intenzitás vonala a preset színével
-                ctx.strokeStyle = colors.border;
-                ctx.lineWidth = 2.0;
-                
-                if (isHoveredPoint && state.hoveredHandleType === 'sensitivity') {
-                    ctx.shadowColor = colors.glow;
-                    ctx.shadowBlur = 12;
+                if (curveEnd > zoneLeft) {
+                    ctx.fillStyle = this.withAlpha(colors.start, 0.15);
+                    ctx.fillRect(zoneLeft, y, curveEnd - zoneLeft, graphBottom - y);
+
+                    ctx.strokeStyle = colors.border;
+                    ctx.lineWidth = 2.0;
+                    if (isHoveredPoint && state.hoveredHandleType === 'sensitivity') {
+                        ctx.shadowColor = colors.glow;
+                        ctx.shadowBlur = 12;
+                    }
+                    ctx.beginPath();
+                    ctx.moveTo(zoneLeft, y);
+                    ctx.lineTo(curveEnd, y);
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
                 }
-                ctx.beginPath();
-                ctx.moveTo(zoneLeft, y);
-                ctx.lineTo(zoneRight, y);
-                ctx.stroke();
-                ctx.shadowBlur = 0;
+
+                if (zoneRight > curveEnd) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.45;
+
+                    ctx.fillStyle = this.withAlpha(colors.start, 0.15);
+                    ctx.fillRect(curveEnd, y, zoneRight - curveEnd, graphBottom - y);
+
+                    ctx.strokeStyle = colors.border;
+                    ctx.lineWidth = 2.0;
+                    if (isHoveredPoint && state.hoveredHandleType === 'sensitivity') {
+                        ctx.shadowColor = colors.glow;
+                        ctx.shadowBlur = 12;
+                    }
+                    ctx.beginPath();
+                    ctx.moveTo(curveEnd, y);
+                    ctx.lineTo(zoneRight, y);
+                    ctx.stroke();
+                    
+                    ctx.restore();
+                }
             }
 
-            // A fogantyú (diamond) átszínezése a preset színével
             ctx.fillStyle = colors.border;
             ctx.shadowColor = colors.glow;
             ctx.shadowBlur = state.isPlaying ? 7 : 0;
