@@ -314,6 +314,9 @@ h1 { margin: 0; font-size: 1rem; font-weight: 700; letter-spacing: 1px; text-tra
 
 .copy-status { font-size: 0.75rem; color: var(--accent); text-align: right; margin-top: 10px; min-height: 16px;}
 
+#dramaturgy-status { margin-top: 0; text-align: left; align-self: center; white-space: nowrap; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+#dramaturgy-status.is-error { color: #ff5a7a; }
+
 .tuning-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 24px; }
 .tuning-group { min-width: 0; }
 .tuning-group h2 { margin: 0 0 12px 0; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); border-bottom: 1px solid var(--panel-border); padding-bottom: 6px;}

@@ -164,6 +164,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
               ${renderOptions(generatorStrategyOptions)}
             </select>
             <button id="generate-plan-btn" class="timeline-export-btn" style="color: #fff; border-color: #fff;">Generate</button>
+            <button id="copy-dramaturgy-btn" class="timeline-export-btn" title="Copy the current dramaturgy plan to the clipboard">Copy Dramaturgy</button>
+            <button id="load-dramaturgy-btn" class="timeline-export-btn" title="Load a dramaturgy plan from the clipboard">Load Dramaturgy</button>
+            <span id="dramaturgy-status" class="copy-status" aria-live="polite"></span>
             <div class="timeline-divider"></div>
             <!-- Zoom / overlay -->
             <button id="toggle-timeline-zoom" class="btn-icon-mini" title="Zoom Timeline" aria-pressed="false" aria-label="Zoom timeline">

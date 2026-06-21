@@ -116,6 +116,10 @@ export interface VisualTuningConfig {
     wormholeDepth: number;
     wormholeSpeed: number;
     wormholeWarp: number;
+    wormholeCurve: number;
+    wormholeRing: number;
+    wormholeStarfield: number;
+    wormholeGalaxy: number;
 }
 
 export interface PerformancePreset {

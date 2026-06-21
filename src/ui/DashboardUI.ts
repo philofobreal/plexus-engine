@@ -1,5 +1,6 @@
 import type { AudioEngine } from '../audio/AudioEngine';
 import { generatePerformancePlan, type GeneratorOptions } from '../automation/performancePlanGenerator';
+import { parseDramaturgyPlan, serializeDramaturgyPlan } from '../automation/dramaturgyTransfer';
 import { featureFlags } from '../config/featureFlags';
 import { normalizeVisualTuningConfig } from '../config/visualTuning';
 import { ExportCapabilityDetector } from '../export/ExportCapabilityDetector';
@@ -105,6 +106,9 @@ export class DashboardUI {
             clearAutomationBtn: document.getElementById('clear-automation-btn')!,
             generatorStrategy: document.getElementById('generator-strategy')!,
             generatePlanBtn: document.getElementById('generate-plan-btn')!,
+            copyDramaturgyBtn: document.getElementById('copy-dramaturgy-btn')!,
+            loadDramaturgyBtn: document.getElementById('load-dramaturgy-btn')!,
+            dramaturgyStatus: document.getElementById('dramaturgy-status')!,
             strictGeneratorSettings: document.getElementById('strict-generator-settings')!,
             strictP1: document.getElementById('strict-p1')!,
             strictP2: document.getElementById('strict-p2')!,
@@ -479,6 +483,12 @@ export class DashboardUI {
         });
         this.els.clearAutomationBtn.addEventListener('click', () => {
             this.clearAutomationWithConfirmation();
+        });
+        this.els.copyDramaturgyBtn.addEventListener('click', () => {
+            void this.copyDramaturgy();
+        });
+        this.els.loadDramaturgyBtn.addEventListener('click', () => {
+            void this.loadDramaturgy();
         });
         this.els.generatorStrategy.addEventListener('change', () => {
             const isStrict = (this.els.generatorStrategy as HTMLSelectElement).value === 'strict';
@@ -1873,6 +1883,80 @@ export class DashboardUI {
         textArea.select();
         document.execCommand('copy');
         textArea.remove();
+    }
+
+    // ─── Dramaturgy copy / load ───────────────────────────────────────────────
+
+    private async copyDramaturgy(): Promise<void> {
+        const plan = State.editedPerformancePlan ?? State.performancePlan;
+        if (!plan || plan.points.length === 0) {
+            this.showDramaturgyStatus('No dramaturgy to copy', true);
+            return;
+        }
+        const payload = serializeDramaturgyPlan(plan, State.duration);
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(payload);
+            } else {
+                this.copyTextFallback(payload);
+            }
+        } catch {
+            this.copyTextFallback(payload);
+        }
+        this.showDramaturgyStatus(`Copied ${this.pointLabel(plan.points.length)}`);
+    }
+
+    private async loadDramaturgy(): Promise<void> {
+        const text = await this.readClipboardText();
+        if (text === null) {
+            this.showDramaturgyStatus('Load cancelled', true);
+            return;
+        }
+        const result = parseDramaturgyPlan(text);
+        if (!result.ok) {
+            this.showDramaturgyStatus(result.error, true);
+            return;
+        }
+        if (!window.confirm(`Replace the current dramaturgy plan with ${this.pointLabel(result.pointCount)}?`)) {
+            return;
+        }
+        this.applyLoadedDramaturgyPlan(result.plan);
+        this.showDramaturgyStatus(`Loaded ${this.pointLabel(result.pointCount)}`);
+    }
+
+    private applyLoadedDramaturgyPlan(plan: PerformanceAutomationPlan): void {
+        State.performancePlan = JSON.parse(JSON.stringify(plan));
+        State.editedPerformancePlan = JSON.parse(JSON.stringify(plan));
+        this.lastTriggeredAutomationPointId = null;
+        this.selectedAutomationPoint = null;
+        this.hideAutomationInspector();
+        void this.preloadPresetsForPlan(State.editedPerformancePlan);
+        this.requestTimelineDraw();
+    }
+
+    private async readClipboardText(): Promise<string | null> {
+        try {
+            if (navigator.clipboard?.readText) {
+                return await navigator.clipboard.readText();
+            }
+        } catch {
+            // Permission denied or unavailable — fall back to manual paste.
+        }
+        return window.prompt('Paste the dramaturgy JSON to load:');
+    }
+
+    private pointLabel(count: number): string {
+        return `${count} point${count === 1 ? '' : 's'}`;
+    }
+
+    private showDramaturgyStatus(text: string, isError = false): void {
+        const el = this.els.dramaturgyStatus;
+        el.innerText = text;
+        el.classList.toggle('is-error', isError);
+        window.setTimeout(() => {
+            el.innerText = '';
+            el.classList.remove('is-error');
+        }, isError ? 3200 : 1800);
     }
 
     // ─── Presentation mode ────────────────────────────────────────────────────
