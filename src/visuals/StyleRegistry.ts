@@ -1,4 +1,5 @@
 import { classicPlexusIdentity } from './ClassicPlexusEffect';
+import { cosmicWormholeIdentity } from './CosmicWormholeIdentity';
 import { featureFlags } from '../config/featureFlags';
 import { cyberpunkIdentity } from './CyberpunkIdentity';
 import { darkTechnoIdentity } from './DarkTechnoIdentity';
@@ -33,6 +34,7 @@ export function createDefaultStyleRegistry(): StyleRegistry {
     registry.register(darkTechnoIdentity);
     registry.register(organicAmbientIdentity);
     registry.register(cyberpunkIdentity);
+    registry.register(cosmicWormholeIdentity);
     if (featureFlags.heroEffect === true) {
         registry.register(heroEffectIdentity);
     }

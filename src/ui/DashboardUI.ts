@@ -2131,5 +2131,6 @@ export class DashboardUI {
 function isVisualMode(value: string): value is VisualMode {
     return value === 'classic' || value === 'temporal' || value === 'dark-techno'
         || value === 'organic-ambient' || value === 'cyberpunk'
+        || value === 'cosmic-wormhole'
         || (featureFlags.heroEffect && value === 'hero');
 }

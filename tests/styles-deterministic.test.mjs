@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import ts from 'typescript';
 
 const SRC_ROOT = join(process.cwd(), 'src');
-const STYLE_IDS = ['classic', 'temporal', 'dark-techno', 'organic-ambient', 'cyberpunk'];
+const STYLE_IDS = ['classic', 'temporal', 'dark-techno', 'organic-ambient', 'cyberpunk', 'cosmic-wormhole'];
 const PHASES = ['INTRO', 'BUILDUP', 'DROP', 'BREAK'];
 
 function createSrcLoader() {

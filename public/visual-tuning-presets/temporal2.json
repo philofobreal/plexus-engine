@@ -29,6 +29,10 @@
     "temporalRingSpeed": 3,
     "temporalNetworkDistance": 2.4,
     "temporalPolygonAlpha": 2,
+    "wormholeRadius": 1.3,
+    "wormholeDepth": 1.2,
+    "wormholeSpeed": 2.5,
+    "wormholeWarp": 1.8,
     "heroBeepMode": 2
   }
 }

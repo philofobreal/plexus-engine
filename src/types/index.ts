@@ -41,7 +41,7 @@ export interface MusicalGrid {
 
 export type AutoState = 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
 
-export type VisualMode = 'classic' | 'temporal' | 'dark-techno' | 'organic-ambient' | 'cyberpunk' | 'hero';
+export type VisualMode = 'classic' | 'temporal' | 'dark-techno' | 'organic-ambient' | 'cyberpunk' | 'cosmic-wormhole' | 'hero';
 
 export type MorphCurve = 'linear' | 'easeInOut' | 'exponential';
 
@@ -112,6 +112,10 @@ export interface VisualTuningConfig {
     breakRestraint: number;
     vocalHighlight: number;
     fxChaos: number;
+    wormholeRadius: number;
+    wormholeDepth: number;
+    wormholeSpeed: number;
+    wormholeWarp: number;
 }
 
 export interface PerformancePreset {

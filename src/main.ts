@@ -13,6 +13,7 @@ const visualModeOptions = [
     { value: 'dark-techno', label: 'Dark Techno' },
     { value: 'organic-ambient', label: 'Organic Ambient' },
     { value: 'cyberpunk', label: 'Cyberpunk' },
+    { value: 'cosmic-wormhole', label: 'Cosmic Wormhole' },
     ...(featureFlags.heroEffect ? [{ value: 'hero', label: 'Hero' }] : [])
 ];
 

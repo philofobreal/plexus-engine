@@ -6,7 +6,7 @@ export type VisualTuningKey = keyof VisualTuningConfig;
 export interface VisualTuningControl {
     key: VisualTuningKey;
     label: string;
-    group: 'Audio' | 'Background' | 'Particles' | 'Circles' | 'Lines' | 'Polygons' | 'Temporal' | 'Hero';
+    group: 'Audio' | 'Background' | 'Particles' | 'Circles' | 'Lines' | 'Polygons' | 'Temporal' | 'Wormhole' | 'Hero';
     min: number;
     max: number;
     step: number;
@@ -66,7 +66,11 @@ export const defaultVisualTuning: VisualTuningConfig = {
     dropDampening: 1.0,
     breakRestraint: 1.0,
     vocalHighlight: 1.0,
-    fxChaos: 1.0
+    fxChaos: 1.0,
+    wormholeRadius: 1,
+    wormholeDepth: 1,
+    wormholeSpeed: 1,
+    wormholeWarp: 1
 };
 
 export const visualTuningKeys = Object.keys(defaultVisualTuning) as VisualTuningKey[];
@@ -132,6 +136,10 @@ const allVisualTuningControls: VisualTuningControl[] = [
     { key: 'temporalRingSpeed', label: 'Ring speed', group: 'Temporal', min: 0, max: 12, step: 0.05, unit: 'x' },
     { key: 'temporalNetworkDistance', label: 'Temporal links', group: 'Temporal', min: 0.05, max: 8, step: 0.05, unit: 'x' },
     { key: 'temporalPolygonAlpha', label: 'Temporal polys', group: 'Temporal', min: 0, max: 5, step: 0.05, unit: 'x' },
+    { key: 'wormholeRadius', label: 'Tunnel radius', group: 'Wormhole', min: 0.1, max: 3, step: 0.1, unit: 'x' },
+    { key: 'wormholeDepth', label: 'Tunnel depth', group: 'Wormhole', min: 0.1, max: 5, step: 0.1, unit: 'x' },
+    { key: 'wormholeSpeed', label: 'Flight speed', group: 'Wormhole', min: 0.1, max: 10, step: 0.1, unit: 'x' },
+    { key: 'wormholeWarp', label: 'Spiral warp', group: 'Wormhole', min: 0, max: 5, step: 0.1, unit: 'x' },
     { key: 'heroLaneBottomOffset', label: 'Lane from bottom', group: 'Hero', min: 0.05, max: 0.9, step: 0.01, unit: 'h' },
     { key: 'heroBeepVolume', label: 'Hero beep volume', group: 'Hero', min: 0, max: 1, step: 0.05 },
     {
