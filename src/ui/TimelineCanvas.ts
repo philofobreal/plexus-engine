@@ -211,17 +211,25 @@ export class TimelineCanvas {
         for (let i = 0; i < sortedPoints.length; i++) {
             const point = sortedPoints[i];
             const x = this.timeToX(point.time, width, viewport);
-            if (x < 0 || x > width) continue;
-            const y = this.automationIntensityToY(point.intensity, topPad, graphBottom);
             const nextPoint = sortedPoints[i + 1];
             const nextX = nextPoint ? this.timeToX(nextPoint.time, width, viewport) : width;
+
+            // JAVÍTVA: Csak akkor hagyjuk ki, ha a zóna teljes egésze a látható képernyőn kívül esik.
+            if (nextX < 0 || x > width) continue;
+
+            const y = this.automationIntensityToY(point.intensity, topPad, graphBottom);
             const zoneLeft = Math.max(0, x);
             const zoneRight = Math.min(width, nextX);
             const zoneWidth = zoneRight - zoneLeft;
 
             const xMorphEnd = this.timeToX(point.time + point.morphDurationSec, width, viewport);
-            const morphStart = Math.max(0, x);
-            const morphEnd = Math.min(width, xMorphEnd);
+            
+            // JAVÍTVA: Ne vágjuk le a pontokat (Math.max/min) a görbe matek előtt, 
+            // mert az torzítja a spline kirajzolását, ha a pont kilóg a képernyőről.
+            // A canvas natív clippingje megoldja a képernyőn kívüli részek levágását.
+            const morphStart = x;
+            const morphEnd = xMorphEnd;
+            
             const isSelectedPoint = point.id === state.selectedPointId;
             const isHoveredPoint = point.id === state.hoveredPointId;
             const highlightCurve = (isHoveredPoint && state.hoveredHandleType === 'curve') || isSelectedPoint;
@@ -473,7 +481,9 @@ export class TimelineCanvas {
         ctx.beginPath();
         let hasPath = false;
         for (const bar of bars) {
-            if (bar.end < viewport.start || bar.start > viewport.end) continue;
+            // Biztonsági időbeli ráhagyás (margin), hogy a vonal összekötése 
+            // ne törjön meg a bal vagy jobb szélen.
+            if (bar.end < viewport.start - 5 || bar.start > viewport.end + 5) continue;
             const midTime = (bar.start + bar.end) * 0.5;
             const x = this.timeToX(midTime, width, viewport);
             const y = topPad + graphHeight * (1 - Math.min(1, bar.avgRms));
