@@ -6,13 +6,14 @@
 
 A **Plexus Engine** egy bongeszoben futo, hardvergyorsitott, audio-first generativ vizualizacios motor es eloadoi hangszer (visual instrument). A rendszer alapelve a lejatszas elotti offline zeneanalizis, amely zeneszerkezeti kontextust (szekciok, feszultseggorbek, mintak es cue esemenyek) hoz letre. Lejatszas kozben a renderelo szal nem vegez valos ideju DSP szamitasokat; egy absztrakt modulacios buszon keresztul fogyasztja a normalizalt zenei szandekot, biztositva a stabil szinpadi es produkcios teljesitmenyt. Az aktualis rendszer audio fajlok mellett bongeszo altal tamogatott video fajlokat is be tud tolteni: a video kep muted backplate-kent fut a p5 canvas mogott, mikozben az audio tovabbra is a Web Audio / `AudioEngine` master clock szerint szol.
 
-Az aktualis implementacio hat regisztralt vizualis identitast tart fenn a `VisualIdentity` / `StyleRegistry` architekturan keresztul:
+Az aktualis implementacio het regisztralt vizualis identitast tart fenn a `VisualIdentity` / `StyleRegistry` architekturan keresztul (a `hero` csak akkor regisztralodik, ha a `featureFlags.heroEffect` engedelyezve van):
 
 * `classic`: az eredeti Plexus reszecskehalo, kozponti glow, beat shockwave es polygon flash viselkedes.
 * `temporal`: ugyanarra az offline analizisre epulo, teljes track-szintu zenei kontextust hasznalo mod, amely section, feature, cue es pattern adatokat hasznal folyamatos vizualis modulaciora.
 * `dark-techno`: szigoru monokrom, minimal ipari stilus eles feher/szurke vonalakkal es ritka strobe-szeru polygon flash viselkedessel.
 * `organic-ambient`: lassu, folyekony, pasztell zold/kek/foldszinu stilus, amely eles halozati vonalak helyett puha reszecske-glow retegeket hasznal.
 * `cyberpunk`: nagy kontrasztu neon magenta/cian stilus kromatikus aberracio-szeru kettos vonalrajzolassal es determinisztikus glitch offsetekkel.
+* `cosmic-wormhole`: 3D terhatasu "csoben repules" mod. Egy konstruktorban allokalt csillagpor-poolt vetit henger-koordinatakbol 2D-be a 24-savos `perceptualSpectrum` es a modulacios busz alapjan. Esemenyvezerelt cso-kanyarodast (a `wormholeCurve` master szerint skalazva), abszolut vilag-koordinatas parallax csillagmezot es egy melyebb `radialGlow` galaxis-reteget ad, amelyek kovetik a kamera elorehaladaset es kanyarodasat. Csak `backend.line`-t es a kapuzott galaxis-glow-t hasznal, determinisztikusan `pseudoNoise()` alapjan. Parameterei a `Wormhole` tuning csoportban talalhatok: `wormholeRadius`, `wormholeDepth`, `wormholeSpeed`, `wormholeWarp`, `wormholeCurve`, `wormholeRing`, `wormholeStarfield`, `wormholeGalaxy`.
 * `hero`: bal also playhead pontra szervezett, also horizontalis lane-en jobbrol balra mozgo event-dot vizual, ahol a dot poziciok determinisztikusan `event.time - State.currentTime` alapjan szamolodnak. A mod sajat interaktiv metronomot is hasznalhat: a lane elore mutatja a `PerformanceAutomationPlan` altal utemezett beep ritmust.
 
 ## 1.1. Termekvizio Es Celcsoport
@@ -264,7 +265,7 @@ Az UI export kozben letiltja a playback/seek/file input utakat es blokkolja a ca
 
 ### ADR-004: Selectable Visual Modes
 
-* **Dontes:** a `State.visualMode` hat bepitett azonosito egyike lehet: `classic`, `temporal`, `dark-techno`, `organic-ambient`, `cyberpunk`, `hero`. A valasztas UI tulajdon, a renderer pedig `StyleRegistry.get(State.visualMode)` utan a kivalasztott `VisualIdentity.draw()` metodusnak delegalt.
+* **Dontes:** a `State.visualMode` het bepitett azonosito egyike lehet: `classic`, `temporal`, `dark-techno`, `organic-ambient`, `cyberpunk`, `cosmic-wormhole`, `hero` (utobbi feature-flag mogott). A valasztas UI tulajdon, a renderer pedig `StyleRegistry.get(State.visualMode)` utan a kivalasztott `VisualIdentity.draw()` metodusnak delegalt.
 * **Indoklas:** az egyes vizualis nyelvek mely modulokban rejthetik el a sajat szinelmeleti, mozgasdinamikai es sokszog-rajzolasi szabalyaikat, mikozben a renderer orchestration es a p5 backend-hatar stabil marad.
 * **Fallback:** ismeretlen stilus ID eseten a registry `classic` identitast ad vissza, igy regi vagy hibas presetek nem torik el a renderelest.
 
@@ -464,5 +465,6 @@ Az aktualis contract tesztek a `tests/contracts.test.mjs` fajlban vannak. Lefedi
 * loop mode, metrics toggle, draggable tuning es auto-hide chrome UI szerzodest.
 * modulacios busz, morphing, dramaturgy, renderer boundary es stream profil viselkedest.
 * performance preset szerzodest, sticky preset normalizalast, timeline draw/preset paint interakciokat, playback fade-et es waveform cache optimalizaciot.
-* hat visual identity determinisztikus, bongeszo- es p5-fuggetlen mock render futasat ot zenei referenciaprofilon keresztul (`tests/styles-deterministic.test.mjs`).
+* hat bepitett visual identity (a `cosmic-wormhole`-lal egyutt) determinisztikus, bongeszo- es p5-fuggetlen mock render futasat ot zenei referenciaprofilon keresztul (`tests/styles-deterministic.test.mjs`).
 * offline WebM export lifecycle-t, p5 `noLoop()`/`loop()` tulajdonlast, renderer polling tilalmat, resize-settle sorrendet, vizjel kartya rajzolast es `stopAndSave()` reszleges Blob lezarast (`tests/export-deterministic.test.mjs`).
+* a dramaturgia (performance-automation terv) vagolapra mentesenek es betoltesenek szerializalasat, validalasat es normalizalasat, az osszes edge-case-szel egyutt (`tests/dramaturgy-transfer.test.mjs`).

@@ -134,7 +134,7 @@ The dramaturgy engine builds a normalized pressure curve from `feature.tension *
 - `glitchIntensity`: exponentially decaying LOW_DROP glitch envelope.
 - `invertBackground`: background inversion flag; currently false to avoid full-screen strobe behavior.
 
-During `GLITCH_LOW_DROP`, `glitchIntensity` starts at `1.0` and decays with `Math.exp(-elapsed * 4.0)`. Classic, temporal, and cyberpunk glitch-style drawing derives coordinate offsets from deterministic index/salt/phase formulas instead of random jitter. The offset is deterministic for the same particle indexes, salt, and rotation phase, so export output remains reproducible.
+During `GLITCH_LOW_DROP`, `glitchIntensity` starts at `1.0` and decays with `Math.exp(-elapsed * 4.0)`. Classic, temporal, cyberpunk, and cosmic-wormhole glitch-style drawing derives coordinate offsets from deterministic index/salt/phase formulas instead of random jitter. The offset is deterministic for the same particle indexes, salt, and rotation phase, so export output remains reproducible.
 
 ## Memory Management And State Reset
 
@@ -164,17 +164,18 @@ Dashboard Beat Impulse is `State.beatDecay` from consumed accepted `BeatEvent[]`
 
 ## Visual Identities
 
-The renderer supports five selectable visual identities through `State.visualMode`:
+The renderer supports six selectable visual identities through `State.visualMode` (plus the feature-flagged `hero` mode):
 
 - `classic`: preserves the original Plexus particle network, center glow, beat shockwaves, and polygon flash behavior.
 - `temporal`: keeps the same particle and shockwave primitives but re-composes them around full-track analysis. It does not draw pattern detections as bar-aligned labels and avoids unrelated decorative wave/ellipse motifs. Instead, `trackAnalysis` continuously modulates polygon color, movement, density, connection sensitivity, background tone, and central mechanism rings for beat, melody, vocal, fx, and pattern resonance.
 - `dark-techno`: strict monochrome industrial style with sharp white/gray line work, sparse high-brightness strobe polygon flashes, and no radial glow usage.
 - `organic-ambient`: slow, fluid, pastel green/blue/earth-tone style that avoids sharp network lines and draws soft particle glow fields instead.
 - `cyberpunk`: high-contrast neon magenta/cyan style with chromatic-aberration line offsets and deterministic high-tension glitch coordinate shifts.
+- `cosmic-wormhole`: a 3D perspective "tunnel flight" identity. A constructor-allocated dust pool is projected from cylinder space to 2D using the 24-band `perceptualSpectrum` and the modulation bus. It adds event-driven tunnel curvature scaled by the `wormholeCurve` master, an absolute-world parallax starfield, and a deep `radialGlow` galaxy layer that both follow the camera as it travels and bends. It draws only `backend.line` plus the gated galaxy glow and stays deterministic through `pseudoNoise()`. Its parameters live in the `Wormhole` tuning group (`wormholeRadius`, `wormholeDepth`, `wormholeSpeed`, `wormholeWarp`, `wormholeCurve`, `wormholeRing`, `wormholeStarfield`, `wormholeGalaxy`).
 
 The common contract is `src/visuals/VisualIdentity.ts`. `src/visuals/StyleRegistry.ts` keeps identities in a private `Map`, exposes `register()` and `get()`, and provides `createDefaultStyleRegistry()` for application composition. Unknown style ids fall back to `classic`; missing `classic` registration is treated as a composition error.
 
-Mode selection belongs to UI projection. `src/main.ts` exposes all five style ids in `#visual-mode`, and `DashboardUI` validates selected/preset-loaded ids before writing `State.visualMode`. Presets remain backward-compatible: missing or unknown `visualMode` fields do not break loading, while known style ids update both shared state and the select element.
+Mode selection belongs to UI projection. `src/main.ts` exposes the built-in style ids in `#visual-mode` (with `hero` listed only when `featureFlags.heroEffect` is enabled), and `DashboardUI` validates selected/preset-loaded ids before writing `State.visualMode`. Presets remain backward-compatible: missing or unknown `visualMode` fields do not break loading, while known style ids update both shared state and the select element.
 
 `src/visuals/PlexusRenderer.ts` only synchronizes playback/analysis state and delegates to the selected identity; no audio analysis may run in a visual identity.
 

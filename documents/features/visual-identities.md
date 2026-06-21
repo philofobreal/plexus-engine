@@ -38,7 +38,8 @@ Unknown style ids fall back to the `classic` identity. If `classic` itself has n
 - `dark-techno`
 - `organic-ambient`
 - `cyberpunk`
-- `hero`
+- `cosmic-wormhole`
+- `hero` (registered only when `featureFlags.heroEffect` is enabled)
 
 There is no module-level writable global registry. The app composes a registry instance in `src/main.ts` and passes it to `startPlexusRenderer()`.
 
@@ -74,6 +75,25 @@ File: `src/visuals/CyberpunkIdentity.ts`
 
 High-contrast neon magenta and cyan identity. It simulates chromatic aberration by drawing connections twice with small offsets and uses deterministic high-tension glitch offsets during buildup/drop pressure.
 
+### Cosmic Wormhole
+
+File: `src/visuals/CosmicWormholeIdentity.ts`
+
+A 3D "tunnel flight" identity. It maintains a fixed dust pool (one grain per spectral band and depth layer) in cylinder space: every grain has an angular position `theta` on the tube wall, a band assignment, and a running depth `z`. Each frame the grain depth streams toward the camera and is projected to 2D through perspective division. The field of view is bound to canvas height (not width) so the tube always fits vertically on a 16:9 surface, and the grains draw only as motion-blurred radial streaks (`backend.line`) — there are no center circles.
+
+Music reactivity is sourced from precomputed state, never realtime DSP:
+
+- The 24-band `State.currentFrame.perceptualSpectrum` is distributed around the tube wall, one angular sector per band, and each band's energy drives the brightness and thickness of its grains.
+- Flight speed scales with `State.modulation.macroMomentum` and `State.modulation.densityDrive`; the dust spiral twist scales with `kineticTension`, `centripetalOrbit`, and the `wormholeWarp` tuning value.
+- `State.denseImpactFlash` flashes grain brightness and thickness on dense impacts (a wormhole-rim flash); `State.directorOutput.glitchIntensity` adds a deterministic per-index coordinate shift during `GLITCH_LOW_DROP`.
+- `State.currentFeatures.vocal` and `melody` shift the grain hue through `hueToRgbInto()` with an identity-owned RGB tuple.
+
+The tunnel curvature is event-driven, not constant. A decaying `curveImpulse` fires whenever `State.directorOutput.state` changes (i.e. when the performance-automation preset transitions), and `kineticTension`/`centripetalOrbit` add a gentle continuous lean. The whole bend is scaled by the dedicated `wormholeCurve` master (`0` = perfectly straight, `1` = full bends) so the tuning panel can override any preset.
+
+The scene is wrapped by a parallax universe that is independent of the tube: an absolute-world starfield plus a deeper layer of large, faint `radialGlow` galaxies (gated by `shouldUseExpensiveGlow`). Both subtract the curving camera offset before projection, so the background sweeps as the tunnel bends and streams as it travels forward. Grain recycling uses a modular depth wrap that preserves each grain's random sub-step depth, so the dispersed look never collapses into concentric rings after a full play-through; the `wormholeRing` parameter optionally blends the dispersed depth back toward discrete rings on purpose.
+
+All pools and color tuples are allocated once in the constructor, glitch and parallax noise come from a deterministic `pseudoNoise()` hash, and drawing stays on `backend.line` plus the gated galaxy `radialGlow`.
+
 ### Hero
 
 File: `src/visuals/HeroEffectIdentity.ts`
@@ -89,10 +109,20 @@ In metronome mode, Hero looks ahead mathematically into the timeline instead of 
 `State.visualMode` is a `VisualMode` union:
 
 ```ts
-'classic' | 'temporal' | 'dark-techno' | 'organic-ambient' | 'cyberpunk' | 'hero'
+'classic' | 'temporal' | 'dark-techno' | 'organic-ambient' | 'cyberpunk' | 'cosmic-wormhole' | 'hero'
 ```
 
-The visual mode select in `src/main.ts` exposes all six values. `DashboardUI` validates mode ids through `isVisualMode()` before writing `State.visualMode`. Preset loading uses the same validation, so older presets without `visualMode` remain valid and newer presets that contain any registered built-in style update both `State.visualMode` and the select element.
+The visual mode select in `src/main.ts` exposes the built-in values; `cosmic-wormhole` is always available, while `hero` is listed only when `featureFlags.heroEffect` is enabled. `DashboardUI` validates mode ids through `isVisualMode()` before writing `State.visualMode`. Preset loading uses the same validation, so older presets without `visualMode` remain valid and newer presets that contain any registered built-in style update both `State.visualMode` and the select element.
+
+### Wormhole Tuning Group
+
+`src/config/visualTuning.ts` exposes a dedicated `Wormhole` control group consumed by `CosmicWormholeIdentity`:
+
+- `wormholeRadius`, `wormholeDepth`, `wormholeSpeed` — base tube diameter, horizon distance, and forward Z-velocity.
+- `wormholeWarp` — dust spiral-twist amount.
+- `wormholeCurve` — master scale for the event-driven tunnel curvature (`0` forces a straight tube regardless of preset content); it is set per preset in `temporal1.json`..`temporal5.json`.
+- `wormholeRing` — blends the natural dispersed depth toward concentric rings (`0` = random, `1` = rings).
+- `wormholeStarfield`, `wormholeGalaxy` — general, preset-independent masters for the background star density and the deep galaxy layer. They are intentionally not written by the bundled presets so they stay global across preset changes.
 
 ## Render Boundary And Performance Rules
 

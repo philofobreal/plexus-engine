@@ -24,6 +24,8 @@ Implemented capabilities:
 
 The default tuning values remain the baseline behavior. New or old preset payloads are normalized through `normalizeVisualTuningConfig`, which merges valid numeric values onto `defaultVisualTuning`.
 
+The `Wormhole` control group drives the `cosmic-wormhole` identity: `wormholeRadius`, `wormholeDepth`, and `wormholeSpeed` shape the tube geometry and forward velocity; `wormholeWarp` controls the dust spiral twist; `wormholeCurve` is a `0..1` master for the event-driven tunnel curvature that can force a straight tube regardless of preset content; `wormholeRing` blends the dust depth between a natural dispersed spread and concentric rings; and `wormholeStarfield` and `wormholeGalaxy` are general, preset-independent masters for the background star density and the deep galaxy parallax layer. Because the bundled presets do not write the two background masters, they stay global across preset changes.
+
 ## Preset Management
 
 Visual tuning presets are loaded from `public/visual-tuning-presets/`.
@@ -38,7 +40,7 @@ Implemented capabilities:
 - The selector defaults to `default.json` when available instead of showing a placeholder.
 - Selecting a preset immediately loads its tuning values.
 - Old preset files remain valid because missing parameters are filled from defaults.
-- Presets may include a `visualMode` field. Known built-in values (`classic`, `temporal`, `dark-techno`, `organic-ambient`, `cyberpunk`) update both `State.visualMode` and the visual mode select. Missing or unknown mode values are ignored so older or external presets do not break loading.
+- Presets may include a `visualMode` field. Known built-in values (`classic`, `temporal`, `dark-techno`, `organic-ambient`, `cyberpunk`, `cosmic-wormhole`, and `hero` when its feature flag is enabled) update both `State.visualMode` and the visual mode select. Missing or unknown mode values are ignored so older or external presets do not break loading.
 - Preset loading does not show transient success messages that would resize or shift the panel.
 - The `Copy config` button exports the current tuning state as preset-compatible JSON with a `version` field and a `visualTuning` payload.
 - Copy feedback is intentionally transient and confined to the tuning panel status area so it does not shift layout. Preset-load failures may use the same status area for short-lived diagnostic text.
@@ -85,6 +87,7 @@ Implemented capabilities:
 - Normal left click or drag always scrubs/seeks, including in zoomed view. Shift-drag or middle-button drag pans the viewport.
 - While playing in zoomed view, the viewport follows the playhead when the playhead leaves the `15%..75%` range of the visible timeline.
 - Timeline generator controls include a Strategy selector and `Generate` button. When `Strict Alternating` is selected, a context-sensitive Strict Mode settings row appears for choosing 4 presets, the Bars/Preset interval, and Morph duration.
+- `Copy Dramaturgy` and `Load Dramaturgy` buttons transfer the current performance-automation plan (the dramaturgy state) through the clipboard. Serialization and validation live in the DOM-free `src/automation/dramaturgyTransfer.ts` module: `serializeDramaturgyPlan()` writes a tagged JSON envelope, and `parseDramaturgyPlan()` accepts a tagged envelope, a bare plan, or a full `Copy config` payload that embeds a `performancePlan`, then validates and normalizes it (points sorted by time, unknown fields stripped, confidence clamped) or returns a precise error message. Load is non-destructive until confirmed: it requires clipboard text (with a manual-paste fallback when the Clipboard API is unavailable), reports parse/validation errors in the timeline status line, asks for overwrite confirmation, then applies the plan as `State.editedPerformancePlan`/`State.performancePlan`, preloads referenced presets, and redraws the timeline. Copy uses the same write/fallback path as `Copy config`.
 - Automation zones remain visible when only partly inside the timeline viewport. Morph curve geometry uses unclipped x coordinates and canvas clipping; curve segment count starts at `15` and increases with curve width. Preset colors mark the automation zone, morph curve, intensity line, and sensitivity handle state, and the zone after the morph curve is dimmed.
 - The waveform is a precomputed `Float32Array` waveform cache owned by `TimelineCanvas`, targeting `80 Hz` buckets and capped at `500000` points. Deep zoom samples it with linear interpolation. It is a cached waveform projection, not runtime audio analysis.
 
@@ -152,6 +155,7 @@ The feature is split across these runtime layers:
 - `src/ui/controllers/PlaybackController.ts`: focused playback DOM controller for upload, play/stop, center-surface playback, seekbar drag state, loop, fullscreen, canvas click/double-click, keyboard shortcuts, time labels, BPM badge, and playback enable/disable state.
 - `src/ui/controllers/TuningController.ts`: focused tuning DOM controller for metadata-driven tuning controls, preset selectors, visual mode selection, metrics toggle, copy feedback, and tuning-panel dragging.
 - `src/ui/controllers/ExportController.ts`: focused export DOM controller for export selectors, capability warnings, progress labels, stop/cancel controls, and active export UI state.
+- `src/automation/dramaturgyTransfer.ts`: DOM-free serialization, validation, and normalization for copying and loading a performance-automation plan through the clipboard. Covered by `tests/dramaturgy-transfer.test.mjs`.
 - `src/ui/GestureEngine.ts`: generic deep input-normalization module for mouse, wheel, pointer-like drag, hover, double-click, touch, and pinch zoom input. It emits normalized semantic callbacks and has no knowledge of playback, sections, presets, or rendering.
 - `src/ui/TimelineCanvas.ts`: declarative timeline renderer. It consumes `RenderState`, owns HDPI canvas sizing, section/cue/playhead drawing, sensitivity and preset labels, spectral overlays, and waveform offscreen caching.
 - `src/export/WebMExporter.ts`: deep main-thread export module. It owns offline time stepping, p5 loop suppression, canvas resize/restore, metadata card drawing, `VideoFrame` capture, audio slicing, stop/cancel behavior, and worker dispatch.
