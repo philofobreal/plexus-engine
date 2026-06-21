@@ -108,7 +108,8 @@ export class TimelineCanvas {
     }
 
     private getViewport(state: RenderState): TimelineViewport {
-        const zoom = this.clamp(state.zoom, 1, 16);
+        const maxZoom = Math.max(16, state.duration / 5.0);
+        const zoom = this.clamp(state.zoom, 1, maxZoom);
         const visibleDuration = state.duration / zoom;
         const start = this.clamp(state.pan, 0, Math.max(0, state.duration - visibleDuration));
         return {

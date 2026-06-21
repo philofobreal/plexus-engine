@@ -1219,7 +1219,8 @@ export class DashboardUI {
 
     private getTimelineVisibleDuration(): number {
         if (State.duration <= 0) return 0;
-        return State.duration / this.clamp(State.zoom, 1, 16);
+        const maxZoom = Math.max(16, State.duration / 5.0); // Min 5 másodperc látszódjon
+        return State.duration / this.clamp(State.zoom, 1, maxZoom);
     }
 
     private getTimelineTimeAtPercent(percent: number): number {
@@ -1380,7 +1381,8 @@ export class DashboardUI {
         const normalizedFocus = this.clamp(focusX, 0, 1);
         const focusTime = this.getTimelineTimeAtPercent(normalizedFocus);
         const zoomFactor = delta > 0 ? 1.18 : 1 / 1.18;
-        State.zoom = this.clamp(State.zoom * zoomFactor, 1, 16);
+        const maxZoom = Math.max(16, State.duration / 5.0);
+        State.zoom = this.clamp(State.zoom * zoomFactor, 1, maxZoom);
         const nextVisibleDuration = this.getTimelineVisibleDuration();
         State.pan = this.clampTimelinePan(focusTime - normalizedFocus * nextVisibleDuration);
         if (State.zoom <= 1.01) State.pan = 0;
