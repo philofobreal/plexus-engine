@@ -120,6 +120,7 @@ export interface VisualTuningConfig {
     wormholeRing: number;
     wormholeStarfield: number;
     wormholeGalaxy: number;
+    wormholeSkybox: number;
 }
 
 export interface PerformancePreset {

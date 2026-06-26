@@ -1,4 +1,5 @@
 import { getBackgroundClearStyle, hueToRgbInto, shouldUseExpensiveGlow } from '../config/visualTuning';
+import { featureFlags } from '../config/featureFlags';
 import { State } from '../state/store';
 import type { Particle } from './Particle';
 import type { Shockwave } from './Shockwave';
@@ -13,7 +14,7 @@ const POOL_SIZE = BANDS * DEPTH_LAYERS;
 /** Reference horizon distance at depth = 1; the live horizon is this scaled by wormholeDepth. */
 const Z_REFERENCE = 1000;
 /** Background parallax universe (near star layer). */
-const STAR_COUNT = 850;
+const STAR_COUNT = 1800;
 const MAX_STAR_Z = 8000;
 const STAR_FIELD_HALF = 6000;
 /** Star colour-temperature palette (icy blue / white / warm amber / faint cyan) for depth variety. */
@@ -38,6 +39,10 @@ const GALAXY_PALETTE: ReadonlyArray<readonly [number, number, number]> = [
     [210, 90, 180],
     [220, 150, 90]
 ];
+/** Dense procedural sky plate: faint stars and dust fixed on the distant background. */
+const SKYBOX_STAR_COUNT = 9000;
+const SKYBOX_TILE_RADIUS = 1.35;
+const SKYBOX_PARALLAX_GAIN = 0.34;
 
 /**
  * A single stardust grain living in cylinder space: a fixed angular position
@@ -74,6 +79,19 @@ interface Galaxy {
     b: number;
 }
 
+/** A skybox star or dust fleck fixed on the repeated distant sky plate. */
+interface SkyStar {
+    x: number;
+    y: number;
+    r: number;
+    g: number;
+    b: number;
+    mag: number;
+    size: number;
+    haze: number;
+    twPhase: number;
+}
+
 class CosmicWormholeIdentity implements VisualIdentity {
     readonly id = 'cosmic-wormhole';
     readonly name = 'Cosmic Wormhole';
@@ -81,6 +99,7 @@ class CosmicWormholeIdentity implements VisualIdentity {
     private readonly pool: DustGrain[] = [];
     private readonly starPool: Star[] = [];
     private readonly galaxyPool: Galaxy[] = [];
+    private readonly skyPool: SkyStar[] = [];
     private readonly lineColor: [number, number, number] = [0, 0, 0];
     private readonly galaxyColor: [number, number, number] = [0, 0, 0];
     /** Accumulated travel along Z; feeds the curvature phase so the tunnel snakes over time. */
@@ -126,6 +145,24 @@ class CosmicWormholeIdentity implements VisualIdentity {
                 r: tint[0],
                 g: tint[1],
                 b: tint[2]
+            });
+        }
+        for (let i = 0; i < SKYBOX_STAR_COUNT; i++) {
+            const seed = (i + 1) * 5.219;
+            const tint = STAR_PALETTE[Math.floor(pseudoNoise(seed, 66.6) * STAR_PALETTE.length) % STAR_PALETTE.length];
+            // Magnitude skewed toward faint specks, with a sparse brighter haze/dust component.
+            const mag = Math.pow(pseudoNoise(seed, 77.7), 2.7);
+            const haze = Math.pow(pseudoNoise(seed, 88.8), 5.4);
+            this.skyPool.push({
+                x: pseudoNoise(seed, 1.9) * 2 - 1,
+                y: pseudoNoise(seed, 2.8) * 2 - 1,
+                r: tint[0],
+                g: tint[1],
+                b: tint[2],
+                mag,
+                size: 0.35 + mag * 1.8 + haze * 3.2,
+                haze,
+                twPhase: pseudoNoise(seed, 3.7) * TWO_PI
             });
         }
     }
@@ -187,6 +224,11 @@ class CosmicWormholeIdentity implements VisualIdentity {
         const lineAlpha = tuning.lineAlpha;
         const lineWeight = tuning.lineWeight;
         const frameTick = Math.floor(State.rotationPhase);
+
+        if (featureFlags.wormholeSkybox) {
+            const skyCamera = this.updateSkyboxCamera(baseOffsetX, baseOffsetY, backend.height);
+            this.drawSkybox(backend, skyCamera.panX, skyCamera.panY, tuning.wormholeSkybox, impact, cx, cy, frameTick);
+        }
 
         // --- Deepest layer: distant galaxies that wrap the whole scene. They sit far beyond the
         // stars in absolute world space and parallax with the camera, so the entire universe turns
@@ -327,6 +369,55 @@ class CosmicWormholeIdentity implements VisualIdentity {
     private curveOffsetY(globalZ: number, amp: number): number {
         return Math.cos(globalZ * 0.0011) * amp;
     }
+
+    private updateSkyboxCamera(
+        baseOffsetX: number,
+        baseOffsetY: number,
+        canvasHeight: number
+    ): { panX: number; panY: number } {
+        const panScale = Math.max(1, canvasHeight);
+        return {
+            panX: clamp((-baseOffsetX / panScale) * SKYBOX_PARALLAX_GAIN, -0.28, 0.28),
+            panY: clamp((-baseOffsetY / panScale) * SKYBOX_PARALLAX_GAIN, -0.28, 0.28)
+        };
+    }
+
+    /**
+     * Deepest layer: a dense astropicture-like sky plate. It uses the same camera-offset parallax
+     * direction as the free-floating background stars, without any independent rotation.
+     */
+    private drawSkybox(
+        backend: VisualRendererBackend,
+        panX: number,
+        panY: number,
+        amount: number,
+        impact: number,
+        cx: number,
+        cy: number,
+        frameTick: number
+    ): void {
+        if (amount <= 0) return;
+        const radius = Math.hypot(cx, cy) * SKYBOX_TILE_RADIUS;
+        const panPx = panX * radius;
+        const panPy = panY * radius;
+        for (let i = 0; i < this.skyPool.length; i++) {
+            const star = this.skyPool[i];
+            const sx = cx + star.x * radius + panPx;
+            const sy = cy + star.y * radius + panPy;
+            const tw = 0.88 + 0.12 * Math.sin(frameTick * 0.035 + star.twPhase);
+            const dustAlpha = star.haze * 34 * tw * amount;
+            if (dustAlpha > 0.2) {
+                backend.stroke(star.r, star.g, star.b, dustAlpha);
+                backend.strokeWeight(star.size * 2.2);
+                backend.line(sx, sy, sx, sy);
+            }
+            const alpha = ((5 + star.mag * 150) * tw + impact * star.mag * 58) * amount;
+            backend.stroke(star.r, star.g, star.b, alpha);
+            backend.strokeWeight(star.size);
+            backend.line(sx, sy, sx, sy);
+        }
+    }
+
 }
 
 /** Blend a dispersed depth toward the centre of its discrete layer ring (mid-layer, always > 0). */
@@ -343,6 +434,10 @@ function pseudoNoise(a: number, b: number): number {
 
 function clamp01(value: number): number {
     return Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
+}
+
+function clamp(value: number, min: number, max: number): number {
+    return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 }
 
 export const cosmicWormholeIdentity: VisualIdentity = new CosmicWormholeIdentity();

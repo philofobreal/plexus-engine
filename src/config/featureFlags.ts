@@ -1,4 +1,5 @@
 export const featureFlags = {
     heroEffect: false,
-    analyzerDebugOverlay: false
+    analyzerDebugOverlay: false,
+    wormholeSkybox: false
 };

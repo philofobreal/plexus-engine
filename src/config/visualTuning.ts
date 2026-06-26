@@ -74,7 +74,8 @@ export const defaultVisualTuning: VisualTuningConfig = {
     wormholeCurve: 1,
     wormholeRing: 0,
     wormholeStarfield: 1,
-    wormholeGalaxy: 1
+    wormholeGalaxy: 1,
+    wormholeSkybox: 1
 };
 
 export const visualTuningKeys = Object.keys(defaultVisualTuning) as VisualTuningKey[];
@@ -148,6 +149,7 @@ const allVisualTuningControls: VisualTuningControl[] = [
     { key: 'wormholeRing', label: 'Ring align', group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x' },
     { key: 'wormholeStarfield', label: 'Starfield', group: 'Wormhole', min: 0, max: 2, step: 0.05, unit: 'x' },
     { key: 'wormholeGalaxy', label: 'Galaxy depth', group: 'Wormhole', min: 0, max: 2, step: 0.05, unit: 'x' },
+    { key: 'wormholeSkybox', label: 'Skybox opacity', group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x' },
     { key: 'heroLaneBottomOffset', label: 'Lane from bottom', group: 'Hero', min: 0.05, max: 0.9, step: 0.01, unit: 'h' },
     { key: 'heroBeepVolume', label: 'Hero beep volume', group: 'Hero', min: 0, max: 1, step: 0.05 },
     {
