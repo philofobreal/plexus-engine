@@ -103,3 +103,15 @@ Every shared state field needs a clear owner:
 - State module owns shape and initialization defaults.
 
 When ownership is ambiguous, add a small explicit API or handoff contract instead of adding hidden direct writes.
+
+## Semantic Dramaturgy Layer (ADR-003)
+
+The semantic layer is the style-independent description of dramatic intent. It is separate from both visual styles and physical presets, and its boundary is binding. See `../adr/ADR-003-semantic-layer-boundary.md`.
+
+- The chain `buildNarrative -> generateIntents -> processChoreography` lives under `src/semantics/` and is pure, offline, and deterministic. It may import `src/types/` and `src/config/` contract helpers only. It must not import p5, DOM, `src/state/`, `src/visuals/`, `src/ui/`, or `src/audio/`. Identical `TrackAnalysis` must yield identical narrative, intent, and choreography plans regardless of selected style.
+- These three stages run once per track (or on timeline edit), not in the render loop. `SemanticResolver.resolveSemanticState` runs when a choreography frame, style, or base lookup changes (renderer-side memoization), not unconditionally every frame, with the action deltas applied on top of the active style's base preset.
+- Channel ownership is split and must never overlap. `SemanticResolver` resolves a `ChoreographyFrame` into `State.targetTuning` only (the slow parameter-morph channel). `VisualDirectorFSM` keeps sole ownership of `State.modulation`, `State.directorOutput`, and per-frame `frame.state` (the fast audio-reactive channel). The resolver must not write the modulation bus or director output, and the FSM must not read `ChoreographyFrame`.
+- Resolved tuning must stay within the `visualTuningControls` min/max bounds; the resolver is responsible for clamping every parameter it writes.
+- The layer is gated by `featureFlags.semanticResolver` and is off by default (pass-through). When off, the legacy `performancePlan` automation owns `State.targetTuning` writes as before. When on, the resolver owns `State.targetTuning` and the legacy automation trigger must yield; the earlier "UI owns `State.targetTuning` writes" rule is superseded for the duration semantic mode is active.
+- Styles consume the abstract `ChoreographyFrame` actions; each style is free to translate the same action into its own geometry. Styles and presets must not leak back into the narrative/intent/choreography stages.
+- Any change that lets the FSM consume semantic input requires a new ADR; it must not be introduced ad hoc.

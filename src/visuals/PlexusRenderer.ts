@@ -7,8 +7,9 @@ import { applyTuningMorph, tuneAudioValue, writeModulationBus } from '../config/
 import { P5RendererBackend } from './P5RendererBackend';
 import type { DashboardUI } from '../ui/DashboardUI';
 import type { AudioEngine } from '../audio/AudioEngine';
-import type { AudioFrame, VisualCueKind, VisualFeatureFrame } from '../types';
+import type { AudioFrame, ChoreographyFrame, VisualChoreographyPlan, VisualCueKind, VisualFeatureFrame, VisualMode, VisualTuningConfig } from '../types';
 import { VisualDirectorFSM } from './VisualDirectorFSM';
+import { resolveSemanticState } from '../semantics';
 import type { StyleRegistry } from './StyleRegistry';
 
 export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine: AudioEngine, styleRegistry: StyleRegistry) {
@@ -20,6 +21,16 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
         let currentTargetFrameRate = 60;
         const backend = new P5RendererBackend(p);
         const visualDirector = new VisualDirectorFSM();
+
+        // Semantic resolver (ADR-003): a monotonic cursor over the choreography frames plus a
+        // memo so the resolver only recomputes when the active frame, style, or base changes —
+        // not 60x/sec over an unchanged section.
+        let choreoCursor = 0;
+        let lastChoreoTime = -1;
+        let lastResolvedChoreography: ChoreographyFrame | null = null;
+        let lastResolvedStyle: VisualMode | null = null;
+        let lastResolvedBase: VisualTuningConfig | null = null;
+        let lastChoreoPlanRef: VisualChoreographyPlan | null = null;
 
         p.setup = () => {
             const renderer = p.createCanvas(p.windowWidth, p.windowHeight);
@@ -66,6 +77,39 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
 
             let ct = State.isExporting ? State.exportTime : engine.getCurrentTime();
             State.currentTime = ct;
+
+            // Semantic dramaturgy layer (ADR-003): when enabled, the resolved choreography
+            // owns targetTuning (the slow param channel). The VisualDirectorFSM and the
+            // modulation bus below are untouched — they remain the fast audio-reactive channel.
+            if (featureFlags.semanticResolver && State.visualChoreography) {
+                // A recompute / dramaturgy load swaps the plan object: the old cursor and memo now
+                // index a stale frames array (wrong slice, or out of bounds). Reset everything.
+                if (State.visualChoreography !== lastChoreoPlanRef) {
+                    lastChoreoPlanRef = State.visualChoreography;
+                    choreoCursor = 0;
+                    lastChoreoTime = -1;
+                    lastResolvedChoreography = null;
+                    lastResolvedStyle = null;
+                    lastResolvedBase = null;
+                }
+
+                const frames = State.visualChoreography.frames;
+                if (ct < lastChoreoTime) choreoCursor = 0; // seek / loop rewind
+                lastChoreoTime = ct;
+                while (choreoCursor + 1 < frames.length && frames[choreoCursor + 1].time <= ct) choreoCursor++;
+                const activeFrame = frames.length > 0 && frames[choreoCursor].time <= ct ? frames[choreoCursor] : null;
+                State.currentChoreography = activeFrame;
+
+                const base = State.semanticBaseTuning;
+                // Only re-resolve (and re-allocate a tuning config) when something actually changed.
+                if (activeFrame !== lastResolvedChoreography || State.visualMode !== lastResolvedStyle || base !== lastResolvedBase) {
+                    lastResolvedChoreography = activeFrame;
+                    lastResolvedStyle = State.visualMode;
+                    lastResolvedBase = base;
+                    const presets = base ? { [State.visualMode]: base } : {};
+                    Object.assign(State.targetTuning, resolveSemanticState(activeFrame, State.visualMode, presets));
+                }
+            }
 
             if ((State.isPlaying || State.isExporting) && State.frames.length > 0) {
                 let frameIdx = Math.floor(ct * State.sampleRate / State.hopSize);
@@ -201,6 +245,7 @@ function resetTransientVisualState() {
     State.directorOutput.centripetalOrbit = 0;
     State.directorOutput.glitchIntensity = 0;
     State.directorOutput.invertBackground = false;
+    State.currentChoreography = null;
     State.activeCueKind = null;
     State.activePatternId = null;
 }

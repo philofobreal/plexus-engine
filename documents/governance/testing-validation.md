@@ -68,6 +68,14 @@ Visual changes:
 - For visual identity or style-registry changes, run the browser-free deterministic style harness (`node --test tests/styles-deterministic.test.mjs`) or explain why it was not applicable.
 - If in-app browser automation cannot reach a transient local dev server, verify server startup and HTTP status with a short-lived shell job, then report browser smoke as not completed.
 
+Semantic dramaturgy layer changes (ADR-003):
+
+- **Semantic Determinism Test (required).** Identical `TrackAnalysis` must produce identical narrative, intent, and choreography plans, independent of the selected style. Assert this with `node --test tests/semantics.test.mjs` (deep-equal of repeated runs over synthetic fixtures).
+- Confirm the layer stays headless: no p5, DOM, `src/state/`, `src/visuals/`, `src/ui/`, or `src/audio/` imports under `src/semantics/` (guarded by a test).
+- Confirm `SemanticResolver` keeps every resolved parameter within `visualTuningControls` min/max bounds for all styles, including saturated/empty choreography input.
+- Confirm channel separation: the resolver writes only `State.targetTuning`; the modulation bus and `directorOutput` remain FSM-owned.
+- Confirm `featureFlags.semanticResolver` defaults off and that the legacy `performancePlan` path is unchanged when off (run `node --test tests/styles-deterministic.test.mjs` and `tests/contracts.test.mjs`).
+
 UI changes:
 
 - Validate disabled/enabled states, dashboard text, BPM badge, seek bar, time display, and responsive layout.

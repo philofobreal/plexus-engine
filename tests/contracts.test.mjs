@@ -220,6 +220,109 @@ test('performance automation contracts and state are exposed and reset', () => {
   assert.match(ui, /videoDominantColor: State\.videoDominantColor/);
 });
 
+test('semantic dramaturgy layer types and state are exposed (ADR-003)', () => {
+  const types = read('src/types/index.ts');
+  const store = read('src/state/store.ts');
+
+  // Union vocabularies
+  assert.match(types, /export type NarrativeType = 'intro' \| 'groove' \| 'tension' \| 'build' \| 'fake-drop' \| 'release' \| 'peak' \| 'breakdown' \| 'outro';/);
+  assert.match(types, /export type IntentType = 'establish' \| 'anticipate' \| 'compress' \| 'expand' \| 'release' \| 'celebrate' \| 'recover' \| 'contrast' \| 'return' \| 'sustain';/);
+  assert.match(types, /export type ChoreographyAction = 'expand' \| 'collapse' \| 'orbit' \| 'fragment' \| 'bloom' \| 'pulse' \| 'echo' \| 'freeze' \| 'accelerate' \| 'slow' \| 'densify' \| 'thin' \| 'focus' \| 'scatter' \| 'merge';/);
+  assert.match(types, /export type GrammarOperator = 'repeat' \| 'mirror' \| 'invert' \| 'alternate' \| 'echo' \| 'grow' \| 'shrink' \| 'cascade' \| 'call-response';/);
+
+  // Plan shapes
+  assert.match(types, /export interface NarrativeSegment[\s\S]*id: string;[\s\S]*startTime: number;[\s\S]*endTime: number;[\s\S]*type: NarrativeType;[\s\S]*intensity: number;/);
+  assert.match(types, /export interface MusicalNarrativePlan[\s\S]*version: 1;[\s\S]*segments: NarrativeSegment\[\];/);
+  assert.match(types, /export interface IntentPoint[\s\S]*time: number;[\s\S]*intent: IntentType;[\s\S]*weight: number;[\s\S]*duration: number;/);
+  assert.match(types, /export interface DramaturgicalIntentPlan[\s\S]*version: 1;[\s\S]*points: IntentPoint\[\];/);
+
+  // ChoreographyFrame.actions MUST be a serializable Record, never a Map (ADR-003).
+  assert.match(types, /export interface ChoreographyFrame[\s\S]*time: number;[\s\S]*actions: Partial<Record<ChoreographyAction, number>>;[\s\S]*activeOperators: GrammarOperator\[\];/);
+  assert.doesNotMatch(types, /actions: Map<ChoreographyAction/);
+  assert.match(types, /export interface VisualChoreographyPlan[\s\S]*version: 1;[\s\S]*frames: ChoreographyFrame\[\];/);
+
+  // Offline plan state slots (nullable, computed once per track)
+  assert.match(store, /semanticNarrative: null as MusicalNarrativePlan \| null/);
+  assert.match(store, /dramaturgicalIntent: null as DramaturgicalIntentPlan \| null/);
+  assert.match(store, /visualChoreography: null as VisualChoreographyPlan \| null/);
+  // Realtime choreography lookup slot, resolver-owned
+  assert.match(store, /currentChoreography: null as ChoreographyFrame \| null/);
+});
+
+test('semantic resolver is wired behind a feature flag and owns targetTuning when on (ADR-003)', () => {
+  const flags = read('src/config/featureFlags.ts');
+  const renderer = read('src/visuals/PlexusRenderer.ts');
+  const ui = read('src/ui/DashboardUI.ts');
+  const audio = read('src/audio/AudioEngine.ts');
+
+  // Flag exists and defaults to off (pass-through).
+  assert.match(flags, /semanticResolver: false/);
+
+  // Renderer: gated resolver writes targetTuning; FSM/modulation untouched in that block.
+  assert.match(renderer, /import \{ resolveSemanticState \} from '\.\.\/semantics'/);
+  assert.match(renderer, /featureFlags\.semanticResolver && State\.visualChoreography/);
+  // A swapped plan object resets cursor + memo so a stale cursor cannot index a new frames array.
+  assert.match(renderer, /if \(State\.visualChoreography !== lastChoreoPlanRef\) \{[\s\S]*lastChoreoPlanRef = State\.visualChoreography;[\s\S]*choreoCursor = 0;/);
+  // Cursor-based lookup with seek/loop rewind (no per-frame full scan).
+  assert.match(renderer, /if \(ct < lastChoreoTime\) choreoCursor = 0/);
+  assert.match(renderer, /while \(choreoCursor \+ 1 < frames\.length && frames\[choreoCursor \+ 1\]\.time <= ct\) choreoCursor\+\+/);
+  // Memoized resolve: recompute only when the active frame, style, or base changed.
+  assert.match(renderer, /activeFrame !== lastResolvedChoreography \|\| State\.visualMode !== lastResolvedStyle \|\| base !== lastResolvedBase/);
+  // Base is the snapshotted preset/look, not a hard-coded empty object.
+  assert.match(renderer, /const base = State\.semanticBaseTuning/);
+  assert.match(renderer, /const presets = base \? \{ \[State\.visualMode\]: base \} : \{\}/);
+  assert.match(renderer, /Object\.assign\(State\.targetTuning, resolveSemanticState\(activeFrame, State\.visualMode, presets\)\)/);
+  assert.match(renderer, /State\.currentChoreography = null/);
+
+  // DashboardUI: offline chain is a pure idempotent recompute (no base side-effect);
+  // base snapshot is a separate concern; legacy automation yields when flag on.
+  assert.match(ui, /import \{ buildNarrative, generateIntents, processChoreography \} from '\.\.\/semantics'/);
+  assert.match(ui, /private computeSemanticPlan\(\): void \{[\s\S]*if \(!featureFlags\.semanticResolver\) return;[\s\S]*State\.visualChoreography = choreography;[\s\S]*State\.currentChoreography = null;\s*\}/);
+  assert.match(ui, /private snapshotSemanticBase\(\): void \{[\s\S]*if \(!featureFlags\.semanticResolver\) return;[\s\S]*State\.semanticBaseTuning = \{ \.\.\.State\.targetTuning \}/);
+  assert.match(ui, /private triggerPerformanceAutomation\(\): void \{[\s\S]*if \(featureFlags\.semanticResolver\) return;/);
+
+  // Manual slider edit folds into the base per-key (no full re-snapshot, so no delta drift).
+  assert.match(ui, /onTuningChange: \(key, value\) => \{[\s\S]*if \(featureFlags\.semanticResolver && State\.semanticBaseTuning\) State\.semanticBaseTuning\[key\] = value;/);
+
+  // The plan is recomputed wherever the dramaturgy/automation plan changes (future-proof; the
+  // call is a flag-gated no-op today since the chain derives from TrackAnalysis).
+  assert.match(ui, /private endTimelineInteraction\(\): void \{[\s\S]*this\.computeSemanticPlan\(\);/);
+  assert.match(ui, /private applyLoadedDramaturgyPlan[\s\S]*this\.computeSemanticPlan\(\);/);
+
+  // AudioEngine: semantic plans + lookup + base snapshot are reset per track.
+  assert.match(audio, /State\.semanticNarrative = null/);
+  assert.match(audio, /State\.dramaturgicalIntent = null/);
+  assert.match(audio, /State\.visualChoreography = null/);
+  assert.match(audio, /State\.currentChoreography = null/);
+  assert.match(audio, /State\.semanticBaseTuning = null/);
+});
+
+test('timeline renders the dramaturgical intent arc and governance documents the layer (ADR-003)', () => {
+  const types = read('src/types/index.ts');
+  const timeline = read('src/ui/TimelineCanvas.ts');
+  const ui = read('src/ui/DashboardUI.ts');
+
+  // RenderState carries the optional intent overlay; DashboardUI populates it from state.
+  assert.match(types, /export interface RenderState[\s\S]*dramaturgicalIntent\?: DramaturgicalIntentPlan \| null;/);
+  assert.match(ui, /dramaturgicalIntent: State\.dramaturgicalIntent/);
+
+  // TimelineCanvas draws a gated intent lane, not raw preset names, from declarative state.
+  assert.match(timeline, /if \(state\.dramaturgicalIntent\) this\.drawIntentLane\(/);
+  assert.match(timeline, /private drawIntentLane\(/);
+  assert.match(timeline, /private getIntentColor\(intent: IntentType\): string/);
+
+  // Governance anchors the boundary and the new anti-patterns.
+  const contract = read('documents/governance/architecture-contract.md');
+  const antiPatterns = read('documents/governance/anti-patterns.md');
+  const testingDoc = read('documents/governance/testing-validation.md');
+  const adr = read('documents/adr/ADR-003-semantic-layer-boundary.md');
+  assert.match(contract, /## Semantic Dramaturgy Layer \(ADR-003\)/);
+  assert.match(antiPatterns, /Physical Preset Coupling in Dramaturgy/);
+  assert.match(antiPatterns, /String-Based DSL Parsers/);
+  assert.match(testingDoc, /Semantic Determinism Test \(required\)/);
+  assert.match(adr, /# ADR-003: Semantic Layer Boundary/);
+});
+
 test('visual track analysis detects recurring temporal patterns', () => {
   const types = read('src/types/index.ts');
   const dramaturgyBuilder = read('src/analyzer/DramaturgyBuilder.ts');

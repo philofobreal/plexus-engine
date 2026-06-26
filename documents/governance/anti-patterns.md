@@ -13,6 +13,13 @@ Stop and redesign if a change introduces any pattern below.
 - UI code reaching into worker internals or DSP implementation details.
 - Renderer code controlling playback lifecycle.
 
+## Semantic Layer Anti-Patterns (ADR-003)
+
+- **Physical Preset Coupling in Dramaturgy.** Hard-coding physical preset names or file names (for example `temporal1.json`) into the music analysis, narrative, intent, or choreography stages. The semantic chain must stay style- and preset-independent; preset binding belongs to `SemanticResolver` / the automation layer.
+- **String-Based DSL Parsers.** Introducing a runtime regex/string-parsed domain-specific language for dramaturgy in the browser. Use a structured, typed, JSON-serializable AST instead, so plans stay deterministic, serializable, and machine-writable.
+- **Cross-channel writes.** Letting `SemanticResolver` touch the modulation bus / `directorOutput`, or letting `VisualDirectorFSM` read `ChoreographyFrame`. The two channels are separate by contract; bridging them requires a new ADR.
+- **Per-frame narrative recompute.** Running `buildNarrative` / `generateIntents` / `processChoreography` inside the render loop. They are offline, run-once stages; only `resolveSemanticState` runs per frame.
+
 ## Realtime Audio Anti-Patterns
 
 - Realtime FFT, beat detection, or spectral analysis in p5 `draw()`.

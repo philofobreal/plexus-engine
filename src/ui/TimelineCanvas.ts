@@ -1,4 +1,4 @@
-import type { RenderState, TimelineLayers, TrackSectionLabel } from '../types';
+import type { IntentType, RenderState, TimelineLayers, TrackSectionLabel } from '../types';
 
 interface TimelineViewport {
     start: number;
@@ -87,6 +87,9 @@ export class TimelineCanvas {
         if (layers.buildup) this.drawBuildup(ctx, state, width, height, viewport);
         this.drawTrends(ctx, state, width, height, viewport);
         if (layers.cues) this.drawCueMarkers(ctx, state, width, height, viewport);
+        // Semantic dramaturgy overlay (ADR-003); gated by declarative state, so the legacy
+        // path (no dramaturgicalIntent) adds no draw calls.
+        if (state.dramaturgicalIntent) this.drawIntentLane(ctx, state, width, height, viewport);
         // Developer-only analyzer overlay; gated by declarative state so normal mode adds no draw
         // calls and the renderer does not read global configuration.
         if (state.showAnalyzerDebugOverlay) this.drawAnalyzerDebug(ctx, state, width, height, viewport);
@@ -853,6 +856,72 @@ export class TimelineCanvas {
             case 'peak': return 'rgba(0, 229, 255, 0.16)';
             case 'break': return 'rgba(120, 0, 255, 0.10)';
             default: return 'rgba(255, 255, 255, 0.035)';
+        }
+    }
+
+    // Dramaturgy arc band drawn along the bottom edge: one colored span per intent, the
+    // narrative read instead of raw preset names. Style-independent (ADR-003).
+    private drawIntentLane(
+        ctx: CanvasRenderingContext2D,
+        state: RenderState,
+        width: number,
+        height: number,
+        viewport: TimelineViewport
+    ): void {
+        const points = state.dramaturgicalIntent?.points;
+        if (!points?.length || height < 60) return;
+
+        const bandHeight = 14;
+        const top = height - bandHeight;
+        const sorted = [...points].sort((a, b) => a.time - b.time);
+
+        ctx.save();
+        ctx.font = '9px Inter, sans-serif';
+        ctx.textBaseline = 'middle';
+
+        for (let i = 0; i < sorted.length; i++) {
+            const point = sorted[i];
+            const next = sorted[i + 1];
+            const startX = this.timeToX(point.time, width, viewport);
+            const endX = next ? this.timeToX(next.time, width, viewport) : width;
+            if (endX < 0 || startX > width) continue;
+
+            const left = Math.max(0, startX);
+            const right = Math.min(width, endX);
+            ctx.fillStyle = this.getIntentColor(point.intent);
+            ctx.fillRect(left, top, Math.max(1, right - left), bandHeight);
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(startX + 0.5, top);
+            ctx.lineTo(startX + 0.5, height);
+            ctx.stroke();
+
+            const label = point.intent.toUpperCase();
+            const labelWidth = ctx.measureText(label).width;
+            if (right - left >= labelWidth + 8) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                ctx.fillText(label, left + 4, top + bandHeight / 2);
+            }
+        }
+
+        ctx.restore();
+    }
+
+    private getIntentColor(intent: IntentType): string {
+        switch (intent) {
+            case 'establish': return 'rgba(0, 150, 255, 0.20)';
+            case 'sustain': return 'rgba(120, 120, 120, 0.18)';
+            case 'anticipate': return 'rgba(255, 170, 0, 0.22)';
+            case 'compress': return 'rgba(255, 90, 0, 0.24)';
+            case 'release': return 'rgba(255, 0, 170, 0.26)';
+            case 'expand': return 'rgba(0, 229, 255, 0.22)';
+            case 'celebrate': return 'rgba(255, 40, 120, 0.28)';
+            case 'recover': return 'rgba(120, 0, 255, 0.18)';
+            case 'contrast': return 'rgba(255, 255, 255, 0.16)';
+            case 'return': return 'rgba(160, 160, 160, 0.16)';
+            default: return 'rgba(255, 255, 255, 0.12)';
         }
     }
 

@@ -1,5 +1,5 @@
 import { cloneDefaultVisualTuning } from '../config/visualTuning.ts';
-import type { AudioFrame, BeatEvent, DirectorOutput, ModulationState, PerformanceAutomationPlan, TimelineLayers, TrackAnalysis, VideoDominantColor, VisualFeatureFrame, VisualCueKind, VisualMode, VisualTuningConfig } from '../types';
+import type { AudioFrame, BeatEvent, ChoreographyFrame, DirectorOutput, DramaturgicalIntentPlan, ModulationState, MusicalNarrativePlan, PerformanceAutomationPlan, TimelineLayers, TrackAnalysis, VideoDominantColor, VisualChoreographyPlan, VisualFeatureFrame, VisualCueKind, VisualMode, VisualTuningConfig } from '../types';
 
 const emptyFeatures: VisualFeatureFrame = {
     melody: 0,
@@ -82,6 +82,10 @@ export const State = {
     preloadedPresets: {} as Record<string, Partial<VisualTuningConfig>>,
     performancePlan: null as PerformanceAutomationPlan | null,
     editedPerformancePlan: null as PerformanceAutomationPlan | null,
+    // Semantic / dramaturgy layer (ADR-003): offline plans computed once per track.
+    semanticNarrative: null as MusicalNarrativePlan | null,
+    dramaturgicalIntent: null as DramaturgicalIntentPlan | null,
+    visualChoreography: null as VisualChoreographyPlan | null,
     hopSize: 1024,
     sampleRate: 44100,
 
@@ -114,7 +118,14 @@ export const State = {
     denseImpactFlash: 0,
     modulation: { ...emptyModulation } as ModulationState,
     directorOutput: { ...emptyDirectorOutput } as DirectorOutput,
+    // Realtime lookup of the active choreography slice (ADR-003); read only by the
+    // SemanticResolver, which resolves it into targetTuning. Never written by the FSM.
+    currentChoreography: null as ChoreographyFrame | null,
     videoDominantColor: { ...emptyVideoDominantColor } as VideoDominantColor,
     visualTuning: cloneDefaultVisualTuning(),
-    targetTuning: cloneDefaultVisualTuning()
+    targetTuning: cloneDefaultVisualTuning(),
+    // Frozen base the SemanticResolver modulates around (ADR-003). Snapshotted from
+    // targetTuning at track load and on preset load so the resolver honours the user's
+    // current look without feeding its own output back in. Null = fall back to defaults.
+    semanticBaseTuning: null as VisualTuningConfig | null
 };

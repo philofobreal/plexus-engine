@@ -155,6 +155,59 @@ export interface PerformanceAutomationPlan {
     points: PerformanceAutomationPoint[];
 }
 
+// ── Semantic / Dramaturgy Layer (ADR-003) ──────────────────────────────────
+// A style-independent semantic chain computed offline from TrackAnalysis:
+//   Narrative -> Intent -> Choreography -> (SemanticResolver at runtime).
+// These plans must stay JSON-serializable and deterministic. Per ADR-003 the
+// renderer reads ONLY the resolved tuning plus the looked-up ChoreographyFrame;
+// the VisualDirectorFSM and its modulation bus are unaffected.
+
+export type NarrativeType = 'intro' | 'groove' | 'tension' | 'build' | 'fake-drop' | 'release' | 'peak' | 'breakdown' | 'outro';
+
+export interface NarrativeSegment {
+    id: string;
+    startTime: number;
+    endTime: number;
+    type: NarrativeType;
+    intensity: number; // 0..1
+}
+
+export interface MusicalNarrativePlan {
+    version: 1;
+    segments: NarrativeSegment[];
+}
+
+export type IntentType = 'establish' | 'anticipate' | 'compress' | 'expand' | 'release' | 'celebrate' | 'recover' | 'contrast' | 'return' | 'sustain';
+
+export interface IntentPoint {
+    time: number;
+    intent: IntentType;
+    weight: number;   // 0..1
+    duration: number; // transition length in seconds
+}
+
+export interface DramaturgicalIntentPlan {
+    version: 1;
+    points: IntentPoint[];
+}
+
+export type ChoreographyAction = 'expand' | 'collapse' | 'orbit' | 'fragment' | 'bloom' | 'pulse' | 'echo' | 'freeze' | 'accelerate' | 'slow' | 'densify' | 'thin' | 'focus' | 'scatter' | 'merge';
+
+export type GrammarOperator = 'repeat' | 'mirror' | 'invert' | 'alternate' | 'echo' | 'grow' | 'shrink' | 'cascade' | 'call-response';
+
+export interface ChoreographyFrame {
+    time: number;
+    // Action intensities (0..1). A plain Record, NOT a Map, so the plan stays
+    // JSON-serializable and deterministic (ADR-003).
+    actions: Partial<Record<ChoreographyAction, number>>;
+    activeOperators: GrammarOperator[];
+}
+
+export interface VisualChoreographyPlan {
+    version: 1;
+    frames: ChoreographyFrame[];
+}
+
 export interface ModulationState {
     kineticTension: number;
     densityDrive: number;
@@ -389,6 +442,10 @@ export interface RenderState {
     boundaryCandidates?: SectionBoundaryCandidate[];
     showAnalyzerDebugOverlay?: boolean;
     performancePlan: PerformanceAutomationPlan | null;
+    // Semantic dramaturgy overlay (ADR-003). Present only when the semantic layer is on;
+    // the timeline draws the dramaturgical arc instead of raw preset names. Optional so the
+    // legacy render path is unaffected.
+    dramaturgicalIntent?: DramaturgicalIntentPlan | null;
     timelineLayers: TimelineLayers;
     snapToGrid: boolean;
     selectedPointId: string | null;

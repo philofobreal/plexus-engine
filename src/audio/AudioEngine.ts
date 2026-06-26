@@ -57,6 +57,12 @@ export class AudioEngine {
         State.trackAnalysis = JSON.parse(JSON.stringify(EMPTY_TRACK_ANALYSIS)); // Deep copy to prevent reference pollution
         State.performancePlan = null;
         State.editedPerformancePlan = null;
+        // Semantic dramaturgy layer (ADR-003): offline plans + realtime lookup are per-track.
+        State.semanticNarrative = null;
+        State.dramaturgicalIntent = null;
+        State.visualChoreography = null;
+        State.currentChoreography = null;
+        State.semanticBaseTuning = null;
         State.hopSize = 1024;
         State.currentFrame = { e: 0, densityProj: 0, melodyProj: 0, fxProj: 0, perceptualSpectrum: new Array(24).fill(0), state: 'IDLE', eRatio: 0 };
         State.currentFeatures = { ...EMPTY_FEATURES };
