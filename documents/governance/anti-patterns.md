@@ -15,11 +15,13 @@ Stop and redesign if a change introduces any pattern below.
 
 ## Semantic Layer Anti-Patterns (ADR-003)
 
-- **Physical Preset Coupling in Dramaturgy.** Hard-coding physical preset names or file names (for example `temporal1.json`) into the music analysis, narrative, intent, or choreography stages. The semantic chain must stay style- and preset-independent; preset binding belongs to `SemanticResolver` / the automation layer.
-- **String-Based DSL Parsers.** Introducing a runtime regex/string-parsed domain-specific language for dramaturgy in the browser. Use a structured, typed, JSON-serializable AST instead, so plans stay deterministic, serializable, and machine-writable.
-- **Mutable or random score generation.** Storing functions, `Map`, `Set`, renderer objects, or unseeded random values in a `VisualScorePlan`. Score variation must derive from stable analysis fields and deterministic seeds.
-- **Cross-channel writes.** Letting `SemanticResolver` touch the modulation bus / `directorOutput`, or letting `VisualDirectorFSM` read `ChoreographyFrame`. The two channels are separate by contract; bridging them requires a new ADR.
+- **Physical Preset Coupling in Dramaturgy.** Hard-coding physical preset names or file names (for example `temporal1.json`) into the music analysis, narrative, intent, or choreography stages. The semantic chain must stay style- and preset-independent; preset binding belongs to the motif resolver (`resolveSemanticState`) / automation layer.
+- **String-Based DSLs.** Introducing runtime regex/string-parsed domain languages is forbidden. Use structured, typed, JSON-serializable ASTs for all choreography and dramaturgy plans.
+- **Mutable or random score generation.** Storing functions, `Map`, `Set`, renderer objects, or unseeded random values in either an ADR-003 `MotifVisualScorePlan` or ADR-004 `VisualScorePlan`. Score variation must derive from stable analysis fields and deterministic seeds.
+- **Cross-channel writes.** Letting the motif resolver (`resolveSemanticState`) touch the modulation bus / `directorOutput`, or letting `VisualDirectorFSM` read `MotifChoreographyFrame`. The two channels are separate by contract; bridging them requires a new ADR.
 - **Per-frame narrative recompute.** Running `buildNarrative` / `generateIntents` / `processChoreography` inside the render loop. They are offline, run-once stages; only `resolveSemanticState` runs per frame.
+- **Semantic State Smuggling.** Direct writes to `State.modulation` or `State.directorOutput` from semantic layers are forbidden.
+- **Non-deterministic Variation.** Using `Math.random()` in choreography is forbidden; variation must derive from `VariationModel.seed`.
 
 ## Realtime Audio Anti-Patterns
 

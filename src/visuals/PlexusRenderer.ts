@@ -7,12 +7,36 @@ import { applyTuningMorph, tuneAudioValue, writeModulationBus } from '../config/
 import { P5RendererBackend } from './P5RendererBackend';
 import type { DashboardUI } from '../ui/DashboardUI';
 import type { AudioEngine } from '../audio/AudioEngine';
-import type { AudioFrame, ChoreographyFrame, VisualChoreographyPlan, VisualCueKind, VisualFeatureFrame, VisualMode, VisualTuningConfig } from '../types';
+import type { AudioFrame, MotifChoreographyFrame as ChoreographyFrame, VisualChoreographyPlan, VisualCueKind, VisualFeatureFrame, VisualMode, VisualTuningConfig } from '../types';
 import { VisualDirectorFSM } from './VisualDirectorFSM';
 import { resolveSemanticState } from '../semantics';
 import type { StyleRegistry } from './StyleRegistry';
+import type { SemanticRuntimeAdapter } from '../semantics';
 
-export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine: AudioEngine, styleRegistry: StyleRegistry) {
+export class SemanticRendererBridge {
+    private semanticAdapter?: SemanticRuntimeAdapter;
+
+    setSemanticAdapter(adapter: SemanticRuntimeAdapter | undefined): void {
+        this.semanticAdapter = adapter;
+    }
+
+    hasPlan(): boolean {
+        return this.semanticAdapter?.hasPlan() ?? false;
+    }
+
+    updateSemantic(timeSec: number, targetTuning: VisualTuningConfig): void {
+        if (!this.semanticAdapter) return;
+        this.semanticAdapter.update(timeSec, targetTuning);
+    }
+}
+
+export function startPlexusRenderer(
+    containerId: string,
+    ui: DashboardUI,
+    engine: AudioEngine,
+    styleRegistry: StyleRegistry,
+    semanticBridge: SemanticRendererBridge = new SemanticRendererBridge()
+) {
     new p5((p: p5) => {
         let particles: Particle[] = [];
         let shockwaves: Shockwave[] = [];
@@ -78,10 +102,16 @@ export function startPlexusRenderer(containerId: string, ui: DashboardUI, engine
             let ct = State.isExporting ? State.exportTime : engine.getCurrentTime();
             State.currentTime = ct;
 
+            const hasTimeBasedSemanticPlan = semanticBridge.hasPlan();
+            const isTimeBasedSemanticActive = featureFlags.semanticChoreography && hasTimeBasedSemanticPlan;
+            if (featureFlags.semanticChoreography) {
+                semanticBridge.updateSemantic(ct, State.targetTuning);
+            }
+
             // Semantic dramaturgy layer (ADR-003): when enabled, the resolved choreography
             // owns targetTuning (the slow param channel). The VisualDirectorFSM and the
             // modulation bus below are untouched — they remain the fast audio-reactive channel.
-            if (featureFlags.semanticResolver && State.visualChoreography) {
+            if (!isTimeBasedSemanticActive && featureFlags.semanticResolver && State.visualChoreography) {
                 // A recompute / dramaturgy load swaps the plan object: the old cursor and memo now
                 // index a stale frames array (wrong slice, or out of bounds). Reset everything.
                 if (State.visualChoreography !== lastChoreoPlanRef) {

@@ -230,9 +230,59 @@ test('long handoff and collapse-release transitions use more than three progress
 
 test('semantic modules have no physical preset or runtime boundary coupling', () => {
   const source = ['NarrativeEngine.ts', 'IntentGenerator.ts', 'MotifPlanner.ts', 'PatternGrammar.ts',
-    'TransitionPlanner.ts', 'ChoreographyEngine.ts', 'SemanticResolver.ts', 'index.ts']
+    'TransitionPlanner.ts', 'ChoreographyEngine.ts', 'motifResolver.ts', 'visualScoreValidation.ts', 'SemanticResolver.ts', 'index.ts']
     .map(file => readFileSync(join(SRC_ROOT, 'semantics', file), 'utf8')).join('\n');
   assert.deepEqual(source.match(/[A-Za-z0-9_-]+\.json\b/g) ?? [], ['default.json']);
   assert.doesNotMatch(source, /preset(?:Name|File)|from ['"](?:p5|\.\.\/state|\.\.\/visuals|\.\.\/ui|\.\.\/audio)/i);
   assert.doesNotMatch(source, /document\.|window\.|navigator\.|State\.(?:modulation|directorOutput)/);
+});
+
+test('ADR-004 score survives a JSON roundtrip and contains data-only values', () => {
+  const score = {
+    version: '1.0',
+    trackHash: 'sha256:test',
+    frames: [{
+      timeSec: 0,
+      durationSec: 8,
+      beatIndex: 0,
+      narrativeState: 'EXPOSITION',
+      primaryPattern: 'CLUSTER',
+      actions: { PULSE: 0.5 },
+      motion: { speed: 0.25, complexity: 0.1, variation: { seed: 42, phraseIndex: 0, variationIndex: 0 } },
+      rhythmicLink: { source: 'KICK', reaction: 'IMPULSE', strength: 0.8 },
+      transition: { type: 'MORPH', durationSec: 2 },
+      confidence: 0.9
+    }]
+  };
+  const roundtrip = JSON.parse(JSON.stringify(score));
+  assert.deepEqual(roundtrip, score);
+
+  const visit = value => {
+    assert.notEqual(typeof value, 'function');
+    assert.equal(value instanceof Map, false);
+    assert.equal(value instanceof Date, false);
+    if (value && typeof value === 'object') {
+      for (const child of Object.values(value)) visit(child);
+    }
+  };
+  visit(score);
+});
+
+test('ADR-004 resolver clamps out-of-range action values and returns null for invalid time', () => {
+  const { SemanticResolver } = loadSemantics();
+  const resolver = new SemanticResolver();
+  const frame = (timeSec, actions) => ({
+    timeSec, durationSec: 1, narrativeState: 'DEVELOPMENT', primaryPattern: 'FLOW', actions,
+    motion: { speed: 0.5, complexity: 0.5, variation: { seed: 1, phraseIndex: 0, variationIndex: 0 } },
+    confidence: 0.5
+  });
+  resolver.setPlan({
+    version: '1.0', trackHash: 'clamp',
+    frames: [frame(0, { EXPAND: -5, PULSE: 3 }), frame(1, { EXPAND: 4, PULSE: -2 })]
+  });
+  const result = resolver.resolve(0.5);
+  assert.equal(result.actions.EXPAND, 0);
+  assert.equal(result.actions.PULSE, 0.5);
+  assert.equal(resolver.resolve(Number.NaN), null);
+  assert.equal(resolver.resolve(Number.POSITIVE_INFINITY), null);
 });

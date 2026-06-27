@@ -1,3 +1,5 @@
+import type { VisualScorePlan } from './semantics';
+
 export interface BeatEvent {
     time: number;
     intensity: number;
@@ -191,7 +193,7 @@ export interface DramaturgicalIntentPlan {
     points: IntentPoint[];
 }
 
-export type ChoreographyAction = 'expand' | 'collapse' | 'orbit' | 'fragment' | 'bloom' | 'pulse' | 'echo' | 'freeze' | 'accelerate' | 'slow' | 'densify' | 'thin' | 'focus' | 'scatter' | 'merge';
+export type MotifChoreographyAction = 'expand' | 'collapse' | 'orbit' | 'fragment' | 'bloom' | 'pulse' | 'echo' | 'freeze' | 'accelerate' | 'slow' | 'densify' | 'thin' | 'focus' | 'scatter' | 'merge';
 
 export type GrammarOperator = 'repeat' | 'mirror' | 'invert' | 'alternate' | 'echo' | 'grow' | 'shrink' | 'cascade' | 'call-response';
 
@@ -235,17 +237,17 @@ export interface TransitionPhrase {
     preserve: Array<'color' | 'rhythmPhase' | 'density' | 'motion' | 'spatialAxis'>;
 }
 
-export interface VisualScorePlan {
+export interface MotifVisualScorePlan {
     version: 1;
     motifs: MotifPhrase[];
     transitions: TransitionPhrase[];
 }
 
-export interface ChoreographyFrame {
+export interface MotifChoreographyFrame {
     time: number;
     // Action intensities (0..1). A plain Record, NOT a Map, so the plan stays
     // JSON-serializable and deterministic (ADR-003).
-    actions: Partial<Record<ChoreographyAction, number>>;
+    actions: Partial<Record<MotifChoreographyAction, number>>;
     activeOperators: GrammarOperator[];
     motifId?: string;
     motif?: VisualMotif;
@@ -269,9 +271,19 @@ export interface ChoreographyFrame {
 
 export interface VisualChoreographyPlan {
     version: 1;
-    frames: ChoreographyFrame[];
-    score?: VisualScorePlan;
+    frames: MotifChoreographyFrame[];
+    score?: MotifVisualScorePlan;
 }
+
+export type {
+    ChoreographyAction,
+    ChoreographyFrame,
+    NarrativeState,
+    PatternPrimitive,
+    VariationModel,
+    VisualIntentType,
+    VisualScorePlan
+} from './semantics';
 
 export interface ModulationState {
     kineticTension: number;
@@ -465,6 +477,8 @@ export interface TrackAnalysis {
     barStarts: number[];
     alternativeTempos: number[];
     timingConfidence: TimingConfidence;
+    /** External ADR-004 payload passed through analysis publication; never produced by the analyzer core. */
+    externalVisualScorePlan?: VisualScorePlan;
 }
 
 export interface TimelineLayers {

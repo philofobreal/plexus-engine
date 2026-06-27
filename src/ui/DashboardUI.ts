@@ -1,7 +1,7 @@
 import type { AudioEngine } from '../audio/AudioEngine';
 import { generatePerformancePlan, type GeneratorOptions } from '../automation/performancePlanGenerator';
 import { parseDramaturgyPlan, serializeDramaturgyPlan } from '../automation/dramaturgyTransfer';
-import { buildNarrative, generateIntents, processChoreography } from '../semantics';
+import { buildNarrative, generateIntents, processChoreography, type SemanticResolver } from '../semantics';
 import { featureFlags } from '../config/featureFlags';
 import { normalizeVisualTuningConfig } from '../config/visualTuning';
 import { ExportCapabilityDetector } from '../export/ExportCapabilityDetector';
@@ -15,6 +15,7 @@ import { TimelineCanvas } from './TimelineCanvas';
 import { PlaybackController } from './controllers/PlaybackController';
 import { TuningController } from './controllers/TuningController';
 import { ExportController } from './controllers/ExportController';
+import { shouldYieldPerformanceAutomation } from './semanticAutomationPolicy';
 
 interface VisualPresetManifest {
     presets?: string[];
@@ -55,6 +56,7 @@ export class DashboardUI {
     private activeMetricCard: HTMLElement | null = null;
     private els: Record<string, HTMLElement>;
     private engine: AudioEngine;
+    private semanticResolver: Pick<SemanticResolver, 'hasPlan'>;
     private timelineCanvas!: TimelineCanvas;
     private gestureEngine!: GestureEngine;
     private timelineResizeObserver: ResizeObserver | null = null;
@@ -80,8 +82,9 @@ export class DashboardUI {
 
     private readonly autoHideTime = 400;
 
-    constructor(engine: AudioEngine) {
+    constructor(engine: AudioEngine, semanticResolver: Pick<SemanticResolver, 'hasPlan'> = { hasPlan: () => false }) {
         this.engine = engine;
+        this.semanticResolver = semanticResolver;
         this.els = {
             status: document.getElementById('status-text')!,
             canvasContainer: document.getElementById('canvas-container')!,
@@ -280,7 +283,7 @@ export class DashboardUI {
                     // In semantic mode the resolver owns targetTuning, so fold a manual slider
                     // edit into the base per-key. A full re-snapshot would re-bake the active
                     // deltas into the base and drift on delta-driven params, so update only this key.
-                    if (featureFlags.semanticResolver && State.semanticBaseTuning) State.semanticBaseTuning[key] = value;
+                    if ((featureFlags.semanticResolver || featureFlags.semanticChoreography) && State.semanticBaseTuning) State.semanticBaseTuning[key] = value;
                 },
                 onPresetLoad: (fileName) => { void this.loadVisualPreset(fileName); },
                 onPresetBrushChange: (_fileName) => { /* brush used during draw via getSelectedAutomationPreset */ },
@@ -1853,7 +1856,7 @@ export class DashboardUI {
         const choreography = processChoreography(intent, State.trackAnalysis);
         State.semanticNarrative = narrative;
         State.dramaturgicalIntent = intent;
-        State.visualScorePlan = choreography.score ?? null;
+        State.motifVisualScorePlan = choreography.score ?? null;
         State.visualChoreography = choreography;
         State.currentChoreography = null;
     }
@@ -1862,7 +1865,8 @@ export class DashboardUI {
     // recomputing the plan after a timeline edit never re-bakes the resolver's deltas into the
     // base. Snapshot only from a clean targetTuning (track load / preset load).
     private snapshotSemanticBase(): void {
-        if (!featureFlags.semanticResolver) return;
+        const isSemanticActive = shouldYieldPerformanceAutomation(featureFlags, this.semanticResolver.hasPlan());
+        if (!isSemanticActive) return;
         State.semanticBaseTuning = { ...State.targetTuning };
     }
 
@@ -1871,7 +1875,7 @@ export class DashboardUI {
     private triggerPerformanceAutomation(): void {
         // When the semantic resolver owns targetTuning, the legacy preset automation must
         // not also write it (ADR-003: one authority per channel).
-        if (featureFlags.semanticResolver) return;
+        if (shouldYieldPerformanceAutomation(featureFlags, this.semanticResolver.hasPlan())) return;
         const plan = State.editedPerformancePlan ?? State.performancePlan;
         if (!plan?.points.length) return;
         let activePoint: PerformanceAutomationPoint | null = null;

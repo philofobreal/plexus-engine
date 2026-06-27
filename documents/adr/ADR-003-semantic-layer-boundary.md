@@ -16,12 +16,15 @@ style-independent visual intent before any preset or p5 drawing is chosen:
 ```
 TrackAnalysis -> NarrativeEngine -> IntentGenerator -> MotifPlanner
               -> PatternGrammar -> TransitionPlanner -> ChoreographyEngine
-              -> SemanticResolver -> targetTuning -> State / Render
+              -> resolveSemanticState -> targetTuning -> State / Render
 ```
 
 The first three stages are pure, offline, environment-agnostic computation run once
-when a track is analyzed (or when the timeline is edited). The `SemanticResolver`
+when a track is analyzed (or when the timeline is edited). The `resolveSemanticState`
 runs in the render loop as an O(1) lookup over the precomputed choreography.
+
+The class name `SemanticResolver` is reserved for the ADR-004 time-based resolver.
+ADR-003 uses the motif-oriented `resolveSemanticState` function in `motifResolver.ts`.
 
 The renderer already contains a realtime semantic-ish module, `VisualDirectorFSM`
 (`src/visuals/VisualDirectorFSM.ts`). It is NOT a passive emitter: each frame it
@@ -33,7 +36,7 @@ It owns hysteresis, a noise gate, drop anticipation, and a glitch envelope. The
 `visualDirector.update(...)`, publishing the result to `State.directorOutput`
 (`src/visuals/PlexusRenderer.ts`).
 
-The open question was how the new `SemanticResolver` should relate to the existing
+The open question was how the motif resolver should relate to the existing
 `VisualDirectorFSM`, because that decision fixes the shape of shared `State` and the
 scope of the first migration task. The two are easy to mistake for redundant, but they
 operate on different output channels at different time scales.
@@ -51,7 +54,7 @@ This decision is constrained by:
 
 Adopt complementary, non-overlapping ownership of the two output channels.
 
-- The **slow, parameter-morph channel** is owned by `SemanticResolver`. It writes ONLY
+- The **slow, parameter-morph channel** is owned by the motif resolver. It writes ONLY
   `State.targetTuning`, which the existing `applyTuningMorph` smooths into
   `State.visualTuning`. Over time this supersedes the `performancePlan` preset
   automation, but `performancePlan` is retained during the hybrid phase and the
@@ -60,15 +63,15 @@ Adopt complementary, non-overlapping ownership of the two output channels.
   own the `modulation` bus, `directorOutput`, and per-frame `frame.state`, driven by
   instantaneous audio energy. Its `update()` signature is left untouched.
 - The two layers MUST NOT write the same field.
-- `ChoreographyFrame` is read ONLY by the `SemanticResolver`. The FSM does not receive
+- `MotifChoreographyFrame` is read ONLY by `resolveSemanticState`. The FSM does not receive
   the choreography.
 
-`ChoreographyFrame.actions` is a `Record<ChoreographyAction, number>` (a plain,
+`MotifChoreographyFrame.actions` is a `Record<MotifChoreographyAction, number>` (a plain,
 JSON-serializable object), never a `Map`, so the plan stays serializable for storage,
 timeline persistence, and the semantic-determinism test.
 
 The intermediate representation is the **Visual Score DSL**: a typed,
-JSON-serializable `VisualScorePlan` AST containing `MotifPhrase` and
+JSON-serializable `MotifVisualScorePlan` AST containing `MotifPhrase` and
 `TransitionPhrase` values. It is not a string DSL and has no parser. `MotifPlanner`
 uses deterministic motif memory and seeded variation; `PatternGrammar` samples its
 operators into phrase fields; `TransitionPlanner` emits one typed transition for each
@@ -76,7 +79,7 @@ adjacent motif boundary. Timing confidence selects beat/bar subdivisions or a
 phrase/section fallback before any runtime lookup occurs.
 
 Sampled `motifIntensity`, `motifDensity`, `motifMotion`, and `novelty` values travel
-with each `ChoreographyFrame`. The resolver weights motif deltas from those values,
+with each `MotifChoreographyFrame`. The resolver weights motif deltas from those values,
 so grammar operations change actual tuning output rather than metadata only.
 Transitions use 3 to 16 progress frames based on duration and subdivision, with a
 one-second maximum sampling interval for long morphs and handoffs.
@@ -132,11 +135,11 @@ Tradeoffs:
 
 ## Implementation References
 
-- `src/types/index.ts` (new semantic types; `ChoreographyFrame.actions` as `Record`)
+- `src/types/index.ts` (new semantic types; `MotifChoreographyFrame.actions` as `Record`)
 - `src/state/store.ts` (nullable plan fields + `currentChoreography`)
 - `src/semantics/` (`NarrativeEngine.ts`, `IntentGenerator.ts`, `MotifPlanner.ts`,
   `PatternGrammar.ts`, `TransitionPlanner.ts`, `ChoreographyEngine.ts`,
-  `SemanticResolver.ts`, `index.ts`)
+  `motifResolver.ts`, `index.ts`)
 - `src/visuals/VisualDirectorFSM.ts` (unchanged signature; owns `modulation` /
   `directorOutput`)
 - `src/visuals/PlexusRenderer.ts` (resolver writes `targetTuning`; FSM untouched)

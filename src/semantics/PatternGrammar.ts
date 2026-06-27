@@ -1,4 +1,4 @@
-import type { ChoreographyAction, ChoreographyFrame, GrammarOperator, MotifPhrase } from '../types';
+import type { MotifChoreographyAction as ChoreographyAction, MotifChoreographyFrame as ChoreographyFrame, GrammarOperator, MotifPhrase } from '../types';
 
 // Pure, deterministic operators for abstract actions and typed Visual Score
 // phrases (ADR-003). `applyOperators` changes action topology for invert/mirror;

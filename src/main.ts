@@ -4,8 +4,10 @@ const bootStart = Date.now();
 import { AudioEngine } from './audio/AudioEngine';
 import { featureFlags } from './config/featureFlags';
 import { DashboardUI } from './ui/DashboardUI';
-import { startPlexusRenderer } from './visuals/PlexusRenderer';
+import { SemanticRendererBridge, startPlexusRenderer } from './visuals/PlexusRenderer';
 import { createDefaultStyleRegistry } from './visuals/StyleRegistry';
+import { SemanticResolver, SemanticRuntimeAdapter } from './semantics';
+import { State } from './state/store';
 
 const visualModeOptions = [
     { value: 'classic', label: 'Classic' },
@@ -233,12 +235,18 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   </div>
 `;
 
-const engine = new AudioEngine();
-const ui = new DashboardUI(engine);
+const semanticResolver = new SemanticResolver();
+const semanticAdapter = new SemanticRuntimeAdapter(semanticResolver, () => State.semanticBaseTuning);
+const engine = new AudioEngine(plan => {
+  semanticResolver.setPlan(plan);
+});
+const ui = new DashboardUI(engine, semanticResolver);
 const styleRegistry = createDefaultStyleRegistry();
+const semanticBridge = new SemanticRendererBridge();
+semanticBridge.setSemanticAdapter(semanticAdapter);
 
 const appReadyPromise = new Promise<void>(resolve => {
-  startPlexusRenderer('canvas-container', ui, engine, styleRegistry);
+  startPlexusRenderer('canvas-container', ui, engine, styleRegistry, semanticBridge);
   resolve();
 });
 

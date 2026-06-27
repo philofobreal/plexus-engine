@@ -1,5 +1,5 @@
 import { cloneDefaultVisualTuning } from '../config/visualTuning.ts';
-import type { AudioFrame, BeatEvent, ChoreographyFrame, DirectorOutput, DramaturgicalIntentPlan, ModulationState, MusicalNarrativePlan, PerformanceAutomationPlan, TimelineLayers, TrackAnalysis, VideoDominantColor, VisualChoreographyPlan, VisualFeatureFrame, VisualCueKind, VisualMode, VisualScorePlan, VisualTuningConfig } from '../types';
+import type { AudioFrame, BeatEvent, MotifChoreographyFrame, DirectorOutput, DramaturgicalIntentPlan, ModulationState, MusicalNarrativePlan, PerformanceAutomationPlan, TimelineLayers, TrackAnalysis, VideoDominantColor, VisualChoreographyPlan, VisualFeatureFrame, VisualCueKind, VisualMode, MotifVisualScorePlan, VisualTuningConfig } from '../types';
 
 const emptyFeatures: VisualFeatureFrame = {
     melody: 0,
@@ -85,7 +85,7 @@ export const State = {
     // Semantic / dramaturgy layer (ADR-003): offline plans computed once per track.
     semanticNarrative: null as MusicalNarrativePlan | null,
     dramaturgicalIntent: null as DramaturgicalIntentPlan | null,
-    visualScorePlan: null as VisualScorePlan | null,
+    motifVisualScorePlan: null as MotifVisualScorePlan | null,
     visualChoreography: null as VisualChoreographyPlan | null,
     hopSize: 1024,
     sampleRate: 44100,
@@ -120,12 +120,12 @@ export const State = {
     modulation: { ...emptyModulation } as ModulationState,
     directorOutput: { ...emptyDirectorOutput } as DirectorOutput,
     // Realtime lookup of the active choreography slice (ADR-003); read only by the
-    // SemanticResolver, which resolves it into targetTuning. Never written by the FSM.
-    currentChoreography: null as ChoreographyFrame | null,
+    // resolveSemanticState motif resolver, which maps it into targetTuning. Never written by the FSM.
+    currentChoreography: null as MotifChoreographyFrame | null,
     videoDominantColor: { ...emptyVideoDominantColor } as VideoDominantColor,
     visualTuning: cloneDefaultVisualTuning(),
     targetTuning: cloneDefaultVisualTuning(),
-    // Frozen base the SemanticResolver modulates around (ADR-003). Snapshotted from
+    // Frozen base the resolveSemanticState motif resolver modulates around (ADR-003). Snapshotted from
     // targetTuning at track load and on preset load so the resolver honours the user's
     // current look without feeding its own output back in. Null = fall back to defaults.
     semanticBaseTuning: null as VisualTuningConfig | null

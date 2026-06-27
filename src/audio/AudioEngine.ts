@@ -2,7 +2,7 @@ import AnalyzerWorker from './analyzer.worker.ts?worker';
 import { ANALYSIS_ALGORITHM_VERSION, EMPTY_TRACK_ANALYSIS, normalizeTrackAnalysis } from '../analyzer';
 import { featureFlags } from '../config/featureFlags';
 import { State } from '../state/store';
-import type { AnalysisWorkerMessage, VisualFeatureFrame } from '../types';
+import type { AnalysisWorkerMessage, VisualFeatureFrame, VisualScorePlan } from '../types';
 import { HeroMetronome } from './HeroMetronome';
 
 const EMPTY_FEATURES: VisualFeatureFrame = { melody: 0, vocal: 0, fx: 0, density: 0, brightness: 0, tension: 0 };
@@ -16,6 +16,11 @@ export class AudioEngine {
     private beepGains: GainNode[] = [];
     private activeWorker: Worker | null = null;
     private currentAnalysisRequestId = 0;
+    private readonly onVisualScorePlan: (plan: VisualScorePlan | null) => void;
+
+    constructor(onVisualScorePlan: (plan: VisualScorePlan | null) => void = () => {}) {
+        this.onVisualScorePlan = onVisualScorePlan;
+    }
 
     private playStartTime = 0;
     private playOffset = 0;
@@ -60,10 +65,11 @@ export class AudioEngine {
         // Semantic dramaturgy layer (ADR-003): offline plans + realtime lookup are per-track.
         State.semanticNarrative = null;
         State.dramaturgicalIntent = null;
-        State.visualScorePlan = null;
+        State.motifVisualScorePlan = null;
         State.visualChoreography = null;
         State.currentChoreography = null;
         State.semanticBaseTuning = null;
+        this.onVisualScorePlan(null);
         State.hopSize = 1024;
         State.currentFrame = { e: 0, densityProj: 0, melodyProj: 0, fxProj: 0, perceptualSpectrum: new Array(24).fill(0), state: 'IDLE', eRatio: 0 };
         State.currentFeatures = { ...EMPTY_FEATURES };
@@ -136,6 +142,7 @@ export class AudioEngine {
                     State.events = e.data.events;
                     // Strict normalization mapping incoming generic objects to rigorous domain models
                     State.trackAnalysis = normalizeTrackAnalysis(e.data.trackAnalysis, State.bpm);
+                    this.onVisualScorePlan(State.trackAnalysis.externalVisualScorePlan ?? null);
                     State.trackAnalysis.bpm = e.data.bpm;
                     State.hopSize = e.data.hopSize;
                     this.beepBuffers = this.ctx ? HeroMetronome.generateStems(this.ctx, State.trackAnalysis) : [];

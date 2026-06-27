@@ -1,6 +1,6 @@
 import type {
-    ChoreographyAction,
-    ChoreographyFrame,
+    MotifChoreographyAction as ChoreographyAction,
+    MotifChoreographyFrame as ChoreographyFrame,
     DramaturgicalIntentPlan,
     GrammarOperator,
     IntentType,
