@@ -195,17 +195,82 @@ export type ChoreographyAction = 'expand' | 'collapse' | 'orbit' | 'fragment' | 
 
 export type GrammarOperator = 'repeat' | 'mirror' | 'invert' | 'alternate' | 'echo' | 'grow' | 'shrink' | 'cascade' | 'call-response';
 
+// Visual Score DSL: a typed, JSON-serializable score AST. This is deliberately
+// data-only; runtime parsers, callbacks and renderer-specific values do not belong here.
+export type VisualMotif =
+    | 'pulse-field' | 'orbit-system' | 'tunnel-drive' | 'network-bloom'
+    | 'fragment-cloud' | 'wave-ripple' | 'grid-scan' | 'halo-focus'
+    | 'swarm-motion' | 'void-minimal';
+
+export type MotifRole = 'foundation' | 'counterpoint' | 'accent' | 'memory' | 'release' | 'tension';
+
+export type PatternSubdivision = 'beat' | 'half-beat' | 'bar' | 'two-bars' | 'four-bars' | 'phrase' | 'section';
+
+export type TransitionBehavior =
+    | 'morph' | 'handoff' | 'echo-out' | 'collapse-release' | 'freeze-cut'
+    | 'dissolve' | 'overlay' | 'snap' | 'phase-shift';
+
+export interface MotifPhrase {
+    id: string;
+    motif: VisualMotif;
+    role: MotifRole;
+    startTime: number;
+    endTime: number;
+    subdivision: PatternSubdivision;
+    intensity: number;
+    density: number;
+    motion: number;
+    novelty: number;
+    variationSeed: number;
+    operators: GrammarOperator[];
+}
+
+export interface TransitionPhrase {
+    fromMotifId: string;
+    toMotifId: string;
+    startTime: number;
+    duration: number;
+    behavior: TransitionBehavior;
+    curve: 'linear' | 'easeInOut' | 'exponential' | 'snap';
+    preserve: Array<'color' | 'rhythmPhase' | 'density' | 'motion' | 'spatialAxis'>;
+}
+
+export interface VisualScorePlan {
+    version: 1;
+    motifs: MotifPhrase[];
+    transitions: TransitionPhrase[];
+}
+
 export interface ChoreographyFrame {
     time: number;
     // Action intensities (0..1). A plain Record, NOT a Map, so the plan stays
     // JSON-serializable and deterministic (ADR-003).
     actions: Partial<Record<ChoreographyAction, number>>;
     activeOperators: GrammarOperator[];
+    motifId?: string;
+    motif?: VisualMotif;
+    motifRole?: MotifRole;
+    subdivision?: PatternSubdivision;
+    transition?: {
+        behavior: TransitionBehavior;
+        progress: number;
+        preserve: TransitionPhrase['preserve'];
+        fromMotif?: VisualMotif;
+        toMotif?: VisualMotif;
+    };
+    motifIntensity?: number;
+    motifDensity?: number;
+    motifMotion?: number;
+    novelty?: number;
+    phrasePosition?: number;
+    rhythmicPhase?: number;
+    variationSeed?: number;
 }
 
 export interface VisualChoreographyPlan {
     version: 1;
     frames: ChoreographyFrame[];
+    score?: VisualScorePlan;
 }
 
 export interface ModulationState {
