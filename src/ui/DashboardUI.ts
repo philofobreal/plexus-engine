@@ -1850,9 +1850,10 @@ export class DashboardUI {
         if (!featureFlags.semanticResolver) return;
         const narrative = buildNarrative(State.trackAnalysis);
         const intent = generateIntents(narrative);
-        const choreography = processChoreography(intent);
+        const choreography = processChoreography(intent, State.trackAnalysis);
         State.semanticNarrative = narrative;
         State.dramaturgicalIntent = intent;
+        State.visualScorePlan = choreography.score ?? null;
         State.visualChoreography = choreography;
         State.currentChoreography = null;
     }

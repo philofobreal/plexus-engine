@@ -60,6 +60,7 @@ export class AudioEngine {
         // Semantic dramaturgy layer (ADR-003): offline plans + realtime lookup are per-track.
         State.semanticNarrative = null;
         State.dramaturgicalIntent = null;
+        State.visualScorePlan = null;
         State.visualChoreography = null;
         State.currentChoreography = null;
         State.semanticBaseTuning = null;

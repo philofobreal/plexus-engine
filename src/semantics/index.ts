@@ -4,8 +4,10 @@
 // This barrel must stay free of p5/DOM/runtime-state imports.
 
 export { buildNarrative } from './NarrativeEngine';
-export { generateIntents } from './IntentGenerator';
+export { generateIntents, findIntentForTime } from './IntentGenerator';
 export { processChoreography } from './ChoreographyEngine';
-export { applyInvert, applyMirror, applyEcho, applyOperators, ACTION_ANTONYMS } from './PatternGrammar';
-export type { ActionMap } from './PatternGrammar';
+export { planMotifs, selectSubdivision, stableHash } from './MotifPlanner';
+export { planTransitions } from './TransitionPlanner';
+export { applyInvert, applyMirror, applyEcho, applyOperators, sampleMotifGrammar, ACTION_ANTONYMS } from './PatternGrammar';
+export type { ActionMap, MotifGrammarSample } from './PatternGrammar';
 export { resolveSemanticState } from './SemanticResolver';

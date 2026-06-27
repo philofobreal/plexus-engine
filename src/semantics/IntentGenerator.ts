@@ -56,6 +56,21 @@ export function generateIntents(narrative: MusicalNarrativePlan): DramaturgicalI
     return { version: 1, points };
 }
 
+// Resolve by musical time rather than array position. This keeps downstream score
+// planning correct when an editor inserts, removes, or reorders intent points.
+export function findIntentForTime(time: number, points: IntentPoint[]): IntentPoint | undefined {
+    let latestBefore: IntentPoint | undefined;
+    let earliestAfter: IntentPoint | undefined;
+    for (const point of points ?? []) {
+        if (point.time <= time) {
+            if (!latestBefore || point.time > latestBefore.time) latestBefore = point;
+        } else if (!earliestAfter || point.time < earliestAfter.time) {
+            earliestAfter = point;
+        }
+    }
+    return latestBefore ?? earliestAfter;
+}
+
 function clamp01(value: number): number {
     return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 }

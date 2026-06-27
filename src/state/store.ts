@@ -1,5 +1,5 @@
 import { cloneDefaultVisualTuning } from '../config/visualTuning.ts';
-import type { AudioFrame, BeatEvent, ChoreographyFrame, DirectorOutput, DramaturgicalIntentPlan, ModulationState, MusicalNarrativePlan, PerformanceAutomationPlan, TimelineLayers, TrackAnalysis, VideoDominantColor, VisualChoreographyPlan, VisualFeatureFrame, VisualCueKind, VisualMode, VisualTuningConfig } from '../types';
+import type { AudioFrame, BeatEvent, ChoreographyFrame, DirectorOutput, DramaturgicalIntentPlan, ModulationState, MusicalNarrativePlan, PerformanceAutomationPlan, TimelineLayers, TrackAnalysis, VideoDominantColor, VisualChoreographyPlan, VisualFeatureFrame, VisualCueKind, VisualMode, VisualScorePlan, VisualTuningConfig } from '../types';
 
 const emptyFeatures: VisualFeatureFrame = {
     melody: 0,
@@ -85,6 +85,7 @@ export const State = {
     // Semantic / dramaturgy layer (ADR-003): offline plans computed once per track.
     semanticNarrative: null as MusicalNarrativePlan | null,
     dramaturgicalIntent: null as DramaturgicalIntentPlan | null,
+    visualScorePlan: null as VisualScorePlan | null,
     visualChoreography: null as VisualChoreographyPlan | null,
     hopSize: 1024,
     sampleRate: 44100,
