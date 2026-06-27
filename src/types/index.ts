@@ -285,6 +285,198 @@ export type {
     VisualScorePlan
 } from './semantics';
 
+// --- Visual OS Style System (ADR-005) ---------------------------------------
+// A renderer-INDEPENDENT style/scene layer that CONSUMES the ADR-003 semantic
+// output (Narrative -> Intent -> MotifChoreographyFrame). It never re-derives
+// musical semantics. These contracts are type-only, JSON-serializable, and must
+// NOT name renderer/runtime quantities (no tuning keys, preset filenames, p5, or
+// DOM). All numeric fields are normalized 0..1 unless documented otherwise. The
+// single place a style touches a concrete preset is StyleTargetReference, which is
+// consumed exclusively by the adapter tier (scenePlanAdapter). Gated by
+// featureFlags.USE_VISUAL_OS_V2; off by default.
+
+// Scene lifecycle: a scene is not static. It is born, grows, peaks, releases, dies.
+export type SceneEvolutionPhase = 'birth' | 'growth' | 'peak' | 'release' | 'death';
+
+export interface SceneEvolutionStep {
+    phase: SceneEvolutionPhase;
+    // Normalized position [0..1] within the scene where this phase begins (birth=0).
+    at: number;
+    // Normalized, style-relative energy the phase targets [0..1].
+    level: number;
+}
+
+export interface SceneEvolution {
+    // Ordered birth..death lifecycle. Always begins with a birth step at at=0.
+    steps: SceneEvolutionStep[];
+}
+
+// A small sub-scene accent. Describes WHAT is accented and HOW strongly in abstract
+// action terms, never how to draw it. Derived from existing cues/grammar echoes.
+export interface MicroEvent {
+    timeSec: number;
+    action: MotifChoreographyAction;
+    strength: number; // 0..1
+    source: 'impact' | 'fx' | 'accent' | 'echo';
+}
+
+export type VisualPalette = 'mono' | 'duotone' | 'neon' | 'earth' | 'spectral' | 'void';
+
+// MATERIAL (texture/palette character), distinct from Motif (FORM). Style-relative,
+// normalized; no renderer/tuning values.
+export interface VisualVocabulary {
+    palette: VisualPalette;
+    lineCharacter: number;  // 0 = soft/organic .. 1 = sharp/digital
+    glowCharacter: number;  // 0 = flat .. 1 = blooming
+    grain: number;          // 0 = clean .. 1 = textured/noisy
+    contrast: number;       // 0 = muted .. 1 = high-contrast
+}
+
+// Style capability over FORMS (motifs) and MATERIALS (palettes). `preferred` is ranked
+// best-first; `forbidden` is hard-excluded and additive across inheritance. `weights` makes
+// the matrix data-driven: the per-tier capability score the VariationEngine applies (e.g.
+// preferred 0.9, supported 0.4). When omitted the engine uses those defaults.
+export interface StyleCapabilityWeights {
+    preferred: number;
+    supported: number;
+}
+
+export interface StyleCapabilityMatrix {
+    preferred: VisualMotif[];
+    supported: VisualMotif[];
+    forbidden: VisualMotif[];
+    palettes: {
+        preferred: VisualPalette[];
+        forbidden: VisualPalette[];
+    };
+    weights?: StyleCapabilityWeights;
+}
+
+// Normalized, style-relative behaviour dynamics. NO tuning keys.
+export interface BehaviourState {
+    energy: number;     // 0..1 overall intensity the scene calls for
+    density: number;    // 0..1 element density
+    motion: number;     // 0..1 movement amount
+    volatility: number; // 0..1 reactivity / glitch tendency
+    cohesion: number;   // 0..1 ordered (1) vs. scattered (0)
+}
+
+// Additive behaviour bias a StylePack/substyle applies on top of the semantic-derived
+// BehaviourState. Each field is in [-1..1]; the Behaviour Resolver adds then clamps to [0..1].
+export interface BehaviourBias {
+    energy: number;
+    density: number;
+    motion: number;
+    volatility: number;
+    cohesion: number;
+}
+
+export type SceneTransitionCurve = 'linear' | 'easeInOut' | 'exponential' | 'snap';
+
+export interface SceneTransition {
+    behavior: TransitionBehavior;
+    durationSec: number;
+    curve: SceneTransitionCurve;
+    preserve: TransitionPhrase['preserve'];
+}
+
+// SceneIntent - the selected, style-permitted realization of an already-generated
+// semantic frame (ADR-003). It picks among style-permitted candidates; it NEVER
+// introduces new narrative/intent/motif. Times come from the semantic frame/section.
+export interface SceneIntent {
+    timeSec: number;
+    durationSec: number;
+    narrative: NarrativeType; // reused ADR-003 narrative type
+    intent: IntentType;       // reused ADR-003 intent type
+    motif: VisualMotif;       // FORM, chosen from style-permitted candidates
+    role: MotifRole;
+    behaviour: BehaviourState;
+    evolution: SceneEvolution;
+    microEvents: MicroEvent[];
+    novelty: number;          // 0..1, carried from the semantic frame
+    variationSeed: number;    // deterministic seed carried from the semantic phrase
+    sourceFrameTime: number;  // back-reference to the source MotifChoreographyFrame time
+    transition?: SceneTransition;
+}
+
+// VisualScene - renderer-INDEPENDENT output of the Style Translation Pipeline.
+// `targetStateReference` is an OPAQUE handle (e.g. "dark-techno-minimal#peak") resolved
+// to a concrete preset/tuning ONLY by scenePlanAdapter (Renderer Independence Contract).
+export interface VisualScene {
+    timeSec: number;
+    durationSec: number;
+    stylePack: string;
+    substyle?: string;
+    motif: VisualMotif;
+    vocabulary: VisualVocabulary;
+    behaviour: BehaviourState;
+    evolution: SceneEvolution;
+    microEvents: MicroEvent[];
+    transition?: SceneTransition;
+    targetStateReference: string;
+}
+
+export interface VisualScenePlan {
+    version: 1;
+    stylePack: string;
+    scenes: VisualScene[];
+}
+
+// --- StylePack data contracts (style-packs.json) ----------------------------
+// `extends` enables single-parent inheritance, flattened by the Style Resolver
+// (Phase 3). `targetMap` is the ONLY adapter-tier escape hatch where a pack may
+// name a concrete preset; it is consumed exclusively by scenePlanAdapter.
+
+// Adapter-tier reference. The single place a style names a concrete preset.
+export interface StyleTargetReference {
+    preset: string;          // preset filename, e.g. "temporal3.json"
+    intensityScale?: number; // optional multiplier the adapter applies to point intensity
+    morphCurve?: 'linear' | 'easeInOut' | 'exponential';
+}
+
+export interface StyleSubstyleDefinition {
+    label?: string;
+    capabilities?: Partial<StyleCapabilityMatrix>;
+    vocabulary?: Partial<VisualVocabulary>;
+    behaviour?: Partial<BehaviourBias>;
+    targetMap?: Record<string, StyleTargetReference>;
+}
+
+export interface StylePackDefinition {
+    id: string;
+    extends?: string;
+    label?: string;
+    capabilities?: Partial<StyleCapabilityMatrix>;
+    vocabulary?: Partial<VisualVocabulary>;
+    behaviour?: Partial<BehaviourBias>;
+    substyles?: Record<string, StyleSubstyleDefinition>;
+    targetMap?: Record<string, StyleTargetReference>;
+}
+
+export interface StylePacksFile {
+    version: 1;
+    packs: StylePackDefinition[];
+}
+
+// Fully-flattened pack after inheritance resolution. All fields are concrete (no Partial).
+export interface ResolvedStylePack {
+    id: string;
+    label: string;
+    capabilities: StyleCapabilityMatrix;
+    vocabulary: VisualVocabulary;
+    behaviour: BehaviourBias;
+    substyles: Record<string, ResolvedSubstyle>;
+    targetMap: Record<string, StyleTargetReference>;
+}
+
+export interface ResolvedSubstyle {
+    label: string;
+    capabilities: StyleCapabilityMatrix;
+    vocabulary: VisualVocabulary;
+    behaviour: BehaviourBias;
+    targetMap: Record<string, StyleTargetReference>;
+}
+
 export interface ModulationState {
     kineticTension: number;
     densityDrive: number;
