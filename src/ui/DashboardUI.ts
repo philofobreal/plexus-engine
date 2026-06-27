@@ -1,5 +1,7 @@
 import type { AudioEngine } from '../audio/AudioEngine';
 import { generatePerformancePlan, type GeneratorOptions } from '../automation/performancePlanGenerator';
+import { generateVisualOsPerformancePlan, loadStylePacksFile } from '../automation/visualOsPlanLoader';
+import { tryResolveStylePack } from '../automation/styleTranslator';
 import { parseDramaturgyPlan, serializeDramaturgyPlan } from '../automation/dramaturgyTransfer';
 import { buildNarrative, generateIntents, processChoreography, type SemanticResolver } from '../semantics';
 import { featureFlags } from '../config/featureFlags';
@@ -8,7 +10,7 @@ import { ExportCapabilityDetector } from '../export/ExportCapabilityDetector';
 import { WebMExporter, type ExportConfig } from '../export/WebMExporter';
 import type { ExportCapabilities } from '../export/ExportTypes';
 import { State } from '../state/store';
-import type { MorphCurve, PerformanceAutomationPlan, PerformanceAutomationPoint, RenderState, TimelineLayers, VisualMode, VisualTuningConfig } from '../types';
+import type { MorphCurve, PerformanceAutomationPlan, PerformanceAutomationPoint, RenderState, StylePacksFile, TimelineLayers, VisualMode, VisualTuningConfig } from '../types';
 import { GestureEngine } from './GestureEngine';
 import { dashboardMetricMetadata, type DashboardMetricKey } from './metricMetadata';
 import { TimelineCanvas } from './TimelineCanvas';
@@ -43,6 +45,11 @@ export class DashboardUI {
     private lastTimelineDrawScroll = 0;
     private lastTimelineDrawScrubTime: number | null = null;
     private lastTriggeredAutomationPointId: string | null = null;
+    // Visual OS V2 generator controls (ADR-005). Present only when USE_VISUAL_OS_V2 is on.
+    private visualOsSettingsEl: HTMLElement | null = null;
+    private visualOsPackEl: HTMLSelectElement | null = null;
+    private visualOsSubstyleEl: HTMLSelectElement | null = null;
+    private stylePacksFile: StylePacksFile | null = null;
     private selectedAutomationPoint: PerformanceAutomationPoint | null = null;
     private hoveredPoint: PerformanceAutomationPoint | null = null;
     private hoveredHandleType: 'start' | 'end' | 'sensitivity' | 'curve' | null = null;
@@ -332,7 +339,7 @@ export class DashboardUI {
             this.playbackCtrl.onAnalysisComplete(State.duration, State.bpm, file.name);
             this.exportCtrl.setCanExport(this.canExport());
             void (async () => {
-                const plan = await generatePerformancePlan(State.trackAnalysis, State.availablePresets, State.duration, this.buildGeneratorOptions());
+                const plan = await this.generatePlan();
                 State.performancePlan = plan;
                 State.editedPerformancePlan = JSON.parse(JSON.stringify(plan));
                 void this.preloadPresetsForPlan(plan);
@@ -503,20 +510,74 @@ export class DashboardUI {
             void this.loadDramaturgy();
         });
         this.els.generatorStrategy.addEventListener('change', () => {
-            const isStrict = (this.els.generatorStrategy as HTMLSelectElement).value === 'strict';
-            this.els.strictGeneratorSettings.classList.toggle('is-hidden', !isStrict);
+            this.syncGeneratorStrategyPanels();
         });
         this.els.generatePlanBtn.addEventListener('click', () => {
             if (!window.confirm('Overwrite current automation plan?')) return;
             void (async () => {
-                const plan = await generatePerformancePlan(State.trackAnalysis, State.availablePresets, State.duration, this.buildGeneratorOptions());
+                const plan = await this.generatePlan();
                 State.editedPerformancePlan = JSON.parse(JSON.stringify(plan));
                 this.computeSemanticPlan();
                 this.requestTimelineDraw();
             })();
         });
+        this.initVisualOsControls();
         this.initAutomationInspectorControls();
         this.initTimelineLayerControls();
+    }
+
+    // Show the settings panel that matches the selected generator strategy.
+    private syncGeneratorStrategyPanels(): void {
+        const value = (this.els.generatorStrategy as HTMLSelectElement).value;
+        this.els.strictGeneratorSettings.classList.toggle('is-hidden', value !== 'strict');
+        this.visualOsSettingsEl?.classList.toggle('is-hidden', value !== 'visual-os');
+    }
+
+    // Visual OS V2 (ADR-005): wire the style-pack / substyle selectors. The markup only
+    // exists when USE_VISUAL_OS_V2 is on, so this is a no-op otherwise.
+    private initVisualOsControls(): void {
+        if (!featureFlags.USE_VISUAL_OS_V2) return;
+        this.visualOsSettingsEl = document.getElementById('visual-os-generator-settings');
+        this.visualOsPackEl = document.getElementById('visual-os-pack') as HTMLSelectElement | null;
+        this.visualOsSubstyleEl = document.getElementById('visual-os-substyle') as HTMLSelectElement | null;
+        this.visualOsPackEl?.addEventListener('change', () => this.populateSubstyleOptions());
+        void this.loadStylePackOptions();
+    }
+
+    private async loadStylePackOptions(): Promise<void> {
+        this.stylePacksFile = await loadStylePacksFile();
+        if (!this.stylePacksFile || !this.visualOsPackEl) return;
+        this.visualOsPackEl.innerHTML = this.stylePacksFile.packs
+            .map(pack => `<option value="${pack.id}">${pack.label ?? pack.id}</option>`)
+            .join('');
+        this.populateSubstyleOptions();
+    }
+
+    private populateSubstyleOptions(): void {
+        if (!this.stylePacksFile || !this.visualOsPackEl || !this.visualOsSubstyleEl) return;
+        const resolved = tryResolveStylePack(this.stylePacksFile, this.visualOsPackEl.value);
+        const names = resolved ? Object.keys(resolved.substyles) : [];
+        this.visualOsSubstyleEl.innerHTML = ['<option value="">(default)</option>']
+            .concat(names.map(name => `<option value="${name}">${name}</option>`))
+            .join('');
+    }
+
+    // Plan generation entry point. When USE_VISUAL_OS_V2 is on AND the user selects the
+    // "Visual OS" strategy, run the ADR-005 pipeline with the chosen style pack / substyle;
+    // if it cannot resolve a pack it returns null and we fall back to the legacy generator,
+    // so behaviour is never worse than today. All other strategies use the legacy generator.
+    private async generatePlan(): Promise<PerformanceAutomationPlan> {
+        const strategy = (this.els.generatorStrategy as HTMLSelectElement).value;
+        if (featureFlags.USE_VISUAL_OS_V2 && strategy === 'visual-os') {
+            const v2 = await generateVisualOsPerformancePlan(State.trackAnalysis, {
+                duration: State.duration,
+                stylePackId: this.visualOsPackEl?.value || undefined,
+                substyle: this.visualOsSubstyleEl?.value || undefined,
+                stylePacksFile: this.stylePacksFile ?? undefined
+            });
+            if (v2) return v2;
+        }
+        return generatePerformancePlan(State.trackAnalysis, State.availablePresets, State.duration, this.buildGeneratorOptions());
     }
 
     private buildGeneratorOptions(): GeneratorOptions {
