@@ -42,6 +42,7 @@ These documents extend this file and must not override it:
 - `src/visuals/` owns p5 rendering, particle lifecycle, shockwaves, and visual consumption of precomputed events.
 - `src/ui/` owns DOM binding, controls, dashboard projection, and user-facing state display.
 - `src/types/` owns shared contracts and must remain dependency-light.
+- `src/semantics/` owns the pure, offline, deterministic Visual Score DSL pipeline. It must follow [ADR-003](documents/adr/ADR-003-semantic-layer-boundary.md), must not import runtime state, DOM, p5, audio, UI, or visual modules, and may affect rendering only through the resolver-owned `State.targetTuning` channel.
 - `documents/` owns product and governance documentation.
 
 ## Deterministic State And Event Rules

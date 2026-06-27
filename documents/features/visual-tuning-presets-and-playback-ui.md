@@ -26,6 +26,29 @@ The default tuning values remain the baseline behavior. New or old preset payloa
 
 The `Wormhole` control group drives the `cosmic-wormhole` identity: `wormholeRadius`, `wormholeDepth`, and `wormholeSpeed` shape the tube geometry and forward velocity; `wormholeWarp` controls the dust spiral twist; `wormholeCurve` is a `0..1` master for the event-driven tunnel curvature that can force a straight tube regardless of preset content; `wormholeRing` blends the dust depth between a natural dispersed spread and concentric rings; and `wormholeStarfield` and `wormholeGalaxy` are general, preset-independent masters for the background star density and the deep galaxy parallax layer. Because the bundled presets do not write the two background masters, they stay global across preset changes.
 
+## Visual Score DSL And Semantic Tuning
+
+The optional semantic tuning path is a typed, JSON-serializable Visual Score AST, not
+a runtime string DSL. Its offline pipeline is:
+
+```txt
+Narrative -> Intent -> VisualScore -> ChoreographyFrame -> SemanticResolver -> targetTuning
+```
+
+`MotifPlanner` selects reusable motif phrases from accepted track analysis,
+`PatternGrammar` adds deterministic phrase variation, and `TransitionPlanner` creates
+typed source-to-target motif transitions. Sampled intensity, density, motion, novelty,
+phrase position, and rhythmic phase travel on `ChoreographyFrame`. During transitions,
+the resolver fades source motif tuning by `1 - progress` and target motif tuning by
+`progress`, then clamps the result to the normal visual-tuning control ranges.
+
+The path is guarded by `featureFlags.semanticResolver`, which defaults off. With the
+flag off, existing `performancePlan` preset automation remains unchanged. With it on,
+the resolver owns only the slow `State.targetTuning` channel; `VisualDirectorFSM`
+continues to own fast modulation and director output. The resolver accepts style keys,
+the generic `default` key, and the legacy `default.json` preset key as its base-tuning
+fallback.
+
 ## Preset Management
 
 Visual tuning presets are loaded from `public/visual-tuning-presets/`.

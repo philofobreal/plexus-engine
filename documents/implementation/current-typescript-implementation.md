@@ -17,6 +17,14 @@ The maintained app is a Vite + TypeScript project, not a single-file HTML protot
 9. **Visual director:** `src/visuals/VisualDirectorFSM.ts` is the deep state-control module for render-time music dramaturgy. It owns dynamic thresholds, LOW-state dampening, drop anticipation, buildup boost, glitch decay, hysteresis, and transition cooldown behavior.
 10. **Offline export:** `src/export/WebMExporter.ts` owns the main-thread offline export loop and `src/export/export.worker.ts` owns WebCodecs encoding plus pure TypeScript WebM muxing.
 
+## Visual Score DSL
+
+The offline semantic pipeline is `Narrative -> Intent -> VisualScore -> ChoreographyFrame -> SemanticResolver -> targetTuning`. `src/semantics/MotifPlanner.ts` creates motif phrases with stable variation seeds and confidence-aware subdivisions. `PatternGrammar.ts` implements repeat, mirror, invert, alternate, echo, grow, shrink, cascade, and call-response as deterministic score sampling. `TransitionPlanner.ts` creates a typed transition between every adjacent motif, including buildup-to-drop collapse/release and low-confidence handoffs.
+
+`VisualScorePlan` is a TypeScript contract and JSON-safe AST; it is not YAML, a shader language, or a runtime string parser. `ChoreographyFrame` keeps its existing action payload and adds optional motif, phrase, rhythm, variation, transition, motif intensity, density, motion, and novelty fields. The resolver scales motif deltas as `intensity * 0.45 + density * 0.25 + motion * 0.2 + novelty * 0.1`, then clamps the resulting tuning. Transition sampling is dynamic: 3 to 16 progress frames based on duration and subdivision, with at most one second between samples for long transitions. Each transition frame identifies both endpoint motifs; the resolver fades the source by `1 - progress` and the target by `progress`. Intent assignment uses the latest point at or before phrase time instead of array position. The generic preset base accepts both `default` and the legacy `default.json` key. The resolver returns a tuning object only: the renderer applies that object to `State.targetTuning`, while `VisualDirectorFSM` remains the sole owner of `State.modulation` and `State.directorOutput`.
+
+The feature flag defaults off. Off mode leaves legacy `performancePlan` preset automation unchanged. On mode computes the score once after analysis and uses indexed choreography lookup; empty analysis produces an empty, valid plan without a crash.
+
 ## Worker Contract
 
 The accepted worker success payload is:

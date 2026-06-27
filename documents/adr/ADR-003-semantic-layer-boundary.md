@@ -14,7 +14,8 @@ A planned semantic chain will translate a track's musical structure into
 style-independent visual intent before any preset or p5 drawing is chosen:
 
 ```
-TrackAnalysis -> NarrativeEngine -> IntentGenerator -> ChoreographyEngine (+ PatternGrammar)
+TrackAnalysis -> NarrativeEngine -> IntentGenerator -> MotifPlanner
+              -> PatternGrammar -> TransitionPlanner -> ChoreographyEngine
               -> SemanticResolver -> targetTuning -> State / Render
 ```
 
@@ -66,6 +67,23 @@ Adopt complementary, non-overlapping ownership of the two output channels.
 JSON-serializable object), never a `Map`, so the plan stays serializable for storage,
 timeline persistence, and the semantic-determinism test.
 
+The intermediate representation is the **Visual Score DSL**: a typed,
+JSON-serializable `VisualScorePlan` AST containing `MotifPhrase` and
+`TransitionPhrase` values. It is not a string DSL and has no parser. `MotifPlanner`
+uses deterministic motif memory and seeded variation; `PatternGrammar` samples its
+operators into phrase fields; `TransitionPlanner` emits one typed transition for each
+adjacent motif boundary. Timing confidence selects beat/bar subdivisions or a
+phrase/section fallback before any runtime lookup occurs.
+
+Sampled `motifIntensity`, `motifDensity`, `motifMotion`, and `novelty` values travel
+with each `ChoreographyFrame`. The resolver weights motif deltas from those values,
+so grammar operations change actual tuning output rather than metadata only.
+Transitions use 3 to 16 progress frames based on duration and subdivision, with a
+one-second maximum sampling interval for long morphs and handoffs.
+Transition frames carry both `fromMotif` and `toMotif`; the resolver crossfades their
+motif deltas by progress while rhythmic phase remains grammar-derived. Intent points
+are matched to motif phrases by musical time, never by array index.
+
 The new semantic modules live under a new `src/semantics/` namespace, not
 `src/dramaturgy/`, to avoid colliding with the analyzer-owned "dramaturgy" term. The
 offline stages stay environment-agnostic (no p5, DOM, or shared mutable runtime state),
@@ -116,13 +134,14 @@ Tradeoffs:
 
 - `src/types/index.ts` (new semantic types; `ChoreographyFrame.actions` as `Record`)
 - `src/state/store.ts` (nullable plan fields + `currentChoreography`)
-- `src/semantics/` (planned: `NarrativeEngine.ts`, `IntentGenerator.ts`,
-  `ChoreographyEngine.ts`, `PatternGrammar.ts`, `SemanticResolver.ts`, `index.ts`)
+- `src/semantics/` (`NarrativeEngine.ts`, `IntentGenerator.ts`, `MotifPlanner.ts`,
+  `PatternGrammar.ts`, `TransitionPlanner.ts`, `ChoreographyEngine.ts`,
+  `SemanticResolver.ts`, `index.ts`)
 - `src/visuals/VisualDirectorFSM.ts` (unchanged signature; owns `modulation` /
   `directorOutput`)
 - `src/visuals/PlexusRenderer.ts` (resolver writes `targetTuning`; FSM untouched)
 - `src/automation/performancePlanGenerator.ts` (retained during hybrid phase)
 - `documents/governance/architecture-contract.md`,
   `documents/governance/anti-patterns.md` (to be updated in the migration's final task)
-- `tests/dramaturgy.test.mjs`, `tests/contracts.test.mjs`,
-  `tests/styles-deterministic.test.mjs`
+- `tests/semantics.test.mjs`, `tests/visual-score-dsl.test.mjs`,
+  `tests/contracts.test.mjs`, `tests/styles-deterministic.test.mjs`

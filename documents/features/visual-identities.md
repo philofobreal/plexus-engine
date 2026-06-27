@@ -21,6 +21,21 @@ const visualIdentity = styleRegistry.get(State.visualMode);
 visualIdentity.draw(backend, particles, shockwaves);
 ```
 
+## Visual Score Tuning Handoff
+
+Visual identities do not parse or directly consume the Visual Score DSL. When
+`featureFlags.semanticResolver` is enabled, the offline semantic chain produces
+`ChoreographyFrame` values containing motif intensity/density/motion, novelty, and
+typed transition endpoints. `SemanticResolver` translates the active frame into
+clamped `State.targetTuning`; the existing tuning morph then exposes the result to the
+selected identity through `State.visualTuning`.
+
+This lets the same motif or transition influence each identity through its own tuning
+vocabulary without coupling `src/semantics/` to renderer classes. Source and target
+motif deltas are blended by transition progress. The fast audio-reactive channel is
+unchanged: `VisualDirectorFSM` remains the sole owner of `State.modulation` and
+`State.directorOutput`, and identities must not read `ChoreographyFrame` directly.
+
 ## Registry
 
 `src/visuals/StyleRegistry.ts` owns registered styles behind a private `Map`. Its public API is intentionally small:

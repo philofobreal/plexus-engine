@@ -70,7 +70,9 @@ Visual changes:
 
 Semantic dramaturgy layer changes (ADR-003):
 
-- **Semantic Determinism Test (required).** Identical `TrackAnalysis` must produce identical narrative, intent, and choreography plans, independent of the selected style. Assert this with `node --test tests/semantics.test.mjs` (deep-equal of repeated runs over synthetic fixtures).
+- **Semantic Determinism Test (required).** Identical `TrackAnalysis` must produce identical narrative, intent, Visual Score, and choreography plans, independent of the selected style. Assert this with `node --test tests/semantics.test.mjs tests/visual-score-dsl.test.mjs`.
+- Confirm the Visual Score survives a JSON stringify/parse round trip, every adjacent motif has a transition, fast BPM uses coarse subdivisions, slow BPM retains internal variation, and low timing confidence falls back to phrase/section timing.
+- Confirm cascade, grow, and shrink produce measurably different resolved tuning outputs through propagated motif intensity/density/motion fields, and long transitions contain more than three progress samples.
 - Confirm the layer stays headless: no p5, DOM, `src/state/`, `src/visuals/`, `src/ui/`, or `src/audio/` imports under `src/semantics/` (guarded by a test).
 - Confirm `SemanticResolver` keeps every resolved parameter within `visualTuningControls` min/max bounds for all styles, including saturated/empty choreography input.
 - Confirm channel separation: the resolver writes only `State.targetTuning`; the modulation bus and `directorOutput` remain FSM-owned.
