@@ -5,6 +5,46 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
 
+function loadExportWorker() {
+  const raw = readFileSync(join(process.cwd(), 'src/export/export.worker.ts'), 'utf8')
+    .replace(/^import[\s\S]*?;\r?\n/gm, '')
+    .replace('const workerScope = self as unknown as {', 'const workerScope = self as {');
+  const source = ts.transpileModule(raw, {
+    compilerOptions: { module: ts.ModuleKind.None, target: ts.ScriptTarget.ES2022 }
+  }).outputText;
+  const encoders = [];
+  class FakeEncoder {
+    constructor() { this.encoded = []; encoders.push(this); }
+    configure(config) { this.config = config; }
+    encode(_frame, options) { this.encoded.push(options); }
+    flush() { return Promise.resolve(); }
+    close() {}
+  }
+  const self = { VideoEncoder: FakeEncoder, VideoFrame: class { close() {} }, postMessage() {}, onmessage: null };
+  const context = vm.createContext({
+    self,
+    performance,
+    setInterval: () => 1,
+    clearInterval() {},
+    navigator: { storage: { async getDirectory() { return {
+      async *entries() {}, async removeEntry() {},
+      async getFileHandle() {
+        return { async createSyncAccessHandle() { return { truncate() {}, write() {}, flush() {}, close() {} }; } };
+      }
+    }; } } },
+    WebMMuxer: class { addVideoChunk() {} addAudioChunk() {} enableAudio() {} finalize() { return null; } }
+  });
+  vm.runInContext(source, context);
+  return { self, encoders };
+}
+
+async function startWorkerExport(fps, width, height, bitrate) {
+  const worker = loadExportWorker();
+  worker.self.onmessage({ data: { type: 'start_export', fps, width, height, bitrate } });
+  while (!worker.encoders[0]?.config) await new Promise((resolve) => setTimeout(resolve, 0));
+  return worker;
+}
+
 function loadWebMExporter() {
   const webcodecsRaw = readFileSync(join(process.cwd(), 'src/export/WebCodecsBackend.ts'), 'utf8');
   const exporterRaw = readFileSync(join(process.cwd(), 'src/export/WebMExporter.ts'), 'utf8');
@@ -274,4 +314,36 @@ test('PlexusRenderer does not poll export loop state', () => {
   assert.doesNotMatch(renderer, /setInterval\(syncExportLoopState/);
   assert.doesNotMatch(renderer, /lastExporting/);
   assert.doesNotMatch(renderer, /syncExportLoopState/);
+});
+
+test('export worker configures constant-quality encoding and resolution bitrate floors', async () => {
+  for (const [width, height, bitrate] of [
+    [960, 720, 8_000_000],
+    [1440, 1080, 14_000_000],
+    [2880, 2160, 40_000_000],
+    [3840, 2160, 40_000_000]
+  ]) {
+    const { encoders } = await startWorkerExport(60, width, height);
+    assert.equal(encoders[0].config.latencyMode, 'quality');
+    assert.equal(encoders[0].config.bitrateMode, 'constant');
+    assert.equal(encoders[0].config.bitrate, bitrate);
+  }
+});
+
+test('export worker gives a valid explicit bitrate priority over the resolution fallback', async () => {
+  const { encoders } = await startWorkerExport(60, 1920, 1080, 22_000_000);
+  assert.equal(encoders[0].config.bitrate, 22_000_000);
+});
+
+test('export worker forces the first and every one-second frame as keyframes', async () => {
+  for (const fps of [60, 30]) {
+    const { self, encoders } = await startWorkerExport(fps, 1280, 720);
+    for (let index = 0; index <= fps; index++) {
+      await self.onmessage({ data: { type: 'encode_frame', bitmap: { close() {} }, timestampUs: index } });
+    }
+    const keyframes = encoders[0].encoded
+      .map((options, index) => options.keyFrame ? index : -1)
+      .filter((index) => index >= 0);
+    assert.deepEqual(keyframes, [0, fps]);
+  }
 });

@@ -19,11 +19,12 @@ interface VideoEncoderConfigLike {
     bitrate: number;
     framerate: number;
     latencyMode: 'quality' | 'realtime';
+    bitrateMode?: 'constant' | 'variable';
 }
 
 interface VideoEncoderLike {
     configure(config: VideoEncoderConfigLike): void;
-    encode(frame: VideoFrameLike): void;
+    encode(frame: VideoFrameLike, options?: { keyFrame?: boolean }): void;
     flush(): Promise<void>;
     close(): void;
 }
@@ -79,6 +80,8 @@ let framesEncodedCount = 0;
 let totalEncodedBytes = 0;
 let totalEncodeTimeMs = 0;
 let peakEncodeTimeMs = 0;
+let submittedVideoFrameCount = 0;
+let keyframeIntervalFrames = 60;
 let queueCheckInterval: ReturnType<typeof setInterval> | null = null;
 
 workerScope.onmessage = (event) => {
@@ -135,9 +138,12 @@ async function startExport(message: StartExportRequest) {
         codec: message.codec || 'vp09.00.10.08',
         width: Math.max(1, Math.floor(message.width)),
         height: Math.max(1, Math.floor(message.height)),
-        bitrate: message.bitrate || getDefaultBitrate(message.width, message.height),
+        bitrate: Number.isFinite(message.bitrate) && message.bitrate! > 0
+            ? Math.round(message.bitrate!)
+            : getDefaultBitrate(message.width, message.height),
         framerate: Math.max(1, Math.round(message.fps)),
-        latencyMode: 'quality'
+        latencyMode: 'quality',
+        bitrateMode: 'constant'
     };
 
     muxer = new WebMMuxer({
@@ -176,6 +182,8 @@ async function startExport(message: StartExportRequest) {
         }
     });
     encoder.configure(config);
+    submittedVideoFrameCount = 0;
+    keyframeIntervalFrames = Math.max(1, Math.round(config.framerate));
 
     if (message.hasAudio) {
         try {
@@ -232,7 +240,9 @@ function encodeFrame(message: EncodeFrameRequest) {
     try {
         frame = new VideoFrame(message.bitmap, { timestamp: message.timestampUs });
         const encodeStartMs = performance.now();
-        encoder.encode(frame);
+        const forceKeyframe = submittedVideoFrameCount % keyframeIntervalFrames === 0;
+        encoder.encode(frame, { keyFrame: forceKeyframe });
+        submittedVideoFrameCount++;
         const encodeTimeMs = performance.now() - encodeStartMs;
         totalEncodeTimeMs += encodeTimeMs;
         peakEncodeTimeMs = Math.max(peakEncodeTimeMs, encodeTimeMs);
@@ -303,9 +313,12 @@ async function finalizeExport() {
 
 function getDefaultBitrate(width: number, height: number) {
     const pixels = Math.max(1, width * height);
+    const hdPixels = 1280 * 720;
     const fullHdPixels = 1920 * 1080;
     const ultraHdPixels = 3840 * 2160;
-    if (pixels >= ultraHdPixels * 0.75) return 20_000_000;
-    if (pixels >= fullHdPixels * 0.75) return 6_000_000;
-    return Math.max(2_000_000, Math.round(6_000_000 * pixels / fullHdPixels));
+    // Export quality policy: conservative CBR floors for dark/static generative visuals.
+    if (pixels >= ultraHdPixels * 0.75) return 40_000_000;
+    if (pixels >= fullHdPixels * 0.75) return 14_000_000;
+    if (pixels >= hdPixels * 0.75) return 8_000_000;
+    return Math.max(2_000_000, Math.round(8_000_000 * pixels / hdPixels));
 }

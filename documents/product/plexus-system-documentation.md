@@ -243,6 +243,10 @@ A metadata kartya tartalma: sotet rounded panel, ritmusra pulzalo cian pont (`St
 
 Ha a betoltott `AudioBuffer` elerheto, az exporter frame-enkent ketcsatornas planar `Float32Array` hangszeletet kuld a workernek. A worker megprobal Opus `AudioEncoder`-t inicializalni; ha ez nem elerheto, video-only exporttal folytatja. A WebM muxer video trackje 1-es (`0x81`), audio trackje 2-es (`0x82`) SimpleBlock track id-t hasznal.
 
+A tenyleges `VideoEncoder` konfiguracio es az `encoder.encode()` hivas az `export.worker.ts` felelossege; a `WebMExporter` backend-facade es fo-szali orchestrator. A worker `latencyMode: 'quality'` es `bitrateMode: 'constant'` beallitast hasznal. Minden export elso frame-je keyframe, majd masodpercenkent uj keyframe kenyszeritett: az intervallum `max(1, round(framerate))`, vagyis 60 FPS-nel 60, 30 FPS-nel 30 frame. A szamlalo minden `start_export` elejen ujraindul.
+
+A veges es pozitiv explicit `StartExportRequest.bitrate` egeszre kerekitve felulirja a fallbacket; nulla, negativ, nem veges vagy hianyzo erteknel a worker fallbacket hasznal. Az export-minosegi CBR savok mar a nevleges pixelszam 75%-atol ervenyesek: 720p savban 8 Mbps, 1080p savban 14 Mbps, 4K savban 40 Mbps. Ez megakadalyozza, hogy egy 4K-kozeli crop vagy bongeszo altal kerekitett meret 14 Mbps-ra essen vissza. A legkisebb sav alatt pixelszam-aranyos skala ervenyes legalabb 2 Mbps ertekkel. A policy a sotet es statikus generativ jelenetek blokk- es gradiensstabilitasat celozza. Dither nincs a normal export utvonalon, mert rontana a pixel-determinizmust; csak valos bongeszotesztben megmarado artifact eseten lehet kesobbi fallback.
+
 Az UI export kozben letiltja a playback/seek/file input utakat es blokkolja a canvas click/keydown, illetve global drawing shortcut interakciokat. A `Stop` reszleges Blob mentest indit: megszakitja a frame hurkot, de lefuttatja a worker `finalize_export` agat. A `Cancel` eldobja a folyamatot. Letolteskor az object URL visszavonasa 1000 ms kesleltetessel tortenik.
 
 ## 5. ADR Osszefoglalo

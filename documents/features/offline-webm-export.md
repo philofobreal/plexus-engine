@@ -136,6 +136,23 @@ If `AudioEncoder` or `AudioData` is unavailable, export continues in video-only 
 - `encode_frame`: encode a transferable `VideoFrame`, optionally encode `AudioData` from planar audio, and write each completed muxer chunk synchronously to disk.
 - `finalize_export`: flush encoders, finalize the WebM container, close the sync handle, retrieve the completed file as a native `Blob` via `getFile()`, and post `export_done`.
 
+### Video encoding quality policy
+
+`WebMExporter` and `WebCodecsBackend` are orchestration facades; the worker owns the effective `VideoEncoder` configuration and every `encoder.encode()` call. The worker configures video with `latencyMode: 'quality'` and `bitrateMode: 'constant'`.
+
+Every export starts with a forced keyframe. Subsequent keyframes are forced once per second: the interval is `max(1, round(framerate))` submitted frames, so it is 60 frames at 60 FPS and 30 frames at 30 FPS. The submitted-frame counter is reset for each `start_export`. A `VideoFrame` remains open through `encoder.encode(frame, { keyFrame })` and is closed in the existing `finally` block immediately afterward.
+
+An explicit finite, positive `StartExportRequest.bitrate` remains authoritative and is rounded to an integer; zero, negative, non-finite, or missing values use the fallback. The worker applies the resolution-based CBR tiers at 75% of each nominal pixel threshold so 4K-like crops and browser-rounded dimensions do not fall into a much lower tier:
+
+| Resolution/pixel threshold | Default bitrate |
+| --- | ---: |
+| Below 75% of 1280x720 | Pixel-scaled from 8 Mbps, with a 2 Mbps minimum |
+| At least 75% of 1280x720 | 8 Mbps |
+| At least 75% of 1920x1080 | 14 Mbps |
+| At least 75% of 3840x2160 | 40 Mbps |
+
+The higher floors are intentional for dark or mostly static generative imagery, where lower bitrate encoding can produce unstable blocks or gradients. Dithering is not part of the normal export path because it would weaken pixel determinism. It may only be considered as a fallback after real-browser validation shows artifacts remain with forced keyframes, constant bitrate mode, and the higher bitrate policy.
+
 Encoded WebM chunks are written synchronously and directly to disk using the Origin Private File System (OPFS) `FileSystemSyncAccessHandle` API. Each chunk is discarded from RAM immediately after the write, eliminating the accumulation of large in-memory Blobs that previously caused OOM crashes on long exports or low-memory devices. At the end of export the final file is retrieved natively via `fileHandle.getFile()` without any in-memory reassembly.
 
 `WebMMuxer` is dependency-free TypeScript. It writes EBML, Segment, Info, Tracks, Cluster, and SimpleBlock structures. Video uses track 1 (`0x81`) with VP8/VP9 codec IDs. Audio uses track 2 (`0x82`) with `A_OPUS`, Opus private header, sample rate, and two channels.
@@ -159,6 +176,9 @@ Export behavior is covered by `tests/export-deterministic.test.mjs`:
 - resize-settle `requestAnimationFrame` happens before first redraw.
 - metadata card text and BPM badge are drawn in a browser-free VM test.
 - `stopAndSave()` finalizes and returns a partial WebM Blob.
+- the encoder receives quality latency mode, constant bitrate mode, and the 8/14/40 Mbps resolution policy.
+- a valid explicit bitrate overrides the resolution fallback.
+- frame zero and each one-second boundary are forced keyframes at both 30 and 60 FPS.
 
 Recommended validation after export changes:
 
