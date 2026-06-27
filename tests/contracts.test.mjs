@@ -229,6 +229,8 @@ test('semantic dramaturgy layer types and state are exposed (ADR-003)', () => {
   assert.match(types, /export type IntentType = 'establish' \| 'anticipate' \| 'compress' \| 'expand' \| 'release' \| 'celebrate' \| 'recover' \| 'contrast' \| 'return' \| 'sustain';/);
   assert.match(types, /export type ChoreographyAction = 'expand' \| 'collapse' \| 'orbit' \| 'fragment' \| 'bloom' \| 'pulse' \| 'echo' \| 'freeze' \| 'accelerate' \| 'slow' \| 'densify' \| 'thin' \| 'focus' \| 'scatter' \| 'merge';/);
   assert.match(types, /export type GrammarOperator = 'repeat' \| 'mirror' \| 'invert' \| 'alternate' \| 'echo' \| 'grow' \| 'shrink' \| 'cascade' \| 'call-response';/);
+  assert.match(types, /export type VisualMotif =/);
+  assert.match(types, /export interface VisualScorePlan[\s\S]*version: 1;[\s\S]*motifs: MotifPhrase\[\];[\s\S]*transitions: TransitionPhrase\[\];/);
 
   // Plan shapes
   assert.match(types, /export interface NarrativeSegment[\s\S]*id: string;[\s\S]*startTime: number;[\s\S]*endTime: number;[\s\S]*type: NarrativeType;[\s\S]*intensity: number;/);
@@ -238,12 +240,15 @@ test('semantic dramaturgy layer types and state are exposed (ADR-003)', () => {
 
   // ChoreographyFrame.actions MUST be a serializable Record, never a Map (ADR-003).
   assert.match(types, /export interface ChoreographyFrame[\s\S]*time: number;[\s\S]*actions: Partial<Record<ChoreographyAction, number>>;[\s\S]*activeOperators: GrammarOperator\[\];/);
+  assert.match(types, /motifIntensity\?: number;[\s\S]*motifDensity\?: number;[\s\S]*motifMotion\?: number;[\s\S]*novelty\?: number;/);
+  assert.match(types, /fromMotif\?: VisualMotif;[\s\S]*toMotif\?: VisualMotif;/);
   assert.doesNotMatch(types, /actions: Map<ChoreographyAction/);
   assert.match(types, /export interface VisualChoreographyPlan[\s\S]*version: 1;[\s\S]*frames: ChoreographyFrame\[\];/);
 
   // Offline plan state slots (nullable, computed once per track)
   assert.match(store, /semanticNarrative: null as MusicalNarrativePlan \| null/);
   assert.match(store, /dramaturgicalIntent: null as DramaturgicalIntentPlan \| null/);
+  assert.match(store, /visualScorePlan: null as VisualScorePlan \| null/);
   assert.match(store, /visualChoreography: null as VisualChoreographyPlan \| null/);
   // Realtime choreography lookup slot, resolver-owned
   assert.match(store, /currentChoreography: null as ChoreographyFrame \| null/);

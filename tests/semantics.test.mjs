@@ -329,6 +329,8 @@ test('semantic layer stays free of p5/DOM/runtime-state imports', () => {
     'semantics/IntentGenerator.ts',
     'semantics/ChoreographyEngine.ts',
     'semantics/PatternGrammar.ts',
+    'semantics/MotifPlanner.ts',
+    'semantics/TransitionPlanner.ts',
     'semantics/SemanticResolver.ts',
     'semantics/index.ts'
   ]
