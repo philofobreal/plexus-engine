@@ -1,4 +1,11 @@
-import type { ChoreographyAction, ChoreographyFrame, VisualMode, VisualTuningConfig } from '../types';
+import type {
+    ChoreographyAction,
+    ChoreographyFrame,
+    TransitionBehavior,
+    VisualMode,
+    VisualMotif,
+    VisualTuningConfig
+} from '../types';
 import {
     cloneDefaultVisualTuning,
     visualTuningControls,
@@ -26,6 +33,7 @@ interface ParamDelta {
 }
 
 type ActionDeltas = Partial<Record<ChoreographyAction, ParamDelta[]>>;
+type MotifDeltas = Record<VisualMotif, ParamDelta[]>;
 
 // Shared interpretation applied for every style.
 const BASE_DELTAS: ActionDeltas = {
@@ -44,6 +52,30 @@ const BASE_DELTAS: ActionDeltas = {
     merge: [{ key: 'polygonAlpha', amount: -0.5 }, { key: 'lineDistance', amount: -0.5 }],
     freeze: [{ key: 'particleEnergySpeed', amount: -20 }, { key: 'particleBeatSpeed', amount: -50 }],
     echo: [{ key: 'shockwaveAlpha', amount: 0.5 }, { key: 'shockwaveExpansion', amount: 0.1 }]
+};
+
+const MOTIF_DELTAS: MotifDeltas = {
+    'pulse-field': [{ key: 'circleAlpha', amount: 0.55 }, { key: 'shockwaveAlpha', amount: 0.35 }],
+    'orbit-system': [{ key: 'wormholeCurve', amount: 0.25 }, { key: 'particleActivityTurn', amount: 0.45 }, { key: 'temporalRingSize', amount: 0.8 }, { key: 'lineDistance', amount: 0.35 }],
+    'tunnel-drive': [{ key: 'wormholeSpeed', amount: 1.8 }, { key: 'wormholeDepth', amount: 0.7 }, { key: 'particleBeatSpeed', amount: 35 }],
+    'network-bloom': [{ key: 'lineDistance', amount: 1.1 }, { key: 'circleSize', amount: 1.1 }, { key: 'polygonAlpha', amount: 0.75 }, { key: 'temporalPolygonAlpha', amount: 0.65 }, { key: 'audioSensitivity', amount: 0.35 }],
+    'fragment-cloud': [{ key: 'polygonAlpha', amount: 0.95 }, { key: 'polygonFlash', amount: 0.7 }, { key: 'lineWeight', amount: 1.2 }, { key: 'temporalPolygonAlpha', amount: 0.8 }],
+    'wave-ripple': [{ key: 'shockwaveRadius', amount: 1.2 }, { key: 'shockwaveExpansion', amount: 0.2 }, { key: 'temporalRingAlpha', amount: 0.5 }],
+    'grid-scan': [{ key: 'temporalNetworkDistance', amount: 0.9 }, { key: 'lineAlpha', amount: 0.45 }, { key: 'particleActivityTurn', amount: 0.2 }],
+    'halo-focus': [{ key: 'circleSize', amount: 0.65 }, { key: 'circleAlpha', amount: 0.7 }, { key: 'particleBoundaryPull', amount: 0.25 }],
+    'swarm-motion': [{ key: 'particleEnergySpeed', amount: 18 }, { key: 'particleActivityTurn', amount: 0.55 }, { key: 'lineDistance', amount: 0.5 }],
+    'void-minimal': [{ key: 'lineAlpha', amount: -0.75 }, { key: 'particleEnergySpeed', amount: -20 }, { key: 'particleBeatSpeed', amount: -30 }, { key: 'audioSensitivity', amount: -0.35 }]
+};
+
+const TRANSITION_DELTAS: Partial<Record<TransitionBehavior, ParamDelta[]>> = {
+    morph: [{ key: 'transitionSpeed', amount: -0.05 }],
+    handoff: [{ key: 'transitionSpeed', amount: -0.12 }],
+    'echo-out': [{ key: 'shockwaveAlpha', amount: 0.45 }, { key: 'lineAlpha', amount: -0.35 }],
+    dissolve: [{ key: 'lineAlpha', amount: -0.6 }, { key: 'polygonAlpha', amount: -0.4 }],
+    overlay: [{ key: 'lineDistance', amount: 0.25 }, { key: 'circleAlpha', amount: 0.2 }],
+    'freeze-cut': [{ key: 'particleEnergySpeed', amount: -18 }, { key: 'polygonFlash', amount: 1.2 }],
+    snap: [{ key: 'transitionSpeed', amount: 0.7 }, { key: 'polygonFlash', amount: 0.9 }],
+    'phase-shift': [{ key: 'particleActivityTurn', amount: 0.45 }, { key: 'temporalRingSpeed', amount: 1.1 }]
 };
 
 // Per-style reinterpretation layered on top of the shared deltas.
@@ -80,11 +112,67 @@ export function resolveSemanticState(
     const actions = choreography?.actions ?? {};
 
     applyActionDeltas(out, BASE_DELTAS, actions);
+    applyMotifDeltas(out, choreography);
+    if (choreography?.transition) applyTransitionDeltas(out, choreography.transition.behavior, choreography.transition.progress);
     const styleDeltas = STYLE_DELTAS[style];
     if (styleDeltas) applyActionDeltas(out, styleDeltas, actions);
 
     clampToControls(out);
     return out;
+}
+
+function applyMotifDeltas(target: VisualTuningConfig, frame: ChoreographyFrame | null): void {
+    if (!frame) return;
+    const scale = motifScale(frame);
+    const transition = frame.transition;
+    if (transition?.fromMotif && transition.toMotif) {
+        const progress = unit(transition.progress, 0);
+        applyParamDeltas(target, MOTIF_DELTAS[transition.fromMotif], scale * (1 - progress));
+        applyParamDeltas(target, MOTIF_DELTAS[transition.toMotif], scale * progress);
+        return;
+    }
+    if (frame.motif) applyParamDeltas(target, MOTIF_DELTAS[frame.motif], scale);
+}
+
+function motifScale(frame: ChoreographyFrame): number {
+    const intensity = unit(frame.motifIntensity, 1);
+    const density = unit(frame.motifDensity, 0);
+    const motion = unit(frame.motifMotion, 0);
+    const novelty = unit(frame.novelty, 0);
+    return intensity * 0.45 + density * 0.25 + motion * 0.2 + novelty * 0.1;
+}
+
+function unit(value: number | undefined, fallback: number): number {
+    return typeof value === 'number' && Number.isFinite(value)
+        ? Math.max(0, Math.min(1, value))
+        : fallback;
+}
+
+function applyTransitionDeltas(target: VisualTuningConfig, behavior: TransitionBehavior, progress: number): void {
+    const p = Math.max(0, Math.min(1, Number.isFinite(progress) ? progress : 0));
+    if (behavior === 'collapse-release') {
+        if (p < 0.5) {
+            applyParamDeltas(target, [
+                { key: 'lineDistance', amount: -1.2 },
+                { key: 'particleEnergySpeed', amount: -18 },
+                { key: 'circleSize', amount: -0.5 }
+            ], 1 - p * 2);
+        } else {
+            applyParamDeltas(target, [
+                { key: 'lineDistance', amount: 1.4 },
+                { key: 'circleSize', amount: 1.1 },
+                { key: 'polygonFlash', amount: 1.5 },
+                { key: 'particleEnergySpeed', amount: 22 }
+            ], (p - 0.5) * 2);
+        }
+        return;
+    }
+    applyParamDeltas(target, TRANSITION_DELTAS[behavior], behavior === 'echo-out' || behavior === 'dissolve' ? 1 - p : p);
+}
+
+function applyParamDeltas(target: VisualTuningConfig, deltas: ParamDelta[] | undefined, scale: number): void {
+    if (!deltas) return;
+    for (const { key, amount } of deltas) target[key] += amount * scale;
 }
 
 // A complete, numeric base: start from engine defaults and overlay a provided preset for

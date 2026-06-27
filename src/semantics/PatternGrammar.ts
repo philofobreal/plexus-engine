@@ -1,17 +1,20 @@
-import type { ChoreographyAction, ChoreographyFrame, GrammarOperator } from '../types';
+import type { ChoreographyAction, ChoreographyFrame, GrammarOperator, MotifPhrase } from '../types';
 
-// PatternGrammar — pure, deterministic operators that transform abstract choreography
-// action sets (ADR-003). No p5/DOM/runtime state. Three operators are implemented:
-//   mirror  — symmetry: each action gains a softened counter-motion (its antonym).
-//   invert  — opposite phase: each action is replaced by its antonym.
-//   echo    — delayed decay: a climactic frame rings out into decreasing follow-ups.
-//
-// FUTURE / NO-OP: the remaining `GrammarOperator` members — repeat, alternate, grow, shrink,
-// cascade, call-response — are reserved in the type for forward compatibility but are not yet
-// implemented here. The ChoreographyEngine never activates them, so they have no runtime effect
-// today; add a handler here before wiring any of them into INTENT_OPERATORS.
+// Pure, deterministic operators for abstract actions and typed Visual Score
+// phrases (ADR-003). `applyOperators` changes action topology for invert/mirror;
+// repeat, alternate, grow, shrink, cascade, and call-response change scalar phrase
+// samples in `sampleMotifGrammar`; echo additionally expands delayed action frames.
 
 export type ActionMap = Partial<Record<ChoreographyAction, number>>;
+
+export interface MotifGrammarSample {
+    intensity: number;
+    density: number;
+    motion: number;
+    phrasePosition: number;
+    rhythmicPhase: number;
+    activeOperators: GrammarOperator[];
+}
 
 // Opposite-motion pairing used by invert/mirror. Total over the action vocabulary so
 // inversion is always defined; `echo` is its own opposite (inverting a ring-out is a ring-out).
@@ -75,7 +78,18 @@ export function applyEcho(primary: ChoreographyFrame, spacingSec: number): Chore
         echoes.push({
             time: primary.time + gap * k,
             actions,
-            activeOperators: ['echo']
+            activeOperators: ['echo'],
+            motifId: primary.motifId,
+            motif: primary.motif,
+            motifRole: primary.motifRole,
+            subdivision: primary.subdivision,
+            motifIntensity: primary.motifIntensity,
+            motifDensity: primary.motifDensity,
+            motifMotion: primary.motifMotion,
+            novelty: primary.novelty,
+            phrasePosition: primary.phrasePosition,
+            rhythmicPhase: primary.rhythmicPhase,
+            variationSeed: primary.variationSeed
         });
     }
     return echoes;
@@ -87,6 +101,70 @@ export function applyOperators(actions: ActionMap, operators: GrammarOperator[])
     if (operators.includes('invert')) out = applyInvert(out);
     if (operators.includes('mirror')) out = applyMirror(out);
     return out;
+}
+
+// Sample the data-only score into deterministic phrase variation. Every declared
+// operator changes at least one scalar field; the source MotifPhrase stays immutable.
+export function sampleMotifGrammar(phrase: MotifPhrase, phrasePosition: number, sampleIndex: number): MotifGrammarSample {
+    const position = clamp01(phrasePosition);
+    let intensity = clamp01(phrase.intensity);
+    let density = clamp01(phrase.density);
+    let motion = clamp01(phrase.motion);
+    let rhythmicPhase = ((sampleIndex + (phrase.variationSeed % 8) / 8) % 4) / 4;
+
+    for (const operator of phrase.operators) {
+        switch (operator) {
+            case 'repeat': {
+                intensity *= sampleIndex % 2 === 0 ? 1 : 0.82;
+                rhythmicPhase = sampleIndex % 2 === 0 ? 0 : 0.5;
+                break;
+            }
+            case 'alternate': {
+                const primary = sampleIndex % 2 === 0;
+                intensity *= primary ? 1 : 0.72;
+                motion *= primary ? 0.82 : 1;
+                rhythmicPhase = primary ? 0 : 0.5;
+                break;
+            }
+            case 'grow': {
+                const growth = 0.45 + 0.55 * position;
+                intensity *= growth;
+                density *= growth;
+                motion *= 0.65 + 0.35 * position;
+                break;
+            }
+            case 'shrink': {
+                const decay = 1 - 0.65 * position;
+                intensity *= decay;
+                density *= decay;
+                motion *= 1 - 0.45 * position;
+                break;
+            }
+            case 'cascade': {
+                const layer = Math.min(1, (sampleIndex + 1) / 4);
+                density *= 0.45 + 0.55 * layer;
+                motion *= 0.6 + 0.4 * layer;
+                break;
+            }
+            case 'call-response': {
+                const response = sampleIndex % 2 === 1;
+                intensity *= response ? 0.68 : 1;
+                density *= response ? 0.75 : 1;
+                motion *= response ? 1 : 0.78;
+                rhythmicPhase = response ? 0.5 : 0;
+                break;
+            }
+        }
+    }
+
+    return {
+        intensity: clamp01(intensity),
+        density: clamp01(density),
+        motion: clamp01(motion),
+        phrasePosition: position,
+        rhythmicPhase: clamp01(rhythmicPhase),
+        activeOperators: [...phrase.operators]
+    };
 }
 
 // Clamp + prune helper shared by all operators so frames never carry NaN or noise dust.
