@@ -23,6 +23,17 @@ Stop and redesign if a change introduces any pattern below.
 - **Semantic State Smuggling.** Direct writes to `State.modulation` or `State.directorOutput` from semantic layers are forbidden.
 - **Non-deterministic Variation.** Using `Math.random()` in choreography is forbidden; variation must derive from `VariationModel.seed`.
 
+## Visual OS Style System Anti-Patterns (ADR-005)
+
+- **Parallel Dramaturgy.** Re-deriving musical semantics (Narrative, Intent, Sections, Motifs) from `TrackAnalysis` inside `src/automation/` Visual OS modules. They must consume the ADR-003 `src/semantics/` output and only select style-permitted realizations of it.
+- **Renderer Leakage Into the Domain.** Putting renderer/tuning concepts (tuning keys, preset filenames, `opacity`, `particleCount`, p5/DOM) into `VisualScene` or any Visual OS domain type. The only place a style names a concrete preset is `StyleTargetReference` (`style-packs.json` `targetMap`), consumed exclusively by `scenePlanAdapter`.
+- **Adapter State Writes.** Writing `State.targetTuning` (or any runtime state) from `scenePlanAdapter`, `styleTranslator`, `choreographyDirector`, or `variationEngine`. The adapter emits a `PerformanceAutomationPlan` only; runtime state stays with the existing runtime/UI path.
+- **Impure Variation Engine.** Letting `variationEngine` mutate state, select, or persist. It is pure, deterministic, read-only scoring; selection belongs to `choreographyDirector`.
+- **Soft-Only Anti-Repetition.** Relying on the history scoring penalty alone. A hard `VariationPolicy` (ban A->A and short-gap A->B->A) must enforce variation during selection.
+- **Unbounded Scene Expansion.** Expanding `SceneEvolution` into automation points without a density cap (`minWaypointSpacingSec` / `maxWaypointsPerScene`), flooding the timeline.
+- **Hard-Coded Capability Weights.** Baking per-tier capability scores into the scorer instead of the data-driven `StyleCapabilityMatrix.weights`.
+- **Non-ASCII In Visual OS Source/Docs.** Using em-dashes, box-drawing, arrows, or smart quotes in Visual OS source or ADR/governance text; keep them ASCII to avoid mojibake in diffs and governance docs.
+
 ## Realtime Audio Anti-Patterns
 
 - Realtime FFT, beat detection, or spectral analysis in p5 `draw()`.

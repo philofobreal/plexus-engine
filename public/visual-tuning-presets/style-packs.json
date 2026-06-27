@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "packs": [
+    {
+      "id": "base-temporal",
+      "label": "Base Temporal",
+      "capabilities": {
+        "preferred": ["pulse-field", "orbit-system", "network-bloom", "halo-focus"],
+        "supported": ["tunnel-drive", "wave-ripple", "grid-scan", "swarm-motion", "fragment-cloud"],
+        "forbidden": [],
+        "palettes": { "preferred": ["spectral", "duotone"], "forbidden": [] },
+        "weights": { "preferred": 0.9, "supported": 0.4 }
+      },
+      "vocabulary": { "palette": "spectral", "lineCharacter": 0.5, "glowCharacter": 0.5, "grain": 0.3, "contrast": 0.5 },
+      "behaviour": { "energy": 0, "density": 0, "motion": 0, "volatility": 0, "cohesion": 0 },
+      "targetMap": {
+        "intro": { "preset": "default.json", "morphCurve": "easeInOut" },
+        "groove": { "preset": "temporal2.json" },
+        "tension": { "preset": "temporal1.json" },
+        "build": { "preset": "temporal1.json" },
+        "fake-drop": { "preset": "temporal4.json" },
+        "release": { "preset": "temporal3.json", "morphCurve": "exponential" },
+        "peak": { "preset": "temporal4.json", "morphCurve": "exponential" },
+        "breakdown": { "preset": "temporal5.json" },
+        "outro": { "preset": "default.json", "morphCurve": "easeInOut" }
+      }
+    },
+    {
+      "id": "dark-techno",
+      "extends": "base-temporal",
+      "label": "Dark Techno",
+      "capabilities": {
+        "preferred": ["grid-scan", "tunnel-drive", "pulse-field", "fragment-cloud"],
+        "supported": ["swarm-motion"],
+        "forbidden": ["wave-ripple", "halo-focus"],
+        "palettes": { "preferred": ["mono"], "forbidden": ["earth", "neon"] }
+      },
+      "vocabulary": { "palette": "mono", "lineCharacter": 0.9, "glowCharacter": 0.15, "grain": 0.4, "contrast": 0.95 },
+      "behaviour": { "energy": 0.1, "density": 0.0, "motion": 0.05, "volatility": 0.2, "cohesion": -0.1 },
+      "substyles": {
+        "strobe": {
+          "label": "Dark Techno Strobe",
+          "capabilities": { "preferred": ["fragment-cloud", "grid-scan"] },
+          "behaviour": { "volatility": 0.4, "energy": 0.15 }
+        }
+      },
+      "targetMap": {
+        "groove": { "preset": "temporal1.json" },
+        "release": { "preset": "temporal3.json" },
+        "peak": { "preset": "temporal4.json", "intensityScale": 1.1, "morphCurve": "exponential" },
+        "breakdown": { "preset": "temporal5.json" }
+      }
+    },
+    {
+      "id": "dark-techno-minimal",
+      "extends": "dark-techno",
+      "label": "Dark Techno Minimal",
+      "capabilities": {
+        "preferred": ["void-minimal", "grid-scan", "pulse-field"],
+        "supported": [],
+        "forbidden": ["network-bloom", "swarm-motion", "orbit-system"],
+        "palettes": { "preferred": ["void", "mono"], "forbidden": [] },
+        "weights": { "preferred": 0.95, "supported": 0.3 }
+      },
+      "vocabulary": { "palette": "void", "lineCharacter": 0.95, "glowCharacter": 0.05, "grain": 0.1, "contrast": 1.0 },
+      "behaviour": { "energy": -0.1, "density": -0.2, "motion": -0.05, "volatility": 0.0, "cohesion": 0.1 },
+      "targetMap": {
+        "build": { "preset": "temporal1.json" },
+        "peak": { "preset": "temporal3.json", "intensityScale": 0.9 }
+      }
+    }
+  ]
+}

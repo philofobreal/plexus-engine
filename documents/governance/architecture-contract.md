@@ -125,3 +125,46 @@ The ADR-004 time-based runtime is a separate consumer path alongside the pure, o
 - `SemanticRuntimeAdapter` is the only ADR-004 component allowed to write `State.targetTuning`. It is an explicit runtime boundary but must receive its target through composition and must not import `src/state/`.
 - `featureFlags.semanticChoreography` may suppress the ADR-003 motif resolver only while an active `VisualScorePlan` exists. With no active plan, ADR-003 or legacy performance automation retains authority.
 - This phase contains no ADR-004 producer. `TrackAnalysis.externalVisualScorePlan` is an explicitly external pass-through payload, never analyzer-owned output. A `VisualScorePlan` may be consumed when supplied, but analyzer-side narrative intent or plan generation is not implemented.
+
+## Visual OS Style System (ADR-005)
+
+The Visual OS style layer is a renderer-independent scene-translation pipeline that CONSUMES
+the ADR-003 semantic output and emits a standard `PerformanceAutomationPlan`. It is gated by
+`featureFlags.USE_VISUAL_OS_V2` (default off) and lives under `src/automation/`. See
+`../adr/ADR-005-visual-os-style-system.md`.
+
+- The existing `src/semantics/` ADR-003 chain is the ONLY component permitted to derive
+  musical semantics (Narrative, Intent, Sections, Motifs) from `TrackAnalysis`. The Visual OS
+  modules consume that output and select style-permitted realizations of it. Re-deriving any
+  musical semantics inside `src/automation/` is a forbidden parallel system.
+- Single-writer ownership of the new stages:
+  - `variationEngine` scores candidate motifs only. It is pure, deterministic, read-only, and
+    never mutates state or selects. Capability tier scores come from the data-driven
+    `StyleCapabilityMatrix.weights`, not hard-coded constants.
+  - `choreographyDirector` selects per-scene realizations and owns the hard anti-repetition
+    `VariationPolicy` (bans A->A and short-gap A->B->A). It builds `SceneIntent[]` and the
+    narrative-shaped `SceneEvolution` lifecycle. It consumes, never re-derives.
+  - `styleTranslator` resolves StylePack inheritance and emits the renderer-INDEPENDENT
+    `VisualScene` (`Style Resolver -> Visual Grammar -> Capability Filter -> Behaviour
+    Resolver`). Inheritance resolution validates cycles, missing parents, and unknown enum
+    members atomically.
+  - `scenePlanAdapter` is the Renderer Adapter tier: the SINGLE place an opaque
+    `VisualScene.targetStateReference` is resolved to a concrete preset (via the pack
+    `targetMap`). It emits `PerformanceAutomationPlan { version: 1, source: 'auto', points }`
+    only, expands `SceneEvolution` into intensity waypoints under a density cap, and MUST NOT
+    import or write `src/state/`.
+  - `visualOsPlanner` is pure orchestration; `visualOsPlanLoader` is the IO boundary (loads
+    `style-packs.json`) and FAILS SAFE by returning null so the caller uses the legacy
+    generator.
+- Renderer Independence Contract: domain types (`VisualScene`, `Motif`, `VisualVocabulary`,
+  `BehaviourState`, `SceneEvolution`) carry no renderer/tuning quantities (no tuning keys,
+  preset filenames, `opacity`, `particleCount`, p5/DOM). The only place a style names a
+  concrete preset is `StyleTargetReference` in `style-packs.json` `targetMap`, consumed
+  exclusively by `scenePlanAdapter`.
+- The Visual OS adapter never writes `State.targetTuning`. Runtime state writes remain with
+  the existing runtime/UI path that consumes the returned `PerformanceAutomationPlan`,
+  exactly as for the legacy generator. When the flag is off, the legacy
+  `performancePlanGenerator` owns plan generation and nothing changes.
+- `src/automation/` Visual OS modules may import `src/types/` and the pure `src/semantics/`
+  output helpers. They must not import `src/state/`, `src/visuals/`, `src/ui/`,
+  `src/audio/`, `src/analyzer/`, or p5 (the IO loader may use `fetch`/`import.meta`).
