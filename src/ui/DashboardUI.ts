@@ -18,7 +18,9 @@ import { TimelineCanvas } from './TimelineCanvas';
 import { PlaybackController } from './controllers/PlaybackController';
 import { TuningController } from './controllers/TuningController';
 import { ExportController } from './controllers/ExportController';
-import { shouldYieldPerformanceAutomation } from './semanticAutomationPolicy';
+import { isSemanticTuningActive } from './semanticAutomationPolicy';
+import { findActiveAutomationPoint } from './performanceAutomationRuntime';
+import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
 
 interface VisualPresetManifest {
     presets?: string[];
@@ -351,6 +353,7 @@ export class DashboardUI {
                 const plan = await this.generatePlan();
                 State.performancePlan = plan;
                 State.editedPerformancePlan = JSON.parse(JSON.stringify(plan));
+                setActiveVisualTransitionComponent('automation', null);
                 void this.preloadPresetsForPlan(plan);
                 this.computeSemanticPlan();
                 this.snapshotSemanticBase();
@@ -1912,6 +1915,7 @@ export class DashboardUI {
         if (this.isPerformanceAutomationPlan(preset.performancePlan)) {
             State.performancePlan = preset.performancePlan;
             State.editedPerformancePlan = JSON.parse(JSON.stringify(preset.performancePlan));
+            setActiveVisualTransitionComponent('automation', null);
             void this.preloadPresetsForPlan(preset.performancePlan);
             this.lastTriggeredAutomationPointId = null;
         }
@@ -1996,7 +2000,11 @@ export class DashboardUI {
     // recomputing the plan after a timeline edit never re-bakes the resolver's deltas into the
     // base. Snapshot only from a clean targetTuning (track load / preset load).
     private snapshotSemanticBase(): void {
-        const isSemanticActive = shouldYieldPerformanceAutomation(featureFlags, this.semanticResolver.hasPlan());
+        const isSemanticActive = isSemanticTuningActive(
+            featureFlags,
+            this.semanticResolver.hasPlan(),
+            State.visualChoreography !== null
+        );
         if (!isSemanticActive) return;
         State.semanticBaseTuning = { ...State.targetTuning };
     }
@@ -2004,18 +2012,22 @@ export class DashboardUI {
     // ─── Performance automation trigger ──────────────────────────────────────
 
     private triggerPerformanceAutomation(): void {
-        // When the semantic resolver owns targetTuning, the legacy preset automation must
-        // not also write it (ADR-003: one authority per channel).
-        if (shouldYieldPerformanceAutomation(featureFlags, this.semanticResolver.hasPlan())) return;
+        // Preset automation always selects the slow-channel base. Semantic runtimes may own
+        // tuning deltas above that base, but must not suppress the underlying preset change.
         const plan = State.editedPerformancePlan ?? State.performancePlan;
-        if (!plan?.points.length) return;
-        let activePoint: PerformanceAutomationPoint | null = null;
-        for (const point of plan.points) {
-            if (point.time > State.currentTime) break;
-            activePoint = point;
+        if (!plan?.points.length) {
+            setActiveVisualTransitionComponent('automation', null);
+            return;
         }
-        if (!activePoint || activePoint.id === this.lastTriggeredAutomationPointId) return;
+        const activePoint = findActiveAutomationPoint(plan, State.currentTime);
+        if (!activePoint) {
+            setActiveVisualTransitionComponent('automation', null);
+            this.lastTriggeredAutomationPointId = null;
+            return;
+        }
+        if (activePoint.id === this.lastTriggeredAutomationPointId) return;
         this.lastTriggeredAutomationPointId = activePoint.id;
+        setActiveVisualTransitionComponent('automation', `automation:${activePoint.id}`);
         State.targetTuning.audioSensitivity = activePoint.intensity;
         State.targetTuning.morphDurationSec = activePoint.morphDurationSec;
         State.targetTuning.morphCurveValue = activePoint.morphCurve === 'linear' ? 0
@@ -2111,6 +2123,7 @@ export class DashboardUI {
     private applyLoadedDramaturgyPlan(plan: PerformanceAutomationPlan): void {
         State.performancePlan = JSON.parse(JSON.stringify(plan));
         State.editedPerformancePlan = JSON.parse(JSON.stringify(plan));
+        setActiveVisualTransitionComponent('automation', null);
         this.lastTriggeredAutomationPointId = null;
         this.selectedAutomationPoint = null;
         this.hideAutomationInspector();

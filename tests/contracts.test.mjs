@@ -260,6 +260,10 @@ test('semantic dramaturgy layer types and state are exposed (ADR-003)', () => {
   assert.match(store, /visualChoreography: null as VisualChoreographyPlan \| null/);
   // Realtime choreography lookup slot, resolver-owned
   assert.match(store, /currentChoreography: null as MotifChoreographyFrame \| null/);
+  assert.match(store, /activeAutomationTransitionId: null as string \| null/);
+  assert.match(store, /activeSemanticScoreTransitionId: null as string \| null/);
+  assert.match(store, /activeMotifTransitionId: null as string \| null/);
+  assert.match(store, /activeVisualTransitionId: null as string \| null/);
 });
 
 test('semantic resolver is wired behind a feature flag and owns targetTuning when on (ADR-003)', () => {
@@ -269,13 +273,14 @@ test('semantic resolver is wired behind a feature flag and owns targetTuning whe
   const audio = read('src/audio/AudioEngine.ts');
 
   // Flag exists and defaults to off (pass-through).
-  assert.match(flags, /semanticResolver: false/);
+  assert.match(flags, /semanticResolver: true/);
+  assert.match(flags, /semanticChoreography: true/);
 
   // Renderer: gated resolver writes targetTuning; FSM/modulation untouched in that block.
   assert.match(renderer, /import \{ resolveSemanticState \} from '\.\.\/semantics'/);
   assert.match(renderer, /const hasTimeBasedSemanticPlan = semanticBridge\.hasPlan\(\)/);
   assert.match(renderer, /const isTimeBasedSemanticActive = featureFlags\.semanticChoreography && hasTimeBasedSemanticPlan/);
-  assert.match(renderer, /if \(featureFlags\.semanticChoreography\) \{\s*semanticBridge\.updateSemantic\(ct, State\.targetTuning\);/);
+  assert.match(renderer, /if \(featureFlags\.semanticChoreography\) \{\s*const semanticTransitionId = semanticBridge\.updateSemantic\(ct, State\.targetTuning\);/);
   assert.match(renderer, /if \(!isTimeBasedSemanticActive && featureFlags\.semanticResolver && State\.visualChoreography\)/);
   assert.match(renderer, /featureFlags\.semanticResolver && State\.visualChoreography/);
   // A swapped plan object resets cursor + memo so a stale cursor cannot index a new frames array.
@@ -292,11 +297,11 @@ test('semantic resolver is wired behind a feature flag and owns targetTuning whe
   assert.match(renderer, /State\.currentChoreography = null/);
 
   // DashboardUI: offline chain is a pure idempotent recompute (no base side-effect);
-  // base snapshot is a separate concern; legacy automation yields when flag on.
+  // base snapshot is separate; preset automation keeps selecting the base under semantic overlays.
   assert.match(ui, /import \{ buildNarrative, generateIntents, processChoreography, type SemanticResolver \} from '\.\.\/semantics'/);
   assert.match(ui, /private computeSemanticPlan\(\): void \{[\s\S]*if \(!featureFlags\.semanticResolver\) return;[\s\S]*State\.visualChoreography = choreography;[\s\S]*State\.currentChoreography = null;\s*\}/);
-  assert.match(ui, /private snapshotSemanticBase\(\): void \{[\s\S]*shouldYieldPerformanceAutomation\(featureFlags, this\.semanticResolver\.hasPlan\(\)\)[\s\S]*if \(!isSemanticActive\) return;[\s\S]*State\.semanticBaseTuning = \{ \.\.\.State\.targetTuning \}/);
-  assert.match(ui, /private triggerPerformanceAutomation\(\): void \{[\s\S]*if \(shouldYieldPerformanceAutomation\(featureFlags, this\.semanticResolver\.hasPlan\(\)\)\) return;/);
+  assert.match(ui, /private snapshotSemanticBase\(\): void \{[\s\S]*isSemanticTuningActive\([\s\S]*State\.visualChoreography !== null[\s\S]*if \(!isSemanticActive\) return;[\s\S]*State\.semanticBaseTuning = \{ \.\.\.State\.targetTuning \}/);
+  assert.match(ui, /private triggerPerformanceAutomation\(\): void \{[\s\S]*findActiveAutomationPoint\(plan, State\.currentTime\)[\s\S]*loadVisualPreset\(activePoint\.preset\)/);
 
   // Manual slider edit folds into the base per-key (no full re-snapshot, so no delta drift).
   assert.match(ui, /onTuningChange: \(key, value\) => \{[\s\S]*if \(\(featureFlags\.semanticResolver \|\| featureFlags\.semanticChoreography\) && State\.semanticBaseTuning\) State\.semanticBaseTuning\[key\] = value;/);
@@ -325,11 +330,12 @@ test('ADR-004 analysis plan is bound to the injected resolver consumer', () => {
   assert.match(main, /new SemanticRendererBridge\(\)/);
 });
 
-test('ADR-004 automation yield policy requires an active time-based plan', () => {
+test('semantic tuning ownership requires a plan on the corresponding enabled path', () => {
   const resolver = read('src/semantics/SemanticResolver.ts');
   const policy = read('src/ui/semanticAutomationPolicy.ts');
   assert.match(resolver, /hasPlan\(\): boolean \{\s*return this\.frames\.length > 0;/);
-  assert.match(policy, /flags\.semanticResolver \|\| \(flags\.semanticChoreography && hasTimeBasedPlan\)/);
+  assert.match(policy, /flags\.semanticChoreography && hasTimeBasedPlan/);
+  assert.match(policy, /flags\.semanticResolver && hasMotifPlan/);
 });
 
 test('renderer bridge reports plan activity for ADR-003 fallback selection', () => {
@@ -913,7 +919,7 @@ test('performance plan playback automation and preloading are wired to playback 
   assert.match(ui, /this\.lastTriggeredAutomationPointId = null/);
   assert.match(ui, /private triggerPerformanceAutomation\(\): void/);
   assert.match(ui, /const plan = State\.editedPerformancePlan \?\? State\.performancePlan/);
-  assert.match(ui, /for \(const point of plan\.points\) \{[\s\S]*if \(point\.time > State\.currentTime\) break;[\s\S]*activePoint = point;[\s\S]*\}/);
+  assert.match(ui, /const activePoint = findActiveAutomationPoint\(plan, State\.currentTime\)/);
   assert.match(ui, /activePoint\.id === this\.lastTriggeredAutomationPointId/);
   assert.match(ui, /this\.lastTriggeredAutomationPointId = activePoint\.id/);
   assert.match(ui, /State\.targetTuning\.morphDurationSec = activePoint\.morphDurationSec/);

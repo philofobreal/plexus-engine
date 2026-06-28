@@ -13,21 +13,33 @@ import { resolveSemanticState } from '../semantics';
 import type { StyleRegistry } from './StyleRegistry';
 import type { SemanticRuntimeAdapter } from '../semantics';
 import { ShockwaveLifecycle } from './ShockwaveLifecycle';
+import type { ChoreographyFrame as SemanticScoreFrame } from '../types/semantics';
+import { motifTransitionId, semanticScoreTransitionId } from './VisualTransitionIdentity';
+import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
 
 export class SemanticRendererBridge {
     private semanticAdapter?: SemanticRuntimeAdapter;
+    private lastFrame: SemanticScoreFrame | null = null;
+    private activeTransitionId: string | null = null;
 
     setSemanticAdapter(adapter: SemanticRuntimeAdapter | undefined): void {
         this.semanticAdapter = adapter;
+        this.lastFrame = null;
+        this.activeTransitionId = null;
     }
 
     hasPlan(): boolean {
         return this.semanticAdapter?.hasPlan() ?? false;
     }
 
-    updateSemantic(timeSec: number, targetTuning: VisualTuningConfig): void {
-        if (!this.semanticAdapter) return;
-        this.semanticAdapter.update(timeSec, targetTuning);
+    updateSemantic(timeSec: number, targetTuning: VisualTuningConfig): string | null {
+        if (!this.semanticAdapter) return null;
+        const frame = this.semanticAdapter.update(timeSec, targetTuning);
+        if (frame !== this.lastFrame) {
+            this.lastFrame = frame;
+            this.activeTransitionId = semanticScoreTransitionId(frame);
+        }
+        return this.activeTransitionId;
     }
 }
 
@@ -109,7 +121,13 @@ export function startPlexusRenderer(
             const hasTimeBasedSemanticPlan = semanticBridge.hasPlan();
             const isTimeBasedSemanticActive = featureFlags.semanticChoreography && hasTimeBasedSemanticPlan;
             if (featureFlags.semanticChoreography) {
-                semanticBridge.updateSemantic(ct, State.targetTuning);
+                const semanticTransitionId = semanticBridge.updateSemantic(ct, State.targetTuning);
+                setActiveVisualTransitionComponent(
+                    'semantic-score',
+                    isTimeBasedSemanticActive ? semanticTransitionId : null
+                );
+            } else {
+                setActiveVisualTransitionComponent('semantic-score', null);
             }
 
             // Semantic dramaturgy layer (ADR-003): when enabled, the resolved choreography
@@ -137,12 +155,17 @@ export function startPlexusRenderer(
                 const base = State.semanticBaseTuning;
                 // Only re-resolve (and re-allocate a tuning config) when something actually changed.
                 if (activeFrame !== lastResolvedChoreography || State.visualMode !== lastResolvedStyle || base !== lastResolvedBase) {
+                    if (activeFrame !== lastResolvedChoreography) {
+                        setActiveVisualTransitionComponent('motif', motifTransitionId(activeFrame));
+                    }
                     lastResolvedChoreography = activeFrame;
                     lastResolvedStyle = State.visualMode;
                     lastResolvedBase = base;
                     const presets = base ? { [State.visualMode]: base } : {};
                     Object.assign(State.targetTuning, resolveSemanticState(activeFrame, State.visualMode, presets));
                 }
+            } else {
+                setActiveVisualTransitionComponent('motif', null);
             }
 
             if ((State.isPlaying || State.isExporting) && State.frames.length > 0) {

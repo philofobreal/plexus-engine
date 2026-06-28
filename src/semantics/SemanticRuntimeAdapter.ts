@@ -1,5 +1,6 @@
 import { defaultVisualTuning, visualTuningControls, type VisualTuningKey } from '../config/visualTuning';
 import type { VisualTuningConfig } from '../types';
+import type { ChoreographyFrame } from '../types/semantics';
 import { SemanticResolver } from './SemanticResolver';
 
 export const ALLOWED_TUNING_KEYS: ReadonlySet<VisualTuningKey> = new Set(
@@ -34,11 +35,11 @@ export class SemanticRuntimeAdapter {
         return this.resolver.hasPlan();
     }
 
-    update(timeSec: number, targetTuning: VisualTuningConfig): void {
+    update(timeSec: number, targetTuning: VisualTuningConfig): ChoreographyFrame | null {
         const result = this.resolver.resolve(timeSec);
         this.ensureBaseTuning(targetTuning);
         const base = this.baseProvider?.() ?? this.fallbackBase;
-        if (!base) return;
+        if (!base) return result?.current ?? null;
 
         const deltas = result?.tuningDeltas ?? {};
         for (const [rawKey, candidate] of Object.entries(deltas)) {
@@ -58,5 +59,6 @@ export class SemanticRuntimeAdapter {
         }
 
         if (!this.resolver.hasPlan()) this.ownedKeys.clear();
+        return result?.current ?? null;
     }
 }

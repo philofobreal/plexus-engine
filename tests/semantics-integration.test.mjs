@@ -139,18 +139,69 @@ test('SemanticRuntimeAdapter releases owned keys when its plan is removed', () =
   assert.equal(target.audioSensitivity, baseSensitivity + 0.25);
 });
 
-test('automation yields to ADR-004 only when a time-based plan exists', () => {
+test('semantic tuning ownership requires an active plan on the enabled semantic path', () => {
   const load = createLoader();
-  const { SemanticResolver } = load('semantics/SemanticResolver.ts');
-  const { shouldYieldPerformanceAutomation } = load('ui/semanticAutomationPolicy.ts');
-  const resolver = new SemanticResolver();
+  const { isSemanticTuningActive } = load('ui/semanticAutomationPolicy.ts');
   const flags = { semanticResolver: false, semanticChoreography: true };
 
-  resolver.setPlan(null);
-  assert.equal(shouldYieldPerformanceAutomation(flags, resolver.hasPlan()), false);
-  resolver.setPlan({ version: '1.0', trackHash: 'active', frames: [frame()] });
-  assert.equal(shouldYieldPerformanceAutomation(flags, resolver.hasPlan()), true);
-  assert.equal(shouldYieldPerformanceAutomation({ ...flags, semanticResolver: true }, false), true);
+  assert.equal(isSemanticTuningActive(flags, false, false), false);
+  assert.equal(isSemanticTuningActive(flags, true, false), true);
+  assert.equal(isSemanticTuningActive({ ...flags, semanticResolver: true }, false, false), false);
+  assert.equal(isSemanticTuningActive({ ...flags, semanticResolver: true }, false, true), true);
+});
+
+test('preset automation still selects new points while both semantic feature flags are enabled', () => {
+  const load = createLoader();
+  const { findActiveAutomationPoint } = load('ui/performanceAutomationRuntime.ts');
+  const point = (id, time, preset) => ({
+    id, time, preset, sectionId: id, confidence: 1, intensity: 1, reason: 'drop',
+    morphDurationSec: 1, morphCurve: 'easeInOut'
+  });
+  const plan = { version: 1, source: 'auto', points: [
+    point('a', 0, 'temporal1.json'), point('b', 8, 'temporal3.json'), point('c', 16, 'temporal5.json')
+  ] };
+  const flags = { semanticResolver: true, semanticChoreography: true };
+
+  assert.deepEqual(flags, { semanticResolver: true, semanticChoreography: true });
+  assert.equal(findActiveAutomationPoint(plan, 4).id, 'a');
+  assert.equal(findActiveAutomationPoint(plan, 10).id, 'b');
+  assert.equal(findActiveAutomationPoint(plan, 18).id, 'c');
+});
+
+test('Visual OS preset changes compose with semantic identity instead of being overwritten', () => {
+  const load = createLoader();
+  const { State } = load('state/store.ts');
+  const {
+    resetActiveVisualTransitions,
+    setActiveVisualTransitionComponent
+  } = load('state/visualTransitionState.ts');
+  const { findActiveAutomationPoint } = load('ui/performanceAutomationRuntime.ts');
+  const point = (id, time, preset) => ({
+    id, time, preset, sectionId: id, confidence: 1, intensity: 1, reason: 'drop',
+    morphDurationSec: 1, morphCurve: 'easeInOut'
+  });
+  const plan = { version: 1, source: 'auto', points: [
+    point('straight', 0, 'temporal1.json'),
+    point('burst', 8, 'temporal2.json'),
+    point('overdrive', 16, 'temporal4.json')
+  ] };
+
+  resetActiveVisualTransitions();
+  setActiveVisualTransitionComponent('semantic-score', 'score:drop:0');
+  const identities = [4, 10, 18].map(time => {
+    const active = findActiveAutomationPoint(plan, time);
+    setActiveVisualTransitionComponent('automation', `automation:${active.id}`);
+    return { preset: active.preset, identity: State.activeVisualTransitionId };
+  });
+
+  assert.deepEqual(identities.map(value => value.preset), [
+    'temporal1.json', 'temporal2.json', 'temporal4.json'
+  ]);
+  assert.equal(new Set(identities.map(value => value.identity)).size, 3);
+  for (const value of identities) {
+    assert.match(value.identity, /^automation:/);
+    assert.match(value.identity, /\|score:drop:0$/);
+  }
 });
 
 test('Plan -> Resolver -> Bridge -> targetTuning clamps extreme semantic actions', () => {
@@ -189,4 +240,29 @@ test('SemanticRendererBridge is active only while its resolver has a plan', () =
   assert.equal(bridge.hasPlan(), true);
   resolver.setPlan(null);
   assert.equal(bridge.hasPlan(), false);
+});
+
+test('SemanticRendererBridge publishes a stable transition id when the active score frame changes', () => {
+  const load = createLoader();
+  const { SemanticResolver } = load('semantics/SemanticResolver.ts');
+  const { SemanticRuntimeAdapter } = load('semantics/SemanticRuntimeAdapter.ts');
+  const { SemanticRendererBridge } = load('visuals/PlexusRenderer.ts');
+  const { defaultVisualTuning } = load('config/visualTuning.ts');
+  const resolver = new SemanticResolver();
+  const first = { ...frame(), durationSec: 1 };
+  const second = {
+    ...frame(), timeSec: 1,
+    motion: { ...frame().motion, variation: { seed: 2, phraseIndex: 1, variationIndex: 0 } }
+  };
+  resolver.setPlan({ version: '1.0', trackHash: 'transition-ids', frames: [first, second] });
+  const bridge = new SemanticRendererBridge();
+  bridge.setSemanticAdapter(new SemanticRuntimeAdapter(resolver));
+  const target = { ...defaultVisualTuning };
+
+  const firstId = bridge.updateSemantic(0, target);
+  assert.equal(bridge.updateSemantic(0.5, target), firstId);
+  const secondId = bridge.updateSemantic(1, target);
+  assert.notEqual(secondId, firstId);
+  assert.match(firstId, /^score:/);
+  assert.match(secondId, /^score:/);
 });

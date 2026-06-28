@@ -49,3 +49,53 @@ test('depth wrapping stays within the live horizon and maps exact zero to epsilo
   assert.equal(wrapDepth(Number.NaN, 1000), 1e-3);
   assert.ok(wrapDepth(4999, 500) > 0 && wrapDepth(4999, 500) < 500);
 });
+
+test('wormhole emission modes are deterministic and sparse mode omits most grains', () => {
+  const { wormholeEmissionGain } = loadTypeScriptModule('src/visuals/WormholeEmission.ts');
+  const first = Array.from({ length: 360 }, (_, index) => wormholeEmissionGain(2, index * 12.9898, 48, 1));
+  const second = Array.from({ length: 360 }, (_, index) => wormholeEmissionGain(2, index * 12.9898, 48, 1));
+
+  assert.deepEqual(first, second);
+  assert.equal(wormholeEmissionGain(0, 10, 48, 0), 1);
+  assert.ok(wormholeEmissionGain(1, 10, 48, 1) > wormholeEmissionGain(1, 10, 0, 0));
+  const active = first.filter(value => value > 0).length;
+  assert.ok(active > 0 && active < first.length * 0.35, `unexpected sparse population: ${active}`);
+});
+
+test('wormhole emission helper stays renderer-independent and allocation-free by construction', () => {
+  const source = readFileSync(join(process.cwd(), 'src/visuals/WormholeEmission.ts'), 'utf8');
+  assert.doesNotMatch(source, /Math\.random|new\s+|\[\]|\{\s*\}/);
+  assert.doesNotMatch(source, /Renderer|backend|document|window|p5/i);
+});
+
+test('wormhole transition tracker reacts once to each legacy or semantic identity', () => {
+  const { WormholeTransitionTracker } = loadTypeScriptModule('src/visuals/WormholeEmission.ts');
+  const tracker = new WormholeTransitionTracker();
+
+  assert.equal(tracker.update(null), false);
+  assert.equal(tracker.update('automation:point-a'), true);
+  assert.equal(tracker.update('automation:point-a'), false);
+  assert.equal(tracker.update('motif:12:tunnel-drive:0'), true);
+  assert.equal(tracker.update('motif:12:tunnel-drive:0'), false);
+  assert.equal(tracker.update(null), false);
+  assert.equal(tracker.update('motif:12:tunnel-drive:0'), true);
+});
+
+test('semantic transition identities are deterministic and distinguish adjacent frames', () => {
+  const { motifTransitionId, semanticScoreTransitionId } = loadTypeScriptModule('src/visuals/VisualTransitionIdentity.ts');
+  const motifA = { time: 8, motifId: 'tunnel-a', phrasePosition: 0, actions: {}, activeOperators: [] };
+  const motifB = { ...motifA, time: 12, motifId: 'tunnel-b' };
+  const scoreA = {
+    timeSec: 8, durationSec: 4, primaryPattern: 'FLOW', narrativeState: 'DEVELOPMENT', actions: {},
+    motion: { speed: 0.5, complexity: 0.4, variation: { seed: 1, phraseIndex: 2, variationIndex: 0 } },
+    confidence: 1
+  };
+  const scoreB = { ...scoreA, timeSec: 12, motion: { ...scoreA.motion, variation: { ...scoreA.motion.variation, variationIndex: 1 } } };
+
+  assert.equal(motifTransitionId(motifA), motifTransitionId({ ...motifA }));
+  assert.notEqual(motifTransitionId(motifA), motifTransitionId(motifB));
+  assert.equal(semanticScoreTransitionId(scoreA), semanticScoreTransitionId({ ...scoreA }));
+  assert.notEqual(semanticScoreTransitionId(scoreA), semanticScoreTransitionId(scoreB));
+  assert.equal(motifTransitionId(null), null);
+  assert.equal(semanticScoreTransitionId(null), null);
+});

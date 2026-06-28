@@ -6,6 +6,7 @@ import type { Shockwave } from './Shockwave';
 import type { VisualRendererBackend } from './RendererBackend';
 import type { VisualIdentity } from './VisualIdentity';
 import { wrapDepth } from './WormholeDepth';
+import { WormholeTransitionTracker, wormholeEmissionGain } from './WormholeEmission';
 
 const TWO_PI = Math.PI * 2;
 const BANDS = 24;
@@ -111,6 +112,10 @@ class CosmicWormholeIdentity implements VisualIdentity {
     private curveImpulse = 0;
     /** Last seen director phase, to detect transitions. */
     private lastDirectorState = '';
+    /** Last discrete emission character; changing it deterministically re-phases the fixed dust pool. */
+    private lastEmissionMode = -1;
+    /** Stable legacy/semantic identity, independent of tuning morph values and FSM phase. */
+    private readonly transitionTracker = new WormholeTransitionTracker();
 
     constructor() {
         for (let i = 0; i < POOL_SIZE; i++) {
@@ -198,10 +203,20 @@ class CosmicWormholeIdentity implements VisualIdentity {
         const vz = (tuning.wormholeSpeed * 10 + momentum * 30 + density * 20) * State.playbackFade;
         const radius = (50 + density * 40) * tuning.wormholeRadius;
         const warpK = 0.001 * tuning.wormholeWarp * (tension + orbit);
+        const emissionMode = clamp(Math.round(tuning.wormholeEmissionMode), 0, 2);
+        const visualTransitionChanged = this.transitionTracker.update(State.activeVisualTransitionId);
+        const emissionChanged = emissionMode !== this.lastEmissionMode;
+        if (visualTransitionChanged) {
+            this.curveImpulse = Math.max(this.curveImpulse, 0.65);
+        }
+        if (visualTransitionChanged || emissionChanged) {
+            this.resetDustDepths(maxZ, emissionMode);
+        }
+        this.lastEmissionMode = emissionMode;
 
-        // Advance camera. Curvature is event-driven, not constant: a fresh surge fires whenever the
-        // dramaturgy phase changes (i.e. when the performance-automation preset transitions), then
-        // decays back to straight. tension/orbit add a gentler continuous lean on top. The whole
+        // Advance camera. Curvature is event-driven, not constant: automation point changes and
+        // dramaturgy phase changes each fire a surge, which then decays back to straight.
+        // tension/orbit add a gentler continuous lean on top. The whole
         // amplitude is scaled by the dedicated `wormholeCurve` master (0..1) so the tuning panel can
         // force a perfectly straight tube (0) or full bends (1) regardless of preset content.
         this.cameraTravelDist += vz;
@@ -212,7 +227,9 @@ class CosmicWormholeIdentity implements VisualIdentity {
         }
         this.curveImpulse *= 0.96;
         const targetAmp = tuning.wormholeCurve * (this.curveImpulse * 700 + tension * 320 + orbit * 380);
-        this.curveAmpSmooth += (targetAmp - this.curveAmpSmooth) * 0.05;
+        this.curveAmpSmooth = tuning.wormholeCurve <= 0
+            ? 0
+            : this.curveAmpSmooth + (targetAmp - this.curveAmpSmooth) * 0.05;
         const curveAmp = this.curveAmpSmooth;
         const camZ = this.cameraTravelDist;
         // Camera fix: keep the lens (z=0) point centered so we always fly *inside* the tube.
@@ -309,6 +326,7 @@ class CosmicWormholeIdentity implements VisualIdentity {
         const ring = tuning.wormholeRing;
         const ringStep = maxZ / DEPTH_LAYERS;
         const trailDepth = vz * tuning.wormholeContinuity;
+        const jitter = clamp01(tuning.wormholeJitter);
 
         for (let i = 0; i < this.pool.length; i++) {
             const grain = this.pool[i];
@@ -317,6 +335,13 @@ class CosmicWormholeIdentity implements VisualIdentity {
             // (NOT a reset to exactly maxZ) preserves each grain's sub-step depth phase, so the
             // random spread never collapses into quantized rings after a full play-through + seek.
             grain.z = wrapDepth(grain.z - vz, maxZ);
+            const emissionGain = wormholeEmissionGain(
+                emissionMode,
+                grain.seed,
+                frameTick,
+                State.modulation.rhythmicImpulse
+            );
+            if (emissionGain <= 0.001) continue;
             const z = ring > 0 ? ringBlend(grain.z, ringStep, ring) : grain.z;
             const previousDepth = wrapDepth(grain.z + trailDepth, maxZ);
             const prevZ = ring > 0 ? ringBlend(previousDepth, ringStep, ring) : previousDepth;
@@ -337,9 +362,11 @@ class CosmicWormholeIdentity implements VisualIdentity {
             let py = cy + dy + radius * Math.sin(thetaPrev) * invPrev * fov;
 
             // Glitch / camera shake: deterministic per-index offset under LOW_DROP.
-            if (glitch > 0) {
-                const ox = (pseudoNoise(i, frameTick) * 2 - 1) * glitch * 28;
-                const oy = (pseudoNoise(i, frameTick + 7.3) * 2 - 1) * glitch * 28;
+            const shakeMagnitude = Math.min(24, glitch * 16 + jitter * (4 + State.modulation.rhythmicImpulse * 14));
+            if (shakeMagnitude > 0) {
+                const jitterTick = frameTick * (1 + jitter * 0.7);
+                const ox = (pseudoNoise(i, jitterTick) * 2 - 1) * shakeMagnitude;
+                const oy = (pseudoNoise(i, jitterTick + 7.3) * 2 - 1) * shakeMagnitude;
                 sx += ox;
                 sy += oy;
                 px += ox;
@@ -354,7 +381,8 @@ class CosmicWormholeIdentity implements VisualIdentity {
 
             // Per-band spectral energy drives brightness and thickness; impact flashes the rim.
             const energy = grain.bandIndex < spectrumLen ? clamp01(spectrum[grain.bandIndex]) : 0;
-            const alpha = (16 + energy * 188 + impact * 90) * fade * lineAlpha;
+            const alpha = (16 + energy * 188 + impact * 90) * fade * lineAlpha
+                * emissionGain * (1 - jitter * 0.25);
             const weight = (0.4 + energy * 3.2 + impact * 2.6) * lineWeight;
 
             backend.stroke(r, g, b, alpha);
@@ -370,6 +398,14 @@ class CosmicWormholeIdentity implements VisualIdentity {
 
     private curveOffsetY(globalZ: number, amp: number): number {
         return Math.cos(globalZ * 0.0011) * amp;
+    }
+
+    /** Reuses the fixed grains while removing the previous character's depth phasing. */
+    private resetDustDepths(maxZ: number, emissionMode: number): void {
+        for (let i = 0; i < this.pool.length; i++) {
+            const grain = this.pool[i];
+            grain.z = Math.max(1e-3, pseudoNoise(grain.seed, 91.7 + emissionMode * 17.3) * maxZ);
+        }
     }
 
     private updateSkyboxCamera(

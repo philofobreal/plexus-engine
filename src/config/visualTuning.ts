@@ -76,7 +76,9 @@ export const defaultVisualTuning: VisualTuningConfig = {
     wormholeContinuity: 1,
     wormholeStarfield: 1,
     wormholeGalaxy: 1,
-    wormholeSkybox: 1
+    wormholeSkybox: 1,
+    wormholeEmissionMode: 0,
+    wormholeJitter: 0
 };
 
 export const visualTuningKeys = Object.keys(defaultVisualTuning) as VisualTuningKey[];
@@ -152,6 +154,20 @@ const allVisualTuningControls: VisualTuningControl[] = [
     { key: 'wormholeStarfield', label: 'Starfield', group: 'Wormhole', min: 0, max: 2, step: 0.05, unit: 'x' },
     { key: 'wormholeGalaxy', label: 'Galaxy depth', group: 'Wormhole', min: 0, max: 2, step: 0.05, unit: 'x' },
     { key: 'wormholeSkybox', label: 'Skybox opacity', group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x' },
+    {
+        key: 'wormholeEmissionMode',
+        label: 'Emission rhythm',
+        group: 'Wormhole',
+        min: 0,
+        max: 2,
+        step: 1,
+        options: [
+            { value: 0, label: 'Continuous' },
+            { value: 1, label: 'Pulse' },
+            { value: 2, label: 'Sparse burst' }
+        ]
+    },
+    { key: 'wormholeJitter', label: 'Tunnel jitter', group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x' },
     { key: 'heroLaneBottomOffset', label: 'Lane from bottom', group: 'Hero', min: 0.05, max: 0.9, step: 0.01, unit: 'h' },
     { key: 'heroBeepVolume', label: 'Hero beep volume', group: 'Hero', min: 0, max: 1, step: 0.05 },
     {
@@ -339,7 +355,8 @@ export function applyTuningMorph(
         // JAVÍTVA: A diszkrét (egész) beállításokat ne interpoláljuk, hanem azonnal pattintsuk be,
         // különben a lebegőpontos értékek érvénytelenítik a háttér és a teljesítmény-mód feltételeit.
         if (key === 'chromaKeyMode' || key === 'performanceMode' || key === 'phraseSize'
-            || key === 'morphCurveValue' || key === 'heroEventMode' || key === 'heroBeepMode') {
+            || key === 'morphCurveValue' || key === 'heroEventMode' || key === 'heroBeepMode'
+            || key === 'wormholeEmissionMode') {
             current[key] = targetValue;
             continue;
         }

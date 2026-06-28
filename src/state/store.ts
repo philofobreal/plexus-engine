@@ -82,6 +82,11 @@ export const State = {
     preloadedPresets: {} as Record<string, Partial<VisualTuningConfig>>,
     performancePlan: null as PerformanceAutomationPlan | null,
     editedPerformancePlan: null as PerformanceAutomationPlan | null,
+    /** Source-specific identities; visualTransitionState alone composes the effective ID. */
+    activeAutomationTransitionId: null as string | null,
+    activeSemanticScoreTransitionId: null as string | null,
+    activeMotifTransitionId: null as string | null,
+    activeVisualTransitionId: null as string | null,
     // Semantic / dramaturgy layer (ADR-003): offline plans computed once per track.
     semanticNarrative: null as MusicalNarrativePlan | null,
     dramaturgicalIntent: null as DramaturgicalIntentPlan | null,

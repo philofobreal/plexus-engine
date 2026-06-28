@@ -3,9 +3,11 @@ export interface SemanticAutomationFlags {
     semanticChoreography: boolean;
 }
 
-export function shouldYieldPerformanceAutomation(
+export function isSemanticTuningActive(
     flags: SemanticAutomationFlags,
-    hasTimeBasedPlan: boolean
+    hasTimeBasedPlan: boolean,
+    hasMotifPlan: boolean
 ): boolean {
-    return flags.semanticResolver || (flags.semanticChoreography && hasTimeBasedPlan);
+    return (flags.semanticChoreography && hasTimeBasedPlan)
+        || (flags.semanticResolver && hasMotifPlan);
 }

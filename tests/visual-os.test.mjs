@@ -250,6 +250,32 @@ test('shipped style-packs.json resolves every pack', () => {
   }
 });
 
+test('cosmic wormhole maps dramaturgy phases to distinct motion characters', () => {
+  const cosmic = STYLE_PACKS.packs.find(pack => pack.id === 'cosmic-wormhole');
+  assert.ok(cosmic);
+  assert.equal(cosmic.targetMap.build.preset, 'temporal1.json');
+  assert.equal(cosmic.targetMap.breakdown.preset, 'temporal2.json');
+  assert.equal(cosmic.targetMap.peak.preset, 'temporal4.json');
+  assert.equal(cosmic.targetMap.release.preset, 'temporal5.json');
+  assert.equal(cosmic.targetMap.outro.preset, 'temporal5.json');
+
+  const presets = [1, 2, 3, 4, 5].map(index => JSON.parse(
+    readFileSync(join(process.cwd(), `public/visual-tuning-presets/temporal${index}.json`), 'utf8')
+  ).visualTuning);
+  assert.equal(presets[0].wormholeCurve, 0, 'straight drive must remain exactly straight');
+  assert.equal(presets[1].wormholeEmissionMode, 2, 'break character must use sparse bursts');
+  assert.ok(presets[2].wormholeWarp > presets[0].wormholeWarp, 'spiral must exceed straight-drive warp');
+  assert.ok(presets[3].wormholeJitter >= 0.8, 'overdrive must carry controlled jitter');
+  assert.ok(presets[4].wormholeDepth > presets[3].wormholeDepth, 'deep drift must own the largest space');
+  assert.equal(new Set(presets.map(preset => JSON.stringify([
+    preset.wormholeEmissionMode,
+    preset.wormholeContinuity,
+    preset.wormholeJitter,
+    preset.wormholeCurve,
+    preset.wormholeWarp
+  ]))).size, 5);
+});
+
 test('inheritance makes forbidden additive and keeps preferred disjoint from forbidden', () => {
   const { resolveStylePack } = load('automation/styleTranslator.ts');
   const minimal = resolveStylePack(STYLE_PACKS, 'dark-techno-minimal');

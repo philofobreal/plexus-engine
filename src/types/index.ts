@@ -124,6 +124,8 @@ export interface VisualTuningConfig {
     wormholeStarfield: number;
     wormholeGalaxy: number;
     wormholeSkybox: number;
+    wormholeEmissionMode: number;
+    wormholeJitter: number;
 }
 
 export interface PerformancePreset {

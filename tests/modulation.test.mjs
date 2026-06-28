@@ -105,6 +105,15 @@ test('visual tuning normalization preserves current values for missing preset ke
   assert.equal(normalized.buildupIntensity, 1.6);
 });
 
+test('legacy presets default new wormhole controls without breaking partial loads', () => {
+  const { normalizeVisualTuningConfig } = loadVisualTuningModule();
+  const normalized = normalizeVisualTuningConfig({ visualTuning: { wormholeSpeed: 3.25 } });
+
+  assert.equal(normalized.wormholeSpeed, 3.25);
+  assert.equal(normalized.wormholeEmissionMode, 0);
+  assert.equal(normalized.wormholeJitter, 0);
+});
+
 test('hueToRgbInto matches hueToRgb, returns the provided tuple, and normalizes hue', () => {
   const { hueToRgb, hueToRgbInto } = loadVisualTuningModule();
   const target = [0, 0, 0];
