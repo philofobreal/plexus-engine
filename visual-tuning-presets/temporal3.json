@@ -29,11 +29,17 @@
     "temporalRingSpeed": 3,
     "temporalNetworkDistance": 2.4,
     "temporalPolygonAlpha": 2,
-    "wormholeRadius": 0.6,
-    "wormholeDepth": 0.9,
-    "wormholeSpeed": 3.5,
-    "wormholeWarp": 2.6,
+    "wormholeRadius": 1.05,
+    "wormholeDepth": 1.7,
+    "wormholeSpeed": 3.6,
+    "wormholeWarp": 4.2,
     "wormholeCurve": 1.0,
+    "wormholeRing": 0.25,
+    "wormholeContinuity": 0.9,
+    "wormholeStarfield": 1.15,
+    "wormholeGalaxy": 0.8,
+    "wormholeEmissionMode": 0,
+    "wormholeJitter": 0.08,
     "heroBeepMode": 3
   }
 }

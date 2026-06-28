@@ -35,6 +35,10 @@
     "wormholeRadius": 0.5,
     "wormholeDepth": 1.0,
     "wormholeSpeed": 3,
-    "wormholeWarp": 1.6
+    "wormholeWarp": 0.2,
+    "wormholeCurve": 0,
+    "wormholeContinuity": 1.6,
+    "wormholeEmissionMode": 0,
+    "wormholeJitter": 0
   }
 }

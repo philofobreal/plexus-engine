@@ -288,15 +288,15 @@
         "peak-sustain": ["tunnel", "swarm", "drive", "echo"]
       },
       "targetMap": {
-        "intro": { "preset": "temporal2.json", "morphCurve": "easeInOut" },
+        "intro": { "preset": "temporal5.json", "morphCurve": "easeInOut" },
         "groove": { "preset": "temporal3.json" },
         "tension": { "preset": "temporal1.json" },
         "build": { "preset": "temporal1.json" },
-        "fake-drop": { "preset": "temporal4.json" },
-        "release": { "preset": "temporal3.json", "intensityScale": 1.1, "morphCurve": "exponential" },
+        "fake-drop": { "preset": "temporal2.json" },
+        "release": { "preset": "temporal5.json", "intensityScale": 0.85, "morphCurve": "easeInOut" },
         "peak": { "preset": "temporal4.json", "intensityScale": 1.15, "morphCurve": "exponential" },
-        "breakdown": { "preset": "temporal5.json" },
-        "outro": { "preset": "default.json", "morphCurve": "easeInOut" },
+        "breakdown": { "preset": "temporal2.json" },
+        "outro": { "preset": "temporal5.json", "morphCurve": "easeInOut" },
         "default": { "preset": "temporal3.json" }
       },
       "variantPairs": {
