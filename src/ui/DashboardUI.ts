@@ -11,7 +11,7 @@ import { ExportCapabilityDetector } from '../export/ExportCapabilityDetector';
 import { WebMExporter, type ExportConfig } from '../export/WebMExporter';
 import type { ExportCapabilities } from '../export/ExportTypes';
 import { State } from '../state/store';
-import type { DramaturgyActivityLevel, MorphCurve, PerformanceAutomationPlan, PerformanceAutomationPoint, RenderState, StylePacksFile, TimelineLayers, VisualMode, VisualTuningConfig } from '../types';
+import type { DramaturgyActivityLevel, DramaturgyVariantMode, MorphCurve, PerformanceAutomationPlan, PerformanceAutomationPoint, RenderState, StylePacksFile, TimelineLayers, VisualMode, VisualTuningConfig } from '../types';
 import { GestureEngine } from './GestureEngine';
 import { dashboardMetricMetadata, type DashboardMetricKey } from './metricMetadata';
 import { TimelineCanvas } from './TimelineCanvas';
@@ -52,6 +52,7 @@ export class DashboardUI {
     private visualOsPackEl: HTMLSelectElement | null = null;
     private visualOsSubstyleEl: HTMLSelectElement | null = null;
     private visualOsActivityEl: HTMLSelectElement | null = null;
+    private visualOsVariantEl: HTMLSelectElement | null = null;
     private stylePacksFile: StylePacksFile | null = null;
     private selectedAutomationPoint: PerformanceAutomationPoint | null = null;
     private hoveredPoint: PerformanceAutomationPoint | null = null;
@@ -550,6 +551,7 @@ export class DashboardUI {
         this.visualOsPackEl = document.getElementById('visual-os-pack') as HTMLSelectElement | null;
         this.visualOsSubstyleEl = document.getElementById('visual-os-substyle') as HTMLSelectElement | null;
         this.visualOsActivityEl = document.getElementById('visual-os-activity') as HTMLSelectElement | null;
+        this.visualOsVariantEl = document.getElementById('visual-os-variant') as HTMLSelectElement | null;
         this.visualOsPackEl?.addEventListener('change', () => this.populateSubstyleOptions());
         this.syncGeneratorStrategyPanels();
         void this.loadStylePackOptions();
@@ -559,6 +561,13 @@ export class DashboardUI {
     private getActivityLevel(): DramaturgyActivityLevel {
         const value = this.visualOsActivityEl?.value;
         return value === 'macro' || value === 'active' ? value : 'balanced';
+    }
+
+    // Current variant density mode for the Visual OS generator (default 'paired'). Orthogonal to
+    // Activity: it decides whether long scenes are split into visually-distinct variant pairs.
+    private getVariantMode(): DramaturgyVariantMode {
+        const value = this.visualOsVariantEl?.value;
+        return value === 'stable' || value === 'expressive' ? value : 'paired';
     }
 
     private async loadStylePackOptions(): Promise<void> {
@@ -612,6 +621,7 @@ export class DashboardUI {
                 stylePackId: this.visualOsPackEl?.value || undefined,
                 substyle: this.visualOsSubstyleEl?.value || undefined,
                 activityLevel: this.getActivityLevel(),
+                variantMode: this.getVariantMode(),
                 stylePacksFile: this.stylePacksFile ?? undefined
             });
             if (v2 && v2.points.length > 0) return v2;
@@ -1498,6 +1508,12 @@ export class DashboardUI {
             if (meta.evolutionPhase) bits.push(meta.evolutionPhase);
             if (meta.palette) bits.push(meta.palette);
             if (bits.length) content += `\nVisual OS: ${bits.join(' | ')}`;
+            // Choreography provenance (debug only): which choreographic situation and behaviour
+            // role produced this point. Renderer-independent; absent on legacy points.
+            const variantBits: string[] = [];
+            if (meta.automationSituation) variantBits.push(meta.automationSituation);
+            if (meta.vocabularyId) variantBits.push(meta.variantRole ? `${meta.vocabularyId}/${meta.variantRole}` : meta.vocabularyId);
+            if (variantBits.length) content += `\nVariant: ${variantBits.join(' | ')}`;
         }
         const rect = canvas.getBoundingClientRect();
         const tooltipX = rect.left + focusX * rect.width + 15;

@@ -235,6 +235,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             <option value="balanced" selected>Balanced</option>
             <option value="active">Active</option>
           </select>
+          <span class="timeline-title" style="margin-left: 8px; margin-right: 4px;">Variation:</span>
+          <select id="visual-os-variant" class="timeline-select" aria-label="Dramaturgy variant mode">
+            <option value="stable">Stable</option>
+            <option value="paired" selected>Paired</option>
+            <option value="expressive">Expressive</option>
+          </select>
         </div>
         <div class="timeline-wrapper">
           <div id="timeline-resize-handle" class="timeline-resize-handle" aria-hidden="true"></div>
