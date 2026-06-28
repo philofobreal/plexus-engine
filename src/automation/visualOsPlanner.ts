@@ -12,6 +12,7 @@ import { buildNarrative, generateIntents, processChoreography } from '../semanti
 import { directScenes } from './choreographyDirector';
 import { resolveStylePack, translateScenePlan } from './styleTranslator';
 import { adaptScenePlanToPerformancePlan } from './scenePlanAdapter';
+import { planGlobalVisualNarrative } from './globalVisualNarrative';
 
 // visualOsPlanner - PURE Visual OS V2 orchestration (ADR-005, Phase 4). It REUSES the
 // ADR-003 semantic chain as the single source of musical semantics, then runs the Visual
@@ -74,12 +75,14 @@ export function buildVisualOsPerformancePlan(
         return null;
     }
     const scenePlan = buildVisualScenePlan(trackAnalysis, pack, options);
+    const globalNarrative = planGlobalVisualNarrative(scenePlan);
     return adaptScenePlanToPerformancePlan(scenePlan, pack, {
         duration: options.duration,
         activityLevel: options.activityLevel,
         variantMode: options.variantMode,
         tempo: buildTempoContext(trackAnalysis),
-        trackSeed: computeTrackSeed(trackAnalysis)
+        trackSeed: computeTrackSeed(trackAnalysis),
+        globalNarrative
     });
 }
 

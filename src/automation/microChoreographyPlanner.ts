@@ -5,10 +5,15 @@ import type {
     ChoreographyPlan,
     ChoreographySegment,
     DramaturgyVariantMode,
+    NarrativeType,
+    MovementGesture,
     TempoContext,
     VariantRole,
-    VariationProfile
+    VariationProfile,
+    VariationMemoryState,
+    LongSceneSection
 } from '../types';
+import { resolveMovementGesture } from './movementGrammar';
 
 // microChoreographyPlanner - PURE, deterministic micro-choreography planner (ADR-005 extension,
 // successor to variantPairPlanner). Given a classified AutomationSituation, the scene's duration
@@ -29,6 +34,8 @@ export interface MicroChoreographyInput {
     startSec: number;            // absolute scene start (seconds); used only for bar alignment
     durationSec: number;
     behaviour: BehaviourState;   // energy/volatility shape the envelope character
+    narrative?: NarrativeType;
+    movementVocabulary?: MovementGesture[];
     // Ordered list of OPAQUE behaviour-family handles the planner may use, resolved by the
     // adapter (authored vocabulary -> variantPairs -> narrative fallback). Index 0 is the home
     // family. Must contain at least one handle.
@@ -46,6 +53,8 @@ export interface MicroChoreographyOptions {
     // so Activity is a genuine density control, not merely an upper cap. See resolveSegmentCount.
     activityDensityScale?: number;
     tempo: TempoContext;
+    memory?: VariationMemoryState;
+    longSceneSections?: LongSceneSection[];
 }
 
 export interface MicroChoreographyContext {
@@ -126,25 +135,57 @@ export function planMicroChoreography(
     const roles = generateRoles(count, profile, variation, ctx);
 
     const segments: ChoreographySegment[] = [];
-    let prevFamily = -1;
+    const lastTarget = options.memory?.recentTargets.at(-1);
+    let prevFamily = lastTarget ? familyPool.indexOf(lastTarget) : -1;
+    let previousGesture: ChoreographySegment['movementGesture'] | undefined = options.memory?.recentGestures.at(-1);
     for (let i = 0; i < count; i++) {
         const offsetSec = boundaries[i];
         const segDuration = boundaries[i + 1] - offsetSec;
-        const role = roles[i];
-        const familyIndex = pickFamily(role, familyPool.length, prevFamily);
+        const longSection = sectionAt(options.longSceneSections, offsetSec + segDuration * 0.5);
+        const generatedRole = roles[i];
+        const role = longSection?.preferredRoles.length
+            ? longSection.preferredRoles[i % longSection.preferredRoles.length]
+            : generatedRole;
+        const familyIndex = pickFamily(role, familyPool, prevFamily, options.memory?.familyUseCounts);
+        const movementGesture = resolveMovementGesture({
+            situation: input.situation,
+            variantRole: role,
+            behaviour: input.behaviour,
+            narrative: input.narrative,
+            variationMode: variation.mode,
+            previousGesture,
+            movementVocabulary: mergeGestures(longSection?.preferredGestures, input.movementVocabulary),
+            gestureUseCounts: options.memory?.gestureUseCounts
+        });
         prevFamily = familyIndex;
+        previousGesture = movementGesture;
         segments.push({
             index: i,
             offsetSec,
             durationSec: segDuration,
             role,
             target: familyPool[familyIndex],
-            intensityScale: intensityForRole(role, input.behaviour, i, count),
+            movementGesture,
+            longScenePhase: longSection?.phase,
+            intensityScale: clamp(intensityForRole(role, input.behaviour, i, count) * (longSection?.intensityBias ?? 1), 0.4, 1.3),
             envelope: computeEnvelope(role, profile, segDuration, input.behaviour, variation, options.tempo, ctx, i)
         });
     }
 
     return { situation: input.situation, vocabularyId: input.vocabularyId, segments };
+}
+
+function sectionAt(sections: LongSceneSection[] | undefined, offsetSec: number): LongSceneSection | undefined {
+    return sections?.find((section) => offsetSec >= section.offsetSec && offsetSec < section.offsetSec + section.durationSec)
+        ?? sections?.at(-1);
+}
+
+function mergeGestures(primary: MovementGesture[] | undefined, secondary: MovementGesture[] | undefined): MovementGesture[] | undefined {
+    const authored = secondary ?? [];
+    const allowed = new Set(authored);
+    const preferred = authored.length > 0 ? (primary ?? []).filter((gesture) => allowed.has(gesture)) : (primary ?? []);
+    const merged = [...preferred, ...authored];
+    return merged.length > 0 ? [...new Set(merged)] : undefined;
 }
 
 // -- Adaptive subdivision -----------------------------------------------------
@@ -271,7 +312,8 @@ function generateRoles(count: number, profile: SituationProfile, variation: Vari
 // later families. With >1 family available, never repeat the previous family on adjacent segments
 // (the A->A ban is now conditional on vocab>1); with a single family everything collapses to it
 // (stable identity) and variety comes from intensity/envelope instead.
-function pickFamily(role: VariantRole, familyCount: number, prevFamily: number): number {
+function pickFamily(role: VariantRole, families: string[], prevFamily: number, useCounts?: Record<string, number>): number {
+    const familyCount = families.length;
     if (familyCount <= 1) return 0;
     let idx: number;
     switch (role) {
@@ -283,6 +325,11 @@ function pickFamily(role: VariantRole, familyCount: number, prevFamily: number):
         default:          idx = 0; break;
     }
     if (idx === prevFamily) idx = (prevFamily + 1) % familyCount;
+    const minUse = Math.min(...families.map((family) => useCounts?.[family] ?? 0));
+    if ((useCounts?.[families[idx]] ?? 0) > minUse + 1) {
+        const leastUsed = families.findIndex((family, index) => index !== prevFamily && (useCounts?.[family] ?? 0) === minUse);
+        if (leastUsed >= 0) idx = leastUsed;
+    }
     return idx;
 }
 

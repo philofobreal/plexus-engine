@@ -26,6 +26,12 @@ const META_SITUATIONS = new Set([
     'drop-after-build', 'breakdown-long', 'peak-sustain', 'transition-release', 'outro-dissolve'
 ]);
 const META_VARIANT_ROLES = new Set(['primary', 'secondary', 'release', 'sparse', 'focus']);
+const META_MOVEMENT_GESTURES = new Set([
+    'pulse', 'drive', 'orbit', 'scatter', 'collapse', 'expand', 'bloom', 'fragment',
+    'ripple', 'slice', 'tunnel', 'swarm', 'lock', 'echo', 'fade'
+]);
+const META_LONG_SCENE_PHASES = new Set(['entry', 'establish', 'develop', 'counter', 'intensify', 'peak', 'release', 'decay']);
+const META_GLOBAL_ARC_ROLES = new Set(['setup', 'development', 'climax', 'aftermath', 'resolution']);
 
 export interface DramaturgyClipboardEnvelope {
     kind: string;
@@ -172,6 +178,9 @@ function sanitizeMeta(raw: unknown): PerformanceAutomationMeta | undefined {
     if (typeof m.automationSituation === 'string' && META_SITUATIONS.has(m.automationSituation)) meta.automationSituation = m.automationSituation as PerformanceAutomationMeta['automationSituation'];
     if (typeof m.vocabularyId === 'string') meta.vocabularyId = m.vocabularyId;
     if (typeof m.variantRole === 'string' && META_VARIANT_ROLES.has(m.variantRole)) meta.variantRole = m.variantRole as PerformanceAutomationMeta['variantRole'];
+    if (typeof m.movementGesture === 'string' && META_MOVEMENT_GESTURES.has(m.movementGesture)) meta.movementGesture = m.movementGesture as PerformanceAutomationMeta['movementGesture'];
+    if (typeof m.longScenePhase === 'string' && META_LONG_SCENE_PHASES.has(m.longScenePhase)) meta.longScenePhase = m.longScenePhase as PerformanceAutomationMeta['longScenePhase'];
+    if (typeof m.globalArcRole === 'string' && META_GLOBAL_ARC_ROLES.has(m.globalArcRole)) meta.globalArcRole = m.globalArcRole as PerformanceAutomationMeta['globalArcRole'];
     const behaviour = sanitizeBehaviour(m.behaviour);
     if (behaviour) meta.behaviour = behaviour;
     return Object.keys(meta).length > 0 ? meta : undefined;

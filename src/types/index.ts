@@ -174,6 +174,9 @@ export interface PerformanceAutomationMeta {
     automationSituation?: AutomationSituation;
     vocabularyId?: string;
     variantRole?: VariantRole;
+    movementGesture?: MovementGesture;
+    longScenePhase?: LongScenePhase;
+    globalArcRole?: SceneNarrativeRole;
 }
 
 export interface PerformanceAutomationPoint {
@@ -495,6 +498,25 @@ export type AutomationIntensityShape = 'flat' | 'ramp' | 'pulse' | 'wave' | 'rel
 // a relaxing tail, sparse = a thinned/quiet beat, focus = a sustained hold on the primary.
 export type VariantRole = 'primary' | 'secondary' | 'release' | 'sparse' | 'focus';
 
+// Abstract movement quality selected by the renderer-independent choreography domain.
+// Gestures describe HOW a segment moves; they never identify a renderer target or preset.
+export type MovementGesture =
+    | 'pulse'
+    | 'drive'
+    | 'orbit'
+    | 'scatter'
+    | 'collapse'
+    | 'expand'
+    | 'bloom'
+    | 'fragment'
+    | 'ripple'
+    | 'slice'
+    | 'tunnel'
+    | 'swarm'
+    | 'lock'
+    | 'echo'
+    | 'fade';
+
 // Style-pack authored variant-pair definition (style-packs.json `variantPairs`). The
 // `primary`/`secondary`/`release` fields are OPAQUE target handles (e.g. "drop.primary"),
 // NOT preset filenames; only scenePlanAdapter resolves them via the pack targetMap.
@@ -534,6 +556,48 @@ export type StyleVariantPairMap = Partial<Record<AutomationSituation, StyleVaria
 // When a situation has no authored vocabulary the planner falls back to its variantPairs,
 // then to the scene's own narrative handle. Still renderer-independent (no preset filenames).
 export type StyleVocabularyMap = Partial<Record<AutomationSituation, string[]>>;
+export type StyleMovementVocabularyMap = Partial<Record<AutomationSituation, MovementGesture[]>>;
+
+export type LongScenePhase = 'entry' | 'establish' | 'develop' | 'counter' | 'intensify' | 'peak' | 'release' | 'decay';
+
+export interface LongSceneSection {
+    phase: LongScenePhase;
+    offsetSec: number;
+    durationSec: number;
+    preferredRoles: VariantRole[];
+    preferredGestures: MovementGesture[];
+    intensityBias: number;
+}
+
+export type GlobalArcType = 'single-rise' | 'two-drop' | 'wave-cycle' | 'slow-burn' | 'peak-and-release' | 'fragmented';
+export type SceneNarrativeRole = 'setup' | 'development' | 'climax' | 'aftermath' | 'resolution';
+
+export interface SceneNarrativeBias {
+    sceneIndex: number;
+    roleInTrack: SceneNarrativeRole;
+    gestureBias: MovementGesture[];
+    variationBias: 'restrain' | 'open' | 'intensify' | 'resolve';
+}
+
+export interface GlobalVisualNarrative {
+    arcType: GlobalArcType;
+    totalEnergyShape: 'rising' | 'falling' | 'wave' | 'plateau';
+    primaryGestureFamily: MovementGesture[];
+    secondaryGestureFamily: MovementGesture[];
+    returnStrategy: 'repeat' | 'evolve' | 'invert' | 'dissolve';
+    climaxSceneIndex?: number;
+    sceneBiases: SceneNarrativeBias[];
+}
+
+export interface VariationMemoryState {
+    recentTargets: string[];
+    recentGestures: MovementGesture[];
+    recentSituations: AutomationSituation[];
+    familyUseCounts: Record<string, number>;
+    gestureUseCounts: Record<MovementGesture, number>;
+    lastPeakGesture?: MovementGesture;
+    lastDropVocabularyId?: string;
+}
 
 // --- Micro-Choreography planner (ADR-005 extension) --------------------------
 // A renderer-INDEPENDENT scheduling layer. The planner turns a classified
@@ -576,6 +640,8 @@ export interface ChoreographySegment {
     durationSec: number;
     role: VariantRole;
     target: string;             // opaque target handle, never a preset filename
+    movementGesture: MovementGesture;
+    longScenePhase?: LongScenePhase;
     intensityScale: number;     // relative envelope multiplier (~0.4..1.3)
     envelope: AutomationEnvelope;
 }
@@ -626,6 +692,7 @@ export interface StyleSubstyleDefinition {
     variantPairs?: StyleVariantPairMap;
     // Per-situation behaviour vocabulary (opaque handles), override/extend like variantPairs.
     behaviourVocabulary?: StyleVocabularyMap;
+    movementVocabulary?: StyleMovementVocabularyMap;
 }
 
 export interface StylePackDefinition {
@@ -640,6 +707,7 @@ export interface StylePackDefinition {
     variantPairs?: StyleVariantPairMap;
     // Per-situation behaviour vocabulary (opaque handles) for the Micro-Choreography planner.
     behaviourVocabulary?: StyleVocabularyMap;
+    movementVocabulary?: StyleMovementVocabularyMap;
 }
 
 export interface StylePacksFile {
@@ -658,6 +726,7 @@ export interface ResolvedStylePack {
     targetMap: Record<string, StyleTargetReference>;
     variantPairs: StyleVariantPairMap;
     behaviourVocabulary: StyleVocabularyMap;
+    movementVocabulary: StyleMovementVocabularyMap;
 }
 
 export interface ResolvedSubstyle {
@@ -668,6 +737,7 @@ export interface ResolvedSubstyle {
     targetMap: Record<string, StyleTargetReference>;
     variantPairs: StyleVariantPairMap;
     behaviourVocabulary: StyleVocabularyMap;
+    movementVocabulary: StyleMovementVocabularyMap;
 }
 
 export interface ModulationState {

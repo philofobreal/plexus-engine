@@ -1,12 +1,14 @@
 import type {
     BehaviourBias,
     BehaviourState,
+    MovementGesture,
     ResolvedStylePack,
     ResolvedSubstyle,
     SceneIntent,
     StyleCapabilityMatrix,
     StylePackDefinition,
     StylePacksFile,
+    StyleMovementVocabularyMap,
     StyleSubstyleDefinition,
     VisualMotif,
     VisualPalette,
@@ -32,6 +34,10 @@ const KNOWN_MOTIFS: ReadonlySet<VisualMotif> = new Set<VisualMotif>([
 ]);
 const KNOWN_PALETTES: ReadonlySet<VisualPalette> = new Set<VisualPalette>([
     'mono', 'duotone', 'neon', 'earth', 'spectral', 'void'
+]);
+const KNOWN_MOVEMENT_GESTURES: ReadonlySet<MovementGesture> = new Set<MovementGesture>([
+    'pulse', 'drive', 'orbit', 'scatter', 'collapse', 'expand', 'bloom', 'fragment',
+    'ripple', 'slice', 'tunnel', 'swarm', 'lock', 'echo', 'fade'
 ]);
 
 const MAX_INHERITANCE_DEPTH = 16;
@@ -76,7 +82,8 @@ export function resolveStylePack(file: StylePacksFile, packId: string): Resolved
             targetMap: { ...acc.targetMap, ...sub.targetMap },
             // Per-situation override/extend, mirroring targetMap inheritance.
             variantPairs: { ...acc.variantPairs, ...sub.variantPairs },
-            behaviourVocabulary: { ...acc.behaviourVocabulary, ...sub.behaviourVocabulary }
+            behaviourVocabulary: { ...acc.behaviourVocabulary, ...sub.behaviourVocabulary },
+            movementVocabulary: mergeMovementVocabulary(acc.movementVocabulary, sub.movementVocabulary)
         };
         validatePalette(substyles[name].vocabulary.palette);
         validateCapabilities(substyles[name].capabilities);
@@ -106,7 +113,8 @@ function baseResolvedPack(id: string): ResolvedStylePack {
         substyles: {},
         targetMap: {},
         variantPairs: {},
-        behaviourVocabulary: {}
+        behaviourVocabulary: {},
+        movementVocabulary: {}
     };
 }
 
@@ -124,8 +132,18 @@ function applyLayer(acc: ResolvedStylePack, def: StylePackDefinition): ResolvedS
         // no explicit behaviourVocabulary is authored for a situation.
         variantPairs: { ...acc.variantPairs, ...def.variantPairs },
         // Behaviour vocabulary inherits the same way: child situation list wins, others inherit.
-        behaviourVocabulary: { ...acc.behaviourVocabulary, ...def.behaviourVocabulary }
+        behaviourVocabulary: { ...acc.behaviourVocabulary, ...def.behaviourVocabulary },
+        movementVocabulary: mergeMovementVocabulary(acc.movementVocabulary, def.movementVocabulary)
     };
+}
+
+function mergeMovementVocabulary(parent: StyleMovementVocabularyMap, child?: StyleMovementVocabularyMap): StyleMovementVocabularyMap {
+    const merged: StyleMovementVocabularyMap = { ...parent };
+    for (const [situation, values] of Object.entries(child ?? {})) {
+        const valid = (values ?? []).filter((value): value is MovementGesture => KNOWN_MOVEMENT_GESTURES.has(value as MovementGesture));
+        if (valid.length > 0) merged[situation as keyof StyleMovementVocabularyMap] = valid;
+    }
+    return merged;
 }
 
 // Capability merge rules (ADR-005): forbidden is additive; a child can re-enable a parent

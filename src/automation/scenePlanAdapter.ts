@@ -2,7 +2,9 @@ import type {
     AutomationSituation,
     DramaturgyActivityLevel,
     DramaturgyVariantMode,
+    GlobalVisualNarrative,
     NarrativeType,
+    MovementGesture,
     PerformanceAutomationMeta,
     PerformanceAutomationPlan,
     PerformanceAutomationPoint,
@@ -22,6 +24,9 @@ import type {
 } from '../types';
 import { classifyAutomationSituation } from './automationSituationClassifier';
 import { planMicroChoreography, variationProfileFor } from './microChoreographyPlanner';
+import { createVariationMemory } from './variationMemory';
+import { planLongScene } from './longScenePlanner';
+import { planGlobalVisualNarrative } from './globalVisualNarrative';
 
 // scenePlanAdapter - the Renderer Adapter tier (ADR-005). It is the SINGLE place where a
 // renderer-independent VisualScenePlan is mapped back to the existing, unchanged
@@ -53,6 +58,7 @@ export interface SceneAdapterOptions {
     // Deterministic per-track seed for the planner's seeded jitter (no runtime randomness).
     // Computed once per track by visualOsPlanner; defaults to 0 for direct adapter callers.
     trackSeed?: number;
+    globalNarrative?: GlobalVisualNarrative;
 }
 
 // Activity level -> segment density. Two levers so Activity is a real density control, not just a
@@ -128,6 +134,8 @@ export function adaptScenePlanToPerformancePlan(
     const trackSeed = Number.isFinite(options.trackSeed) ? (options.trackSeed as number) : 0;
     const allowReleasePoints = activityLevel !== 'macro';
     const raw: RawPoint[] = [];
+    const memory = createVariationMemory();
+    const globalNarrative = options.globalNarrative ?? planGlobalVisualNarrative(plan);
 
     // Cross-scene state: the previous scene's narrative (so the classifier can recognize "a drop
     // right after a build") and the vocabulary ids already used (cross-scene rotation).
@@ -140,6 +148,7 @@ export function adaptScenePlanToPerformancePlan(
         const narrative = narrativeKeyOf(scene.targetStateReference);
         const sceneCurve = resolveMorphCurve(scene, ref);
         const effectivePackId = scene.substyle ? `${scene.stylePack}#${scene.substyle}` : scene.stylePack;
+        const narrativeBias = globalNarrative.sceneBiases.find((bias) => bias.sceneIndex === index);
 
         // Classify the choreographic situation from already-generated context (never raw audio).
         const situation = classifyAutomationSituation({
@@ -160,20 +169,31 @@ export function adaptScenePlanToPerformancePlan(
             substyle: scene.substyle,
             targetStateReference: scene.targetStateReference,
             sceneId: `vos:${plan.stylePack}:${index}`,
-            automationSituation: situation
+            automationSituation: situation,
+            globalArcRole: narrativeBias?.roleInTrack
         };
 
         // Resolve the behaviour vocabulary (opaque handles) and ask the planner for the scene's
         // timed, enveloped segments. The planner ALWAYS returns >=1 segment.
         const vocab = resolveBehaviourVocabulary(situation, narrative, scene.substyle, pack, recentVocabularyIds);
+        const memoryState = memory.snapshot();
+        const gestureBias = [...(narrativeBias?.gestureBias ?? [])];
+        if (situation === 'outro-dissolve' && memoryState.lastPeakGesture) gestureBias.unshift('echo', memoryState.lastPeakGesture);
+        const movementVocabulary = biasMovementVocabulary(
+            resolveMovementVocabulary(situation, scene.substyle, pack),
+            gestureBias
+        );
+        const longSceneSections = planLongScene(situation, scene.durationSec);
         recentVocabularyIds.push(vocab.id);
 
         const choreo = planMicroChoreography(
-            { situation, startSec: scene.timeSec, durationSec: scene.durationSec, behaviour: scene.behaviour, vocabulary: vocab.handles, vocabularyId: vocab.id },
-            { variation, activityCap: maxPerScene, activityDensityScale: densityScale, tempo },
+            { situation, startSec: scene.timeSec, durationSec: scene.durationSec, behaviour: scene.behaviour, narrative, vocabulary: vocab.handles, vocabularyId: vocab.id, movementVocabulary },
+            { variation, activityCap: maxPerScene, activityDensityScale: densityScale, tempo, memory: memoryState, longSceneSections },
             { trackSeed, sceneIndex: index }
         );
+        memory.record(choreo);
 
+        let emittedScenePoints = 0;
         choreo.segments.forEach((seg) => {
             const segRef = resolveTargetKey(seg.target, scene.substyle, pack);
             const env = seg.envelope;
@@ -196,13 +216,15 @@ export function adaptScenePlanToPerformancePlan(
                 // The first subsegment carries the cross-scene transition curve; later ones use the
                 // target's declared curve (or a smooth default).
                 curve: isBirth ? sceneCurve : (segRef.morphCurve ?? 'easeInOut'),
-                meta: choreoMeta(sceneMeta, attackPhase, vocab.id, seg.role, effectivePackId, seg.target)
+                meta: choreoMeta(sceneMeta, attackPhase, vocab.id, seg.role, seg.movementGesture, seg.longScenePhase, effectivePackId, seg.target)
             });
+            emittedScenePoints++;
 
             // Optional release waypoint: only a real 'release' role with a long-enough decay earns
             // its own softer point (so build/groove segments do not double up). The preset stays
             // the same family; only intensity relaxes.
-            if (allowReleasePoints && seg.role === 'release' && env.releaseSec >= MIN_RELEASE_POINT_SEC) {
+            const remainingAttacks = choreo.segments.length - seg.index - 1;
+            if (allowReleasePoints && emittedScenePoints + remainingAttacks < maxPerScene && seg.role === 'release' && env.releaseSec >= MIN_RELEASE_POINT_SEC) {
                 const relOffset = seg.offsetSec + env.attackSec + env.sustainSec;
                 const relFrac = scene.durationSec > 0 ? relOffset / scene.durationSec : 0;
                 const relLevel = evolutionLevelAt(scene.evolution, relFrac);
@@ -218,13 +240,29 @@ export function adaptScenePlanToPerformancePlan(
                     confidence: clamp01(0.35 + relLevel * 0.4),
                     morph: clamp(env.releaseSec, 0.1, 20),
                     curve: 'easeInOut',
-                    meta: choreoMeta(sceneMeta, relPhase, vocab.id, 'release', effectivePackId, seg.target)
+                    meta: choreoMeta(sceneMeta, relPhase, vocab.id, 'release', seg.movementGesture, seg.longScenePhase, effectivePackId, seg.target)
                 });
+                emittedScenePoints++;
             }
         });
     });
 
     return finalize(raw, plan.stylePack);
+}
+
+function dedupeGestures(values: MovementGesture[]): MovementGesture[] {
+    return [...new Set(values)];
+}
+
+function biasMovementVocabulary(authored: MovementGesture[], bias: MovementGesture[]): MovementGesture[] {
+    if (authored.length === 0) return dedupeGestures(bias);
+    const allowed = new Set(authored);
+    return dedupeGestures([...bias.filter((gesture) => allowed.has(gesture)), ...authored]);
+}
+
+function resolveMovementVocabulary(situation: AutomationSituation, substyle: string | undefined, pack: ResolvedStylePack): MovementGesture[] {
+    const map = substyle && pack.substyles[substyle] ? pack.substyles[substyle].movementVocabulary : pack.movementVocabulary;
+    return [...(map[situation] ?? [])];
 }
 
 // Per-waypoint provenance: the shared scene meta plus the evolution phase and the choreography
@@ -234,6 +272,8 @@ function choreoMeta(
     phase: SceneEvolutionPhase,
     vocabularyId: string,
     role: VariantRole,
+    movementGesture: MovementGesture,
+    longScenePhase: PerformanceAutomationMeta['longScenePhase'],
     effectivePackId: string,
     target: string
 ): PerformanceAutomationMeta {
@@ -242,6 +282,8 @@ function choreoMeta(
         evolutionPhase: phase,
         vocabularyId,
         variantRole: role,
+        movementGesture,
+        longScenePhase,
         targetStateReference: `${effectivePackId}:${target}`
     };
 }
