@@ -4,7 +4,9 @@
 
 Accepted - the DEFAULT dramaturgy/automation generator path, with the legacy
 `performancePlanGenerator` as the fallback. The Dramaturgy strategy runs the Visual OS
-pipeline first (semantic chain -> ChoreographyDirector -> StyleTranslator -> scenePlanAdapter)
+pipeline first (semantic chain -> ChoreographyDirector -> StyleTranslator ->
+GlobalVisualNarrative -> AutomationSituation -> LongScenePlanner -> MovementGrammar ->
+MicroChoreography -> scenePlanAdapter)
 and re-materializes the existing `PerformanceAutomationPlan` contract; it falls back quietly
 to the legacy generator when a style pack cannot be resolved (e.g. `style-packs.json` is
 missing) or the pipeline returns an empty plan. The earlier `USE_VISUAL_OS_V2` gating flag is
@@ -12,11 +14,12 @@ removed; `featureFlags.forceLegacyDramaturgy` (default `false`) is a debug/legac
 only and is NOT the condition for normal operation. The explicit `Strict Alternating` and
 `Hero Rhythm` strategies remain on the legacy generator by design. A user-facing
 `DramaturgyActivityLevel` control (`macro` / `balanced` / `active`) tunes waypoint density,
+`DramaturgyVariantMode` (`stable` / `paired` / `expressive`) tunes choreography complexity,
 and the adapter carries renderer-independent provenance onto `PerformanceAutomationPoint.meta`.
 
 ## Date
 
-2026-06-27
+2026-06-28
 
 ## Context
 
@@ -99,6 +102,12 @@ Each datum has exactly one writer. Reuse is marked `[existing]`; new code is `[n
 | **Choreography** (scene order & selection) | `src/automation/choreographyDirector` orchestrating `src/semantics/{MotifPlanner,PatternGrammar,TransitionPlanner,ChoreographyEngine}` | `SceneIntent[]` + `SceneEvolution` phases, derived from `MotifVisualScorePlan` / `MotifChoreographyFrame` | `[new orchestrator over existing engines]` |
 | **Variation Engine** (candidate scoring ONLY) | `src/automation/variationEngine` | `CandidateScore[]` - pure, read-only, mutates no state | `[new]` |
 | **Style Translation Pipeline** | `src/automation/styleTranslator` | `VisualScene` / `VisualScenePlan` (renderer-independent) | `[new]` |
+| **Global Visual Narrative** | `src/automation/globalVisualNarrative` | Track-level arc and per-scene narrative bias from `VisualScenePlan` | `[new]` |
+| **Situation Classification** | `src/automation/automationSituationClassifier` | `AutomationSituation` from existing scene semantics | `[new]` |
+| **Long Scene Form** | `src/automation/longScenePlanner` | `LongSceneSection[]` (`entry` through `release`/`decay`) | `[new]` |
+| **Movement Grammar** | `src/automation/movementGrammar` | Abstract `MovementGesture` per choreography segment | `[new]` |
+| **Variation Memory** | `src/automation/variationMemory` | Plan-local cross-scene target/gesture/situation memory | `[new]` |
+| **Micro-Choreography** | `src/automation/microChoreographyPlanner` | Timed, enveloped `ChoreographySegment[]` | `[new]` |
 | **Renderer Adapter** | `src/automation/scenePlanAdapter` | `PerformanceAutomationPlan` (compatible `preset`/`meta` references only) | `[new]` |
 | **Runtime** (interpolation & frame state) | `applyTuningMorph` + `VisualDirectorFSM` + `motifResolver`/`SemanticRuntimeAdapter` | `State.visualTuning`, `State.modulation`, `State.targetTuning` | `[existing]` |
 
@@ -172,6 +181,10 @@ targets the adapter maps onto). A StylePack declares:
   `preferred`.
 - `vocabulary` - the materials this pack speaks.
 - `behaviour` - style-relative behaviour rules (normalized).
+- `behaviourVocabulary` - per-situation ordered OPAQUE target handles.
+- `movementVocabulary` - per-situation abstract `MovementGesture` values. It inherits by
+  situation, supports substyle overrides, and drops unknown gestures without erasing a valid
+  inherited fallback.
 - `targetMap` - maps `targetStateReference` handles to **adapter-tier** preset ids /
   tuning references (this is the only place packs touch concrete presets).
 
@@ -210,7 +223,11 @@ Dramaturgy strategy (default): Visual OS first, legacy fallback
     -> choreographyDirector (orchestrates the above)            -> SceneIntent[] + SceneEvolution
     -> variationEngine (scores candidates, read-only)
     -> styleTranslator (Style Resolver..Behaviour Resolver)     -> VisualScenePlan
-    -> scenePlanAdapter (activityLevel density + meta)          -> PerformanceAutomationPlan
+    -> globalVisualNarrative                                    -> track arc + scene biases
+    -> automationSituationClassifier                            -> AutomationSituation
+    -> longScenePlanner                                         -> LongSceneSection[]
+    -> movementGrammar + microChoreographyPlanner               -> ChoreographyPlan
+    -> scenePlanAdapter (Activity cap + preset binding + meta)  -> PerformanceAutomationPlan
     -> (unchanged) existing runtime / UI consume the plan as before
   If the pipeline returns null/empty (no style-packs.json, unresolvable pack), or
   featureFlags.forceLegacyDramaturgy is set, fall back to:
@@ -235,7 +252,8 @@ density pair: `macro` (section anchors only), `balanced` (the historical default
 
 Provenance (`PerformanceAutomationPoint.meta`): the adapter carries renderer-INDEPENDENT scene
 provenance (motif, palette/material family, normalized behaviour summary, evolution phase,
-scene id, stylePack/substyle, opaque targetStateReference) onto each point so the timeline can
+scene id, stylePack/substyle, automation situation, vocabulary/role, movement gesture,
+long-scene phase, global arc role, opaque targetStateReference) onto each point so the timeline can
 surface it (debug tooltip) and Copy/Load round-trips it. It NEVER carries tuning keys; the
 concrete preset binding stays in `PerformanceAutomationPoint.preset`. Legacy and
 imported-legacy plans simply omit `meta`.
@@ -248,12 +266,11 @@ imported-legacy plans simply omit `meta`.
 - The adapter does **not** import or write `src/state/`. Runtime state continues to be
   written only by the existing runtime/UI adapter, after the plan flows through the
   normal path.
-- `SceneEvolution` phases are expanded into `PerformanceAutomationPoint` intensity
-  waypoints (the preset is constant within a scene; audio-sensitivity follows the
-  birth..death envelope), so the existing morph engine reproduces the lifecycle. A
-  per-scene **density cap** (`minWaypointSpacingSec`, `maxWaypointsPerScene`) keeps the
-  birth anchor and thins the rest, so short scenes collapse to a single point and long
-  scenes never flood the timeline.
+- Choreography segments are expanded into `PerformanceAutomationPoint` attack/release
+  waypoints. OPAQUE targets may change within a scene and resolve through `targetMap`; the
+  segment intensity is composed with the macro `SceneEvolution` envelope. Activity supplies a
+  segment-length density scale and hard point cap (1 / 5 / 8), so optional release points never
+  overflow the cap, short scenes stay sparse, and long scenes never flood the timeline.
 
 Selection / anti-repetition (`choreographyDirector`):
 - The Variation Engine only *scores* (soft history penalty). The director enforces a hard
@@ -278,14 +295,14 @@ and resolves in the *same* adapter tier.
 
 ```
 VisualScenePlan (per scene: narrative handle + behaviour + duration + evolution)
+  -> globalVisualNarrative         : track arc + per-scene bias                              [pure]
   -> automationSituationClassifier : narrative/energy/duration -> AutomationSituation        [pure]
-  -> microChoreographyPlanner      : situation + vocabulary + tempo + variation profile
-                                     -> ChoreographyPlan { ChoreographySegment[] }           [pure]
-                                        (role + OPAQUE target + intensityScale + AutomationEnvelope;
-                                         adaptive bar-snapped subdivision; weighted recency memory;
-                                         deterministic seed)
-  -> scenePlanAdapter              : handle -> preset (targetMap), envelope -> point(s),
-                                     evolution-arc composition, anti-overlap (NEVER stretch)  [tier]
+  -> longScenePlanner              : situation + duration -> LongSceneSection[]               [pure]
+  -> movementGrammar               : context + style vocabulary -> MovementGesture            [pure]
+  -> microChoreographyPlanner      : situation + vocabularies + tempo + variation + memory
+                                     -> ChoreographyPlan { ChoreographySegment[] }             [pure]
+  -> scenePlanAdapter              : OPAQUE handle -> preset (targetMap), envelope -> points,
+                                     evolution composition, anti-overlap (NEVER stretch)      [tier]
 ```
 
 - **Planner vs adapter boundary.** The planner decides *what* and *when* (choreography + timing +
@@ -326,8 +343,9 @@ VisualScenePlan (per scene: narrative handle + behaviour + duration + evolution)
 - **Determinism.** All randomness is seeded from `hash(trackSeed, sceneIndex, segmentIndex)` where
   `trackSeed` is a stable hash of the analysis (bpm + duration + section count). No `Math.random`.
 - **Provenance.** Each `PerformanceAutomationPoint.meta` adds `automationSituation`, `vocabularyId`,
-  `variantRole` (now incl. `sparse`/`focus`), and an opaque `targetStateReference`. Copy/Load
-  (`dramaturgyTransfer`) whitelists and enum-validates them.
+  `variantRole` (including `sparse`/`focus`), `movementGesture`, `longScenePhase`,
+  `globalArcRole`, and an opaque `targetStateReference`. Copy/Load (`dramaturgyTransfer`)
+  whitelists and enum-validates them; the analyzer debug tooltip surfaces the same fields.
 - **Assets:** 12 visually-distinct presets (`public/visual-tuning-presets/vos-*.json`, registered in
   `index.json`).
 
@@ -335,6 +353,74 @@ The `targetTuning` single-writer rule is untouched: the adapter still only emits
 `PerformanceAutomationPlan`; it never writes runtime state, and the domain modules
 (`automationSituationClassifier`, `microChoreographyPlanner`) name no preset/tuning quantity
 (guarded by the renderer-independence tests).
+
+### 8. Movement language, plan-local memory, long-scene form, and global narrative
+
+The choreography extension adds four renderer-independent layers without creating a second
+analyzer or a second semantic dramaturgy system.
+
+#### 8.1 MovementGrammar
+
+`MovementGesture` is the abstract movement vocabulary: `pulse`, `drive`, `orbit`, `scatter`,
+`collapse`, `expand`, `bloom`, `fragment`, `ripple`, `slice`, `tunnel`, `swarm`, `lock`,
+`echo`, and `fade`. `movementGrammar.resolveMovementGesture()` chooses one gesture from:
+
+1. the resolved style/substyle `movementVocabulary[situation]`, or the situation default;
+2. the segment role and semantic narrative affinity;
+3. normalized behaviour (`energy`, `motion`, `volatility`, `cohesion`);
+4. variation mode, previous gesture, and gesture-use counts.
+
+The resolver is deterministic and knows no target handle, preset, tuning key, renderer API,
+DOM, p5, or runtime state. Style vocabulary constrains the available language; long-scene and
+global narrative inputs only reorder gestures that the active style permits.
+
+#### 8.2 VariationMemory
+
+`createVariationMemory()` creates one isolated memory instance inside each
+`adaptScenePlanToPerformancePlan()` call. Its snapshots track recent targets, gestures, and
+situations, family/gesture use counts, the latest peak gesture, and the latest drop vocabulary.
+The adapter records each completed `ChoreographyPlan` and passes a defensive snapshot into the
+next scene. There is no module-global mutable state and no persistence across plan builds, so
+identical inputs remain byte-identical.
+
+Memory prevents immediate cross-scene target/gesture repetition when alternatives exist,
+penalizes overused families in richer variation modes, helps returning drops evolve, and lets
+the outro bias toward an `echo`/`fade` interpretation of an earlier peak gesture. Stable mode
+still retains one visual identity when its behaviour vocabulary contains one family.
+
+#### 8.3 LongScenePlanner
+
+Scenes shorter than 24 seconds receive one `entry` section. Longer energetic scenes receive
+`entry -> establish -> intensify -> peak -> release`; reflective scenes receive
+`entry -> develop -> counter -> decay`. Every `LongSceneSection` owns an offset, duration,
+preferred roles, preferred gestures, and an intensity bias. The shares always cover the scene
+duration exactly. Micro-choreography maps each segment midpoint to a section and preserves the
+Activity waypoint cap, including optional release points.
+
+#### 8.4 GlobalVisualNarrative
+
+`planGlobalVisualNarrative()` consumes `VisualScenePlan` only. It does not inspect raw audio.
+It classifies a track arc (`single-rise`, `two-drop`, `wave-cycle`, `slow-burn`,
+`peak-and-release`, or `fragmented`), energy shape, primary/secondary gesture families, return
+strategy, climax index, and a `SceneNarrativeBias` for every scene. Bias roles are `setup`,
+`development`, `climax`, `aftermath`, and `resolution`. A later drop can therefore evolve the
+first drop instead of replaying the same target/gesture sequence, while the outro is treated as
+resolution rather than a generic fade.
+
+The resolved pipeline is:
+
+```
+TrackAnalysis
+  -> existing semantic narrative / intent / choreography
+  -> VisualScenePlan
+  -> GlobalVisualNarrative
+  -> AutomationSituation
+  -> LongSceneSection[]
+  -> MovementGrammar
+  -> MicroChoreography (with VariationMemory snapshot)
+  -> scenePlanAdapter
+  -> PerformanceAutomationPlan
+```
 
 ### Future Extension (explicitly Out of Scope)
 
@@ -377,7 +463,8 @@ Tradeoffs / risks (flagged for human review):
    substyle, activity level), but live-browser smoke still requires loading an audio track and
    is not part of the automated gate.
 5. **`src/types/` growth.** `VisualScene`, `VisualVocabulary`, `StyleCapabilityMatrix`,
-   `SceneEvolution` etc. must remain type-only and dependency-light per the contract.
+   `SceneEvolution`, `MovementGesture`, `LongSceneSection`, `VariationMemoryState`, and
+   `GlobalVisualNarrative` must remain type-only and dependency-light per the contract.
 
 Resolved during implementation (previously flagged): SceneEvolution is now load-bearing
 (narrative-shaped envelope expanded under a density cap); the capability matrix is
@@ -411,11 +498,17 @@ validates cycles/missing-parents/unknown enums atomically and falls back to lega
   `AutomationEnvelope` to attack/release points with anti-overlap-only `finalize`).
 - `src/automation/automationSituationClassifier.ts` (pure: VisualScene context -> AutomationSituation).
 - `src/automation/microChoreographyPlanner.ts` (pure: situation + vocabulary + tempo + variation ->
-  `ChoreographyPlan`; adaptive bar-snapped subdivision, cycle grammar, weighted memory, seeded
-  jitter, `computeEnvelope`, `VARIATION_PROFILES`). Replaces the former `variantPairPlanner.ts`.
-- `src/automation/visualOsPlanner.ts` (computes `TempoContext` + `trackSeed` from `TrackAnalysis`
-  and passes them to the adapter).
-- `public/visual-tuning-presets/style-packs.json` (inheritance; `variantPairs` + `behaviourVocabulary`).
+  `ChoreographyPlan`; adaptive bar-snapped subdivision, long-section bias, cycle grammar,
+  plan-local memory, seeded jitter, `computeEnvelope`, `VARIATION_PROFILES`). Replaces the
+  former `variantPairPlanner.ts`.
+- `src/automation/movementGrammar.ts` (pure abstract gesture resolver).
+- `src/automation/variationMemory.ts` (plan-local cross-scene memory and defensive snapshots).
+- `src/automation/longScenePlanner.ts` (pure duration-aware scene macro-form planner).
+- `src/automation/globalVisualNarrative.ts` (pure track-level arc and per-scene bias planner).
+- `src/automation/visualOsPlanner.ts` (computes `TempoContext`, `trackSeed`, and the global
+  narrative from existing semantic output, then passes them to the adapter).
+- `public/visual-tuning-presets/style-packs.json` (inheritance; `variantPairs`,
+  `behaviourVocabulary`, and `movementVocabulary`).
 - `public/visual-tuning-presets/vos-*.json` (12 new variant presets) + `index.json` manifest.
 - `src/automation/performancePlanGenerator.ts` (unchanged; the fallback / strict / hero path).
 - `src/automation/generatorRouting.ts` (new, pure): `shouldUseVisualOs` + Visual Mode ->
@@ -423,5 +516,6 @@ validates cycles/missing-parents/unknown enums atomically and falls back to lega
 - `src/semantics/*` (unchanged; consumed, not modified).
 - `documents/governance/architecture-contract.md`, `anti-patterns.md` (update in the
   migration's final task to record the Visual OS ownership line).
-- Tests: `tests/visual-os.test.mjs` (new - style inheritance, capability filtering,
-  renderer-independence guard, adapter->plan contract, flag-off no-op).
+- Tests: `tests/visual-os.test.mjs` (style inheritance, movement vocabulary fallback,
+  plan-local memory, long-scene form, global arc, returning-drop evolution,
+  renderer-independence guard, adapter-to-plan contract, legacy fallback).

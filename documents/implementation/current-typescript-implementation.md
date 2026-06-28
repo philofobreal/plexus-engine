@@ -33,6 +33,55 @@ ADR-004 discrete semantic fields do not interpolate. During an incomplete non-`C
 
 The feature flag defaults off. Off mode leaves legacy `performancePlan` preset automation unchanged. On mode computes the score once after analysis and uses indexed choreography lookup; empty analysis produces an empty, valid plan without a crash.
 
+## Visual OS Dramaturgy Generator
+
+The `Dramaturgy` automation strategy uses Visual OS by default and retains
+`performancePlanGenerator` as a silent fallback. `Strict Alternating` and `Hero Rhythm` stay on
+the legacy generator. The current pure generation path is:
+
+```text
+TrackAnalysis
+  -> existing semantic narrative / intent / choreography
+  -> ChoreographyDirector
+  -> StyleTranslator
+  -> VisualScenePlan
+  -> GlobalVisualNarrative
+  -> AutomationSituationClassifier
+  -> LongScenePlanner
+  -> MovementGrammar
+  -> MicroChoreographyPlanner (with VariationMemory snapshot)
+  -> ScenePlanAdapter
+  -> PerformanceAutomationPlan
+```
+
+`globalVisualNarrative.ts` classifies the already-generated scene list into a track arc and
+assigns every scene a setup/development/climax/aftermath/resolution bias. It never reads raw
+audio. `longScenePlanner.ts` gives scenes of at least 24 seconds an internal macro-form:
+energetic scenes use entry/establish/intensify/peak/release and reflective scenes use
+entry/develop/counter/decay. Short scenes receive one entry section.
+
+`movementGrammar.ts` assigns every choreography segment an abstract `MovementGesture`.
+Style packs constrain gestures with inherited, per-situation `movementVocabulary` data;
+substyles may override a situation. Unknown gesture values are filtered without deleting an
+inherited valid fallback. Global and long-scene biases reorder only gestures permitted by the
+active style. Concrete target handles remain separate from movement gestures.
+
+`variationMemory.ts` is instantiated inside each adapter run. It records recent target and
+gesture decisions, use counts, situations, peak gesture, and drop vocabulary. Planners receive
+defensive snapshots, so memory cannot leak between builds and identical input remains
+byte-identical. It reduces cross-scene repetition, evolves returning drops, and gives outro
+resolution access to an echo/fade-biased peak callback.
+
+Activity remains the density control (`macro`/`balanced`/`active`, hard caps 1/5/8), while
+Variation remains the complexity/style control (`stable`/`paired`/`expressive`). Optional release
+points cannot exceed the Activity cap. The adapter is still the only tier that resolves an
+OPAQUE target through `targetMap`; no new domain module imports runtime state or names a preset.
+
+Generated point meta now includes `automationSituation`, `vocabularyId`, `variantRole`,
+`movementGesture`, `longScenePhase`, `globalArcRole`, and opaque `targetStateReference` in
+addition to scene/style provenance. The debug tooltip displays these fields and
+`dramaturgyTransfer.ts` enum-validates and round-trips them.
+
 ## Worker Contract
 
 The accepted worker success payload is:

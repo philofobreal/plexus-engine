@@ -152,16 +152,31 @@ operation. See `../adr/ADR-005-visual-os-style-system.md`.
     `VisualScene` (`Style Resolver -> Visual Grammar -> Capability Filter -> Behaviour
     Resolver`). Inheritance resolution validates cycles, missing parents, and unknown enum
     members atomically.
+  - `globalVisualNarrative` consumes `VisualScenePlan` and owns the track-level arc plus
+    per-scene narrative bias. It MUST NOT inspect raw audio or derive musical sections.
+  - `automationSituationClassifier` maps existing scene semantics to an abstract
+    `AutomationSituation`; `longScenePlanner` maps situation + duration to scene-internal
+    macro-form sections.
+  - `movementGrammar` resolves abstract `MovementGesture` values. It may consume the resolved
+    style movement vocabulary, behaviour, narrative, role, variation mode, and memory snapshot,
+    but MUST NOT name target handles, presets, tuning keys, or renderer concepts.
+  - `variationMemory` is instantiated once per performance-plan build. It is never a module-
+    global runtime store and never persists across builds. The adapter is its only lifecycle
+    owner; planners receive defensive snapshots.
+  - `microChoreographyPlanner` combines situation, long-scene sections, behaviour and movement
+    vocabularies, variation, timing, and memory into `ChoreographySegment[]` with bounded
+    `AutomationEnvelope`s.
   - `scenePlanAdapter` is the Renderer Adapter tier: the SINGLE place an opaque
     `VisualScene.targetStateReference` is resolved to a concrete preset (via the pack
     `targetMap`). It emits `PerformanceAutomationPlan { version: 1, source: 'auto', points }`
-    only, expands `SceneEvolution` into intensity waypoints under a density cap, and MUST NOT
-    import or write `src/state/`.
+    only, maps choreography envelopes into intensity waypoints under the Activity cap, and MUST
+    NOT import or write `src/state/`.
   - `visualOsPlanner` is pure orchestration; `visualOsPlanLoader` is the IO boundary (loads
     `style-packs.json`) and FAILS SAFE by returning null so the caller uses the legacy
     generator.
 - Renderer Independence Contract: domain types (`VisualScene`, `Motif`, `VisualVocabulary`,
-  `BehaviourState`, `SceneEvolution`) carry no renderer/tuning quantities (no tuning keys,
+  `BehaviourState`, `SceneEvolution`, `MovementGesture`, `LongSceneSection`,
+  `GlobalVisualNarrative`, `VariationMemoryState`) carry no renderer/tuning quantities (no tuning keys,
   preset filenames, `opacity`, `particleCount`, p5/DOM). The only place a style names a
   concrete preset is `StyleTargetReference` in `style-packs.json` `targetMap`, consumed
   exclusively by `scenePlanAdapter`.
@@ -171,9 +186,10 @@ operation. See `../adr/ADR-005-visual-os-style-system.md`.
   and produces the same contract, so the runtime/UI consumers are agnostic to which generator
   ran.
 - `DramaturgyActivityLevel` (`macro` / `balanced` / `active`) is a normal user-facing control,
-  not a feature flag. The planner forwards it to `scenePlanAdapter`, which resolves it to the
-  waypoint density pair (`minWaypointSpacingSec` / `maxWaypointsPerScene`); explicit overrides
-  win. It only thins/expands waypoints and must never re-derive semantics.
+  not a feature flag. The adapter resolves it to a segment-length density scale plus a hard
+  per-scene point cap (1 / 5 / 8); explicit test overrides win. It controls density only and
+  must never re-derive semantics. `DramaturgyVariantMode` controls choreography complexity and
+  remains orthogonal to Activity.
 - The top-right Visual Mode drives the default Visual OS style pack via the pure, DOM-free
   `generatorRouting` module (`shouldUseVisualOs`, `stylePackForVisualMode`): the main visual
   styles select the matching style pack (ids are 1:1 except `temporal` -> `base-temporal`)
@@ -183,7 +199,8 @@ operation. See `../adr/ADR-005-visual-os-style-system.md`.
   net, not a substitute for per-pack coverage.
 - `scenePlanAdapter` may annotate each `PerformanceAutomationPoint` with optional, renderer-
   INDEPENDENT `meta` (motif, palette/material family, normalized behaviour summary, evolution
-  phase, scene id, stylePack/substyle, opaque targetStateReference). `meta` must never carry
+  phase, scene id, stylePack/substyle, automation situation, vocabulary id, variant role,
+  movement gesture, long-scene phase, global arc role, opaque targetStateReference). `meta` must never carry
   tuning keys, preset filenames as values beyond the existing `preset` field, or any renderer
   quantity. It is optional everywhere: legacy and imported-legacy plans omit it, and the
   Copy/Load (`dramaturgyTransfer`) path validates, normalizes, and round-trips it without ever

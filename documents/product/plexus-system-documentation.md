@@ -249,6 +249,28 @@ A veges es pozitiv explicit `StartExportRequest.bitrate` egeszre kerekitve felul
 
 Az UI export kozben letiltja a playback/seek/file input utakat es blokkolja a canvas click/keydown, illetve global drawing shortcut interakciokat. A `Stop` reszleges Blob mentest indit: megszakitja a frame hurkot, de lefuttatja a worker `finalize_export` agat. A `Cancel` eldobja a folyamatot. Letolteskor az object URL visszavonasa 1000 ms kesleltetessel tortenik.
 
+### 4.6. Visual OS Koreografiai Nyelv Es Globalis Dramaturgia
+
+A `Dramaturgy` automation strategia alapertelmezetten a Visual OS utvonalat hasznalja. A
+meglevo semantic narrative/intent/choreography eredmenyebol `VisualScenePlan` keszul; ebbol a
+`GlobalVisualNarrative` teljes track ivet es scene biasokat, az
+`AutomationSituationClassifier` koreografiai helyzetet, a `LongScenePlanner` pedig hosszu
+scene-eken beluli makroformat allit elo. A `MovementGrammar` minden szegmenshez absztrakt
+`MovementGesture` erteket rendel, a `MicroChoreographyPlanner` pedig idozitett,
+`AutomationEnvelope`-pal rendelkezo szegmenseket general.
+
+A style packok `movementVocabulary` mezoje situationonkent korlatozza a hasznalhato
+mozgasnyelvet; oroklodes es substyle override tamogatott. A konkret preset binding tovabbra is
+kizarolag a `scenePlanAdapter` `targetMap` feloldasaban tortenik. A domain modulok nem olvasnak
+raw audiot, nem irnak runtime `State`-et, es nem tartalmaznak preset vagy tuning couplingot.
+
+A `VariationMemory` egyetlen performance plan generalasan belul el, cross-scene target/gesture
+ismetlodest csokkent, visszatero dropokat fejleszt tovabb, es outroban korabbi peak motivum
+feloldott visszahozasat tamogatja. Nem globalis mutable allapot, igy azonos input es beallitas
+byte-identikus tervet ad. A timeline debug meta visszaolvashato mezoi:
+`automationSituation`, `vocabularyId`, `variantRole`, `movementGesture`, `longScenePhase`,
+`globalArcRole`, `targetStateReference`.
+
 ## 5. ADR Osszefoglalo
 
 ### ADR-001: Nativ Web Audio API vs. p5.sound
@@ -299,6 +321,15 @@ src/
 |   `-- analyzer.worker.ts
 |-- config/
 |   `-- visualTuning.ts
+|-- automation/
+|   |-- visualOsPlanner.ts
+|   |-- globalVisualNarrative.ts
+|   |-- automationSituationClassifier.ts
+|   |-- longScenePlanner.ts
+|   |-- movementGrammar.ts
+|   |-- variationMemory.ts
+|   |-- microChoreographyPlanner.ts
+|   `-- scenePlanAdapter.ts
 |-- state/
 |   `-- store.ts
 |-- types/
@@ -334,6 +365,7 @@ src/
 public/
 `-- visual-tuning-presets/
     |-- index.json
+    |-- style-packs.json
     |-- default.json
     |-- temporal1.json
     |-- temporal2.json
