@@ -263,6 +263,79 @@ Selection / anti-repetition (`choreographyDirector`):
 - Degenerate scenes (e.g. a trailing frame with zero duration in the no-score fallback)
   are filtered out so the plan never carries meaningless points.
 
+### 7. Micro-Choreography planner & AutomationEnvelope (extension)
+
+The first cut bound each scene to a single style preset for its whole lifetime (the
+`targetMap[narrative]` lookup), so a long drop showed one look modulated only by the
+SceneEvolution intensity envelope. The follow-up "variant pair" planner split long scenes but had
+two dramaturgical flaws: (A) automation **stretched to the next point** (the adapter set every
+morph to `gap - 0.01`), erasing the trailing "air" so nothing breathed; and (B) intra-scene
+variation was coarse, time-based, and a plain A/B alternation. This extension replaces the
+variant-pair planner with a **Micro-Choreography planner** that emits *behaviour intent +
+envelopes*, and introduces a renderer-independent **`AutomationEnvelope`** so automation lifetime
+is bounded by the segment and never auto-stretches. It still consumes the *same* `VisualScenePlan`
+and resolves in the *same* adapter tier.
+
+```
+VisualScenePlan (per scene: narrative handle + behaviour + duration + evolution)
+  -> automationSituationClassifier : narrative/energy/duration -> AutomationSituation        [pure]
+  -> microChoreographyPlanner      : situation + vocabulary + tempo + variation profile
+                                     -> ChoreographyPlan { ChoreographySegment[] }           [pure]
+                                        (role + OPAQUE target + intensityScale + AutomationEnvelope;
+                                         adaptive bar-snapped subdivision; weighted recency memory;
+                                         deterministic seed)
+  -> scenePlanAdapter              : handle -> preset (targetMap), envelope -> point(s),
+                                     evolution-arc composition, anti-overlap (NEVER stretch)  [tier]
+```
+
+- **Planner vs adapter boundary.** The planner decides *what* and *when* (choreography + timing +
+  envelope) with NO preset and NO tuning. The adapter resolves opaque handles to presets, turns
+  each `AutomationEnvelope` into one (attack) or two (attack + release) `PerformanceAutomationPoint`s,
+  composes the macro `SceneEvolution` arc into intensity, and dedups/anti-overlaps. `targetTuning`
+  single-writer and renderer-independence are unchanged.
+- **`AutomationEnvelope`** (`attackSec`, `sustainSec`, `releaseSec`, `cooldownSec`) is the
+  renderer-independent amplitude model. Invariant: the four phases sum to the segment duration.
+  `attackSec` is the SOLE source of `PerformanceAutomationPoint.morphDurationSec`; the trailing
+  `cooldownSec` is the visible breath. `finalize` only *shortens* a morph on overlap — it never
+  stretches one to fill the gap (fixing flaw A in every mode, Stable included).
+- **`AutomationSituation`** (`intro-establish`, `verse-long`, `groove-sustain`, `buildup-ramp`,
+  `drop-short`, `drop-long`, `drop-after-build`, `breakdown-long`, `peak-sustain`,
+  `transition-release`, `outro-dissolve`) is classified deterministically from already-generated
+  context (narrative, behaviour energy, scene duration, previous narrative), NEVER from raw audio.
+- **Behaviour vocabulary.** Each scene resolves an ordered list of OPAQUE target handles: authored
+  `behaviourVocabulary[situation]` (in `style-packs.json`, inherited like `targetMap`) → the
+  situation's `variantPairs` (flattened, legacy fallback) → the scene's own narrative handle. The
+  four long sustained situations carry an authored vocabulary on `base-temporal`; child packs may
+  override a handle's preset (e.g. `cyberpunk` remaps `drop.counter`).
+- **Adaptive subdivision & cycle grammar.** Segment count derives from situation, BPM/bar
+  structure, variation, the activity density scale, scene length and timing confidence, then clamped
+  by the activity cap (`Math.ceil`, so a long scene never rounds down to one block). Interior
+  boundaries snap to bar starts under a reliable grid (equal-time fallback otherwise). A forward
+  cycle grammar (`primary → counter → release → sparse → focus`) with `callbackFrequency`,
+  `releaseFrequency`, `transitionFrequency`, a weighted recency penalty, and seeded jitter generates
+  a real cycle — not a fixed A/B. The A→A ban is now conditional: only when `vocabularySize > 1` and
+  at the *family* level; a Stable scene reuses one family and varies intensity/envelope instead.
+- **Variation = style, Activity = density.** `DramaturgyVariantMode` (`stable`/`paired`/`expressive`,
+  default `paired`) selects a `VariationProfile` controlling choreography COMPLEXITY (vocabulary
+  size, cycle frequencies, `lifetimeScale`, seeded `randomnessBudget`). `DramaturgyActivityLevel`
+  (`macro`/`balanced`/`active`) is the orthogonal DENSITY control with two levers: a `densityScale`
+  on the target segment length (`active` 0.5 shortens = denser, `macro` 1.8 lengthens = sparser,
+  `balanced` 1.0) AND a hard `maxPerScene` cap (1 / 5 / 8). So `active` genuinely fills a scene with
+  beats rather than just permitting a higher ceiling; `macro` also suppresses release points. Stable
+  always yields a plan (≥1 segment); it is never static.
+- **Determinism.** All randomness is seeded from `hash(trackSeed, sceneIndex, segmentIndex)` where
+  `trackSeed` is a stable hash of the analysis (bpm + duration + section count). No `Math.random`.
+- **Provenance.** Each `PerformanceAutomationPoint.meta` adds `automationSituation`, `vocabularyId`,
+  `variantRole` (now incl. `sparse`/`focus`), and an opaque `targetStateReference`. Copy/Load
+  (`dramaturgyTransfer`) whitelists and enum-validates them.
+- **Assets:** 12 visually-distinct presets (`public/visual-tuning-presets/vos-*.json`, registered in
+  `index.json`).
+
+The `targetTuning` single-writer rule is untouched: the adapter still only emits a
+`PerformanceAutomationPlan`; it never writes runtime state, and the domain modules
+(`automationSituationClassifier`, `microChoreographyPlanner`) name no preset/tuning quantity
+(guarded by the renderer-independence tests).
+
 ### Future Extension (explicitly Out of Scope)
 
 A **Learning Path** seam is reserved but **not implemented**: renderer feedback + user
@@ -333,8 +406,17 @@ validates cycles/missing-parents/unknown enums atomically and falls back to lega
 - `src/automation/variationEngine.ts` (new, pure read-only scoring).
 - `src/automation/choreographyDirector.ts` (new, orchestrates `src/semantics/`).
 - `src/automation/styleTranslator.ts` (new, Style Resolver -> Behaviour Resolver).
-- `src/automation/scenePlanAdapter.ts` (new, VisualScenePlan -> PerformanceAutomationPlan).
-- `public/visual-tuning-presets/style-packs.json` (new asset, inheritance).
+- `src/automation/scenePlanAdapter.ts` (VisualScenePlan -> PerformanceAutomationPlan; classifies
+  situations, resolves the behaviour vocabulary, drives the planner, and maps each
+  `AutomationEnvelope` to attack/release points with anti-overlap-only `finalize`).
+- `src/automation/automationSituationClassifier.ts` (pure: VisualScene context -> AutomationSituation).
+- `src/automation/microChoreographyPlanner.ts` (pure: situation + vocabulary + tempo + variation ->
+  `ChoreographyPlan`; adaptive bar-snapped subdivision, cycle grammar, weighted memory, seeded
+  jitter, `computeEnvelope`, `VARIATION_PROFILES`). Replaces the former `variantPairPlanner.ts`.
+- `src/automation/visualOsPlanner.ts` (computes `TempoContext` + `trackSeed` from `TrackAnalysis`
+  and passes them to the adapter).
+- `public/visual-tuning-presets/style-packs.json` (inheritance; `variantPairs` + `behaviourVocabulary`).
+- `public/visual-tuning-presets/vos-*.json` (12 new variant presets) + `index.json` manifest.
 - `src/automation/performancePlanGenerator.ts` (unchanged; the fallback / strict / hero path).
 - `src/automation/generatorRouting.ts` (new, pure): `shouldUseVisualOs` + Visual Mode ->
   style pack mapping, so DashboardUI routing is unit-testable without a DOM.
