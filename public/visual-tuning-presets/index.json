@@ -1,11 +1,22 @@
 {
   "presets": [
     "default.json",
-      "temporal1.json",
+    "temporal1.json",
     "temporal2.json",
     "temporal3.json",
     "temporal4.json",
-    "temporal5.json"
-
+    "temporal5.json",
+    "vos-drop-primary.json",
+    "vos-drop-counter.json",
+    "vos-drop-release.json",
+    "vos-build-compress.json",
+    "vos-build-escalate.json",
+    "vos-break-sparse.json",
+    "vos-break-glow.json",
+    "vos-verse-primary.json",
+    "vos-verse-motion.json",
+    "vos-peak-overdrive.json",
+    "vos-transition-slice.json",
+    "vos-outro-dissolve.json"
   ]
 }
