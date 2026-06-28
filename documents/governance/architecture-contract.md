@@ -129,9 +129,13 @@ The ADR-004 time-based runtime is a separate consumer path alongside the pure, o
 ## Visual OS Style System (ADR-005)
 
 The Visual OS style layer is a renderer-independent scene-translation pipeline that CONSUMES
-the ADR-003 semantic output and emits a standard `PerformanceAutomationPlan`. It is gated by
-`featureFlags.USE_VISUAL_OS_V2` (default off) and lives under `src/automation/`. See
-`../adr/ADR-005-visual-os-style-system.md`.
+the ADR-003 semantic output and emits a standard `PerformanceAutomationPlan`. It is the
+DEFAULT dramaturgy/automation generator (the Dramaturgy strategy) and lives under
+`src/automation/`; the legacy `performancePlanGenerator` is the fallback when a style pack
+cannot be resolved or the pipeline returns an empty plan, and it stays the owner of the
+explicit `Strict Alternating` and `Hero Rhythm` strategies. `featureFlags.forceLegacyDramaturgy`
+(default off) is a debug/legacy override only; it must never be the condition for normal
+operation. See `../adr/ADR-005-visual-os-style-system.md`.
 
 - The existing `src/semantics/` ADR-003 chain is the ONLY component permitted to derive
   musical semantics (Narrative, Intent, Sections, Motifs) from `TrackAnalysis`. The Visual OS
@@ -163,8 +167,27 @@ the ADR-003 semantic output and emits a standard `PerformanceAutomationPlan`. It
   exclusively by `scenePlanAdapter`.
 - The Visual OS adapter never writes `State.targetTuning`. Runtime state writes remain with
   the existing runtime/UI path that consumes the returned `PerformanceAutomationPlan`,
-  exactly as for the legacy generator. When the flag is off, the legacy
-  `performancePlanGenerator` owns plan generation and nothing changes.
+  exactly as for the legacy generator. The fallback to `performancePlanGenerator` is silent
+  and produces the same contract, so the runtime/UI consumers are agnostic to which generator
+  ran.
+- `DramaturgyActivityLevel` (`macro` / `balanced` / `active`) is a normal user-facing control,
+  not a feature flag. The planner forwards it to `scenePlanAdapter`, which resolves it to the
+  waypoint density pair (`minWaypointSpacingSec` / `maxWaypointsPerScene`); explicit overrides
+  win. It only thins/expands waypoints and must never re-derive semantics.
+- The top-right Visual Mode drives the default Visual OS style pack via the pure, DOM-free
+  `generatorRouting` module (`shouldUseVisualOs`, `stylePackForVisualMode`): the main visual
+  styles select the matching style pack (ids are 1:1 except `temporal` -> `base-temporal`)
+  instead of a separate temporal substyle path. The timeline pack selector is an explicit
+  override that the Visual Mode re-aligns. Each `style-packs.json` pack must declare an
+  explicit, full `targetMap` (all narratives plus a sparse `default`); inheritance is a safety
+  net, not a substitute for per-pack coverage.
+- `scenePlanAdapter` may annotate each `PerformanceAutomationPoint` with optional, renderer-
+  INDEPENDENT `meta` (motif, palette/material family, normalized behaviour summary, evolution
+  phase, scene id, stylePack/substyle, opaque targetStateReference). `meta` must never carry
+  tuning keys, preset filenames as values beyond the existing `preset` field, or any renderer
+  quantity. It is optional everywhere: legacy and imported-legacy plans omit it, and the
+  Copy/Load (`dramaturgyTransfer`) path validates, normalizes, and round-trips it without ever
+  rejecting a point because of it.
 - `src/automation/` Visual OS modules may import `src/types/` and the pure `src/semantics/`
   output helpers. They must not import `src/state/`, `src/visuals/`, `src/ui/`,
   `src/audio/`, `src/analyzer/`, or p5 (the IO loader may use `fetch`/`import.meta`).

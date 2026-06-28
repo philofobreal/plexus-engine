@@ -2,11 +2,17 @@
 
 ## Status
 
-Accepted - implemented behind the disabled `USE_VISUAL_OS_V2` feature flag. While the flag
-is off, runtime behavior is identical to the legacy path. When on, the runtime UI plan
-generation route is served by the Visual OS pipeline through an adapter that
-re-materializes the existing `PerformanceAutomationPlan` contract, with automatic fallback
-to the legacy generator if a style pack cannot be resolved.
+Accepted - the DEFAULT dramaturgy/automation generator path, with the legacy
+`performancePlanGenerator` as the fallback. The Dramaturgy strategy runs the Visual OS
+pipeline first (semantic chain -> ChoreographyDirector -> StyleTranslator -> scenePlanAdapter)
+and re-materializes the existing `PerformanceAutomationPlan` contract; it falls back quietly
+to the legacy generator when a style pack cannot be resolved (e.g. `style-packs.json` is
+missing) or the pipeline returns an empty plan. The earlier `USE_VISUAL_OS_V2` gating flag is
+removed; `featureFlags.forceLegacyDramaturgy` (default `false`) is a debug/legacy override
+only and is NOT the condition for normal operation. The explicit `Strict Alternating` and
+`Hero Rhythm` strategies remain on the legacy generator by design. A user-facing
+`DramaturgyActivityLevel` control (`macro` / `balanced` / `active`) tunes waypoint density,
+and the adapter carries renderer-independent provenance onto `PerformanceAutomationPoint.meta`.
 
 ## Date
 
@@ -78,7 +84,8 @@ normalized, intent-level terms.
 Adopt a **Style Translation layer that sits on top of the existing `src/semantics/`
 dramaturgy output**, produces a renderer-independent `VisualScene` / `VisualScenePlan`,
 and is bridged back to the unchanged `PerformanceAutomationPlan` contract by a new
-adapter. Everything is gated by `USE_VISUAL_OS_V2` (default `false`).
+adapter. This is the default Dramaturgy generator; the legacy `performancePlanGenerator` is
+the fallback (`featureFlags.forceLegacyDramaturgy` is a debug-only override).
 
 ### 1. Layer Diagram & Domain Pipeline Ownership (Single Writer Principle)
 
@@ -197,18 +204,41 @@ density cap so it never floods the timeline.
 ### 6. Integration & Adapter (backward-compatible migration)
 
 ```
-USE_VISUAL_OS_V2 === false (default):
-  unchanged. performancePlanGenerator / ADR-003 / ADR-004 own everything exactly as today.
-
-USE_VISUAL_OS_V2 === true:
+Dramaturgy strategy (default): Visual OS first, legacy fallback
   TrackAnalysis
     -> [existing] buildNarrative -> generateIntents -> Motif* plan
     -> choreographyDirector (orchestrates the above)            -> SceneIntent[] + SceneEvolution
     -> variationEngine (scores candidates, read-only)
     -> styleTranslator (Style Resolver..Behaviour Resolver)     -> VisualScenePlan
-    -> scenePlanAdapter                                          -> PerformanceAutomationPlan
+    -> scenePlanAdapter (activityLevel density + meta)          -> PerformanceAutomationPlan
     -> (unchanged) existing runtime / UI consume the plan as before
+  If the pipeline returns null/empty (no style-packs.json, unresolvable pack), or
+  featureFlags.forceLegacyDramaturgy is set, fall back to:
+    performancePlanGenerator.generatePerformancePlan(...)         -> PerformanceAutomationPlan
+
+Strict Alternating / Hero Rhythm strategies:
+  performancePlanGenerator owns generation exactly as before (no Visual OS).
 ```
+
+Routing + style selection live in the pure, DOM-free `generatorRouting` module so they are
+unit-testable without a browser: `shouldUseVisualOs(strategy, forceLegacyDramaturgy)` owns the
+default-vs-legacy decision, and `stylePackForVisualMode(mode)` couples the top-right Visual Mode
+to the default Visual OS style pack (1:1 ids; `temporal -> base-temporal`). The main visual
+styles therefore drive the style pack instead of a temporal substyle dropdown - selecting the
+`cyberpunk` Visual Mode selects the `cyberpunk` style pack. The timeline pack selector remains
+an explicit override; changing the Visual Mode re-aligns it.
+
+Activity level (`DramaturgyActivityLevel`): a user-facing control that the planner forwards
+to `scenePlanAdapter`, resolving to the waypoint `minWaypointSpacingSec` / `maxWaypointsPerScene`
+density pair: `macro` (section anchors only), `balanced` (the historical default), `active`
+(denser intra-scene evolution waypoints). Explicit spacing/cap overrides still win.
+
+Provenance (`PerformanceAutomationPoint.meta`): the adapter carries renderer-INDEPENDENT scene
+provenance (motif, palette/material family, normalized behaviour summary, evolution phase,
+scene id, stylePack/substyle, opaque targetStateReference) onto each point so the timeline can
+surface it (debug tooltip) and Copy/Load round-trips it. It NEVER carries tuning keys; the
+concrete preset binding stays in `PerformanceAutomationPoint.preset`. Legacy and
+imported-legacy plans simply omit `meta`.
 
 `scenePlanAdapter` rules (the Phase-3 contract boundary):
 - Output is exactly `PerformanceAutomationPlan { version: 1, source: 'auto', points }`.
@@ -250,8 +280,10 @@ Positive:
   exists only in `scenePlanAdapter`.
 - Declarative, inheritable styles replace two ad hoc preset-selection heuristics and add
   capability constraints that are impossible to express today.
-- Zero behavior change while `USE_VISUAL_OS_V2` is off; the migration is adapter-shaped,
-  not a rewrite, matching the ADR-003/004 strategy.
+- The migration is adapter-shaped, not a rewrite, matching the ADR-003/004 strategy: the
+  Visual OS pipeline emits the same `PerformanceAutomationPlan` contract the runtime already
+  consumes, so promoting it to the default generator did not touch the runtime/UI consumers.
+  The legacy generator remains a tested, byte-for-byte fallback.
 
 Tradeoffs / risks (flagged for human review):
 1. **Lossy VisualScene -> preset mapping (primary review item).** `VisualScene` carries
@@ -267,9 +299,10 @@ Tradeoffs / risks (flagged for human review):
 3. **Choreography/Variation overlap.** `choreographyDirector` and `variationEngine`
    orchestrate the existing `src/semantics/` engines and must never re-derive
    narrative/intent/motifs. Guarded by a purity test; keep it that way on future edits.
-4. **No live-browser smoke of the V2 path.** With the flag off the runtime is identical to
-   today (verified); with it on, there is no UI to select a style pack (defaults to
-   `base-temporal`), so the V2 path is validated only headlessly.
+4. **Headless validation of the default path.** The Visual OS path is validated headlessly
+   (build + tests). As the default Dramaturgy generator it now has UI controls (style pack,
+   substyle, activity level), but live-browser smoke still requires loading an audio track and
+   is not part of the automated gate.
 5. **`src/types/` growth.** `VisualScene`, `VisualVocabulary`, `StyleCapabilityMatrix`,
    `SceneEvolution` etc. must remain type-only and dependency-light per the contract.
 
@@ -292,7 +325,8 @@ validates cycles/missing-parents/unknown enums atomically and falls back to lega
 
 ## Implementation References
 
-- `src/config/featureFlags.ts` - add `USE_VISUAL_OS_V2: false`.
+- `src/config/featureFlags.ts` - `forceLegacyDramaturgy: false` (debug/legacy override only;
+  replaces the removed `USE_VISUAL_OS_V2` gate).
 - `src/types/index.ts` - add `VisualScene`, `VisualScenePlan`, `VisualVocabulary`,
   `StyleCapabilityMatrix`, `SceneEvolution`/`SceneEvolutionPhase`, `SceneIntent`,
   `BehaviourState` (type-only; reuse `VisualMotif`, `TransitionBehavior`).
@@ -301,7 +335,9 @@ validates cycles/missing-parents/unknown enums atomically and falls back to lega
 - `src/automation/styleTranslator.ts` (new, Style Resolver -> Behaviour Resolver).
 - `src/automation/scenePlanAdapter.ts` (new, VisualScenePlan -> PerformanceAutomationPlan).
 - `public/visual-tuning-presets/style-packs.json` (new asset, inheritance).
-- `src/automation/performancePlanGenerator.ts` (unchanged; default path when flag off).
+- `src/automation/performancePlanGenerator.ts` (unchanged; the fallback / strict / hero path).
+- `src/automation/generatorRouting.ts` (new, pure): `shouldUseVisualOs` + Visual Mode ->
+  style pack mapping, so DashboardUI routing is unit-testable without a DOM.
 - `src/semantics/*` (unchanged; consumed, not modified).
 - `documents/governance/architecture-contract.md`, `anti-patterns.md` (update in the
   migration's final task to record the Visual OS ownership line).

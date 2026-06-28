@@ -32,6 +32,8 @@ Stop and redesign if a change introduces any pattern below.
 - **Soft-Only Anti-Repetition.** Relying on the history scoring penalty alone. A hard `VariationPolicy` (ban A->A and short-gap A->B->A) must enforce variation during selection.
 - **Unbounded Scene Expansion.** Expanding `SceneEvolution` into automation points without a density cap (`minWaypointSpacingSec` / `maxWaypointsPerScene`), flooding the timeline.
 - **Hard-Coded Capability Weights.** Baking per-tier capability scores into the scorer instead of the data-driven `StyleCapabilityMatrix.weights`.
+- **Tuning Keys In Automation Meta.** Putting renderer/tuning quantities (tuning keys, `opacity`, `particleCount`, p5/DOM, or a second preset reference) into the optional `PerformanceAutomationPoint.meta`. `meta` carries only renderer-independent provenance (motif, palette/material family, normalized behaviour, evolution phase, scene/style ids, opaque target handle); the concrete preset binding stays in `PerformanceAutomationPoint.preset`. `meta` must be optional everywhere and never break legacy plan import/export.
+- **Flag-Gated Default Generation.** Making normal dramaturgy generation depend on a feature flag. Visual OS is the default generator with a silent legacy fallback; `featureFlags.forceLegacyDramaturgy` is a debug/legacy override only and must never be the condition for normal operation. Re-introducing a parallel "select the generator" flag for the normal path is forbidden.
 - **Non-ASCII In Visual OS Source/Docs.** Using em-dashes, box-drawing, arrows, or smart quotes in Visual OS source or ADR/governance text; keep them ASCII to avoid mojibake in diffs and governance docs.
 
 ## Realtime Audio Anti-Patterns
