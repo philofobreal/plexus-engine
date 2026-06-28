@@ -22,7 +22,33 @@
         "release": { "preset": "temporal3.json", "morphCurve": "exponential" },
         "peak": { "preset": "temporal4.json", "morphCurve": "exponential" },
         "breakdown": { "preset": "temporal5.json" },
-        "outro": { "preset": "default.json", "morphCurve": "easeInOut" }
+        "outro": { "preset": "default.json", "morphCurve": "easeInOut" },
+        "default": { "preset": "default.json", "morphCurve": "easeInOut" }
+      }
+    },
+    {
+      "id": "classic",
+      "extends": "base-temporal",
+      "label": "Classic",
+      "capabilities": {
+        "preferred": ["pulse-field", "orbit-system", "network-bloom", "wave-ripple"],
+        "supported": ["tunnel-drive", "grid-scan", "halo-focus", "swarm-motion", "fragment-cloud"],
+        "forbidden": [],
+        "palettes": { "preferred": ["duotone", "spectral"], "forbidden": [] }
+      },
+      "vocabulary": { "palette": "duotone", "lineCharacter": 0.5, "glowCharacter": 0.5, "grain": 0.3, "contrast": 0.6 },
+      "behaviour": { "energy": 0, "density": 0, "motion": 0, "volatility": 0, "cohesion": 0.05 },
+      "targetMap": {
+        "intro": { "preset": "default.json", "morphCurve": "easeInOut" },
+        "groove": { "preset": "temporal2.json" },
+        "tension": { "preset": "temporal1.json" },
+        "build": { "preset": "temporal1.json" },
+        "fake-drop": { "preset": "temporal4.json" },
+        "release": { "preset": "temporal3.json", "morphCurve": "exponential" },
+        "peak": { "preset": "temporal4.json", "morphCurve": "exponential" },
+        "breakdown": { "preset": "temporal5.json" },
+        "outro": { "preset": "default.json", "morphCurve": "easeInOut" },
+        "default": { "preset": "default.json", "morphCurve": "easeInOut" }
       }
     },
     {
@@ -45,10 +71,16 @@
         }
       },
       "targetMap": {
+        "intro": { "preset": "default.json", "morphCurve": "easeInOut" },
         "groove": { "preset": "temporal1.json" },
-        "release": { "preset": "temporal3.json" },
+        "tension": { "preset": "temporal1.json" },
+        "build": { "preset": "temporal1.json" },
+        "fake-drop": { "preset": "temporal4.json" },
+        "release": { "preset": "temporal3.json", "morphCurve": "exponential" },
         "peak": { "preset": "temporal4.json", "intensityScale": 1.1, "morphCurve": "exponential" },
-        "breakdown": { "preset": "temporal5.json" }
+        "breakdown": { "preset": "temporal5.json" },
+        "outro": { "preset": "default.json", "morphCurve": "easeInOut" },
+        "default": { "preset": "temporal1.json", "morphCurve": "easeInOut" }
       }
     },
     {
@@ -65,8 +97,127 @@
       "vocabulary": { "palette": "void", "lineCharacter": 0.95, "glowCharacter": 0.05, "grain": 0.1, "contrast": 1.0 },
       "behaviour": { "energy": -0.1, "density": -0.2, "motion": -0.05, "volatility": 0.0, "cohesion": 0.1 },
       "targetMap": {
+        "intro": { "preset": "temporal5.json", "morphCurve": "easeInOut" },
+        "groove": { "preset": "temporal1.json" },
+        "tension": { "preset": "temporal1.json" },
         "build": { "preset": "temporal1.json" },
-        "peak": { "preset": "temporal3.json", "intensityScale": 0.9 }
+        "fake-drop": { "preset": "temporal5.json" },
+        "release": { "preset": "temporal3.json", "intensityScale": 0.9, "morphCurve": "exponential" },
+        "peak": { "preset": "temporal3.json", "intensityScale": 0.9, "morphCurve": "exponential" },
+        "breakdown": { "preset": "temporal5.json" },
+        "outro": { "preset": "temporal5.json", "morphCurve": "easeInOut" },
+        "default": { "preset": "temporal5.json", "morphCurve": "easeInOut" }
+      }
+    },
+    {
+      "id": "organic-ambient",
+      "extends": "base-temporal",
+      "label": "Organic Ambient",
+      "capabilities": {
+        "preferred": ["wave-ripple", "halo-focus", "orbit-system", "network-bloom"],
+        "supported": ["pulse-field"],
+        "forbidden": ["grid-scan", "fragment-cloud"],
+        "palettes": { "preferred": ["earth", "spectral"], "forbidden": ["mono", "void"] },
+        "weights": { "preferred": 0.92, "supported": 0.45 }
+      },
+      "vocabulary": { "palette": "earth", "lineCharacter": 0.2, "glowCharacter": 0.8, "grain": 0.5, "contrast": 0.3 },
+      "behaviour": { "energy": -0.15, "density": -0.05, "motion": -0.15, "volatility": -0.2, "cohesion": 0.25 },
+      "targetMap": {
+        "intro": { "preset": "default.json", "morphCurve": "easeInOut" },
+        "groove": { "preset": "temporal2.json", "morphCurve": "easeInOut" },
+        "tension": { "preset": "temporal2.json", "morphCurve": "easeInOut" },
+        "build": { "preset": "temporal1.json", "morphCurve": "easeInOut" },
+        "fake-drop": { "preset": "temporal5.json", "morphCurve": "easeInOut" },
+        "release": { "preset": "temporal3.json", "intensityScale": 0.85, "morphCurve": "easeInOut" },
+        "peak": { "preset": "temporal3.json", "intensityScale": 0.9, "morphCurve": "easeInOut" },
+        "breakdown": { "preset": "temporal5.json", "morphCurve": "easeInOut" },
+        "outro": { "preset": "default.json", "morphCurve": "easeInOut" },
+        "default": { "preset": "temporal2.json", "morphCurve": "easeInOut" }
+      }
+    },
+    {
+      "id": "cyberpunk",
+      "extends": "base-temporal",
+      "label": "Cyberpunk",
+      "capabilities": {
+        "preferred": ["fragment-cloud", "grid-scan", "tunnel-drive", "network-bloom"],
+        "supported": ["pulse-field", "swarm-motion"],
+        "forbidden": ["halo-focus", "wave-ripple"],
+        "palettes": { "preferred": ["neon", "duotone"], "forbidden": ["earth"] },
+        "weights": { "preferred": 0.92, "supported": 0.38 }
+      },
+      "vocabulary": { "palette": "neon", "lineCharacter": 0.95, "glowCharacter": 0.7, "grain": 0.6, "contrast": 1.0 },
+      "behaviour": { "energy": 0.15, "density": 0.1, "motion": 0.05, "volatility": 0.4, "cohesion": -0.2 },
+      "substyles": {
+        "glitch": {
+          "label": "Cyberpunk Glitch",
+          "capabilities": { "preferred": ["fragment-cloud", "grid-scan"] },
+          "vocabulary": { "grain": 0.85, "contrast": 1.0 },
+          "behaviour": { "volatility": 0.5, "energy": 0.1 }
+        }
+      },
+      "targetMap": {
+        "intro": { "preset": "default.json", "morphCurve": "easeInOut" },
+        "groove": { "preset": "temporal1.json" },
+        "tension": { "preset": "temporal4.json" },
+        "build": { "preset": "temporal4.json" },
+        "fake-drop": { "preset": "temporal3.json", "morphCurve": "exponential" },
+        "release": { "preset": "temporal4.json", "intensityScale": 1.15, "morphCurve": "exponential" },
+        "peak": { "preset": "temporal4.json", "intensityScale": 1.2, "morphCurve": "exponential" },
+        "breakdown": { "preset": "temporal3.json" },
+        "outro": { "preset": "temporal2.json", "morphCurve": "easeInOut" },
+        "default": { "preset": "temporal1.json" }
+      }
+    },
+    {
+      "id": "cosmic-wormhole",
+      "extends": "base-temporal",
+      "label": "Cosmic Wormhole",
+      "capabilities": {
+        "preferred": ["tunnel-drive", "orbit-system", "swarm-motion", "network-bloom"],
+        "supported": ["pulse-field", "wave-ripple"],
+        "forbidden": ["grid-scan"],
+        "palettes": { "preferred": ["spectral", "void"], "forbidden": ["earth"] },
+        "weights": { "preferred": 0.93, "supported": 0.4 }
+      },
+      "vocabulary": { "palette": "spectral", "lineCharacter": 0.4, "glowCharacter": 0.9, "grain": 0.3, "contrast": 0.6 },
+      "behaviour": { "energy": 0.15, "density": 0.05, "motion": 0.3, "volatility": 0.1, "cohesion": 0.05 },
+      "targetMap": {
+        "intro": { "preset": "temporal2.json", "morphCurve": "easeInOut" },
+        "groove": { "preset": "temporal3.json" },
+        "tension": { "preset": "temporal1.json" },
+        "build": { "preset": "temporal1.json" },
+        "fake-drop": { "preset": "temporal4.json" },
+        "release": { "preset": "temporal3.json", "intensityScale": 1.1, "morphCurve": "exponential" },
+        "peak": { "preset": "temporal4.json", "intensityScale": 1.15, "morphCurve": "exponential" },
+        "breakdown": { "preset": "temporal5.json" },
+        "outro": { "preset": "default.json", "morphCurve": "easeInOut" },
+        "default": { "preset": "temporal3.json" }
+      }
+    },
+    {
+      "id": "hero",
+      "extends": "base-temporal",
+      "label": "Hero",
+      "capabilities": {
+        "preferred": ["pulse-field", "network-bloom", "tunnel-drive"],
+        "supported": ["grid-scan", "orbit-system", "swarm-motion", "fragment-cloud", "wave-ripple", "halo-focus"],
+        "forbidden": [],
+        "palettes": { "preferred": ["neon", "spectral"], "forbidden": [] }
+      },
+      "vocabulary": { "palette": "neon", "lineCharacter": 0.7, "glowCharacter": 0.6, "grain": 0.3, "contrast": 0.8 },
+      "behaviour": { "energy": 0.1, "density": 0.05, "motion": 0.1, "volatility": 0.05, "cohesion": 0.05 },
+      "targetMap": {
+        "intro": { "preset": "default.json", "morphCurve": "easeInOut" },
+        "groove": { "preset": "temporal2.json" },
+        "tension": { "preset": "temporal1.json" },
+        "build": { "preset": "temporal1.json" },
+        "fake-drop": { "preset": "temporal4.json" },
+        "release": { "preset": "temporal3.json", "morphCurve": "exponential" },
+        "peak": { "preset": "temporal4.json", "intensityScale": 1.1, "morphCurve": "exponential" },
+        "breakdown": { "preset": "temporal5.json" },
+        "outro": { "preset": "default.json", "morphCurve": "easeInOut" },
+        "default": { "preset": "default.json", "morphCurve": "easeInOut" }
       }
     }
   ]

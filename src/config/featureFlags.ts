@@ -9,9 +9,11 @@ export const featureFlags = {
     semanticResolver: false,
     // ADR-004 time-based Visual Score runtime. Disabled until a score producer is wired.
     semanticChoreography: false,
-    // ADR-005 Visual OS style system. Off by default = legacy generatePerformancePlan owns
-    // plan generation. When on, the Visual OS pipeline (semantic chain -> ChoreographyDirector
-    // -> StyleTranslator -> scenePlanAdapter) produces the PerformanceAutomationPlan instead,
-    // falling back to the legacy generator if a style pack cannot be resolved.
-    USE_VISUAL_OS_V2: false
+    // ADR-005 Visual OS style system. The Visual OS pipeline (semantic chain ->
+    // ChoreographyDirector -> StyleTranslator -> scenePlanAdapter) is now the DEFAULT
+    // dramaturgy/automation generator; the legacy generatePerformancePlan is only the
+    // fallback when a style pack cannot be resolved. This flag is a debug/legacy override
+    // ONLY: when true the Dramaturgy strategy bypasses Visual OS and uses the legacy
+    // generator directly. It is NOT the condition for normal operation.
+    forceLegacyDramaturgy: false
 };

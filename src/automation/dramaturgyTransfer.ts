@@ -1,4 +1,4 @@
-import type { PerformanceAutomationPlan, PerformanceAutomationPoint } from '../types';
+import type { BehaviourState, PerformanceAutomationMeta, PerformanceAutomationPlan, PerformanceAutomationPoint } from '../types';
 
 /**
  * Pure (DOM-free) serialization and validation for copying/loading a dramaturgy
@@ -12,6 +12,15 @@ export const DRAMATURGY_CLIPBOARD_VERSION = 1;
 const REASONS = ['intro', 'verse', 'build', 'drop', 'break', 'peak', 'outro', 'harmonicShift', 'manual'];
 const CURVES = ['linear', 'easeInOut', 'exponential'];
 const TIMING_MODES = ['bar-aligned', 'energy-reactive', 'novelty'];
+
+// Visual OS meta enums (ADR-005). Must mirror the unions in src/types: an out-of-vocabulary
+// motif/palette/phase is dropped rather than trusted, so corrupt provenance cannot ride along.
+const META_MOTIFS = new Set([
+    'pulse-field', 'orbit-system', 'tunnel-drive', 'network-bloom', 'fragment-cloud',
+    'wave-ripple', 'grid-scan', 'halo-focus', 'swarm-motion', 'void-minimal'
+]);
+const META_PALETTES = new Set(['mono', 'duotone', 'neon', 'earth', 'spectral', 'void']);
+const META_EVOLUTION_PHASES = new Set(['birth', 'growth', 'peak', 'release', 'death']);
 
 export interface DramaturgyClipboardEnvelope {
     kind: string;
@@ -135,7 +144,41 @@ function sanitizePoint(raw: unknown): PerformanceAutomationPoint | null {
     if (c.analysisConfidence !== undefined) point.analysisConfidence = clamp01(c.analysisConfidence as number);
     if (c.timingMode !== undefined) point.timingMode = c.timingMode as PerformanceAutomationPoint['timingMode'];
     if (c.locked !== undefined) point.locked = c.locked as boolean;
+    // Optional Visual OS provenance (ADR-005). Kept and normalized, never a reason to reject a
+    // point: malformed meta is dropped, valid sub-fields survive, legacy points have no meta.
+    const meta = sanitizeMeta(c.meta);
+    if (meta) point.meta = meta;
     return point;
+}
+
+// Whitelist the renderer-independent meta sub-fields. Unknown keys are stripped; numeric
+// behaviour fields are clamped to 0..1. Returns undefined when nothing valid remains.
+function sanitizeMeta(raw: unknown): PerformanceAutomationMeta | undefined {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const m = raw as Record<string, unknown>;
+    const meta: PerformanceAutomationMeta = {};
+    if (typeof m.motif === 'string' && META_MOTIFS.has(m.motif)) meta.motif = m.motif as PerformanceAutomationMeta['motif'];
+    if (typeof m.palette === 'string' && META_PALETTES.has(m.palette)) meta.palette = m.palette as PerformanceAutomationMeta['palette'];
+    if (typeof m.evolutionPhase === 'string' && META_EVOLUTION_PHASES.has(m.evolutionPhase)) meta.evolutionPhase = m.evolutionPhase as PerformanceAutomationMeta['evolutionPhase'];
+    if (typeof m.sceneId === 'string') meta.sceneId = m.sceneId;
+    if (typeof m.stylePack === 'string') meta.stylePack = m.stylePack;
+    if (typeof m.substyle === 'string') meta.substyle = m.substyle;
+    if (typeof m.targetStateReference === 'string') meta.targetStateReference = m.targetStateReference;
+    const behaviour = sanitizeBehaviour(m.behaviour);
+    if (behaviour) meta.behaviour = behaviour;
+    return Object.keys(meta).length > 0 ? meta : undefined;
+}
+
+function sanitizeBehaviour(raw: unknown): BehaviourState | undefined {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const b = raw as Record<string, unknown>;
+    const keys: Array<keyof BehaviourState> = ['energy', 'density', 'motion', 'volatility', 'cohesion'];
+    const out = { energy: 0, density: 0, motion: 0, volatility: 0, cohesion: 0 } as BehaviourState;
+    let any = false;
+    for (const key of keys) {
+        if (isFiniteNumber(b[key])) { out[key] = clamp01(b[key] as number); any = true; }
+    }
+    return any ? out : undefined;
 }
 
 function isFiniteNumber(value: unknown): boolean {

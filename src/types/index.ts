@@ -136,6 +136,32 @@ export interface PerformancePreset {
 
 export type PerformanceAutomationReason = 'intro' | 'verse' | 'build' | 'drop' | 'break' | 'peak' | 'outro' | 'harmonicShift' | 'manual';
 
+// Dramaturgy density level the Visual OS generator uses to thin or expand SceneEvolution
+// waypoints. A normal, user-facing control (NOT a feature flag): 'macro' keeps only major
+// section anchors, 'balanced' adds strong cues / novelty peaks, 'active' emits denser
+// scene-evolution waypoints. Consumed by visualOsPlanner / scenePlanAdapter only.
+export type DramaturgyActivityLevel = 'macro' | 'balanced' | 'active';
+
+// Optional, renderer-INDEPENDENT provenance carried from the Visual OS pipeline onto a
+// PerformanceAutomationPoint. It records WHICH style/scene produced the point so the
+// timeline can surface it (debug/tooltip) and Copy/Load can round-trip it. It MUST NOT
+// carry renderer/tuning quantities (no tuning keys, opacity, particleCount); the concrete
+// preset binding already lives in PerformanceAutomationPoint.preset. Absent on
+// legacy-generated and imported-legacy plans.
+export interface PerformanceAutomationMeta {
+    motif?: VisualMotif;                 // FORM the scene realized
+    palette?: VisualPalette;             // MATERIAL/vocabulary family
+    // RESOLVED, post-bias behaviour summary: a normalized BehaviourState (every field 0..1,
+    // already clamped by the Behaviour Resolver). This is the realized scene dynamics, NOT a
+    // BehaviourBias (-1..1) like StylePack.behaviour, so Copy/Load clamps it to 0..1.
+    behaviour?: BehaviourState;
+    evolutionPhase?: SceneEvolutionPhase;
+    sceneId?: string;                    // adapter scene id (e.g. "vos:dark-techno:0")
+    stylePack?: string;
+    substyle?: string;
+    targetStateReference?: string;       // opaque style handle the adapter resolved
+}
+
 export interface PerformanceAutomationPoint {
     id: string;
     time: number;
@@ -149,6 +175,8 @@ export interface PerformanceAutomationPoint {
     morphDurationSec: number;
     morphCurve: 'linear' | 'easeInOut' | 'exponential';
     locked?: boolean;
+    // Optional Visual OS provenance (ADR-005). Renderer-independent; safe to omit.
+    meta?: PerformanceAutomationMeta;
 }
 
 export interface PerformanceAutomationPlan {
@@ -292,8 +320,9 @@ export type {
 // NOT name renderer/runtime quantities (no tuning keys, preset filenames, p5, or
 // DOM). All numeric fields are normalized 0..1 unless documented otherwise. The
 // single place a style touches a concrete preset is StyleTargetReference, which is
-// consumed exclusively by the adapter tier (scenePlanAdapter). Gated by
-// featureFlags.USE_VISUAL_OS_V2; off by default.
+// consumed exclusively by the adapter tier (scenePlanAdapter). This pipeline is the
+// DEFAULT dramaturgy generator; the legacy generatePerformancePlan is the fallback
+// (featureFlags.forceLegacyDramaturgy is a debug-only override).
 
 // Scene lifecycle: a scene is not static. It is born, grows, peaks, releases, dies.
 export type SceneEvolutionPhase = 'birth' | 'growth' | 'peak' | 'release' | 'death';

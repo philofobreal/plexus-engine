@@ -1,4 +1,5 @@
 import type {
+    DramaturgyActivityLevel,
     PerformanceAutomationPlan,
     ResolvedStylePack,
     StylePacksFile,
@@ -30,6 +31,9 @@ export interface VisualOsPlanOptions {
     substyle?: string;
     historyWindow?: number;
     duration?: number;
+    // Dramaturgy density level (user-facing control). Forwarded to the adapter to thin or
+    // expand SceneEvolution waypoints. Defaults to 'balanced'.
+    activityLevel?: DramaturgyActivityLevel;
     // Inject a parsed style-packs file (tests / preloaded asset) to skip the fetch.
     stylePacksFile?: StylePacksFile;
 }
@@ -65,5 +69,8 @@ export function buildVisualOsPerformancePlan(
         return null;
     }
     const scenePlan = buildVisualScenePlan(trackAnalysis, pack, options);
-    return adaptScenePlanToPerformancePlan(scenePlan, pack, { duration: options.duration });
+    return adaptScenePlanToPerformancePlan(scenePlan, pack, {
+        duration: options.duration,
+        activityLevel: options.activityLevel
+    });
 }

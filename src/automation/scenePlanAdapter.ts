@@ -1,9 +1,12 @@
 import type {
+    DramaturgyActivityLevel,
     NarrativeType,
+    PerformanceAutomationMeta,
     PerformanceAutomationPlan,
     PerformanceAutomationPoint,
     PerformanceAutomationReason,
     ResolvedStylePack,
+    SceneEvolutionPhase,
     SceneTransitionCurve,
     StyleTargetReference,
     VisualScene,
@@ -19,14 +22,25 @@ import type {
 
 export interface SceneAdapterOptions {
     duration?: number;
+    // Dramaturgy density level. Resolves to the spacing/cap pair below unless an explicit
+    // override is supplied. Defaults to 'balanced' (identical to the historical defaults).
+    activityLevel?: DramaturgyActivityLevel;
     // Density controls so SceneEvolution expansion never floods the timeline: a minimum gap
     // between waypoints and a hard cap per scene. Short scenes collapse toward a single anchor.
-    minWaypointSpacingSec?: number; // default 2.5
-    maxWaypointsPerScene?: number;  // default 5
+    // When omitted these are derived from activityLevel; when present they win.
+    minWaypointSpacingSec?: number;
+    maxWaypointsPerScene?: number;
 }
 
-const DEFAULT_MIN_WAYPOINT_SPACING_SEC = 2.5;
-const DEFAULT_MAX_WAYPOINTS_PER_SCENE = 5;
+// Activity level -> waypoint density. 'balanced' reproduces the historical defaults so the
+// normal path is unchanged; 'macro' collapses scenes to a single anchor (section boundaries
+// only); 'active' emits denser intra-scene evolution waypoints.
+const ACTIVITY_DENSITY: Record<DramaturgyActivityLevel, { minSpacing: number; maxPerScene: number }> = {
+    macro: { minSpacing: 8.0, maxPerScene: 1 },
+    balanced: { minSpacing: 2.5, maxPerScene: 5 },
+    active: { minSpacing: 1.2, maxPerScene: 8 }
+};
+const DEFAULT_ACTIVITY_LEVEL: DramaturgyActivityLevel = 'balanced';
 
 const NARRATIVE_TO_REASON: Record<NarrativeType, PerformanceAutomationReason> = {
     intro: 'intro',
@@ -52,6 +66,7 @@ interface RawPoint {
     intensity: number;
     confidence: number;
     curve: PerformanceAutomationPoint['morphCurve'];
+    meta: PerformanceAutomationMeta;
 }
 
 export function adaptScenePlanToPerformancePlan(
@@ -60,8 +75,9 @@ export function adaptScenePlanToPerformancePlan(
     options: SceneAdapterOptions = {}
 ): PerformanceAutomationPlan {
     const duration = Number.isFinite(options.duration) && (options.duration as number) > 0 ? (options.duration as number) : Infinity;
-    const minSpacing = options.minWaypointSpacingSec ?? DEFAULT_MIN_WAYPOINT_SPACING_SEC;
-    const maxPerScene = Math.max(1, options.maxWaypointsPerScene ?? DEFAULT_MAX_WAYPOINTS_PER_SCENE);
+    const density = ACTIVITY_DENSITY[options.activityLevel ?? DEFAULT_ACTIVITY_LEVEL] ?? ACTIVITY_DENSITY[DEFAULT_ACTIVITY_LEVEL];
+    const minSpacing = options.minWaypointSpacingSec ?? density.minSpacing;
+    const maxPerScene = Math.max(1, options.maxWaypointsPerScene ?? density.maxPerScene);
     const raw: RawPoint[] = [];
 
     plan.scenes.forEach((scene, index) => {
@@ -69,6 +85,17 @@ export function adaptScenePlanToPerformancePlan(
         const reason = narrativeReason(scene.targetStateReference);
         const intensityScale = ref.intensityScale ?? 1;
         const sceneCurve = resolveMorphCurve(scene, ref);
+        // Renderer-independent provenance shared by every waypoint of this scene. The per-step
+        // evolution phase is added below. Never carries tuning keys (Renderer Independence).
+        const sceneMeta: PerformanceAutomationMeta = {
+            motif: scene.motif,
+            palette: scene.vocabulary.palette,
+            behaviour: scene.behaviour,
+            stylePack: scene.stylePack,
+            substyle: scene.substyle,
+            targetStateReference: scene.targetStateReference,
+            sceneId: `vos:${plan.stylePack}:${index}`
+        };
         // Expand the SceneEvolution lifecycle (birth..death) into intensity waypoints so the
         // existing morph engine reproduces the envelope; the preset stays constant across a
         // scene (its style binding), while audio-sensitivity follows the lifecycle level.
@@ -97,7 +124,8 @@ export function adaptScenePlanToPerformancePlan(
                 confidence: clamp01(0.4 + step.level * 0.5),
                 // The birth point carries the cross-scene transition curve; intra-scene
                 // waypoints ease smoothly.
-                curve: isBirth ? sceneCurve : 'easeInOut'
+                curve: isBirth ? sceneCurve : 'easeInOut',
+                meta: { ...sceneMeta, evolutionPhase: step.phase as SceneEvolutionPhase }
             });
         });
     });
@@ -112,7 +140,10 @@ function resolveTargetReference(scene: VisualScene, pack: ResolvedStylePack): St
         ? pack.substyles[scene.substyle].targetMap
         : pack.targetMap;
     const key = scene.targetStateReference.split(':').pop() ?? '';
-    return map[key] ?? pack.targetMap[key] ?? DEFAULT_TARGET;
+    // Resolution order: exact narrative key -> the pack's declared sparse/low-confidence
+    // 'default' target -> the hard-coded last resort. The 'default' key lets every pack own
+    // its own sparse fallback instead of silently dropping to default.json.
+    return map[key] ?? pack.targetMap[key] ?? map.default ?? pack.targetMap.default ?? DEFAULT_TARGET;
 }
 
 function narrativeReason(handle: string): PerformanceAutomationReason {
@@ -166,7 +197,8 @@ function finalize(raw: RawPoint[], stylePack: string): PerformanceAutomationPlan
             intensity: point.intensity,
             reason: point.reason,
             morphDurationSec: morph,
-            morphCurve: morph < 0.2 ? 'linear' : point.curve
+            morphCurve: morph < 0.2 ? 'linear' : point.curve,
+            meta: point.meta
         };
     });
     return { version: 1, source: 'auto', points };
