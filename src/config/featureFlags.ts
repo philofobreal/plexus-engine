@@ -15,5 +15,5 @@ export const featureFlags = {
     // fallback when a style pack cannot be resolved. This flag is a debug/legacy override
     // ONLY: when true the Dramaturgy strategy bypasses Visual OS and uses the legacy
     // generator directly. It is NOT the condition for normal operation.
-    forceLegacyDramaturgy: true
+    forceLegacyDramaturgy: false
 };

@@ -137,6 +137,7 @@ The visual mode select in `src/main.ts` exposes the built-in values; `cosmic-wor
 - `wormholeWarp` — dust spiral-twist amount.
 - `wormholeCurve` — master scale for the event-driven tunnel curvature (`0` forces a straight tube regardless of preset content); it is set per preset in `temporal1.json`..`temporal5.json`.
 - `wormholeRing` — blends the natural dispersed depth toward concentric rings (`0` = random, `1` = rings).
+- `wormholeContinuity` — scales projected streak length independently of ring alignment (`0` = dots, `1` = default trails, `2` = extended trails).
 - `wormholeStarfield`, `wormholeGalaxy` — general, preset-independent masters for the background star density and the deep galaxy layer. They are intentionally not written by the bundled presets so they stay global across preset changes.
 
 ## Render Boundary And Performance Rules

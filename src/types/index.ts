@@ -120,6 +120,7 @@ export interface VisualTuningConfig {
     wormholeWarp: number;
     wormholeCurve: number;
     wormholeRing: number;
+    wormholeContinuity: number;
     wormholeStarfield: number;
     wormholeGalaxy: number;
     wormholeSkybox: number;

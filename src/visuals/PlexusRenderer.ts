@@ -12,6 +12,7 @@ import { VisualDirectorFSM } from './VisualDirectorFSM';
 import { resolveSemanticState } from '../semantics';
 import type { StyleRegistry } from './StyleRegistry';
 import type { SemanticRuntimeAdapter } from '../semantics';
+import { ShockwaveLifecycle } from './ShockwaveLifecycle';
 
 export class SemanticRendererBridge {
     private semanticAdapter?: SemanticRuntimeAdapter;
@@ -39,7 +40,8 @@ export function startPlexusRenderer(
 ) {
     new p5((p: p5) => {
         let particles: Particle[] = [];
-        let shockwaves: Shockwave[] = [];
+        const shockwaveLifecycle = new ShockwaveLifecycle<Shockwave>(State.visualMode);
+        const shockwaves = shockwaveLifecycle.items;
         let currentEventIdx = 0;
         let currentCueIdx = 0;
         let currentTargetFrameRate = 60;
@@ -88,6 +90,8 @@ export function startPlexusRenderer(
                 currentTargetFrameRate = targetFrameRate;
                 p.frameRate(targetFrameRate);
             }
+
+            shockwaveLifecycle.syncMode(State.visualMode);
 
             const fadeStep = 1 / targetFrameRate;
             if (State.isPlaying || State.isExporting) {
@@ -149,7 +153,9 @@ export function startPlexusRenderer(
                     let ev = State.events[currentEventIdx];
                     State.beatDecay = 1.0;
                     if (ev.type === 2) State.denseImpactFlash = 1.0;
-                    shockwaves.push(new Shockwave(p, tuneAudioValue(ev.intensity, State.visualTuning), State.currentFrame.state, ev.type));
+                    shockwaveLifecycle.emit(State.visualMode, () =>
+                        new Shockwave(p, tuneAudioValue(ev.intensity, State.visualTuning), State.currentFrame.state, ev.type)
+                    );
                     currentEventIdx++;
                 }
 
@@ -159,7 +165,9 @@ export function startPlexusRenderer(
                     State.cueDecay = Math.max(State.cueDecay, cueIntensity);
                     State.activeCueKind = cue.kind;
                     State.activePatternId = cue.kind === 'pattern' ? cue.patternId || null : State.activePatternId;
-                    shockwaves.push(new Shockwave(p, cueIntensity, State.currentFrame.state, cueTypeToShockwave(cue.kind)));
+                    shockwaveLifecycle.emit(State.visualMode, () =>
+                        new Shockwave(p, cueIntensity, State.currentFrame.state, cueTypeToShockwave(cue.kind))
+                    );
                     currentCueIdx++;
                 }
             } else {

@@ -5,6 +5,7 @@ import type { Particle } from './Particle';
 import type { Shockwave } from './Shockwave';
 import type { VisualRendererBackend } from './RendererBackend';
 import type { VisualIdentity } from './VisualIdentity';
+import { wrapDepth } from './WormholeDepth';
 
 const TWO_PI = Math.PI * 2;
 const BANDS = 24;
@@ -307,6 +308,7 @@ class CosmicWormholeIdentity implements VisualIdentity {
         // concentric depth rings (the look the wrap bug used to force — now an opt-in parameter).
         const ring = tuning.wormholeRing;
         const ringStep = maxZ / DEPTH_LAYERS;
+        const trailDepth = vz * tuning.wormholeContinuity;
 
         for (let i = 0; i < this.pool.length; i++) {
             const grain = this.pool[i];
@@ -314,10 +316,10 @@ class CosmicWormholeIdentity implements VisualIdentity {
             // Stream toward the camera; recycle past the lens back to the horizon. Modular wrap
             // (NOT a reset to exactly maxZ) preserves each grain's sub-step depth phase, so the
             // random spread never collapses into quantized rings after a full play-through + seek.
-            grain.z -= vz;
-            if (grain.z <= 0) grain.z = grain.z % maxZ + maxZ;
+            grain.z = wrapDepth(grain.z - vz, maxZ);
             const z = ring > 0 ? ringBlend(grain.z, ringStep, ring) : grain.z;
-            const prevZ = ring > 0 ? ringBlend(grain.z + vz, ringStep, ring) : grain.z + vz;
+            const previousDepth = wrapDepth(grain.z + trailDepth, maxZ);
+            const prevZ = ring > 0 ? ringBlend(previousDepth, ringStep, ring) : previousDepth;
 
             // Spiral warp accumulates with depth; tension + orbit twist the whole tube.
             const thetaNow = grain.theta + z * warpK;
