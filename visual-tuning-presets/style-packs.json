@@ -43,6 +43,15 @@
         "drop-long": ["drop.primary", "drop.counter", "drop.release", "peak.overdrive", "transition.slice"],
         "breakdown-long": ["break.glow", "break.sparse", "verse.motion", "transition.slice"],
         "peak-sustain": ["peak.overdrive", "drop.counter", "drop.release", "drop.primary", "transition.slice"]
+      },
+      "movementVocabulary": {
+        "intro-establish": ["pulse", "bloom", "orbit", "fade"],
+        "groove-sustain": ["drive", "pulse", "orbit", "echo"],
+        "buildup-ramp": ["collapse", "expand", "tunnel"],
+        "drop-long": ["drive", "slice", "fragment", "lock"],
+        "breakdown-long": ["fade", "bloom", "ripple", "orbit"],
+        "peak-sustain": ["drive", "swarm", "tunnel", "echo"],
+        "outro-dissolve": ["fade", "echo", "bloom"]
       }
     },
     {
@@ -102,7 +111,8 @@
           "behaviour": { "volatility": 0.4, "energy": 0.15 },
           "variantPairs": {
             "drop-long": [{ "id": "drop-strobe-stutter", "primary": "drop.primary", "secondary": "transition.slice", "release": "drop.release", "alternation": "A-B-A", "minSegmentSec": 4, "maxSegmentSec": 10, "intensityShape": "pulse" }]
-          }
+          },
+          "movementVocabulary": { "drop-long": ["slice", "fragment", "lock", "pulse"] }
         }
       },
       "targetMap": {
@@ -172,6 +182,11 @@
       },
       "vocabulary": { "palette": "earth", "lineCharacter": 0.2, "glowCharacter": 0.8, "grain": 0.5, "contrast": 0.3 },
       "behaviour": { "energy": -0.15, "density": -0.05, "motion": -0.15, "volatility": -0.2, "cohesion": 0.25 },
+      "movementVocabulary": {
+        "drop-long": ["bloom", "expand", "ripple", "orbit"],
+        "breakdown-long": ["fade", "bloom", "ripple", "orbit"],
+        "peak-sustain": ["bloom", "swarm", "expand", "echo"]
+      },
       "targetMap": {
         "intro": { "preset": "default.json", "morphCurve": "easeInOut" },
         "groove": { "preset": "temporal2.json", "morphCurve": "easeInOut" },
@@ -210,6 +225,11 @@
       },
       "vocabulary": { "palette": "neon", "lineCharacter": 0.95, "glowCharacter": 0.7, "grain": 0.6, "contrast": 1.0 },
       "behaviour": { "energy": 0.15, "density": 0.1, "motion": 0.05, "volatility": 0.4, "cohesion": -0.2 },
+      "movementVocabulary": {
+        "drop-long": ["drive", "slice", "fragment", "lock"],
+        "breakdown-long": ["fade", "fragment", "ripple", "lock"],
+        "peak-sustain": ["drive", "swarm", "fragment", "slice"]
+      },
       "substyles": {
         "glitch": {
           "label": "Cyberpunk Glitch",
@@ -262,6 +282,11 @@
       },
       "vocabulary": { "palette": "spectral", "lineCharacter": 0.4, "glowCharacter": 0.9, "grain": 0.3, "contrast": 0.6 },
       "behaviour": { "energy": 0.15, "density": 0.05, "motion": 0.3, "volatility": 0.1, "cohesion": 0.05 },
+      "movementVocabulary": {
+        "drop-long": ["tunnel", "orbit", "drive", "swarm"],
+        "breakdown-long": ["orbit", "ripple", "fade", "echo"],
+        "peak-sustain": ["tunnel", "swarm", "drive", "echo"]
+      },
       "targetMap": {
         "intro": { "preset": "temporal2.json", "morphCurve": "easeInOut" },
         "groove": { "preset": "temporal3.json" },
