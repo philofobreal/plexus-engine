@@ -23,7 +23,26 @@
         "peak": { "preset": "temporal4.json", "morphCurve": "exponential" },
         "breakdown": { "preset": "temporal5.json" },
         "outro": { "preset": "default.json", "morphCurve": "easeInOut" },
-        "default": { "preset": "default.json", "morphCurve": "easeInOut" }
+        "default": { "preset": "default.json", "morphCurve": "easeInOut" },
+
+        "drop.primary": { "preset": "vos-drop-primary.json", "morphCurve": "exponential" },
+        "drop.counter": { "preset": "vos-drop-counter.json", "morphCurve": "exponential" },
+        "drop.release": { "preset": "vos-drop-release.json", "morphCurve": "easeInOut" },
+        "build.compress": { "preset": "vos-build-compress.json", "morphCurve": "easeInOut" },
+        "build.escalate": { "preset": "vos-build-escalate.json", "morphCurve": "easeInOut" },
+        "break.sparse": { "preset": "vos-break-sparse.json", "morphCurve": "easeInOut" },
+        "break.glow": { "preset": "vos-break-glow.json", "morphCurve": "easeInOut" },
+        "verse.primary": { "preset": "vos-verse-primary.json" },
+        "verse.motion": { "preset": "vos-verse-motion.json" },
+        "peak.overdrive": { "preset": "vos-peak-overdrive.json", "morphCurve": "exponential" },
+        "transition.slice": { "preset": "vos-transition-slice.json", "morphCurve": "linear" },
+        "outro.dissolve": { "preset": "vos-outro-dissolve.json", "morphCurve": "easeInOut" }
+      },
+      "behaviourVocabulary": {
+        "groove-sustain": ["verse.primary", "verse.motion", "drop.counter", "break.glow"],
+        "drop-long": ["drop.primary", "drop.counter", "drop.release", "peak.overdrive", "transition.slice"],
+        "breakdown-long": ["break.glow", "break.sparse", "verse.motion", "transition.slice"],
+        "peak-sustain": ["peak.overdrive", "drop.counter", "drop.release", "drop.primary", "transition.slice"]
       }
     },
     {
@@ -49,6 +68,19 @@
         "breakdown": { "preset": "temporal5.json" },
         "outro": { "preset": "default.json", "morphCurve": "easeInOut" },
         "default": { "preset": "default.json", "morphCurve": "easeInOut" }
+      },
+      "variantPairs": {
+        "intro-establish": [{ "id": "intro-emerge", "primary": "verse.primary", "secondary": "verse.motion", "alternation": "A-B", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "ramp" }],
+        "verse-long": [{ "id": "verse-weave", "primary": "verse.primary", "secondary": "verse.motion", "alternation": "A-B", "minSegmentSec": 8, "maxSegmentSec": 14, "intensityShape": "flat" }],
+        "groove-sustain": [{ "id": "groove-weave", "primary": "verse.primary", "secondary": "verse.motion", "alternation": "A-B-A", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "wave" }],
+        "buildup-ramp": [{ "id": "build-escalation", "primary": "build.compress", "secondary": "build.escalate", "alternation": "sparse-dense", "minSegmentSec": 4, "maxSegmentSec": 10, "intensityShape": "ramp" }],
+        "drop-short": [{ "id": "drop-hit", "primary": "drop.primary", "secondary": "drop.counter", "alternation": "A-B", "minSegmentSec": 4, "maxSegmentSec": 8, "intensityShape": "pulse" }],
+        "drop-long": [{ "id": "drop-drive-counterpulse", "primary": "drop.primary", "secondary": "drop.counter", "release": "drop.release", "alternation": "call-response", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "pulse" }],
+        "drop-after-build": [{ "id": "drop-from-build", "primary": "drop.primary", "secondary": "drop.counter", "release": "drop.release", "alternation": "compress-release", "minSegmentSec": 6, "maxSegmentSec": 12, "intensityShape": "release" }],
+        "breakdown-long": [{ "id": "break-breath", "primary": "break.sparse", "secondary": "break.glow", "alternation": "A-B-A", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "wave" }],
+        "peak-sustain": [{ "id": "peak-overdrive-pulse", "primary": "peak.overdrive", "secondary": "drop.counter", "release": "drop.release", "alternation": "call-response", "minSegmentSec": 6, "maxSegmentSec": 12, "intensityShape": "pulse" }],
+        "transition-release": [{ "id": "transition-slice-release", "primary": "transition.slice", "secondary": "break.glow", "alternation": "compress-release", "minSegmentSec": 4, "maxSegmentSec": 8, "intensityShape": "release" }],
+        "outro-dissolve": [{ "id": "outro-fade", "primary": "outro.dissolve", "secondary": "break.glow", "alternation": "A-B", "minSegmentSec": 10, "maxSegmentSec": 20, "intensityShape": "release" }]
       }
     },
     {
@@ -67,7 +99,10 @@
         "strobe": {
           "label": "Dark Techno Strobe",
           "capabilities": { "preferred": ["fragment-cloud", "grid-scan"] },
-          "behaviour": { "volatility": 0.4, "energy": 0.15 }
+          "behaviour": { "volatility": 0.4, "energy": 0.15 },
+          "variantPairs": {
+            "drop-long": [{ "id": "drop-strobe-stutter", "primary": "drop.primary", "secondary": "transition.slice", "release": "drop.release", "alternation": "A-B-A", "minSegmentSec": 4, "maxSegmentSec": 10, "intensityShape": "pulse" }]
+          }
         }
       },
       "targetMap": {
@@ -81,6 +116,19 @@
         "breakdown": { "preset": "temporal5.json" },
         "outro": { "preset": "default.json", "morphCurve": "easeInOut" },
         "default": { "preset": "temporal1.json", "morphCurve": "easeInOut" }
+      },
+      "variantPairs": {
+        "intro-establish": [{ "id": "intro-emerge", "primary": "verse.primary", "secondary": "verse.motion", "alternation": "A-B", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "ramp" }],
+        "verse-long": [{ "id": "verse-weave", "primary": "verse.primary", "secondary": "verse.motion", "alternation": "A-B", "minSegmentSec": 8, "maxSegmentSec": 14, "intensityShape": "flat" }],
+        "groove-sustain": [{ "id": "groove-grid-pulse", "primary": "verse.motion", "secondary": "drop.counter", "alternation": "A-B-A", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "pulse" }],
+        "buildup-ramp": [{ "id": "build-escalation", "primary": "build.compress", "secondary": "build.escalate", "alternation": "sparse-dense", "minSegmentSec": 4, "maxSegmentSec": 10, "intensityShape": "ramp" }],
+        "drop-short": [{ "id": "drop-hit", "primary": "drop.primary", "secondary": "drop.counter", "alternation": "A-B", "minSegmentSec": 4, "maxSegmentSec": 8, "intensityShape": "pulse" }],
+        "drop-long": [{ "id": "drop-drive-counterpulse", "primary": "drop.primary", "secondary": "drop.counter", "release": "drop.release", "alternation": "call-response", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "pulse" }],
+        "drop-after-build": [{ "id": "drop-from-build", "primary": "drop.primary", "secondary": "drop.counter", "release": "drop.release", "alternation": "compress-release", "minSegmentSec": 6, "maxSegmentSec": 12, "intensityShape": "release" }],
+        "breakdown-long": [{ "id": "break-breath", "primary": "break.sparse", "secondary": "break.glow", "alternation": "A-B-A", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "wave" }],
+        "peak-sustain": [{ "id": "peak-overdrive-pulse", "primary": "peak.overdrive", "secondary": "drop.counter", "release": "drop.release", "alternation": "call-response", "minSegmentSec": 6, "maxSegmentSec": 12, "intensityShape": "pulse" }],
+        "transition-release": [{ "id": "transition-slice-release", "primary": "transition.slice", "secondary": "break.glow", "alternation": "compress-release", "minSegmentSec": 4, "maxSegmentSec": 8, "intensityShape": "release" }],
+        "outro-dissolve": [{ "id": "outro-fade", "primary": "outro.dissolve", "secondary": "break.glow", "alternation": "A-B", "minSegmentSec": 10, "maxSegmentSec": 20, "intensityShape": "release" }]
       }
     },
     {
@@ -106,7 +154,9 @@
         "peak": { "preset": "temporal3.json", "intensityScale": 0.9, "morphCurve": "exponential" },
         "breakdown": { "preset": "temporal5.json" },
         "outro": { "preset": "temporal5.json", "morphCurve": "easeInOut" },
-        "default": { "preset": "temporal5.json", "morphCurve": "easeInOut" }
+        "default": { "preset": "temporal5.json", "morphCurve": "easeInOut" },
+
+        "break.sparse": { "preset": "vos-break-sparse.json", "intensityScale": 0.85, "morphCurve": "easeInOut" }
       }
     },
     {
@@ -133,6 +183,18 @@
         "breakdown": { "preset": "temporal5.json", "morphCurve": "easeInOut" },
         "outro": { "preset": "default.json", "morphCurve": "easeInOut" },
         "default": { "preset": "temporal2.json", "morphCurve": "easeInOut" }
+      },
+      "variantPairs": {
+        "intro-establish": [{ "id": "intro-emerge", "primary": "verse.primary", "secondary": "break.glow", "alternation": "A-B", "minSegmentSec": 10, "maxSegmentSec": 18, "intensityShape": "ramp" }],
+        "verse-long": [{ "id": "verse-weave", "primary": "verse.primary", "secondary": "verse.motion", "alternation": "A-B", "minSegmentSec": 10, "maxSegmentSec": 18, "intensityShape": "flat" }],
+        "groove-sustain": [{ "id": "groove-drift", "primary": "verse.primary", "secondary": "break.glow", "alternation": "A-B-A", "minSegmentSec": 10, "maxSegmentSec": 20, "intensityShape": "wave" }],
+        "buildup-ramp": [{ "id": "build-swell", "primary": "build.compress", "secondary": "build.escalate", "alternation": "sparse-dense", "minSegmentSec": 6, "maxSegmentSec": 12, "intensityShape": "ramp" }],
+        "drop-long": [{ "id": "drop-bloom", "primary": "drop.primary", "secondary": "drop.release", "release": "drop.release", "alternation": "call-response", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "wave" }],
+        "drop-after-build": [{ "id": "drop-bloom-release", "primary": "drop.primary", "secondary": "drop.release", "release": "drop.release", "alternation": "compress-release", "minSegmentSec": 8, "maxSegmentSec": 14, "intensityShape": "release" }],
+        "breakdown-long": [{ "id": "break-glow-breath", "primary": "break.glow", "secondary": "break.sparse", "alternation": "A-B-A", "minSegmentSec": 10, "maxSegmentSec": 18, "intensityShape": "wave" }],
+        "peak-sustain": [{ "id": "peak-bloom", "primary": "peak.overdrive", "secondary": "drop.release", "release": "drop.release", "alternation": "call-response", "minSegmentSec": 8, "maxSegmentSec": 14, "intensityShape": "wave" }],
+        "transition-release": [{ "id": "transition-soft", "primary": "break.glow", "secondary": "break.sparse", "alternation": "compress-release", "minSegmentSec": 6, "maxSegmentSec": 10, "intensityShape": "release" }],
+        "outro-dissolve": [{ "id": "outro-fade", "primary": "outro.dissolve", "secondary": "break.glow", "alternation": "A-B", "minSegmentSec": 12, "maxSegmentSec": 22, "intensityShape": "release" }]
       }
     },
     {
@@ -166,7 +228,25 @@
         "peak": { "preset": "temporal4.json", "intensityScale": 1.2, "morphCurve": "exponential" },
         "breakdown": { "preset": "temporal3.json" },
         "outro": { "preset": "temporal2.json", "morphCurve": "easeInOut" },
-        "default": { "preset": "temporal1.json" }
+        "default": { "preset": "temporal1.json" },
+
+        "drop.counter": { "preset": "vos-peak-overdrive.json", "morphCurve": "exponential" }
+      },
+      "variantPairs": {
+        "intro-establish": [{ "id": "intro-emerge", "primary": "verse.motion", "secondary": "transition.slice", "alternation": "A-B", "minSegmentSec": 8, "maxSegmentSec": 14, "intensityShape": "ramp" }],
+        "verse-long": [{ "id": "verse-weave", "primary": "verse.primary", "secondary": "verse.motion", "alternation": "A-B", "minSegmentSec": 6, "maxSegmentSec": 12, "intensityShape": "flat" }],
+        "groove-sustain": [{ "id": "groove-stutter", "primary": "verse.motion", "secondary": "transition.slice", "alternation": "A-B-A", "minSegmentSec": 6, "maxSegmentSec": 14, "intensityShape": "pulse" }],
+        "buildup-ramp": [{ "id": "build-escalation", "primary": "build.compress", "secondary": "build.escalate", "alternation": "sparse-dense", "minSegmentSec": 4, "maxSegmentSec": 9, "intensityShape": "ramp" }],
+        "drop-short": [{ "id": "drop-hit", "primary": "drop.primary", "secondary": "drop.counter", "alternation": "A-B", "minSegmentSec": 4, "maxSegmentSec": 8, "intensityShape": "pulse" }],
+        "drop-long": [
+          { "id": "drop-drive-counterpulse", "primary": "drop.primary", "secondary": "drop.counter", "release": "drop.release", "alternation": "call-response", "minSegmentSec": 6, "maxSegmentSec": 14, "intensityShape": "pulse" },
+          { "id": "drop-neon-stutter", "primary": "drop.primary", "secondary": "transition.slice", "release": "drop.release", "alternation": "A-B-A", "minSegmentSec": 6, "maxSegmentSec": 12, "intensityShape": "pulse" }
+        ],
+        "drop-after-build": [{ "id": "drop-from-build", "primary": "drop.primary", "secondary": "drop.counter", "release": "drop.release", "alternation": "compress-release", "minSegmentSec": 5, "maxSegmentSec": 11, "intensityShape": "release" }],
+        "breakdown-long": [{ "id": "break-glitch-breath", "primary": "break.sparse", "secondary": "transition.slice", "alternation": "A-B-A", "minSegmentSec": 6, "maxSegmentSec": 14, "intensityShape": "wave" }],
+        "peak-sustain": [{ "id": "peak-overdrive-pulse", "primary": "peak.overdrive", "secondary": "transition.slice", "release": "drop.release", "alternation": "call-response", "minSegmentSec": 5, "maxSegmentSec": 11, "intensityShape": "pulse" }],
+        "transition-release": [{ "id": "transition-slice-release", "primary": "transition.slice", "secondary": "break.glow", "alternation": "compress-release", "minSegmentSec": 4, "maxSegmentSec": 8, "intensityShape": "release" }],
+        "outro-dissolve": [{ "id": "outro-fade", "primary": "outro.dissolve", "secondary": "transition.slice", "alternation": "A-B", "minSegmentSec": 10, "maxSegmentSec": 18, "intensityShape": "release" }]
       }
     },
     {
@@ -193,6 +273,18 @@
         "breakdown": { "preset": "temporal5.json" },
         "outro": { "preset": "default.json", "morphCurve": "easeInOut" },
         "default": { "preset": "temporal3.json" }
+      },
+      "variantPairs": {
+        "intro-establish": [{ "id": "intro-emerge", "primary": "verse.motion", "secondary": "break.glow", "alternation": "A-B", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "ramp" }],
+        "verse-long": [{ "id": "verse-weave", "primary": "verse.primary", "secondary": "verse.motion", "alternation": "A-B", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "flat" }],
+        "groove-sustain": [{ "id": "groove-drift", "primary": "verse.motion", "secondary": "drop.counter", "alternation": "A-B-A", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "wave" }],
+        "buildup-ramp": [{ "id": "build-escalation", "primary": "build.compress", "secondary": "build.escalate", "alternation": "sparse-dense", "minSegmentSec": 5, "maxSegmentSec": 11, "intensityShape": "ramp" }],
+        "drop-long": [{ "id": "drop-flight", "primary": "drop.primary", "secondary": "drop.counter", "release": "drop.release", "alternation": "call-response", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "pulse" }],
+        "drop-after-build": [{ "id": "drop-flight-release", "primary": "drop.primary", "secondary": "drop.counter", "release": "drop.release", "alternation": "compress-release", "minSegmentSec": 6, "maxSegmentSec": 12, "intensityShape": "release" }],
+        "breakdown-long": [{ "id": "break-drift", "primary": "break.glow", "secondary": "break.sparse", "alternation": "A-B-A", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "wave" }],
+        "peak-sustain": [{ "id": "peak-warp", "primary": "peak.overdrive", "secondary": "drop.counter", "release": "drop.release", "alternation": "call-response", "minSegmentSec": 6, "maxSegmentSec": 12, "intensityShape": "pulse" }],
+        "transition-release": [{ "id": "transition-warp", "primary": "transition.slice", "secondary": "break.glow", "alternation": "compress-release", "minSegmentSec": 4, "maxSegmentSec": 9, "intensityShape": "release" }],
+        "outro-dissolve": [{ "id": "outro-fade", "primary": "outro.dissolve", "secondary": "break.glow", "alternation": "A-B", "minSegmentSec": 10, "maxSegmentSec": 20, "intensityShape": "release" }]
       }
     },
     {
@@ -218,6 +310,19 @@
         "breakdown": { "preset": "temporal5.json" },
         "outro": { "preset": "default.json", "morphCurve": "easeInOut" },
         "default": { "preset": "default.json", "morphCurve": "easeInOut" }
+      },
+      "variantPairs": {
+        "intro-establish": [{ "id": "intro-emerge", "primary": "verse.primary", "secondary": "verse.motion", "alternation": "A-B", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "ramp" }],
+        "verse-long": [{ "id": "verse-weave", "primary": "verse.primary", "secondary": "verse.motion", "alternation": "A-B", "minSegmentSec": 8, "maxSegmentSec": 14, "intensityShape": "flat" }],
+        "groove-sustain": [{ "id": "groove-weave", "primary": "verse.primary", "secondary": "verse.motion", "alternation": "A-B-A", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "wave" }],
+        "buildup-ramp": [{ "id": "build-escalation", "primary": "build.compress", "secondary": "build.escalate", "alternation": "sparse-dense", "minSegmentSec": 4, "maxSegmentSec": 10, "intensityShape": "ramp" }],
+        "drop-short": [{ "id": "drop-hit", "primary": "drop.primary", "secondary": "drop.counter", "alternation": "A-B", "minSegmentSec": 4, "maxSegmentSec": 8, "intensityShape": "pulse" }],
+        "drop-long": [{ "id": "drop-drive-counterpulse", "primary": "drop.primary", "secondary": "drop.counter", "release": "drop.release", "alternation": "call-response", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "pulse" }],
+        "drop-after-build": [{ "id": "drop-from-build", "primary": "drop.primary", "secondary": "drop.counter", "release": "drop.release", "alternation": "compress-release", "minSegmentSec": 6, "maxSegmentSec": 12, "intensityShape": "release" }],
+        "breakdown-long": [{ "id": "break-breath", "primary": "break.sparse", "secondary": "break.glow", "alternation": "A-B-A", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "wave" }],
+        "peak-sustain": [{ "id": "peak-overdrive-pulse", "primary": "peak.overdrive", "secondary": "drop.counter", "release": "drop.release", "alternation": "call-response", "minSegmentSec": 6, "maxSegmentSec": 12, "intensityShape": "pulse" }],
+        "transition-release": [{ "id": "transition-slice-release", "primary": "transition.slice", "secondary": "break.glow", "alternation": "compress-release", "minSegmentSec": 4, "maxSegmentSec": 8, "intensityShape": "release" }],
+        "outro-dissolve": [{ "id": "outro-fade", "primary": "outro.dissolve", "secondary": "break.glow", "alternation": "A-B", "minSegmentSec": 10, "maxSegmentSec": 20, "intensityShape": "release" }]
       }
     }
   ]
