@@ -146,6 +146,51 @@ test('parse clamps confidence into the 0..1 range but leaves intensity free', ()
   assert.equal(result.plan.points[0].intensity, 2.5);
 });
 
+test('serialize/parse round-trips Visual OS meta and normalizes behaviour', () => {
+  const meta = {
+    motif: 'tunnel-drive', palette: 'neon', evolutionPhase: 'peak',
+    sceneId: 'vos:cyberpunk:2', stylePack: 'cyberpunk', substyle: 'glitch',
+    targetStateReference: 'cyberpunk#glitch:peak',
+    behaviour: { energy: 1.4, density: 0.5, motion: 0.3, volatility: -0.2, cohesion: 0.6 }
+  };
+  const result = parseDramaturgyPlan(serializeDramaturgyPlan(makePlan([makePoint({ meta })])));
+  assert.ok(result.ok);
+  const out = result.plan.points[0].meta;
+  assert.equal(out.motif, 'tunnel-drive');
+  assert.equal(out.stylePack, 'cyberpunk');
+  assert.equal(out.substyle, 'glitch');
+  assert.equal(out.evolutionPhase, 'peak');
+  assert.equal(out.targetStateReference, 'cyberpunk#glitch:peak');
+  // Behaviour fields are clamped into 0..1.
+  assert.equal(out.behaviour.energy, 1);
+  assert.equal(out.behaviour.volatility, 0);
+});
+
+test('meta sub-fields are enum-validated: out-of-vocabulary motif/palette/phase are dropped', () => {
+  const meta = {
+    motif: 'not-a-motif', palette: 'ultraviolet', evolutionPhase: 'apocalypse',
+    sceneId: 'vos:cyberpunk:1', stylePack: 'cyberpunk'
+  };
+  const result = parseDramaturgyPlan(JSON.stringify(makePlan([makePoint({ meta })])));
+  assert.ok(result.ok);
+  const out = result.plan.points[0].meta;
+  assert.ok(out, 'valid free-string fields keep meta alive');
+  assert.equal('motif' in out, false, 'invalid motif dropped');
+  assert.equal('palette' in out, false, 'invalid palette dropped');
+  assert.equal('evolutionPhase' in out, false, 'invalid phase dropped');
+  assert.equal(out.sceneId, 'vos:cyberpunk:1');
+  assert.equal(out.stylePack, 'cyberpunk');
+});
+
+test('malformed meta is dropped without rejecting the point; legacy points keep no meta', () => {
+  const withBadMeta = parseDramaturgyPlan(JSON.stringify(makePlan([makePoint({ meta: 'nope' })])));
+  assert.ok(withBadMeta.ok);
+  assert.equal('meta' in withBadMeta.plan.points[0], false);
+  const legacy = parseDramaturgyPlan(JSON.stringify(makePlan([makePoint()])));
+  assert.ok(legacy.ok);
+  assert.equal('meta' in legacy.plan.points[0], false);
+});
+
 test('serialize coerces an invalid duration to null and tolerates a malformed plan', () => {
   const text = serializeDramaturgyPlan({ version: 1, source: 'edited', points: [] }, Number.NaN);
   const envelope = JSON.parse(text);

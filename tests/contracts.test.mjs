@@ -213,13 +213,15 @@ test('performance automation contracts and state are exposed and reset', () => {
   assert.match(audio, /State\.editedPerformancePlan = null/);
   assert.match(ui, /import \{ generatePerformancePlan.*\} from '\.\.\/automation\/performancePlanGenerator'/);
   assert.match(ui, /State\.availablePresets = presets/);
-  // Plan generation is routed through generatePlan(): the legacy generator stays wired with
-  // the same inputs, while the ADR-005 Visual OS pipeline is gated behind USE_VISUAL_OS_V2
-  // with a legacy fallback.
+  // Plan generation is routed through generatePlan(): the ADR-005 Visual OS pipeline is the
+  // DEFAULT (runs first) and the legacy generator is the fallback, wired unchanged with the
+  // same inputs. The pure shouldUseVisualOs() helper owns the strategy/override decision.
+  assert.match(ui, /import \{ shouldUseVisualOs, stylePackForVisualMode \} from '\.\.\/automation\/generatorRouting'/);
   assert.match(ui, /await this\.generatePlan\(\)/);
-  assert.match(ui, /generatePerformancePlan\(State\.trackAnalysis, State\.availablePresets, State\.duration,/);
-  assert.match(ui, /featureFlags\.USE_VISUAL_OS_V2 && strategy === 'visual-os'/);
+  assert.match(ui, /shouldUseVisualOs\(strategy, featureFlags\.forceLegacyDramaturgy\)/);
   assert.match(ui, /generateVisualOsPerformancePlan\(State\.trackAnalysis,/);
+  assert.match(ui, /if \(v2 && v2\.points\.length > 0\) return v2;/);
+  assert.match(ui, /generatePerformancePlan\(State\.trackAnalysis, State\.availablePresets, State\.duration,/);
   assert.match(ui, /State\.performancePlan = plan/);
   assert.match(ui, /State\.editedPerformancePlan = JSON\.parse\(JSON\.stringify\(plan\)\)/);
   assert.match(ui, /performancePlan: State\.editedPerformancePlan \?\? State\.performancePlan/);

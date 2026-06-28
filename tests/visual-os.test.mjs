@@ -534,7 +534,115 @@ test('capability weights are data-driven (override flips preferred vs supported)
   assert.ok(grid.capability > bloom.capability, 'supported outweighs preferred when the pack says so');
 });
 
-test('feature flag USE_VISUAL_OS_V2 defaults to false (legacy path unchanged)', () => {
+test('Visual OS is the default generator: forceLegacyDramaturgy defaults to false and the old flag is gone', () => {
   const { featureFlags } = load('config/featureFlags.ts');
-  assert.equal(featureFlags.USE_VISUAL_OS_V2, false);
+  assert.equal(featureFlags.forceLegacyDramaturgy, false);
+  assert.equal('USE_VISUAL_OS_V2' in featureFlags, false);
+});
+
+// -- Generator routing (UI flow, via the pure helper DashboardUI.generatePlan calls) ----------
+
+test('generator routing is an allowlist: only Dramaturgy runs Visual OS; everything else is legacy', () => {
+  const { shouldUseVisualOs } = load('automation/generatorRouting.ts');
+  assert.equal(shouldUseVisualOs('dramaturgy', false), true, 'Dramaturgy -> Visual OS');
+  assert.equal(shouldUseVisualOs('strict', false), false, 'Strict -> legacy');
+  assert.equal(shouldUseVisualOs('hero', false), false, 'Hero -> legacy');
+  assert.equal(shouldUseVisualOs('dramaturgy', true), false, 'debug override -> legacy');
+  // An unknown / typo / future strategy must NOT accidentally fall into Visual OS.
+  assert.equal(shouldUseVisualOs('visual-os', false), false, 'unknown strategy -> legacy');
+  assert.equal(shouldUseVisualOs('', false), false, 'empty strategy -> legacy');
+});
+
+test('every Visual Mode maps to a real, resolvable style pack', () => {
+  const { stylePackForVisualMode, VISUAL_MODE_TO_STYLE_PACK } = load('automation/generatorRouting.ts');
+  const { resolveStylePack } = load('automation/styleTranslator.ts');
+  const packIds = new Set(STYLE_PACKS.packs.map((p) => p.id));
+  for (const mode of Object.keys(VISUAL_MODE_TO_STYLE_PACK)) {
+    const packId = stylePackForVisualMode(mode);
+    assert.ok(packId && packIds.has(packId), `visual mode '${mode}' -> known pack`);
+    assert.equal(resolveStylePack(STYLE_PACKS, packId).id, packId);
+  }
+  // Visual mode and its default pack share an id except 'temporal' -> 'base-temporal'.
+  assert.equal(stylePackForVisualMode('cyberpunk'), 'cyberpunk');
+  assert.equal(stylePackForVisualMode('temporal'), 'base-temporal');
+  assert.equal(stylePackForVisualMode('not-a-mode'), undefined);
+});
+
+// -- Full style-pack coverage (Phase 4) ---------------------------------------
+
+const MAIN_PACKS = ['base-temporal', 'classic', 'dark-techno', 'organic-ambient', 'cyberpunk', 'cosmic-wormhole', 'hero'];
+const NARRATIVES = ['intro', 'groove', 'tension', 'build', 'fake-drop', 'release', 'peak', 'breakdown', 'outro'];
+
+test('every shipped style pack declares an explicit, full targetMap (not relying on inheritance)', () => {
+  for (const pack of STYLE_PACKS.packs) {
+    const map = pack.targetMap ?? {};
+    for (const key of [...NARRATIVES, 'default']) {
+      const ref = map[key];
+      assert.ok(ref && typeof ref.preset === 'string' && /\.json$/i.test(ref.preset), `${pack.id} raw targetMap missing '${key}'`);
+    }
+  }
+});
+
+test('every main style pack resolves and covers all narratives plus a sparse default target', () => {
+  const { resolveStylePack } = load('automation/styleTranslator.ts');
+  for (const id of MAIN_PACKS) {
+    const pack = resolveStylePack(STYLE_PACKS, id);
+    assert.equal(pack.id, id);
+    for (const n of NARRATIVES) {
+      const ref = pack.targetMap[n];
+      assert.ok(ref && typeof ref.preset === 'string' && /\.json$/i.test(ref.preset), `${id} missing targetMap[${n}]`);
+    }
+    assert.ok(pack.targetMap.default && /\.json$/i.test(pack.targetMap.default.preset), `${id} missing sparse default target`);
+  }
+});
+
+test('every main style pack produces a valid Visual OS plan with renderer-independent meta', () => {
+  const { buildVisualOsPerformancePlan } = load('automation/visualOsPlanner.ts');
+  for (const id of MAIN_PACKS) {
+    const plan = buildVisualOsPerformancePlan(makeTrackAnalysis(), STYLE_PACKS, { duration: 56, stylePackId: id });
+    assert.ok(plan && plan.points.length > 0, `plan for ${id}`);
+    for (const p of plan.points) {
+      assert.ok(/\.json$/i.test(p.preset), `${id} preset ${p.preset}`);
+      assert.ok(p.meta, `${id} point carries meta`);
+      assert.equal(typeof p.meta.motif, 'string');
+      assert.equal(p.meta.stylePack, id);
+      assert.equal(typeof p.meta.sceneId, 'string');
+      assert.equal(typeof p.meta.evolutionPhase, 'string');
+      for (const key of Object.keys(p.meta)) {
+        assert.ok(!/tuning|preset|opacity|particle|alpha/i.test(key), `meta leaked renderer concept: ${key}`);
+      }
+    }
+  }
+});
+
+test('planner returns null for an empty/broken packs file (legacy fallback)', () => {
+  const { buildVisualOsPerformancePlan } = load('automation/visualOsPlanner.ts');
+  assert.equal(buildVisualOsPerformancePlan(makeTrackAnalysis(), { version: 1, packs: [] }, { stylePackId: 'base-temporal' }), null);
+});
+
+// -- Activity level (Phase 3) -------------------------------------------------
+
+test('activity level changes waypoint density deterministically (macro < balanced < active)', () => {
+  const { resolveStylePack } = load('automation/styleTranslator.ts');
+  const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
+  const pack = resolveStylePack(STYLE_PACKS, 'base-temporal');
+  // A ~10s scene whose phase gaps straddle the balanced vs. active minimum spacing.
+  const scenePlan = { version: 1, stylePack: 'base-temporal', scenes: [makeScene(0, 10, 'build')] };
+  const count = (level) => adaptScenePlanToPerformancePlan(scenePlan, pack, { duration: 60, activityLevel: level }).points.length;
+  const macro = count('macro');
+  const balanced = count('balanced');
+  const active = count('active');
+  assert.equal(macro, 1, 'macro collapses the scene to a single anchor');
+  assert.ok(balanced > macro, `balanced (${balanced}) denser than macro (${macro})`);
+  assert.ok(active > balanced, `active (${active}) denser than balanced (${balanced})`);
+  assert.equal(count('active'), active, 'deterministic');
+});
+
+// -- Renderer Independence Contract: domain modules stay clean (Phase 8 #9) ----
+
+test('Visual OS domain modules contain no preset filenames or render/tuning concepts', () => {
+  const renderTokens = /\.json|particleEnergySpeed|particleBeatSpeed|opacity|lineAlpha|wormholeWarp|document\.|window\./;
+  for (const rel of ['automation/styleTranslator.ts', 'automation/choreographyDirector.ts', 'automation/variationEngine.ts']) {
+    assert.ok(!renderTokens.test(readSrc(rel)), `${rel} must stay renderer-independent`);
+  }
 });
