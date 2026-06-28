@@ -196,6 +196,9 @@ test('serialize/parse round-trips choreography meta fields', () => {
     automationSituation: 'drop-long',
     vocabularyId: 'drop-drive-counterpulse',
     variantRole: 'secondary',
+    movementGesture: 'slice',
+    longScenePhase: 'intensify',
+    globalArcRole: 'climax',
     targetStateReference: 'cyberpunk:drop.counter',
     motif: 'tunnel-drive',
     evolutionPhase: 'peak'
@@ -206,6 +209,9 @@ test('serialize/parse round-trips choreography meta fields', () => {
   assert.equal(out.automationSituation, 'drop-long');
   assert.equal(out.vocabularyId, 'drop-drive-counterpulse');
   assert.equal(out.variantRole, 'secondary');
+  assert.equal(out.movementGesture, 'slice');
+  assert.equal(out.longScenePhase, 'intensify');
+  assert.equal(out.globalArcRole, 'climax');
   assert.equal(out.targetStateReference, 'cyberpunk:drop.counter');
 });
 
@@ -218,12 +224,15 @@ test('new behaviour roles (sparse, focus) survive the round-trip', () => {
 });
 
 test('invalid choreography meta enums are dropped but free-string ids survive', () => {
-  const meta = { automationSituation: 'not-a-situation', variantRole: 'lead', vocabularyId: 'x' };
+  const meta = { automationSituation: 'not-a-situation', variantRole: 'lead', movementGesture: 'explode', longScenePhase: 'middle', globalArcRole: 'finale', vocabularyId: 'x' };
   const result = parseDramaturgyPlan(JSON.stringify(makePlan([makePoint({ meta })])));
   assert.ok(result.ok);
   const out = result.plan.points[0].meta;
   assert.equal('automationSituation' in out, false, 'invalid situation dropped');
   assert.equal('variantRole' in out, false, 'invalid role dropped');
+  assert.equal('movementGesture' in out, false, 'invalid movement gesture dropped');
+  assert.equal('longScenePhase' in out, false, 'invalid long scene phase dropped');
+  assert.equal('globalArcRole' in out, false, 'invalid global arc role dropped');
   assert.equal(out.vocabularyId, 'x', 'free-string vocabulary id kept');
 });
 

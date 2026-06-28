@@ -230,7 +230,7 @@ test('director output is deterministic across repeated runs', () => {
 
 test('Visual OS automation modules do not import runtime, renderer, or analyzer layers', () => {
   const forbidden = [/from '\.\.\/state/, /from '\.\.\/visuals/, /from '\.\.\/ui/, /from '\.\.\/audio/, /from '\.\.\/analyzer/, /from 'p5'/];
-  for (const rel of ['automation/variationEngine.ts', 'automation/choreographyDirector.ts', 'automation/styleTranslator.ts', 'automation/automationSituationClassifier.ts', 'automation/microChoreographyPlanner.ts']) {
+  for (const rel of ['automation/variationEngine.ts', 'automation/choreographyDirector.ts', 'automation/styleTranslator.ts', 'automation/automationSituationClassifier.ts', 'automation/globalVisualNarrative.ts', 'automation/longScenePlanner.ts', 'automation/movementGrammar.ts', 'automation/variationMemory.ts', 'automation/microChoreographyPlanner.ts']) {
     const src = readSrc(rel);
     for (const pattern of forbidden) {
       assert.ok(!pattern.test(src), `${rel} must not match ${pattern}`);
@@ -666,7 +666,7 @@ test('Active is a real density increase, not just a higher cap, on medium drops/
 
 test('Visual OS domain modules contain no preset filenames or render/tuning concepts', () => {
   const renderTokens = /\.json|particleEnergySpeed|particleBeatSpeed|opacity|lineAlpha|wormholeWarp|document\.|window\./;
-  for (const rel of ['automation/styleTranslator.ts', 'automation/choreographyDirector.ts', 'automation/variationEngine.ts', 'automation/automationSituationClassifier.ts', 'automation/microChoreographyPlanner.ts']) {
+  for (const rel of ['automation/styleTranslator.ts', 'automation/choreographyDirector.ts', 'automation/variationEngine.ts', 'automation/automationSituationClassifier.ts', 'automation/globalVisualNarrative.ts', 'automation/longScenePlanner.ts', 'automation/movementGrammar.ts', 'automation/variationMemory.ts', 'automation/microChoreographyPlanner.ts']) {
     assert.ok(!renderTokens.test(readSrc(rel)), `${rel} must stay renderer-independent`);
   }
 });
@@ -707,6 +707,77 @@ test('automation situation classifier is deterministic and rule-based', () => {
   assert.equal(c(args), c(args));
 });
 
+test('movement grammar resolves deterministic renderer-independent gesture qualities', () => {
+  const { resolveMovementGesture } = load('automation/movementGrammar.ts');
+  const behaviour = { energy: 0.9, density: 0.7, motion: 0.8, volatility: 0.5, cohesion: 0.4 };
+  const input = { situation: 'drop-long', variantRole: 'primary', behaviour, narrative: 'release', variationMode: 'paired' };
+  const first = resolveMovementGesture(input);
+  assert.equal(first, resolveMovementGesture(input), 'same input gives the same gesture');
+  assert.ok(['pulse', 'drive', 'orbit', 'scatter', 'collapse', 'expand', 'bloom', 'fragment', 'ripple', 'slice', 'tunnel', 'swarm', 'lock', 'echo', 'fade'].includes(first));
+  assert.ok(!/\.json/i.test(JSON.stringify(first)), 'gesture carries no concrete target');
+
+  const release = resolveMovementGesture({ ...input, variantRole: 'release' });
+  assert.notEqual(release, first, 'segment role can change movement quality within one situation');
+  const developed = resolveMovementGesture({ ...input, previousGesture: first, variationMode: 'expressive' });
+  assert.notEqual(developed, first, 'expressive mode develops away from an immediate repetition');
+});
+
+test('style movement vocabulary inherits, substyles override, and unknown gestures fall back', () => {
+  const { resolveStylePack } = load('automation/styleTranslator.ts');
+  const base = resolveStylePack(STYLE_PACKS, 'base-temporal');
+  assert.deepEqual([...base.movementVocabulary['drop-long']], ['drive', 'slice', 'fragment', 'lock']);
+  const strobe = resolveStylePack(STYLE_PACKS, 'dark-techno').substyles.strobe;
+  assert.deepEqual([...strobe.movementVocabulary['drop-long']], ['slice', 'fragment', 'lock', 'pulse']);
+  assert.deepEqual([...strobe.movementVocabulary['breakdown-long']], [...base.movementVocabulary['breakdown-long']], 'unlisted situation inherits');
+
+  const file = { version: 1, packs: [
+    { id: 'parent', movementVocabulary: { 'drop-long': ['drive', 'slice'] } },
+    { id: 'child', extends: 'parent', movementVocabulary: { 'drop-long': ['explode'] } }
+  ] };
+  assert.deepEqual([...resolveStylePack(file, 'child').movementVocabulary['drop-long']], ['drive', 'slice'], 'invalid authored list does not erase valid fallback');
+});
+
+test('variation memory is local, defensive, and records cross-scene choreography', () => {
+  const { createVariationMemory } = load('automation/variationMemory.ts');
+  const memory = createVariationMemory();
+  const plan = planChoreo('peak-sustain', 32, ['a', 'b', 'c'], 'paired');
+  memory.record(plan);
+  const snapshot = memory.snapshot();
+  assert.equal(snapshot.recentSituations.at(-1), 'peak-sustain');
+  assert.equal(snapshot.recentTargets.length, plan.segments.length);
+  assert.equal(snapshot.lastPeakGesture, plan.segments.at(-1).movementGesture);
+  snapshot.recentTargets.push('mutated');
+  assert.ok(!memory.snapshot().recentTargets.includes('mutated'), 'snapshot cannot mutate generator memory');
+  assert.deepEqual(memory.snapshot(), memory.snapshot(), 'memory reads are deterministic');
+});
+
+test('long scene planner creates a real entry-to-release macro form', () => {
+  const { planLongScene } = load('automation/longScenePlanner.ts');
+  const long = planLongScene('drop-long', 48);
+  assert.deepEqual([...long.map((section) => section.phase)], ['entry', 'establish', 'intensify', 'peak', 'release']);
+  assert.ok(Math.abs(long.reduce((sum, section) => sum + section.durationSec, 0) - 48) < 1e-6);
+  assert.ok(new Set(long.flatMap((section) => section.preferredGestures)).size >= 4, 'macro phases change movement quality');
+  assert.deepEqual([...planLongScene('drop-short', 8).map((section) => section.phase)], ['entry']);
+});
+
+test('global visual narrative distinguishes returns and marks climax/resolution', () => {
+  const { planGlobalVisualNarrative } = load('automation/globalVisualNarrative.ts');
+  const plan = { version: 1, stylePack: 'cyberpunk', scenes: [
+    makeVariantScene(0, 8, 'intro', 'cyberpunk', 0.2),
+    makeVariantScene(8, 24, 'release', 'cyberpunk', 0.8),
+    makeVariantScene(32, 16, 'breakdown', 'cyberpunk', 0.3),
+    makeVariantScene(48, 24, 'peak', 'cyberpunk', 1),
+    makeVariantScene(72, 12, 'outro', 'cyberpunk', 0.15)
+  ] };
+  const narrative = planGlobalVisualNarrative(plan);
+  assert.equal(narrative.arcType, 'two-drop');
+  assert.equal(narrative.returnStrategy, 'evolve');
+  assert.equal(narrative.climaxSceneIndex, 3);
+  assert.equal(narrative.sceneBiases[3].roleInTrack, 'climax');
+  assert.equal(narrative.sceneBiases[4].roleInTrack, 'resolution');
+  assert.equal(JSON.stringify(narrative), JSON.stringify(planGlobalVisualNarrative(plan)), 'deterministic global arc');
+});
+
 const NEUTRAL_TEMPO = { bpm: 0, secondsPerBar: null, gridOffset: 0, bars: [], reliable: false, confidence: 0 };
 
 function planChoreo(situation, durationSec, vocabulary, mode, overrides = {}) {
@@ -726,6 +797,7 @@ test('micro-choreography planner always returns a plan whose envelopes fill each
     assert.ok(plan && plan.segments.length >= 1, `>=1 segment (dur ${dur}, ${mode})`);
     for (const s of plan.segments) {
       assert.ok(s.durationSec > 0 && s.envelope, 'segment has duration + envelope');
+      assert.equal(typeof s.movementGesture, 'string', 'segment has an abstract movement gesture');
       const { attackSec, sustainSec, releaseSec, cooldownSec } = s.envelope;
       assert.ok(attackSec >= 0 && sustainSec >= 0 && releaseSec >= 0 && cooldownSec >= 0, 'non-negative phases');
       const sum = attackSec + sustainSec + releaseSec + cooldownSec;
@@ -807,9 +879,28 @@ test('a long drop scene is split into a variant pair with multiple distinct reso
     assert.equal(p.meta.automationSituation, 'drop-long');
     assert.equal(typeof p.meta.vocabularyId, 'string');
     assert.ok(['primary', 'secondary', 'release', 'sparse', 'focus'].includes(p.meta.variantRole), `role ${p.meta.variantRole}`);
+    assert.equal(typeof p.meta.movementGesture, 'string', 'movement gesture reaches timeline meta');
+    assert.equal(typeof p.meta.longScenePhase, 'string', 'long-scene phase reaches timeline meta');
+    assert.equal(typeof p.meta.globalArcRole, 'string', 'global arc role reaches timeline meta');
     assert.ok(typeof p.meta.targetStateReference === 'string' && !/\.json/i.test(p.meta.targetStateReference), 'meta handle stays opaque');
     assert.equal(typeof p.meta.evolutionPhase, 'string');
   }
+});
+
+test('two consecutive long drops evolve instead of replaying the same target and gesture sequence', () => {
+  const { resolveStylePack } = load('automation/styleTranslator.ts');
+  const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
+  const pack = resolveStylePack(STYLE_PACKS, 'cyberpunk');
+  const scenePlan = { version: 1, stylePack: 'cyberpunk', scenes: [
+    makeVariantScene(0, 40, 'release', 'cyberpunk'),
+    makeVariantScene(40, 40, 'release', 'cyberpunk')
+  ] };
+  const plan = adaptScenePlanToPerformancePlan(scenePlan, pack, { duration: 80, variantMode: 'expressive', maxWaypointsPerScene: 8 });
+  const signature = (sceneIndex) => plan.points
+    .filter((point) => point.sectionId === `vos:cyberpunk:${sceneIndex}`)
+    .map((point) => `${point.meta.targetStateReference}/${point.meta.movementGesture}`);
+  assert.notDeepEqual(signature(0), signature(1), 'returning drop is evolved by global bias and cross-scene memory');
+  assert.notEqual(signature(0).at(-1), signature(1)[0], 'scene boundary does not repeat the same target/gesture');
 });
 
 test('a short scene stays sparse but still carries choreography provenance', () => {
