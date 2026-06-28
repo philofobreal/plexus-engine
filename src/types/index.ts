@@ -142,6 +142,14 @@ export type PerformanceAutomationReason = 'intro' | 'verse' | 'build' | 'drop' |
 // scene-evolution waypoints. Consumed by visualOsPlanner / scenePlanAdapter only.
 export type DramaturgyActivityLevel = 'macro' | 'balanced' | 'active';
 
+// Choreography variation mode: selects a VariationProfile controlling how COMPLEX a scene's
+// micro-choreography is (behaviour-vocabulary size, cycle frequencies, lifetime, seeded jitter).
+// Renderer-independent, user-facing, and orthogonal to DramaturgyActivityLevel (which caps overall
+// density): 'stable' keeps a single behaviour family per scene (but still breathes via varying
+// intensity/envelope), 'paired' weaves 2-3 families, 'expressive' adds richer cycles. Consumed by
+// scenePlanAdapter / microChoreographyPlanner only. See [[visual-os-style-system]].
+export type DramaturgyVariantMode = 'stable' | 'paired' | 'expressive';
+
 // Optional, renderer-INDEPENDENT provenance carried from the Visual OS pipeline onto a
 // PerformanceAutomationPoint. It records WHICH style/scene produced the point so the
 // timeline can surface it (debug/tooltip) and Copy/Load can round-trip it. It MUST NOT
@@ -160,6 +168,12 @@ export interface PerformanceAutomationMeta {
     stylePack?: string;
     substyle?: string;
     targetStateReference?: string;       // opaque style handle the adapter resolved
+    // Choreography provenance (ADR-005 extension). All renderer-independent: an abstract
+    // choreographic situation, the id of the behaviour vocabulary that produced the point, and
+    // the role this segment plays within the scene's cycle. Absent on legacy points.
+    automationSituation?: AutomationSituation;
+    vocabularyId?: string;
+    variantRole?: VariantRole;
 }
 
 export interface PerformanceAutomationPoint {
@@ -451,6 +465,146 @@ export interface VisualScenePlan {
     scenes: VisualScene[];
 }
 
+// --- Automation Situations & Variant Pairs (ADR-005 extension) ---------------
+// A renderer-INDEPENDENT layer on top of VisualScene that turns a long dramaturgical
+// scene into visually-distinct variant pairs. AutomationSituation is a choreographic
+// situation classified deterministically from already-generated narrative/behaviour/
+// duration (never from raw audio). It names NO renderer/tuning quantity and NO preset.
+
+export type AutomationSituation =
+    | 'intro-establish'
+    | 'verse-long'
+    | 'groove-sustain'
+    | 'buildup-ramp'
+    | 'drop-short'
+    | 'drop-long'
+    | 'drop-after-build'
+    | 'breakdown-long'
+    | 'peak-sustain'
+    | 'transition-release'
+    | 'outro-dissolve';
+
+// How a variant pair alternates its targets across the subsegments of a long scene.
+export type AutomationAlternation = 'A-B' | 'A-B-A' | 'call-response' | 'compress-release' | 'sparse-dense';
+
+// The intensity envelope shape applied across a variant pair's subsegments.
+export type AutomationIntensityShape = 'flat' | 'ramp' | 'pulse' | 'wave' | 'release';
+
+// The role a single choreography segment plays inside a scene's behaviour cycle.
+// primary = the dominant/percussive family, secondary = a contrasting counter, release =
+// a relaxing tail, sparse = a thinned/quiet beat, focus = a sustained hold on the primary.
+export type VariantRole = 'primary' | 'secondary' | 'release' | 'sparse' | 'focus';
+
+// Style-pack authored variant-pair definition (style-packs.json `variantPairs`). The
+// `primary`/`secondary`/`release` fields are OPAQUE target handles (e.g. "drop.primary"),
+// NOT preset filenames; only scenePlanAdapter resolves them via the pack targetMap.
+export interface StyleVariantPairDefinition {
+    id: string;
+    primary: string;
+    secondary: string;
+    release?: string;
+    alternation: AutomationAlternation;
+    minSegmentSec: number;
+    maxSegmentSec: number;
+    intensityShape: AutomationIntensityShape;
+}
+
+// Runtime contract the variant-pair planner emits for a chosen situation+scene. Identical
+// shape to the authored definition plus the resolved situation; still opaque (no presets).
+export interface AutomationVariantPair {
+    id: string;
+    situation: AutomationSituation;
+    primaryTarget: string;
+    secondaryTarget: string;
+    releaseTarget?: string;
+    alternation: AutomationAlternation;
+    minSegmentSec: number;
+    maxSegmentSec: number;
+    intensityShape: AutomationIntensityShape;
+}
+
+// Per-pack/per-situation variant-pair config, resolved with single-parent inheritance
+// alongside targetMap. A missing/empty map means the pack has no authored pairs; the
+// Micro-Choreography planner then derives a single-family vocabulary from the scene narrative.
+export type StyleVariantPairMap = Partial<Record<AutomationSituation, StyleVariantPairDefinition[]>>;
+
+// Per-situation behaviour VOCABULARY: an ordered list of OPAQUE target handles (e.g.
+// ["drop.primary", "drop.counter", "drop.release"]) the Micro-Choreography planner draws
+// families from. Resolved with single-parent inheritance alongside targetMap/variantPairs.
+// When a situation has no authored vocabulary the planner falls back to its variantPairs,
+// then to the scene's own narrative handle. Still renderer-independent (no preset filenames).
+export type StyleVocabularyMap = Partial<Record<AutomationSituation, string[]>>;
+
+// --- Micro-Choreography planner (ADR-005 extension) --------------------------
+// A renderer-INDEPENDENT scheduling layer. The planner turns a classified
+// AutomationSituation + scene duration + tempo + variation profile into an ordered set of
+// ChoreographySegments, each carrying a behaviour intent (role + OPAQUE target + relative
+// intensity) and an AutomationEnvelope. It names NO preset and NO tuning key; scenePlanAdapter
+// alone resolves targets to presets and envelopes to PerformanceAutomationPoints.
+
+// A renderer-independent amplitude envelope for one choreography segment. The four phases
+// fill the segment's musical room: attack (morph-in) -> sustain (hold) -> release (decay) ->
+// cooldown (the trailing "air"/breath before the next segment). Invariant:
+// attackSec + sustainSec + releaseSec + cooldownSec == segmentDurationSec. attackSec is the
+// SOLE source of a PerformanceAutomationPoint.morphDurationSec, so automation lifetime is
+// bounded by the segment and never auto-stretches to the next point.
+export interface AutomationEnvelope {
+    attackSec: number;
+    sustainSec: number;
+    releaseSec: number;
+    cooldownSec: number;
+}
+
+// Musical timing context passed to the planner so subdivision and envelope phases can snap to
+// bars. Derived once per track from TrackAnalysis. `secondsPerBar` is null when there is no
+// usable tempo (planner then uses equal time fallbacks). `reliable` mirrors the legacy grid-
+// timing threshold; `confidence` (0..1) coarsens subdivision when timing evidence is weak.
+export interface TempoContext {
+    bpm: number;
+    secondsPerBar: number | null;
+    gridOffset: number;
+    bars: number[];        // bar start times (seconds), ascending; may be empty
+    reliable: boolean;
+    confidence: number;
+}
+
+// One scheduled behaviour beat inside a scene. `target` is an OPAQUE vocabulary handle; the
+// intensityScale is a relative multiplier the adapter combines with the SceneEvolution arc.
+export interface ChoreographySegment {
+    index: number;
+    offsetSec: number;          // start, seconds from scene start
+    durationSec: number;
+    role: VariantRole;
+    target: string;             // opaque target handle, never a preset filename
+    intensityScale: number;     // relative envelope multiplier (~0.4..1.3)
+    envelope: AutomationEnvelope;
+}
+
+// The planner's output for one scene. `vocabularyId` is provenance for the chosen behaviour
+// vocabulary (an authored pair id, or a synthesized id for derived/fallback vocabularies).
+export interface ChoreographyPlan {
+    situation: AutomationSituation;
+    vocabularyId: string;
+    segments: ChoreographySegment[];
+}
+
+// Resolved parameters for a DramaturgyVariantMode. Variation controls choreography COMPLEXITY
+// and STYLE (how many behaviour families, how often it switches, how long things live), which
+// is orthogonal to DramaturgyActivityLevel (which caps overall automation DENSITY). See the
+// VARIATION_PROFILES table in the planner and [[visual-os-style-system]].
+export interface VariationProfile {
+    mode: DramaturgyVariantMode;
+    vocabularySize: number;          // max distinct behaviour families used (1 | 2..3 | 4..6)
+    subdivisionScale: number;        // multiplier on the situation's base segment length in bars
+                                     // (>1 = longer segments/stable, <1 = shorter/expressive)
+    transitionFrequency: number;     // 0..1, how readily the cycle switches role/family
+    releaseFrequency: number;        // 0..1, how often a release tail/point is emitted
+    callbackFrequency: number;       // 0..1, how strongly the cycle returns to the primary family
+    weightedMemoryStrength: number;  // 0..1, recency penalty strength (high=avoids change)
+    randomnessBudget: number;        // seeded jitter fraction (0.10 | 0.20 | 0.35)
+    lifetimeScale: number;           // envelope cooldown share multiplier (1.3 | 1.0 | 0.75)
+}
+
 // --- StylePack data contracts (style-packs.json) ----------------------------
 // `extends` enables single-parent inheritance, flattened by the Style Resolver
 // (Phase 3). `targetMap` is the ONLY adapter-tier escape hatch where a pack may
@@ -469,6 +623,9 @@ export interface StyleSubstyleDefinition {
     vocabulary?: Partial<VisualVocabulary>;
     behaviour?: Partial<BehaviourBias>;
     targetMap?: Record<string, StyleTargetReference>;
+    variantPairs?: StyleVariantPairMap;
+    // Per-situation behaviour vocabulary (opaque handles), override/extend like variantPairs.
+    behaviourVocabulary?: StyleVocabularyMap;
 }
 
 export interface StylePackDefinition {
@@ -480,6 +637,9 @@ export interface StylePackDefinition {
     behaviour?: Partial<BehaviourBias>;
     substyles?: Record<string, StyleSubstyleDefinition>;
     targetMap?: Record<string, StyleTargetReference>;
+    variantPairs?: StyleVariantPairMap;
+    // Per-situation behaviour vocabulary (opaque handles) for the Micro-Choreography planner.
+    behaviourVocabulary?: StyleVocabularyMap;
 }
 
 export interface StylePacksFile {
@@ -496,6 +656,8 @@ export interface ResolvedStylePack {
     behaviour: BehaviourBias;
     substyles: Record<string, ResolvedSubstyle>;
     targetMap: Record<string, StyleTargetReference>;
+    variantPairs: StyleVariantPairMap;
+    behaviourVocabulary: StyleVocabularyMap;
 }
 
 export interface ResolvedSubstyle {
@@ -504,6 +666,8 @@ export interface ResolvedSubstyle {
     vocabulary: VisualVocabulary;
     behaviour: BehaviourBias;
     targetMap: Record<string, StyleTargetReference>;
+    variantPairs: StyleVariantPairMap;
+    behaviourVocabulary: StyleVocabularyMap;
 }
 
 export interface ModulationState {

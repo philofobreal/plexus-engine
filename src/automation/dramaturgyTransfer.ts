@@ -21,6 +21,11 @@ const META_MOTIFS = new Set([
 ]);
 const META_PALETTES = new Set(['mono', 'duotone', 'neon', 'earth', 'spectral', 'void']);
 const META_EVOLUTION_PHASES = new Set(['birth', 'growth', 'peak', 'release', 'death']);
+const META_SITUATIONS = new Set([
+    'intro-establish', 'verse-long', 'groove-sustain', 'buildup-ramp', 'drop-short', 'drop-long',
+    'drop-after-build', 'breakdown-long', 'peak-sustain', 'transition-release', 'outro-dissolve'
+]);
+const META_VARIANT_ROLES = new Set(['primary', 'secondary', 'release', 'sparse', 'focus']);
 
 export interface DramaturgyClipboardEnvelope {
     kind: string;
@@ -164,6 +169,9 @@ function sanitizeMeta(raw: unknown): PerformanceAutomationMeta | undefined {
     if (typeof m.stylePack === 'string') meta.stylePack = m.stylePack;
     if (typeof m.substyle === 'string') meta.substyle = m.substyle;
     if (typeof m.targetStateReference === 'string') meta.targetStateReference = m.targetStateReference;
+    if (typeof m.automationSituation === 'string' && META_SITUATIONS.has(m.automationSituation)) meta.automationSituation = m.automationSituation as PerformanceAutomationMeta['automationSituation'];
+    if (typeof m.vocabularyId === 'string') meta.vocabularyId = m.vocabularyId;
+    if (typeof m.variantRole === 'string' && META_VARIANT_ROLES.has(m.variantRole)) meta.variantRole = m.variantRole as PerformanceAutomationMeta['variantRole'];
     const behaviour = sanitizeBehaviour(m.behaviour);
     if (behaviour) meta.behaviour = behaviour;
     return Object.keys(meta).length > 0 ? meta : undefined;

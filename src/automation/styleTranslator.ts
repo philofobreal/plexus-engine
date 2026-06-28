@@ -73,7 +73,10 @@ export function resolveStylePack(file: StylePacksFile, packId: string): Resolved
             capabilities: mergeCapabilities(acc.capabilities, sub.capabilities),
             vocabulary: { ...acc.vocabulary, ...sub.vocabulary },
             behaviour: { ...acc.behaviour, ...sub.behaviour },
-            targetMap: { ...acc.targetMap, ...sub.targetMap }
+            targetMap: { ...acc.targetMap, ...sub.targetMap },
+            // Per-situation override/extend, mirroring targetMap inheritance.
+            variantPairs: { ...acc.variantPairs, ...sub.variantPairs },
+            behaviourVocabulary: { ...acc.behaviourVocabulary, ...sub.behaviourVocabulary }
         };
         validatePalette(substyles[name].vocabulary.palette);
         validateCapabilities(substyles[name].capabilities);
@@ -101,7 +104,9 @@ function baseResolvedPack(id: string): ResolvedStylePack {
         vocabulary: { palette: 'spectral', lineCharacter: 0.5, glowCharacter: 0.5, grain: 0.3, contrast: 0.5 },
         behaviour: { energy: 0, density: 0, motion: 0, volatility: 0, cohesion: 0 },
         substyles: {},
-        targetMap: {}
+        targetMap: {},
+        variantPairs: {},
+        behaviourVocabulary: {}
     };
 }
 
@@ -113,7 +118,13 @@ function applyLayer(acc: ResolvedStylePack, def: StylePackDefinition): ResolvedS
         vocabulary: { ...acc.vocabulary, ...def.vocabulary },
         behaviour: { ...acc.behaviour, ...def.behaviour },
         substyles: acc.substyles,
-        targetMap: { ...acc.targetMap, ...def.targetMap }
+        targetMap: { ...acc.targetMap, ...def.targetMap },
+        // Variant pairs override/extend per situation (child wins for a given situation key,
+        // unlisted situations are inherited). They are the planner's vocabulary fallback when
+        // no explicit behaviourVocabulary is authored for a situation.
+        variantPairs: { ...acc.variantPairs, ...def.variantPairs },
+        // Behaviour vocabulary inherits the same way: child situation list wins, others inherit.
+        behaviourVocabulary: { ...acc.behaviourVocabulary, ...def.behaviourVocabulary }
     };
 }
 
