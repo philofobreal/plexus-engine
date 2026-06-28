@@ -230,7 +230,7 @@ test('director output is deterministic across repeated runs', () => {
 
 test('Visual OS automation modules do not import runtime, renderer, or analyzer layers', () => {
   const forbidden = [/from '\.\.\/state/, /from '\.\.\/visuals/, /from '\.\.\/ui/, /from '\.\.\/audio/, /from '\.\.\/analyzer/, /from 'p5'/];
-  for (const rel of ['automation/variationEngine.ts', 'automation/choreographyDirector.ts', 'automation/styleTranslator.ts']) {
+  for (const rel of ['automation/variationEngine.ts', 'automation/choreographyDirector.ts', 'automation/styleTranslator.ts', 'automation/automationSituationClassifier.ts', 'automation/microChoreographyPlanner.ts']) {
     const src = readSrc(rel);
     for (const pattern of forbidden) {
       assert.ok(!pattern.test(src), `${rel} must not match ${pattern}`);
@@ -405,22 +405,25 @@ test('adapter and planner do not import runtime/renderer/analyzer layers', () =>
   }
 });
 
-test('adapter expands SceneEvolution phases into intensity waypoints', () => {
-  const { resolveStylePack, translateScenePlan } = load('automation/styleTranslator.ts');
-  const { directScenes } = load('automation/choreographyDirector.ts');
+// A reliable musical grid for the planner (bars every secondsPerBar from t=0).
+function makeTempo(bpm = 128, reliable = true) {
+  const spb = (60 / bpm) * 4;
+  return { bpm, secondsPerBar: spb, gridOffset: 0, bars: Array.from({ length: 400 }, (_, i) => i * spb), reliable, confidence: reliable ? 0.9 : 0.1 };
+}
+
+test('a long scene expands into multiple enveloped segments that follow the evolution arc', () => {
+  const { resolveStylePack } = load('automation/styleTranslator.ts');
   const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
   const pack = resolveStylePack(STYLE_PACKS, 'dark-techno');
-  const scenes = directScenes(makeBundle(), pack);
-  const scenePlan = translateScenePlan(scenes, pack);
-  const plan = adaptScenePlanToPerformancePlan(scenePlan, pack, { duration: 16 });
-  // Phase expansion => more points than scenes.
-  assert.ok(plan.points.length > scenes.length, 'evolution phases expanded into waypoints');
-  // Within scene 0 the peak waypoint must read hotter than the birth waypoint.
-  const scene0 = plan.points.filter((p) => p.sectionId === 'vos:dark-techno:0');
-  const birth = scene0.find((p) => p.id.includes('-birth-'));
-  const peak = scene0.find((p) => p.id.includes('-peak-'));
-  assert.ok(birth && peak, 'birth and peak waypoints present');
-  assert.ok(peak.intensity >= birth.intensity, 'peak hotter than birth');
+  const scenePlan = { version: 1, stylePack: 'dark-techno', scenes: [makeScene(0, 40, 'release', 'dark-techno')] };
+  const plan = adaptScenePlanToPerformancePlan(scenePlan, pack, { duration: 60, tempo: makeTempo(128), trackSeed: 7 });
+  const pts = plan.points.filter((p) => p.sectionId === 'vos:dark-techno:0');
+  // A 40s scene expands into several choreography segments (not one big anchor).
+  assert.ok(pts.length > 1, `long scene expands into multiple segments (${pts.length})`);
+  for (const p of pts) assert.equal(typeof p.meta.evolutionPhase, 'string', 'each point carries an evolution phase');
+  // Intensity follows the birth..peak..death arc: the hottest point sits past the birth anchor.
+  const maxIdx = pts.reduce((best, p, i, arr) => (p.intensity > arr[best].intensity ? i : best), 0);
+  assert.ok(maxIdx > 0, 'a later (peak-region) segment reads hotter than the birth anchor');
 });
 
 // -- Anti-repetition (hard variation policy) ----------------------------------
@@ -491,16 +494,16 @@ test('frame fallback gives the trailing frame a real duration (no zero-length sc
 
 // -- Density cap on SceneEvolution expansion ----------------------------------
 
-function makeScene(timeSec, durationSec, narrative) {
+function makeScene(timeSec, durationSec, narrative, packId = 'base-temporal', energy = 0.6) {
   return {
-    timeSec, durationSec, stylePack: 'base-temporal', motif: 'pulse-field',
+    timeSec, durationSec, stylePack: packId, motif: 'pulse-field',
     vocabulary: { palette: 'spectral', lineCharacter: 0.5, glowCharacter: 0.5, grain: 0.3, contrast: 0.5 },
-    behaviour: { energy: 0.6, density: 0.5, motion: 0.5, volatility: 0.2, cohesion: 0.6 },
+    behaviour: { energy, density: 0.5, motion: 0.5, volatility: 0.2, cohesion: 0.6 },
     evolution: { steps: [
       { phase: 'birth', at: 0, level: 0.2 }, { phase: 'growth', at: 0.3, level: 0.5 },
       { phase: 'peak', at: 0.5, level: 0.9 }, { phase: 'release', at: 0.75, level: 0.5 }, { phase: 'death', at: 0.92, level: 0.2 }
     ] },
-    microEvents: [], targetStateReference: `base-temporal:${narrative}`
+    microEvents: [], targetStateReference: `${packId}:${narrative}`
   };
 }
 
@@ -622,13 +625,15 @@ test('planner returns null for an empty/broken packs file (legacy fallback)', ()
 
 // -- Activity level (Phase 3) -------------------------------------------------
 
-test('activity level changes waypoint density deterministically (macro < balanced < active)', () => {
+test('activity level is the density cap (macro < balanced < active) independent of variation', () => {
   const { resolveStylePack } = load('automation/styleTranslator.ts');
   const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
   const pack = resolveStylePack(STYLE_PACKS, 'base-temporal');
-  // A ~10s scene whose phase gaps straddle the balanced vs. active minimum spacing.
-  const scenePlan = { version: 1, stylePack: 'base-temporal', scenes: [makeScene(0, 10, 'build')] };
-  const count = (level) => adaptScenePlanToPerformancePlan(scenePlan, pack, { duration: 60, activityLevel: level }).points.length;
+  // A long build scene whose natural bar subdivision exceeds every activity cap, so the cap (not
+  // the music) is what differentiates the three levels. 'build' has no release role => no extra
+  // release points, so the point count equals the segment cap exactly.
+  const scenePlan = { version: 1, stylePack: 'base-temporal', scenes: [makeScene(0, 64, 'build')] };
+  const count = (level) => adaptScenePlanToPerformancePlan(scenePlan, pack, { duration: 70, activityLevel: level, tempo: makeTempo(128), trackSeed: 3 }).points.length;
   const macro = count('macro');
   const balanced = count('balanced');
   const active = count('active');
@@ -638,11 +643,270 @@ test('activity level changes waypoint density deterministically (macro < balance
   assert.equal(count('active'), active, 'deterministic');
 });
 
+test('Active is a real density increase, not just a higher cap, on medium drops/breaks', () => {
+  const { resolveStylePack } = load('automation/styleTranslator.ts');
+  const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
+  const pack = resolveStylePack(STYLE_PACKS, 'cyberpunk');
+  const count = (dur, narrative, level, energy) => {
+    const scenePlan = { version: 1, stylePack: 'cyberpunk', scenes: [makeVariantScene(10, dur, narrative, 'cyberpunk', energy)] };
+    return adaptScenePlanToPerformancePlan(scenePlan, pack, { duration: dur + 20, variantMode: 'paired', activityLevel: level, tempo: makeTempo(128), trackSeed: 4 })
+      .points.filter((p) => p.sectionId === 'vos:cyberpunk:0').length;
+  };
+  // Reported bug: Active+Paired produced only ~1-3 points on a 20-30s drop/break because Activity
+  // was merely a cap. With the density scale + lowered base segment lengths, a medium scene fills.
+  assert.ok(count(24, 'release', 'active', 0.9) >= 4, `active+paired densifies a 24s drop (${count(24, 'release', 'active', 0.9)})`);
+  assert.ok(count(20, 'breakdown', 'active', 0.3) >= 4, `active+paired densifies a 20s break (${count(20, 'breakdown', 'active', 0.3)})`);
+  // Active genuinely exceeds Balanced on the SAME medium scene (density, not just a higher ceiling).
+  assert.ok(count(24, 'release', 'active', 0.9) > count(24, 'release', 'balanced', 0.9), `active denser than balanced (${count(24, 'release', 'active', 0.9)} vs ${count(24, 'release', 'balanced', 0.9)})`);
+  // Macro still collapses a medium scene to a single section anchor.
+  assert.equal(count(24, 'release', 'macro', 0.9), 1, 'macro stays a single anchor');
+});
+
 // -- Renderer Independence Contract: domain modules stay clean (Phase 8 #9) ----
 
 test('Visual OS domain modules contain no preset filenames or render/tuning concepts', () => {
   const renderTokens = /\.json|particleEnergySpeed|particleBeatSpeed|opacity|lineAlpha|wormholeWarp|document\.|window\./;
-  for (const rel of ['automation/styleTranslator.ts', 'automation/choreographyDirector.ts', 'automation/variationEngine.ts']) {
+  for (const rel of ['automation/styleTranslator.ts', 'automation/choreographyDirector.ts', 'automation/variationEngine.ts', 'automation/automationSituationClassifier.ts', 'automation/microChoreographyPlanner.ts']) {
     assert.ok(!renderTokens.test(readSrc(rel)), `${rel} must stay renderer-independent`);
   }
+});
+
+// -- AutomationSituation + Variant Pairs (ADR-005 extension) -------------------
+
+function makeVariantScene(timeSec, durationSec, narrative, packId = 'cyberpunk', energy = 0.85) {
+  return {
+    timeSec, durationSec, stylePack: packId, motif: 'tunnel-drive',
+    vocabulary: { palette: 'neon', lineCharacter: 0.9, glowCharacter: 0.6, grain: 0.5, contrast: 0.9 },
+    behaviour: { energy, density: 0.7, motion: 0.6, volatility: 0.4, cohesion: 0.4 },
+    evolution: { steps: [
+      { phase: 'birth', at: 0, level: 0.4 }, { phase: 'growth', at: 0.3, level: 0.7 },
+      { phase: 'peak', at: 0.5, level: 0.95 }, { phase: 'release', at: 0.75, level: 0.6 }, { phase: 'death', at: 0.92, level: 0.3 }
+    ] },
+    microEvents: [], targetStateReference: `${packId}:${narrative}`
+  };
+}
+
+test('automation situation classifier is deterministic and rule-based', () => {
+  const { classifyAutomationSituation } = load('automation/automationSituationClassifier.ts');
+  const c = (o) => classifyAutomationSituation(o);
+  assert.equal(c({ narrative: 'intro', energy: 0.2, durationSec: 10 }), 'intro-establish');
+  assert.equal(c({ narrative: 'outro', energy: 0.2, durationSec: 20 }), 'outro-dissolve');
+  assert.equal(c({ narrative: 'build', energy: 0.6, durationSec: 8 }), 'buildup-ramp');
+  assert.equal(c({ narrative: 'tension', energy: 0.6, durationSec: 8 }), 'buildup-ramp');
+  assert.equal(c({ narrative: 'release', energy: 0.9, durationSec: 20 }), 'drop-long');
+  assert.equal(c({ narrative: 'release', energy: 0.9, durationSec: 6 }), 'drop-short');
+  assert.equal(c({ narrative: 'release', energy: 0.9, durationSec: 20, previousNarrative: 'build' }), 'drop-after-build');
+  assert.equal(c({ narrative: 'breakdown', energy: 0.2, durationSec: 30 }), 'breakdown-long');
+  assert.equal(c({ narrative: 'breakdown', energy: 0.2, durationSec: 6 }), 'transition-release');
+  assert.equal(c({ narrative: 'peak', energy: 0.9, durationSec: 20 }), 'peak-sustain');
+  assert.equal(c({ narrative: 'groove', energy: 0.5, durationSec: 30 }), 'groove-sustain');
+  assert.equal(c({ narrative: 'groove', energy: 0.5, durationSec: 10 }), 'verse-long');
+  assert.equal(c({ narrative: 'fake-drop', energy: 0.6, durationSec: 8 }), 'transition-release');
+  // Deterministic for identical input.
+  const args = { narrative: 'release', energy: 0.8, durationSec: 25, previousNarrative: 'tension' };
+  assert.equal(c(args), c(args));
+});
+
+const NEUTRAL_TEMPO = { bpm: 0, secondsPerBar: null, gridOffset: 0, bars: [], reliable: false, confidence: 0 };
+
+function planChoreo(situation, durationSec, vocabulary, mode, overrides = {}) {
+  const { planMicroChoreography, variationProfileFor } = load('automation/microChoreographyPlanner.ts');
+  const behaviour = overrides.behaviour ?? { energy: 0.8, density: 0.5, motion: 0.5, volatility: 0.3, cohesion: 0.5 };
+  return planMicroChoreography(
+    { situation, startSec: overrides.startSec ?? 0, durationSec, behaviour, vocabulary, vocabularyId: 'vid' },
+    { variation: variationProfileFor(mode), activityCap: overrides.activityCap ?? 8, tempo: overrides.tempo ?? NEUTRAL_TEMPO },
+    { trackSeed: overrides.trackSeed ?? 42, sceneIndex: overrides.sceneIndex ?? 0 }
+  );
+}
+
+test('micro-choreography planner always returns a plan whose envelopes fill each segment exactly', () => {
+  // Stable mode, a short scene, and an empty vocabulary all yield a usable plan (never null/empty).
+  for (const [dur, vocab, mode] of [[40, ['drop.primary', 'drop.counter', 'drop.release'], 'stable'], [6, ['drop.primary'], 'paired'], [40, [], 'expressive']]) {
+    const plan = planChoreo('drop-long', dur, vocab, mode);
+    assert.ok(plan && plan.segments.length >= 1, `>=1 segment (dur ${dur}, ${mode})`);
+    for (const s of plan.segments) {
+      assert.ok(s.durationSec > 0 && s.envelope, 'segment has duration + envelope');
+      const { attackSec, sustainSec, releaseSec, cooldownSec } = s.envelope;
+      assert.ok(attackSec >= 0 && sustainSec >= 0 && releaseSec >= 0 && cooldownSec >= 0, 'non-negative phases');
+      const sum = attackSec + sustainSec + releaseSec + cooldownSec;
+      assert.ok(Math.abs(sum - s.durationSec) < 1e-6, `envelope fills the segment (${sum} vs ${s.durationSec})`);
+    }
+  }
+  // Bit-for-bit determinism for identical input (seeded, no Math.random).
+  assert.equal(JSON.stringify(planChoreo('drop-long', 40, ['a', 'b', 'c'], 'paired')), JSON.stringify(planChoreo('drop-long', 40, ['a', 'b', 'c'], 'paired')));
+  // Renderer independence: the planner never emits a preset filename.
+  assert.ok(!/\.json/i.test(JSON.stringify(planChoreo('drop-long', 40, ['drop.primary', 'drop.counter'], 'expressive'))), 'planner output names no preset file');
+});
+
+test('subdivision snaps to bars under a reliable grid and falls back to equal time without one', () => {
+  const spb = (60 / 120) * 4; // 2.0s bars
+  const tempo = { bpm: 120, secondsPerBar: spb, gridOffset: 0, bars: Array.from({ length: 100 }, (_, i) => i * spb), reliable: true, confidence: 0.9 };
+  const snapped = planChoreo('drop-long', 48, ['drop.primary', 'drop.counter'], 'paired', { tempo, startSec: 0 });
+  assert.ok(snapped.segments.length >= 3, `enough segments to test snapping (${snapped.segments.length})`);
+  for (const s of snapped.segments) {
+    const offBars = s.offsetSec / spb;
+    assert.ok(Math.abs(offBars - Math.round(offBars)) < 1e-6, `segment starts on a bar line (${s.offsetSec})`);
+  }
+  // Without a reliable grid the subdivision is an equal time split.
+  const even = planChoreo('drop-long', 48, ['drop.primary', 'drop.counter'], 'paired', { tempo: NEUTRAL_TEMPO });
+  assert.ok(even.segments.length >= 2);
+  const d0 = even.segments[0].durationSec;
+  for (const s of even.segments) assert.ok(Math.abs(s.durationSec - d0) < 1e-6, 'equal-time fallback segments');
+});
+
+test('the role sequence is a real cycle, not a fixed A/B alternation', () => {
+  const plan = planChoreo('drop-long', 64, ['drop.primary', 'drop.counter', 'drop.release'], 'expressive', { tempo: makeTempo(128), activityCap: 12, trackSeed: 99 });
+  const roles = plan.segments.map((s) => s.role);
+  assert.ok(roles.length >= 4, `enough segments to show a cycle (${roles.length})`);
+  assert.ok(new Set(roles).size >= 3, `cycle uses more than two roles (${[...new Set(roles)].join(',')})`);
+  // Not a strict two-symbol alternation (A,B,A,B,...): some position breaks role[i] === role[i-2].
+  assert.ok(!roles.every((r, i) => i < 2 || r === roles[i - 2]), 'not a fixed A-B-A-B alternation');
+});
+
+test('weighted memory keeps roles moving (bounded runs) and is deterministic', () => {
+  const opts = { tempo: makeTempo(128), activityCap: 14, trackSeed: 77 };
+  const roles = planChoreo('groove-sustain', 80, ['verse.primary', 'verse.motion', 'drop.counter', 'break.glow'], 'expressive', opts).segments.map((s) => s.role);
+  assert.ok(roles.length >= 6, `long horizon (${roles.length})`);
+  let run = 1, maxRun = 1;
+  for (let i = 1; i < roles.length; i++) { run = roles[i] === roles[i - 1] ? run + 1 : 1; maxRun = Math.max(maxRun, run); }
+  assert.ok(maxRun <= 3, `weighted memory avoids long same-role runs (max run ${maxRun})`);
+  assert.ok(new Set(roles).size >= 2, 'more than one role across the horizon');
+  const again = planChoreo('groove-sustain', 80, ['verse.primary', 'verse.motion', 'drop.counter', 'break.glow'], 'expressive', opts).segments.map((s) => s.role);
+  assert.equal(JSON.stringify(roles), JSON.stringify(again), 'deterministic role sequence');
+});
+
+test('style pack targetMap resolves variant target handles to concrete presets (with child override)', () => {
+  const { resolveStylePack } = load('automation/styleTranslator.ts');
+  const base = resolveStylePack(STYLE_PACKS, 'base-temporal');
+  const keys = ['drop.primary', 'drop.counter', 'drop.release', 'build.compress', 'build.escalate',
+    'break.sparse', 'break.glow', 'verse.primary', 'verse.motion', 'peak.overdrive', 'transition.slice', 'outro.dissolve'];
+  for (const key of keys) {
+    const ref = base.targetMap[key];
+    assert.ok(ref && /\.json$/i.test(ref.preset), `base-temporal ${key} -> ${ref && ref.preset}`);
+  }
+  // Inheritance: a child without its own variant key inherits the base mapping.
+  const hero = resolveStylePack(STYLE_PACKS, 'hero');
+  assert.equal(hero.targetMap['drop.counter'].preset, 'vos-drop-counter.json');
+  // Child override: cyberpunk remaps drop.counter to its own preset.
+  const cyber = resolveStylePack(STYLE_PACKS, 'cyberpunk');
+  assert.equal(cyber.targetMap['drop.counter'].preset, 'vos-peak-overdrive.json');
+});
+
+test('a long drop scene is split into a variant pair with multiple distinct resolved presets', () => {
+  const { resolveStylePack } = load('automation/styleTranslator.ts');
+  const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
+  const pack = resolveStylePack(STYLE_PACKS, 'cyberpunk');
+  const scenePlan = { version: 1, stylePack: 'cyberpunk', scenes: [makeVariantScene(0, 40, 'release', 'cyberpunk')] };
+  const plan = adaptScenePlanToPerformancePlan(scenePlan, pack, { duration: 60, variantMode: 'paired', maxWaypointsPerScene: 8 });
+  const pts = plan.points.filter((p) => p.sectionId === 'vos:cyberpunk:0');
+  assert.ok(pts.length >= 2, `long drop expanded into variants (${pts.length})`);
+  const presets = new Set(pts.map((p) => p.preset));
+  assert.ok(presets.size >= 2, `distinct variant presets (${[...presets].join(',')})`);
+  for (const p of pts) {
+    assert.ok(/\.json$/i.test(p.preset), `resolved preset ${p.preset}`);
+    assert.equal(p.meta.automationSituation, 'drop-long');
+    assert.equal(typeof p.meta.vocabularyId, 'string');
+    assert.ok(['primary', 'secondary', 'release', 'sparse', 'focus'].includes(p.meta.variantRole), `role ${p.meta.variantRole}`);
+    assert.ok(typeof p.meta.targetStateReference === 'string' && !/\.json/i.test(p.meta.targetStateReference), 'meta handle stays opaque');
+    assert.equal(typeof p.meta.evolutionPhase, 'string');
+  }
+});
+
+test('a short scene stays sparse but still carries choreography provenance', () => {
+  const { resolveStylePack } = load('automation/styleTranslator.ts');
+  const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
+  const pack = resolveStylePack(STYLE_PACKS, 'cyberpunk');
+  const scenePlan = { version: 1, stylePack: 'cyberpunk', scenes: [makeVariantScene(0, 6, 'release', 'cyberpunk')] };
+  const plan = adaptScenePlanToPerformancePlan(scenePlan, pack, { duration: 60, variantMode: 'paired' });
+  const pts = plan.points.filter((p) => p.sectionId === 'vos:cyberpunk:0');
+  assert.ok(pts.length >= 1 && pts.length <= 3, `short scene stays sparse (${pts.length})`);
+  for (const p of pts) {
+    assert.equal(typeof p.meta.vocabularyId, 'string', 'point carries choreography provenance');
+    assert.ok(['primary', 'secondary', 'release', 'sparse', 'focus'].includes(p.meta.variantRole), `role ${p.meta.variantRole}`);
+  }
+});
+
+test('variant mode controls split aggressiveness (stable single style, paired/expressive split)', () => {
+  const { resolveStylePack } = load('automation/styleTranslator.ts');
+  const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
+  const pack = resolveStylePack(STYLE_PACKS, 'dark-techno');
+  const scenePlan = { version: 1, stylePack: 'dark-techno', scenes: [makeVariantScene(0, 44, 'release', 'dark-techno')] };
+  const stats = (mode) => {
+    const plan = adaptScenePlanToPerformancePlan(scenePlan, pack, { duration: 60, variantMode: mode, maxWaypointsPerScene: 8 });
+    const pts = plan.points.filter((p) => p.sectionId === 'vos:dark-techno:0');
+    return { points: pts.length, distinct: new Set(pts.map((p) => p.preset)).size };
+  };
+  const stable = stats('stable');
+  const paired = stats('paired');
+  const expressive = stats('expressive');
+  assert.equal(stable.distinct, 1, 'stable keeps a single style per scene');
+  assert.ok(paired.distinct >= 2, `paired splits into distinct variants (${paired.distinct})`);
+  assert.ok(expressive.points >= paired.points, `expressive at least as dense (${expressive.points} vs ${paired.points})`);
+  assert.deepEqual(stats('expressive'), expressive, 'deterministic');
+});
+
+test('automation breathes: every morph stays well short of the gap to the next point', () => {
+  const { resolveStylePack } = load('automation/styleTranslator.ts');
+  const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
+  const pack = resolveStylePack(STYLE_PACKS, 'dark-techno');
+  // A long, sparse breakdown is exactly where the legacy "stretch to next point" erased the air.
+  const scenePlan = { version: 1, stylePack: 'dark-techno', scenes: [makeScene(10, 36, 'breakdown', 'dark-techno', 0.25)] };
+  const plan = adaptScenePlanToPerformancePlan(scenePlan, pack, { duration: 60, variantMode: 'stable', tempo: makeTempo(120), trackSeed: 5 });
+  const pts = plan.points;
+  assert.ok(pts.length >= 2, `breakdown breathes across multiple points (${pts.length})`);
+  for (let i = 0; i < pts.length - 1; i++) {
+    const gap = pts[i + 1].time - pts[i].time;
+    assert.ok(pts[i].morphDurationSec <= gap + 1e-6, 'morph never overruns the next point (anti-overlap)');
+    assert.ok(gap - pts[i].morphDurationSec > 0.5, `visible air remains after the morph (gap ${gap.toFixed(2)}, morph ${pts[i].morphDurationSec.toFixed(2)})`);
+  }
+});
+
+test('stable mode is not static: one identity, multiple points, varying intensity', () => {
+  const { resolveStylePack } = load('automation/styleTranslator.ts');
+  const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
+  const pack = resolveStylePack(STYLE_PACKS, 'dark-techno');
+  const scenePlan = { version: 1, stylePack: 'dark-techno', scenes: [makeVariantScene(0, 44, 'release', 'dark-techno', 0.9)] };
+  const plan = adaptScenePlanToPerformancePlan(scenePlan, pack, { duration: 60, variantMode: 'stable', tempo: makeTempo(128), trackSeed: 6 });
+  const pts = plan.points.filter((p) => p.sectionId === 'vos:dark-techno:0');
+  assert.ok(pts.length >= 2, `stable still breaks a long scene into multiple points (${pts.length})`);
+  assert.equal(new Set(pts.map((p) => p.preset)).size, 1, 'a single visual identity');
+  assert.ok(new Set(pts.map((p) => p.intensity.toFixed(3))).size >= 2, 'intensity varies across the scene (it breathes, not flat)');
+});
+
+test('release roles scale with releaseFrequency (expressive >> stable) across the horizon', () => {
+  // Release roles are seeded, so assert over a horizon of scenes rather than one fragile seed.
+  const countReleases = (mode) => {
+    let n = 0;
+    for (let s = 0; s < 8; s++) {
+      const plan = planChoreo('drop-long', 64, ['drop.primary', 'drop.counter', 'drop.release'], mode, { tempo: makeTempo(128), activityCap: 12, trackSeed: 100 + s, sceneIndex: s });
+      n += plan.segments.filter((seg) => seg.role === 'release').length;
+    }
+    return n;
+  };
+  const expressive = countReleases('expressive');
+  const stable = countReleases('stable');
+  assert.ok(expressive >= 1, `expressive emits release roles across scenes (${expressive})`);
+  assert.ok(expressive > stable, `expressive releases far more than stable (${expressive} vs ${stable})`);
+});
+
+test('every style-pack targetMap preset is registered in the preset manifest', () => {
+  const manifest = JSON.parse(readFileSync(join(process.cwd(), 'public/visual-tuning-presets/index.json'), 'utf8'));
+  const present = new Set(manifest.presets);
+  for (const pack of STYLE_PACKS.packs) {
+    const maps = [pack.targetMap ?? {}];
+    for (const sub of Object.values(pack.substyles ?? {})) if (sub.targetMap) maps.push(sub.targetMap);
+    for (const map of maps) {
+      for (const ref of Object.values(map)) {
+        assert.ok(present.has(ref.preset), `${pack.id} targetMap preset ${ref.preset} missing from manifest`);
+      }
+    }
+  }
+});
+
+test('new Visual OS variant presets are registered in the manifest', () => {
+  const manifest = JSON.parse(readFileSync(join(process.cwd(), 'public/visual-tuning-presets/index.json'), 'utf8'));
+  const required = ['vos-drop-primary.json', 'vos-drop-counter.json', 'vos-drop-release.json',
+    'vos-build-compress.json', 'vos-build-escalate.json', 'vos-break-sparse.json', 'vos-break-glow.json',
+    'vos-verse-primary.json', 'vos-verse-motion.json', 'vos-peak-overdrive.json', 'vos-transition-slice.json', 'vos-outro-dissolve.json'];
+  for (const p of required) assert.ok(manifest.presets.includes(p), `manifest missing ${p}`);
 });

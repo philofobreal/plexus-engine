@@ -191,6 +191,42 @@ test('malformed meta is dropped without rejecting the point; legacy points keep 
   assert.equal('meta' in legacy.plan.points[0], false);
 });
 
+test('serialize/parse round-trips choreography meta fields', () => {
+  const meta = {
+    automationSituation: 'drop-long',
+    vocabularyId: 'drop-drive-counterpulse',
+    variantRole: 'secondary',
+    targetStateReference: 'cyberpunk:drop.counter',
+    motif: 'tunnel-drive',
+    evolutionPhase: 'peak'
+  };
+  const result = parseDramaturgyPlan(serializeDramaturgyPlan(makePlan([makePoint({ meta })])));
+  assert.ok(result.ok);
+  const out = result.plan.points[0].meta;
+  assert.equal(out.automationSituation, 'drop-long');
+  assert.equal(out.vocabularyId, 'drop-drive-counterpulse');
+  assert.equal(out.variantRole, 'secondary');
+  assert.equal(out.targetStateReference, 'cyberpunk:drop.counter');
+});
+
+test('new behaviour roles (sparse, focus) survive the round-trip', () => {
+  for (const role of ['sparse', 'focus']) {
+    const result = parseDramaturgyPlan(serializeDramaturgyPlan(makePlan([makePoint({ meta: { variantRole: role } })])));
+    assert.ok(result.ok);
+    assert.equal(result.plan.points[0].meta.variantRole, role, `role ${role} kept`);
+  }
+});
+
+test('invalid choreography meta enums are dropped but free-string ids survive', () => {
+  const meta = { automationSituation: 'not-a-situation', variantRole: 'lead', vocabularyId: 'x' };
+  const result = parseDramaturgyPlan(JSON.stringify(makePlan([makePoint({ meta })])));
+  assert.ok(result.ok);
+  const out = result.plan.points[0].meta;
+  assert.equal('automationSituation' in out, false, 'invalid situation dropped');
+  assert.equal('variantRole' in out, false, 'invalid role dropped');
+  assert.equal(out.vocabularyId, 'x', 'free-string vocabulary id kept');
+});
+
 test('serialize coerces an invalid duration to null and tolerates a malformed plan', () => {
   const text = serializeDramaturgyPlan({ version: 1, source: 'edited', points: [] }, Number.NaN);
   const envelope = JSON.parse(text);
