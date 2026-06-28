@@ -1,6 +1,7 @@
 import type { AudioEngine } from '../audio/AudioEngine';
 import { generatePerformancePlan, type GeneratorOptions } from '../automation/performancePlanGenerator';
 import { generateVisualOsPerformancePlan, loadStylePacksFile } from '../automation/visualOsPlanLoader';
+import { shouldUseVisualOs, stylePackForVisualMode } from '../automation/generatorRouting';
 import { tryResolveStylePack } from '../automation/styleTranslator';
 import { parseDramaturgyPlan, serializeDramaturgyPlan } from '../automation/dramaturgyTransfer';
 import { buildNarrative, generateIntents, processChoreography, type SemanticResolver } from '../semantics';
@@ -10,7 +11,7 @@ import { ExportCapabilityDetector } from '../export/ExportCapabilityDetector';
 import { WebMExporter, type ExportConfig } from '../export/WebMExporter';
 import type { ExportCapabilities } from '../export/ExportTypes';
 import { State } from '../state/store';
-import type { MorphCurve, PerformanceAutomationPlan, PerformanceAutomationPoint, RenderState, StylePacksFile, TimelineLayers, VisualMode, VisualTuningConfig } from '../types';
+import type { DramaturgyActivityLevel, MorphCurve, PerformanceAutomationPlan, PerformanceAutomationPoint, RenderState, StylePacksFile, TimelineLayers, VisualMode, VisualTuningConfig } from '../types';
 import { GestureEngine } from './GestureEngine';
 import { dashboardMetricMetadata, type DashboardMetricKey } from './metricMetadata';
 import { TimelineCanvas } from './TimelineCanvas';
@@ -45,10 +46,12 @@ export class DashboardUI {
     private lastTimelineDrawScroll = 0;
     private lastTimelineDrawScrubTime: number | null = null;
     private lastTriggeredAutomationPointId: string | null = null;
-    // Visual OS V2 generator controls (ADR-005). Present only when USE_VISUAL_OS_V2 is on.
+    // Visual OS generator controls (ADR-005). Now the default Dramaturgy generator, so these
+    // are always present (shown when the Dramaturgy strategy is selected).
     private visualOsSettingsEl: HTMLElement | null = null;
     private visualOsPackEl: HTMLSelectElement | null = null;
     private visualOsSubstyleEl: HTMLSelectElement | null = null;
+    private visualOsActivityEl: HTMLSelectElement | null = null;
     private stylePacksFile: StylePacksFile | null = null;
     private selectedAutomationPoint: PerformanceAutomationPoint | null = null;
     private hoveredPoint: PerformanceAutomationPoint | null = null;
@@ -300,8 +303,13 @@ export class DashboardUI {
                     this.els.toggleMetrics.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
                 },
                 onVisualModeChange: (mode) => {
-                    if (isVisualMode(mode)) State.visualMode = mode;
-                    else (this.els.visualMode as HTMLSelectElement).value = State.visualMode;
+                    if (isVisualMode(mode)) {
+                        State.visualMode = mode;
+                        // Main visual styles drive the Visual OS style pack default (ADR-005).
+                        this.syncStylePackToVisualMode();
+                    } else {
+                        (this.els.visualMode as HTMLSelectElement).value = State.visualMode;
+                    }
                 },
             }
         );
@@ -526,22 +534,31 @@ export class DashboardUI {
         this.initTimelineLayerControls();
     }
 
-    // Show the settings panel that matches the selected generator strategy.
+    // Show the settings panel that matches the selected generator strategy. The Visual OS
+    // controls drive the default Dramaturgy generator, so they appear for that strategy.
     private syncGeneratorStrategyPanels(): void {
         const value = (this.els.generatorStrategy as HTMLSelectElement).value;
         this.els.strictGeneratorSettings.classList.toggle('is-hidden', value !== 'strict');
-        this.visualOsSettingsEl?.classList.toggle('is-hidden', value !== 'visual-os');
+        this.visualOsSettingsEl?.classList.toggle('is-hidden', value !== 'dramaturgy');
     }
 
-    // Visual OS V2 (ADR-005): wire the style-pack / substyle selectors. The markup only
-    // exists when USE_VISUAL_OS_V2 is on, so this is a no-op otherwise.
+    // Visual OS (ADR-005): wire the style-pack / substyle / activity selectors. These drive
+    // the default Dramaturgy generator path. A missing style-packs.json leaves the pack list
+    // empty and the generator falls back to the legacy path quietly.
     private initVisualOsControls(): void {
-        if (!featureFlags.USE_VISUAL_OS_V2) return;
         this.visualOsSettingsEl = document.getElementById('visual-os-generator-settings');
         this.visualOsPackEl = document.getElementById('visual-os-pack') as HTMLSelectElement | null;
         this.visualOsSubstyleEl = document.getElementById('visual-os-substyle') as HTMLSelectElement | null;
+        this.visualOsActivityEl = document.getElementById('visual-os-activity') as HTMLSelectElement | null;
         this.visualOsPackEl?.addEventListener('change', () => this.populateSubstyleOptions());
+        this.syncGeneratorStrategyPanels();
         void this.loadStylePackOptions();
+    }
+
+    // Current dramaturgy density level for the Visual OS generator (default 'balanced').
+    private getActivityLevel(): DramaturgyActivityLevel {
+        const value = this.visualOsActivityEl?.value;
+        return value === 'macro' || value === 'active' ? value : 'balanced';
     }
 
     private async loadStylePackOptions(): Promise<void> {
@@ -550,6 +567,25 @@ export class DashboardUI {
         this.visualOsPackEl.innerHTML = this.stylePacksFile.packs
             .map(pack => `<option value="${pack.id}">${pack.label ?? pack.id}</option>`)
             .join('');
+        // Align the default style pack with the current Visual Mode (main styles replace the
+        // temporal substyle logic), then populate substyles for whatever pack ends up active.
+        this.syncStylePackToVisualMode();
+        this.populateSubstyleOptions();
+    }
+
+    // Drive the default Visual OS style pack from the top-right Visual Mode so the two never
+    // diverge (e.g. a 'cyberpunk' mode no longer leaves 'base-temporal' selected). Override
+    // contract (intentional, not accidental): a manual pack choice persists until the NEXT
+    // Visual Mode change, which re-aligns the pack to the mode. There is no separate "lock"
+    // flag; switching the mode is the explicit re-sync gesture. No-op when the mapped pack is
+    // not in the loaded list, or when it is already selected.
+    private syncStylePackToVisualMode(): void {
+        if (!this.visualOsPackEl) return;
+        const packId = stylePackForVisualMode(State.visualMode);
+        if (!packId) return;
+        const hasOption = Array.from(this.visualOsPackEl.options).some(option => option.value === packId);
+        if (!hasOption || this.visualOsPackEl.value === packId) return;
+        this.visualOsPackEl.value = packId;
         this.populateSubstyleOptions();
     }
 
@@ -562,20 +598,23 @@ export class DashboardUI {
             .join('');
     }
 
-    // Plan generation entry point. When USE_VISUAL_OS_V2 is on AND the user selects the
-    // "Visual OS" strategy, run the ADR-005 pipeline with the chosen style pack / substyle;
-    // if it cannot resolve a pack it returns null and we fall back to the legacy generator,
-    // so behaviour is never worse than today. All other strategies use the legacy generator.
+    // Plan generation entry point (ADR-005). The Visual OS pipeline is now the DEFAULT for the
+    // Dramaturgy strategy: it runs first and, only if it returns null or an empty plan (e.g.
+    // style-packs.json is missing or a pack cannot be resolved), generation falls back quietly
+    // to the legacy generatePerformancePlan. 'Strict' and 'Hero' stay explicit legacy
+    // strategies, and featureFlags.forceLegacyDramaturgy is a debug override that skips Visual
+    // OS entirely. The legacy generator is wired unchanged either way.
     private async generatePlan(): Promise<PerformanceAutomationPlan> {
         const strategy = (this.els.generatorStrategy as HTMLSelectElement).value;
-        if (featureFlags.USE_VISUAL_OS_V2 && strategy === 'visual-os') {
+        if (shouldUseVisualOs(strategy, featureFlags.forceLegacyDramaturgy)) {
             const v2 = await generateVisualOsPerformancePlan(State.trackAnalysis, {
                 duration: State.duration,
                 stylePackId: this.visualOsPackEl?.value || undefined,
                 substyle: this.visualOsSubstyleEl?.value || undefined,
+                activityLevel: this.getActivityLevel(),
                 stylePacksFile: this.stylePacksFile ?? undefined
             });
-            if (v2) return v2;
+            if (v2 && v2.points.length > 0) return v2;
         }
         return generatePerformancePlan(State.trackAnalysis, State.availablePresets, State.duration, this.buildGeneratorOptions());
     }
@@ -1449,6 +1488,17 @@ export class DashboardUI {
         const frameIdx = Math.floor(hoverTime * State.sampleRate / State.hopSize);
         const buildup = State.trackAnalysis.buildupConfidence[frameIdx] || 0;
         if (buildup > 0.01) content += `\nBuildup: ${(buildup * 100).toFixed(0)}%`;
+        // Visual OS provenance (debug only): surface the meta the adapter carried for the
+        // hovered automation point. Absent on legacy/imported-legacy plans, so this is opt-in.
+        if (featureFlags.analyzerDebugOverlay && this.hoveredPoint?.meta) {
+            const meta = this.hoveredPoint.meta;
+            const bits: string[] = [];
+            if (meta.stylePack) bits.push(meta.substyle ? `${meta.stylePack}#${meta.substyle}` : meta.stylePack);
+            if (meta.motif) bits.push(meta.motif);
+            if (meta.evolutionPhase) bits.push(meta.evolutionPhase);
+            if (meta.palette) bits.push(meta.palette);
+            if (bits.length) content += `\nVisual OS: ${bits.join(' | ')}`;
+        }
         const rect = canvas.getBoundingClientRect();
         const tooltipX = rect.left + focusX * rect.width + 15;
         const tooltipY = rect.top + focusY * rect.height + 15;
@@ -1849,6 +1899,7 @@ export class DashboardUI {
         if (typeof preset.visualMode === 'string' && isVisualMode(preset.visualMode)) {
             State.visualMode = preset.visualMode;
             (this.els.visualMode as HTMLSelectElement).value = State.visualMode;
+            this.syncStylePackToVisualMode();
         }
         if (preset.morphProfile) {
             if (typeof preset.morphProfile.durationSec === 'number') State.targetTuning.morphDurationSec = preset.morphProfile.durationSec;
