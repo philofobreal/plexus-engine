@@ -1513,6 +1513,9 @@ export class DashboardUI {
             const variantBits: string[] = [];
             if (meta.automationSituation) variantBits.push(meta.automationSituation);
             if (meta.vocabularyId) variantBits.push(meta.variantRole ? `${meta.vocabularyId}/${meta.variantRole}` : meta.vocabularyId);
+            if (meta.movementGesture) variantBits.push(meta.movementGesture);
+            if (meta.longScenePhase) variantBits.push(meta.longScenePhase);
+            if (meta.globalArcRole) variantBits.push(meta.globalArcRole);
             if (variantBits.length) content += `\nVariant: ${variantBits.join(' | ')}`;
         }
         const rect = canvas.getBoundingClientRect();
