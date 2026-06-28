@@ -20,10 +20,12 @@ const visualModeOptions = [
 ];
 
 const generatorStrategyOptions = [
+    // 'Dramaturgy' is now served by the Visual OS pipeline (ADR-005) with a silent legacy
+    // fallback; it is the default. 'Hero Rhythm' and 'Strict Alternating' stay on the legacy
+    // generator as explicit, non-Visual-OS strategies.
     { value: 'dramaturgy', label: 'Dramaturgy' },
     ...(featureFlags.heroEffect ? [{ value: 'hero', label: 'Hero Rhythm' }] : []),
-    { value: 'strict', label: 'Strict Alternating' },
-    ...(featureFlags.USE_VISUAL_OS_V2 ? [{ value: 'visual-os', label: 'Visual OS' }] : [])
+    { value: 'strict', label: 'Strict Alternating' }
 ];
 
 function renderOptions(options: Array<{ value: string; label: string }>): string {
@@ -222,13 +224,18 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <span class="timeline-title" style="margin-left: 8px; margin-right: 4px;">Morph (s):</span>
           <input type="number" id="strict-morph" value="1.0" min="0.1" max="20" step="0.1" style="width: 40px; height: 24px; background: rgba(255,255,255,0.06); color: white; border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; text-align: center;">
         </div>
-        ${featureFlags.USE_VISUAL_OS_V2 ? `
         <div id="visual-os-generator-settings" class="timeline-header-row is-hidden" style="padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 8px;">
           <span class="timeline-title" style="margin-right: 8px;">Visual OS Style:</span>
           <select id="visual-os-pack" class="timeline-select" aria-label="Style pack"></select>
           <span class="timeline-title" style="margin-left: 8px; margin-right: 4px;">Substyle:</span>
           <select id="visual-os-substyle" class="timeline-select" aria-label="Substyle"></select>
-        </div>` : ''}
+          <span class="timeline-title" style="margin-left: 8px; margin-right: 4px;">Activity:</span>
+          <select id="visual-os-activity" class="timeline-select" aria-label="Dramaturgy activity level">
+            <option value="macro">Macro</option>
+            <option value="balanced" selected>Balanced</option>
+            <option value="active">Active</option>
+          </select>
+        </div>
         <div class="timeline-wrapper">
           <div id="timeline-resize-handle" class="timeline-resize-handle" aria-hidden="true"></div>
           <canvas id="dramaturgy-timeline" class="dramaturgy-timeline" aria-label="Dramaturgy timeline"></canvas>
