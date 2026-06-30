@@ -14,15 +14,11 @@ Use this file for practical platform behavior that affects repeatability in Code
 
 ## Runtime Discovery and Execution Policy
 
-- Bun is the preferred default package manager, compiler, and runner for this repository when it is available on `PATH`.
-- Avoid using plain `npm`, `npx`, or package-manager-equivalent commands unless specifically requested.
-- First try scripts and tests through the commands declared in `package.json`:
-  - Developer environment: `bun run dev`
-  - Tests: `bun run test`
-  - Production build: `bun run build`
-  - Deploy: `bun run deploy`
-- If Bun is temporarily blocked or unavailable in the local sandbox shell, fall back to the Codex bundled Node executable with local project entrypoints. This is the recommended fallback in Codex Desktop on Windows when `bun` is not recognized.
-- Use the workspace dependency tool to discover the actual bundled Node path. Then run the local project entrypoints directly:
+- Before validation, inspect `package.json` and determine which runtime and package manager are actually available in the environment.
+- Start with the project's declared scripts using an environment-compatible Node/npm invocation, normally `npm run dev`, `npm test`, or `npm run build`.
+- The current `deploy` script invokes Bun internally. Do not treat it as a normal Node/npm validation command or run it automatically in a Bun-free environment.
+- For a targeted Node test, use `node --test <test-file>`.
+- If a declared script is absent or broken, use `npx`, a local `node_modules/.bin` executable, or the package's local Node entrypoint. When Codex Desktop provides the only working Node executable, discover its path with the workspace dependency tool and use it with the local project entrypoint:
 
 ```powershell
 & '<bundled-node>\node.exe' 'node_modules\typescript\bin\tsc'
@@ -36,7 +32,9 @@ Use this file for practical platform behavior that affects repeatability in Code
 & '<bundled-node>\node.exe' --test tests\ui-interaction.test.mjs tests\timeline-ui.test.mjs tests\contracts.test.mjs
 ```
 
-- Do not add dependencies just to make validation runnable when local `node_modules` and bundled Node are sufficient.
+- Do not install or add dependencies only to make validation runnable.
+- Do not use a Bun-first strategy. Use Bun only if runtime discovery shows it is the project's current, working runner and no suitable Node/npm/npx route is available.
+- Report every runtime or package-manager fallback, including why it was needed and the exact command used.
 
 ## Build And Test Execution
 

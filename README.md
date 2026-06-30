@@ -120,37 +120,35 @@ The stronger path is:
 
 ## Development
 
-Install dependencies with the package manager available in your environment. Bun is preferred for project scripts when available:
+Inspect `package.json` and use the Node/npm-compatible package manager already available in your environment. Do not install dependencies solely for validation.
 
 ```bash
-bun install
+npm install
 ```
 
 Run locally:
 
 ```bash
-bun run dev
+npm run dev
 ```
 
 Build:
 
 ```bash
-bun run build
+npm run build
 ```
 
-Deploy to GitHub Pages:
+The current `deploy` script invokes Bun internally, so it is not a general Node/npm-compatible recommendation. Do not run it automatically in a Bun-free environment; migrating deployment to a Node-compatible script is a separate task.
 
-```bash
-bun run deploy
-```
-
-If `bun` is not available on PATH in Codex Desktop or a Windows sandbox, use the bundled Node runtime with local project entrypoints instead of switching to global `npm`/`npx`. Discover the bundled Node path with the workspace dependency tool, then run:
+If a declared script is absent or broken, use `npx`, a local `node_modules/.bin` executable, or a local package entrypoint with an available Node runtime. In Codex Desktop, discover the bundled Node path with the workspace dependency tool when needed, then run commands such as:
 
 ```powershell
 & '<bundled-node>\node.exe' .\node_modules\typescript\bin\tsc
 & '<bundled-node>\node.exe' .\node_modules\vite\bin\vite.js build
 & '<bundled-node>\node.exe' --test tests\*.test.mjs tests\ui\*.test.mjs
 ```
+
+Do not use a Bun-first strategy. Bun is an acceptable fallback only when it is the project's sole available, working runner; report any runtime or package-manager fallback used.
 
 ## Status
 

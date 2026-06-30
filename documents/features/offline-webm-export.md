@@ -180,7 +180,7 @@ Export behavior is covered by `tests/export-deterministic.test.mjs`:
 - a valid explicit bitrate overrides the resolution fallback.
 - frame zero and each one-second boundary are forced keyframes at both 30 and 60 FPS.
 
-Recommended validation after export changes:
+Recommended validation after export changes starts with the applicable `package.json` scripts, normally `npm test` and `npm run build`. The bundled-Node commands below are fallback examples only, for use when those scripts are absent or broken:
 
 ```powershell
 & '<bundled-node>\node.exe' .\node_modules\typescript\bin\tsc
@@ -188,4 +188,4 @@ Recommended validation after export changes:
 & '<bundled-node>\node.exe' .\node_modules\vite\bin\vite.js build
 ```
 
-Use this bundled Node form when Bun is unavailable on PATH. If Bun is available, the equivalent project-level commands remain `bun run test` and `bun run build`.
+Report use of this fallback and the reason for it. Do not install dependencies for validation or prefer Bun; use Bun only when it is the project's sole available, working runner.

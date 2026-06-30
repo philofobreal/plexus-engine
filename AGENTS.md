@@ -109,13 +109,10 @@ Single-agent ownership required:
 - Any visual-only change requires render smoke validation.
 - Any worker algorithm change requires deterministic fixture-style validation where practical.
 - Any governance-only change must verify references, inheritance, and absence of contradictory policy.
-- Every build check, test execution, dependency installation, or script run performed by an agent MUST first try Bun (`bun run build`, `bun run test`, etc.) and the exact entrypoints defined in `package.json`.
-- If `bun` is not available on PATH, use the Codex bundled Node runtime directly with local `node_modules` entrypoints and report that fallback. The validated fallback shape is:
-  - TypeScript check: `& '<bundled-node>\node.exe' .\node_modules\typescript\bin\tsc`
-  - Production bundle: `& '<bundled-node>\node.exe' .\node_modules\vite\bin\vite.js build`
-  - Full tests: `& '<bundled-node>\node.exe' --test tests\*.test.mjs tests\ui\*.test.mjs`
-  - Targeted tests: `& '<bundled-node>\node.exe' --test <test-file> [<test-file> ...]`
-- Before reporting completion, state what validation was run and what was not run.
+- Validation must start from the scripts declared in `package.json`. First inspect which runtime and package manager are available, then use the environment-compatible Node/npm command, normally `npm run build`, `npm test`, or `node --test <test-file>` for a targeted suite.
+- If a required script is absent or broken, use `npx` or a local `node_modules/.bin`/package entrypoint with an available Node runtime. Do not install a dependency only to make validation runnable.
+- Do not use a Bun-first strategy. Bun may be used only when environment discovery shows that it is the project's current, working runner and no suitable Node/npm/npx path is available.
+- Before reporting completion, state the exact validation commands run, what could not be run, and every runtime or package-manager fallback used.
 
 ## Dependency Policy
 
