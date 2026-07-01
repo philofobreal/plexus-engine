@@ -82,7 +82,8 @@ export function buildVisualOsPerformancePlan(
         variantMode: options.variantMode,
         tempo: buildTempoContext(trackAnalysis),
         trackSeed: computeTrackSeed(trackAnalysis),
-        globalNarrative
+        globalNarrative,
+        analysis: trackAnalysis
     });
 }
 

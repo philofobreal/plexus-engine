@@ -18,6 +18,7 @@ import type {
     StyleVariantPairMap,
     StyleVocabularyMap,
     TempoContext,
+    TrackAnalysis,
     VariantRole,
     VisualScene,
     VisualScenePlan
@@ -27,6 +28,7 @@ import { planMicroChoreography, variationProfileFor } from './microChoreographyP
 import { createVariationMemory } from './variationMemory';
 import { planLongScene } from './longScenePlanner';
 import { planGlobalVisualNarrative } from './globalVisualNarrative';
+import { adaptAutomationEnvelopeToDynamics, adaptMorphCurveToDynamics, computeTransitionDynamicsProfile } from './transitionDynamics';
 
 // scenePlanAdapter - the Renderer Adapter tier (ADR-005). It is the SINGLE place where a
 // renderer-independent VisualScenePlan is mapped back to the existing, unchanged
@@ -59,6 +61,7 @@ export interface SceneAdapterOptions {
     // Computed once per track by visualOsPlanner; defaults to 0 for direct adapter callers.
     trackSeed?: number;
     globalNarrative?: GlobalVisualNarrative;
+    analysis?: TrackAnalysis;
 }
 
 // Activity level -> segment density. Two levers so Activity is a real density control, not just a
@@ -196,7 +199,8 @@ export function adaptScenePlanToPerformancePlan(
         let emittedScenePoints = 0;
         choreo.segments.forEach((seg) => {
             const segRef = resolveTargetKey(seg.target, scene.substyle, pack);
-            const env = seg.envelope;
+            const dynamics = computeTransitionDynamicsProfile({ analysis: options.analysis, timeSec: scene.timeSec + seg.offsetSec });
+            const env = adaptAutomationEnvelopeToDynamics(seg.envelope, dynamics);
 
             // Attack waypoint: the segment is born here; morph length = the envelope attack.
             const attackFrac = scene.durationSec > 0 ? seg.offsetSec / scene.durationSec : 0;
@@ -215,7 +219,9 @@ export function adaptScenePlanToPerformancePlan(
                 morph: clamp(env.attackSec, 0.1, 20),
                 // The first subsegment carries the cross-scene transition curve; later ones use the
                 // target's declared curve (or a smooth default).
-                curve: isBirth ? sceneCurve : (segRef.morphCurve ?? 'easeInOut'),
+                curve: isBirth
+                    ? (sceneCurve.isExplicit ? sceneCurve.curve : adaptMorphCurveToDynamics(sceneCurve.curve, dynamics))
+                    : (segRef.morphCurve ?? adaptMorphCurveToDynamics('easeInOut', dynamics)),
                 meta: choreoMeta(sceneMeta, attackPhase, vocab.id, seg.role, seg.movementGesture, seg.longScenePhase, effectivePackId, seg.target)
             });
             emittedScenePoints++;
@@ -388,10 +394,10 @@ function narrativeReason(handle: string): PerformanceAutomationReason {
     return NARRATIVE_TO_REASON[key as NarrativeType] ?? 'manual';
 }
 
-function resolveMorphCurve(scene: VisualScene, ref: StyleTargetReference): PerformanceAutomationPoint['morphCurve'] {
-    if (ref.morphCurve) return ref.morphCurve;
-    if (scene.transition) return mapCurve(scene.transition.curve);
-    return 'easeInOut';
+function resolveMorphCurve(scene: VisualScene, ref: StyleTargetReference): { curve: PerformanceAutomationPoint['morphCurve']; isExplicit: boolean } {
+    if (ref.morphCurve) return { curve: ref.morphCurve, isExplicit: true };
+    if (scene.transition) return { curve: mapCurve(scene.transition.curve), isExplicit: true };
+    return { curve: 'easeInOut', isExplicit: false };
 }
 
 function mapCurve(curve: SceneTransitionCurve): PerformanceAutomationPoint['morphCurve'] {

@@ -978,6 +978,43 @@ test('automation breathes: every morph stays well short of the gap to the next p
   }
 });
 
+test('adapter makes soft transitions longer and drop-like transitions shorter without edge-to-edge stretching', () => {
+  const { resolveStylePack } = load('automation/styleTranslator.ts');
+  const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
+  const pack = resolveStylePack(STYLE_PACKS, 'dark-techno');
+  const scenePlan = { version: 1, stylePack: 'dark-techno', scenes: [makeScene(16, 36, 'breakdown', 'dark-techno', 0.5)] };
+  const base = { duration: 60, variantMode: 'stable', tempo: makeTempo(120), trackSeed: 15 };
+  const analysis = (energy, density, novelty = 0, reasons = []) => ({
+    sections: [section('verse', 0, 16, 0.3, 0.3), { ...section('break', 16, 52, energy, density), reasons }],
+    noveltyPeaks: novelty ? [{ time: 16, value: novelty }] : [], cues: [], timingConfidence: { overall: 0.9 }
+  });
+  const soft = adaptScenePlanToPerformancePlan(scenePlan, pack, { ...base, analysis: analysis(0.32, 0.31) });
+  const drop = adaptScenePlanToPerformancePlan(scenePlan, pack, { ...base, analysis: analysis(0.95, 0.95, 1, ['high-transient']) });
+  assert.ok(soft.points[0].morphDurationSec > drop.points[0].morphDurationSec);
+  assert.equal(soft.points[0].morphCurve, 'easeInOut');
+  assert.equal(drop.points[0].morphCurve, 'exponential');
+  assert.equal(JSON.stringify(drop), JSON.stringify(adaptScenePlanToPerformancePlan(scenePlan, pack, { ...base, analysis: analysis(0.95, 0.95, 1, ['high-transient']) })));
+  for (let i = 0; i < soft.points.length - 1; i++) {
+    const gap = soft.points[i + 1].time - soft.points[i].time;
+    assert.ok(soft.points[i].morphDurationSec < gap - 0.5, 'cooldown air remains; morph is not edge-to-edge');
+  }
+});
+
+test('adapter preserves an explicit style-pack morph curve under aggressive dynamics', () => {
+  const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
+  const pack = makePack({
+    targetMap: { breakdown: { preset: 'explicit.json', morphCurve: 'linear' }, default: { preset: 'default.json' } },
+    behaviourVocabulary: {}, variantPairs: {}, movementVocabulary: {}
+  });
+  const scenePlan = { version: 1, stylePack: 'test-pack', scenes: [makeScene(16, 20, 'breakdown', 'test-pack', 0.5)] };
+  const analysis = {
+    sections: [section('verse', 0, 16, 0.1, 0.1), { ...section('break', 16, 36, 1, 1), reasons: ['high-transient'] }],
+    noveltyPeaks: [{ time: 16, value: 1 }], cues: [], timingConfidence: { overall: 1 }
+  };
+  const plan = adaptScenePlanToPerformancePlan(scenePlan, pack, { duration: 40, variantMode: 'stable', analysis });
+  assert.equal(plan.points[0].morphCurve, 'linear');
+});
+
 test('stable mode is not static: one identity, multiple points, varying intensity', () => {
   const { resolveStylePack } = load('automation/styleTranslator.ts');
   const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
