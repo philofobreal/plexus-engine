@@ -86,6 +86,13 @@ Keep visual event index synchronization event-driven. `PlexusRenderer` registers
 - **Automation Rendering At Viewport Edges:** `TimelineCanvas` keeps partially visible automation zones visible at timeline viewport boundaries. Morph curve math uses unclipped x coordinates and relies on canvas clipping, so offscreen starts or ends do not distort `linear`, `easeInOut`, or `exponential` curves. Preset-derived colors mark automation zones, morph curves, intensity lines, and sensitivity handle state; the post-morph zone segment is dimmed. Curve segment count is at least `15` and grows with curve width. RMS/bar drawing includes a small offscreen time margin so lines remain visually continuous at viewport edges.
 - **Waveform Cache For Deep Zoom:** `TimelineCanvas.setAudioBuffer()` stores precomputed waveform peaks in a `Float32Array` with a target `80 Hz` bucket resolution and a `500000` bucket upper bound. Waveform sampling linearly interpolates adjacent buckets to avoid blocky deep-zoom output. This is still a cached waveform projection and fallback to precomputed `AudioFrame.e`; no runtime audio analysis or analyzer DSP behavior changes.
 
+## Decisions Extended (2026-07-01)
+
+- **Timeline-level Morph Scale:** Add `State.automationMorphScale` and a Morph Scale slider to control automation morph duration without rewriting the authored plan. `computeMaxMorphScale` derives a safe upper bound from point spacing, `clampMorphScale` bounds the control, and `applyMorphScale` returns a cloned, anti-overlap-clamped plan view. `TimelineCanvas` and runtime automation scheduling consume the projection; `State.editedPerformancePlan` / `State.performancePlan` remain the base source of truth.
+- **Projection/editor ownership boundary:** Scaled points are read models, not editable entities. Hit-tests may use scaled start/end geometry, but `DashboardUI` maps the hit `id` back to the base point before selection or mutation. `automationPlanEditing.ts` centralizes ID lookup, update, delete, and scaled-to-base duration conversion. Delete is ID-based, and inspector duration writes divide the displayed duration by the active scale.
+- **Automation morph authority:** Automation-triggered preset loads carry the active point id and projected morph override. After preset normalization, `applyAutomationMorphAuthority` reasserts sensitivity, duration, and curve, and stale asynchronous automation loads are rejected. Manual preset loading follows the existing preset contract and receives no automation override.
+- **Continuous wormhole transition behavior:** `wormholeEmissionMode` participates in numeric tuning morphs. Fractional mode values crossfade adjacent deterministic emission envelopes. `WormholeAutomationTransition` follows the active automation identity and target morph duration with a zero-start smoothstep response so the first rendered frame does not receive an instant curve impulse.
+
 ## Consequences
 
 Positive:
@@ -115,6 +122,9 @@ Positive:
 - Visual identities can be added without changing `PlexusRenderer` branching logic.
 - Invalid or future preset visual mode values no longer crash rendering because style lookup falls back to `classic`.
 - New visual styles receive deterministic, browser-free smoke coverage through mock backend tests.
+- Morph Scale changes are reversible because the base automation plan is never rewritten by the projection.
+- Automation editing remains persistent across projection invalidation because all mutations resolve the base point by id.
+- Automation-triggered preset loads cannot silently replace the active point's morph timing with preset-local morph values.
 
 Tradeoffs:
 
@@ -132,6 +142,7 @@ Tradeoffs:
 - The waveform peak cache can be larger than the previous short fixed bucket array on long tracks, bounded by `500000` `Float32Array` entries.
 - The director adds a separate render-facing state contract beside `AudioFrame.state`, so future changes must keep worker frame compatibility and `DirectorOutput` semantics documented together.
 - `StyleRegistry` centralizes built-in style registration, so tests and docs must be updated when a built-in identity is added or removed.
+- The projection cache must track point order, insertion/deletion, and every editable field used by rendering/runtime; editor tests must also rebuild the projection after mutation.
 
 ## Alternatives Considered
 
@@ -148,6 +159,8 @@ Tradeoffs:
 - **Using clipped x coordinates for morph curve math:** Rejected because clipping the start/end before curve evaluation distorts partially visible automation zones at viewport edges. Canvas clipping should hide offscreen pixels after the real curve geometry is computed.
 - **Fixed `16x` timeline zoom ceiling:** Rejected because long tracks still showed too much time at max zoom. A dynamic ceiling keeps at least about five seconds visible while preserving `16x` as the minimum max zoom.
 - **Runtime waveform analysis during timeline zoom:** Rejected because timeline zoom is a UI projection concern. Precomputed `Float32Array` waveform peaks and interpolation provide deep-zoom readability without changing analyzer DSP or adding render-loop audio analysis.
+- **Destructively multiplying base morph durations:** Rejected because repeated slider movement would accumulate rounding and destroy authored timing. Morph Scale is a derived plan view.
+- **Editing cloned projection points:** Rejected because cache invalidation discards those mutations. Projection hits must resolve a base point by id before editing.
 
 ## Implementation References
 
@@ -157,6 +170,9 @@ Tradeoffs:
 - `src/ui/DashboardUI.ts`
 - `src/ui/GestureEngine.ts`
 - `src/ui/TimelineCanvas.ts`
+- `src/ui/performanceAutomationRuntime.ts`
+- `src/automation/morphScale.ts`
+- `src/automation/automationPlanEditing.ts`
 - `src/audio/AudioEngine.ts`
 - `src/visuals/ClassicPlexusEffect.ts`
 - `src/visuals/TemporalMusicEffect.ts`
@@ -169,4 +185,5 @@ Tradeoffs:
 - `src/visuals/VisualDirectorFSM.ts`
 - `src/visuals/RendererBackend.ts`
 - `src/visuals/P5RendererBackend.ts`
+- `src/visuals/WormholeEmission.ts`
 - `public/visual-tuning-presets/`

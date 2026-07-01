@@ -57,6 +57,9 @@ You can currently:
 - view realtime music metrics such as energy, density, spectral melody-presence and vocal/formant heuristics, FX, beat impulse, dynamics, the header BPM badge, and a 24-band logarithmic Spectrum Balance visualization from the offline analyzer
 - use presentation-oriented UI behavior where the chrome starts locked visible and can be unpinned into chrome auto-hide during performance
 - inspect the timeline viewport with zoom, pan, scrub buffering, automation zone rendering, morph curve handles, and a cached waveform projection
+- scale every automation morph non-destructively from the timeline-level `Morph Scale` control while keeping the authored plan intact
+- edit automation presets, sensitivity, timing, and morph duration against the base plan even while the timeline displays the scaled projection
+- use music-adaptive Visual OS transitions whose attack timing responds to precomputed track dynamics without adding render-loop analysis
 
 ## Visual modes
 
@@ -90,7 +93,7 @@ The aim is to keep the workflow immediate:
 2. Choose or tune a visual style.
 3. Perform, stream, capture, or iterate.
 
-No timeline editing.  
+No clip-by-clip timeline authoring or media library management.
 No clip library management.  
 No heavyweight desktop setup required.
 

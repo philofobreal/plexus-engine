@@ -82,6 +82,39 @@ Generated point meta now includes `automationSituation`, `vocabularyId`, `varian
 addition to scene/style provenance. The debug tooltip displays these fields and
 `dramaturgyTransfer.ts` enum-validates and round-trips them.
 
+## Automation Transition Dynamics And Plan Projection
+
+`src/automation/transitionDynamics.ts` is a pure projection over existing `TrackAnalysis`; it does
+not perform DSP and does not import renderer, DOM, or shared runtime state. At a transition time it
+combines section energy/density deltas, time-normalized local feature changes, novelty peaks,
+impact/fx cue evidence, transient reasons, and timing confidence into a deterministic
+`TransitionDynamicsProfile`. `adaptAutomationEnvelopeToDynamics()` lengthens attack for smooth,
+low-contrast evidence and shortens it for high-contrast/transient/drop evidence. It preserves the
+envelope total, release, and cooldown; sustain absorbs the attack delta. The Visual OS adapter maps
+the adapted `attackSec` to `PerformanceAutomationPoint.morphDurationSec`.
+
+`adaptMorphCurveToDynamics()` may select `easeInOut` for sufficiently smooth defaults or
+`exponential` for sufficiently confident aggressive defaults. Explicit scene transition curves and
+target-reference `morphCurve` values remain authoritative and bypass this adaptation. Missing
+analysis produces a neutral zero-confidence profile, preserving the original envelope and curve.
+
+The timeline-level Morph Scale control writes `State.automationMorphScale`. The base plan is
+`State.editedPerformancePlan ?? State.performancePlan`; it is never multiplied in place.
+`src/automation/morphScale.ts` implements `computeMaxMorphScale()` (safe upper bound from adjacent
+point gaps), `clampMorphScale()` (UI/state bounding), and `applyMorphScale()` (cloned projection with
+scaled, anti-overlap-clamped morph durations). `DashboardUI.getAutomationPlanView()` caches this
+projection using the plan reference, scale, and a content signature over point order plus `id`,
+`time`, `preset`, `intensity`, `morphDurationSec`, `morphCurve`, and `locked`. Timeline rendering and
+`triggerPerformanceAutomation()` consume the projected plan.
+
+Editing has a separate ownership contract. Hit-tests may use projected start/end geometry, but they
+return or resolve the base point by `id` before assigning selection/drag/resize state.
+`src/automation/automationPlanEditing.ts` supplies ID lookup, update, delete, and
+`baseMorphDurationFromScaled()`. Inspector duration displays the projected value and stores the base
+value after division by the active scale. Preset/curve/intensity edits, point/zone drag, morph resize,
+draw overwrite, and delete therefore survive `invalidateAutomationPlanView()` and projection rebuild.
+Delete never depends on object identity between a projection clone and its source.
+
 ## Worker Contract
 
 The accepted worker success payload is:
@@ -225,7 +258,7 @@ The deep copy is intentional. The empty analysis template contains nested arrays
 
 Dashboard Beat Impulse is `State.beatDecay` from consumed accepted `BeatEvent[]`. It is a decaying visual pulse, not BPM, raw bass, raw beat strength, or drum stem detection.
 
-`State.visualTuning` is the live interpolated tuning. `State.targetTuning` is the selected destination. Presets and sliders write to `targetTuning`; `PlexusRenderer.draw()` calls `applyTuningMorph()` before frame publication so numeric tuning values move toward their targets without overshooting. Automation point intensity values from `State.editedPerformancePlan` (or `State.performancePlan` when no user edits exist) temporarily replace the live `audioSensitivity` for the active point's morph zone during the current draw frame; the original global sensitivity is restored before the frame ends. `State.sectionOverrides` is fully removed. Tuning normalization and morphing iterate a module-level `visualTuningKeys` list instead of rebuilding `Object.keys(defaultVisualTuning)` in hot paths. This keeps preset changes stage-safe during live playback.
+`State.visualTuning` is the live interpolated tuning. `State.targetTuning` is the selected destination. Presets and sliders write to `targetTuning`; `PlexusRenderer.draw()` calls `applyTuningMorph()` before frame publication so numeric tuning values move toward their targets without overshooting. Performance automation selects the active point from the scaled plan view and writes its preset target. For automation-triggered loads, `applyAutomationMorphAuthority()` reasserts projected `intensity`, `morphDurationSec`, and `morphCurve` after preset `visualTuning` and `morphProfile` values have been normalized; stale asynchronous point loads are rejected. Manual preset loading supplies no override and retains normal preset semantics. `State.sectionOverrides` is fully removed. Tuning normalization and morphing iterate a module-level `visualTuningKeys` list instead of rebuilding `Object.keys(defaultVisualTuning)` in hot paths. This keeps preset changes stage-safe during live playback.
 
 ## Visual Identities
 
@@ -236,7 +269,7 @@ The renderer supports six selectable visual identities through `State.visualMode
 - `dark-techno`: strict monochrome industrial style with sharp white/gray line work, sparse high-brightness strobe polygon flashes, and no radial glow usage.
 - `organic-ambient`: slow, fluid, pastel green/blue/earth-tone style that avoids sharp network lines and draws soft particle glow fields instead.
 - `cyberpunk`: high-contrast neon magenta/cyan style with chromatic-aberration line offsets and deterministic high-tension glitch coordinate shifts.
-- `cosmic-wormhole`: a 3D perspective "tunnel flight" identity. A constructor-allocated dust pool is projected from cylinder space to 2D using the 24-band `perceptualSpectrum` and the modulation bus. It adds event-driven tunnel curvature scaled by the `wormholeCurve` master, an absolute-world parallax starfield, and a deep `radialGlow` galaxy layer that both follow the camera as it travels and bends. It draws only `backend.line` plus the gated galaxy glow and stays deterministic through `pseudoNoise()`. Its parameters live in the `Wormhole` tuning group (`wormholeRadius`, `wormholeDepth`, `wormholeSpeed`, `wormholeWarp`, `wormholeCurve`, `wormholeRing`, `wormholeContinuity`, `wormholeStarfield`, `wormholeGalaxy`).
+- `cosmic-wormhole`: a 3D perspective "tunnel flight" identity. A constructor-allocated dust pool is projected from cylinder space to 2D using the 24-band `perceptualSpectrum` and the modulation bus. It adds event-driven tunnel curvature scaled by the `wormholeCurve` master, an absolute-world parallax starfield, and a deep `radialGlow` galaxy layer that both follow the camera as it travels and bends. It draws only `backend.line` plus the gated galaxy glow and stays deterministic through `pseudoNoise()`. Its parameters live in the `Wormhole` tuning group (`wormholeRadius`, `wormholeDepth`, `wormholeSpeed`, `wormholeWarp`, `wormholeCurve`, `wormholeRing`, `wormholeContinuity`, `wormholeStarfield`, `wormholeGalaxy`, `wormholeEmissionMode`). `wormholeEmissionMode` is continuous during tuning morphs: `wormholeEmissionGain()` evaluates adjacent integer modes and crossfades their gains for fractional values. `WormholeAutomationTransition` tracks automation identity changes separately from tuning floats and returns a zero-start smoothstep response over `State.targetTuning.morphDurationSec`, avoiding an instant first-frame curvature surge.
 
 The common contract is `src/visuals/VisualIdentity.ts`. `src/visuals/StyleRegistry.ts` keeps identities in a private `Map`, exposes `register()` and `get()`, and provides `createDefaultStyleRegistry()` for application composition. Unknown style ids fall back to `classic`; missing `classic` registration is treated as a composition error.
 
@@ -252,7 +285,7 @@ Application boot uses a separate `#app-loader` overlay for FOUC protection. `src
 
 For stream output, `chromaKeyMode` selects normal, green, or transparent background clearing. `performanceMode` disables radial-gradient glow work and chroma-key modes also skip those expensive glow paths. Expensive radial glow also requires `State.isPlaying`, so paused and idle views keep their static visual state without rebuilding radial gradients. `PlexusRenderer` lowers the p5 frame-rate target by playback state: playing runs at `60 FPS`, paused with a loaded track runs at `30 FPS`, and no-audio idle runs at `15 FPS`. The frame-rate call is issued only when the target changes, and this policy does not alter audio playback or offline analysis behavior. `?presentation=true` sets `State.uiVisible` to `false` and hides the UI chrome automatically.
 
-The seek chrome includes an interactive dramaturgy timeline canvas. It does not perform analysis at runtime. `DashboardUI.drawDramaturgyTimeline()` passes a declarative `RenderState` into `TimelineCanvas`, which projects precomputed `TrackAnalysis` data into layered canvas bands: section blocks use label-specific colors, BPM-derived gridlines draw bar boundaries, RMS/bar pressure stays visually connected at timeline viewport edges, `buildupConfidence` is drawn as a cyan tension wave, `spectralPivot` active regions are drawn as a magenta dotted overlay, `tensionTrends.segments` are drawn as rising/falling/stable guide strokes, and selected cue kinds (`impact`, `break`) appear as labeled markers. Performance automation zones are colored from the preset signature; their morph curve, intensity line, and sensitivity handle state share that signature. Partially visible automation zones remain visible at viewport edges. Morph curve math uses unclipped x coordinates and canvas clipping, has a minimum of `15` segments, and increases segment count with curve width. The zone segment after the morph curve is dimmed. The configured `dropAnticipation` window is shown as a magenta suspense gradient to the right of the playhead. The canvas is HDPI-aware and redraws through `requestTimelineDraw()` when user interaction can arrive faster than animation frames. `updateDashboard()` does not imply a timeline redraw; it calls `requestDashboardTimelineDraw()`, which redraws only when the analysis reference, canvas size, zoom, scroll, scrub state, or visible playhead position changes. The playhead threshold is one visible pixel, computed as `viewport.duration / Math.max(1, rect.width)`.
+The seek chrome includes an interactive dramaturgy timeline canvas. It does not perform analysis at runtime. `DashboardUI.drawDramaturgyTimeline()` passes a declarative `RenderState` into `TimelineCanvas`, which projects precomputed `TrackAnalysis` data into layered canvas bands: section blocks use label-specific colors, BPM-derived gridlines draw bar boundaries, RMS/bar pressure stays visually connected at timeline viewport edges, `buildupConfidence` is drawn as a cyan tension wave, `spectralPivot` active regions are drawn as a magenta dotted overlay, `tensionTrends.segments` are drawn as rising/falling/stable guide strokes, and selected cue kinds (`impact`, `break`) appear as labeled markers. Performance automation zones come from `getAutomationPlanView()`, so their displayed morph geometry reflects the timeline-level Morph Scale without modifying base points. Zones are colored from the preset signature; their morph curve, intensity line, and sensitivity handle state share that signature. Partially visible automation zones remain visible at viewport edges. Morph curve math uses unclipped x coordinates and canvas clipping, has a minimum of `15` segments, and increases segment count with curve width. The zone segment after the morph curve is dimmed. The configured `dropAnticipation` window is shown as a magenta suspense gradient to the right of the playhead. The canvas is HDPI-aware and redraws through `requestTimelineDraw()` when user interaction can arrive faster than animation frames. `updateDashboard()` does not imply a timeline redraw; it calls `requestDashboardTimelineDraw()`, which redraws only when the analysis reference, canvas size, zoom, scroll, scrub state, or visible playhead position changes. The playhead threshold is one visible pixel, computed as `viewport.duration / Math.max(1, rect.width)`.
 
 Timeline scrubbing is intentionally separated from audio seeking. `DashboardUI` owns `private scrubTime: number | null`; pointer or seekbar drag calls `setScrubTime()`, updates the visible time label, updates the seekbar value, and redraws the playhead in yellow without touching the Web Audio source graph. `commitScrubTime()` is called when the interaction ends (`pointerup`, `pointercancel`, `change`, or touch-end paths). Only that commit performs the single final `AudioEngine.seek(targetTime)` call. `updateDashboard()` also respects this state: while `scrubTime` is non-null, playback time does not overwrite the user's in-progress scrub position.
 
@@ -291,6 +324,7 @@ Recent hot-path optimizations:
 - UI chrome intentionally starts locked visible and separates fast user-requested hide feedback (`400ms` after background unpin) from passive idle hiding (about `1400ms`) so normal interaction stays forgiving while explicit hide feels immediate. Hover defers hiding by rescheduling the timer.
 - Timeline automation rendering keeps partially visible automation zones, morph curves, intensity lines, sensitivity handles, and RMS/bar lines visually continuous at viewport edges. Morph curve drawing relies on canvas clipping rather than pre-clipped x coordinates.
 - Timeline waveform rendering stores precomputed peaks in a `Float32Array` waveform cache at a target `80 Hz` bucket resolution, capped at `500000` points. Deep zoom samples the waveform cache with linear interpolation and remains a cached projection, not runtime audio analysis.
+- Automation regression coverage is split by ownership: `tests/transition-dynamics.test.mjs` covers TrackAnalysis-driven envelope/curve adaptation; `tests/morph-scale.test.mjs` covers scaling, clamping, determinism, and cache signatures including reorder/add/delete; `tests/automation-plan-editing.test.mjs` covers scaled selection followed by base preset/duration edits, drag, delete, invalidation, and projection reload; `tests/wormhole-lifecycle.test.mjs` and `tests/morphing.test.mjs` cover duration-aware wormhole response and fractional emission interpolation. Timeline/UI/contracts and semantic integration tests verify projection wiring and automation morph authority.
 - Offline export captures frames immediately after p5 redraw plus metadata-card drawing and before yielding to `requestAnimationFrame`. This protects the watermark from browser buffer swaps or canvas clears. The exporter still yields after capture so the UI can update progress and respond to stop/cancel.
 - Object URLs for exported WebM downloads are revoked after a `1000ms` timeout rather than synchronously after link removal, giving the browser download queue time to claim the Blob.
 

@@ -354,6 +354,27 @@ The `targetTuning` single-writer rule is untouched: the adapter still only emits
 (`automationSituationClassifier`, `microChoreographyPlanner`) name no preset/tuning quantity
 (guarded by the renderer-independence tests).
 
+#### Adaptive transition dynamics (implemented extension)
+
+`src/automation/transitionDynamics.ts` refines the already-planned envelope at the adapter boundary.
+It consumes only existing `TrackAnalysis` evidence: section energy/density change, uniformly projected
+feature windows, novelty, impact/fx cues, transient reasons, and timing confidence. From these values it
+computes a deterministic `TransitionDynamicsProfile` containing energy/density deltas, time-normalized
+energy slope, transientness, smoothness, local contrast, and confidence. It performs no audio DSP and
+does not import renderer, DOM, shared runtime state, or visual tuning.
+
+The profile may lengthen `AutomationEnvelope.attackSec` for smooth low-contrast handoffs or shorten it
+for high-contrast/transient/drop handoffs. Envelope total duration, `releaseSec`, and `cooldownSec` stay
+fixed; `sustainSec` absorbs the difference. Because the adapter maps attack to
+`PerformanceAutomationPoint.morphDurationSec`, this changes transition pacing without changing the
+plan contract or stretching a zone to the next point. Missing analysis or zero confidence preserves the
+original envelope.
+
+Curve ownership remains explicit. A scene transition curve or target reference `morphCurve` is kept
+verbatim. Dynamics may adapt only the implicit/default curve, choosing `easeInOut` for sufficiently
+smooth low-contrast evidence or `exponential` for sufficiently confident high-contrast transient/drop
+evidence. This preserves style-pack author intent while allowing evidence-based defaults.
+
 ### 8. Movement language, plan-local memory, long-scene form, and global narrative
 
 The choreography extension adds four renderer-independent layers without creating a second
@@ -495,7 +516,10 @@ validates cycles/missing-parents/unknown enums atomically and falls back to lega
 - `src/automation/styleTranslator.ts` (new, Style Resolver -> Behaviour Resolver).
 - `src/automation/scenePlanAdapter.ts` (VisualScenePlan -> PerformanceAutomationPlan; classifies
   situations, resolves the behaviour vocabulary, drives the planner, and maps each
-  `AutomationEnvelope` to attack/release points with anti-overlap-only `finalize`).
+  `AutomationEnvelope` to attack/release points with adaptive transition dynamics and
+  anti-overlap-only `finalize`).
+- `src/automation/transitionDynamics.ts` (pure `TrackAnalysis` projection; adapts envelope attack and
+  implicit/default morph curves while preserving explicit curves, release, cooldown, and total).
 - `src/automation/automationSituationClassifier.ts` (pure: VisualScene context -> AutomationSituation).
 - `src/automation/microChoreographyPlanner.ts` (pure: situation + vocabulary + tempo + variation ->
   `ChoreographyPlan`; adaptive bar-snapped subdivision, long-section bias, cycle grammar,
@@ -519,3 +543,5 @@ validates cycles/missing-parents/unknown enums atomically and falls back to lega
 - Tests: `tests/visual-os.test.mjs` (style inheritance, movement vocabulary fallback,
   plan-local memory, long-scene form, global arc, returning-drop evolution,
   renderer-independence guard, adapter-to-plan contract, legacy fallback).
+- Tests: `tests/transition-dynamics.test.mjs` (soft/aggressive attack adaptation, explicit no-evidence
+  fallback, determinism, and real feature-window contrast).
