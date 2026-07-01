@@ -82,6 +82,8 @@ export const State = {
     preloadedPresets: {} as Record<string, Partial<VisualTuningConfig>>,
     performancePlan: null as PerformanceAutomationPlan | null,
     editedPerformancePlan: null as PerformanceAutomationPlan | null,
+    // Non-destructive editor/runtime projection over the base automation plan.
+    automationMorphScale: 1,
     /** Source-specific identities; visualTransitionState alone composes the effective ID. */
     activeAutomationTransitionId: null as string | null,
     activeSemanticScoreTransitionId: null as string | null,

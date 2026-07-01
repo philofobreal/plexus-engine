@@ -254,3 +254,17 @@ test('analyzer debug overlay caps novelty curve sampling on wide timelines', () 
   assert.ok(lineToCount <= 1500, `wide debug overlay should cap lineTo calls, got ${lineToCount}`);
   assertFiniteDrawCoordinates(wideCanvas.context.calls, ['moveTo', 'lineTo']);
 });
+
+test('TimelineCanvas identifies an active global morph scale in the automation lane', () => {
+  const mockCanvas = createMockCanvas();
+  new TimelineCanvas(mockCanvas).render({
+    isExporting: false, exportTime: 0, currentTime: 0, duration: 20, zoom: 1, pan: 0, bpm: 120,
+    sampleRate: 44100, hopSize: 1024, frames: [], sections: [], bars: [], cues: [], significantMoments: [],
+    buildupConfidence: [], spectralPivot: [], tensionTrends: { globalSlope: 0, peakTime: 0, peakValue: 0, segments: [] },
+    performancePlan: { version: 1, source: 'edited', points: [{ id: 'a', time: 1, sectionId: 'a', preset: 'default.json', confidence: 1, intensity: 1, reason: 'manual', morphDurationSec: 4, morphCurve: 'easeInOut' }] },
+    automationMorphScale: 2, timelineLayers: { waveform: false, rms: false, buildup: false, cues: false, automation: true },
+    snapToGrid: true, selectedPointId: null, followPlayhead: false, hoveredPointId: null, hoveredHandleType: null,
+    audioSensitivity: 1, dropAnticipation: 0, videoDominantColor: { r: 0, g: 0, b: 0 }, gridOffset: 0
+  });
+  assert.ok(mockCanvas.context.calls.some(call => call[0] === 'fillText' && String(call[1]).includes('[200%]')));
+});

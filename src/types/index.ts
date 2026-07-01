@@ -979,6 +979,7 @@ export interface RenderState {
     boundaryCandidates?: SectionBoundaryCandidate[];
     showAnalyzerDebugOverlay?: boolean;
     performancePlan: PerformanceAutomationPlan | null;
+    automationMorphScale?: number;
     // Semantic dramaturgy overlay (ADR-003). Present only when the semantic layer is on;
     // the timeline draws the dramaturgical arc instead of raw preset names. Optional so the
     // legacy render path is unaffected.

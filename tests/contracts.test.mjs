@@ -301,7 +301,7 @@ test('semantic resolver is wired behind a feature flag and owns targetTuning whe
   assert.match(ui, /import \{ buildNarrative, generateIntents, processChoreography, type SemanticResolver \} from '\.\.\/semantics'/);
   assert.match(ui, /private computeSemanticPlan\(\): void \{[\s\S]*if \(!featureFlags\.semanticResolver\) return;[\s\S]*State\.visualChoreography = choreography;[\s\S]*State\.currentChoreography = null;\s*\}/);
   assert.match(ui, /private snapshotSemanticBase\(\): void \{[\s\S]*isSemanticTuningActive\([\s\S]*State\.visualChoreography !== null[\s\S]*if \(!isSemanticActive\) return;[\s\S]*State\.semanticBaseTuning = \{ \.\.\.State\.targetTuning \}/);
-  assert.match(ui, /private triggerPerformanceAutomation\(\): void \{[\s\S]*findActiveAutomationPoint\(plan, State\.currentTime\)[\s\S]*loadVisualPreset\(activePoint\.preset\)/);
+  assert.match(ui, /private triggerPerformanceAutomation\(\): void \{[\s\S]*findActiveAutomationPoint\(plan, State\.currentTime\)[\s\S]*loadVisualPreset\(activePoint\.preset, \{/);
 
   // Manual slider edit folds into the base per-key (no full re-snapshot, so no delta drift).
   assert.match(ui, /onTuningChange: \(key, value\) => \{[\s\S]*if \(\(featureFlags\.semanticResolver \|\| featureFlags\.semanticChoreography\) && State\.semanticBaseTuning\) State\.semanticBaseTuning\[key\] = value;/);
@@ -879,7 +879,7 @@ test('perceptual spectrum dashboard metric uses precomputed 24-band analyzer out
   assert.match(drawSpectrumSource, /rgba\(232, 232, 226/);
 });
 
-test('timeline draw mode writes directly to performance automation points', () => {
+test('timeline draw mode writes through the base automation plan editor', () => {
   const state = read('src/state/store.ts');
   const audio = read('src/audio/AudioEngine.ts');
   const renderer = read('src/visuals/PlexusRenderer.ts');
@@ -895,8 +895,8 @@ test('timeline draw mode writes directly to performance automation points', () =
   assert.match(ui, /State\.isDrawingEnvelope = true/);
   assert.match(ui, /const MIN_DRAW_DISTANCE_SEC = 2\.0/);
   assert.match(ui, /const existingPoint = this\.getNearestEditableAutomationPoint\(hoverTime, MIN_DRAW_DISTANCE_SEC\)/);
-  assert.match(ui, /if \(existingPoint && !existingPoint\.locked\) \{[\s\S]*existingPoint\.preset = presetName;[\s\S]*existingPoint\.intensity = this\.getAutomationIntensityAtPercent\(focusY\);[\s\S]*return;/);
-  assert.match(ui, /point\.intensity = this\.getAutomationIntensityAtPercent\(focusY\)/);
+  assert.match(ui, /if \(existingPoint && !existingPoint\.locked\) \{[\s\S]*updateAutomationPointById\(this\.getBaseAutomationPlan\(\), existingPoint\.id, edit\);[\s\S]*return;/);
+  assert.match(ui, /updateAutomationPointById\(this\.getBaseAutomationPlan\(\), point\.id, \{[\s\S]*intensity: this\.getAutomationIntensityAtPercent\(focusY\)/);
   assert.match(ui, /this\.createAutomationPointAtTime\(hoverTime\)/);
   assert.match(ui, /State\.editedPerformancePlan\?\.points\.sort\(\(a, b\) => a\.time - b\.time\)/);
   assert.match(ui, /this\.engine\.addPositionChangedListener\(\(\) => \{[\s\S]*this\.lastTriggeredAutomationPointId = null;[\s\S]*this\.triggerPerformanceAutomation\(\);[\s\S]*\}\);/);
@@ -918,15 +918,22 @@ test('performance plan playback automation and preloading are wired to playback 
   assert.match(ui, /void this\.preloadPresetsForPlan\(plan\)/);
   assert.match(ui, /this\.lastTriggeredAutomationPointId = null/);
   assert.match(ui, /private triggerPerformanceAutomation\(\): void/);
-  assert.match(ui, /const plan = State\.editedPerformancePlan \?\? State\.performancePlan/);
+  assert.match(ui, /const plan = this\.getAutomationPlanView\(\)/);
   assert.match(ui, /const activePoint = findActiveAutomationPoint\(plan, State\.currentTime\)/);
   assert.match(ui, /activePoint\.id === this\.lastTriggeredAutomationPointId/);
   assert.match(ui, /this\.lastTriggeredAutomationPointId = activePoint\.id/);
-  assert.match(ui, /State\.targetTuning\.morphDurationSec = activePoint\.morphDurationSec/);
-  assert.match(ui, /State\.targetTuning\.morphCurveValue = activePoint\.morphCurve === 'linear'[\s\S]*\? 0[\s\S]*: activePoint\.morphCurve === 'exponential'[\s\S]*\? 2[\s\S]*: 1;/);
-  assert.match(ui, /void this\.loadVisualPreset\(activePoint\.preset\)/);
+  assert.match(ui, /applyAutomationMorphAuthority\(State\.targetTuning, activePoint\)/);
+  assert.match(ui, /void this\.loadVisualPreset\(activePoint\.preset, \{[\s\S]*overrideMorph: activePoint/);
   assert.match(ui, /updateDashboard\(\) \{[\s\S]*this\.triggerPerformanceAutomation\(\);/);
   assert.doesNotMatch(ui, /updateDashboard\(\) \{[\s\S]*this\.triggerSectionPresetAutomation\(\);/);
+});
+
+test('automation-triggered preset loads retain scaled morph authority while manual loads stay unchanged', () => {
+  const ui = read('src/ui/DashboardUI.ts');
+  assert.match(ui, /loadVisualPreset\(activePoint\.preset, \{[\s\S]*automationPointId: activePoint\.id,[\s\S]*overrideMorph: activePoint/);
+  assert.match(ui, /this\.applyPerformancePreset\(presetData, options\)/);
+  assert.match(ui, /if \(options\.overrideMorph\) applyAutomationMorphAuthority\(State\.targetTuning, options\.overrideMorph\)/);
+  assert.match(ui, /onPresetLoad: \(fileName\) => \{ void this\.loadVisualPreset\(fileName\); \}/);
 });
 
 test('visual config copy and preset apply serialize performance plans', () => {

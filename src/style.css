@@ -442,6 +442,17 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(1.3); }
   margin: 0 8px;
   align-self: center;
 }
+.automation-size-control {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--text-muted); font-size: 0.65rem; font-weight: 600; white-space: nowrap;
+}
+.automation-size-control input[type="range"] {
+  width: 64px; accent-color: var(--accent); cursor: pointer;
+}
+.automation-size-control output {
+  min-width: 34px; color: var(--text-main); font: 0.65rem monospace; text-align: right;
+}
+.automation-size-control input:disabled { opacity: 0.35; cursor: default; }
 #automation-inspector {
   display: flex;
   gap: 8px;

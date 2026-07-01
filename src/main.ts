@@ -152,6 +152,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             </button>
             <button id="toggle-timeline-follow" class="btn-icon-mini is-active" title="Toggle Playhead Follow (F)" aria-pressed="true" aria-label="Toggle playhead follow">F</button>
             <div class="timeline-divider"></div>
+            <label id="automation-size-control" class="automation-size-control" for="automation-morph-scale" title="Non-destructive global automation morph scale">
+              <span>Morph Scale</span>
+              <input id="automation-morph-scale" type="range" min="0.25" max="4" step="0.01" value="1" aria-label="Automation Size">
+              <output id="automation-morph-scale-value" for="automation-morph-scale">100%</output>
+            </label>
+            <div class="timeline-divider"></div>
             <!-- Draw mode -->
             <button id="toggle-timeline-draw" class="btn-icon-mini" title="Draw Envelope (D)" aria-pressed="false" aria-label="Draw envelope mode">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>

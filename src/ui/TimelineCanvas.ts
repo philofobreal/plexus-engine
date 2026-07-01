@@ -349,7 +349,9 @@ export class TimelineCanvas {
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            const label = `${this.formatPresetName(point.preset)} [${point.reason.toUpperCase()}]${point.locked ? ' [L]' : ''}`;
+            const scaleLabel = state.automationMorphScale && Math.abs(state.automationMorphScale - 1) > 0.005
+                ? ` [${Math.round(state.automationMorphScale * 100)}%]` : '';
+            const label = `${this.formatPresetName(point.preset)} [${point.reason.toUpperCase()}]${scaleLabel}${point.locked ? ' [L]' : ''}`;
             const labelY = topPad + 4;
             ctx.font = '7px monospace';
             ctx.textBaseline = 'middle';

@@ -4,6 +4,8 @@ import { generateVisualOsPerformancePlan, loadStylePacksFile } from '../automati
 import { shouldUseVisualOs, stylePackForVisualMode } from '../automation/generatorRouting';
 import { tryResolveStylePack } from '../automation/styleTranslator';
 import { parseDramaturgyPlan, serializeDramaturgyPlan } from '../automation/dramaturgyTransfer';
+import { applyMorphScale, clampMorphScale, computeMaxMorphScale, getAutomationPlanViewSignature } from '../automation/morphScale';
+import { baseMorphDurationFromScaled, findAutomationPointById, removeAutomationPointById, updateAutomationPointById } from '../automation/automationPlanEditing';
 import { buildNarrative, generateIntents, processChoreography, type SemanticResolver } from '../semantics';
 import { featureFlags } from '../config/featureFlags';
 import { normalizeVisualTuningConfig } from '../config/visualTuning';
@@ -19,11 +21,16 @@ import { PlaybackController } from './controllers/PlaybackController';
 import { TuningController } from './controllers/TuningController';
 import { ExportController } from './controllers/ExportController';
 import { isSemanticTuningActive } from './semanticAutomationPolicy';
-import { findActiveAutomationPoint } from './performanceAutomationRuntime';
+import { applyAutomationMorphAuthority, findActiveAutomationPoint } from './performanceAutomationRuntime';
 import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
 
 interface VisualPresetManifest {
     presets?: string[];
+}
+
+interface VisualPresetLoadOptions {
+    automationPointId?: string;
+    overrideMorph?: Pick<PerformanceAutomationPoint, 'intensity' | 'morphDurationSec' | 'morphCurve'>;
 }
 
 const VIDEO_FILE_EXTENSION_RE = /\.(mp4|m4v|webm|ogv|ogg|mov|mkv)$/i;
@@ -48,6 +55,10 @@ export class DashboardUI {
     private lastTimelineDrawScroll = 0;
     private lastTimelineDrawScrubTime: number | null = null;
     private lastTriggeredAutomationPointId: string | null = null;
+    private automationPlanViewCache: PerformanceAutomationPlan | null = null;
+    private automationPlanViewSource: PerformanceAutomationPlan | null = null;
+    private automationPlanViewScale = NaN;
+    private automationPlanViewSignature: string | null = null;
     // Visual OS generator controls (ADR-005). Now the default Dramaturgy generator, so these
     // are always present (shown when the Dramaturgy strategy is selected).
     private visualOsSettingsEl: HTMLElement | null = null;
@@ -121,6 +132,8 @@ export class DashboardUI {
             timelineDrawTarget: document.getElementById('timeline-draw-target')!,
             timelinePresetBrush: document.getElementById('timeline-preset-brush')!,
             clearAutomationBtn: document.getElementById('clear-automation-btn')!,
+            automationMorphScale: document.getElementById('automation-morph-scale')!,
+            automationMorphScaleValue: document.getElementById('automation-morph-scale-value')!,
             generatorStrategy: document.getElementById('generator-strategy')!,
             generatePlanBtn: document.getElementById('generate-plan-btn')!,
             copyDramaturgyBtn: document.getElementById('copy-dramaturgy-btn')!,
@@ -340,6 +353,8 @@ export class DashboardUI {
 
     private async handleFileSelected(file: File): Promise<void> {
         this.engine.stop(true);
+        State.automationMorphScale = 1;
+        this.invalidateAutomationPlanView();
         this.configureVideoBackplate(file);
         this.playbackCtrl.onFileLoadStart(file.name);
         this.exportCtrl.setCanExport(false);
@@ -524,6 +539,16 @@ export class DashboardUI {
         this.els.generatorStrategy.addEventListener('change', () => {
             this.syncGeneratorStrategyPanels();
         });
+        this.els.automationMorphScale.addEventListener('input', () => {
+            const plan = State.editedPerformancePlan ?? State.performancePlan;
+            const requested = parseFloat((this.els.automationMorphScale as HTMLInputElement).value);
+            State.automationMorphScale = clampMorphScale(plan, requested);
+            this.invalidateAutomationPlanView();
+            this.lastTriggeredAutomationPointId = null;
+            this.syncAutomationMorphScaleControl(plan);
+            this.requestTimelineDraw();
+        });
+        this.syncAutomationMorphScaleControl(State.editedPerformancePlan ?? State.performancePlan);
         this.els.generatePlanBtn.addEventListener('click', () => {
             if (!window.confirm('Overwrite current automation plan?')) return;
             void (async () => {
@@ -663,6 +688,7 @@ export class DashboardUI {
         const plan = this.ensureEditedPerformancePlan();
         plan.points = [];
         plan.source = 'edited';
+        this.invalidateAutomationPlanView();
         this.hideAutomationInspector();
         this.selectedAutomationPoint = null;
         this.requestTimelineDraw();
@@ -713,23 +739,34 @@ export class DashboardUI {
 
     private initAutomationInspectorControls(): void {
         this.els.inspectorPreset.addEventListener('change', () => {
-            if (!this.selectedAutomationPoint) return;
-            this.selectedAutomationPoint.preset = (this.els.inspectorPreset as HTMLSelectElement).value;
+            const point = this.resolveSelectedAutomationPointForEditing();
+            if (!point) return;
+            updateAutomationPointById(this.getBaseAutomationPlan(), point.id, {
+                preset: (this.els.inspectorPreset as HTMLSelectElement).value
+            });
+            this.invalidateAutomationPlanView();
             this.requestTimelineDraw();
         });
 
         this.els.inspectorDuration.addEventListener('input', () => {
-            if (!this.selectedAutomationPoint) return;
+            const point = this.resolveSelectedAutomationPointForEditing();
+            if (!point) return;
             const value = parseFloat((this.els.inspectorDuration as HTMLInputElement).value);
-            this.selectedAutomationPoint.morphDurationSec = this.constrainMorphDuration(this.selectedAutomationPoint, value);
+            const baseValue = baseMorphDurationFromScaled(value, State.automationMorphScale);
+            updateAutomationPointById(this.getBaseAutomationPlan(), point.id, {
+                morphDurationSec: this.constrainMorphDuration(point, baseValue)
+            });
+            this.invalidateAutomationPlanView();
             this.requestTimelineDraw();
         });
 
         this.els.inspectorCurve.addEventListener('change', () => {
-            if (!this.selectedAutomationPoint) return;
+            const point = this.resolveSelectedAutomationPointForEditing();
+            if (!point) return;
             const value = (this.els.inspectorCurve as HTMLSelectElement).value;
             if (!this.isMorphCurve(value)) return;
-            this.selectedAutomationPoint.morphCurve = value;
+            updateAutomationPointById(this.getBaseAutomationPlan(), point.id, { morphCurve: value });
+            this.invalidateAutomationPlanView();
             this.requestTimelineDraw();
         });
 
@@ -739,10 +776,15 @@ export class DashboardUI {
 
         this.els.inspectorDeleteBtn.addEventListener('click', () => {
             const point = this.selectedAutomationPoint;
-            if (!point || !State.editedPerformancePlan) return;
-            State.editedPerformancePlan.points = State.editedPerformancePlan.points.filter(c => c !== point);
+            if (!point) return;
+            const plan = this.ensureEditedPerformancePlan();
+            if (!removeAutomationPointById(plan, point.id)) return;
+            this.invalidateAutomationPlanView();
             this.selectedAutomationPoint = null;
             this.draggingAutomationPoint = null;
+            this.draggingSensitivityPoint = null;
+            this.draggingFullZone = null;
+            this.resizingMorphPoint = null;
             this.hideAutomationInspector();
             this.requestTimelineDraw();
         });
@@ -914,6 +956,7 @@ export class DashboardUI {
         this.timelineDragShiftKey = shiftKey;
         if (button === 0 && this.hoveredPoint && this.hoveredHandleType) {
             const point = this.selectEditableAutomationPoint(this.hoveredPoint);
+            if (!point) return false;
             this.selectedAutomationPoint = point;
             this.draggingAutomationPoint = !point.locked && this.hoveredHandleType === 'start' ? point : null;
             this.resizingMorphPoint = !point.locked && this.hoveredHandleType === 'end' ? point : null;
@@ -929,6 +972,7 @@ export class DashboardUI {
         const morphHandlePoint = button === 0 ? this.getAutomationMorphHandleHit(focusX, focusY, 6) : null;
         if (morphHandlePoint) {
             const point = this.selectEditableAutomationPoint(morphHandlePoint);
+            if (!point) return false;
             this.selectedAutomationPoint = point;
             this.resizingMorphPoint = point.locked ? null : point;
             this.draggingAutomationPoint = null;
@@ -943,6 +987,7 @@ export class DashboardUI {
         const startHandlePoint = button === 0 ? this.getAutomationPointHit(focusX, focusY, 8) : null;
         if (startHandlePoint) {
             const point = this.selectEditableAutomationPoint(startHandlePoint);
+            if (!point) return false;
             this.selectedAutomationPoint = point;
             this.draggingAutomationPoint = point.locked ? null : point;
             this.draggingSensitivityPoint = null;
@@ -957,6 +1002,7 @@ export class DashboardUI {
         const sensitivityPoint = button === 0 ? this.getAutomationSensitivityHit(focusX, focusY) : null;
         if (sensitivityPoint) {
             const point = this.selectEditableAutomationPoint(sensitivityPoint);
+            if (!point) return false;
             this.selectedAutomationPoint = point;
             this.draggingSensitivityPoint = point.locked ? null : point;
             this.draggingAutomationPoint = null;
@@ -971,6 +1017,7 @@ export class DashboardUI {
         const zoneMovePoint = button === 0 ? this.getAutomationZoneMoveHit(focusX, focusY) : null;
         if (zoneMovePoint) {
             const point = this.selectEditableAutomationPoint(zoneMovePoint);
+            if (!point) return false;
             this.selectedAutomationPoint = point;
             this.draggingFullZone = point.locked ? null : point;
             this.draggingAutomationPoint = null;
@@ -985,6 +1032,7 @@ export class DashboardUI {
         const automationPoint = button === 0 ? this.getAutomationPointHit(focusX, focusY, 10) : null;
         if (automationPoint) {
             const point = this.selectEditableAutomationPoint(automationPoint);
+            if (!point) return false;
             this.selectedAutomationPoint = point;
             this.draggingAutomationPoint = point.locked ? null : point;
             this.draggingSensitivityPoint = null;
@@ -1025,32 +1073,51 @@ export class DashboardUI {
 
     private moveTimelineInteraction(focusX: number, focusY: number, deltaX: number): void {
         if (this.draggingAutomationPoint) {
+            const point = this.selectEditableAutomationPoint(this.draggingAutomationPoint);
+            if (!point) return;
+            this.draggingAutomationPoint = point;
             const rawTime = this.getSnappedTimelineTimeAtPercent(focusX, this.timelineDragShiftKey);
-            const newTime = this.constrainPointTime(this.draggingAutomationPoint, rawTime);
-            this.draggingAutomationPoint.time = newTime;
+            const newTime = this.constrainPointTime(point, rawTime);
+            updateAutomationPointById(this.getBaseAutomationPlan(), point.id, { time: newTime });
+            this.invalidateAutomationPlanView();
             this.els.inspectorTime.innerText = this.formatTime(newTime);
             this.requestTimelineDraw();
             return;
         }
         if (this.draggingSensitivityPoint) {
-            this.draggingSensitivityPoint.intensity = this.getAutomationIntensityAtPercent(focusY);
+            const point = this.selectEditableAutomationPoint(this.draggingSensitivityPoint);
+            if (!point) return;
+            this.draggingSensitivityPoint = point;
+            updateAutomationPointById(this.getBaseAutomationPlan(), point.id, {
+                intensity: this.getAutomationIntensityAtPercent(focusY)
+            });
+            this.invalidateAutomationPlanView();
             this.requestTimelineDraw();
             return;
         }
         if (this.draggingFullZone) {
+            const point = this.selectEditableAutomationPoint(this.draggingFullZone);
+            if (!point) return;
+            this.draggingFullZone = point;
             const rawTime = this.getSnappedTimelineTimeAtPercent(focusX, this.timelineDragShiftKey) - this.dragStartOffsetSec;
-            const newTime = this.constrainPointTime(this.draggingFullZone, rawTime);
-            this.draggingFullZone.time = newTime;
+            const newTime = this.constrainPointTime(point, rawTime);
+            updateAutomationPointById(this.getBaseAutomationPlan(), point.id, { time: newTime });
+            this.invalidateAutomationPlanView();
             this.els.inspectorTime.innerText = this.formatTime(newTime);
             this.requestTimelineDraw();
             return;
         }
         if (this.resizingMorphPoint) {
+            const point = this.selectEditableAutomationPoint(this.resizingMorphPoint);
+            if (!point) return;
+            this.resizingMorphPoint = point;
             const rawEnd = this.getTimelineTimeAtPercent(focusX);
-            const rawDuration = rawEnd - this.resizingMorphPoint.time;
-            const newDuration = this.constrainMorphDuration(this.resizingMorphPoint, rawDuration);
-            this.resizingMorphPoint.morphDurationSec = newDuration;
-            (this.els.inspectorDuration as HTMLInputElement).value = newDuration.toFixed(1);
+            const rawDuration = rawEnd - point.time;
+            const baseDuration = baseMorphDurationFromScaled(rawDuration, State.automationMorphScale);
+            const newDuration = this.constrainMorphDuration(point, baseDuration);
+            updateAutomationPointById(this.getBaseAutomationPlan(), point.id, { morphDurationSec: newDuration });
+            this.invalidateAutomationPlanView();
+            (this.els.inspectorDuration as HTMLInputElement).value = (newDuration * State.automationMorphScale).toFixed(1);
             this.requestTimelineDraw();
             return;
         }
@@ -1094,7 +1161,7 @@ export class DashboardUI {
         const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
         const rect = canvas.getBoundingClientRect();
         if (rect.height < 80) return null;
-        const points = (State.editedPerformancePlan ?? State.performancePlan)?.points;
+        const points = this.getAutomationPlanView()?.points;
         if (!points?.length) return null;
         const x = focusX * rect.width;
         let closestPoint: PerformanceAutomationPoint | null = null;
@@ -1104,7 +1171,7 @@ export class DashboardUI {
             const distance = Math.abs(pointX - x);
             if (distance <= closestDistance) { closestPoint = point; closestDistance = distance; }
         }
-        return closestPoint;
+        return closestPoint ? this.getBaseAutomationPointById(closestPoint.id) : null;
     }
 
     private getAutomationMorphHandleHit(focusX: number, focusY: number, tolerancePx: number): PerformanceAutomationPoint | null {
@@ -1112,7 +1179,7 @@ export class DashboardUI {
         const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
         const rect = canvas.getBoundingClientRect();
         if (rect.height < 80) return null;
-        const points = (State.editedPerformancePlan ?? State.performancePlan)?.points;
+        const points = this.getAutomationPlanView()?.points;
         if (!points?.length) return null;
         const x = focusX * rect.width;
         let closestPoint: PerformanceAutomationPoint | null = null;
@@ -1122,14 +1189,14 @@ export class DashboardUI {
             const distance = Math.abs(handleX - x);
             if (distance <= closestDistance) { closestPoint = point; closestDistance = distance; }
         }
-        return closestPoint;
+        return closestPoint ? this.getBaseAutomationPointById(closestPoint.id) : null;
     }
 
     private getAutomationSensitivityHit(focusX: number, focusY: number): PerformanceAutomationPoint | null {
         const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
         const rect = canvas.getBoundingClientRect();
         if (rect.height < 80) return null;
-        const points = this.getSortedAutomationPoints();
+        const points = this.getSortedScaledAutomationPoints();
         if (!points.length) return null;
         const x = focusX * rect.width;
         const y = focusY * rect.height;
@@ -1139,7 +1206,7 @@ export class DashboardUI {
             const zoneStart = this.getTimelineXForTime(point.time, rect.width);
             const zoneEnd = i + 1 < points.length ? this.getTimelineXForTime(points[i + 1].time, rect.width) : rect.width;
             const lineY = this.getAutomationYForIntensity(point.intensity, topPad, graphBottom);
-            if (x >= zoneStart && x <= zoneEnd && Math.abs(y - lineY) <= 8) return point;
+            if (x >= zoneStart && x <= zoneEnd && Math.abs(y - lineY) <= 8) return this.getBaseAutomationPointById(point.id);
         }
         return null;
     }
@@ -1148,7 +1215,7 @@ export class DashboardUI {
         const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
         const rect = canvas.getBoundingClientRect();
         if (rect.height < 80) return null;
-        const points = this.getSortedAutomationPoints();
+        const points = this.getSortedScaledAutomationPoints();
         if (!points.length) return null;
         const x = focusX * rect.width;
         const y = focusY * rect.height;
@@ -1157,7 +1224,7 @@ export class DashboardUI {
         for (let i = 0; i < points.length; i++) {
             const zoneStart = this.getTimelineXForTime(points[i].time, rect.width);
             const zoneEnd = i + 1 < points.length ? this.getTimelineXForTime(points[i + 1].time, rect.width) : rect.width;
-            if (x >= zoneStart && x <= zoneEnd) return points[i];
+            if (x >= zoneStart && x <= zoneEnd) return this.getBaseAutomationPointById(points[i].id);
         }
         return null;
     }
@@ -1166,7 +1233,7 @@ export class DashboardUI {
         const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
         const rect = canvas.getBoundingClientRect();
         if (rect.height < 80) return null;
-        const points = this.getSortedAutomationPoints();
+        const points = this.getSortedScaledAutomationPoints();
         if (!points.length) return null;
         const x = focusX * rect.width;
         const y = focusY * rect.height;
@@ -1176,13 +1243,13 @@ export class DashboardUI {
             const startX = this.getTimelineXForTime(point.time, rect.width);
             const endX = this.getTimelineXForTime(point.time + point.morphDurationSec, rect.width);
             if (endX <= startX || x < startX || x > endX) continue;
-            return point;
+            return this.getBaseAutomationPointById(point.id);
         }
         return null;
     }
 
-    private getSortedAutomationPoints(): PerformanceAutomationPoint[] {
-        const points = (State.editedPerformancePlan ?? State.performancePlan)?.points ?? [];
+    private getSortedScaledAutomationPoints(): PerformanceAutomationPoint[] {
+        const points = this.getAutomationPlanView()?.points ?? [];
         return [...points].sort((a, b) => a.time - b.time);
     }
 
@@ -1233,6 +1300,7 @@ export class DashboardUI {
         };
         plan.points.push(point);
         plan.points.sort((a, b) => a.time - b.time);
+        this.invalidateAutomationPlanView();
         this.selectedAutomationPoint = point;
         this.showAutomationInspector(point);
         this.requestTimelineDraw();
@@ -1307,11 +1375,16 @@ export class DashboardUI {
     }
 
 
-    private selectEditableAutomationPoint(point: PerformanceAutomationPoint): PerformanceAutomationPoint {
-        if (!State.editedPerformancePlan && State.performancePlan) {
-            State.editedPerformancePlan = JSON.parse(JSON.stringify(State.performancePlan));
-        }
-        return State.editedPerformancePlan?.points.find(c => c.id === point.id) ?? point;
+    private selectEditableAutomationPoint(point: PerformanceAutomationPoint): PerformanceAutomationPoint | null {
+        this.ensureEditedPerformancePlan();
+        return this.getBaseAutomationPointById(point.id);
+    }
+
+    private resolveSelectedAutomationPointForEditing(): PerformanceAutomationPoint | null {
+        if (!this.selectedAutomationPoint) return null;
+        const point = this.selectEditableAutomationPoint(this.selectedAutomationPoint);
+        this.selectedAutomationPoint = point;
+        return point;
     }
 
     private showAutomationInspector(point: PerformanceAutomationPoint): void {
@@ -1324,7 +1397,11 @@ export class DashboardUI {
             ? presetOptions.map(f => `<option value="${this.escapeHtml(f)}">${this.escapeHtml(this.formatPresetName(f))}</option>`).join('')
             : `<option value="${this.escapeHtml(point.preset)}">${this.escapeHtml(this.formatPresetName(point.preset))}</option>`;
         presetSelect.value = point.preset;
-        (this.els.inspectorDuration as HTMLInputElement).value = point.morphDurationSec.toFixed(1);
+        const effective = this.getScaledAutomationPointById(point.id)?.morphDurationSec ?? point.morphDurationSec;
+        (this.els.inspectorDuration as HTMLInputElement).value = effective.toFixed(1);
+        this.els.inspectorDuration.title = State.automationMorphScale === 1
+            ? 'Morph duration'
+            : `Scaled duration (${Math.round(State.automationMorphScale * 100)}%; base ${point.morphDurationSec.toFixed(2)}s)`;
         (this.els.inspectorCurve as HTMLSelectElement).value = point.morphCurve;
         this.els.automationInspector.style.opacity = '1';
         this.els.automationInspector.style.pointerEvents = 'auto';
@@ -1390,7 +1467,7 @@ export class DashboardUI {
     }
 
     private constrainPointTime(movingPoint: PerformanceAutomationPoint, proposedTime: number): number {
-        const plan = State.editedPerformancePlan ?? State.performancePlan;
+        const plan = this.getBaseAutomationPlan();
         const dur = movingPoint.morphDurationSec;
         const totalDur = State.duration;
         if (!plan?.points.length) return this.clamp(proposedTime, 0, Math.max(0, totalDur - dur));
@@ -1418,7 +1495,7 @@ export class DashboardUI {
     }
 
     private constrainMorphDuration(point: PerformanceAutomationPoint, proposedDuration: number): number {
-        const plan = State.editedPerformancePlan ?? State.performancePlan;
+        const plan = this.getBaseAutomationPlan();
         if (!plan?.points.length) return this.clamp(proposedDuration, 0.1, 20);
         let maxDuration = Math.min(20, Math.max(0.1, State.duration - point.time));
         for (const other of plan.points) {
@@ -1473,6 +1550,9 @@ export class DashboardUI {
         const bar = bars.find(b => hoverTime >= b.start && hoverTime <= b.end);
         const section = State.trackAnalysis.sections.find(s => hoverTime >= s.start && hoverTime <= s.end);
         let content = `Idő: ${this.formatTime(hoverTime)} (Zoom: ${State.zoom.toFixed(1)}x)`;
+        if (Math.abs(State.automationMorphScale - 1) > 0.005) {
+            content += `\nAutomation Size: ${Math.round(State.automationMorphScale * 100)}% (non-destructive)`;
+        }
         const analysis = State.trackAnalysis;
         if (featureFlags.analyzerDebugOverlay && (analysis.bpmConfidence > 0 || analysis.gridConfidence > 0 || analysis.downbeatConfidence > 0)) {
             content += `\nBPM conf: ${this.formatPercent(analysis.bpmConfidence)} | Grid: ${this.formatPercent(analysis.gridConfidence)} | Downbeat: ${this.formatPercent(analysis.downbeatConfidence)}`;
@@ -1562,8 +1642,11 @@ export class DashboardUI {
         const existingPoint = this.getNearestEditableAutomationPoint(hoverTime, MIN_DRAW_DISTANCE_SEC);
         const presetName = this.getSelectedAutomationPreset();
         if (existingPoint && !existingPoint.locked) {
-            if (drawTarget === 'preset') { existingPoint.preset = presetName; }
-            else { existingPoint.intensity = this.getAutomationIntensityAtPercent(focusY); }
+            const edit = drawTarget === 'preset'
+                ? { preset: presetName }
+                : { intensity: this.getAutomationIntensityAtPercent(focusY) };
+            updateAutomationPointById(this.getBaseAutomationPlan(), existingPoint.id, edit);
+            this.invalidateAutomationPlanView();
             this.selectedAutomationPoint = existingPoint;
             this.showAutomationInspector(existingPoint);
             this.requestTimelineDraw();
@@ -1572,7 +1655,10 @@ export class DashboardUI {
         if (drawTarget === 'preset') { this.createAutomationPointAtTime(hoverTime); return; }
         const point = this.createAutomationPointAtTime(hoverTime);
         if (!point || point.locked) return;
-        point.intensity = this.getAutomationIntensityAtPercent(focusY);
+        updateAutomationPointById(this.getBaseAutomationPlan(), point.id, {
+            intensity: this.getAutomationIntensityAtPercent(focusY)
+        });
+        this.invalidateAutomationPlanView();
         this.selectedAutomationPoint = point;
         this.showAutomationInspector(point);
         this.requestTimelineDraw();
@@ -1685,7 +1771,8 @@ export class DashboardUI {
             noveltyCurve: State.trackAnalysis.noveltyCurve,
             boundaryCandidates: State.trackAnalysis.boundaryCandidates,
             showAnalyzerDebugOverlay: featureFlags.analyzerDebugOverlay,
-            performancePlan: State.editedPerformancePlan ?? State.performancePlan,
+            performancePlan: this.getAutomationPlanView(),
+            automationMorphScale: State.automationMorphScale,
             dramaturgicalIntent: State.dramaturgicalIntent,
             timelineLayers: State.timelineLayers,
             snapToGrid: State.snapToGrid,
@@ -1852,7 +1939,7 @@ export class DashboardUI {
         }
     }
 
-    private async loadVisualPreset(fileName: string): Promise<void> {
+    private async loadVisualPreset(fileName: string, options: VisualPresetLoadOptions = {}): Promise<void> {
         try {
             let presetData = this.presetCache.get(fileName);
             if (!presetData) {
@@ -1861,8 +1948,10 @@ export class DashboardUI {
                 presetData = await response.json();
                 this.presetCache.set(fileName, presetData);
             }
+            // Ignore a stale async automation load after playback has advanced to another point.
+            if (options.automationPointId && options.automationPointId !== this.lastTriggeredAutomationPointId) return;
             this.cachePreloadedPreset(fileName, presetData);
-            this.applyPerformancePreset(presetData);
+            this.applyPerformancePreset(presetData, options);
             // In semantic mode the resolver owns targetTuning, so re-base it on the freshly
             // applied (clean) preset; otherwise the preset selection would be overwritten each frame.
             this.snapshotSemanticBase();
@@ -1897,10 +1986,9 @@ export class DashboardUI {
             : {};
     }
 
-    private applyPerformancePreset(payload: unknown): void {
+    private applyPerformancePreset(payload: unknown, options: VisualPresetLoadOptions = {}): void {
         Object.assign(State.targetTuning, normalizeVisualTuningConfig(payload, State.targetTuning));
-        if (!payload || typeof payload !== 'object') return;
-        const preset = payload as {
+        const preset = payload && typeof payload === 'object' ? payload as {
             visualMode?: unknown;
             performancePlan?: unknown;
             morphProfile?: { durationSec?: unknown; curve?: unknown };
@@ -1911,33 +1999,37 @@ export class DashboardUI {
                 vocalHighlight?: unknown;
                 fxChaos?: unknown;
             };
-        };
-        if (this.isPerformanceAutomationPlan(preset.performancePlan)) {
-            State.performancePlan = preset.performancePlan;
-            State.editedPerformancePlan = JSON.parse(JSON.stringify(preset.performancePlan));
-            setActiveVisualTransitionComponent('automation', null);
-            void this.preloadPresetsForPlan(preset.performancePlan);
-            this.lastTriggeredAutomationPointId = null;
+        } : null;
+        if (preset) {
+            if (this.isPerformanceAutomationPlan(preset.performancePlan)) {
+                State.performancePlan = preset.performancePlan;
+                State.editedPerformancePlan = JSON.parse(JSON.stringify(preset.performancePlan));
+                setActiveVisualTransitionComponent('automation', null);
+                void this.preloadPresetsForPlan(preset.performancePlan);
+                this.lastTriggeredAutomationPointId = null;
+            }
+            if (typeof preset.visualMode === 'string' && isVisualMode(preset.visualMode)) {
+                State.visualMode = preset.visualMode;
+                (this.els.visualMode as HTMLSelectElement).value = State.visualMode;
+                this.syncStylePackToVisualMode();
+            }
+            if (preset.morphProfile) {
+                if (typeof preset.morphProfile.durationSec === 'number') State.targetTuning.morphDurationSec = preset.morphProfile.durationSec;
+                if (preset.morphProfile.curve === 'linear') State.targetTuning.morphCurveValue = 0;
+                else if (preset.morphProfile.curve === 'easeInOut') State.targetTuning.morphCurveValue = 1;
+                else if (preset.morphProfile.curve === 'exponential') State.targetTuning.morphCurveValue = 2;
+            }
+            if (preset.dramaturgyProfile) {
+                const p = preset.dramaturgyProfile;
+                if (typeof p.buildupIntensity === 'number') State.targetTuning.buildupIntensity = p.buildupIntensity;
+                if (typeof p.dropDampening === 'number') State.targetTuning.dropDampening = p.dropDampening;
+                if (typeof p.breakRestraint === 'number') State.targetTuning.breakRestraint = p.breakRestraint;
+                if (typeof p.vocalHighlight === 'number') State.targetTuning.vocalHighlight = p.vocalHighlight;
+                if (typeof p.fxChaos === 'number') State.targetTuning.fxChaos = p.fxChaos;
+            }
         }
-        if (typeof preset.visualMode === 'string' && isVisualMode(preset.visualMode)) {
-            State.visualMode = preset.visualMode;
-            (this.els.visualMode as HTMLSelectElement).value = State.visualMode;
-            this.syncStylePackToVisualMode();
-        }
-        if (preset.morphProfile) {
-            if (typeof preset.morphProfile.durationSec === 'number') State.targetTuning.morphDurationSec = preset.morphProfile.durationSec;
-            if (preset.morphProfile.curve === 'linear') State.targetTuning.morphCurveValue = 0;
-            else if (preset.morphProfile.curve === 'easeInOut') State.targetTuning.morphCurveValue = 1;
-            else if (preset.morphProfile.curve === 'exponential') State.targetTuning.morphCurveValue = 2;
-        }
-        if (preset.dramaturgyProfile) {
-            const p = preset.dramaturgyProfile;
-            if (typeof p.buildupIntensity === 'number') State.targetTuning.buildupIntensity = p.buildupIntensity;
-            if (typeof p.dropDampening === 'number') State.targetTuning.dropDampening = p.dropDampening;
-            if (typeof p.breakRestraint === 'number') State.targetTuning.breakRestraint = p.breakRestraint;
-            if (typeof p.vocalHighlight === 'number') State.targetTuning.vocalHighlight = p.vocalHighlight;
-            if (typeof p.fxChaos === 'number') State.targetTuning.fxChaos = p.fxChaos;
-        }
+        // Automation owns morph timing over preset visualTuning and morphProfile values.
+        if (options.overrideMorph) applyAutomationMorphAuthority(State.targetTuning, options.overrideMorph);
     }
 
     private isPerformanceAutomationPlan(value: unknown): value is PerformanceAutomationPlan {
@@ -2014,7 +2106,7 @@ export class DashboardUI {
     private triggerPerformanceAutomation(): void {
         // Preset automation always selects the slow-channel base. Semantic runtimes may own
         // tuning deltas above that base, but must not suppress the underlying preset change.
-        const plan = State.editedPerformancePlan ?? State.performancePlan;
+        const plan = this.getAutomationPlanView();
         if (!plan?.points.length) {
             setActiveVisualTransitionComponent('automation', null);
             return;
@@ -2028,11 +2120,60 @@ export class DashboardUI {
         if (activePoint.id === this.lastTriggeredAutomationPointId) return;
         this.lastTriggeredAutomationPointId = activePoint.id;
         setActiveVisualTransitionComponent('automation', `automation:${activePoint.id}`);
-        State.targetTuning.audioSensitivity = activePoint.intensity;
-        State.targetTuning.morphDurationSec = activePoint.morphDurationSec;
-        State.targetTuning.morphCurveValue = activePoint.morphCurve === 'linear' ? 0
-            : activePoint.morphCurve === 'exponential' ? 2 : 1;
-        void this.loadVisualPreset(activePoint.preset);
+        applyAutomationMorphAuthority(State.targetTuning, activePoint);
+        void this.loadVisualPreset(activePoint.preset, {
+            automationPointId: activePoint.id,
+            overrideMorph: activePoint
+        });
+    }
+
+    private getAutomationPlanView(): PerformanceAutomationPlan | null {
+        const source = this.getBaseAutomationPlan();
+        if (!source) return null;
+        const clampedScale = clampMorphScale(source, State.automationMorphScale);
+        if (clampedScale !== State.automationMorphScale) {
+            State.automationMorphScale = clampedScale;
+            this.lastTriggeredAutomationPointId = null;
+        }
+        const signature = getAutomationPlanViewSignature(source);
+        if (this.automationPlanViewSource !== source || this.automationPlanViewScale !== clampedScale || this.automationPlanViewSignature !== signature) {
+            this.automationPlanViewSource = source;
+            this.automationPlanViewScale = clampedScale;
+            this.automationPlanViewSignature = signature;
+            this.automationPlanViewCache = applyMorphScale(source, clampedScale, { durationSec: State.duration });
+            this.syncAutomationMorphScaleControl(source);
+        }
+        return this.automationPlanViewCache;
+    }
+
+    private getBaseAutomationPlan(): PerformanceAutomationPlan | null {
+        return State.editedPerformancePlan ?? State.performancePlan;
+    }
+
+    private getBaseAutomationPointById(id: string): PerformanceAutomationPoint | null {
+        return findAutomationPointById(this.getBaseAutomationPlan(), id);
+    }
+
+    private getScaledAutomationPointById(id: string): PerformanceAutomationPoint | null {
+        return findAutomationPointById(this.getAutomationPlanView(), id);
+    }
+
+    private invalidateAutomationPlanView(): void {
+        this.automationPlanViewSource = null;
+        this.automationPlanViewCache = null;
+        this.automationPlanViewScale = NaN;
+        this.automationPlanViewSignature = null;
+    }
+
+    private syncAutomationMorphScaleControl(plan: PerformanceAutomationPlan | null): void {
+        const input = this.els.automationMorphScale as HTMLInputElement;
+        const max = computeMaxMorphScale(plan);
+        State.automationMorphScale = clampMorphScale(plan, State.automationMorphScale);
+        input.max = max.toFixed(2);
+        input.value = State.automationMorphScale.toFixed(2);
+        input.disabled = !plan?.points.length;
+        this.els.automationMorphScaleValue.textContent = `${Math.round(State.automationMorphScale * 100)}%`;
+        this.els.automationMorphScaleValue.title = `Maximum ${Math.round(max * 100)}% for this plan`;
     }
 
     // ─── Config copy ──────────────────────────────────────────────────────────
