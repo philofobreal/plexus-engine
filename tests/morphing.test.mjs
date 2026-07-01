@@ -63,3 +63,12 @@ test('morphing is stable when current and target values match', () => {
 
   assert.deepEqual(current, target);
 });
+
+test('long morphs crossfade wormhole emission mode instead of snapping in one frame', () => {
+  const { applyTuningMorph, defaultVisualTuning } = loadVisualTuningModule();
+  const current = { ...defaultVisualTuning, wormholeEmissionMode: 0 };
+  const target = { ...defaultVisualTuning, wormholeEmissionMode: 2, morphDurationSec: 12, transitionSpeed: 0.25 };
+  applyTuningMorph(current, target, target.transitionSpeed);
+  assert.ok(current.wormholeEmissionMode > 0);
+  assert.ok(current.wormholeEmissionMode < 2);
+});

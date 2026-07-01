@@ -1,4 +1,4 @@
-import type { PerformanceAutomationPlan, PerformanceAutomationPoint } from '../types';
+import type { PerformanceAutomationPlan, PerformanceAutomationPoint, VisualTuningConfig } from '../types';
 
 /** Finds the point whose preset owns the current timeline position. */
 export function findActiveAutomationPoint(
@@ -12,4 +12,14 @@ export function findActiveAutomationPoint(
         activePoint = point;
     }
     return activePoint;
+}
+
+/** Reasserts the active automation point after a preset payload has been normalized/applied. */
+export function applyAutomationMorphAuthority(
+    target: VisualTuningConfig,
+    point: Pick<PerformanceAutomationPoint, 'intensity' | 'morphDurationSec' | 'morphCurve'>
+): void {
+    target.audioSensitivity = point.intensity;
+    target.morphDurationSec = point.morphDurationSec;
+    target.morphCurveValue = point.morphCurve === 'linear' ? 0 : point.morphCurve === 'exponential' ? 2 : 1;
 }

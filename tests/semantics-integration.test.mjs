@@ -168,6 +168,18 @@ test('preset automation still selects new points while both semantic feature fla
   assert.equal(findActiveAutomationPoint(plan, 18).id, 'c');
 });
 
+test('automation morph authority survives preset-applied morph values', () => {
+  const load = createLoader();
+  const { applyAutomationMorphAuthority } = load('ui/performanceAutomationRuntime.ts');
+  const { defaultVisualTuning } = load('config/visualTuning.ts');
+  const target = { ...defaultVisualTuning, audioSensitivity: 0.4, morphDurationSec: 0.5, morphCurveValue: 0 };
+  const scaledPoint = { intensity: 1.7, morphDurationSec: 9.25, morphCurve: 'exponential' };
+  applyAutomationMorphAuthority(target, scaledPoint);
+  assert.equal(target.audioSensitivity, 1.7);
+  assert.equal(target.morphDurationSec, 9.25);
+  assert.equal(target.morphCurveValue, 2);
+});
+
 test('Visual OS preset changes compose with semantic identity instead of being overwritten', () => {
   const load = createLoader();
   const { State } = load('state/store.ts');

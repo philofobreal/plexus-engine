@@ -356,7 +356,7 @@ export function applyTuningMorph(
         // különben a lebegőpontos értékek érvénytelenítik a háttér és a teljesítmény-mód feltételeit.
         if (key === 'chromaKeyMode' || key === 'performanceMode' || key === 'phraseSize'
             || key === 'morphCurveValue' || key === 'heroEventMode' || key === 'heroBeepMode'
-            || key === 'wormholeEmissionMode') {
+            ) {
             current[key] = targetValue;
             continue;
         }

@@ -62,9 +62,18 @@ test('wormhole emission modes are deterministic and sparse mode omits most grain
   assert.ok(active > 0 && active < first.length * 0.35, `unexpected sparse population: ${active}`);
 });
 
+test('fractional wormhole emission coordinates crossfade adjacent valid modes', () => {
+  const { wormholeEmissionGain } = loadTypeScriptModule('src/visuals/WormholeEmission.ts');
+  const dense = wormholeEmissionGain(0, 10, 48, 0);
+  const pulse = wormholeEmissionGain(1, 10, 48, 0);
+  assert.equal(wormholeEmissionGain(0.5, 10, 48, 0), dense + (pulse - dense) * 0.5);
+});
+
 test('wormhole emission helper stays renderer-independent and allocation-free by construction', () => {
   const source = readFileSync(join(process.cwd(), 'src/visuals/WormholeEmission.ts'), 'utf8');
-  assert.doesNotMatch(source, /Math\.random|new\s+|\[\]|\{\s*\}/);
+  // Stateful envelopes may allocate their tracker once at identity construction; draw-time
+  // helpers must still avoid random or collection/object allocation in the hot path.
+  assert.doesNotMatch(source, /Math\.random|\[\]|\{\s*\}/);
   assert.doesNotMatch(source, /Renderer|backend|document|window|p5/i);
 });
 
@@ -79,6 +88,30 @@ test('wormhole transition tracker reacts once to each legacy or semantic identit
   assert.equal(tracker.update('motif:12:tunnel-drive:0'), false);
   assert.equal(tracker.update(null), false);
   assert.equal(tracker.update('motif:12:tunnel-drive:0'), true);
+});
+
+test('wormhole automation transition starts without an instant curve surge', () => {
+  const { WormholeAutomationTransition } = loadTypeScriptModule('src/visuals/WormholeEmission.ts');
+  const transition = new WormholeAutomationTransition();
+
+  assert.equal(transition.update('point-a', 10, 12), 0);
+  assert.ok(transition.update('point-a', 10.016, 12) < 0.001);
+});
+
+test('wormhole automation response follows morph duration without resetting instantly', () => {
+  const { WormholeAutomationTransition } = loadTypeScriptModule('src/visuals/WormholeEmission.ts');
+  const longMorph = new WormholeAutomationTransition();
+  const shortMorph = new WormholeAutomationTransition();
+
+  longMorph.update('point-a', 0, 12);
+  shortMorph.update('point-a', 0, 0.5);
+  const longFirstFrame = longMorph.update('point-a', 1 / 60, 12);
+  const shortFirstFrame = shortMorph.update('point-a', 1 / 60, 0.5);
+
+  assert.ok(longFirstFrame < 0.001, `long morph surged on first frame: ${longFirstFrame}`);
+  assert.ok(shortFirstFrame > longFirstFrame, 'short morph should respond faster');
+  assert.ok(shortFirstFrame < 0.01, `short morph reset instantly: ${shortFirstFrame}`);
+  assert.ok(longMorph.update('point-a', 6, 12) > longFirstFrame);
 });
 
 test('semantic transition identities are deterministic and distinguish adjacent frames', () => {

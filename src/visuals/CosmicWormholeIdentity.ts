@@ -6,7 +6,7 @@ import type { Shockwave } from './Shockwave';
 import type { VisualRendererBackend } from './RendererBackend';
 import type { VisualIdentity } from './VisualIdentity';
 import { wrapDepth } from './WormholeDepth';
-import { WormholeTransitionTracker, wormholeEmissionGain } from './WormholeEmission';
+import { WormholeAutomationTransition, wormholeEmissionGain } from './WormholeEmission';
 
 const TWO_PI = Math.PI * 2;
 const BANDS = 24;
@@ -112,10 +112,8 @@ class CosmicWormholeIdentity implements VisualIdentity {
     private curveImpulse = 0;
     /** Last seen director phase, to detect transitions. */
     private lastDirectorState = '';
-    /** Last discrete emission character; changing it deterministically re-phases the fixed dust pool. */
-    private lastEmissionMode = -1;
-    /** Stable legacy/semantic identity, independent of tuning morph values and FSM phase. */
-    private readonly transitionTracker = new WormholeTransitionTracker();
+    /** Automation response follows the preset morph instead of firing on its first frame. */
+    private readonly automationTransition = new WormholeAutomationTransition();
 
     constructor() {
         for (let i = 0; i < POOL_SIZE; i++) {
@@ -203,19 +201,18 @@ class CosmicWormholeIdentity implements VisualIdentity {
         const vz = (tuning.wormholeSpeed * 10 + momentum * 30 + density * 20) * State.playbackFade;
         const radius = (50 + density * 40) * tuning.wormholeRadius;
         const warpK = 0.001 * tuning.wormholeWarp * (tension + orbit);
-        const emissionMode = clamp(Math.round(tuning.wormholeEmissionMode), 0, 2);
-        const visualTransitionChanged = this.transitionTracker.update(State.activeVisualTransitionId);
-        const emissionChanged = emissionMode !== this.lastEmissionMode;
-        if (visualTransitionChanged) {
-            this.curveImpulse = Math.max(this.curveImpulse, 0.65);
-        }
-        if (visualTransitionChanged || emissionChanged) {
-            this.resetDustDepths(maxZ, emissionMode);
-        }
-        this.lastEmissionMode = emissionMode;
+        // Fractional values are a crossfade coordinate between valid integer emission modes;
+        // WormholeEmission resolves the two modes separately and blends their gains.
+        const emissionMode = clamp(tuning.wormholeEmissionMode, 0, 2);
+        const automationResponse = this.automationTransition.update(
+            State.activeAutomationTransitionId,
+            State.currentTime,
+            State.targetTuning.morphDurationSec
+        );
+        this.curveImpulse = Math.max(this.curveImpulse, automationResponse * 0.65);
 
-        // Advance camera. Curvature is event-driven, not constant: automation point changes and
-        // dramaturgy phase changes each fire a surge, which then decays back to straight.
+        // Advance camera. Automation curvature ramps over the configured morph duration, while
+        // dramaturgy phase changes retain their deliberately fast performance impulse.
         // tension/orbit add a gentler continuous lean on top. The whole
         // amplitude is scaled by the dedicated `wormholeCurve` master (0..1) so the tuning panel can
         // force a perfectly straight tube (0) or full bends (1) regardless of preset content.
@@ -400,13 +397,6 @@ class CosmicWormholeIdentity implements VisualIdentity {
         return Math.cos(globalZ * 0.0011) * amp;
     }
 
-    /** Reuses the fixed grains while removing the previous character's depth phasing. */
-    private resetDustDepths(maxZ: number, emissionMode: number): void {
-        for (let i = 0; i < this.pool.length; i++) {
-            const grain = this.pool[i];
-            grain.z = Math.max(1e-3, pseudoNoise(grain.seed, 91.7 + emissionMode * 17.3) * maxZ);
-        }
-    }
 
     private updateSkyboxCamera(
         baseOffsetX: number,
