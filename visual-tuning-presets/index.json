@@ -17,6 +17,16 @@
     "vos-verse-motion.json",
     "vos-peak-overdrive.json",
     "vos-transition-slice.json",
-    "vos-outro-dissolve.json"
+    "vos-outro-dissolve.json",
+    "vos-wh-establish.json",
+    "vos-wh-drive.json",
+    "vos-wh-spiral.json",
+    "vos-wh-sparse.json",
+    "vos-wh-punch.json",
+    "vos-wh-overdrive.json",
+    "vos-wh-drift.json",
+    "vos-wh-collapse.json",
+    "vos-wh-galaxy.json",
+    "vos-wh-dissolve.json"
   ]
 }

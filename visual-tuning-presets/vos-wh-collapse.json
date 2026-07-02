@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "visualMode": "cosmic-wormhole",
+  "visualTuning": {
+    "audioSensitivity": 1.1,
+    "backgroundRed": 10,
+    "backgroundGreen": 4,
+    "backgroundBlue": 4,
+    "circleHue": 15,
+    "lineAlpha": 1.3,
+    "lineWeight": 1.2,
+    "wormholeRadius": 0.5,
+    "wormholeDepth": 2.2,
+    "wormholeSpeed": 3.0,
+    "wormholeWarp": 1.2,
+    "wormholeCurve": 0.25,
+    "wormholeRing": 0.85,
+    "wormholeContinuity": 0.9,
+    "wormholeEmissionMode": 1,
+    "wormholeJitter": 0.45
+  }
+}
