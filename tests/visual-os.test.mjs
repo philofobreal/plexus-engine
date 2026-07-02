@@ -250,30 +250,19 @@ test('shipped style-packs.json resolves every pack', () => {
   }
 });
 
-test('cosmic wormhole maps dramaturgy phases to distinct motion characters', () => {
+test('cosmic wormhole maps every main dramaturgy phase to a wormhole clip preset', () => {
   const cosmic = STYLE_PACKS.packs.find(pack => pack.id === 'cosmic-wormhole');
   assert.ok(cosmic);
-  assert.equal(cosmic.targetMap.build.preset, 'temporal1.json');
-  assert.equal(cosmic.targetMap.breakdown.preset, 'temporal2.json');
-  assert.equal(cosmic.targetMap.peak.preset, 'temporal4.json');
-  assert.equal(cosmic.targetMap.release.preset, 'temporal5.json');
-  assert.equal(cosmic.targetMap.outro.preset, 'temporal5.json');
-
-  const presets = [1, 2, 3, 4, 5].map(index => JSON.parse(
-    readFileSync(join(process.cwd(), `public/visual-tuning-presets/temporal${index}.json`), 'utf8')
-  ).visualTuning);
-  assert.equal(presets[0].wormholeCurve, 0, 'straight drive must remain exactly straight');
-  assert.equal(presets[1].wormholeEmissionMode, 2, 'break character must use sparse bursts');
-  assert.ok(presets[2].wormholeWarp > presets[0].wormholeWarp, 'spiral must exceed straight-drive warp');
-  assert.ok(presets[3].wormholeJitter >= 0.8, 'overdrive must carry controlled jitter');
-  assert.ok(presets[4].wormholeDepth > presets[3].wormholeDepth, 'deep drift must own the largest space');
-  assert.equal(new Set(presets.map(preset => JSON.stringify([
-    preset.wormholeEmissionMode,
-    preset.wormholeContinuity,
-    preset.wormholeJitter,
-    preset.wormholeCurve,
-    preset.wormholeWarp
-  ]))).size, 5);
+  // The clip profile owns the whole narrative surface: no main dramaturgy key may fall back to a
+  // generic temporal/default preset. Role-level motion contrast between the vos-wh presets is
+  // asserted in tests/wormhole-clip-profile.test.mjs.
+  const mainKeys = ['intro', 'groove', 'tension', 'build', 'fake-drop', 'release', 'peak', 'breakdown', 'outro', 'default'];
+  for (const key of mainKeys) {
+    const preset = cosmic.targetMap[key]?.preset;
+    assert.ok(preset && /^vos-wh-/.test(preset), `'${key}' must bind a wormhole clip preset, got '${preset}'`);
+  }
+  const distinct = new Set(mainKeys.map(key => cosmic.targetMap[key].preset));
+  assert.ok(distinct.size >= 7, `dramaturgy phases spread across the clip family (${distinct.size} distinct presets)`);
 });
 
 test('inheritance makes forbidden additive and keeps preferred disjoint from forbidden', () => {

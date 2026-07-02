@@ -140,6 +140,11 @@ The visual mode select in `src/main.ts` exposes the built-in values; `cosmic-wor
 - `wormholeContinuity` — scales projected streak length independently of ring alignment (`0` = dots, `1` = default trails, `2` = extended trails).
 - `wormholeStarfield`, `wormholeGalaxy` — general, preset-independent masters for the background star density and the deep galaxy layer. They are intentionally not written by the bundled presets so they stay global across preset changes.
 
+The Visual OS dramaturgy drives this identity through a dedicated clip preset family and
+action vocabulary; see [wormhole-clip-profile.md](wormhole-clip-profile.md). The clip
+presets pin `visualMode` to `cosmic-wormhole` and respect the starfield/galaxy master
+contract above.
+
 ## Render Boundary And Performance Rules
 
 - Identities must draw only through `VisualRendererBackend`.

@@ -443,6 +443,28 @@ TrackAnalysis
   -> PerformanceAutomationPlan
 ```
 
+### 9. Per-identity action vocabulary (Cosmic Wormhole Videoclip Profile)
+
+The first per-identity ACTION vocabulary is realized as a pure data extension of the
+mechanisms above - no new layer, no ClipDirector, no separate clip-actions asset. The
+`cosmic-wormhole` pack authors a `behaviourVocabulary` for all 11 situations whose opaque
+handles (`wormhole.establish-space`, `wormhole.tunnel-punch`, ...) name effect actions,
+and binds them to a dedicated 10-preset clip family (`vos-wh-*.json`) via `targetMap`.
+Every narrative-level key is overridden as well, so the pack never falls back to generic
+temporal presets. The clip presets pin `visualMode` and never write the global
+`wormholeStarfield`/`wormholeGalaxy` masters. Introduced alongside the profile but
+GLOBAL in scope, `dampVariationForConfidence` is a Visual OS low-confidence safety rule
+in the style-agnostic Micro-Choreography planner: it applies to EVERY style pack, and
+with real but untrustworthy timing evidence it damps the variation profile (family cap
+2, rarer switching/releases, less jitter, longer breath) via a cloned profile, never by
+mutating `VARIATION_PROFILES`. The profile is a deterministic, music-aware BASELINE videoclip
+performance profile, not a guaranteed finished videoclip generator. Details:
+`documents/features/wormhole-clip-profile.md`; contract tests:
+`tests/wormhole-clip-profile.test.mjs`. A reserved future seam is an action-scoped
+runtime multiplier (e.g. `galaxyRevealBoost`) that scales a global master instead of
+overwriting it - a SEPARATE ADR decides that if preset-level expression proves
+insufficient.
+
 ### Future Extension (explicitly Out of Scope)
 
 A **Learning Path** seam is reserved but **not implemented**: renderer feedback + user

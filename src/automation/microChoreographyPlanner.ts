@@ -110,6 +110,34 @@ export function variationProfileFor(mode: DramaturgyVariantMode): VariationProfi
     return VARIATION_PROFILES[mode] ?? VARIATION_PROFILES.paired;
 }
 
+// Low-confidence damping threshold. Mirrors the resolveSegmentCount coarsening threshold so the
+// two low-confidence behaviours (fewer segments, calmer variation) engage together.
+const LOW_CONFIDENCE_THRESHOLD = 0.35;
+
+// dampVariationForConfidence - GLOBAL Visual OS low-confidence safety rule. It runs for every
+// style pack (this planner is style-agnostic), not just a specific identity profile. When the
+// tempo context carries REAL timing evidence (bpm/bars present) but that evidence is
+// untrustworthy, the variation profile is damped toward a simpler dramaturgy: at most two
+// behaviour families, rarer switching/releases, less seeded jitter, and a longer trailing breath.
+// A neutral context with no tempo at all (direct adapter callers) is left untouched - absence of
+// timing is not evidence of bad timing. ALWAYS returns a fresh clone; never mutates the input or
+// VARIATION_PROFILES.
+export function dampVariationForConfidence(variation: VariationProfile, tempo: TempoContext): VariationProfile {
+    const damped: VariationProfile = { ...variation };
+    const hasEvidence = tempo.bpm > 0 || tempo.bars.length >= 2 || (typeof tempo.secondsPerBar === 'number' && tempo.secondsPerBar > 0);
+    if (!hasEvidence) return damped;
+    const confidence = clamp01(tempo.confidence);
+    const below = confidence < LOW_CONFIDENCE_THRESHOLD ? 1 - confidence / LOW_CONFIDENCE_THRESHOLD : 0;
+    const strength = Math.max(below, tempo.reliable ? 0 : 0.5);
+    if (strength <= 0) return damped;
+    damped.vocabularySize = Math.min(damped.vocabularySize, 2);
+    damped.transitionFrequency *= 1 - 0.5 * strength;
+    damped.releaseFrequency *= 1 - 0.5 * strength;
+    damped.randomnessBudget *= 1 - 0.6 * strength;
+    damped.lifetimeScale *= 1 + 0.3 * strength;
+    return damped;
+}
+
 // Plan a scene's micro-choreography. ALWAYS returns a plan (>=1 segment): even a stable, short,
 // or vocabulary-less scene yields a single home-family segment with its own envelope, so the
 // adapter has a uniform path and stable scenes still "breathe".
@@ -119,7 +147,7 @@ export function planMicroChoreography(
     ctx: MicroChoreographyContext
 ): ChoreographyPlan {
     const profile = SITUATION_PROFILES[input.situation] ?? SITUATION_PROFILES['verse-long'];
-    const variation = options.variation;
+    const variation = dampVariationForConfidence(options.variation, options.tempo);
     const duration = Number.isFinite(input.durationSec) && input.durationSec > 0 ? input.durationSec : 0;
 
     // Effective family list: cap the resolved vocabulary to the variation's vocabulary size.
