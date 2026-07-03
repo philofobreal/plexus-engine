@@ -318,10 +318,10 @@
         "drop-short": ["wormhole.tunnel-punch", "wormhole.overdrive-peak"],
         "drop-long": ["wormhole.tunnel-punch", "wormhole.overdrive-peak", "wormhole.reveal-galaxy", "wormhole.collapse-transition"],
         "drop-after-build": ["wormhole.tunnel-punch", "wormhole.overdrive-peak", "wormhole.reveal-galaxy"],
-        "breakdown-long": ["wormhole.sparse-break", "wormhole.deep-drift", "wormhole.reveal-galaxy", "wormhole.establish-space"],
-        "peak-sustain": ["wormhole.overdrive-peak", "wormhole.tunnel-punch", "wormhole.reveal-galaxy", "wormhole.collapse-transition"],
+        "breakdown-long": ["wormhole.deep-drift", "wormhole.sparse-break", "wormhole.reveal-galaxy", "wormhole.establish-space"],
+        "peak-sustain": ["wormhole.overdrive-peak", "wormhole.tunnel-punch", "wormhole.collapse-transition", "wormhole.reveal-galaxy"],
         "transition-release": ["wormhole.collapse-transition", "wormhole.sparse-break"],
-        "outro-dissolve": ["wormhole.outro-dissolve", "wormhole.deep-drift"]
+        "outro-dissolve": ["wormhole.outro-dissolve", "wormhole.deep-drift", "wormhole.establish-space"]
       },
       "variantPairs": {
         "intro-establish": [{ "id": "intro-emerge", "primary": "verse.motion", "secondary": "break.glow", "alternation": "A-B", "minSegmentSec": 8, "maxSegmentSec": 16, "intensityShape": "ramp" }],

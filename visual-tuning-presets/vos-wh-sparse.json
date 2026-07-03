@@ -3,20 +3,20 @@
   "visualMode": "cosmic-wormhole",
   "visualTuning": {
     "audioSensitivity": 0.8,
-    "backgroundRed": 2,
-    "backgroundGreen": 2,
-    "backgroundBlue": 10,
+    "backgroundRed": 3,
+    "backgroundGreen": 3,
+    "backgroundBlue": 6,
     "circleHue": 230,
-    "lineAlpha": 0.7,
+    "lineAlpha": 2.2,
     "lineWeight": 0.8,
-    "wormholeRadius": 1.4,
-    "wormholeDepth": 3.0,
-    "wormholeSpeed": 0.8,
-    "wormholeWarp": 0.4,
-    "wormholeCurve": 0.15,
-    "wormholeRing": 0,
-    "wormholeContinuity": 1.5,
-    "wormholeEmissionMode": 2,
-    "wormholeJitter": 0.15
+    "wormholeRadius": 1.2,
+    "wormholeDepth": 4.7,
+    "wormholeSpeed": 2.681627101279439,
+    "wormholeWarp": 0,
+    "wormholeCurve": 0.1,
+    "wormholeRing": 0.85,
+    "wormholeContinuity": 0.15,
+    "wormholeEmissionMode": 0,
+    "wormholeJitter": 0.25
   }
 }
