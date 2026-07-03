@@ -452,7 +452,9 @@ handles (`wormhole.establish-space`, `wormhole.tunnel-punch`, ...) name effect a
 and binds them to a dedicated 10-preset clip family (`vos-wh-*.json`) via `targetMap`.
 Every narrative-level key is overridden as well, so the pack never falls back to generic
 temporal presets. The clip presets pin `visualMode` and never write the global
-`wormholeStarfield`/`wormholeGalaxy` masters. Introduced alongside the profile but
+`wormholeStarfield`/`wormholeGalaxy` masters. Within the family, non-zero ring alignment
+is restricted to authored segmented roles: collapse is restrained, while sparse is a
+continuous segmented/ribbed break texture. Introduced alongside the profile but
 GLOBAL in scope, `dampVariationForConfidence` is a Visual OS low-confidence safety rule
 in the style-agnostic Micro-Choreography planner: it applies to EVERY style pack, and
 with real but untrustworthy timing evidence it damps the variation profile (family cap

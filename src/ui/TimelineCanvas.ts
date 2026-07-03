@@ -244,12 +244,9 @@ export class TimelineCanvas {
 
             if (morphEnd > morphStart) {
                 const gradient = ctx.createLinearGradient(morphStart, topPad, morphEnd, topPad);
-                gradient.addColorStop(0, highlightCurve ? this.withAlpha(colors.start, 0.28) : colors.start);
+                // Selection stays readable through its outline; never darken the whole morph block.
+                gradient.addColorStop(0, colors.start);
                 gradient.addColorStop(1, colors.end);
-                if (highlightCurve) {
-                    ctx.shadowColor = colors.glow;
-                    ctx.shadowBlur = 18;
-                }
                 const segmentCount = Math.max(15, Math.ceil((morphEnd - morphStart) / 2));
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
@@ -268,9 +265,9 @@ export class TimelineCanvas {
                 ctx.shadowBlur = 0;
 
                 ctx.strokeStyle = colors.border;
-                ctx.lineWidth = 1.5;
+                ctx.lineWidth = highlightCurve ? 2.25 : 1.5;
                 ctx.shadowColor = colors.glow;
-                ctx.shadowBlur = highlightCurve ? 18 : 8;
+                ctx.shadowBlur = highlightCurve ? 12 : 6;
                 ctx.beginPath();
                 ctx.moveTo(morphStart, topPad);
                 for (let segment = 0; segment <= segmentCount; segment++) {
@@ -299,7 +296,7 @@ export class TimelineCanvas {
                 const curveEnd = Math.max(zoneLeft, Math.min(zoneRight, morphEnd));
 
                 if (curveEnd > zoneLeft) {
-                    ctx.fillStyle = this.withAlpha(colors.start, 0.15);
+                    ctx.fillStyle = this.withAlpha(colors.start, 0.08);
                     ctx.fillRect(zoneLeft, y, curveEnd - zoneLeft, graphBottom - y);
 
                     ctx.strokeStyle = colors.border;
@@ -319,7 +316,7 @@ export class TimelineCanvas {
                     ctx.save();
                     ctx.globalAlpha = 0.45;
 
-                    ctx.fillStyle = this.withAlpha(colors.start, 0.15);
+                    ctx.fillStyle = this.withAlpha(colors.start, 0.08);
                     ctx.fillRect(curveEnd, y, zoneRight - curveEnd, graphBottom - y);
 
                     ctx.strokeStyle = colors.border;

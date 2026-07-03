@@ -36,11 +36,11 @@ only inside `scenePlanAdapter` via the pack `targetMap`.
 | `wormhole.establish-space` | `vos-wh-establish.json` | build the space: slow, wide, straight, calm |
 | `wormhole.straight-drive` | `vos-wh-drive.json` | groove: steady straight flight (curve exactly 0) |
 | `wormhole.spiral-build` | `vos-wh-spiral.json` | rising tension: strong spiral twist, growing jitter |
-| `wormhole.sparse-break` | `vos-wh-sparse.json` | thinned floating break: sparse bursts, long streaks |
+| `wormhole.sparse-break` | `vos-wh-sparse.json` | segmented sparse field / ribbed break texture |
 | `wormhole.tunnel-punch` | `vos-wh-punch.json` | drop hit: sudden speed and warp jump |
 | `wormhole.overdrive-peak` | `vos-wh-overdrive.json` | overdriven peak: maximum speed/warp, jitter >= 0.8 |
 | `wormhole.deep-drift` | `vos-wh-drift.json` | aftermath: the deepest, slowest space of the family |
-| `wormhole.collapse-transition` | `vos-wh-collapse.json` | transition: concentric ring collapse (high ring align) |
+| `wormhole.collapse-transition` | `vos-wh-collapse.json` | transition: restrained depth compression into rings |
 | `wormhole.reveal-galaxy` | `vos-wh-galaxy.json` | reveal: slow glide with the longest streaks |
 | `wormhole.outro-dissolve` | `vos-wh-dissolve.json` | dissolve: everything fades toward dots and dark |
 
@@ -58,10 +58,10 @@ vocabulary and the variant-pair fallback never engage for this pack:
 | `drop-short` | tunnel-punch, overdrive-peak |
 | `drop-long` | tunnel-punch, overdrive-peak, reveal-galaxy, collapse-transition |
 | `drop-after-build` | tunnel-punch, overdrive-peak, reveal-galaxy |
-| `breakdown-long` | sparse-break, deep-drift, reveal-galaxy, establish-space |
-| `peak-sustain` | overdrive-peak, tunnel-punch, reveal-galaxy, collapse-transition |
+| `breakdown-long` | deep-drift, sparse-break, reveal-galaxy, establish-space |
+| `peak-sustain` | overdrive-peak, tunnel-punch, collapse-transition, reveal-galaxy |
 | `transition-release` | collapse-transition, sparse-break |
-| `outro-dissolve` | outro-dissolve, deep-drift |
+| `outro-dissolve` | outro-dissolve, deep-drift, establish-space |
 
 The narrative-level `targetMap` keys (intro, groove, tension, build, fake-drop, release,
 peak, breakdown, outro, default) are all overridden to clip presets as well, so no main
@@ -77,6 +77,8 @@ action inside the situation vocabularies.
 
 ## Preset family constraints
 
+- The family contains ten tunnel roles; it deliberately adds no craft, star-system, or
+  camera-journey layer to the wormhole identity.
 - Every `vos-wh-*.json` preset pins `"visualMode": "cosmic-wormhole"` at the root, so
   loading one always lands in the wormhole identity.
 - No clip preset writes `wormholeStarfield` or `wormholeGalaxy`. These stay global,
@@ -86,12 +88,35 @@ action inside the situation vocabularies.
   line/glow material instead. If stronger reveal control is ever needed, the reserved
   path is an action-scoped runtime multiplier (for example `galaxyRevealBoost`) that
   scales the current global master rather than overwriting the user's setting.
+- Every preset keeps `lineAlpha >= 1.05`, with dissolve as the deliberate `0.95`
+  exception. Establish,
+  drive, spiral, collapse, and dissolve use longer continuity to preserve tunnel velocity
+  instead of falling back to a point-cloud look.
+- Only authored segmented roles use `wormholeRing`: collapse uses restrained `0.35`
+  compression, while sparse intentionally uses a strong segmented/ribbed field. All other
+  roles keep ring alignment at zero.
 - Role-level contrast is a tested contract, not a styling accident: the drive is exactly
   straight, the spiral out-twists the drive, the punch outruns the drive, the overdrive
-  tops the punch, the drift is the deepest and slowest, the sparse break uses sparse
-  bursts, the collapse owns ring alignment, the galaxy reveal owns streak length, and the
-  dissolve is the dimmest and shortest-streaked. The preset values themselves are
+  tops the punch, the drift is the deepest and slowest, the sparse break uses a continuous
+  segmented sparse texture, the authored ring roles own depth segmentation, the galaxy reveal owns streak length, and the
+  dissolve is the dimmest while retaining visible perspective trails. The preset values themselves are
   first-draft designer values; tuning them is fine as long as these relations hold.
+
+## Readability and perspective pass
+
+The ten original presets raise `audioSensitivity` and `lineAlpha` while preserving their
+relative character (including dissolve as the dimmest role). Continuity increases on the
+deep-perspective and transitional roles strengthen tunnel velocity; sparse is the explicit
+exception, using short continuity plus strong ring compression for its ribbed texture.
+Reduced spiral/punch/overdrive warp avoids a centrifuge-like camera feel. This pass does not change the
+user-owned `wormholeStarfield`/`wormholeGalaxy` defaults and does not alter
+`WormholeEmission.ts`: the continuous emission-mode morph is not the source of the observed
+brightness loss. A master-default boost, if needed after visual review, remains a separate
+change.
+
+The automation lane uses fills of at most `0.08` alpha. Selected morphs are indicated by
+outline and a restrained glow instead of a stronger filled gradient, preventing the editor
+overlay from visually swallowing dark wormhole passages.
 
 ## Low-confidence fallback
 
@@ -120,10 +145,13 @@ the seeded hash of the analysis, and identical input produces a byte-identical
 
 ## Validation
 
-`tests/wormhole-clip-profile.test.mjs` pins the contract: preset registration and role
+`tests/wormhole-clip-profile.test.mjs` pins the contract: 10-preset registration and role
 coverage, the forbidden-master scan, the mandatory `visualMode`, role-level contrast,
-targetMap purity on the main dramaturgy keys, the full 11-situation action vocabulary,
+the opacity floor, authored ring roles only, targetMap purity on the main dramaturgy
+keys, and the full 11-situation action vocabulary,
 end-to-end action coverage for a clip-shaped fixture, byte-identical determinism, the
 `dampVariationForConfidence` clone/no-mutation regression, and the low-confidence
 simplification contracts. `tests/visual-os.test.mjs` keeps the pack-level dramaturgy
 mapping assertion.
+
+This feature is an ADR-005 data-mechanism extension, so ADR-005 itself is unchanged.

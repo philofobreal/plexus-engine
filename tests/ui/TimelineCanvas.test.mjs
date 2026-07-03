@@ -181,7 +181,8 @@ test('TimelineCanvas renders performance automation plan lane with viewport scal
   const gradients = calls.filter(call => call[0] === 'createLinearGradient').map(call => call[1]);
   assert.ok(calls.some(call => call[0] === 'fillRect' && call[1] === 90 && call[2] === 18 && call[3] === 20 && call[4] === 62));
   assert.ok(calls.some(call => call[0] === 'lineTo' && Math.abs(call[1] - 100) < 0.001 && call[2] === 75));
-  assert.ok(gradients.some(gradient => gradient.stops.some(stop => stop[1] === 'rgba(213, 84, 172, 0.28)') && gradient.stops.some(stop => stop[1] === 'rgba(0, 229, 255, 0.01)')));
+  assert.ok(gradients.some(gradient => gradient.stops.some(stop => stop[1] === 'rgba(213, 84, 172, 0.08)') && gradient.stops.some(stop => stop[1] === 'rgba(0, 229, 255, 0.01)')));
+  assert.ok(!gradients.some(gradient => gradient.stops.some(stop => stop[1] === 'rgba(213, 84, 172, 0.28)')));
   assert.ok(calls.some(call => call[0] === 'setLineDash' && Array.isArray(call[1]) && call[1][0] === 2 && call[1][1] === 4));
   assert.ok(calls.some(call => call[0] === 'moveTo' && call[1] === 100.5 && call[2] === 18));
   assert.ok(calls.some(call => call[0] === 'lineTo' && call[1] === 100.5 && call[2] === 80));

@@ -99,6 +99,38 @@ test('every wormhole clip preset pins visualMode to cosmic-wormhole', () => {
   }
 });
 
+test('all presets stay visible and ring quantization is limited to authored ring roles', () => {
+  for (const role of WH_ROLES) {
+    const tuning = readPreset(`vos-wh-${role}.json`).visualTuning;
+    const floor = role === 'dissolve' ? 0.95 : 1.05;
+    assert.ok(tuning.lineAlpha >= floor, `${role} remains visibly above the opacity floor`);
+    if (role !== 'collapse' && role !== 'sparse') {
+      assert.equal(tuning.wormholeRing, 0, `${role} does not quantize depth into rings`);
+    }
+  }
+  const collapse = readPreset('vos-wh-collapse.json').visualTuning;
+  const sparse = readPreset('vos-wh-sparse.json').visualTuning;
+  assert.ok(collapse.wormholeRing >= 0.25 && collapse.wormholeRing <= 0.4, 'collapse ring compression stays restrained');
+  assert.ok(sparse.wormholeRing >= 0.8, 'sparse role intentionally uses strong ring segmentation');
+});
+
+test('weak roles pin a deep-perspective depth and continuity profile', () => {
+  const expected = {
+    establish: [3.4, 1.1],
+    drive: [2.6, 1.35],
+    spiral: [3.0, 1.45],
+    sparse: [4.7, 0.15],
+    drift: [5.0, 1.55],
+    galaxy: [4.6, 2.0],
+    dissolve: [4.2, 1.0]
+  };
+  for (const [role, [depth, continuity]] of Object.entries(expected)) {
+    const tuning = readPreset(`vos-wh-${role}.json`).visualTuning;
+    assert.equal(tuning.wormholeDepth, depth, `${role} depth`);
+    assert.equal(tuning.wormholeContinuity, continuity, `${role} continuity`);
+  }
+});
+
 test('clip roles have materially different wormhole behaviour (role-level contrast)', () => {
   const p = Object.fromEntries(WH_ROLES.map((role) => [role, readPreset(`vos-wh-${role}.json`).visualTuning]));
 
@@ -110,6 +142,9 @@ test('clip roles have materially different wormhole behaviour (role-level contra
   assert.ok(p.punch.wormholeSpeed > p.drive.wormholeSpeed, 'tunnel punch outruns the drive');
   assert.ok(p.overdrive.wormholeJitter >= 0.8, 'overdrive carries controlled jitter');
   assert.ok(p.overdrive.wormholeSpeed >= p.punch.wormholeSpeed, 'overdrive tops the punch speed');
+  assert.ok(p.spiral.wormholeWarp <= 1.9 && p.spiral.wormholeCurve <= 0.32, 'spiral avoids centrifuge motion');
+  assert.ok(p.punch.wormholeWarp <= 2.2, 'punch keeps speed without excessive spin');
+  assert.ok(p.overdrive.wormholeWarp <= 2.6, 'overdrive keeps speed without excessive spin');
 
   // Deep drift owns the largest, slowest space of the family.
   for (const role of WH_ROLES) {
@@ -118,15 +153,16 @@ test('clip roles have materially different wormhole behaviour (role-level contra
     assert.ok(p.drift.wormholeSpeed < p[role].wormholeSpeed, `deep drift slower than ${role}`);
   }
 
-  // Sparse break breathes in sparse bursts; the collapse aligns into rings.
-  assert.equal(p.sparse.wormholeEmissionMode, 2, 'sparse break uses sparse bursts');
-  assert.ok(p.collapse.wormholeRing >= 0.7, 'collapse reads as concentric rings');
+  // Sparse break uses continuous emission with strong segmentation; collapse stays restrained.
+  assert.equal(p.sparse.wormholeEmissionMode, 0, 'sparse break keeps its segmented field continuously emissive');
+  assert.ok(p.sparse.wormholeRing >= 0.8, 'sparse break owns strong ring segmentation');
+  assert.ok(p.collapse.wormholeRing >= 0.25, 'collapse retains restrained ring compression');
   for (const role of WH_ROLES) {
-    if (role === 'collapse') continue;
+    if (role === 'collapse' || role === 'sparse') continue;
     assert.ok(p.collapse.wormholeRing > p[role].wormholeRing, `collapse ring alignment above ${role}`);
   }
 
-  // Galaxy reveal owns the longest streaks at low speed; the dissolve fades to dots.
+  // Galaxy reveal owns the longest streaks at low speed; dissolve remains dim but readable.
   for (const role of WH_ROLES) {
     if (role === 'galaxy') continue;
     assert.ok(p.galaxy.wormholeContinuity > p[role].wormholeContinuity, `galaxy streaks longer than ${role}`);
@@ -135,8 +171,8 @@ test('clip roles have materially different wormhole behaviour (role-level contra
   for (const role of WH_ROLES) {
     if (role === 'dissolve') continue;
     assert.ok(p.dissolve.lineAlpha < p[role].lineAlpha, `dissolve dimmer than ${role}`);
-    assert.ok(p.dissolve.wormholeContinuity < p[role].wormholeContinuity, `dissolve shorter streaks than ${role}`);
   }
+  assert.ok(p.dissolve.wormholeContinuity >= 1, 'dissolve retains visible perspective trails');
 
   // The whole family stays pairwise distinct on the motion-character tuple.
   const tuples = WH_ROLES.map((role) => JSON.stringify([

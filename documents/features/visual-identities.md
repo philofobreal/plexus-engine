@@ -107,6 +107,12 @@ The tunnel curvature is event-driven, not constant. A decaying `curveImpulse` fi
 
 The scene is wrapped by a parallax universe that is independent of the tube: an absolute-world starfield plus a deeper layer of large, faint `radialGlow` galaxies (gated by `shouldUseExpensiveGlow`). Both subtract the curving camera offset before projection, so the background sweeps as the tunnel bends and streams as it travels forward. Grain recycling uses a modular depth wrap that preserves each grain's random sub-step depth, so the dispersed look never collapses into concentric rings after a full play-through; the `wormholeRing` parameter optionally blends the dispersed depth back toward discrete rings on purpose.
 
+The clip preset family keeps ring alignment disabled except for authored segmented roles:
+collapse uses a restrained `0.35` ring amount, while sparse intentionally uses a strong
+segmented/ribbed field. `ringBlend()` compresses grains toward depth-layer centers, so ring
+values remain explicit role-level choices. Longer continuity values provide perspective and
+velocity without introducing new scene objects.
+
 All pools and color tuples are allocated once in the constructor, glitch and parallax noise come from a deterministic `pseudoNoise()` hash, and drawing stays on `backend.line` plus the gated galaxy `radialGlow`.
 
 ### Hero
@@ -135,7 +141,7 @@ The visual mode select in `src/main.ts` exposes the built-in values; `cosmic-wor
 
 - `wormholeRadius`, `wormholeDepth`, `wormholeSpeed` — base tube diameter, horizon distance, and forward Z-velocity.
 - `wormholeWarp` — dust spiral-twist amount.
-- `wormholeCurve` — master scale for the event-driven tunnel curvature (`0` forces a straight tube regardless of preset content); it is set per preset in `temporal1.json`..`temporal5.json`.
+- `wormholeCurve` — master scale for the event-driven tunnel curvature (`0` forces a straight tube regardless of preset content); clip and legacy presets may author it per role.
 - `wormholeRing` — blends the natural dispersed depth toward concentric rings (`0` = random, `1` = rings).
 - `wormholeContinuity` — scales projected streak length independently of ring alignment (`0` = dots, `1` = default trails, `2` = extended trails).
 - `wormholeStarfield`, `wormholeGalaxy` — general, preset-independent masters for the background star density and the deep galaxy layer. They are intentionally not written by the bundled presets so they stay global across preset changes.
