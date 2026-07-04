@@ -3,17 +3,18 @@ import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
 import type { VisualRendererBackend } from './RendererBackend';
-import type { VisualIdentity } from './VisualIdentity';
+import type { VisualIdentity, VisualIdentityDrawContext } from './VisualIdentity';
 
 class CyberpunkIdentity implements VisualIdentity {
     readonly id = 'cyberpunk';
     readonly name = 'Cyberpunk';
+    readonly usesSharedSimulation = true;
 
     private readonly magenta: [number, number, number] = [0, 0, 0];
     private readonly cyan: [number, number, number] = [0, 0, 0];
     private readonly violet: [number, number, number] = [0, 0, 0];
 
-    draw(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[]) {
+    draw(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[], context?: VisualIdentityDrawContext) {
         const clear = getBackgroundClearStyle(State.visualTuning, State.modulation.rhythmicImpulse * 9 + State.cueDecay * 5);
         backend.background(Math.min(clear.r + 4, 18), Math.min(clear.g + 1, 9), Math.min(clear.b + 14, 34), clear.a);
 
@@ -21,9 +22,10 @@ class CyberpunkIdentity implements VisualIdentity {
         hueToRgbInto(this.cyan, 183, 1, 0.5);
         hueToRgbInto(this.violet, 276, 0.86, 0.62);
 
-        this.updateParticles(backend, particles);
+        const advance = context?.advanceSharedSimulation !== false;
+        if (advance) this.updateParticles(backend, particles);
         this.drawChromaticNetwork(backend, particles);
-        this.drawNeonCore(backend, shockwaves);
+        this.drawNeonCore(backend, shockwaves, advance);
     }
 
     private updateParticles(backend: VisualRendererBackend, particles: Particle[]) {
@@ -103,14 +105,14 @@ class CyberpunkIdentity implements VisualIdentity {
         }
     }
 
-    private drawNeonCore(backend: VisualRendererBackend, shockwaves: Shockwave[]) {
+    private drawNeonCore(backend: VisualRendererBackend, shockwaves: Shockwave[], advance: boolean) {
         const cx = backend.width / 2;
         const cy = backend.height / 2;
         for (let i = shockwaves.length - 1; i >= 0; i--) {
             const sw = shockwaves[i];
-            sw.update();
+            if (advance) sw.update();
             sw.draw(backend, cx, cy);
-            if (sw.alpha <= 0) shockwaves.splice(i, 1);
+            if (advance && sw.alpha <= 0) shockwaves.splice(i, 1);
         }
 
         const pulse = Math.max(State.modulation.rhythmicImpulse, State.cueDecay * 0.72);

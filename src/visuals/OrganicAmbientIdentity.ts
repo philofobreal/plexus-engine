@@ -3,17 +3,18 @@ import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
 import type { VisualRendererBackend } from './RendererBackend';
-import type { VisualIdentity } from './VisualIdentity';
+import type { VisualIdentity, VisualIdentityDrawContext } from './VisualIdentity';
 
 class OrganicAmbientIdentity implements VisualIdentity {
     readonly id = 'organic-ambient';
     readonly name = 'Organic Ambient';
+    readonly usesSharedSimulation = true;
 
     private readonly mistColor: [number, number, number] = [0, 0, 0];
     private readonly earthColor: [number, number, number] = [0, 0, 0];
     private readonly bloomColor: [number, number, number] = [0, 0, 0];
 
-    draw(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[]) {
+    draw(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[], context?: VisualIdentityDrawContext) {
         const clear = getBackgroundClearStyle(State.visualTuning, State.cueDecay * 3);
         backend.background(
             Math.min(clear.r + 2, 28),
@@ -22,9 +23,10 @@ class OrganicAmbientIdentity implements VisualIdentity {
             clear.a
         );
 
-        this.updateFlowingParticles(backend, particles);
+        const advance = context?.advanceSharedSimulation !== false;
+        if (advance) this.updateFlowingParticles(backend, particles);
         this.drawMistField(backend, particles);
-        this.drawSoftCenter(backend, shockwaves);
+        this.drawSoftCenter(backend, shockwaves, advance);
     }
 
     private updateFlowingParticles(backend: VisualRendererBackend, particles: Particle[]) {
@@ -52,15 +54,15 @@ class OrganicAmbientIdentity implements VisualIdentity {
         }
     }
 
-    private drawSoftCenter(backend: VisualRendererBackend, shockwaves: Shockwave[]) {
+    private drawSoftCenter(backend: VisualRendererBackend, shockwaves: Shockwave[], advance: boolean) {
         const cx = backend.width / 2;
         const cy = backend.height / 2;
         hueToRgbInto(this.bloomColor, 190 + State.modulation.kineticTension * 24, 0.38, 0.72);
 
         for (let i = shockwaves.length - 1; i >= 0; i--) {
             const sw = shockwaves[i];
-            sw.update();
-            if (sw.alpha <= 0) shockwaves.splice(i, 1);
+            if (advance) sw.update();
+            if (advance && sw.alpha <= 0) shockwaves.splice(i, 1);
         }
 
         const bloomRadius = Math.max(backend.width, backend.height) * (0.18 + State.modulation.macroMomentum * 0.1);

@@ -3,11 +3,12 @@ import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
 import type { VisualRendererBackend } from './RendererBackend';
-import type { VisualIdentity } from './VisualIdentity';
+import type { VisualIdentity, VisualIdentityDrawContext } from './VisualIdentity';
 
 class ClassicPlexusIdentity implements VisualIdentity {
     readonly id = 'classic';
     readonly name = 'Classic';
+    readonly usesSharedSimulation = true;
 
     private readonly glowColor: [number, number, number] = [0, 0, 0];
     private readonly coreColor: [number, number, number] = [0, 0, 0];
@@ -15,15 +16,16 @@ class ClassicPlexusIdentity implements VisualIdentity {
     private readonly polygonColor: [number, number, number] = [0, 0, 0];
     private readonly nodeColor: [number, number, number] = [0, 0, 0];
 
-    draw(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[]) {
+    draw(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[], context?: VisualIdentityDrawContext) {
         let bgFlash = State.modulation.rhythmicImpulse * 12;
         const clear = getBackgroundClearStyle(State.visualTuning, bgFlash);
 
         backend.background(clear.r, clear.g, clear.b, clear.a);
 
-        this.drawCenterDynamics(backend, shockwaves);
+        const advance = context?.advanceSharedSimulation !== false;
+        this.drawCenterDynamics(backend, shockwaves, advance);
         for (let pt of particles) {
-            pt.update(
+            if (advance) pt.update(
                 State.modulation.macroMomentum,
                 State.modulation.densityDrive,
                 State.modulation.rhythmicImpulse,
@@ -36,11 +38,13 @@ class ClassicPlexusIdentity implements VisualIdentity {
         this.drawPolygonalNetwork(backend, particles);
     }
 
-    private drawCenterDynamics(backend: VisualRendererBackend, shockwaves: Shockwave[]) {
+    private drawCenterDynamics(backend: VisualRendererBackend, shockwaves: Shockwave[], advance: boolean) {
         let cx = backend.width / 2; let cy = backend.height / 2;
         for (let i = shockwaves.length - 1; i >= 0; i--) {
-            let sw = shockwaves[i]; sw.update(); sw.draw(backend, cx, cy);
-            if (sw.alpha <= 0) shockwaves.splice(i, 1);
+            let sw = shockwaves[i];
+            if (advance) sw.update();
+            sw.draw(backend, cx, cy);
+            if (advance && sw.alpha <= 0) shockwaves.splice(i, 1);
         }
 
         let isLowMode = State.currentFrame.state.startsWith('LOW');

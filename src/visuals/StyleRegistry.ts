@@ -25,6 +25,10 @@ export class StyleRegistry {
         if (!fallback) throw new Error(`Visual identity "${CLASSIC_STYLE_ID}" is not registered`);
         return fallback;
     }
+
+    forEach(callback: (identity: VisualIdentity) => void): void {
+        this.identities.forEach(callback);
+    }
 }
 
 export function createDefaultStyleRegistry(): StyleRegistry {

@@ -4,7 +4,7 @@ import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
 import type { MusicPattern, PatternOccurrence, TrackSection } from '../types';
 import type { VisualRendererBackend } from './RendererBackend';
-import type { VisualIdentity } from './VisualIdentity';
+import type { VisualIdentity, VisualIdentityDrawContext } from './VisualIdentity';
 
 interface PatternResonance {
     pattern: MusicPattern | null;
@@ -24,6 +24,7 @@ interface TemporalColorBuffers {
 class TemporalMusicIdentity implements VisualIdentity {
     readonly id = 'temporal';
     readonly name = 'Temporal';
+    readonly usesSharedSimulation = true;
 
     private readonly colors: TemporalColorBuffers = {
         glowColor: [0, 0, 0],
@@ -33,16 +34,17 @@ class TemporalMusicIdentity implements VisualIdentity {
         mechanismRingColor: [0, 0, 0]
     };
 
-    draw(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[]) {
+    draw(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[], context?: VisualIdentityDrawContext) {
         let cx = backend.width / 2;
         let cy = backend.height / 2;
         let section = getCurrentSection(State.currentTime);
         let resonance = getPatternResonance(State.currentTime);
 
         drawTemporalBackground(backend, cx, cy, resonance, section, this.colors);
-        updateTemporalParticles(backend, particles, resonance);
+        const advance = context?.advanceSharedSimulation !== false;
+        if (advance) updateTemporalParticles(backend, particles, resonance);
         drawTemporalPolygonNetwork(backend, particles, resonance, this.colors);
-        drawCenterMechanisms(backend, shockwaves, cx, cy, resonance, section, this.colors);
+        drawCenterMechanisms(backend, shockwaves, cx, cy, resonance, section, this.colors, advance);
     }
 }
 
@@ -184,7 +186,8 @@ function drawCenterMechanisms(
     cy: number,
     resonance: PatternResonance,
     section: TrackSection | null,
-    colors: TemporalColorBuffers
+    colors: TemporalColorBuffers,
+    advanceSharedSimulation: boolean
 ) {
     let sectionEnergy = section ? tuneAudioValue(section.energy, State.visualTuning) : State.modulation.macroMomentum;
     setMechanismRingColor(State.visualTuning.circleHue, colors);
@@ -268,9 +271,9 @@ function drawCenterMechanisms(
 
     for (let i = shockwaves.length - 1; i >= 0; i--) {
         let sw = shockwaves[i];
-        sw.update();
+        if (advanceSharedSimulation) sw.update();
         sw.draw(backend, cx, cy);
-        if (sw.alpha <= 0) shockwaves.splice(i, 1);
+        if (advanceSharedSimulation && sw.alpha <= 0) shockwaves.splice(i, 1);
     }
 }
 

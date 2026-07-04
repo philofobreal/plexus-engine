@@ -3,19 +3,21 @@ import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
 import type { VisualRendererBackend } from './RendererBackend';
-import type { VisualIdentity } from './VisualIdentity';
+import type { VisualIdentity, VisualIdentityDrawContext } from './VisualIdentity';
 
 class DarkTechnoIdentity implements VisualIdentity {
     readonly id = 'dark-techno';
     readonly name = 'Dark Techno';
+    readonly usesSharedSimulation = true;
 
-    draw(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[]) {
+    draw(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[], context?: VisualIdentityDrawContext) {
         const clear = getBackgroundClearStyle(State.visualTuning, State.modulation.rhythmicImpulse * 4);
         backend.background(Math.min(clear.r, 8), Math.min(clear.g, 8), Math.min(clear.b, 8), clear.a);
 
-        this.updateParticles(backend, particles);
+        const advance = context?.advanceSharedSimulation !== false;
+        if (advance) this.updateParticles(backend, particles);
         this.drawIndustrialNetwork(backend, particles);
-        this.drawStrobeCore(backend, shockwaves);
+        this.drawStrobeCore(backend, shockwaves, advance);
     }
 
     private updateParticles(backend: VisualRendererBackend, particles: Particle[]) {
@@ -78,14 +80,14 @@ class DarkTechnoIdentity implements VisualIdentity {
         }
     }
 
-    private drawStrobeCore(backend: VisualRendererBackend, shockwaves: Shockwave[]) {
+    private drawStrobeCore(backend: VisualRendererBackend, shockwaves: Shockwave[], advance: boolean) {
         const cx = backend.width / 2;
         const cy = backend.height / 2;
         for (let i = shockwaves.length - 1; i >= 0; i--) {
             const sw = shockwaves[i];
-            sw.update();
+            if (advance) sw.update();
             sw.draw(backend, cx, cy);
-            if (sw.alpha <= 0) shockwaves.splice(i, 1);
+            if (advance && sw.alpha <= 0) shockwaves.splice(i, 1);
         }
 
         const strobe = Math.max(State.denseImpactFlash, State.modulation.rhythmicImpulse * 0.75);
