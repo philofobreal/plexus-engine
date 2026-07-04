@@ -114,6 +114,17 @@ test('wormhole automation response follows morph duration without resetting inst
   assert.ok(longMorph.update('point-a', 6, 12) > longFirstFrame);
 });
 
+test('backward seek re-arms wormhole automation without a tracking stall', () => {
+  const { WormholeAutomationTransition } = loadTypeScriptModule('src/visuals/WormholeEmission.ts');
+  const transition = new WormholeAutomationTransition();
+
+  transition.update('point-a', 10, 2);
+  assert.ok(transition.update('point-a', 11, 2) > 0);
+  transition.syncPosition(4);
+  assert.equal(transition.update('point-a', 4, 2), 0);
+  assert.ok(transition.update('point-a', 4.5, 2) > 0);
+});
+
 test('semantic transition identities are deterministic and distinguish adjacent frames', () => {
   const { motifTransitionId, semanticScoreTransitionId } = loadTypeScriptModule('src/visuals/VisualTransitionIdentity.ts');
   const motifA = { time: 8, motifId: 'tunnel-a', phrasePosition: 0, actions: {}, activeOperators: [] };

@@ -405,9 +405,10 @@ test('visual mode selector preserves classic mode and exposes temporal mode', ()
   assert.match(main, /id="visual-mode"/);
   assert.match(main, /createDefaultStyleRegistry\(\)/);
   assert.match(ui, /function isVisualMode\(value: string\): value is VisualMode/);
-  assert.match(renderer, /styleRegistry\.get\(State\.visualMode\)/);
-  assert.match(renderer, /visualIdentity\.draw\(backend, particles, shockwaves\)/);
-  assert.match(identity, /export interface VisualIdentity[\s\S]*draw\(backend: VisualRendererBackend, particles: Particle\[\], shockwaves: Shockwave\[\]\): void;/);
+  assert.match(renderer, /identityTransitionController\.draw\(ct, backend, compositor, styleRegistry, particles, shockwaves\)/);
+  assert.match(renderer, /styleRegistry\.get\(State\.visualMode\)\.draw\(backend, particles, shockwaves\)/);
+  assert.match(identity, /export interface VisualIdentityDrawContext[\s\S]*advanceSharedSimulation: boolean/);
+  assert.match(identity, /export interface VisualIdentity[\s\S]*draw\(backend: VisualRendererBackend, particles: Particle\[\], shockwaves: Shockwave\[\], context\?: VisualIdentityDrawContext\): void;/);
   assert.match(registry, /private readonly identities = new Map<string, VisualIdentity>\(\)/);
   assert.match(registry, /registry\.register\(classicPlexusIdentity\)/);
   assert.match(registry, /registry\.register\(temporalMusicIdentity\)/);
