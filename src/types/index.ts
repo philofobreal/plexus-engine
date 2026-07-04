@@ -45,6 +45,14 @@ export type AutoState = 'IDLE' | 'HIGH' | 'LOW' | 'LOW_DROP' | 'LOW_OVERLOAD';
 
 export type VisualMode = 'classic' | 'temporal' | 'dark-techno' | 'organic-ambient' | 'cyberpunk' | 'cosmic-wormhole' | 'hero';
 
+export interface VisualModeTransition {
+    readonly generation: number;
+    readonly from: VisualMode;
+    readonly to: VisualMode;
+    readonly startTimeSec: number;
+    readonly durationSec: number;
+}
+
 export type MorphCurve = 'linear' | 'easeInOut' | 'exponential';
 
 export interface MorphProfile {
@@ -120,6 +128,7 @@ export interface VisualTuningConfig {
     wormholeWarp: number;
     wormholeCurve: number;
     wormholeRing: number;
+    wormholeDepthCoherence: number;
     wormholeContinuity: number;
     wormholeStarfield: number;
     wormholeGalaxy: number;
