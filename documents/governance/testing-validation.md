@@ -70,6 +70,16 @@ Visual changes:
 - For visual identity or style-registry changes, run the browser-free deterministic style harness (`node --test tests/styles-deterministic.test.mjs`) or explain why it was not applicable.
 - If in-app browser automation cannot reach a transient local dev server, verify server startup and HTTP status with a short-lived shell job, then report browser smoke as not completed.
 
+Visual identity transition changes:
+
+- Run `node --test tests/visual-mode-transition.test.mjs tests/wormhole-depth-integrity.test.mjs tests/wormhole-lifecycle.test.mjs` plus `tests/contracts.test.mjs` and `tests/styles-deterministic.test.mjs` when the shared identity contract changes.
+- `computeCrossfadeAlpha` coverage must pin start, midpoint, completion, and backward-song-time behavior. Transition request coverage must pin synchronous logical switching, no paused dual render, live/export clock anchoring, and the `0.1..4.0` duration clamp.
+- Compositor regressions must assert two persistent targets, per-active-frame clearing, `source-over`, and the true `A * (1 - alpha) + B * alpha` weights. Additive `lighter` blending is forbidden.
+- Controller regressions must assert that compositing runs only during an active transition, completion returns to the direct steady-state path, and `State.visualMode` has one runtime writer.
+- Transition ownership coverage must keep record creation/replacement in `requestVisualModeChange()` and completion cleanup in the renderer-owned controller. Effect modules must not own compositing or transition state.
+- Shared simulation gating must prove that one participant advances shared particle/shockwave pools exactly once. Incoming normally owns advancement; when it does not use the shared pool, eligible outgoing owns it and the other participant receives `advanceSharedSimulation: false`.
+- Wormhole determinism coverage must include immutable depth-phase uniformity under a moving horizon, authored coherence determinism, repeated seeks without accumulated density damage, identical tunnel and curved-galaxy geometry after different histories, and automation-transition re-arming after backward seek.
+
 Semantic dramaturgy layer changes (ADR-003):
 
 - **Semantic Determinism Test (required).** Identical `TrackAnalysis` must produce identical narrative, intent, Visual Score, and choreography plans, independent of the selected style. Assert this with `node --test tests/semantics.test.mjs tests/visual-score-dsl.test.mjs`.

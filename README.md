@@ -47,7 +47,7 @@ You can currently:
 
 - load a local audio file
 - play, pause, seek, loop, or run once
-- switch between visual modes
+- switch between visual modes with a song-time-anchored crossfade during playback/export (paused selection switches immediately)
 - use fullscreen presentation mode
 - tune the look live
 - load JSON visual presets
@@ -82,6 +82,14 @@ A slow, fluid mode with soft pastel green, blue, and earth-tone glow fields inst
 ### Cyberpunk
 
 A high-contrast neon magenta/cyan mode with chromatic-aberration line offsets and deterministic glitch motion under high tension.
+
+### Cosmic Wormhole
+
+A deterministic 3D tunnel-flight identity with spectral dust, curved parallax space, and seek-safe depth phases.
+
+### Identity transitions
+
+Visual mode selection changes the logical mode synchronously. During playback or export, the renderer-owned `IdentityTransitionController` keeps a separate transition record and renders the outgoing and incoming identities into two persistent offscreen targets. `RenderTargetCompositor` combines them as a true `A * (1 - alpha) + B * alpha` crossfade; steady-state frames bypass both targets and draw directly to the active backend. Effect modules never own targets or compositing.
 
 ## Why it exists
 

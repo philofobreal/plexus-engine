@@ -10,16 +10,36 @@ Visual identities are deep visual modules. Each identity hides its own color the
 export interface VisualIdentity {
     readonly id: string;
     readonly name: string;
-    draw(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[]): void;
+    readonly usesSharedSimulation?: boolean;
+    draw(backend: VisualRendererBackend, particles: Particle[], shockwaves: Shockwave[], context?: VisualIdentityDrawContext): void;
+    syncPosition?(timeSec: number): void;
 }
 ```
 
-`PlexusRenderer` remains the render orchestrator. It synchronizes playback time, accepted analysis frames, beat and cue event indexes, modulation, visual tuning, and `VisualDirectorFSM` output. It does not contain mode-specific drawing branches. At the end of each draw cycle it calls:
+`PlexusRenderer` remains the render orchestrator. It synchronizes playback time, accepted analysis frames, beat and cue event indexes, modulation, visual tuning, and `VisualDirectorFSM` output. It does not contain mode-specific drawing branches. At the end of each draw cycle it delegates to `IdentityTransitionController`, which selects either the steady-state direct path or the renderer-owned transition path.
 
-```ts
-const visualIdentity = styleRegistry.get(State.visualMode);
-visualIdentity.draw(backend, particles, shockwaves);
+```mermaid
+flowchart LR
+    UI["UI or validated preset"] --> Request["requestVisualModeChange"]
+    Request --> Mode["State.visualMode (synchronous)"]
+    Request --> Record["State.visualModeTransition"]
+    Mode --> Controller["IdentityTransitionController"]
+    Record --> Controller
+    Controller -->|"steady state"| Direct["active identity -> live backend"]
+    Controller -->|"active transition"| Out["outgoing render target"]
+    Controller -->|"active transition"| In["incoming render target"]
+    Out --> Composite["RenderTargetCompositor"]
+    In --> Composite
+    Composite --> Live["A*(1-alpha) + B*alpha"]
 ```
+
+`requestVisualModeChange()` is the only runtime writer of `State.visualMode`. It changes the logical selection immediately. When playback or offline export is active, it also writes one `VisualModeTransition` record (`from`, `to`, `generation`, `startTimeSec`, `durationSec`); paused/stopped changes clear the record and do not dual-render. The start is anchored to `State.currentTime` for playback and exact `State.exportTime` for export. Duration is clamped to `0.1..4.0` seconds.
+
+`IdentityTransitionController` owns transition consumption and completion. `computeCrossfadeAlpha()` derives a smoothstep alpha from the song/export clock. Before the recorded start (including a backward time jump) or on completion, the controller clears the transition and draws only the incoming identity. A record that no longer targets the logical mode is bypassed. In steady state it does not call the compositor.
+
+`P5RenderTargetCompositor` implements `RenderTargetCompositor` with exactly two constructor-allocated `p5.Graphics` targets. Active transition frames clear both targets, resize them only when the live surface size changes, and composite with Canvas2D `source-over`: outgoing at `1 - alpha`, incoming at `alpha`. Additive `lighter` blending is not part of identity replacement.
+
+Shared particle/shockwave simulation advances exactly once per transition frame. Normally the incoming identity receives `advanceSharedSimulation: true` and the outgoing identity receives `false`. If the incoming identity does not declare `usesSharedSimulation`, ownership remains with a shared-simulation outgoing identity. Effects must honor the flag before updating or deleting shared pool entries.
 
 ## Visual Score Tuning Handoff
 
@@ -94,7 +114,7 @@ High-contrast neon magenta and cyan identity. It simulates chromatic aberration 
 
 File: `src/visuals/CosmicWormholeIdentity.ts`
 
-A 3D "tunnel flight" identity. It maintains a fixed dust pool (one grain per spectral band and depth layer) in cylinder space: every grain has an angular position `theta` on the tube wall, a band assignment, and a running depth `z`. Each frame the grain depth streams toward the camera and is projected to 2D through perspective division. The field of view is bound to canvas height (not width) so the tube always fits vertically on a 16:9 surface, and the grains draw only as motion-blurred radial streaks (`backend.line`) — there are no center circles.
+A 3D "tunnel flight" identity. It maintains a fixed dust pool (one grain per spectral band and depth layer) in cylinder space: every grain has an angular position `theta`, a band assignment, and an immutable normalized `depthPhase`. A single shared travel phase advances each frame; live depth is derived from the grain phase, travel phase, and current horizon. Horizon morphs therefore cannot accumulate density bands in individual grains. The field of view is bound to canvas height (not width) so the tube always fits vertically on a 16:9 surface, and the grains draw only as motion-blurred radial streaks (`backend.line`) — there are no center circles.
 
 Music reactivity is sourced from precomputed state, never realtime DSP:
 
@@ -105,7 +125,7 @@ Music reactivity is sourced from precomputed state, never realtime DSP:
 
 The tunnel curvature is event-driven, not constant. A decaying `curveImpulse` fires whenever `State.directorOutput.state` changes (i.e. when the performance-automation preset transitions), and `kineticTension`/`centripetalOrbit` add a gentle continuous lean. The whole bend is scaled by the dedicated `wormholeCurve` master (`0` = perfectly straight, `1` = full bends) so the tuning panel can override any preset.
 
-The scene is wrapped by a parallax universe that is independent of the tube: an absolute-world starfield plus a deeper layer of large, faint `radialGlow` galaxies (gated by `shouldUseExpensiveGlow`). Both subtract the curving camera offset before projection, so the background sweeps as the tunnel bends and streams as it travels forward. Grain recycling uses a modular depth wrap that preserves each grain's random sub-step depth, so the dispersed look never collapses into concentric rings after a full play-through; the `wormholeRing` parameter optionally blends the dispersed depth back toward discrete rings on purpose.
+The scene is wrapped by a parallax universe that is independent of the tube: an absolute-world starfield plus a deeper layer of large, faint `radialGlow` galaxies (gated by `shouldUseExpensiveGlow`). Both subtract the curving camera offset before projection, so the background sweeps as the tunnel bends and streams as it travels forward. `syncPosition()` re-anchors travel, automation transition, starfield, and galaxy state after seek/stop so identical song positions reproduce identical geometry. `wormholeDepthCoherence` can deterministically compress immutable depth cohorts for authored rib character without restoring mutable depth damage; `wormholeRing` separately blends live depths toward discrete rings.
 
 The clip preset family keeps ring alignment disabled except for authored segmented roles:
 collapse uses a restrained `0.35` ring amount, while sparse intentionally uses a strong
@@ -133,7 +153,7 @@ In metronome mode, Hero looks ahead mathematically into the timeline instead of 
 'classic' | 'temporal' | 'dark-techno' | 'organic-ambient' | 'cyberpunk' | 'cosmic-wormhole' | 'hero'
 ```
 
-The visual mode select in `src/main.ts` exposes the built-in values; `cosmic-wormhole` is always available, while `hero` is listed only when `featureFlags.heroEffect` is enabled. `DashboardUI` validates mode ids through `isVisualMode()` before writing `State.visualMode`. Preset loading uses the same validation, so older presets without `visualMode` remain valid and newer presets that contain any registered built-in style update both `State.visualMode` and the select element.
+The visual mode select in `src/main.ts` exposes the built-in values; `cosmic-wormhole` is always available, while `hero` is listed only when `featureFlags.heroEffect` is enabled. `DashboardUI` validates mode ids through `isVisualMode()` and routes both user and preset changes through `requestVisualModeChange()`; no UI or effect module assigns `State.visualMode` directly. Older presets without `visualMode` remain valid and known built-in ids update the logical state and select element synchronously.
 
 ### Wormhole Tuning Group
 
@@ -143,6 +163,7 @@ The visual mode select in `src/main.ts` exposes the built-in values; `cosmic-wor
 - `wormholeWarp` — dust spiral-twist amount.
 - `wormholeCurve` — master scale for the event-driven tunnel curvature (`0` forces a straight tube regardless of preset content); clip and legacy presets may author it per role.
 - `wormholeRing` — blends the natural dispersed depth toward concentric rings (`0` = random, `1` = rings).
+- `wormholeDepthCoherence` — deterministically compresses immutable depth cohorts (`0` = continuous distribution, `1` = strongest authored cohort character) without path-dependent damage.
 - `wormholeContinuity` — scales projected streak length independently of ring alignment (`0` = dots, `1` = default trails, `2` = extended trails).
 - `wormholeStarfield`, `wormholeGalaxy` — general, preset-independent masters for the background star density and the deep galaxy layer. They are intentionally not written by the bundled presets so they stay global across preset changes.
 
@@ -154,6 +175,8 @@ contract above.
 ## Render Boundary And Performance Rules
 
 - Identities must draw only through `VisualRendererBackend`.
+- Identities must not create, retain, resize, clear, or composite render targets and must not call `RenderTargetCompositor`; composition is renderer-owned.
+- Identities must not write `State.visualMode` or `State.visualModeTransition`, and shared-pool identities must honor `advanceSharedSimulation`.
 - Direct p5 drawing belongs in `P5RendererBackend`, `Particle`, `Shockwave`, or `PlexusRenderer` setup/lifecycle code.
 - Do not allocate p5 vectors, particles, shockwaves, or unbounded persistent objects inside identity draw paths.
 - Hot color conversion should use `hueToRgbInto()` with identity-owned RGB tuples.
@@ -170,3 +193,5 @@ contract above.
 - Cinematic Ambient, 70 BPM
 
 The test asserts that no identity crashes in intro, buildup, drop, or break phases and that backend draw-call counts are deterministic across repeated runs.
+
+`tests/visual-mode-transition.test.mjs` covers alpha boundaries, synchronous mode switching, playback/export clock anchoring, duration clamps, compositor blend/clear rules, transition-only dual rendering, shared simulation gating, and the single runtime writer for `State.visualMode`. `tests/wormhole-depth-integrity.test.mjs` covers immutable phase uniformity under moving horizons, deterministic coherence, repeated seeks, and identical post-seek tunnel/galaxy geometry; `tests/wormhole-lifecycle.test.mjs` covers automation re-arming after backward seek.

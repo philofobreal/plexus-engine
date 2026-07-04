@@ -13,7 +13,7 @@ Az aktualis implementacio het regisztralt vizualis identitast tart fenn a `Visua
 * `dark-techno`: szigoru monokrom, minimal ipari stilus eles feher/szurke vonalakkal es ritka strobe-szeru polygon flash viselkedessel.
 * `organic-ambient`: lassu, folyekony, pasztell zold/kek/foldszinu stilus, amely eles halozati vonalak helyett puha reszecske-glow retegeket hasznal.
 * `cyberpunk`: nagy kontrasztu neon magenta/cian stilus kromatikus aberracio-szeru kettos vonalrajzolassal es determinisztikus glitch offsetekkel.
-* `cosmic-wormhole`: 3D terhatasu "csoben repules" mod. Egy konstruktorban allokalt csillagpor-poolt vetit henger-koordinatakbol 2D-be a 24-savos `perceptualSpectrum` es a modulacios busz alapjan. Esemenyvezerelt cso-kanyarodast (a `wormholeCurve` master szerint skalazva), abszolut vilag-koordinatas parallax csillagmezot es egy melyebb `radialGlow` galaxis-reteget ad, amelyek kovetik a kamera elorehaladaset es kanyarodasat. Csak `backend.line`-t es a kapuzott galaxis-glow-t hasznal, determinisztikusan `pseudoNoise()` alapjan. A nem nulla ring alignment csak szerzoi szandekkal szegmentalt szerepekben jelenik meg: a collapse visszafogott, a sparse pedig szandekosan eros, folyamatos bordazott break-texturat ad. Parameterei a `Wormhole` tuning csoportban talalhatok: `wormholeRadius`, `wormholeDepth`, `wormholeSpeed`, `wormholeWarp`, `wormholeCurve`, `wormholeRing`, `wormholeContinuity`, `wormholeStarfield`, `wormholeGalaxy`, `wormholeSkybox`, `wormholeEmissionMode`, `wormholeJitter`.
+* `cosmic-wormhole`: 3D terhatasu "csoben repules" mod. A konstruktorban allokalt szemcsek immutable normalizalt depth phase-t tartanak, a mozgas egyetlen shared travel phase-bol es az aktualis horizonbol szarmazik, igy depth morph es seek nem halmoz fel eloszlasi serulest. A `wormholeDepthCoherence` determinisztikus szerzoi cohort karaktert adhat, a `wormholeRing` ettol kulon ring alignment. A `syncPosition()` azonos dalpozicion azonos tunnel/galaxy geometriat allit elo. Esemenyvezerelt kanyarodast, parallax csillagmezot es kapuzott `radialGlow` galaxis-reteget rajzol csak a backend-hataron keresztul.
 * `hero`: bal also playhead pontra szervezett, also horizontalis lane-en jobbrol balra mozgo event-dot vizual, ahol a dot poziciok determinisztikusan `event.time - State.currentTime` alapjan szamolodnak. A mod sajat interaktiv metronomot is hasznalhat: a lane elore mutatja a `PerformanceAutomationPlan` altal utemezett beep ritmust.
 
 ## 1.1. Termekvizio Es Celcsoport
@@ -49,7 +49,7 @@ A rendszer Vite + TypeScript projekt, explicit runtime retegekkel. A kanonikus m
 3. **Audio Engine (`src/audio/AudioEngine.ts`):** felelos a hangfajlok dekodolasaert, a `AudioBufferSourceNode` eletciklusert, a kanonikus idoszamitasert, a seek/end resetert, a worker request id kezelesert, a stale worker eredmenyek eldobasaert es a worker terminalasaert. Az `onProgress(progress, stage)` callbacken keresztul a decode fazist es a worker progress telemetriat is tovabbitja a UI-nak. A Hero metronomhoz negy szintetizalt beep stemet tart parhuzamosan szinkronban, es preset automatizalas alapjan sima gain crossfade-del valt koztuk.
 4. **Analysis Engine (`src/audio/analyzer.worker.ts`):** dedikalt Web Worker. Nem monolitikus `onmessage` algoritmus: a feldolgozas `SpectralCalibration`, `FeatureExtractor`, `GridAligner`, `SectionAnalyzer` es `DramaturgyBuilder` osztalyokra van bontva. 1024 mintas Hann-windowed FFT pipeline-t hasznal, spektralis fluxust, Hz-alapu relativ savenergiakat, centroidot es flatness erteket szamol, majd `AudioFrame`, `BeatEvent` es `TrackAnalysis` kimenetet publikal. A tempo kimenet mar nem csak scalar BPM: a worker confidence mezoket es rendezett `tempoCandidates` listat is ad, gyenge grid esetben pedig a sectioning energia-reaktiv fallbacket hasznalhat. A nehez FFT ciklus alatt `analysis_progress` uzenetekkel folyamatos telemetriat is kuld a fo szalnak.
 5. **Shared contracts/state (`src/types/index.ts`, `src/state/store.ts`):** tarolja a megosztott tipusokat, az elfogadott analizis eredmenyeket, a vizualis modot, loop allapotot, aktualis frame-et, cue allapotokat, modulacios buszt, `videoDominantColor`-t, elo tuningot es target tuningot.
-6. **Render Engine (`src/visuals/`):** p5 canvas renderer backend adapterrel, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `StyleRegistry`-bol lekert `VisualIdentity` implementaciokat kezeli. A zene-dramaturgiai allapotszabalyozast a `VisualDirectorFSM.ts` modul vegzi, majd `DirectorOutput` formaban ad render-facing jeleket az identitasoknak.
+6. **Render Engine (`src/visuals/`):** p5 canvas renderer backend adapterrel, amely 75 elore inicializalt reszecsket, lokeshullamokat, event/cue indexeket es a `StyleRegistry`-bol lekert `VisualIdentity` implementaciokat kezeli. Az `IdentityTransitionController` valaszt a kozvetlen steady-state rajzolas es a ket elore allokalt render targetet hasznalo crossfade kozott; a `P5RenderTargetCompositor` renderer-private modon vegzi a vegso kompozitalast. A zene-dramaturgiai allapotszabalyozast a `VisualDirectorFSM.ts` modul vegzi, majd `DirectorOutput` formaban ad render-facing jeleket az identitasoknak.
 7. **Offline Export (`src/export/`):** a `WebMExporter` a fo szalon vezerli az offline idohurkot, a p5 canvas atmeretezeset, a `VideoFrame` elkapast, az audio buffer szeletelest es a vizjelkartyat. Ha video backplate aktiv, az export frame-enkent megkeresi az eredeti video megfelelo kepkockajat, azt hatterkent kompozitalja, erre rajzolja a p5 generativ reteget, majd legfelulre a metadata kartyat. Az `export.worker.ts` WebCodecs `VideoEncoder`/optionalis `AudioEncoder` hasznalataval es pure TypeScript EBML/WebM muxerrel allit elo Blob-ot. A fo szal szigoru hardver-encoder-sor alapu visszanyomast (backpressure) alkalmaz, es rendszeresen atveszi a vezerlest a bongeszoesemanyhurkoktol, hogy megelozze a felhasznaloi felulet lefagyasat es a memoriaosszeomlasat mobil eszkozokkel.
 
 ## 3. Funkcionalis Specifikacio
@@ -166,6 +166,10 @@ A UI-ban a korabbi `Bass`, `Mid`, `Treble` dashboard narrativak megszuntek. A me
 A visual identity implementaciok negyzetes tavolsagellenorzest hasznalnak hot loopban, amikor reszecske-kapcsolatokat vizsgalnak. A gyokvonas csak akkor tortenik meg, amikor a pontok mar biztosan a maximum tavolsagon belul vannak. A particle pool 75 elemre inicializalodik setupkor, normal draw loopban nem jonnek letre uj `Particle` peldanyok.
 
 Az effekt modulok `VisualRendererBackend` interfeszen keresztul rajzolnak. A p5-specifikus hivasokat a `P5RendererBackend` adapter tartalmazza, igy a scene logika mock backenddel tesztelheto es kesobb WebGPU/shader backend fele mozgathato.
+
+A visual identity valtas logikailag szinkron: csak a `requestVisualModeChange()` irhatja a `State.visualMode` mezot. Aktiv lejatszas vagy export eseten ugyanez az API kulon `State.visualModeTransition` rekordot hoz letre a dalido (`State.currentTime`) vagy az egzakt export ido (`State.exportTime`) alapjan; pause/stop allapotban nincs dual render. Az `IdentityTransitionController` kezeli a rekord renderer oldali eletciklusat es a smoothstep alfat. Aktiv atmenetben a kimeneti es bemeneti identitas ket tartos `p5.Graphics` targetre rajzol, majd a compositor `source-over` modban `A * (1 - alpha) + B * alpha` sulyokkal kever. Additiv `lighter` blending tiltott. Steady state-ben a targetek es a compositor teljesen kimaradnak.
+
+A megosztott particle/shockwave szimulacio transition frame-enkent pontosan egyszer lep. Alapesetben a bejovo identitas kap `advanceSharedSimulation: true` kontextust, a kimeno `false` erteket; ha a bejovo nem hasznalja a kozos poolt, a jogosult kimeno identitas vegzi az egyetlen leptetest. Effekt modul nem kezelhet transition rekordot, render targetet vagy compositingot.
 
 ### 4.2.1. Modulacios Busz Es Parameter Morphing
 
@@ -291,7 +295,7 @@ byte-identikus tervet ad. A timeline debug meta visszaolvashato mezoi:
 
 ### ADR-004: Selectable Visual Modes
 
-* **Dontes:** a `State.visualMode` het bepitett azonosito egyike lehet: `classic`, `temporal`, `dark-techno`, `organic-ambient`, `cyberpunk`, `cosmic-wormhole`, `hero` (utobbi feature-flag mogott). A valasztas UI tulajdon, a renderer pedig `StyleRegistry.get(State.visualMode)` utan a kivalasztott `VisualIdentity.draw()` metodusnak delegalt.
+* **Dontes:** a `State.visualMode` het bepitett azonosito egyike lehet: `classic`, `temporal`, `dark-techno`, `organic-ambient`, `cyberpunk`, `cosmic-wormhole`, `hero` (utobbi feature-flag mogott). A valasztasi szandek UI/preset tulajdon, de minden iras a `requestVisualModeChange()` API-n megy at. A renderer az `IdentityTransitionController`-nek delegalt, amely steady state-ben kozvetlenul a `StyleRegistry` aktiv identitasat rajzolja, aktiv atmenetben pedig a kimeno es bejovo identitast rendereli.
 * **Indoklas:** az egyes vizualis nyelvek mely modulokban rejthetik el a sajat szinelmeleti, mozgasdinamikai es sokszog-rajzolasi szabalyaikat, mikozben a renderer orchestration es a p5 backend-hatar stabil marad.
 * **Fallback:** ismeretlen stilus ID eseten a registry `classic` identitast ad vissza, igy regi vagy hibas presetek nem torik el a renderelest.
 
@@ -301,10 +305,10 @@ byte-identikus tervet ad. A timeline debug meta visszaolvashato mezoi:
 * **Indoklas:** statikus Vite app nem tud megbizhatoan public konyvtarat listazni runtime-ban backend vagy manifest nelkul. A target tuning es morphing a live UX resze, mert az eles preset valtasok nem ugorhatnak hirtelen.
 * **Kiterjesztes:** a performance preset szerzodes resze a morph profil es dramaturgiai profil. A partial preset normalizalas sticky modon megorzi a hianyzo aktualis ertekeket. A `State.sectionOverrides` teljesen el lett tavolitva; az automatizalas egyseges `PerformanceAutomationPlan` formaban tarolodik a `State.performancePlan` (auto-generalalt) es `State.editedPerformancePlan` (szerkesztett) allomanyokban. A plan pontjai `PerformanceAutomationPoint` tipusuak: `id`, `time`, `sectionId`, `preset`, `confidence`, `intensity` (0.1-4.0), `reason`, `morphDurationSec`, `morphCurve`, opcionalis `analysisConfidence`, `timingMode` (`bar-aligned` | `novelty` | `energy-reactive`) es opcionalis `locked` mezokkel. A `TimelineLayers` szerzodes (`waveform`, `rms`, `buildup`, `cues`, `automation` lathatosagi booleanok) vezererli az idovonal retegek megjeleneset. A timeline viewport `State.zoom`/`State.pan` parja kanonikus; max zoomja dinamikus (`max(16, duration / 5.0)`). Az automation zone renderelesnek viewport szeleken is meg kell tartania a reszben lathato zonakat, unclipped morph curve geometriaval es preset-szin alapjelolessel.
 
-### ADR-006: Render Backend Boundary
+### ADR-006: Renderer-Owned Visual Identity Crossfade
 
-* **Dontes:** effekt modulok csak `VisualRendererBackend`-en keresztul adhatnak ki rajzolasi parancsot.
-* **Indoklas:** ez levagja az effekt logikat a p5 konkret API-jarol es elokesziti a WebGPU/shader backend lehetoseget.
+* **Dontes:** effekt modulok csak `VisualRendererBackend`-en keresztul adhatnak ki rajzolasi parancsot. A `State.visualMode` szinkron valtasat es a kulon transition rekord letrehozasat a `requestVisualModeChange()` birtokolja; a renderer-owned `IdentityTransitionController` az egyetlen compositor-hivo. Az aktiv crossfade ket elore allokalt targetet es true alpha keverest hasznal, a steady-state kozvetlenul rajzol.
+* **Indoklas:** az identitasok p5- es target-fuggetlenek maradnak, a logical state nem kesik a vizualis atmenet vegeig, a dalido/export ido determinisztikus, es a megosztott szimulacio nem leptetodik ketszer.
 
 ### ADR-007: Playback Motion Fade Es Waveform Cache
 
@@ -331,7 +335,8 @@ src/
 |   |-- microChoreographyPlanner.ts
 |   `-- scenePlanAdapter.ts
 |-- state/
-|   `-- store.ts
+|   |-- store.ts
+|   `-- visualModeTransition.ts
 |-- types/
 |   `-- index.ts
 |-- export/
@@ -352,6 +357,8 @@ src/
 |   |-- StyleRegistry.ts
 |   |-- RendererBackend.ts
 |   |-- P5RendererBackend.ts
+|   |-- IdentityTransitionController.ts
+|   |-- P5RenderTargetCompositor.ts
 |   |-- ClassicPlexusEffect.ts
 |   |-- TemporalMusicEffect.ts
 |   |-- DarkTechnoIdentity.ts
@@ -494,6 +501,7 @@ Az aktualis contract tesztek a `tests/contracts.test.mjs` fajlban vannak. Lefedi
 * visual mode valasztast,
 * visual tuning defaultokat, kontrollokat es preset kompatibilitast,
 * visual identity registryt, UI mode integraciot es preset `visualMode` kompatibilitast,
+* identity crossfade alpha-, controller-, compositor-, ownership-, steady-state- es shared-simulation regressziokat (`tests/visual-mode-transition.test.mjs`),
 * FFT alapu analizist az IIR crossover megkozelites helyett,
 * playback data copy-vs-transfer policyt,
 * stale worker result vedelmet,
@@ -502,5 +510,6 @@ Az aktualis contract tesztek a `tests/contracts.test.mjs` fajlban vannak. Lefedi
 * modulacios busz, morphing, dramaturgy, renderer boundary es stream profil viselkedest.
 * performance preset szerzodest, sticky preset normalizalast, timeline draw/preset paint interakciokat, playback fade-et es waveform cache optimalizaciot.
 * hat bepitett visual identity (a `cosmic-wormhole`-lal egyutt) determinisztikus, bongeszo- es p5-fuggetlen mock render futasat ot zenei referenciaprofilon keresztul (`tests/styles-deterministic.test.mjs`).
+* wormhole immutable depth-phase egyenletesseget, authored coherence determinisztikussagot, 100 seek utani serulesmentesseget es azonos dalpozicion reprodukalhato tunnel/galaxy geometriat (`tests/wormhole-depth-integrity.test.mjs`, `tests/wormhole-lifecycle.test.mjs`).
 * offline WebM export lifecycle-t, p5 `noLoop()`/`loop()` tulajdonlast, renderer polling tilalmat, resize-settle sorrendet, vizjel kartya rajzolast es `stopAndSave()` reszleges Blob lezarast (`tests/export-deterministic.test.mjs`).
 * a dramaturgia (performance-automation terv) vagolapra mentesenek es betoltesenek szerializalasat, validalasat es normalizalasat, az osszes edge-case-szel egyutt (`tests/dramaturgy-transfer.test.mjs`).

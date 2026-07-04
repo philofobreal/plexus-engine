@@ -95,6 +95,9 @@ action inside the situation vocabularies.
 - Only authored segmented roles use `wormholeRing`: collapse uses restrained `0.35`
   compression, while sparse intentionally uses a strong segmented/ribbed field. All other
   roles keep ring alignment at zero.
+- Collapse, sparse, and spiral explicitly author `wormholeDepthCoherence` to recover
+  deterministic cohort character over immutable depth phases. Coherence is distinct from
+  ring alignment and cannot accumulate path-dependent damage across horizon morphs or seeks.
 - Role-level contrast is a tested contract, not a styling accident: the drive is exactly
   straight, the spiral out-twists the drive, the punch outruns the drive, the overdrive
   tops the punch, the drift is the deepest and slowest, the sparse break uses a continuous
@@ -153,5 +156,10 @@ end-to-end action coverage for a clip-shaped fixture, byte-identical determinism
 `dampVariationForConfidence` clone/no-mutation regression, and the low-confidence
 simplification contracts. `tests/visual-os.test.mjs` keeps the pack-level dramaturgy
 mapping assertion.
+
+`tests/wormhole-depth-integrity.test.mjs` separately pins immutable depth-phase uniformity,
+authored coherence determinism, repeated-seek integrity, and identical tunnel/galaxy geometry
+at the same song position after different render histories. `tests/wormhole-lifecycle.test.mjs`
+pins automation-transition re-arming after backward seek.
 
 This feature is an ADR-005 data-mechanism extension, so ADR-005 itself is unchanged.

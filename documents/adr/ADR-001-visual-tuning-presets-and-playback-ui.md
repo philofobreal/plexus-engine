@@ -66,7 +66,7 @@ Keep visual event index synchronization event-driven. `PlexusRenderer` registers
 
 ## Decisions Extended (2026-06-06)
 
-- **Visual Identity Registry:** Introduce `VisualIdentity` as the stable style contract and `StyleRegistry` as the deep registry module. `PlexusRenderer` receives a registry instance and delegates drawing through `StyleRegistry.get(State.visualMode).draw(...)`, removing hard-coded mode branches from the draw loop.
+- **Visual Identity Registry:** Introduce `VisualIdentity` as the stable style contract and `StyleRegistry` as the deep registry module. `PlexusRenderer` receives a registry instance and delegates through renderer-owned `IdentityTransitionController`. Its steady-state path draws `StyleRegistry.get(State.visualMode)` directly; its active path draws outgoing/incoming identities through the dual-target compositor defined by ADR-006. Hard-coded mode branches remain absent from the draw loop.
 - **Built-in Style Set:** Extend `VisualMode` to `classic`, `temporal`, `dark-techno`, `organic-ambient`, and `cyberpunk`. The new identities keep their own color, movement, and polygon/network rules behind the same backend-only draw contract.
 - **Preset Mode Compatibility:** Treat `visualMode` in performance presets as optional. Known style ids update both `State.visualMode` and the visual-mode select; missing or unknown ids are ignored for backward compatibility. Unknown registry lookup at render time falls back to `classic`.
 - **Deterministic Style Harness:** Add `tests/styles-deterministic.test.mjs` to run every built-in identity against five genre-specific mock track profiles without a browser or real p5 instance. The harness verifies no crashes and deterministic backend call counts across repeated 60-frame simulations.

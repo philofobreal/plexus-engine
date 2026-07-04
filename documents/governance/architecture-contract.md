@@ -42,7 +42,7 @@ Allowed dependency directions:
 - UI controllers must not import `src/audio/AudioEngine.ts`, analyzer workers, renderer modules, or export worker modules. Export UI may reference export capability/config types but must not perform export encoding or worker orchestration.
 - `GestureEngine.ts` may depend on DOM event and geometry APIs plus shared callback types, but must not import `src/state/`, `src/audio/`, `src/visuals/`, or timeline rendering modules.
 - `TimelineCanvas.ts` may depend on canvas APIs and shared render types, but must not import `src/state/`, `src/audio/`, `src/visuals/`, or gesture modules.
-- `src/visuals/P5RendererBackend.ts`, `Particle.ts`, `Shockwave.ts`, and `PlexusRenderer.ts` may import p5.
+- `src/visuals/P5RendererBackend.ts`, `P5RenderTargetCompositor.ts`, `Particle.ts`, `Shockwave.ts`, and `PlexusRenderer.ts` may import p5.
 - Effect modules and visual identity modules under `src/visuals/` must draw through `VisualRendererBackend` rather than direct p5 APIs.
 - `src/visuals/` may import `src/state/`, visual classes, config helpers, renderer backend contracts, and types.
 - `src/state/` may import types only.
@@ -65,6 +65,17 @@ Mode-specific visual implementations should live in separate `VisualIdentity` im
 `StyleRegistry` is the deep style-management module. It may hide registered identities behind a private map and expose only simple registration/lookup methods. Application composition should create a registry instance and pass it into the renderer; modules must not rely on a writable unmanaged global registry.
 
 `VisualRendererBackend` is the render boundary for effect modules. The p5 implementation lives in `P5RendererBackend`; future WebGPU, shader, or mock backends must implement the same draw-command contract.
+
+### Visual Identity Lifecycle And Phase 1 Composition
+
+- `VisualIdentity.draw()` receives a renderer-owned `VisualIdentityDrawContext`. During dual rendering, exactly one eligible identity receives `advanceSharedSimulation: true`; the other renders the already-advanced shared pools. If the incoming identity does not use shared simulation, ownership remains with the outgoing identity until the transition completes.
+- `VisualIdentity.syncPosition?(timeSec)` is an optional, idempotent discontinuity hook. `PlexusRenderer` invokes it for every registered identity after play/seek/stop position synchronization. It may re-anchor deterministic visual state but must not initiate playback or automation decisions.
+- `requestVisualModeChange()` is the sole runtime writer of `State.visualMode`. It flips the logical mode synchronously and records at most one transition using playback time or exact export time. Active dual-render duration is clamped to `0.1..4.0` seconds.
+- `requestVisualModeChange()` also owns creation/replacement of `State.visualModeTransition`; it clears the record for paused/stopped switching. `IdentityTransitionController` is the only renderer consumer allowed to clear a completed or backward-time transition record; a record whose `to` no longer matches the logical mode is bypassed. Effect modules and UI controllers must neither read/write the record nor infer transition lifecycle from `State.visualMode`.
+- `IdentityTransitionController` owns Phase 1 A-to-B replacement and is the only module allowed to invoke `RenderTargetCompositor`. Inactive rendering bypasses compositor targets. Active rendering uses exactly two persistent buffers and finishes in one identity.
+- Composition uses Canvas2D `source-over` with explicit `A * (1 - alpha) + B * alpha` weights; additive `lighter` blending is forbidden for identity replacement. Both transition buffers are cleared at the start of every active transition frame so transparent, chroma-key, and video-backplate modes cannot retain ghost pixels. Offscreen targets remain renderer-private and identities receive only `VisualRendererBackend`.
+- Effect/identity modules must not allocate, retain, resize, clear, or composite render targets; import `P5RenderTargetCompositor`; call Canvas compositing APIs; write `State.visualMode`/`State.visualModeTransition`; or advance/delete shared particles and shockwaves when their draw context has `advanceSharedSimulation: false`.
+- The wormhole continuous depth distribution and authored ring character are separate concerns. `wormholeDepthCoherence` may deterministically compress immutable phase cohorts into a ribbed look, while progressive seek-induced distribution damage remains forbidden.
 
 ## Lifecycle Ownership
 
@@ -97,12 +108,14 @@ Every shared state field needs a clear owner:
 - `State.modulation` must keep a stable object reference during rendering. Visuals update it through `writeModulationBus(State.modulation, ...)`, and transient reset must zero its fields in place instead of assigning `State.modulation = { ... }`.
 - UI owns DOM projection and user input dispatch.
 - UI may expose analyzer confidence and alternate tempo candidates only through explicitly gated debug surfaces such as `featureFlags.analyzerDebugOverlay`; these fields are not default user-facing dashboard metrics.
-- Visual mode selection is user input owned by UI and stored in shared state as an explicit render-facing setting. Preset loading may update this field only after validating the selected id against the supported `VisualMode` union.
+- Visual mode intent is owned by UI/preset projection, but the state mutation API is owned by `src/state/visualModeTransition.ts`. UI and validated preset loading must route changes through `requestVisualModeChange()` rather than assigning `State.visualMode` directly. The same module creates/replaces the transition record; renderer-owned `IdentityTransitionController` consumes it and clears completed/backward-time records.
 - UI owns `State.targetTuning` writes from sliders and presets; visuals own interpolation into `State.visualTuning`.
 - `State.isExporting` and `State.exportTime` are export-owned render clock fields. `WebMExporter` writes them during offline export; `PlexusRenderer` and timeline/dashboard projections consume them. Export must reset both fields in cleanup.
 - State module owns shape and initialization defaults.
 
 When ownership is ambiguous, add a small explicit API or handoff contract instead of adding hidden direct writes.
+
+The visual identity transition decision and its rationale are recorded in `../adr/ADR-006-renderer-owned-visual-identity-crossfade.md`.
 
 ## Semantic Dramaturgy Layer (ADR-003)
 
