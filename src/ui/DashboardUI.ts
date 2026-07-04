@@ -23,6 +23,7 @@ import { ExportController } from './controllers/ExportController';
 import { isSemanticTuningActive } from './semanticAutomationPolicy';
 import { applyAutomationMorphAuthority, findActiveAutomationPoint } from './performanceAutomationRuntime';
 import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
+import { requestVisualModeChange } from '../state/visualModeTransition';
 
 interface VisualPresetManifest {
     presets?: string[];
@@ -320,7 +321,7 @@ export class DashboardUI {
                 },
                 onVisualModeChange: (mode) => {
                     if (isVisualMode(mode)) {
-                        State.visualMode = mode;
+                        requestVisualModeChange(mode);
                         // Main visual styles drive the Visual OS style pack default (ADR-005).
                         this.syncStylePackToVisualMode();
                     } else {
@@ -2009,7 +2010,7 @@ export class DashboardUI {
                 this.lastTriggeredAutomationPointId = null;
             }
             if (typeof preset.visualMode === 'string' && isVisualMode(preset.visualMode)) {
-                State.visualMode = preset.visualMode;
+                requestVisualModeChange(preset.visualMode, { durationSec: State.targetTuning.morphDurationSec });
                 (this.els.visualMode as HTMLSelectElement).value = State.visualMode;
                 this.syncStylePackToVisualMode();
             }

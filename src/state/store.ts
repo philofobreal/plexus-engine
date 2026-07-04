@@ -1,5 +1,5 @@
 import { cloneDefaultVisualTuning } from '../config/visualTuning.ts';
-import type { AudioFrame, BeatEvent, MotifChoreographyFrame, DirectorOutput, DramaturgicalIntentPlan, ModulationState, MusicalNarrativePlan, PerformanceAutomationPlan, TimelineLayers, TrackAnalysis, VideoDominantColor, VisualChoreographyPlan, VisualFeatureFrame, VisualCueKind, VisualMode, MotifVisualScorePlan, VisualTuningConfig } from '../types';
+import type { AudioFrame, BeatEvent, MotifChoreographyFrame, DirectorOutput, DramaturgicalIntentPlan, ModulationState, MusicalNarrativePlan, PerformanceAutomationPlan, TimelineLayers, TrackAnalysis, VideoDominantColor, VisualChoreographyPlan, VisualFeatureFrame, VisualCueKind, VisualMode, VisualModeTransition, MotifVisualScorePlan, VisualTuningConfig } from '../types';
 
 const emptyFeatures: VisualFeatureFrame = {
     melody: 0,
@@ -99,6 +99,7 @@ export const State = {
 
     // Real-time visualization state
     visualMode: 'classic' as VisualMode,
+    visualModeTransition: null as VisualModeTransition | null,
     videoBackplateActive: false,
     loopPlayback: true,
     uiVisible: true,
