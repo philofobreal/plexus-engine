@@ -5,8 +5,9 @@ import type { Particle } from './Particle';
 import type { Shockwave } from './Shockwave';
 import type { VisualRendererBackend } from './RendererBackend';
 import type { VisualIdentity } from './VisualIdentity';
-import { wrapDepth } from './WormholeDepth';
+import { advanceDepthPhase, depthFromPhase, depthPhaseAtTime, depthWithCoherence, wrapDepthPhase } from './WormholeDepth';
 import { WormholeAutomationTransition, wormholeEmissionGain } from './WormholeEmission';
+import { wormholeDepthDiagnostics } from './WormholeDiagnostics';
 
 const TWO_PI = Math.PI * 2;
 const BANDS = 24;
@@ -49,12 +50,12 @@ const SKYBOX_PARALLAX_GAIN = 0.34;
 /**
  * A single stardust grain living in cylinder space: a fixed angular position
  * (`theta`) on the tube wall, a band assignment for spectral reactivity, and a
- * running depth (`z`) that streams toward the camera. Screen position is derived
- * every frame via perspective division, so the object itself is never realloc'd.
+ * immutable normalized depth phase. Screen position is derived every frame via
+ * perspective division, so the object itself is never realloc'd.
  */
 interface DustGrain {
     theta: number;
-    z: number;
+    readonly depthPhase: number;
     bandIndex: number;
     seed: number;
 }
@@ -94,7 +95,7 @@ interface SkyStar {
     twPhase: number;
 }
 
-class CosmicWormholeIdentity implements VisualIdentity {
+export class CosmicWormholeIdentity implements VisualIdentity {
     readonly id = 'cosmic-wormhole';
     readonly name = 'Cosmic Wormhole';
 
@@ -106,6 +107,7 @@ class CosmicWormholeIdentity implements VisualIdentity {
     private readonly galaxyColor: [number, number, number] = [0, 0, 0];
     /** Accumulated travel along Z; feeds the curvature phase so the tunnel snakes over time. */
     private cameraTravelDist = 0;
+    private travelPhase = 0;
     /** Smoothed curve amplitude to avoid hard bends when the impulse fires. */
     private curveAmpSmooth = 0;
     /** Decaying surge that triggers a bend on each dramaturgy phase change (preset transition). */
@@ -122,8 +124,8 @@ class CosmicWormholeIdentity implements VisualIdentity {
             const seed = (i + 1) * 12.9898;
             // Each band owns an angular sector; grains are spread inside it and staggered in depth.
             const theta = (bandIndex / BANDS) * TWO_PI + (pseudoNoise(seed, 1.7) / BANDS) * TWO_PI;
-            const z = ((layer + pseudoNoise(seed, 3.1)) / DEPTH_LAYERS) * Z_REFERENCE;
-            this.pool.push({ theta, z, bandIndex, seed });
+            const depthPhase = (layer + pseudoNoise(seed, 3.1)) / DEPTH_LAYERS;
+            this.pool.push({ theta, depthPhase, bandIndex, seed });
         }
         for (let i = 0; i < STAR_COUNT; i++) {
             const seed = (i + 1) * 7.3148;
@@ -171,6 +173,38 @@ class CosmicWormholeIdentity implements VisualIdentity {
         }
     }
 
+    syncPosition(timeSec: number): void {
+        const safeTime = Number.isFinite(timeSec) ? Math.max(0, timeSec) : 0;
+        this.travelPhase = depthPhaseAtTime(safeTime);
+        this.cameraTravelDist = safeTime * 60;
+        this.curveAmpSmooth = 0;
+        this.curveImpulse = 0;
+        this.lastDirectorState = '';
+        this.automationTransition.syncPosition(safeTime);
+        const referenceTravel = safeTime * 60;
+        for (let index = 0; index < this.starPool.length; index++) {
+            const star = this.starPool[index];
+            star.z = depthFromPhase(
+                pseudoNoise(star.seed, 33.3),
+                wrapDepthPhase(referenceTravel * STAR_SPEED_RATIO / MAX_STAR_Z),
+                MAX_STAR_Z
+            );
+            star.x = (pseudoNoise(star.seed, 11.1) * 2 - 1) * STAR_FIELD_HALF;
+            star.y = (pseudoNoise(star.seed, 22.2) * 2 - 1) * STAR_FIELD_HALF;
+        }
+        for (let index = 0; index < this.galaxyPool.length; index++) {
+            const galaxy = this.galaxyPool[index];
+            galaxy.z = depthFromPhase(
+                (index + 0.5) / GALAXY_COUNT,
+                wrapDepthPhase(referenceTravel * GALAXY_SPEED_RATIO / MAX_GALAXY_Z),
+                MAX_GALAXY_Z
+            );
+            galaxy.x = (pseudoNoise(galaxy.seed, 12.4) * 2 - 1) * GALAXY_FIELD_HALF;
+            galaxy.y = (pseudoNoise(galaxy.seed, 21.8) * 2 - 1) * GALAXY_FIELD_HALF;
+        }
+        if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.noteSeek(safeTime);
+    }
+
     draw(backend: VisualRendererBackend, _particles: Particle[], _shockwaves: Shockwave[]): void {
         const tuning = State.visualTuning;
         const cx = backend.width / 2;
@@ -199,6 +233,8 @@ class CosmicWormholeIdentity implements VisualIdentity {
         // --- Projection constants (task-specified) ---
         const maxZ = Z_REFERENCE * tuning.wormholeDepth;
         const vz = (tuning.wormholeSpeed * 10 + momentum * 30 + density * 20) * State.playbackFade;
+        this.travelPhase = advanceDepthPhase(this.travelPhase, vz, maxZ);
+        if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.beginFrame(maxZ, vz);
         const radius = (50 + density * 40) * tuning.wormholeRadius;
         const warpK = 0.001 * tuning.wormholeWarp * (tension + orbit);
         // Fractional values are a crossfade coordinate between valid integer emission modes;
@@ -328,10 +364,16 @@ class CosmicWormholeIdentity implements VisualIdentity {
         for (let i = 0; i < this.pool.length; i++) {
             const grain = this.pool[i];
 
-            // Stream toward the camera; recycle past the lens back to the horizon. Modular wrap
-            // (NOT a reset to exactly maxZ) preserves each grain's sub-step depth phase, so the
-            // random spread never collapses into quantized rings after a full play-through + seek.
-            grain.z = wrapDepth(grain.z - vz, maxZ);
+            // The grain phase is immutable. Only one shared travel phase advances, so changing
+            // maxZ cannot fold individual particles into persistent density bands.
+            const grainDepth = depthWithCoherence(
+                grain.depthPhase,
+                this.travelPhase,
+                maxZ,
+                tuning.wormholeDepthCoherence,
+                DEPTH_LAYERS
+            );
+            if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.observeDepth(grainDepth);
             const emissionGain = wormholeEmissionGain(
                 emissionMode,
                 grain.seed,
@@ -339,8 +381,14 @@ class CosmicWormholeIdentity implements VisualIdentity {
                 State.modulation.rhythmicImpulse
             );
             if (emissionGain <= 0.001) continue;
-            const z = ring > 0 ? ringBlend(grain.z, ringStep, ring) : grain.z;
-            const previousDepth = wrapDepth(grain.z + trailDepth, maxZ);
+            const z = ring > 0 ? ringBlend(grainDepth, ringStep, ring) : grainDepth;
+            const previousDepth = depthWithCoherence(
+                grain.depthPhase,
+                this.travelPhase - trailDepth / maxZ,
+                maxZ,
+                tuning.wormholeDepthCoherence,
+                DEPTH_LAYERS
+            );
             const prevZ = ring > 0 ? ringBlend(previousDepth, ringStep, ring) : previousDepth;
 
             // Spiral warp accumulates with depth; tension + orbit twist the whole tube.
@@ -386,6 +434,7 @@ class CosmicWormholeIdentity implements VisualIdentity {
             backend.strokeWeight(weight);
             backend.line(px, py, sx, sy);
         }
+        if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.endFrame();
     }
 
     /** Lateral tunnel displacement at a given world depth (summed sines for an organic snake). */

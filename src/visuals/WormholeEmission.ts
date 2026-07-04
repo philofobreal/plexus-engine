@@ -30,6 +30,10 @@ export class WormholeTransitionTracker {
         this.lastId = activeId;
         return changed;
     }
+
+    reset(): void {
+        this.lastId = null;
+    }
 }
 
 /** Morph-duration-aware response for automation-owned wormhole character changes. */
@@ -52,6 +56,13 @@ export class WormholeAutomationTransition {
         if (progress >= 1) this.active = false;
         // Smoothstep: zero slope at both ends, so the first rendered frame cannot hard-surge.
         return progress * progress * (3 - 2 * progress);
+    }
+
+    syncPosition(_timeSec: number): void {
+        this.tracker.reset();
+        this.startTime = 0;
+        this.durationSec = 0.2;
+        this.active = false;
     }
 }
 
