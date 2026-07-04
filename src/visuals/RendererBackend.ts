@@ -17,6 +17,14 @@ export interface VisualRendererBackend {
     radialGlow(cx: number, cy: number, radius: number, color: [number, number, number], alpha: number): void;
 }
 
+/** Renderer-only composition seam. Identities receive only VisualRendererBackend. */
+export interface RenderTargetCompositor {
+    readonly outgoingBackend: VisualRendererBackend;
+    readonly incomingBackend: VisualRendererBackend;
+    beginFrame(generation: number, width: number, height: number): void;
+    composite(alpha: number): void;
+}
+
 export interface SceneNode {
     x: number;
     y: number;

@@ -16,6 +16,8 @@ import { ShockwaveLifecycle } from './ShockwaveLifecycle';
 import type { ChoreographyFrame as SemanticScoreFrame } from '../types/semantics';
 import { motifTransitionId, semanticScoreTransitionId } from './VisualTransitionIdentity';
 import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
+import { IdentityTransitionController } from './IdentityTransitionController';
+import { P5RenderTargetCompositor } from './P5RenderTargetCompositor';
 
 export class SemanticRendererBridge {
     private semanticAdapter?: SemanticRuntimeAdapter;
@@ -59,6 +61,8 @@ export function startPlexusRenderer(
         let currentTargetFrameRate = 60;
         const backend = new P5RendererBackend(p);
         const visualDirector = new VisualDirectorFSM();
+        const identityTransitionController = new IdentityTransitionController();
+        let compositor: P5RenderTargetCompositor | null = null;
 
         // Semantic resolver (ADR-003): a monotonic cursor over the choreography frames plus a
         // memo so the resolver only recomputes when the active frame, style, or base changes —
@@ -75,6 +79,7 @@ export function startPlexusRenderer(
             renderer.parent(containerId);
             p.frameRate(60);
             for (let i = 0; i < 75; i++) particles.push(new Particle(p));
+            compositor = new P5RenderTargetCompositor(p);
             ui.setExportTarget(p, (renderer as unknown as { elt: HTMLCanvasElement }).elt);
         };
 
@@ -84,6 +89,7 @@ export function startPlexusRenderer(
             currentCueIdx = State.trackAnalysis.cues.findIndex(e => e.time >= time);
             if (currentCueIdx === -1) currentCueIdx = State.trackAnalysis.cues.length;
             resetTransientVisualState();
+            styleRegistry.forEach(identity => identity.syncPosition?.(time));
         };
 
         engine.addPositionChangedListener(syncEventIndex);
@@ -230,8 +236,11 @@ export function startPlexusRenderer(
 
             if (p.frameCount % 4 === 0) ui.updateDashboard();
 
-            const visualIdentity = styleRegistry.get(State.visualMode);
-            visualIdentity.draw(backend, particles, shockwaves);
+            if (compositor) {
+                identityTransitionController.draw(ct, backend, compositor, styleRegistry, particles, shockwaves);
+            } else {
+                styleRegistry.get(State.visualMode).draw(backend, particles, shockwaves);
+            }
             engine.syncMetronomeState(featureFlags.heroEffect && State.visualMode === 'hero', State.visualTuning.heroBeepMode, State.visualTuning.heroBeepVolume);
 
         };
