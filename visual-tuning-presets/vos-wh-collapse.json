@@ -15,6 +15,7 @@
     "wormholeWarp": 1.2,
     "wormholeCurve": 0.25,
     "wormholeRing": 0.35,
+    "wormholeDepthCoherence": 0.7,
     "wormholeContinuity": 1.15,
     "wormholeEmissionMode": 1,
     "wormholeJitter": 0.45
