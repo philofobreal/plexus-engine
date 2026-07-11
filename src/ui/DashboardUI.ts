@@ -5,9 +5,11 @@ import { shouldUseVisualOs, stylePackForVisualMode } from '../automation/generat
 import { tryResolveStylePack } from '../automation/styleTranslator';
 import { parseDramaturgyPlan, serializeDramaturgyPlan } from '../automation/dramaturgyTransfer';
 import { applyMorphScale, clampMorphScale, computeMaxMorphScale, getAutomationPlanViewSignature } from '../automation/morphScale';
+import { wormholeMorphDurationFloor } from '../automation/morphFloor';
 import { baseMorphDurationFromScaled, findAutomationPointById, removeAutomationPointById, updateAutomationPointById } from '../automation/automationPlanEditing';
 import { buildNarrative, generateIntents, processChoreography, type SemanticResolver } from '../semantics';
 import { featureFlags } from '../config/featureFlags';
+import { filterForeignIdentityTuningForAutomation } from '../config/identityTuningRegistry';
 import { normalizeVisualTuningConfig } from '../config/visualTuning';
 import { ExportCapabilityDetector } from '../export/ExportCapabilityDetector';
 import { WebMExporter, type ExportConfig } from '../export/WebMExporter';
@@ -22,6 +24,7 @@ import { TuningController } from './controllers/TuningController';
 import { ExportController } from './controllers/ExportController';
 import { isSemanticTuningActive } from './semanticAutomationPolicy';
 import { applyAutomationMorphAuthority, findActiveAutomationPoint } from './performanceAutomationRuntime';
+import { shouldApplyVisualModePlanGeneration } from './visualModePlanRegeneration';
 import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
 import { requestVisualModeChange } from '../state/visualModeTransition';
 
@@ -31,7 +34,7 @@ interface VisualPresetManifest {
 
 interface VisualPresetLoadOptions {
     automationPointId?: string;
-    overrideMorph?: Pick<PerformanceAutomationPoint, 'intensity' | 'morphDurationSec' | 'morphCurve'>;
+    overrideMorph?: Pick<PerformanceAutomationPoint, 'intensity' | 'morphDurationSec' | 'morphCurve' | 'bendMirror'>;
 }
 
 const VIDEO_FILE_EXTENSION_RE = /\.(mp4|m4v|webm|ogv|ogg|mov|mkv)$/i;
@@ -56,6 +59,7 @@ export class DashboardUI {
     private lastTimelineDrawScroll = 0;
     private lastTimelineDrawScrubTime: number | null = null;
     private lastTriggeredAutomationPointId: string | null = null;
+    private visualModePlanRequestId = 0;
     private automationPlanViewCache: PerformanceAutomationPlan | null = null;
     private automationPlanViewSource: PerformanceAutomationPlan | null = null;
     private automationPlanViewScale = NaN;
@@ -324,6 +328,7 @@ export class DashboardUI {
                         requestVisualModeChange(mode);
                         // Main visual styles drive the Visual OS style pack default (ADR-005).
                         this.syncStylePackToVisualMode();
+                        void this.handleVisualModePlanChange(mode);
                     } else {
                         (this.els.visualMode as HTMLSelectElement).value = State.visualMode;
                     }
@@ -369,6 +374,7 @@ export class DashboardUI {
                 const plan = await this.generatePlan();
                 State.performancePlan = plan;
                 State.editedPerformancePlan = JSON.parse(JSON.stringify(plan));
+                State.performancePlanEdited = false;
                 setActiveVisualTransitionComponent('automation', null);
                 void this.preloadPresetsForPlan(plan);
                 this.computeSemanticPlan();
@@ -554,7 +560,12 @@ export class DashboardUI {
             if (!window.confirm('Overwrite current automation plan?')) return;
             void (async () => {
                 const plan = await this.generatePlan();
+                State.performancePlan = plan;
                 State.editedPerformancePlan = JSON.parse(JSON.stringify(plan));
+                State.performancePlanEdited = false;
+                setActiveVisualTransitionComponent('automation', null);
+                this.lastTriggeredAutomationPointId = null;
+                void this.preloadPresetsForPlan(plan);
                 this.computeSemanticPlan();
                 this.requestTimelineDraw();
             })();
@@ -627,6 +638,26 @@ export class DashboardUI {
         this.populateSubstyleOptions();
     }
 
+    private async handleVisualModePlanChange(mode: VisualMode): Promise<void> {
+        const requestId = ++this.visualModePlanRequestId;
+        if (State.performancePlanEdited) {
+            this.tuningCtrl.showCopyStatus(`Manual automation preserved. Regenerate plan for ${mode} when ready.`, 2600);
+            return;
+        }
+        if (!State.trackAnalysis.sections.length && State.duration <= 0) return;
+        const plan = await this.generatePlan();
+        if (!shouldApplyVisualModePlanGeneration(requestId, this.visualModePlanRequestId, mode, State.visualMode, State.performancePlanEdited)) return;
+        State.performancePlan = plan;
+        State.editedPerformancePlan = JSON.parse(JSON.stringify(plan));
+        State.performancePlanEdited = false;
+        setActiveVisualTransitionComponent('automation', null);
+        this.lastTriggeredAutomationPointId = null;
+        this.invalidateAutomationPlanView();
+        void this.preloadPresetsForPlan(plan);
+        this.computeSemanticPlan();
+        this.requestTimelineDraw();
+    }
+
     private populateSubstyleOptions(): void {
         if (!this.stylePacksFile || !this.visualOsPackEl || !this.visualOsSubstyleEl) return;
         const resolved = tryResolveStylePack(this.stylePacksFile, this.visualOsPackEl.value);
@@ -689,6 +720,7 @@ export class DashboardUI {
         const plan = this.ensureEditedPerformancePlan();
         plan.points = [];
         plan.source = 'edited';
+        this.markPerformancePlanEdited();
         this.invalidateAutomationPlanView();
         this.hideAutomationInspector();
         this.selectedAutomationPoint = null;
@@ -745,6 +777,7 @@ export class DashboardUI {
             updateAutomationPointById(this.getBaseAutomationPlan(), point.id, {
                 preset: (this.els.inspectorPreset as HTMLSelectElement).value
             });
+            this.markPerformancePlanEdited();
             this.invalidateAutomationPlanView();
             this.requestTimelineDraw();
         });
@@ -757,6 +790,7 @@ export class DashboardUI {
             updateAutomationPointById(this.getBaseAutomationPlan(), point.id, {
                 morphDurationSec: this.constrainMorphDuration(point, baseValue)
             });
+            this.markPerformancePlanEdited();
             this.invalidateAutomationPlanView();
             this.requestTimelineDraw();
         });
@@ -767,6 +801,7 @@ export class DashboardUI {
             const value = (this.els.inspectorCurve as HTMLSelectElement).value;
             if (!this.isMorphCurve(value)) return;
             updateAutomationPointById(this.getBaseAutomationPlan(), point.id, { morphCurve: value });
+            this.markPerformancePlanEdited();
             this.invalidateAutomationPlanView();
             this.requestTimelineDraw();
         });
@@ -780,6 +815,7 @@ export class DashboardUI {
             if (!point) return;
             const plan = this.ensureEditedPerformancePlan();
             if (!removeAutomationPointById(plan, point.id)) return;
+            this.markPerformancePlanEdited();
             this.invalidateAutomationPlanView();
             this.selectedAutomationPoint = null;
             this.draggingAutomationPoint = null;
@@ -1143,6 +1179,7 @@ export class DashboardUI {
             this.resizingMorphPoint = null;
             this.timelineDragShiftKey = false;
             State.editedPerformancePlan?.points.sort((a, b) => a.time - b.time);
+            State.performancePlanEdited = true;
             this.computeSemanticPlan();
             this.requestTimelineDraw();
         }
@@ -1301,6 +1338,7 @@ export class DashboardUI {
         };
         plan.points.push(point);
         plan.points.sort((a, b) => a.time - b.time);
+        State.performancePlanEdited = true;
         this.invalidateAutomationPlanView();
         this.selectedAutomationPoint = point;
         this.showAutomationInspector(point);
@@ -1314,6 +1352,10 @@ export class DashboardUI {
         plan.source = 'edited';
         State.editedPerformancePlan = plan;
         return plan;
+    }
+
+    private markPerformancePlanEdited(): void {
+        State.performancePlanEdited = true;
     }
 
     private getSelectedAutomationPreset(): string {
@@ -1647,6 +1689,7 @@ export class DashboardUI {
                 ? { preset: presetName }
                 : { intensity: this.getAutomationIntensityAtPercent(focusY) };
             updateAutomationPointById(this.getBaseAutomationPlan(), existingPoint.id, edit);
+            this.markPerformancePlanEdited();
             this.invalidateAutomationPlanView();
             this.selectedAutomationPoint = existingPoint;
             this.showAutomationInspector(existingPoint);
@@ -1659,6 +1702,7 @@ export class DashboardUI {
         updateAutomationPointById(this.getBaseAutomationPlan(), point.id, {
             intensity: this.getAutomationIntensityAtPercent(focusY)
         });
+        this.markPerformancePlanEdited();
         this.invalidateAutomationPlanView();
         this.selectedAutomationPoint = point;
         this.showAutomationInspector(point);
@@ -1988,8 +2032,19 @@ export class DashboardUI {
     }
 
     private applyPerformancePreset(payload: unknown, options: VisualPresetLoadOptions = {}): void {
-        Object.assign(State.targetTuning, normalizeVisualTuningConfig(payload, State.targetTuning));
-        const preset = payload && typeof payload === 'object' ? payload as {
+        const previousWormholeSpeed = State.targetTuning.wormholeSpeed;
+        const previousWormholePathBend = State.targetTuning.wormholePathBend;
+        const previousWormholePathBendVertical = State.targetTuning.wormholePathBendVertical;
+        const sourcePayload = options.automationPointId && payload && typeof payload === 'object'
+            ? filterForeignIdentityTuningForAutomation(payload as { visualMode?: unknown; visualTuning?: unknown }, State.visualMode)
+            : payload;
+        Object.assign(State.targetTuning, normalizeVisualTuningConfig(sourcePayload, State.targetTuning));
+        // Only an automation point may request a direction mirror. The vertical bend remains
+        // untouched so diagonal routes preserve their authored vertical component.
+        if (options.automationPointId && options.overrideMorph?.bendMirror === true) {
+            State.targetTuning.wormholePathBend = -State.targetTuning.wormholePathBend;
+        }
+        const preset = sourcePayload && typeof sourcePayload === 'object' ? sourcePayload as {
             visualMode?: unknown;
             performancePlan?: unknown;
             morphProfile?: { durationSec?: unknown; curve?: unknown };
@@ -2005,6 +2060,7 @@ export class DashboardUI {
             if (this.isPerformanceAutomationPlan(preset.performancePlan)) {
                 State.performancePlan = preset.performancePlan;
                 State.editedPerformancePlan = JSON.parse(JSON.stringify(preset.performancePlan));
+                State.performancePlanEdited = false;
                 setActiveVisualTransitionComponent('automation', null);
                 void this.preloadPresetsForPlan(preset.performancePlan);
                 this.lastTriggeredAutomationPointId = null;
@@ -2031,6 +2087,17 @@ export class DashboardUI {
         }
         // Automation owns morph timing over preset visualTuning and morphProfile values.
         if (options.overrideMorph) applyAutomationMorphAuthority(State.targetTuning, options.overrideMorph);
+        if (options.automationPointId && options.overrideMorph) {
+            const deltaSpeed = Math.abs(State.targetTuning.wormholeSpeed - previousWormholeSpeed);
+            const deltaBend = Math.hypot(
+                State.targetTuning.wormholePathBend - previousWormholePathBend,
+                State.targetTuning.wormholePathBendVertical - previousWormholePathBendVertical
+            );
+            State.targetTuning.morphDurationSec = Math.max(
+                options.overrideMorph.morphDurationSec,
+                wormholeMorphDurationFloor(deltaSpeed, deltaBend)
+            );
+        }
     }
 
     private isPerformanceAutomationPlan(value: unknown): value is PerformanceAutomationPlan {
@@ -2121,7 +2188,9 @@ export class DashboardUI {
         if (activePoint.id === this.lastTriggeredAutomationPointId) return;
         this.lastTriggeredAutomationPointId = activePoint.id;
         setActiveVisualTransitionComponent('automation', `automation:${activePoint.id}`);
-        applyAutomationMorphAuthority(State.targetTuning, activePoint);
+        // Morph authority is applied atomically with the preset payload in applyPerformancePreset
+        // (via options.overrideMorph), not here -- otherwise the new morph metadata would act on
+        // the still-old target tuning for the frame(s) between this call and the async preset load.
         void this.loadVisualPreset(activePoint.preset, {
             automationPointId: activePoint.id,
             overrideMorph: activePoint
@@ -2265,6 +2334,7 @@ export class DashboardUI {
     private applyLoadedDramaturgyPlan(plan: PerformanceAutomationPlan): void {
         State.performancePlan = JSON.parse(JSON.stringify(plan));
         State.editedPerformancePlan = JSON.parse(JSON.stringify(plan));
+        State.performancePlanEdited = false;
         setActiveVisualTransitionComponent('automation', null);
         this.lastTriggeredAutomationPointId = null;
         this.selectedAutomationPoint = null;

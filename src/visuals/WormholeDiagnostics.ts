@@ -9,6 +9,9 @@ export interface WormholeDiagnosticsSnapshot {
     readonly maxZ: number;
     readonly maxZDelta: number;
     readonly velocity: number;
+    readonly trailSamples: number;
+    readonly trailCorrections: number;
+    readonly trailCorrectionRate: number;
 }
 
 /** Development-only, fixed-storage density instrumentation. */
@@ -23,6 +26,23 @@ export class WormholeDepthDiagnostics {
     private maxZDelta = 0;
     private velocity = 0;
     private sampleCount = 0;
+    private trailSamples = 0;
+    private trailCorrections = 0;
+
+    reset(): void {
+        this.bins.fill(0);
+        this.frames = 0;
+        this.seeks = 0;
+        this.lastSeekTimeSec = 0;
+        this.densityCv = 0;
+        this.peakDensityCv = 0;
+        this.maxZ = 0;
+        this.maxZDelta = 0;
+        this.velocity = 0;
+        this.sampleCount = 0;
+        this.trailSamples = 0;
+        this.trailCorrections = 0;
+    }
 
     beginFrame(maxZ: number, velocity: number): void {
         this.bins.fill(0);
@@ -37,6 +57,11 @@ export class WormholeDepthDiagnostics {
         const index = Math.min(BIN_COUNT - 1, Math.max(0, Math.floor(depth / this.maxZ * BIN_COUNT)));
         this.bins[index]++;
         this.sampleCount++;
+    }
+
+    observeTrailCorrection(correction: number): void {
+        this.trailSamples++;
+        if (Number.isFinite(correction) && correction > 1e-12) this.trailCorrections++;
     }
 
     endFrame(): void {
@@ -63,7 +88,10 @@ export class WormholeDepthDiagnostics {
             peakDensityCv: this.peakDensityCv,
             maxZ: this.maxZ,
             maxZDelta: this.maxZDelta,
-            velocity: this.velocity
+            velocity: this.velocity,
+            trailSamples: this.trailSamples,
+            trailCorrections: this.trailCorrections,
+            trailCorrectionRate: this.trailSamples > 0 ? this.trailCorrections / this.trailSamples : 0
         };
     }
 }

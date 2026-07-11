@@ -1,0 +1,327 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "plexus-engine.analysis-result.schema.json",
+  "title": "Plexus Engine AnalysisResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requestId",
+    "bpm",
+    "bpmConfidence",
+    "gridConfidence",
+    "downbeatConfidence",
+    "tempoCandidates",
+    "adaptiveThreshold",
+    "frames",
+    "events",
+    "hopSize",
+    "beats",
+    "barStarts",
+    "timingConfidence",
+    "trackAnalysis"
+  ],
+  "properties": {
+    "requestId": { "type": "number" },
+    "bpm": { "type": "number" },
+    "bpmConfidence": { "type": "number" },
+    "gridConfidence": { "type": "number" },
+    "downbeatConfidence": { "type": "number" },
+    "tempoCandidates": { "type": "array", "items": { "$ref": "#/$defs/tempoCandidate" } },
+    "adaptiveThreshold": { "type": "number" },
+    "frames": { "type": "array", "items": { "$ref": "#/$defs/audioFrame" } },
+    "events": { "type": "array", "items": { "$ref": "#/$defs/beatEvent" } },
+    "hopSize": { "type": "number" },
+    "beats": { "type": "array", "items": { "type": "number" } },
+    "barStarts": { "type": "array", "items": { "type": "number" } },
+    "timingConfidence": { "$ref": "#/$defs/timingConfidence" },
+    "trackAnalysis": { "$ref": "#/$defs/trackAnalysis" }
+  },
+  "$defs": {
+    "timingConfidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tempo", "beat", "grid", "overall"],
+      "properties": {
+        "tempo": { "type": "number" },
+        "beat": { "type": "number" },
+        "grid": { "type": "number" },
+        "overall": { "type": "number" }
+      }
+    },
+    "autoState": {
+      "type": "string",
+      "enum": ["IDLE", "HIGH", "LOW", "LOW_DROP", "LOW_OVERLOAD"]
+    },
+    "barState": {
+      "type": "string",
+      "enum": ["HIGH", "LOW"]
+    },
+    "trackSectionLabel": {
+      "type": "string",
+      "enum": ["intro", "verse", "build", "drop", "break", "peak", "outro"]
+    },
+    "visualCueKind": {
+      "type": "string",
+      "enum": ["melody", "vocal", "fx", "impact", "break", "pattern"]
+    },
+    "analysisReason": {
+      "type": "string",
+      "enum": [
+        "bar-aligned",
+        "energy-rise",
+        "energy-drop",
+        "density-rise",
+        "bass-return",
+        "bass-drop",
+        "high-transient",
+        "percussive-onset",
+        "after-buildup",
+        "low-grid-confidence",
+        "novelty-peak",
+        "section-position",
+        "weak-evidence-fallback"
+      ]
+    },
+    "noveltyPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["time", "value", "reasons"],
+      "properties": {
+        "time": { "type": "number" },
+        "value": { "type": "number" },
+        "reasons": { "type": "array", "items": { "$ref": "#/$defs/analysisReason" } }
+      }
+    },
+    "sectionBoundaryCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["time", "confidence", "timingMode", "reasons"],
+      "properties": {
+        "time": { "type": "number" },
+        "confidence": { "type": "number" },
+        "timingMode": { "type": "string", "enum": ["bar-aligned", "energy-reactive", "novelty"] },
+        "reasons": { "type": "array", "items": { "$ref": "#/$defs/analysisReason" } }
+      }
+    },
+    "dominantFeature": {
+      "type": "string",
+      "enum": ["melody", "vocal", "fx", "impact", "break", "pattern", "rhythm"]
+    },
+    "trendDirection": {
+      "type": "string",
+      "enum": ["rising", "falling", "stable"]
+    },
+    "audioFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["e", "densityProj", "melodyProj", "fxProj", "perceptualSpectrum", "state", "eRatio"],
+      "properties": {
+        "e": { "type": "number" },
+        "densityProj": { "type": "number" },
+        "melodyProj": { "type": "number" },
+        "fxProj": { "type": "number" },
+        "perceptualSpectrum": {
+          "type": "array",
+          "minItems": 24,
+          "maxItems": 24,
+          "items": { "type": "number" }
+        },
+        "state": { "$ref": "#/$defs/autoState" },
+        "eRatio": { "type": "number" }
+      }
+    },
+    "beatEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["time", "intensity", "type"],
+      "properties": {
+        "time": { "type": "number" },
+        "intensity": { "type": "number" },
+        "type": { "type": "number", "enum": [1, 2, 3] }
+      }
+    },
+    "tempoCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bpm", "score", "intervalSec", "peakCount", "isHalfTime", "isDoubleTime"],
+      "properties": {
+        "bpm": { "type": "number" },
+        "score": { "type": "number" },
+        "intervalSec": { "type": "number" },
+        "peakCount": { "type": "number" },
+        "isHalfTime": { "type": "boolean" },
+        "isDoubleTime": { "type": "boolean" }
+      }
+    },
+    "visualFeatureFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["melody", "vocal", "fx", "density", "brightness", "tension"],
+      "properties": {
+        "melody": { "type": "number" },
+        "vocal": { "type": "number" },
+        "fx": { "type": "number" },
+        "density": { "type": "number" },
+        "brightness": { "type": "number" },
+        "tension": { "type": "number" }
+      }
+    },
+    "visualCueEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["time", "duration", "intensity", "confidence", "kind"],
+      "properties": {
+        "time": { "type": "number" },
+        "duration": { "type": "number" },
+        "intensity": { "type": "number" },
+        "confidence": { "type": "number" },
+        "kind": { "$ref": "#/$defs/visualCueKind" },
+        "patternId": { "type": "string" },
+        "reasons": { "type": "array", "items": { "$ref": "#/$defs/analysisReason" } }
+      }
+    },
+    "trackSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "label", "energy", "density", "dominantFeature", "avgRms", "peakRms"],
+      "properties": {
+        "start": { "type": "number" },
+        "end": { "type": "number" },
+        "label": { "$ref": "#/$defs/trackSectionLabel" },
+        "energy": { "type": "number" },
+        "density": { "type": "number" },
+        "dominantFeature": { "$ref": "#/$defs/dominantFeature" },
+        "avgRms": { "type": "number" },
+        "peakRms": { "type": "number" },
+        "reasons": { "type": "array", "items": { "$ref": "#/$defs/analysisReason" } }
+      }
+    },
+    "barAnalysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "start", "end", "energy", "density", "avgRms", "peakRms", "bass", "mid", "treble", "state", "dominantFeature"],
+      "properties": {
+        "index": { "type": "number" },
+        "start": { "type": "number" },
+        "end": { "type": "number" },
+        "energy": { "type": "number" },
+        "density": { "type": "number" },
+        "avgRms": { "type": "number" },
+        "peakRms": { "type": "number" },
+        "bass": { "type": "number" },
+        "mid": { "type": "number" },
+        "treble": { "type": "number" },
+        "state": { "$ref": "#/$defs/barState" },
+        "dominantFeature": { "$ref": "#/$defs/dominantFeature" }
+      }
+    },
+    "patternOccurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "intensity", "confidence"],
+      "properties": {
+        "start": { "type": "number" },
+        "end": { "type": "number" },
+        "intensity": { "type": "number" },
+        "confidence": { "type": "number" }
+      }
+    },
+    "musicPattern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "signature", "label", "dominantFeature", "occurrences", "averageEnergy", "averageDensity"],
+      "properties": {
+        "id": { "type": "string" },
+        "signature": { "type": "string" },
+        "label": { "$ref": "#/$defs/trackSectionLabel" },
+        "dominantFeature": { "$ref": "#/$defs/dominantFeature" },
+        "occurrences": { "type": "array", "items": { "$ref": "#/$defs/patternOccurrence" } },
+        "averageEnergy": { "type": "number" },
+        "averageDensity": { "type": "number" }
+      }
+    },
+    "tensionTrendSegment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "startValue", "endValue", "direction", "confidence"],
+      "properties": {
+        "start": { "type": "number" },
+        "end": { "type": "number" },
+        "startValue": { "type": "number" },
+        "endValue": { "type": "number" },
+        "direction": { "$ref": "#/$defs/trendDirection" },
+        "confidence": { "type": "number" }
+      }
+    },
+    "tensionTrends": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["globalSlope", "peakTime", "peakValue", "segments"],
+      "properties": {
+        "globalSlope": { "type": "number" },
+        "peakTime": { "type": "number" },
+        "peakValue": { "type": "number" },
+        "segments": { "type": "array", "items": { "$ref": "#/$defs/tensionTrendSegment" } }
+      }
+    },
+    "trackAnalysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duration",
+        "bpm",
+        "bpmConfidence",
+        "gridConfidence",
+        "downbeatConfidence",
+        "tempoCandidates",
+        "bars",
+        "sections",
+        "patterns",
+        "cues",
+        "significantMoments",
+        "features",
+        "buildupConfidence",
+        "spectralPivot",
+        "tensionTrends",
+        "featureHopSize",
+        "gridOffset",
+        "tempo",
+        "tempoConfidence",
+        "beats",
+        "beatConfidence",
+        "barStarts",
+        "alternativeTempos",
+        "timingConfidence"
+      ],
+      "properties": {
+        "duration": { "type": "number" },
+        "bpm": { "type": "number" },
+        "bpmConfidence": { "type": "number" },
+        "gridConfidence": { "type": "number" },
+        "downbeatConfidence": { "type": "number" },
+        "tempoCandidates": { "type": "array", "items": { "$ref": "#/$defs/tempoCandidate" } },
+        "bars": { "type": "array", "items": { "$ref": "#/$defs/barAnalysis" } },
+        "sections": { "type": "array", "items": { "$ref": "#/$defs/trackSection" } },
+        "patterns": { "type": "array", "items": { "$ref": "#/$defs/musicPattern" } },
+        "cues": { "type": "array", "items": { "$ref": "#/$defs/visualCueEvent" } },
+        "significantMoments": { "type": "array", "items": { "$ref": "#/$defs/visualCueEvent" } },
+        "features": { "type": "array", "items": { "$ref": "#/$defs/visualFeatureFrame" } },
+        "buildupConfidence": { "type": "array", "items": { "type": "number" } },
+        "spectralPivot": { "type": "array", "items": { "type": "number" } },
+        "tensionTrends": { "$ref": "#/$defs/tensionTrends" },
+        "noveltyCurve": { "type": "array", "items": { "type": "number" } },
+        "noveltyPeaks": { "type": "array", "items": { "$ref": "#/$defs/noveltyPoint" } },
+        "boundaryCandidates": { "type": "array", "items": { "$ref": "#/$defs/sectionBoundaryCandidate" } },
+        "featureHopSize": { "type": "number" },
+        "gridOffset": { "type": "number" },
+        "tempo": { "type": "number" },
+        "tempoConfidence": { "type": "number" },
+        "beats": { "type": "array", "items": { "type": "number" } },
+        "beatConfidence": { "type": "number" },
+        "barStarts": { "type": "array", "items": { "type": "number" } },
+        "alternativeTempos": { "type": "array", "items": { "type": "number" } },
+        "timingConfidence": { "$ref": "#/$defs/timingConfidence" }
+      }
+    }
+  }
+}

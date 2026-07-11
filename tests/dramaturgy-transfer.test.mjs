@@ -215,6 +215,13 @@ test('serialize/parse round-trips choreography meta fields', () => {
   assert.equal(out.targetStateReference, 'cyberpunk:drop.counter');
 });
 
+test('serialize/parse preserves the optional automation bend mirror flag', () => {
+  const plan = makePlan([makePoint({ bendMirror: true })]);
+  const parsed = parseDramaturgyPlan(serializeDramaturgyPlan(plan, 60));
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.plan.points[0].bendMirror, true);
+});
+
 test('new behaviour roles (sparse, focus) survive the round-trip', () => {
   for (const role of ['sparse', 'focus']) {
     const result = parseDramaturgyPlan(serializeDramaturgyPlan(makePlan([makePoint({ meta: { variantRole: role } })])));

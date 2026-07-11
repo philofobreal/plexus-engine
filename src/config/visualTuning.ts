@@ -11,6 +11,7 @@ export interface VisualTuningControl {
     max: number;
     step: number;
     unit?: string;
+    description?: string;
     options?: Array<{ value: number; label: string }>;
 }
 
@@ -72,6 +73,8 @@ export const defaultVisualTuning: VisualTuningConfig = {
     wormholeSpeed: 1,
     wormholeWarp: 1,
     wormholeCurve: 1,
+    wormholePathBend: 0,
+    wormholePathBendVertical: 0,
     wormholeRing: 0,
     wormholeDepthCoherence: 0,
     wormholeContinuity: 1,
@@ -149,7 +152,24 @@ const allVisualTuningControls: VisualTuningControl[] = [
     { key: 'wormholeDepth', label: 'Tunnel depth', group: 'Wormhole', min: 0.1, max: 5, step: 0.1, unit: 'x' },
     { key: 'wormholeSpeed', label: 'Flight speed', group: 'Wormhole', min: 0.1, max: 10, step: 0.1, unit: 'x' },
     { key: 'wormholeWarp', label: 'Spiral warp', group: 'Wormhole', min: 0, max: 5, step: 0.1, unit: 'x' },
-    { key: 'wormholeCurve', label: 'Curve amount', group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x' },
+    {
+        key: 'wormholeCurve',
+        label: 'Grain flow curvature',
+        description: 'Shapes each grain trajectory independently; it never bends the camera, horizon, or whole tunnel.',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholePathBend',
+        label: 'Path bend',
+        description: 'Controls route heading/curvature intensity for the roll-free camera-local wormhole travel frame. Negative bends left, positive bends right.',
+        group: 'Wormhole', min: -1, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholePathBendVertical',
+        label: 'Path bend (vertical)',
+        description: 'Controls vertical route heading/curvature intensity for the roll-free camera-local wormhole travel frame, combined with the horizontal path bend into a diagonal turn. Negative bends down, positive bends up.',
+        group: 'Wormhole', min: -1, max: 1, step: 0.05, unit: 'x'
+    },
     { key: 'wormholeRing', label: 'Ring align', group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x' },
     { key: 'wormholeDepthCoherence', label: 'Depth coherence', group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x' },
     { key: 'wormholeContinuity', label: 'Streak continuity', group: 'Wormhole', min: 0, max: 2, step: 0.05, unit: 'x' },
@@ -345,9 +365,13 @@ export function writeModulationBus(
 export function applyTuningMorph(
     current: VisualTuningConfig,
     target: VisualTuningConfig,
-    transitionSpeed = target.transitionSpeed
+    transitionSpeed = target.transitionSpeed,
+    deltaSec = 1 / 60
 ): VisualTuningConfig {
-    const speed = getCurvedMorphStep(target, transitionSpeed);
+    const baseStep = getCurvedMorphStep(target, transitionSpeed);
+    const safeDelta = Math.max(0, Number.isFinite(deltaSec) ? deltaSec : 1 / 60);
+    // Exponential composition makes equal song-time intervals equivalent at 30/60/120 FPS.
+    const speed = safeDelta === 0 ? 0 : baseStep >= 1 ? 1 : 1 - Math.pow(1 - baseStep, safeDelta * 60);
 
     for (const key of visualTuningKeys) {
         const currentValue = current[key];
@@ -373,6 +397,13 @@ export function applyTuningMorph(
     }
 
     return current;
+}
+
+/** Rejects discontinuous clock changes so seek/export transitions cannot fast-forward a morph. */
+export function tuningMorphDeltaSec(currentTime: number, previousTime: number | null, clockChanged = false): number {
+    if (clockChanged || previousTime === null || !Number.isFinite(currentTime) || !Number.isFinite(previousTime)) return 0;
+    const delta = currentTime - previousTime;
+    return delta >= 0 && delta <= 0.25 ? delta : 0;
 }
 
 function getCurvedMorphStep(target: VisualTuningConfig, transitionSpeed: number): number {

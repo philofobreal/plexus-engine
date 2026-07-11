@@ -35,14 +35,14 @@ only inside `scenePlanAdapter` via the pack `targetMap`.
 |---|---|---|
 | `wormhole.establish-space` | `vos-wh-establish.json` | build the space: slow, wide, straight, calm |
 | `wormhole.straight-drive` | `vos-wh-drive.json` | groove: steady straight flight (curve exactly 0) |
-| `wormhole.spiral-build` | `vos-wh-spiral.json` | rising tension: strong spiral twist, growing jitter |
+| `wormhole.spiral-build` | `vos-wh-spiral.json` | rising tension: strong spiral flow and the largest authored path bend |
 | `wormhole.sparse-break` | `vos-wh-sparse.json` | segmented sparse field / ribbed break texture |
 | `wormhole.tunnel-punch` | `vos-wh-punch.json` | drop hit: sudden speed and warp jump |
 | `wormhole.overdrive-peak` | `vos-wh-overdrive.json` | overdriven peak: maximum speed/warp, jitter >= 0.8 |
 | `wormhole.deep-drift` | `vos-wh-drift.json` | aftermath: the deepest, slowest space of the family |
 | `wormhole.collapse-transition` | `vos-wh-collapse.json` | transition: restrained depth compression into rings |
 | `wormhole.reveal-galaxy` | `vos-wh-galaxy.json` | reveal: slow glide with the longest streaks |
-| `wormhole.outro-dissolve` | `vos-wh-dissolve.json` | dissolve: everything fades toward dots and dark |
+| `wormhole.outro-dissolve` | `vos-wh-dissolve.json` | dissolve: quieter but still visible deep trails |
 
 ## Situation mapping
 
@@ -81,27 +81,34 @@ action inside the situation vocabularies.
   camera-journey layer to the wormhole identity.
 - Every `vos-wh-*.json` preset pins `"visualMode": "cosmic-wormhole"` at the root, so
   loading one always lands in the wormhole identity.
-- No clip preset writes `wormholeStarfield` or `wormholeGalaxy`. These stay global,
-  user-owned, preset-independent masters (see
-  [visual-identities.md](visual-identities.md)). The reveal-galaxy feeling is built from
-  depth, speed, warp, curve, continuity, ring dispersion, emission mode, jitter, and
-  line/glow material instead. If stronger reveal control is ever needed, the reserved
-  path is an action-scoped runtime multiplier (for example `galaxyRevealBoost`) that
-  scales the current global master rather than overwriting the user's setting.
-- Every preset keeps `lineAlpha >= 1.05`, with dissolve as the deliberate `0.95`
-  exception. Establish,
+- Every clip preset explicitly carries its route/grain wormhole role keys, but does not
+  write `wormholeStarfield`, `wormholeGalaxy`, or `wormholeSkybox`. Those remain
+  user-global background masters. Cross-identity pollution is handled by the automation
+  ownership guard for explicitly foreign presets, not by resetting user background
+  controls on every wormhole role change.
+- Every factory wormhole preset keeps `lineAlpha >= 1.25`. Establish,
   drive, spiral, collapse, and dissolve use longer continuity to preserve tunnel velocity
   instead of falling back to a point-cloud look.
-- Only authored segmented roles use `wormholeRing`: collapse uses restrained `0.35`
-  compression, while sparse intentionally uses a strong segmented/ribbed field. All other
-  roles keep ring alignment at zero.
-- Collapse, sparse, and spiral explicitly author `wormholeDepthCoherence` to recover
-  deterministic cohort character over immutable depth phases. Coherence is distinct from
-  ring alignment and cannot accumulate path-dependent damage across horizon morphs or seeks.
+- Only collapse uses `wormholeRing`, with restrained `0.35` compression. Sparse keeps
+  ring alignment at zero and recovers segmented/ribbed texture through depth coherence,
+  sparse emission, and long continuity.
+- Every role explicitly authors `wormholeDepthCoherence`; roles without cohort compression
+  pin it to zero. Coherence is distinct from ring alignment and cannot accumulate
+  path-dependent damage across horizon morphs or seeks.
+- Every role explicitly authors `wormholePathBend`. Establish, drive, sparse, collapse, punch, and
+  dissolve are exact straight-axis roles; drift and galaxy own restrained scenic arcs; overdrive may
+  bank under peak energy; spiral alone owns the strongest hero turn. The value is signed: positive
+  and negative values are horizontal mirror directions. `wormholePathBendVertical` is independently
+  signed for diagonal scenic arcs; `bendMirror` flips the mirrorable spiral/overdrive direction before
+  the target is applied. Straight roles actively steer a previously curved runtime route back to the
+  zero-heading baseline without a camera teleport.
+- The style-pack pair metadata is operational: `minSegmentSec`, `maxSegmentSec`, `alternation`, and
+  `intensityShape` select the pacing envelope, and the wormhole morph floor prevents a high-delta
+  preset pair from collapsing into a short attack morph.
 - Role-level contrast is a tested contract, not a styling accident: the drive is exactly
   straight, the spiral out-twists the drive, the punch outruns the drive, the overdrive
   tops the punch, the drift is the deepest and slowest, the sparse break uses a continuous
-  segmented sparse texture, the authored ring roles own depth segmentation, the galaxy reveal owns streak length, and the
+  segmented sparse texture, collapse owns ring compression, the galaxy reveal owns streak length, and the
   dissolve is the dimmest while retaining visible perspective trails. The preset values themselves are
   first-draft designer values; tuning them is fine as long as these relations hold.
 
@@ -110,9 +117,11 @@ action inside the situation vocabularies.
 The ten original presets raise `audioSensitivity` and `lineAlpha` while preserving their
 relative character (including dissolve as the dimmest role). Continuity increases on the
 deep-perspective and transitional roles strengthen tunnel velocity; sparse is the explicit
-exception, using short continuity plus strong ring compression for its ribbed texture.
+exception, using sparse emission, depth coherence, and long continuity for its ribbed texture.
+Punch, overdrive, and collapse keep at least `2.2` depth, `0.75` radius, and at most `1.25`
+authored line weight; renderer-side near fade and projection caps remain the final safety net.
 Reduced spiral/punch/overdrive warp avoids a centrifuge-like camera feel. This pass does not change the
-user-owned `wormholeStarfield`/`wormholeGalaxy` defaults and does not alter
+user-global `wormholeStarfield`/`wormholeGalaxy` masters and does not alter
 `WormholeEmission.ts`: the continuous emission-mode morph is not the source of the observed
 brightness loss. A master-default boost, if needed after visual review, remains a separate
 change.
@@ -149,7 +158,7 @@ the seeded hash of the analysis, and identical input produces a byte-identical
 ## Validation
 
 `tests/wormhole-clip-profile.test.mjs` pins the contract: 10-preset registration and role
-coverage, the forbidden-master scan, the mandatory `visualMode`, role-level contrast,
+coverage, explicit route/grain wormhole role keys, user-global background masters, the identity ownership guard, the mandatory `visualMode`, role-level contrast,
 the opacity floor, authored ring roles only, targetMap purity on the main dramaturgy
 keys, and the full 11-situation action vocabulary,
 end-to-end action coverage for a clip-shaped fixture, byte-identical determinism, the

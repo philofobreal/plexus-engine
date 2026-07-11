@@ -1,196 +1,213 @@
-# Wormhole travel and route-field implementation record
+# Wormhole travel and route-frame implementation record
 
 ## Scope
 
 The cosmic-wormhole identity uses one canonical, forward-only travel distance. Geometry is a pure
 function of song position, analyzed fixed-hop data, and tuning, so seek, live playback, export, and
-30/60/120 FPS sampling reproduce the same result. There is no camera shake, roll, horizon jump, or
-global sinusoid/wall-clock transform. The visual lens center stays stable while a route-local viewer
-frame gives the world deterministic viewer-relative parallax.
+30/60/120 FPS sampling reproduce the same result. There is no camera shake, roll, horizon jump,
+whole-canvas rotation, global sinusoid, or wall-clock transform.
 
-## Route contract
+The visual lens center stays fixed. The projection camera-local frame follows the route tangent
+without roll, so a turn reads as travelling inside a hyperspace route rather than watching a bent
+tube from outside.
 
-`sampleWormholeRoute(routeDistance, depthT, bend)` returns:
+## Route Contract
+
+`sampleWormholeRouteFrame(distance, bend, out?)` returns:
 
 ```ts
-{ offsetX, offsetY, tangentX, tangentY }
+{
+  positionX, positionY,
+  tangentX, tangentY,
+  normalX, normalY,
+  headingAngle,
+  curvature,
+  turnIntensity
+}
 ```
 
-The sampler is distance-domain and deterministic. It uses an explicit arc-segment centerline with an
-analytic local tangent. There are no hashed route targets, route cells, or per-section random
-meanders. The visible route is intended to read as one choreographed turn, not as an offset field.
+The sampler integrates a smooth deterministic curvature envelope over long route segments. Heading is
+the integral of curvature; position is the integrated route travel frame. Tangent and normal are
+normalized perpendicular axes. `wormholePathBend = 0` is the exact straight baseline:
+`positionX = 0`, `positionY = distance`, `headingAngle = 0`, `curvature = 0`, tangent `(0, 1)`,
+normal `(1, 0)`.
 
-`depthT` applies only a mild lens/far-plane amplitude fade over the same centerline; it never
-chooses a separate route, nulls the arc at the endpoints, or creates local S-turn topology. With
-`wormholePathBend = 0`, all four returned values are literal positive zero, preserving the straight
-baseline exactly. Route radius/curvature cadence are invariant: `wormholePathBend` scales only the
-sampled centerline amplitude. It cannot change route topology, radius, or tangent cadence, so live
-bend morphs stay on the same authored arc.
+`wormholePathBend` is route heading/curvature intensity. It is not a lateral deformation scalar,
+screen-space pan, random meander, or preset-tuned scale mask.
 
-## Projection and trails
+The legacy `sampleWormholeRoute()` / `sampleWormholeBackgroundRoute()` helpers remain as exact
+zero-bend compatibility wrappers, but the renderer uses route frames.
 
-Grain projection samples the current route at `distanceNow + z` and the trail endpoint at
-`distancePrev + prevZ`. The tail is therefore the projection of a real earlier route position, not a
-screen-space estimate. Each point subtracts a viewer route sample at canonical travel distance plus
-a fixed lookahead. A bounded first-order tangent term compensates viewer heading, so the tube remains
-organized in front of the viewer instead of behaving like a screen-space snake. This changes the
-reference frame, not the camera roll or horizon. `wormholeBackwardTrailCorrection()` remains a final route-local tube
-cross-section invariant guard; normal presets are draw-tested so it is normally inactive. Measuring
-this invariant from the fixed lens center would incorrectly classify legitimate centerline turns as
-backward grain flow.
+## Projection
 
-Release and seek snapshots read `State.visualTuning`, the tuning actually rendered on that frame, for
-grain radius/depth/ring/coherence and per-generation material character. Route bend, travel speed,
-and part of continuity are intentionally live/morphed at draw time so existing grains visibly follow
-automation preset changes without waiting for the next generation release. Target tuning is not used
-directly for spawn geometry; it must first become rendered tuning through the existing morph path.
+`projectWormholeTubePoint()` (`WormholeGrainField.ts`) is the single, testable projection function
+used by both foreground grain heads/tails and (indirectly, via the same camera-local dot-product
+transform) the background layers. For a tube point it samples:
 
-## Background coupling
+- the camera route frame at the current or previous camera travel distance;
+- the point route frame at `cameraDistance + depth`;
+- the grain's tube radial offset (`radius`, `theta`) along the point frame's route-local normal.
 
-Grains, stars, galaxies, and the optional skybox sample the same viewer route field, but the field is
-split into two independent mechanisms so that core stabilization and background sweep cannot cancel
-each other:
+The world point is transformed into the camera route frame before perspective projection via plain
+camera-local dot products -- no heading-shear compensation term of any kind. The route only turns in
+its own horizontal plane, so the tube's vertical axis (`radialY`) never rotates with heading and needs
+no transform beyond the shared perspective divide; this is what keeps both screen axes symmetric and
+the projected cross-section circular at every bend, including the exact zero-bend baseline.
 
-- **`grainRouteRelative`** (core stabilization, grains only): each grain samples
-  `sampleWormholeRoute()` at its own current/previous position and at the viewer's own
-  lookahead position, then `wormholeViewerRelativeRoute()` subtracts the viewer sample. This keeps
-  the tunnel core organized ahead of the fixed lens instead of translating the whole tube as a
-  screen-space object.
-- **Background viewer-frame world transform** (stars/galaxies/skybox): the background samples the
-  same canonical arc once per frame via
-  `sampleWormholeBackgroundViewerFrame(routeDistance, bend)`. The frame contains the viewer's lateral
-  arc offset plus the arc tangent (`headingX`, `headingY`); `turnAngle` remains zero for compatibility
-  so the cosmos is not rotated as a separate world plate. Every background object uses that shared
-  frame; no star, galaxy, or skybox tile owns an independent route sample.
+Keeping the far centerline lens-local (so a turn does not carry the whole cross-section's visual
+centroid off-screen) is handled by splitting the delta into two additive parts instead of a shear:
 
-  `wormholeBackgroundWorldRelative(worldX, worldY, viewerFrame, worldScale)` performs the actual
-  per-object transform in world units, **before** that layer's own perspective divide: translate by
-  `viewerFrame.offset * worldScale` without rotating the whole cosmos. Current and previous star
-  endpoints use their own viewer frames, so trail motion follows the same arc tangent as the
-  foreground route. Near objects still move more on screen than distant ones because each layer
-  applies its own perspective divide afterward. Stars still fade/thicken by their own `sNear` depth proximity as before; that
-  visibility math is unrelated to the route-follow transform and unchanged. Galaxies only need a
-  "now" frame (they are drawn as a single glow, not a line with two endpoints). The skybox has no
-  independent depth to divide by, so its translate is expressed as a small fraction of its own tile
-  radius (`SKYBOX_ROUTE_WORLD_FRACTION`) instead of a world-unit scale.
+- the grain's own radial contribution (`radius`, `theta`) -- always full strength, since this is what
+  actually draws the circle;
+- the route-curvature drift between the point's route position and the camera's route position --
+  identical for every grain at a given depth regardless of angle, scaled by
+  `FOREGROUND_ROUTE_DRIFT_WEIGHT` (1, undamped).
 
-  A single master constant, `BACKGROUND_ROUTE_FOLLOW_SCALE`, scales every layer's world-scale weight
-  together; each layer keeps its own relative strength below that (stars strongest, galaxies softer
-  and wider, skybox faintest), replacing the old per-layer
-  `STAR_ROTATION_GAIN_*`/`GALAXY_ROTATION_GAIN_*`/`SKYBOX_ROTATION_GAIN` constants, which existed only
-  to fake a near/far differential that now falls out of the perspective divide for free.
+The drift term is theta-independent, so scaling it changes only how far the cross-section's centroid
+drifts as the route turns -- it cannot bias the circle's shape the way scaling the *combined* delta
+(the rejected, previous approach) did. An earlier revision damped this weight to 0.12 to keep the
+lens "anchored" through a turn; that was screen-space stabilization by another name, and it silently
+recentered every depth ring toward the lens regardless of the route's actual curvature, which reads
+as a frontal tube viewed from outside rather than a turn the camera is actually following. Numeric
+measurement (`tests/wormhole-route-geometry.test.mjs`) at full weight across a wider depth/bend sweep
+than the original test covered also showed the *undamped* value keeps the cross-section closer to
+circular at large depths/bends than the damped one did (the damped, theta-independent numerator no
+longer cancels correctly against the theta-dependent projection denominator once depth is large
+relative to the route's turn scale) -- so full weight is both the physically correct model and the
+better numeric fit, not a tradeoff between the two.
 
-  Because `sampleWormholeBackgroundViewerFrame` is a pure function of `routeDistance` and `bend`, this
-  still needs no mutable per-frame accumulator: seeking to any timestamp reproduces the identical
-  frame without replaying intervening frames. No layer adds an independent additive X/Y offset on top
-  of the transform, and no layer owns an independent random background path.
+This replaces the rejected model:
 
-### Near-plane guard for stars/galaxies
+```ts
+screen = project(point + routeOffset)
+```
 
-Stars and galaxies cycle depth the same way grains do (approaching the lens, then respawning at the
-far plane), but -- unlike grains, which cull via `wormholeNearPlaneVisibility()` and `continue` -- they
-previously had no near-plane guard at all, and their own alpha formula grew *brighter* as depth
-approached zero. Since `1/z` diverges there, this was a pre-existing singularity (confirmed present
-before any of the route-follow work above, independent of `wormholePathBend`): a star's projected
-position could reach numerically extreme values at the exact moment it was drawn at peak brightness,
-reading as a jarring flash. Stars/galaxies now compute `wormholeNearPlaneVisibility(z, maxZ)` and
-multiply it into their own alpha (fading to zero through the near-plane zone, same shape as grains),
-and additionally floor the *projection* depth only (`STAR_PROJECTION_Z_FLOOR` /
-`GALAXY_PROJECTION_Z_FLOOR`, a fixed fraction of the horizon) so `1/z` stays bounded through that zone.
-Unlike grains, this does not skip the draw call outright: skipping would desync `backend.lines[]` from
-the star pool's index (relied on by direct-index test/diagnostic code), so the fade happens through
-alpha instead of omission.
+and the rejected "compensate with a per-axis heading shear" fix attempt:
 
-## Tuning semantics
+```ts
+localX = (radial + routeOffset) * FIXED_SCALE - headingDelta * z * COMPENSATION  // X only, asymmetric
+localY = radialY + radialX * headingDelta * SMALL_FACTOR                        // different treatment
+```
 
-- `wormholeWarp`: local per-grain spiral/advection amount around the tunnel. It does not bend the
-  global route.
-- `wormholeCurve`: local, per-grain flow curvature around the tunnel. It does not bend the global
-  route.
-- `wormholePathBend`: controls viewer route-following / cosmic turn cue in the viewer-local frame —
-  `grainRouteRelative` for the foreground core, and the `sampleWormholeBackgroundViewerFrame` /
-  `wormholeBackgroundWorldRelative` translate-only world transform for stars/galaxies/skybox. It does
-  not introduce camera shake, roll, lens-center drift, or horizon jumps. It is an amplitude scalar for
-  the sampled canonical arc only; it does not change route radius, topology, or tangent cadence.
-- The canonical route centerline is a pure function of song-time-derived travel distance and the
-  fixed arc model. Preset tuning can scale the sampled amplitude, but cannot author a separate random
-  route or change the centerline's frequency. The wormhole identity still does not consume
-  `State.modulation` as a route authoring source; if that changes later, it needs a separate explicit
-  contract.
-- Route bend, speed, and continuity are live draw-time inputs. Radius/depth/ring/coherence remain
-  release/seek-snapshotted per grain, but existing grains do not wait for their next generation before
-  the route arc, trail distance, or continuity response changes.
-- The background cue always reads the effective live `wormholePathBend`, evaluated fresh
-  every `draw()` call. It is intentionally **not** routed through a grain's frozen
-  `releasePathBend` snapshot: the viewer's own route frame is not a per-grain attribute, so a live
-  preset/tuning change is felt on the very next frame, not after the next grain-generation release.
+with the intended model:
 
-Drive is the exact zero-bend baseline. Spiral has the strongest readable turn; drift and galaxy use
-slow broad arcs; collapse and sparse use restrained structural arcs; punch and overdrive use stronger
-arc amplitude without increasing route frequency or adding camera impulse.
+```ts
+local = inverse(cameraRouteFrame) * (routePointFrame * radial + routeCurvatureDrift * DRIFT_WEIGHT)
+screen = project(local)
+```
 
-## Material response (spectrum-distributed grain brightness)
+`sampleWormholeRouteFrame()` itself is a closed-form O(1) integration (a fixed handful of arithmetic
+operations regardless of `distance`), not a per-4800-unit-segment loop from distance zero: the turn
+sign pattern has period 4 in segment index and heading returns to exactly zero after every complete
+period, so whole periods are skipped via one precomputed period displacement instead of iterated.
 
-Each grain owns a fixed `bandIndex` (0..23) mapped to a fixed angular sector (`BANDS = 24` sectors
-around the tube), assigned once at construction and never touched afterward. This spatial mapping was
-already correct, but grain *material* (alpha and stroke weight -- never position/geometry) previously
-blended only a 12% live-spectrum shimmer against an 88% release-time snapshot
-(`LIVE_GRAIN_SHIMMER = 0.12`), added specifically to keep a kick/bass hit from making the whole tube
-pump. That older fix over-corrected: it also suppressed the identity's original circular-spectrograph
-read, where an active frequency band visibly lit up its own angular sector and that bright arc migrated
-around the tube as the active band changed. `LIVE_GRAIN_SHIMMER` is now `0.88` (live-dominant, with a
-small release-snapshot grounding term so a grain never goes fully dark between spectrum frames). This
-is safe against the original regression it was guarding against: kick/bass swarm reactions are a
-wholly separate, still release-snapshotted mechanism (`releaseKick`/`releaseBass`/`kickGain`, decayed
-by `wormholeKickReleaseEnvelope`), read nowhere in this energy blend, so raising the live weight here
-cannot reintroduce a global per-kick pulse -- it only makes each grain's own band-energy material
-response track its own band, which is a spatially distributed signal by construction, not a global one.
-Grain structural geometry (`theta`, radius/depth/ring/coherence, flow identity) remains
-release-snapshotted. Route bend, speed, and continuity are the explicit exceptions: they are live
-draw-time transport/route controls so automation transitions stay performative.
+## Background
+
+Stars, galaxies, and the optional skybox use the same route-local travel frame. Stars use current and
+previous camera frames so trail direction follows camera heading delta and layer speed. Near stars
+react more strongly through their own perspective divide; far stars and the skybox react weakly.
+
+There is no separate background viewer-frame API, no independent background route, no whole-cosmos
+rotation, and no oversized shared background scale. Background changes read the live effective
+`wormholePathBend`, so preset/automation changes affect star trails immediately without waiting for a
+grain generation release.
+
+Stars and galaxies fade alpha through their own near-plane zone via `wormholeNearPlaneVisibility()`
+and floor projection depth to avoid unbounded near-plane coordinates.
+
+### Cosmos travel-rate and turn-reactivity sync (`WormholeCosmicSync.ts`)
+
+Every layer's reactivity to travel speed and to route turning is derived from one shared, zero-import
+pure module, `src/visuals/WormholeCosmicSync.ts`, instead of each layer inventing its own cue:
+
+- `wormholeEffectiveTravelRate(wormholeSpeed, travelSpeedMotion)` is the single shared reference
+  (equal to the foreground grains' pre-existing `vz / 10`).
+- `wormholeForegroundTravelRate` / `wormholeStarTravelRate` / `wormholeGalaxyTravelRate` /
+  `wormholeSkyboxTravelRate` scale that one reference by each layer's own existing parallax ratio
+  (`STAR_SPEED_RATIO`, `GALAXY_SPEED_RATIO`, `SKYBOX_ROUTE_WORLD_FRACTION`, which stay owned by
+  `CosmicWormholeIdentity.ts` since they are also used for non-speed lateral-scale purposes). The
+  skybox variant is hard-capped so the most distant layer's reactivity stays bounded/minimal rather
+  than becoming a major moving object.
+- `wormholeParallaxStrength(turnIntensity)` is a small, bounded, symmetric amplitude boost (never a
+  corrective/heading-shear term) applied to each layer's existing lateral-scale constant while the
+  route is actively turning, so sideways parallax reads stronger through a turn than on a straight
+  stretch, not just faster with speed.
+
+Before this module existed, galaxies and the skybox tracked `wormholeSpeed` only through the slow,
+bounded `WormholeAuthoredSpeedTimeline` offset baked into `travelDistance` -- measured (at
+`wormholeSpeed = 8`) to reach only ~3.8x the baseline travel-distance rate, while foreground grains
+and stars got a full ~8x instantaneous trail-length cue from a direct, live read of `wormholeSpeed`.
+Galaxies and the skybox had no trail at all to carry that weaker signal, reading as "partial or
+delayed" cosmos reactivity. Both layers now get the same kind of bounded, positional prev/current
+motion cue grains and stars already had (a fainter echo of each galaxy at its own previous-frame
+position; a short line instead of a static point for skybox dust), scaled by the shared rate above.
+
+## Automation And Materials
+
+Route bend, speed, and continuity are live draw-time inputs, read directly from `State.visualTuning`
+(no additional automation-triggered multiplier). `State.visualTuning` itself already glides
+continuously toward `State.targetTuning` every frame via `applyTuningMorph()`
+(`src/config/visualTuning.ts`), starting from whatever the previously active value was -- never from
+zero or from a fresh preset reload -- so an automation point activating never causes a value jump on
+its own. Radius, depth, ring, and coherence remain release/seek-snapshotted per grain.
+
+An earlier revision additionally scaled effective route/speed/continuity by an `automationResponse`
+envelope that jumped to full strength the instant a point activated and decayed over the point's morph
+duration, layered on top of the already-smooth glide above. That produced a real, visible snap/surge at
+the trigger instant (up to +18-35% over the gliding value) even though the underlying value itself
+never jumped -- exactly the "character still snaps" symptom this file's `automationResponse` had been
+credited with avoiding. It has been removed; the continuous `applyTuningMorph` glide is now the sole
+source of automation-driven change.
+
+Grain material remains live-spectrum-dominant (`LIVE_GRAIN_SHIMMER = 0.88`): a grain's fixed
+`bandIndex` maps to a fixed angular sector, so active frequency bands light their own sectors without
+moving the tunnel geometry.
+
+### Continuity completion record
+
+The runtime steering cancel path no longer clears curvature when a target changes. It retargets
+continuously, including bounded counter-steering when a curved role returns to the straight target.
+Background parallax reads the distance-smoothed turn measure, while point geometry continues to use
+the live route frame; a target change therefore cannot turn a one-frame curvature value into a
+whole-background positional jump.
+
+`syncPosition()` reconstructs each horizontal and vertical route with
+`resetWormholeRouteStateConverged`, rather than starting from heading zero. The canonical transport
+rate (`WormholeTransport.rateAt`) and authored future-rate timeline are also the source for foreground
+trail separation, so foreground trail length and cosmic travel use the same rate vocabulary.
+
+`wormholePathBend` is signed: positive and negative values are mirror directions on the horizontal
+axis. `wormholePathBendVertical` supplies the independent signed screen-Y component without camera
+roll. The scene-plan `mirrorable` metadata becomes the renderer-agnostic `bendMirror` flag and is
+applied before tuning reaches the identity. Pair pacing consumes its duration/alternation metadata
+and enforces the wormhole morph floor before activating a target.
 
 ## Verification
 
-Regression coverage checks exact zero-bend output, no hashed route-cell targets, bend-as-amplitude-only
-sampling, bend-invariant heading cadence, single-arc curvature sign behavior, continuous
-forward/backward bend morphs, endpoint anchors, bounded grain-core centroid, route/background tangent
-correlation, infrequent projected direction reversals, forward trails, low correction activation,
-release/seek snapshot source, and seek/export/FPS
-determinism. It additionally covers the background viewer-frame transform specifically:
-`sampleWormholeBackgroundViewerFrame` is a bounded,
-exact-zero pure function of travel distance at rest/zero-bend; `wormholeBackgroundWorldRelative` is an
-exact, depth-agnostic identity at zero offset (callers divide by their own object's depth afterward,
-which is what gives near objects a bigger on-screen shift than distant ones); the renderer wires
-`backgroundViewerNow`/`backgroundViewerPrev` from live effective `wormholePathBend` (not a grain's
-`releasePathBend`) once per frame, not once per object; stars read `backgroundViewerNow` for their
-current endpoint and `backgroundViewerPrev` for their previous one; and neither the old additive pan
-nor any independent random background route reappears as the primary cue
-(`tests/wormhole-determinism.test.mjs`). Integration tests track individual stars'
-screen-space polar angle across several independent multi-second draw windows under the spiral preset:
-the angular sweep is visible on average across windows and reads as a continuous arc, the on-screen radius measurably diverges
-from a same-depth zero-bend baseline, the foreground core centroid stays bounded throughout, a tracked
-star's on-screen motion never snaps/teleports while visible across a ~40-second sequence (long enough
-to cover a full star depth cycle, including near-plane transits), and a live
-`State.visualTuning.wormholePathBend` change shifts a tracked star on the very next frame without a
-`syncPosition()` call or any grain-generation release; the same sequence under the zero-bend `drive`
-preset keeps every tracked star's angle and radius exactly frozen
-(`tests/wormhole-background-turn-cue.test.mjs`). The spectrum material response is verified directly:
-a single active frequency band lights up only the grains in its own angular sector, far brighter than
-every other band's grains, and switching to a different active band immediately migrates the lit
-sector rather than pulsing the whole field
-(`tests/wormhole-depth-integrity.test.mjs`).
+Regression coverage includes:
 
-Automation behavior is covered by a draw-level regression: after an automation point begins, a
-0.75-second morph step changes existing rendered grain geometry measurably without waiting for a new
-grain release. Route curvature tests also assert that a visible arc span does not flip curvature sign
-repeatedly, and background-heading tests assert that the background tangent remains correlated with
-the canonical wormhole route tangent (`tests/wormhole-route-geometry.test.mjs`,
-`tests/wormhole-depth-integrity.test.mjs`).
-
-Automation/preset ownership is guarded separately. `src/config/identityTuningRegistry.ts` declares
-the tuning keys owned by `cosmic-wormhole`. Automation-triggered presets with an explicit foreign
-`visualMode` are filtered before normalization so they cannot write the active identity's owned
-wormhole keys; manual preset loading and `visualMode`-less presets remain backward compatible. The
-`vos-wh-*` factory presets explicitly carry their route/grain role keys but intentionally leave
-`wormholeStarfield`, `wormholeGalaxy`, and `wormholeSkybox` as user-global background masters
-(`tests/wormhole-clip-profile.test.mjs`, `tests/contracts.test.mjs`).
+- exact zero-bend route frame baseline;
+- normalized tangent/normal and perpendicularity;
+- continuous heading;
+- stable curvature sign inside a turn segment;
+- seek-independent route sampling;
+- camera-local centerline staying lens-local;
+- foreground projection using route frames, not screen offsets;
+- background star trail direction correlating with camera heading delta;
+- drive preserving the straight route baseline;
+- automation changing route/speed cues within one second without first-frame surge or grain-release
+  dependency;
+- **projected tube cross-section circularity** at multiple depths and bends (`wormhole-route-geometry.test.mjs`)
+  -- a numeric check of the actual screen-space ring shape, not just the underlying route-frame math,
+  since that is exactly the gap that let the previous 4:1-ellipse regression ship with a fully green
+  suite;
+- **no heading-shear compensation** anywhere in the render pipeline (`wormhole-determinism.test.mjs`),
+  a source-level regression guard against reintroducing the rejected per-axis shear;
+- closed-form route integration matching a brute-force per-segment reference, and route sampling cost
+  not growing with distance (`wormhole-route-geometry.test.mjs`).
+- a 30-minute, 1/60-second cyclic render run over all ten presets, including mirrored spiral and
+  overdrive activations, with finite route/draw data, monotonic travel, bounded route/anchor buffers,
+  and visible-star continuity (`wormhole-long-run.test.mjs`);
+- playback/export exact draw-list agreement, converged-seek heading agreement, repeated-export byte
+  determinism, 30/120 FPS-scaled continuity bounds, and a bounded route-sample count per draw
+  (`wormhole-long-run.test.mjs`).

@@ -3,7 +3,7 @@ import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
 import { featureFlags } from '../config/featureFlags';
-import { applyTuningMorph, tuneAudioValue, writeModulationBus } from '../config/visualTuning';
+import { applyTuningMorph, tuneAudioValue, tuningMorphDeltaSec, writeModulationBus } from '../config/visualTuning';
 import { P5RendererBackend } from './P5RendererBackend';
 import type { DashboardUI } from '../ui/DashboardUI';
 import type { AudioEngine } from '../audio/AudioEngine';
@@ -59,6 +59,8 @@ export function startPlexusRenderer(
         let currentEventIdx = 0;
         let currentCueIdx = 0;
         let currentTargetFrameRate = 60;
+        let lastTuningTime: number | null = null;
+        let lastTuningClockWasExport = State.isExporting;
         const backend = new P5RendererBackend(p);
         const visualDirector = new VisualDirectorFSM();
         const identityTransitionController = new IdentityTransitionController();
@@ -119,10 +121,18 @@ export function startPlexusRenderer(
             }
             State.rotationPhase += State.playbackFade;
 
-            applyTuningMorph(State.visualTuning, State.targetTuning, State.targetTuning.transitionSpeed);
-
             let ct = State.isExporting ? State.exportTime : engine.getCurrentTime();
             State.currentTime = ct;
+            const tuningClockChanged = lastTuningClockWasExport !== State.isExporting;
+            const tuningDeltaSec = tuningMorphDeltaSec(ct, lastTuningTime, tuningClockChanged);
+            lastTuningTime = ct;
+            lastTuningClockWasExport = State.isExporting;
+            applyTuningMorph(
+                State.visualTuning,
+                State.targetTuning,
+                State.targetTuning.transitionSpeed,
+                tuningDeltaSec
+            );
 
             const hasTimeBasedSemanticPlan = semanticBridge.hasPlan();
             const isTimeBasedSemanticActive = featureFlags.semanticChoreography && hasTimeBasedSemanticPlan;

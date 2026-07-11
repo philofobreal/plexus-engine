@@ -101,6 +101,21 @@ test('authored speed morph changes only future rate and stays monotonic', () => 
   }
 });
 
+test('mirrored horizontal bend morph has deterministic canonical travel and route samples', () => {
+  const transport = new timeline.WormholeTransport();
+  transport.sync(Array.from({ length: 1200 }, () => frame('HIGH')), 48000, 1024);
+  const speed = new timeline.WormholeAuthoredSpeedTimeline();
+  speed.reset(0, 1);
+  const sampleRun = () => Array.from({ length: 121 }, (_, index) => {
+    const time = 2 + index / 60;
+    const progress = index / 120;
+    const distance = transport.distanceAt(time) + speed.offsetAt(time, 4.8, 2);
+    const bend = 0.72 + (-0.42 - 0.72) * progress;
+    return { distance, frame: grains.sampleWormholeRouteFrame(distance, bend) };
+  });
+  assert.deepEqual(sampleRun(), sampleRun());
+});
+
 test('authored speed timeline is equivalent at 30, 60, and 120 FPS', () => {
   const endOffsets = [30, 60, 120].map((fps) => {
     const speed = new timeline.WormholeAuthoredSpeedTimeline();
@@ -320,95 +335,62 @@ test('curved presets have measurable mid-depth displacement and tangent', () => 
   assert.ok(Math.hypot(route.tangentX, route.tangentY) > 0.02, JSON.stringify(route));
 });
 
-test('viewer-relative route frame is an exact zero-bend baseline (grainRouteRelative)', () => {
-  const viewer = grains.sampleWormholeBackgroundRoute(5100, 0.8);
-  const deepPlate = grains.sampleWormholeBackgroundRoute(12000, 0.8);
-  const relative = grains.wormholeViewerRelativeRoute(deepPlate, viewer, 6900);
-  const viewerTangentLength = Math.hypot(viewer.tangentX, viewer.tangentY);
-  assert.ok(viewerTangentLength > 1e-8);
-  assert.ok(
-    viewer.tangentX * relative.tangentX + viewer.tangentY * relative.tangentY < 0,
-    'deep route tangent must counter the viewer-relative heading compensation'
-  );
+test('camera-relative route frame is an exact zero-bend baseline', () => {
+  const route = grains.sampleWormholeRouteFrame(12000, 0.8);
+  const camera = grains.sampleWormholeRouteFrame(5100, 0.8);
+  const dx = route.positionX - camera.positionX;
+  const dy = route.positionY - camera.positionY;
+  const relative = {
+    x: dx * camera.normalX + dy * camera.normalY,
+    z: dx * camera.tangentX + dy * camera.tangentY
+  };
+  assert.ok(Math.abs(relative.x) > 1e-3);
+  assert.ok(relative.z > 1000);
 
-  const zeroRoute = grains.sampleWormholeRoute(4200, 0.5, 0);
+  const zeroRoute = grains.sampleWormholeRouteFrame(4200, 0);
+  const zeroCamera = grains.sampleWormholeRouteFrame(1100, 0);
+  const zeroDx = zeroRoute.positionX - zeroCamera.positionX;
+  const zeroDy = zeroRoute.positionY - zeroCamera.positionY;
   assert.deepEqual(
-    Object.values(grains.wormholeViewerRelativeRoute(zeroRoute, zeroRoute, 3000)),
-    [0, 0, 0, 0],
-    'zero bend remains an exact viewer-frame baseline'
+    [zeroDx * zeroCamera.normalX + zeroDy * zeroCamera.normalY, zeroDx * zeroCamera.tangentX + zeroDy * zeroCamera.tangentY],
+    [0, 3100],
+    'zero bend remains an exact camera-local straight baseline'
   );
-  // This mechanism (`grainRouteRelative`) is grain-only core stabilization; it is unrelated to the
-  // background turn angle covered by the tests below.
   const source = readFileSync(join(SRC_ROOT, 'visuals/CosmicWormholeIdentity.ts'), 'utf8');
-  assert.match(source, /wormholeViewerRelativeRoute\(\s*this\.routeNow,\s*this\.viewerRouteNow/);
-  assert.match(source, /wormholeViewerRelativeRoute\(\s*this\.routePrev,\s*this\.viewerRoutePrev/);
+  assert.match(source, /this\.routePath\.sample\(distanceNow \+ z, this\.routeNow\)/);
+  assert.match(source, /this\.routePath\.sample\(distanceNow, this\.baseRouteNow\)/);
+  assert.match(source, /projectWormholeTubePoint\(\s*\r?\n?\s*this\.routeNow, this\.baseRouteNow, z, projectedThetaNow, projectedRadiusNow, routeTurnVisualGain/);
+  assert.doesNotMatch(source, /sampleWormholeRoute\(|wormholeViewerRelativeRoute|VIEWER_ROUTE_LOOKAHEAD|FOREGROUND_ROUTE_SCREEN_SCALE/);
+
+  // The pure projection math itself: the grain's own radial contribution (what draws the circle) is
+  // projected through the camera frame at full strength; only the shared, theta-independent
+  // route-curvature drift term may be damped by `routeDriftWeight`, so scaling can never bias the
+  // circle's shape.
+  const grainFieldSource = readFileSync(join(SRC_ROOT, 'visuals/WormholeGrainField.ts'), 'utf8');
+  assert.match(grainFieldSource, /radialWorldX \* baseRouteNow\.normalX \+ radialWorldY \* baseRouteNow\.normalY/);
+  assert.match(grainFieldSource, /routeDriftX \* baseRouteNow\.normalX \+ routeDriftY \* baseRouteNow\.normalY\)\s*\r?\n?\s*\*\s*depthDriftWeight/);
 });
 
-test('the viewer background frame is a pure function of travel distance/bend and is exact zero at bend=0', () => {
-  const zero = grains.sampleWormholeBackgroundViewerFrame(6600, 0);
-  assert.deepEqual([zero.offsetX, zero.offsetY, zero.headingX, zero.headingY, zero.turnAngle], [0, 0, 0, 0, 0]);
-
-  // Pure function: identical (distance, bend) reproduces the identical frame regardless of what was
-  // computed before it -- no mutable accumulator, so scrubbing to any timestamp works standalone.
-  const direct = grains.sampleWormholeBackgroundViewerFrame(9400, 0.65);
-  grains.sampleWormholeBackgroundViewerFrame(500, 0.65);
-  grains.sampleWormholeBackgroundViewerFrame(20000, 0.2);
-  const recomputed = grains.sampleWormholeBackgroundViewerFrame(9400, 0.65);
-  assert.deepEqual(recomputed, direct, 'identical distance/bend must reproduce the identical frame regardless of prior calls');
-
-  // The frame carries both lateral offset and route heading from the same canonical arc. This is the
-  // shared background turn cue; it is not a per-object random sample or a history accumulator.
-  assert.ok(Math.hypot(direct.offsetX, direct.offsetY) > 0.01, 'expected a measurable lateral offset for a nonzero bend');
-  assert.ok(Math.hypot(direct.headingX, direct.headingY) > 0.01, 'expected a measurable route tangent for a nonzero bend');
-  assert.equal(direct.turnAngle, 0, 'background frame must not rotate the whole cosmos');
-  assert.equal(Object.keys(direct).sort().join(','), 'headingX,headingY,offsetX,offsetY,turnAngle');
-});
-
-test('the background world transform applies route translate before projection without rotating the cosmos', () => {
-  const frame = { offsetX: 0.4, offsetY: -0.25, headingX: 0.1, headingY: 0.6, turnAngle: 0 };
-  const relative = grains.wormholeBackgroundWorldRelative(1000, 500, frame, 300);
-  assert.deepEqual([relative.x, relative.y], [1000 + 0.4 * 300, 500 + -0.25 * 300]);
-
-  const rotated = grains.wormholeBackgroundWorldRelative(1000, 0, { ...frame, offsetX: 0, offsetY: 0, turnAngle: Math.PI / 2 }, 300);
-  assert.deepEqual([rotated.x, rotated.y], [1000, 0]);
-
-  // Zero offset is the identity.
-  const identityFrame = { offsetX: 0, offsetY: 0, headingX: 0, headingY: 0, turnAngle: 0 };
-  const identity = grains.wormholeBackgroundWorldRelative(77, -34, identityFrame, 300);
-  assert.deepEqual([identity.x, identity.y], [77, -34]);
-
-  // The function itself has no notion of depth/z: callers divide by their own object's depth
-  // afterward, which is what gives near objects a bigger on-screen shift than distant ones for the
-  // exact same world-unit offset (real parallax, not a per-object near/far gain table).
-  assert.equal(grains.wormholeBackgroundWorldRelative.length, 5, 'expected (worldX, worldY, viewerFrame, worldScale, out?) with no depth/angle parameter');
-});
-
-test('background layers use a genuine viewer-frame world arc transform, sampled once per frame from live tuning, not per-object noise', () => {
+test('background layers use the same route-local travel frame, not screen rotation', () => {
   const source = readFileSync(join(SRC_ROOT, 'visuals/CosmicWormholeIdentity.ts'), 'utf8');
-  // The viewer's own current/previous frame is sampled once per frame -- not once per object --
-  // directly from the live tuning value, never a grain's frozen `releasePathBend`.
-  assert.match(source, /sampleWormholeBackgroundViewerFrame\(camZ, effectivePathBend, this\.backgroundViewerNow\)/);
-  assert.match(source, /sampleWormholeBackgroundViewerFrame\(\s*Math\.max\(0, camZ - vz\), effectivePathBend, this\.backgroundViewerPrev\s*\)/);
-
-  // Stars read two different viewer frames for their current vs. previous endpoint, so the
-  // trail's own motion vector carries the turn instead of both ends sharing one rigid transform.
-  assert.match(source, /wormholeBackgroundWorldRelative\(\s*star\.x, star\.y, this\.backgroundViewerNow/);
-  assert.match(source, /wormholeBackgroundWorldRelative\(\s*star\.x, star\.y, this\.backgroundViewerPrev/);
-
-  // Galaxies and the skybox each carry their own world-scale weight; the master
-  // BACKGROUND_ROUTE_FOLLOW_SCALE knob scales all of them.
-  assert.match(source, /wormholeBackgroundWorldRelative\(\s*galaxy\.x, galaxy\.y, this\.backgroundViewerNow/);
-  assert.match(source, /BACKGROUND_ROUTE_FOLLOW_SCALE/);
+  assert.match(source, /this\.routePath\.advance\(camZ, effectivePathBend\)/);
+  assert.match(source, /this\.routePath\.sample\(camZ, this\.baseRouteNow\)/);
+  assert.match(source, /const starDepthTravel = camZ \* STAR_SPEED_RATIO/);
+  assert.match(source, /const starPrevCamZ = Math\.max\(0, camZ - vzStar\)/);
+  assert.match(source, /this\.routePath\.sample\(starPrevCamZ, this\.baseRoutePrev\)/);
+  assert.match(source, /this\.routePath\.sampleSmoothedLookahead\(camZ \+ z, this\.routeNow\)/);
+  assert.match(source, /const starLateralX = star\.x \* STAR_ROUTE_WORLD_SCALE \* starParallax \* this\.routeNow\.normalX/);
+  assert.match(source, /const prevStarLateralX = star\.x \* STAR_ROUTE_WORLD_SCALE \* starParallaxPrev \* this\.routePrev\.normalX/);
+  assert.match(source, /const galaxyDepthTravel = camZ \* GALAXY_SPEED_RATIO/);
+  assert.match(source, /this\.routePath\.sampleSmoothedLookahead\(camZ \+ gz, this\.routeNow\)/);
+  assert.match(source, /const gLateralX = galaxy\.x \* GALAXY_ROUTE_WORLD_SCALE \* galaxyParallax \* this\.routeNow\.normalX/);
+  assert.doesNotMatch(source, /BACKGROUND_ROUTE_FOLLOW_SCALE|sampleWormholeBackgroundViewerFrame|wormholeBackgroundWorldRelative|backgroundViewer/);
+  assert.doesNotMatch(source, /sampleWormholeRouteFrame\(starDepthTravel|sampleWormholeRouteFrame\(galaxyDepthTravel/);
   assert.doesNotMatch(source, /STAR_ROTATION_GAIN|GALAXY_ROTATION_GAIN|SKYBOX_ROTATION_GAIN/);
 
-  // No additive screen-space offset/pan may reappear as the background cue.
+  // No additive screen-space offset/rotation may reappear as the background cue.
   assert.doesNotMatch(source, /\+ starTurnX|\+ galaxyTurnX|panX|panY/);
   assert.doesNotMatch(source, /wormholeRotateAroundCenter|wormholeBackgroundTurnAngle|backgroundTurnAngle/);
-
-  // Grains keep their own dedicated viewer-relative frame (`grainRouteRelative`) and never read
-  // the background viewer frames or the shared translate scratch.
-  assert.doesNotMatch(source, /wormholeGrainFlowAngle\([^)]*(backgroundViewer|rotatedPoint)/);
-  assert.doesNotMatch(source, /this\.routeRelativeNow[^;]*rotatedPoint|rotatedPoint[^;]*this\.routeRelativeNow/);
 });
 
 test('stars and galaxies fade out through the near-plane zone instead of projecting an unbounded position', () => {
@@ -421,36 +403,20 @@ test('stars and galaxies fade out through the near-plane zone instead of project
   assert.match(source, /wormholeNearPlaneVisibility\(gz, MAX_GALAXY_Z\)/);
   assert.match(source, /STAR_PROJECTION_Z_FLOOR/);
   assert.match(source, /GALAXY_PROJECTION_Z_FLOOR/);
-  assert.match(source, /sAlpha[^;]*nearVisibility/);
+  assert.match(source, /sAlpha[^;]*starNearVisibility/);
   assert.match(source, /gAlpha[^;]*gNearVisibility/);
 });
 
-test('viewer heading compensation is bounded and removes first-order lateral drift', () => {
-  const route = { offsetX: 0.4, offsetY: -0.4, tangentX: 0.8, tangentY: -0.8 };
-  const viewer = { offsetX: 0, offsetY: 0, tangentX: 0.8, tangentY: -0.8 };
-  const relative = grains.wormholeViewerRelativeRoute(route, viewer, 2600);
-  assert.ok(Math.abs(relative.offsetX) < Math.abs(route.offsetX));
-  assert.ok(Math.abs(relative.offsetY) < Math.abs(route.offsetY));
-  assert.ok(Math.abs(relative.offsetX) <= 0.8 && Math.abs(relative.offsetY) <= 0.8);
-  assert.equal(relative.tangentX, 0);
-  assert.equal(relative.tangentY, 0);
-});
-
-test('background route sampling keeps deep layers curved without tunnel depth anchoring', () => {
+test('background route frame keeps deep layers curved without tunnel depth anchoring', () => {
   const distance = 7350;
   const bend = 0.72;
-  const tunnelHorizon = grains.sampleWormholeRoute(distance, 1, bend);
-  const background = grains.sampleWormholeBackgroundRoute(distance, bend);
-  assert.ok(Math.hypot(tunnelHorizon.offsetX, tunnelHorizon.offsetY) > 0.05, JSON.stringify(tunnelHorizon));
-  assert.ok(Math.hypot(background.offsetX, background.offsetY) > 0.1, JSON.stringify(background));
-  assert.ok(
-    Math.abs(tunnelHorizon.offsetX * background.offsetY - tunnelHorizon.offsetY * background.offsetX) <= 1e-12,
-    'foreground far depth must stay on the same centreline as the background'
-  );
-  assert.deepEqual(
-    Object.values(grains.sampleWormholeBackgroundRoute(distance, 0)),
-    [0, 0, 0, 0]
-  );
+  const foreground = grains.sampleWormholeRouteFrame(distance, bend);
+  const background = grains.sampleWormholeRouteFrame(distance, bend);
+  assert.deepEqual(foreground, background);
+  assert.ok(Math.abs(background.headingAngle) > 0.1, JSON.stringify(background));
+  assert.ok(Math.abs(background.positionX) > 10, JSON.stringify(background));
+  assert.equal(grains.sampleWormholeRouteFrame(distance, 0).positionX, 0);
+  assert.equal(grains.sampleWormholeRouteFrame(distance, 0).headingAngle, 0);
 });
 
 test('disabled starfield skips the complete star projection and route-sampling hot path', () => {
@@ -465,19 +431,51 @@ test('disabled starfield skips the complete star projection and route-sampling h
 test('grain projection samples real current and previous route positions without moving the lens', () => {
   const source = readFileSync(join(SRC_ROOT, 'visuals/CosmicWormholeIdentity.ts'), 'utf8');
   assert.match(source, /const cx = backend\.width \/ 2;\s*const cy = backend\.height \/ 2;/);
-  assert.match(source, /sampleWormholeRoute\(distanceNow \+ z, depthT/);
-  assert.match(source, /sampleWormholeRoute\(distancePrev \+ prevZ, prevDepthT/);
-  assert.match(source, /sampleWormholeRoute\(\s*distanceNow \+ VIEWER_ROUTE_LOOKAHEAD/);
-  assert.match(source, /sampleWormholeRoute\(\s*distancePrev \+ VIEWER_ROUTE_LOOKAHEAD/);
-  assert.match(source, /wormholeViewerRelativeRoute\(\s*this\.routePrev,\s*this\.viewerRoutePrev/);
+  assert.match(source, /this\.routePath\.sample\(distanceNow \+ z, this\.routeNow\)/);
+  assert.match(source, /this\.routePath\.sample\(distancePrev \+ prevZ, this\.routePrev\)/);
+  assert.match(source, /this\.routePath\.sample\(distanceNow, this\.baseRouteNow\)/);
+  assert.match(source, /this\.routePath\.sample\(distancePrev, this\.baseRoutePrev\)/);
+  assert.match(source, /wormholeTransitionEnergy\(\s*grain\.seed, frameTick, transitionEnvelope, liveEnergy, depthT/);
   assert.doesNotMatch(source, /distanceNow \+ routeDepthNow|distancePrev \+ routeDepthPrev/);
+  assert.doesNotMatch(source, /wormholeViewerRelativeRoute|FOREGROUND_ROUTE_SCREEN_SCALE/);
   assert.doesNotMatch(source, /cx\s*[+\-]=|cy\s*[+\-]=/);
+});
+
+test('foreground and background projection use pure camera-local transform, no heading-shear compensation', () => {
+  const source = readFileSync(join(SRC_ROOT, 'visuals/CosmicWormholeIdentity.ts'), 'utf8');
+  // The tube/star/galaxy cross-section must come from a plain camera-local dot-product transform
+  // (right/up/forward basis), never an extra heading-delta shear term layered on top of it -- that
+  // shear is exactly what compressed the tube's circular cross-section into an ellipse.
+  assert.doesNotMatch(source, /FOREGROUND_HEADING_COMPENSATION|BACKGROUND_HEADING_COMPENSATION/);
+  assert.doesNotMatch(source, /FOREGROUND_ROUTE_WORLD_SCALE/);
+  assert.doesNotMatch(source, /headingDelta\w*\s*\*\s*z\b|headingDelta\w*\s*\*\s*prevZ\b|headingDelta\w*\s*\*\s*gz\b/);
 });
 
 test('release and sync geometry snapshot the rendered tuning, never the morph target', () => {
   const source = readFileSync(join(SRC_ROOT, 'visuals/CosmicWormholeIdentity.ts'), 'utf8');
   assert.match(source, /snapshotGrainGeometry\(grain, State\.visualTuning\)/);
   assert.doesNotMatch(source, /snapshotGrainGeometry\(grain, State\.targetTuning\)/);
+});
+
+test('transition turbulence is deterministic, per-grain decorrelated, spectral, and depth-local', () => {
+  const seed = 12.9898;
+  const time = 18.25;
+  const a = grains.wormholeTransitionEnergy(seed, time, 1, 0.8, 0.18);
+  const b = grains.wormholeTransitionEnergy(seed, time, 1, 0.8, 0.18);
+  assert.deepEqual(a, b, 'same seed/time/envelope/band/depth must produce identical turbulence');
+  const zero = grains.wormholeTransitionEnergy(seed, time, 0, 0.8, 0.18);
+  assert.equal(JSON.stringify(zero), JSON.stringify(
+    { angularOffset: 0, radiusScale: 1, alphaScale: 1, strokeScale: 1, amplitude: 0 }
+  ), 'zero morph envelope must be an exact no-op');
+
+  const other = grains.wormholeTransitionEnergy(seed + 12.9898, time, 1, 0.8, 0.18);
+  assert.notDeepEqual(a, other, 'different grain seeds need decorrelated phases');
+
+  const quiet = grains.wormholeTransitionEnergy(seed, time, 1, 0.05, 0.18);
+  const deep = grains.wormholeTransitionEnergy(seed, time, 1, 0.8, 0.9);
+  assert.ok(a.amplitude > quiet.amplitude, 'active spectrum band should strengthen transition energy');
+  assert.ok(a.amplitude > deep.amplitude * 2, 'near-camera grains should receive stronger local turbulence than deep grains');
+  assert.ok(a.alphaScale !== 1 || a.strokeScale !== 1, 'transition material flicker should affect alpha/stroke');
 });
 
 test('near-plane visibility culls close grains and projection caps stay finite', () => {
@@ -573,8 +571,8 @@ test('route sampling and draw-time grain projection do not allocate path or grai
   const source = readFileSync(join(SRC_ROOT, 'visuals/CosmicWormholeIdentity.ts'), 'utf8');
   const drawBody = source.slice(source.indexOf('    draw('), source.indexOf('    private travelDistanceAt'));
   assert.doesNotMatch(drawBody, /this\.pool\.push|this\.starPool\.push|this\.galaxyPool\.push|createWormholeGrainCharacter/);
-  assert.match(drawBody, /sampleWormholeRoute\([^;]+, this\.routeNow\)/);
-  assert.match(drawBody, /sampleWormholeRoute\([^;]+, this\.routePrev\)/);
+  assert.match(drawBody, /this\.routePath\.sample\([^;]+, this\.routeNow\)/);
+  assert.match(drawBody, /this\.routePath\.sample\([^;]+, this\.routePrev\)/);
 });
 
 test('tunnel geometry has a canonical phase and no live or oscillating position multiplier', () => {
@@ -586,9 +584,13 @@ test('tunnel geometry has a canonical phase and no live or oscillating position 
   const source = readFileSync(join(SRC_ROOT, 'visuals/CosmicWormholeIdentity.ts'), 'utf8');
   assert.match(source, /const fov = backend\.height \* 1\.2;/);
   assert.match(source, /this\.travelPhase = wrapDepthPhase\(travelDistance \/ Z_REFERENCE\);/);
-  assert.match(source, /const vz = effectiveSpeed \* 10 \* motion\.travelSpeed;/);
+  assert.match(source, /const vz = wormholeTrailSeparation\(canonicalRate, 1\);/);
   assert.match(source, /const radius = 50 \* grain\.releaseRadius;/);
   assert.match(source, /const grainMaxZ = Z_REFERENCE \* grain\.releaseDepth;/);
+  assert.match(source, /const projectedThetaNow = thetaNow \+ transitionEnergyNow\.angularOffset;/);
+  assert.match(source, /const projectedRadiusNow = radius \* transitionEnergyNow\.radiusScale;/);
+  assert.match(source, /\* transitionEnergyNow\.alphaScale/);
+  assert.match(source, /\* transitionEnergyNow\.strokeScale/);
   assert.doesNotMatch(source, /const (fov|diagnosticMaxZ|vz|radius) = [^;]*(perspectiveCompression|depthPulse|densityFill|depthEvolution|perspectiveEvolution)/);
   assert.doesNotMatch(source, /reactiveGrainAlpha = [^;]*(motion\.densityFill|impact)/);
   assert.doesNotMatch(source, /wormholeProjectedStrokeWeight\(\s*\([^)]*impact/);

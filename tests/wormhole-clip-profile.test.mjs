@@ -67,6 +67,30 @@ function readPreset(name) {
 
 const WH_ROLES = ['establish', 'drive', 'spiral', 'sparse', 'punch', 'overdrive', 'drift', 'collapse', 'galaxy', 'dissolve'];
 const MAIN_DRAMATURGY_KEYS = ['intro', 'groove', 'tension', 'build', 'fake-drop', 'release', 'peak', 'breakdown', 'outro', 'default'];
+const WORMHOLE_TUNING_KEYS = [
+  'wormholeRadius',
+  'wormholeDepth',
+  'wormholeSpeed',
+  'wormholeWarp',
+  'wormholeCurve',
+  'wormholePathBend',
+  'wormholePathBendVertical',
+  'wormholeRing',
+  'wormholeDepthCoherence',
+  'wormholeContinuity',
+  'wormholeStarfield',
+  'wormholeGalaxy',
+  'wormholeSkybox',
+  'wormholeEmissionMode',
+  'wormholeJitter'
+];
+const WORMHOLE_BACKGROUND_MASTER_KEYS = ['wormholeStarfield', 'wormholeGalaxy', 'wormholeSkybox'];
+// `wormholePathBendVertical` defaults to zero for the family. Task 11 authors it only on the
+// galaxy reveal, so it remains optional while still being an owned wormhole tuning key.
+const WORMHOLE_UNPRESETED_KEYS = ['wormholePathBendVertical'];
+const WORMHOLE_FACTORY_PRESET_KEYS = WORMHOLE_TUNING_KEYS.filter(
+  (key) => !WORMHOLE_BACKGROUND_MASTER_KEYS.includes(key) && !WORMHOLE_UNPRESETED_KEYS.includes(key)
+);
 
 // -- Preset family contract ----------------------------------------------------
 
@@ -85,12 +109,53 @@ test('all 10 wormhole clip presets exist, are registered, and cover every clip r
   }
 });
 
-test('no wormhole clip preset touches the global starfield/galaxy masters', () => {
+test('every wormhole clip preset carries the route/grain wormhole role keys explicitly and leaves background masters global', () => {
   for (const name of WH_PRESET_FILES) {
     const tuning = readPreset(name).visualTuning ?? {};
-    assert.ok(!('wormholeStarfield' in tuning), `${name} must not write wormholeStarfield`);
-    assert.ok(!('wormholeGalaxy' in tuning), `${name} must not write wormholeGalaxy`);
+    for (const key of WORMHOLE_FACTORY_PRESET_KEYS) {
+      assert.ok(key in tuning, `${name} must explicitly carry ${key}`);
+    }
+    for (const key of WORMHOLE_BACKGROUND_MASTER_KEYS) {
+      assert.ok(!(key in tuning), `${name} must not reset user-global ${key}`);
+    }
   }
+});
+
+test('identity tuning registry owns wormhole keys once and filters only automation foreign writes', () => {
+  const registry = load('config/identityTuningRegistry.ts');
+  assert.deepEqual(Array.from(registry.ownedTuningKeysForIdentity('cosmic-wormhole')), WORMHOLE_TUNING_KEYS);
+  for (const key of WORMHOLE_TUNING_KEYS) {
+    assert.equal(registry.ownerForTuningKey(key), 'cosmic-wormhole', `${key} owner`);
+  }
+
+  const generic = registry.filterForeignIdentityTuningForAutomation({
+    visualTuning: {
+      wormholeDepth: 4,
+      wormholePathBend: 0.7,
+      lineAlpha: 1.2
+    }
+  }, 'cosmic-wormhole');
+  assert.equal(JSON.stringify(generic.visualTuning), JSON.stringify({ wormholeDepth: 4, wormholePathBend: 0.7, lineAlpha: 1.2 }));
+
+  const foreign = registry.filterForeignIdentityTuningForAutomation({
+    visualMode: 'temporal',
+    visualTuning: {
+      wormholeDepth: 4,
+      wormholePathBend: 0.7,
+      lineAlpha: 1.2
+    }
+  }, 'cosmic-wormhole');
+  assert.equal(JSON.stringify(foreign.visualTuning), JSON.stringify({ lineAlpha: 1.2 }));
+
+  const authored = registry.filterForeignIdentityTuningForAutomation({
+    visualMode: 'cosmic-wormhole',
+    visualTuning: {
+      wormholeDepth: 4,
+      wormholePathBend: 0.7,
+      lineAlpha: 1.2
+    }
+  }, 'cosmic-wormhole');
+  assert.equal(JSON.stringify(authored.visualTuning), JSON.stringify({ wormholeDepth: 4, wormholePathBend: 0.7, lineAlpha: 1.2 }));
 });
 
 test('every wormhole clip preset pins visualMode to cosmic-wormhole', () => {
@@ -102,27 +167,25 @@ test('every wormhole clip preset pins visualMode to cosmic-wormhole', () => {
 test('all presets stay visible and ring quantization is limited to authored ring roles', () => {
   for (const role of WH_ROLES) {
     const tuning = readPreset(`vos-wh-${role}.json`).visualTuning;
-    const floor = role === 'dissolve' ? 0.95 : 1.05;
+    const floor = 1.25;
     assert.ok(tuning.lineAlpha >= floor, `${role} remains visibly above the opacity floor`);
-    if (role !== 'collapse' && role !== 'sparse') {
+    if (role !== 'collapse') {
       assert.equal(tuning.wormholeRing, 0, `${role} does not quantize depth into rings`);
     }
   }
   const collapse = readPreset('vos-wh-collapse.json').visualTuning;
-  const sparse = readPreset('vos-wh-sparse.json').visualTuning;
   assert.ok(collapse.wormholeRing >= 0.25 && collapse.wormholeRing <= 0.4, 'collapse ring compression stays restrained');
-  assert.ok(sparse.wormholeRing >= 0.8, 'sparse role intentionally uses strong ring segmentation');
 });
 
 test('weak roles pin a deep-perspective depth and continuity profile', () => {
   const expected = {
     establish: [3.4, 1.1],
-    drive: [2.6, 1.35],
+    drive: [2.8, 1.35],
     spiral: [3.0, 1.45],
-    sparse: [4.7, 0.15],
+    sparse: [4.7, 2.0],
     drift: [5.0, 1.55],
     galaxy: [4.6, 2.0],
-    dissolve: [4.2, 1.0]
+    dissolve: [4.2, 0.9]
   };
   for (const [role, [depth, continuity]] of Object.entries(expected)) {
     const tuning = readPreset(`vos-wh-${role}.json`).visualTuning;
@@ -136,12 +199,18 @@ test('clip roles have materially different wormhole behaviour (role-level contra
 
   // Straight drive stays perfectly straight; the spiral build twists past it.
   assert.equal(p.drive.wormholeCurve, 0, 'straight drive must remain exactly straight');
+  assert.equal(p.drive.wormholePathBend, 0, 'straight drive keeps a fixed route');
   assert.ok(p.spiral.wormholeWarp > p.drive.wormholeWarp, 'spiral build exceeds straight-drive warp');
+  assert.ok(p.spiral.wormholePathBend > p.drive.wormholePathBend, 'spiral restores a curved route');
 
-  // The punch hits harder than the groove drive; overdrive tops the punch.
+  // Impact is carried by forward speed/material: punch keeps a stable line of action, while
+  // overdrive may bank and spiral remains the dedicated hero turn.
   assert.ok(p.punch.wormholeSpeed > p.drive.wormholeSpeed, 'tunnel punch outruns the drive');
   assert.ok(p.overdrive.wormholeJitter >= 0.8, 'overdrive carries controlled jitter');
   assert.ok(p.overdrive.wormholeSpeed >= p.punch.wormholeSpeed, 'overdrive tops the punch speed');
+  assert.ok(p.spiral.wormholePathBend > p.overdrive.wormholePathBend, 'spiral owns the strongest readable route bend');
+  assert.equal(p.punch.wormholePathBend, 0, 'tunnel punch stays axis-locked for a readable impact');
+  assert.ok(p.overdrive.wormholePathBend > p.galaxy.wormholePathBend, 'overdrive intensifies the galaxy arc');
   assert.ok(p.spiral.wormholeWarp <= 1.9 && p.spiral.wormholeCurve <= 0.32, 'spiral avoids centrifuge motion');
   assert.ok(p.punch.wormholeWarp <= 2.2, 'punch keeps speed without excessive spin');
   assert.ok(p.overdrive.wormholeWarp <= 2.6, 'overdrive keeps speed without excessive spin');
@@ -153,26 +222,35 @@ test('clip roles have materially different wormhole behaviour (role-level contra
     assert.ok(p.drift.wormholeSpeed < p[role].wormholeSpeed, `deep drift slower than ${role}`);
   }
 
-  // Sparse break uses continuous emission with strong segmentation; collapse stays restrained.
-  assert.equal(p.sparse.wormholeEmissionMode, 0, 'sparse break keeps its segmented field continuously emissive');
-  assert.ok(p.sparse.wormholeRing >= 0.8, 'sparse break owns strong ring segmentation');
+  // Sparse break uses a small burst population with long streaks; collapse owns ring compression.
+  assert.equal(p.sparse.wormholeEmissionMode, 2, 'sparse break emits only a small grain population');
+  assert.equal(p.sparse.wormholeRing, 0, 'sparse break preserves open depth instead of becoming rings');
+  assert.ok(p.sparse.wormholeContinuity >= 2, 'sparse break keeps long readable streaks');
+  assert.ok(p.sparse.wormholeDepthCoherence > 0, 'sparse break retains segmented/ribbed structure');
   assert.ok(p.collapse.wormholeRing >= 0.25, 'collapse retains restrained ring compression');
+  assert.ok(p.collapse.wormholeDepthCoherence >= 0.7, 'collapse retains compressed structural coherence');
+  assert.equal(p.collapse.wormholePathBend, 0, 'collapse recentres while ring compression carries the transition');
+  assert.equal(p.sparse.wormholePathBend, 0, 'sparse break restores stable negative space');
+  assert.equal(p.establish.wormholePathBend, 0, 'establish presents the space on a stable axis');
+  assert.equal(p.dissolve.wormholePathBend, 0, 'dissolve exits without introducing a final camera turn');
+  assert.ok(p.galaxy.wormholePathBend > p.drift.wormholePathBend, 'galaxy reveal owns a broader arc than deep drift');
   for (const role of WH_ROLES) {
-    if (role === 'collapse' || role === 'sparse') continue;
+    if (role === 'collapse') continue;
     assert.ok(p.collapse.wormholeRing > p[role].wormholeRing, `collapse ring alignment above ${role}`);
   }
 
-  // Galaxy reveal owns the longest streaks at low speed; dissolve remains dim but readable.
+  // Galaxy reveal shares the maximum allowed streak continuity with sparse; dissolve remains dim but readable.
   for (const role of WH_ROLES) {
-    if (role === 'galaxy') continue;
+    if (role === 'galaxy' || role === 'sparse') continue;
     assert.ok(p.galaxy.wormholeContinuity > p[role].wormholeContinuity, `galaxy streaks longer than ${role}`);
   }
+  assert.equal(p.galaxy.wormholeContinuity, p.sparse.wormholeContinuity, 'galaxy and sparse share the control-safe continuity maximum');
   assert.ok(p.galaxy.wormholeSpeed < 1, 'galaxy reveal is a slow glide');
   for (const role of WH_ROLES) {
     if (role === 'dissolve') continue;
-    assert.ok(p.dissolve.lineAlpha < p[role].lineAlpha, `dissolve dimmer than ${role}`);
+    assert.ok(p.dissolve.lineAlpha <= p[role].lineAlpha, `dissolve no brighter than ${role}`);
   }
-  assert.ok(p.dissolve.wormholeContinuity >= 1, 'dissolve retains visible perspective trails');
+  assert.ok(p.dissolve.wormholeContinuity >= 0.9, 'dissolve retains shortened but visible perspective trails');
 
   // The whole family stays pairwise distinct on the motion-character tuple.
   const tuples = WH_ROLES.map((role) => JSON.stringify([
@@ -183,6 +261,89 @@ test('clip roles have materially different wormhole behaviour (role-level contra
     p[role].wormholeWarp
   ]));
   assert.equal(new Set(tuples).size, WH_ROLES.length, 'clip family pairwise distinct');
+});
+
+test('impact roles respect minimum projection-safe geometry', () => {
+  for (const role of ['punch', 'overdrive', 'collapse']) {
+    const tuning = readPreset(`vos-wh-${role}.json`).visualTuning;
+    assert.ok(tuning.wormholeDepth >= 2.2, `${role} keeps sufficient horizon depth`);
+    assert.ok(tuning.wormholeRadius >= 0.75, `${role} keeps a projection-safe radius`);
+    assert.ok(tuning.lineWeight <= 1.25, `${role} keeps authored stroke weight controlled`);
+  }
+});
+
+test('authored wormhole preset pairs form the requested contrast matrix', () => {
+  const p = Object.fromEntries(WH_ROLES.map((role) => [role, readPreset(`vos-wh-${role}.json`).visualTuning]));
+  assert.ok(p.punch.wormholeSpeed >= p.drive.wormholeSpeed * 1.5, 'drive -> punch is a speed jump');
+  assert.ok(p.overdrive.wormholeWarp > p.spiral.wormholeWarp, 'spiral -> overdrive raises warp');
+  assert.ok(p.overdrive.wormholeJitter > p.spiral.wormholeJitter * 4, 'spiral -> overdrive raises jitter');
+  assert.ok(p.sparse.wormholeEmissionMode > p.galaxy.wormholeEmissionMode, 'sparse -> galaxy opens the field');
+  assert.ok(p.galaxy.wormholeContinuity >= p.sparse.wormholeContinuity, 'sparse -> galaxy maintains maximum streak continuity');
+  assert.ok(p.collapse.wormholeRing > p.drive.wormholeRing, 'collapse -> drive releases ring compression');
+  assert.equal(p.drive.wormholeCurve, 0, 'collapse -> drive resolves to straight perspective');
+  assert.ok(p.overdrive.wormholeSpeed > p.drift.wormholeSpeed * 10, 'overdrive -> drift is a deep slowdown');
+});
+
+test('Task11 assigns left, right, and diagonal route cues while preserving mirrorable hero turns', () => {
+  const p = Object.fromEntries(WH_ROLES.map((role) => [role, readPreset(`vos-wh-${role}.json`).visualTuning]));
+  const pack = STYLE_PACKS.packs.find((candidate) => candidate.id === 'cosmic-wormhole');
+
+  assert.equal(p.drift.wormholePathBend, -0.16, 'deep drift uses the authored left arc');
+  assert.equal(p.galaxy.wormholePathBend, 0.22, 'galaxy reveal keeps its authored right arc');
+  assert.equal(p.galaxy.wormholePathBendVertical, 0.12, 'galaxy reveal adds a gentle upward diagonal');
+  assert.ok(p.spiral.wormholePathBend > 0 && p.overdrive.wormholePathBend > 0, 'hero turns retain right-hand authored magnitudes');
+  assert.equal(pack.targetMap['wormhole.spiral-build'].mirrorable, true, 'spiral remains mirrorable');
+  assert.equal(pack.targetMap['wormhole.overdrive-peak'].mirrorable, true, 'overdrive remains mirrorable');
+});
+
+test('cosmic variant pairs use only wormhole action handles', () => {
+  const pack = STYLE_PACKS.packs.find((candidate) => candidate.id === 'cosmic-wormhole');
+  for (const [situation, variants] of Object.entries(pack.variantPairs)) {
+    for (const variant of variants) {
+      for (const key of ['primary', 'secondary', 'release']) {
+        if (!variant[key]) continue;
+        assert.match(variant[key], /^wormhole\./, `${situation}.${key} remains in wormhole vocabulary`);
+      }
+    }
+  }
+
+  const expectedPairs = {
+    'groove-sustain': ['wormhole.straight-drive', 'wormhole.tunnel-punch'],
+    'buildup-ramp': ['wormhole.spiral-build', 'wormhole.overdrive-peak'],
+    'breakdown-long': ['wormhole.sparse-break', 'wormhole.reveal-galaxy'],
+    'transition-release': ['wormhole.collapse-transition', 'wormhole.straight-drive'],
+    'peak-sustain': ['wormhole.overdrive-peak', 'wormhole.deep-drift']
+  };
+  for (const [situation, [primary, secondary]] of Object.entries(expectedPairs)) {
+    assert.equal(pack.variantPairs[situation][0].primary, primary, `${situation} primary`);
+    assert.equal(pack.variantPairs[situation][0].secondary, secondary, `${situation} secondary`);
+  }
+});
+
+test('cosmic variant-pair pacing ranges are valid authored bounds', () => {
+  const pack = STYLE_PACKS.packs.find((candidate) => candidate.id === 'cosmic-wormhole');
+  for (const [situation, variants] of Object.entries(pack.variantPairs)) {
+    for (const pair of variants) {
+      assert.ok(Number.isFinite(pair.minSegmentSec) && pair.minSegmentSec > 0, `${situation} has a positive minimum`);
+      assert.ok(Number.isFinite(pair.maxSegmentSec) && pair.minSegmentSec <= pair.maxSegmentSec, `${situation} has an ordered range`);
+    }
+  }
+});
+
+test('wormhole morph floor is deterministic, calibrated, and capped', () => {
+  const { wormholeMorphDurationFloor, WORMHOLE_MORPH_FLOOR_CAP } = load('automation/morphFloor.ts');
+  assert.ok(wormholeMorphDurationFloor(8.7, 0) >= 1.3, 'large speed delta raises morph time');
+  assert.ok(wormholeMorphDurationFloor(0, 0.72) >= 1.15, 'large bend delta raises morph time');
+  assert.equal(wormholeMorphDurationFloor(0, 0), 0, 'no wormhole delta adds no floor');
+  assert.equal(wormholeMorphDurationFloor(100, 100), WORMHOLE_MORPH_FLOOR_CAP, 'floor cap applies');
+});
+
+test('the wormhole morph floor is automation-only and can only raise the point morph', () => {
+  const dashboard = readFileSync(join(SRC_ROOT, 'ui/DashboardUI.ts'), 'utf8');
+  const method = dashboard.match(/private applyPerformancePreset\([\s\S]*?\r?\n    \}\r?\n\r?\n    private isPerformanceAutomationPlan/);
+  assert.ok(method, 'isolates the preset application method');
+  assert.match(method[0], /if \(options\.overrideMorph\) applyAutomationMorphAuthority\(State\.targetTuning, options\.overrideMorph\);\r?\n        if \(options\.automationPointId && options\.overrideMorph\) \{[\s\S]*?State\.targetTuning\.morphDurationSec = Math\.max\(\s*options\.overrideMorph\.morphDurationSec,\s*wormholeMorphDurationFloor\(deltaSpeed, deltaBend\)/);
+  assert.match(dashboard, /onPresetLoad: \(fileName\) => \{ void this\.loadVisualPreset\(fileName\); \}/);
 });
 
 // -- Style pack contract --------------------------------------------------------

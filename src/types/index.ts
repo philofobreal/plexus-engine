@@ -127,6 +127,11 @@ export interface VisualTuningConfig {
     wormholeSpeed: number;
     wormholeWarp: number;
     wormholeCurve: number;
+    /** Signed route bend: [-1, 1], negative = left, positive = right, mirror-symmetric around 0. */
+    wormholePathBend: number;
+    /** Signed vertical route bend: [-1, 1], negative = down, positive = up; combines with
+     *  `wormholePathBend` into a diagonal turn via an independent screen-Y steering integrator. */
+    wormholePathBendVertical: number;
     wormholeRing: number;
     wormholeDepthCoherence: number;
     wormholeContinuity: number;
@@ -204,6 +209,9 @@ export interface PerformanceAutomationPoint {
     morphDurationSec: number;
     morphCurve: 'linear' | 'easeInOut' | 'exponential';
     locked?: boolean;
+    // Automation-only behaviour flag: mirror the resolved preset's horizontal wormhole turn.
+    // Absent for legacy plans and targets whose authored direction is part of their identity.
+    bendMirror?: boolean;
     // Optional Visual OS provenance (ADR-005). Renderer-independent; safe to omit.
     meta?: PerformanceAutomationMeta;
 }
@@ -693,6 +701,8 @@ export interface StyleTargetReference {
     preset: string;          // preset filename, e.g. "temporal3.json"
     intensityScale?: number; // optional multiplier the adapter applies to point intensity
     morphCurve?: 'linear' | 'easeInOut' | 'exponential';
+    // The target's horizontal turn direction may be mirrored; set only on direction-carrying presets.
+    mirrorable?: boolean;
 }
 
 export interface StyleSubstyleDefinition {

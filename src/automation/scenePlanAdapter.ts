@@ -36,7 +36,9 @@ import { adaptAutomationEnvelopeToDynamics, adaptMorphCurveToDynamics, computeTr
 // concrete preset (via the resolved pack's targetMap). For each scene it resolves a behaviour
 // VOCABULARY (opaque handles) from the pack, asks the Micro-Choreography planner for a set of
 // timed, enveloped segments, then turns each segment's AutomationEnvelope into one (or two)
-// PerformanceAutomationPoints. It is pure and MUST NOT import or write `src/state/`.
+// PerformanceAutomationPoints. It is pure and MUST NOT import or write `src/state/`. Direction
+// mirroring is emitted only as the renderer-agnostic `bendMirror` behaviour flag; the adapter
+// never emits tuning keys or tuning values.
 
 export interface SceneAdapterOptions {
     duration?: number;
@@ -113,6 +115,7 @@ interface RawPoint {
     morph: number;
     curve: PerformanceAutomationPoint['morphCurve'];
     meta: PerformanceAutomationMeta;
+    bendMirror?: boolean;
 }
 
 // Behaviour vocabulary resolved for one scene: an ordered list of OPAQUE handles plus a
@@ -120,6 +123,7 @@ interface RawPoint {
 interface ResolvedVocabulary {
     handles: string[];
     id: string;
+    segmentSecRange?: { min: number; max: number };
 }
 
 export function adaptScenePlanToPerformancePlan(
@@ -144,6 +148,9 @@ export function adaptScenePlanToPerformancePlan(
     // right after a build") and the vocabulary ids already used (cross-scene rotation).
     let previousNarrative: NarrativeType | null = null;
     const recentVocabularyIds: string[] = [];
+    // Adapter-local direction history: it is recreated for every pure adaptation, so it cannot
+    // leak variation across exports, seeks, or tracks.
+    const recentMirrorSigns: number[] = [];
 
     plan.scenes.forEach((scene, index) => {
         const ref = resolveTargetReference(scene, pack);
@@ -191,7 +198,7 @@ export function adaptScenePlanToPerformancePlan(
 
         const choreo = planMicroChoreography(
             { situation, startSec: scene.timeSec, durationSec: scene.durationSec, behaviour: scene.behaviour, narrative, vocabulary: vocab.handles, vocabularyId: vocab.id, movementVocabulary },
-            { variation, activityCap: maxPerScene, activityDensityScale: densityScale, tempo, memory: memoryState, longSceneSections },
+            { variation, activityCap: maxPerScene, activityDensityScale: densityScale, tempo, memory: memoryState, longSceneSections, segmentSecRange: vocab.segmentSecRange },
             { trackSeed, sceneIndex: index }
         );
         memory.record(choreo);
@@ -199,6 +206,9 @@ export function adaptScenePlanToPerformancePlan(
         let emittedScenePoints = 0;
         choreo.segments.forEach((seg) => {
             const segRef = resolveTargetKey(seg.target, scene.substyle, pack);
+            const mirrorSign = segRef.mirrorable
+                ? resolveMirrorSign(trackSeed, index, seg.index, recentMirrorSigns)
+                : undefined;
             const dynamics = computeTransitionDynamicsProfile({ analysis: options.analysis, timeSec: scene.timeSec + seg.offsetSec });
             const env = adaptAutomationEnvelopeToDynamics(seg.envelope, dynamics);
 
@@ -222,7 +232,8 @@ export function adaptScenePlanToPerformancePlan(
                 curve: isBirth
                     ? (sceneCurve.isExplicit ? sceneCurve.curve : adaptMorphCurveToDynamics(sceneCurve.curve, dynamics))
                     : (segRef.morphCurve ?? adaptMorphCurveToDynamics('easeInOut', dynamics)),
-                meta: choreoMeta(sceneMeta, attackPhase, vocab.id, seg.role, seg.movementGesture, seg.longScenePhase, effectivePackId, seg.target)
+                meta: choreoMeta(sceneMeta, attackPhase, vocab.id, seg.role, seg.movementGesture, seg.longScenePhase, effectivePackId, seg.target),
+                ...(mirrorSign === undefined ? {} : { bendMirror: mirrorSign < 0 })
             });
             emittedScenePoints++;
 
@@ -246,7 +257,8 @@ export function adaptScenePlanToPerformancePlan(
                     confidence: clamp01(0.35 + relLevel * 0.4),
                     morph: clamp(env.releaseSec, 0.1, 20),
                     curve: 'easeInOut',
-                    meta: choreoMeta(sceneMeta, relPhase, vocab.id, 'release', seg.movementGesture, seg.longScenePhase, effectivePackId, seg.target)
+                    meta: choreoMeta(sceneMeta, relPhase, vocab.id, 'release', seg.movementGesture, seg.longScenePhase, effectivePackId, seg.target),
+                    ...(mirrorSign === undefined ? {} : { bendMirror: mirrorSign < 0 })
                 });
                 emittedScenePoints++;
             }
@@ -313,9 +325,15 @@ function resolveBehaviourVocabulary(
     const pair = selectVariantPair(pairMap[situation], recentVocabularyIds);
     if (pair) {
         const handles = [pair.primary, pair.secondary, pair.release].filter((h): h is string => typeof h === 'string' && h.length > 0);
-        if (handles.length > 0) return { handles, id: pair.id };
+        if (handles.length > 0) return { handles, id: pair.id, segmentSecRange: validSegmentSecRange(pair) };
     }
     return { handles: [narrative], id: `narrative:${narrative}` };
+}
+
+function validSegmentSecRange(pair: StyleVariantPairDefinition): { min: number; max: number } | undefined {
+    const min = pair.minSegmentSec;
+    const max = pair.maxSegmentSec;
+    return Number.isFinite(min) && Number.isFinite(max) && min > 0 && min <= max ? { min, max } : undefined;
 }
 
 // Deterministic vocabulary selection across a situation's authored variant pairs: pick the
@@ -356,6 +374,19 @@ function resolveTargetReference(scene: VisualScene, pack: ResolvedStylePack): St
 function resolveTargetKey(key: string, substyle: string | undefined, pack: ResolvedStylePack): StyleTargetReference {
     const map = substyle && pack.substyles[substyle] ? pack.substyles[substyle].targetMap : pack.targetMap;
     return map[key] ?? pack.targetMap[key] ?? map.default ?? pack.targetMap.default ?? DEFAULT_TARGET;
+}
+
+function resolveMirrorSign(trackSeed: number, sceneIndex: number, segmentIndex: number, recentSigns: number[]): number {
+    let hash = 2166136261 >>> 0;
+    for (const value of [trackSeed, sceneIndex, segmentIndex]) {
+        hash ^= value >>> 0;
+        hash = Math.imul(hash, 16777619) >>> 0;
+    }
+    let sign = (hash & 1) === 0 ? 1 : -1;
+    const last = recentSigns.length - 1;
+    if (last >= 1 && recentSigns[last] === recentSigns[last - 1]) sign = -recentSigns[last];
+    recentSigns.push(sign);
+    return sign;
 }
 
 function narrativeKeyOf(handle: string): NarrativeType {
@@ -436,7 +467,8 @@ function finalize(raw: RawPoint[], stylePack: string): PerformanceAutomationPlan
             reason: point.reason,
             morphDurationSec: morph,
             morphCurve: morph < 0.2 ? 'linear' : point.curve,
-            meta: point.meta
+            meta: point.meta,
+            ...(point.bendMirror === undefined ? {} : { bendMirror: point.bendMirror })
         };
     });
     return { version: 1, source: 'auto', points };

@@ -800,10 +800,50 @@ function planChoreo(situation, durationSec, vocabulary, mode, overrides = {}) {
   const behaviour = overrides.behaviour ?? { energy: 0.8, density: 0.5, motion: 0.5, volatility: 0.3, cohesion: 0.5 };
   return planMicroChoreography(
     { situation, startSec: overrides.startSec ?? 0, durationSec, behaviour, vocabulary, vocabularyId: 'vid' },
-    { variation: variationProfileFor(mode), activityCap: overrides.activityCap ?? 8, tempo: overrides.tempo ?? NEUTRAL_TEMPO },
+    { variation: variationProfileFor(mode), activityCap: overrides.activityCap ?? 8, tempo: overrides.tempo ?? NEUTRAL_TEMPO, segmentSecRange: overrides.segmentSecRange },
     { trackSeed: overrides.trackSeed ?? 42, sceneIndex: overrides.sceneIndex ?? 0 }
   );
 }
+
+test('variant-pair pacing reaches the planner while range-less pacing keeps its saved output', () => {
+  const baseline = {
+    situation: 'drop-long', vocabularyId: 'vid', segments: [
+      { index: 0, offsetSec: 0, durationSec: 6, role: 'primary', target: 'drop.primary', movementGesture: 'drive', intensityScale: 1.1444999999999999, envelope: { attackSec: 0.3655634072338343, sustainSec: 2.7534725511754115, releaseSec: 1.1876139971986412, cooldownSec: 1.693350044392114 } },
+      { index: 1, offsetSec: 6, durationSec: 6, role: 'secondary', target: 'drop.counter', movementGesture: 'slice', intensityScale: 0.9809999999999999, envelope: { attackSec: 0.4843640003764629, sustainSec: 2.575763554153308, releaseSec: 1.355811138264835, cooldownSec: 1.5840613072053942 } }
+    ]
+  };
+  assert.equal(JSON.stringify(planChoreo('drop-long', 12, ['drop.primary', 'drop.counter'], 'paired', { activityCap: 4 })), JSON.stringify(baseline), 'no range follows the pre-pacing fixture exactly');
+
+  const ranged = planChoreo('drop-long', 34, ['drop.primary', 'drop.counter'], 'expressive', {
+    activityCap: 8,
+    segmentSecRange: { min: 5, max: 11 }
+  });
+  for (const segment of ranged.segments) {
+    assert.ok(segment.durationSec >= 5 - 1e-6, `pair minimum is respected (${segment.durationSec}s)`);
+    assert.ok(segment.durationSec <= 11 + 1e-6, `pair maximum is respected (${segment.durationSec}s)`);
+  }
+
+  const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
+  const pairPack = makePack({
+    targetMap: {
+      release: { preset: 'release.json' },
+      'drop.primary': { preset: 'primary.json' },
+      'drop.counter': { preset: 'counter.json' },
+      default: { preset: 'default.json' }
+    },
+    behaviourVocabulary: {},
+    movementVocabulary: {},
+    variantPairs: {
+      'drop-long': [{ id: 'pair-5-11', primary: 'drop.primary', secondary: 'drop.counter', alternation: 'A-B', minSegmentSec: 5, maxSegmentSec: 11, intensityShape: 'pulse' }]
+    }
+  });
+  const adapted = adaptScenePlanToPerformancePlan(
+    { version: 1, stylePack: 'test-pack', scenes: [makeVariantScene(0, 34, 'release', 'test-pack')] },
+    pairPack,
+    { duration: 34, variantMode: 'expressive', maxWaypointsPerScene: 8, tempo: NEUTRAL_TEMPO }
+  );
+  assert.ok(adapted.points.length > 0 && adapted.points.every((point) => point.meta.vocabularyId === 'pair-5-11'), 'adapter selects and forwards the authored pair');
+});
 
 test('micro-choreography planner always returns a plan whose envelopes fill each segment exactly', () => {
   // Stable mode, a short scene, and an empty vocabulary all yield a usable plan (never null/empty).
@@ -1030,6 +1070,40 @@ test('release roles scale with releaseFrequency (expressive >> stable) across th
   const stable = countReleases('stable');
   assert.ok(expressive >= 1, `expressive emits release roles across scenes (${expressive})`);
   assert.ok(expressive > stable, `expressive releases far more than stable (${expressive} vs ${stable})`);
+});
+
+test('mirrorable targets receive deterministic horizontal directions with no three-sign run', () => {
+  const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
+  const pack = makePack({
+    targetMap: {
+      default: { preset: 'default.json' },
+      mirror: { preset: 'mirror.json', mirrorable: true },
+      plain: { preset: 'plain.json' }
+    },
+    behaviourVocabulary: {
+      'buildup-ramp': ['mirror'],
+      'groove-sustain': ['plain']
+    },
+    variantPairs: {},
+    movementVocabulary: {}
+  });
+  const scenes = Array.from({ length: 6 }, (_, index) => makeScene(index * 12, 12, 'build', 'test-pack'));
+  scenes.push(makeScene(72, 24, 'groove', 'test-pack'));
+  const scenePlan = { version: 1, stylePack: 'test-pack', scenes };
+  const options = { duration: 100, maxWaypointsPerScene: 1, trackSeed: 4815162342 };
+  const first = adaptScenePlanToPerformancePlan(scenePlan, pack, options);
+  const second = adaptScenePlanToPerformancePlan(scenePlan, pack, options);
+  assert.equal(JSON.stringify(first), JSON.stringify(second), 'same analysis and pack serialize identically');
+
+  const mirrored = first.points.filter((point) => point.preset === 'mirror.json');
+  assert.equal(mirrored.length, 6, 'six mirrorable activations are emitted');
+  const signs = mirrored.map((point) => point.bendMirror ? -1 : 1);
+  for (let index = 2; index < signs.length; index++) {
+    assert.notEqual(signs[index - 2], signs[index - 1], `third repeated sign at activation ${index}`);
+  }
+  for (const point of first.points.filter((point) => point.preset === 'plain.json')) {
+    assert.equal(Object.hasOwn(point, 'bendMirror'), false, 'non-mirrorable points omit the flag');
+  }
 });
 
 test('every style-pack targetMap preset is registered in the preset manifest', () => {

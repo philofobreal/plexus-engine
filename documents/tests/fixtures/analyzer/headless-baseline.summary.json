@@ -1,0 +1,82 @@
+{
+  "fixture": {
+    "id": "synthetic-vst-saas-contract-v1",
+    "sampleRate": 44100,
+    "totalSamples": 98304,
+    "algorithmVersion": 2,
+    "phraseSize": 8,
+    "requestId": 9001
+  },
+  "summary": {
+    "requestId": 9001,
+    "bpm": 120,
+    "bpmConfidence": 0.182048,
+    "gridConfidence": 0.225672,
+    "downbeatConfidence": 0.207702,
+    "tempoCandidateCount": 5,
+    "topTempoCandidate": {
+      "bpm": 120,
+      "score": 0.78848,
+      "intervalSec": 0.5,
+      "peakCount": 1,
+      "isHalfTime": false,
+      "isDoubleTime": false
+    },
+    "adaptiveThreshold": 0.6,
+    "hopSize": 1024,
+    "frameCount": 96,
+    "eventCount": 7,
+    "barCount": 2,
+    "sectionCount": 2,
+    "patternCount": 0,
+    "cueCount": 1,
+    "significantMomentCount": 0,
+    "featureCount": 96,
+    "buildupCount": 96,
+    "spectralPivotCount": 96,
+    "featureHopSize": 1024,
+    "gridOffset": 1.996916,
+    "trackBpmConfidence": 0.182048,
+    "trackGridConfidence": 0.225672,
+    "trackDownbeatConfidence": 0.207702,
+    "trackTempoCandidateCount": 5,
+    "duration": 2.229116,
+    "firstFrame": {
+      "e": 0.996872,
+      "densityProj": 1,
+      "melodyProj": 0.347833,
+      "fxProj": 0.151396,
+      "state": "LOW",
+      "eRatio": 0
+    },
+    "midFrame": {
+      "e": 0.496756,
+      "densityProj": 0.081767,
+      "melodyProj": 0.523013,
+      "fxProj": 0.007878,
+      "state": "LOW",
+      "eRatio": 0
+    },
+    "firstEvent": {
+      "time": 0.487619,
+      "intensity": 0.491166,
+      "type": 1
+    },
+    "firstSection": {
+      "start": 0,
+      "end": 1.996916,
+      "label": "intro",
+      "energy": 0,
+      "density": 0.130377,
+      "dominantFeature": "melody",
+      "avgRms": 0,
+      "peakRms": 1
+    },
+    "tensionTrends": {
+      "globalSlope": -0.416337,
+      "peakTime": 0,
+      "peakValue": 0.721034,
+      "segmentCount": 1
+    }
+  }
+}

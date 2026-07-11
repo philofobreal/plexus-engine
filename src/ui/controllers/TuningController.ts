@@ -110,7 +110,7 @@ export class TuningController {
                    </select>`
                 : `<input type="range" min="${control.min}" max="${control.max}" step="${control.step}" value="${value}" data-tuning-key="${control.key}" aria-label="${control.label}">`;
             row.innerHTML = `
-                <span class="tuning-label">${control.label}</span>
+                <span class="tuning-label"${control.description ? ` title="${this.escapeHtml(control.description)}"` : ''}>${this.escapeHtml(control.label)}</span>
                 ${controlMarkup}
                 <output id="${valueId}" class="tuning-value">${this.formatControlValue(value, control)}</output>
             `;

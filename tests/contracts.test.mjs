@@ -209,8 +209,10 @@ test('performance automation contracts and state are exposed and reset', () => {
   assert.match(store, /videoDominantColor: \{ \.\.\.emptyVideoDominantColor \} as VideoDominantColor/);
   assert.match(store, /performancePlan: null as PerformanceAutomationPlan \| null/);
   assert.match(store, /editedPerformancePlan: null as PerformanceAutomationPlan \| null/);
+  assert.match(store, /performancePlanEdited: false/);
   assert.match(audio, /State\.performancePlan = null/);
   assert.match(audio, /State\.editedPerformancePlan = null/);
+  assert.match(audio, /State\.performancePlanEdited = false/);
   assert.match(ui, /import \{ generatePerformancePlan.*\} from '\.\.\/automation\/performancePlanGenerator'/);
   assert.match(ui, /State\.availablePresets = presets/);
   // Plan generation is routed through generatePlan(): the ADR-005 Visual OS pipeline is the
@@ -224,6 +226,7 @@ test('performance automation contracts and state are exposed and reset', () => {
   assert.match(ui, /generatePerformancePlan\(State\.trackAnalysis, State\.availablePresets, State\.duration,/);
   assert.match(ui, /State\.performancePlan = plan/);
   assert.match(ui, /State\.editedPerformancePlan = JSON\.parse\(JSON\.stringify\(plan\)\)/);
+  assert.match(ui, /State\.performancePlanEdited = false/);
   assert.match(ui, /performancePlan: State\.editedPerformancePlan \?\? State\.performancePlan/);
   assert.match(ui, /videoDominantColor: State\.videoDominantColor/);
 });
@@ -452,6 +455,8 @@ test('visual effects expose live tuning controls and copyable config', () => {
   // TuningController owns the DOM markup generation (FÁZIS 1 refactor)
   const tuningCtrl = read('src/ui/controllers/TuningController.ts');
   assert.match(tuningCtrl, /data-tuning-key="\$\{control\.key\}"/);
+  assert.match(tuningCtrl, /title="\$\{this\.escapeHtml\(control\.description\)\}"/);
+  assert.doesNotMatch(tuningCtrl, /title="\$\{control\.description\}"/);
   assert.match(ui, /State\.targetTuning\[key\] = value/);
   assert.match(ui, /loadVisualPresetList/);
   assert.match(ui, /loadVisualPreset\(fileName/);
@@ -483,7 +488,7 @@ test('visual tuning presets are read from public json files and remain backward 
   assert.match(config, /source\?\.\[key\]/);
   assert.match(config, /legacySource\?\.particleBassTurn/);
   assert.match(ui, /visual-tuning-presets\/\$\{encodeURIComponent\(fileName\)\}/);
-  assert.match(ui, /Object\.assign\(State\.targetTuning, normalizeVisualTuningConfig\(payload, State\.targetTuning\)\)/);
+  assert.match(ui, /Object\.assign\(State\.targetTuning, normalizeVisualTuningConfig\(sourcePayload, State\.targetTuning\)\)/);
 });
 
 test('visual tuning controls cover circle, line, polygon, particle, and temporal parameters', () => {
@@ -900,6 +905,7 @@ test('timeline draw mode writes through the base automation plan editor', () => 
   assert.match(ui, /updateAutomationPointById\(this\.getBaseAutomationPlan\(\), point\.id, \{[\s\S]*intensity: this\.getAutomationIntensityAtPercent\(focusY\)/);
   assert.match(ui, /this\.createAutomationPointAtTime\(hoverTime\)/);
   assert.match(ui, /State\.editedPerformancePlan\?\.points\.sort\(\(a, b\) => a\.time - b\.time\)/);
+  assert.match(ui, /State\.performancePlanEdited = true/);
   assert.match(ui, /this\.engine\.addPositionChangedListener\(\(\) => \{[\s\S]*this\.lastTriggeredAutomationPointId = null;[\s\S]*this\.triggerPerformanceAutomation\(\);[\s\S]*\}\);/);
   assert.doesNotMatch(ui, /triggerSectionPresetAutomation/);
   assert.doesNotMatch(ui, /splitTimelineSection/);
@@ -923,17 +929,33 @@ test('performance plan playback automation and preloading are wired to playback 
   assert.match(ui, /const activePoint = findActiveAutomationPoint\(plan, State\.currentTime\)/);
   assert.match(ui, /activePoint\.id === this\.lastTriggeredAutomationPointId/);
   assert.match(ui, /this\.lastTriggeredAutomationPointId = activePoint\.id/);
-  assert.match(ui, /applyAutomationMorphAuthority\(State\.targetTuning, activePoint\)/);
-  assert.match(ui, /void this\.loadVisualPreset\(activePoint\.preset, \{[\s\S]*overrideMorph: activePoint/);
+  // Morph authority (audioSensitivity/morphDurationSec/morphCurveValue) must not be applied
+  // synchronously here, before the preset payload lands -- that would let new morph metadata act
+  // on the still-old target tuning for the async gap. It is applied atomically with the payload
+  // in applyPerformancePreset via options.overrideMorph instead (asserted below).
+  assert.match(
+    ui,
+    /this\.lastTriggeredAutomationPointId = activePoint\.id;[\s\S]*?void this\.loadVisualPreset\(activePoint\.preset, \{[\s\S]*?overrideMorph: activePoint/
+  );
+  assert.doesNotMatch(
+    ui,
+    /this\.lastTriggeredAutomationPointId = activePoint\.id;[\s\S]*?applyAutomationMorphAuthority\(State\.targetTuning, activePoint\)[\s\S]*?void this\.loadVisualPreset/
+  );
   assert.match(ui, /updateDashboard\(\) \{[\s\S]*this\.triggerPerformanceAutomation\(\);/);
   assert.doesNotMatch(ui, /updateDashboard\(\) \{[\s\S]*this\.triggerSectionPresetAutomation\(\);/);
 });
 
 test('automation-triggered preset loads retain scaled morph authority while manual loads stay unchanged', () => {
   const ui = read('src/ui/DashboardUI.ts');
+  const registry = read('src/config/identityTuningRegistry.ts');
+  assert.match(registry, /export const identityOwnedTuningKeys[\s\S]*'cosmic-wormhole'[\s\S]*'wormholePathBend'/);
+  assert.match(registry, /filterForeignIdentityTuningForAutomation/);
   assert.match(ui, /loadVisualPreset\(activePoint\.preset, \{[\s\S]*automationPointId: activePoint\.id,[\s\S]*overrideMorph: activePoint/);
+  assert.match(ui, /filterForeignIdentityTuningForAutomation\(payload as \{ visualMode\?: unknown; visualTuning\?: unknown \}, State\.visualMode\)/);
   assert.match(ui, /this\.applyPerformancePreset\(presetData, options\)/);
   assert.match(ui, /if \(options\.overrideMorph\) applyAutomationMorphAuthority\(State\.targetTuning, options\.overrideMorph\)/);
+  assert.match(ui, /if \(options\.automationPointId && options\.overrideMorph\?\.bendMirror === true\) \{\s*State\.targetTuning\.wormholePathBend = -State\.targetTuning\.wormholePathBend;/);
+  assert.match(ui, /overrideMorph\?: Pick<PerformanceAutomationPoint, 'intensity' \| 'morphDurationSec' \| 'morphCurve' \| 'bendMirror'>/);
   assert.match(ui, /onPresetLoad: \(fileName\) => \{ void this\.loadVisualPreset\(fileName\); \}/);
 });
 

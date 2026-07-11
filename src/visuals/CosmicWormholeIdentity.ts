@@ -10,9 +10,11 @@ import { depthFromPhase, depthWithCoherence, wrapDepthPhase } from './WormholeDe
 import { wormholeEmissionGain } from './WormholeEmission';
 import { wormholeDepthDiagnostics } from './WormholeDiagnostics';
 import {
+    advanceWormholeRouteState,
+    combinedWormholePathBend,
+    copyWormholeRouteFrame,
+    createWormholeRouteState,
     createWormholeGrainCharacter,
-    sampleWormholeBackgroundViewerFrame,
-    wormholeBackgroundWorldRelative,
     wormholeBackwardTrailCorrection,
     wormholeGrainFlowAngle,
     wormholeKickReleaseEnvelope,
@@ -20,14 +22,20 @@ import {
     wormholeLowDropGain,
     wormholeLowDropMaterialGain,
     wormholeLowDropReleaseEnvelope,
+    wormholeRingReleaseEnvelope,
     wormholeNearPlaneVisibility,
     wormholeProjectedStrokeWeight,
     wormholeProjectedTrailScale,
-    sampleWormholeRoute,
-    type WormholeRouteSample,
-    type WormholeScreenPoint,
-    type WormholeViewerFrame,
-    wormholeViewerRelativeRoute,
+    wormholeRouteTurnVisualGain,
+    wormholeTransitionEnergy,
+    projectWormholeTubePoint,
+    ROUTE_CURVATURE,
+    ROUTE_MAX_HEADING,
+    resetWormholeRouteState,
+    resetWormholeRouteStateConverged,
+    sampleWormholeRouteStateFrame,
+    type WormholeRouteFrame,
+    type WormholeRouteFrameWithDistance,
     wormholeVisibilityFloor
 } from './WormholeGrainField';
 import { computeWormholeMotionProfile } from './WormholeMotionProfile';
@@ -38,6 +46,11 @@ import {
     wormholeKickEnvelopeAtTime,
     wormholeLowDropAtTime
 } from './WormholeTimeline';
+import {
+    wormholeParallaxStrength,
+    wormholeTrailSeparation,
+    SKYBOX_TRAVEL_RATE_CAP
+} from './WormholeCosmicSync';
 
 const TWO_PI = Math.PI * 2;
 const BANDS = 24;
@@ -74,23 +87,23 @@ const GALAXY_CORE = 5200;
 const NEAR_PROJECTION_FLOOR_RATIO = 0.015;
 const STAR_PROJECTION_Z_FLOOR = MAX_STAR_Z * NEAR_PROJECTION_FLOOR_RATIO;
 const GALAXY_PROJECTION_Z_FLOOR = MAX_GALAXY_Z * NEAR_PROJECTION_FLOOR_RATIO;
-/**
- * Single master strength knob for the background route-follow world transform. The shared
- * `WormholeViewerFrame` carries the canonical arc's lateral offset and tangent; every background
- * layer applies that same translated frame before its own perspective divide, so stars, galaxies,
- * and the skybox flow with the wormhole instead of receiving independent pans or route samples.
- * Layers keep their own relative weight below; this scales all of them together.
- */
-const BACKGROUND_ROUTE_FOLLOW_SCALE = 22;
-/** World-unit lateral translate applied to the near starfield. */
-const STAR_ROUTE_WORLD_SCALE = 220 * BACKGROUND_ROUTE_FOLLOW_SCALE;
-/** Galaxies bank softer and drift over a wider world scale than the near starfield. */
-const GALAXY_ROUTE_WORLD_SCALE = 150 * BACKGROUND_ROUTE_FOLLOW_SCALE;
+/** Route-local lateral scale for the near starfield before perspective projection. */
+const STAR_ROUTE_WORLD_SCALE = 1;
+/** Galaxies use the same route-local frame with a softer lateral scale. */
+const GALAXY_ROUTE_WORLD_SCALE = 0.65;
 /** The skybox is a single flat, infinitely-distant plate: no depth to divide by, so its translate
  * is expressed as a small fraction of its own tile radius instead of a world-unit scale. */
-const SKYBOX_ROUTE_WORLD_FRACTION = 0.04 * BACKGROUND_ROUTE_FOLLOW_SCALE;
-const VIEWER_ROUTE_LOOKAHEAD = 1100;
-const VIEWER_ROUTE_DEPTH_T = 0.5;
+const SKYBOX_ROUTE_WORLD_FRACTION = 0.035;
+/** Skybox heading pan saturates smoothly instead of hard-clamping, so it keeps following the route
+ * through the full authored heading range instead of visibly stopping mid-turn. */
+const SKYBOX_PAN_MAX_HEADING = ROUTE_MAX_HEADING;
+const SKYBOX_PAN_SOFTNESS = 0.45;
+/** Unity slope at heading=0 (matches the old clamp's near-zero behaviour), saturating at this
+ * radius instead of `SKYBOX_PAN_MAX_HEADING` itself: `pannedHeading = A * tanh(heading / A)`. */
+const SKYBOX_PAN_SATURATION_RADIUS = SKYBOX_PAN_MAX_HEADING * SKYBOX_PAN_SOFTNESS;
+/** Bend=0 still gives the skybox a faint, capped, rate-proportional forward streak instead of a
+ * perfectly static plate: `k` shrinks the trail start toward the screen center by this fraction. */
+export const SKYBOX_FORWARD_CUE_CAP = 0.004;
 /**
  * How strongly a grain's *material* (alpha/stroke weight, never its geometry) tracks its own band's
  * live spectrum energy each frame, vs. staying anchored to the value sampled once at its own release.
@@ -112,6 +125,19 @@ const GALAXY_PALETTE: ReadonlyArray<readonly [number, number, number]> = [
 /** Dense procedural sky plate: faint stars and dust fixed on the distant background. */
 const SKYBOX_STAR_COUNT = 9000;
 const SKYBOX_TILE_RADIUS = 1.35;
+const TRANSITION_DISTURBANCE_DURATION_SEC = 0.72;
+const ROUTE_HISTORY_CAPACITY = 360;
+const ROUTE_HISTORY_MIN_DISTANCE = 0.05;
+const ROUTE_HISTORY_DISTANCE_EPSILON = 1e-5;
+/** Must stay within the route history's roughly 1440-unit coverage. */
+const ROUTE_TURN_SMOOTHING_DISTANCE = 600;
+/**
+ * Backward slack tolerated by `IntegratedWormholeRoute.advance` before treating a distance
+ * decrease as a seek. 24 units is about a 0.1s seek-jump at the reference travel rate; smaller
+ * regressions are rate arithmetic (silent audio + minimum authored speed can make the summed
+ * travel rate briefly negative), not a seek. Genuine seeks are handled by `syncPosition`/`reset`.
+ */
+const ROUTE_BACKWARD_RESET_THRESHOLD = 24;
 
 /**
  * A single stardust grain living in cylinder space: a fixed angular position
@@ -159,11 +185,8 @@ interface DustGrain {
     releaseDepth: number;
     releaseWarp: number;
     releaseCurve: number;
-    releasePathBend: number;
     releaseRing: number;
     releaseDepthCoherence: number;
-    releaseContinuity: number;
-    releaseSpeed: number;
     releaseGeometryInitialized: boolean;
 }
 
@@ -202,6 +225,16 @@ interface SkyStar {
     twPhase: number;
 }
 
+/**
+ * Smooth, monotonic, sign-symmetric replacement for the old hard heading clamp: near-zero heading
+ * behaves like a (steeper) linear pan, then saturates continuously toward `SKYBOX_PAN_SATURATION_RADIUS`
+ * instead of holding flat once `heading` crosses a fixed threshold. Pure and exported so its shape can
+ * be verified directly (monotonicity/continuity) without driving the full renderer.
+ */
+export function wormholeSkyboxPanHeading(heading: number): number {
+    return SKYBOX_PAN_SATURATION_RADIUS * Math.tanh(heading / SKYBOX_PAN_SATURATION_RADIUS);
+}
+
 export class CosmicWormholeIdentity implements VisualIdentity {
     readonly id = 'cosmic-wormhole';
     readonly name = 'Cosmic Wormhole';
@@ -212,23 +245,29 @@ export class CosmicWormholeIdentity implements VisualIdentity {
     private readonly skyPool: SkyStar[] = [];
     private readonly lineColor: [number, number, number] = [0, 0, 0];
     private readonly galaxyColor: [number, number, number] = [0, 0, 0];
-    /** Grain-only, route-relative frame: keeps the foreground tube ahead of the viewer (core stabilization). */
-    private readonly routeNow: WormholeRouteSample = { offsetX: 0, offsetY: 0, tangentX: 0, tangentY: 0 };
-    private readonly routePrev: WormholeRouteSample = { offsetX: 0, offsetY: 0, tangentX: 0, tangentY: 0 };
-    private readonly viewerRouteNow: WormholeRouteSample = { offsetX: 0, offsetY: 0, tangentX: 0, tangentY: 0 };
-    private readonly viewerRoutePrev: WormholeRouteSample = { offsetX: 0, offsetY: 0, tangentX: 0, tangentY: 0 };
-    private readonly routeRelativeNow: WormholeRouteSample = { offsetX: 0, offsetY: 0, tangentX: 0, tangentY: 0 };
-    private readonly routeRelativePrev: WormholeRouteSample = { offsetX: 0, offsetY: 0, tangentX: 0, tangentY: 0 };
-    /** Background-only world-transform scratch: reused across stars/galaxies/skybox, never by grains. */
-    private readonly rotatedPoint: WormholeScreenPoint = { x: 0, y: 0 };
-    /** The viewer's own current/previous lateral position in the background route field, sampled
-     * once per frame from live tuning (never a grain's frozen `releasePathBend`), and shared by every
-     * background object so the whole field reads as one coherent world instead of per-object noise. */
-    private readonly backgroundViewerNow: WormholeViewerFrame = { offsetX: 0, offsetY: 0, headingX: 0, headingY: 0, turnAngle: 0 };
-    private readonly backgroundViewerPrev: WormholeViewerFrame = { offsetX: 0, offsetY: 0, headingX: 0, headingY: 0, turnAngle: 0 };
+    /** Grain, background, and camera route frames reused in the draw loop. */
+    private readonly routeNow: WormholeRouteFrame = createRouteFrame();
+    private readonly routePrev: WormholeRouteFrame = createRouteFrame();
+    private readonly baseRouteNow: WormholeRouteFrame = createRouteFrame();
+    private readonly baseRoutePrev: WormholeRouteFrame = createRouteFrame();
+    private readonly routePath = new IntegratedWormholeRoute();
+    /**
+     * Task 08: a second, independent 2D steering integrator whose lateral axis is the screen-Y axis
+     * (instead of the horizontal integrator's screen-X), adding a diagonal drift component without
+     * ever rotating the camera (no roll) or touching the horizontal route's forward/z axis. Reuses
+     * the exact same scratch-frame-per-section pattern as the horizontal route/background frames
+     * above: allocated once, resampled in place across the skybox/galaxy/star/grain sections below.
+     */
+    private readonly routeNowV: WormholeRouteFrame = createRouteFrame();
+    private readonly routePrevV: WormholeRouteFrame = createRouteFrame();
+    private readonly baseRouteNowV: WormholeRouteFrame = createRouteFrame();
+    private readonly baseRoutePrevV: WormholeRouteFrame = createRouteFrame();
+    private readonly routePathVertical = new IntegratedWormholeRoute();
     private readonly transport = new WormholeTransport();
     private readonly authoredSpeedTimeline = new WormholeAuthoredSpeedTimeline();
     private travelPhase = 0;
+    private transitionPulseId: string | null = null;
+    private transitionPulseStartedAt = 0;
 
     constructor() {
         for (let i = 0; i < POOL_SIZE; i++) {
@@ -255,11 +294,8 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 releaseDepth: 1,
                 releaseWarp: 0,
                 releaseCurve: 0,
-                releasePathBend: 0,
                 releaseRing: 0,
                 releaseDepthCoherence: 0,
-                releaseContinuity: 1,
-                releaseSpeed: 1,
                 releaseGeometryInitialized: false
             });
         }
@@ -323,6 +359,11 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         if (analysisChanged) this.authoredSpeedTimeline.reset(safeTime, this.currentAuthoredTravelRate());
         const horizon = this.generationHorizon();
         const travelDistanceNow = this.travelDistanceAt(safeTime);
+        const { bendH: syncBendH, bendV: syncBendV } = combinedWormholePathBend(
+            State.visualTuning.wormholePathBend, State.visualTuning.wormholePathBendVertical
+        );
+        this.routePath.resetConverged(travelDistanceNow, syncBendH);
+        this.routePathVertical.resetConverged(travelDistanceNow, syncBendV);
         this.travelPhase = wrapDepthPhase(travelDistanceNow / horizon);
         // A seek is not an organic release: clear every grain's release state so no stale
         // pre-seek kick/LOW_DROP reaction lingers. `releaseGeneration` is set to the grain's true
@@ -411,11 +452,15 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         const diagnosticMaxZ = Z_REFERENCE * tuning.wormholeDepth;
         // Every generation uses one fixed reference horizon; preset morphs cannot rewind phase.
         this.travelPhase = wrapDepthPhase(travelDistance / Z_REFERENCE);
-        const automationResponse = this.automationResponseAt(timeSec);
-        const effectivePathBend = clamp01(tuning.wormholePathBend * (1 + automationResponse * 0.35));
-        const effectiveSpeed = Math.max(0.1, tuning.wormholeSpeed * (1 + automationResponse * 0.18));
-        const effectiveContinuity = Math.max(0, tuning.wormholeContinuity * (1 + automationResponse * 0.25));
-        const vz = effectiveSpeed * 10 * motion.travelSpeed;
+        // These already glide continuously from the previous active value toward the new preset
+        // via `applyTuningMorph` (see `src/config/visualTuning.ts`) every frame -- no extra
+        // automation-triggered boost here, which used to spike them the instant a point activated.
+        const { bendH: effectivePathBend, bendV: effectivePathBendVertical } = combinedWormholePathBend(
+            tuning.wormholePathBend, tuning.wormholePathBendVertical
+        );
+        const effectiveContinuity = Math.max(0, tuning.wormholeContinuity);
+        const canonicalRate = this.travelRateAt(timeSec);
+        const vz = wormholeTrailSeparation(canonicalRate, 1);
         if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.beginFrame(diagnosticMaxZ, vz);
         // Fractional values are a crossfade coordinate between valid integer emission modes;
         // WormholeEmission resolves the two modes separately and blends their gains.
@@ -425,56 +470,123 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         const lineAlpha = tuning.lineAlpha;
         const lineWeight = tuning.lineWeight;
         const frameTick = timeSec;
-        const pathScale = backend.height * 0.22;
-        // Background layers get a genuine viewer route frame, not a screen-space rotation: the
-        // viewer's own lateral world offset and route tangent are sampled once per frame -- at the
-        // camera's own travel distance, never at each object's own depth -- so every star, galaxy,
-        // and skybox tile shares exactly the same world transform and reads as one coherent world
-        // instead of per-object noise (see documents/audits/wormhole-travel-and-path-bend-plan.md).
-        // This always reads live `tuning.wormholePathBend`, never a grain's frozen
-        // `releasePathBend`, so the background cue never waits for a grain generation release.
-        // Current and previous star endpoints sample two different viewer positions/headings
-        // (`camZ` and one representative step behind it), so the streak motion vector itself carries
-        // the turn, not just a shared in-place rotation of the existing radial streak. This is
-        // scoped to background layers only: the foreground core keeps its own, unrelated
-        // grainRouteRelative stabilization below and never reads these frames.
-        sampleWormholeBackgroundViewerFrame(camZ, effectivePathBend, this.backgroundViewerNow);
-        sampleWormholeBackgroundViewerFrame(
-            Math.max(0, camZ - vz), effectivePathBend, this.backgroundViewerPrev
+        const transitionEnvelope = this.transitionDisturbanceEnvelope(
+            State.visualTuning,
+            State.targetTuning,
+            State.activeVisualTransitionId,
+            timeSec
         );
+        // The fixed lens projects camera-local route coordinates. The camera frame follows the
+        // route tangent without roll; foreground and background points are transformed into it.
+        this.routePath.advance(camZ, effectivePathBend);
+        this.routePath.sample(camZ, this.baseRouteNow);
+        this.routePathVertical.advance(camZ, effectivePathBendVertical);
+        this.routePathVertical.sample(camZ, this.baseRouteNowV);
+        // The integrated route itself decides whether any centerline drift exists. Do not gate this
+        // on the live preset bend: doing so would erase a still-easing turn during curved->straight.
+        const routeTurnVisualGain = wormholeRouteTurnVisualGain(1);
 
         if (featureFlags.wormholeSkybox) {
+            const skyboxTravelRate = Math.min(
+                SKYBOX_TRAVEL_RATE_CAP,
+                wormholeTrailSeparation(canonicalRate, SKYBOX_ROUTE_WORLD_FRACTION)
+            );
+            const skyboxPrevCamZ = Math.max(0, camZ - skyboxTravelRate);
+            this.routePath.sample(skyboxPrevCamZ, this.routePrev);
+            this.routePathVertical.sample(skyboxPrevCamZ, this.routePrevV);
+            const skyboxTurnSmooth = combinedTurnIntensity(
+                this.routePath.smoothedTurnIntensity(camZ),
+                this.routePathVertical.smoothedTurnIntensity(camZ)
+            );
+            const skyboxTurnSmoothPrev = combinedTurnIntensity(
+                this.routePath.smoothedTurnIntensity(skyboxPrevCamZ),
+                this.routePathVertical.smoothedTurnIntensity(skyboxPrevCamZ)
+            );
             this.drawSkybox(
-                backend, this.backgroundViewerNow,
-                tuning.wormholeSkybox * lineAlpha, impact, cx, cy, frameTick
+                backend, this.baseRouteNow, this.routePrev, this.baseRouteNowV, this.routePrevV,
+                skyboxTurnSmooth, skyboxTurnSmoothPrev,
+                routeTurnVisualGain, tuning.wormholeSkybox * lineAlpha, impact, cx, cy, frameTick,
+                skyboxTravelRate
             );
         }
 
         // Deep galaxies bank into the turn over a wider, softer world scale than the near starfield.
         const galaxyAmount = tuning.wormholeGalaxy;
         if (galaxyAmount > 0 && shouldUseExpensiveGlow(tuning)) {
+            const galaxyDepthTravel = camZ * GALAXY_SPEED_RATIO;
+            const galaxyTravelRate = wormholeTrailSeparation(canonicalRate, GALAXY_SPEED_RATIO);
+            const galaxyPrevCamZ = Math.max(0, camZ - galaxyTravelRate);
+            this.routePath.sample(galaxyPrevCamZ, this.baseRoutePrev);
+            this.routePathVertical.sample(galaxyPrevCamZ, this.baseRoutePrevV);
+            const galaxyTurnSmooth = combinedTurnIntensity(
+                this.routePath.smoothedTurnIntensity(camZ),
+                this.routePathVertical.smoothedTurnIntensity(camZ)
+            );
+            const galaxyTurnSmoothPrev = combinedTurnIntensity(
+                this.routePath.smoothedTurnIntensity(galaxyPrevCamZ),
+                this.routePathVertical.smoothedTurnIntensity(galaxyPrevCamZ)
+            );
+            const galaxyParallax = wormholeParallaxStrength(galaxyTurnSmooth);
+            const galaxyParallaxPrev = wormholeParallaxStrength(galaxyTurnSmoothPrev);
             for (let i = 0; i < this.galaxyPool.length; i++) {
                 const galaxy = this.galaxyPool[i];
                 const gz = depthFromPhase(
                     (i + 0.5) / GALAXY_COUNT,
-                    wrapDepthPhase(camZ * GALAXY_SPEED_RATIO / MAX_GALAXY_Z),
+                    wrapDepthPhase(galaxyDepthTravel / MAX_GALAXY_Z),
                     MAX_GALAXY_Z
                 );
                 const gNearVisibility = wormholeNearPlaneVisibility(gz, MAX_GALAXY_Z);
                 const gNear = 1 - gz / MAX_GALAXY_Z;
-                const gProjZ = Math.max(gz, GALAXY_PROJECTION_Z_FLOOR);
-                wormholeBackgroundWorldRelative(
-                    galaxy.x, galaxy.y, this.backgroundViewerNow,
-                    GALAXY_ROUTE_WORLD_SCALE, this.rotatedPoint
+                this.routePath.sampleSmoothedLookahead(camZ + gz, this.routeNow);
+                this.routePathVertical.sampleSmoothedLookahead(camZ + gz, this.routeNowV);
+                const gRouteDriftX = this.routeNow.positionX - this.baseRouteNow.positionX;
+                const gRouteDriftY = this.routeNow.positionY - this.baseRouteNow.positionY;
+                const gRouteDriftV = this.routeNowV.positionX - this.baseRouteNowV.positionX;
+                const gLateralX = galaxy.x * GALAXY_ROUTE_WORLD_SCALE * galaxyParallax * this.routeNow.normalX;
+                const gLateralY = galaxy.x * GALAXY_ROUTE_WORLD_SCALE * galaxyParallax * this.routeNow.normalY;
+                const gDeltaX = gRouteDriftX + gLateralX;
+                const gDeltaY = gRouteDriftY + gLateralY;
+                const gLocalX =
+                    (gRouteDriftX * this.baseRouteNow.normalX + gRouteDriftY * this.baseRouteNow.normalY) * routeTurnVisualGain
+                    + gLateralX * this.baseRouteNow.normalX + gLateralY * this.baseRouteNow.normalY;
+                const gLocalZ = Math.max(
+                    GALAXY_PROJECTION_Z_FLOOR,
+                    gz * 0.72,
+                    gDeltaX * this.baseRouteNow.tangentX + gDeltaY * this.baseRouteNow.tangentY
                 );
-                const gx = cx + (this.rotatedPoint.x / gProjZ) * fov;
-                const gy = cy + (this.rotatedPoint.y / gProjZ) * fov;
-                const gRadius = Math.max(8, (GALAXY_CORE / gProjZ) * fov);
+                const gx = cx + (gLocalX / gLocalZ) * fov;
+                const gy = cy + (galaxy.y + gRouteDriftV * routeTurnVisualGain) / gLocalZ * fov;
+                const gRadius = Math.max(8, (GALAXY_CORE / gLocalZ) * fov);
                 const gAlpha = (0.018 + gNear * 0.05 + impact * 0.03) * galaxyAmount * lineAlpha * gNearVisibility;
                 this.galaxyColor[0] = galaxy.r;
                 this.galaxyColor[1] = galaxy.g;
                 this.galaxyColor[2] = galaxy.b;
                 backend.radialGlow(gx, gy, gRadius, this.galaxyColor, gAlpha);
+
+                // Bounded drift cue: a fainter, smaller echo at this galaxy's own previous-frame
+                // position (same prev/current pattern already used for grains and stars), whose
+                // separation from the current glow scales with the shared travel rate.
+                const gzPrev = Math.min(MAX_GALAXY_Z, gz + galaxyTravelRate);
+                this.routePath.samplePreviousSmoothedLookahead(galaxyPrevCamZ + gzPrev, this.routePrev);
+                this.routePathVertical.samplePreviousSmoothedLookahead(galaxyPrevCamZ + gzPrev, this.routePrevV);
+                const gRouteDriftXPrev = this.routePrev.positionX - this.baseRoutePrev.positionX;
+                const gRouteDriftYPrev = this.routePrev.positionY - this.baseRoutePrev.positionY;
+                const gRouteDriftVPrev = this.routePrevV.positionX - this.baseRoutePrevV.positionX;
+                const gLateralXPrev = galaxy.x * GALAXY_ROUTE_WORLD_SCALE * galaxyParallaxPrev * this.routePrev.normalX;
+                const gLateralYPrev = galaxy.x * GALAXY_ROUTE_WORLD_SCALE * galaxyParallaxPrev * this.routePrev.normalY;
+                const gDeltaXPrev = gRouteDriftXPrev + gLateralXPrev;
+                const gDeltaYPrev = gRouteDriftYPrev + gLateralYPrev;
+                const gLocalXPrev =
+                    (gRouteDriftXPrev * this.baseRoutePrev.normalX + gRouteDriftYPrev * this.baseRoutePrev.normalY) * routeTurnVisualGain
+                    + gLateralXPrev * this.baseRoutePrev.normalX + gLateralYPrev * this.baseRoutePrev.normalY;
+                const gLocalZPrev = Math.max(
+                    GALAXY_PROJECTION_Z_FLOOR,
+                    gzPrev * 0.72,
+                    gDeltaXPrev * this.baseRoutePrev.tangentX + gDeltaYPrev * this.baseRoutePrev.tangentY
+                );
+                const gxPrev = cx + (gLocalXPrev / gLocalZPrev) * fov;
+                const gyPrev = cy + (galaxy.y + gRouteDriftVPrev * routeTurnVisualGain) / gLocalZPrev * fov;
+                backend.radialGlow(gxPrev, gyPrev, gRadius * 0.7, this.galaxyColor, gAlpha * 0.4);
             }
         }
 
@@ -484,12 +596,26 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         // same world-unit offset.
         const starAmount = tuning.wormholeStarfield;
         if (starAmount > 0) {
-            const vzStar = vz * STAR_SPEED_RATIO;
+            const starDepthTravel = camZ * STAR_SPEED_RATIO;
+            const vzStar = wormholeTrailSeparation(canonicalRate, STAR_SPEED_RATIO);
+            const starPrevCamZ = Math.max(0, camZ - vzStar);
+            this.routePath.sample(starPrevCamZ, this.baseRoutePrev);
+            this.routePathVertical.sample(starPrevCamZ, this.baseRoutePrevV);
+            const starTurnSmooth = combinedTurnIntensity(
+                this.routePath.smoothedTurnIntensity(camZ),
+                this.routePathVertical.smoothedTurnIntensity(camZ)
+            );
+            const starTurnSmoothPrev = combinedTurnIntensity(
+                this.routePath.smoothedTurnIntensity(starPrevCamZ),
+                this.routePathVertical.smoothedTurnIntensity(starPrevCamZ)
+            );
+            const starParallax = wormholeParallaxStrength(starTurnSmooth);
+            const starParallaxPrev = wormholeParallaxStrength(starTurnSmoothPrev);
             for (let i = 0; i < this.starPool.length; i++) {
                 const star = this.starPool[i];
                 const z = depthFromPhase(
                     pseudoNoise(star.seed, 33.3),
-                    wrapDepthPhase(camZ * STAR_SPEED_RATIO / MAX_STAR_Z),
+                    wrapDepthPhase(starDepthTravel / MAX_STAR_Z),
                     MAX_STAR_Z
                 );
                 // Near-plane guard: as a star's cyclical depth approaches the lens, 1/z diverges
@@ -500,25 +626,76 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 // This fades alpha rather than skipping the draw call outright, so every star still
                 // contributes exactly one `backend.line()` per frame at a stable pool index.
                 const nearVisibility = wormholeNearPlaneVisibility(z, MAX_STAR_Z);
+                // Stars span a much wider world radius than tunnel grains, so the shared near-plane
+                // fade alone can leave a still-visible star moving hundreds of pixels in one frame.
+                // Extend only the star material fade (never its geometry/index) through 4%..12% of
+                // the horizon to hide the perspective singularity before it reads as a teleport.
+                const starNearVisibility = nearVisibility
+                    * clamp01((z / MAX_STAR_Z - 0.04) / 0.08);
                 const prevZ = z + vzStar;
-                const invZ = 1 / Math.max(z, STAR_PROJECTION_Z_FLOOR);
-                const invPrev = 1 / Math.max(prevZ, STAR_PROJECTION_Z_FLOOR);
                 // Proportional depth cue: near stars are bright, thick streaks; far ones faint specks.
                 const sNear = 1 - z / MAX_STAR_Z;
-                wormholeBackgroundWorldRelative(
-                    star.x, star.y, this.backgroundViewerNow,
-                    STAR_ROUTE_WORLD_SCALE, this.rotatedPoint
+                this.routePath.sampleSmoothedLookahead(camZ + z, this.routeNow);
+                this.routePathVertical.sampleSmoothedLookahead(camZ + z, this.routeNowV);
+                const starRouteDriftX = this.routeNow.positionX - this.baseRouteNow.positionX;
+                const starRouteDriftY = this.routeNow.positionY - this.baseRouteNow.positionY;
+                const starRouteDriftV = this.routeNowV.positionX - this.baseRouteNowV.positionX;
+                const starLateralX = star.x * STAR_ROUTE_WORLD_SCALE * starParallax * this.routeNow.normalX;
+                const starLateralY = star.x * STAR_ROUTE_WORLD_SCALE * starParallax * this.routeNow.normalY;
+                // The star's world-route distance is fixed across the trail:
+                // (camZ - vzStar) + (z + vzStar) === camZ + z. Its route geometry still has to be
+                // evaluated from the previous integrated state: during a bend morph, extrapolating
+                // both endpoints from the latest curvature hides a look-ahead rearrangement from
+                // the motion-safety gate.
+                this.routePath.samplePreviousSmoothedLookahead(camZ + z, this.routePrev);
+                this.routePathVertical.samplePreviousSmoothedLookahead(camZ + z, this.routePrevV);
+                const prevStarRouteDriftX = this.routePrev.positionX - this.baseRoutePrev.positionX;
+                const prevStarRouteDriftY = this.routePrev.positionY - this.baseRoutePrev.positionY;
+                const prevStarRouteDriftV = this.routePrevV.positionX - this.baseRoutePrevV.positionX;
+                const prevStarLateralX = star.x * STAR_ROUTE_WORLD_SCALE * starParallaxPrev * this.routePrev.normalX;
+                const prevStarLateralY = star.x * STAR_ROUTE_WORLD_SCALE * starParallaxPrev * this.routePrev.normalY;
+                const starDeltaX = starRouteDriftX + starLateralX;
+                const starDeltaY = starRouteDriftY + starLateralY;
+                const prevStarDeltaX = prevStarRouteDriftX + prevStarLateralX;
+                const prevStarDeltaY = prevStarRouteDriftY + prevStarLateralY;
+                const localX =
+                    (starRouteDriftX * this.baseRouteNow.normalX + starRouteDriftY * this.baseRouteNow.normalY) * routeTurnVisualGain
+                    + starLateralX * this.baseRouteNow.normalX + starLateralY * this.baseRouteNow.normalY;
+                const prevLocalX =
+                    (prevStarRouteDriftX * this.baseRoutePrev.normalX + prevStarRouteDriftY * this.baseRoutePrev.normalY) * routeTurnVisualGain
+                    + prevStarLateralX * this.baseRoutePrev.normalX + prevStarLateralY * this.baseRoutePrev.normalY;
+                const localZ = Math.max(
+                    STAR_PROJECTION_Z_FLOOR,
+                    z * 0.72,
+                    starDeltaX * this.baseRouteNow.tangentX + starDeltaY * this.baseRouteNow.tangentY
                 );
-                const sx = cx + this.rotatedPoint.x * invZ * fov;
-                const sy = cy + this.rotatedPoint.y * invZ * fov;
-                wormholeBackgroundWorldRelative(
-                    star.x, star.y, this.backgroundViewerPrev,
-                    STAR_ROUTE_WORLD_SCALE, this.rotatedPoint
+                const prevLocalZ = Math.max(
+                    STAR_PROJECTION_Z_FLOOR,
+                    prevZ * 0.72,
+                    prevStarDeltaX * this.baseRoutePrev.tangentX + prevStarDeltaY * this.baseRoutePrev.tangentY
                 );
-                const psx = cx + this.rotatedPoint.x * invPrev * fov;
-                const psy = cy + this.rotatedPoint.y * invPrev * fov;
+                const localY = star.y + starRouteDriftV * routeTurnVisualGain;
+                const prevLocalY = star.y + prevStarRouteDriftV * routeTurnVisualGain;
+                const sx = cx + localX / localZ * fov;
+                const sy = cy + localY / localZ * fov;
+                const psx = cx + prevLocalX / prevLocalZ * fov;
+                const psy = cy + prevLocalY / prevLocalZ * fov;
 
-                const sAlpha = (10 + sNear * sNear * 120 + impact * 60) * lineAlpha * starAmount * nearVisibility;
+                // Motion-safety gate: a very near/wide star can still have a finite position while
+                // crossing an implausibly large screen distance in one frame. Fade that material
+                // before drawing instead of clipping geometry or changing stable pool indexing.
+                const projectedMotion = Math.hypot(sx - psx, sy - psy);
+                const starMotionVisibility = 1 - clamp01((projectedMotion - 120) / 180);
+                const marginX = Math.max(1, backend.width * 0.1);
+                const marginY = Math.max(1, backend.height * 0.1);
+                const viewportVisibility = Math.min(
+                    clamp01((sx + marginX) / marginX),
+                    clamp01((backend.width + marginX - sx) / marginX),
+                    clamp01((sy + marginY) / marginY),
+                    clamp01((backend.height + marginY - sy) / marginY)
+                );
+                const sAlpha = (10 + sNear * sNear * 120 + impact * 60)
+                    * lineAlpha * starAmount * starNearVisibility * starMotionVisibility * viewportVisibility;
                 const sWeight = (0.4 + sNear * sNear * 2.2) * lineWeight;
                 backend.stroke(star.r, star.g, star.b, sAlpha);
                 backend.strokeWeight(sWeight);
@@ -595,12 +772,14 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 kickEnvelope
             );
             if (emissionGain <= 0.001) continue;
-            const z = grain.releaseRing > 0 ? ringBlend(grainDepth, ringStep, grain.releaseRing) : grainDepth;
+            const ringFreshness = wormholeRingReleaseEnvelope(distanceSinceRelease);
+            const effectiveRing = grain.releaseRing * ringFreshness;
+            const z = effectiveRing > 0 ? ringBlend(grainDepth, ringStep, effectiveRing) : grainDepth;
 
             // The trail's tail is a real earlier travel sample, not a velocity-estimated guess:
             // an explicit earlier distance is projected the same way as the current one.
             const distanceNow = travelDistance;
-            const trailDepth = effectiveSpeed * 10 * motion.travelSpeed * effectiveContinuity;
+            const trailDepth = vz * effectiveContinuity;
             const distancePrev = Math.max(0, distanceNow - trailDepth * effectiveTrailScale);
             const previousGeneration = generationIndexAt(distancePrev, grain.depthPhase, generationHorizon);
             const crossedReleasePlane = previousGeneration < generationNow;
@@ -615,7 +794,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 );
             const prevZ = crossedReleasePlane
                 ? grainMaxZ
-                : grain.releaseRing > 0 ? ringBlend(previousDepth, ringStep, grain.releaseRing) : previousDepth;
+                : effectiveRing > 0 ? ringBlend(previousDepth, ringStep, effectiveRing) : previousDepth;
             const depthT = z / grainMaxZ;
             const prevDepthT = clamp01(prevZ / grainMaxZ);
             const nearFade = wormholeNearPlaneVisibility(z, grainMaxZ);
@@ -637,48 +816,49 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             const invPrev = 1 / prevZ;
 
             const radius = 50 * grain.releaseRadius;
-            let sx = cx + radius * Math.cos(thetaNow) * invZ * fov;
-            let sy = cy + radius * Math.sin(thetaNow) * invZ * fov;
-            let px = cx + radius * Math.cos(thetaPrev) * invPrev * fov;
-            let py = cy + radius * Math.sin(thetaPrev) * invPrev * fov;
+            const transitionEnergyNow = wormholeTransitionEnergy(
+                grain.seed, frameTick, transitionEnvelope, liveEnergy, depthT
+            );
+            const transitionEnergyPrev = wormholeTransitionEnergy(
+                grain.seed, frameTick, transitionEnvelope, liveEnergy, prevDepthT
+            );
+            const projectedThetaNow = thetaNow + transitionEnergyNow.angularOffset;
+            const projectedThetaPrev = thetaPrev + transitionEnergyPrev.angularOffset;
+            const projectedRadiusNow = radius * transitionEnergyNow.radiusScale;
+            const projectedRadiusPrev = radius * transitionEnergyPrev.radiusScale;
+            let sx = cx + projectedRadiusNow * Math.cos(projectedThetaNow) * invZ * fov;
+            let sy = cy + projectedRadiusNow * Math.sin(projectedThetaNow) * invZ * fov;
+            let px = cx + projectedRadiusPrev * Math.cos(projectedThetaPrev) * invPrev * fov;
+            let py = cy + projectedRadiusPrev * Math.sin(projectedThetaPrev) * invPrev * fov;
 
-            // Sample the same world route for the grain and viewer, then express both endpoints in
-            // the viewer-local frame. This keeps the core ahead of the lens instead of translating
-            // the entire tube as a screen-space object.
-            sampleWormholeRoute(distanceNow + z, depthT, effectivePathBend, this.routeNow);
-            sampleWormholeRoute(distancePrev + prevZ, prevDepthT, effectivePathBend, this.routePrev);
-            sampleWormholeRoute(
-                distanceNow + VIEWER_ROUTE_LOOKAHEAD,
-                VIEWER_ROUTE_DEPTH_T,
-                effectivePathBend,
-                this.viewerRouteNow
+            // Project route-local tube points through the camera's route frame: a pure camera-local
+            // change of basis, no heading-shear compensation. The route only turns in its own
+            // horizontal plane, so the tube's vertical (radialY) axis never rotates with heading --
+            // it needs no transform of its own, only the same perspective divide as the lateral axis.
+            // The independent vertical steering integrator (Task 08) adds only a drift term on top,
+            // never a rotation, so the cross-section stays circular under a diagonal bend too.
+            this.routePath.sample(distanceNow + z, this.routeNow);
+            this.routePath.sample(distancePrev + prevZ, this.routePrev);
+            this.routePath.sample(distanceNow, this.baseRouteNow);
+            this.routePath.sample(distancePrev, this.baseRoutePrev);
+            this.routePathVertical.sample(distanceNow + z, this.routeNowV);
+            this.routePathVertical.sample(distancePrev + prevZ, this.routePrevV);
+            this.routePathVertical.sample(distanceNow, this.baseRouteNowV);
+            this.routePathVertical.sample(distancePrev, this.baseRoutePrevV);
+            const verticalDriftNow = this.routeNowV.positionX - this.baseRouteNowV.positionX;
+            const verticalDriftPrev = this.routePrevV.positionX - this.baseRoutePrevV.positionX;
+            const nowProjection = projectWormholeTubePoint(
+                this.routeNow, this.baseRouteNow, z, projectedThetaNow, projectedRadiusNow, routeTurnVisualGain, cx, cy, fov,
+                verticalDriftNow
             );
-            sampleWormholeRoute(
-                distancePrev + VIEWER_ROUTE_LOOKAHEAD,
-                VIEWER_ROUTE_DEPTH_T,
-                effectivePathBend,
-                this.viewerRoutePrev
+            const prevProjection = projectWormholeTubePoint(
+                this.routePrev, this.baseRoutePrev, prevZ, projectedThetaPrev, projectedRadiusPrev, routeTurnVisualGain, cx, cy, fov,
+                verticalDriftPrev
             );
-            wormholeViewerRelativeRoute(
-                this.routeNow,
-                this.viewerRouteNow,
-                z - VIEWER_ROUTE_LOOKAHEAD,
-                this.routeRelativeNow
-            );
-            wormholeViewerRelativeRoute(
-                this.routePrev,
-                this.viewerRoutePrev,
-                prevZ - VIEWER_ROUTE_LOOKAHEAD,
-                this.routeRelativePrev
-            );
-            const routeNowX = this.routeRelativeNow.offsetX * pathScale;
-            const routeNowY = this.routeRelativeNow.offsetY * pathScale;
-            const routePrevX = this.routeRelativePrev.offsetX * pathScale;
-            const routePrevY = this.routeRelativePrev.offsetY * pathScale;
-            sx += routeNowX;
-            sy += routeNowY;
-            px += routePrevX;
-            py += routePrevY;
+            sx = nowProjection.screenX;
+            sy = nowProjection.screenY;
+            px = prevProjection.screenX;
+            py = prevProjection.screenY;
 
             let materialGain = 1;
             if (lowDropReleaseGain > 0.0005) {
@@ -688,10 +868,10 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             // Evaluate the safety invariant in the route-local tube cross-section. Measuring from
             // the fixed lens would misclassify legitimate centerline turns as backward grain flow.
             // The rendered tail still comes from its real previous route sample above.
-            const headX = sx - cx - routeNowX;
-            const headY = sy - cy - routeNowY;
-            const tailX = px - cx - routePrevX;
-            const tailY = py - cy - routePrevY;
+            const headX = projectedRadiusNow * Math.cos(projectedThetaNow) * invZ * fov;
+            const headY = projectedRadiusNow * Math.sin(projectedThetaNow) * invZ * fov;
+            const tailX = projectedRadiusPrev * Math.cos(projectedThetaPrev) * invPrev * fov;
+            const tailY = projectedRadiusPrev * Math.sin(projectedThetaPrev) * invPrev * fov;
             const correction = wormholeBackwardTrailCorrection(headX, headY, tailX, tailY);
             if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.observeTrailCorrection(correction);
             if (correction > 0) {
@@ -713,9 +893,11 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             const releaseLift = 1 + grain.releaseDensity * 0.25 * releaseFreshness + kickGain * 0.4;
             const reactiveGrainAlpha = (12 + energy * 188) * grain.alphaScale * materialGain * releaseLift;
             const visibilityFloor = wormholeVisibilityFloor(depthT);
-            const alpha = lineAlpha * fade * emissionGain * Math.max(visibilityFloor, reactiveGrainAlpha);
+            const alpha = lineAlpha * fade * emissionGain * Math.max(visibilityFloor, reactiveGrainAlpha)
+                * transitionEnergyNow.alphaScale;
             const weight = wormholeProjectedStrokeWeight(
                 (0.4 + energy * 3.2) * lineWeight * grain.weightScale * materialGain * (1 + kickGain * 0.3)
+                * transitionEnergyNow.strokeScale
             );
             const trailScale = wormholeProjectedTrailScale(px - sx, py - sy, backend.height);
             if (trailScale < 1) {
@@ -736,28 +918,9 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         grain.releaseDepth = Math.max(0.1, finiteOr(tuning.wormholeDepth, 1));
         grain.releaseWarp = Math.max(0, finiteOr(tuning.wormholeWarp, 0));
         grain.releaseCurve = clamp01(tuning.wormholeCurve);
-        grain.releasePathBend = clamp01(tuning.wormholePathBend);
         grain.releaseRing = clamp01(tuning.wormholeRing);
         grain.releaseDepthCoherence = clamp01(tuning.wormholeDepthCoherence);
-        grain.releaseContinuity = Math.max(0, finiteOr(tuning.wormholeContinuity, 1));
-        grain.releaseSpeed = Math.max(0.1, finiteOr(tuning.wormholeSpeed, 1));
         grain.releaseGeometryInitialized = true;
-    }
-
-    private automationResponseAt(timeSec: number): number {
-        const plan = State.editedPerformancePlan ?? State.performancePlan;
-        if (!plan?.points.length || !Number.isFinite(timeSec)) return 0;
-        let active: { time: number; morphDurationSec: number } | null = null;
-        for (const point of plan.points) {
-            if (point.time > timeSec) break;
-            active = point;
-        }
-        if (!active) return 0;
-        const duration = Math.max(0.1, active.morphDurationSec);
-        const age = timeSec - active.time;
-        if (age < 0 || age > duration) return 0;
-        const t = clamp01(age / duration);
-        return 1 - t * t * (3 - 2 * t);
     }
 
     private travelDistanceAt(timeSec: number): number {
@@ -774,47 +937,275 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         const playbackAuthority = State.isExporting ? 1 : clamp01(State.playbackFade);
         return 1 + (State.targetTuning.wormholeSpeed - 1) * playbackAuthority;
     }
+
+    /** Canonical instantaneous distance rate (world units/sec): transport + authored offset. */
+    private travelRateAt(timeSec: number): number {
+        return Math.max(0, this.transport.rateAt(timeSec) + this.authoredSpeedTimeline.rateAt(timeSec));
+    }
+
+    private transitionDisturbanceEnvelope(
+        current: VisualTuningConfig,
+        target: VisualTuningConfig,
+        activeTransitionId: string | null,
+        timeSec: number
+    ): number {
+        if (!activeTransitionId) {
+            this.transitionPulseId = null;
+            return 0;
+        }
+        if (this.transitionPulseId !== activeTransitionId) {
+            this.transitionPulseId = activeTransitionId;
+            this.transitionPulseStartedAt = timeSec;
+        }
+        return wormholeTransitionMorphEnvelope(
+            current,
+            target,
+            activeTransitionId,
+            timeSec - this.transitionPulseStartedAt
+        );
+    }
+
     /**
      * Deepest layer: a dense astropicture-like sky plate, the slowest and flattest of the three
      * background layers. It has no independent per-star depth to divide by, so its world-space
      * translate is expressed as a small fraction of its own tile radius (`SKYBOX_ROUTE_WORLD_FRACTION`)
      * instead of a world-unit scale, giving it a faint but genuine lateral parallax cue rather than a
-     * fully static plate.
+     * fully static plate. `baseRoutePrev` is a single shared previous-frame sample (computed once by
+     * the caller, not per star) that turns the previously static point draw into a short, bounded
+     * trail whose length scales with the shared cosmos travel rate -- the same reactivity every other
+     * layer gets, just capped small since this is the most distant layer.
      */
     private drawSkybox(
         backend: VisualRendererBackend,
-        viewerFrame: WormholeViewerFrame,
+        baseRoute: WormholeRouteFrame,
+        baseRoutePrev: WormholeRouteFrame,
+        baseRouteV: WormholeRouteFrame,
+        baseRoutePrevV: WormholeRouteFrame,
+        turnSmooth: number,
+        turnSmoothPrev: number,
+        routeTurnVisualGain: number,
         amount: number,
         impact: number,
         cx: number,
         cy: number,
-        frameTick: number
+        frameTick: number,
+        skyboxSeparation: number
     ): void {
         if (amount <= 0) return;
         const radius = Math.hypot(cx, cy) * SKYBOX_TILE_RADIUS;
         const worldScale = radius * SKYBOX_ROUTE_WORLD_FRACTION;
+        const parallax = wormholeParallaxStrength(turnSmooth);
+        const prevParallax = wormholeParallaxStrength(turnSmoothPrev);
+        const routePan = wormholeSkyboxPanHeading(baseRoute.headingAngle) * radius * SKYBOX_ROUTE_WORLD_FRACTION * parallax * routeTurnVisualGain;
+        const prevRoutePan = wormholeSkyboxPanHeading(baseRoutePrev.headingAngle) * radius * SKYBOX_ROUTE_WORLD_FRACTION * prevParallax * routeTurnVisualGain;
+        // Vertical mirror (Task 08): the independent vertical steering integrator's own heading pans
+        // the plate along screen-Y with the same tanh-saturated formula and the same combined
+        // (H+V) parallax strength -- no camera roll, just a second orthogonal pan term.
+        const routePanV = wormholeSkyboxPanHeading(baseRouteV.headingAngle) * radius * SKYBOX_ROUTE_WORLD_FRACTION * parallax * routeTurnVisualGain;
+        const prevRoutePanV = wormholeSkyboxPanHeading(baseRoutePrevV.headingAngle) * radius * SKYBOX_ROUTE_WORLD_FRACTION * prevParallax * routeTurnVisualGain;
+        // Minimal, canonical-rate-derived forward cue: even on a dead-straight route (bend=0) the
+        // plate still shows a short, capped zoom-streak toward the current point instead of an
+        // exactly static line -- `skyboxSeparation` is the same shared, capped travel rate every
+        // other background layer already uses, just rescaled into a tiny fraction of the plate radius.
+        const forwardShrink = Math.min(SKYBOX_FORWARD_CUE_CAP, skyboxSeparation / radius);
         for (let i = 0; i < this.skyPool.length; i++) {
             const star = this.skyPool[i];
-            wormholeBackgroundWorldRelative(
-                star.x * radius, star.y * radius, viewerFrame,
-                worldScale, this.rotatedPoint
-            );
-            const sx = cx + this.rotatedPoint.x;
-            const sy = cy + this.rotatedPoint.y;
+            // `positionX` (raw world-frame camera position, not a normal-projected drift) tracks the
+            // same sign as the star/galaxy layers' `routeDriftX` at the small headings where their
+            // shared normal vector is ~identity, so it is added here to match their convention --
+            // subtracting it here (as an earlier revision of this layer did) put the skybox's lateral
+            // response a full turn out of phase with every other background layer (see Task06 AC4).
+            const sx = cx + star.x * radius - routePan + baseRoute.positionX * worldScale * 0.002 * routeTurnVisualGain;
+            const sy = cy + star.y * radius - routePanV + baseRouteV.positionX * worldScale * 0.002 * routeTurnVisualGain;
+            const prevSx = cx + star.x * radius - prevRoutePan + baseRoutePrev.positionX * worldScale * 0.002 * routeTurnVisualGain
+                + forwardShrink * (cx - sx);
+            const prevSy = cy + star.y * radius - prevRoutePanV + baseRoutePrevV.positionX * worldScale * 0.002 * routeTurnVisualGain
+                + forwardShrink * (cy - sy);
             const tw = 0.88 + 0.12 * Math.sin(frameTick * 0.035 + star.twPhase);
             const dustAlpha = star.haze * 34 * tw * amount;
             if (dustAlpha > 0.2) {
                 backend.stroke(star.r, star.g, star.b, dustAlpha);
                 backend.strokeWeight(star.size * 2.2);
-                backend.line(sx, sy, sx, sy);
+                backend.line(prevSx, prevSy, sx, sy);
             }
             const alpha = ((5 + star.mag * 150) * tw + impact * star.mag * 58) * amount;
             backend.stroke(star.r, star.g, star.b, alpha);
             backend.strokeWeight(star.size);
-            backend.line(sx, sy, sx, sy);
+            backend.line(prevSx, prevSy, sx, sy);
         }
     }
 
+}
+
+interface RouteHistorySample extends WormholeRouteFrameWithDistance {}
+
+export class IntegratedWormholeRoute {
+    private readonly state = createWormholeRouteState();
+    private readonly history: RouteHistorySample[] = Array.from(
+        { length: ROUTE_HISTORY_CAPACITY },
+        createRouteHistorySample
+    );
+    private historyHead = -1;
+    private historyCount = 0;
+    private readonly turnNow = createRouteFrame();
+    private readonly turnPast = createRouteFrame();
+    private readonly lookaheadState = createRouteHistorySample();
+
+    reset(distance: number, bend: number): void {
+        resetWormholeRouteState(this.state, distance, bend);
+        this.historyHead = -1;
+        this.historyCount = 0;
+        this.pushCurrent();
+    }
+
+    /** Seek/backstop reset: reconstructs the converged (distance, bend) steering state instead of
+     *  the always-heading-0 straight baseline `reset` uses, so the post-seek frame matches what
+     *  continuous playback at this bend would already look like. */
+    resetConverged(distance: number, bend: number): void {
+        resetWormholeRouteStateConverged(this.state, distance, bend);
+        this.historyHead = -1;
+        this.historyCount = 0;
+        this.pushCurrent();
+    }
+
+    advance(distance: number, bend: number): void {
+        const safeDistance = routeDistanceOrZero(distance);
+        if (!this.state.initialized || safeDistance < this.state.distance - ROUTE_BACKWARD_RESET_THRESHOLD) {
+            this.resetConverged(safeDistance, bend);
+            return;
+        }
+        // Within tolerance: hold the camera instead of integrating backward. Clamping the
+        // incoming distance to the current state distance makes `advanceWormholeRouteState`
+        // take its existing stationary (deltaDistance <= epsilon) branch.
+        const clampedDistance = Math.max(safeDistance, this.state.distance);
+
+        const previous = this.historyHead >= 0 ? this.history[this.historyHead] : null;
+        advanceWormholeRouteState(this.state, clampedDistance, bend);
+        if (
+            !previous
+            || Math.abs(this.state.distance - previous.distance) >= ROUTE_HISTORY_MIN_DISTANCE
+            || Math.abs(this.state.headingAngle - previous.headingAngle) > 1e-8
+            || Math.abs(this.state.curvature - previous.curvature) > 1e-10
+        ) {
+            this.pushCurrent();
+        }
+    }
+
+    sample(distance: number, out: WormholeRouteFrame): WormholeRouteFrame {
+        const safeDistance = routeDistanceOrZero(distance);
+        if (!this.state.initialized) this.reset(safeDistance, 0);
+        if (safeDistance >= this.state.distance - ROUTE_HISTORY_DISTANCE_EPSILON) {
+            return sampleWormholeRouteStateFrame(this.state, safeDistance, out);
+        }
+        return this.sampleHistory(safeDistance, out);
+    }
+
+    /** Distance-windowed, continuous turn measure: |heading(d) - heading(d-W)| / (kmax*W), clamped. */
+    smoothedTurnIntensity(
+        distance: number,
+        windowDistance: number = ROUTE_TURN_SMOOTHING_DISTANCE
+    ): number {
+        const safeDistance = routeDistanceOrZero(distance);
+        const safeWindow = routeDistanceOrZero(windowDistance);
+        if (safeWindow <= ROUTE_HISTORY_DISTANCE_EPSILON || ROUTE_CURVATURE <= 0) return 0;
+        this.sample(safeDistance, this.turnNow);
+        this.sample(Math.max(0, safeDistance - safeWindow), this.turnPast);
+        return clamp01(
+            Math.abs(this.turnNow.headingAngle - this.turnPast.headingAngle)
+            / (ROUTE_CURVATURE * safeWindow)
+        );
+    }
+
+    /** Uses the same distance window to keep far background look-ahead geometry continuous. */
+    sampleSmoothedLookahead(distance: number, out: WormholeRouteFrame): WormholeRouteFrame {
+        if (!this.state.initialized) return this.sample(distance, out);
+        return this.sampleSmoothedLookaheadFrom(this.state, distance, out);
+    }
+
+    /** Previous integrated-state variant used by allocation-free trail/motion checks. */
+    samplePreviousSmoothedLookahead(distance: number, out: WormholeRouteFrame): WormholeRouteFrame {
+        if (this.historyCount <= 0) return this.sample(distance, out);
+        const previousOffset = this.historyCount > 1 ? 1 : 0;
+        return this.sampleSmoothedLookaheadFrom(this.historyAt(previousOffset), distance, out);
+    }
+
+    private sampleHistory(distance: number, out: WormholeRouteFrame): WormholeRouteFrame {
+        if (this.historyCount <= 0) {
+            return sampleWormholeRouteStateFrame(this.state, distance, out);
+        }
+
+        let newer = this.historyAt(0);
+        if (distance >= newer.distance) {
+            return sampleWormholeRouteStateFrame(newer, distance, out);
+        }
+
+        for (let offset = 1; offset < this.historyCount; offset++) {
+            const older = this.historyAt(offset);
+            if (distance >= older.distance && distance <= newer.distance) {
+                return interpolateRouteHistoryFrame(older, newer, distance, out);
+            }
+            newer = older;
+        }
+
+        return sampleWormholeRouteStateFrame(this.historyAt(this.historyCount - 1), distance, out);
+    }
+
+    private sampleSmoothedLookaheadFrom(
+        anchor: WormholeRouteFrameWithDistance,
+        distance: number,
+        out: WormholeRouteFrame
+    ): WormholeRouteFrame {
+        const safeDistance = routeDistanceOrZero(distance);
+        if (safeDistance <= anchor.distance + ROUTE_HISTORY_DISTANCE_EPSILON) {
+            return this.sample(safeDistance, out);
+        }
+        const pastDistance = Math.max(0, anchor.distance - ROUTE_TURN_SMOOTHING_DISTANCE);
+        this.sampleHistory(pastDistance, this.turnPast);
+        const averageCurvature = (
+            anchor.headingAngle - this.turnPast.headingAngle
+        ) / ROUTE_TURN_SMOOTHING_DISTANCE;
+        this.lookaheadState.distance = anchor.distance;
+        this.lookaheadState.targetHeading = anchor.headingAngle
+            + averageCurvature * ROUTE_TURN_SMOOTHING_DISTANCE;
+        copyWormholeRouteFrame(anchor, this.lookaheadState);
+        this.lookaheadState.curvature = averageCurvature;
+        return sampleWormholeRouteStateFrame(this.lookaheadState, safeDistance, out);
+    }
+
+    private historyAt(offsetFromNewest: number): RouteHistorySample {
+        const index = (this.historyHead - offsetFromNewest + ROUTE_HISTORY_CAPACITY) % ROUTE_HISTORY_CAPACITY;
+        return this.history[index];
+    }
+
+    private pushCurrent(): void {
+        this.historyHead = (this.historyHead + 1) % ROUTE_HISTORY_CAPACITY;
+        const sample = this.history[this.historyHead];
+        sample.distance = this.state.distance;
+        sample.targetHeading = this.state.targetHeading;
+        copyWormholeRouteFrame(this.state, sample);
+        this.historyCount = Math.min(ROUTE_HISTORY_CAPACITY, this.historyCount + 1);
+    }
+}
+
+function wormholeTransitionMorphEnvelope(
+    current: VisualTuningConfig,
+    target: VisualTuningConfig,
+    activeTransitionId: string | null,
+    elapsedSec: number
+): number {
+    if (!activeTransitionId) return 0;
+    const diff =
+        Math.abs(current.wormholePathBend - target.wormholePathBend) * 1.2
+        + Math.abs(current.wormholeWarp - target.wormholeWarp) * 0.16
+        + Math.abs(current.wormholeCurve - target.wormholeCurve) * 0.42
+        + Math.abs(current.wormholeRadius - target.wormholeRadius) * 0.28
+        + Math.abs(current.wormholeDepth - target.wormholeDepth) * 0.12
+        + Math.abs(current.wormholeEmissionMode - target.wormholeEmissionMode) * 0.18;
+    const t = clamp01(diff);
+    const diffEnvelope = t * t * (3 - 2 * t);
+    const age = clamp01(elapsedSec / TRANSITION_DISTURBANCE_DURATION_SEC);
+    const pulse = Math.sin(Math.PI * age);
+    return diffEnvelope * pulse * pulse;
 }
 
 /** Blend a dispersed depth toward the centre of its discrete layer ring (mid-layer, always > 0). */
@@ -845,12 +1236,80 @@ function clamp01(value: number): number {
     return Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
 }
 
+/**
+ * Task 08: combines the horizontal and vertical steering integrators' independently smoothed turn
+ * intensities into one diagonal-aware measure that every background layer's parallax call reads,
+ * instead of each layer picking one axis. `hypot(h, 0) === h`, so a vertical-bend of exactly zero
+ * (the default) reproduces the pre-Task-08 horizontal-only value bit-for-bit.
+ */
+function combinedTurnIntensity(horizontal: number, vertical: number): number {
+    return clamp01(Math.hypot(horizontal, vertical));
+}
+
 function finiteOr(value: number, fallback: number): number {
     return Number.isFinite(value) ? value : fallback;
 }
 
 function clamp(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
+}
+
+function routeDistanceOrZero(distance: number): number {
+    return Math.max(0, Number.isFinite(distance) ? distance : 0);
+}
+
+function createRouteHistorySample(): RouteHistorySample {
+    return {
+        distance: 0,
+        positionX: 0,
+        positionY: 0,
+        tangentX: 0,
+        tangentY: 1,
+        normalX: 1,
+        normalY: 0,
+        headingAngle: 0,
+        curvature: 0,
+        turnIntensity: 0,
+        targetHeading: 0
+    };
+}
+
+function interpolateRouteHistoryFrame(
+    older: RouteHistorySample,
+    newer: RouteHistorySample,
+    distance: number,
+    out: WormholeRouteFrame
+): WormholeRouteFrame {
+    const span = Math.max(ROUTE_HISTORY_DISTANCE_EPSILON, newer.distance - older.distance);
+    const t = clamp((distance - older.distance) / span, 0, 1);
+    out.positionX = lerp(older.positionX, newer.positionX, t);
+    out.positionY = lerp(older.positionY, newer.positionY, t);
+    out.headingAngle = lerp(older.headingAngle, newer.headingAngle, t);
+    out.curvature = lerp(older.curvature, newer.curvature, t);
+    out.turnIntensity = lerp(older.turnIntensity, newer.turnIntensity, t);
+    out.tangentX = Math.sin(out.headingAngle);
+    out.tangentY = Math.cos(out.headingAngle);
+    out.normalX = out.tangentY;
+    out.normalY = -out.tangentX;
+    return out;
+}
+
+function lerp(a: number, b: number, t: number): number {
+    return a + (b - a) * t;
+}
+
+function createRouteFrame(): WormholeRouteFrame {
+    return {
+        positionX: 0,
+        positionY: 0,
+        tangentX: 0,
+        tangentY: 1,
+        normalX: 1,
+        normalY: 0,
+        headingAngle: 0,
+        curvature: 0,
+        turnIntensity: 0
+    };
 }
 
 export const cosmicWormholeIdentity: VisualIdentity = new CosmicWormholeIdentity();

@@ -139,6 +139,7 @@ function sanitizePoint(raw: unknown): PerformanceAutomationPoint | null {
     if (c.analysisConfidence !== undefined && !isFiniteNumber(c.analysisConfidence)) return null;
     if (c.timingMode !== undefined && (typeof c.timingMode !== 'string' || !TIMING_MODES.includes(c.timingMode))) return null;
     if (c.locked !== undefined && typeof c.locked !== 'boolean') return null;
+    if (c.bendMirror !== undefined && typeof c.bendMirror !== 'boolean') return null;
 
     // Rebuild from known fields only so unknown/extra properties are stripped.
     const point: PerformanceAutomationPoint = {
@@ -155,6 +156,7 @@ function sanitizePoint(raw: unknown): PerformanceAutomationPoint | null {
     if (c.analysisConfidence !== undefined) point.analysisConfidence = clamp01(c.analysisConfidence as number);
     if (c.timingMode !== undefined) point.timingMode = c.timingMode as PerformanceAutomationPoint['timingMode'];
     if (c.locked !== undefined) point.locked = c.locked as boolean;
+    if (c.bendMirror !== undefined) point.bendMirror = c.bendMirror as boolean;
     // Optional Visual OS provenance (ADR-005). Kept and normalized, never a reason to reject a
     // point: malformed meta is dropped, valid sub-fields survive, legacy points have no meta.
     const meta = sanitizeMeta(c.meta);

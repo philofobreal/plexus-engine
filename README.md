@@ -85,7 +85,7 @@ A high-contrast neon magenta/cyan mode with chromatic-aberration line offsets an
 
 ### Cosmic Wormhole
 
-A deterministic 3D tunnel-flight identity with spectral dust, curved parallax space, and seek-safe depth phases.
+A deterministic 3D grain field with fixed-hop travel, timestamp-based local kick/LOW_DROP reactions, bounded slow spatial evolution, and seek-safe depth phases. The camera and horizon remain fixed.
 
 ### Identity transitions
 

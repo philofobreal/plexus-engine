@@ -55,6 +55,9 @@ export interface MicroChoreographyOptions {
     tempo: TempoContext;
     memory?: VariationMemoryState;
     longSceneSections?: LongSceneSection[];
+    // Optional authored pacing from the selected style-pack variant pair. Omitted means
+    // the legacy subdivision path is used unchanged.
+    segmentSecRange?: { min: number; max: number };
 }
 
 export interface MicroChoreographyContext {
@@ -158,7 +161,7 @@ export function planMicroChoreography(
         return { situation: input.situation, vocabularyId: input.vocabularyId, segments: [] };
     }
 
-    const count = resolveSegmentCount(duration, profile, variation, options.tempo, options.activityCap, options.activityDensityScale ?? 1);
+    const count = resolveSegmentCount(duration, profile, variation, options.tempo, options.activityCap, options.activityDensityScale ?? 1, options.segmentSecRange);
     const boundaries = computeBoundaries(input.startSec, duration, count, options.tempo);
     const roles = generateRoles(count, profile, variation, ctx);
 
@@ -224,7 +227,15 @@ function mergeGestures(primary: MovementGesture[] | undefined, secondary: Moveme
 // lengthens it. Low confidence coarsens (fewer, longer segments). No tempo falls back to an equal
 // time split with an assumed bar length. ceil (not round) so a long scene whose natural division is
 // e.g. 1.4 segments still yields 2 rather than collapsing into one block.
-function resolveSegmentCount(duration: number, profile: SituationProfile, variation: VariationProfile, tempo: TempoContext, activityCap: number, densityScale: number): number {
+function resolveSegmentCount(
+    duration: number,
+    profile: SituationProfile,
+    variation: VariationProfile,
+    tempo: TempoContext,
+    activityCap: number,
+    densityScale: number,
+    segmentSecRange?: { min: number; max: number }
+): number {
     const scale = Number.isFinite(densityScale) && densityScale > 0 ? densityScale : 1;
     let targetSegBars = Math.max(0.5, profile.segBars * variation.subdivisionScale * scale);
     if (!tempo.reliable || tempo.confidence < 0.35) targetSegBars *= 1.5;
@@ -240,7 +251,22 @@ function resolveSegmentCount(duration: number, profile: SituationProfile, variat
 
     const cap = Math.max(1, Math.floor(activityCap));
     const roomCap = Math.max(1, Math.floor(duration / MIN_SEGMENT_SEC));
-    return clampInt(count, 1, Math.min(cap, roomCap));
+    if (!isValidSegmentSecRange(segmentSecRange)) return clampInt(count, 1, Math.min(cap, roomCap));
+
+    const minSegmentSec = Math.max(MIN_SEGMENT_SEC, segmentSecRange.min);
+    const baseSegmentSec = secondsPerBar && secondsPerBar > 0
+        ? targetSegBars * secondsPerBar
+        : Math.max(MIN_SEGMENT_SEC, targetSegBars * 2.0);
+    const targetSegmentSec = clamp(baseSegmentSec, minSegmentSec, segmentSecRange.max);
+    // ceil keeps the target length at or below the pair's authored maximum. The lower room cap
+    // prevents equal subdivision from making segments shorter than the pair minimum; bar snapping
+    // below may move an interior boundary by at most one bar.
+    const rangeCount = Math.min(Math.ceil(duration / targetSegmentSec), Math.max(1, Math.floor(duration / minSegmentSec)));
+    return clampInt(rangeCount, 1, Math.min(cap, roomCap));
+}
+
+function isValidSegmentSecRange(range: { min: number; max: number } | undefined): range is { min: number; max: number } {
+    return !!range && Number.isFinite(range.min) && Number.isFinite(range.max) && range.min > 0 && range.min <= range.max;
 }
 
 // Segment boundaries (scene-relative, ascending, [0..duration]). Interior boundaries snap to the

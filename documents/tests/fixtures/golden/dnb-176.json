@@ -1,0 +1,103 @@
+{
+  "id": "dnb-176",
+  "bpm": 175,
+  "bpmConfidence": 0.354622,
+  "gridConfidence": 0.420167,
+  "downbeatConfidence": 0.420167,
+  "gridOffset": 0.1161,
+  "hopSize": 1024,
+  "duration": 7,
+  "timingConfidence": {
+    "tempo": 0.354622,
+    "beat": 0.825879,
+    "grid": 0.420167,
+    "overall": 0.515663
+  },
+  "counts": {
+    "frames": 301,
+    "events": 21,
+    "beats": 21,
+    "bars": 7,
+    "barStarts": 6,
+    "sections": 2,
+    "cues": 0,
+    "patterns": 0
+  },
+  "tempoCandidates": [
+    {
+      "bpm": 175,
+      "score": 0.198557,
+      "intervalSec": 0.342857,
+      "peakCount": 1,
+      "isHalfTime": false,
+      "isDoubleTime": false
+    },
+    {
+      "bpm": 117,
+      "score": 0.583889,
+      "intervalSec": 0.512821,
+      "peakCount": 0.964,
+      "isHalfTime": false,
+      "isDoubleTime": false
+    },
+    {
+      "bpm": 88,
+      "score": 0.233703,
+      "intervalSec": 0.681818,
+      "peakCount": 0.971,
+      "isHalfTime": true,
+      "isDoubleTime": false
+    },
+    {
+      "bpm": 131,
+      "score": 0.111588,
+      "intervalSec": 0.458015,
+      "peakCount": 0.321,
+      "isHalfTime": false,
+      "isDoubleTime": false
+    },
+    {
+      "bpm": 140,
+      "score": 0.110846,
+      "intervalSec": 0.428571,
+      "peakCount": 0.341,
+      "isHalfTime": false,
+      "isDoubleTime": false
+    }
+  ],
+  "beats": [
+    0.1161,
+    0.464399,
+    0.789478,
+    1.137778,
+    1.486077,
+    1.811156,
+    2.159456,
+    2.507755,
+    2.832834,
+    3.181134,
+    3.529433,
+    3.877732,
+    4.202812,
+    4.551111,
+    4.87619,
+    5.22449,
+    5.572789,
+    5.921088,
+    6.246168,
+    6.594467,
+    6.942766
+  ],
+  "barStarts": [
+    0.1161,
+    1.486077,
+    2.832834,
+    4.202812,
+    5.572789,
+    6.942766
+  ],
+  "sectionStarts": [
+    0,
+    6.965986
+  ]
+}
