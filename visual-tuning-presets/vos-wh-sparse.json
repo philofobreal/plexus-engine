@@ -7,17 +7,18 @@
     "backgroundGreen": 3,
     "backgroundBlue": 6,
     "circleHue": 230,
-    "lineAlpha": 2.2,
+    "lineAlpha": 1.35,
     "lineWeight": 0.8,
     "wormholeRadius": 1.2,
     "wormholeDepth": 4.7,
-    "wormholeSpeed": 2.681627101279439,
-    "wormholeWarp": 0,
-    "wormholeCurve": 0.1,
-    "wormholeRing": 0.85,
-    "wormholeDepthCoherence": 0.9,
-    "wormholeContinuity": 0.15,
-    "wormholeEmissionMode": 0,
-    "wormholeJitter": 0.25
+    "wormholeSpeed": 1.4,
+    "wormholeWarp": 0.1,
+    "wormholeCurve": 0.05,
+    "wormholePathBend": 0,
+    "wormholeRing": 0,
+    "wormholeDepthCoherence": 0.35,
+    "wormholeContinuity": 2.0,
+    "wormholeEmissionMode": 2,
+    "wormholeJitter": 0
   }
 }

@@ -10,13 +10,15 @@
     "lineAlpha": 1.3,
     "lineWeight": 1.0,
     "wormholeRadius": 1.0,
-    "wormholeDepth": 2.6,
-    "wormholeSpeed": 4.5,
-    "wormholeWarp": 0.6,
+    "wormholeDepth": 2.8,
+    "wormholeSpeed": 4.2,
+    "wormholeWarp": 0.35,
     "wormholeCurve": 0,
+    "wormholePathBend": 0,
     "wormholeRing": 0,
+    "wormholeDepthCoherence": 0,
     "wormholeContinuity": 1.35,
     "wormholeEmissionMode": 0,
-    "wormholeJitter": 0.1
+    "wormholeJitter": 0.04
   }
 }

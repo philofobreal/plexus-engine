@@ -8,15 +8,17 @@
     "backgroundBlue": 18,
     "circleHue": 320,
     "lineAlpha": 1.65,
-    "lineWeight": 1.4,
-    "wormholeRadius": 0.7,
-    "wormholeDepth": 2.0,
-    "wormholeSpeed": 7.5,
-    "wormholeWarp": 2.2,
-    "wormholeCurve": 0.35,
+    "lineWeight": 1.15,
+    "wormholeRadius": 0.85,
+    "wormholeDepth": 2.4,
+    "wormholeSpeed": 7.2,
+    "wormholeWarp": 1.2,
+    "wormholeCurve": 0.08,
+    "wormholePathBend": 0,
     "wormholeRing": 0,
+    "wormholeDepthCoherence": 0,
     "wormholeContinuity": 0.7,
     "wormholeEmissionMode": 1,
-    "wormholeJitter": 0.6
+    "wormholeJitter": 0.35
   }
 }
