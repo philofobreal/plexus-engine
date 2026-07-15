@@ -1,0 +1,28 @@
+node_modules/
+dist/
+graphify-out/
+scripts/
+public/
+tests/fixtures/
+*.json
+*.ps1
+*.sh
+*.log
+bun.lock
+
+# Minden dokumentum kizárva alapból
+documents/*
+
+# Csak a kanonikus első szemantikai korpusz
+!documents/governance/
+documents/governance/*
+!documents/governance/architecture-contract.md
+
+!documents/adr/
+documents/adr/*
+!documents/adr/ADR-003-semantic-layer-boundary.md
+!documents/adr/ADR-006-renderer-owned-visual-identity-crossfade.md
+
+!documents/audits/
+documents/audits/*
+!documents/audits/wormhole-travel-and-path-bend-plan.md

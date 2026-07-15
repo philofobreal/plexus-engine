@@ -32,6 +32,30 @@ These documents extend this file and must not override it:
 
 `CLAUDE.md` is a compatibility shim only. It must explicitly inherit from this file and must not accumulate independent policy.
 
+## Graphify-Assisted Repository Navigation
+
+When `graphify-out/graph.json` is available, use Graphify as a scoped
+repository-navigation aid before broad source exploration.
+
+- Start with `graphify explain`, `graphify path`, or `graphify affected`
+  using exact symbols.
+- Prefer `graphify affected "<symbol>" --depth 2` for change-impact discovery.
+- Prefer `graphify path "<source>" "<target>"` for a specific dependency or
+  data-flow hypothesis.
+- Use broad natural-language `graphify query` only for initial discovery.
+  Keep its context budget bounded and narrow the relation type when practical.
+- Treat Graphify output as navigation evidence, not architectural truth.
+- Verify every relationship used for planning or implementation against the
+  referenced source files, tests, and applicable governance documents.
+- Do not infer ownership from community membership, node centrality, or an
+  unverified `INFERRED` or `AMBIGUOUS` edge.
+- Ignore generic-name connections such as `clamp()`, `sleep()`, `index.ts`,
+  or `write*()` unless source inspection proves the relationship.
+- If the graph is missing, stale, contradictory, or noisy, fall back to
+  targeted `rg`, direct source inspection, and the canonical governance files.
+- Do not start deep extraction, invoke an LLM backend, install Graphify hooks,
+  or rebuild the semantic corpus unless the user explicitly requests it.
+
 ## Module Ownership
 
 - `src/main.ts` composes the app, creates subsystem instances, and wires startup.
