@@ -65,7 +65,12 @@ function Test-ShouldIncludeFile {
     if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
     if ($Path -eq $OutFile) { return $false }
 
-    $extension = [System.IO.Path]::GetExtension($Path).ToLowerInvariant()
+    try {
+        $extension = [System.IO.Path]::GetExtension($Path).ToLowerInvariant()
+    } catch {
+        return $false
+    }
+
     $isTestFile = Test-IsTestFile -Path $Path
 
     switch ($Mode) {
@@ -137,8 +142,10 @@ try {
     $MergeBase = git merge-base $BaseRef HEAD
 
     # Érintett fájlok listájának egyesítése és szűrése
-    $trackedFiles = @(git diff --name-only $MergeBase)
-    $untrackedFiles = @(git ls-files --others --exclude-standard)
+    # A natív Git stderr kimenetét külön eldobjuk, hogy a CRLF warningok
+    # ne kerüljenek be PowerShell ErrorRecordként a fájllistába.
+    $trackedFiles = @(git diff --name-only $MergeBase 2>$null | Where-Object { $_ -is [string] })
+    $untrackedFiles = @(git ls-files --others --exclude-standard 2>$null | Where-Object { $_ -is [string] })
 
     $filteredTrackedFiles = @($trackedFiles | Where-Object { Test-ShouldIncludeFile -Path $_ -Mode $CollectionMode })
     $filteredUntrackedFiles = @($untrackedFiles | Where-Object { Test-ShouldIncludeFile -Path $_ -Mode $CollectionMode })
