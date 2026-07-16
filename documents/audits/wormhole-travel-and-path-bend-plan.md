@@ -60,8 +60,9 @@ centroid off-screen) is handled by splitting the delta into two additive parts i
 - the grain's own radial contribution (`radius`, `theta`) -- always full strength, since this is what
   actually draws the circle;
 - the route-curvature drift between the point's route position and the camera's route position --
-  identical for every grain at a given depth regardless of angle, scaled by
-  `FOREGROUND_ROUTE_DRIFT_WEIGHT` (1, undamped).
+  identical for every grain at a given depth regardless of angle, scaled by `routeTurnVisualGain`
+  (`wormholeRouteTurnVisualGain()`, currently `ROUTE_TURN_VISUAL_GAIN = 4`) -- one explicit,
+  screen-readable centerline-drift gain shared by every foreground and background layer.
 
 The drift term is theta-independent, so scaling it changes only how far the cross-section's centroid
 drifts as the route turns -- it cannot bias the circle's shape the way scaling the *combined* delta
@@ -96,10 +97,20 @@ local = inverse(cameraRouteFrame) * (routePointFrame * radial + routeCurvatureDr
 screen = project(local)
 ```
 
-`sampleWormholeRouteFrame()` itself is a closed-form O(1) integration (a fixed handful of arithmetic
-operations regardless of `distance`), not a per-4800-unit-segment loop from distance zero: the turn
-sign pattern has period 4 in segment index and heading returns to exactly zero after every complete
-period, so whole periods are skipped via one precomputed period displacement instead of iterated.
+`sampleWormholeRouteFrame()` itself stays a closed-form O(1) integration of a single
+constant-curvature arc (`wormholeIntegratedRoute`): heading is `amount * ROUTE_CURVATURE * distance`
+and position is its closed-form sin/cos integral, a fixed handful of arithmetic operations regardless
+of `distance` -- not an iterated per-segment loop, and not a periodic turn-sign pattern.
+
+The renderer does not sample that pure function directly, though. It drives a stateful runtime
+steering integrator (`IntegratedWormholeRoute` / `WormholeRouteState`, `WormholeGrainField.ts`) that
+eases curvature toward a bend-derived target heading over a bounded response distance
+(`ROUTE_HEADING_RESPONSE_DISTANCE`), with a faster ease distance when counter-steering (reversing
+direction) and a recentring-authority floor so it always converges to a new straight or curved target
+within bounded distance -- never an endless turn-rate command. `advance()`/`sample()` integrate this
+state forward in fixed-size distance steps (`ROUTE_INTEGRATION_MAX_STEP`, capped at
+`ROUTE_INTEGRATION_MAX_STEPS` per call) and keep a small bounded history ring so distance-windowed
+turn measures and look-ahead sampling stay O(1) instead of re-walking playback history.
 
 ## Background
 
