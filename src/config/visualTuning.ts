@@ -77,6 +77,12 @@ export const defaultVisualTuning: VisualTuningConfig = {
     wormholePathBendVertical: 0,
     wormholeRing: 0,
     wormholeDepthCoherence: 0,
+    wormholeRadiusLfoWaveform: 0,
+    wormholeRadiusLfoRate: 0.12,
+    wormholeRadiusLfoAmount: 0.15,
+    wormholeDepthLfoWaveform: 0,
+    wormholeDepthLfoRate: 0.09,
+    wormholeDepthLfoAmount: 0.12,
     wormholeContinuity: 1,
     wormholeStarfield: 1,
     wormholeGalaxy: 1,
@@ -86,6 +92,17 @@ export const defaultVisualTuning: VisualTuningConfig = {
 };
 
 export const visualTuningKeys = Object.keys(defaultVisualTuning) as VisualTuningKey[];
+
+const WORMHOLE_LFO_WAVEFORM_OPTIONS = [
+    { value: 0, label: 'Off' },
+    { value: 1, label: 'Sine' },
+    { value: 2, label: 'Saw' },
+    { value: 3, label: 'Triangle' },
+    { value: 4, label: 'Square' },
+    { value: 5, label: 'Random Glide' },
+    { value: 6, label: 'Pluck' },
+    { value: 7, label: 'Organic' }
+];
 
 const allVisualTuningControls: VisualTuningControl[] = [
     { key: 'audioSensitivity', label: 'Music sensitivity', group: 'Audio', min: 0.1, max: 4, step: 0.05, unit: 'x' },
@@ -172,6 +189,30 @@ const allVisualTuningControls: VisualTuningControl[] = [
     },
     { key: 'wormholeRing', label: 'Ring align', group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x' },
     { key: 'wormholeDepthCoherence', label: 'Depth coherence', group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x' },
+    {
+        key: 'wormholeRadiusLfoWaveform',
+        label: 'Radius LFO waveform',
+        description: 'Canonical-time LFO behind the Tunnel radius control; newly released grains sample its effective value.',
+        group: 'Wormhole',
+        min: 0,
+        max: 7,
+        step: 1,
+        options: WORMHOLE_LFO_WAVEFORM_OPTIONS
+    },
+    { key: 'wormholeRadiusLfoRate', label: 'Radius LFO rate', group: 'Wormhole', min: 0.01, max: 8, step: 0.01, unit: ' Hz' },
+    { key: 'wormholeRadiusLfoAmount', label: 'Radius LFO amount', group: 'Wormhole', min: 0, max: 0.5, step: 0.01, unit: 'x' },
+    {
+        key: 'wormholeDepthLfoWaveform',
+        label: 'Depth LFO waveform',
+        description: 'Canonical-time LFO behind the Tunnel depth control; newly released grains sample its phase-offset effective value.',
+        group: 'Wormhole',
+        min: 0,
+        max: 7,
+        step: 1,
+        options: WORMHOLE_LFO_WAVEFORM_OPTIONS
+    },
+    { key: 'wormholeDepthLfoRate', label: 'Depth LFO rate', group: 'Wormhole', min: 0.01, max: 8, step: 0.01, unit: ' Hz' },
+    { key: 'wormholeDepthLfoAmount', label: 'Depth LFO amount', group: 'Wormhole', min: 0, max: 0.5, step: 0.01, unit: 'x' },
     { key: 'wormholeContinuity', label: 'Streak continuity', group: 'Wormhole', min: 0, max: 2, step: 0.05, unit: 'x' },
     { key: 'wormholeStarfield', label: 'Starfield', group: 'Wormhole', min: 0, max: 2, step: 0.05, unit: 'x' },
     { key: 'wormholeGalaxy', label: 'Galaxy depth', group: 'Wormhole', min: 0, max: 2, step: 0.05, unit: 'x' },
@@ -255,7 +296,30 @@ export function normalizeVisualTuningConfig(payload: unknown, current?: VisualTu
         else if (legacyHeroDrumsOnly === 1) next.heroEventMode = 1;
     }
 
+    normalizeWormholeLfoWaveformKey(source, next, 'wormholeRadiusLfoWaveform');
+    normalizeWormholeLfoWaveformKey(source, next, 'wormholeDepthLfoWaveform');
+
     return next;
+}
+
+/**
+ * The generic per-key copy loop above only overwrites `next[key]` when `source[key]` is a finite
+ * number, so a `NaN`/non-number authored value silently leaves `next[key]` at whatever `current` had
+ * -- indistinguishable, after the fact, from the key never having been mentioned at all. Inspecting
+ * `source` directly (present vs. absent) instead of `next` is what lets this tell the two cases
+ * apart: an absent key stays sticky (VT-3.7's backward-compatible partial-preset contract), while a
+ * present-but-invalid value resets to Off rather than silently keeping whatever was active before.
+ */
+function normalizeWormholeLfoWaveformKey(
+    source: Partial<VisualTuningConfig> | null,
+    next: VisualTuningConfig,
+    key: 'wormholeRadiusLfoWaveform' | 'wormholeDepthLfoWaveform'
+): void {
+    if (!source || !Object.prototype.hasOwnProperty.call(source, key)) return;
+    const value = source[key];
+    next[key] = typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 7
+        ? value
+        : 0;
 }
 
 function getVisualTuningSource(payload: unknown): Partial<VisualTuningConfig> | null {
@@ -382,6 +446,7 @@ export function applyTuningMorph(
         // különben a lebegőpontos értékek érvénytelenítik a háttér és a teljesítmény-mód feltételeit.
         if (key === 'chromaKeyMode' || key === 'performanceMode' || key === 'phraseSize'
             || key === 'morphCurveValue' || key === 'heroEventMode' || key === 'heroBeepMode'
+            || key === 'wormholeRadiusLfoWaveform' || key === 'wormholeDepthLfoWaveform'
             ) {
             current[key] = targetValue;
             continue;

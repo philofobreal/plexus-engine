@@ -94,6 +94,18 @@ test('zero song-time delta freezes morph state during pause', () => {
   assert.equal(current.wormholeDepth, 1);
 });
 
+test('discrete selector parameters snap immediately even at a zero song-time delta (VT-2.15/VT-2.16)', () => {
+  // A zero delta freezes every continuous/interpolated morph (see the preceding test), but discrete
+  // selector parameters are a general exception: they snap regardless of elapsed morph time,
+  // including a zero delta. Proven here on an existing, pre-LFO discrete key (`heroBeepMode`) so the
+  // rule reads as general behaviour, not something special-cased for the two new wormhole LFO keys.
+  const { applyTuningMorph, defaultVisualTuning } = loadVisualTuningModule();
+  const current = { ...defaultVisualTuning, heroBeepMode: 0 };
+  const target = { ...defaultVisualTuning, heroBeepMode: 3, transitionSpeed: 0.5 };
+  applyTuningMorph(current, target, target.transitionSpeed, 0);
+  assert.equal(current.heroBeepMode, 3);
+});
+
 test('morph clock resets on first frame, seek, large jump, and export clock switch', () => {
   const { tuningMorphDeltaSec } = loadVisualTuningModule();
   assert.equal(tuningMorphDeltaSec(10, null), 0);

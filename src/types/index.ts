@@ -134,6 +134,19 @@ export interface VisualTuningConfig {
     wormholePathBendVertical: number;
     wormholeRing: number;
     wormholeDepthCoherence: number;
+    /** Waveform modulating the radius value sampled through the normal grain-release tuning path:
+     *  0 Off, 1 Sine, 2 Saw, 3 Triangle, 4 Square, 5 Random Glide, 6 Pluck, 7 Organic. */
+    wormholeRadiusLfoWaveform: number;
+    /** Canonical-time oscillator frequency for radius, in cycles per second. */
+    wormholeRadiusLfoRate: number;
+    /** Bipolar radius modulation depth; 0 disables variation while retaining the waveform choice. */
+    wormholeRadiusLfoAmount: number;
+    /** Same waveform vocabulary as `wormholeRadiusLfoWaveform`, applied to release-sampled depth. */
+    wormholeDepthLfoWaveform: number;
+    /** Canonical-time oscillator frequency for depth, in cycles per second. */
+    wormholeDepthLfoRate: number;
+    /** Bipolar depth modulation depth; 0 disables variation while retaining the waveform choice. */
+    wormholeDepthLfoAmount: number;
     wormholeContinuity: number;
     wormholeStarfield: number;
     wormholeGalaxy: number;

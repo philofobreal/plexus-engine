@@ -40,6 +40,10 @@ import {
 } from './WormholeGrainField';
 import { computeWormholeMotionProfile } from './WormholeMotionProfile';
 import {
+    effectiveWormholeGeometryValue,
+    WORMHOLE_DEPTH_LFO_PHASE_OFFSET,
+} from './WormholeGeometryLfo';
+import {
     canonicalWormholeTime,
     WormholeAuthoredSpeedTimeline,
     WormholeTransport,
@@ -382,7 +386,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             grain.releaseEmission = 0;
             grain.releaseVariant = 0;
             grain.releaseTrailScale = grain.trailScale;
-            this.snapshotGrainGeometry(grain, State.visualTuning);
+            this.snapshotGrainGeometry(grain, State.visualTuning, safeTime);
         }
         if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.noteSeek(safeTime);
     }
@@ -721,7 +725,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             const grain = this.pool[i];
             const liveEnergy = grain.bandIndex < spectrumLen ? clamp01(spectrum[grain.bandIndex]) : 0;
             if (grain.releaseBandEnergy < 0) grain.releaseBandEnergy = liveEnergy;
-            if (!grain.releaseGeometryInitialized) this.snapshotGrainGeometry(grain, State.visualTuning);
+            if (!grain.releaseGeometryInitialized) this.snapshotGrainGeometry(grain, State.visualTuning, timeSec);
 
             // Release-time sampling: the grain's generation is an absolute function of current
             // travel distance (see `generationIndexAt`), never a frame-to-frame delta, so an
@@ -743,7 +747,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 grain.releaseEmission = lowDrop ? wormholeLowDropGain(grain, lowDrop.envelope) : 0;
                 grain.releaseVariant = lowDrop ? lowDrop.variant : 0;
                 grain.releaseTrailScale = grain.trailScale * (1 + grain.releaseKick * 0.5 + grain.releaseBass * 0.2);
-                this.snapshotGrainGeometry(grain, State.visualTuning);
+                this.snapshotGrainGeometry(grain, State.visualTuning, timeSec);
             }
 
             const distanceSinceRelease = Math.max(0, travelDistance - grain.releaseDistance);
@@ -912,10 +916,28 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.endFrame();
     }
 
-    /** Freeze all position-affecting tuning for one grain generation. */
-    private snapshotGrainGeometry(grain: DustGrain, tuning: VisualTuningConfig): void {
-        grain.releaseRadius = Math.max(0.1, finiteOr(tuning.wormholeRadius, 1));
-        grain.releaseDepth = Math.max(0.1, finiteOr(tuning.wormholeDepth, 1));
+    /**
+     * Snapshot the same rendered radius/depth values a live slider adjustment would expose through
+     * `State.visualTuning`. The LFO sits directly behind those authored controls: it changes the
+     * effective parameter sampled by a newly released grain, while the grain keeps that geometry
+     * for the rest of its generation just like any other radius/depth tuning change.
+     */
+    private snapshotGrainGeometry(grain: DustGrain, tuning: VisualTuningConfig, timeSec: number): void {
+        grain.releaseRadius = effectiveWormholeGeometryValue(
+            tuning.wormholeRadius,
+            tuning.wormholeRadiusLfoWaveform,
+            timeSec,
+            tuning.wormholeRadiusLfoRate,
+            tuning.wormholeRadiusLfoAmount
+        );
+        grain.releaseDepth = effectiveWormholeGeometryValue(
+            tuning.wormholeDepth,
+            tuning.wormholeDepthLfoWaveform,
+            timeSec,
+            tuning.wormholeDepthLfoRate,
+            tuning.wormholeDepthLfoAmount,
+            WORMHOLE_DEPTH_LFO_PHASE_OFFSET
+        );
         grain.releaseWarp = Math.max(0, finiteOr(tuning.wormholeWarp, 0));
         grain.releaseCurve = clamp01(tuning.wormholeCurve);
         grain.releaseRing = clamp01(tuning.wormholeRing);

@@ -453,8 +453,8 @@ test('foreground and background projection use pure camera-local transform, no h
 
 test('release and sync geometry snapshot the rendered tuning, never the morph target', () => {
   const source = readFileSync(join(SRC_ROOT, 'visuals/CosmicWormholeIdentity.ts'), 'utf8');
-  assert.match(source, /snapshotGrainGeometry\(grain, State\.visualTuning\)/);
-  assert.doesNotMatch(source, /snapshotGrainGeometry\(grain, State\.targetTuning\)/);
+  assert.match(source, /snapshotGrainGeometry\(grain, State\.visualTuning, (?:safeTime|timeSec)\)/);
+  assert.doesNotMatch(source, /snapshotGrainGeometry\(grain, State\.targetTuning/);
 });
 
 test('transition turbulence is deterministic, per-grain decorrelated, spectral, and depth-local', () => {
@@ -575,7 +575,7 @@ test('route sampling and draw-time grain projection do not allocate path or grai
   assert.match(drawBody, /this\.routePath\.sample\([^;]+, this\.routePrev\)/);
 });
 
-test('tunnel geometry has a canonical phase and no live or oscillating position multiplier', () => {
+test('tunnel geometry release-samples canonical-time LFO parameters and has no live audio position multiplier', () => {
   // Regression guard: FOV/maxZ/radius/alpha/weight/vz previously read `motion.perspectiveCompression`,
   // `motion.depthPulse`, `motion.densityFill`, and the live `impact` (kick) scalar directly, making
   // the whole tunnel/field visibly "breathe" with every audio frame. Only the slow, bar-scale
@@ -585,6 +585,9 @@ test('tunnel geometry has a canonical phase and no live or oscillating position 
   assert.match(source, /const fov = backend\.height \* 1\.2;/);
   assert.match(source, /this\.travelPhase = wrapDepthPhase\(travelDistance \/ Z_REFERENCE\);/);
   assert.match(source, /const vz = wormholeTrailSeparation\(canonicalRate, 1\);/);
+  assert.match(source, /grain\.releaseRadius = effectiveWormholeGeometryValue\(/);
+  assert.match(source, /grain\.releaseDepth = effectiveWormholeGeometryValue\(/);
+  assert.match(source, /snapshotGrainGeometry\(grain, State\.visualTuning, timeSec\)/);
   assert.match(source, /const radius = 50 \* grain\.releaseRadius;/);
   assert.match(source, /const grainMaxZ = Z_REFERENCE \* grain\.releaseDepth;/);
   assert.match(source, /const projectedThetaNow = thetaNow \+ transitionEnergyNow\.angularOffset;/);
