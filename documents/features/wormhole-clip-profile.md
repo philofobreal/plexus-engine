@@ -33,16 +33,16 @@ only inside `scenePlanAdapter` via the pack `targetMap`.
 
 | Action handle | Preset | Clip role |
 |---|---|---|
-| `wormhole.establish-space` | `vos-wh-establish.json` | build the space: slow, wide, straight, calm |
-| `wormhole.straight-drive` | `vos-wh-drive.json` | groove: steady straight flight (curve exactly 0) |
-| `wormhole.spiral-build` | `vos-wh-spiral.json` | rising tension: strong spiral flow and the largest authored path bend |
-| `wormhole.sparse-break` | `vos-wh-sparse.json` | segmented sparse field / ribbed break texture |
-| `wormhole.tunnel-punch` | `vos-wh-punch.json` | drop hit: sudden speed and warp jump |
-| `wormhole.overdrive-peak` | `vos-wh-overdrive.json` | overdriven peak: maximum speed/warp, jitter >= 0.8 |
+| `wormhole.establish-space` | `vos-wh-establish.json` | build the space: slow, distant, straight, calm |
+| `wormhole.straight-drive` | `vos-wh-drive.json` | groove: close steady straight flight (curve exactly 0) |
+| `wormhole.spiral-build` | `vos-wh-spiral.json` | distant rising tension: strong spiral flow and the largest authored path bend |
+| `wormhole.sparse-break` | `vos-wh-sparse.json` | close segmented field / readable ribbed break texture |
+| `wormhole.tunnel-punch` | `vos-wh-punch.json` | focused drop hit: sudden speed and warp jump |
+| `wormhole.overdrive-peak` | `vos-wh-overdrive.json` | close full-frame rush: maximum speed/warp, jitter >= 0.8 |
 | `wormhole.deep-drift` | `vos-wh-drift.json` | aftermath: the deepest, slowest space of the family |
-| `wormhole.collapse-transition` | `vos-wh-collapse.json` | transition: restrained depth compression into rings |
-| `wormhole.reveal-galaxy` | `vos-wh-galaxy.json` | reveal: slow glide with the longest streaks |
-| `wormhole.outro-dissolve` | `vos-wh-dissolve.json` | dissolve: quieter but still visible deep trails |
+| `wormhole.collapse-transition` | `vos-wh-collapse.json` | close transition: restrained depth compression into rings |
+| `wormhole.reveal-galaxy` | `vos-wh-galaxy.json` | distant reveal: slow glide with the longest streaks |
+| `wormhole.outro-dissolve` | `vos-wh-dissolve.json` | close dissolve: quieter but still visible perspective trails |
 
 ## Situation mapping
 
@@ -101,7 +101,19 @@ action inside the situation vocabularies.
   and negative values are horizontal mirror directions. `wormholePathBendVertical` is independently
   signed for diagonal scenic arcs; `bendMirror` flips the mirrorable spiral/overdrive direction before
   the target is applied. Straight roles actively steer a previously curved runtime route back to the
-  zero-heading baseline without a camera teleport.
+  zero-heading baseline without a camera teleport. This explicit-authoring discipline is not limited
+  to the 10 wormhole clip roles: every bundled factory preset asset that authors `wormholeRadius` or
+  `wormholeDepth` also explicitly authors `wormholePathBend`, `wormholePathBendVertical`, and both
+  complete radius/depth LFO profiles, so route-bend and LFO state cannot stick
+  across a preset switch into any other factory preset, wormhole or otherwise. Runtime behaviour for
+  externally-authored/user presets is unaffected: an absent key still stays sticky (VT-3.7).
+- Every factory geometry preset authors a role-expressive radius/depth waveform, rate, and amount:
+  atmospheric states stay slow and organic, drive/build states use medium rhythmic movement, and
+  peak/transition states use faster, sharper shapes. The LFO modulates the release-snapshotted tunnel radius/depth around their authored values in the
+  distance domain (never wall-clock time), so it freezes with the rest of a grain's geometry at
+  release and reproduces identically under seek, export, and any playback FPS. See
+  [VT-2.16](../acceptance-criteria/visual-tuning-presets-and-playback-ui-acs.md) for the full contract
+  (enum range, normalization semantics, and morph-snap behavior).
 - The style-pack pair metadata is operational: `minSegmentSec`, `maxSegmentSec`, `alternation`, and
   `intensityShape` select the pacing envelope, and the wormhole morph floor prevents a high-delta
   preset pair from collapsing into a short attack morph.
@@ -111,6 +123,21 @@ action inside the situation vocabularies.
   segmented sparse texture, collapse owns ring compression, the galaxy reveal owns streak length, and the
   dissolve is the dimmest while retaining visible perspective trails. The preset values themselves are
   first-draft designer values; tuning them is fine as long as these relations hold.
+
+## Near/far geometry pairs
+
+The fixed-lens projected tube scale follows `wormholeRadius / wormholeDepth`. Each natural role
+pair therefore uses both controls in opposition: the near member has a larger radius and shallower
+horizon, while the far member has a smaller radius and deeper horizon. The authored pair contrast
+is at least `2.2x`; LFO motion animates around those centers without erasing their spatial identity.
+
+| Near member | Far member |
+|---|---|
+| straight drive | establish space |
+| collapse transition | spiral build |
+| sparse break | galaxy reveal |
+| overdrive peak | tunnel punch |
+| outro dissolve | deep drift |
 
 ## Readability and perspective pass
 

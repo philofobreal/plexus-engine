@@ -77,6 +77,12 @@ const WORMHOLE_TUNING_KEYS = [
   'wormholePathBendVertical',
   'wormholeRing',
   'wormholeDepthCoherence',
+  'wormholeRadiusLfoWaveform',
+  'wormholeRadiusLfoRate',
+  'wormholeRadiusLfoAmount',
+  'wormholeDepthLfoWaveform',
+  'wormholeDepthLfoRate',
+  'wormholeDepthLfoAmount',
   'wormholeContinuity',
   'wormholeStarfield',
   'wormholeGalaxy',
@@ -85,9 +91,10 @@ const WORMHOLE_TUNING_KEYS = [
   'wormholeJitter'
 ];
 const WORMHOLE_BACKGROUND_MASTER_KEYS = ['wormholeStarfield', 'wormholeGalaxy', 'wormholeSkybox'];
-// `wormholePathBendVertical` defaults to zero for the family. Task 11 authors it only on the
-// galaxy reveal, so it remains optional while still being an owned wormhole tuning key.
-const WORMHOLE_UNPRESETED_KEYS = ['wormholePathBendVertical'];
+// Every factory preset that authors wormholeRadius/wormholeDepth now also explicitly authors
+// wormholePathBend, wormholePathBendVertical, and both complete LFO profiles (closing the F2 route
+// and LFO preset leak in one coordinated edit), so no wormhole tuning key remains unpreseted.
+const WORMHOLE_UNPRESETED_KEYS = [];
 const WORMHOLE_FACTORY_PRESET_KEYS = WORMHOLE_TUNING_KEYS.filter(
   (key) => !WORMHOLE_BACKGROUND_MASTER_KEYS.includes(key) && !WORMHOLE_UNPRESETED_KEYS.includes(key)
 );
@@ -119,6 +126,42 @@ test('every wormhole clip preset carries the route/grain wormhole role keys expl
       assert.ok(!(key in tuning), `${name} must not reset user-global ${key}`);
     }
   }
+});
+
+test('a bent, LFO-authored preset does not leak route-bend or LFO-waveform state into the next factory preset (F2, within-family)', () => {
+  const { normalizeVisualTuningConfig, defaultVisualTuning } = load('config/visualTuning.ts');
+  const galaxy = readPreset('vos-wh-galaxy.json');
+  const drive = readPreset('vos-wh-drive.json');
+
+  let current = normalizeVisualTuningConfig(galaxy, { ...defaultVisualTuning });
+  assert.ok(current.wormholePathBend !== 0, 'galaxy authors a nonzero bend to leak from');
+  assert.ok(current.wormholeRadiusLfoWaveform !== 0, 'galaxy authors a nonzero radius LFO waveform to leak from');
+
+  current = normalizeVisualTuningConfig(drive, current);
+  assert.equal(current.wormholePathBend, 0, 'drive resets route bend explicitly, no leak');
+  assert.equal(current.wormholePathBendVertical, 0, 'drive resets vertical route bend explicitly, no leak');
+  assert.equal(current.wormholeRadiusLfoWaveform, drive.visualTuning.wormholeRadiusLfoWaveform, 'drive authors its own radius waveform, no leak');
+  assert.equal(current.wormholeRadiusLfoRate, drive.visualTuning.wormholeRadiusLfoRate, 'drive authors its own radius rate, no leak');
+  assert.equal(current.wormholeRadiusLfoAmount, drive.visualTuning.wormholeRadiusLfoAmount, 'drive authors its own radius amount, no leak');
+  assert.equal(current.wormholeDepthLfoWaveform, drive.visualTuning.wormholeDepthLfoWaveform, 'drive authors its own depth waveform, no leak');
+});
+
+test('a bent, LFO-authored wormhole preset does not leak route-bend or LFO-waveform state across families (F2, cross-family)', () => {
+  const { normalizeVisualTuningConfig, defaultVisualTuning } = load('config/visualTuning.ts');
+  const galaxy = readPreset('vos-wh-galaxy.json');
+  const verseMotion = readPreset('vos-verse-motion.json');
+
+  let current = normalizeVisualTuningConfig(galaxy, { ...defaultVisualTuning });
+  assert.ok(current.wormholePathBend !== 0, 'galaxy authors a nonzero bend to leak from');
+  assert.ok(current.wormholeRadiusLfoWaveform !== 0, 'galaxy authors a nonzero radius LFO waveform to leak from');
+
+  current = normalizeVisualTuningConfig(verseMotion, current);
+  assert.equal(current.wormholePathBend, 0, 'verse-motion resets route bend explicitly, no cross-family leak');
+  assert.equal(current.wormholePathBendVertical, 0, 'verse-motion resets vertical route bend explicitly, no cross-family leak');
+  assert.equal(current.wormholeRadiusLfoWaveform, verseMotion.visualTuning.wormholeRadiusLfoWaveform, 'verse-motion authors its own radius waveform, no cross-family leak');
+  assert.equal(current.wormholeRadiusLfoRate, verseMotion.visualTuning.wormholeRadiusLfoRate, 'verse-motion authors its own radius rate, no cross-family leak');
+  assert.equal(current.wormholeDepthLfoWaveform, verseMotion.visualTuning.wormholeDepthLfoWaveform, 'verse-motion authors its own depth waveform, no cross-family leak');
+  assert.equal(current.wormholeDepthLfoAmount, verseMotion.visualTuning.wormholeDepthLfoAmount, 'verse-motion authors its own depth amount, no cross-family leak');
 });
 
 test('identity tuning registry owns wormhole keys once and filters only automation foreign writes', () => {
@@ -179,13 +222,13 @@ test('all presets stay visible and ring quantization is limited to authored ring
 
 test('weak roles pin a deep-perspective depth and continuity profile', () => {
   const expected = {
-    establish: [3.4, 1.1],
-    drive: [2.8, 1.35],
-    spiral: [3.0, 1.45],
-    sparse: [4.7, 2.0],
+    establish: [4.0, 1.1],
+    drive: [2.5, 1.35],
+    spiral: [4.2, 1.45],
+    sparse: [2.7, 2.0],
     drift: [5.0, 1.55],
-    galaxy: [4.6, 2.0],
-    dissolve: [4.2, 0.9]
+    galaxy: [4.7, 2.0],
+    dissolve: [2.5, 0.9]
   };
   for (const [role, [depth, continuity]] of Object.entries(expected)) {
     const tuning = readPreset(`vos-wh-${role}.json`).visualTuning;
