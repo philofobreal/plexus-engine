@@ -226,13 +226,20 @@ if (Test-Path $OutputPath) {
 "`nRoot: $RootPath`nMode: $ExportModeLabel`nGenerated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`n" | Out-File $OutputPath -Append -Encoding UTF8
 
 if ($UseGit) {
-    $files = git -C $RootPath ls-files | ForEach-Object {
-        $path = Join-Path $RootPath $_
-        if (Test-Path $path) {
-            Get-Item $path
+    $files = git -C $RootPath -c core.quotepath=false ls-files | ForEach-Object {
+        $relativePath = $_.Trim()
+
+        if ([string]::IsNullOrWhiteSpace($relativePath)) {
+            return
+        }
+
+        $path = Join-Path -Path $RootPath -ChildPath $relativePath
+
+        if (Test-Path -LiteralPath $path) {
+            Get-Item -LiteralPath $path
         }
     } | Where-Object {
-        Should-IncludeFile $_ $ExportMode
+        $_ -and (Should-IncludeFile $_ $ExportMode)
     }
 } else {
     $files = Get-ChildItem $RootPath -Recurse -File | Where-Object {
