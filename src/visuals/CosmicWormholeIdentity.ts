@@ -91,9 +91,9 @@ const GALAXY_CORE = 5200;
 const NEAR_PROJECTION_FLOOR_RATIO = 0.015;
 const STAR_PROJECTION_Z_FLOOR = MAX_STAR_Z * NEAR_PROJECTION_FLOOR_RATIO;
 const GALAXY_PROJECTION_Z_FLOOR = MAX_GALAXY_Z * NEAR_PROJECTION_FLOOR_RATIO;
-/** Route-local lateral scale for the near starfield before perspective projection. */
+/** Route-drift parallax gain for the near starfield before perspective projection. */
 const STAR_ROUTE_WORLD_SCALE = 1;
-/** Galaxies use the same route-local frame with a softer lateral scale. */
+/** Galaxies use the same route-local frame with a softer route-drift gain. */
 const GALAXY_ROUTE_WORLD_SCALE = 0.65;
 /** The skybox is a single flat, infinitely-distant plate: no depth to divide by, so its translate
  * is expressed as a small fraction of its own tile radius instead of a world-unit scale. */
@@ -546,20 +546,20 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 const gRouteDriftX = this.routeNow.positionX - this.baseRouteNow.positionX;
                 const gRouteDriftY = this.routeNow.positionY - this.baseRouteNow.positionY;
                 const gRouteDriftV = this.routeNowV.positionX - this.baseRouteNowV.positionX;
-                const gLateralX = galaxy.x * GALAXY_ROUTE_WORLD_SCALE * galaxyParallax * this.routeNow.normalX;
-                const gLateralY = galaxy.x * GALAXY_ROUTE_WORLD_SCALE * galaxyParallax * this.routeNow.normalY;
-                const gDeltaX = gRouteDriftX + gLateralX;
-                const gDeltaY = gRouteDriftY + gLateralY;
-                const gLocalX =
-                    (gRouteDriftX * this.baseRouteNow.normalX + gRouteDriftY * this.baseRouteNow.normalY) * routeTurnVisualGain
-                    + gLateralX * this.baseRouteNow.normalX + gLateralY * this.baseRouteNow.normalY;
-                const gLocalZ = Math.max(
-                    GALAXY_PROJECTION_Z_FLOOR,
-                    gz * 0.72,
-                    gDeltaX * this.baseRouteNow.tangentX + gDeltaY * this.baseRouteNow.tangentY
-                );
+                // The authored cosmos is a rigid background plate at each depth. Turning may
+                // translate that plate through route parallax, but it must not rotate/scale the
+                // galaxy's own x/y coordinates or feed lateral route motion back into projection
+                // depth. Those couplings stretched the background whenever bend changed.
+                const gRouteLocalX =
+                    gRouteDriftX * this.baseRouteNow.normalX + gRouteDriftY * this.baseRouteNow.normalY;
+                const gLocalX = galaxy.x
+                    + gRouteLocalX * GALAXY_ROUTE_WORLD_SCALE * galaxyParallax * routeTurnVisualGain;
+                const gLocalZ = Math.max(GALAXY_PROJECTION_Z_FLOOR, gz * 0.72);
                 const gx = cx + (gLocalX / gLocalZ) * fov;
-                const gy = cy + (galaxy.y + gRouteDriftV * routeTurnVisualGain) / gLocalZ * fov;
+                const gy = cy + (
+                    galaxy.y
+                    + gRouteDriftV * GALAXY_ROUTE_WORLD_SCALE * galaxyParallax * routeTurnVisualGain
+                ) / gLocalZ * fov;
                 const gRadius = Math.max(8, (GALAXY_CORE / gLocalZ) * fov);
                 const gAlpha = (0.018 + gNear * 0.05 + impact * 0.03) * galaxyAmount * lineAlpha * gNearVisibility;
                 this.galaxyColor[0] = galaxy.r;
@@ -576,20 +576,16 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 const gRouteDriftXPrev = this.routePrev.positionX - this.baseRoutePrev.positionX;
                 const gRouteDriftYPrev = this.routePrev.positionY - this.baseRoutePrev.positionY;
                 const gRouteDriftVPrev = this.routePrevV.positionX - this.baseRoutePrevV.positionX;
-                const gLateralXPrev = galaxy.x * GALAXY_ROUTE_WORLD_SCALE * galaxyParallaxPrev * this.routePrev.normalX;
-                const gLateralYPrev = galaxy.x * GALAXY_ROUTE_WORLD_SCALE * galaxyParallaxPrev * this.routePrev.normalY;
-                const gDeltaXPrev = gRouteDriftXPrev + gLateralXPrev;
-                const gDeltaYPrev = gRouteDriftYPrev + gLateralYPrev;
-                const gLocalXPrev =
-                    (gRouteDriftXPrev * this.baseRoutePrev.normalX + gRouteDriftYPrev * this.baseRoutePrev.normalY) * routeTurnVisualGain
-                    + gLateralXPrev * this.baseRoutePrev.normalX + gLateralYPrev * this.baseRoutePrev.normalY;
-                const gLocalZPrev = Math.max(
-                    GALAXY_PROJECTION_Z_FLOOR,
-                    gzPrev * 0.72,
-                    gDeltaXPrev * this.baseRoutePrev.tangentX + gDeltaYPrev * this.baseRoutePrev.tangentY
-                );
+                const gRouteLocalXPrev =
+                    gRouteDriftXPrev * this.baseRoutePrev.normalX + gRouteDriftYPrev * this.baseRoutePrev.normalY;
+                const gLocalXPrev = galaxy.x
+                    + gRouteLocalXPrev * GALAXY_ROUTE_WORLD_SCALE * galaxyParallaxPrev * routeTurnVisualGain;
+                const gLocalZPrev = Math.max(GALAXY_PROJECTION_Z_FLOOR, gzPrev * 0.72);
                 const gxPrev = cx + (gLocalXPrev / gLocalZPrev) * fov;
-                const gyPrev = cy + (galaxy.y + gRouteDriftVPrev * routeTurnVisualGain) / gLocalZPrev * fov;
+                const gyPrev = cy + (
+                    galaxy.y
+                    + gRouteDriftVPrev * GALAXY_ROUTE_WORLD_SCALE * galaxyParallaxPrev * routeTurnVisualGain
+                ) / gLocalZPrev * fov;
                 backend.radialGlow(gxPrev, gyPrev, gRadius * 0.7, this.galaxyColor, gAlpha * 0.4);
             }
         }
@@ -644,8 +640,6 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 const starRouteDriftX = this.routeNow.positionX - this.baseRouteNow.positionX;
                 const starRouteDriftY = this.routeNow.positionY - this.baseRouteNow.positionY;
                 const starRouteDriftV = this.routeNowV.positionX - this.baseRouteNowV.positionX;
-                const starLateralX = star.x * STAR_ROUTE_WORLD_SCALE * starParallax * this.routeNow.normalX;
-                const starLateralY = star.x * STAR_ROUTE_WORLD_SCALE * starParallax * this.routeNow.normalY;
                 // The star's world-route distance is fixed across the trail:
                 // (camZ - vzStar) + (z + vzStar) === camZ + z. Its route geometry still has to be
                 // evaluated from the previous integrated state: during a bend morph, extrapolating
@@ -656,30 +650,22 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 const prevStarRouteDriftX = this.routePrev.positionX - this.baseRoutePrev.positionX;
                 const prevStarRouteDriftY = this.routePrev.positionY - this.baseRoutePrev.positionY;
                 const prevStarRouteDriftV = this.routePrevV.positionX - this.baseRoutePrevV.positionX;
-                const prevStarLateralX = star.x * STAR_ROUTE_WORLD_SCALE * starParallaxPrev * this.routePrev.normalX;
-                const prevStarLateralY = star.x * STAR_ROUTE_WORLD_SCALE * starParallaxPrev * this.routePrev.normalY;
-                const starDeltaX = starRouteDriftX + starLateralX;
-                const starDeltaY = starRouteDriftY + starLateralY;
-                const prevStarDeltaX = prevStarRouteDriftX + prevStarLateralX;
-                const prevStarDeltaY = prevStarRouteDriftY + prevStarLateralY;
-                const localX =
-                    (starRouteDriftX * this.baseRouteNow.normalX + starRouteDriftY * this.baseRouteNow.normalY) * routeTurnVisualGain
-                    + starLateralX * this.baseRouteNow.normalX + starLateralY * this.baseRouteNow.normalY;
-                const prevLocalX =
-                    (prevStarRouteDriftX * this.baseRoutePrev.normalX + prevStarRouteDriftY * this.baseRoutePrev.normalY) * routeTurnVisualGain
-                    + prevStarLateralX * this.baseRoutePrev.normalX + prevStarLateralY * this.baseRoutePrev.normalY;
-                const localZ = Math.max(
-                    STAR_PROJECTION_Z_FLOOR,
-                    z * 0.72,
-                    starDeltaX * this.baseRouteNow.tangentX + starDeltaY * this.baseRouteNow.tangentY
-                );
-                const prevLocalZ = Math.max(
-                    STAR_PROJECTION_Z_FLOOR,
-                    prevZ * 0.72,
-                    prevStarDeltaX * this.baseRoutePrev.tangentX + prevStarDeltaY * this.baseRoutePrev.tangentY
-                );
-                const localY = star.y + starRouteDriftV * routeTurnVisualGain;
-                const prevLocalY = star.y + prevStarRouteDriftV * routeTurnVisualGain;
+                const starRouteLocalX =
+                    starRouteDriftX * this.baseRouteNow.normalX + starRouteDriftY * this.baseRouteNow.normalY;
+                const prevStarRouteLocalX =
+                    prevStarRouteDriftX * this.baseRoutePrev.normalX + prevStarRouteDriftY * this.baseRoutePrev.normalY;
+                // Keep the star plate rigid: bend scales only its shared route translation. The
+                // star's own x/y and projection depth remain independent of turn intensity.
+                const localX = star.x
+                    + starRouteLocalX * STAR_ROUTE_WORLD_SCALE * starParallax * routeTurnVisualGain;
+                const prevLocalX = star.x
+                    + prevStarRouteLocalX * STAR_ROUTE_WORLD_SCALE * starParallaxPrev * routeTurnVisualGain;
+                const localZ = Math.max(STAR_PROJECTION_Z_FLOOR, z * 0.72);
+                const prevLocalZ = Math.max(STAR_PROJECTION_Z_FLOOR, prevZ * 0.72);
+                const localY = star.y
+                    + starRouteDriftV * STAR_ROUTE_WORLD_SCALE * starParallax * routeTurnVisualGain;
+                const prevLocalY = star.y
+                    + prevStarRouteDriftV * STAR_ROUTE_WORLD_SCALE * starParallaxPrev * routeTurnVisualGain;
                 const sx = cx + localX / localZ * fov;
                 const sy = cy + localY / localZ * fov;
                 const psx = cx + prevLocalX / prevLocalZ * fov;
@@ -841,12 +827,15 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             // it needs no transform of its own, only the same perspective divide as the lateral axis.
             // The independent vertical steering integrator (Task 08) adds only a drift term on top,
             // never a rotation, so the cross-section stays circular under a diagonal bend too.
-            this.routePath.sample(distanceNow + z, this.routeNow);
-            this.routePath.sample(distancePrev + prevZ, this.routePrev);
+            // A bend retarget changes future steering, not already-visible tunnel geometry in one
+            // frame. Project both endpoints from the distance-smoothed route history so curvature
+            // enters the visible volume only as the camera actually travels through it.
+            this.routePath.sampleSmoothedLookahead(distanceNow + z, this.routeNow);
+            this.routePath.samplePreviousSmoothedLookahead(distancePrev + prevZ, this.routePrev);
             this.routePath.sample(distanceNow, this.baseRouteNow);
             this.routePath.sample(distancePrev, this.baseRoutePrev);
-            this.routePathVertical.sample(distanceNow + z, this.routeNowV);
-            this.routePathVertical.sample(distancePrev + prevZ, this.routePrevV);
+            this.routePathVertical.sampleSmoothedLookahead(distanceNow + z, this.routeNowV);
+            this.routePathVertical.samplePreviousSmoothedLookahead(distancePrev + prevZ, this.routePrevV);
             this.routePathVertical.sample(distanceNow, this.baseRouteNowV);
             this.routePathVertical.sample(distancePrev, this.baseRoutePrevV);
             const verticalDriftNow = this.routeNowV.positionX - this.baseRouteNowV.positionX;
@@ -1210,9 +1199,12 @@ function wormholeTransitionMorphEnvelope(
     elapsedSec: number
 ): number {
     if (!activeTransitionId) return 0;
+    // Route bend already has two continuity layers: tuning morph and distance-domain steering.
+    // Feeding that same delta into a per-grain distortion pulse made a bend change look like a
+    // geometry jump even when the route itself was continuous. Transition energy remains available
+    // for local material/tube-character changes, never for route retargeting alone.
     const diff =
-        Math.abs(current.wormholePathBend - target.wormholePathBend) * 1.2
-        + Math.abs(current.wormholeWarp - target.wormholeWarp) * 0.16
+        Math.abs(current.wormholeWarp - target.wormholeWarp) * 0.16
         + Math.abs(current.wormholeCurve - target.wormholeCurve) * 0.42
         + Math.abs(current.wormholeRadius - target.wormholeRadius) * 0.28
         + Math.abs(current.wormholeDepth - target.wormholeDepth) * 0.12

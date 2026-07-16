@@ -142,13 +142,13 @@ test('Task08: wormholePathBendVertical=0 fixture -- frozen background/foreground
   const backend = makeBackend();
   identity.draw(backend, [], []);
 
-  assert.equal(backend.lines.length, 2156);
+  assert.equal(backend.lines.length, 2160);
   assert.equal(backend.glows.length, 18);
-  assertLineClose(backend.lines[0], [2117.835705993326, -1545.2883352399774, 2126.9098292595645, -1556.578528731975]);
-  assertLineClose(backend.lines[900], [-2714.6121172241315, 2010.8162742115571, -2749.652386368014, 2029.3728844235297]);
-  assertLineClose(backend.lines[backend.lines.length - 361], [147.29479235967221, -185.14108221297664, 145.5769867633212, -186.04390712957922]);
-  assertLineClose(backend.lines[backend.lines.length - 1], [555.3211986237654, 266.0547111332349, 553.4289720711456, 265.43668359686063]);
-  assertLineClose(backend.glows[0].slice(0, 3), [6299.904031816239, 4444.471737160811, 2451.7743620513143]);
+  assertLineClose(backend.lines[0], [2035.594456651597, -2124.3061784061883, 2044.1727174492291, -2140.786333353574]);
+  assertLineClose(backend.lines[900], [-2948.8580976555386, 2978.32688871218, -2983.951451731245, 3004.361884599845]);
+  assertLineClose(backend.lines[backend.lines.length - 361], [-458.8733533693646, 2416.418952386579, -466.971701935532, 2430.0671791293207]);
+  assertLineClose(backend.lines[backend.lines.length - 1], [542.6268815252189, 267.6095872454522, 541.3080127695839, 267.2349609396641]);
+  assertLineClose(backend.glows[0].slice(0, 3), [7781.463294449433, 5149.61491188822, 2865.9230415074553]);
   assert.equal(backend.glows[0][4], 0.08807312070709467);
 });
 

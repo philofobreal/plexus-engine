@@ -357,7 +357,7 @@ test('camera-relative route frame is an exact zero-bend baseline', () => {
     'zero bend remains an exact camera-local straight baseline'
   );
   const source = readFileSync(join(SRC_ROOT, 'visuals/CosmicWormholeIdentity.ts'), 'utf8');
-  assert.match(source, /this\.routePath\.sample\(distanceNow \+ z, this\.routeNow\)/);
+  assert.match(source, /this\.routePath\.sampleSmoothedLookahead\(distanceNow \+ z, this\.routeNow\)/);
   assert.match(source, /this\.routePath\.sample\(distanceNow, this\.baseRouteNow\)/);
   assert.match(source, /projectWormholeTubePoint\(\s*\r?\n?\s*this\.routeNow, this\.baseRouteNow, z, projectedThetaNow, projectedRadiusNow, routeTurnVisualGain/);
   assert.doesNotMatch(source, /sampleWormholeRoute\(|wormholeViewerRelativeRoute|VIEWER_ROUTE_LOOKAHEAD|FOREGROUND_ROUTE_SCREEN_SCALE/);
@@ -379,11 +379,13 @@ test('background layers use the same route-local travel frame, not screen rotati
   assert.match(source, /const starPrevCamZ = Math\.max\(0, camZ - vzStar\)/);
   assert.match(source, /this\.routePath\.sample\(starPrevCamZ, this\.baseRoutePrev\)/);
   assert.match(source, /this\.routePath\.sampleSmoothedLookahead\(camZ \+ z, this\.routeNow\)/);
-  assert.match(source, /const starLateralX = star\.x \* STAR_ROUTE_WORLD_SCALE \* starParallax \* this\.routeNow\.normalX/);
-  assert.match(source, /const prevStarLateralX = star\.x \* STAR_ROUTE_WORLD_SCALE \* starParallaxPrev \* this\.routePrev\.normalX/);
+  assert.match(source, /const localX = star\.x\s*\+ starRouteLocalX \* STAR_ROUTE_WORLD_SCALE \* starParallax \* routeTurnVisualGain/);
+  assert.match(source, /const localZ = Math\.max\(STAR_PROJECTION_Z_FLOOR, z \* 0\.72\)/);
   assert.match(source, /const galaxyDepthTravel = camZ \* GALAXY_SPEED_RATIO/);
   assert.match(source, /this\.routePath\.sampleSmoothedLookahead\(camZ \+ gz, this\.routeNow\)/);
-  assert.match(source, /const gLateralX = galaxy\.x \* GALAXY_ROUTE_WORLD_SCALE \* galaxyParallax \* this\.routeNow\.normalX/);
+  assert.match(source, /const gLocalX = galaxy\.x\s*\+ gRouteLocalX \* GALAXY_ROUTE_WORLD_SCALE \* galaxyParallax \* routeTurnVisualGain/);
+  assert.match(source, /const gLocalZ = Math\.max\(GALAXY_PROJECTION_Z_FLOOR, gz \* 0\.72\)/);
+  assert.doesNotMatch(source, /starLateral[XY]|gLateral[XY]|starDelta[XY]|gDelta[XY]/);
   assert.doesNotMatch(source, /BACKGROUND_ROUTE_FOLLOW_SCALE|sampleWormholeBackgroundViewerFrame|wormholeBackgroundWorldRelative|backgroundViewer/);
   assert.doesNotMatch(source, /sampleWormholeRouteFrame\(starDepthTravel|sampleWormholeRouteFrame\(galaxyDepthTravel/);
   assert.doesNotMatch(source, /STAR_ROTATION_GAIN|GALAXY_ROTATION_GAIN|SKYBOX_ROTATION_GAIN/);
@@ -431,8 +433,8 @@ test('disabled starfield skips the complete star projection and route-sampling h
 test('grain projection samples real current and previous route positions without moving the lens', () => {
   const source = readFileSync(join(SRC_ROOT, 'visuals/CosmicWormholeIdentity.ts'), 'utf8');
   assert.match(source, /const cx = backend\.width \/ 2;\s*const cy = backend\.height \/ 2;/);
-  assert.match(source, /this\.routePath\.sample\(distanceNow \+ z, this\.routeNow\)/);
-  assert.match(source, /this\.routePath\.sample\(distancePrev \+ prevZ, this\.routePrev\)/);
+  assert.match(source, /this\.routePath\.sampleSmoothedLookahead\(distanceNow \+ z, this\.routeNow\)/);
+  assert.match(source, /this\.routePath\.samplePreviousSmoothedLookahead\(distancePrev \+ prevZ, this\.routePrev\)/);
   assert.match(source, /this\.routePath\.sample\(distanceNow, this\.baseRouteNow\)/);
   assert.match(source, /this\.routePath\.sample\(distancePrev, this\.baseRoutePrev\)/);
   assert.match(source, /wormholeTransitionEnergy\(\s*grain\.seed, frameTick, transitionEnvelope, liveEnergy, depthT/);
@@ -571,8 +573,8 @@ test('route sampling and draw-time grain projection do not allocate path or grai
   const source = readFileSync(join(SRC_ROOT, 'visuals/CosmicWormholeIdentity.ts'), 'utf8');
   const drawBody = source.slice(source.indexOf('    draw('), source.indexOf('    private travelDistanceAt'));
   assert.doesNotMatch(drawBody, /this\.pool\.push|this\.starPool\.push|this\.galaxyPool\.push|createWormholeGrainCharacter/);
-  assert.match(drawBody, /this\.routePath\.sample\([^;]+, this\.routeNow\)/);
-  assert.match(drawBody, /this\.routePath\.sample\([^;]+, this\.routePrev\)/);
+  assert.match(drawBody, /this\.routePath\.sampleSmoothedLookahead\([^;]+, this\.routeNow\)/);
+  assert.match(drawBody, /this\.routePath\.samplePreviousSmoothedLookahead\([^;]+, this\.routePrev\)/);
 });
 
 test('tunnel geometry release-samples canonical-time LFO parameters and has no live audio position multiplier', () => {

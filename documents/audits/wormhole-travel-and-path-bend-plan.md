@@ -116,7 +116,10 @@ turn measures and look-ahead sampling stay O(1) instead of re-walking playback h
 
 Stars, galaxies, and the optional skybox use the same route-local travel frame. Stars use current and
 previous camera frames so trail direction follows camera heading delta and layer speed. Near stars
-react more strongly through their own perspective divide; far stars and the skybox react weakly.
+react more strongly through their own perspective divide; far stars and the skybox react weakly. At
+each depth, authored cosmos coordinates and projection depth remain rigid: route bend scales only the
+shared translation term, never the point field or its depth denominator, so a turn cannot stretch the
+background.
 
 There is no separate background viewer-frame API, no independent background route, no whole-cosmos
 rotation, and no oversized shared background scale. Background changes read the live effective
@@ -178,9 +181,10 @@ moving the tunnel geometry.
 
 The runtime steering cancel path no longer clears curvature when a target changes. It retargets
 continuously, including bounded counter-steering when a curved role returns to the straight target.
-Background parallax reads the distance-smoothed turn measure, while point geometry continues to use
-the live route frame; a target change therefore cannot turn a one-frame curvature value into a
-whole-background positional jump.
+Foreground and background look-ahead read distance-smoothed route history; a target change therefore
+cannot turn a one-frame curvature value into a visible-volume rearrangement. Bend deltas are excluded
+from the separate grain transition-disturbance envelope because tuning morph plus steering already own
+their complete response.
 
 `syncPosition()` reconstructs each horizontal and vertical route with
 `resetWormholeRouteStateConverged`, rather than starting from heading zero. The canonical transport

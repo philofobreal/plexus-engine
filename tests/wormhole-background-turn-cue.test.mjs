@@ -169,16 +169,11 @@ test('spiral background reads as a visible, continuous cosmic-turn cue across se
     `expected at least one window with a mostly one-directional sweep, best net/total ratio was ${maxMonotonicRatio.toFixed(2)}`
   );
 
-  // The foreground core (grain) centroid is a *consequence* of the same undamped, camera-local
-  // route transform the background already used (`FOREGROUND_ROUTE_DRIFT_WEIGHT` = 1): it must
-  // visibly swing with the route through a real turn, not stay artificially anchored near the fixed
-  // lens (the old, now-fixed "frontal tube" regression -- background genuinely banking into the turn
-  // while the foreground silently stayed centered). The floor stays above the old damped behaviour
-  // while leaving room for the sign-preserving route model, which deliberately avoids the previous
-  // periodic over-swing. The ceiling is a generous lens-local sanity bound, not a re-imposed
-  // "stays centered" requirement.
+  // The foreground reads the distance-smoothed route history so a bend retarget cannot rewrite the
+  // whole visible volume in one frame. It must still produce a clearly visible developed-arc swing,
+  // while the upper bound keeps the route lens-local.
   assert.ok(
-    maxCoreDrift >= 60,
+    maxCoreDrift >= 35,
     `expected the foreground core to visibly swing with the turn, drifted only ${maxCoreDrift.toFixed(1)}px`
   );
   assert.ok(
@@ -356,5 +351,145 @@ test('background turn cue retargets without teleporting at a stationary song dis
   assert.ok(
     shift <= 1e-6,
     `expected a stationary live bend retarget to preserve the background position, got a ${shift.toFixed(6)}px shift`
+  );
+});
+
+test('foreground route retargets without rearranging in-flight grains at a stationary song distance', () => {
+  const load = createSourceLoader();
+  const { CosmicWormholeIdentity } = load('visuals/CosmicWormholeIdentity.ts');
+  const { State } = load('state/store.ts');
+  const spiral = JSON.parse(readFileSync(
+    join(process.cwd(), 'public/visual-tuning-presets', 'vos-wh-spiral.json'), 'utf8'
+  )).visualTuning;
+  setupReleaseTestState(State);
+
+  const tuning = {
+    ...spiral,
+    wormholePathBend: 0,
+    wormholePathBendVertical: 0,
+    wormholeStarfield: 0,
+    wormholeGalaxy: 0,
+    wormholeSkybox: 0,
+    performanceMode: 0,
+    chromaKeyMode: 0
+  };
+  Object.assign(State.visualTuning, tuning);
+  Object.assign(State.targetTuning, tuning);
+  State.activeVisualTransitionId = null;
+
+  const identity = new CosmicWormholeIdentity();
+  const time = 2;
+  identity.syncPosition(time);
+  State.currentTime = time;
+
+  const baseline = makeBackend();
+  identity.draw(baseline, [], []);
+  State.visualTuning.wormholePathBend = spiral.wormholePathBend;
+  const retargeted = makeBackend();
+  identity.draw(retargeted, [], []);
+
+  assert.equal(retargeted.lines.length, baseline.lines.length);
+  let maxShift = 0;
+  for (let index = 0; index < baseline.lines.length; index++) {
+    const before = baseline.lines[index];
+    const after = retargeted.lines[index];
+    maxShift = Math.max(maxShift, Math.hypot(after[2] - before[2], after[3] - before[3]));
+  }
+  assert.ok(
+    maxShift <= 1e-6,
+    `stationary bend retarget rearranged an in-flight grain by ${maxShift.toFixed(6)}px`
+  );
+});
+
+test('bend-only transitions do not inject a second grain-geometry disturbance', () => {
+  const load = createSourceLoader();
+  const { CosmicWormholeIdentity } = load('visuals/CosmicWormholeIdentity.ts');
+  const { State } = load('state/store.ts');
+  const spiral = JSON.parse(readFileSync(
+    join(process.cwd(), 'public/visual-tuning-presets', 'vos-wh-spiral.json'), 'utf8'
+  )).visualTuning;
+  setupReleaseTestState(State);
+
+  const tuning = {
+    ...spiral,
+    wormholePathBend: 0,
+    wormholePathBendVertical: 0,
+    wormholeStarfield: 0,
+    wormholeGalaxy: 0,
+    wormholeSkybox: 0,
+    performanceMode: 0,
+    chromaKeyMode: 0
+  };
+  const target = { ...tuning, wormholePathBend: spiral.wormholePathBend };
+
+  function render(activeTransitionId) {
+    Object.assign(State.visualTuning, tuning);
+    Object.assign(State.targetTuning, target);
+    State.activeVisualTransitionId = activeTransitionId;
+    const identity = new CosmicWormholeIdentity();
+    identity.syncPosition(2);
+    State.currentTime = 2;
+    identity.draw(makeBackend(), [], []);
+    State.currentTime = 2.36;
+    const backend = makeBackend();
+    identity.draw(backend, [], []);
+    return backend.lines;
+  }
+
+  const control = render(null);
+  const transitioning = render('bend-only');
+  State.activeVisualTransitionId = null;
+  assert.deepEqual(
+    transitioning,
+    control,
+    'a route bend already has tuning morph + steering; it must not also trigger grain distortion'
+  );
+});
+
+test('cosmos bend response translates equal-depth stars without stretching their spacing', () => {
+  const load = createSourceLoader();
+  const { CosmicWormholeIdentity } = load('visuals/CosmicWormholeIdentity.ts');
+  const { State } = load('state/store.ts');
+  const spiral = JSON.parse(readFileSync(
+    join(process.cwd(), 'public/visual-tuning-presets', 'vos-wh-spiral.json'), 'utf8'
+  )).visualTuning;
+  setupReleaseTestState(State);
+
+  function separationAt(bend) {
+    const tuning = {
+      ...spiral,
+      wormholePathBend: bend,
+      wormholePathBendVertical: 0,
+      wormholeStarfield: 1,
+      wormholeGalaxy: 0,
+      wormholeSkybox: 0,
+      performanceMode: 0,
+      chromaKeyMode: 0
+    };
+    Object.assign(State.visualTuning, tuning);
+    Object.assign(State.targetTuning, tuning);
+    State.activeVisualTransitionId = null;
+    const identity = new CosmicWormholeIdentity();
+    identity.starPool[0].x = -2000;
+    identity.starPool[0].y = 0;
+    identity.starPool[1].x = 2000;
+    identity.starPool[1].y = 0;
+    identity.starPool[1].seed = identity.starPool[0].seed;
+    const time = 8;
+    identity.syncPosition(time);
+    State.currentTime = time;
+    const backend = makeBackend();
+    identity.draw(backend, [], []);
+    const first = backend.lines[0];
+    const second = backend.lines[1];
+    return Math.hypot(second[2] - first[2], second[3] - first[3]);
+  }
+
+  const straight = separationAt(0);
+  const bent = separationAt(spiral.wormholePathBend);
+  assert.ok(straight > 1, 'fixture must have measurable equal-depth star spacing');
+  assert.ok(
+    Math.abs(bent - straight) <= 1e-6,
+    `bend stretched equal-depth cosmos spacing from ${straight.toFixed(6)}px to ${bent.toFixed(6)}px`
   );
 });

@@ -547,24 +547,32 @@ test('Task07: a negative (left) path bend moves the background starfield opposit
   const rightTuning = { ...PRESETS.drive, wormholePathBend: 0.6 };
   const leftTuning = { ...PRESETS.drive, wormholePathBend: -0.6 };
 
-  function meanLateralDelta(run) {
-    const before = run.frames[run.switchFrameIndex];
-    const after = run.frames[run.frames.length - 1];
-    let sum = 0;
-    let count = 0;
-    for (let starIndex = 0; starIndex < STAR_COUNT; starIndex++) {
-      const b = before[starIndex];
-      const a = after[starIndex];
-      if (b.alpha < VISIBLE_ALPHA_FLOOR || a.alpha < VISIBLE_ALPHA_FLOOR) continue;
-      sum += a.sx - b.sx;
-      count++;
-    }
-    assert.ok(count > 50, `too few visible stars to measure a stable mean (got ${count})`);
-    return sum / count;
+  const rightRun = runScriptedMorph(PRESETS.drive, rightTuning);
+  const leftRun = runScriptedMorph(PRESETS.drive, leftTuning);
+  const straightRun = runScriptedMorph(PRESETS.drive, PRESETS.drive);
+  const rightBefore = rightRun.frames[rightRun.switchFrameIndex];
+  const rightAfter = rightRun.frames[rightRun.frames.length - 1];
+  const leftBefore = leftRun.frames[leftRun.switchFrameIndex];
+  const leftAfter = leftRun.frames[leftRun.frames.length - 1];
+  const straightBefore = straightRun.frames[straightRun.switchFrameIndex];
+  const straightAfter = straightRun.frames[straightRun.frames.length - 1];
+  let rightSum = 0;
+  let leftSum = 0;
+  let count = 0;
+  for (let starIndex = 0; starIndex < STAR_COUNT; starIndex++) {
+    const samples = [
+      rightBefore[starIndex], rightAfter[starIndex], leftBefore[starIndex], leftAfter[starIndex],
+      straightBefore[starIndex], straightAfter[starIndex]
+    ];
+    if (samples.some(sample => sample.alpha < VISIBLE_ALPHA_FLOOR)) continue;
+    const straightDelta = straightAfter[starIndex].sx - straightBefore[starIndex].sx;
+    rightSum += rightAfter[starIndex].sx - rightBefore[starIndex].sx - straightDelta;
+    leftSum += leftAfter[starIndex].sx - leftBefore[starIndex].sx - straightDelta;
+    count++;
   }
-
-  const rightMean = meanLateralDelta(runScriptedMorph(PRESETS.drive, rightTuning));
-  const leftMean = meanLateralDelta(runScriptedMorph(PRESETS.drive, leftTuning));
+  assert.ok(count > 50, `too few mutually visible stars to measure a stable mirrored mean (got ${count})`);
+  const rightMean = rightSum / count;
+  const leftMean = leftSum / count;
 
   assert.ok(
     Math.sign(rightMean) !== Math.sign(leftMean),
