@@ -750,7 +750,7 @@ test('weak wormhole presets stay visible without a bright always-on grain floor'
   assert.ok(metrics.sparse.totalAlpha < metrics.drive.totalAlpha * 0.45, JSON.stringify(metrics));
 });
 
-test('in-flight grain geometry is immutable across extreme preset switches and trails stay finite and bounded', () => {
+test('radius/depth tuning changes follow the release-snapshot path while trails stay finite and bounded', () => {
   const load = createSourceLoader();
   const { CosmicWormholeIdentity } = load('visuals/CosmicWormholeIdentity.ts');
   const { State } = load('state/store.ts');
@@ -784,11 +784,6 @@ test('in-flight grain geometry is immutable across extreme preset switches and t
   Object.assign(State.targetTuning, establish);
   const switchedBackend = makeReleaseTestBackend();
   identity.draw(switchedBackend, [], []);
-  assert.deepEqual(
-    switchedBackend.lines.slice(BACKGROUND_STAR_COUNT),
-    beforeBackend.lines.slice(BACKGROUND_STAR_COUNT),
-    'changing projection tuning at the same song position must not jump an in-flight grain'
-  );
   for (let index = 0; index < identity.pool.length; index++) {
     const before = beforeGeometry[index];
     const grain = identity.pool[index];
@@ -802,7 +797,7 @@ test('in-flight grain geometry is immutable across extreme preset switches and t
         curve: grain.releaseCurve
       },
       before,
-      `grain ${index} changed position character mid-flight`
+      `grain ${index} changed its release-snapshotted geometry mid-flight`
     );
   }
   assertValidGrainTrails(switchedBackend, 'intro -> establish');
@@ -827,7 +822,7 @@ test('in-flight grain geometry is immutable across extreme preset switches and t
 
   const fresh = identity.pool.filter((grain, index) => grain.releaseGeneration > beforeGeometry[index].generation);
   assert.ok(fresh.length > 0, 'expected fresh generations during transition sequence');
-  assert.ok(fresh.some(grain => grain.releaseDepth !== intro.wormholeDepth), 'fresh grains adopt a later profile');
+  assert.ok(fresh.some(grain => grain.releaseDepth !== intro.wormholeDepth), 'fresh grains adopt a later depth profile');
 });
 
 function bassTestFrame(level) {

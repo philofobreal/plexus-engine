@@ -404,7 +404,7 @@ test('visual mode selector preserves classic mode and exposes temporal mode', ()
   const temporal = read('src/visuals/TemporalMusicEffect.ts');
 
   assert.match(types, /export type VisualMode = 'classic' \| 'temporal' \| 'dark-techno' \| 'organic-ambient' \| 'cyberpunk'/);
-  assert.match(state, /visualMode: 'classic' as VisualMode/);
+  assert.match(state, /visualMode: 'cosmic-wormhole' as VisualMode/);
   assert.match(main, /id="visual-mode"/);
   assert.match(main, /createDefaultStyleRegistry\(\)/);
   assert.match(ui, /function isVisualMode\(value: string\): value is VisualMode/);

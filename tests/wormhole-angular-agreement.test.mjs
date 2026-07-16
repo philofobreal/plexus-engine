@@ -307,3 +307,74 @@ test('starfield, galaxy, and skybox agree on lateral turn direction, in a fixed,
     `expected star:galaxy lateral ratio within +-40% of ${measuredRatio}, got ${ratio}`
   );
 });
+
+test('skybox lateral offset stays bounded over a long sustained turn, at any song distance', () => {
+  // Regression guard for the removed `baseRoute.positionX * worldScale * 0.002 * routeTurnVisualGain`
+  // term: that term was the route's raw world-frame lateral position (which keeps growing with total
+  // distance travelled through a sustained turn, unlike the tanh-saturated `routePan`/`routePanV`
+  // pan terms, which stay bounded no matter how long the turn continues). Comparing a bent route
+  // against a same-time zero-bend baseline cancels out the shared `star.x * radius` per-star term and
+  // isolates exactly the turn-driven lateral contribution, at increasingly large song distances.
+  const load = createSourceLoader();
+  const { CosmicWormholeIdentity } = load('visuals/CosmicWormholeIdentity.ts');
+  const { State } = load('state/store.ts');
+  const { featureFlags } = load('config/featureFlags.ts');
+  const spiral = loadSpiralPreset();
+  setupReleaseTestState(State);
+  featureFlags.wormholeSkybox = true;
+
+  function skyboxOffsetAt(bend, time) {
+    const tuning = {
+      ...spiral, wormholePathBend: bend, wormholeStarfield: 0, wormholeGalaxy: 0, wormholeSkybox: 1,
+      wormholeSpeed: 4, performanceMode: 0, chromaKeyMode: 0
+    };
+    Object.assign(State.visualTuning, tuning);
+    Object.assign(State.targetTuning, tuning);
+    const identity = new CosmicWormholeIdentity();
+    identity.syncPosition(time);
+    State.currentTime = time;
+    const backend = makeBackend();
+    identity.draw(backend, [], []);
+    const [, , sx, sy] = backend.lines[0];
+    return { sx, sy };
+  }
+
+  try {
+    // Bounded, per the fixed geometry: |routePan| is capped by SKYBOX_PAN_SATURATION_RADIUS *
+    // radius * SKYBOX_ROUTE_WORLD_FRACTION * (1+PARALLAX_TURN_GAIN) * ROUTE_TURN_VISUAL_GAIN, roughly
+    // 66px at this backend size; a generous multiple of that (well below the thousands-of-pixels an
+    // unbounded distance-proportional term would produce over these song distances) makes this a
+    // regression test, not a tight analytic proof.
+    const bound = 250;
+    const times = [2, 200, 2000, 20000];
+    let maxOffset = 0;
+    for (const time of times) {
+      const bent = skyboxOffsetAt(spiral.wormholePathBend, time);
+      const straight = skyboxOffsetAt(0, time);
+      const offset = Math.hypot(bent.sx - straight.sx, bent.sy - straight.sy);
+      maxOffset = Math.max(maxOffset, offset);
+      assert.ok(
+        offset <= bound,
+        `expected the turn-driven skybox offset to stay bounded at song distance t=${time}s, got ${offset.toFixed(1)}px (bound ${bound}px)`
+      );
+    }
+    // The strongest signal that the offset is genuinely bounded (not just small at the sampled
+    // points): once the turn has had time to develop (past the initial heading ramp-up near t=2),
+    // it must not keep growing between two already-developed, widely separated song distances. An
+    // unbounded distance-proportional term would instead keep growing roughly linearly between these
+    // two points.
+    const developedOffsetAt = (time) => {
+      const bent = skyboxOffsetAt(spiral.wormholePathBend, time);
+      const straight = skyboxOffsetAt(0, time);
+      return Math.hypot(bent.sx - straight.sx, bent.sy - straight.sy);
+    };
+    const earlyDevelopedOffset = developedOffsetAt(times[1]);
+    const lateDevelopedOffset = developedOffsetAt(times[times.length - 1]);
+    assert.ok(
+      lateDevelopedOffset <= earlyDevelopedOffset * 3 + 10,
+      `expected the offset to plateau rather than grow with song distance: t=${times[1]}s=${earlyDevelopedOffset.toFixed(1)}px t=${times[times.length - 1]}s=${lateDevelopedOffset.toFixed(1)}px`
+    );
+  } finally {
+    featureFlags.wormholeSkybox = false;
+  }
+});

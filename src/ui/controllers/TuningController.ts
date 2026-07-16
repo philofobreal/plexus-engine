@@ -1,5 +1,6 @@
 import { visualTuningControls, type VisualTuningKey } from '../../config/visualTuning';
 import { State } from '../../state/store';
+import { featureFlags } from '../../config/featureFlags';
 
 export interface TuningCallbacks {
     onTuningChange: (key: VisualTuningKey, value: number) => void;
@@ -92,6 +93,7 @@ export class TuningController {
         const groups = new Map<string, HTMLElement>();
 
         for (const control of visualTuningControls) {
+            if (control.key === 'wormholeSkybox' && !featureFlags.wormholeSkybox) continue;
             let group = groups.get(control.group);
             if (!group) {
                 group = document.createElement('section');

@@ -1015,7 +1015,6 @@ export class CosmicWormholeIdentity implements VisualIdentity {
     ): void {
         if (amount <= 0) return;
         const radius = Math.hypot(cx, cy) * SKYBOX_TILE_RADIUS;
-        const worldScale = radius * SKYBOX_ROUTE_WORLD_FRACTION;
         const parallax = wormholeParallaxStrength(turnSmooth);
         const prevParallax = wormholeParallaxStrength(turnSmoothPrev);
         const routePan = wormholeSkyboxPanHeading(baseRoute.headingAngle) * radius * SKYBOX_ROUTE_WORLD_FRACTION * parallax * routeTurnVisualGain;
@@ -1032,16 +1031,11 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         const forwardShrink = Math.min(SKYBOX_FORWARD_CUE_CAP, skyboxSeparation / radius);
         for (let i = 0; i < this.skyPool.length; i++) {
             const star = this.skyPool[i];
-            // `positionX` (raw world-frame camera position, not a normal-projected drift) tracks the
-            // same sign as the star/galaxy layers' `routeDriftX` at the small headings where their
-            // shared normal vector is ~identity, so it is added here to match their convention --
-            // subtracting it here (as an earlier revision of this layer did) put the skybox's lateral
-            // response a full turn out of phase with every other background layer (see Task06 AC4).
-            const sx = cx + star.x * radius - routePan + baseRoute.positionX * worldScale * 0.002 * routeTurnVisualGain;
-            const sy = cy + star.y * radius - routePanV + baseRouteV.positionX * worldScale * 0.002 * routeTurnVisualGain;
-            const prevSx = cx + star.x * radius - prevRoutePan + baseRoutePrev.positionX * worldScale * 0.002 * routeTurnVisualGain
+            const sx = cx + star.x * radius + routePan;
+            const sy = cy + star.y * radius + routePanV;
+            const prevSx = cx + star.x * radius + prevRoutePan
                 + forwardShrink * (cx - sx);
-            const prevSy = cy + star.y * radius - prevRoutePanV + baseRoutePrevV.positionX * worldScale * 0.002 * routeTurnVisualGain
+            const prevSy = cy + star.y * radius + prevRoutePanV
                 + forwardShrink * (cy - sy);
             const tw = 0.88 + 0.12 * Math.sin(frameTick * 0.035 + star.twPhase);
             const dustAlpha = star.haze * 34 * tw * amount;

@@ -194,6 +194,7 @@ export class DashboardUI {
             mediaLoaderText: document.getElementById('media-loader-text')!,
             mediaLoaderBar: document.getElementById('media-loader-bar')!,
         };
+        (this.els.visualMode as HTMLSelectElement).value = State.visualMode;
         this.videoElement = document.getElementById('video-backplate') as HTMLVideoElement;
         this.videoElement.muted = true;
         this.videoElement.playsInline = true;

@@ -99,7 +99,7 @@ export const State = {
     sampleRate: 44100,
 
     // Real-time visualization state
-    visualMode: 'classic' as VisualMode,
+    visualMode: 'cosmic-wormhole' as VisualMode,
     visualModeTransition: null as VisualModeTransition | null,
     videoBackplateActive: false,
     loopPlayback: true,
