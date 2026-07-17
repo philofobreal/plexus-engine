@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "test": "node --test tests/*.test.mjs tests/ui/*.test.mjs",
     "update-golden-masters": "bun scripts/generate-golden-masters.ts",
-    "deploy": "bun run build && gh-pages -d dist"
+    "deploy": "bun run build && bun -e \"import { writeFileSync } from 'node:fs'; writeFileSync('dist/.nojekyll', '')\" && gh-pages -d dist"
   },
   "devDependencies": {
     "@types/p5": "^1.7.7",
