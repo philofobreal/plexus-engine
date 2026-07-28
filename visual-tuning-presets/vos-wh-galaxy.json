@@ -6,7 +6,7 @@
     "backgroundRed": 4,
     "backgroundGreen": 3,
     "backgroundBlue": 14,
-    "circleHue": 45,
+    "circleHue": 215,
     "lineAlpha": 1.55,
     "lineWeight": 1.1,
     "wormholeRadius": 0.85,
@@ -27,9 +27,14 @@
     "wormholeContinuity": 2,
     "wormholeEmissionMode": 0,
     "wormholeJitter": 0,
-    "wormholeWall": 0.55,
+    "wormholeWall": 0,
     "wormholeWallRefraction": 0.4,
-    "wormholeWallCaustics": 0.75,
-    "wormholeWallWaves": 0.2
+    "wormholeWallCaustics": 0.62,
+    "wormholeWallWaves": 0.2,
+    "wormholeWallCracks": 0.25,
+    "wormholeWallMode": 0,
+    "wormholeLens": 1,
+    "wormholeLensRadius": 0.85,
+    "wormholeLensSwirl": 0.5
   }
 }

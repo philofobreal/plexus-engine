@@ -35,6 +35,7 @@
     "temporalRingSpeed": 1,
     "temporalNetworkDistance": 1,
     "temporalPolygonAlpha": 1,
+    "wormholeOpticsEnabled": 0,
     "heroBeepMode": 0
   }
 }
