@@ -9,11 +9,11 @@
     "circleHue": 215,
     "lineAlpha": 1.55,
     "lineWeight": 1.1,
-    "wormholeRadius": 0.85,
+    "wormholeRadius": 1,
     "wormholeDepth": 4.7,
     "wormholeSpeed": 0.75,
     "wormholeWarp": 0.35,
-    "wormholeCurve": 0.12,
+    "wormholeCurve": 0.23464801703582794,
     "wormholePathBend": 0.22,
     "wormholePathBendVertical": 0.12,
     "wormholeRadiusLfoWaveform": 7,
@@ -35,6 +35,7 @@
     "wormholeWallMode": 0,
     "wormholeLens": 1,
     "wormholeLensRadius": 0.85,
-    "wormholeLensSwirl": 0.5
+    "wormholeLensSwirl": 0.5,
+    "shockwaveRadius": 6.65
   }
 }
