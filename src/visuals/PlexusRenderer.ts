@@ -18,6 +18,9 @@ import { motifTransitionId, semanticScoreTransitionId } from './VisualTransition
 import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
 import { IdentityTransitionController } from './IdentityTransitionController';
 import { P5RenderTargetCompositor } from './P5RenderTargetCompositor';
+import { PostFxPipeline } from './PostFxPipeline';
+import { TemporalFragmentationEffect } from './TemporalFragmentationEffect';
+import type { PostFxSurfaceHost } from './CanvasPostFxSurface';
 
 export class SemanticRendererBridge {
     private semanticAdapter?: SemanticRuntimeAdapter;
@@ -65,6 +68,9 @@ export function startPlexusRenderer(
         const visualDirector = new VisualDirectorFSM();
         const identityTransitionController = new IdentityTransitionController();
         let compositor: P5RenderTargetCompositor | null = null;
+        // Renderer-owned post chain (ADR-007). Buffers are allocated lazily on the first active
+        // frame, so an untouched Post FX section costs nothing.
+        const postFxPipeline = new PostFxPipeline([new TemporalFragmentationEffect()]);
 
         // Semantic resolver (ADR-003): a monotonic cursor over the choreography frames plus a
         // memo so the resolver only recomputes when the active frame, style, or base changes —
@@ -251,6 +257,10 @@ export function startPlexusRenderer(
             } else {
                 styleRegistry.get(State.visualMode).draw(backend, particles, shockwaves);
             }
+            // Single Post FX seam (ADR-007): the identity frame is finished here in both the
+            // steady-state and the crossfade path, so the chain runs exactly once per frame on the
+            // final composite, for the live canvas and the offscreen export target alike.
+            postFxPipeline.render(p as unknown as PostFxSurfaceHost, ct);
             engine.syncMetronomeState(featureFlags.heroEffect && State.visualMode === 'hero', State.visualTuning.heroBeepMode, State.visualTuning.heroBeepVolume);
 
         };

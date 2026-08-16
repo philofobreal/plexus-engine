@@ -6,7 +6,7 @@ export type VisualTuningKey = keyof VisualTuningConfig;
 export interface VisualTuningControl {
     key: VisualTuningKey;
     label: string;
-    group: 'Audio' | 'Background' | 'Particles' | 'Circles' | 'Lines' | 'Polygons' | 'Temporal' | 'Wormhole' | 'Hero';
+    group: 'Audio' | 'Background' | 'Particles' | 'Circles' | 'Lines' | 'Polygons' | 'Temporal' | 'Wormhole' | 'Post FX' | 'Hero';
     min: number;
     max: number;
     step: number;
@@ -105,7 +105,13 @@ export const defaultVisualTuning: VisualTuningConfig = {
     wormholeWallMode: 0,
     wormholeLens: 0.6,
     wormholeLensRadius: 0.5,
-    wormholeLensSwirl: 0.35
+    wormholeLensSwirl: 0.35,
+    // Renderer-level post FX (ADR-007). Identity-independent, so these are deliberately NOT in
+    // `identityOwnedTuningKeys`. The master amount defaults to 0, which keeps the current Plexus
+    // output pixel-identical until a preset or the user opts in.
+    postFxFragmentAmount: 0,
+    postFxFragmentDisplacement: 0.5,
+    postFxFragmentDensity: 0.5
 };
 
 export const visualTuningKeys = Object.keys(defaultVisualTuning) as VisualTuningKey[];
@@ -321,6 +327,24 @@ const allVisualTuningControls: VisualTuningControl[] = [
         label: 'Lens swirl',
         description: 'Azimuthal swirl-rotation amount layered on top of the radial lens deflection.',
         group: 'Wormhole', min: 0, max: 1.5, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'postFxFragmentAmount',
+        label: 'Fragment accent',
+        description: 'Renderer-level post FX master for the temporal fragmentation slice accent, applied to the finished frame of any visual identity. Zero fully bypasses the post chain.',
+        group: 'Post FX', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'postFxFragmentDisplacement',
+        label: 'Fragment displacement',
+        description: 'Scales how far a fragment slides horizontally during an accent.',
+        group: 'Post FX', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'postFxFragmentDensity',
+        label: 'Fragment density',
+        description: 'Scales how finely the frame is cut and how many fragments move per accent.',
+        group: 'Post FX', min: 0, max: 1, step: 0.05, unit: 'x'
     },
     { key: 'heroLaneBottomOffset', label: 'Lane from bottom', group: 'Hero', min: 0.05, max: 0.9, step: 0.01, unit: 'h' },
     { key: 'heroBeepVolume', label: 'Hero beep volume', group: 'Hero', min: 0, max: 1, step: 0.05 },

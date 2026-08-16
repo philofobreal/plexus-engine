@@ -177,6 +177,14 @@ export interface VisualTuningConfig {
     wormholeLensRadius: number;
     /** Azimuthal swirl-rotation amount layered on top of the radial lens deflection. */
     wormholeLensSwirl: number;
+    /** Renderer-level post FX (ADR-007), identity-independent. Master amount for the Temporal
+     *  Fragmentation slice accent; `0` fully bypasses the post chain and is pixel-identical to the
+     *  identity output. */
+    postFxFragmentAmount: number;
+    /** Scales the maximum horizontal slice displacement of the fragmentation accent. */
+    postFxFragmentDisplacement: number;
+    /** Scales fragment count and how many fragments move per accent. */
+    postFxFragmentDensity: number;
 }
 
 export interface PerformancePreset {
