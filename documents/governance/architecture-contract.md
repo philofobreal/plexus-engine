@@ -75,6 +75,39 @@ Mode-specific visual implementations should live in separate `VisualIdentity` im
 - `IdentityTransitionController` owns Phase 1 A-to-B replacement and is the only module allowed to invoke `RenderTargetCompositor`. Inactive rendering bypasses compositor targets. Active rendering uses exactly two persistent buffers and finishes in one identity.
 - Composition uses Canvas2D `source-over` with explicit `A * (1 - alpha) + B * alpha` weights; additive `lighter` blending is forbidden for identity replacement. Both transition buffers are cleared at the start of every active transition frame so transparent, chroma-key, and video-backplate modes cannot retain ghost pixels. Offscreen targets remain renderer-private and identities receive only `VisualRendererBackend`.
 - Effect/identity modules must not allocate, retain, resize, clear, or composite render targets; import `P5RenderTargetCompositor`; call Canvas compositing APIs; write `State.visualMode`/`State.visualModeTransition`; or advance/delete shared particles and shockwaves when their draw context has `advanceSharedSimulation: false`.
+### Renderer Post FX Seam (ADR-007)
+
+- The post chain is renderer-owned and identity-independent. `PlexusRenderer` invokes
+  `PostFxPipeline.render()` exactly once per `draw()`, after the identity draw branch: after the
+  direct identity draw in steady state, and after `RenderTargetCompositor.composite()` during an
+  active transition. It processes the single finished frame, never one frame per participating
+  identity. See `../adr/ADR-007-renderer-owned-post-fx-pipeline.md`.
+- `P5RenderTargetCompositor` remains the exclusive property of the ADR-006 identity replacement
+  crossfade. It must not be extended into a general post-process surface. Post FX owns its own
+  modules (`PostFxTypes`, `CanvasPostFxSurface`, `PostFxPipeline`, one module per effect) and its own
+  persistent buffer, allocated lazily on the first active frame and resized only on a real dimension
+  change.
+- Visual identities must not create, resize, retain, clear, or composite a post-process target and
+  must not import the post contract. They keep receiving only `VisualRendererBackend` plus
+  `VisualIdentityDrawContext`.
+- Post FX consumes only already-published render-facing state: `State.modulation`,
+  `State.directorOutput`, the renderer clock (`State.currentTime` / `State.exportTime`), and tuning.
+  `State.modulation` and `State.directorOutput` stay `VisualDirectorFSM`-owned and are read-only
+  here. Post FX must not run analyzer DSP, onset/beat detection, or any second dramaturgy state
+  machine.
+- Effect decisions must be a pure function of song time, published signals, tuning, and surface size,
+  with no runtime randomness and no cross-frame state, so live playback, seek, and export make the
+  same decisions at the same song time. Effects address the destination in device pixels under a
+  neutralized transform and must restore the context state they touched.
+- `performanceMode >= 0.5` and a paused/stopped renderer are explicit full bypasses ahead of target
+  resolution, probing, snapshotting, and allocation.
+- `POST_FX_CHAIN_ORDER` fixes chain order independently of composition order. Post FX tuning keys are
+  renderer-level and must not be registered in `identityOwnedTuningKeys`; their master amount
+  defaults to `0` so the default output is unchanged.
+- Presence in `visualTuningControls` makes a key valid, bounded, morphable, and preset-serializable;
+  it does not make it semantically owned. The semantic layer owns a key only when an actual semantic
+  delta targets it. The post FX keys are valid tuning keys with no semantic delta.
+
 - The wormhole continuous depth distribution and authored ring character are separate concerns. `wormholeDepthCoherence` may deterministically compress immutable phase cohorts into a ribbed look, while progressive seek-induced distribution damage remains forbidden.
 - Wormhole route geometry is owned by the wormhole identity, not by preset frequency or automation state. `wormholeWarp` and `wormholeCurve` are local grain-flow controls. Signed `wormholePathBend` controls the bounded horizontal target heading and `wormholePathBendVertical` the independent vertical route component; neither is a lateral deformation scalar or an indefinitely accumulated turn-rate command. Lower targets must counter-steer continuously, and zero must converge to the exact straight heading without a camera teleport. `bendMirror` is an automation direction flag applied once to mirrorable preset targets, not a renderer multiplier. The camera-local projection follows the route tangent without roll, camera shake, whole-canvas rotation, horizon jumps, or identity-foreign route ownership. Visible foreground look-ahead is derived from distance-smoothed route history, so a retarget cannot rewrite in-flight geometry at stationary song time. Cosmos layers keep their authored coordinates and projection depth rigid at each layer depth: bend may translate them through route parallax, but must not stretch, rotate, or rescale their point field. The continuous tuning morph is the sole automation response for live route/speed/continuity/material values; a bend-only delta must not also trigger transition-disturbance geometry. Automation-triggered presets with an explicit foreign `visualMode` must not write active identity-owned wormhole keys; `visualMode`-less presets stay backward compatible. The ownership registry lives in config, not UI logic.
 

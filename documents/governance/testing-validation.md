@@ -80,6 +80,21 @@ Visual identity transition changes:
 - Shared simulation gating must prove that one participant advances shared particle/shockwave pools exactly once. Incoming normally owns advancement; when it does not use the shared pool, eligible outgoing owns it and the other participant receives `advanceSharedSimulation: false`.
 - Wormhole determinism coverage must include immutable depth-phase uniformity under a moving horizon, authored coherence determinism, repeated seeks without accumulated density damage, identical tunnel and curved-galaxy geometry after different histories, and automation-transition re-arming after backward seek.
 
+Renderer post FX changes (ADR-007):
+
+- Run `node --test tests/postfx-fragmentation.test.mjs` plus `tests/visual-mode-transition.test.mjs`
+  and `tests/contracts.test.mjs` when the post seam, the chain contract, or the renderer draw order
+  changes.
+- Coverage must pin: full bypass at zero effect strength and zero master amount; the explicit
+  `performanceMode` and paused/stopped bypasses ahead of any target resolution or allocation; lazy
+  single buffer allocation with resize only on a real dimension change; identical decisions for the
+  live and export clock at the same song time; determinism across repeated and revisited song times;
+  fragment bounds and the cleared-rect coverage contract that protects transparent/chroma output;
+  absence of runtime randomness in the post path; and exactly one post seam in the renderer, placed
+  after the finished identity frame.
+- Adding a post effect requires proving that the chain still runs once per frame on the final
+  composite and that shared particle/shockwave simulation still advances exactly once per frame.
+
 Semantic dramaturgy layer changes (ADR-003):
 
 - **Semantic Determinism Test (required).** Identical `TrackAnalysis` must produce identical narrative, intent, Visual Score, and choreography plans, independent of the selected style. Assert this with `node --test tests/semantics.test.mjs tests/visual-score-dsl.test.mjs`.

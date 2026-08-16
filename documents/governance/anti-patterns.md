@@ -40,6 +40,27 @@ Stop and redesign if a change introduces any pattern below.
 - **Flag-Gated Default Generation.** Making normal dramaturgy generation depend on a feature flag. Visual OS is the default generator with a silent legacy fallback; `featureFlags.forceLegacyDramaturgy` is a debug/legacy override only and must never be the condition for normal operation. Re-introducing a parallel "select the generator" flag for the normal path is forbidden.
 - **Non-ASCII In Visual OS Source/Docs.** Using em-dashes, box-drawing, arrows, or smart quotes in Visual OS source or ADR/governance text; keep them ASCII to avoid mojibake in diffs and governance docs.
 
+## Renderer Post FX Anti-Patterns (ADR-007)
+
+- **Compositor Repurposing.** Extending `P5RenderTargetCompositor` (or its targets) into a general
+  post-process system. It belongs to the ADR-006 identity replacement crossfade; post processing owns
+  a separate renderer seam.
+- **Identity-Owned Post Targets.** Letting a `VisualIdentity` allocate, resize, retain, or composite a
+  post-process target, or importing the post contract into an identity. Identities receive only
+  `VisualRendererBackend`.
+- **Per-Identity Post Application.** Running the post chain inside the transition branch so a
+  crossfade post-processes each participant. The chain runs once, on the final composite.
+- **Post-Path Randomness.** `Math.random()`, a wall clock, or cross-frame accumulation in a post
+  effect's decisions. Variation must derive from song time and published signals through a
+  deterministic hash, or export and seek stop reproducing playback.
+- **Post-Path Dramaturgy.** Deriving onsets, beats, or spectral features inside a post effect, or
+  adding a second dramaturgy state machine next to `VisualDirectorFSM`. Post FX consumes
+  `directorOutput` / `modulation` read-only.
+- **Per-Frame Post Buffers.** Allocating, recreating, or unconditionally resizing a post buffer per
+  frame, or snapshotting the frame while every effect is inactive.
+- **Semantic Ownership By Presence.** Treating a key as semantically owned merely because it appears
+  in `visualTuningControls`. Ownership follows an actual semantic delta targeting the key.
+
 ## Realtime Audio Anti-Patterns
 
 - Realtime FFT, beat detection, or spectral analysis in p5 `draw()`.
