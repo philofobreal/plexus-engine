@@ -9,6 +9,10 @@ import { createDefaultStyleRegistry } from './visuals/StyleRegistry';
 import { SemanticResolver, SemanticRuntimeAdapter } from './semantics';
 import { State } from './state/store';
 
+const devPresetSaveButton = import.meta.env.DEV
+    ? '<button id="save-visual-preset" class="std-btn btn-pill outline dev-preset-save" title="Write the current tuning values into the selected preset JSON">Save preset</button>'
+    : '';
+
 const visualModeOptions = [
     { value: 'classic', label: 'Classic' },
     { value: 'temporal', label: 'Temporal' },
@@ -102,6 +106,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
           <p>Live effect parameters</p>
         </div>
         <div class="tuning-actions">
+          ${devPresetSaveButton}
           <button id="copy-visual-config" class="std-btn btn-pill outline">Copy config</button>
         </div>
       </div>

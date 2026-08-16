@@ -7,6 +7,7 @@ export interface TuningCallbacks {
     onPresetLoad: (fileName: string) => void;
     onPresetBrushChange: (fileName: string) => void;
     onCopyConfig: () => void;
+    onSavePreset: () => void;
     onMetricsToggle: () => void;
     onVisualModeChange: (mode: string) => void;
 }
@@ -18,6 +19,7 @@ type TuningEls = {
     tuningControls: HTMLElement;
     presetList: HTMLElement;
     copyVisualConfig: HTMLElement;
+    saveVisualPreset: HTMLElement | null;
     copyConfigStatus: HTMLElement;
     timelinePresetBrush: HTMLElement;
     toggleMetrics: HTMLElement;
@@ -87,6 +89,12 @@ export class TuningController {
         }
     }
 
+    setPresetSaveBusy(isBusy: boolean): void {
+        if (!(this.els.saveVisualPreset instanceof HTMLButtonElement)) return;
+        this.els.saveVisualPreset.disabled = isBusy;
+        this.els.saveVisualPreset.textContent = isBusy ? 'Saving...' : 'Save preset';
+    }
+
     initVisualTuningControls(): void {
         const container = this.els.tuningControls;
         container.innerHTML = '';
@@ -140,6 +148,10 @@ export class TuningController {
 
         this.els.copyVisualConfig.addEventListener('click', () => {
             this.callbacks.onCopyConfig();
+        });
+
+        this.els.saveVisualPreset?.addEventListener('click', () => {
+            this.callbacks.onSavePreset();
         });
 
         const loadPreset = () => {
