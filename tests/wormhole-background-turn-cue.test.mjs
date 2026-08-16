@@ -53,7 +53,8 @@ function makeBackend() {
     width: 960, height: 540, frameCount: 1, lines: [], glows: [],
     background() {}, noStroke() {}, noFill() {}, fill() {}, stroke() {}, strokeWeight() {},
     line(...args) { this.lines.push(args); }, circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {},
-    radialGlow(...args) { this.glows.push(args); }
+    radialGlow(...args) { this.glows.push(args); },
+    radialDim() {}, compositeRingTint() {}
   };
 }
 
@@ -68,7 +69,10 @@ function makeBackend() {
  */
 function starAngleSeries(CosmicWormholeIdentity, State, tuningPreset, startTime, durationSec, fps, starIndex) {
   const tuning = {
-    ...tuningPreset, wormholeStarfield: 1, wormholeGalaxy: 0, performanceMode: 0, chromaKeyMode: 0
+    // wormholeLens is not yet authored by any preset (lens-overhaul plan T9), so it otherwise stays
+    // at its nonzero default and warps exactly the star screen positions these angle/radius
+    // measurements assume come from the pre-lens background-turn mechanism alone.
+    ...tuningPreset, wormholeStarfield: 1, wormholeGalaxy: 0, performanceMode: 0, chromaKeyMode: 0, wormholeLens: 0
   };
   Object.assign(State.visualTuning, tuning);
   Object.assign(State.targetTuning, tuning);
@@ -235,7 +239,7 @@ test('spiral background moves smoothly frame to frame -- no on-screen snap/telep
         previous[starIndex] = { x: sx, y: sy, visible };
       },
       circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {},
-      radialGlow() {}
+      radialGlow() {}, radialDim() {}, compositeRingTint() {}
     };
     identity.draw(backend, [], []);
   }
@@ -464,7 +468,11 @@ test('cosmos bend response translates equal-depth stars without stretching their
       wormholeGalaxy: 0,
       wormholeSkybox: 0,
       performanceMode: 0,
-      chromaKeyMode: 0
+      chromaKeyMode: 0,
+      // Isolate the pre-lens world-translate mechanism under test: the lens center itself moves
+      // with route bend, so leaving the lens at its nonzero default would add a second, unrelated
+      // source of equal-depth spacing change on top of the one this test measures.
+      wormholeLens: 0
     };
     Object.assign(State.visualTuning, tuning);
     Object.assign(State.targetTuning, tuning);

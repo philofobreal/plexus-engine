@@ -26,6 +26,15 @@
     "wormholeDepthCoherence": 0,
     "wormholeContinuity": 0.9,
     "wormholeEmissionMode": 0,
-    "wormholeJitter": 0
+    "wormholeJitter": 0,
+    "wormholeWall": 0,
+    "wormholeWallRefraction": 0.2,
+    "wormholeWallCaustics": 0.18,
+    "wormholeWallWaves": 0.1,
+    "wormholeWallCracks": 0.15,
+    "wormholeWallMode": 0,
+    "wormholeLens": 0.35,
+    "wormholeLensRadius": 0.68,
+    "wormholeLensSwirl": 0.15
   }
 }

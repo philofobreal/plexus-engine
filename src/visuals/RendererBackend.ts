@@ -15,7 +15,21 @@ export interface VisualRendererBackend {
     vertex(x: number, y: number): void;
     endShape(): void;
     radialGlow(cx: number, cy: number, radius: number, color: [number, number, number], alpha: number): void;
+    radialDim(cx: number, cy: number, innerRadius: number, outerRadius: number, alpha: number): void;
+    compositeRingTint(
+        cx: number,
+        cy: number,
+        innerRadius: number,
+        outerRadius: number,
+        color: [number, number, number],
+        alpha: number,
+        mode: RingTintCompositeMode,
+        startAngle?: number,
+        endAngle?: number
+    ): void;
 }
+
+export type RingTintCompositeMode = 'saturation' | 'overlay' | 'screen' | 'soft-light';
 
 /** Renderer-only composition seam. Identities receive only VisualRendererBackend. */
 export interface RenderTargetCompositor {

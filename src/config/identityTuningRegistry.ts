@@ -24,7 +24,17 @@ export const identityOwnedTuningKeys: Readonly<Record<string, readonly IdentityO
         'wormholeGalaxy',
         'wormholeSkybox',
         'wormholeEmissionMode',
-        'wormholeJitter'
+        'wormholeJitter',
+        'wormholeOpticsEnabled',
+        'wormholeWall',
+        'wormholeWallRefraction',
+        'wormholeWallCaustics',
+        'wormholeWallWaves',
+        'wormholeWallCracks',
+        'wormholeWallMode',
+        'wormholeLens',
+        'wormholeLensRadius',
+        'wormholeLensSwirl'
     ]
 };
 

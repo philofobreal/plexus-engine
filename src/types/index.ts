@@ -153,6 +153,30 @@ export interface VisualTuningConfig {
     wormholeSkybox: number;
     wormholeEmissionMode: number;
     wormholeJitter: number;
+    /** Boolean-style master gate for the membrane-wall and gravitational-lens parameter family.
+     *  `0` disables every wall/lens optical consequence; `1` enables the authored values below. */
+    wormholeOpticsEnabled: number;
+    /** Master intensity for the refractive membrane wall layer (ripple, Fresnel edge, chromatic
+     *  fringe, caustics, pressure waves). `0` fully skips the layer. */
+    wormholeWall: number;
+    /** Chromatic refraction fringe intensity on the wall's brightest edges; `0` disables the offset. */
+    wormholeWallRefraction: number;
+    /** Caustic helix hero-layer brightness/visibility on the wall. */
+    wormholeWallCaustics: number;
+    /** Event-driven pressure wave-front intensity on the wall (kick/LOW_DROP driven). */
+    wormholeWallWaves: number;
+    /** Peak-only crack-flash intensity on the wall; short-lived, kick/LOW_DROP driven, chromatically split. */
+    wormholeWallCracks: number;
+    /** Wall material mode: 0 rippling membrane grid (default), 1 pixel-mosaic tick grid. */
+    wormholeWallMode: number;
+    /** Master intensity for the screen-space gravitational lens warp on background layers
+     *  (skybox/starfield/galaxy). `0` fully skips the layer, bit-identical to the pre-lens image. */
+    wormholeLens: number;
+    /** Lens radius as a fraction of the screen's half-diagonal; where the deflection/magnification
+     *  curves are centered. */
+    wormholeLensRadius: number;
+    /** Azimuthal swirl-rotation amount layered on top of the radial lens deflection. */
+    wormholeLensSwirl: number;
 }
 
 export interface PerformancePreset {

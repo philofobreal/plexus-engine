@@ -136,7 +136,7 @@ function makeStarBackend() {
       if (lineIndex < STAR_COUNT) stars.push({ px, py, sx, sy, alpha: lastAlpha });
       lineIndex++;
     },
-    circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {}, radialGlow() {}
+    circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {}, radialGlow() {}, radialDim() {}, compositeRingTint() {}
   };
 }
 
@@ -157,7 +157,11 @@ function completePreset(preset, morphDurationSec) {
     wormholeStarfield: 1,
     wormholeGalaxy: 0,
     performanceMode: 0,
-    chromaKeyMode: 0
+    chromaKeyMode: 0,
+    // wormholeLens is not yet authored by any preset (lens-overhaul plan T9); none of the inlined
+    // PRESETS entries above set it, so it would otherwise fall through to its nonzero default and
+    // add its own route-bend-dependent displacement on top of the one these tests measure.
+    wormholeLens: 0
   };
 }
 

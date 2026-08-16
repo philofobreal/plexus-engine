@@ -51,10 +51,57 @@ import {
     wormholeLowDropAtTime
 } from './WormholeTimeline';
 import {
+    wormholeLensSmearGain,
     wormholeParallaxStrength,
+    wormholeSmearRateGain,
     wormholeTrailSeparation,
     SKYBOX_TRAVEL_RATE_CAP
 } from './WormholeCosmicSync';
+import {
+    WALL_CAUSTIC_COUNT,
+    WALL_RINGS,
+    wormholeWallSegmentCount,
+    wormholeWallRingCount,
+    wormholeWallSegmentTheta,
+    wormholeWallRingDepthPhase,
+    wormholeWallRingZ,
+    wormholeWallRippleOffset,
+    wormholeWallCausticTheta,
+    wormholeWallAdvectedPhase
+} from './WormholeWallGeometry';
+import {
+    wormholeWallFresnel,
+    wormholeWallBandIndex,
+    wormholeWallSectorResponse,
+    wormholeWallChromaticGain,
+    wormholeWallChromaticOffset,
+    wormholeWallClumpGain
+} from './WormholeWallMaterial';
+import {
+    createWormholeWallWaveFrontPool,
+    wormholeWallGatherWaveFronts,
+    wormholeWallWaveOffset,
+    type WormholeWallWaveFront
+} from './WormholeWallWaves';
+import {
+    WALL_CRACK_COUNT,
+    wormholeWallCrackPointCount,
+    wormholeWallCrackPoint,
+    wormholeWallCrackEmission
+} from './WormholeWallCracks';
+import {
+    MOSAIC_SEGMENTS,
+    wormholeMosaicRingCount,
+    wormholeMosaicTickHalfWidth
+} from './WormholeWallMosaic';
+import {
+    wormholeLensWarpPoint,
+    wormholeLensMagnificationGain,
+    wormholeLensNearAxisVisibility,
+    wormholeLensSecondaryPoint,
+    wormholeLensSecondaryGain,
+    type WormholeLensWarpPoint
+} from './WormholeLensWarp';
 
 const TWO_PI = Math.PI * 2;
 const BANDS = 24;
@@ -63,10 +110,78 @@ const DEPTH_LAYERS = 15;
 const POOL_SIZE = BANDS * DEPTH_LAYERS;
 /** Reference horizon distance at depth = 1; the live horizon is this scaled by wormholeDepth. */
 const Z_REFERENCE = 1000;
+/** Membrane wall (Phase 4 of the refractive membrane wall plan): same base tube radius as grains. */
+const WALL_BASE_RADIUS = 50;
+/** Base alpha stays low; the Fresnel edge (near-camera brightness) is what carries the read. Kept
+ *  lower than the pre-clump-mask value (geometry-overhaul plan T2): with the wireframe gone, the
+ *  clump-gated arcs themselves carry the read, and a low base keeps them reading as smeared light
+ *  rather than a still-visible faint outline. */
+const WALL_ALPHA_SCALE = 120;
+const WALL_CHROMATIC_HUE_SHIFT = 18;
+const WALL_CHROMATIC_MAX_OFFSET_PX = 3;
+/** Caustic hero layer (Phase 6 of the wall plan): brighter/thicker than the base membrane grid. */
+const WALL_CAUSTIC_ALPHA_SCALE = 200;
+const WALL_CAUSTIC_WEIGHT_SCALE = 1.3;
+/** Performance mode keeps only the brightest couple of helices instead of the full analytic set. */
+const WALL_CAUSTIC_PERFORMANCE_COUNT = 2;
+/** Einstein-ring light pooling (lens-overhaul plan T6): a stable, seeded set of soft highlights
+ * around the lens radius. Performance mode retains only four spots, while the normal path stays
+ * within the plan's 8-16 spot budget. */
+const EINSTEIN_RING_GLOW_COUNT = 12;
+const EINSTEIN_RING_GLOW_COUNT_PERFORMANCE = 4;
+const EINSTEIN_RING_SEED = 71.93;
+const EINSTEIN_RING_ADVECTION_PER_HORIZON = 0.16;
+const EINSTEIN_RING_CANONICAL_DRIFT = 0.025;
+const EINSTEIN_RING_ALPHA_SCALE = 0.18;
+const EINSTEIN_RING_RADIUS_MIN_PX = 5;
+const EINSTEIN_RING_RADIUS_FRACTION = 0.075;
+/** Secondary-image pass (true-lens plan F2): `wormholeLensSecondaryGain` is bounded to
+ *  `[0, 1.2]` (a plain multiplier), which is far below the stroke-alpha scale (0-255-ish, matching
+ *  p5's default color mode) every other line()-based layer in this file uses -- `stroke()`
+ *  ultimately routes through p5's own alpha channel, not `radialGlow`'s raw CSS 0-1 alpha, so this
+ *  scale must land in the same 0-255-ish range the star loop's own `sAlpha` peaks around (~190) for
+ *  the secondary image to read as genuinely present, if fainter, rather than sub-perceptual. */
+const LENS_SECONDARY_ALPHA_SCALE = 90;
+/** Wall-as-refraction-field (true-lens plan F4): hard ceiling on the combined azimuthal ripple
+ *  (`wormholeWallRippleOffset`, capped +-3%) and temporal kick/LOW_DROP swell (`wormholeWallWaveOffset`,
+ *  capped +-5%) that perturbs the lens's own Einstein radius per source point. The two evaluators'
+ *  own caps already sum to exactly this ceiling; this clamp makes the +-8% invariant explicit and
+ *  directly testable rather than an implicit consequence of two unrelated constants elsewhere. */
+const LENS_WALL_PERTURBATION_MAX = 0.08;
+/** True-lens plan F5: three broad chroma sectors plus one full-annulus exposure breath. */
+const LENS_TINT_SECTOR_COUNT = 3;
+const LENS_TINT_SECTOR_COUNT_PERFORMANCE = 2;
+const LENS_TINT_SMOOTHING_FRAMES = 8;
+const LENS_TINT_SATURATION_ALPHA = 0.22;
+const LENS_TINT_EXPOSURE_ALPHA = 0.14;
+/**
+ * Caustic dense-sampling (geometry-overhaul plan T3): a helix's twist is a smooth analytic curve,
+ * but the old code only ever sampled it at the 16 (10 in performance mode) coarse membrane rings,
+ * so up to 3.6 turns of twist collapsed into a jagged few-point polygon. Sampling far more densely
+ * along depth -- independent of the membrane ring count -- keeps the same Nyquist-safe margin the
+ * `WALL_CAUSTIC_MAX_TURNS` cap was chosen for (see `WormholeWallGeometry`'s own test) while adding
+ * only ~160-200 lines total, well inside the budget the connector removal (T2) freed up.
+ */
+const WALL_CAUSTIC_SAMPLE_COUNT = 48;
+const WALL_CAUSTIC_SAMPLE_COUNT_PERFORMANCE = 32;
+/** Peak-only crack flashes (Phase 8 of the wall plan): brighter and thicker than the base membrane. */
+const WALL_CRACK_ALPHA_SCALE = 210;
+const WALL_CRACK_WEIGHT_SCALE = 1.2;
+const WALL_CRACK_CHROMATIC_MAX_OFFSET_PX = 2.4;
+/** Pixel-mosaic material mode (Phase 8): converts the shared wave-offset fraction into a per-cell
+ *  angular shift instead of a radius bump -- discrete cells have no ripple concept. */
+const MOSAIC_SHIFT_RADIANS_PER_UNIT = 2.5;
 /** Background parallax universe (near star layer). */
 const STAR_COUNT = 1800;
 const MAX_STAR_Z = 8000;
 const STAR_FIELD_HALF = 6000;
+/** True-lens plan F6: extra source material only around the lens axis. The pool is allocated once,
+ *  kept separate from the global sky/star pools, and halved by a fixed stride in performance mode. */
+export const WORMHOLE_DEEP_FIELD_POINT_COUNT = 800;
+export const WORMHOLE_DEEP_FIELD_PERFORMANCE_STRIDE = 2;
+const DEEP_FIELD_MAX_BETA_RATIO = 2.5;
+const DEEP_FIELD_ADVECTION_PER_HORIZON = 0.022;
+const DEEP_FIELD_CANONICAL_DRIFT = 0.006;
 /** Star colour-temperature palette (icy blue / white / warm amber / faint cyan) for depth variety. */
 const STAR_PALETTE: ReadonlyArray<readonly [number, number, number]> = [
     [180, 205, 255],
@@ -205,6 +320,22 @@ interface Star {
     b: number;
 }
 
+/**
+ * Lightweight, screen-space source point for the true-lens deep field (F6). `betaRatio` is the
+ * unwarped source distance in Einstein-radius units, so a lens-radius morph keeps the whole pool
+ * inside the same bounded optical zone without rebuilding or reallocating it.
+ */
+interface DeepFieldPoint {
+    readonly theta: number;
+    readonly betaRatio: number;
+    readonly driftScale: number;
+    readonly size: number;
+    readonly alphaScale: number;
+    readonly r: number;
+    readonly g: number;
+    readonly b: number;
+}
+
 /** A distant galaxy: a huge, faint, very slow glow in absolute world space far beyond the stars. */
 interface Galaxy {
     x: number;
@@ -245,10 +376,41 @@ export class CosmicWormholeIdentity implements VisualIdentity {
 
     private readonly pool: DustGrain[] = [];
     private readonly starPool: Star[] = [];
+    private readonly deepFieldPool: DeepFieldPoint[] = [];
     private readonly galaxyPool: Galaxy[] = [];
     private readonly skyPool: SkyStar[] = [];
     private readonly lineColor: [number, number, number] = [0, 0, 0];
     private readonly galaxyColor: [number, number, number] = [0, 0, 0];
+    /** Membrane wall (Phase 4): warm/cool chromatic-fringe colors, recomputed once per frame. */
+    private readonly wallWarmColor: [number, number, number] = [0, 0, 0];
+    private readonly wallCoolColor: [number, number, number] = [0, 0, 0];
+    /** Caustic hero layer (Phase 6): bright/low-saturation tint, recomputed once per frame. */
+    private readonly causticColor: [number, number, number] = [0, 0, 0];
+    /** Einstein-ring light pooling (lens-overhaul plan T6): recomputed once per frame. */
+    private readonly einsteinRingColor: [number, number, number] = [0, 0, 0];
+    /** F5 annular overlay scratch colors; constructor-owned to keep draw allocation-free. */
+    private readonly ringTintColorA: [number, number, number] = [0, 0, 0];
+    private readonly ringTintColorB: [number, number, number] = [0, 0, 0];
+    private readonly ringTintColorC: [number, number, number] = [0, 0, 0];
+    private readonly ringExposureColor: [number, number, number] = [0, 0, 0];
+    /** Per-helix previous-sample screen point, so each caustic draws as a continuous polyline. */
+    private readonly causticPrevX = new Float64Array(WALL_CAUSTIC_COUNT);
+    private readonly causticPrevY = new Float64Array(WALL_CAUSTIC_COUNT);
+    private readonly causticPrevValid = new Uint8Array(WALL_CAUSTIC_COUNT);
+    /**
+     * Membrane ring route-frame cache (geometry-overhaul plan T3): every membrane ring's own
+     * already-sampled route frame, kept around after the ring loop so the dense caustic pass can
+     * interpolate between them instead of issuing its own `sampleSmoothedLookahead` call per fine
+     * depth sample. Sized to `WALL_RINGS` (the largest ring count across performance modes);
+     * `drawMembraneGrid` only fills and `drawCaustics` only reads the first `ringCount` entries.
+     */
+    private readonly wallRingFrames: WormholeRouteFrame[] = Array.from({ length: WALL_RINGS }, createRouteFrame);
+    private readonly wallRingVerticalDrift = new Float64Array(WALL_RINGS);
+    private readonly wallRingDepthPhase = new Float64Array(WALL_RINGS);
+    /** Scratch for the caustic pass's own interpolated (never route-sampled) frame. */
+    private readonly causticFrame: WormholeRouteFrame = createRouteFrame();
+    /** Event-driven pressure-wave fronts (Phase 5/7): gathered once per frame, read per ring. */
+    private readonly waveFronts: WormholeWallWaveFront[] = createWormholeWallWaveFrontPool();
     /** Grain, background, and camera route frames reused in the draw loop. */
     private readonly routeNow: WormholeRouteFrame = createRouteFrame();
     private readonly routePrev: WormholeRouteFrame = createRouteFrame();
@@ -267,6 +429,31 @@ export class CosmicWormholeIdentity implements VisualIdentity {
     private readonly baseRouteNowV: WormholeRouteFrame = createRouteFrame();
     private readonly baseRoutePrevV: WormholeRouteFrame = createRouteFrame();
     private readonly routePathVertical = new IntegratedWormholeRoute();
+    /**
+     * Gravitational lens warp (lens-overhaul plan T5). `lensHorizonFrame`/`lensHorizonFrameV` are
+     * dedicated scratch frames for projecting the lens center at the horizon depth once per frame --
+     * distinct from `routeNow`/`baseRouteNow` etc. above so this projection never clobbers state
+     * those background sections still need later in the same `draw()` call. `lensWarpPointA`/`B` are
+     * the reusable, caller-owned output points every per-point `wormholeLensWarpPoint` call below
+     * writes into (zero allocation); a single point's own warp uses only `A`, while a two-endpoint
+     * streak (prev->now) uses both simultaneously.
+     */
+    private readonly lensHorizonFrame: WormholeRouteFrame = createRouteFrame();
+    private readonly lensHorizonFrameV: WormholeRouteFrame = createRouteFrame();
+    private readonly lensWarpPointA: WormholeLensWarpPoint = { x: 0, y: 0 };
+    private readonly lensWarpPointB: WormholeLensWarpPoint = { x: 0, y: 0 };
+    /**
+     * Secondary-image cache (true-lens plan F2): every star's own unwarped now/trail screen
+     * position, recorded once per star during the main star loop below so the separate secondary-
+     * image pass afterward can read them back without a second route-sampling pass. The main loop's
+     * own "exactly one line() call per star, at a stable pool index" invariant must never be
+     * touched by F2, so the secondary image draws in its own appended loop instead of interleaving
+     * an extra line into the main one.
+     */
+    private readonly starSxCache = new Float64Array(STAR_COUNT);
+    private readonly starSyCache = new Float64Array(STAR_COUNT);
+    private readonly starTrailPsxCache = new Float64Array(STAR_COUNT);
+    private readonly starTrailPsyCache = new Float64Array(STAR_COUNT);
     private readonly transport = new WormholeTransport();
     private readonly authoredSpeedTimeline = new WormholeAuthoredSpeedTimeline();
     private travelPhase = 0;
@@ -311,6 +498,26 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 y: (pseudoNoise(seed, 22.2) * 2 - 1) * STAR_FIELD_HALF,
                 z: pseudoNoise(seed, 33.3) * MAX_STAR_Z,
                 seed,
+                r: tint[0],
+                g: tint[1],
+                b: tint[2]
+            });
+        }
+        for (let i = 0; i < WORMHOLE_DEEP_FIELD_POINT_COUNT; i++) {
+            const seed = (i + 1) * 23.417;
+            const tint = STAR_PALETTE[
+                Math.floor(pseudoNoise(seed, 91.7) * STAR_PALETTE.length) % STAR_PALETTE.length
+            ];
+            // Bias source material toward the axis: the forward mapping sends these near-axis
+            // sources to thetaE, so their aggregate image becomes a dense, continuous light arc.
+            // A tiny positive floor avoids the directionless exact beta=0 sample.
+            const betaDistribution = Math.pow(pseudoNoise(seed, 37.1), 2.2);
+            this.deepFieldPool.push({
+                theta: pseudoNoise(seed, 14.3) * TWO_PI,
+                betaRatio: 0.04 + betaDistribution * (DEEP_FIELD_MAX_BETA_RATIO - 0.04),
+                driftScale: 0.72 + pseudoNoise(seed, 52.6) * 0.56,
+                size: 0.45 + pseudoNoise(seed, 68.2) * 1.15,
+                alphaScale: 0.45 + pseudoNoise(seed, 79.4) * 0.55,
                 r: tint[0],
                 g: tint[1],
                 b: tint[2]
@@ -464,6 +671,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         );
         const effectiveContinuity = Math.max(0, tuning.wormholeContinuity);
         const canonicalRate = this.travelRateAt(timeSec);
+        const smearRateGain = wormholeSmearRateGain(canonicalRate);
         const vz = wormholeTrailSeparation(canonicalRate, 1);
         if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.beginFrame(diagnosticMaxZ, vz);
         // Fractional values are a crossfade coordinate between valid integer emission modes;
@@ -489,11 +697,65 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         // The integrated route itself decides whether any centerline drift exists. Do not gate this
         // on the live preset bend: doing so would erase a still-easing turn during curved->straight.
         const routeTurnVisualGain = wormholeRouteTurnVisualGain(1);
+        const performanceMode = tuning.performanceMode > 0;
+
+        // Gravitational lens warp (lens-overhaul plan T5): a screen-space, post-projection transform
+        // applied only to the background layers below (skybox/starfield/galaxy) -- it never writes
+        // route heading, travelPhase, camera, or the grain tunnel interior. `lensActive` gates every
+        // warp call site directly so `wormholeLens <= 0` skips the extra per-point work entirely
+        // rather than relying only on `wormholeLensWarpPoint`'s own internal identity pass-through.
+        // Discrete, default-off opt-in requested for the complete membrane/lens parameter family.
+        // Keeping the gate here makes Off a true render bypass: none of the authored sub-values can
+        // leak into wall lines, refraction-field perturbation, lens geometry, vignette, or overlays.
+        const opticsEnabled = tuning.wormholeOpticsEnabled >= 0.5;
+        const wallStrength = opticsEnabled ? tuning.wormholeWall : 0;
+        const lensStrength = opticsEnabled ? tuning.wormholeLens : 0;
+        const lensActive = lensStrength > 0;
+        const lensSwirl = tuning.wormholeLensSwirl;
+        let lensCenterX = cx;
+        let lensCenterY = cy;
+        let lensRadiusPx = 0;
+        if (lensActive) {
+            // The lens center follows the route exactly like every other background layer's
+            // parallax does: projected from the smoothed-lookahead frame at the horizon depth, so a
+            // turning route bends the lens center with the tunnel instead of pinning it to center.
+            this.routePath.sampleSmoothedLookahead(camZ + Z_REFERENCE, this.lensHorizonFrame);
+            this.routePathVertical.sampleSmoothedLookahead(camZ + Z_REFERENCE, this.lensHorizonFrameV);
+            const lensVerticalDrift = this.lensHorizonFrameV.positionX - this.baseRouteNowV.positionX;
+            const lensCenterProjection = projectWormholeTubePoint(
+                this.lensHorizonFrame, this.baseRouteNow, Z_REFERENCE, 0, 0, routeTurnVisualGain,
+                cx, cy, fov, lensVerticalDrift
+            );
+            lensCenterX = lensCenterProjection.screenX;
+            lensCenterY = lensCenterProjection.screenY;
+            lensRadiusPx = tuning.wormholeLensRadius * Math.hypot(backend.width, backend.height) * 0.5;
+        }
+        // Wall-as-refraction-field (true-lens plan F4): gathered once here -- whenever either the
+        // lens perturbation below or the (now legacy, off-by-default) drawn wall further down needs
+        // it -- so neither path re-gathers the same fronts a second time. Independent of `lensActive`
+        // alone: a wormholeWall>0, wormholeLens=0 configuration (the pre-F4 legacy look) must still
+        // see its own wave fronts exactly as before.
+        let waveFrontCount = 0;
+        if (opticsEnabled && tuning.wormholeWallWaves > 0 && (lensActive || wallStrength > 0)) {
+            waveFrontCount = wormholeWallGatherWaveFronts(
+                State.events, State.frames, timeSec, State.sampleRate, State.hopSize, this.waveFronts
+            );
+        }
+        // Uniform (theta-independent) refraction-impulse term: a kick/LOW_DROP pressure front
+        // reaching the throat's near-plane reference (depthPhase 0) swells the lens radius briefly,
+        // reusing the exact same evaluator/channel the (optional) drawn wall's own pressure bump
+        // uses -- never a second, independently authored pulse source.
+        const lensWallWaveOffset = lensActive && waveFrontCount > 0
+            ? wormholeWallWaveOffset(this.waveFronts, waveFrontCount, 0)
+            : 0;
+        // Performance mode drops only the skybox warp (its plate has the most points); stars and
+        // galaxies keep warping since they carry most of the lensed silhouette read.
+        const applySkyboxLens = lensActive && !performanceMode;
 
         if (featureFlags.wormholeSkybox) {
             const skyboxTravelRate = Math.min(
                 SKYBOX_TRAVEL_RATE_CAP,
-                wormholeTrailSeparation(canonicalRate, SKYBOX_ROUTE_WORLD_FRACTION)
+                wormholeTrailSeparation(canonicalRate, SKYBOX_ROUTE_WORLD_FRACTION) * smearRateGain
             );
             const skyboxPrevCamZ = Math.max(0, camZ - skyboxTravelRate);
             this.routePath.sample(skyboxPrevCamZ, this.routePrev);
@@ -510,7 +772,8 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 backend, this.baseRouteNow, this.routePrev, this.baseRouteNowV, this.routePrevV,
                 skyboxTurnSmooth, skyboxTurnSmoothPrev,
                 routeTurnVisualGain, tuning.wormholeSkybox * lineAlpha, impact, cx, cy, frameTick,
-                skyboxTravelRate
+                skyboxTravelRate, canonicalRate, applySkyboxLens, lensCenterX, lensCenterY, lensRadiusPx,
+                lensStrength, lensSwirl, camZ, lensWallWaveOffset
             );
         }
 
@@ -565,7 +828,26 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 this.galaxyColor[0] = galaxy.r;
                 this.galaxyColor[1] = galaxy.g;
                 this.galaxyColor[2] = galaxy.b;
-                backend.radialGlow(gx, gy, gRadius, this.galaxyColor, gAlpha);
+                let lineGx = gx;
+                let lineGy = gy;
+                let gMagnification = 1;
+                if (lensActive) {
+                    const dxLens = gx - lensCenterX;
+                    const dyLens = gy - lensCenterY;
+                    // Wall-as-refraction-field (true-lens plan F4): see `perturbedLensRadius`.
+                    const theta = Math.atan2(dyLens, dxLens);
+                    const perturbedRadius = this.perturbedLensRadius(theta, lensRadiusPx, camZ, lensWallWaveOffset);
+                    gMagnification = 1 + wormholeLensMagnificationGain(
+                        dxLens * dxLens + dyLens * dyLens, perturbedRadius, lensStrength
+                    );
+                    wormholeLensWarpPoint(
+                        gx, gy, lensCenterX, lensCenterY, perturbedRadius, lensStrength, lensSwirl,
+                        this.lensWarpPointA
+                    );
+                    lineGx = this.lensWarpPointA.x;
+                    lineGy = this.lensWarpPointA.y;
+                }
+                backend.radialGlow(lineGx, lineGy, gRadius, this.galaxyColor, gAlpha * gMagnification);
 
                 // Bounded drift cue: a fainter, smaller echo at this galaxy's own previous-frame
                 // position (same prev/current pattern already used for grains and stars), whose
@@ -586,7 +868,28 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                     galaxy.y
                     + gRouteDriftVPrev * GALAXY_ROUTE_WORLD_SCALE * galaxyParallaxPrev * routeTurnVisualGain
                 ) / gLocalZPrev * fov;
-                backend.radialGlow(gxPrev, gyPrev, gRadius * 0.7, this.galaxyColor, gAlpha * 0.4);
+                let lineGxPrev = gxPrev;
+                let lineGyPrev = gyPrev;
+                let gMagnificationPrev = 1;
+                if (lensActive) {
+                    const dxLensPrev = gxPrev - lensCenterX;
+                    const dyLensPrev = gyPrev - lensCenterY;
+                    // Wall-as-refraction-field (true-lens plan F4): see `perturbedLensRadius`.
+                    const thetaPrev = Math.atan2(dyLensPrev, dxLensPrev);
+                    const perturbedRadiusPrev = this.perturbedLensRadius(thetaPrev, lensRadiusPx, camZ, lensWallWaveOffset);
+                    gMagnificationPrev = 1 + wormholeLensMagnificationGain(
+                        dxLensPrev * dxLensPrev + dyLensPrev * dyLensPrev, perturbedRadiusPrev, lensStrength
+                    );
+                    wormholeLensWarpPoint(
+                        gxPrev, gyPrev, lensCenterX, lensCenterY, perturbedRadiusPrev, lensStrength, lensSwirl,
+                        this.lensWarpPointA
+                    );
+                    lineGxPrev = this.lensWarpPointA.x;
+                    lineGyPrev = this.lensWarpPointA.y;
+                }
+                backend.radialGlow(
+                    lineGxPrev, lineGyPrev, gRadius * 0.7, this.galaxyColor, gAlpha * 0.4 * gMagnificationPrev
+                );
             }
         }
 
@@ -597,7 +900,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         const starAmount = tuning.wormholeStarfield;
         if (starAmount > 0) {
             const starDepthTravel = camZ * STAR_SPEED_RATIO;
-            const vzStar = wormholeTrailSeparation(canonicalRate, STAR_SPEED_RATIO);
+            const vzStar = wormholeTrailSeparation(canonicalRate, STAR_SPEED_RATIO) * smearRateGain;
             const starPrevCamZ = Math.max(0, camZ - vzStar);
             this.routePath.sample(starPrevCamZ, this.baseRoutePrev);
             this.routePathVertical.sample(starPrevCamZ, this.baseRoutePrevV);
@@ -671,26 +974,139 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 const psx = cx + prevLocalX / prevLocalZ * fov;
                 const psy = cy + prevLocalY / prevLocalZ * fov;
 
+                // Smear character (lens-overhaul plan T8): fast canonical travel already lengthens
+                // `vzStar` above. Points inside the throat receive one additional bounded, purely
+                // screen-space tail stretch; the head stays fixed and the existing post-warp
+                // motion-safety fade below remains the final guard.
+                let trailPsx = psx;
+                let trailPsy = psy;
+                if (lensActive) {
+                    const smearDx = sx - lensCenterX;
+                    const smearDy = sy - lensCenterY;
+                    const lensSmearGain = wormholeLensSmearGain(
+                        smearDx * smearDx + smearDy * smearDy, lensRadiusPx, canonicalRate
+                    );
+                    if (lensSmearGain > 1) {
+                        trailPsx = sx + (psx - sx) * lensSmearGain;
+                        trailPsy = sy + (psy - sy) * lensSmearGain;
+                    }
+                }
+                // Cached for the secondary-image pass after this loop (true-lens plan F2): the
+                // unwarped now/trail position, so that pass never re-samples the route.
+                this.starSxCache[i] = sx;
+                this.starSyCache[i] = sy;
+                this.starTrailPsxCache[i] = trailPsx;
+                this.starTrailPsyCache[i] = trailPsy;
+
+                // Gravitational lens warp (lens-overhaul plan T5): magnification is read from each
+                // star's own pre-warp distance to the lens center -- the source point's screen-space
+                // impact parameter -- before the point itself is bent toward the lens.
+                let lineSx = sx;
+                let lineSy = sy;
+                let linePsx = trailPsx;
+                let linePsy = trailPsy;
+                let starMagnification = 1;
+                if (lensActive) {
+                    const dxLens = sx - lensCenterX;
+                    const dyLens = sy - lensCenterY;
+                    const d2Lens = dxLens * dxLens + dyLens * dyLens;
+                    // Wall-as-refraction-field (true-lens plan F4): see `perturbedLensRadius`.
+                    const theta = Math.atan2(dyLens, dxLens);
+                    const perturbedRadius = this.perturbedLensRadius(theta, lensRadiusPx, camZ, lensWallWaveOffset);
+                    const starAxisVisibility = wormholeLensNearAxisVisibility(Math.sqrt(d2Lens), perturbedRadius);
+                    starMagnification = (1 + wormholeLensMagnificationGain(d2Lens, perturbedRadius, lensStrength))
+                        * starAxisVisibility;
+                    wormholeLensWarpPoint(
+                        sx, sy, lensCenterX, lensCenterY, perturbedRadius, lensStrength, lensSwirl,
+                        this.lensWarpPointA
+                    );
+                    wormholeLensWarpPoint(
+                        trailPsx, trailPsy, lensCenterX, lensCenterY, perturbedRadius, lensStrength, lensSwirl,
+                        this.lensWarpPointB
+                    );
+                    lineSx = this.lensWarpPointA.x;
+                    lineSy = this.lensWarpPointA.y;
+                    linePsx = this.lensWarpPointB.x;
+                    linePsy = this.lensWarpPointB.y;
+                }
+
                 // Motion-safety gate: a very near/wide star can still have a finite position while
                 // crossing an implausibly large screen distance in one frame. Fade that material
                 // before drawing instead of clipping geometry or changing stable pool indexing.
-                const projectedMotion = Math.hypot(sx - psx, sy - psy);
+                // Reads the (possibly lens-warped) line endpoints, since a warp can itself introduce
+                // a large jump near the lens core that this same gate must catch.
+                const projectedMotion = Math.hypot(lineSx - linePsx, lineSy - linePsy);
                 const starMotionVisibility = 1 - clamp01((projectedMotion - 120) / 180);
                 const marginX = Math.max(1, backend.width * 0.1);
                 const marginY = Math.max(1, backend.height * 0.1);
                 const viewportVisibility = Math.min(
-                    clamp01((sx + marginX) / marginX),
-                    clamp01((backend.width + marginX - sx) / marginX),
-                    clamp01((sy + marginY) / marginY),
-                    clamp01((backend.height + marginY - sy) / marginY)
+                    clamp01((lineSx + marginX) / marginX),
+                    clamp01((backend.width + marginX - lineSx) / marginX),
+                    clamp01((lineSy + marginY) / marginY),
+                    clamp01((backend.height + marginY - lineSy) / marginY)
                 );
                 const sAlpha = (10 + sNear * sNear * 120 + impact * 60)
-                    * lineAlpha * starAmount * starNearVisibility * starMotionVisibility * viewportVisibility;
+                    * lineAlpha * starAmount * starNearVisibility * starMotionVisibility * viewportVisibility
+                    * starMagnification;
                 const sWeight = (0.4 + sNear * sNear * 2.2) * lineWeight;
                 backend.stroke(star.r, star.g, star.b, sAlpha);
                 backend.strokeWeight(sWeight);
-                backend.line(psx, psy, sx, sy);
+                backend.line(linePsx, linePsy, lineSx, lineSy);
             }
+
+            // Secondary-image pass (true-lens plan F2): fills the throat's interior with the point-
+            // mass lens's fainter, counter-rotating second image instead of leaving it empty --
+            // "looking back through the wormhole" instead of into a void. Budget-gated to a fixed,
+            // frame-invariant half of the pool (every other index) rather than a beta-based cutoff:
+            // conditionally skipping individual stars by their current (frame-varying) distance from
+            // the axis would itself vary this loop's own line() count frame to frame, exactly the
+            // class of bug the main loop's own "stable pool index" comment above warns against.
+            // `wormholeLensSecondaryGain` already fades to ~0 far from the axis, so drawing every
+            // eligible star unconditionally costs a few effectively-invisible calls rather than
+            // risking that bug -- and reads the now/trail cache the main loop just populated, so
+            // this never re-samples the route.
+            if (lensActive && !performanceMode) {
+                for (let i = 0; i < this.starPool.length; i += 2) {
+                    const star = this.starPool[i];
+                    const secSx = this.starSxCache[i];
+                    const secSy = this.starSyCache[i];
+                    const secTrailPsx = this.starTrailPsxCache[i];
+                    const secTrailPsy = this.starTrailPsyCache[i];
+                    const dxLens = secSx - lensCenterX;
+                    const dyLens = secSy - lensCenterY;
+                    // Wall-as-refraction-field (true-lens plan F4): see `perturbedLensRadius`.
+                    const secTheta = Math.atan2(dyLens, dxLens);
+                    const secPerturbedRadius = this.perturbedLensRadius(secTheta, lensRadiusPx, camZ, lensWallWaveOffset);
+                    const secondaryGain = wormholeLensSecondaryGain(
+                        dxLens * dxLens + dyLens * dyLens, secPerturbedRadius, lensStrength
+                    );
+                    wormholeLensSecondaryPoint(
+                        secSx, secSy, lensCenterX, lensCenterY, secPerturbedRadius, lensStrength, lensSwirl,
+                        this.lensWarpPointA
+                    );
+                    wormholeLensSecondaryPoint(
+                        secTrailPsx, secTrailPsy, lensCenterX, lensCenterY, secPerturbedRadius, lensStrength, lensSwirl,
+                        this.lensWarpPointB
+                    );
+                    const secondaryAlpha = secondaryGain * LENS_SECONDARY_ALPHA_SCALE * lineAlpha * starAmount;
+                    backend.stroke(star.r, star.g, star.b, secondaryAlpha);
+                    backend.strokeWeight(lineWeight * 0.6);
+                    backend.line(
+                        this.lensWarpPointB.x, this.lensWarpPointB.y, this.lensWarpPointA.x, this.lensWarpPointA.y
+                    );
+                }
+            }
+        }
+
+        // True-lens plan F6: a dedicated, constructor-owned deep-field pool supplies enough real
+        // background light for the forward mapping to form a rich Einstein arc. This is deliberately
+        // separate from (and does not increase) the global skybox/star pools. The helper owns the
+        // lens-active and cheap source-d2 gates; performance mode samples a fixed half-pool stride.
+        if (lensActive) {
+            this.drawLensDeepField(
+                backend, lensCenterX, lensCenterY, lensRadiusPx, lensStrength, lensSwirl,
+                travelDistance, timeSec, performanceMode, lineAlpha, lensWallWaveOffset
+            );
         }
 
         // --- Color: GC-free, shifted by vocal (+) and melody (-) ---
@@ -702,6 +1118,69 @@ export class CosmicWormholeIdentity implements VisualIdentity {
 
         const spectrum = State.currentFrame.perceptualSpectrum;
         const spectrumLen = spectrum ? spectrum.length : 0;
+
+        // Dark-glass vignette (lens-overhaul plan T7): dim the background plate outside the
+        // transparent throat before adding the Einstein ring and wall highlights. Chroma-key mode
+        // must remain untouched so the inverse radial gradient cannot contaminate the key color.
+        // Export and video-backplate rendering deliberately use the same path: P5RendererBackend
+        // resolves their active target before issuing this single gradient fill.
+        if (lensActive && wallStrength > 0 && tuning.chromaKeyMode === 0) {
+            const dimAlpha = clamp01(lensStrength * wallStrength) * 0.58;
+            backend.radialDim(
+                lensCenterX,
+                lensCenterY,
+                lensRadiusPx * 0.82,
+                lensRadiusPx * 2.35,
+                dimAlpha
+            );
+        }
+
+        // True-lens plan F5: audio energy now breathes through a continuous annular composite,
+        // never through flashing points. Band groups are averaged over a canonical eight-frame
+        // analysis window (seek/export deterministic, no frame-delta state), then mapped to two or
+        // three broad azimuth sectors. A fourth, full-ring screen pass carries overall exposure.
+        if (lensActive && tuning.chromaKeyMode === 0) {
+            this.drawLensRingTint(
+                backend, lensCenterX, lensCenterY, lensRadiusPx, lensStrength, hue,
+                timeSec, performanceMode, spectrum, spectrumLen
+            );
+        }
+
+        // Einstein-ring light pooling (lens-overhaul plan T6): this is a separate, deliberately
+        // sparse soft-light layer on the already-computed screen-space lens radius. It does not
+        // warp or alter route/tunnel geometry. `shouldUseExpensiveGlow` normally owns this gate;
+        // performance mode retains a bounded four-spot version (rather than its regular twelve)
+        // while preserving the chroma-key exclusion that the shared gate enforces.
+        const expensiveGlowAllowed = shouldUseExpensiveGlow(tuning);
+        const einsteinRingEnabled = lensActive && (
+            expensiveGlowAllowed || (performanceMode && tuning.chromaKeyMode === 0)
+        );
+        if (einsteinRingEnabled) {
+            hueToRgbInto(this.einsteinRingColor, hue + 8, 0.3, 0.99);
+            this.drawEinsteinRing(
+                backend, lensCenterX, lensCenterY, lensRadiusPx, lensStrength, travelDistance, timeSec,
+                performanceMode, lineAlpha, spectrum, spectrumLen, lensWallWaveOffset
+            );
+        }
+
+        // Membrane wall (refractive membrane wall plan, Phase 4): drawn after the background
+        // layers and before the grain field, so dust floats in front of the wall it frames. Reuses
+        // this frame's already-sampled `baseRouteNow`/`baseRouteNowV` camera frames untouched.
+        if (wallStrength > 0) {
+            hueToRgbInto(this.wallWarmColor, hue - WALL_CHROMATIC_HUE_SHIFT, 0.85, 0.6);
+            hueToRgbInto(this.wallCoolColor, hue + WALL_CHROMATIC_HUE_SHIFT, 0.85, 0.6);
+            // Low saturation, near-max brightness: reads as a hot highlight distinct from the
+            // membrane grid's own base hue instead of just a brighter copy of it.
+            hueToRgbInto(this.causticColor, hue, 0.4, 0.98);
+            // Event-driven pressure waves (Phase 5/7): reuses the fronts already gathered above
+            // (true-lens plan F4) -- this legacy, off-by-default line-material layer must never
+            // gather its own second, potentially-inconsistent copy.
+            this.drawWall(
+                backend, tuning, camZ, cx, cy, fov, lineAlpha, routeTurnVisualGain, travelDistance,
+                r, g, b, spectrum, spectrumLen, waveFrontCount
+            );
+        }
+
         // Ring vs. dispersion feature: 0 = the natural random spread, 1 = grains snapped to discrete
         // concentric depth rings (the look the wrap bug used to force — now an opt-in parameter).
         const jitter = authoredJitter;
@@ -906,6 +1385,726 @@ export class CosmicWormholeIdentity implements VisualIdentity {
     }
 
     /**
+     * Dense but lightweight lensed source field (true-lens plan F6). Every point is drawn only when
+     * its *unwarped* source beta is within 2.5 thetaE, checked with squared distance before invoking
+     * the lens math. Placement is a pure function of constructor seed, travel distance, and canonical
+     * time: no frame-delta state, twinkle, or draw-loop allocation can make the ring flicker after a
+     * seek/export. The existing skybox/star densities remain untouched.
+     */
+    private drawLensDeepField(
+        backend: VisualRendererBackend,
+        lensCenterX: number,
+        lensCenterY: number,
+        lensRadiusPx: number,
+        lensStrength: number,
+        lensSwirl: number,
+        travelDistance: number,
+        canonicalTime: number,
+        performanceMode: boolean,
+        lineAlpha: number,
+        lensWallWaveOffset: number
+    ): void {
+        if (lensStrength <= 0 || lensRadiusPx <= 0) return;
+        const stride = performanceMode ? WORMHOLE_DEEP_FIELD_PERFORMANCE_STRIDE : 1;
+        const maxBeta = lensRadiusPx * DEEP_FIELD_MAX_BETA_RATIO;
+        const maxBetaD2 = maxBeta * maxBeta;
+        const sharedDrift = travelDistance / Z_REFERENCE * DEEP_FIELD_ADVECTION_PER_HORIZON
+            + canonicalTime * DEEP_FIELD_CANONICAL_DRIFT;
+
+        backend.noStroke();
+        for (let i = 0; i < this.deepFieldPool.length; i += stride) {
+            const point = this.deepFieldPool[i];
+            const theta = point.theta + sharedDrift * point.driftScale;
+            const beta = point.betaRatio * lensRadiusPx;
+            const sourceDx = Math.cos(theta) * beta;
+            const sourceDy = Math.sin(theta) * beta;
+            const sourceD2 = sourceDx * sourceDx + sourceDy * sourceDy;
+            if (sourceD2 > maxBetaD2) continue;
+
+            const perturbedRadius = this.perturbedLensRadius(
+                theta, lensRadiusPx, travelDistance, lensWallWaveOffset
+            );
+            const axisVisibility = wormholeLensNearAxisVisibility(beta, perturbedRadius);
+            const magnificationGain = wormholeLensMagnificationGain(
+                sourceD2, perturbedRadius, lensStrength
+            );
+            wormholeLensWarpPoint(
+                lensCenterX + sourceDx,
+                lensCenterY + sourceDy,
+                lensCenterX,
+                lensCenterY,
+                perturbedRadius,
+                lensStrength,
+                lensSwirl,
+                this.lensWarpPointA
+            );
+
+            const alpha = (7 + point.alphaScale * 19) * lineAlpha * lensStrength
+                * axisVisibility * (1 + magnificationGain * 0.82);
+            const diameter = point.size * (1 + magnificationGain * 0.28);
+            backend.fill(point.r, point.g, point.b, alpha);
+            backend.circle(this.lensWarpPointA.x, this.lensWarpPointA.y, diameter);
+        }
+    }
+
+    /**
+     * Audio-reactive annular overlay (true-lens plan F5). The exposure pass spans the complete
+     * lens zone; saturation is divided into a fixed two/three-sector budget. The backend clips the
+     * same radial annulus to each broad wedge, so these remain continuous color fields rather than
+     * a new chain of glow spots. All energy lookup is canonical-time indexed and history-free.
+     */
+    private drawLensRingTint(
+        backend: VisualRendererBackend,
+        lensCenterX: number,
+        lensCenterY: number,
+        lensRadiusPx: number,
+        lensStrength: number,
+        hue: number,
+        canonicalTime: number,
+        performanceMode: boolean,
+        fallbackSpectrum: number[],
+        fallbackSpectrumLen: number
+    ): void {
+        const sectorCount = performanceMode ? LENS_TINT_SECTOR_COUNT_PERFORMANCE : LENS_TINT_SECTOR_COUNT;
+        let aggregateEnergy = 0;
+        for (let sectorIndex = 0; sectorIndex < sectorCount; sectorIndex++) {
+            aggregateEnergy += this.smoothedLensTintSectorEnergy(
+                sectorIndex, sectorCount, canonicalTime, fallbackSpectrum, fallbackSpectrumLen
+            );
+        }
+        aggregateEnergy /= sectorCount;
+
+        hueToRgbInto(this.ringExposureColor, hue + 6, 0.18, 0.96);
+        backend.compositeRingTint(
+            lensCenterX,
+            lensCenterY,
+            lensRadiusPx * 0.7,
+            lensRadiusPx * 1.58,
+            this.ringExposureColor,
+            clamp01(aggregateEnergy * lensStrength) * LENS_TINT_EXPOSURE_ALPHA,
+            'screen'
+        );
+
+        const sectorWidth = TWO_PI / sectorCount;
+        const halfVisibleWidth = sectorWidth * 0.47;
+        // A very slow canonical drift keeps broad color regions alive without coupling their
+        // position to spectrum energy (spectrum remains a light/color input, never geometry).
+        const sectorDrift = canonicalTime * 0.035;
+        for (let sectorIndex = 0; sectorIndex < sectorCount; sectorIndex++) {
+            const energy = this.smoothedLensTintSectorEnergy(
+                sectorIndex, sectorCount, canonicalTime, fallbackSpectrum, fallbackSpectrumLen
+            );
+            const color = sectorIndex === 0
+                ? this.ringTintColorA
+                : sectorIndex === 1
+                    ? this.ringTintColorB
+                    : this.ringTintColorC;
+            const hueOffset = (sectorIndex - (sectorCount - 1) * 0.5) * 34;
+            hueToRgbInto(color, hue + hueOffset, 0.9, 0.58);
+            const centerAngle = -Math.PI * 0.5 + sectorIndex * sectorWidth + sectorDrift;
+            backend.compositeRingTint(
+                lensCenterX,
+                lensCenterY,
+                lensRadiusPx * 0.76,
+                lensRadiusPx * 1.46,
+                color,
+                clamp01(energy * lensStrength) * LENS_TINT_SATURATION_ALPHA,
+                'saturation',
+                centerAngle - halfVisibleWidth,
+                centerAngle + halfVisibleWidth
+            );
+        }
+    }
+
+    /** Causal, canonical-time window average: deterministic after seek/export and allocation-free. */
+    private smoothedLensTintSectorEnergy(
+        sectorIndex: number,
+        sectorCount: number,
+        canonicalTime: number,
+        fallbackSpectrum: number[],
+        fallbackSpectrumLen: number
+    ): number {
+        const frames = State.frames;
+        const frameStep = State.hopSize > 0 && State.sampleRate > 0
+            ? State.sampleRate / State.hopSize
+            : 0;
+        let total = 0;
+        let sampleCount = 0;
+
+        if (frames.length > 0 && frameStep > 0) {
+            const endFrame = Math.min(frames.length - 1, Math.max(0, Math.floor(canonicalTime * frameStep)));
+            const startFrame = Math.max(0, endFrame - LENS_TINT_SMOOTHING_FRAMES + 1);
+            for (let frameIndex = startFrame; frameIndex <= endFrame; frameIndex++) {
+                const spectrum = frames[frameIndex].perceptualSpectrum;
+                const spectrumLen = spectrum ? spectrum.length : 0;
+                for (let bandIndex = sectorIndex; bandIndex < spectrumLen; bandIndex += sectorCount) {
+                    total += clamp01(spectrum[bandIndex]);
+                    sampleCount++;
+                }
+            }
+        }
+
+        if (sampleCount === 0) {
+            for (let bandIndex = sectorIndex; bandIndex < fallbackSpectrumLen; bandIndex += sectorCount) {
+                total += clamp01(fallbackSpectrum[bandIndex]);
+                sampleCount++;
+            }
+        }
+
+        const average = sampleCount > 0 ? clamp01(total / sampleCount) : 0;
+        // Smoothstep suppresses low-level flicker while retaining a bounded, monotonic response.
+        return average * average * (3 - 2 * average);
+    }
+
+    /**
+     * Wall-as-refraction-field (true-lens plan F4): the wall's presence is no longer drawn as
+     * lines -- it is read entirely through a small, bounded perturbation of the Einstein radius a
+     * given source point's own azimuth (`theta`, its angle around the lens center) sees. Reuses the
+     * exact same `wormholeWallRippleOffset` evaluator every drawn wall material already shared
+     * (never a second, independently authored distortion source): its own two-harmonic sine wave,
+     * advected at the same `WALL_ADVECTION_HORIZON` rate every other wall texture flows at, using a
+     * fixed `ringDepthPhase=0` reference (the throat's near-plane -- there is no depth-stack of
+     * "lens rings" the way the drawn wall has, only this one screen-space radius). `waveOffset` is
+     * the theta-independent kick/LOW_DROP swell computed once per frame by the caller (same value
+     * for every point this frame, unlike the per-point ripple) so a pressure front reads as the
+     * whole ring briefly swelling, not a directional bump. Bounded to `+-LENS_WALL_PERTURBATION_MAX`.
+     */
+    private perturbedLensRadius(
+        theta: number,
+        lensRadiusPx: number,
+        travelDistance: number,
+        waveOffset: number
+    ): number {
+        const ripple = wormholeWallRippleOffset(theta, 0, travelDistance);
+        const perturbation = clamp(ripple + waveOffset, -LENS_WALL_PERTURBATION_MAX, LENS_WALL_PERTURBATION_MAX);
+        return lensRadiusPx * (1 + perturbation);
+    }
+
+    /**
+     * Einstein-ring residual glow (true-lens plan F3). The ring itself now emerges from real
+     * lensed starlight (F1's forward mapping) and the secondary image (F2); this layer only adds a
+     * faint, uniform brightness breath on top, not a second light source. Every spot around the
+     * ring shares the exact same brightness (aggregate, whole-spectrum energy, never a per-band
+     * lookup), so the ring breathes together instead of the old per-spot 24-band flashing chain --
+     * that stroboscopic dot-chain read is exactly what this task removes. The seeded phase offsets
+     * and slow travel/canonical-time advection stay only to keep the spot placement organic (not a
+     * mechanical, perfectly regular polygon); with every spot now equally bright, the advection
+     * itself is close to imperceptible under the ring's own rotational symmetry, but costs nothing
+     * to keep for placement variety across presets/seeds.
+     */
+    private drawEinsteinRing(
+        backend: VisualRendererBackend,
+        lensCenterX: number,
+        lensCenterY: number,
+        lensRadiusPx: number,
+        lensStrength: number,
+        travelDistance: number,
+        canonicalTime: number,
+        performanceMode: boolean,
+        lineAlpha: number,
+        spectrum: number[],
+        spectrumLen: number,
+        lensWallWaveOffset: number
+    ): void {
+        const spotCount = performanceMode ? EINSTEIN_RING_GLOW_COUNT_PERFORMANCE : EINSTEIN_RING_GLOW_COUNT;
+        const ringGain = wormholeLensMagnificationGain(
+            lensRadiusPx * lensRadiusPx, lensRadiusPx, lensStrength
+        );
+        if (ringGain <= 0) return;
+
+        let aggregateEnergy = 0;
+        for (let bandIndex = 0; bandIndex < spectrumLen; bandIndex++) aggregateEnergy += spectrum[bandIndex];
+        aggregateEnergy = spectrumLen > 0 ? clamp01(aggregateEnergy / spectrumLen) : 0;
+        const brightness = ringGain * aggregateEnergy;
+        if (brightness <= 0) return;
+        const glowAlpha = brightness * lineAlpha * EINSTEIN_RING_ALPHA_SCALE;
+
+        const advectedTheta = travelDistance / Z_REFERENCE * EINSTEIN_RING_ADVECTION_PER_HORIZON
+            + canonicalTime * EINSTEIN_RING_CANONICAL_DRIFT;
+        for (let spotIndex = 0; spotIndex < spotCount; spotIndex++) {
+            const seed = EINSTEIN_RING_SEED + spotIndex * 19.19;
+            const seededPhase = pseudoNoise(seed, 4.7) * TWO_PI;
+            const theta = (spotIndex / spotCount) * TWO_PI + seededPhase * 0.28 + advectedTheta;
+            const spotRadius = Math.max(
+                EINSTEIN_RING_RADIUS_MIN_PX,
+                lensRadiusPx * (EINSTEIN_RING_RADIUS_FRACTION + pseudoNoise(seed, 8.3) * 0.045)
+            );
+            // Wall-as-refraction-field (true-lens plan F4): each spot sits on its own azimuth's
+            // perturbed radius, so this residual glow wobbles in lockstep with the real lensed
+            // points around it instead of tracing a perfectly circular contour on top of them.
+            const perturbedSpotRadius = this.perturbedLensRadius(theta, lensRadiusPx, travelDistance, lensWallWaveOffset);
+            backend.radialGlow(
+                lensCenterX + Math.cos(theta) * perturbedSpotRadius,
+                lensCenterY + Math.sin(theta) * perturbedSpotRadius,
+                spotRadius,
+                this.einsteinRingColor,
+                glowAlpha
+            );
+        }
+    }
+
+    /**
+     * Wall dispatcher (Phase 8 of the wall plan): computes the shared setup every wall material needs
+     * and picks exactly one base material -- the default rippling membrane grid (`drawMembraneGrid`)
+     * or the discrete, opt-in pixel-mosaic tick grid (`drawMosaicGrid`) -- then always layers the
+     * peak-only crack accent (`drawCracks`) on top regardless of material, since a crack is wall
+     * damage, not a property of one specific material.
+     */
+    private drawWall(
+        backend: VisualRendererBackend,
+        tuning: VisualTuningConfig,
+        camZ: number,
+        cx: number,
+        cy: number,
+        fov: number,
+        lineAlpha: number,
+        routeTurnVisualGain: number,
+        travelDistance: number,
+        r: number,
+        g: number,
+        b: number,
+        spectrum: number[],
+        spectrumLen: number,
+        waveFrontCount: number
+    ): void {
+        const wallAmount = tuning.wormholeWall;
+        const performanceMode = tuning.performanceMode > 0;
+        const wallMaxZ = Z_REFERENCE * tuning.wormholeDepth;
+        const wallRadius = WALL_BASE_RADIUS * Math.max(0.05, tuning.wormholeRadius);
+
+        if (tuning.wormholeWallMode === 1) {
+            this.drawMosaicGrid(
+                backend, tuning, camZ, cx, cy, fov, lineAlpha, routeTurnVisualGain, wallAmount,
+                wallMaxZ, wallRadius, performanceMode, r, g, b, spectrum, spectrumLen, waveFrontCount
+            );
+        } else {
+            this.drawMembraneGrid(
+                backend, tuning, camZ, cx, cy, fov, lineAlpha, routeTurnVisualGain, travelDistance,
+                wallAmount, performanceMode, wallMaxZ, wallRadius, r, g, b, spectrum, spectrumLen, waveFrontCount
+            );
+        }
+
+        this.drawCracks(
+            backend, tuning, camZ, cx, cy, fov, routeTurnVisualGain, wallAmount, performanceMode,
+            wallMaxZ, wallRadius, lineAlpha, waveFrontCount
+        );
+    }
+
+    /**
+     * Membrane wall (refractive membrane wall plan, Phases 4, 6 & 7): a rippling ring/segment grid
+     * framing the tunnel, a small set of brighter analytic caustic helices layered on top, and
+     * event-driven kick/LOW_DROP pressure-wave bumps sharing the ripple's own radius channel. Every
+     * ring sits at a *fixed* camera-space depth (unlike grains, it never travels or regenerates); the
+     * flowing look comes only from the ripple/caustic phase terms scrolling with `travelDistance` plus
+     * the wave fronts' own age-based position. Sector brightness reuses the grain field's exact
+     * `bandIndex` mapping so both the membrane and the caustics light up in lockstep with the circular
+     * spectrograph instead of drifting from it. Spectrum energy drives only
+     * alpha/refraction/caustic-brightness (`WormholeWallMaterial`), never radius -- radius comes only
+     * from `wormholeWallRippleOffset` and `wormholeWallWaveOffset` (`WormholeWallWaves`), summed once
+     * per ring, never per segment. Caustics reuse each ring's already-sampled route frame from the
+     * membrane pass above them; they never sample the route a second time.
+     */
+    private drawMembraneGrid(
+        backend: VisualRendererBackend,
+        tuning: VisualTuningConfig,
+        camZ: number,
+        cx: number,
+        cy: number,
+        fov: number,
+        lineAlpha: number,
+        routeTurnVisualGain: number,
+        travelDistance: number,
+        wallAmount: number,
+        performanceMode: boolean,
+        wallMaxZ: number,
+        wallRadius: number,
+        r: number,
+        g: number,
+        b: number,
+        spectrum: number[],
+        spectrumLen: number,
+        waveFrontCount: number
+    ): void {
+        const segmentCount = wormholeWallSegmentCount(performanceMode);
+        const ringCount = wormholeWallRingCount(performanceMode);
+        // Performance mode drops the chromatic pass entirely (plan Phase 4 gate).
+        const refraction = performanceMode ? 0 : tuning.wormholeWallRefraction;
+        // Shares the ripple's own radius channel (plan Phase 5): never scaled by the wallAmount
+        // master, exactly like ripple isn't -- only this sub-layer's own authored intensity.
+        const wavesAmount = waveFrontCount > 0 ? clamp01(tuning.wormholeWallWaves) : 0;
+
+        for (let ringIndex = 0; ringIndex < ringCount; ringIndex++) {
+            const ringDepthPhase = wormholeWallRingDepthPhase(ringIndex, ringCount);
+            const ringZ = wormholeWallRingZ(ringIndex, ringCount, wallMaxZ);
+
+            // Always sample and cache this ring's route frame and vertical drift (geometry-overhaul
+            // plan T3), regardless of whether the membrane itself ends up visible here: the dense
+            // caustic pass below reuses every ring's frame as an interpolation bracket, so a gap in
+            // the cache would leave a hole in caustic coverage even where a caustic's own fresnel
+            // gate says it should still be visible.
+            this.routePath.sampleSmoothedLookahead(camZ + ringZ, this.wallRingFrames[ringIndex]);
+            this.routePathVertical.sampleSmoothedLookahead(camZ + ringZ, this.routeNowV);
+            this.wallRingVerticalDrift[ringIndex] = this.routeNowV.positionX - this.baseRouteNowV.positionX;
+            this.wallRingDepthPhase[ringIndex] = ringDepthPhase;
+
+            const fresnel = wormholeWallFresnel(ringZ, wallMaxZ);
+            if (fresnel <= 0.001) continue;
+
+            const routeNow = this.wallRingFrames[ringIndex];
+            const verticalDrift = this.wallRingVerticalDrift[ringIndex];
+
+            // Pressure-wave radius bump is a function of ringDepthPhase only (not theta/segment), so
+            // it is evaluated once per ring, exactly like fresnel/ringZ above.
+            const waveOffset = wavesAmount > 0
+                ? wormholeWallWaveOffset(this.waveFronts, waveFrontCount, ringDepthPhase) * wavesAmount
+                : 0;
+
+            const center = projectWormholeTubePoint(
+                routeNow, this.baseRouteNow, ringZ, 0, 0, routeTurnVisualGain, cx, cy, fov, verticalDrift
+            );
+            // Clump gate (geometry-overhaul plan T2): a ring sits at one fixed depth, so the clump
+            // field's depth-phase argument is the same advected phase the ripple already reads for
+            // every segment on this ring -- computed once here, not per segment.
+            const advectedDepthPhase = wormholeWallAdvectedPhase(ringDepthPhase, travelDistance);
+
+            let firstX = 0;
+            let firstY = 0;
+            let firstAlpha = 0;
+            let firstWeight = 0;
+            let firstClump = 0;
+            let prevX = 0;
+            let prevY = 0;
+
+            for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++) {
+                const theta = wormholeWallSegmentTheta(segmentIndex, segmentCount);
+                const ripple = wormholeWallRippleOffset(theta, ringDepthPhase, travelDistance);
+                const radius = wallRadius * (1 + ripple + waveOffset);
+                const bandIndex = wormholeWallBandIndex(theta);
+                const bandEnergy = bandIndex < spectrumLen ? clamp01(spectrum[bandIndex]) : 0;
+                const sector = wormholeWallSectorResponse(bandEnergy);
+                const clump = wormholeWallClumpGain(theta, advectedDepthPhase);
+
+                const projection = projectWormholeTubePoint(
+                    routeNow, this.baseRouteNow, ringZ, theta, radius, routeTurnVisualGain, cx, cy, fov,
+                    verticalDrift
+                );
+                const sx = projection.screenX;
+                const sy = projection.screenY;
+                // The wall no longer draws a full closed wireframe ring: `clump` extinguishes
+                // roughly 40-60% of segments and smoothsteps the rest, so the membrane reads as
+                // soft, drifting patches of light on glass instead of a visible polygonal cage.
+                const alpha = wallAmount * lineAlpha * fresnel * sector.alphaGain * clump * WALL_ALPHA_SCALE;
+                const weight = wormholeProjectedStrokeWeight((0.4 + sector.alphaGain * 0.5) * tuning.lineWeight);
+
+                if (segmentIndex === 0) {
+                    firstX = sx;
+                    firstY = sy;
+                    firstAlpha = alpha;
+                    firstWeight = weight;
+                    firstClump = clump;
+                } else if (clump > 0.001) {
+                    backend.stroke(r, g, b, alpha);
+                    backend.strokeWeight(weight);
+                    backend.line(prevX, prevY, sx, sy);
+
+                    if (refraction > 0) {
+                        const chromaticGain = wormholeWallChromaticGain(sector.alphaGain, refraction);
+                        if (chromaticGain > 0) {
+                            const offsetPixels = chromaticGain * WALL_CHROMATIC_MAX_OFFSET_PX;
+                            const chroma = wormholeWallChromaticOffset(sx, sy, center.screenX, center.screenY, offsetPixels);
+                            const dxWarm = chroma.warmX - sx;
+                            const dyWarm = chroma.warmY - sy;
+                            const chromaAlpha = alpha * chromaticGain * 0.6;
+                            const chromaWeight = weight * 0.7;
+                            backend.stroke(this.wallWarmColor[0], this.wallWarmColor[1], this.wallWarmColor[2], chromaAlpha);
+                            backend.strokeWeight(chromaWeight);
+                            backend.line(prevX + dxWarm, prevY + dyWarm, sx + dxWarm, sy + dyWarm);
+                            backend.stroke(this.wallCoolColor[0], this.wallCoolColor[1], this.wallCoolColor[2], chromaAlpha);
+                            backend.strokeWeight(chromaWeight);
+                            backend.line(prevX - dxWarm, prevY - dyWarm, sx - dxWarm, sy - dyWarm);
+                        }
+                    }
+                }
+                prevX = sx;
+                prevY = sy;
+            }
+
+            // Close the ring loop the same way the loop would have connected the last segment to a
+            // wrapped-around segment 0: gated by segment 0's own clump value, never unconditionally.
+            if (firstClump > 0.001) {
+                backend.stroke(r, g, b, firstAlpha);
+                backend.strokeWeight(firstWeight);
+                backend.line(prevX, prevY, firstX, firstY);
+            }
+        }
+
+        // Caustic hero layer (Phases 6 & T3): its own intensity knob on top of the wall master, and
+        // its own performance-mode cap (fewer helices, no glow companion) independent of the
+        // segment/ring halving above. Densely sampled along depth (see `drawCaustics`), reusing the
+        // ring cache just populated above instead of any further route-lookahead calls.
+        const causticsAmount = tuning.wormholeWallCaustics;
+        const causticCount = causticsAmount > 0
+            ? (performanceMode ? Math.min(WALL_CAUSTIC_PERFORMANCE_COUNT, WALL_CAUSTIC_COUNT) : WALL_CAUSTIC_COUNT)
+            : 0;
+        if (causticCount > 0) {
+            this.drawCaustics(
+                backend, tuning, cx, cy, fov, routeTurnVisualGain, wallAmount, causticsAmount, causticCount,
+                performanceMode, wallMaxZ, wallRadius, travelDistance, ringCount, spectrum, spectrumLen
+            );
+        }
+    }
+
+    /**
+     * Caustic hero helices (geometry-overhaul plan T3): samples each helix far more densely along
+     * depth than the membrane's own ring stack (`WALL_CAUSTIC_SAMPLE_COUNT`, independent of
+     * `ringCount`), so up to `WALL_CAUSTIC_MAX_TURNS` turns of analytic twist read as a smooth
+     * spiral instead of the old few-point jagged polygon. Never calls `sampleSmoothedLookahead`
+     * itself: every fine depth sample's route frame is a linear interpolation between the two
+     * bracketing membrane rings' already-cached frames (`wallRingFrames`/`wallRingVerticalDrift`,
+     * populated by the ring loop in `drawMembraneGrid` just above). Sector brightness reuses the
+     * same `bandIndex` mapping the membrane segments use, so a caustic brightens in lockstep with
+     * the circular spectrograph instead of running on its own independent light source.
+     */
+    private drawCaustics(
+        backend: VisualRendererBackend,
+        tuning: VisualTuningConfig,
+        cx: number,
+        cy: number,
+        fov: number,
+        routeTurnVisualGain: number,
+        wallAmount: number,
+        causticsAmount: number,
+        causticCount: number,
+        performanceMode: boolean,
+        wallMaxZ: number,
+        wallRadius: number,
+        travelDistance: number,
+        ringCount: number,
+        spectrum: number[],
+        spectrumLen: number
+    ): void {
+        for (let slot = 0; slot < WALL_CAUSTIC_COUNT; slot++) this.causticPrevValid[slot] = 0;
+
+        const sampleCount = performanceMode ? WALL_CAUSTIC_SAMPLE_COUNT_PERFORMANCE : WALL_CAUSTIC_SAMPLE_COUNT;
+        // Two-pointer bracket search: both the cached coarse rings and the fine samples are
+        // monotonically increasing in depth phase, so `bracketLo` only ever advances forward.
+        let bracketLo = 0;
+
+        for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
+            const fineDepthPhase = wormholeWallRingDepthPhase(sampleIndex, sampleCount);
+            const fineZ = fineDepthPhase * wallMaxZ;
+            const fresnel = wormholeWallFresnel(fineZ, wallMaxZ);
+
+            while (
+                bracketLo < ringCount - 1
+                && this.wallRingDepthPhase[bracketLo + 1] <= fineDepthPhase
+            ) bracketLo++;
+            const bracketHi = Math.min(ringCount - 1, bracketLo + 1);
+            const loPhase = this.wallRingDepthPhase[bracketLo];
+            const hiPhase = this.wallRingDepthPhase[bracketHi];
+            const span = hiPhase - loPhase;
+            const bracketT = span > 1e-9 ? clamp01((fineDepthPhase - loPhase) / span) : 0;
+            lerpWormholeRouteFrame(
+                this.wallRingFrames[bracketLo], this.wallRingFrames[bracketHi], bracketT, this.causticFrame
+            );
+            const verticalDrift = lerp(
+                this.wallRingVerticalDrift[bracketLo], this.wallRingVerticalDrift[bracketHi], bracketT
+            );
+
+            for (let causticIndex = 0; causticIndex < causticCount; causticIndex++) {
+                if (fresnel <= 0.001) {
+                    this.causticPrevValid[causticIndex] = 0;
+                    continue;
+                }
+                const causticTheta = wormholeWallCausticTheta(causticIndex, fineDepthPhase, travelDistance);
+                const causticBandIndex = wormholeWallBandIndex(causticTheta);
+                const causticBandEnergy = causticBandIndex < spectrumLen ? clamp01(spectrum[causticBandIndex]) : 0;
+                const causticSector = wormholeWallSectorResponse(causticBandEnergy);
+                const causticProjection = projectWormholeTubePoint(
+                    this.causticFrame, this.baseRouteNow, fineZ, causticTheta, wallRadius, routeTurnVisualGain,
+                    cx, cy, fov, verticalDrift
+                );
+                const csx = causticProjection.screenX;
+                const csy = causticProjection.screenY;
+                const causticAlpha = wallAmount * causticsAmount * tuning.lineAlpha * fresnel
+                    * causticSector.alphaGain * WALL_CAUSTIC_ALPHA_SCALE;
+                const causticWeight = wormholeProjectedStrokeWeight(
+                    (0.5 + causticSector.alphaGain * 0.6) * tuning.lineWeight * WALL_CAUSTIC_WEIGHT_SCALE
+                );
+
+                if (this.causticPrevValid[causticIndex]) {
+                    backend.stroke(this.causticColor[0], this.causticColor[1], this.causticColor[2], causticAlpha);
+                    backend.strokeWeight(causticWeight);
+                    backend.line(this.causticPrevX[causticIndex], this.causticPrevY[causticIndex], csx, csy);
+                }
+                this.causticPrevX[causticIndex] = csx;
+                this.causticPrevY[causticIndex] = csy;
+                this.causticPrevValid[causticIndex] = 1;
+            }
+        }
+    }
+
+    /**
+     * Pixel-mosaic wall material (Phase 8 of the wall plan): a coarser depth x angle grid of short,
+     * unfilled tick marks instead of the rippling membrane grid, selected only via the discrete
+     * `wormholeWallMode` = 1 switch. Spectrum energy drives only tick brightness (the exact same
+     * `bandIndex`/`sectorResponse` mapping the membrane uses); an active pressure-wave front drives
+     * only a bounded per-cell *angular* shift (the same `wormholeWallWaveOffset` fraction the membrane
+     * reads, reinterpreted as an angle) -- discrete cells have no ripple/radius concept, so the wave
+     * layer never touches radius here. Caustics are deliberately not layered on this material: smooth
+     * analytic helices would read as inconsistent against a blocky digital grid.
+     */
+    private drawMosaicGrid(
+        backend: VisualRendererBackend,
+        tuning: VisualTuningConfig,
+        camZ: number,
+        cx: number,
+        cy: number,
+        fov: number,
+        lineAlpha: number,
+        routeTurnVisualGain: number,
+        wallAmount: number,
+        wallMaxZ: number,
+        wallRadius: number,
+        performanceMode: boolean,
+        r: number,
+        g: number,
+        b: number,
+        spectrum: number[],
+        spectrumLen: number,
+        waveFrontCount: number
+    ): void {
+        const ringCount = wormholeMosaicRingCount(performanceMode);
+        const segmentCount = MOSAIC_SEGMENTS;
+        const tickHalfWidth = wormholeMosaicTickHalfWidth(segmentCount);
+        const wavesAmount = waveFrontCount > 0 ? clamp01(tuning.wormholeWallWaves) : 0;
+
+        for (let ringIndex = 0; ringIndex < ringCount; ringIndex++) {
+            const ringDepthPhase = wormholeWallRingDepthPhase(ringIndex, ringCount);
+            const ringZ = wormholeWallRingZ(ringIndex, ringCount, wallMaxZ);
+            const fresnel = wormholeWallFresnel(ringZ, wallMaxZ);
+            if (fresnel <= 0.001) continue;
+
+            this.routePath.sampleSmoothedLookahead(camZ + ringZ, this.routeNow);
+            this.routePathVertical.sampleSmoothedLookahead(camZ + ringZ, this.routeNowV);
+            const verticalDrift = this.routeNowV.positionX - this.baseRouteNowV.positionX;
+
+            const cellShift = wavesAmount > 0
+                ? wormholeWallWaveOffset(this.waveFronts, waveFrontCount, ringDepthPhase) * wavesAmount * MOSAIC_SHIFT_RADIANS_PER_UNIT
+                : 0;
+
+            for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++) {
+                const cellTheta = wormholeWallSegmentTheta(segmentIndex, segmentCount) + cellShift;
+                const bandIndex = wormholeWallBandIndex(cellTheta);
+                const bandEnergy = bandIndex < spectrumLen ? clamp01(spectrum[bandIndex]) : 0;
+                const sector = wormholeWallSectorResponse(bandEnergy);
+
+                const pointA = projectWormholeTubePoint(
+                    this.routeNow, this.baseRouteNow, ringZ, cellTheta - tickHalfWidth, wallRadius,
+                    routeTurnVisualGain, cx, cy, fov, verticalDrift
+                );
+                const pointB = projectWormholeTubePoint(
+                    this.routeNow, this.baseRouteNow, ringZ, cellTheta + tickHalfWidth, wallRadius,
+                    routeTurnVisualGain, cx, cy, fov, verticalDrift
+                );
+
+                const alpha = wallAmount * lineAlpha * fresnel * sector.alphaGain * WALL_ALPHA_SCALE;
+                const weight = wormholeProjectedStrokeWeight((0.4 + sector.alphaGain * 0.5) * tuning.lineWeight);
+                backend.stroke(r, g, b, alpha);
+                backend.strokeWeight(weight);
+                backend.line(pointA.screenX, pointA.screenY, pointB.screenX, pointB.screenY);
+            }
+        }
+    }
+
+    /**
+     * Peak-only crack flashes (Phase 8 of the wall plan): a small, pre-generated, deterministic crack
+     * pool (`WormholeWallCracks`) that only lights up under an active kick/LOW_DROP pressure front --
+     * reusing the very same fronts `drawMembraneGrid`/`drawMosaicGrid` already read, never a second
+     * event source. Fully disabled in performance mode. Each visible crack point samples its own route
+     * frame (its fixed depth differs from every ring), then the whole crack is drawn as one warm/cool
+     * chromatically-split polyline, reusing the wall's own `wallWarmColor`/`wallCoolColor` and the
+     * `wormholeWallRefraction` dial that already gates the membrane's own chromatic fringe.
+     */
+    private drawCracks(
+        backend: VisualRendererBackend,
+        tuning: VisualTuningConfig,
+        camZ: number,
+        cx: number,
+        cy: number,
+        fov: number,
+        routeTurnVisualGain: number,
+        wallAmount: number,
+        performanceMode: boolean,
+        wallMaxZ: number,
+        wallRadius: number,
+        lineAlpha: number,
+        waveFrontCount: number
+    ): void {
+        if (performanceMode) return;
+        const cracksAmount = tuning.wormholeWallCracks;
+        if (cracksAmount <= 0) return;
+        const refraction = tuning.wormholeWallRefraction;
+
+        for (let crackIndex = 0; crackIndex < WALL_CRACK_COUNT; crackIndex++) {
+            const emission = wormholeWallCrackEmission(crackIndex, this.waveFronts, waveFrontCount);
+            if (emission <= 0.001) continue;
+
+            const pointCount = wormholeWallCrackPointCount(crackIndex);
+            let prevSx = 0;
+            let prevSy = 0;
+            let havePrev = false;
+
+            for (let pointIndex = 0; pointIndex < pointCount; pointIndex++) {
+                const point = wormholeWallCrackPoint(crackIndex, pointIndex);
+                const z = point.depthPhase * wallMaxZ;
+                const fresnel = wormholeWallFresnel(z, wallMaxZ);
+
+                this.routePath.sampleSmoothedLookahead(camZ + z, this.routeNow);
+                this.routePathVertical.sampleSmoothedLookahead(camZ + z, this.routeNowV);
+                const verticalDrift = this.routeNowV.positionX - this.baseRouteNowV.positionX;
+                const projection = projectWormholeTubePoint(
+                    this.routeNow, this.baseRouteNow, z, point.theta, wallRadius, routeTurnVisualGain, cx, cy, fov,
+                    verticalDrift
+                );
+                const sx = projection.screenX;
+                const sy = projection.screenY;
+
+                if (havePrev && fresnel > 0.001) {
+                    const alpha = wallAmount * cracksAmount * lineAlpha * fresnel * emission * WALL_CRACK_ALPHA_SCALE;
+                    const weight = wormholeProjectedStrokeWeight(
+                        (0.5 + emission * 0.8) * tuning.lineWeight * WALL_CRACK_WEIGHT_SCALE
+                    );
+                    backend.stroke(this.causticColor[0], this.causticColor[1], this.causticColor[2], alpha);
+                    backend.strokeWeight(weight);
+                    backend.line(prevSx, prevSy, sx, sy);
+
+                    if (refraction > 0) {
+                        const center = projectWormholeTubePoint(
+                            this.routeNow, this.baseRouteNow, z, 0, 0, routeTurnVisualGain, cx, cy, fov, verticalDrift
+                        );
+                        const offsetPixels = emission * WALL_CRACK_CHROMATIC_MAX_OFFSET_PX;
+                        const chroma = wormholeWallChromaticOffset(sx, sy, center.screenX, center.screenY, offsetPixels);
+                        const dxWarm = chroma.warmX - sx;
+                        const dyWarm = chroma.warmY - sy;
+                        const chromaAlpha = alpha * 0.7;
+                        const chromaWeight = weight * 0.7;
+                        backend.stroke(this.wallWarmColor[0], this.wallWarmColor[1], this.wallWarmColor[2], chromaAlpha);
+                        backend.strokeWeight(chromaWeight);
+                        backend.line(prevSx + dxWarm, prevSy + dyWarm, sx + dxWarm, sy + dyWarm);
+                        backend.stroke(this.wallCoolColor[0], this.wallCoolColor[1], this.wallCoolColor[2], chromaAlpha);
+                        backend.strokeWeight(chromaWeight);
+                        backend.line(prevSx - dxWarm, prevSy - dyWarm, sx - dxWarm, sy - dyWarm);
+                    }
+                }
+                prevSx = sx;
+                prevSy = sy;
+                havePrev = true;
+            }
+        }
+    }
+
+    /**
      * Snapshot the same rendered radius/depth values a live slider adjustment would expose through
      * `State.visualTuning`. The LFO sits directly behind those authored controls: it changes the
      * effective parameter sampled by a newly released grain, while the grain keeps that geometry
@@ -1000,7 +2199,16 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         cx: number,
         cy: number,
         frameTick: number,
-        skyboxSeparation: number
+        skyboxSeparation: number,
+        canonicalRate: number,
+        applyLens: boolean,
+        lensCenterX: number,
+        lensCenterY: number,
+        lensRadiusPx: number,
+        lensStrength: number,
+        lensSwirl: number,
+        travelDistance: number,
+        lensWallWaveOffset: number
     ): void {
         if (amount <= 0) return;
         const radius = Math.hypot(cx, cy) * SKYBOX_TILE_RADIUS;
@@ -1017,26 +2225,79 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         // plate still shows a short, capped zoom-streak toward the current point instead of an
         // exactly static line -- `skyboxSeparation` is the same shared, capped travel rate every
         // other background layer already uses, just rescaled into a tiny fraction of the plate radius.
-        const forwardShrink = Math.min(SKYBOX_FORWARD_CUE_CAP, skyboxSeparation / radius);
+        const baseForwardShrink = skyboxSeparation / radius;
         for (let i = 0; i < this.skyPool.length; i++) {
             const star = this.skyPool[i];
             const sx = cx + star.x * radius + routePan;
             const sy = cy + star.y * radius + routePanV;
+            const lensDx = sx - lensCenterX;
+            const lensDy = sy - lensCenterY;
+            const lensSmearGain = lensStrength > 0
+                ? wormholeLensSmearGain(lensDx * lensDx + lensDy * lensDy, lensRadiusPx, canonicalRate)
+                : 1;
+            // The pre-existing forward-cue ceiling remains authoritative even after the local lens
+            // emphasis. Route-pan separation is independently bounded by SKYBOX_TRAVEL_RATE_CAP.
+            const forwardShrink = Math.min(SKYBOX_FORWARD_CUE_CAP, baseForwardShrink * lensSmearGain);
             const prevSx = cx + star.x * radius + prevRoutePan
                 + forwardShrink * (cx - sx);
             const prevSy = cy + star.y * radius + prevRoutePanV
                 + forwardShrink * (cy - sy);
+
+            let lineSx = sx;
+            let lineSy = sy;
+            let linePrevSx = prevSx;
+            let linePrevSy = prevSy;
+            let magnification = 1;
+            if (applyLens) {
+                const dxLens = sx - lensCenterX;
+                const dyLens = sy - lensCenterY;
+                const d2Lens = dxLens * dxLens + dyLens * dyLens;
+                // Wall-as-refraction-field (true-lens plan F4): this point's own local Einstein
+                // radius, perturbed by its azimuth around the lens center -- computed once and
+                // reused for the warp, magnification, and near-axis fade below so all three stay
+                // consistent for this one point.
+                const theta = Math.atan2(dyLens, dxLens);
+                const perturbedRadius = this.perturbedLensRadius(theta, lensRadiusPx, travelDistance, lensWallWaveOffset);
+                // Near-axis fade (true-lens plan F1): a source passing close to the lens axis
+                // sweeps around the Einstein ring at an angular rate that blows up as its true
+                // distance from center shrinks -- a discrete tile can only render that as a
+                // frame-to-frame jump, so fade it out in that narrow band instead.
+                const axisVisibility = wormholeLensNearAxisVisibility(Math.sqrt(d2Lens), perturbedRadius);
+                magnification = (1 + wormholeLensMagnificationGain(d2Lens, perturbedRadius, lensStrength))
+                    * axisVisibility;
+                wormholeLensWarpPoint(
+                    sx, sy, lensCenterX, lensCenterY, perturbedRadius, lensStrength, lensSwirl,
+                    this.lensWarpPointA
+                );
+                wormholeLensWarpPoint(
+                    prevSx, prevSy, lensCenterX, lensCenterY, perturbedRadius, lensStrength, lensSwirl,
+                    this.lensWarpPointB
+                );
+                lineSx = this.lensWarpPointA.x;
+                lineSy = this.lensWarpPointA.y;
+                linePrevSx = this.lensWarpPointB.x;
+                linePrevSy = this.lensWarpPointB.y;
+            }
+
+            // Motion-safety gate (mirrors the starfield loop's own gate below): a lens-warped
+            // point near the axis can jump a long screen distance between the streak's two
+            // endpoints even after the fade above. Reads the warped endpoints, since the warp
+            // itself -- not just world/route motion -- can introduce the jump this catches.
+            const skyboxProjectedMotion = Math.hypot(lineSx - linePrevSx, lineSy - linePrevSy);
+            const skyboxMotionVisibility = 1 - clamp01((skyboxProjectedMotion - 120) / 180);
+
             const tw = 0.88 + 0.12 * Math.sin(frameTick * 0.035 + star.twPhase);
-            const dustAlpha = star.haze * 34 * tw * amount;
+            const dustAlpha = star.haze * 34 * tw * amount * magnification * skyboxMotionVisibility;
             if (dustAlpha > 0.2) {
                 backend.stroke(star.r, star.g, star.b, dustAlpha);
                 backend.strokeWeight(star.size * 2.2);
-                backend.line(prevSx, prevSy, sx, sy);
+                backend.line(linePrevSx, linePrevSy, lineSx, lineSy);
             }
-            const alpha = ((5 + star.mag * 150) * tw + impact * star.mag * 58) * amount;
+            const alpha = ((5 + star.mag * 150) * tw + impact * star.mag * 58)
+                * amount * magnification * skyboxMotionVisibility;
             backend.stroke(star.r, star.g, star.b, alpha);
             backend.strokeWeight(star.size);
-            backend.line(prevSx, prevSy, sx, sy);
+            backend.line(linePrevSx, linePrevSy, lineSx, lineSy);
         }
     }
 
@@ -1295,6 +2556,31 @@ function interpolateRouteHistoryFrame(
     out.headingAngle = lerp(older.headingAngle, newer.headingAngle, t);
     out.curvature = lerp(older.curvature, newer.curvature, t);
     out.turnIntensity = lerp(older.turnIntensity, newer.turnIntensity, t);
+    out.tangentX = Math.sin(out.headingAngle);
+    out.tangentY = Math.cos(out.headingAngle);
+    out.normalX = out.tangentY;
+    out.normalY = -out.tangentX;
+    return out;
+}
+
+/**
+ * Linear interpolation between two already-sampled route frames (geometry-overhaul plan T3): used
+ * by the dense caustic pass to approximate a route frame at a fine depth between two coarse
+ * membrane rings, without an extra `sampleSmoothedLookahead` call. Re-derives tangent/normal from
+ * the lerped `headingAngle` (never lerps the raw vectors themselves) so the result stays a valid
+ * unit tangent/normal pair, exactly like `interpolateRouteHistoryFrame` above.
+ */
+function lerpWormholeRouteFrame(
+    a: WormholeRouteFrame,
+    b: WormholeRouteFrame,
+    t: number,
+    out: WormholeRouteFrame
+): WormholeRouteFrame {
+    out.positionX = lerp(a.positionX, b.positionX, t);
+    out.positionY = lerp(a.positionY, b.positionY, t);
+    out.headingAngle = lerp(a.headingAngle, b.headingAngle, t);
+    out.curvature = lerp(a.curvature, b.curvature, t);
+    out.turnIntensity = lerp(a.turnIntensity, b.turnIntensity, t);
     out.tangentX = Math.sin(out.headingAngle);
     out.tangentY = Math.cos(out.headingAngle);
     out.normalX = out.tangentY;

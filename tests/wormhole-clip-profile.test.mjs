@@ -88,15 +88,31 @@ const WORMHOLE_TUNING_KEYS = [
   'wormholeGalaxy',
   'wormholeSkybox',
   'wormholeEmissionMode',
-  'wormholeJitter'
+  'wormholeJitter',
+  'wormholeOpticsEnabled',
+  'wormholeWall',
+  'wormholeWallRefraction',
+  'wormholeWallCaustics',
+  'wormholeWallWaves',
+  'wormholeWallCracks',
+  'wormholeWallMode',
+  'wormholeLens',
+  'wormholeLensRadius',
+  'wormholeLensSwirl'
 ];
-const WORMHOLE_BACKGROUND_MASTER_KEYS = ['wormholeStarfield', 'wormholeGalaxy', 'wormholeSkybox'];
+const WORMHOLE_USER_GLOBAL_KEYS = [
+  'wormholeStarfield', 'wormholeGalaxy', 'wormholeSkybox', 'wormholeOpticsEnabled'
+];
+const WORMHOLE_LENS_KEYS = ['wormholeLens', 'wormholeLensRadius', 'wormholeLensSwirl'];
 // Every factory preset that authors wormholeRadius/wormholeDepth now also explicitly authors
 // wormholePathBend, wormholePathBendVertical, and both complete LFO profiles (closing the F2 route
-// and LFO preset leak in one coordinated edit), so no wormhole tuning key remains unpreseted.
-const WORMHOLE_UNPRESETED_KEYS = [];
+// and LFO preset leak in one coordinated edit). The membrane wall keys (wormholeWall and its three
+// sub-layer intensities) are now also explicitly authored per clip role (membrane-wall Phase 7 preset
+// pass -- see documents/audits/wormhole-wall-membrane-plan.md), replacing the global moderate default
+// every preset relied on through Phase 6. The lens-overhaul T9 pass likewise promotes all lens keys
+// to factory-preset keys. The background masters and the default-off optics opt-in remain global.
 const WORMHOLE_FACTORY_PRESET_KEYS = WORMHOLE_TUNING_KEYS.filter(
-  (key) => !WORMHOLE_BACKGROUND_MASTER_KEYS.includes(key) && !WORMHOLE_UNPRESETED_KEYS.includes(key)
+  (key) => !WORMHOLE_USER_GLOBAL_KEYS.includes(key)
 );
 
 // -- Preset family contract ----------------------------------------------------
@@ -116,13 +132,13 @@ test('all 10 wormhole clip presets exist, are registered, and cover every clip r
   }
 });
 
-test('every wormhole clip preset carries the route/grain wormhole role keys explicitly and leaves background masters global', () => {
+test('every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched', () => {
   for (const name of WH_PRESET_FILES) {
     const tuning = readPreset(name).visualTuning ?? {};
     for (const key of WORMHOLE_FACTORY_PRESET_KEYS) {
       assert.ok(key in tuning, `${name} must explicitly carry ${key}`);
     }
-    for (const key of WORMHOLE_BACKGROUND_MASTER_KEYS) {
+    for (const key of WORMHOLE_USER_GLOBAL_KEYS) {
       assert.ok(!(key in tuning), `${name} must not reset user-global ${key}`);
     }
   }
@@ -304,6 +320,79 @@ test('clip roles have materially different wormhole behaviour (role-level contra
     p[role].wormholeWarp
   ]));
   assert.equal(new Set(tuples).size, WH_ROLES.length, 'clip family pairwise distinct');
+});
+
+test('every wormhole clip preset authors its own membrane wall intensity (Phase 7 preset pass)', () => {
+  const WALL_KEYS = ['wormholeWall', 'wormholeWallRefraction', 'wormholeWallCaustics', 'wormholeWallWaves', 'wormholeWallCracks'];
+  for (const role of WH_ROLES) {
+    const tuning = readPreset(`vos-wh-${role}.json`).visualTuning;
+    for (const key of WALL_KEYS) {
+      assert.ok(Number.isFinite(tuning[key]), `${role} authors ${key}`);
+      assert.ok(tuning[key] >= 0 && tuning[key] <= 1, `${role} ${key} stays within its authored [0,1] control range`);
+    }
+  }
+});
+
+test('no factory clip preset enables the pixel-mosaic wall material (Phase 8: opt-in only, never the base wall)', () => {
+  for (const role of WH_ROLES) {
+    const tuning = readPreset(`vos-wh-${role}.json`).visualTuning;
+    assert.equal(tuning.wormholeWallMode, 0, `${role} must keep the default rippling membrane material`);
+  }
+});
+
+test('membrane wall preset pass matches the plan\'s explicit character examples (collapse/punch emphasized waves, galaxy hero caustics)', () => {
+  // true-lens plan F4: wormholeWall itself is now uniformly 0 across every preset (the drawn line
+  // materials are a legacy, opt-in-only layer -- see wormhole-wall-refraction-field.test.mjs for
+  // that contract), so the sub-controls below carry all the remaining role-based character; there
+  // is no more "wall master intensity" contrast to assert.
+  const p = Object.fromEntries(WH_ROLES.map((role) => [role, readPreset(`vos-wh-${role}.json`).visualTuning]));
+
+  // Collapse and punch are the family's two impact/transition beats; both carry visibly emphasized
+  // pressure waves relative to the rest of the family (galaxy/establish/dissolve stay calm).
+  for (const role of ['galaxy', 'establish', 'dissolve', 'drive', 'drift']) {
+    assert.ok(p.collapse.wormholeWallWaves > p[role].wormholeWallWaves, `collapse waves above ${role}`);
+    assert.ok(p.punch.wormholeWallWaves > p[role].wormholeWallWaves, `punch waves above ${role}`);
+  }
+
+  // Galaxy reveal is the family's showcase shot for the caustic hero layer.
+  for (const role of WH_ROLES) {
+    if (role === 'galaxy') continue;
+    assert.ok(p.galaxy.wormholeWallCaustics >= p[role].wormholeWallCaustics, `galaxy caustics at or above ${role}`);
+  }
+});
+
+test('every wormhole clip preset authors bounded lens controls (T9 factory-preset contract)', () => {
+  for (const role of WH_ROLES) {
+    const tuning = readPreset(`vos-wh-${role}.json`).visualTuning;
+    for (const key of WORMHOLE_LENS_KEYS) {
+      assert.ok(Number.isFinite(tuning[key]), `${role} authors ${key}`);
+    }
+    assert.ok(tuning.wormholeLens >= 0 && tuning.wormholeLens <= 1, `${role} lens master in [0,1]`);
+    assert.ok(tuning.wormholeLensRadius >= 0.1 && tuning.wormholeLensRadius <= 1, `${role} lens radius in [0.1,1]`);
+    assert.ok(tuning.wormholeLensSwirl >= 0 && tuning.wormholeLensSwirl <= 1.5, `${role} lens swirl in [0,1.5]`);
+  }
+});
+
+test('lens preset pass matches the authored cinematic contrast matrix', () => {
+  const p = Object.fromEntries(WH_ROLES.map((role) => [role, readPreset(`vos-wh-${role}.json`).visualTuning]));
+
+  assert.ok(p.sparse.wormholeLens < p.establish.wormholeLens, 'sparse lens below establish');
+  assert.ok(p.sparse.wormholeLens < p.galaxy.wormholeLens, 'sparse lens below galaxy');
+  assert.ok(p.establish.wormholeLens >= 0.9, 'establish is a strong lens reveal');
+  assert.ok(p.galaxy.wormholeLens >= p.establish.wormholeLens, 'galaxy is the strongest lens reveal');
+  assert.ok(p.galaxy.wormholeLensRadius > p.establish.wormholeLensRadius, 'galaxy opens the widest lens');
+
+  for (const role of ['establish', 'galaxy', 'sparse', 'dissolve', 'drift', 'drive']) {
+    assert.ok(p.collapse.wormholeLensSwirl > p[role].wormholeLensSwirl, `collapse swirl above ${role}`);
+    assert.ok(p.punch.wormholeLensSwirl > p[role].wormholeLensSwirl, `punch swirl above ${role}`);
+  }
+
+  for (const role of ['collapse', 'dissolve', 'drift', 'drive', 'establish', 'galaxy', 'sparse']) {
+    assert.ok(p[role].circleHue >= 190 && p[role].circleHue <= 235, `${role} uses the cinematic blue-white palette`);
+  }
+  for (const role of ['punch', 'overdrive']) {
+    assert.ok(p[role].circleHue >= 300 && p[role].circleHue <= 350, `${role} preserves the authored magenta impact palette`);
+  }
 });
 
 test('impact roles respect minimum projection-safe geometry', () => {

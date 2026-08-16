@@ -44,6 +44,8 @@ class MockRendererBackend {
   vertex() {}
   endShape() {}
   radialGlow() {}
+  radialDim() {}
+  compositeRingTint() {}
 }
 
 test('scene geometry delegates drawing commands through VisualRendererBackend', () => {

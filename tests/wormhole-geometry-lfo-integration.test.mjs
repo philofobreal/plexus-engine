@@ -120,7 +120,7 @@ test('the renderer feeds canonical-time LFO values through the same release snap
   identity.draw({
     width: 960, height: 540, frameCount: 1,
     background() {}, noStroke() {}, noFill() {}, fill() {}, stroke() {}, strokeWeight() {},
-    line() {}, circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {}, radialGlow() {}
+    line() {}, circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {}, radialGlow() {}, radialDim() {}, compositeRingTint() {}
   }, [], []);
   let released = 0;
   const expectedAtNextRelease = effectiveWormholeGeometryValue(1.4, WAVEFORMS.sine, 0.26, 1, 0.25);

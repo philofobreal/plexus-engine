@@ -1,5 +1,5 @@
 import p5 from 'p5';
-import type { VisualRendererBackend } from './RendererBackend';
+import type { RingTintCompositeMode, VisualRendererBackend } from './RendererBackend';
 import { State } from '../state/store';
 
 export class P5RendererBackend implements VisualRendererBackend {
@@ -140,5 +140,79 @@ export class P5RendererBackend implements VisualRendererBackend {
         ctx.fillStyle = glow;
         this.noStroke();
         target.circle(cx, cy, radius * 2);
+    }
+
+    radialDim(cx: number, cy: number, innerRadius: number, outerRadius: number, alpha: number) {
+        const target = this.target;
+        const ctx = target.drawingContext as CanvasRenderingContext2D;
+        const safeInnerRadius = Math.max(0, innerRadius);
+        const safeOuterRadius = Math.max(safeInnerRadius + 1, outerRadius);
+        const safeAlpha = Math.max(0, Math.min(1, alpha));
+        const dim = ctx.createRadialGradient(
+            cx, cy, safeInnerRadius,
+            cx, cy, safeOuterRadius
+        );
+        dim.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        dim.addColorStop(1, `rgba(0, 0, 0, ${safeAlpha})`);
+        ctx.save();
+        ctx.fillStyle = dim;
+        ctx.fillRect(0, 0, target.width, target.height);
+        ctx.restore();
+    }
+
+    compositeRingTint(
+        cx: number,
+        cy: number,
+        innerRadius: number,
+        outerRadius: number,
+        color: [number, number, number],
+        alpha: number,
+        mode: RingTintCompositeMode,
+        startAngle?: number,
+        endAngle?: number
+    ) {
+        // Chroma outputs must remain an untouched key color/alpha plate. This defensive backend
+        // gate complements the identity-side skip and also protects future direct callers.
+        if (State.visualTuning.chromaKeyMode !== 0) return;
+
+        const target = this.target;
+        const ctx = target.drawingContext as CanvasRenderingContext2D;
+        const safeInnerRadius = Math.max(0, Number.isFinite(innerRadius) ? innerRadius : 0);
+        const safeOuterRadius = Math.max(
+            safeInnerRadius + 1,
+            Number.isFinite(outerRadius) ? outerRadius : safeInnerRadius + 1
+        );
+        const safeAlpha = Math.max(0, Math.min(1, Number.isFinite(alpha) ? alpha : 0));
+        if (safeAlpha <= 0) return;
+
+        const tint = ctx.createRadialGradient(
+            cx, cy, safeInnerRadius,
+            cx, cy, safeOuterRadius
+        );
+        const rgba = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${safeAlpha})`;
+        tint.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        tint.addColorStop(0.38, rgba);
+        tint.addColorStop(0.68, rgba);
+        tint.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        ctx.save();
+        try {
+            ctx.globalCompositeOperation = mode;
+            ctx.fillStyle = tint;
+            if (Number.isFinite(startAngle) && Number.isFinite(endAngle) && (endAngle as number) > (startAngle as number)) {
+                const clipRadius = Math.hypot(target.width, target.height) * 1.5;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, clipRadius, startAngle as number, endAngle as number);
+                ctx.closePath();
+                ctx.clip();
+            }
+            ctx.fillRect(0, 0, target.width, target.height);
+        } finally {
+            ctx.restore();
+            // The renderer contract deliberately does not restore an arbitrary previous mode:
+            // every primitive returns the shared target to the canonical source-over state.
+            ctx.globalCompositeOperation = 'source-over';
+        }
     }
 }

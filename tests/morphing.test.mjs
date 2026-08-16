@@ -106,6 +106,25 @@ test('discrete selector parameters snap immediately even at a zero song-time del
   assert.equal(current.heroBeepMode, 3);
 });
 
+test('wormholeWallMode snaps immediately instead of interpolating through an invalid intermediate material (Phase 8 mode-snap)', () => {
+  // The pixel-mosaic material mode is a discrete membrane/mosaic switch (0/1), just like
+  // performanceMode/chromaKeyMode -- an in-between value has no meaning (there is no "half mosaic"
+  // material), so it must join the same snap-list those keys already use rather than ease through 0.5.
+  const { applyTuningMorph, defaultVisualTuning } = loadVisualTuningModule();
+  const current = { ...defaultVisualTuning, wormholeWallMode: 0 };
+  const target = { ...defaultVisualTuning, wormholeWallMode: 1, transitionSpeed: 0.5 };
+  applyTuningMorph(current, target, target.transitionSpeed, 1 / 60);
+  assert.equal(current.wormholeWallMode, 1);
+});
+
+test('wormholeWallMode snaps even at a zero song-time delta, same as the other discrete selectors', () => {
+  const { applyTuningMorph, defaultVisualTuning } = loadVisualTuningModule();
+  const current = { ...defaultVisualTuning, wormholeWallMode: 0 };
+  const target = { ...defaultVisualTuning, wormholeWallMode: 1, transitionSpeed: 0.5 };
+  applyTuningMorph(current, target, target.transitionSpeed, 0);
+  assert.equal(current.wormholeWallMode, 1);
+});
+
 test('morph clock resets on first frame, seek, large jump, and export clock switch', () => {
   const { tuningMorphDeltaSec } = loadVisualTuningModule();
   assert.equal(tuningMorphDeltaSec(10, null), 0);

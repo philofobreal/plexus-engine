@@ -24,19 +24,20 @@ export function createWormholeGrainCharacter(seed: number): WormholeGrainCharact
     let trailScale: number;
 
     if (kind < 0.56) {
-        // Fine dust: most of the field remains quiet and lightweight.
+        // Fine dust: most of the field stays hairline-thin, with enough trail continuity to read as
+        // a filament rather than a fat point during fast passages (lens-overhaul plan T8).
         alphaScale = 0.52 + nuance * 0.3;
-        weightScale = 0.5 + nuance * 0.28;
-        trailScale = 0.68 + nuance * 0.28;
+        weightScale = 0.32 + nuance * 0.22;
+        trailScale = 0.9 + nuance * 0.35;
     } else if (kind < 0.9) {
         // Body grains carry the readable tunnel structure.
         alphaScale = 0.86 + nuance * 0.34;
-        weightScale = 0.82 + nuance * 0.38;
-        trailScale = 0.9 + nuance * 0.38;
+        weightScale = 0.8 + nuance * 0.3;
+        trailScale = 1.02 + nuance * 0.4;
     } else {
         // Sparse sparks punctuate the field without turning every grain into a highlight.
         alphaScale = 1.22 + nuance * 0.42;
-        weightScale = 1.3 + nuance * 0.55;
+        weightScale = 1.3 + nuance * 0.3;
         trailScale = 0.46 + nuance * 0.28;
     }
 

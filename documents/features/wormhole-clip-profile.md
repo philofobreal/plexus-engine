@@ -86,6 +86,18 @@ action inside the situation vocabularies.
   user-global background masters. Cross-identity pollution is handled by the automation
   ownership guard for explicitly foreign presets, not by resetting user background
   controls on every wormhole role change.
+- Since the membrane-wall/gravitational-lens overhaul (`../audits/wormhole-wall-membrane-plan.md`,
+  `../audits/wormhole-lens-overhaul-plan.md`, `../audits/wormhole-true-lens-plan.md`), every clip
+  preset also explicitly authors the wall sub-layer intensities (`wormholeWallRefraction`,
+  `wormholeWallCaustics`, `wormholeWallWaves`, `wormholeWallCracks`) and all three lens keys
+  (`wormholeLens`, `wormholeLensRadius`, `wormholeLensSwirl`). `wormholeWall` itself (the master
+  for the *drawn* legacy wall-line materials) is uniformly `0` across the family -- the wall's
+  presence reads through the lens's own bounded refraction-field perturbation instead (see
+  `wormholeLens` in `visual-identities.md`). `wormholeWallMode` (membrane vs. pixel-mosaic) is
+  authored as `0` (membrane) on every factory preset; the mosaic material is opt-in only. The
+  new boolean `wormholeOpticsEnabled` master switch joins the background masters as a third
+  user-global key that no clip preset writes, so switching wormhole roles never flips a user's
+  optics opt-in on or off.
 - Every factory wormhole preset keeps `lineAlpha >= 1.25`. Establish,
   drive, spiral, collapse, and dissolve use longer continuity to preserve tunnel velocity
   instead of falling back to a point-cloud look.
@@ -123,6 +135,14 @@ action inside the situation vocabularies.
   segmented sparse texture, collapse owns ring compression, the galaxy reveal owns streak length, and the
   dissolve is the dimmest while retaining visible perspective trails. The preset values themselves are
   first-draft designer values; tuning them is fine as long as these relations hold.
+- The wall/lens preset pass (true-lens plan F7) extends this contract: `collapse` and `punch` carry
+  visibly emphasized `wormholeWallWaves` over the rest of the family, `galaxy` owns the strongest
+  `wormholeWallCaustics`, `sparse` sits below `establish`/`galaxy` on `wormholeLens`, `establish`
+  and `galaxy` are the strongest lens reveals (`wormholeLens >= 0.9`), `galaxy` opens the widest
+  lens radius, and `collapse`/`punch` carry the strongest `wormholeLensSwirl`. The family's
+  `circleHue` also splits into two authored bands: a cinematic blue-white group
+  (`establish`/`drive`/`drift`/`sparse`/`dissolve`/`collapse`/`galaxy`, hue 190-235) versus the
+  magenta impact group (`punch`/`overdrive`, hue 300-350), with `spiral` as the blue-violet bridge.
 
 ## Near/far geometry pairs
 
@@ -197,5 +217,17 @@ mapping assertion.
 authored coherence determinism, repeated-seek integrity, and identical tunnel/galaxy geometry
 at the same song position after different render histories. `tests/wormhole-lifecycle.test.mjs`
 pins automation-transition re-arming after backward seek.
+
+The underlying membrane-wall and gravitational-lens mechanisms the preset family now drives are
+validated separately from the clip-profile contract above: `tests/wormhole-wall-geometry.test.mjs`,
+`tests/wormhole-wall-material.test.mjs`, `tests/wormhole-wall-waves.test.mjs`,
+`tests/wormhole-wall-cracks.test.mjs`, `tests/wormhole-wall-mosaic.test.mjs`, and
+`tests/wormhole-lens-warp.test.mjs` cover the pure modules in isolation;
+`tests/wormhole-wall-refraction-field.test.mjs`, `tests/wormhole-lens-integration.test.mjs`,
+`tests/wormhole-einstein-ring.test.mjs`, `tests/wormhole-deep-field.test.mjs`,
+`tests/wormhole-ring-tint.test.mjs`, and `tests/wormhole-radial-dim.test.mjs` cover their
+integration into `CosmicWormholeIdentity.draw()` and the `wormholeOpticsEnabled` bypass gate. See
+`../audits/wormhole-wall-membrane-plan.md`, `../audits/wormhole-lens-overhaul-plan.md`, and
+`../audits/wormhole-true-lens-plan.md` for the implementation history and per-task validation notes.
 
 This feature is an ADR-005 data-mechanism extension, so ADR-005 itself is unchanged.

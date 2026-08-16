@@ -66,7 +66,8 @@ class MockRendererBackend {
     beginShape: 0,
     vertex: 0,
     endShape: 0,
-    radialGlow: 0
+    radialGlow: 0,
+    radialDim: 0
   };
 
   background(...args) { this.count('background', args); }
@@ -82,6 +83,8 @@ class MockRendererBackend {
   vertex(...args) { this.count('vertex', args); }
   endShape(...args) { this.count('endShape', args); }
   radialGlow(...args) { this.count('radialGlow', args); }
+  radialDim(...args) { this.count('radialDim', args); }
+  compositeRingTint(...args) { this.count('compositeRingTint', args); }
 
   count(name, args) {
     for (const value of args) {

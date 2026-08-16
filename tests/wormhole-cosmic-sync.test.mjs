@@ -87,6 +87,66 @@ test('trail separation has no wall-clock or frame-count dependence (pure functio
   assert.doesNotMatch(source, /Date\.now|performance\.now|frameCount|requestAnimationFrame/);
 });
 
+test('T8 smear gain makes background streak separation grow faster than the canonical rate, monotonically and deterministically', () => {
+  const rates = [0, 40, 120, 240, 480, 720, 1200, 4000];
+  let previousGain = -Infinity;
+  let previousLength = -Infinity;
+  for (const rate of rates) {
+    const gain = sync.wormholeSmearRateGain(rate);
+    const repeated = sync.wormholeSmearRateGain(rate);
+    const length = sync.wormholeTrailSeparation(rate, STAR_SPEED_RATIO) * gain;
+    assert.equal(gain, repeated, `smear gain must be deterministic at rate=${rate}`);
+    assert.ok(gain >= previousGain, `smear gain decreased at rate=${rate}`);
+    assert.ok(length >= previousLength, `effective streak length decreased at rate=${rate}`);
+    assert.ok(gain >= 1 && gain <= 2.2, `smear gain escaped its bounded range at rate=${rate}: ${gain}`);
+    previousGain = gain;
+    previousLength = length;
+  }
+
+  const slowRate = 120;
+  const fastRate = 720;
+  const slowLength = sync.wormholeTrailSeparation(slowRate, STAR_SPEED_RATIO)
+    * sync.wormholeSmearRateGain(slowRate);
+  const fastLength = sync.wormholeTrailSeparation(fastRate, STAR_SPEED_RATIO)
+    * sync.wormholeSmearRateGain(fastRate);
+  assert.ok(
+    fastLength / slowLength > fastRate / slowRate,
+    'T8 must add more than the old strictly linear rate scaling before the bounded plateau'
+  );
+});
+
+test('T8 lens-local smear emphasizes only points inside the throat and keeps the gain bounded', () => {
+  const radius = 120;
+  const rate = 720;
+  const center = sync.wormholeLensSmearGain(0, radius, rate);
+  const halfway = sync.wormholeLensSmearGain(radius * radius * 0.5, radius, rate);
+  const edge = sync.wormholeLensSmearGain(radius * radius, radius, rate);
+  const outside = sync.wormholeLensSmearGain(radius * radius * 4, radius, rate);
+
+  assert.ok(center > halfway && halfway > edge, `${center} > ${halfway} > ${edge}`);
+  assert.equal(edge, 1);
+  assert.equal(outside, 1);
+  assert.equal(sync.wormholeLensSmearGain(0, 0, rate), 1, 'disabled lens radius must be identity');
+  assert.equal(sync.wormholeLensSmearGain(0, radius, 0), 1, 'stationary travel must not fabricate smear');
+  assert.ok(center <= 1.65, `lens-local gain escaped its cap: ${center}`);
+  assert.equal(center, sync.wormholeLensSmearGain(0, radius, rate), 'lens smear must be deterministic');
+});
+
+test('T8 keeps the existing projected trail safety ceiling authoritative', () => {
+  const viewportHeight = 540;
+  const dx = 5000;
+  const dy = -3000;
+  const scale = route.wormholeProjectedTrailScale(dx, dy, viewportHeight);
+  const projectedLength = Math.hypot(dx * scale, dy * scale);
+  const maxLength = Math.max(24, viewportHeight * 0.22);
+  assert.ok(projectedLength <= maxLength + 1e-9, `${projectedLength} exceeded ${maxLength}`);
+  assert.equal(
+    route.wormholeProjectedTrailScale(dx, dy, viewportHeight),
+    scale,
+    'projected trail safety remains deterministic'
+  );
+});
+
 test('trail/rate consistency: every layer\'s implied rate is the same constant multiple of the canonical rate, and layer ratios match exactly', () => {
   const rates = [0, 10, 75, 240, 596, 1200];
   for (const rate of rates) {

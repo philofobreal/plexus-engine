@@ -88,7 +88,24 @@ export const defaultVisualTuning: VisualTuningConfig = {
     wormholeGalaxy: 1,
     wormholeSkybox: 1,
     wormholeEmissionMode: 0,
-    wormholeJitter: 0
+    wormholeJitter: 0,
+    // Discrete boolean-style opt-in for every membrane-wall / gravitational-lens control below.
+    // Keep disabled by default so legacy looks remain bit-identical until the user enables optics.
+    wormholeOpticsEnabled: 0,
+    // Wall-as-refraction-field (true-lens plan F4): the drawn line materials (membrane/caustic/
+    // crack/mosaic, all gated behind this master) are now a legacy/stylized opt-in, off by
+    // default. The wall's presence reads instead through a bounded perturbation of the lens's own
+    // Einstein radius (see `CosmicWormholeIdentity.perturbedLensRadius`), active whenever
+    // `wormholeLens > 0` regardless of this value.
+    wormholeWall: 0,
+    wormholeWallRefraction: 0.5,
+    wormholeWallCaustics: 0.5,
+    wormholeWallWaves: 0.6,
+    wormholeWallCracks: 0.5,
+    wormholeWallMode: 0,
+    wormholeLens: 0.6,
+    wormholeLensRadius: 0.5,
+    wormholeLensSwirl: 0.35
 };
 
 export const visualTuningKeys = Object.keys(defaultVisualTuning) as VisualTuningKey[];
@@ -231,6 +248,80 @@ const allVisualTuningControls: VisualTuningControl[] = [
         ]
     },
     { key: 'wormholeJitter', label: 'Tunnel jitter', group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x' },
+    {
+        key: 'wormholeOpticsEnabled',
+        label: 'Wormhole optics',
+        description: 'Boolean master switch for Membrane wall, wall refraction/caustics/pressure waves/cracks/material, and gravitational lens/radius/swirl. Off bypasses all of them.',
+        group: 'Wormhole',
+        min: 0,
+        max: 1,
+        step: 1,
+        options: [
+            { value: 0, label: 'Off' },
+            { value: 1, label: 'On' }
+        ]
+    },
+    {
+        key: 'wormholeWall',
+        label: 'Membrane wall',
+        description: 'Master intensity for the refractive membrane wall layer (ripple, Fresnel edge, chromatic fringe, caustics, pressure waves). Zero fully skips the layer.',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeWallRefraction',
+        label: 'Wall refraction',
+        description: 'Chromatic refraction fringe intensity on the wall\'s brightest edges.',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeWallCaustics',
+        label: 'Wall caustics',
+        description: 'Caustic helix hero-layer brightness/visibility on the wall.',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeWallWaves',
+        label: 'Wall pressure waves',
+        description: 'Event-driven pressure wave-front intensity on the wall (kick/LOW_DROP driven).',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeWallCracks',
+        label: 'Wall cracks',
+        description: 'Peak-only crack-flash intensity on the wall: short-lived, kick/LOW_DROP driven, chromatically split.',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeWallMode',
+        label: 'Wall material',
+        description: 'Base wall material: rippling membrane grid, or a coarser pixel-mosaic tick grid.',
+        group: 'Wormhole',
+        min: 0,
+        max: 1,
+        step: 1,
+        options: [
+            { value: 0, label: 'Membrane' },
+            { value: 1, label: 'Pixel mosaic' }
+        ]
+    },
+    {
+        key: 'wormholeLens',
+        label: 'Gravitational lens',
+        description: 'Master intensity for the screen-space gravitational lens warp on the skybox/starfield/galaxy background layers. Zero fully skips the layer.',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeLensRadius',
+        label: 'Lens radius',
+        description: 'Screen-space radius (as a fraction of the half-diagonal) the lens deflection and Einstein-ring magnification are centered on.',
+        group: 'Wormhole', min: 0.1, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeLensSwirl',
+        label: 'Lens swirl',
+        description: 'Azimuthal swirl-rotation amount layered on top of the radial lens deflection.',
+        group: 'Wormhole', min: 0, max: 1.5, step: 0.05, unit: 'x'
+    },
     { key: 'heroLaneBottomOffset', label: 'Lane from bottom', group: 'Hero', min: 0.05, max: 0.9, step: 0.01, unit: 'h' },
     { key: 'heroBeepVolume', label: 'Hero beep volume', group: 'Hero', min: 0, max: 1, step: 0.05 },
     {
@@ -447,6 +538,7 @@ export function applyTuningMorph(
         if (key === 'chromaKeyMode' || key === 'performanceMode' || key === 'phraseSize'
             || key === 'morphCurveValue' || key === 'heroEventMode' || key === 'heroBeepMode'
             || key === 'wormholeRadiusLfoWaveform' || key === 'wormholeDepthLfoWaveform'
+            || key === 'wormholeWallMode' || key === 'wormholeOpticsEnabled'
             ) {
             current[key] = targetValue;
             continue;

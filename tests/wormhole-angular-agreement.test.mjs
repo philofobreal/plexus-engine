@@ -53,7 +53,8 @@ function makeBackend() {
     width: 960, height: 540, frameCount: 1, lines: [], glows: [],
     background() {}, noStroke() {}, noFill() {}, fill() {}, stroke() {}, strokeWeight() {},
     line(...args) { this.lines.push(args); }, circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {},
-    radialGlow(...args) { this.glows.push(args); }
+    radialGlow(...args) { this.glows.push(args); },
+    radialDim() {}, compositeRingTint() {}
   };
 }
 
@@ -114,7 +115,9 @@ test('bend=0 skybox trail is a nonzero, rate-proportional, capped forward cue in
   function measureAtSpeed(speed) {
     const tuning = {
       ...spiral, wormholePathBend: 0, wormholeStarfield: 0, wormholeGalaxy: 0, wormholeSkybox: 1,
-      wormholeSpeed: speed, performanceMode: 0, chromaKeyMode: 0
+      // wormholeLens is not yet authored by any preset (lens-overhaul plan T9); isolate this trail-
+      // length geometry measurement from its nonzero default warp.
+      wormholeSpeed: speed, performanceMode: 0, chromaKeyMode: 0, wormholeLens: 0
     };
     Object.assign(State.visualTuning, tuning);
     Object.assign(State.targetTuning, tuning);
@@ -168,17 +171,22 @@ test('starfield, galaxy, and skybox agree on lateral turn direction, in a fixed,
   const fps = 30;
   const frameCount = 400;
 
+  // wormholeWall: 0 isolates each layer from the membrane wall's caustic hero helices (Phase 6),
+  // which also call backend.radialGlow -- without this, its glow calls would interleave with the
+  // galaxy layer's own two-glows-per-galaxy positional reads below (`backend.glows[idx * 2]`).
+  // wormholeLens is not yet authored by any preset (lens-overhaul plan T9); isolate this
+  // layer-vs-layer direction/ratio comparison from its nonzero default warp.
   const starTuning = {
     ...spiral, wormholePathBend: 0.6, wormholeStarfield: 1, wormholeGalaxy: 0, wormholeSkybox: 0,
-    performanceMode: 0, chromaKeyMode: 0
+    wormholeWall: 0, performanceMode: 0, chromaKeyMode: 0, wormholeLens: 0
   };
   const galaxyTuning = {
     ...spiral, wormholePathBend: 0.6, wormholeStarfield: 0, wormholeGalaxy: 1, wormholeSkybox: 0,
-    performanceMode: 0, chromaKeyMode: 0
+    wormholeWall: 0, performanceMode: 0, chromaKeyMode: 0, wormholeLens: 0
   };
   const skyTuning = {
     ...spiral, wormholePathBend: 0.6, wormholeStarfield: 0, wormholeGalaxy: 0, wormholeSkybox: 1,
-    performanceMode: 0, chromaKeyMode: 0
+    wormholeWall: 0, performanceMode: 0, chromaKeyMode: 0, wormholeLens: 0
   };
 
   function runFrames(tuning) {

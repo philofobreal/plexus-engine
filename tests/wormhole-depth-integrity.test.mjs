@@ -182,7 +182,7 @@ test('syncPosition produces identical wormhole line geometry after different his
   const makeBackend = () => ({
     width: 960, height: 540, frameCount: 1, lines: [],
     background() {}, noStroke() {}, noFill() {}, fill() {}, stroke() {}, strokeWeight() {},
-    line(...args) { this.lines.push(args); }, circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {}, radialGlow() {}
+    line(...args) { this.lines.push(args); }, circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {}, radialGlow() {}, radialDim() {}, compositeRingTint() {}
   });
 
   State.isPlaying = true;
@@ -215,7 +215,7 @@ test('syncPosition also restores deterministic curved galaxy geometry', () => {
     width: 960, height: 540, frameCount: 1, lines: [], glows: [],
     background() {}, noStroke() {}, noFill() {}, fill() {}, stroke() {}, strokeWeight() {},
     line(...args) { this.lines.push(args); }, circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {},
-    radialGlow(...args) { this.glows.push(args); }
+    radialGlow(...args) { this.glows.push(args); }, radialDim() {}, compositeRingTint() {}
   });
 
   State.isPlaying = true;
@@ -243,6 +243,85 @@ test('syncPosition also restores deterministic curved galaxy geometry', () => {
   assert.deepEqual(firstBackend.lines, secondBackend.lines);
   assert.deepEqual(firstBackend.glows, secondBackend.glows);
   assert.ok(firstBackend.glows.length > 0, 'galaxy branch rendered');
+});
+
+test('syncPosition also restores deterministic membrane wall, caustic, and pressure-wave geometry (Phase 7 gate)', () => {
+  // Full-stack seek/export determinism check for the wormhole wall membrane plan (documents/audits/
+  // wormhole-wall-membrane-plan.md): the ripple/caustic modules are already proven pure and
+  // seek-independent in isolation (wormhole-wall-geometry/material/waves.test.mjs), but this exercises
+  // the same guarantee through the real draw() integration -- two identities reach the same song time
+  // via different numbers of prior frame-by-frame draws, then both seek directly there, and their
+  // rendered wall+caustic+wave output must be bit-identical either way.
+  const load = createSourceLoader();
+  const { CosmicWormholeIdentity } = load('visuals/CosmicWormholeIdentity.ts');
+  const { State } = load('state/store.ts');
+  const first = new CosmicWormholeIdentity();
+  const second = new CosmicWormholeIdentity();
+  const makeBackend = () => ({
+    width: 960, height: 540, frameCount: 1, lines: [], glows: [],
+    background() {}, noStroke() {}, noFill() {}, fill() {}, stroke() {}, strokeWeight() {},
+    line(...args) { this.lines.push(args); }, circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {},
+    radialGlow(...args) { this.glows.push(args); }, radialDim() {}, compositeRingTint() {}
+  });
+
+  const sampleRate = 48000;
+  const hopSize = 1024;
+  const hopSec = hopSize / sampleRate;
+  State.sampleRate = sampleRate;
+  State.hopSize = hopSize;
+  State.frames = Array.from({ length: 4000 }, (_, index) => {
+    const spectrum = new Array(24).fill(0);
+    for (let i = 0; i < 8; i++) spectrum[i] = 0.7;
+    const timeSec = index * hopSec;
+    return {
+      e: 0.6, eRatio: 0.7, densityProj: 0.6, melodyProj: 0, fxProj: 0,
+      perceptualSpectrum: spectrum, state: timeSec >= 12.0 && timeSec <= 12.6 ? 'LOW_DROP' : 'HIGH'
+    };
+  });
+  State.events = [
+    { time: 10.5, intensity: 0.9, type: 1 },
+    { time: 11.2, intensity: 0.85, type: 2 },
+    { time: 11.9, intensity: 0.95, type: 1 }
+  ];
+  State.bpm = 128;
+  State.trackAnalysis.timingConfidence.overall = 0.9;
+  State.currentFrame = State.frames[0];
+  State.currentFeatures = { melody: 0.2, vocal: 0.1, fx: 0, density: 0.6, brightness: 0.5, tension: 0.5 };
+  State.isExporting = false;
+  State.isPlaying = true;
+  State.playbackFade = 1;
+  State.visualTuning.performanceMode = 0;
+  State.visualTuning.chromaKeyMode = 0;
+  State.visualTuning.wormholeDepth = 3.2;
+  State.visualTuning.wormholeSpeed = 2.4;
+  State.visualTuning.wormholeCurve = 0.2;
+  State.visualTuning.wormholeGalaxy = 0;
+  State.visualTuning.wormholeStarfield = 0;
+  State.visualTuning.wormholeWall = 0.7;
+  State.visualTuning.wormholeWallRefraction = 0.5;
+  State.visualTuning.wormholeWallCaustics = 0.6;
+  State.visualTuning.wormholeWallWaves = 0.8;
+
+  for (let index = 0; index < 5; index++) {
+    State.currentTime = 1 + index * 0.4;
+    first.draw(makeBackend(), [], []);
+  }
+  for (let index = 0; index < 17; index++) {
+    State.currentTime = 1 + index * 0.13;
+    second.draw(makeBackend(), [], []);
+  }
+
+  State.currentTime = 12.2; // inside the LOW_DROP block, shortly after all three kicks
+  first.syncPosition(12.2);
+  second.syncPosition(12.2);
+  const firstBackend = makeBackend();
+  const secondBackend = makeBackend();
+  first.draw(firstBackend, [], []);
+  second.draw(secondBackend, [], []);
+
+  assert.ok(firstBackend.lines.length > 0, 'wall/caustic geometry rendered');
+  assert.deepEqual(firstBackend.lines, secondBackend.lines);
+  assert.deepEqual(firstBackend.glows, secondBackend.glows);
 });
 
 test('cohort character is reserved for collapse/spiral while sparse keeps open depth', () => {
@@ -283,13 +362,18 @@ function setupReleaseTestState(State, events) {
   State.visualTuning.wormholeStarfield = 0;
   State.visualTuning.wormholeWarp = 0;
   State.visualTuning.wormholeEmissionMode = 0;
+  // Same isolation as the other background/decorative layers above: these tests read
+  // backend.lines/alphas positionally as one entry per surviving grain, so the membrane wall's
+  // own line() calls (an independent, orthogonal layer -- see the wormhole wall membrane plan)
+  // must not be interleaved into that stream.
+  State.visualTuning.wormholeWall = 0;
 }
 
 function makeReleaseTestBackend() {
   return {
     width: 960, height: 540, frameCount: 1, lines: [],
     background() {}, noStroke() {}, noFill() {}, fill() {}, stroke() {}, strokeWeight() {},
-    line(...args) { this.lines.push(args); }, circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {}, radialGlow() {}
+    line(...args) { this.lines.push(args); }, circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {}, radialGlow() {}, radialDim() {}, compositeRingTint() {}
   };
 }
 
@@ -403,7 +487,7 @@ test('viewer route frame keeps the wormhole core centered while backgrounds sell
     width: 960, height: 540, frameCount: 1, lines: [], glows: [],
     background() {}, noStroke() {}, noFill() {}, fill() {}, stroke() {}, strokeWeight() {},
     line(...args) { this.lines.push(args); }, circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {},
-    radialGlow(...args) { this.glows.push(args); }
+    radialGlow(...args) { this.glows.push(args); }, radialDim() {}, compositeRingTint() {}
   });
   const render = (bend, starfield, galaxy, timeSec) => {
     const tuning = {
@@ -607,7 +691,13 @@ test('automation morph reaches existing render geometry within one second withou
     wormholeContinuity: 0.7,
     wormholeGalaxy: 0,
     wormholeStarfield: 0,
-    wormholeSkybox: 0
+    wormholeSkybox: 0,
+    // Same isolation `setupReleaseTestState` already applies and every other grain-behavior test
+    // in this file relies on: the membrane wall/caustic layers are an independent, orthogonal
+    // line() stream (see the wormhole wall membrane plan), so spreading the full preset object
+    // above must not silently re-enable them here -- this test's centroid is meant to read grain
+    // reactivity only, not a wall/caustic-diluted average across every rendered layer.
+    wormholeWall: 0
   };
   Object.assign(State.visualTuning, baseline);
   Object.assign(State.targetTuning, baseline);
@@ -723,7 +813,10 @@ test('weak wormhole presets stay visible without a bright always-on grain floor'
   State.currentFeatures = { melody: 0, vocal: 0, fx: 0, density: 0.04, brightness: 0.1, tension: 0.1 };
 
   const render = role => {
-    const tuning = { ...readPreset(role), wormholeStarfield: 0, wormholeGalaxy: 0 };
+    // wormholeWall: 0 isolates the grain floor this test measures from the membrane wall layer
+    // (own alpha scale, now per-preset authored in Phase 7), matching the existing convention of
+    // zeroing wormholeStarfield/wormholeGalaxy here for the same reason.
+    const tuning = { ...readPreset(role), wormholeStarfield: 0, wormholeGalaxy: 0, wormholeWall: 0 };
     Object.assign(State.visualTuning, tuning);
     Object.assign(State.targetTuning, tuning);
     const backend = {
@@ -1076,7 +1169,7 @@ function makeAlphaCapturingBackend() {
     background() {}, noStroke() {}, noFill() {}, fill() {}, strokeWeight() {},
     stroke(_r, _g, _b, a) { lastAlpha = a; },
     line(...args) { this.lines.push(args); this.alphas.push(lastAlpha); },
-    circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {}, radialGlow() {}
+    circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {}, radialGlow() {}, radialDim() {}, compositeRingTint() {}
   };
 }
 

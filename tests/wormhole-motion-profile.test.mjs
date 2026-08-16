@@ -103,12 +103,19 @@ test('release character decays monotonically by forward distance without a posit
 
 test('grain field contains fine dust, structural grains, and sparse highlights', () => {
   const characters = Array.from({ length: 1000 }, (_, index) => createWormholeGrainCharacter((index + 1) * 12.9898));
-  const fine = characters.filter((character) => character.weightScale < 0.8).length;
+  const fineCharacters = characters.filter((character) => character.weightScale < 0.8);
+  const fine = fineCharacters.length;
   const body = characters.filter((character) => character.weightScale >= 0.8 && character.weightScale < 1.3).length;
   const sparks = characters.filter((character) => character.weightScale >= 1.3).length;
   assert.ok(fine > body && body > sparks && sparks > 50, `expected authored population mix (${fine}/${body}/${sparks})`);
   assert.ok(Math.min(...characters.map((character) => character.trailScale)) < 0.6);
   assert.ok(Math.max(...characters.map((character) => character.trailScale)) > 1.2);
+  assert.ok(
+    Math.max(...fineCharacters.map((character) => character.weightScale)) < 0.55,
+    'T8 fine dust must remain hairline-thin instead of reading as fat points'
+  );
+  const averageFineTrail = fineCharacters.reduce((sum, character) => sum + character.trailScale, 0) / fine;
+  assert.ok(averageFineTrail > 1, `T8 fine dust should favor continuous filaments, got ${averageFineTrail}`);
 });
 
 test('warp advects grains independently instead of rotating the field as one tube', () => {

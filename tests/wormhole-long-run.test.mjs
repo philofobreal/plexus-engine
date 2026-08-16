@@ -76,7 +76,7 @@ function makeBackend() {
         frameCount: 1,
         lines,
         background() {}, noStroke() {}, noFill() {}, fill() {}, strokeWeight() {}, circle() {}, triangle() {},
-        beginShape() {}, vertex() {}, endShape() {}, radialGlow() {},
+        beginShape() {}, vertex() {}, endShape() {}, radialGlow() {}, radialDim() {}, compositeRingTint() {},
         stroke(_r, _g, _b, value) { alpha = value; },
         line(x1, y1, x2, y2) { lines.push([x1, y1, x2, y2, alpha]); }
     };
@@ -102,6 +102,13 @@ function completePreset(preset) {
         wormholeStarfield: 1,
         wormholeGalaxy: 0,
         wormholeSkybox: 0,
+        // The harness trims the grain/galaxy/sky pools to isolate the fixed star sample (see
+        // trimForHarness below); the membrane wall is an independent layer with its own line()
+        // calls unrelated to any pool, so it must stay off here too. Same reasoning for the lens
+        // (true-lens plan F2): its own secondary-image pass draws additional line() calls for half
+        // the star pool whenever active, which is not what this test measures.
+        wormholeWall: 0,
+        wormholeLens: 0,
         performanceMode: 0,
         chromaKeyMode: 0
     };

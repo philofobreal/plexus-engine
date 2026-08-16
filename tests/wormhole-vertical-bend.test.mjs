@@ -64,7 +64,8 @@ function makeBackend() {
     width: 960, height: 540, frameCount: 1, lines: [], glows: [],
     background() {}, noStroke() {}, noFill() {}, fill() {}, stroke() {}, strokeWeight() {},
     line(...args) { this.lines.push(args); }, circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {},
-    radialGlow(...args) { this.glows.push(args); }
+    radialGlow(...args) { this.glows.push(args); },
+    radialDim() {}, compositeRingTint() {}
   };
 }
 
@@ -133,7 +134,11 @@ test('Task08: wormholePathBendVertical=0 fixture -- frozen background/foreground
   const { State } = src.load('state/store.ts');
   setupReleaseTestState(State);
 
-  const tuning = { ...presetTuning('spiral'), wormholePathBendVertical: 0 };
+  // This fixture pins Task 08's vertical-bend geometry specifically; the membrane wall and the
+  // gravitational lens warp (both independent, orthogonal layers -- see the wormhole wall membrane
+  // plan and the lens-overhaul plan) are switched off here so their own, separately-tested output
+  // doesn't get baked into a bend-geometry snapshot.
+  const tuning = { ...presetTuning('spiral'), wormholePathBendVertical: 0, wormholeWall: 0, wormholeLens: 0 };
   Object.assign(State.visualTuning, tuning);
   Object.assign(State.targetTuning, tuning);
   const identity = new CosmicWormholeIdentity();
@@ -144,10 +149,12 @@ test('Task08: wormholePathBendVertical=0 fixture -- frozen background/foreground
 
   assert.equal(backend.lines.length, 2160);
   assert.equal(backend.glows.length, 18);
-  assertLineClose(backend.lines[0], [2035.594456651597, -2124.3061784061883, 2044.1727174492291, -2140.786333353574]);
-  assertLineClose(backend.lines[900], [-2948.8580976555386, 2978.32688871218, -2983.951451731245, 3004.361884599845]);
-  assertLineClose(backend.lines[backend.lines.length - 361], [-458.8733533693646, 2416.418952386579, -466.971701935532, 2430.0671791293207]);
-  assertLineClose(backend.lines[backend.lines.length - 1], [542.6268815252189, 267.6095872454522, 541.3080127695839, 267.2349609396641]);
+  // Lens-overhaul T8 deliberately lengthens the star trail's previous endpoint while leaving every
+  // current endpoint, galaxy glow, and bendV=0 route invariant unchanged.
+  assertLineClose(backend.lines[0], [2026.9523045141812, -2107.6746612956636, 2044.1727174492291, -2140.786333353574]);
+  assertLineClose(backend.lines[900], [-2913.613606000352, 2952.195122878597, -2983.951451731245, 3004.361884599845]);
+  assertLineClose(backend.lines[backend.lines.length - 361], [-450.6782897286456, 2402.6309438133876, -466.971701935532, 2430.0671791293207]);
+  assertLineClose(backend.lines[backend.lines.length - 1], [543.1108294122616, 267.7068656770541, 541.3080127695839, 267.2349609396641]);
   assertLineClose(backend.glows[0].slice(0, 3), [7781.463294449433, 5149.61491188822, 2865.9230415074553]);
   assert.equal(backend.glows[0][4], 0.08807312070709467);
 });
@@ -166,7 +173,9 @@ test('Task08: vertical-only bend mirrors background star drift across the screen
   const { State } = src.load('state/store.ts');
   setupReleaseTestState(State);
 
-  const base = { ...presetTuning('spiral'), wormholePathBend: 0, wormholeStarfield: 1, wormholeGalaxy: 0, wormholeSkybox: 0, performanceMode: 0, chromaKeyMode: 0 };
+  // wormholeLens is not yet authored by any preset (lens-overhaul plan T9); isolate this mirror-
+  // symmetry measurement from its nonzero default warp.
+  const base = { ...presetTuning('spiral'), wormholePathBend: 0, wormholeStarfield: 1, wormholeGalaxy: 0, wormholeSkybox: 0, performanceMode: 0, chromaKeyMode: 0, wormholeLens: 0 };
   const starIndices = Array.from({ length: 6 }, (_, index) => index * 260);
 
   function starPositions(bendV) {
