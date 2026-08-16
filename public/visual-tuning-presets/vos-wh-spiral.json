@@ -8,7 +8,7 @@
     "backgroundBlue": 20,
     "circleHue": 255,
     "lineAlpha": 1.35,
-    "lineWeight": 1.1,
+    "lineWeight": 2.7650678374817,
     "wormholeRadius": 0.8,
     "wormholeDepth": 4.2,
     "wormholeSpeed": 4.8,
@@ -35,6 +35,8 @@
     "wormholeWallMode": 0,
     "wormholeLens": 0.85,
     "wormholeLensRadius": 0.62,
-    "wormholeLensSwirl": 0.9
+    "wormholeLensSwirl": 0.9,
+    "shockwaveSpeed": 0.15,
+    "shockwaveRadius": 4.55
   }
 }
