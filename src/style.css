@@ -309,8 +309,10 @@ h1 { margin: 0; font-size: 1rem; font-weight: 700; letter-spacing: 1px; text-tra
 .tuning-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; cursor: grab; }
 .panel-title { font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); }
 .tuning-header p { margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-muted); }
+.tuning-actions { display: flex; align-items: center; gap: 8px; }
 .btn-pill.outline { background: transparent; border: 1px solid var(--panel-border); height: 32px; font-size: 0.7rem; }
 .btn-pill.outline:hover { background: var(--text-main); }
+.dev-preset-save { border-color: rgba(0,229,255,0.5) !important; color: var(--accent); }
 
 .copy-status { font-size: 0.75rem; color: var(--accent); text-align: right; margin-top: 10px; min-height: 16px;}
 

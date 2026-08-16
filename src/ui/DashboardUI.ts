@@ -41,6 +41,7 @@ const VIDEO_FILE_EXTENSION_RE = /\.(mp4|m4v|webm|ogv|ogg|mov|mkv)$/i;
 
 export class DashboardUI {
     private presetCache = new Map<string, unknown>();
+    private changedTuningKeys = new Set<keyof VisualTuningConfig>();
     private timelineTooltip: HTMLDivElement;
     private isResizingTimeline = false;
     private isPanningTimeline = false;
@@ -299,6 +300,7 @@ export class DashboardUI {
                 tuningControls: this.els.tuningControls,
                 presetList: this.els.presetList,
                 copyVisualConfig: this.els.copyVisualConfig,
+                saveVisualPreset: document.getElementById('save-visual-preset'),
                 copyConfigStatus: this.els.copyConfigStatus,
                 timelinePresetBrush: this.els.timelinePresetBrush,
                 toggleMetrics: this.els.toggleMetrics,
@@ -312,6 +314,7 @@ export class DashboardUI {
             {
                 onTuningChange: (key, value) => {
                     State.targetTuning[key] = value;
+                    this.changedTuningKeys.add(key);
                     // In semantic mode the resolver owns targetTuning, so fold a manual slider
                     // edit into the base per-key. A full re-snapshot would re-bake the active
                     // deltas into the base and drift on delta-driven params, so update only this key.
@@ -320,6 +323,7 @@ export class DashboardUI {
                 onPresetLoad: (fileName) => { void this.loadVisualPreset(fileName); },
                 onPresetBrushChange: (_fileName) => { /* brush used during draw via getSelectedAutomationPreset */ },
                 onCopyConfig: () => { void this.copyVisualConfig(); },
+                onSavePreset: () => { void this.saveSelectedVisualPreset(); },
                 onMetricsToggle: () => {
                     const isHidden = this.els.metricsGrid.classList.toggle('is-hidden');
                     this.els.toggleMetrics.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
@@ -2002,6 +2006,7 @@ export class DashboardUI {
             // applied (clean) preset; otherwise the preset selection would be overwritten each frame.
             this.snapshotSemanticBase();
             this.tuningCtrl.syncVisualTuningControls();
+            if (!options.automationPointId) this.changedTuningKeys.clear();
         } catch {
             this.tuningCtrl.showCopyStatus(`Could not load ${fileName}`, 1800);
         }
@@ -2248,6 +2253,45 @@ export class DashboardUI {
     }
 
     // ─── Config copy ──────────────────────────────────────────────────────────
+
+    private async saveSelectedVisualPreset(): Promise<void> {
+        if (!import.meta.env.DEV) return;
+        const fileName = (this.els.presetList as HTMLSelectElement).value;
+        if (!fileName) {
+            this.tuningCtrl.showCopyStatus('Select a preset first', 2200);
+            return;
+        }
+
+        this.tuningCtrl.setPresetSaveBusy(true);
+        try {
+            const response = await fetch('/__plexus-dev/save-preset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fileName,
+                    tuning: State.targetTuning,
+                    changedKeys: [...this.changedTuningKeys],
+                }),
+            });
+            const result = await response.json() as {
+                error?: string;
+                preset?: unknown;
+                savedKeys?: string[];
+            };
+            if (!response.ok) throw new Error(result.error || `Preset save failed (${response.status})`);
+
+            this.presetCache.set(fileName, result.preset);
+            this.cachePreloadedPreset(fileName, result.preset);
+            this.changedTuningKeys.clear();
+            const count = result.savedKeys?.length ?? 0;
+            this.tuningCtrl.showCopyStatus(`Saved ${fileName} (${count} values)`, 2600);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Could not save preset';
+            this.tuningCtrl.showCopyStatus(message, 3200);
+        } finally {
+            this.tuningCtrl.setPresetSaveBusy(false);
+        }
+    }
 
     private async copyVisualConfig(): Promise<void> {
         const payload = JSON.stringify({

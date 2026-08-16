@@ -2,12 +2,12 @@
   "version": 1,
   "visualMode": "cosmic-wormhole",
   "visualTuning": {
-    "audioSensitivity": 1.45,
+    "audioSensitivity": 1.3763674795828904,
     "backgroundRed": 14,
     "backgroundGreen": 2,
     "backgroundBlue": 18,
     "circleHue": 320,
-    "lineAlpha": 1.65,
+    "lineAlpha": 1.4922160276776222,
     "lineWeight": 1.15,
     "wormholeRadius": 1.4,
     "wormholeDepth": 2.4,
@@ -35,6 +35,7 @@
     "wormholeWallMode": 0,
     "wormholeLens": 0.82,
     "wormholeLensRadius": 0.4,
-    "wormholeLensSwirl": 1.25
+    "wormholeLensSwirl": 1.25,
+    "shockwaveSpeed": 8.05
   }
 }
