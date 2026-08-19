@@ -7,13 +7,13 @@
     "backgroundGreen": 3,
     "backgroundBlue": 6,
     "circleHue": 230,
-    "lineAlpha": 1.35,
-    "lineWeight": 0.8,
-    "wormholeRadius": 1.45,
-    "wormholeDepth": 2.7,
+    "lineAlpha": 5,
+    "lineWeight": 0.7,
+    "wormholeRadius": 2.09,
+    "wormholeDepth": 3.5,
     "wormholeSpeed": 1.4,
     "wormholeWarp": 0.1,
-    "wormholeCurve": 0.05,
+    "wormholeCurve": 0.07215240454960761,
     "wormholePathBend": 0,
     "wormholePathBendVertical": 0,
     "wormholeRadiusLfoWaveform": 5,
@@ -35,6 +35,12 @@
     "wormholeWallMode": 0,
     "wormholeLens": 0.25,
     "wormholeLensRadius": 0.72,
-    "wormholeLensSwirl": 0.1
+    "wormholeLensSwirl": 0.1,
+    "transitionSpeed": 0.07400000000000001,
+    "fxChaos": 0.2,
+    "lineDistance": 8,
+    "lineHue": 127,
+    "circleBackgroundAlpha": 1.05,
+    "temporalRingSize": 1.0708876945587444
   }
 }
