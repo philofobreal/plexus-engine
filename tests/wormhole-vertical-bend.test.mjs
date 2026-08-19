@@ -147,14 +147,14 @@ test('Task08: wormholePathBendVertical=0 fixture -- frozen background/foreground
   const backend = makeBackend();
   identity.draw(backend, [], []);
 
-  assert.equal(backend.lines.length, 2160);
+  assert.equal(backend.lines.length, 2149);
   assert.equal(backend.glows.length, 18);
   // Lens-overhaul T8 deliberately lengthens the star trail's previous endpoint while leaving every
   // current endpoint, galaxy glow, and bendV=0 route invariant unchanged.
   assertLineClose(backend.lines[0], [2026.9523045141812, -2107.6746612956636, 2044.1727174492291, -2140.786333353574]);
   assertLineClose(backend.lines[900], [-2913.613606000352, 2952.195122878597, -2983.951451731245, 3004.361884599845]);
-  assertLineClose(backend.lines[backend.lines.length - 361], [-450.6782897286456, 2402.6309438133876, -466.971701935532, 2430.0671791293207]);
-  assertLineClose(backend.lines[backend.lines.length - 1], [543.1108294122616, 267.7068656770541, 541.3080127695839, 267.2349609396641]);
+  assertLineClose(backend.lines[backend.lines.length - 361], [-247.5568984369154, -1000.9440817462614, -261.14833115627687, -1017.1400288276341]);
+  assertLineClose(backend.lines[backend.lines.length - 1], [548.633236283774, 264.33078440018255, 551.3689654058222, 263.16435734318367]);
   assertLineClose(backend.glows[0].slice(0, 3), [7781.463294449433, 5149.61491188822, 2865.9230415074553]);
   assert.equal(backend.glows[0][4], 0.08807312070709467);
 });

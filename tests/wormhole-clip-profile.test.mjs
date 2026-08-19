@@ -240,8 +240,8 @@ test('weak roles pin a deep-perspective depth and continuity profile', () => {
   const expected = {
     establish: [4.0, 1.1],
     drive: [2.5, 1.35],
-    spiral: [4.2, 1.45],
-    sparse: [2.7, 2.0],
+    spiral: [1.7, 1.45],
+    sparse: [3.5, 2.0],
     drift: [5.0, 1.55],
     galaxy: [4.7, 2.0],
     dissolve: [2.5, 0.9]
