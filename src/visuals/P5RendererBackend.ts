@@ -1,9 +1,11 @@
 import p5 from 'p5';
-import type { RingTintCompositeMode, VisualRendererBackend } from './RendererBackend';
+import type { FieldRasterBlendMode, RingTintCompositeMode, VisualRendererBackend } from './RendererBackend';
 import { State } from '../state/store';
+import { CanvasFieldRasterSurface } from './CanvasFieldRasterSurface';
 
 export class P5RendererBackend implements VisualRendererBackend {
     private readonly p: p5 | p5.Graphics;
+    private readonly fieldRasterSurface = new CanvasFieldRasterSurface();
     private lastStrokeR = NaN;
     private lastStrokeG = NaN;
     private lastStrokeB = NaN;
@@ -214,5 +216,20 @@ export class P5RendererBackend implements VisualRendererBackend {
             // every primitive returns the shared target to the canonical source-over state.
             ctx.globalCompositeOperation = 'source-over';
         }
+    }
+
+    beginFieldRaster(layer: 0 | 1 | 2, cols: number, rows: number): Float32Array | null {
+        return this.fieldRasterSurface.beginFieldRaster(layer, cols, rows);
+    }
+
+    drawFieldRaster(
+        layer: 0 | 1 | 2,
+        dstX: number, dstY: number, dstW: number, dstH: number,
+        gain: number,
+        blend: FieldRasterBlendMode
+    ) {
+        const target = this.target;
+        const ctx = target.drawingContext as CanvasRenderingContext2D;
+        this.fieldRasterSurface.drawFieldRaster(layer, ctx, dstX, dstY, dstW, dstH, gain, blend);
     }
 }

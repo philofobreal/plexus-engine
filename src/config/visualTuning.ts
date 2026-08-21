@@ -106,6 +106,11 @@ export const defaultVisualTuning: VisualTuningConfig = {
     wormholeLens: 0.6,
     wormholeLensRadius: 0.5,
     wormholeLensSwirl: 0.35,
+    // Foreground grain-conditioned emissive material (corrected Nebula architecture gate).
+    // Off by default: the exact legacy grain line path runs with zero raster work.
+    wormholeNebulaAmount: 0,
+    wormholeNebulaDetail: 0.5,
+    wormholeNebulaBloom: 0.5,
     // Renderer-level post FX (ADR-007). Identity-independent, so these are deliberately NOT in
     // `identityOwnedTuningKeys`. The master amount defaults to 0, which keeps the current Plexus
     // output pixel-identical until a preset or the user opts in.
@@ -327,6 +332,24 @@ const allVisualTuningControls: VisualTuningControl[] = [
         label: 'Lens swirl',
         description: 'Azimuthal swirl-rotation amount layered on top of the radial lens deflection.',
         group: 'Wormhole', min: 0, max: 1.5, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeNebulaAmount',
+        label: 'Grain material',
+        description: 'Crossfades the resolved foreground grain trails from legacy lines into continuous filament material. Zero fully skips raster work.',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeNebulaDetail',
+        label: 'Material detail',
+        description: 'Controls carrier breakup, micro-detail, kernel character, and the bounded raster quality tier.',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeNebulaBloom',
+        label: 'Material bloom',
+        description: 'Strength of the L1/L2 bloom derived only from resolved foreground carrier emission.',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
     },
     {
         key: 'postFxFragmentAmount',

@@ -177,6 +177,13 @@ export interface VisualTuningConfig {
     wormholeLensRadius: number;
     /** Azimuthal swirl-rotation amount layered on top of the radial lens deflection. */
     wormholeLensSwirl: number;
+    /** Crossfade from the exact legacy foreground grain lines into carrier-conditioned emissive
+     *  material. `0` is a full raster bypass and preserves the legacy draw commands exactly. */
+    wormholeNebulaAmount: number;
+    /** Carrier breakup, micro-detail, kernel character, and bounded raster-quality tier. */
+    wormholeNebulaDetail: number;
+    /** Strength of L1/L2 bloom derived exclusively from the resolved L0 carrier emission. */
+    wormholeNebulaBloom: number;
     /** Renderer-level post FX (ADR-007), identity-independent. Master amount for the Temporal
      *  Fragmentation slice accent; `0` fully bypasses the post chain and is pixel-identical to the
      *  identity output. */

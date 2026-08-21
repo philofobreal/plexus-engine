@@ -161,6 +161,9 @@ test('P5 radialDim uses one inverse radial gradient fill on the active export ta
     require(request) {
       if (request === 'p5') return { default: class MockP5 {} };
       if (request === '../state/store') return { State };
+      if (request === './CanvasFieldRasterSurface') {
+        return { CanvasFieldRasterSurface: class { beginFieldRaster() { return null; } drawFieldRaster() {} } };
+      }
       throw new Error(`Unexpected import: ${request}`);
     },
     Math,

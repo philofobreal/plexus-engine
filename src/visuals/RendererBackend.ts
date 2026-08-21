@@ -27,9 +27,23 @@ export interface VisualRendererBackend {
         startAngle?: number,
         endAngle?: number
     ): void;
+    /** Renderer-owned, reused RGBA float scratch for one generic material layer. Null when the backend
+     *  refuses the request (too large, or no raster capability). The identity fills it and must
+     *  not retain it beyond the matching drawFieldRaster call. */
+    beginFieldRaster(layer: 0 | 1 | 2, cols: number, rows: number): Float32Array | null;
+    /** Blits the material layer filled by the matching beginFieldRaster into the destination rect, in the
+     *  same user/CSS pixel space every other primitive uses. */
+    drawFieldRaster(
+        layer: 0 | 1 | 2,
+        dstX: number, dstY: number, dstW: number, dstH: number,
+        gain: number,
+        blend: FieldRasterBlendMode
+    ): void;
 }
 
 export type RingTintCompositeMode = 'saturation' | 'overlay' | 'screen' | 'soft-light';
+
+export type FieldRasterBlendMode = 'source-over' | 'screen' | 'lighter';
 
 /** Renderer-only composition seam. Identities receive only VisualRendererBackend. */
 export interface RenderTargetCompositor {

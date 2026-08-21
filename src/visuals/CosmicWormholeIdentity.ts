@@ -102,6 +102,14 @@ import {
     wormholeLensSecondaryGain,
     type WormholeLensWarpPoint
 } from './WormholeLensWarp';
+import {
+    accumulateWormholeGrainCarrier,
+    clearWormholeGrainMaterialBuffers,
+    resolveWormholeGrainMaterial,
+    resolveWormholeGrainMaterialRasterSize,
+    type ResolvedWormholeGrainCarrier,
+    type WormholeGrainMaterialRasterSize
+} from './wormholeGrainMaterialRaster';
 
 const TWO_PI = Math.PI * 2;
 const BANDS = 24;
@@ -459,6 +467,15 @@ export class CosmicWormholeIdentity implements VisualIdentity {
     private travelPhase = 0;
     private transitionPulseId: string | null = null;
     private transitionPulseStartedAt = 0;
+    /** Single constructor-owned handoff reused by both the legacy line and material accumulator. */
+    private readonly grainMaterialCarrier: ResolvedWormholeGrainCarrier = {
+        headX: 0, headY: 0, tailX: 0, tailY: 0,
+        alpha: 0, strokeWeight: 0,
+        colorR: 0, colorG: 0, colorB: 0,
+        seed: 0, generation: 0, materialPhase: 0, energy: 0
+    };
+    /** Caller-owned output for viewport raster sizing; avoids a per-frame dimensions object. */
+    private readonly grainMaterialRasterSize: WormholeGrainMaterialRasterSize = { cols: 0, rows: 0 };
 
     constructor() {
         for (let i = 0; i < POOL_SIZE; i++) {
@@ -1186,6 +1203,47 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         const jitter = authoredJitter;
         const generationHorizon = this.generationHorizon();
 
+        // Corrected Nebula architecture gate: the material is a viewport raster conditioned only by
+        // the final foreground grain carriers below. Amount zero and performance mode bypass every
+        // raster request. All three buffers are acquired before the grain loop so a refusal can fall
+        // back to the exact legacy line path for the whole frame, never a partially-rasterized frame.
+        const grainMaterialAmount = performanceMode ? 0 : clamp01(tuning.wormholeNebulaAmount);
+        const grainMaterialDetail = clamp01(tuning.wormholeNebulaDetail);
+        let grainMaterialActive = false;
+        let grainMaterialL0: Float32Array | null = null;
+        let grainMaterialL1: Float32Array | null = null;
+        let grainMaterialL2: Float32Array | null = null;
+        let grainMaterialL0Cols = 0;
+        let grainMaterialL0Rows = 0;
+        let grainMaterialL1Cols = 0;
+        let grainMaterialL1Rows = 0;
+        let grainMaterialL2Cols = 0;
+        let grainMaterialL2Rows = 0;
+
+        if (grainMaterialAmount > 0) {
+            resolveWormholeGrainMaterialRasterSize(
+                backend.width,
+                backend.height,
+                grainMaterialDetail,
+                State.isExporting,
+                this.grainMaterialRasterSize
+            );
+            grainMaterialL0Cols = this.grainMaterialRasterSize.cols;
+            grainMaterialL0Rows = this.grainMaterialRasterSize.rows;
+            grainMaterialL1Cols = Math.max(1, Math.round(grainMaterialL0Cols / 3));
+            grainMaterialL1Rows = Math.max(1, Math.round(grainMaterialL0Rows / 3));
+            grainMaterialL2Cols = Math.max(1, Math.round(grainMaterialL0Cols / 8));
+            grainMaterialL2Rows = Math.max(1, Math.round(grainMaterialL0Rows / 8));
+
+            grainMaterialL0 = backend.beginFieldRaster(0, grainMaterialL0Cols, grainMaterialL0Rows);
+            grainMaterialL1 = backend.beginFieldRaster(1, grainMaterialL1Cols, grainMaterialL1Rows);
+            grainMaterialL2 = backend.beginFieldRaster(2, grainMaterialL2Cols, grainMaterialL2Rows);
+            if (grainMaterialL0 && grainMaterialL1 && grainMaterialL2) {
+                clearWormholeGrainMaterialBuffers(grainMaterialL0, grainMaterialL1, grainMaterialL2);
+                grainMaterialActive = true;
+            }
+        }
+
         for (let i = 0; i < this.pool.length; i++) {
             const grain = this.pool[i];
             const liveEnergy = grain.bandIndex < spectrumLen ? clamp01(spectrum[grain.bandIndex]) : 0;
@@ -1377,9 +1435,66 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 py = sy + (py - sy) * trailScale;
             }
 
-            backend.stroke(r, g, b, alpha);
-            backend.strokeWeight(weight);
-            backend.line(px, py, sx, sy);
+            // Disabled, performance, and refusal frames retain the exact legacy hot path without
+            // even populating the material scratch object.
+            if (!grainMaterialActive || !grainMaterialL0) {
+                backend.stroke(r, g, b, alpha);
+                backend.strokeWeight(weight);
+                backend.line(px, py, sx, sy);
+                continue;
+            }
+
+            // This is the sole material handoff point: both active consumers receive the already-
+            // resolved endpoint pair after route projection, backward correction, trail cap,
+            // transition, spectral response, fade, and material scaling. The raster module cannot
+            // reproduce or reinterpret any of that geometry.
+            const carrier = this.grainMaterialCarrier;
+            carrier.headX = sx;
+            carrier.headY = sy;
+            carrier.tailX = px;
+            carrier.tailY = py;
+            carrier.alpha = alpha;
+            carrier.strokeWeight = weight;
+            carrier.colorR = r;
+            carrier.colorG = g;
+            carrier.colorB = b;
+            carrier.seed = grain.seed;
+            carrier.generation = generationNow;
+            carrier.materialPhase = grain.flowPhase + generationNow * 0.61803398875
+                + distanceSinceRelease / Math.max(1, grainMaxZ);
+            carrier.energy = energy;
+
+            accumulateWormholeGrainCarrier(
+                grainMaterialL0,
+                grainMaterialL0Cols,
+                grainMaterialL0Rows,
+                backend.width,
+                backend.height,
+                carrier,
+                grainMaterialDetail
+            );
+
+            // During a valid partial material frame the same carrier is crossfaded, without another
+            // geometry evaluation or retained segment list.
+            if (grainMaterialAmount < 1) {
+                backend.stroke(carrier.colorR, carrier.colorG, carrier.colorB, carrier.alpha * (1 - grainMaterialAmount));
+                backend.strokeWeight(carrier.strokeWeight);
+                backend.line(carrier.tailX, carrier.tailY, carrier.headX, carrier.headY);
+            }
+        }
+
+        if (grainMaterialActive && grainMaterialL0 && grainMaterialL1 && grainMaterialL2) {
+            resolveWormholeGrainMaterial(
+                grainMaterialL0, grainMaterialL0Cols, grainMaterialL0Rows,
+                grainMaterialL1, grainMaterialL1Cols, grainMaterialL1Rows,
+                grainMaterialL2, grainMaterialL2Cols, grainMaterialL2Rows,
+                grainMaterialAmount, tuning.wormholeNebulaBloom
+            );
+            // Broad haze first, medium bloom second, sharp carrier material last. All three cover
+            // the viewport and occupy the foreground grain slot after the wall.
+            backend.drawFieldRaster(2, 0, 0, backend.width, backend.height, 1, 'lighter');
+            backend.drawFieldRaster(1, 0, 0, backend.width, backend.height, 1, 'lighter');
+            backend.drawFieldRaster(0, 0, 0, backend.width, backend.height, 1, 'source-over');
         }
         if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.endFrame();
     }
