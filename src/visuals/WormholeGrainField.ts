@@ -127,16 +127,26 @@ export function wormholeGrainFlowAngle(
     depthT: number,
     authoredWarp: number,
     authoredCurve: number,
-    bassWarp: number
+    bassWarp: number,
+    spiralTurns = 0
 ): number {
-    const curve = clamp01(authoredCurve);
-    if (curve <= 0) return 0;
     const forwardProgress = 1 - clamp01(depthT);
+    // Coherent spiral twist (spiral material plan S1). The per-grain advection above stays an
+    // independent current; this term is the one thing every grain shares, which is what puts
+    // neighbouring depth layers of one angular sector onto a common arm instead of scattering them.
+    // It is a function of travelled depth only -- never of wall clock or frame count -- so the
+    // field does not rotate on its own, it twists as the camera moves through it. At zero turns the
+    // returned value is identical to the pre-spiral behaviour.
+    const twist = Number.isFinite(spiralTurns)
+        ? forwardProgress * Math.max(0, spiralTurns) * TWO_PI
+        : 0;
+    const curve = clamp01(authoredCurve);
+    if (curve <= 0) return twist;
     const warp = clamp01(authoredWarp / 2.6);
     const characterRate = 1.25 + character.flowRate * 60 + character.flowPhase / TWO_PI * 0.35;
     const signedRate = characterRate * character.flowDirection;
     const amplitude = curve * (0.04 + warp * 0.12 + clamp01(bassWarp) * 0.08);
-    return forwardProgress * signedRate * amplitude;
+    return forwardProgress * signedRate * amplitude + twist;
 }
 
 /**

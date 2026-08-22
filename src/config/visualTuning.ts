@@ -106,6 +106,22 @@ export const defaultVisualTuning: VisualTuningConfig = {
     wormholeLens: 0.6,
     wormholeLensRadius: 0.5,
     wormholeLensSwirl: 0.35,
+    // Foreground grain-conditioned emissive material (corrected Nebula architecture gate).
+    // Off by default: the exact legacy grain line path runs with zero raster work.
+    wormholeNebulaAmount: 0,
+    wormholeNebulaDetail: 0.5,
+    wormholeNebulaBloom: 0.5,
+    wormholeNebulaWeave: 0.6,
+    // Spiral geometry and grain density (spiral material plan S1/S2/S5). All three are
+    // conditioning for the Nebula material and are force-zeroed by the identity whenever
+    // `wormholeNebulaAmount` is 0, so they never change the legacy default render. Their own
+    // defaults are the tuned "optimal" values validated against the reference look, so enabling
+    // the master Amount alone -- without five additional knob turns -- already gives the intended
+    // spiral-arm read. Density 0.34 (2 grain copies) was the measured perf/appearance balance:
+    // further copies cost materially more per frame for a subtle density gain.
+    wormholeSpiral: 1.2,
+    wormholeSpiralArms: 2,
+    wormholeGrainDensity: 0.34,
     // Renderer-level post FX (ADR-007). Identity-independent, so these are deliberately NOT in
     // `identityOwnedTuningKeys`. The master amount defaults to 0, which keeps the current Plexus
     // output pixel-identical until a preset or the user opts in.
@@ -327,6 +343,48 @@ const allVisualTuningControls: VisualTuningControl[] = [
         label: 'Lens swirl',
         description: 'Azimuthal swirl-rotation amount layered on top of the radial lens deflection.',
         group: 'Wormhole', min: 0, max: 1.5, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeNebulaAmount',
+        label: 'Grain material',
+        description: 'Crossfades the resolved foreground grain trails from legacy lines into continuous filament material. Zero fully skips raster work.',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeNebulaDetail',
+        label: 'Material detail',
+        description: 'Controls carrier breakup, micro-detail, kernel character, and the bounded raster quality tier.',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeNebulaBloom',
+        label: 'Material bloom',
+        description: 'Strength of the L1/L2 bloom derived only from resolved foreground carrier emission.',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeNebulaWeave',
+        label: 'Material weave',
+        description: 'Connective filaments between neighbouring grains along a spiral arm and around a depth ring. Needs Grain material above zero.',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
+    },
+    {
+        key: 'wormholeSpiral',
+        label: 'Spiral twist',
+        description: 'Coherent twist in turns between the far and near plane. Zero keeps the independent per-grain flow; higher values organise the grains onto shared spiral arms.',
+        group: 'Wormhole', min: 0, max: 4, step: 0.05, unit: 'turn'
+    },
+    {
+        key: 'wormholeSpiralArms',
+        label: 'Spiral arms',
+        description: 'Number of density-wave arms brightening the grains on their crest. Zero disables the density wave.',
+        group: 'Wormhole', min: 0, max: 6, step: 1, unit: ''
+    },
+    {
+        key: 'wormholeGrainDensity',
+        label: 'Grain density',
+        description: 'Activates additional grain copies for a denser tunnel. Zero is the historical population and costs nothing.',
+        group: 'Wormhole', min: 0, max: 1, step: 0.05, unit: 'x'
     },
     {
         key: 'postFxFragmentAmount',

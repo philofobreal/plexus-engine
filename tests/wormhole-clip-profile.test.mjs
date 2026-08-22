@@ -98,10 +98,19 @@ const WORMHOLE_TUNING_KEYS = [
   'wormholeWallMode',
   'wormholeLens',
   'wormholeLensRadius',
-  'wormholeLensSwirl'
+  'wormholeLensSwirl',
+  'wormholeNebulaAmount',
+  'wormholeNebulaDetail',
+  'wormholeNebulaBloom',
+  'wormholeNebulaWeave',
+  'wormholeSpiral',
+  'wormholeSpiralArms',
+  'wormholeGrainDensity'
 ];
 const WORMHOLE_USER_GLOBAL_KEYS = [
-  'wormholeStarfield', 'wormholeGalaxy', 'wormholeSkybox', 'wormholeOpticsEnabled'
+  'wormholeStarfield', 'wormholeGalaxy', 'wormholeSkybox', 'wormholeOpticsEnabled',
+  'wormholeNebulaAmount', 'wormholeNebulaDetail', 'wormholeNebulaBloom', 'wormholeNebulaWeave',
+  'wormholeSpiral', 'wormholeSpiralArms', 'wormholeGrainDensity'
 ];
 const WORMHOLE_LENS_KEYS = ['wormholeLens', 'wormholeLensRadius', 'wormholeLensSwirl'];
 // Every factory preset that authors wormholeRadius/wormholeDepth now also explicitly authors

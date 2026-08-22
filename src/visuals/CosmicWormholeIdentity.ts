@@ -102,12 +102,42 @@ import {
     wormholeLensSecondaryGain,
     type WormholeLensWarpPoint
 } from './WormholeLensWarp';
+import {
+    accumulateWormholeGrainCarrier,
+    clearWormholeGrainMaterialBuffers,
+    resolveWormholeGrainMaterial,
+    resolveWormholeGrainMaterialRasterSize,
+    type ResolvedWormholeGrainCarrier,
+    type WormholeGrainMaterialRasterSize
+} from './wormholeGrainMaterialRaster';
 
 const TWO_PI = Math.PI * 2;
 const BANDS = 24;
 const DEPTH_LAYERS = 15;
-/** Fixed dust pool: one grain per (band, depth layer). Allocated once in the constructor (GC-safe). */
-const POOL_SIZE = BANDS * DEPTH_LAYERS;
+/** One grain per (band, depth layer) in one copy of the field. */
+const COPY_SIZE = BANDS * DEPTH_LAYERS;
+/**
+ * Opt-in density copies (spiral material plan S5). Copy 0 occupies pool indices `0..COPY_SIZE-1`
+ * with the unchanged seed/theta/depth-phase formulas, so the default active set is exactly the
+ * historical field. Higher `wormholeGrainDensity` activates further copies; the draw loop is
+ * bounded by the active count, so the default path does no extra work.
+ */
+const GRAIN_COPIES_MAX = 4;
+/** Fixed dust pool, allocated once in the constructor (GC-safe). */
+const POOL_SIZE = COPY_SIZE * GRAIN_COPIES_MAX;
+/** Density-wave shaping constants for the spiral arms (plan S2). */
+const ARM_TWIST_RATIO = 0.7;
+const ARM_CONTRAST = 0.55;
+const ARM_SHARPNESS = 1.7;
+/** Weave neighbour caps (plan S4): screen length cap and Hermite subdivision of one arm link. */
+const WEAVE_MAX_LENGTH_FRACTION = 0.14;
+const WEAVE_BEND = 0.45;
+const WEAVE_SEGMENTS = 2;
+/** Ring neighbours only read as a ring in the deeper strata, where grains are close together. */
+const WEAVE_RING_MIN_DEPTH = 0.25;
+/** Resolved-head record stride: x, y, alpha, weight, r, g, b, depth, seed, generation, phase, energy,
+ *  plus the grain's own resolved trail tangent, which is the local arm direction. */
+const WEAVE_STRIDE = 14;
 /** Reference horizon distance at depth = 1; the live horizon is this scaled by wormholeDepth. */
 const Z_REFERENCE = 1000;
 /** Membrane wall (Phase 4 of the refractive membrane wall plan): same base tube radius as grains. */
@@ -459,37 +489,33 @@ export class CosmicWormholeIdentity implements VisualIdentity {
     private travelPhase = 0;
     private transitionPulseId: string | null = null;
     private transitionPulseStartedAt = 0;
+    /** Single constructor-owned handoff reused by both the legacy line and material accumulator. */
+    private readonly grainMaterialCarrier: ResolvedWormholeGrainCarrier = {
+        headX: 0, headY: 0, tailX: 0, tailY: 0,
+        alpha: 0, strokeWeight: 0,
+        colorR: 0, colorG: 0, colorB: 0,
+        seed: 0, generation: 0, materialPhase: 0, energy: 0, depth: 0, weave: 0
+    };
+    /** Second constructor-owned handoff, used only by the weave pass (plan S4). */
+    private readonly grainWeaveCarrier: ResolvedWormholeGrainCarrier = {
+        headX: 0, headY: 0, tailX: 0, tailY: 0,
+        alpha: 0, strokeWeight: 0,
+        colorR: 0, colorG: 0, colorB: 0,
+        seed: 0, generation: 0, materialPhase: 0, energy: 0, depth: 0, weave: 1
+    };
+    /**
+     * Resolved head record per grain for the weave pass. Filled from the values the grain loop has
+     * already produced, so the weave never projects, samples the route, or reads tuning geometry.
+     */
+    private readonly grainWeaveHeads = new Float32Array(POOL_SIZE * WEAVE_STRIDE);
+    private readonly grainWeaveVisible = new Uint8Array(POOL_SIZE);
+    /** Highest grain-density copy count materialised so far; the pool never shrinks by itself. */
+    private grainCopiesAllocated = 0;
+    /** Caller-owned output for viewport raster sizing; avoids a per-frame dimensions object. */
+    private readonly grainMaterialRasterSize: WormholeGrainMaterialRasterSize = { cols: 0, rows: 0 };
 
     constructor() {
-        for (let i = 0; i < POOL_SIZE; i++) {
-            const bandIndex = i % BANDS;
-            const layer = Math.floor(i / BANDS);
-            const seed = (i + 1) * 12.9898;
-            // Each band owns an angular sector; grains are spread inside it and staggered in depth.
-            const theta = (bandIndex / BANDS) * TWO_PI + (pseudoNoise(seed, 1.7) / BANDS) * TWO_PI;
-            const depthPhase = (layer + pseudoNoise(seed, 3.1)) / DEPTH_LAYERS;
-            const character = createWormholeGrainCharacter(seed);
-            this.pool.push({
-                theta, depthPhase, bandIndex, seed, ...character,
-                releaseGeneration: 0,
-                releaseDistance: 0,
-                releaseKick: 0,
-                releaseBass: 0,
-                releaseDensity: 0,
-                releaseBandEnergy: -1,
-                releaseJitter: 0,
-                releaseEmission: 0,
-                releaseVariant: 0,
-                releaseTrailScale: character.trailScale,
-                releaseRadius: 1,
-                releaseDepth: 1,
-                releaseWarp: 0,
-                releaseCurve: 0,
-                releaseRing: 0,
-                releaseDepthCoherence: 0,
-                releaseGeometryInitialized: false
-            });
-        }
+        this.growGrainPool(1);
         for (let i = 0; i < STAR_COUNT; i++) {
             const seed = (i + 1) * 7.3148;
             const tint = STAR_PALETTE[Math.floor(pseudoNoise(seed, 44.4) * STAR_PALETTE.length) % STAR_PALETTE.length];
@@ -554,6 +580,53 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 twPhase: pseudoNoise(seed, 3.7) * TWO_PI
             });
         }
+    }
+
+    /**
+     * Grows the dust pool to `target` grains (spiral material plan S5).
+     *
+     * Copy 0 is created in the constructor with the historical seed/theta/depth-phase formulas, so
+     * the default population, its identities, and its draw order are unchanged. Higher densities
+     * append further copies once, on the frame the density first reaches them -- never per frame,
+     * and never during a draw at a density the pool already covers.
+     */
+    private growGrainPool(copies: number): void {
+        const bounded = Math.min(GRAIN_COPIES_MAX, Math.max(1, Math.floor(copies)));
+        // Allocation is tracked by copy count, not by `pool.length`: a caller that empties the
+        // pool (diagnostics, isolation tests) must stay empty rather than being silently refilled.
+        if (bounded <= this.grainCopiesAllocated) return;
+        const target = bounded * COPY_SIZE;
+        for (let i = this.pool.length; i < target; i++) {
+            const withinCopy = i % COPY_SIZE;
+            const bandIndex = withinCopy % BANDS;
+            const layer = Math.floor(withinCopy / BANDS);
+            const seed = (i + 1) * 12.9898;
+            // Each band owns an angular sector; grains are spread inside it and staggered in depth.
+            const theta = (bandIndex / BANDS) * TWO_PI + (pseudoNoise(seed, 1.7) / BANDS) * TWO_PI;
+            const depthPhase = (layer + pseudoNoise(seed, 3.1)) / DEPTH_LAYERS;
+            const character = createWormholeGrainCharacter(seed);
+            this.pool.push({
+                theta, depthPhase, bandIndex, seed, ...character,
+                releaseGeneration: 0,
+                releaseDistance: 0,
+                releaseKick: 0,
+                releaseBass: 0,
+                releaseDensity: 0,
+                releaseBandEnergy: -1,
+                releaseJitter: 0,
+                releaseEmission: 0,
+                releaseVariant: 0,
+                releaseTrailScale: character.trailScale,
+                releaseRadius: 1,
+                releaseDepth: 1,
+                releaseWarp: 0,
+                releaseCurve: 0,
+                releaseRing: 0,
+                releaseDepthCoherence: 0,
+                releaseGeometryInitialized: false
+            });
+        }
+        this.grainCopiesAllocated = bounded;
     }
 
     syncPosition(timeSec: number): void {
@@ -1186,7 +1259,67 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         const jitter = authoredJitter;
         const generationHorizon = this.generationHorizon();
 
-        for (let i = 0; i < this.pool.length; i++) {
+        // Corrected Nebula architecture gate: the material is a viewport raster conditioned only by
+        // the final foreground grain carriers below. Amount zero and performance mode bypass every
+        // raster request. All three buffers are acquired before the grain loop so a refusal can fall
+        // back to the exact legacy line path for the whole frame, never a partially-rasterized frame.
+        const grainMaterialAmount = performanceMode ? 0 : clamp01(tuning.wormholeNebulaAmount);
+        const grainMaterialDetail = clamp01(tuning.wormholeNebulaDetail);
+        const grainWeaveAmount = grainMaterialAmount > 0 ? clamp01(tuning.wormholeNebulaWeave) : 0;
+        // Spiral geometry, arm density wave, and grain density (plan S1/S2/S5) are conditioning for
+        // the Nebula material, exactly like the weave: they stay at the historical zero/one-copy
+        // field whenever the material is inactive (amount 0 or performance mode), so legacy frames
+        // -- the overwhelming default across the app -- are byte-identical to before this plan. Once
+        // the material is active they default to the tuned "optimal" look instead of a bare zero, so
+        // turning the master Amount on gives the intended read without five additional knob turns.
+        const spiralTurns = grainMaterialAmount > 0 ? Math.max(0, finiteOr(tuning.wormholeSpiral, 0)) : 0;
+        const spiralArms = grainMaterialAmount > 0
+            ? Math.round(clamp(finiteOr(tuning.wormholeSpiralArms, 0), 0, 6))
+            : 0;
+        const armTwist = spiralTurns * ARM_TWIST_RATIO * TWO_PI;
+        const activeCopies = grainMaterialAmount > 0
+            ? 1 + Math.round(clamp01(tuning.wormholeGrainDensity) * (GRAIN_COPIES_MAX - 1))
+            : 1;
+        if (activeCopies > 1) this.growGrainPool(activeCopies);
+        const activeGrainCount = Math.min(this.pool.length, COPY_SIZE * activeCopies);
+        let grainMaterialActive = false;
+        let grainMaterialL0: Float32Array | null = null;
+        let grainMaterialL1: Float32Array | null = null;
+        let grainMaterialL2: Float32Array | null = null;
+        let grainMaterialL0Cols = 0;
+        let grainMaterialL0Rows = 0;
+        let grainMaterialL1Cols = 0;
+        let grainMaterialL1Rows = 0;
+        let grainMaterialL2Cols = 0;
+        let grainMaterialL2Rows = 0;
+
+        if (grainMaterialAmount > 0) {
+            resolveWormholeGrainMaterialRasterSize(
+                backend.width,
+                backend.height,
+                grainMaterialDetail,
+                State.isExporting,
+                this.grainMaterialRasterSize
+            );
+            grainMaterialL0Cols = this.grainMaterialRasterSize.cols;
+            grainMaterialL0Rows = this.grainMaterialRasterSize.rows;
+            grainMaterialL1Cols = Math.max(1, Math.round(grainMaterialL0Cols / 3));
+            grainMaterialL1Rows = Math.max(1, Math.round(grainMaterialL0Rows / 3));
+            grainMaterialL2Cols = Math.max(1, Math.round(grainMaterialL0Cols / 8));
+            grainMaterialL2Rows = Math.max(1, Math.round(grainMaterialL0Rows / 8));
+
+            grainMaterialL0 = backend.beginFieldRaster(0, grainMaterialL0Cols, grainMaterialL0Rows);
+            grainMaterialL1 = backend.beginFieldRaster(1, grainMaterialL1Cols, grainMaterialL1Rows);
+            grainMaterialL2 = backend.beginFieldRaster(2, grainMaterialL2Cols, grainMaterialL2Rows);
+            if (grainMaterialL0 && grainMaterialL1 && grainMaterialL2) {
+                clearWormholeGrainMaterialBuffers(grainMaterialL0, grainMaterialL1, grainMaterialL2);
+                grainMaterialActive = true;
+            }
+        }
+
+        if (grainMaterialActive && grainWeaveAmount > 0) this.grainWeaveVisible.fill(0);
+
+        for (let i = 0; i < activeGrainCount; i++) {
             const grain = this.pool[i];
             const liveEnergy = grain.bandIndex < spectrumLen ? clamp01(spectrum[grain.bandIndex]) : 0;
             if (grain.releaseBandEnergy < 0) grain.releaseBandEnergy = liveEnergy;
@@ -1274,10 +1407,10 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             // this grain's stable release-time snapshot, not the live bass level, so the whole tube
             // cannot visibly "breathe" together on every bass frame or reverse as the bass decays.
             const flowNow = wormholeGrainFlowAngle(
-                grain, depthT, grain.releaseWarp, grain.releaseCurve, grain.releaseBass
+                grain, depthT, grain.releaseWarp, grain.releaseCurve, grain.releaseBass, spiralTurns
             );
             const flowPrev = wormholeGrainFlowAngle(
-                grain, prevDepthT, grain.releaseWarp, grain.releaseCurve, grain.releaseBass
+                grain, prevDepthT, grain.releaseWarp, grain.releaseCurve, grain.releaseBass, spiralTurns
             );
             const thetaNow = grain.theta + flowNow;
             const thetaPrev = grain.theta + flowPrev;
@@ -1363,13 +1496,22 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             // one-shot lifts that decay with travelled distance, layered on top of this live term.
             const energy = grain.releaseBandEnergy * (1 - LIVE_GRAIN_SHIMMER) + liveEnergy * LIVE_GRAIN_SHIMMER;
             const releaseLift = 1 + grain.releaseDensity * 0.25 * releaseFreshness + kickGain * 0.4;
-            const reactiveGrainAlpha = (12 + energy * 188) * grain.alphaScale * materialGain * releaseLift;
+            // Spiral arm density wave (plan S2): a brightness ridge whose crest angle rotates with
+            // depth, so it reads as a spiral arm rather than a radial spoke. It scales an already
+            // resolved material response; it never moves a grain.
+            const armFactor = spiralArms > 0
+                ? (1 - ARM_CONTRAST) + ARM_CONTRAST * Math.pow(
+                    0.5 + 0.5 * Math.cos(spiralArms * projectedThetaNow - armTwist * (1 - depthT)),
+                    ARM_SHARPNESS
+                )
+                : 1;
+            const reactiveGrainAlpha = (12 + energy * 188) * grain.alphaScale * materialGain * releaseLift * armFactor;
             const visibilityFloor = wormholeVisibilityFloor(depthT);
             const alpha = lineAlpha * fade * emissionGain * Math.max(visibilityFloor, reactiveGrainAlpha)
                 * transitionEnergyNow.alphaScale;
             const weight = wormholeProjectedStrokeWeight(
                 (0.4 + energy * 3.2) * lineWeight * grain.weightScale * materialGain * (1 + kickGain * 0.3)
-                * transitionEnergyNow.strokeScale
+                * transitionEnergyNow.strokeScale * (spiralArms > 0 ? 0.55 + 0.45 * armFactor : 1)
             );
             const trailScale = wormholeProjectedTrailScale(px - sx, py - sy, backend.height);
             if (trailScale < 1) {
@@ -1377,11 +1519,242 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 py = sy + (py - sy) * trailScale;
             }
 
-            backend.stroke(r, g, b, alpha);
-            backend.strokeWeight(weight);
-            backend.line(px, py, sx, sy);
+            // Disabled, performance, and refusal frames retain the exact legacy hot path without
+            // even populating the material scratch object.
+            if (!grainMaterialActive || !grainMaterialL0) {
+                backend.stroke(r, g, b, alpha);
+                backend.strokeWeight(weight);
+                backend.line(px, py, sx, sy);
+                continue;
+            }
+
+            // This is the sole material handoff point: both active consumers receive the already-
+            // resolved endpoint pair after route projection, backward correction, trail cap,
+            // transition, spectral response, fade, and material scaling. The raster module cannot
+            // reproduce or reinterpret any of that geometry.
+            const carrier = this.grainMaterialCarrier;
+            carrier.headX = sx;
+            carrier.headY = sy;
+            carrier.tailX = px;
+            carrier.tailY = py;
+            carrier.alpha = alpha;
+            carrier.strokeWeight = weight;
+            carrier.colorR = r;
+            carrier.colorG = g;
+            carrier.colorB = b;
+            carrier.seed = grain.seed;
+            carrier.generation = generationNow;
+            carrier.materialPhase = grain.flowPhase + generationNow * 0.61803398875
+                + distanceSinceRelease / Math.max(1, grainMaxZ);
+            carrier.energy = energy;
+            // The one scalar the material was missing: where in the tunnel this carrier is. Every
+            // depth-stratified material law (kernel size, halo reach, extinction, detail frequency,
+            // atmospheric tint) is derived from it, and it is already resolved here.
+            carrier.depth = depthT;
+
+            // Record the resolved head for the weave pass. This is storage of values the loop has
+            // already produced -- no projection, no route sample, no tuning geometry read.
+            if (grainWeaveAmount > 0) {
+                const slot = i * WEAVE_STRIDE;
+                const heads = this.grainWeaveHeads;
+                heads[slot] = sx;
+                heads[slot + 1] = sy;
+                heads[slot + 2] = alpha;
+                heads[slot + 3] = weight;
+                heads[slot + 4] = r;
+                heads[slot + 5] = g;
+                heads[slot + 6] = b;
+                heads[slot + 7] = depthT;
+                heads[slot + 8] = grain.seed;
+                heads[slot + 9] = generationNow;
+                heads[slot + 10] = carrier.materialPhase;
+                heads[slot + 11] = energy;
+                // The already-resolved trail direction doubles as the local arm tangent, which is
+                // what lets a weave link bend along the arm instead of cutting across it as a chord.
+                const trailDX = sx - px;
+                const trailDY = sy - py;
+                const trailLength = Math.sqrt(trailDX * trailDX + trailDY * trailDY);
+                heads[slot + 12] = trailLength > 1e-4 ? trailDX / trailLength : 0;
+                heads[slot + 13] = trailLength > 1e-4 ? trailDY / trailLength : 0;
+                this.grainWeaveVisible[i] = 1;
+            }
+
+            accumulateWormholeGrainCarrier(
+                grainMaterialL0,
+                grainMaterialL0Cols,
+                grainMaterialL0Rows,
+                backend.width,
+                backend.height,
+                carrier,
+                grainMaterialDetail
+            );
+
+            // During a valid partial material frame the same carrier is crossfaded, without another
+            // geometry evaluation or retained segment list.
+            if (grainMaterialAmount < 1) {
+                backend.stroke(carrier.colorR, carrier.colorG, carrier.colorB, carrier.alpha * (1 - grainMaterialAmount));
+                backend.strokeWeight(carrier.strokeWeight);
+                backend.line(carrier.tailX, carrier.tailY, carrier.headX, carrier.headY);
+            }
+        }
+
+        if (grainMaterialActive && grainMaterialL0 && grainMaterialL1 && grainMaterialL2 && grainWeaveAmount > 0) {
+            this.drawGrainWeave(
+                grainMaterialL0, grainMaterialL0Cols, grainMaterialL0Rows,
+                backend.width, backend.height, grainMaterialDetail,
+                grainWeaveAmount, activeGrainCount
+            );
+        }
+
+        if (grainMaterialActive && grainMaterialL0 && grainMaterialL1 && grainMaterialL2) {
+            resolveWormholeGrainMaterial(
+                grainMaterialL0, grainMaterialL0Cols, grainMaterialL0Rows,
+                grainMaterialL1, grainMaterialL1Cols, grainMaterialL1Rows,
+                grainMaterialL2, grainMaterialL2Cols, grainMaterialL2Rows,
+                grainMaterialAmount, tuning.wormholeNebulaBloom
+            );
+            // Broad haze first, medium bloom second, sharp carrier material last. All three cover
+            // the viewport and occupy the foreground grain slot after the wall.
+            backend.drawFieldRaster(2, 0, 0, backend.width, backend.height, 1, 'lighter');
+            backend.drawFieldRaster(1, 0, 0, backend.width, backend.height, 1, 'lighter');
+            backend.drawFieldRaster(0, 0, 0, backend.width, backend.height, 1, 'lighter');
         }
         if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.endFrame();
+    }
+
+    /**
+     * Connective weave between neighbouring grains (spiral material plan S4).
+     *
+     * Runs after the grain loop over the heads that loop already resolved. It performs no
+     * projection, no route sampling, and no tuning geometry read: a weave carrier is a pure
+     * function of two recorded heads. Neighbours are the pool's own structure -- `i` and
+     * `i + BANDS` share an angular sector one depth layer apart (the arm direction), `i` and the
+     * next band in the same layer close a ring. Material-only: with the raster inactive, or with
+     * `wormholeNebulaWeave` at zero, this never runs and the legacy line output is untouched.
+     */
+    private drawGrainWeave(
+        l0: Float32Array,
+        cols: number,
+        rows: number,
+        viewportWidth: number,
+        viewportHeight: number,
+        detail: number,
+        weaveAmount: number,
+        activeGrainCount: number
+    ): void {
+        const maxLength = Math.max(1, viewportHeight) * WEAVE_MAX_LENGTH_FRACTION;
+        for (let i = 0; i < activeGrainCount; i++) {
+            if (this.grainWeaveVisible[i] === 0) continue;
+            const withinCopy = i % COPY_SIZE;
+            const band = withinCopy % BANDS;
+            const layer = (withinCopy - band) / BANDS;
+            const copyBase = i - withinCopy;
+            if (layer + 1 < DEPTH_LAYERS) {
+                this.weaveNeighbour(
+                    l0, cols, rows, viewportWidth, viewportHeight, detail, weaveAmount,
+                    i, i + BANDS, true, maxLength
+                );
+            }
+            this.weaveNeighbour(
+                l0, cols, rows, viewportWidth, viewportHeight, detail, weaveAmount,
+                i, copyBase + layer * BANDS + (band + 1) % BANDS, false, maxLength
+            );
+        }
+    }
+
+    /** Emits one weave connection, as a Hermite arc along an arm or a straight chord around a ring. */
+    private weaveNeighbour(
+        l0: Float32Array,
+        cols: number,
+        rows: number,
+        viewportWidth: number,
+        viewportHeight: number,
+        detail: number,
+        weaveAmount: number,
+        indexA: number,
+        indexB: number,
+        alongArm: boolean,
+        maxLength: number
+    ): void {
+        if (indexA === indexB || this.grainWeaveVisible[indexB] === 0) return;
+
+        const heads = this.grainWeaveHeads;
+        const a = indexA * WEAVE_STRIDE;
+        const b = indexB * WEAVE_STRIDE;
+        const ax = heads[a];
+        const ay = heads[a + 1];
+        const bx = heads[b];
+        const by = heads[b + 1];
+        const dx = bx - ax;
+        const dy = by - ay;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        // Perspective spreads neighbouring depth layers far apart near the camera; past the cap a
+        // link would be an invented streak rather than connective material.
+        if (!(length > 0.5) || length > maxLength) return;
+
+        const depth = (heads[a + 7] + heads[b + 7]) * 0.5;
+        if (!alongArm && depth < WEAVE_RING_MIN_DEPTH) return;
+        // Never brighter than its dimmer end: the weave cannot invent emission between two grains
+        // that have none.
+        const alpha = Math.min(heads[a + 2], heads[b + 2]) * weaveAmount;
+        if (alpha < 2) return;
+
+        const carrier = this.grainWeaveCarrier;
+        carrier.alpha = alpha;
+        carrier.strokeWeight = Math.min(heads[a + 3], heads[b + 3]) * 0.72;
+        carrier.colorR = (heads[a + 4] + heads[b + 4]) * 0.5;
+        carrier.colorG = (heads[a + 5] + heads[b + 5]) * 0.5;
+        carrier.colorB = (heads[a + 6] + heads[b + 6]) * 0.5;
+        carrier.depth = depth;
+        carrier.seed = heads[a + 8] + heads[b + 8];
+        carrier.generation = heads[a + 9];
+        carrier.materialPhase = (heads[a + 10] + heads[b + 10]) * 0.5;
+        carrier.energy = (heads[a + 11] + heads[b + 11]) * 0.5;
+
+        const tangentAX = heads[a + 12];
+        const tangentAY = heads[a + 13];
+        const tangentBX = heads[b + 12];
+        const tangentBY = heads[b + 13];
+        const bendable = alongArm
+            && (tangentAX !== 0 || tangentAY !== 0)
+            && (tangentBX !== 0 || tangentBY !== 0);
+
+        if (!bendable) {
+            carrier.tailX = ax;
+            carrier.tailY = ay;
+            carrier.headX = bx;
+            carrier.headY = by;
+            accumulateWormholeGrainCarrier(l0, cols, rows, viewportWidth, viewportHeight, carrier, detail);
+            return;
+        }
+
+        // Both tangents point the way the grain travels; the link runs the other way, deeper into
+        // the tunnel, so the Hermite tangents are their negatives.
+        const scale = length * WEAVE_BEND;
+        const startX = -tangentAX * scale;
+        const startY = -tangentAY * scale;
+        const endX = -tangentBX * scale;
+        const endY = -tangentBY * scale;
+        let previousX = ax;
+        let previousY = ay;
+        for (let step = 1; step <= WEAVE_SEGMENTS; step++) {
+            const t = step / WEAVE_SEGMENTS;
+            const t2 = t * t;
+            const t3 = t2 * t;
+            const basisStart = 2 * t3 - 3 * t2 + 1;
+            const basisStartTangent = t3 - 2 * t2 + t;
+            const basisEnd = -2 * t3 + 3 * t2;
+            const basisEndTangent = t3 - t2;
+            const x = basisStart * ax + basisStartTangent * startX + basisEnd * bx + basisEndTangent * endX;
+            const y = basisStart * ay + basisStartTangent * startY + basisEnd * by + basisEndTangent * endY;
+            carrier.tailX = previousX;
+            carrier.tailY = previousY;
+            carrier.headX = x;
+            carrier.headY = y;
+            accumulateWormholeGrainCarrier(l0, cols, rows, viewportWidth, viewportHeight, carrier, detail);
+            previousX = x;
+            previousY = y;
+        }
     }
 
     /**
