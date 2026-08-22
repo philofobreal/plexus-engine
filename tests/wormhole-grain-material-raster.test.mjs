@@ -45,6 +45,8 @@ function baseCarrier(overrides = {}) {
     generation: 3,
     materialPhase: 1.25,
     energy: 0.8,
+    depth: 0.3,
+    weave: 0,
     ...overrides
   };
 }
@@ -187,6 +189,49 @@ test('pure module has no forbidden geometry/runtime dependency or private raster
   assert.doesNotMatch(source, /Math\.random|Date\.now|performance\.now|frameCount/);
   assert.doesNotMatch(source, /new\s+(?:Float32Array|ImageData|OffscreenCanvas|HTMLCanvasElement)/);
   assert.doesNotMatch(source, /document\.|drawingContext|getContext\(/);
-  assert.match(source, /MAX_GRAIN_MATERIAL_SAMPLES_PER_CARRIER = 48/);
-  assert.match(source, /MAX_GRAIN_MATERIAL_DILATION_PX = 3/);
+  assert.match(source, /MAX_GRAIN_MATERIAL_PIXELS_PER_CARRIER = 1024/);
+  assert.match(source, /MAX_GRAIN_MATERIAL_DILATION_PX = 6/);
+});
+
+// -- depth stratification (spiral material plan S3) ------------------------------------------
+
+function coverage(buffers) {
+  let pixels = 0;
+  let emission = 0;
+  for (let index = 3; index < buffers.l0.length; index += 4) {
+    if (buffers.l0[index] > 0) pixels++;
+    emission += buffers.l0[index];
+  }
+  return { pixels, emission };
+}
+
+test('a near carrier deposits a wider body than the same carrier at the far plane', () => {
+  const near = coverage(renderCarrier(baseCarrier({ depth: 0.05 }), 0.65, 1, 0));
+  const far = coverage(renderCarrier(baseCarrier({ depth: 0.95 }), 0.65, 1, 0));
+  assert.ok(near.pixels > far.pixels * 1.5,
+    `near support ${near.pixels} must clearly exceed far support ${far.pixels}`);
+});
+
+test('tunnel extinction makes emission fall monotonically with depth', () => {
+  const depths = [0, 0.2, 0.4, 0.6, 0.8, 1];
+  const emissions = depths.map(depth => coverage(renderCarrier(baseCarrier({ depth }), 0.65, 1, 0)).emission);
+  for (let index = 1; index < emissions.length; index++) {
+    assert.ok(emissions[index] <= emissions[index - 1] + 1e-9,
+      `emission rose from depth ${depths[index - 1]} to ${depths[index]}`);
+  }
+  assert.ok(emissions[0] > emissions[emissions.length - 1] * 3, 'the throat must be far dimmer than the near plane');
+});
+
+test('a weave carrier is spread and dimmed relative to the grain carrier it connects', () => {
+  const grain = coverage(renderCarrier(baseCarrier({ depth: 0.5, weave: 0 }), 0.65, 1, 0));
+  const weave = coverage(renderCarrier(baseCarrier({ depth: 0.5, weave: 1 }), 0.65, 1, 0));
+  assert.ok(weave.pixels > grain.pixels, 'connective gas covers more area than the grain body');
+  assert.ok(weave.emission < grain.emission * 1.6, 'connective gas must not outshine the grains it joins');
+});
+
+test('carriers without a depth field are treated as the near plane instead of producing NaN', () => {
+  const carrier = baseCarrier();
+  delete carrier.depth;
+  const buffers = renderCarrier(carrier, 0.65, 1, 0.5);
+  for (const value of buffers.l0) assert.ok(Number.isFinite(value) && value >= 0 && value <= 1);
 });

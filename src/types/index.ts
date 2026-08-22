@@ -184,6 +184,17 @@ export interface VisualTuningConfig {
     wormholeNebulaDetail: number;
     /** Strength of L1/L2 bloom derived exclusively from the resolved L0 carrier emission. */
     wormholeNebulaBloom: number;
+    /** Strength of the connective weave drawn between neighbouring grains along a spiral arm and
+     *  around a depth ring. Material-only: inert while `wormholeNebulaAmount` is 0. */
+    wormholeNebulaWeave: number;
+    /** Coherent spiral twist, in turns between the far plane and the near plane, layered on top of
+     *  the per-grain angular advection. `0` reproduces the independent-grain flow exactly. */
+    wormholeSpiral: number;
+    /** Spiral arm count for the density wave that brightens grains on an arm crest. `0` disables it. */
+    wormholeSpiralArms: number;
+    /** Opt-in grain population multiplier. `0` keeps the historical single-copy field; higher values
+     *  activate additional constructor-allocated grain copies for a denser tunnel. */
+    wormholeGrainDensity: number;
     /** Renderer-level post FX (ADR-007), identity-independent. Master amount for the Temporal
      *  Fragmentation slice accent; `0` fully bypasses the post chain and is pixel-identical to the
      *  identity output. */

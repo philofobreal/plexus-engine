@@ -46,7 +46,7 @@ function testFrame() {
   };
 }
 
-function setupState(State, featureFlags, amount, performanceMode = 0) {
+function setupState(State, featureFlags, amount, performanceMode = 0, extra = {}) {
   featureFlags.wormholeSkybox = false;
   State.sampleRate = 48000;
   State.hopSize = 1024;
@@ -85,7 +85,12 @@ function setupState(State, featureFlags, amount, performanceMode = 0) {
     wormholeLens: 0,
     wormholeNebulaAmount: amount,
     wormholeNebulaDetail: 0.65,
-    wormholeNebulaBloom: 0.7
+    wormholeNebulaBloom: 0.7,
+    wormholeNebulaWeave: 0,
+    wormholeSpiral: 0,
+    wormholeSpiralArms: 0,
+    wormholeGrainDensity: 0,
+    ...extra
   });
   Object.assign(State.targetTuning, State.visualTuning);
 }
@@ -126,17 +131,26 @@ function json(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function render({ amount, refuseRaster = false, performanceMode = 0, stubs = new Map() }) {
+function render({ amount, refuseRaster = false, performanceMode = 0, stubs = new Map(), tuning = {} }) {
   const load = createSourceLoader(stubs);
   const { CosmicWormholeIdentity } = load('visuals/CosmicWormholeIdentity.ts');
   const { State } = load('state/store.ts');
   const { featureFlags } = load('config/featureFlags.ts');
-  setupState(State, featureFlags, amount, performanceMode);
+  setupState(State, featureFlags, amount, performanceMode, tuning);
   const identity = new CosmicWormholeIdentity();
   identity.syncPosition(State.currentTime);
   const backend = makeBackend(refuseRaster);
   identity.draw(backend, [], []);
   return { backend, State };
+}
+
+/** Grain carriers only; the weave pass feeds the same accumulator with `weave: 1` commands. */
+function grainCarriers(carriers) {
+  return carriers.filter(carrier => carrier.weave !== 1);
+}
+
+function weaveCarriers(carriers) {
+  return carriers.filter(carrier => carrier.weave === 1);
 }
 
 function capturingMaterialStub(carriers) {
@@ -177,9 +191,10 @@ test('legacy line and raster accumulator consume identical corrected/capped endp
     stubs: new Map([[MATERIAL_PATH, materialStub]])
   });
 
-  assert.equal(carriers.length, backend.lines.length);
-  for (let index = 0; index < carriers.length; index++) {
-    const carrier = carriers[index];
+  const grains = grainCarriers(carriers);
+  assert.equal(grains.length, backend.lines.length);
+  for (let index = 0; index < grains.length; index++) {
+    const carrier = grains[index];
     assert.deepEqual(
       [carrier.tailX, carrier.tailY, carrier.headX, carrier.headY],
       backend.lines[index].coords
@@ -209,7 +224,7 @@ test('amount crossfade preserves endpoints, halves legacy alpha, and amount one 
     stubs: new Map([[MATERIAL_PATH, capturingMaterialStub(fullCarriers)]])
   }).backend;
   assert.equal(full.lines.length, 0);
-  assert.equal(fullCarriers.length, disabled.lines.length);
+  assert.equal(grainCarriers(fullCarriers).length, disabled.lines.length);
   assert.deepEqual(full.drawCalls.map(call => call[0]), [2, 1, 0]);
 });
 
@@ -255,11 +270,116 @@ test('identity contains one carrier loop handoff and no superseded background/le
   assert.match(source, /from '\.\/wormholeGrainMaterialRaster'/);
 
   const loopEnd = source.indexOf('wormholeDepthDiagnostics.endFrame()');
-  const loopStart = source.lastIndexOf('for (let i = 0; i < this.pool.length; i++)', loopEnd);
+  const loopStart = source.lastIndexOf('for (let i = 0; i < activeGrainCount; i++)', loopEnd);
   const grainLoop = source.slice(loopStart, loopEnd);
   assert.equal((grainLoop.match(/= projectWormholeTubePoint\(/g) ?? []).length, 2);
   assert.equal((grainLoop.match(/accumulateWormholeGrainCarrier\(/g) ?? []).length, 1);
   assert.equal((grainLoop.match(/backend\.line\(/g) ?? []).length, 2, 'one exact fallback and one active crossfade call site');
   assert.ok(grainLoop.indexOf('wormholeProjectedTrailScale') < grainLoop.indexOf('accumulateWormholeGrainCarrier'));
   assert.ok(grainLoop.indexOf('accumulateWormholeGrainCarrier') < grainLoop.lastIndexOf('backend.line'));
+
+  // The weave pass owns the only other handoff, and it may not reproject or resample the route.
+  const weaveStart = source.indexOf('private drawGrainWeave(');
+  const weaveBodyStart = source.indexOf('private weaveNeighbour(', weaveStart);
+  const afterWeave = source.indexOf('private ', weaveBodyStart + 'private '.length);
+  const weavePass = source.slice(weaveStart, afterWeave > weaveBodyStart ? afterWeave : source.length);
+  assert.equal((weavePass.match(/accumulateWormholeGrainCarrier\(/g) ?? []).length, 2,
+    'one straight ring chord and one Hermite arm segment call site');
+  assert.doesNotMatch(weavePass, /projectWormholeTubePoint|routePath|sampleSmoothedLookahead/);
+});
+
+// -- connective weave and spiral geometry (spiral material plan S1/S4/S5) --------------------
+
+test('the weave only exists while the material raster is active and the weave amount is nonzero', () => {
+  const off = [];
+  render({ amount: 1, stubs: new Map([[MATERIAL_PATH, capturingMaterialStub(off)]]), tuning: { wormholeNebulaWeave: 0 } });
+  assert.equal(weaveCarriers(off).length, 0, 'zero weave amount emits no connective carriers');
+
+  const on = [];
+  render({ amount: 1, stubs: new Map([[MATERIAL_PATH, capturingMaterialStub(on)]]), tuning: { wormholeNebulaWeave: 0.6 } });
+  assert.ok(weaveCarriers(on).length > 0, 'an active weave amount emits connective carriers');
+  assert.equal(grainCarriers(on).length, grainCarriers(off).length, 'the weave never changes the grain carrier set');
+
+  const disabled = render({ amount: 0, tuning: { wormholeNebulaWeave: 1 } }).backend;
+  assert.equal(disabled.beginCalls.length, 0, 'a weave cannot resurrect raster work at amount zero');
+});
+
+test('weave carriers stay bounded, tagged, and never brighter than the grains they join', () => {
+  const carriers = [];
+  render({
+    amount: 1,
+    stubs: new Map([[MATERIAL_PATH, capturingMaterialStub(carriers)]]),
+    tuning: { wormholeNebulaWeave: 0.6 }
+  });
+  const grains = grainCarriers(carriers);
+  const weaves = weaveCarriers(carriers);
+  const brightestGrain = Math.max(...grains.map(carrier => carrier.alpha));
+  for (const carrier of weaves) {
+    assert.equal(carrier.weave, 1);
+    assert.ok(carrier.depth >= 0 && carrier.depth <= 1, 'weave depth is the mean of two resolved depths');
+    assert.ok(carrier.alpha <= brightestGrain * 0.6 + 1e-9, 'a weave is capped by its dimmer endpoint');
+    assert.ok(Number.isFinite(carrier.headX + carrier.headY + carrier.tailX + carrier.tailY));
+  }
+});
+
+test('spiral twist, arm density, and grain density are inert while the material is off', () => {
+  // These three are conditioning for the Nebula material: at amount 0 they must force back to
+  // the historical single-copy, non-twisted field regardless of their own tuning value, so the
+  // legacy default render -- the overwhelming default case across the app -- never changes.
+  const historical = render({ amount: 0 }).backend;
+  const stillHistorical = render({
+    amount: 0,
+    tuning: { wormholeSpiral: 3, wormholeSpiralArms: 6, wormholeGrainDensity: 1 }
+  }).backend;
+  assert.deepEqual(json(stillHistorical.lines), json(historical.lines));
+});
+
+test('spiral twist, arm density, and grain density activate once the material is on, and default to the tuned look', () => {
+  const zeroCarriers = [];
+  render({
+    amount: 1,
+    stubs: new Map([[MATERIAL_PATH, capturingMaterialStub(zeroCarriers)]]),
+    tuning: { wormholeSpiral: 0, wormholeSpiralArms: 0, wormholeGrainDensity: 0 }
+  });
+  const twistedCarriers = [];
+  render({
+    amount: 1,
+    stubs: new Map([[MATERIAL_PATH, capturingMaterialStub(twistedCarriers)]]),
+    tuning: { wormholeSpiral: 1.2 }
+  });
+  const zeroGrains = grainCarriers(zeroCarriers);
+  const twistedGrains = grainCarriers(twistedCarriers);
+  assert.equal(twistedGrains.length, zeroGrains.length, 'twist moves grains, it does not add or drop them');
+  assert.ok(
+    twistedGrains.some((carrier, index) => carrier.headX !== zeroGrains[index].headX || carrier.headY !== zeroGrains[index].headY),
+    'a nonzero twist must actually rotate the field once the material is active'
+  );
+
+  const tunedDensityCarriers = [];
+  render({
+    amount: 1,
+    stubs: new Map([[MATERIAL_PATH, capturingMaterialStub(tunedDensityCarriers)]]),
+    tuning: { wormholeGrainDensity: 0.34 }
+  });
+  assert.ok(
+    grainCarriers(tunedDensityCarriers).length > zeroGrains.length,
+    'a nonzero grain density must add carriers over the historical single copy'
+  );
+
+  const fullDensityCarriers = [];
+  render({
+    amount: 1,
+    stubs: new Map([[MATERIAL_PATH, capturingMaterialStub(fullDensityCarriers)]]),
+    tuning: { wormholeGrainDensity: 1 }
+  });
+  assert.ok(grainCarriers(fullDensityCarriers).length > zeroGrains.length * 2, 'full density activates the extra grain copies');
+});
+
+test('the shipped defaults for spiral, arm, and density conditioning are the tuned optimum, not zero', () => {
+  const load = createSourceLoader();
+  const { defaultVisualTuning } = load('config/visualTuning.ts');
+  assert.ok(defaultVisualTuning.wormholeSpiral > 0, 'spiral twist should default to the validated look once enabled');
+  assert.ok(defaultVisualTuning.wormholeSpiralArms > 0, 'arm density wave should default to the validated look once enabled');
+  assert.ok(defaultVisualTuning.wormholeGrainDensity > 0, 'grain density should default to the validated look once enabled');
+  assert.equal(defaultVisualTuning.wormholeNebulaAmount, 0, 'the master gate itself stays off by default, per the architecture gate');
 });

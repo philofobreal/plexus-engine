@@ -15,6 +15,35 @@ const FIELD_RASTER_LAYER_COUNT = 3;
 /** Hostile-identity guard: refuse any request above the measured 640x360 ceiling. */
 export const MAX_FIELD_RASTER_PIXELS = 640 * 360;
 
+const DITHER_SIZE = 8;
+const DITHER_MASK = DITHER_SIZE - 1;
+
+/**
+ * Ordered 8x8 Bayer thresholds in [-0.5, 0.5), built once at module load.
+ *
+ * A broad, low-amplitude haze layer lands in the first few 8-bit codes, where plain rounding turns
+ * a smooth field into visible contour steps that read as blocks once the small raster is upscaled
+ * to the viewport. An ordered threshold is a fixed function of pixel position, so it removes that
+ * banding without introducing any frame-dependent or random state.
+ */
+const DITHER_THRESHOLDS = buildDitherThresholds();
+
+function buildDitherThresholds(): Float32Array {
+    const thresholds = new Float32Array(DITHER_SIZE * DITHER_SIZE);
+    for (let y = 0; y < DITHER_SIZE; y++) {
+        for (let x = 0; x < DITHER_SIZE; x++) {
+            const mixed = x ^ y;
+            let value = 0;
+            for (let bit = 2; bit >= 0; bit--) {
+                value = (value << 1) | ((y >> bit) & 1);
+                value = (value << 1) | ((mixed >> bit) & 1);
+            }
+            thresholds[y * DITHER_SIZE + x] = value / (DITHER_SIZE * DITHER_SIZE) - 0.5;
+        }
+    }
+    return thresholds;
+}
+
 export type FieldRasterCanvasFactory = () => HTMLCanvasElement;
 
 function defaultFieldRasterCanvasFactory(): HTMLCanvasElement {
@@ -132,11 +161,20 @@ export class CanvasFieldRasterSurface {
         const safeGain = Number.isFinite(gain) ? gain : 0;
         const src = state.buffer;
         const pixels = state.imageData.data;
-        const length = state.cols * state.rows * 4;
-        for (let i = 0; i < length; i++) {
-            // Uint8ClampedArray assignment clamps NaN -> 0 and +-Infinity -> 0/255 per spec, so
-            // malformed source channels cannot leak a NaN pixel even without an explicit guard.
-            pixels[i] = src[i] * safeGain * 255;
+        let index = 0;
+        for (let y = 0; y < state.rows; y++) {
+            const ditherRow = (y & DITHER_MASK) * DITHER_SIZE;
+            for (let x = 0; x < state.cols; x++) {
+                // The threshold stays below half a code, so an exactly zero channel still rounds to
+                // 0 and a fully cleared layer stays fully transparent.
+                const threshold = DITHER_THRESHOLDS[ditherRow + (x & DITHER_MASK)];
+                for (let channel = 0; channel < 4; channel++) {
+                    // Uint8ClampedArray assignment clamps NaN -> 0 and +-Infinity -> 0/255 per spec,
+                    // so malformed source channels cannot leak a NaN pixel even without a guard.
+                    pixels[index] = src[index] * safeGain * 255 + threshold;
+                    index++;
+                }
+            }
         }
         state.ctx.putImageData(state.imageData, 0, 0);
 
