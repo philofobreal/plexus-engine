@@ -36,6 +36,9 @@
     "wormholeLens": 0.82,
     "wormholeLensRadius": 0.4,
     "wormholeLensSwirl": 1.25,
-    "shockwaveSpeed": 8.05
+    "shockwaveSpeed": 8.05,
+    "postFxFragmentAmount": 0,
+    "postFxFragmentDisplacement": 0,
+    "postFxFragmentDensity": 0
   }
 }
