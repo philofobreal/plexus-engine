@@ -4,9 +4,19 @@ import { generateVisualOsPerformancePlan, loadStylePacksFile } from '../automati
 import { shouldUseVisualOs, stylePackForVisualMode } from '../automation/generatorRouting';
 import { tryResolveStylePack } from '../automation/styleTranslator';
 import { parseDramaturgyPlan, serializeDramaturgyPlan } from '../automation/dramaturgyTransfer';
-import { applyMorphScale, clampMorphScale, computeMaxMorphScale, getAutomationPlanViewSignature } from '../automation/morphScale';
+import { clampMorphScale, computeMaxMorphScale } from '../automation/morphScale';
+import { AutomationPlanViewCache } from '../automation/automationPlanView';
 import { wormholeMorphDurationFloor } from '../automation/morphFloor';
-import { baseMorphDurationFromScaled, findAutomationPointById, removeAutomationPointById, updateAutomationPointById } from '../automation/automationPlanEditing';
+import {
+    baseMorphDurationFromScaled,
+    constrainAutomationPointTime,
+    constrainMorphDuration as constrainMorphDurationShared,
+    createAutomationPointAtTime as createAutomationPointAtTimeShared,
+    findAutomationPointById,
+    removeAutomationPointById,
+    snapTimeToNearestGrid as snapTimeToNearestGridShared,
+    updateAutomationPointById
+} from '../automation/automationPlanEditing';
 import { buildNarrative, generateIntents, processChoreography, type SemanticResolver } from '../semantics';
 import { featureFlags } from '../config/featureFlags';
 import { filterForeignIdentityTuningForAutomation } from '../config/identityTuningRegistry';
@@ -61,10 +71,7 @@ export class DashboardUI {
     private lastTimelineDrawScrubTime: number | null = null;
     private lastTriggeredAutomationPointId: string | null = null;
     private visualModePlanRequestId = 0;
-    private automationPlanViewCache: PerformanceAutomationPlan | null = null;
-    private automationPlanViewSource: PerformanceAutomationPlan | null = null;
-    private automationPlanViewScale = NaN;
-    private automationPlanViewSignature: string | null = null;
+    private readonly automationPlanView = new AutomationPlanViewCache();
     // Visual OS generator controls (ADR-005). Now the default Dramaturgy generator, so these
     // are always present (shown when the Dramaturgy strategy is selected).
     private visualOsSettingsEl: HTMLElement | null = null;
@@ -1315,34 +1322,13 @@ export class DashboardUI {
         if (State.duration <= 0) return null;
         const plan = this.ensureEditedPerformancePlan();
         if (!plan) return null;
-        const pointTime = this.clamp(time, 0, State.duration);
-        for (const existing of plan.points) {
-            if (pointTime >= existing.time && pointTime < existing.time + existing.morphDurationSec) return null;
-        }
-        const defaultDuration = State.targetTuning.morphDurationSec;
-        let allowedDuration = defaultDuration;
-        for (const existing of plan.points) {
-            if (existing.time > pointTime) {
-                allowedDuration = Math.min(allowedDuration, existing.time - pointTime);
-            }
-        }
-        allowedDuration = Math.max(0.1, allowedDuration);
-        const sectionIdx = Math.max(0, State.trackAnalysis.sections.findIndex(s => pointTime >= s.start && pointTime <= s.end));
-        const section = State.trackAnalysis.sections[sectionIdx];
-        const preset = this.getSelectedAutomationPreset();
-        const point: PerformanceAutomationPoint = {
-            id: `manual-${Date.now().toString(36)}-${Math.round(pointTime * 1000).toString(36)}`,
-            time: pointTime,
-            sectionId: section ? `${sectionIdx}:${section.label}:${pointTime.toFixed(3).replace('.', '-')}` : `manual:${pointTime.toFixed(3).replace('.', '-')}`,
-            preset,
-            confidence: 1,
+        const point = createAutomationPointAtTimeShared(plan, time, State.duration, State.trackAnalysis.sections, {
+            preset: this.getSelectedAutomationPreset(),
             intensity: this.getDefaultAutomationIntensity(),
-            reason: 'manual',
-            morphDurationSec: allowedDuration,
-            morphCurve: this.getMorphCurveName(State.targetTuning.morphCurveValue)
-        };
-        plan.points.push(point);
-        plan.points.sort((a, b) => a.time - b.time);
+            morphCurve: this.getMorphCurveName(State.targetTuning.morphCurveValue),
+            defaultMorphDurationSec: State.targetTuning.morphDurationSec
+        });
+        if (!point) return null;
         State.performancePlanEdited = true;
         this.invalidateAutomationPlanView();
         this.selectedAutomationPoint = point;
@@ -1413,13 +1399,7 @@ export class DashboardUI {
     }
 
     private snapTimeToNearestGrid(time: number): number {
-        const bars = State.trackAnalysis.bars;
-        if (bars.length < 2) return time;
-        const secondsPerBar = bars[1].start - bars[0].start;
-        const secondsPerBeat = secondsPerBar / 4;
-        const firstBar = bars[0].start;
-        const beatIndex = Math.round((time - firstBar) / secondsPerBeat);
-        return this.clamp(firstBar + beatIndex * secondsPerBeat, 0, State.duration);
+        return snapTimeToNearestGridShared(time, State.trackAnalysis.bars, State.duration);
     }
 
 
@@ -1515,43 +1495,11 @@ export class DashboardUI {
     }
 
     private constrainPointTime(movingPoint: PerformanceAutomationPoint, proposedTime: number): number {
-        const plan = this.getBaseAutomationPlan();
-        const dur = movingPoint.morphDurationSec;
-        const totalDur = State.duration;
-        if (!plan?.points.length) return this.clamp(proposedTime, 0, Math.max(0, totalDur - dur));
-        const others = plan.points.filter(p => p.id !== movingPoint.id).sort((a, b) => a.time - b.time);
-        if (!others.length) return this.clamp(proposedTime, 0, Math.max(0, totalDur - dur));
-        let minStart = 0;
-        let maxEnd = totalDur;
-        for (const other of others) {
-            const os = other.time;
-            const oe = other.time + other.morphDurationSec;
-            if (oe <= proposedTime) {
-                minStart = Math.max(minStart, oe);
-            } else if (os >= proposedTime + dur) {
-                maxEnd = Math.min(maxEnd, os);
-            } else {
-                const distLeft = Math.abs(proposedTime - (os - dur));
-                const distRight = Math.abs(proposedTime - oe);
-                if (distLeft <= distRight) { maxEnd = Math.min(maxEnd, os); }
-                else { minStart = Math.max(minStart, oe); }
-            }
-        }
-        const lo = minStart;
-        const hi = Math.max(lo, maxEnd - dur);
-        return this.clamp(proposedTime, lo, hi);
+        return constrainAutomationPointTime(this.getBaseAutomationPlan(), movingPoint.id, movingPoint.morphDurationSec, proposedTime, State.duration);
     }
 
     private constrainMorphDuration(point: PerformanceAutomationPoint, proposedDuration: number): number {
-        const plan = this.getBaseAutomationPlan();
-        if (!plan?.points.length) return this.clamp(proposedDuration, 0.1, 20);
-        let maxDuration = Math.min(20, Math.max(0.1, State.duration - point.time));
-        for (const other of plan.points) {
-            if (other.id !== point.id && other.time > point.time) {
-                maxDuration = Math.min(maxDuration, other.time - point.time);
-            }
-        }
-        return this.clamp(proposedDuration, 0.1, Math.max(0.1, maxDuration));
+        return constrainMorphDurationShared(this.getBaseAutomationPlan(), point.id, point.time, proposedDuration, State.duration);
     }
 
     private hoverTimeline(focusX: number, focusY: number): void {
@@ -2205,21 +2153,13 @@ export class DashboardUI {
 
     private getAutomationPlanView(): PerformanceAutomationPlan | null {
         const source = this.getBaseAutomationPlan();
-        if (!source) return null;
-        const clampedScale = clampMorphScale(source, State.automationMorphScale);
-        if (clampedScale !== State.automationMorphScale) {
-            State.automationMorphScale = clampedScale;
-            this.lastTriggeredAutomationPointId = null;
-        }
-        const signature = getAutomationPlanViewSignature(source);
-        if (this.automationPlanViewSource !== source || this.automationPlanViewScale !== clampedScale || this.automationPlanViewSignature !== signature) {
-            this.automationPlanViewSource = source;
-            this.automationPlanViewScale = clampedScale;
-            this.automationPlanViewSignature = signature;
-            this.automationPlanViewCache = applyMorphScale(source, clampedScale, { durationSec: State.duration });
-            this.syncAutomationMorphScaleControl(source);
-        }
-        return this.automationPlanViewCache;
+        return this.automationPlanView.getView(
+            source,
+            State.automationMorphScale,
+            State.duration,
+            (clampedScale) => { State.automationMorphScale = clampedScale; this.lastTriggeredAutomationPointId = null; },
+            (rebuiltSource) => this.syncAutomationMorphScaleControl(rebuiltSource)
+        );
     }
 
     private getBaseAutomationPlan(): PerformanceAutomationPlan | null {
@@ -2235,10 +2175,7 @@ export class DashboardUI {
     }
 
     private invalidateAutomationPlanView(): void {
-        this.automationPlanViewSource = null;
-        this.automationPlanViewCache = null;
-        this.automationPlanViewScale = NaN;
-        this.automationPlanViewSignature = null;
+        this.automationPlanView.invalidate();
     }
 
     private syncAutomationMorphScaleControl(plan: PerformanceAutomationPlan | null): void {
