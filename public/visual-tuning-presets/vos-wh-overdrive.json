@@ -35,6 +35,13 @@
     "wormholeWallMode": 0,
     "wormholeLens": 0.88,
     "wormholeLensRadius": 0.45,
-    "wormholeLensSwirl": 0.95
+    "wormholeLensSwirl": 0.95,
+    "wormholeNebulaAmount": 0.2,
+    "wormholeNebulaDetail": 0.95,
+    "wormholeNebulaBloom": 0.25,
+    "wormholeNebulaWeave": 0.55,
+    "wormholeSpiral": 0.05,
+    "wormholeSpiralArms": 6,
+    "wormholeGrainDensity": 1
   }
 }
