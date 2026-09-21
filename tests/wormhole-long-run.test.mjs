@@ -75,6 +75,9 @@ function makeBackend() {
         height: BACKEND_HEIGHT,
         frameCount: 1,
         lines,
+        // Geometry-only backend: explicitly exercise the supported vector fallback.
+        beginFieldRaster() { return null; },
+        drawFieldRaster() { throw new Error('Refused raster must not be drawn'); },
         background() {}, noStroke() {}, noFill() {}, fill() {}, strokeWeight() {}, circle() {}, triangle() {},
         beginShape() {}, vertex() {}, endShape() {}, radialGlow() {}, radialDim() {}, compositeRingTint() {},
         stroke(_r, _g, _b, value) { alpha = value; },
@@ -102,6 +105,10 @@ function completePreset(preset) {
         wormholeStarfield: 1,
         wormholeGalaxy: 0,
         wormholeSkybox: 0,
+        // Keep trimForHarness's empty foreground pool empty: positive material density would
+        // repopulate it before raster acquisition, contaminating the fixed star-only sample.
+        // Material-enabled presets still exercise beginFieldRaster's refusal/fallback contract.
+        wormholeGrainDensity: 0,
         // The harness trims the grain/galaxy/sky pools to isolate the fixed star sample (see
         // trimForHarness below); the membrane wall is an independent layer with its own line()
         // calls unrelated to any pool, so it must stay off here too. Same reasoning for the lens

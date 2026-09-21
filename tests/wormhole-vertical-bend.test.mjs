@@ -62,6 +62,9 @@ function setupReleaseTestState(State) {
 function makeBackend() {
   return {
     width: 960, height: 540, frameCount: 1, lines: [], glows: [],
+    // Geometry-only backend: explicitly exercise the supported vector fallback.
+    beginFieldRaster() { return null; },
+    drawFieldRaster() { throw new Error('Refused raster must not be drawn'); },
     background() {}, noStroke() {}, noFill() {}, fill() {}, stroke() {}, strokeWeight() {},
     line(...args) { this.lines.push(args); }, circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {},
     radialGlow(...args) { this.glows.push(args); },
