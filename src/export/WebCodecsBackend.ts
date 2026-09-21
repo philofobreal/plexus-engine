@@ -51,7 +51,11 @@ export class WebCodecsBackend implements ExportBackend {
         this.p5Instance.noLoop();
 
         const target = getExportDimensions(config);
-        this.offscreenGraphics = this.p5Instance.createGraphics(target.width, target.height);
+        const exportGraphics: p5.Graphics = this.p5Instance.createGraphics(target.width, target.height);
+        // Export dimensions are already device pixels. Never inherit preview downsampling
+        // (or HiDPI supersampling) from the parent p5 canvas.
+        exportGraphics.pixelDensity(1);
+        this.offscreenGraphics = exportGraphics;
         if (typeof document !== 'undefined') {
             this.captureCanvas = document.createElement('canvas');
             this.captureCanvas.width = target.width;

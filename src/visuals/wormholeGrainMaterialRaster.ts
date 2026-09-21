@@ -21,6 +21,10 @@
 const MIN_NORMAL_RASTER_PIXELS = 320 * 180;
 const MAX_NORMAL_RASTER_PIXELS = 480 * 270;
 const MIN_EXPORT_RASTER_PIXELS = 480 * 270;
+const MIN_COMPACT_RASTER_PIXELS = 240 * 135;
+const MAX_COMPACT_RASTER_PIXELS = 320 * 180;
+/** Five pixel budgets (0, 1/4, 1/2, 3/4, 1) keep tuning morphs from resizing every frame. */
+const RASTER_DETAIL_INTERVALS = 4;
 
 export const MAX_GRAIN_MATERIAL_RASTER_PIXELS = 640 * 360;
 export const MAX_GRAIN_MATERIAL_RASTER_DIMENSION = 640;
@@ -64,23 +68,30 @@ export interface WormholeGrainMaterialRasterSize {
 }
 
 /**
- * Resolves a viewport-shaped L0 size without allocating. Detail changes the bounded pixel budget;
- * export may use the larger measured ceiling, while performance mode is expected to bypass this
- * module entirely at the caller.
+ * Resolves a viewport-shaped L0 size without allocating. Only the pixel budget uses fixed detail
+ * tiers; carrier shading still receives continuous detail. Tier selection has no render history,
+ * so a seek or export cannot inherit a different resolution from a previous frame. Export retains
+ * its larger ceiling even on a compact host; performance mode bypasses this module at the caller.
+ * Compact selection comes from the renderer host, never from the current canvas size or FPS,
+ * so fullscreen, seeking and previous render history cannot silently change the quality tier.
  */
 export function resolveWormholeGrainMaterialRasterSize(
     viewportWidth: number,
     viewportHeight: number,
     detail: number,
     highTier: boolean,
-    out: WormholeGrainMaterialRasterSize
+    out: WormholeGrainMaterialRasterSize,
+    compactPreview = false
 ): WormholeGrainMaterialRasterSize {
     const width = Math.max(1, finiteOr(viewportWidth, 1));
     const height = Math.max(1, finiteOr(viewportHeight, 1));
     const safeDetail = clamp01(detail);
-    const minPixels = highTier ? MIN_EXPORT_RASTER_PIXELS : MIN_NORMAL_RASTER_PIXELS;
-    const maxPixels = highTier ? MAX_GRAIN_MATERIAL_RASTER_PIXELS : MAX_NORMAL_RASTER_PIXELS;
-    const targetPixels = minPixels + (maxPixels - minPixels) * safeDetail;
+    const rasterDetail = Math.round(safeDetail * RASTER_DETAIL_INTERVALS) / RASTER_DETAIL_INTERVALS;
+    const minPixels = highTier ? MIN_EXPORT_RASTER_PIXELS
+        : compactPreview ? MIN_COMPACT_RASTER_PIXELS : MIN_NORMAL_RASTER_PIXELS;
+    const maxPixels = highTier ? MAX_GRAIN_MATERIAL_RASTER_PIXELS
+        : compactPreview ? MAX_COMPACT_RASTER_PIXELS : MAX_NORMAL_RASTER_PIXELS;
+    const targetPixels = minPixels + (maxPixels - minPixels) * rasterDetail;
     const aspect = width / height;
 
     let cols = Math.max(1, Math.round(Math.sqrt(targetPixels * aspect)));
@@ -140,6 +151,16 @@ export function accumulateWormholeGrainCarrier(
     const tailY = finiteOr(carrier.tailY, 0) * safeRows / viewportHeight;
     const headX = finiteOr(carrier.headX, 0) * safeCols / viewportWidth;
     const headY = finiteOr(carrier.headY, 0) * safeRows / viewportHeight;
+    // The material never extends farther than this fixed raster-space dilation. Reject
+    // carriers whose entire conservative support is outside the viewport before doing
+    // depth attenuation, kernel setup or noise setup. Crossing and edge-touching trails
+    // still use the exact original capsule rasterizer below.
+    const margin = MAX_GRAIN_MATERIAL_DILATION_PX;
+    if ((tailX < -margin && headX < -margin)
+        || (tailX > safeCols + margin && headX > safeCols + margin)
+        || (tailY < -margin && headY < -margin)
+        || (tailY > safeRows + margin && headY > safeRows + margin)) return;
+
     const dx = headX - tailX;
     const dy = headY - tailY;
     const length = Math.sqrt(dx * dx + dy * dy);
@@ -221,9 +242,22 @@ export function accumulateWormholeGrainCarrier(
     const minY = Math.max(0, Math.floor(Math.min(tailY, headY) - radius));
     const maxY = Math.min(safeRows - 1, Math.ceil(Math.max(tailY, headY) + radius));
 
+    // A capsule is contained in the infinite strip |across| <= radius. Intersect each row
+    // with that strip before testing the exact rounded support below. This avoids the mostly
+    // empty AABB of a diagonal carrier without changing any shading arithmetic or write order.
+    // Near-horizontal strips and extreme coordinates retain the exhaustive bounds; a one-pixel
+    // guard covers rounding at the strip edge for the normal, bounded viewport coordinates.
+    const narrowRows = Math.abs(normalX) > 1e-6
+        && Math.max(Math.abs(tailX), Math.abs(tailY), Math.abs(headX), Math.abs(headY)) < 1e7;
+    const rowSlope = narrowRows ? -normalY / normalX : 0;
+    const rowReach = narrowRows ? radius / Math.abs(normalX) : 0;
+
     for (let y = minY; y <= maxY; y++) {
         const relY = y + 0.5 - tailY;
-        for (let x = minX; x <= maxX; x++) {
+        const rowCenter = tailX + relY * rowSlope - 0.5;
+        const rowMinX = narrowRows ? Math.max(minX, Math.floor(rowCenter - rowReach) - 1) : minX;
+        const rowMaxX = narrowRows ? Math.min(maxX, Math.ceil(rowCenter + rowReach) + 1) : maxX;
+        for (let x = rowMinX; x <= rowMaxX; x++) {
             const relX = x + 0.5 - tailX;
             const along = relX * tangentX + relY * tangentY;
             const across = relX * normalX + relY * normalY;
@@ -428,42 +462,54 @@ function smoothBloomLayerInPlace(
     const safeKeep = Math.min(0.99, Math.max(0.01, keep));
     const spread = 1 - safeKeep;
 
+    const rowStride = safeCols * 4;
     for (let pass = 0; pass < passes; pass++) {
         for (let y = 0; y < safeRows; y++) {
-            const rowStart = y * safeCols * 4;
-            for (let channel = 0; channel < 4; channel++) {
-                let previous = buffer[rowStart + channel];
-                for (let x = 1; x < safeCols; x++) {
-                    const index = rowStart + x * 4 + channel;
-                    previous = buffer[index] * safeKeep + previous * spread;
-                    buffer[index] = previous;
-                }
-                previous = buffer[rowStart + (safeCols - 1) * 4 + channel];
-                for (let x = safeCols - 2; x >= 0; x--) {
-                    const index = rowStart + x * 4 + channel;
-                    previous = buffer[index] * safeKeep + previous * spread;
-                    buffer[index] = previous;
-                }
-            }
+            smoothBloomLine(buffer, y * rowStride, 4, safeCols, safeKeep, spread);
         }
-
         for (let x = 0; x < safeCols; x++) {
-            const columnStart = x * 4;
-            for (let channel = 0; channel < 4; channel++) {
-                let previous = buffer[columnStart + channel];
-                for (let y = 1; y < safeRows; y++) {
-                    const index = (y * safeCols + x) * 4 + channel;
-                    previous = buffer[index] * safeKeep + previous * spread;
-                    buffer[index] = previous;
-                }
-                previous = buffer[((safeRows - 1) * safeCols + x) * 4 + channel];
-                for (let y = safeRows - 2; y >= 0; y--) {
-                    const index = (y * safeCols + x) * 4 + channel;
-                    previous = buffer[index] * safeKeep + previous * spread;
-                    buffer[index] = previous;
-                }
-            }
+            smoothBloomLine(buffer, x * 4, rowStride, safeRows, safeKeep, spread);
         }
+    }
+}
+
+/**
+ * Visit adjacent RGBA values together instead of traversing each line four times. The channels
+ * are independent; keep a double-precision recurrence for each, including the original reload
+ * from Float32 at the reverse boundary. Reading rounded buffer values for every previous sample
+ * would change the filter. No scratch allocation, changed coefficients or skipped pixels.
+ */
+function smoothBloomLine(
+    buffer: Float32Array, start: number, stride: number, count: number, keep: number, spread: number
+): void {
+    const end = start + (count - 1) * stride;
+    let red = buffer[start];
+    let green = buffer[start + 1];
+    let blue = buffer[start + 2];
+    let alpha = buffer[start + 3];
+    for (let index = start + stride; index <= end; index += stride) {
+        red = buffer[index] * keep + red * spread;
+        green = buffer[index + 1] * keep + green * spread;
+        blue = buffer[index + 2] * keep + blue * spread;
+        alpha = buffer[index + 3] * keep + alpha * spread;
+        buffer[index] = red;
+        buffer[index + 1] = green;
+        buffer[index + 2] = blue;
+        buffer[index + 3] = alpha;
+    }
+    red = buffer[end];
+    green = buffer[end + 1];
+    blue = buffer[end + 2];
+    alpha = buffer[end + 3];
+    for (let index = end - stride; index >= start; index -= stride) {
+        red = buffer[index] * keep + red * spread;
+        green = buffer[index + 1] * keep + green * spread;
+        blue = buffer[index + 2] * keep + blue * spread;
+        alpha = buffer[index + 3] * keep + alpha * spread;
+        buffer[index] = red;
+        buffer[index + 1] = green;
+        buffer[index + 2] = blue;
+        buffer[index + 3] = alpha;
     }
 }
 

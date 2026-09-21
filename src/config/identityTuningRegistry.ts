@@ -5,6 +5,7 @@ export type IdentityOwnedTuningKey = keyof VisualTuningConfig;
 export const identityOwnedTuningKeys: Readonly<Record<string, readonly IdentityOwnedTuningKey[]>> = {
     'cosmic-wormhole': [
         'wormholeRadius',
+        'wormholeGrainShape',
         'wormholeDepth',
         'wormholeSpeed',
         'wormholeWarp',

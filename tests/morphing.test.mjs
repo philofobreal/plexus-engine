@@ -94,6 +94,38 @@ test('zero song-time delta freezes morph state during pause', () => {
   assert.equal(current.wormholeDepth, 1);
 });
 
+test('an explicitly disabled Nebula finishes fading at every playback/export frame rate', () => {
+  const { applyTuningMorph, defaultVisualTuning } = loadVisualTuningModule();
+  for (const fps of [24, 30, 60, 120]) {
+    const current = { ...defaultVisualTuning, wormholeNebulaAmount: 0.05 };
+    const target = { ...current, wormholeNebulaAmount: 0 };
+    applyTuningMorph(current, target, target.transitionSpeed, 1 / fps);
+    assert.ok(current.wormholeNebulaAmount > 0, 'preserve the visible fade');
+    for (let frame = 1; frame < fps * 10; frame++) {
+      applyTuningMorph(current, target, target.transitionSpeed, 1 / fps);
+    }
+    assert.equal(current.wormholeNebulaAmount, 0, `finish at ${fps} FPS`);
+    target.wormholeNebulaAmount = 0.05;
+    applyTuningMorph(current, target, target.transitionSpeed, 1 / fps);
+    assert.ok(current.wormholeNebulaAmount > 0, 'allow the material to fade back in');
+  }
+});
+
+test('Nebula completion preserves positive targets, unrelated tuning, and frozen clocks', () => {
+  const { applyTuningMorph, defaultVisualTuning } = loadVisualTuningModule();
+  const current = { ...defaultVisualTuning, wormholeNebulaAmount: 0.00005, lineAlpha: 0.00005 };
+  const target = { ...current, wormholeNebulaAmount: 0, lineAlpha: 0 };
+  applyTuningMorph(current, target, target.transitionSpeed, 0);
+  assert.equal(current.wormholeNebulaAmount, 0.00005, 'pause/seek clock reset must stay frozen');
+  applyTuningMorph(current, target, 0, 1 / 60);
+  assert.equal(current.wormholeNebulaAmount, 0.00005, 'zero transition speed must stay frozen');
+  target.wormholeNebulaAmount = 0.00001;
+  applyTuningMorph(current, target, target.transitionSpeed, 1 / 60);
+  assert.ok(current.wormholeNebulaAmount >= target.wormholeNebulaAmount);
+  assert.ok(current.wormholeNebulaAmount < 0.00005);
+  assert.ok(current.lineAlpha > 0, 'do not change other parameters\' easing');
+});
+
 test('discrete selector parameters snap immediately even at a zero song-time delta (VT-2.15/VT-2.16)', () => {
   // A zero delta freezes every continuous/interpolated morph (see the preceding test), but discrete
   // selector parameters are a general exception: they snap regardless of elapsed morph time,

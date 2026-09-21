@@ -102,6 +102,8 @@ export interface VisualTuningConfig {
     lineAlpha: number;
     lineDistance: number;
     lineWeight: number;
+    /** 0: rounded grain line ends, 1: square grain line ends. */
+    wormholeGrainShape: number;
     polygonHue: number;
     polygonAlpha: number;
     polygonSize: number;

@@ -123,15 +123,17 @@ class ExportCapabilityDetector {
   }
 
   const events = [];
+  const bitmapSizes = [];
   const context = vm.createContext({
     State,
     FakeWorker,
     ExportWorker: FakeWorker,
     Blob,
     VideoFrame: FakeVideoFrame,
-    createImageBitmap: async () => ({
-      close() {}
-    }),
+    createImageBitmap: async (canvas) => {
+      bitmapSizes.push([canvas.width, canvas.height]);
+      return { close() {} };
+    },
     window: {
       requestAnimationFrame(callback) {
         events.push(['raf']);
@@ -144,7 +146,7 @@ class ExportCapabilityDetector {
   context.VideoEncoder = class FakeVideoEncoder {};
 
   vm.runInContext(transpiled, context);
-  return { WebMExporter: context.exports.WebMExporter, State, events };
+  return { WebMExporter: context.exports.WebMExporter, State, events, bitmapSizes };
 }
 
 function createMockCanvas(drawnText = [], calls = []) {
@@ -198,6 +200,7 @@ test('WebMExporter owns p5 loop state without renderer polling', async () => {
       calls.push(['createGraphics', width, height]);
       return {
         elt: createMockCanvas(drawnText, calls),
+        pixelDensity(value) { calls.push(['exportDensity', value]); },
         clear() {
           calls.push(['clearGraphics']);
         },
@@ -247,6 +250,7 @@ test('WebMExporter omits metadata card when watermark is disabled', async () => 
     createGraphics() {
       return {
         elt: createMockCanvas(drawnText, calls),
+        pixelDensity() {},
         clear() {},
         remove() {}
       };
@@ -284,6 +288,7 @@ test('WebMExporter stopAndSave finalizes a partial WebM blob', async () => {
       calls.push(['createGraphics', width, height]);
       return {
         elt: createMockCanvas([], calls),
+        pixelDensity() {},
         clear() {},
         remove() {
           calls.push(['removeGraphics']);
@@ -314,6 +319,33 @@ test('PlexusRenderer does not poll export loop state', () => {
   assert.doesNotMatch(renderer, /setInterval\(syncExportLoopState/);
   assert.doesNotMatch(renderer, /lastExporting/);
   assert.doesNotMatch(renderer, /syncExportLoopState/);
+});
+
+test('encoded frame sampling uses requested pixels regardless of preview density', async () => {
+  for (const inheritedDensity of [0.5, 0.75, 1, 1.25, 2, 3]) {
+    const { WebMExporter, bitmapSizes } = loadWebMExporter();
+    let exportDensity;
+    let previewDensity = inheritedDensity;
+    const p5 = {
+      width: 2560, height: 1440, noLoop() {}, loop() {}, redraw() {},
+      pixelDensity(value) { if (value !== undefined) previewDensity = value; return previewDensity; },
+      createGraphics(width, height) {
+        const elt = createMockCanvas();
+        elt.width = Math.floor(width * inheritedDensity);
+        elt.height = Math.floor(height * inheritedDensity);
+        return { elt, clear() {}, remove() {}, pixelDensity(value) {
+          exportDensity = value;
+          elt.width = Math.floor(width * value);
+          elt.height = Math.floor(height * value);
+        } };
+      }
+    };
+    const exporter = new WebMExporter(p5, createMockCanvas(), { getAudioBuffer: () => null });
+    await exporter.startExport({ resolution: '1080p', aspectRatio: '16:9', fps: 60 }, () => {});
+    assert.equal(exportDensity, 1);
+    assert.equal(previewDensity, inheritedDensity);
+    assert.deepEqual(bitmapSizes, [[1920, 1080]]);
+  }
 });
 
 test('export worker configures constant-quality encoding and resolution bitrate floors', async () => {

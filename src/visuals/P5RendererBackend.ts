@@ -4,6 +4,7 @@ import { State } from '../state/store';
 import { CanvasFieldRasterSurface } from './CanvasFieldRasterSurface';
 
 export class P5RendererBackend implements VisualRendererBackend {
+    private readonly compactPreviewPolicy: boolean | (() => boolean);
     private readonly p: p5 | p5.Graphics;
     private readonly fieldRasterSurface = new CanvasFieldRasterSurface();
     private lastStrokeR = NaN;
@@ -19,8 +20,13 @@ export class P5RendererBackend implements VisualRendererBackend {
     private fillActive = true;
     private lastTarget: p5 | p5.Graphics | null = null;
 
-    constructor(p: p5 | p5.Graphics) {
+    constructor(p: p5 | p5.Graphics, compactMaterialPreview: boolean | (() => boolean) = false) {
         this.p = p;
+        this.compactPreviewPolicy = compactMaterialPreview;
+    }
+
+    get compactMaterialPreview(): boolean {
+        return typeof this.compactPreviewPolicy === 'function' ? this.compactPreviewPolicy() : this.compactPreviewPolicy;
     }
 
     private get target(): p5 | p5.Graphics {
@@ -109,8 +115,20 @@ export class P5RendererBackend implements VisualRendererBackend {
         }
     }
 
-    line(x1: number, y1: number, x2: number, y2: number) {
-        this.target.line(x1, y1, x2, y2);
+    line(x1: number, y1: number, x2: number, y2: number, cap?: 'round' | 'square') {
+        const target = this.target;
+        if (!cap) {
+            target.line(x1, y1, x2, y2);
+            return;
+        }
+        const ctx = target.drawingContext as CanvasRenderingContext2D;
+        const previousCap = ctx.lineCap;
+        try {
+            ctx.lineCap = cap;
+            target.line(x1, y1, x2, y2);
+        } finally {
+            ctx.lineCap = previousCap;
+        }
     }
 
     circle(x: number, y: number, diameter: number) {

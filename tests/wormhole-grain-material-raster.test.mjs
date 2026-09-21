@@ -7,8 +7,7 @@ import ts from 'typescript';
 
 const MODULE_PATH = join(process.cwd(), 'src', 'visuals', 'wormholeGrainMaterialRaster.ts');
 
-function loadMaterial() {
-  const source = readFileSync(MODULE_PATH, 'utf8');
+function loadMaterial(source = readFileSync(MODULE_PATH, 'utf8')) {
   const output = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
   }).outputText;
@@ -20,6 +19,81 @@ function loadMaterial() {
 }
 
 const material = loadMaterial();
+
+test('compact previews keep five bounded detail tiers while exports retain desktop resolution', () => {
+  const size = (w, h, detail, exporting, compact) => material.resolveWormholeGrainMaterialRasterSize(w, h, detail, exporting, {}, compact);
+  assert.deepEqual(size(1920, 1080, 0, false, true), { cols: 240, rows: 135 });
+  assert.deepEqual(size(1920, 1080, 1, false, true), { cols: 320, rows: 180 });
+  for (const [width, height] of [[390, 844], [844, 390], [1920, 1080]]) {
+    const tiers = new Set();
+    for (let i = 0; i <= 600; i++) {
+      const detail = i / 600;
+      const compact = size(width, height, detail, false, true);
+      const desktop = size(width, height, detail, false, false);
+      tiers.add(`${compact.cols}x${compact.rows}`);
+      assert.ok(compact.cols * compact.rows < desktop.cols * desktop.rows * 0.58);
+      assert.ok(Math.abs(compact.cols / compact.rows - width / height) < 0.02);
+      assert.deepEqual(size(width, height, detail, true, true), size(width, height, detail, true, false));
+    }
+    assert.equal(tiers.size, 5);
+    const preview = size(width, height, 0.49, false, true);
+    size(height, width, 1, true, true);
+    assert.deepEqual(size(width, height, 0.51, false, true), preview, 'export/rotation history cannot change the preview tier');
+  }
+});
+
+// Keep the same material laws but evaluate the original full rectangle as an independent
+// coverage oracle. Instrument only this test copy; production has no counters or allocations.
+function instrumentedMaterial(exhaustive) {
+  let source = readFileSync(MODULE_PATH, 'utf8');
+  const rowLoop = 'for (let x = rowMinX; x <= rowMaxX; x++)';
+  assert.ok(source.includes(rowLoop));
+  if (exhaustive) source = source.replace(rowLoop, 'for (let x = minX; x <= maxX; x++)');
+  source = 'export let scanVisits = 0;\n' + source.replace('const relX = x + 0.5 - tailX;', 'scanVisits++; const relX = x + 0.5 - tailX;');
+  return loadMaterial(source);
+}
+
+test('scanline clipping is byte-identical to exhaustive coverage across angles, caps, clipping and material settings', () => {
+  const fast = instrumentedMaterial(false), reference = instrumentedMaterial(true);
+  let cases = 0;
+  for (const [cols, rows, width, height] of [[128, 72, 128, 72], [72, 128, 1080, 1920], [192, 108, 1920, 1080]]) {
+    const a = new Float32Array(cols * rows * 4), b = new Float32Array(a.length);
+    for (let i = 0; i < 240; i++) {
+      const angle = [0, 1e-9, -1e-9, Math.PI / 2, Math.PI, Math.PI / 4, i * 2.399963][i % 7];
+      const length = [0, 1e-8, 0.5, 8, 45, 150, 900][Math.floor(i / 7) % 7];
+      const x = [-20, 0, cols / 2, cols + 20][i % 4];
+      const y = [-20, 0, rows / 2, rows + 20][Math.floor(i / 4) % 4];
+      const carrier = baseCarrier({
+        tailX: x * width / cols, tailY: y * height / rows,
+        headX: (x + Math.cos(angle) * length) * width / cols,
+        headY: (y + Math.sin(angle) * length) * height / rows,
+        strokeWeight: [0, 0.25, 2, 30][i % 4], depth: (i % 11) / 10,
+        alpha: [0, 1, 180, 255][i % 4], weave: i % 2, seed: i + 0.337,
+        materialPhase: i * 0.618, generation: i % 9
+      });
+      a.fill(0); b.fill(0);
+      const args = [cols, rows, width, height, carrier, (i % 13) / 12];
+      fast.accumulateWormholeGrainCarrier(a, ...args);
+      reference.accumulateWormholeGrainCarrier(b, ...args);
+      assert.deepEqual(bytes(a), bytes(b), `coverage mismatch at case ${cases}`);
+      cases++;
+    }
+  }
+  assert.equal(cases, 720);
+});
+
+test('long diagonal carriers skip most empty samples without changing pixels', () => {
+  const fast = instrumentedMaterial(false), reference = instrumentedMaterial(true);
+  const a = new Float32Array(192 * 108 * 4), b = new Float32Array(a.length);
+  const carrier = baseCarrier({ tailX: 35, tailY: 15, headX: 35 + 100 / Math.SQRT2, headY: 15 + 100 / Math.SQRT2, depth: 0, strokeWeight: 2 });
+  const args = [192, 108, 192, 108, carrier, 0.65];
+  fast.accumulateWormholeGrainCarrier(a, ...args);
+  reference.accumulateWormholeGrainCarrier(b, ...args);
+  assert.deepEqual(bytes(a), bytes(b));
+  assert.ok(a.some(v => v > 0));
+  assert.ok(fast.scanVisits < reference.scanVisits * 0.3, `${fast.scanVisits} vs ${reference.scanVisits}`);
+  console.log(`Diagonal pixel candidates: ${reference.scanVisits} -> ${fast.scanVisits}`);
+});
 
 function createBuffers(cols = 64, rows = 36) {
   const l1Cols = Math.max(1, Math.round(cols / 3));
@@ -90,6 +164,34 @@ test('raster sizing preserves viewport shape and never exceeds the renderer ceil
         assert.ok(Math.abs(out.cols / out.rows - width / height) < 0.02 || Math.min(width, height) === 1);
       }
     }
+  }
+});
+
+test('continuous detail sweeps use five monotonic raster sizes with unchanged quality endpoints', () => {
+  for (const highTier of [false, true]) {
+    const sizes = new Set();
+    const out = { cols: 0, rows: 0 };
+    let previousPixels = 0;
+    for (let step = 0; step <= 600; step++) {
+      material.resolveWormholeGrainMaterialRasterSize(1920, 1080, step / 600, highTier, out);
+      sizes.add(`${out.cols}x${out.rows}`);
+      assert.ok(out.cols * out.rows >= previousPixels);
+      previousPixels = out.cols * out.rows;
+    }
+    assert.equal(sizes.size, 5, 'a slider sweep must not resize the backing canvas each frame');
+    assert.equal([...sizes][0], highTier ? '480x270' : '320x180');
+    assert.equal([...sizes].at(-1), highTier ? '640x360' : '480x270');
+  }
+});
+
+test('raster tiers are stable within a band and independent of previous detail, aspect, and export requests', () => {
+  const out = { cols: 0, rows: 0 };
+  material.resolveWormholeGrainMaterialRasterSize(1920, 1080, 0.5, false, out);
+  const expected = { ...out };
+  for (const detail of [0.46, 0.49, 0.51, 0.54]) {
+    material.resolveWormholeGrainMaterialRasterSize(1080, 1920, 1, true, out);
+    material.resolveWormholeGrainMaterialRasterSize(1920, 1080, detail, false, out);
+    assert.deepEqual(out, expected, 'revisiting a tier must not depend on render history');
   }
 });
 

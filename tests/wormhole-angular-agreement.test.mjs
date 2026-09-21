@@ -217,21 +217,26 @@ test('starfield, galaxy, and skybox agree on lateral turn direction, in a fixed,
   const headingSpan = starRuns[starRuns.length - 1].heading - starRuns[0].heading;
   assert.ok(headingSpan > 0.05, `expected a developed turn over the script, heading only spanned ${headingSpan}`);
 
-  // Galaxy (9 large, slow glows) and skybox (a single shared pan scalar) are both effectively
-  // noise-free at single-frame granularity, so their lateral direction can be compared frame by
-  // frame: this is exactly the class of regression this test exists to catch (RC6 -- the skybox's
-  // pan used to translate the opposite screen direction from every other background layer for the
-  // same route heading).
+  // Galaxy (9 large, slow glows) and skybox (a single shared pan/rotation scalar) are both
+  // effectively noise-free at single-frame granularity, so their turn direction can be compared
+  // frame by frame: this is exactly the class of regression this test exists to catch (RC6 -- the
+  // skybox's pan used to translate the opposite screen direction from every other background layer
+  // for the same route heading).
   function meanCurrentGx(glows) {
     let sum = 0, count = 0;
     for (let g = 0; g < glows.length; g += 2) { sum += glows[g][0]; count++; }
     return sum / count;
   }
   const galaxyMean = galaxyRuns.map(r => meanCurrentGx(r.backend.glows));
-  // Every skybox star shares the exact same frame-to-frame pan delta (the per-star `star.x * radius`
-  // term is time-invariant and cancels out), so star index 0's own current endpoint is an exact,
-  // noise-free stand-in for the whole layer's pan direction.
-  const skyPosition = skyRuns.map(r => r.backend.lines[0][2]);
+  // The skybox now turns the whole dome (a rotation about screen center) instead of sliding it
+  // sideways, so a star's raw x-position is no longer a lateral stand-in for the whole layer:
+  // rotating a zero-mean star field about its own center leaves the mean x position unchanged by
+  // construction. The correct noise-free per-frame signal for "which way did the dome turn" is a
+  // star's *angle* around screen center (cx, cy) -- rotating a point by heading-derived angle theta
+  // shifts its polar angle by exactly theta regardless of which point it is, so every skybox star
+  // shares the exact same frame-to-frame angular delta, and star index 0 is an exact stand-in.
+  const cx = 480, cy = 270;
+  const skyAngle = skyRuns.map(r => angleAt(r.backend.lines[0][2], r.backend.lines[0][3], cx, cy));
 
   let significantFrames = 0;
   let signMismatches = 0;
@@ -239,13 +244,13 @@ test('starfield, galaxy, and skybox agree on lateral turn direction, in a fixed,
     if (Math.abs(starRuns[i].heading) <= 0.05) continue;
     significantFrames++;
     const dGalaxy = galaxyMean[i] - galaxyMean[i - 1];
-    const dSky = skyPosition[i] - skyPosition[i - 1];
-    if (Math.sign(dGalaxy) !== Math.sign(dSky)) signMismatches++;
+    const dSkyAngle = unwrapDelta(skyAngle[i] - skyAngle[i - 1]);
+    if (Math.sign(dGalaxy) !== Math.sign(dSkyAngle)) signMismatches++;
   }
   assert.ok(significantFrames > 100, `expected many frames past the |heading|>0.05 gate, got ${significantFrames}`);
   assert.equal(
     signMismatches, 0,
-    `galaxy and skybox disagreed on lateral turn direction in ${signMismatches}/${significantFrames} frames`
+    `galaxy and skybox disagreed on turn direction (lateral shift vs dome rotation) in ${signMismatches}/${significantFrames} frames`
   );
 
   // The near starfield's per-star depth-cycling dominates any single-frame or single-window lateral
@@ -348,10 +353,10 @@ test('skybox lateral offset stays bounded over a long sustained turn, at any son
   }
 
   try {
-    // Bounded, per the fixed geometry: |routePan| is capped by SKYBOX_PAN_SATURATION_RADIUS *
-    // radius * SKYBOX_ROUTE_WORLD_FRACTION * (1+PARALLAX_TURN_GAIN) * ROUTE_TURN_VISUAL_GAIN, roughly
-    // 66px at this backend size; a generous multiple of that (well below the thousands-of-pixels an
-    // unbounded distance-proportional term would produce over these song distances) makes this a
+    // Bounded, per the fixed geometry: the horizontal term is now a dome rotation whose angle is
+    // capped at SKYBOX_PAN_SATURATION_RADIUS regardless of song distance, and the vertical pan term
+    // is still capped the same way as before; a generous bound (well below the thousands-of-pixels
+    // an unbounded distance-proportional term would produce over these song distances) makes this a
     // regression test, not a tight analytic proof.
     const bound = 250;
     const times = [2, 200, 2000, 20000];

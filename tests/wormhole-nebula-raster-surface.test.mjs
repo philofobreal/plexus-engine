@@ -122,6 +122,30 @@ test('the same buffer object is reused across frames at unchanged dimensions, re
   assert.equal(surface.bufferResizeCount(0), 2, 'calling again with identical dimensions must not bump the resize counter');
 });
 
+test('a ten-second detail morph resizes material buffers only at quality tier boundaries', () => {
+  const load = createLoader();
+  const { CanvasFieldRasterSurface } = load('visuals/CanvasFieldRasterSurface.ts');
+  const { resolveWormholeGrainMaterialRasterSize } = load('visuals/wormholeGrainMaterialRaster.ts');
+  const { applyTuningMorph, defaultVisualTuning } = load('config/visualTuning.ts');
+  for (const highTier of [false, true]) {
+    const surface = new CanvasFieldRasterSurface(() => createMockCanvas(0, 0));
+    const current = { ...defaultVisualTuning, wormholeNebulaDetail: 0.95 };
+    const target = { ...current, wormholeNebulaDetail: 0.2 };
+    const size = { cols: 0, rows: 0 };
+    for (let frame = 0; frame < 600; frame++) {
+      applyTuningMorph(current, target, target.transitionSpeed, 1 / 60);
+      resolveWormholeGrainMaterialRasterSize(1280, 720, current.wormholeNebulaDetail, highTier, size);
+      for (const [layer, divisor] of [[0, 1], [1, 3], [2, 8]]) {
+        surface.beginFieldRaster(layer, Math.max(1, Math.round(size.cols / divisor)), Math.max(1, Math.round(size.rows / divisor)));
+      }
+    }
+    for (const layer of [0, 1, 2]) {
+      assert.ok(surface.bufferResizeCount(layer) <= 4, 'at most initial sizing plus three tier changes');
+      assert.equal(surface.bufferAllocationCount(layer), 1, 'retain one surface per layer');
+    }
+  }
+});
+
 test('an oversized request (> 640*360 px) is refused and allocates nothing', () => {
   const { CanvasFieldRasterSurface, MAX_FIELD_RASTER_PIXELS } = loadSurface();
   assert.equal(MAX_FIELD_RASTER_PIXELS, 640 * 360);

@@ -12,17 +12,22 @@ export class P5RenderTargetCompositor implements RenderTargetCompositor {
     readonly outgoingBackend: VisualRendererBackend;
     readonly incomingBackend: VisualRendererBackend;
 
-    constructor(p: p5) {
+    constructor(p: p5, compactMaterialPreview: boolean | (() => boolean) = false) {
         this.p = p;
         this.outgoing = p.createGraphics(Math.max(1, p.width), Math.max(1, p.height));
         this.incoming = p.createGraphics(Math.max(1, p.width), Math.max(1, p.height));
-        this.outgoingBackend = new P5RendererBackend(this.outgoing);
-        this.incomingBackend = new P5RendererBackend(this.incoming);
+        this.outgoingBackend = new P5RendererBackend(this.outgoing, compactMaterialPreview);
+        this.incomingBackend = new P5RendererBackend(this.incoming, compactMaterialPreview);
     }
 
     beginFrame(_generation: number, width: number, height: number): void {
         const safeWidth = Math.max(1, Math.floor(width));
         const safeHeight = Math.max(1, Math.floor(height));
+        // Export owns its sampling density. Preview targets follow live quality/size changes.
+        const target = (this.p as P5WithExportTarget).__plexusExportTarget ?? this.p;
+        const density = target.pixelDensity();
+        if (this.outgoing.pixelDensity() !== density) this.outgoing.pixelDensity(density);
+        if (this.incoming.pixelDensity() !== density) this.incoming.pixelDensity(density);
         if (this.outgoing.width !== safeWidth || this.outgoing.height !== safeHeight) {
             this.outgoing.resizeCanvas(safeWidth, safeHeight);
             this.incoming.resizeCanvas(safeWidth, safeHeight);
@@ -39,6 +44,9 @@ export class P5RenderTargetCompositor implements RenderTargetCompositor {
         const ctx = target.drawingContext as CanvasRenderingContext2D;
         const mix = Math.max(0, Math.min(1, Number.isFinite(alpha) ? alpha : 1));
         ctx.save();
+        // These dimensions are backing pixels, not p5 CSS units. Remove the destination's
+        // density transform to avoid a second scale/crop when preview density differs from 1.
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.globalCompositeOperation = 'source-over';
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.globalAlpha = 1 - mix;

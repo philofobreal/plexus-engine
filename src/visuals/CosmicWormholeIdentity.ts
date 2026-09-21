@@ -240,9 +240,12 @@ const GALAXY_PROJECTION_Z_FLOOR = MAX_GALAXY_Z * NEAR_PROJECTION_FLOOR_RATIO;
 const STAR_ROUTE_WORLD_SCALE = 1;
 /** Galaxies use the same route-local frame with a softer route-drift gain. */
 const GALAXY_ROUTE_WORLD_SCALE = 0.65;
-/** The skybox is a single flat, infinitely-distant plate: no depth to divide by, so its translate
- * is expressed as a small fraction of its own tile radius instead of a world-unit scale. */
-const SKYBOX_ROUTE_WORLD_FRACTION = 0.035;
+/** The skybox is a single flat, infinitely-distant plate: no depth to divide by, so its forward/
+ * vertical translate is expressed as a small fraction of its own tile radius instead of a world-unit
+ * scale. Raised from the original 0.035: at that scale the forward-motion streak stayed a fraction
+ * of a pixel across the *entire* authored `wormholeSpeed` range (including e.g. the "overdrive"
+ * preset's high setting), so the skybox never visibly sped up with the rest of the tunnel. */
+const SKYBOX_ROUTE_WORLD_FRACTION = 0.15;
 /** Skybox heading pan saturates smoothly instead of hard-clamping, so it keeps following the route
  * through the full authored heading range instead of visibly stopping mid-turn. */
 const SKYBOX_PAN_MAX_HEADING = ROUTE_MAX_HEADING;
@@ -250,9 +253,11 @@ const SKYBOX_PAN_SOFTNESS = 0.45;
 /** Unity slope at heading=0 (matches the old clamp's near-zero behaviour), saturating at this
  * radius instead of `SKYBOX_PAN_MAX_HEADING` itself: `pannedHeading = A * tanh(heading / A)`. */
 const SKYBOX_PAN_SATURATION_RADIUS = SKYBOX_PAN_MAX_HEADING * SKYBOX_PAN_SOFTNESS;
-/** Bend=0 still gives the skybox a faint, capped, rate-proportional forward streak instead of a
- * perfectly static plate: `k` shrinks the trail start toward the screen center by this fraction. */
-export const SKYBOX_FORWARD_CUE_CAP = 0.004;
+/** Bend=0 still gives the skybox a faint, rate-proportional forward streak instead of a perfectly
+ * static plate: `k` shrinks the trail start toward the screen center by this fraction. Raised
+ * alongside `SKYBOX_ROUTE_WORLD_FRACTION` so it guards only genuinely extreme rates instead of
+ * silently re-flattening the widened speed range back down to sub-pixel streaks. */
+export const SKYBOX_FORWARD_CUE_CAP = 0.05;
 /**
  * How strongly a grain's *material* (alpha/stroke weight, never its geometry) tracks its own band's
  * live spectrum energy each frame, vs. staying anchored to the value sampled once at its own release.
@@ -833,17 +838,14 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             const skyboxPrevCamZ = Math.max(0, camZ - skyboxTravelRate);
             this.routePath.sample(skyboxPrevCamZ, this.routePrev);
             this.routePathVertical.sample(skyboxPrevCamZ, this.routePrevV);
-            const skyboxTurnSmooth = combinedTurnIntensity(
-                this.routePath.smoothedTurnIntensity(camZ),
-                this.routePathVertical.smoothedTurnIntensity(camZ)
-            );
-            const skyboxTurnSmoothPrev = combinedTurnIntensity(
-                this.routePath.smoothedTurnIntensity(skyboxPrevCamZ),
-                this.routePathVertical.smoothedTurnIntensity(skyboxPrevCamZ)
-            );
+            // The skybox reads its turn directly off the camera's own current/previous heading
+            // (`baseRouteNow`/`routePrev`, both already-resolved route state -- never an extrapolated
+            // look-ahead) rather than a windowed `smoothedTurnIntensity` gate: the tunnel's own
+            // bounded-steering easing is already the only lag the sky should show, so the plate turns
+            // in lockstep with the tube instead of also waiting for a second, independent smoothing
+            // window to catch up.
             this.drawSkybox(
                 backend, this.baseRouteNow, this.routePrev, this.baseRouteNowV, this.routePrevV,
-                skyboxTurnSmooth, skyboxTurnSmoothPrev,
                 routeTurnVisualGain, tuning.wormholeSkybox * lineAlpha, impact, cx, cy, frameTick,
                 skyboxTravelRate, canonicalRate, applySkyboxLens, lensCenterX, lensCenterY, lensRadiusPx,
                 lensStrength, lensSwirl, camZ, lensWallWaveOffset
@@ -1273,8 +1275,15 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         // the material is active they default to the tuned "optimal" look instead of a bare zero, so
         // turning the master Amount on gives the intended read without five additional knob turns.
         const spiralTurns = grainMaterialAmount > 0 ? Math.max(0, finiteOr(tuning.wormholeSpiral, 0)) : 0;
+        // Left unrounded on purpose: this feeds the density-wave crest formula below as a cosine
+        // frequency, which is continuous in a fractional arm count. Automation morphs this value
+        // smoothly between preset arm counts (e.g. 1 -> 6); rounding it every frame would make the
+        // crest/trough pattern re-shuffle across the whole grain field at each integer crossing
+        // instead of blending, reading as a hard jump right as the morph settles. Authored/preset
+        // values are already whole numbers (UI step is 1), so the rendered pattern at rest is
+        // unaffected.
         const spiralArms = grainMaterialAmount > 0
-            ? Math.round(clamp(finiteOr(tuning.wormholeSpiralArms, 0), 0, 6))
+            ? clamp(finiteOr(tuning.wormholeSpiralArms, 0), 0, 6)
             : 0;
         const armTwist = spiralTurns * ARM_TWIST_RATIO * TWO_PI;
         const activeCopies = grainMaterialAmount > 0
@@ -1299,7 +1308,8 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 backend.height,
                 grainMaterialDetail,
                 State.isExporting,
-                this.grainMaterialRasterSize
+                this.grainMaterialRasterSize,
+                backend.compactMaterialPreview
             );
             grainMaterialL0Cols = this.grainMaterialRasterSize.cols;
             grainMaterialL0Rows = this.grainMaterialRasterSize.rows;
@@ -1524,7 +1534,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             if (!grainMaterialActive || !grainMaterialL0) {
                 backend.stroke(r, g, b, alpha);
                 backend.strokeWeight(weight);
-                backend.line(px, py, sx, sy);
+                backend.line(px, py, sx, sy, tuning.wormholeGrainShape === 1 ? 'square' : undefined);
                 continue;
             }
 
@@ -1594,7 +1604,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             if (grainMaterialAmount < 1) {
                 backend.stroke(carrier.colorR, carrier.colorG, carrier.colorB, carrier.alpha * (1 - grainMaterialAmount));
                 backend.strokeWeight(carrier.strokeWeight);
-                backend.line(carrier.tailX, carrier.tailY, carrier.headX, carrier.headY);
+                backend.line(carrier.tailX, carrier.tailY, carrier.headX, carrier.headY, tuning.wormholeGrainShape === 1 ? 'square' : undefined);
             }
         }
 
@@ -2564,8 +2574,6 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         baseRoutePrev: WormholeRouteFrame,
         baseRouteV: WormholeRouteFrame,
         baseRoutePrevV: WormholeRouteFrame,
-        turnSmooth: number,
-        turnSmoothPrev: number,
         routeTurnVisualGain: number,
         amount: number,
         impact: number,
@@ -2585,24 +2593,36 @@ export class CosmicWormholeIdentity implements VisualIdentity {
     ): void {
         if (amount <= 0) return;
         const radius = Math.hypot(cx, cy) * SKYBOX_TILE_RADIUS;
-        const parallax = wormholeParallaxStrength(turnSmooth);
-        const prevParallax = wormholeParallaxStrength(turnSmoothPrev);
-        const routePan = wormholeSkyboxPanHeading(baseRoute.headingAngle) * radius * SKYBOX_ROUTE_WORLD_FRACTION * parallax * routeTurnVisualGain;
-        const prevRoutePan = wormholeSkyboxPanHeading(baseRoutePrev.headingAngle) * radius * SKYBOX_ROUTE_WORLD_FRACTION * prevParallax * routeTurnVisualGain;
-        // Vertical mirror (Task 08): the independent vertical steering integrator's own heading pans
-        // the plate along screen-Y with the same tanh-saturated formula and the same combined
-        // (H+V) parallax strength -- no camera roll, just a second orthogonal pan term.
-        const routePanV = wormholeSkyboxPanHeading(baseRouteV.headingAngle) * radius * SKYBOX_ROUTE_WORLD_FRACTION * parallax * routeTurnVisualGain;
-        const prevRoutePanV = wormholeSkyboxPanHeading(baseRoutePrevV.headingAngle) * radius * SKYBOX_ROUTE_WORLD_FRACTION * prevParallax * routeTurnVisualGain;
-        // Minimal, canonical-rate-derived forward cue: even on a dead-straight route (bend=0) the
-        // plate still shows a short, capped zoom-streak toward the current point instead of an
-        // exactly static line -- `skyboxSeparation` is the same shared, capped travel rate every
-        // other background layer already uses, just rescaled into a tiny fraction of the plate radius.
+        // Direction (horizontal bend) is read as an actual dome rotation, not a translate: a
+        // sideways parallax slide reads as "the plate slid a little," while rotating every point
+        // around the plate center reads as "we turned" -- which is what a distant, effectively
+        // infinite starfield should show when the route's heading changes. The angle comes straight
+        // from the camera's own current/previous heading (`baseRoute`/`baseRoutePrev`, already
+        // resolved -- not a look-ahead extrapolation), so the sky turns in the same step as the
+        // tunnel itself, with no independent smoothing lag layered on top. `wormholeSkyboxPanHeading`
+        // still supplies the bounded tanh saturation so an extreme heading cannot over-spin the dome.
+        const rotationNow = wormholeSkyboxPanHeading(baseRoute.headingAngle);
+        const rotationPrev = wormholeSkyboxPanHeading(baseRoutePrev.headingAngle);
+        const cosNow = Math.cos(rotationNow);
+        const sinNow = Math.sin(rotationNow);
+        const cosPrev = Math.cos(rotationPrev);
+        const sinPrev = Math.sin(rotationPrev);
+        // Vertical mirror (Task 08): the independent vertical steering integrator's own heading still
+        // pans the plate along screen-Y (no roll axis to rotate around for a pure up/down bend).
+        const routePanV = wormholeSkyboxPanHeading(baseRouteV.headingAngle) * radius * SKYBOX_ROUTE_WORLD_FRACTION * routeTurnVisualGain;
+        const prevRoutePanV = wormholeSkyboxPanHeading(baseRoutePrevV.headingAngle) * radius * SKYBOX_ROUTE_WORLD_FRACTION * routeTurnVisualGain;
+        // Canonical-rate-derived forward cue: even on a dead-straight route (bend=0) the plate still
+        // shows a short, rate-proportional zoom-streak toward the current point instead of an exactly
+        // static line -- `skyboxSeparation` is the same shared travel rate every other background
+        // layer already uses, rescaled into a fraction of the plate radius so a fast preset's tunnel
+        // speed reads as a visibly longer streak here too, not a flat, near-invisible one.
         const baseForwardShrink = skyboxSeparation / radius;
         for (let i = 0; i < this.skyPool.length; i++) {
             const star = this.skyPool[i];
-            const sx = cx + star.x * radius + routePan;
-            const sy = cy + star.y * radius + routePanV;
+            const rx = star.x * cosNow - star.y * sinNow;
+            const ry = star.x * sinNow + star.y * cosNow;
+            const sx = cx + rx * radius;
+            const sy = cy + ry * radius + routePanV;
             const lensDx = sx - lensCenterX;
             const lensDy = sy - lensCenterY;
             const lensSmearGain = lensStrength > 0
@@ -2611,9 +2631,11 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             // The pre-existing forward-cue ceiling remains authoritative even after the local lens
             // emphasis. Route-pan separation is independently bounded by SKYBOX_TRAVEL_RATE_CAP.
             const forwardShrink = Math.min(SKYBOX_FORWARD_CUE_CAP, baseForwardShrink * lensSmearGain);
-            const prevSx = cx + star.x * radius + prevRoutePan
+            const rxPrev = star.x * cosPrev - star.y * sinPrev;
+            const ryPrev = star.x * sinPrev + star.y * cosPrev;
+            const prevSx = cx + rxPrev * radius
                 + forwardShrink * (cx - sx);
-            const prevSy = cy + star.y * radius + prevRoutePanV
+            const prevSy = cy + ryPrev * radius + prevRoutePanV
                 + forwardShrink * (cy - sy);
 
             let lineSx = sx;

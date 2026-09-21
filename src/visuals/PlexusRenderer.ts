@@ -3,9 +3,9 @@ import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
 import { featureFlags } from '../config/featureFlags';
-import { applyTuningMorph, tuneAudioValue, tuningMorphDeltaSec, writeModulationBus } from '../config/visualTuning';
+import { applyTuningMorph, tuneAudioValue, tuningMorphDeltaSec, visualTuningKeys, writeModulationBus } from '../config/visualTuning';
+import { PausedPreviewGate } from './PausedPreviewGate';
 import { P5RendererBackend } from './P5RendererBackend';
-import type { DashboardUI } from '../ui/DashboardUI';
 import type { AudioEngine } from '../audio/AudioEngine';
 import type { AudioFrame, MotifChoreographyFrame as ChoreographyFrame, VisualChoreographyPlan, VisualCueKind, VisualFeatureFrame, VisualMode, VisualTuningConfig } from '../types';
 import { VisualDirectorFSM } from './VisualDirectorFSM';
@@ -48,14 +48,96 @@ export class SemanticRendererBridge {
     }
 }
 
+/** Structural subset of DashboardUI (and any lighter host, e.g. the MVP UI) that the renderer loop needs. */
+export interface PlexusRendererHost {
+    updateDashboard(): void;
+    setExportTarget(p5Instance: any, canvas: HTMLCanvasElement): void;
+    /**
+     * Optional final transform applied to State.targetTuning immediately before it's used as the
+     * morph target, once per render frame, after every other targetTuning writer that frame
+     * (preset/automation triggers, the ADR-003/004 semantic layer) has already run. A host that
+     * doesn't implement this (e.g. the advanced dashboard) is unaffected -- the renderer falls
+     * back to targetTuning itself, today's exact behaviour. The MVP surface uses this to layer its
+     * Visual character / Advanced tuning boosts on top of whatever is currently authored, without
+     * ever writing into targetTuning or semanticBaseTuning itself (see
+     * MvpVisualController.getBoostedTuning for why that matters). Implementations should return a
+     * reused/mutated object rather than allocating one per call.
+     */
+    getTuningForMorph?(rawTuning: VisualTuningConfig): VisualTuningConfig;
+}
+
+export interface PlexusRendererOptions {
+    /** Live host quality preference. When present, overrides the static preview caps below. */
+    previewQuality?: {
+        readonly compactMaterialPreview: boolean;
+        readonly pixelRatioCap: number;
+        readonly maxBackingLongEdge: number;
+    };
+    /** Smaller material rasters for compact/mobile previews; exports retain their own budget. */
+    compactMaterialPreview?: boolean;
+    /** When provided, the canvas tracks this container-relative size instead of the full browser window. */
+    getPreviewSize?: () => { width: number; height: number };
+    /** Caps the p5 backing-store pixel density independently of devicePixelRatio (perf policy). */
+    pixelRatioCap?: number;
+    /**
+     * Absolute backing-store resolution ceiling (long edge, device pixels; e.g. 1920 for a
+     * 1080p-tier preview). pixelRatioCap alone only bounds the *ratio* applied to whatever CSS
+     * size the container currently is -- on a HiDPI display that container can itself grow past
+     * the design's preview-quality tiers (e.g. a fullscreen previewCol on a 4K/5K screen), which
+     * would still multiply out to a far larger backing store than the tier intends. When set, the
+     * effective pixel density is reduced below pixelRatioCap as needed so the backing store's
+     * long edge never exceeds this value, independent of the container's current CSS size.
+     */
+    maxBackingLongEdge?: number;
+}
+
 export function startPlexusRenderer(
     containerId: string,
-    ui: DashboardUI,
+    ui: PlexusRendererHost,
     engine: AudioEngine,
     styleRegistry: StyleRegistry,
-    semanticBridge: SemanticRendererBridge = new SemanticRendererBridge()
+    semanticBridge: SemanticRendererBridge = new SemanticRendererBridge(),
+    options?: PlexusRendererOptions
 ) {
     new p5((p: p5) => {
+        const getCanvasSize = () => options?.getPreviewSize?.() ?? { width: p.windowWidth, height: p.windowHeight };
+        const getPreviewPolicy = () => options?.previewQuality ?? options;
+        let lastRatioCap = getPreviewPolicy()?.pixelRatioCap;
+        let lastLongEdgeCap = getPreviewPolicy()?.maxBackingLongEdge;
+        const pausedPreview = new PausedPreviewGate();
+        const renderFeatureKeys = Object.keys(featureFlags) as Array<keyof typeof featureFlags>;
+        let canvasRevision = 0;
+
+        // Effective pixel density for a given CSS size: pixelRatioCap bounds the ratio, then
+        // maxBackingLongEdge (if set) reduces it further so the backing store's long edge never
+        // exceeds that absolute device-pixel ceiling, however large the CSS container itself is.
+        const computeEffectiveDensity = (cssWidth: number, cssHeight: number): number => {
+            const policy = getPreviewPolicy();
+            const requested = Math.max(0.1, Math.min(window.devicePixelRatio || 1, policy?.pixelRatioCap ?? Infinity));
+            if (!policy?.maxBackingLongEdge) return requested;
+            const longEdge = Math.max(cssWidth, cssHeight);
+            if (longEdge <= 0) return requested;
+            return Math.max(0.1, Math.min(requested, policy.maxBackingLongEdge / longEdge));
+        };
+
+        // Applies a target CSS size, first adjusting pixel density if the size change moved it
+        // past the backing-store cap, then resizing the canvas. Used by setup, the container
+        // ResizeObserver, and the draw-loop self-heal fallback below, so all three honour the same
+        // backing-resolution ceiling instead of only the initial setup call doing so.
+        const applyCanvasSize = (cssWidth: number, cssHeight: number): void => {
+            if (getPreviewPolicy()?.pixelRatioCap !== undefined || getPreviewPolicy()?.maxBackingLongEdge !== undefined) {
+                const effectiveDensity = computeEffectiveDensity(cssWidth, cssHeight);
+                if (Math.abs(effectiveDensity - p.pixelDensity()) > 1e-6) {
+                    p.pixelDensity(effectiveDensity);
+                    canvasRevision++;
+                }
+            }
+            if (cssWidth !== p.width || cssHeight !== p.height) {
+                p.resizeCanvas(cssWidth, cssHeight);
+                canvasRevision++;
+            }
+        };
+
         let particles: Particle[] = [];
         const shockwaveLifecycle = new ShockwaveLifecycle<Shockwave>(State.visualMode);
         const shockwaves = shockwaveLifecycle.items;
@@ -64,7 +146,8 @@ export function startPlexusRenderer(
         let currentTargetFrameRate = 60;
         let lastTuningTime: number | null = null;
         let lastTuningClockWasExport = State.isExporting;
-        const backend = new P5RendererBackend(p);
+        const compactMaterialPreview = () => getPreviewPolicy()?.compactMaterialPreview ?? false;
+        const backend = new P5RendererBackend(p, compactMaterialPreview);
         const visualDirector = new VisualDirectorFSM();
         const identityTransitionController = new IdentityTransitionController();
         let compositor: P5RenderTargetCompositor | null = null;
@@ -83,15 +166,34 @@ export function startPlexusRenderer(
         let lastChoreoPlanRef: VisualChoreographyPlan | null = null;
 
         p.setup = () => {
-            const renderer = p.createCanvas(p.windowWidth, p.windowHeight);
+            const initialSize = getCanvasSize();
+            const renderer = p.createCanvas(initialSize.width, initialSize.height);
+            // p5 2 creates a new renderer with device density in createCanvas(), discarding any
+            // earlier pixelDensity() setting. Cap the actual canvas before its first draw and
+            // before graphics targets inherit its density.
+            applyCanvasSize(initialSize.width, initialSize.height);
             renderer.parent(containerId);
             p.frameRate(60);
             for (let i = 0; i < 75; i++) particles.push(new Particle(p));
-            compositor = new P5RenderTargetCompositor(p);
+            compositor = new P5RenderTargetCompositor(p, compactMaterialPreview);
             ui.setExportTarget(p, (renderer as unknown as { elt: HTMLCanvasElement }).elt);
+
+            if (options?.getPreviewSize && typeof ResizeObserver !== 'undefined') {
+                const containerEl = document.getElementById(containerId);
+                if (containerEl) {
+                    // Reacts as soon as the container's box changes (including a display:none ->
+                    // visible transition), independent of the draw loop's own throttled check below
+                    // (which is the fallback for cases a ResizeObserver notification is missed).
+                    new ResizeObserver(() => {
+                        const size = getCanvasSize();
+                        applyCanvasSize(size.width, size.height);
+                    }).observe(containerEl);
+                }
+            }
         };
 
         const syncEventIndex = (time: number) => {
+            pausedPreview.invalidate();
             currentEventIdx = State.events.findIndex(e => e.time >= time);
             if (currentEventIdx === -1) currentEventIdx = State.events.length;
             currentCueIdx = State.trackAnalysis.cues.findIndex(e => e.time >= time);
@@ -103,6 +205,7 @@ export function startPlexusRenderer(
         engine.addPositionChangedListener(syncEventIndex);
 
         engine.addPlaybackEndedListener(() => {
+            pausedPreview.invalidate();
             currentEventIdx = 0;
             currentCueIdx = 0;
             resetTransientVisualState();
@@ -111,10 +214,70 @@ export function startPlexusRenderer(
         });
 
         p.draw = () => {
+            // Preferences are cheap host values. Only a real policy change needs a size read.
+            const policy = getPreviewPolicy();
+            if (lastRatioCap !== policy?.pixelRatioCap || lastLongEdgeCap !== policy?.maxBackingLongEdge) {
+                lastRatioCap = policy?.pixelRatioCap;
+                lastLongEdgeCap = policy?.maxBackingLongEdge;
+                const size = getCanvasSize();
+                applyCanvasSize(size.width, size.height);
+            }
+            // Fallback for the rare case the ResizeObserver above missed a transition (e.g. a
+            // resize that happened before the observer was attached): self-heals regardless of
+            // when the container's box actually changes. Throttled rather than checked every
+            // frame -- getPreviewSize() reads getBoundingClientRect(), which forces a layout, and
+            // the ResizeObserver above already handles the common case immediately.
+            if (options?.getPreviewSize && p.frameCount % 15 === 0) {
+                const size = getCanvasSize();
+                applyCanvasSize(size.width, size.height);
+            }
+
             const targetFrameRate = State.isPlaying ? 60 : State.duration > 0 ? 30 : 15;
             if (currentTargetFrameRate !== targetFrameRate) {
                 currentTargetFrameRate = targetFrameRate;
                 p.frameRate(targetFrameRate);
+            }
+
+            const ct = State.isExporting ? State.exportTime : engine.getCurrentTime();
+            const morphTarget = ui.getTuningForMorph ? ui.getTuningForMorph(State.targetTuning) : State.targetTuning;
+            const idlePreview = !State.isPlaying && !State.isExporting && State.playbackFade <= 0;
+            if (idlePreview) {
+                // The p5 callback stays available for UI/host changes; unchanged paused frames
+                // perform no identity, material, post-FX or dashboard canvas drawing. Snapshot
+                // numeric values too: tuning objects and MVP boost results are mutated in place.
+                pausedPreview.begin();
+                pausedPreview.watch(canvasRevision);
+                pausedPreview.watch(ct);
+                pausedPreview.watch(State.duration);
+                pausedPreview.watch(State.bpm);
+                pausedPreview.watch(State.visualMode);
+                pausedPreview.watch(State.frames);
+                pausedPreview.watch(State.events);
+                pausedPreview.watch(State.trackAnalysis);
+                pausedPreview.watch(State.visualChoreography);
+                pausedPreview.watch(State.semanticBaseTuning);
+                pausedPreview.watch(State.performancePlan);
+                pausedPreview.watch(State.editedPerformancePlan);
+                pausedPreview.watch(State.automationMorphScale);
+                pausedPreview.watch(State.activeVisualTransitionId);
+                pausedPreview.watch(State.visualModeTransition);
+                pausedPreview.watch(State.videoBackplateActive);
+                pausedPreview.watch(State.videoDominantColor.r);
+                pausedPreview.watch(State.videoDominantColor.g);
+                pausedPreview.watch(State.videoDominantColor.b);
+                pausedPreview.watch(compactMaterialPreview());
+                pausedPreview.watch(semanticBridge.hasPlan());
+                for (const key of renderFeatureKeys) pausedPreview.watch(featureFlags[key]);
+                for (const key of visualTuningKeys) {
+                    pausedPreview.watch(State.visualTuning[key]);
+                    pausedPreview.watch(State.targetTuning[key]);
+                    pausedPreview.watch(morphTarget[key]);
+                }
+                if (!pausedPreview.shouldDraw()) return;
+            } else {
+                // Playback, export and the existing pause fade always render normally. Finish
+                // with one settled paused frame, even if its tuning and song time are unchanged.
+                pausedPreview.invalidate();
             }
 
             shockwaveLifecycle.syncMode(State.visualMode);
@@ -127,16 +290,20 @@ export function startPlexusRenderer(
             }
             State.rotationPhase += State.playbackFade;
 
-            let ct = State.isExporting ? State.exportTime : engine.getCurrentTime();
             State.currentTime = ct;
             const tuningClockChanged = lastTuningClockWasExport !== State.isExporting;
             const tuningDeltaSec = tuningMorphDeltaSec(ct, lastTuningTime, tuningClockChanged);
             lastTuningTime = ct;
             lastTuningClockWasExport = State.isExporting;
+            // Optional host-owned final layer (see PlexusRendererHost.getTuningForMorph): applied
+            // fresh every frame directly on top of whatever State.targetTuning currently is, so a
+            // host that boosts/cuts specific keys (the MVP surface) never has to write into
+            // targetTuning itself to make that stick. A host without the hook (the advanced
+            // dashboard) morphs toward targetTuning directly, exactly as before.
             applyTuningMorph(
                 State.visualTuning,
-                State.targetTuning,
-                State.targetTuning.transitionSpeed,
+                morphTarget,
+                morphTarget.transitionSpeed,
                 tuningDeltaSec
             );
 
@@ -250,7 +417,7 @@ export function startPlexusRenderer(
             State.directorOutput.glitchIntensity = directorOutput.glitchIntensity;
             State.directorOutput.invertBackground = directorOutput.invertBackground;
 
-            if (p.frameCount % 4 === 0) ui.updateDashboard();
+            if (idlePreview || p.frameCount % 4 === 0) ui.updateDashboard();
 
             if (compositor) {
                 identityTransitionController.draw(ct, backend, compositor, styleRegistry, particles, shockwaves);
@@ -265,7 +432,14 @@ export function startPlexusRenderer(
 
         };
 
-        p.windowResized = () => p.resizeCanvas(p.windowWidth, p.windowHeight);
+        p.windowResized = () => {
+            if (options?.getPreviewSize) return; // handled by the container ResizeObserver above
+            // Routed through applyCanvasSize (not a bare resizeCanvas) so a window moved to a
+            // display with a different devicePixelRatio -- or simply resized larger -- keeps
+            // honouring pixelRatioCap/maxBackingLongEdge instead of only capping the density once
+            // at setup and then drifting uncapped on every resize after.
+            applyCanvasSize(p.windowWidth, p.windowHeight);
+        };
     });
 }
 

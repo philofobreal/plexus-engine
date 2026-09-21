@@ -69,6 +69,7 @@ const WH_ROLES = ['establish', 'drive', 'spiral', 'sparse', 'punch', 'overdrive'
 const MAIN_DRAMATURGY_KEYS = ['intro', 'groove', 'tension', 'build', 'fake-drop', 'release', 'peak', 'breakdown', 'outro', 'default'];
 const WORMHOLE_TUNING_KEYS = [
   'wormholeRadius',
+  'wormholeGrainShape',
   'wormholeDepth',
   'wormholeSpeed',
   'wormholeWarp',
@@ -108,6 +109,7 @@ const WORMHOLE_TUNING_KEYS = [
   'wormholeGrainDensity'
 ];
 const WORMHOLE_USER_GLOBAL_KEYS = [
+  'wormholeGrainShape',
   'wormholeStarfield', 'wormholeGalaxy', 'wormholeSkybox', 'wormholeOpticsEnabled',
   'wormholeNebulaAmount', 'wormholeNebulaDetail', 'wormholeNebulaBloom', 'wormholeNebulaWeave',
   'wormholeSpiral', 'wormholeSpiralArms', 'wormholeGrainDensity'

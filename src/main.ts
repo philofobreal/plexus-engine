@@ -277,8 +277,19 @@ const styleRegistry = createDefaultStyleRegistry();
 const semanticBridge = new SemanticRendererBridge();
 semanticBridge.setSemanticAdapter(semanticAdapter);
 
+// Same backing-store resolution ceiling the MVP surface uses (src/ui/mvp/main.ts): the canvas
+// here fills the whole window at the full devicePixelRatio, which on a high-DPR display or a
+// large monitor becomes a far bigger backing store than the visual identities need, and the
+// wormhole grain-material system in particular scales real per-frame draw work with backend
+// width/height, not just the raster budget. Capping it keeps the advanced dashboard from being
+// disproportionately more expensive than the now-capped MVP page for the exact same preset.
+const isDesktopViewport = window.matchMedia('(min-width: 1024px)').matches;
+const previewQuality = createPreviewQualityControl(!isDesktopViewport);
+document.getElementById('visual-tuning-controls')!.before(previewQuality.root);
 const appReadyPromise = new Promise<void>(resolve => {
-  startPlexusRenderer('canvas-container', ui, engine, styleRegistry, semanticBridge);
+  startPlexusRenderer('canvas-container', ui, engine, styleRegistry, semanticBridge, {
+    previewQuality: previewQuality.preference
+  });
   resolve();
 });
 
@@ -294,3 +305,4 @@ Promise.all([appReadyPromise, minDelayPromise]).then(() => {
     loader.addEventListener('transitionend', () => loader.remove(), { once: true });
   }
 });
+import { createPreviewQualityControl } from './ui/PreviewQualityControl';

@@ -371,6 +371,10 @@ function setupReleaseTestState(State, events) {
 
 function makeReleaseTestBackend() {
   return {
+    // Geometry-only backend: explicitly refuse material surfaces and exercise vector fallback.
+    // Full material coverage lives in wormhole-grain-material-integration.test.mjs.
+    beginFieldRaster() { return null; },
+    drawFieldRaster() { throw new Error('Refused raster must not be drawn'); },
     width: 960, height: 540, frameCount: 1, lines: [],
     background() {}, noStroke() {}, noFill() {}, fill() {}, stroke() {}, strokeWeight() {},
     line(...args) { this.lines.push(args); }, circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {}, radialGlow() {}, radialDim() {}, compositeRingTint() {}

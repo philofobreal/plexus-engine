@@ -48,6 +48,7 @@ export const defaultVisualTuning: VisualTuningConfig = {
     lineAlpha: 1,
     lineDistance: 1,
     lineWeight: 1,
+    wormholeGrainShape: 0,
     polygonHue: 210,
     polygonAlpha: 1,
     polygonSize: 1,
@@ -195,6 +196,8 @@ const allVisualTuningControls: VisualTuningControl[] = [
     { key: 'lineAlpha', label: 'Line opacity', group: 'Lines', min: 0, max: 5, step: 0.05, unit: 'x' },
     { key: 'lineDistance', label: 'Line distance', group: 'Lines', min: 0.05, max: 8, step: 0.05, unit: 'x' },
     { key: 'lineWeight', label: 'Line stroke', group: 'Lines', min: 0.05, max: 30, step: 0.05, unit: 'x' },
+    { key: 'wormholeGrainShape', label: 'Grain line ends', group: 'Lines', min: 0, max: 1, step: 1,
+        options: [{ value: 0, label: 'Rounded' }, { value: 1, label: 'Square' }] },
     { key: 'polygonHue', label: 'Polygon hue', group: 'Polygons', min: 0, max: 360, step: 1, unit: 'deg' },
     { key: 'polygonAlpha', label: 'Polygon opacity', group: 'Polygons', min: 0, max: 5, step: 0.05, unit: 'x' },
     { key: 'polygonSize', label: 'Polygon reach', group: 'Polygons', min: 0.05, max: 5, step: 0.05, unit: 'x' },
@@ -444,6 +447,21 @@ export function cloneDefaultVisualTuning(): VisualTuningConfig {
     return { ...defaultVisualTuning };
 }
 
+/**
+ * Tuning keys the MVP surface (src/ui/mvp/) locks to a fixed value regardless of what a
+ * preset/automation point requests. The ownership registry for a surface-level override lives
+ * here in config, not in UI controller logic. Currently just the wall/lens "optics" gate: several
+ * style-pack presets opt into the legacy drawn membrane/caustic/crack/mosaic wall lines and
+ * gravitational-lens warp by setting wormholeOpticsEnabled themselves, but the MVP never shows
+ * that stylized opt-in -- same as the plain engine default -- so it is forced back off after
+ * every preset merge. This one flag is the authoritative gate for both (see
+ * CosmicWormholeIdentity's lensStrength/wallStrength), so it alone is enough; the raw
+ * wormholeWall/wormholeLens values underneath are harmless when it is off.
+ */
+export const mvpSurfaceTuningOverrides: Readonly<Partial<VisualTuningConfig>> = {
+    wormholeOpticsEnabled: 0
+};
+
 export function normalizeVisualTuningConfig(payload: unknown, current?: VisualTuningConfig): VisualTuningConfig {
     const source = getVisualTuningSource(payload);
     const next = current ? { ...current } : cloneDefaultVisualTuning();
@@ -599,6 +617,11 @@ export function writeModulationBus(
     return target;
 }
 
+// Finish an explicitly disabled Nebula fade below 0.01% intensity. Without an exact zero,
+// exponential easing keeps its raster/weave/density branches alive indefinitely. This is
+// below 0.026 of one 8-bit alpha code before bloom; authored positive amounts stay untouched.
+const NEBULA_OFF_MORPH_EPSILON = 1e-4;
+
 export function applyTuningMorph(
     current: VisualTuningConfig,
     target: VisualTuningConfig,
@@ -620,7 +643,7 @@ export function applyTuningMorph(
         if (key === 'chromaKeyMode' || key === 'performanceMode' || key === 'phraseSize'
             || key === 'morphCurveValue' || key === 'heroEventMode' || key === 'heroBeepMode'
             || key === 'wormholeRadiusLfoWaveform' || key === 'wormholeDepthLfoWaveform'
-            || key === 'wormholeWallMode' || key === 'wormholeOpticsEnabled'
+            || key === 'wormholeWallMode' || key === 'wormholeOpticsEnabled' || key === 'wormholeGrainShape'
             ) {
             current[key] = targetValue;
             continue;
@@ -632,7 +655,10 @@ export function applyTuningMorph(
         }
 
         const next = currentValue + (targetValue - currentValue) * speed;
-        current[key] = clampBetween(next, currentValue, targetValue);
+        current[key] = key === 'wormholeNebulaAmount' && targetValue === 0 && speed > 0
+            && Math.abs(next) <= NEBULA_OFF_MORPH_EPSILON
+            ? 0
+            : clampBetween(next, currentValue, targetValue);
     }
 
     return current;

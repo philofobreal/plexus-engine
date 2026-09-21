@@ -104,12 +104,14 @@ function makeBackend(refuseRaster = false) {
     height: 360,
     frameCount: 1,
     lines: [],
+    caps: [],
     beginCalls: [],
     drawCalls: [],
     background() {}, noStroke() {}, noFill() {}, fill() {},
     stroke(r, g, b, a) { currentStroke = [r, g, b, a]; },
     strokeWeight(weight) { currentWeight = weight; },
-    line(px, py, sx, sy) {
+    line(px, py, sx, sy, cap) {
+      this.caps.push(cap);
       this.lines.push({ coords: [px, py, sx, sy], stroke: [...currentStroke], weight: currentWeight });
     },
     circle() {}, triangle() {}, beginShape() {}, vertex() {}, endShape() {},
@@ -131,18 +133,42 @@ function json(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function render({ amount, refuseRaster = false, performanceMode = 0, stubs = new Map(), tuning = {} }) {
+function render({ amount, refuseRaster = false, performanceMode = 0, stubs = new Map(), tuning = {}, compactPreview = false, isExporting = false }) {
   const load = createSourceLoader(stubs);
   const { CosmicWormholeIdentity } = load('visuals/CosmicWormholeIdentity.ts');
   const { State } = load('state/store.ts');
   const { featureFlags } = load('config/featureFlags.ts');
   setupState(State, featureFlags, amount, performanceMode, tuning);
+  State.isExporting = isExporting;
+  State.exportTime = State.currentTime;
   const identity = new CosmicWormholeIdentity();
   identity.syncPosition(State.currentTime);
   const backend = makeBackend(refuseRaster);
+  backend.compactMaterialPreview = compactPreview;
   identity.draw(backend, [], []);
   return { backend, State };
 }
+
+test('compact host reduces all material buffers, preserves square lines and never reduces export quality', () => {
+  const options = { amount: 0.3, tuning: { wormholeGrainShape: 1 } };
+  const desktop = render(options).backend;
+  const compact = render({ ...options, compactPreview: true }).backend;
+  assert.equal(compact.beginCalls.length, 3);
+  for (let i = 0; i < 3; i++) {
+    assert.ok(compact.beginCalls[i][1] * compact.beginCalls[i][2] < desktop.beginCalls[i][1] * desktop.beginCalls[i][2] * 0.58);
+  }
+  assert.deepEqual(compact.lines, desktop.lines);
+  assert.deepEqual(compact.caps, desktop.caps);
+  const desktopExport = render({ ...options, isExporting: true }).backend;
+  const compactExport = render({ ...options, compactPreview: true, isExporting: true }).backend;
+  assert.deepEqual(compactExport.beginCalls, desktopExport.beginCalls);
+  assert.deepEqual(compactExport.lines, desktopExport.lines);
+  for (const overrides of [{ amount: 0 }, { performanceMode: 1 }]) {
+    const disabled = render({ ...options, ...overrides, compactPreview: true }).backend;
+    assert.equal(disabled.beginCalls.length, 0);
+    assert.ok(disabled.caps.includes('square'));
+  }
+});
 
 /** Grain carriers only; the weave pass feeds the same accumulator with `weave: 1` commands. */
 function grainCarriers(carriers) {
@@ -173,6 +199,56 @@ test('amount zero performs exact legacy line work and makes zero raster calls', 
   assert.ok(backend.lines.length > 0, 'foreground grains must still render');
   assert.equal(backend.beginCalls.length, 0);
   assert.equal(backend.drawCalls.length, 0);
+});
+
+test('square grain ends preserve geometry in legacy, material crossfade, refusal and performance paths', () => {
+  for (const options of [{ amount: 0 }, { amount: 0.3 }, { amount: 0.3, refuseRaster: true }, { amount: 0.3, performanceMode: 1 }]) {
+    const stubs = new Map([[MATERIAL_PATH, capturingMaterialStub([])]]);
+    const round = render({ ...options, stubs }).backend;
+    const square = render({ ...options, stubs, tuning: { wormholeGrainShape: 1 } }).backend;
+    assert.deepEqual(square.lines, round.lines, 'cap choice must not change endpoints, color or width');
+    assert.ok(square.caps.includes('square'));
+    assert.ok(!round.caps.includes('square'));
+  }
+});
+
+test('fading Nebula to off stops raster and weave work, and re-enabling resumes it live and in export', () => {
+  for (const isExporting of [false, true]) {
+    const carriers = [];
+    const load = createSourceLoader(new Map([[MATERIAL_PATH, capturingMaterialStub(carriers)]]));
+    const { CosmicWormholeIdentity } = load('visuals/CosmicWormholeIdentity.ts');
+    const { State } = load('state/store.ts');
+    const { featureFlags } = load('config/featureFlags.ts');
+    const { applyTuningMorph } = load('config/visualTuning.ts');
+    setupState(State, featureFlags, 0.05, 0, { wormholeGrainDensity: 1, wormholeNebulaWeave: 0.55 });
+    State.isExporting = isExporting;
+    State.exportTime = State.currentTime;
+    const identity = new CosmicWormholeIdentity();
+    identity.syncPosition(State.currentTime);
+    const backend = makeBackend();
+    identity.draw(backend, [], []);
+    assert.equal(backend.drawCalls.length, 3);
+    assert.ok(carriers.length > 0);
+
+    State.targetTuning.wormholeNebulaAmount = 0;
+    for (let frame = 0; frame < 600; frame++) {
+      applyTuningMorph(State.visualTuning, State.targetTuning, State.targetTuning.transitionSpeed, 1 / 60);
+    }
+    assert.equal(State.visualTuning.wormholeNebulaAmount, 0);
+    backend.beginCalls.length = backend.drawCalls.length = backend.lines.length = carriers.length = 0;
+    identity.draw(backend, [], []);
+    assert.equal(backend.beginCalls.length, 0, 'no raster buffer request after fade completion');
+    assert.equal(backend.drawCalls.length, 0, 'no raster blit after fade completion');
+    assert.equal(carriers.length, 0, 'no grain material or weave accumulation');
+    assert.ok(backend.lines.length > 0, 'keep the ordinary wormhole visible');
+    assert.ok(backend.lines.length <= 360, 'return to the ordinary one-copy grain budget');
+
+    State.targetTuning.wormholeNebulaAmount = 0.05;
+    applyTuningMorph(State.visualTuning, State.targetTuning, State.targetTuning.transitionSpeed, 1 / 60);
+    identity.draw(backend, [], []);
+    assert.equal(backend.drawCalls.length, 3);
+    assert.ok(carriers.length > 0, 'material resumes after re-enabling');
+  }
 });
 
 test('backend refusal falls back to the exact amount-zero line commands for the whole frame', () => {

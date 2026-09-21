@@ -168,12 +168,13 @@ export class CanvasFieldRasterSurface {
                 // The threshold stays below half a code, so an exactly zero channel still rounds to
                 // 0 and a fully cleared layer stays fully transparent.
                 const threshold = DITHER_THRESHOLDS[ditherRow + (x & DITHER_MASK)];
-                for (let channel = 0; channel < 4; channel++) {
-                    // Uint8ClampedArray assignment clamps NaN -> 0 and +-Infinity -> 0/255 per spec,
-                    // so malformed source channels cannot leak a NaN pixel even without a guard.
-                    pixels[index] = src[index] * safeGain * 255 + threshold;
-                    index++;
-                }
+                // Visit RGBA together without a per-channel loop. Preserve multiplication order
+                // and Uint8ClampedArray rounding (including malformed channels) exactly.
+                pixels[index] = src[index] * safeGain * 255 + threshold;
+                pixels[index + 1] = src[index + 1] * safeGain * 255 + threshold;
+                pixels[index + 2] = src[index + 2] * safeGain * 255 + threshold;
+                pixels[index + 3] = src[index + 3] * safeGain * 255 + threshold;
+                index += 4;
             }
         }
         state.ctx.putImageData(state.imageData, 0, 0);

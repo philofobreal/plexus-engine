@@ -2,13 +2,16 @@ export interface VisualRendererBackend {
     readonly width: number;
     readonly height: number;
     readonly frameCount: number;
+    /** Host-selected preview budget, independent of the identity's artistic tuning. */
+    readonly compactMaterialPreview?: boolean;
     background(r: number, g: number, b: number, a?: number): void;
     noStroke(): void;
     noFill(): void;
     fill(r: number, g: number, b: number, a?: number): void;
     stroke(r: number, g: number, b: number, a?: number): void;
     strokeWeight(weight: number): void;
-    line(x1: number, y1: number, x2: number, y2: number): void;
+    /** An explicit cap applies only to this segment, including export targets. */
+    line(x1: number, y1: number, x2: number, y2: number, cap?: 'round' | 'square'): void;
     circle(x: number, y: number, diameter: number): void;
     triangle(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void;
     beginShape(): void;

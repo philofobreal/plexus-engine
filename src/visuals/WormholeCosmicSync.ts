@@ -9,9 +9,11 @@
  * constant of its own -- each layer differs only by the ratio its caller already owns.
  */
 
-/** Skybox is the most distant, "infinitely far" layer; its reactivity is deliberately bounded so it
- * can never become a major moving object, only a minimal parallax cue. */
-export const SKYBOX_TRAVEL_RATE_CAP = 6;
+/** Skybox is the most distant, "infinitely far" layer; its reactivity stays a soft cue relative to
+ * the near starfield, but this ceiling now only guards truly extreme/degenerate canonicalRate values
+ * rather than flattening the ordinary preset speed range -- a fast preset (high authored
+ * `wormholeSpeed`) must still read as visibly faster than a slow one instead of plateauing. */
+export const SKYBOX_TRAVEL_RATE_CAP = 60;
 /** How much a layer's existing lateral-parallax scale may amplify while the route is actively
  * turning, on top of its own fixed scale constant. Bounded and symmetric -- not a corrective or
  * heading-shear term, just "sharper turns read as stronger sideways parallax". */
