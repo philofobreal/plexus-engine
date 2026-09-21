@@ -58,7 +58,7 @@ repository-navigation aid before broad source exploration.
 
 ## Module Ownership
 
-- `src/main.ts` composes the app, creates subsystem instances, and wires startup.
+- `src/main.ts` composes the dashboard; `src/ui/mvp/main.ts` is the MVP composition entrypoint with the same startup responsibility (see ADR-008). Only these entrypoints create and wire audio, UI and renderer subsystems.
 - `src/audio/` owns file decode, `AudioContext`, playback lifecycle, source nodes, timing, and worker invocation.
 - `src/analyzer/` owns deterministic offline DSP, grid alignment, section analysis, dramaturgy, headless `analyzeAudio()`, and canonical analysis normalization. It must remain environment-independent and must not import Worker, DOM, p5, UI, renderer, playback, or shared mutable runtime state.
 - `src/audio/analyzer.worker.ts` is a thin Web Worker adapter around `src/analyzer/analyzeAudio()`. It owns only request destructuring, progress forwarding, success posting, and error message formatting.

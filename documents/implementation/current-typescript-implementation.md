@@ -6,7 +6,7 @@ This document records the active `plexus-engine/` implementation and clarifies o
 
 The maintained app is a Vite + TypeScript project, not a single-file HTML prototype.
 
-1. **Composition:** `src/main.ts` builds the DOM shell and wires subsystem instances.
+1. **Composition:** `src/main.ts` builds the dashboard; `src/ui/mvp/main.ts` composes the focused MVP host. Vite builds both HTML entries as an MPA. See [MVP workspace](../features/mvp-workspace.md) and [ADR-008](../adr/ADR-008-mvp-host-and-shared-renderer.md) for its facade, tuning projection and shared renderer contracts.
 2. **Audio orchestration:** `src/audio/AudioEngine.ts` owns decode, source-node lifecycle, playback timing, seek/end reset, worker request ids, stale-result rejection, and worker termination.
 3. **Offline analysis:** `src/analyzer/` owns deterministic, environment-independent DSP analysis and exposes headless `analyzeAudio()`. `src/audio/analyzer.worker.ts` is only the Web Worker adapter that communicates through typed worker messages.
 4. **Shared contracts:** `src/types/index.ts` defines audio frames, beat events, visual track analysis, analysis requests, success messages, progress messages, and error messages.
@@ -15,7 +15,7 @@ The maintained app is a Vite + TypeScript project, not a single-file HTML protot
 7. **UI controllers:** `src/ui/controllers/PlaybackController.ts`, `src/ui/controllers/TuningController.ts`, and `src/ui/controllers/ExportController.ts` own their specific DOM element bindings, input listeners, enable/disable state, labels, and small UI state. They delegate intent back to `DashboardUI` through callback interfaces; they do not own audio playback, analysis, preset normalization, or export encoding.
 8. **Visual rendering:** `src/visuals/` owns p5 rendering, particle lifecycle, shockwave lifecycle, beat-event consumption, visual cue consumption, visual identity registration, and effect-mode delegation. `PlexusRenderer.ts` adapts p5 through `P5RendererBackend` and delegates drawing to the current `VisualIdentity` from `StyleRegistry`. Built-in identities draw through `VisualRendererBackend`.
 9. **Visual director:** `src/visuals/VisualDirectorFSM.ts` is the deep state-control module for render-time music dramaturgy. It owns dynamic thresholds, LOW-state dampening, drop anticipation, buildup boost, glitch decay, hysteresis, and transition cooldown behavior.
-10. **Offline export:** `src/export/WebMExporter.ts` owns the main-thread offline export loop and `src/export/export.worker.ts` owns WebCodecs encoding plus pure TypeScript WebM muxing.
+10. **Offline export:** `src/export/WebMExporter.ts` coordinates the export workflow; its `WebCodecsBackend` owns the main-thread offline frame loop and p5 loop handoff and `src/export/export.worker.ts` owns WebCodecs encoding plus pure TypeScript WebM muxing.
 
 ## Visual Score DSL
 

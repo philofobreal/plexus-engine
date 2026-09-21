@@ -8,6 +8,16 @@ Implementation result (2026-08-19): W1 was reverted, W2 was adapted to foregroun
 semantics, W3 was replaced by `wormholeGrainMaterialRaster.ts`, W4 was retained as the generic
 renderer-owned three-layer raster seam, and the incompatible W5 background integration was removed.
 
+**Implementation addendum (2026-09-21):** The carrier-owned architecture below still
+applies. The shared implementation now finishes an explicitly disabled Nebula morph at
+exact zero, chooses among five stateless raster budgets, and bounds scanline candidates
+without changing accepted pixels. Compact previews use a smaller material budget; export
+retains its own budget. Foreground vector strokes have an optional Square cap, scoped by
+the backend. The canvas density cap is applied after p5 canvas creation. See
+[Playback performance](../features/playback-performance.md) for the current size tables,
+control/save behavior, limitations and validation links. These refinements do not restore
+the rejected independent background field or introduce alternate carrier geometry.
+
 ## 1. Corrected requirement
 
 The Nebula is not an independent background field and does not own a second motion model. The

@@ -21,13 +21,30 @@ Implemented capabilities:
 
 ## Runtime Ownership
 
-The export path is split across three modules:
+The export path uses a facade and a WebCodecs backend:
 
 - `src/ui/DashboardUI.ts` owns DOM controls, enabled/disabled states, progress labels, stop/cancel button visibility, download creation, and user-input lockout while export is active.
-- `src/export/WebMExporter.ts` owns the main-thread offline frame loop, p5 canvas resize/restore, `State.isExporting`, `State.exportTime`, `VideoFrame` capture, planar audio slicing, metadata-card drawing, and worker message dispatch.
+- `src/export/WebMExporter.ts` selects a backend through capability detection and the registry, and delegates start/stop/cancel.
+- `src/export/WebCodecsBackend.ts` owns the offline frame loop, a separate export graphics target and capture canvas, `State.isExporting`, `State.exportTime`, `ImageBitmap` capture, planar audio slicing, metadata-card drawing and worker dispatch. It does not resize the live preview canvas.
 - `src/export/export.worker.ts` owns WebCodecs encoder lifecycle and byte-level WebM muxing.
 
-`PlexusRenderer` does not poll export state and does not own p5 loop state during export. `WebMExporter.startExport()` calls `p5Instance.noLoop()`, and cleanup calls `p5Instance.loop()`.
+`PlexusRenderer` does not own p5 loop state during export. The selected backend calls
+`p5Instance.noLoop()` and cleanup calls `p5Instance.loop()`.
+
+## Export Resolution And Preview Independence
+
+The export graphics target explicitly uses `pixelDensity(1)` after creation. Requested
+dimensions are output pixels: landscape 1080p draws at 1920x1080 even if preview density
+is below 1 or the device DPR is above 1. This removes both inherited undersampling and
+accidental HiDPI supersampling. The live preview retains its own density and CSS dimensions.
+The output need not match an old, unintentionally supersampled export pixel for pixel.
+
+Renderer-owned crossfade surfaces synchronize their dimensions and density to the active
+destination before dual drawing. During export they also use density 1; a later live
+transition restores preview density. The Nebula material's export raster budget remains
+independent of the live compact budget. The dashboard/MVP **Preview quality > Reduced load**
+choice therefore reduces preview work without reducing requested export sampling.
+See [Playback performance](playback-performance.md) for preview controls and limits.
 
 ## Time Decoupling
 
@@ -37,7 +54,7 @@ The render-time clock is detached from live playback during export:
 let ct = State.isExporting ? State.exportTime : engine.getCurrentTime();
 ```
 
-`WebMExporter` sets `State.isExporting = true`, initializes `State.exportTime = 0`, and advances `State.exportTime = i / fps` for each encoded frame. This lets the renderer reuse the normal visual pipeline while taking deterministic timestamps from the exporter.
+`WebCodecsBackend` sets `State.isExporting = true`, initializes `State.exportTime = 0`, and advances `State.exportTime = i / fps` for each encoded frame. This lets the renderer reuse the normal visual pipeline while taking deterministic timestamps from the exporter.
 
 Export is considered an active visual state:
 
@@ -63,19 +80,21 @@ Additionally, the main loop yields `sleep(1)` every 2 frames unconditionally, en
 
 ## Frame Capture Ordering
 
-The main-thread export loop captures the frame immediately after drawing and before yielding back to the browser:
+The main-thread export loop uses a dedicated offscreen target in this order:
 
 1. Set `State.exportTime`.
 2. If a video backplate is active, set `video.currentTime = State.exportTime` and wait for the browser to expose the requested frame.
 3. Call `p5Instance.redraw()` to draw the transparent p5 visual layer.
-4. Composite video background, p5 overlay, and optional metadata card into the capture canvas.
-5. Create the `VideoFrame` from the composited canvas.
-6. Yield with `await nextAnimationFrame()`.
-7. Send the frame and optional audio payload to the worker.
+4. Yield with `await nextAnimationFrame()` and check cancellation/worker state.
+5. Composite video background, p5 overlay, and optional metadata card into the capture canvas.
+6. Create an `ImageBitmap` from the composited canvas.
+7. Send the bitmap and optional audio payload to the worker, which creates the `VideoFrame`.
 
-This ordering is intentional. When the watermark is enabled, it guarantees the metadata card is included in the captured frame before any browser buffer swap, canvas clear, or UI task can intervene.
+The metadata card is composed before bitmap capture. The live loop remains stopped while
+export advances its own target; each accepted export frame clears that target first.
 
-After `resizeCanvas(target.width, target.height)`, the exporter awaits one animation frame before the first render frame. This gives p5 and the browser time to settle the resized backing store.
+After export-target initialization, the backend awaits one animation frame before the
+first render frame. The preview canvas is not resized for export.
 
 ## Video Background Composition
 
@@ -91,7 +110,7 @@ When no video backplate is loaded, export keeps the original p5-only capture pat
 
 ## Metadata Card Watermark
 
-`WebMExporter.drawMetadataCard(width, height)` draws a high-resolution visual identity card in the upper-left corner of exported frames when the UI `#export-watermark` checkbox is enabled. The checkbox is off by default, so exports omit the Plexus metadata card unless the user explicitly opts in.
+`WebCodecsBackend.drawMetadataCard()` draws a high-resolution visual identity card in the upper-left corner of exported frames when the UI `#export-watermark` checkbox is enabled. The checkbox is off by default, so exports omit the Plexus metadata card unless the user explicitly opts in.
 
 The card includes:
 
@@ -105,7 +124,7 @@ All card drawing happens inside `ctx.save()` / `ctx.restore()`, and transient sh
 
 ## Audio Export
 
-When `AudioEngine.getAudioBuffer()` returns an `AudioBuffer`, `WebMExporter` sends stereo planar `Float32Array` slices alongside each video frame.
+When `AudioEngine.getAudioBuffer()` returns an `AudioBuffer`, `WebCodecsBackend` sends stereo planar `Float32Array` slices alongside each video frame.
 
 For frame `i`, samples are copied as:
 
@@ -173,7 +192,8 @@ Export behavior is covered by `tests/export-deterministic.test.mjs`:
 
 - `WebMExporter` owns p5 `noLoop()` / `loop()` lifecycle.
 - `PlexusRenderer` does not poll export loop state.
-- resize-settle `requestAnimationFrame` happens before first redraw.
+- export-target initialization yields through `requestAnimationFrame` before first redraw.
+- output sampling stays at requested dimensions across preview densities 0.5, 0.75, 1, 1.25, 2 and 3; the live canvas density is not modified.
 - metadata card text and BPM badge are drawn in a browser-free VM test.
 - `stopAndSave()` finalizes and returns a partial WebM Blob.
 - the encoder receives quality latency mode, constant bitrate mode, and the 8/14/40 Mbps resolution policy.

@@ -131,6 +131,16 @@ The stronger path is:
 
 ## Development
 
+The [MVP workspace](documents/features/mvp-workspace.md) is available at `/plexus-engine/mvp/`;
+`/plexus-engine/` opens the dashboard. Both production HTML entries use the shared engine.
+See the [implementation inventory and validation](documents/audits/mvp-renderer-integration-audit.md)
+for the current local integration and known gaps.
+
+The shared dashboard/MVP renderer's current preview budgets, selectable Reduced load mode,
+independent export resolution, Square grain controls, Nebula optimizations and testing instructions are documented in
+[Playback performance](documents/features/playback-performance.md).
+Unchanged paused previews retain their pixels after the fade, avoiding repeated scene rendering.
+
 Inspect `package.json` and use the Node/npm-compatible package manager already available in your environment. Do not install dependencies solely for validation.
 
 ```bash

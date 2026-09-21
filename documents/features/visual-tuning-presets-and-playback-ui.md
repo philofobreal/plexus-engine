@@ -24,9 +24,29 @@ Implemented capabilities:
 
 The default tuning values remain the baseline behavior. New or old preset payloads are normalized through `normalizeVisualTuningConfig`, which merges valid numeric values onto `defaultVisualTuning`.
 
-The `Wormhole` control group drives the `cosmic-wormhole` identity: `wormholeRadius` and `wormholeDepth` shape the tube; `wormholeSpeed` changes only future travel rate through a continuous song-time anchor; the fixed-hop prefix integrates tempo/energy `motion.travelSpeed`, and playback fade gates authored acceleration. `wormholeWarp` and `wormholeCurve` control local grain flow and never bend the global route. `wormholePathBend` controls route heading/curvature intensity in the canonical route-local travel frame, not a screen-space tube bend or lateral offset. Grains, stars, and galaxies sample route frames at camera and point distances, transform into the camera-local frame, then project; the lens center stays fixed while the projection frame follows the route tangent without roll, shake, whole-canvas rotation, or horizon jump. Stars and galaxies derive trail direction from current/previous camera heading and their own layer speed, never an independent random route or separate background viewer-frame system. Automation transitions can use a morph-duration-aware `automationResponse` envelope to scale live path bend, speed, continuity, and emission/material response without camera shake. `wormholeRing`, `wormholeDepthCoherence`, and structural grain radius/depth remain release-snapshotted; path bend, speed, and part of continuity remain live/morphed. Projection clamps cap only the closest zone, stroke thickness, and extreme screen-space trails. Factory wormhole presets explicitly carry route/grain role keys but leave `wormholeStarfield`, `wormholeGalaxy`, and `wormholeSkybox` as user-global background masters; automation-triggered presets with an explicit foreign `visualMode` are filtered by identity ownership before they can write active wormhole keys, while manual preset load and `visualMode`-less presets remain backward compatible.
+Nebula's material raster, bloom and pixel conversion use the same contracts in MVP,
+dashboard and export. See [playback performance](playback-performance.md) for quality
+budgets, exact-output optimizations and validation evidence.
+
+The `Wormhole` control group drives the `cosmic-wormhole` identity: `wormholeRadius` and `wormholeDepth` shape the tube; `wormholeSpeed` changes only future travel rate through a continuous song-time anchor; the fixed-hop prefix integrates tempo/energy `motion.travelSpeed`, and playback fade gates authored acceleration. `wormholeWarp` and `wormholeCurve` control local grain flow and never bend the global route. `wormholePathBend` controls route heading/curvature intensity in the canonical route-local travel frame, not a screen-space tube bend or lateral offset. Grains, stars, and galaxies sample route frames at camera and point distances, transform into the camera-local frame, then project; the lens center stays fixed while the projection frame follows the route tangent without roll, shake, whole-canvas rotation, or horizon jump. Stars and galaxies derive trail direction from current/previous camera heading and their own layer speed, never an independent random route or separate background viewer-frame system. Automation transitions can use a morph-duration-aware `automationResponse` envelope to scale live path bend, speed, continuity, and emission/material response without camera shake. `wormholeRing`, `wormholeDepthCoherence`, and structural grain radius/depth remain release-snapshotted; path bend, speed, and part of continuity remain live/morphed. Projection clamps cap only the closest zone, stroke thickness, and extreme screen-space trails. Factory wormhole presets explicitly carry route/grain role keys. The establish, drive, sparse and drift presets also author starfield/galaxy amounts; skybox remains omitted. See [current preset behavior](wormhole-clip-profile.md#current-preset-tuning). Automation-triggered presets with an explicit foreign `visualMode` are filtered by identity ownership before they can write active wormhole keys, while manual preset load and `visualMode`-less presets remain backward compatible.
 
 Tuning morphs use canonical song/export-time deltas. The first frame, backward seek, clock jump over `250 ms`, and live/export clock switch use a zero delta, including at maximum transition speed, so preset automation cannot surge on the discontinuity frame.
+
+## Playback Performance And Grain Appearance
+
+For the shared dashboard/MVP playback path, see
+[Playback performance and wormhole grain appearance](playback-performance.md). It records
+the exact-zero Nebula fade, five raster budgets, scanline bounds, compact preview policy,
+and canvas density initialization. The **Lines > Grain line ends** selector chooses
+Rounded (default) or Square; **Line stroke** controls thickness. MVP Advanced tuning saves
+the shape as an absolute choice and Reset returns to Rounded. Nebula material remains
+soft and completely replaces these vector lines at amount 1.
+
+**Preview quality** in MVP Advanced tuning and the dashboard Tuning panel offers
+Automatic or Reduced load, including on desktop. It changes preview canvas/material
+budgets on the next frame and is saved as a browser preference, outside presets and
+per-track Save/Reset. Export uses its selected output size at density 1, including
+renderer-owned crossfade targets; it does not inherit reduced preview sampling.
 
 ## Visual Score DSL And Semantic Tuning
 
@@ -94,6 +114,11 @@ Implemented capabilities:
 - After a file picker `change` event, `PlaybackController` clears the upload input value so the same local audio or video file can be selected again for reload. This does not change `AudioEngine` playback ownership.
 
 Single click no longer pauses playback. Pause follows the same double-click behavior as play.
+
+Once the pause fade settles, the renderer retains unchanged scene pixels and skips repeated
+identity/material/post-FX and dashboard canvas drawing. A lightweight input comparison
+keeps tuning, quality, position, mode and resize changes responsive. Playback and every
+offline export frame bypass this idle gate; the exporter retains p5 loop ownership.
 
 ## Track Dramaturgy Timeline
 
@@ -183,7 +208,7 @@ The feature is split across these runtime layers:
 - `src/automation/dramaturgyTransfer.ts`: DOM-free serialization, validation, and normalization for copying and loading a performance-automation plan through the clipboard. Covered by `tests/dramaturgy-transfer.test.mjs`.
 - `src/ui/GestureEngine.ts`: generic deep input-normalization module for mouse, wheel, pointer-like drag, hover, double-click, touch, and pinch zoom input. It emits normalized semantic callbacks and has no knowledge of playback, sections, presets, or rendering.
 - `src/ui/TimelineCanvas.ts`: declarative timeline renderer. It consumes `RenderState`, owns HDPI canvas sizing, section/cue/playhead drawing, sensitivity and preset labels, spectral overlays, and waveform offscreen caching.
-- `src/export/WebMExporter.ts`: deep main-thread export module. It owns offline time stepping, p5 loop suppression, canvas resize/restore, metadata card drawing, `VideoFrame` capture, audio slicing, stop/cancel behavior, and worker dispatch.
+- `src/export/WebMExporter.ts`: export facade for capability/backend selection and start/stop/cancel delegation. `WebCodecsBackend.ts` owns offline time stepping, p5 loop suppression, independent density-1 export graphics, metadata drawing, `ImageBitmap` capture, audio slicing and worker dispatch; it leaves the preview canvas size intact.
 - `src/export/export.worker.ts`: dependency-free WebCodecs and WebM muxing worker. It owns VP8/VP9 video encoding, optional Opus audio encoding, and EBML/WebM byte layout.
 - `src/audio/AudioEngine.ts`: loop-on-end playback behavior.
 - `src/visuals/`: render usage of tuning values, background color, and sensitivity-scaled audio data.
@@ -212,3 +237,10 @@ Two interaction hot paths are explicitly guarded:
 - Browser-free visual identity regression coverage lives in `tests/styles-deterministic.test.mjs`. It renders every registered built-in style through a mock backend over five genre reference profiles and verifies no crashes plus deterministic draw-call counts.
 - `P5RendererBackend` skips redundant `fill()`, `stroke()`, and `strokeWeight()` calls by comparing numeric cached components. String keys are avoided in the draw-state cache, while `noFill()` and `noStroke()` still force the next matching fill or stroke call to reactivate p5 state.
 - Expensive radial glow is limited to active playback and still respects `performanceMode`, green-screen chroma key, and transparent chroma key. Paused-loaded render targets run at `30 FPS`; no-audio idle targets run at `15 FPS`; playing targets run at `60 FPS`.
+
+## Focused MVP surface
+
+The separate [MVP workspace](mvp-workspace.md) projects relative Visual character and
+Advanced tuning over raw preset/automation values, with per-track persistence, journey
+editing and the shared export workflow. Its [acceptance criteria](../acceptance-criteria/mvp-workspace-acs.md)
+cover these host-specific behaviors; the dashboard retains its direct tuning workflow.

@@ -81,9 +81,9 @@ action inside the situation vocabularies.
   camera-journey layer to the wormhole identity.
 - Every `vos-wh-*.json` preset pins `"visualMode": "cosmic-wormhole"` at the root, so
   loading one always lands in the wormhole identity.
-- Every clip preset explicitly carries its route/grain wormhole role keys, but does not
-  write `wormholeStarfield`, `wormholeGalaxy`, or `wormholeSkybox`. Those remain
-  user-global background masters. Cross-identity pollution is handled by the automation
+- Every clip preset explicitly carries its route/grain wormhole role keys. The original
+  user-global background constraint is currently violated by four local presets; see
+  [current preset tuning](#current-preset-tuning). Cross-identity pollution is handled by the automation
   ownership guard for explicitly foreign presets, not by resetting user background
   controls on every wormhole role change.
 - Since the membrane-wall/gravitational-lens overhaul (`../audits/wormhole-wall-membrane-plan.md`,
@@ -231,3 +231,34 @@ integration into `CosmicWormholeIdentity.draw()` and the `wormholeOpticsEnabled`
 `../audits/wormhole-true-lens-plan.md` for the implementation history and per-task validation notes.
 
 This feature is an ADR-005 data-mechanism extension, so ADR-005 itself is unchanged.
+
+## Current preset tuning
+
+The six locally revised factory presets change the authored look as well as rendering
+cost. They adjust depth/speed, opacity, warp/coherence/jitter, material, spiral and post FX
+values. The table records current source values; it is not a new accepted contrast matrix.
+Earlier role names describe intent, and several older role constraints/tests now disagree.
+
+| Role | Depth | Speed | Material amount | Detail | Bloom | Spiral arms | Starfield / galaxy |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| establish | 2.03136 | 1.2 | 0.1 | 1 | 0.9 | 4 | 0.60407 / 0.60407 |
+| drive | 1.07484 | 3.78752 | 0.05 | 0.95 | 0.25 | 1 | 0.52394 / 0.52394 |
+| sparse | 1.25484 | 1.33952 | 0.05 | 0.95 | 0.25 | 1 | 0.50800 / 0.50800 |
+| drift | 1.52484 | 0.54752 | 0.05 | 0.95 | 0.25 | 1 | 0.50810 / 0.50809 |
+| overdrive | 2.2 | 9 | 0.2 | 0.95 | 0.25 | 6 | omitted / omitted |
+| punch | 2.4 | 7.2 | omitted | omitted | omitted | omitted | omitted / omitted |
+
+Values are rounded for readability. Omitted keys retain the prior/default tuning; they
+do not force material off. In particular, punch can inherit material from a preceding role.
+
+Establish/drive/sparse/drift set audio sensitivity to 1.9 and explicitly overwrite the two
+background masters listed above. Every factory preset still omits skybox. Establish, drive,
+sparse, drift and punch explicitly set post FX amount to zero; nonzero displacement/density
+controls in establish remain latent while the master is zero. The five material-authored
+presets use grain density 1; punch omits that key.
+
+These authored changes predate the current documentation review. They are retained, but
+background persistence, minimum opacity, near/far depth ordering and role contrast cannot
+be advertised as passing the original preset contract. The [integration audit](../audits/mvp-renderer-integration-audit.md)
+records the test disagreements separately from renderer regressions. Resolving the artistic
+contract needs an explicit preset decision, not simply weakened tests.

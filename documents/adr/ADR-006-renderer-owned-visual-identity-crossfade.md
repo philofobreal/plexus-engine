@@ -21,11 +21,17 @@ The transition must remain deterministic under the live song clock, offline expo
 3. `PlexusRenderer` owns one `IdentityTransitionController` and one `P5RenderTargetCompositor`. The compositor creates exactly two persistent `p5.Graphics` targets during renderer setup.
 4. With no valid active transition, the controller uses the steady-state fast path and draws only `StyleRegistry.get(State.visualMode)` to the live backend. No target clear, dual draw, or composite occurs.
 5. During an active transition, outgoing and incoming identities draw to separate backends. `computeCrossfadeAlpha()` derives smoothstep progress from song/export time. Completion or time before the recorded start clears the transition and draws only the logical incoming identity. A record whose `to` no longer matches the logical mode is bypassed.
-6. `P5RenderTargetCompositor` clears both targets on every active transition frame, resizes them only when surface dimensions change, and composites to the live/export target with Canvas2D `source-over`: `outgoing * (1 - alpha) + incoming * alpha`. Additive `lighter` blending is forbidden for identity replacement.
+6. `P5RenderTargetCompositor` clears both targets on every active transition frame, resizes them only when surface dimensions change, synchronizes density only when the active live/export destination density changes, and composites with Canvas2D `source-over`: `outgoing * (1 - alpha) + incoming * alpha`. Export targets use explicit density 1; live targets follow preview quality. Both backends receive the same live compact-material policy. Additive `lighter` blending is forbidden for identity replacement.
 7. Shared particle/shockwave simulation advances once per transition frame. Incoming owns advancement when it declares shared-simulation use, or when neither participant does. If incoming is not a shared-pool identity and outgoing is, outgoing owns the single advance. The other participant receives `advanceSharedSimulation: false` and must not update or remove shared objects.
 8. Render targets and compositing remain renderer-private. Identities receive only `VisualRendererBackend` plus `VisualIdentityDrawContext`; they must not write visual-mode/transition state or own target lifecycle.
 
 ## Consequences
+
+Density synchronization refinement (2026-09-21): full-surface compositing temporarily uses
+the identity Canvas2D transform because source/destination rectangles are backing pixels.
+The p5 transform is restored after composition. This prevents density from being applied
+twice when a preview runs below or above density 1. `tests/material-preview-budget.test.mjs`
+covers preview/export density changes, target reuse and transform restoration.
 
 - Logical state, UI selection, preset routing, and metronome/style consumers observe the new mode immediately, while presentation can still crossfade.
 - Normal frames retain the direct single-identity path; the extra clear/draw/composite cost is bounded to active transitions.

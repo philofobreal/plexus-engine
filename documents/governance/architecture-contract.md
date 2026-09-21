@@ -6,7 +6,7 @@ This document extends `../../AGENTS.md`. If there is a conflict, `AGENTS.md` is 
 
 The app is a Vite TypeScript project with explicit runtime layers:
 
-- Composition: `src/main.ts`
+- Composition: `src/main.ts` (dashboard) and `src/ui/mvp/main.ts` (MVP; explicit entrypoint exception to UI import restrictions, [ADR-008](../adr/ADR-008-mvp-host-and-shared-renderer.md))
 - Audio playback and analysis orchestration: `src/audio/`
 - Offline analyzer core: `src/analyzer/`
 - Offline analyzer worker adapter: `src/audio/analyzer.worker.ts`
@@ -17,6 +17,8 @@ The app is a Vite TypeScript project with explicit runtime layers:
 - p5 canvas rendering and backend adaptation: `src/visuals/`
 
 The UI layer has an explicit internal shape:
+
+- `src/ui/mvp/MvpUI.ts` composes the MVP DOM components; `MvpVisualController.ts` is its application facade, with the same audio/state/export orchestration responsibility as `DashboardUI`, despite its Controller suffix. Leaf MVP controls emit callbacks; they do not own audio lifecycle, DSP, encoding or renderer instances. The composition entrypoint alone wires the renderer. The [MVP feature](../features/mvp-workspace.md) records the host-specific tuning projection and plan handoffs.
 
 - `src/ui/DashboardUI.ts` is the facade/orchestrator. It owns cross-controller coordination, timeline interaction state, dashboard projection, preset/performance-plan handoff, `State` writes, and `AudioEngine` calls. It composes the focused controller classes and timeline submodules but must not re-accumulate all DOM listener code, raw pointer normalization, or low-level canvas drawing logic.
 - `src/ui/controllers/PlaybackController.ts` owns playback-surface DOM bindings: file selection, play/stop buttons, center play button, seekbar drag state, loop toggle, fullscreen button, canvas click/double-click handling, surface keyboard shortcuts, playback labels, time display, BPM badge, and playback enable/disable state. It delegates intent through callbacks and must not own Web Audio source lifecycle or analysis publication.
@@ -29,17 +31,17 @@ The UI layer has an explicit internal shape:
 
 Allowed dependency directions:
 
-- `main.ts` may import audio, UI, visuals, CSS, and shared types.
+- The two composition entrypoints may import audio, UI, visuals, CSS, and shared types.
 - `src/audio/` may import `src/state/`, `src/types/`, `src/analyzer/`, and worker modules.
 - `src/analyzer/` may import `src/types/` and analyzer-local modules only. It must remain environment-independent and must not import Worker APIs, DOM, p5, UI, renderer modules, `AudioEngine`, or shared mutable runtime state.
 - `src/audio/analyzer.worker.ts` may import `src/analyzer/` and `src/types/` only. It must remain a message adapter around `analyzeAudio()`.
 - `src/ui/` may import `src/audio/`, `src/state/`, and types.
-- `src/ui/DashboardUI.ts` may import `src/export/WebMExporter.ts` to orchestrate user-triggered exports, but it must treat the exporter as a black-box workflow module.
+- `src/ui/DashboardUI.ts` and `src/ui/mvp/MvpVisualController.ts` may import `src/export/WebMExporter.ts` to orchestrate user-triggered exports, but must treat it as a black-box workflow module. This does not extend export orchestration or AudioEngine access to leaf UI controls.
 - `src/export/WebMExporter.ts` may import `src/state/` and its worker module. It may receive `AudioEngine` through construction and use only the public `getAudioBuffer()` surface.
 - `src/export/export.worker.ts` must remain dependency-free from DOM, p5, UI, audio engine, renderer, and shared mutable state. It may use worker globals, WebCodecs, `Blob`, typed arrays, local pure TypeScript EBML helpers, and the Origin Private File System API (`navigator.storage.getDirectory()`) for direct-to-disk chunk streaming.
 - Within `src/ui/`, `DashboardUI.ts` may compose `GestureEngine.ts` and `TimelineCanvas.ts`; those submodules must stay independent from each other.
 - Within `src/ui/`, `DashboardUI.ts` may compose focused controllers from `src/ui/controllers/`. Controllers may depend on DOM APIs, callback interfaces, and narrow state reads needed for UI projection, but they must delegate application decisions back to `DashboardUI`.
-- UI controllers must not import `src/audio/AudioEngine.ts`, analyzer workers, renderer modules, or export worker modules. Export UI may reference export capability/config types but must not perform export encoding or worker orchestration.
+- Leaf UI controllers must not import `src/audio/AudioEngine.ts`, analyzer workers, renderer modules, or export worker modules. Export UI may reference export capability/config types but must not perform export encoding or worker orchestration. `MvpVisualController` is the application facade described above, not a leaf control.
 - `GestureEngine.ts` may depend on DOM event and geometry APIs plus shared callback types, but must not import `src/state/`, `src/audio/`, `src/visuals/`, or timeline rendering modules.
 - `TimelineCanvas.ts` may depend on canvas APIs and shared render types, but must not import `src/state/`, `src/audio/`, `src/visuals/`, or gesture modules.
 - `src/visuals/P5RendererBackend.ts`, `P5RenderTargetCompositor.ts`, `Particle.ts`, `Shockwave.ts`, and `PlexusRenderer.ts` may import p5.
@@ -56,7 +58,7 @@ Forbidden dependency directions:
 - Renderer to UI implementation details except through an explicit composition boundary.
 - UI to worker internals or DSP algorithms.
 - Export worker to application runtime modules.
-- Renderer-owned polling for export loop state. Export loop/no-loop ownership belongs to `WebMExporter`.
+- Renderer-owned polling for export loop state. Export loop/no-loop ownership belongs to the export workflow (`WebMExporter`, delegated to `WebCodecsBackend`).
 - Gesture or timeline renderer submodules to application-level state ownership. Gesture input stays generic; timeline rendering receives data through `RenderState`.
 - Types to runtime modules.
 
@@ -118,7 +120,7 @@ Mode-specific visual implementations should live in separate `VisualIdentity` im
 - Analyzer computation belongs to `src/analyzer/`, not to the worker. `analyzeAudio()` is the single offline analysis orchestration implementation. `FeatureExtractor` owns FFT-derived feature extraction, `GridAligner` owns BPM/grid alignment, ordered tempo candidates, half/double-time ambiguity annotation, and tempo confidence, `SectionAnalyzer` owns bar and section analysis including critically low tempo/grid energy-reactive fallback, and `DramaturgyBuilder` owns beats, cues, and recurring pattern output.
 - The analyzer worker message handler is a thin typed response boundary. It destructures `AnalysisRequest`, calls `analyzeAudio()`, forwards progress, posts success, and formats errors. It must not contain DSP, scoring, threshold, BPM detection, dramaturgy, Spectral Pivot, or result-normalization logic.
 - Playback start, pause, seek, stop, and end belong to audio.
-- Offline export frame timing, p5 loop suppression, export canvas resize/restore, `VideoFrame` capture, audio slicing, watermark drawing, hardware encoder queue synchronization, and stop/cancel semantics belong to `src/export/WebMExporter.ts`.
+- Offline export is coordinated by `src/export/WebMExporter.ts`. Its `WebCodecsBackend` owns frame timing, p5 loop suppression/restoration, export targets, `VideoFrame` capture, audio slicing, watermark drawing, hardware encoder queue synchronization and backend stop/cancel execution. UI and renderer must not take over that loop.
 - WebM byte layout, WebCodecs encoder lifecycle, and muxing belong to `src/export/export.worker.ts`.
 - Event consumption for visual effects belongs to visuals, but event index reset rules are part of the playback synchronization contract.
 - DOM enable/disable states and dashboard text belong to UI.
