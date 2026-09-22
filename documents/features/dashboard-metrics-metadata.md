@@ -34,7 +34,7 @@ Estimated tempo of the loaded track.
 
 ## Technical Meaning
 
-Worker-estimated beats per minute from autocorrelation/comb-filter analysis of the onset envelope (`TempoEstimator`). The estimator builds ordered `TempoCandidate` values in the 70..185 BPM range, resolves close half/double-time aliases (preferring the actual beat rate when the fast grid is fully covered), and falls back to `120` when detection is insufficient. When candidates exist, the displayed BPM is the top candidate: `AnalysisResult.bpm === AnalysisResult.tempoCandidates[0].bpm`.
+Worker-estimated beats per minute from local autocorrelation/comb-filter analysis of recurring percussive flux (`TempoEstimator`). Fixed 12-second windows with a 6-second hop contribute normalized periodic evidence; silent duration and section loudness do not directly vote for a tempo. `GridAligner` locally balances low/mid/high positive flux and resolves half/double-time aliases using active-span beat coverage (preferring the actual beat rate when the fast grid is fully covered). The 70..185 BPM range and low-confidence `120` fallback remain. When candidates exist, `AnalysisResult.bpm === AnalysisResult.tempoCandidates[0].bpm`. See [Local percussive tempo estimation](analyzer-local-tempo.md) for algorithm-version-3 details and limitations.
 
 ## Source
 

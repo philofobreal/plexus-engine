@@ -114,12 +114,16 @@
     "audioFrame": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["e", "densityProj", "melodyProj", "fxProj", "perceptualSpectrum", "state", "eRatio"],
+      "required": ["e", "densityProj", "melodyProj", "fxProj", "perceptualSpectrum", "subEnergy", "bassEnergy", "subFlux", "bassFlux", "state", "eRatio"],
       "properties": {
         "e": { "type": "number" },
         "densityProj": { "type": "number" },
         "melodyProj": { "type": "number" },
         "fxProj": { "type": "number" },
+        "subEnergy": { "type": "number", "minimum": 0, "maximum": 1 },
+        "bassEnergy": { "type": "number", "minimum": 0, "maximum": 1 },
+        "subFlux": { "type": "number", "minimum": 0, "maximum": 1 },
+        "bassFlux": { "type": "number", "minimum": 0, "maximum": 1 },
         "perceptualSpectrum": {
           "type": "array",
           "minItems": 24,

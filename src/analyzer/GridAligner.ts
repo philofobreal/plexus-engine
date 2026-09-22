@@ -1,5 +1,5 @@
 import { FeatureExtractor } from './FeatureExtractor';
-import { estimateTempo, type TempoEstimate } from './TempoEstimator';
+import { estimateTempo, TEMPO_WINDOW_SECONDS, type TempoEstimate } from './TempoEstimator';
 import { trackBeats } from './BeatTracker';
 import type { MusicalGrid, TempoCandidate, TimingConfidence } from '../types';
 
@@ -20,6 +20,9 @@ type FeatureSource = Pick<FeatureExtractor, 'totalFrames' | 'fluxT' | 'typFlux'>
     rawHighT?: ArrayLike<number>;
     rmsT?: ArrayLike<number>;
     typRms?: number;
+    fluxLowT?: Float32Array;
+    fluxMidT?: Float32Array;
+    fluxHighT?: Float32Array;
 };
 
 /**
@@ -60,6 +63,7 @@ export class GridAligner {
 
     private onsetEnv: Float32Array = new Float32Array(0);
     private onsetPeaks: OnsetPeak[] = [];
+    private tempoRegions: { peaks: OnsetPeak[]; start: number; end: number; weight: number }[] = [];
 
     constructor(features: FeatureSource, sampleRate: number, hopSize: number) {
         this.features = features;
@@ -80,6 +84,29 @@ export class GridAligner {
 
         // 1. TEMPO — autocorrelation/comb estimation with perceptual + metric resolution.
         const tempoResult = estimateTempo(this.onsetEnv, this.sampleRate, this.hopSize);
+        // Reuse the estimator's accepted local evidence for metric resolution. Neither a
+        // silent intro nor a phase reset in a later phrase should favour a half-time grid.
+        let lo = 0;
+        let hi = 0;
+        this.tempoRegions = tempoResult.windows.flatMap(window => {
+            while (lo < this.onsetPeaks.length && this.onsetPeaks[lo].frame < window.startFrame) lo++;
+            hi = Math.max(lo, hi);
+            while (hi < this.onsetPeaks.length && this.onsetPeaks[hi].frame < window.endFrame) hi++;
+            const regions: typeof this.tempoRegions = [];
+            let first = lo;
+            for (let i = lo + 1; i <= hi; i++) {
+                // Long onset-free gaps are not missing beats in a double-time candidate.
+                // Split them off; metric evidence describes only recurring active material.
+                if (i < hi && this.onsetPeaks[i].time - this.onsetPeaks[i - 1].time <= 3) continue;
+                if (i - first >= 4) regions.push({ peaks: this.onsetPeaks.slice(first, i),
+                    start: this.onsetPeaks[first].time,
+                    end: this.onsetPeaks[i - 1].time + 1 / this.framesPerSecond, weight: 0 });
+                first = i;
+            }
+            const activeDuration = regions.reduce((sum, region) => sum + region.end - region.start, 0);
+            for (const region of regions) region.weight = window.weight * (region.end - region.start) / activeDuration;
+            return regions;
+        });
         const resolved = this.resolveTempo(tempoResult.candidates);
         const top = resolved[0];
 
@@ -127,10 +154,34 @@ export class GridAligner {
 
     private buildOnsetEnvelope(): Float32Array {
         const n = this.features.totalFrames;
+        const { fluxLowT: low, fluxMidT: mid, fluxHighT: high } = this.features;
+        if (low?.length === n && mid?.length === n && high?.length === n) {
+            // Normalize raw positive flux locally, before combining bands. Reusing the
+            // track-wide onset normalization here lets a loud section silence quiet hats.
+            const env = new Float32Array(n);
+            const weights = new Float32Array(n);
+            const size = Math.max(8, Math.round(TEMPO_WINDOW_SECONDS * this.framesPerSecond));
+            const step = Math.max(1, Math.floor(size / 2));
+            for (let start = 0; start < n; start += step) {
+                const end = Math.min(n, start + size);
+                const typLow = this.percentile(low.subarray(start, end), 0.98) || 0.001;
+                const typMid = this.percentile(mid.subarray(start, end), 0.98) || 0.001;
+                const typHigh = this.percentile(high.subarray(start, end), 0.98) || 0.001;
+                for (let i = start; i < end; i++) {
+                    // Crossfade scales, so a normalization-window boundary is not an onset.
+                    const w = n <= size ? 1 : Math.max(1 / size, 1 - Math.abs(2 * (i - start) / (end - start) - 1));
+                    env[i] += (low[i] / typLow + mid[i] / typMid * 0.7 + high[i] / typHigh * 0.4) * w;
+                    weights[i] += w;
+                }
+                if (end === n) break;
+            }
+            for (let i = 0; i < n; i++) env[i] = Number.isFinite(env[i]) ? Math.max(0, env[i] / weights[i]) : 0;
+            return env;
+        }
         const provided = this.features.onsetEnvT;
         if (provided && provided.length === n) {
             const env = new Float32Array(n);
-            for (let i = 0; i < n; i++) env[i] = provided[i] || 0;
+            for (let i = 0; i < n; i++) env[i] = Number.isFinite(provided[i]) ? Math.max(0, provided[i]) : 0;
             return env;
         }
         // Fallback for duck-typed feature sources: band-weighted normalized flux.
@@ -148,12 +199,14 @@ export class GridAligner {
     private detectOnsetPeaks(env: Float32Array): OnsetPeak[] {
         const n = env.length;
         const peaks: OnsetPeak[] = [];
-        const typ = this.percentile(env, 0.95) || 0.001;
+        const windowFrames = Math.max(1, Math.round(this.framesPerSecond * TEMPO_WINDOW_SECONDS));
+        let typ = this.percentile(env.subarray(0, windowFrames), 0.95) || 0.001;
         const minGapFrames = Math.max(1, Math.round(this.framesPerSecond * 0.12));
         const bass = this.features.rawBassT;
         let lastPeakFrame = -minGapFrames - 1;
 
         for (let i = 1; i < n - 1; i++) {
+            if (i % windowFrames === 0) typ = this.percentile(env.subarray(i, i + windowFrames), 0.95) || 0.001;
             const v = env[i];
             if (v <= 0) continue;
             let localSum = 0;
@@ -199,10 +252,19 @@ export class GridAligner {
     }
 
     private metricScore(candidate: TempoEstimate): number {
-        const kick = this.kickPeriodicity(candidate.bpm);
-        const coverage = this.beatCoverage(candidate.bpm);
+        let kick = 0;
+        let coverage = 0;
+        let weight = 0;
+        for (const region of this.tempoRegions) {
+            if (region.peaks.length < 4) continue;
+            kick += this.kickPeriodicity(candidate.bpm, region.peaks) * region.weight;
+            coverage += this.beatCoverage(candidate.bpm, region.peaks, region.start, region.end) * region.weight;
+            weight += region.weight;
+        }
+        if (weight > 0) { kick /= weight; coverage /= weight; }
         return candidate.confidence * 0.45 + kick * 0.15 + coverage * 0.30 + candidate.strength * 0.10
-            + this.fastTempoPreference(candidate.bpm, coverage);
+            + this.fastTempoPreference(candidate.bpm, coverage)
+            - Math.max(0, 0.6 - coverage) * 1.5;
     }
 
     // Resolves half/double ambiguity toward the actual beat rate (e.g. drum & bass at ~174,
@@ -217,33 +279,40 @@ export class GridAligner {
     // Fraction of beat positions at the given BPM that actually carry an onset. This is what
     // distinguishes a true tempo from its double: at double-time, every other "beat" is empty,
     // so a double-time candidate scores ~0.5 here while the true tempo scores ~1.
-    private beatCoverage(bpm: number): number {
-        if (this.onsetPeaks.length === 0) return 0;
+    private beatCoverage(bpm: number, peaks: OnsetPeak[], start: number, end: number): number {
+        if (peaks.length === 0) return 0;
         const period = 60 / bpm;
         const tol = period * 0.18;
-        let anchor = this.onsetPeaks[0];
-        for (const p of this.onsetPeaks) if (p.strength > anchor.strength) anchor = p;
-        const duration = this.features.totalFrames / this.framesPerSecond;
-        const times = this.onsetPeaks.map(p => p.time);
-        const hasOnset = (t: number) => times.some(pt => Math.abs(pt - t) <= tol);
+        let anchor = peaks[0];
+        for (const p of peaks) if (p.strength > anchor.strength) anchor = p;
+        const hasOnset = (t: number) => {
+            let lo = 0;
+            let hi = peaks.length;
+            while (lo < hi) {
+                const mid = (lo + hi) >>> 1;
+                if (peaks[mid].time < t - tol) lo = mid + 1;
+                else hi = mid;
+            }
+            return lo < peaks.length && Math.abs(peaks[lo].time - t) <= tol;
+        };
         let matched = 0;
         let total = 0;
-        for (let t = anchor.time; t < duration; t += period) { total++; if (hasOnset(t)) matched++; }
-        for (let t = anchor.time - period; t >= 0; t -= period) { total++; if (hasOnset(t)) matched++; }
+        for (let t = anchor.time; t < end; t += period) { total++; if (hasOnset(t)) matched++; }
+        for (let t = anchor.time - period; t >= start; t -= period) { total++; if (hasOnset(t)) matched++; }
         return total > 0 ? matched / total : 0;
     }
 
     // Phase-invariant periodicity of the (kick-weighted) onsets at the given BPM: the mean
     // resultant length of onset phases on the unit circle. ~1 when onsets cluster at a single
     // consistent phase (a real pulse, regardless of offset), ~0 when scattered (a ghost tempo).
-    private kickPeriodicity(bpm: number): number {
-        if (this.onsetPeaks.length === 0) return 0;
+    private kickPeriodicity(bpm: number, peaks: OnsetPeak[]): number {
+        if (peaks.length === 0) return 0;
         const periodSec = 60 / bpm;
         const bass = this.features.rawBassT;
         let sumCos = 0;
         let sumSin = 0;
         let totalWeight = 0;
-        for (const peak of this.onsetPeaks) {
+        for (const peak of peaks) {
             const phase = 2 * Math.PI * ((peak.time % periodSec) / periodSec);
             const weight = Math.max(0.001, peak.strength) * (bass ? 0.3 + peak.bass : 1);
             sumCos += Math.cos(phase) * weight;

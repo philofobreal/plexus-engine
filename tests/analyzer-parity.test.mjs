@@ -159,12 +159,17 @@ function runGrid(onsetTimes, duration = 10) {
   return grid;
 }
 
-test('GridAligner caps bpm confidence for one or two onset intervals', () => {
-  const grid = runGrid([0.5, 1.0], 2);
-
-  assert.ok(grid.tempoCandidates.length > 0);
-  assert.ok(grid.bpmConfidence < 0.35);
-  assert.equal(grid.estimatedBPM, grid.tempoCandidates[0].bpm);
+test('GridAligner refuses a tempo claim from fewer than four attacks above a positive background', () => {
+  // Version 3 requires recurring evidence; one/two intervals no longer manufacture
+  // low-confidence candidates. The established 120 BPM fallback is explicit instead.
+  for (const count of [1, 2, 3]) {
+    const grid = runGrid(Array.from({ length: count }, (_, i) => 0.5 + i * 0.5), 3);
+    assert.equal(grid.tempoCandidates.length, 0);
+    assert.equal(grid.estimatedBPM, 120);
+    assert.ok(grid.bpmConfidence <= 0.05);
+    assert.equal(grid.beats.length, 0);
+  }
+  assert.ok(runGrid([0.5, 1, 1.5, 2], 3).tempoCandidates.length > 0);
 });
 
 test('GridAligner reports low grid confidence for irregular random onsets', () => {

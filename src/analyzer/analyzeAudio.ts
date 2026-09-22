@@ -5,6 +5,7 @@ import { FeatureClassifier } from './FeatureClassifier';
 import { FeatureExtractor, PERCEPTUAL_SPECTRUM_BAND_COUNT, PERCEPTUAL_SPECTRUM_MAX_HZ, PERCEPTUAL_SPECTRUM_MIN_HZ } from './FeatureExtractor';
 import { normalizeArray } from './FeatureNormalizer';
 import { GridAligner } from './GridAligner';
+import { extractLowFrequencies } from './LowFrequencyExtractor';
 import { NoveltyAnalyzer } from './NoveltyAnalyzer';
 import { SectionAnalyzer } from './SectionAnalyzer';
 import { applySpectralPivot } from './SpectralPivot';
@@ -57,6 +58,7 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     const brightness = applyEMA(classified.brightnessRaw, 0.1);
     const tension = applyEMA(classified.tensionRaw, 0.05);
     const perceptualSpectrum = buildPerceptualSpectrum(features);
+    const lowFrequency = extractLowFrequencies(channel, sampleRate, hopSize);
 
     let outFrames: AudioFrame[] = new Array(features.totalFrames);
     let visualFeatures: VisualFeatureFrame[] = new Array(features.totalFrames);
@@ -75,6 +77,10 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
             melodyProj: melody[i],
             fxProj: fx[i],
             perceptualSpectrum: perceptualSpectrum[i],
+            subEnergy: lowFrequency.subEnergy[i],
+            bassEnergy: lowFrequency.bassEnergy[i],
+            subFlux: lowFrequency.subFlux[i],
+            bassFlux: lowFrequency.bassFlux[i],
             state: 'LOW',
             eRatio: energy[i]
         };

@@ -6,7 +6,7 @@ export { FeatureClassifier } from './FeatureClassifier';
 export { FeatureExtractor } from './FeatureExtractor';
 export { normalizeArray } from './FeatureNormalizer';
 export { GridAligner } from './GridAligner';
-export { EMPTY_TRACK_ANALYSIS, normalizeTrackAnalysis } from './normalizeAnalysisResult';
+export { EMPTY_TRACK_ANALYSIS, normalizeTrackAnalysis, normalizeAudioFrame } from './normalizeAnalysisResult';
 export { SectionAnalyzer } from './SectionAnalyzer';
 export { collectCalibrationWindowStarts, estimateSpectralCalibration } from './SpectralCalibration';
 export { applySpectralPivot } from './SpectralPivot';

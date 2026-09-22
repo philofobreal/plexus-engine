@@ -1,5 +1,13 @@
-import type { TrackAnalysis } from '../types';
+import type { AudioFrame, TrackAnalysis } from '../types';
 import { DEFAULT_ANALYSIS_HOP_SIZE } from './constants';
+
+/** Additive v4 frame fields: legacy absence and malformed numbers are silent, never inferred
+ * from independently normalized display-spectrum bars. Preserve the worker-owned source. */
+export function normalizeAudioFrame(frame: AudioFrame): AudioFrame {
+    const unit = (value: number | undefined) => Number.isFinite(value) ? Math.min(1, Math.max(0, value!)) : 0;
+    return { ...frame, subEnergy: unit(frame.subEnergy), bassEnergy: unit(frame.bassEnergy),
+        subFlux: unit(frame.subFlux), bassFlux: unit(frame.bassFlux) };
+}
 
 export const EMPTY_TRACK_ANALYSIS: TrackAnalysis = {
     duration: 0,
