@@ -560,6 +560,7 @@ export function computeModulationBus(
     return writeModulationBus(
         {
             kineticTension: 0,
+            subEnergy: 0, bassEnergy: 0, subFlux: 0, bassFlux: 0,
             densityDrive: 0,
             spectralChaos: 0,
             rhythmicImpulse: 0,
@@ -571,6 +572,10 @@ export function computeModulationBus(
         cueDecay,
         tuning
     );
+}
+
+function finiteLowFrequency(value: number | undefined): number {
+    return Number.isFinite(value) ? Math.min(1, Math.max(0, value!)) : 0;
 }
 
 export function writeModulationBus(
@@ -585,11 +590,19 @@ export function writeModulationBus(
     const vocalHighlight = getProfileScale(tuning.vocalHighlight);
     const fxChaos = getProfileScale(tuning.fxChaos);
 
+    // These offline signals are already normalized together; apply sensitivity once here.
+    const subEnergy = finiteLowFrequency(frame.subEnergy), bassEnergy = finiteLowFrequency(frame.bassEnergy);
+    const subFlux = finiteLowFrequency(frame.subFlux), bassFlux = finiteLowFrequency(frame.bassFlux);
+    target.subEnergy = scaleUnit(subEnergy, sensitivity);
+    target.bassEnergy = scaleUnit(bassEnergy, sensitivity);
+    target.subFlux = scaleUnit(subFlux, sensitivity);
+    target.bassFlux = scaleUnit(bassFlux, sensitivity);
+
     target.kineticTension = scaleUnit(
         features.vocal * 0.28 * vocalHighlight +
         features.melody * 0.22 +
         features.tension * 0.32 +
-        cueDecay * 0.18,
+        cueDecay * 0.18 + bassFlux * 0.12,
         sensitivity
     );
     target.densityDrive = scaleUnit(
@@ -611,7 +624,7 @@ export function writeModulationBus(
     target.macroMomentum = scaleUnit(
         frame.eRatio * 0.58 +
         frame.e * 0.24 +
-        features.density * 0.18,
+        features.density * 0.18 + subEnergy * 0.10 + bassEnergy * 0.06,
         sensitivity
     );
     return target;

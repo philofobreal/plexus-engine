@@ -5,12 +5,13 @@ import { applyMorphScale, clampMorphScale, getAutomationPlanViewSignature } from
  * Non-destructive morph-scale view cache: the base plan (State.performancePlan /
  * editedPerformancePlan) is never mutated by the scale. Shared by DashboardUI and the MVP
  * surface (MvpVisualController) so both apply State.automationMorphScale to a base plan the same
- * way and only rebuild the scaled copy when the source plan, scale, or plan content actually
+ * way and only rebuild the scaled copy when the source plan, scale, duration, or plan content actually
  * changed -- not on every per-frame automation tick.
  */
 export class AutomationPlanViewCache {
     private source: PerformanceAutomationPlan | null = null;
     private scale = NaN;
+    private durationSec = NaN;
     private signature: string | null = null;
     private cache: PerformanceAutomationPlan | null = null;
 
@@ -18,6 +19,7 @@ export class AutomationPlanViewCache {
         this.source = null;
         this.cache = null;
         this.scale = NaN;
+        this.durationSec = NaN;
         this.signature = null;
     }
 
@@ -37,13 +39,14 @@ export class AutomationPlanViewCache {
         onRebuild?: (source: PerformanceAutomationPlan) => void
     ): PerformanceAutomationPlan | null {
         if (!source) return null;
-        const clampedScale = clampMorphScale(source, requestedScale);
+        const clampedScale = clampMorphScale(source, requestedScale, { durationSec });
         if (clampedScale !== requestedScale) onScaleClamped(clampedScale);
 
         const signature = getAutomationPlanViewSignature(source);
-        if (this.source !== source || this.scale !== clampedScale || this.signature !== signature) {
+        if (this.source !== source || this.scale !== clampedScale || this.durationSec !== durationSec || this.signature !== signature) {
             this.source = source;
             this.scale = clampedScale;
+            this.durationSec = durationSec;
             this.signature = signature;
             this.cache = applyMorphScale(source, clampedScale, { durationSec });
             onRebuild?.(source);

@@ -21,25 +21,27 @@ export function getAutomationPlanViewSignature(plan: PerformanceAutomationPlan):
 
 const DEFAULT_MARGIN_SEC = 0.02;
 const DEFAULT_MIN_SCALE = 0.25;
-const DEFAULT_MAX_SCALE = 4;
+const UNBOUNDED_PLAN_FALLBACK = 4;
 
 export function computeMaxMorphScale(plan: PerformanceAutomationPlan | null | undefined, options: MorphScaleOptions = {}): number {
     const minScale = positive(options.minScale, DEFAULT_MIN_SCALE);
-    const uiMax = Math.max(minScale, positive(options.maxScale, DEFAULT_MAX_SCALE));
+    // A finite plan boundary, not an arbitrary percentage, limits proportional growth.
+    const explicitMax = Math.max(minScale, positive(options.maxScale, Infinity));
     const margin = nonNegative(options.safetyMarginSec, DEFAULT_MARGIN_SEC);
+    const duration = positive(options.durationSec, Infinity);
     const points = sortedPoints(plan);
-    if (points.length < 2) return uiMax;
-    let limit = uiMax;
+    let limit = explicitMax;
     let found = false;
-    for (let i = 0; i < points.length - 1; i++) {
+    for (let i = 0; i < points.length; i++) {
         const morph = points[i].morphDurationSec;
         if (!(Number.isFinite(morph) && morph > 0)) continue;
-        const room = points[i + 1].time - points[i].time - margin;
-        if (!(Number.isFinite(room) && room > 0)) continue;
-        limit = Math.min(limit, room / morph);
+        const boundary = Math.min(points[i + 1]?.time ?? Infinity, duration);
+        const room = boundary - points[i].time - margin;
+        if (!Number.isFinite(room)) continue;
+        limit = Math.min(limit, Math.max(0, room) / morph);
         found = true;
     }
-    return clamp(found ? limit : uiMax, minScale, uiMax);
+    return clamp(found ? limit : Math.min(explicitMax, UNBOUNDED_PLAN_FALLBACK), minScale, explicitMax);
 }
 
 export function clampMorphScale(plan: PerformanceAutomationPlan | null | undefined, scale: number, options: MorphScaleOptions = {}): number {
@@ -64,7 +66,9 @@ export function applyMorphScale(plan: PerformanceAutomationPlan | null, scale: n
             const room = nextTime !== undefined
                 ? nextTime - point.time - margin
                 : Number.isFinite(duration) ? duration - point.time - margin : scaled;
-            return { ...point, morphDurationSec: Math.max(0.1, Math.min(scaled, Math.max(0.1, room))) };
+            // The authoring floor applies to base durations, not this proportional view.
+            // Reapplying it here would stretch short morphs and contradict the bound.
+            return { ...point, morphDurationSec: Math.max(0, Math.min(scaled, Math.max(0, room))) };
         })
     };
 }

@@ -397,6 +397,25 @@ test('end-to-end Visual OS plan is a valid PerformanceAutomationPlan with resolv
   }
 });
 
+test('sub-minimum scene boundaries cannot create a hidden pair that caps the whole morph scale at 44%', () => {
+  const loader = createSrcLoader();
+  const { buildVisualOsPerformancePlan } = loader('automation/visualOsPlanner.ts');
+  const { computeMaxMorphScale, applyMorphScale } = loader('automation/morphScale.ts');
+  const analysis = { ...makeTrackAnalysis(), duration: 358, sections: [
+    section('break', 0, 0.064, 0.2, 0.2), section('break', 0.064, 100, 0.2, 0.2),
+    section('verse', 100, 200, 0.2, 0.2), section('break', 200, 358, 0.2, 0.2)
+  ], noveltyPeaks: [] };
+  const plan = buildVisualOsPerformancePlan(analysis, STYLE_PACKS, { duration: 358, stylePackId: 'cosmic-wormhole' });
+  assert.ok(computeMaxMorphScale(plan, { durationSec: 358 }) > 1,
+    'a transient 64ms scene must not shrink every visible transition to 44%');
+  assert.equal(plan.points[0].time, 0.064, 'the succeeding scene birth wins over an unplayable transient');
+  const scaled = applyMorphScale(plan, computeMaxMorphScale(plan, { durationSec: 358 }), { durationSec: 358 });
+  for (let i = 0; i < scaled.points.length; i++) {
+    const end = scaled.points[i + 1]?.time ?? 358;
+    assert.ok(scaled.points[i].time + scaled.points[i].morphDurationSec <= end - 0.02 + 1e-9);
+  }
+});
+
 test('end-to-end Visual OS plan is deterministic', () => {
   const { buildVisualOsPerformancePlan } = load('automation/visualOsPlanner.ts');
   const a = JSON.stringify(buildVisualOsPerformancePlan(makeTrackAnalysis(), STYLE_PACKS, { duration: 56, stylePackId: 'dark-techno-minimal' }));
@@ -535,6 +554,26 @@ test('adapter caps waypoint density on long scenes and collapses short scenes', 
   assert.equal(tinyPts.length, 1, 'a 1s scene collapses to a single anchor');
   for (let i = 1; i < longPts.length; i++) {
     assert.ok(longPts[i].time - longPts[i - 1].time >= 2.5 - 1e-6, 'min spacing respected');
+  }
+});
+
+test('adapter collapses consecutive unplayable births, preserves playable boundaries and drops terminal stubs', () => {
+  const loader = createSrcLoader();
+  const { resolveStylePack } = loader('automation/styleTranslator.ts');
+  const { adaptScenePlanToPerformancePlan } = loader('automation/scenePlanAdapter.ts');
+  const pack = resolveStylePack(STYLE_PACKS, 'base-temporal');
+  const adapt = scenes => adaptScenePlanToPerformancePlan({ version: 1, stylePack: 'base-temporal', scenes }, pack,
+    { duration: 10, activityLevel: 'macro' });
+  const collapsed = adapt([makeScene(0, .064, 'build'), makeScene(.064, .056, 'build'),
+    makeScene(.12, 9.83, 'build'), makeScene(9.95, .05, 'outro')]);
+  assert.equal(collapsed.points.length, 1);
+  assert.equal(collapsed.points[0].time, .12);
+  const playable = adapt([makeScene(0, .12, 'build'), makeScene(.12, 9.88, 'build')]);
+  assert.equal(playable.points.length, 2, 'a real minimum-duration morph plus margin remains');
+  for (let i = 0; i < playable.points.length; i++) {
+    assert.ok(playable.points[i].morphDurationSec >= .1);
+    assert.ok(playable.points[i].time + playable.points[i].morphDurationSec
+      <= (playable.points[i + 1]?.time ?? 10) - .02 + 1e-9);
   }
 });
 

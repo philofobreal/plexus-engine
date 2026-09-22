@@ -71,6 +71,24 @@ test('writeModulationBus mutates and returns the caller-owned modulation object'
   assert.deepEqual({ ...target }, { ...expected });
 });
 
+test('low-frequency bus preserves bands, applies sensitivity once and never synthesizes beat impulses', () => {
+  const { computeModulationBus, defaultVisualTuning } = loadVisualTuningModule();
+  const frame = Object.freeze({ e: 0, eRatio: 0, densityProj: 0, fxProj: 0,
+    subEnergy: 0.4, bassEnergy: 0.2, subFlux: 0.1, bassFlux: 0.3 });
+  const features = { melody: 0, vocal: 0, fx: 0, density: 0, brightness: 0, tension: 0 };
+  const normal = computeModulationBus(frame, features, 0, 0, { ...defaultVisualTuning, audioSensitivity: 1 });
+  const half = computeModulationBus(frame, features, 0, 0, { ...defaultVisualTuning, audioSensitivity: 0.5 });
+  for (const key of ['subEnergy','bassEnergy','subFlux','bassFlux']) {
+    assert.equal(normal[key], frame[key]); assert.equal(half[key], frame[key] * 0.5);
+  }
+  assert.equal(normal.rhythmicImpulse, 0);
+  assert.ok(normal.macroMomentum > 0); assert.ok(normal.kineticTension > 0);
+  const corrupt = computeModulationBus({ ...frame, subEnergy: NaN, bassFlux: Infinity }, features, 0, 0, defaultVisualTuning);
+  assert.ok(Object.values(corrupt).every(Number.isFinite));
+  const mute = computeModulationBus(frame, features, 0, 0, { ...defaultVisualTuning, audioSensitivity: 0 });
+  assert.ok(Object.values(mute).every(v => v === 0));
+});
+
 test('visual tuning normalization maps legacy particleBassTurn payloads to particleActivityTurn', () => {
   const { normalizeVisualTuningConfig, defaultVisualTuning } = loadVisualTuningModule();
 

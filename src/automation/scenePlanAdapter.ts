@@ -82,6 +82,8 @@ const DEFAULT_VARIANT_MODE: DramaturgyVariantMode = 'paired';
 // A release phase only earns its own (softer) waypoint when it is at least this long, so trivial
 // decays do not litter the timeline.
 const MIN_RELEASE_POINT_SEC = 0.8;
+const MIN_MORPH_SEC = 0.1;
+const MORPH_GAP_SEC = 0.02;
 
 // Neutral tempo used when the caller supplies none (direct adapter tests): no grid, equal-time
 // subdivision, no bar snapping.
@@ -265,7 +267,7 @@ export function adaptScenePlanToPerformancePlan(
         });
     });
 
-    return finalize(raw, plan.stylePack);
+    return finalize(raw, plan.stylePack, duration);
 }
 
 function dedupeGestures(values: MovementGesture[]): MovementGesture[] {
@@ -440,13 +442,19 @@ function mapCurve(curve: SceneTransitionCurve): PerformanceAutomationPoint['morp
 // with its envelope-derived morph. The morph is only SHORTENED when it would overrun the next
 // point (anti-overlap); it is NEVER stretched to fill the gap, so the trailing cooldown survives
 // as visible "air" on the timeline (the breathing the legacy stretch erased).
-function finalize(raw: RawPoint[], stylePack: string): PerformanceAutomationPlan {
+function finalize(raw: RawPoint[], stylePack: string, duration: number): PerformanceAutomationPlan {
     raw.sort((a, b) => a.time - b.time);
     const merged: RawPoint[] = [];
     for (const point of raw) {
+        // No playable transition fits here; a clamped endpoint is not another scene.
+        if (duration - point.time < MIN_MORPH_SEC + MORPH_GAP_SEC - 1e-9) continue;
         const last = merged[merged.length - 1];
-        if (last && point.time - last.time < 0.05) {
-            if (point.intensity > last.intensity) merged[merged.length - 1] = point;
+        if (last && point.time - last.time < MIN_MORPH_SEC + MORPH_GAP_SEC - 1e-9) {
+            // A tiny preceding scene must not suppress the succeeding scene's birth.
+            // Both morphs cannot fit; resolve the conflict before the global scale sees it.
+            if ((point.isBirth && point.sceneIndex > last.sceneIndex) || point.intensity > last.intensity) {
+                merged[merged.length - 1] = point;
+            }
             continue;
         }
         merged.push(point);
@@ -455,8 +463,8 @@ function finalize(raw: RawPoint[], stylePack: string): PerformanceAutomationPlan
     const points: PerformanceAutomationPoint[] = merged.map((point, index) => {
         const next = merged[index + 1];
         // Anti-overlap clamp ONLY: never let a morph run past the next point; never stretch it.
-        const limit = next ? Math.max(0.1, next.time - point.time - 0.01) : point.morph;
-        const morph = clamp(Math.min(point.morph, limit), 0.1, 20);
+        const limit = (next?.time ?? duration) - point.time - MORPH_GAP_SEC;
+        const morph = clamp(Math.min(point.morph, limit), MIN_MORPH_SEC, 20);
         return {
             id: `vos-${point.sceneIndex}-${point.phase}-${formatTimeForId(point.time)}`,
             time: point.time,
