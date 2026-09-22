@@ -1,7 +1,8 @@
-import type { AudioFrame, BarAnalysis, DirectorOutput, VisualFeatureFrame } from '../types';
+import type { AudioFrame, BarAnalysis, DirectorOutput, ModulationState, VisualFeatureFrame } from '../types';
 import { canonicalWormholeTravelSpeed, wormholeMusicalPhase } from './WormholeTimeline';
 
 export interface WormholeMotionProfileInput {
+    lowFrequency?: Pick<ModulationState, 'subEnergy' | 'bassEnergy' | 'subFlux' | 'bassFlux'>;
     bpm: number;
     currentFrame: AudioFrame;
     currentFeatures: VisualFeatureFrame;
@@ -53,9 +54,10 @@ const DIRECTOR_ENERGY: Record<DirectorOutput['state'], number> = {
  */
 export function computeWormholeMotionProfile(input: WormholeMotionProfileInput): WormholeMotionProfile {
     const spectrum = input.perceptualSpectrum;
-    const sub = weightedBandMean(spectrum, 0, 3, true);
-    const lowBass = weightedBandMean(spectrum, 0, 8, false);
-    const upperBass = weightedBandMean(spectrum, 3, 8, false);
+    const low = input.lowFrequency;
+    const sub = low ? clamp01(low.subEnergy) : weightedBandMean(spectrum, 0, 3, true);
+    const lowBass = low ? clamp01(low.subEnergy * 0.65 + low.bassEnergy * 0.35) : weightedBandMean(spectrum, 0, 8, false);
+    const upperBass = low ? clamp01(low.bassEnergy) : weightedBandMean(spectrum, 3, 8, false);
     const beat = clamp01(input.beatDecay);
     const denseImpact = clamp01(input.denseImpactFlash);
     const transient = input.kickEnvelope === undefined
@@ -69,7 +71,8 @@ export function computeWormholeMotionProfile(input: WormholeMotionProfileInput):
     const lowAttackSupport = clamp01(sub * 0.72 + lowBass * 0.28);
     const depthPulseRaw = clamp01(transient * lowAttackSupport);
     const sustainedGate = 1 - transient * 0.82;
-    const bassWarpRaw = clamp01((lowBass * 0.72 + upperBass * 0.28) * sustainedGate);
+    const change = low ? clamp01(low.subFlux * 0.12 + low.bassFlux * 0.20) : 0;
+    const bassWarpRaw = clamp01((lowBass * 0.72 + upperBass * 0.28 + change) * sustainedGate);
 
     const sectionEnergy = DIRECTOR_ENERGY[input.directorOutput.state];
     const frameEnergy = clamp01(input.currentFrame.eRatio * 0.62 + input.currentFrame.e * 0.38);

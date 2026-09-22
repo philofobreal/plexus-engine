@@ -458,6 +458,10 @@ function copyAudioFrame(source: AudioFrame, target: AudioFrame) {
     target.melodyProj = source.melodyProj;
     target.fxProj = source.fxProj;
     target.perceptualSpectrum = source.perceptualSpectrum;
+    target.subEnergy = source.subEnergy ?? 0;
+    target.bassEnergy = source.bassEnergy ?? 0;
+    target.subFlux = source.subFlux ?? 0;
+    target.bassFlux = source.bassFlux ?? 0;
     target.state = source.state;
     target.eRatio = source.eRatio;
 }
@@ -482,6 +486,10 @@ function getDropAnticipationFrame(currentTime: number): AudioFrame | undefined {
 }
 
 function decayCurrentAnalysisFrame() {
+    State.currentFrame.subEnergy = (State.currentFrame.subEnergy ?? 0) * 0.9;
+    State.currentFrame.bassEnergy = (State.currentFrame.bassEnergy ?? 0) * 0.9;
+    State.currentFrame.subFlux = (State.currentFrame.subFlux ?? 0) * 0.9;
+    State.currentFrame.bassFlux = (State.currentFrame.bassFlux ?? 0) * 0.9;
     State.currentFrame.e *= 0.9;
     State.currentFrame.densityProj *= 0.9;
     State.currentFrame.melodyProj *= 0.9;
@@ -497,6 +505,7 @@ function decayCurrentAnalysisFrame() {
 }
 
 function resetTransientVisualState() {
+    State.modulation.subEnergy = State.modulation.bassEnergy = State.modulation.subFlux = State.modulation.bassFlux = 0;
     State.beatDecay = 0;
     State.denseImpactFlash = 0;
     State.cueDecay = 0;

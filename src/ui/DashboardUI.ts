@@ -561,7 +561,7 @@ export class DashboardUI {
         this.els.automationMorphScale.addEventListener('input', () => {
             const plan = State.editedPerformancePlan ?? State.performancePlan;
             const requested = parseFloat((this.els.automationMorphScale as HTMLInputElement).value);
-            State.automationMorphScale = clampMorphScale(plan, requested);
+            State.automationMorphScale = clampMorphScale(plan, requested, { durationSec: State.duration });
             this.invalidateAutomationPlanView();
             this.lastTriggeredAutomationPointId = null;
             this.syncAutomationMorphScaleControl(plan);
@@ -2180,11 +2180,11 @@ export class DashboardUI {
 
     private syncAutomationMorphScaleControl(plan: PerformanceAutomationPlan | null): void {
         const input = this.els.automationMorphScale as HTMLInputElement;
-        const max = computeMaxMorphScale(plan);
-        State.automationMorphScale = clampMorphScale(plan, State.automationMorphScale);
-        input.max = max.toFixed(2);
-        input.value = State.automationMorphScale.toFixed(2);
-        input.disabled = !plan?.points.length;
+        const max = computeMaxMorphScale(plan, { durationSec: State.duration });
+        State.automationMorphScale = clampMorphScale(plan, State.automationMorphScale, { durationSec: State.duration });
+        input.max = String(max);
+        input.value = String(State.automationMorphScale);
+        input.disabled = !plan?.points.length || max <= Number(input.min);
         this.els.automationMorphScaleValue.textContent = `${Math.round(State.automationMorphScale * 100)}%`;
         this.els.automationMorphScaleValue.title = `Maximum ${Math.round(max * 100)}% for this plan`;
     }

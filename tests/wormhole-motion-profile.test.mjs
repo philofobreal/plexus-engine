@@ -62,6 +62,21 @@ test('wormhole travel speed scales monotonically with trusted BPM', () => {
   assert.ok(medium.travelSpeed < fast.travelSpeed);
 });
 
+test('dedicated low-frequency modulation overrides display spectrum and adds local warp without fake kicks', () => {
+  const empty = { subEnergy: 0, bassEnergy: 0, subFlux: 0, bassFlux: 0 };
+  const silent = profile({ lowFrequency: empty, perceptualSpectrum: new Array(24).fill(1) });
+  assert.equal(silent.bassWarp, 0);
+  const sub = profile({ lowFrequency: { ...empty, subEnergy: 0.7 } });
+  const bass = profile({ lowFrequency: { ...empty, bassEnergy: 0.7 } });
+  const changing = profile({ lowFrequency: { ...empty, bassEnergy: 0.7, bassFlux: 0.8 } });
+  assert.ok(sub.bassWarp > 0); assert.ok(bass.bassWarp > 0);
+  assert.ok(changing.bassWarp > bass.bassWarp);
+  for (const p of [sub,bass,changing]) { assert.equal(p.depthPulse, 0); assert.equal(p.kickJitter, 0); }
+  // Visiting unrelated times does not alter this pure preview/export projection.
+  profile({ timeSec: 100, lowFrequency: empty });
+  assert.deepEqual(profile({ lowFrequency: { ...empty, bassEnergy: 0.7 } }), bass);
+});
+
 test('kick evidence produces a short depth pulse and cohort impulse', () => {
   const kickSpectrum = [...new Array(8).fill(0.95), ...new Array(16).fill(0.08)];
   const idle = profile({ perceptualSpectrum: kickSpectrum, beatDecay: 0, denseImpactFlash: 0 });

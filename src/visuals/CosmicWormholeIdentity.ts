@@ -712,6 +712,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         const melody = State.currentFeatures.melody;
 
         const motion = computeWormholeMotionProfile({
+            lowFrequency: State.currentFrame.subEnergy === undefined ? undefined : State.modulation,
             bpm: State.bpm,
             currentFrame: State.currentFrame,
             currentFeatures: State.currentFeatures,

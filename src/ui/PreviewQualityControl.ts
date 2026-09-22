@@ -28,5 +28,9 @@ export function createPreviewQualityControl(automaticCompact: boolean) {
     const hint = document.createElement('p');
     hint.textContent = 'Reduced load uses a softer, lower-resolution preview. Export resolution stays independent.';
     root.append(label, hint);
-    return { root, preference };
+    return { root, preference, setMode(mode: 'auto' | 'reduced') {
+        preference.setMode(mode);
+        select.value = preference.mode;
+        try { window.localStorage.setItem(STORAGE_KEY, preference.mode); } catch { /* Live setting still restored. */ }
+    } };
 }
