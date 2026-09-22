@@ -828,6 +828,10 @@ export interface ResolvedSubstyle {
 }
 
 export interface ModulationState {
+    subEnergy: number;
+    bassEnergy: number;
+    subFlux: number;
+    bassFlux: number;
     kineticTension: number;
     densityDrive: number;
     spectralChaos: number;
@@ -851,6 +855,12 @@ export interface VideoDominantColor {
 }
 
 export interface AudioFrame {
+    /** Offline fixed-band body/change [0,1]: sub 20..60 Hz, bass 60..180 Hz.
+     * Optional only for legacy frames; current analysis always publishes all four. */
+    subEnergy?: number;
+    bassEnergy?: number;
+    subFlux?: number;
+    bassFlux?: number;
     /** Normalized RMS energy. */
     e: number;
     /** Smoothed spectral-flux density projection. */

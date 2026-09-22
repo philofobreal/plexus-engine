@@ -81,6 +81,27 @@ test('unchanged welcome and paused previews do not redraw identities or dashboar
   assert.equal(h.updates, updates);
 });
 
+test('low-frequency frame publication agrees across playback, seek and export without mutating analysis', () => {
+  const h = createHarness();
+  h.State.duration = 4; h.State.sampleRate = 1024; h.State.hopSize = 1024;
+  h.State.frames = Array.from({ length: 4 }, (_, i) => Object.freeze({ e: 0.3, eRatio: 0.3,
+    densityProj: 0, melodyProj: 0, fxProj: 0, perceptualSpectrum: new Array(24).fill(0), state: 'LOW',
+    subEnergy: i * 0.2, bassEnergy: i * 0.1, subFlux: i * 0.05, bassFlux: i * 0.08 }));
+  h.State.trackAnalysis.features = Array.from({ length: 4 }, () => ({ melody: 0, vocal: 0, fx: 0, density: 0, brightness: 0, tension: 0 }));
+  h.State.visualTuning.audioSensitivity = h.State.targetTuning.audioSensitivity = 1;
+  const keys = ['subEnergy','bassEnergy','subFlux','bassFlux'];
+  const values = () => keys.map(k => h.State.modulation[k]);
+  h.State.isPlaying = true; h.seek(2); h.tick();
+  const live = values(); assert.deepEqual(live, keys.map(k => h.State.frames[2][k]));
+  h.seek(0); h.tick(); assert.ok(values().every(v => v === 0));
+  h.seek(2); h.tick(); assert.deepEqual(values(), live);
+  h.State.isPlaying = false; h.State.isExporting = true; h.State.exportTime = 2; h.tick();
+  assert.deepEqual(values(), live);
+  assert.equal(h.State.frames[2].subEnergy, 0.4);
+  h.State.frames[1] = { e: 0, eRatio: 0, densityProj: 0, melodyProj: 0, fxProj: 0, perceptualSpectrum: new Array(24).fill(0), state: 'LOW' };
+  h.State.exportTime = 1; h.tick(); assert.ok(values().every(v => v === 0));
+});
+
 test('pause settles once, resume and every export frame bypass the idle gate', () => {
   const h = createHarness();
   h.State.duration = 8;

@@ -1,5 +1,5 @@
 import AnalyzerWorker from './analyzer.worker.ts?worker';
-import { ANALYSIS_ALGORITHM_VERSION, EMPTY_TRACK_ANALYSIS, normalizeTrackAnalysis } from '../analyzer';
+import { ANALYSIS_ALGORITHM_VERSION, EMPTY_TRACK_ANALYSIS, normalizeTrackAnalysis, normalizeAudioFrame } from '../analyzer';
 import { featureFlags } from '../config/featureFlags';
 import { State } from '../state/store';
 import { resetActiveVisualTransitions } from '../state/visualTransitionState';
@@ -74,7 +74,8 @@ export class AudioEngine {
         State.semanticBaseTuning = null;
         this.onVisualScorePlan(null);
         State.hopSize = 1024;
-        State.currentFrame = { e: 0, densityProj: 0, melodyProj: 0, fxProj: 0, perceptualSpectrum: new Array(24).fill(0), state: 'IDLE', eRatio: 0 };
+        State.currentFrame = { e: 0, densityProj: 0, melodyProj: 0, fxProj: 0, subEnergy: 0, bassEnergy: 0, subFlux: 0, bassFlux: 0, perceptualSpectrum: new Array(24).fill(0), state: 'IDLE', eRatio: 0 };
+        State.modulation.subEnergy = State.modulation.bassEnergy = State.modulation.subFlux = State.modulation.bassFlux = 0;
         State.currentFeatures = { ...EMPTY_FEATURES };
         State.modulation.kineticTension = 0;
         State.modulation.densityDrive = 0;
@@ -141,7 +142,7 @@ export class AudioEngine {
                     State.bpm = e.data.bpm;
                     State.targetTuning.dynamicsThreshold = e.data.adaptiveThreshold;
                     State.visualTuning.dynamicsThreshold = e.data.adaptiveThreshold;
-                    State.frames = e.data.frames;
+                    State.frames = e.data.frames.map(normalizeAudioFrame);
                     State.events = e.data.events;
                     // Strict normalization mapping incoming generic objects to rigorous domain models
                     State.trackAnalysis = normalizeTrackAnalysis(e.data.trackAnalysis, State.bpm);

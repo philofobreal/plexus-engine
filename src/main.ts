@@ -159,7 +159,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
             <div class="timeline-divider"></div>
             <label id="automation-size-control" class="automation-size-control" for="automation-morph-scale" title="Non-destructive global automation morph scale">
               <span>Morph Scale</span>
-              <input id="automation-morph-scale" type="range" min="0.25" max="4" step="0.01" value="1" aria-label="Automation Size">
+              <input id="automation-morph-scale" type="range" min="0.25" max="4" step="any" value="1" aria-label="Automation Size">
               <output id="automation-morph-scale-value" for="automation-morph-scale">100%</output>
             </label>
             <div class="timeline-divider"></div>
