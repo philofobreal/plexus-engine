@@ -54,11 +54,19 @@ Analyzer timing changes (tempo / beat / grid):
   - **Regression (golden master)**: `tests/analyzer-golden.test.mjs` compares against snapshots in `tests/fixtures/golden/` with tolerances (+/-15ms on time arrays, 1e-4 scalars, exact counts). These only encode "what the algorithm currently does".
   - **Musical correctness (verification)**: `tests/analyzer-verification.test.mjs` asserts the engine against KNOWN ground truth (tempo metric-match, beat precision, bar precision) for fixtures spanning 70-176 BPM and house/techno/trance/dnb/breakbeat/sparse/breakdown. `strictTempo` fixtures (e.g. drum & bass) must lock the actual beat rate — a half/double read is a failure.
   - Focused suites: `analyzer-metric-ambiguity` (half/double), `analyzer-timing-confidence` (unified confidence), `analyzer-timing-edgecases` (silence, click track, tempo transition, breakdown extrapolation vs. suppressed visual events), `analyzer-dsp` (TempoEstimator / BeatTracker / onset envelope units).
+  - `analyzer-local-tempo` covers fixed-window recurring-flux estimation: section loudness versus repetition, long gaps and shifted phases, outliers, insufficient attacks, ambiguous tempos, invalid clocks/options, final-window evidence and raw-audio house/DnB/slow-floor integration. Keep strict DnB and slow-pulse assertions alongside estimator-level metric-family checks. Short golden clips alone cannot validate duration-independent pooling. Profile long envelopes separately from FFT/decode; do not make wall-clock timing a flaky test assertion.
 - The current `update-golden-masters` package script is Bun-dependent. Migrating it to a Node-compatible entrypoint is a separate task; in an environment without a working Bun runtime, do not attempt to run or emulate it automatically. Snapshot generation intentionally OVERWRITES baselines and must run ONLY when a timing change is a deliberate, reviewed improvement. Inspect the git diff before committing regenerated snapshots.
 - `tests/fixtures/analyzer/headless-baseline.summary.json` is the exact-match contract baseline for the synthetic SaaS/VST fixture; regenerate it deliberately when the algorithm legitimately changes, never to silence an unexplained drift.
 - Benchmark/fixture framework changes and timing-algorithm changes are ideally landed as separate commits so a baseline diff makes clear whether the algorithm actually improved.
 
 State/event changes:
+
+- Sub/bass changes require fixed-Hz separation across sample rates, relative mixed-band levels,
+  sustained tones versus positive change, ramps, mixed kick/bass, silence/DC/near-silence,
+  outliers, short/malformed input and deterministic/no-input-mutation checks. Keep tempo/event
+  baselines separate. Verify schema/defaults, load/reset and preview/seek/export scalar parity,
+  sensitivity applied once, and no fabricated beat impulse. Measure offline cost outside CI
+  timing assertions; document long-window temporal spreading and actual render smoke evidence.
 
 - Validate ordered transitions for load, analysis complete, play, pause, seek, stop, and end.
 - Validate beat event index reset and no duplicate event playback after seek.
@@ -108,6 +116,20 @@ Semantic dramaturgy layer changes (ADR-003):
 UI changes:
 
 - Validate disabled/enabled states, dashboard text, BPM badge, seek bar, time display, and responsive layout.
+- For dynamically constrained range inputs, test model-to-control limits below the default,
+  fractional endpoints, exhausted ranges and re-enabling. Browser checks must exercise native
+  dragging and keyboard endpoints: a mocked input does not reproduce HTML step rounding.
+  For proportional timeline scaling, also test bounds above former UI caps, unequal transition
+  lengths, the final track boundary, changes to the limiting pair and non-destructive projection.
+  Verify accepted limits agree across controller, view cache, storage and undo/redo snapshots;
+  a model clamp caused by an edit belongs in that edit's history entry.
+  Include a real-generator fixture with near-coincident scene boundaries: clean hand-built
+  plans alone cannot detect a generation floor that contradicts the spacing/clamping policy.
+- For MVP history/workspace changes, apply the [session-persistence evidence requirements](session-persistence.md#required-evidence),
+  including same-file reselection after reload, token consumption, storage failures and no audio persistence.
+  Use detailed multi-point journeys for the 300-command storage test: tiny one-point fixtures
+  miss repeated-plan payload growth. Cover capture failure followed by retry, actionable modal
+  errors, lossless encoded round trips and hostile delta expansion before allocation.
 
 Documentation and governance changes:
 

@@ -76,6 +76,10 @@ Stop and redesign if a change introduces any pattern below.
 - Mutating worker result arrays from renderer or UI code.
 - Async state transitions without a request id or cancellation path.
 - Multiple modules claiming ownership of the same state field.
+- Replaying history using only an analysis-descriptor fingerprint, or serializing runtime handles/audio
+  into a workspace checkpoint. See [Session Persistence](session-persistence.md).
+- Rewriting large history snapshots per slider event or from the render/audio loop.
+- Reusing an old restore capability after a consumed, changed or explicitly discarded session.
 
 ## Render Anti-Patterns
 

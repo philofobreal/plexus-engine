@@ -58,6 +58,11 @@ Spectrum Balance (`AudioFrame.perceptualSpectrum`) does not violate the realtime
 
 New dashboard metrics that display spectral data must follow the same rule: only precomputed `AudioFrame` or `TrackAnalysis` values may be drawn. Realtime FFT or `getByteFrequencyData` in `DashboardUI` is forbidden.
 
+Sub/bass body and flux follow this rule too: long-window FFT, normalization and envelope
+smoothing belong to `LowFrequencyExtractor` during loading. The renderer copies frame-aligned
+scalars into the existing modulation owner, with no FFT or onset reconstruction in `draw()`.
+Spectral change alone must never be promoted to a BeatEvent or repeated kick/shockwave.
+
 ## Memory Safety
 
 Audio buffers used for playback must remain valid after analysis dispatch. If worker analysis uses transferable buffers, the implementation must document whether it copied or transferred data and why playback data cannot be detached.

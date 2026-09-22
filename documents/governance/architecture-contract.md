@@ -4,6 +4,10 @@ This document extends `../../AGENTS.md`. If there is a conflict, `AGENTS.md` is 
 
 ## System Shape
 
+MVP history/workspace storage follows [Session Persistence](session-persistence.md): UI-owned
+validated snapshots, explicit per-track publication, content-identity checks and paused restoration
+through AudioEngine. It does not transfer ownership of audio, worker results or renderer state.
+
 The app is a Vite TypeScript project with explicit runtime layers:
 
 - Composition: `src/main.ts` (dashboard) and `src/ui/mvp/main.ts` (MVP; explicit entrypoint exception to UI import restrictions, [ADR-008](../adr/ADR-008-mvp-host-and-shared-renderer.md))

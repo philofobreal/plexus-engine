@@ -29,6 +29,7 @@ These documents extend this file and must not override it:
 - [Testing and Validation](documents/governance/testing-validation.md)
 - [Platform Operations](documents/governance/platform-operations.md)
 - [Anti-Patterns](documents/governance/anti-patterns.md)
+- [Session Persistence](documents/governance/session-persistence.md)
 
 `CLAUDE.md` is a compatibility shim only. It must explicitly inherit from this file and must not accumulate independent policy.
 
