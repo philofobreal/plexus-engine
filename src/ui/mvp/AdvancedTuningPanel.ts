@@ -17,8 +17,7 @@ export interface AdvancedTuningPanelCallbacks {
     /** Slider position (0.5 = neutral), or an absolute option value for a selector. */
     onChange: (key: VisualTuningKey, fraction: number) => void;
     onReset: () => void;
-    /** Persists the current Visual character + Advanced tuning boosts for the whole track (one
-     *  combined save covering both panels -- see MvpVisualController.saveMetaTuningForTrack).
+    /** Persists Visual character and Advanced tuning only; dramaturgy has its own Save.
      *  Resolves to whether the save actually succeeded. */
     onSave: () => Promise<boolean>;
 }
@@ -49,7 +48,9 @@ export class AdvancedTuningPanel {
     private readonly selects = new Map<VisualTuningKey, HTMLSelectElement>();
     private readonly saveBtn: HTMLButtonElement;
     private readonly saveStatus: HTMLElement;
-    private saveStatusTimer: number | null = null;
+    private saving = false;
+    private canSave = false;
+    private dirty = false;
 
     constructor(callbacks: AdvancedTuningPanelCallbacks) {
         const { onChange, onReset, onSave } = callbacks;
@@ -59,7 +60,7 @@ export class AdvancedTuningPanel {
         this.root.innerHTML = `
             <div class="mvp-meta-save-row">
                 <span class="mvp-panel-eyebrow">Advanced tuning</span>
-                <button type="button" class="mvp-meta-save-btn" data-meta-save>Save</button>
+                <button type="button" class="mvp-meta-save-btn" data-meta-save disabled title="Save visual tuning for this track; automation is saved in Track dramaturgy">Save</button>
             </div>
             <div class="mvp-advanced-body">
                 ${ADVANCED_BOOST_GROUPS.map((group) => `
@@ -87,7 +88,7 @@ export class AdvancedTuningPanel {
                     </div>
                 `).join('')}
             </div>
-            <div class="mvp-meta-save-status" data-meta-save-status></div>
+            <div class="mvp-meta-save-status" data-meta-save-status role="status" aria-live="polite"></div>
             <button type="button" class="mvp-btn mvp-advanced-reset">Reset</button>
         `;
 
@@ -121,18 +122,27 @@ export class AdvancedTuningPanel {
     }
 
     private async handleSave(onSave: AdvancedTuningPanelCallbacks['onSave']): Promise<void> {
+        if (this.saving || !this.canSave) return;
+        this.saving = true;
         this.saveBtn.disabled = true;
         this.saveStatus.textContent = 'Saving...';
-        if (this.saveStatusTimer !== null) window.clearTimeout(this.saveStatusTimer);
         try {
             const ok = await onSave();
-            this.saveStatus.textContent = ok ? 'Saved for this track.' : "Couldn't save -- storage unavailable.";
+            this.saveStatus.textContent = !ok ? "Couldn't save. Your visual tuning changes are still unsaved."
+                : this.dirty ? 'Snapshot saved; newer visual tuning changes are still unsaved.' : 'Visual tuning saved for this track.';
         } catch {
             this.saveStatus.textContent = 'Save failed.';
         } finally {
-            this.saveBtn.disabled = false;
-            this.saveStatusTimer = window.setTimeout(() => { this.saveStatus.textContent = ''; }, 3200);
+            this.saving = false;
+            this.saveBtn.disabled = !this.canSave;
         }
+    }
+
+    setSaveState(dirty: boolean, canSave: boolean): void {
+        this.dirty = dirty;
+        this.canSave = canSave;
+        this.saveBtn.disabled = this.saving || !canSave;
+        if (!this.saving) this.saveStatus.textContent = dirty ? 'Unsaved visual tuning changes.' : 'No unsaved changes.';
     }
 
     setValues(boosts: AdvancedBoosts): void {

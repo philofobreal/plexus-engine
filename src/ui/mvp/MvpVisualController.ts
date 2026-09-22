@@ -3,7 +3,7 @@ import { generatePerformancePlan } from '../../automation/performancePlanGenerat
 import { generateVisualOsPerformancePlan } from '../../automation/visualOsPlanLoader';
 import { shouldUseVisualOs, stylePackForVisualMode } from '../../automation/generatorRouting';
 import { wormholeMorphDurationFloor } from '../../automation/morphFloor';
-import { clampMorphScale } from '../../automation/morphScale';
+import { clampMorphScale, computeMaxMorphScale } from '../../automation/morphScale';
 import { AutomationPlanViewCache } from '../../automation/automationPlanView';
 import {
     constrainAutomationPointTime,
@@ -23,7 +23,13 @@ import { filterForeignIdentityTuningForAutomation } from '../../config/identityT
 import { cloneDefaultVisualTuning, mvpSurfaceTuningOverrides, normalizeVisualTuningConfig, type VisualTuningKey } from '../../config/visualTuning';
 import { defaultMvpMacroTuning, mapMvpMacrosToTuning, type MvpMacroTuning } from './macroTuningMapper';
 import { advancedBoostKeys, resolveAdvancedTuningValue, defaultAdvancedBoosts, type AdvancedBoosts } from './metaTuningBoost';
-import { computeTrackFingerprint, loadMetaTuning, saveMetaTuning, type StoredMetaTuning } from './metaTuningStorage';
+import { computeTrackFingerprint, loadMetaTuning, saveTrackChanges, type TrackSaveChanges } from './metaTuningStorage';
+import type { TrackSaveSection, TrackSaveSignatures, UnsavedTrackChanges } from './trackSaveState';
+import type { StoredJourney } from './journeyStorage';
+import { EditHistory, type HistoryDomain, type HistoryScope, type HistorySnapshot, type HistoryStatus } from './EditHistory';
+import { SessionStore } from './SessionStore';
+import { computeAudioContentHash } from './audioContentHash';
+import { normalizeSessionSnapshot, type SessionCheckpoint, type WorkspaceSnapshot } from './sessionCheckpoint';
 import { ExportCapabilityDetector } from '../../export/ExportCapabilityDetector';
 import { WebMExporter, type ExportConfig } from '../../export/WebMExporter';
 import { State } from '../../state/store';
@@ -38,6 +44,11 @@ export interface MvpVisualControllerCallbacks {
     onPositionChange: (currentTime: number) => void;
     onPlaybackEnded: () => void;
     onPlanChanged: () => void;
+    onSaveStateChanged?: () => void;
+    onHistoryChanged?: () => void;
+    getWorkspaceSnapshot?: () => WorkspaceSnapshot;
+    onWorkspaceRestored?: (workspace: WorkspaceSnapshot) => void;
+    onSessionNotice?: (message: string) => void;
     /** Fired when a saved Visual character / Advanced tuning setting is restored for a
      *  newly-loaded track (see restoreMetaTuningForTrack), so the UI can refresh the two panels'
      *  slider positions to match. */
@@ -68,6 +79,19 @@ export class MvpVisualController {
     private loadRevision = 0;
     private planRevision = 0;
     private preparingTrack = false;
+    private regeneratingPlan = false;
+    private cleanSignatures: TrackSaveSignatures | null = null;
+    private readonly dirtySections: UnsavedTrackChanges = { journey: false, tuning: false };
+    private readonly history = new EditHistory(300);
+    private historyBaseline: Record<HistoryDomain, HistorySnapshot> | null = null;
+    private readonly sessions = new SessionStore();
+    private sessionDirty = false;
+    private sessionRevision = 0;
+    private sessionSaving = false;
+    private sessionSaveError: string | null = null;
+    private currentFile: File | null = null;
+    private currentFileHash: string | null = null;
+    private pendingCheckpoint: SessionCheckpoint | null = null;
     private scrubPreviewTime: number | null = null;
     private exportP5Instance: unknown = null;
     private exportCanvas: HTMLCanvasElement | null = null;
@@ -99,24 +123,61 @@ export class MvpVisualController {
 
     // ─── File loading ─────────────────────────────────────────────────────────
 
+    async resumeSession(): Promise<boolean> {
+        const revision = this.loadRevision;
+        const saved = await this.sessions.consume();
+        if (saved && revision === this.loadRevision) { this.pendingCheckpoint = saved; return true; }
+        return false;
+    }
+
     async loadFile(file: File): Promise<void> {
+        if (this.sessions.invalidate() === false) {
+            this.callbacks.onSessionNotice?.('Browser storage is blocked. Could not discard the previous history checkpoint; retry after enabling storage.');
+            return;
+        }
+        this.currentFile = file;
+        this.currentFileHash = null;
+        this.sessionDirty = false;
+        ++this.sessionRevision;
         const loadRevision = ++this.loadRevision;
         const planRevision = ++this.planRevision;
         this.preparingTrack = true;
+        this.regeneratingPlan = false;
         this.engine.stop(true);
         this.presetCache.clear();
         this.lastTriggeredAutomationPointId = null;
         State.performancePlan = null;
         State.editedPerformancePlan = null;
         State.automationMorphScale = 1;
+        State.performancePlanEdited = false;
+        this.macros = { ...defaultMvpMacroTuning };
+        this.advancedBoosts = defaultAdvancedBoosts();
+        this.activityLevel = 'balanced';
+        this.variantMode = 'paired';
         this.invalidateAutomationPlanView();
         this.trackFingerprint = null;
+        this.cleanSignatures = null;
+        this.history.clear();
+        this.historyBaseline = null;
+        this.callbacks.onHistoryChanged?.();
+        this.refreshSaveState();
         this.callbacks.onLoadStart(file.name);
 
-        this.engine.onAnalysisComplete = () => { void this.finishLoading(loadRevision, planRevision); };
-
         try {
-            await this.engine.loadFile(file);
+            // AudioEngine must invalidate the old worker synchronously, before any hashing await.
+            // Analysis may finish before hashing; both gates must accept the same load revision.
+            let hashReady: Promise<string>;
+            this.engine.onAnalysisComplete = () => {
+                void hashReady.then(hash => {
+                    if (!this.isCurrentRequest(loadRevision, planRevision)) return;
+                    this.currentFileHash = hash;
+                    return this.finishLoading(loadRevision, planRevision);
+                }).catch(() => { /* loadFile reports hash errors for the current request below. */ });
+            };
+            hashReady = this.engine.loadFile(file).then(() => computeAudioContentHash(file));
+            const hash = await hashReady;
+            if (!this.isCurrentRequest(loadRevision, planRevision)) return;
+            this.currentFileHash = hash;
         } catch {
             if (this.isCurrentRequest(loadRevision, planRevision)) {
                 this.callbacks.onAnalysisError('Could not load this file.');
@@ -132,20 +193,43 @@ export class MvpVisualController {
         if (!this.isCurrentRequest(loadRevision, planRevision)) return;
         const analysis = State.trackAnalysis;
         try {
-            const plan = await this.generatePlan();
+            const generatedPlan = await this.generatePlan();
             if (!this.isCurrentRequest(loadRevision, planRevision)) return;
-            await this.restoreMetaTuningForTrack(loadRevision, analysis);
+            const journey = await this.restoreMetaTuningForTrack(loadRevision, analysis);
             if (!this.isCurrentRequest(loadRevision, planRevision)) return;
-            State.performancePlan = plan;
+            const plan = journey?.plan ?? generatedPlan;
+            State.performancePlan = generatedPlan;
             State.editedPerformancePlan = JSON.parse(JSON.stringify(plan));
-            State.performancePlanEdited = false;
+            State.performancePlanEdited = journey?.edited ?? false;
+            State.automationMorphScale = journey?.morphScale ?? 1;
+            this.activityLevel = journey?.activityLevel ?? 'balanced';
+            this.variantMode = journey?.variantMode ?? 'paired';
+            this.lastTriggeredAutomationPointId = null;
+            this.invalidateAutomationPlanView();
             setActiveVisualTransitionComponent('automation', null);
             void this.preloadPresetsForPlan(plan);
             this.computeSemanticPlan();
             this.snapshotSemanticBase();
             this.preparingTrack = false;
+            this.cleanSignatures = { journey: this.journeySignature(), tuning: this.tuningSignature() };
+            this.historyBaseline = { journey: this.historySnapshot('journey'), tuning: this.historySnapshot('tuning') };
+            const checkpoint = this.pendingCheckpoint;
+            const restored = checkpoint && checkpoint.file.hash === this.currentFileHash && checkpoint.file.size === this.currentFile?.size
+                && checkpoint.fingerprint === this.trackFingerprint
+                && Math.abs(checkpoint.duration - State.duration) < 0.01 && this.restoreCheckpoint(checkpoint);
+            if (restored) this.pendingCheckpoint = null;
+            this.callbacks.onHistoryChanged?.();
+            this.refreshSaveState();
             this.callbacks.onPlanChanged();
             this.callbacks.onAnalysisComplete();
+            if (restored) {
+                this.engine.seek(checkpoint.workspace.position);
+                const trigger = resolveAutomationTrigger(this.getAutomationPlanView(), checkpoint.workspace.position, null);
+                if (trigger.kind === 'trigger') this.lastTriggeredAutomationPointId = trigger.point.id;
+                this.callbacks.onWorkspaceRestored?.(checkpoint.workspace);
+                // Consumption is deliberate: another departure requires a fresh explicit save.
+                this.markSessionChanged();
+            }
         } catch {
             if (this.isCurrentRequest(loadRevision, planRevision)) {
                 this.callbacks.onAnalysisError('Could not prepare this track. Please load it again.');
@@ -172,21 +256,30 @@ export class MvpVisualController {
      */
     async regeneratePlan(activityLevel: DramaturgyActivityLevel, variantMode: DramaturgyVariantMode): Promise<void> {
         if (this.preparingTrack) return;
+        this.markSessionChanged();
+        this.endHistoryGesture();
         const loadRevision = this.loadRevision;
         const planRevision = ++this.planRevision;
-        this.activityLevel = activityLevel;
-        this.variantMode = variantMode;
+        this.regeneratingPlan = true;
+        this.callbacks.onHistoryChanged?.();
+        this.refreshSaveState('journey');
         this.lastTriggeredAutomationPointId = null;
         let plan: PerformanceAutomationPlan;
         try {
-            plan = await this.generatePlan();
+            plan = await this.generatePlan(activityLevel, variantMode);
         } catch {
             if (this.isCurrentRequest(loadRevision, planRevision)) {
+                this.regeneratingPlan = false;
+                this.callbacks.onHistoryChanged?.();
+                this.refreshSaveState('journey');
                 this.callbacks.onAnalysisError('Could not regenerate the journey.');
             }
             return;
         }
         if (!this.isCurrentRequest(loadRevision, planRevision)) return;
+        this.regeneratingPlan = false;
+        this.activityLevel = activityLevel;
+        this.variantMode = variantMode;
         // The previous plan may still have triggered presets while this plan was building.
         // Invalidate those requests even when regenerated points reuse the same ids.
         ++this.planRevision;
@@ -199,10 +292,12 @@ export class MvpVisualController {
         setActiveVisualTransitionComponent('automation', null);
         void this.preloadPresetsForPlan(plan);
         this.computeSemanticPlan();
+        this.recordEdit('journey', 'Regenerate journey');
+        this.refreshSaveState('journey');
         this.callbacks.onPlanChanged();
     }
 
-    private async generatePlan(): Promise<PerformanceAutomationPlan> {
+    private async generatePlan(activityLevel = this.activityLevel, variantMode = this.variantMode): Promise<PerformanceAutomationPlan> {
         // Capture the inputs before the Visual OS await, including its legacy fallback.
         const analysis = State.trackAnalysis;
         const duration = State.duration;
@@ -212,8 +307,8 @@ export class MvpVisualController {
             const plan = await generateVisualOsPerformancePlan(analysis, {
                 duration,
                 stylePackId: stylePackForVisualMode('cosmic-wormhole'),
-                activityLevel: this.activityLevel,
-                variantMode: this.variantMode
+                activityLevel,
+                variantMode
             });
             if (plan && plan.points.length > 0) return plan;
         }
@@ -336,7 +431,7 @@ export class MvpVisualController {
 
     // ─── Playback ─────────────────────────────────────────────────────────────
 
-    play(): void { this.engine.play(); }
+    play(): void { this.markSessionChanged(); this.engine.play(); }
     pause(): void { this.engine.stop(false); }
     isPlaying(): boolean { return State.isPlaying; }
 
@@ -346,11 +441,13 @@ export class MvpVisualController {
     }
 
     commitScrub(time: number): void {
+        this.markSessionChanged();
         this.scrubPreviewTime = null;
         this.engine.seek(Math.max(0, Math.min(time, State.duration)));
     }
 
     seekRelative(deltaSec: number): void {
+        this.markSessionChanged();
         this.engine.seek(this.getCurrentTime() + deltaSec);
     }
 
@@ -376,16 +473,23 @@ export class MvpVisualController {
 
     setMacros(macros: MvpMacroTuning): void {
         this.macros = { ...macros };
+        this.recordEdit('tuning', 'Visual character');
+        this.refreshSaveState('tuning');
     }
 
     getAdvancedBoosts(): AdvancedBoosts { return { ...this.advancedBoosts }; }
 
     setAdvancedBoost(key: VisualTuningKey, fraction: number): void {
         this.advancedBoosts[key] = fraction;
+        this.recordEdit('tuning', 'Advanced tuning');
+        this.refreshSaveState('tuning');
     }
 
     resetAdvancedBoosts(): void {
+        this.endHistoryGesture();
         this.advancedBoosts = defaultAdvancedBoosts();
+        this.recordEdit('tuning', 'Reset advanced tuning');
+        this.refreshSaveState('tuning');
     }
 
     /** State.targetTuning itself: the raw, un-boosted signal a preset/automation point/dramaturgy
@@ -418,32 +522,263 @@ export class MvpVisualController {
     // The saved key fingerprints rounded analysis descriptors, independently of filename.
     // It does not guarantee audio-content identity or stability after re-encoding.
 
-    private async restoreMetaTuningForTrack(loadRevision: number, analysis: typeof State.trackAnalysis): Promise<void> {
+    private async restoreMetaTuningForTrack(loadRevision: number, analysis: typeof State.trackAnalysis): Promise<StoredJourney | null> {
         const fingerprint = await computeTrackFingerprint(analysis);
-        if (loadRevision !== this.loadRevision) return;
+        if (loadRevision !== this.loadRevision) return null;
         this.trackFingerprint = fingerprint;
-        const stored = loadMetaTuning(fingerprint);
-        if (!stored) return;
+        const stored = loadMetaTuning(fingerprint, State.duration);
+        if (!stored) return null;
         this.macros = { ...defaultMvpMacroTuning, ...stored.macros };
         this.advancedBoosts = { ...defaultAdvancedBoosts(), ...stored.advancedBoosts };
         this.callbacks.onMetaTuningRestored();
+        return stored.journey ?? null;
     }
 
-    /** Persists the current Visual character + Advanced tuning boosts for the whole track under
-     *  one combined entry (triggered from Advanced tuning's single Save button) so they come back
-     *  automatically next time this same song loads. Returns false if the write itself failed
-     *  (private browsing, storage quota, disabled storage) so the caller can tell the user. */
+    /** Explicit effect save; storage preserves only the previously saved journey. */
     async saveMetaTuningForTrack(): Promise<boolean> {
-        if (this.preparingTrack) return false;
+        return this.saveSections({ tuning: true, journey: false });
+    }
+
+    canSaveJourney(): boolean {
+        return !this.preparingTrack && !this.regeneratingPlan && this.getPlan() !== null;
+    }
+
+    hasUnsavedJourneyChanges(): boolean { return this.dirtySections.journey || this.regeneratingPlan; }
+    hasUnsavedTuningChanges(): boolean { return this.dirtySections.tuning; }
+    hasUnsavedChanges(): boolean { return this.hasUnsavedJourneyChanges() || this.hasUnsavedTuningChanges() || this.sessionDirty; }
+
+    getUnsavedChanges(): UnsavedTrackChanges {
+        return { journey: this.hasUnsavedJourneyChanges(), tuning: this.hasUnsavedTuningChanges(),
+            ...(this.callbacks.getWorkspaceSnapshot ? { history: this.sessionDirty } : {}) };
+    }
+
+    private tuningSignature(): string {
+        // Fixed key order makes equivalent values clean even if object construction order differs.
+        return JSON.stringify([this.macros.intensity, this.macros.motion, this.macros.depth, this.macros.detail,
+            ...advancedBoostKeys.map(key => this.advancedBoosts[key])]);
+    }
+
+    /** Content comparison excludes bookkeeping flags, so no-op edits/reverts are clean. */
+    private journeySignature(): string {
+        return JSON.stringify({ points: this.getPlan()?.points ?? [], activity: this.activityLevel,
+            variant: this.variantMode, scale: clampMorphScale(this.getPlan(), this.getMorphScale(), { durationSec: State.duration }) });
+    }
+
+    private refreshSaveState(section?: TrackSaveSection): void {
+        for (const key of ['journey', 'tuning'] as const) {
+            if (section && section !== key) continue;
+            this.dirtySections[key] = this.cleanSignatures !== null && this.cleanSignatures[key]
+                !== (key === 'journey' ? this.journeySignature() : this.tuningSignature());
+        }
+        this.callbacks.onSaveStateChanged?.();
+    }
+
+    /** Called only by explicit dramaturgy Save or the unsaved-changes dialog. */
+    async saveJourneyForTrack(): Promise<boolean> {
+        return this.saveSections({ journey: true, tuning: false });
+    }
+
+    /** The common leave modal explicitly saves all dirty sections in one atomic storage write. */
+    async saveUnsavedChangesForTrack(): Promise<boolean> {
+        if (this.callbacks.getWorkspaceSnapshot) return this.saveSessionForTrack();
+        const saved = await this.saveSections(this.getUnsavedChanges());
+        return saved && !this.hasUnsavedChanges();
+    }
+
+    private async saveSections(sections: UnsavedTrackChanges): Promise<boolean> {
+        this.endHistoryGesture();
+        if (!sections.journey && !sections.tuning) return true;
+        if (!this.canSaveJourney()) return false;
         const loadRevision = this.loadRevision;
-        const payload: StoredMetaTuning = { version: 1, macros: this.getMacros(), advancedBoosts: this.getAdvancedBoosts() };
+        const signatures = { journey: this.journeySignature(), tuning: this.tuningSignature() };
+        const changes: TrackSaveChanges = {};
+        if (sections.tuning) changes.tuning = { macros: this.getMacros(), advancedBoosts: this.getAdvancedBoosts() };
+        if (sections.journey) changes.journey = {
+            version: 1, plan: JSON.parse(JSON.stringify(this.getPlan())), activityLevel: this.activityLevel,
+            variantMode: this.variantMode, morphScale: clampMorphScale(this.getPlan(), this.getMorphScale(), { durationSec: State.duration }),
+            edited: State.performancePlanEdited
+        };
         const fingerprint = this.trackFingerprint ?? await computeTrackFingerprint(State.trackAnalysis);
         if (loadRevision !== this.loadRevision) return false;
         this.trackFingerprint = fingerprint;
-        return saveMetaTuning(fingerprint, payload);
+        if (!saveTrackChanges(fingerprint, changes)) return false;
+        this.cleanSignatures ??= { ...signatures };
+        for (const key of ['journey', 'tuning'] as const) {
+            if (sections[key]) this.cleanSignatures[key] = signatures[key];
+        }
+        this.refreshSaveState();
+        return true;
     }
 
     // ─── Journey / moment editing ─────────────────────────────────────────────
+
+    markSessionChanged(): void {
+        if (!this.callbacks.getWorkspaceSnapshot || !this.cleanSignatures || this.preparingTrack) return;
+        ++this.sessionRevision;
+        this.sessionDirty = true;
+        if (this.sessions.invalidate() === false) this.callbacks.onSessionNotice?.('Browser storage is blocked. History changes remain unsaved; enable storage before leaving.');
+        this.callbacks.onSaveStateChanged?.();
+    }
+
+    discardSession(): boolean {
+        if (this.sessions.discard() === false) return false;
+        this.pendingCheckpoint = null;
+        ++this.sessionRevision;
+        this.sessionDirty = false;
+        this.callbacks.onSaveStateChanged?.();
+        return true;
+    }
+
+    async saveSessionForTrack(): Promise<boolean> {
+        this.sessionSaveError = null;
+        if (!this.canUseHistory() || !this.currentFile || !this.currentFileHash || !this.trackFingerprint
+            || !this.callbacks.getWorkspaceSnapshot || this.sessionSaving) {
+            this.sessionSaveError = 'History cannot be saved yet. Wait for loading, generation or the current save to finish, then retry.';
+            return false;
+        }
+        this.sessionSaving = true;
+        try {
+            this.endHistoryGesture();
+            // Freeze transport and late preset requests before capturing a coherent checkpoint.
+            this.engine.stop(false);
+            ++this.planRevision;
+            const revision = this.sessionRevision, load = this.loadRevision;
+            const current = { journey: this.historySnapshot('journey'), tuning: this.historySnapshot('tuning') };
+            const checkpoint: SessionCheckpoint = {
+                version: 1, token: crypto.randomUUID(), fingerprint: this.trackFingerprint, duration: State.duration,
+                file: { name: this.currentFile.name, size: this.currentFile.size, hash: this.currentFileHash },
+                current, history: this.history.exportArchive(), workspace: this.callbacks.getWorkspaceSnapshot()
+            };
+            const changes: TrackSaveChanges = {
+                tuning: { macros: this.getMacros(), advancedBoosts: this.getAdvancedBoosts() },
+                journey: { version: 1, plan: JSON.parse(JSON.stringify(this.getPlan())), activityLevel: this.activityLevel,
+                    variantMode: this.variantMode, morphScale: this.getMorphScale(), edited: State.performancePlanEdited }
+            };
+            const saved = await this.sessions.save(checkpoint, changes,
+                () => load === this.loadRevision && revision === this.sessionRevision && this.canUseHistory());
+            if (!saved) {
+                const reason = this.sessions.getSaveError();
+                this.sessionSaveError = reason === 'too-large'
+                    ? 'History is too large to save in browser storage. Save automation and visual tuning separately, then continue without saving history.'
+                    : reason === 'invalid-checkpoint'
+                        ? 'History could not be validated. Your edits are still here. Save automation and visual tuning separately before leaving.'
+                        : reason === 'changed'
+                            ? 'The workspace changed during saving. Retry to save its current state.'
+                            : 'Browser storage is full or unavailable. Free space or allow storage for this site, then retry. Your changes are still here.';
+                return false;
+            }
+            if (load !== this.loadRevision || revision !== this.sessionRevision) {
+                this.sessions.invalidate();
+                this.sessionSaveError = 'The workspace changed during saving. Retry to save its current state.';
+                return false;
+            }
+            this.pendingCheckpoint = null;
+            this.cleanSignatures = { journey: current.journey.key, tuning: current.tuning.key };
+            this.sessionDirty = false;
+            this.sessionSaveError = null;
+            this.refreshSaveState();
+            return true;
+        } catch {
+            this.sessionSaveError = 'Could not capture the workspace for history saving. Your changes are still here; retry, or save automation and visual tuning separately.';
+            return false;
+        } finally { this.sessionSaving = false; }
+    }
+
+    getSessionSaveError(): string | null { return this.sessionSaveError; }
+
+    private restoreCheckpoint(checkpoint: SessionCheckpoint): boolean {
+        if (!this.history.importArchive(checkpoint.history, checkpoint.current,
+            (domain, data) => normalizeSessionSnapshot(domain, data, State.duration))) return false;
+        const j = JSON.parse(checkpoint.current.journey.data), t = JSON.parse(checkpoint.current.tuning.data);
+        ++this.planRevision;
+        State.performancePlan = j.generatedPlan;
+        State.editedPerformancePlan = j.plan;
+        State.performancePlanEdited = j.edited;
+        State.automationMorphScale = j.scale;
+        this.activityLevel = j.activity;
+        this.variantMode = j.variant;
+        this.macros = t.macros;
+        this.advancedBoosts = t.advancedBoosts;
+        State.loopPlayback = checkpoint.workspace.loopPlayback;
+        Object.assign(State.targetTuning, checkpoint.workspace.targetTuning);
+        Object.assign(State.visualTuning, checkpoint.workspace.targetTuning);
+        this.lastTriggeredAutomationPointId = null;
+        this.invalidateAutomationPlanView();
+        this.computeSemanticPlan();
+        this.snapshotSemanticBase();
+        void this.preloadPresetsForPlan(j.plan);
+        this.historyBaseline = { journey: this.historySnapshot('journey'), tuning: this.historySnapshot('tuning') };
+        this.cleanSignatures = { journey: this.journeySignature(), tuning: this.tuningSignature() };
+        this.callbacks.onMetaTuningRestored();
+        return true;
+    }
+
+    beginHistoryGesture(): void { this.history.beginGroup(); }
+    endHistoryGesture(): void { this.history.endGroup(); }
+    setHistoryScope(scope: HistoryScope): void {
+        if (scope !== this.history.getStatus().scope) this.markSessionChanged();
+        this.history.setScope(scope);
+        this.callbacks.onHistoryChanged?.();
+    }
+    getHistoryStatus(): HistoryStatus { return this.history.getStatus(); }
+    canUseHistory(): boolean { return this.canSaveJourney() && !this.currentExporter; }
+
+    private historySnapshot(domain: HistoryDomain): HistorySnapshot {
+        return domain === 'tuning'
+            ? { key: this.tuningSignature(), data: JSON.stringify({ macros: this.macros, advancedBoosts: this.advancedBoosts }) }
+            : { key: this.journeySignature(), data: JSON.stringify({ plan: this.getPlan(), generatedPlan: State.performancePlan,
+                edited: State.performancePlanEdited, activity: this.activityLevel, variant: this.variantMode, scale: this.getMorphScale() }) };
+    }
+
+    private recordEdit(domain: HistoryDomain, label: string): void {
+        // Plan edits can shrink the permitted scale. Record the accepted value in the same
+        // undo entry, before callbacks project it into the timeline or persistence snapshot.
+        if (domain === 'journey') {
+            State.automationMorphScale = clampMorphScale(this.getPlan(), this.getMorphScale(), { durationSec: State.duration });
+        }
+        if (!this.historyBaseline) return;
+        const snapshot = this.historySnapshot(domain);
+        if (snapshot.key !== this.historyBaseline[domain].key) this.markSessionChanged();
+        this.history.record(domain, this.historyBaseline[domain], snapshot, label);
+        this.historyBaseline[domain] = snapshot;
+        this.callbacks.onHistoryChanged?.();
+    }
+
+    undo(): boolean { return this.restoreHistory(false); }
+    redo(): boolean { return this.restoreHistory(true); }
+    private restoreHistory(redo: boolean): boolean {
+        if (!this.canUseHistory() || !this.historyBaseline) return false;
+        const entry = redo ? this.history.redo() : this.history.undo();
+        if (!entry) return false;
+        this.markSessionChanged();
+        const snapshot = redo ? entry.after : entry.before;
+        if (entry.domain === 'tuning') {
+            const value = JSON.parse(snapshot.data) as { macros: MvpMacroTuning; advancedBoosts: AdvancedBoosts };
+            this.macros = value.macros;
+            this.advancedBoosts = value.advancedBoosts;
+            this.callbacks.onMetaTuningRestored();
+        } else {
+            const value = JSON.parse(snapshot.data) as { plan: PerformanceAutomationPlan; generatedPlan: PerformanceAutomationPlan;
+                edited: boolean; activity: DramaturgyActivityLevel; variant: DramaturgyVariantMode; scale: number };
+            ++this.planRevision; // Late presets from the abandoned plan must never apply, even with reused IDs.
+            State.performancePlan = value.generatedPlan;
+            State.editedPerformancePlan = value.plan;
+            State.performancePlanEdited = value.edited;
+            State.automationMorphScale = value.scale;
+            this.activityLevel = value.activity;
+            this.variantMode = value.variant;
+            this.lastTriggeredAutomationPointId = null;
+            this.invalidateAutomationPlanView();
+            setActiveVisualTransitionComponent('automation', null);
+            this.computeSemanticPlan();
+            void this.preloadPresetsForPlan(value.plan);
+            this.callbacks.onPlanChanged();
+        }
+        this.historyBaseline[entry.domain] = snapshot;
+        this.refreshSaveState(entry.domain);
+        this.callbacks.onHistoryChanged?.();
+        return true;
+    }
 
     getPlan(): PerformanceAutomationPlan | null {
         return State.editedPerformancePlan ?? State.performancePlan;
@@ -474,6 +809,8 @@ export class MvpVisualController {
             State.performancePlanEdited = true;
             this.lastTriggeredAutomationPointId = null;
             this.invalidateAutomationPlanView();
+            this.recordEdit('journey', 'Add moment');
+            this.refreshSaveState('journey');
             this.callbacks.onPlanChanged();
         }
         return point;
@@ -506,6 +843,8 @@ export class MvpVisualController {
             State.performancePlanEdited = true;
             this.lastTriggeredAutomationPointId = null;
             this.invalidateAutomationPlanView();
+            this.recordEdit('journey', 'Edit moment');
+            this.refreshSaveState('journey');
             this.callbacks.onPlanChanged();
         }
     }
@@ -523,6 +862,8 @@ export class MvpVisualController {
         State.performancePlanEdited = true;
         this.lastTriggeredAutomationPointId = null;
         this.invalidateAutomationPlanView();
+        this.recordEdit('journey', 'Move moment');
+        this.refreshSaveState('journey');
         this.callbacks.onPlanChanged();
     }
 
@@ -534,6 +875,8 @@ export class MvpVisualController {
             State.performancePlanEdited = true;
             this.lastTriggeredAutomationPointId = null;
             this.invalidateAutomationPlanView();
+            this.recordEdit('journey', 'Nudge moment');
+            this.refreshSaveState('journey');
             this.callbacks.onPlanChanged();
         }
     }
@@ -545,6 +888,8 @@ export class MvpVisualController {
             State.performancePlanEdited = true;
             this.lastTriggeredAutomationPointId = null;
             this.invalidateAutomationPlanView();
+            this.recordEdit('journey', 'Delete moment');
+            this.refreshSaveState('journey');
             this.callbacks.onPlanChanged();
         }
     }
@@ -555,13 +900,15 @@ export class MvpVisualController {
     getMorphScale(): number { return State.automationMorphScale; }
 
     getMaxMorphScale(): number {
-        return clampMorphScale(this.getPlan(), 4);
+        return computeMaxMorphScale(this.getPlan(), { durationSec: State.duration });
     }
 
     setMorphScale(scale: number): void {
-        State.automationMorphScale = clampMorphScale(this.getPlan(), scale);
+        State.automationMorphScale = clampMorphScale(this.getPlan(), scale, { durationSec: State.duration });
         this.lastTriggeredAutomationPointId = null;
         this.invalidateAutomationPlanView();
+        this.recordEdit('journey', 'Morph scale');
+        this.refreshSaveState('journey');
     }
 
     private invalidateAutomationPlanView(): void {
@@ -619,6 +966,7 @@ export class MvpVisualController {
 
     async startExport(config: ExportConfig, onProgress: (progress: number) => void): Promise<Blob> {
         if (!this.canExport() || this.currentExporter) throw new Error('Export is not available right now.');
+        this.markSessionChanged();
         const wasPlaying = State.isPlaying;
         if (wasPlaying) this.engine.stop(false);
 

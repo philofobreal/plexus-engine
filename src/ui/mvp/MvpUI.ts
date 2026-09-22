@@ -15,6 +15,11 @@ import { IntentInfoPanel } from './IntentInfoPanel';
 import { ExportDialog } from './ExportDialog';
 import { FirstRunScreen } from './FirstRunScreen';
 import { AnalyzingScreen } from './AnalyzingScreen';
+import { UnsavedChangesDialog } from './UnsavedChangesDialog';
+import { UnsavedChangesGuard } from './UnsavedChangesGuard';
+import { HistoryInput } from './HistoryInput';
+import type { WorkspaceSnapshot } from './sessionCheckpoint';
+import type { createPreviewQualityControl } from '../PreviewQualityControl';
 
 const DESKTOP_QUERY = '(min-width: 1024px)';
 
@@ -49,6 +54,8 @@ export class MvpUI {
     private readonly exportDialog: ExportDialog;
     private readonly firstRun: FirstRunScreen;
     private readonly analyzing: AnalyzingScreen;
+    private readonly unsavedChangesDialog: UnsavedChangesDialog;
+    private readonly unsavedChangesGuard: UnsavedChangesGuard;
 
     private readonly workspaceEl: HTMLElement;
     private readonly sideCol: HTMLElement;
@@ -67,8 +74,12 @@ export class MvpUI {
     private currentFileName = '';
     private timelineHidden = false;
     private toastTimer: number | null = null;
+    private viewKey = '';
+    private readonly previewQualityControl?: ReturnType<typeof createPreviewQualityControl>;
 
-    constructor(engine: AudioEngine, hasTimeBasedSemanticPlan: () => boolean = () => false, previewQualityControl?: HTMLElement) {
+    constructor(engine: AudioEngine, hasTimeBasedSemanticPlan: () => boolean = () => false,
+        previewQualityControl?: ReturnType<typeof createPreviewQualityControl>) {
+        this.previewQualityControl = previewQualityControl;
         this.root = document.createElement('div');
         this.root.className = 'mvp-shell';
 
@@ -127,7 +138,7 @@ export class MvpUI {
             onReset: () => { this.controller.resetAdvancedBoosts(); this.advancedTuning.setValues(this.controller.getAdvancedBoosts()); },
             onSave: () => this.controller.saveMetaTuningForTrack()
         });
-        if (previewQualityControl) this.advancedTuning.root.prepend(previewQualityControl);
+        if (previewQualityControl) this.advancedTuning.root.prepend(previewQualityControl.root);
         this.macroControls = new MacroControls({
             onChange: (macros) => this.controller.setMacros(macros),
             onOpenAdvanced: () => { this.advancedTuning.setValues(this.controller.getAdvancedBoosts()); this.quickDrawer.toggle('tuning'); }
@@ -185,7 +196,11 @@ export class MvpUI {
             onToggleZoom: (value) => this.journey.setZoomed(value),
             onMorphScaleChange: (scale) => { this.controller.setMorphScale(scale); this.refreshJourney(); },
             onToggleLayer: (layer, value) => this.journey.setLayers({ ...State.timelineLayers, [layer]: value }),
-            onRegenerate: (activity, variant) => void this.regenerateJourney(activity, variant)
+            onRegenerate: (activity, variant) => void this.regenerateJourney(activity, variant),
+            onSave: () => this.controller.saveJourneyForTrack(),
+            onUndo: () => this.applyHistory(false),
+            onRedo: () => this.applyHistory(true),
+            onHistoryScopeChange: (scope) => this.controller.setHistoryScope(scope)
         });
         journeyPanel.appendChild(this.timelineToolbar.root);
         journeyWrap.appendChild(journeyPanel);
@@ -232,6 +247,19 @@ export class MvpUI {
         this.root.appendChild(this.toastEl);
         this.root.appendChild(this.intentInfoPanel.root);
         this.root.appendChild(this.exportDialog.root);
+        this.unsavedChangesDialog = new UnsavedChangesDialog(
+            (choice) => choice === 'journey' ? this.controller.saveJourneyForTrack()
+                : choice === 'tuning' ? this.controller.saveMetaTuningForTrack()
+                : this.controller.saveUnsavedChangesForTrack(),
+            () => this.controller.getUnsavedChanges(),
+            () => this.controller.discardSession(),
+            choice => choice === 'history' || choice === 'all' ? this.controller.getSessionSaveError() : null
+        );
+        this.root.appendChild(this.unsavedChangesDialog.root);
+        this.unsavedChangesGuard = new UnsavedChangesGuard(window, {
+            hasChanges: () => this.controller.hasUnsavedChanges(),
+            confirm: (continuing) => this.unsavedChangesDialog.confirm(continuing)
+        });
 
         this.trackMetaEl = topbar.querySelector('.mvp-track-meta')!;
         this.trackTitleEl = topbar.querySelector('.mvp-track-title')!;
@@ -263,13 +291,46 @@ export class MvpUI {
             },
             onPlaybackEnded: () => { this.previewStage.setPlaying(false); this.transport.setPlaying(false); },
             onPlanChanged: () => this.refreshJourney(),
+            onHistoryChanged: () => this.timelineToolbar.setHistoryState(this.controller.getHistoryStatus(), this.controller.canUseHistory()),
+            onSaveStateChanged: () => {
+                this.timelineToolbar.setSaveState(this.controller.hasUnsavedJourneyChanges(), this.controller.canSaveJourney());
+                this.advancedTuning.setSaveState(this.controller.hasUnsavedTuningChanges(), this.controller.canSaveJourney());
+                this.unsavedChangesDialog.updateChanges(this.controller.getUnsavedChanges());
+                this.unsavedChangesGuard.sync();
+            },
             onMetaTuningRestored: () => {
                 this.macroControls.setValues(this.controller.getMacros());
                 this.advancedTuning.setValues(this.controller.getAdvancedBoosts());
-            }
+            },
+            getWorkspaceSnapshot: () => this.captureWorkspace(),
+            onSessionNotice: message => this.showToast(message),
+            onWorkspaceRestored: workspace => this.restoreWorkspace(workspace)
         });
 
+        new HistoryInput(window, {
+            undo: () => this.applyHistory(false), redo: () => this.applyHistory(true),
+            beginGesture: () => this.controller.beginHistoryGesture(),
+            endGesture: () => this.controller.endHistoryGesture(),
+            blocked: () => this.historyBlocked()
+        });
         void MvpVisualController.detectExportCapabilities().then((report) => this.exportDialog.applyCapabilityReport(report));
+        // Compare small view settings only after UI events, never in the render/audio loop.
+        for (const event of ['click', 'change', 'pointerup', 'keyup', 'fullscreenchange']) {
+            window.addEventListener(event, () => queueMicrotask(() => {
+                if (!this.controller.canSaveJourney()) return;
+                const key = this.workspaceViewKey();
+                if (key !== this.viewKey) { this.viewKey = key; this.controller.markSessionChanged(); }
+            }));
+        }
+        this.root.querySelector('[data-session-save]')!.addEventListener('click', () => {
+            if (!this.controller.canSaveJourney()) return;
+            this.momentInspector.commitPendingTime();
+            this.controller.markSessionChanged();
+            void this.unsavedChangesDialog.confirm(false);
+        });
+        void this.controller.resumeSession().then(available => {
+            if (available) this.showToast('Saved history is available. Load the same audio file to restore it.');
+        });
     }
 
     private buildTopbar(): HTMLElement {
@@ -288,6 +349,7 @@ export class MvpUI {
                 </div>
             </div>
             <div class="mvp-topbar-actions">
+                <button type="button" class="mvp-btn" data-session-save title="Save history and workspace for the next reload. Audio is never stored; select the same file again to restore.">Save session</button>
                 <label class="mvp-btn mvp-load-btn">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm12-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/></svg>
                     Load Track
@@ -311,7 +373,7 @@ export class MvpUI {
     // ─── File lifecycle ─────────────────────────────────────────────────────
 
     private handleFile(file: File): void {
-        void this.controller.loadFile(file);
+        void this.unsavedChangesGuard.run(() => { void this.controller.loadFile(file); });
     }
 
     private showAnalyzing(fileName: string): void {
@@ -352,6 +414,44 @@ export class MvpUI {
         this.macroControls.setValues(this.controller.getMacros());
         this.advancedTuning.setValues(this.controller.getAdvancedBoosts());
         this.exportBtn.disabled = !this.controller.canExport();
+        this.viewKey = this.workspaceViewKey();
+    }
+
+    private captureWorkspace(): WorkspaceSnapshot {
+        return { position: this.controller.getCurrentTime(), wasPlaying: State.isPlaying, fullscreen: this.isNativeFullscreen(),
+            selectedMomentId: this.selectedMomentId, timelineHidden: this.timelineHidden,
+            snap: State.snapToGrid, follow: State.followPlayhead, draw: State.drawModeActive,
+            zoom: State.zoom, pan: State.pan, layers: { ...State.timelineLayers }, drawer: this.quickDrawer.getOpenTab(),
+            sheetOpen: this.sheet.classList.contains('is-open'), previewQuality: this.previewQualityControl?.preference.mode ?? 'auto',
+            exportResolution: this.exportDialog.getResolution(), loopPlayback: State.loopPlayback,
+            targetTuning: { ...State.targetTuning } };
+    }
+
+    private workspaceViewKey(): string {
+        const { position: _position, wasPlaying: _playing, targetTuning: _target, ...view } = this.captureWorkspace();
+        return JSON.stringify(view);
+    }
+
+    private restoreWorkspace(w: WorkspaceSnapshot): void {
+        this.timelineHidden = w.timelineHidden;
+        this.updateTimelineVisibility();
+        this.journey.setSnapEnabled(w.snap);
+        this.journey.setFollowEnabled(w.follow);
+        this.journey.setDrawModeActive(w.draw);
+        this.journey.setLayers(w.layers);
+        this.journey.restoreViewport(w.zoom, w.pan);
+        this.timelineToolbar.setLayers(w.layers);
+        this.timelineToolbar.setToggles({ snap: w.snap, follow: w.follow, draw: w.draw, zoomed: w.zoom > 1 });
+        this.quickDrawer.close();
+        if (w.drawer) this.quickDrawer.toggle(w.drawer);
+        if (w.selectedMomentId) this.selectMoment(w.selectedMomentId, false); else this.deselectMoment();
+        if (w.sheetOpen && !this.desktopQuery.matches) this.openSheet(); else this.closeSheet();
+        this.previewQualityControl?.setMode(w.previewQuality);
+        this.exportDialog.restoreResolution(w.exportResolution);
+        this.transport.setTime(w.position);
+        this.journey.setPlayhead(w.position);
+        this.viewKey = this.workspaceViewKey();
+        this.showToast(w.fullscreen ? 'Session restored, paused. Use Fullscreen to re-enter full screen.' : 'Session restored, paused. Save again to keep it for the next reload.');
     }
 
     private showFirstRun(): void {
@@ -367,6 +467,7 @@ export class MvpUI {
         this.journey.setPoints(this.controller.getAutomationPlanView()?.points ?? points);
         this.journey.setIntentPlan(State.dramaturgicalIntent);
         this.timelineToolbar.setMorphScale(this.controller.getMorphScale(), this.controller.getMaxMorphScale());
+        this.timelineToolbar.setGenerationSelection(this.controller.getActivityLevel(), this.controller.getVariantMode());
 
         if (this.selectedMomentId && !points.some((p) => p.id === this.selectedMomentId)) {
             this.deselectMoment();
@@ -387,6 +488,19 @@ export class MvpUI {
     }
 
     // ─── Moment selection ───────────────────────────────────────────────────
+
+    private historyBlocked(): boolean {
+        return !this.controller.canUseHistory() || Boolean(document.querySelector('dialog[open]'))
+            || !this.exportDialog.root.classList.contains('mvp-hidden');
+    }
+
+    private applyHistory(redo: boolean): void {
+        if (this.historyBlocked()) return;
+        this.momentInspector.commitPendingTime();
+        this.controller.endHistoryGesture();
+        this.journey.cancelMomentDrag();
+        if (redo) this.controller.redo(); else this.controller.undo();
+    }
 
     private selectMoment(id: string, openSheetIfMobile = true): void {
         const point = this.controller.getPlan()?.points.find((p) => p.id === id);

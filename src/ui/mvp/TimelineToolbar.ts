@@ -1,4 +1,5 @@
 import type { DramaturgyActivityLevel, DramaturgyVariantMode, TimelineLayers } from '../../types';
+import type { HistoryScope, HistoryStatus } from './EditHistory';
 
 export interface TimelineToggleState {
     snap: boolean;
@@ -16,6 +17,10 @@ export interface TimelineToolbarCallbacks {
     onToggleLayer: (layer: keyof TimelineLayers, value: boolean) => void;
     /** Fires only after the user has confirmed the destructive-regenerate warning. */
     onRegenerate: (activity: DramaturgyActivityLevel, variant: DramaturgyVariantMode) => void;
+    onSave: () => Promise<boolean>;
+    onUndo: () => void;
+    onRedo: () => void;
+    onHistoryScopeChange: (scope: HistoryScope) => void;
 }
 
 const LAYER_OPTIONS: Array<{ key: keyof TimelineLayers; letter: string; label: string }> = [
@@ -56,6 +61,15 @@ export class TimelineToolbar {
     private readonly callbacks: TimelineToolbarCallbacks;
     private pendingActivity: DramaturgyActivityLevel = 'balanced';
     private pendingVariant: DramaturgyVariantMode = 'paired';
+    private readonly saveButton: HTMLButtonElement;
+    private readonly saveStatus: HTMLElement;
+    private saving = false;
+    private canSave = false;
+    private dirty = false;
+    private readonly undoButton: HTMLButtonElement;
+    private readonly redoButton: HTMLButtonElement;
+    private readonly scopeCheckbox: HTMLInputElement;
+    private readonly historyStatus: HTMLElement;
 
     constructor(callbacks: TimelineToolbarCallbacks) {
         this.callbacks = callbacks;
@@ -64,10 +78,20 @@ export class TimelineToolbar {
         this.root.innerHTML = `
             <div class="mvp-toolbar-row mvp-toolbar-layers">
                 <span class="mvp-toolbar-layers-label">Track dramaturgy</span>
+                <button type="button" class="mvp-btn mvp-journey-save" disabled>Save automation</button>
                 <div class="mvp-toolbar-layers-group">
                     ${LAYER_OPTIONS.map((o) => `<button type="button" class="mvp-toolbar-layer" data-layer="${o.key}" title="Toggle ${o.label}" aria-pressed="false" aria-label="Toggle ${o.label}">${o.letter}</button>`).join('')}
                 </div>
             </div>
+            <div class="mvp-journey-save-status" role="status" aria-live="polite">No unsaved changes.</div>
+            <div class="mvp-toolbar-row mvp-history-controls">
+                <button type="button" class="mvp-btn" data-history-undo disabled aria-keyshortcuts="Control+z Meta+z">Undo</button>
+                <button type="button" class="mvp-btn" data-history-redo disabled aria-keyshortcuts="Control+Shift+z Meta+Shift+z Control+y">Redo</button>
+                <label class="mvp-history-scope" title="Off: dramaturgy only. On: dramaturgy, Visual character and Advanced tuning. Switching keeps history; playback, saves and view settings are excluded.">
+                    <input type="checkbox" data-history-scope> Include visual tuning
+                </label>
+            </div>
+            <div class="mvp-history-status" role="status" aria-live="polite" data-history-status>Dramaturgy · 0 undo / 0 redo · 300-step history</div>
             <div class="mvp-toolbar-row mvp-toolbar-toggles">
                 <button type="button" class="mvp-toolbar-toggle" data-toggle="snap" title="Snap moments to the beat grid" aria-pressed="false" aria-label="Snap to grid">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 10a7 7 0 0 1 14 0v4a2 2 0 0 0 2 2h1a2 2 0 0 0-2-2V10a9 9 0 0 0-18 0v4a2 2 0 0 0-2 2h1a2 2 0 0 0 2-2V10z"/></svg>
@@ -88,7 +112,7 @@ export class TimelineToolbar {
             </div>
             <div class="mvp-toolbar-row mvp-toolbar-morph">
                 <span class="mvp-toolbar-morph-label">Morph Scale</span>
-                <input type="range" class="mvp-slider mvp-toolbar-morph-slider" min="0.25" max="4" step="0.01" value="1" aria-label="Automation morph scale">
+                <input type="range" class="mvp-slider mvp-toolbar-morph-slider" min="0.25" max="4" step="any" value="1" aria-label="Automation morph scale">
                 <output class="mvp-toolbar-morph-value">100%</output>
             </div>
             <div class="mvp-toolbar-row mvp-toolbar-generate">
@@ -106,6 +130,17 @@ export class TimelineToolbar {
                 </div>
             </div>
         `;
+
+        this.saveButton = this.root.querySelector('.mvp-journey-save')!;
+        this.saveStatus = this.root.querySelector('.mvp-journey-save-status')!;
+        this.saveButton.addEventListener('click', () => void this.save());
+        this.undoButton = this.root.querySelector('[data-history-undo]')!;
+        this.redoButton = this.root.querySelector('[data-history-redo]')!;
+        this.scopeCheckbox = this.root.querySelector('[data-history-scope]')!;
+        this.historyStatus = this.root.querySelector('[data-history-status]')!;
+        this.undoButton.addEventListener('click', () => callbacks.onUndo());
+        this.redoButton.addEventListener('click', () => callbacks.onRedo());
+        this.scopeCheckbox.addEventListener('change', () => callbacks.onHistoryScopeChange(this.scopeCheckbox.checked ? 'all' : 'journey'));
 
         this.layerBtns = {} as Record<keyof TimelineLayers, HTMLButtonElement>;
         for (const option of LAYER_OPTIONS) {
@@ -139,7 +174,7 @@ export class TimelineToolbar {
         this.morphValue = this.root.querySelector('.mvp-toolbar-morph-value')!;
         this.morphSlider.addEventListener('input', () => {
             const scale = Number(this.morphSlider.value);
-            this.morphValue.textContent = `${Math.round(scale * 100)}%`;
+            this.updateMorphScaleLabel(scale);
             this.callbacks.onMorphScaleChange(scale);
         });
 
@@ -164,6 +199,39 @@ export class TimelineToolbar {
         this.setActive(this.activityBtns, activity);
         this.setActive(this.variantBtns, variant);
         this.callbacks.onRegenerate(activity, variant);
+    }
+
+    setSaveState(dirty: boolean, canSave: boolean): void {
+        this.dirty = dirty;
+        this.canSave = canSave;
+        this.saveButton.disabled = this.saving || !canSave;
+        if (!this.saving) this.saveStatus.textContent = dirty ? 'Unsaved automation changes.' : 'No unsaved changes.';
+    }
+
+    setHistoryState(state: HistoryStatus, enabled: boolean): void {
+        this.undoButton.disabled = !enabled || state.undoLabel === null;
+        this.redoButton.disabled = !enabled || state.redoLabel === null;
+        this.undoButton.title = `${state.undoLabel ? `Undo: ${state.undoLabel}` : 'Nothing to undo'} (Ctrl/Cmd+Z)`;
+        this.redoButton.title = `${state.redoLabel ? `Redo: ${state.redoLabel}` : 'Nothing to redo'} (Ctrl/Cmd+Shift+Z or Ctrl+Y)`;
+        this.scopeCheckbox.checked = state.scope === 'all';
+        this.historyStatus.textContent = `${state.scope === 'all' ? 'Dramaturgy + visual tuning' : 'Dramaturgy'} · ${state.undoCount} undo / ${state.redoCount} redo · 300-step history`;
+    }
+
+    private async save(): Promise<void> {
+        if (this.saving || !this.canSave) return;
+        this.saving = true;
+        this.saveButton.disabled = true;
+        this.saveStatus.textContent = 'Saving automation...';
+        try {
+            const ok = await this.callbacks.onSave();
+            this.saveStatus.textContent = !ok ? 'Could not save automation. Your changes are still unsaved.'
+                : this.dirty ? 'Snapshot saved; newer changes are still unsaved.' : 'Automation saved for this track.';
+        } catch {
+            this.saveStatus.textContent = 'Could not save automation. Your changes are still unsaved.';
+        } finally {
+            this.saving = false;
+            this.saveButton.disabled = !this.canSave;
+        }
     }
 
     private setActive<T extends string>(group: Record<T, HTMLButtonElement>, active: T): void {
@@ -194,9 +262,22 @@ export class TimelineToolbar {
     }
 
     setMorphScale(scale: number, maxScale: number): void {
-        this.morphSlider.max = String(Math.max(1, maxScale));
+        // Dense plans can safely allow less than 100%. The native track must end at
+        // that same limit; step="any" also keeps fractional endpoints reachable.
+        const min = Number(this.morphSlider.min);
+        const max = Math.max(min, maxScale);
+        this.morphSlider.max = String(max);
         this.morphSlider.value = String(scale);
-        this.morphValue.textContent = `${Math.round(scale * 100)}%`;
+        this.morphSlider.disabled = max <= min;
+        this.morphSlider.title = `Maximum ${Number((max * 100).toFixed(2))}% for this journey. Transitions must finish before the next moment.`;
+        this.morphValue.title = this.morphSlider.title;
+        this.updateMorphScaleLabel(Number(this.morphSlider.value));
+    }
+
+    private updateMorphScaleLabel(scale: number): void {
+        const label = `${Number((scale * 100).toFixed(2))}%`;
+        this.morphValue.textContent = label;
+        this.morphSlider.setAttribute('aria-valuetext', label);
     }
 
     setGenerationSelection(activity: DramaturgyActivityLevel, variant: DramaturgyVariantMode): void {

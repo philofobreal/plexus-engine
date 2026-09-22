@@ -31,8 +31,9 @@ test('automation size is a timeline-level non-destructive dynamic control', () =
   assert.match(main, /id="automation-size-control"[\s\S]*Morph Scale[\s\S]*id="automation-morph-scale"/);
   assert.match(main, /id="automation-morph-scale"[^>]*min="0\.25"/);
   assert.match(state, /automationMorphScale: 1/);
-  assert.match(ui, /computeMaxMorphScale\(plan\)/);
-  assert.match(ui, /State\.automationMorphScale = clampMorphScale\(plan, State\.automationMorphScale\)/);
+  assert.match(ui, /computeMaxMorphScale\(plan, \{ durationSec: State\.duration \}\)/);
+  assert.match(ui, /State\.automationMorphScale = clampMorphScale\(plan, State\.automationMorphScale, \{ durationSec: State\.duration \}\)/);
+  assert.match(main, /id="automation-morph-scale"[^>]*step="any"/);
   assert.match(ui, /performancePlan: this\.getAutomationPlanView\(\)/);
   assert.match(ui, /private triggerPerformanceAutomation\(\)[\s\S]*const plan = this\.getAutomationPlanView\(\)/);
   assert.match(timeline, /state\.automationMorphScale/);

@@ -182,6 +182,14 @@ export class MomentInspector {
     getSelectedId(): string | null {
         return this.point?.id ?? null;
     }
+
+    /** Global history commits a focused time draft first, so a later blur cannot resurrect it. */
+    commitPendingTime(): void {
+        if (this.point && document.activeElement === this.timeInput
+            && this.timeInput.value !== formatTimeTenths(this.point.time)) {
+            this.timeInput.dispatchEvent(new Event('change'));
+        }
+    }
 }
 
 export { TRANSITION_PRESETS };

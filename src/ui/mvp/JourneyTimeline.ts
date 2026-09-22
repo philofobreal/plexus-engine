@@ -171,6 +171,12 @@ export class JourneyTimeline {
         this.requestDraw();
     }
 
+    restoreViewport(zoom: number, pan: number): void {
+        State.zoom = Math.max(1, Math.min(Math.max(16, this.duration / 5), zoom));
+        State.pan = this.clampPan(pan);
+        this.requestDraw();
+    }
+
     destroy(): void {
         this.gesture.destroy();
         if (this.rafHandle !== null) cancelAnimationFrame(this.rafHandle);
@@ -303,6 +309,12 @@ export class JourneyTimeline {
             this.isSeekDragging = false;
             this.callbacks.onScrubCommit(this.playheadTime);
         }
+    }
+
+    /** A history command invalidates an uncommitted pointer preview too. */
+    cancelMomentDrag(): void {
+        this.draggingPointId = null;
+        this.requestDraw();
     }
 
     // ─── Render ─────────────────────────────────────────────────────────────────────────────

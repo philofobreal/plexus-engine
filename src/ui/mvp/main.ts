@@ -25,7 +25,7 @@ const engine = new AudioEngine((plan) => semanticResolver.setPlan(plan));
 
 const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
 const previewQuality = createPreviewQualityControl(!isDesktop);
-const ui = new MvpUI(engine, () => semanticResolver.hasPlan(), previewQuality.root);
+const ui = new MvpUI(engine, () => semanticResolver.hasPlan(), previewQuality);
 document.querySelector<HTMLDivElement>('#mvp-app')!.appendChild(ui.root);
 
 const styleRegistry = createDefaultStyleRegistry();

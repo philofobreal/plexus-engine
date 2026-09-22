@@ -90,6 +90,13 @@ export class ExportDialog {
         this.statusEl.textContent = this.blockedMessage ?? '';
     }
 
+    getResolution(): ExportResolution { return this.getConfig().resolution; }
+    restoreResolution(resolution: ExportResolution): void {
+        const selected = this.resolutionBtns.find(b => b.dataset.res === resolution && !b.disabled)
+            ?? this.resolutionBtns.find(b => b.dataset.res === '720p');
+        this.resolutionBtns.forEach(b => b.classList.toggle('is-active', b === selected));
+    }
+
     close(): void {
         this.root.classList.add('mvp-hidden');
     }

@@ -60,6 +60,11 @@ release without any intervening renderer/dashboard tick.
 
 ### R3 — P2: A new track without saved tuning inherits the previous track's boosts
 
+**Resolved by sequential development task 1 (2026-09-22).** The facade now resets per-track
+controls on load and restores only the accepted track's validated payload. See the
+[task-1 validation and manual gate](sequential-development-plan.md). The original reproduction
+below is retained as historical evidence; other findings in this review are unchanged.
+
 Location: [MvpVisualController](../../src/ui/mvp/MvpVisualController.ts), `loadFile`
 and `restoreMetaTuningForTrack`.
 
