@@ -57,7 +57,7 @@ validation gaps are in [MVP workspace](../features/mvp-workspace.md) and the
   (`src/automation/automationPlanView.ts`). Left duplicated on purpose in DashboardUI, with a new
   shared implementation used only by MvpVisualController (no contract test constrains the MVP
   surface's shape, so no regression risk there): the automation-trigger decision logic
-  (`resolveAutomationTrigger` in `src/ui/performanceAutomationRuntime.ts`) and the semantic
+  (`resolveAutomationTrigger`, now in `src/automation/performanceAutomationRuntime.ts`) and the semantic
   narrative/intent/choreography compute + base-tuning snapshot
   (`computeAndPublishSemanticPlan`/`snapshotSemanticBaseTuning` in `src/ui/semanticPlanRuntime.ts`).
   Left duplicated in both (not attempted): `presetUrl`/`preloadPresetsForPlan`/preset `Map` cache

@@ -327,7 +327,8 @@ VisualScenePlan (per scene: narrative handle + behaviour + duration + evolution)
 - **Adaptive subdivision & cycle grammar.** Segment count derives from situation, BPM/bar
   structure, variation, the activity density scale, scene length and timing confidence, then clamped
   by the activity cap (`Math.ceil`, so a long scene never rounds down to one block). Interior
-  boundaries snap to bar starts under a reliable grid (equal-time fallback otherwise). A forward
+  boundaries snap to bar starts under a reliable grid (equal-time fallback otherwise). These are
+  proposal times; the published times follow the cue-evidenced publication gate (addendum below). A forward
   cycle grammar (`primary → counter → release → sparse → focus`) with `callbackFrequency`,
   `releaseFrequency`, `transitionFrequency`, a weighted recency penalty, and seeded jitter generates
   a real cycle — not a fixed A/B. The A→A ban is now conditional: only when `vocabularySize > 1` and
@@ -474,6 +475,34 @@ edits -> style tuning (adjusting StylePack `behaviour`/`targetMap` weights over 
 The architecture leaves room for it (StylePacks are data; the adapter is the single
 tuning-binding point), but no producer, persistence, or feedback channel is built in
 this phase. No code path reads or writes learning state.
+
+## Addendum: Cue-evidenced automation publication (2026-09-26)
+
+Choreography proposes evenly divided or bar-snapped times; publication must resolve each automatic
+proposal to published musical evidence or omit it. This applies to every automatic plan, whatever
+the host: the Visual OS loader (`visualOsPlanLoader`) and the legacy `dramaturgy` strategy of
+`performancePlanGenerator` both return `alignAutomationToCues(plan, analysis)`. The explicit
+`Strict Alternating` and `Hero Rhythm` strategies are not aligned.
+
+- Evidence is derived only in `src/semantics/cueEvidence.ts` (`musicalCueAnchors`, `cueContext`):
+  published cues/significant moments, novelty peaks and boundary candidates that pass confidence
+  thresholds and a before/after feature-window contrast check. It runs no DSP and invents no cue.
+  `src/automation/alignAutomationToCues.ts` only snaps and publishes.
+- Each automatic proposal searches both sides, bounded by the midpoints to its neighbours and
+  four seconds, and publishes the exact anchor time. Unsupported proposals are omitted, including
+  legacy section starts without boundary evidence. When the earliest proposal is automatic, it
+  becomes the explicit initial state at time zero. Locked and `manual` points are never moved; automatic points closer
+  than 0.12 s to them, or to each other, are dropped. Automatic morph durations are clamped to the
+  gap before the next published point.
+- Provenance: each published automatic point carries optional `cueAnchor` (planned/source time,
+  kind, confidence and before/after context) and the plan carries optional `cueAlignmentReport`
+  (proposed/published counts, omitted times). Both are renderer-independent provenance of the
+  automatic publication only: manual edits do not update `cueAnchor`, and Copy/Load
+  (`dramaturgyTransfer`) does not serialize either field. Plans with `source: 'edited'` are not
+  re-aligned.
+- Activity caps are unaffected: the gate can only move or remove proposals, never add points.
+- Tests: `tests/automation-cue-alignment.test.mjs`, `tests/dramaturgy.test.mjs`,
+  `tests/automation.test.mjs`.
 
 ## Consequences
 

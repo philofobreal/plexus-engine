@@ -170,7 +170,7 @@ Tradeoffs:
 - `src/ui/DashboardUI.ts`
 - `src/ui/GestureEngine.ts`
 - `src/ui/TimelineCanvas.ts`
-- `src/ui/performanceAutomationRuntime.ts`
+- `src/automation/performanceAutomationRuntime.ts` (moved from `src/ui/` with ADR-009)
 - `src/automation/morphScale.ts`
 - `src/automation/automationPlanEditing.ts`
 - `src/audio/AudioEngine.ts`

@@ -12,6 +12,10 @@ pause, restart or seek. Dragging the scrubber previews the intended position; co
 the gesture requests an engine seek. AudioEngine remains the playback clock and lifecycle
 owner. The initial automatic journey uses the wormhole style pack and falls back to the
 legacy plan generator if needed. Activity starts Balanced and variation starts Paired.
+Both generators publish automatic points through the cue-evidenced gate of the
+[ADR-005 addendum](../adr/ADR-005-visual-os-style-system.md#addendum-cue-evidenced-automation-publication-2026-09-26),
+so unsupported proposals are omitted rather than kept on a bar line. Macro/Advanced gain
+resolution lives in `src/config/` and is shared with the XR Wormhole background (ADR-009).
 
 The facade guards post-analysis work with a load revision and plan revisions, independently
 of AudioEngine's worker request guard. A superseded plan, preset response or tuning restore
