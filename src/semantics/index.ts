@@ -17,3 +17,5 @@ export { MAX_VISUAL_SCORE_FRAMES, VISUAL_SCORE_VERSION, normalizeVisualScorePlan
 export { NeutralSemanticStyleMapper } from './mapper';
 export type { SemanticStyleInput, SemanticStyleMapper } from './mapper';
 export { ALLOWED_TUNING_KEYS, SemanticRuntimeAdapter } from './SemanticRuntimeAdapter';
+export { cueContext, musicalCueAnchors } from './cueEvidence';
+export type { CueContext, CueEvidenceAnchor } from './cueEvidence';

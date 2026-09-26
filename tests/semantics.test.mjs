@@ -336,6 +336,7 @@ test('semantic layer stays free of p5/DOM/runtime-state imports', () => {
     'semantics/visualScoreValidation.ts',
     'semantics/SemanticResolver.ts',
     'semantics/SemanticRuntimeAdapter.ts',
+    'semantics/cueEvidence.ts',
     'semantics/index.ts'
   ]
     .map(p => readFileSync(join(SRC_ROOT, p), 'utf8'))

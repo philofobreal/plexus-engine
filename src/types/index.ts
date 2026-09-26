@@ -274,6 +274,18 @@ export interface PerformanceAutomationPoint {
     morphDurationSec: number;
     morphCurve: 'linear' | 'easeInOut' | 'exponential';
     locked?: boolean;
+    /** Provenance of automatic cue placement (ADR-005 addendum); user-authored/locked points are not moved.
+     *  Not updated by manual edits and not serialized by Copy/Load. */
+    cueAnchor?: {
+        plannedTime: number;
+        sourceTime: number;
+        kind: 'cue' | 'novelty' | 'boundary' | 'initial';
+        confidence: number;
+        before: number;
+        after: number;
+        plannedBefore: number;
+        plannedAfter: number;
+    };
     // Automation-only behaviour flag: mirror the resolved preset's horizontal wormhole turn.
     // Absent for legacy plans and targets whose authored direction is part of their identity.
     bendMirror?: boolean;
@@ -285,6 +297,7 @@ export interface PerformanceAutomationPlan {
     version: 1;
     source: 'auto' | 'edited';
     points: PerformanceAutomationPoint[];
+    cueAlignmentReport?: { proposedPoints: number; publishedPoints: number; omittedTimes: number[] };
 }
 
 // ── Semantic / Dramaturgy Layer (ADR-003) ──────────────────────────────────

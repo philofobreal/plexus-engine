@@ -17,9 +17,11 @@ function createSection(start, end, label, dominantFeature, energy = 0.5, density
 
 function createTrackAnalysis(sections) {
   return {
-    duration: 90,
+    duration: Math.max(90, ...sections.map(s => s.end)),
     bars: [],
     sections,
+    // These fixtures describe accepted musical boundaries, not unverified grid divisions.
+    boundaryCandidates: sections.filter(s => s.start > 0).map(s => ({ time: s.start, confidence: 0.9, timingMode: 'novelty', reasons: ['novelty-peak'] })),
     patterns: [],
     cues: [],
     significantMoments: [],
@@ -254,7 +256,7 @@ test('generatePerformancePlan prioritizes primary section anchors before nearby 
   assert.ok(plan.points.some(point => point.time === 21 && point.reason === 'break'));
 });
 
-test('generatePerformancePlan preserves section starts and snaps cue automation to musical bar starts', async () => {
+test('generatePerformancePlan preserves evidenced boundaries and retains actual cue time instead of rounding to a bar', async () => {
   const trackAnalysis = createTrackAnalysis([
     createSection(0.2, 17.5, 'intro', 'melody', 0.25),
     createSection(17.7, 34.2, 'build', 'pattern', 0.65),
@@ -267,7 +269,7 @@ test('generatePerformancePlan preserves section starts and snaps cue automation 
 
   const plan = await generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal3.json'], 64);
 
-  assert.deepEqual(plan.points.map(point => point.time), [0.2, 17.7, 34.4, 42]);
+  assert.deepEqual(plan.points.map(point => point.time), [0, 17.7, 34.4, 41.2]);
   assert.equal(plan.points.find(point => point.reason === 'drop')?.time, 34.4);
 });
 

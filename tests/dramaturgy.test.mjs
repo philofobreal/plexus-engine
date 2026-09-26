@@ -138,7 +138,9 @@ test('critically low grid and bpm confidence keeps dramaturgy cue timing energy-
 
   assert.ok(alignedMicro);
   assert.ok(reactiveMicro);
-  assert.equal(alignedMicro.time, 2.5);
+  // A confident grid may propose 2.5, but publication must preserve the audible cue at 2.26.
+  assert.equal(alignedMicro.time, 2.26);
+  assert.equal(alignedMicro.cueAnchor.plannedTime, 2.5);
   assert.equal(reactiveMicro.time, 2.26);
   assert.equal(reactiveMicro.timingMode, 'energy-reactive');
   assert.ok(reactiveMicro.confidence < alignedMicro.confidence);

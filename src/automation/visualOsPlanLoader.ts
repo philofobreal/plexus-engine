@@ -1,5 +1,6 @@
 import type { PerformanceAutomationPlan, StylePacksFile, TrackAnalysis } from '../types';
 import { buildVisualOsPerformancePlan, type VisualOsPlanOptions } from './visualOsPlanner';
+import { alignAutomationToCues } from './alignAutomationToCues';
 
 // visualOsPlanLoader - the IO boundary for the Visual OS V2 pipeline (ADR-005, Phase 4).
 // It loads public/visual-tuning-presets/style-packs.json (unless one is injected) and runs
@@ -14,7 +15,8 @@ export async function generateVisualOsPerformancePlan(
     try {
         const file = options.stylePacksFile ?? await loadStylePacksFile();
         if (!file) return null;
-        return buildVisualOsPerformancePlan(trackAnalysis, file, options);
+        const plan = buildVisualOsPerformancePlan(trackAnalysis, file, options);
+        return plan ? alignAutomationToCues(plan, trackAnalysis) : null;
     } catch {
         return null;
     }

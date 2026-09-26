@@ -11,6 +11,7 @@ import type {
     VisualCueEvent
 } from '../types';
 import { featureFlags } from '../config/featureFlags.ts';
+import { alignAutomationToCues } from './alignAutomationToCues.ts';
 
 // Constants & Configuration
 
@@ -77,7 +78,7 @@ export async function generatePerformancePlan(
         remapPresetsForHero(trackAnalysis, points, presets, options.presetMetadata);
     }
 
-    return finalizePlan(points);
+    return strategy === 'dramaturgy' ? alignAutomationToCues(finalizePlan(points), trackAnalysis) : finalizePlan(points);
 }
 
 // Strategy: Strict Alternating
