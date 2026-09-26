@@ -1,5 +1,5 @@
 import AnalyzerWorker from './analyzer.worker.ts?worker';
-import { ANALYSIS_ALGORITHM_VERSION, EMPTY_TRACK_ANALYSIS, normalizeTrackAnalysis, normalizeAudioFrame } from '../analyzer';
+import { ANALYSIS_ALGORITHM_VERSION, createEmptyTrackAnalysis, normalizeTrackAnalysis, normalizeAudioFrame } from '../analyzer';
 import { featureFlags } from '../config/featureFlags';
 import { State } from '../state/store';
 import { resetActiveVisualTransitions } from '../state/visualTransitionState';
@@ -7,6 +7,12 @@ import type { AnalysisWorkerMessage, VisualFeatureFrame, VisualScorePlan } from 
 import { HeroMetronome } from './HeroMetronome';
 
 const EMPTY_FEATURES: VisualFeatureFrame = { melody: 0, vocal: 0, fx: 0, density: 0, brightness: 0, tension: 0 };
+
+export interface AudioEngineOptions {
+    /** Omit to retain the dashboard's live State.loopPlayback preference. */
+    readonly loopPlayback?: boolean;
+    readonly heroMetronome?: boolean;
+}
 
 export class AudioEngine {
     private ctx: AudioContext | null = null;
@@ -19,8 +25,11 @@ export class AudioEngine {
     private currentAnalysisRequestId = 0;
     private readonly onVisualScorePlan: (plan: VisualScorePlan | null) => void;
 
-    constructor(onVisualScorePlan: (plan: VisualScorePlan | null) => void = () => {}) {
+    private readonly options: AudioEngineOptions;
+
+    constructor(onVisualScorePlan: (plan: VisualScorePlan | null) => void = () => {}, options: AudioEngineOptions = {}) {
         this.onVisualScorePlan = onVisualScorePlan;
+        this.options = options;
     }
 
     private playStartTime = 0;
@@ -35,9 +44,18 @@ export class AudioEngine {
     private positionChangedListeners: Array<(time: number) => void> = [];
     private playbackStateListeners: Array<(event: 'play' | 'pause' | 'stop' | 'seek', time: number) => void> = [];
 
-    addPlaybackEndedListener(listener: () => void) { this.playbackEndedListeners.push(listener); }
-    addPositionChangedListener(listener: (time: number) => void) { this.positionChangedListeners.push(listener); }
-    addPlaybackStateListener(listener: (event: 'play' | 'pause' | 'stop' | 'seek', time: number) => void) { this.playbackStateListeners.push(listener); }
+    addPlaybackEndedListener(listener: () => void) {
+        this.playbackEndedListeners.push(listener);
+        return () => { this.playbackEndedListeners = this.playbackEndedListeners.filter(item => item !== listener); };
+    }
+    addPositionChangedListener(listener: (time: number) => void) {
+        this.positionChangedListeners.push(listener);
+        return () => { this.positionChangedListeners = this.positionChangedListeners.filter(item => item !== listener); };
+    }
+    addPlaybackStateListener(listener: (event: 'play' | 'pause' | 'stop' | 'seek', time: number) => void) {
+        this.playbackStateListeners.push(listener);
+        return () => { this.playbackStateListeners = this.playbackStateListeners.filter(item => item !== listener); };
+    }
     getAudioBuffer(): AudioBuffer | null { return this.buffer; }
 
     private emitPlaybackEnded() {
@@ -60,7 +78,7 @@ export class AudioEngine {
         State.bpm = 0;
         State.frames = [];
         State.events = [];
-        State.trackAnalysis = JSON.parse(JSON.stringify(EMPTY_TRACK_ANALYSIS)); // Deep copy to prevent reference pollution
+        State.trackAnalysis = createEmptyTrackAnalysis(); // Deep copy to prevent reference pollution
         State.performancePlan = null;
         State.editedPerformancePlan = null;
         State.performancePlanEdited = false;
@@ -106,7 +124,10 @@ export class AudioEngine {
         try {
             if (!this.ctx) this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
             const arrayBuffer = await file.arrayBuffer();
-            this.buffer = await this.ctx.decodeAudioData(arrayBuffer);
+            if (requestId !== this.currentAnalysisRequestId) return;
+            const decodedBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+            if (requestId !== this.currentAnalysisRequestId) return;
+            this.buffer = decodedBuffer;
 
             State.duration = this.buffer.duration;
             State.sampleRate = this.buffer.sampleRate;
@@ -149,7 +170,8 @@ export class AudioEngine {
                     this.onVisualScorePlan(State.trackAnalysis.externalVisualScorePlan ?? null);
                     State.trackAnalysis.bpm = e.data.bpm;
                     State.hopSize = e.data.hopSize;
-                    this.beepBuffers = this.ctx ? HeroMetronome.generateStems(this.ctx, State.trackAnalysis) : [];
+                    this.beepBuffers = this.ctx && this.options.heroMetronome !== false
+                        ? HeroMetronome.generateStems(this.ctx, State.trackAnalysis) : [];
                     if (this.onAnalysisComplete) this.onAnalysisComplete();
                     return;
                 }
@@ -184,11 +206,15 @@ export class AudioEngine {
         this.source = this.ctx.createBufferSource();
         this.source.buffer = this.buffer;
         this.source.connect(this.ctx.destination);
-        this.startBeepSources(this.playOffset);
+        if (this.options.heroMetronome !== false) this.startBeepSources(this.playOffset);
 
+        const playingSource = this.source;
         this.source.onended = () => {
-            if (this.getCurrentTime() >= State.duration - 0.1) {
-                if (State.loopPlayback) {
+            // Source completion uses the raw audio clock, not the latency-compensated visual clock.
+            // A delayed callback from an old one-shot source cannot end a replacement playback.
+            if (this.source !== playingSource || !this.ctx) return;
+            if (this.playOffset + (this.ctx.currentTime - this.playStartTime) >= State.duration - 0.1) {
+                if (this.options.loopPlayback ?? State.loopPlayback) {
                     this.stop(true);
                     this.play(0);
                 } else {
