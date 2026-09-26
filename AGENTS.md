@@ -59,7 +59,8 @@ repository-navigation aid before broad source exploration.
 
 ## Module Ownership
 
-- `src/main.ts` composes the dashboard; `src/ui/mvp/main.ts` is the MVP composition entrypoint with the same startup responsibility (see ADR-008). Only these entrypoints create and wire audio, UI and renderer subsystems.
+- `src/main.ts` composes the dashboard; `src/ui/mvp/main.ts` is the MVP composition entrypoint with the same startup responsibility (see ADR-008). `src/xr/main.ts` is a third, independent composition entrypoint for the `/xr/` WebXR rhythm-game host (see ADR-009); it wires its own `AudioEngine` instance and never shares a runtime with the other two. Only these entrypoints create and wire audio, UI and renderer subsystems.
+- `src/gameplay/` owns pure, renderer-independent rhythm-game domain logic (chart construction, judging, session state) for the `/xr/` host. It must not import Three.js, WebXR, DOM, `AudioEngine`, or `src/state/`; it may import shared `src/types/` contracts. `src/xr/` owns all Three.js/WebXR runtime, scene, input, and performance-policy code and must not implement or extend `VisualRendererBackend`. See [ADR-009](documents/adr/ADR-009-xr-rhythm-game-host.md).
 - `src/audio/` owns file decode, `AudioContext`, playback lifecycle, source nodes, timing, and worker invocation.
 - `src/analyzer/` owns deterministic offline DSP, grid alignment, section analysis, dramaturgy, headless `analyzeAudio()`, and canonical analysis normalization. It must remain environment-independent and must not import Worker, DOM, p5, UI, renderer, playback, or shared mutable runtime state.
 - `src/audio/analyzer.worker.ts` is a thin Web Worker adapter around `src/analyzer/analyzeAudio()`. It owns only request destructuring, progress forwarding, success posting, and error message formatting.
@@ -67,6 +68,8 @@ repository-navigation aid before broad source exploration.
 - `src/visuals/` owns p5 rendering, particle lifecycle, shockwaves, and visual consumption of precomputed events.
 - `src/ui/` owns DOM binding, controls, dashboard projection, and user-facing state display.
 - `src/types/` owns shared contracts and must remain dependency-light.
+- `src/automation/` owns offline performance-plan generation (legacy generator and the ADR-005 Visual OS pipeline), the cue-evidenced publication gate, plan editing/transfer helpers, and host-shared preset-merge/runtime helpers. It returns plans and never writes `State`; see [ADR-005](documents/adr/ADR-005-visual-os-style-system.md).
+- `src/config/` owns tuning-control metadata, feature flags, identity tuning ownership, and the shared macro/Advanced gain resolution used by the MVP and the XR Wormhole background. It holds pure helpers and constants, not runtime state.
 - `src/semantics/` owns the pure, offline, deterministic Visual Score DSL pipeline. It must follow [ADR-003](documents/adr/ADR-003-semantic-layer-boundary.md), must not import runtime state, DOM, p5, audio, UI, or visual modules, and may affect rendering only through the resolver-owned `State.targetTuning` channel.
 - `documents/` owns product and governance documentation.
 

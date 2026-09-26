@@ -36,6 +36,11 @@ Use this file for practical platform behavior that affects repeatability in Code
 - Do not use a Bun-first strategy. Use Bun only if runtime discovery shows it is the project's current, working runner and no suitable Node/npm/npx route is available.
 - Report every runtime or package-manager fallback, including why it was needed and the exact command used.
 
+## Lockfiles
+
+- The repository carries `package-lock.json` (npm, the governance validation path) and `bun.lock` (used by the Bun-based `deploy` and `update-golden-masters` scripts). A dependency change updates both, each with its own tool, and their resolved versions must match.
+- Never hand-edit a lockfile. If a package manager is unavailable, regenerate its lockfile later in an isolated copy (`bun install --lockfile-only`, `npm install --package-lock-only --ignore-scripts`), compare resolved versions and integrities, and only then replace the file. Report the command used.
+
 ## Build And Test Execution
 
 - Split `tsc` and Vite build when package-manager scripts are unavailable, so failures identify either type checking or bundling.

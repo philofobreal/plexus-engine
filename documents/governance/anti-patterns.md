@@ -61,6 +61,14 @@ Stop and redesign if a change introduces any pattern below.
 - **Semantic Ownership By Presence.** Treating a key as semantically owned merely because it appears
   in `visualTuningControls`. Ownership follows an actual semantic delta targeting the key.
 
+## XR Host Anti-Patterns (ADR-009)
+
+- **Second Song Clock.** Deriving musical position from `XRFrame` time, `performance.now()`, a Three.js `Clock` or accumulated `deltaTime`. `AudioEngine.getCurrentTime()` is the only song clock; frame delta is for controller velocity and visual interpolation only.
+- **Leaking Three/WebXR.** Importing `three` or WebXR APIs outside `src/xr/`, or importing `three`, DOM, `AudioEngine` or `src/state/` into `src/gameplay/`.
+- **Render-Time Planning.** Running chart, narrative or automation-plan generation inside a render callback, or letting the background regenerate its own plan instead of consuming the one prepared by the facade.
+- **Global State Swapping.** Temporarily rewriting or aliasing the shared `State` so a visual identity can render for another host. Inject a private render state instead.
+- **Page Globals In Runtime Modules.** Reading `window.location` or similar page globals for debug flags inside runtime, scene or visual modules. The composition root decides and injects.
+
 ## Realtime Audio Anti-Patterns
 
 - Realtime FFT, beat detection, or spectral analysis in p5 `draw()`.

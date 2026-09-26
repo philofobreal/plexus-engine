@@ -10,7 +10,9 @@ through AudioEngine. It does not transfer ownership of audio, worker results or 
 
 The app is a Vite TypeScript project with explicit runtime layers:
 
-- Composition: `src/main.ts` (dashboard) and `src/ui/mvp/main.ts` (MVP; explicit entrypoint exception to UI import restrictions, [ADR-008](../adr/ADR-008-mvp-host-and-shared-renderer.md))
+- Composition: `src/main.ts` (dashboard), `src/ui/mvp/main.ts` (MVP; explicit entrypoint exception to UI import restrictions, [ADR-008](../adr/ADR-008-mvp-host-and-shared-renderer.md)), and `src/xr/main.ts` (WebXR rhythm-game host, a third independent runtime, [ADR-009](../adr/ADR-009-xr-rhythm-game-host.md))
+- Renderer-independent XR rhythm-game domain: `src/gameplay/`
+- Three.js/WebXR runtime, scene, and input: `src/xr/`
 - Audio playback and analysis orchestration: `src/audio/`
 - Offline analyzer core: `src/analyzer/`
 - Offline analyzer worker adapter: `src/audio/analyzer.worker.ts`
@@ -18,6 +20,9 @@ The app is a Vite TypeScript project with explicit runtime layers:
 - Shared static contracts: `src/types/`
 - DOM controls and dashboard projection: `src/ui/`
 - Offline export orchestration and encoding: `src/export/`
+- Offline semantic layer (ADR-003/004, evidence helpers for ADR-005 publication): `src/semantics/`
+- Offline automation plan generation and publication (ADR-005): `src/automation/`
+- Shared configuration helpers (tuning metadata, feature flags, macro/Advanced gain resolution): `src/config/`
 - p5 canvas rendering and backend adaptation: `src/visuals/`
 
 The UI layer has an explicit internal shape:
@@ -35,7 +40,10 @@ The UI layer has an explicit internal shape:
 
 Allowed dependency directions:
 
-- The two composition entrypoints may import audio, UI, visuals, CSS, and shared types.
+- The two dashboard/MVP composition entrypoints may import audio, UI, visuals, CSS, and shared types. `src/xr/main.ts` is a separate composition entrypoint (ADR-009) that may import `src/audio/`, `src/gameplay/`, `src/xr/`, and shared types. It must not import `src/ui/`. Its sole visual import is the optional `WormholeCanvasSource` factory (ADR-009 addendum), passed through the `CanvasVisualSource` contract.
+- `src/gameplay/` may import `src/types/` and gameplay-local modules only. It must remain environment-independent and must not import `three`, WebXR/DOM APIs, `src/xr/`, `src/audio/`, or `src/state/`.
+- `src/xr/` may import `src/gameplay/`, `src/audio/` (read-only use of `AudioEngine`'s public surface), `src/types/`, and `three`. Except for the explicit `main.ts` factory import above, it must not import `src/visuals/` or `src/ui/`, and must not implement or extend `VisualRendererBackend`. It must not import `src/automation/`, except that `src/xr/XrAppController.ts` may import `src/automation/prepareWormholePerformance` to prepare the one offline plan it passes as plain data to gameplay and the background. Only `src/xr/XrAppController.ts` (the composition/coordination facade for this page, equivalent in role to `DashboardUI`/`MvpVisualController`) may import `src/state/`, and only to READ the existing analysis-publication fields (`State.events`, `State.frames`, `State.sampleRate`, `State.hopSize`, `State.trackAnalysis`, `State.bpm`, `State.duration`) after `AudioEngine.onAnalysisComplete` fires -- the same read pattern the dashboard and MVP already use, since `AudioEngine` publishes analysis exclusively through that shared store. It must never write to `State` and must never import `src/xr/runtime/` or `src/xr/scene/` modules into reading/writing `State` themselves; those modules receive plain data parameters instead.
+- `src/visuals/WormholeCanvasSource.ts` is the embedded-host Wormhole adapter (ADR-009 addendum A), not an effect or identity module. Besides normal visuals imports it may import the analyzer empty-analysis factory (`createEmptyTrackAnalysis`), the shared automation preset merge/runtime helpers (`applyMvpWormholePreset`, `findActiveAutomationPoint`) and pure `src/semantics/` functions. It must not import `src/state/`, `src/ui/`, `src/audio/`, `src/xr/`, `three` or plan generation, never writes global `State`, consumes the supplied plan without regenerating it, and may `fetch` only that plan's preset assets. `tests/gameplay-purity.test.mjs` guards these limits.
 - `src/audio/` may import `src/state/`, `src/types/`, `src/analyzer/`, and worker modules.
 - `src/analyzer/` may import `src/types/` and analyzer-local modules only. It must remain environment-independent and must not import Worker APIs, DOM, p5, UI, renderer modules, `AudioEngine`, or shared mutable runtime state.
 - `src/audio/analyzer.worker.ts` may import `src/analyzer/` and `src/types/` only. It must remain a message adapter around `analyzeAudio()`.
@@ -258,6 +266,12 @@ operation. See `../adr/ADR-005-visual-os-style-system.md`.
   quantity. It is optional everywhere: legacy and imported-legacy plans omit it, and the
   Copy/Load (`dramaturgyTransfer`) path validates, normalizes, and round-trips it without ever
   rejecting a point because of it.
+- Automatic plan publication passes through `alignAutomationToCues` (ADR-005 addendum). Musical
+  evidence for it is derived only by `src/semantics/cueEvidence.ts`; the automation module snaps
+  and publishes, it does not score features itself.
+- Host-shared automation helpers (`performancePlanGenerator`, `prepareWormholePerformance`,
+  `applyMvpWormholePreset`) may additionally import `src/config/`. `prepareWormholePerformance` is
+  a second IO boundary: it fetches the preset manifest only for the legacy fallback.
 - `src/automation/` Visual OS modules may import `src/types/` and the pure `src/semantics/`
   output helpers. They must not import `src/state/`, `src/visuals/`, `src/ui/`,
   `src/audio/`, `src/analyzer/`, or p5 (the IO loader may use `fetch`/`import.meta`).

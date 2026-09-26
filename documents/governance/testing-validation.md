@@ -131,6 +131,18 @@ UI changes:
   miss repeated-plan payload growth. Cover capture failure followed by retry, actionable modal
   errors, lossless encoded round trips and hostile delta expansion before allocation.
 
+XR rhythm game host changes (ADR-009):
+
+- Run `node --test tests/gameplay-purity.test.mjs tests/rhythm-chart.test.mjs tests/rhythm-judge.test.mjs tests/rhythm-session.test.mjs tests/xr-spatial.test.mjs tests/xr-performance.test.mjs tests/xr-audio-integration.test.mjs tests/xr-choreography.test.mjs tests/xr-whole-track-variation.test.mjs tests/xr-wormhole.test.mjs`.
+- Changes to the shared MVP Wormhole path (`src/config/` gain resolution, `applyMvpWormholePreset`, injected `WormholeRenderState`) also run `tests/mvp-macro-tuning-mapper.test.mjs`, `tests/mvp-async-lifecycle.test.mjs`, `tests/semantics-integration.test.mjs` and the wormhole determinism/lifecycle suites, because the MVP consumes the same code.
+- `AudioEngine` host-option changes follow the audio playback matrix above and must keep dashboard/MVP defaults unchanged.
+- Desktop, browser or mocked-device results never substitute for physical Quest acceptance; record headset runs in `../audits/xr-rhythm-game-quest3-manual-test.md`.
+
+Automation publication changes (ADR-005 cue-evidenced gate):
+
+- Run `node --test tests/automation-cue-alignment.test.mjs tests/dramaturgy.test.mjs tests/automation.test.mjs tests/visual-os.test.mjs`.
+- The gate affects dashboard, MVP and XR plans. Pin omissions explicitly; do not add cues, novelty peaks or boundary candidates to a fixture only to keep an expected point.
+
 Documentation and governance changes:
 
 - Verify every referenced governance file exists.
