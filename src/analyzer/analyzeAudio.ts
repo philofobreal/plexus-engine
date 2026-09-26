@@ -122,7 +122,8 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
         sections: segmenter.trackSections,
         patterns: cueBuilder.musicPatterns,
         cues: cueBuilder.cues,
-        significantMoments: cueBuilder.cues.filter(cue => cue.kind === 'impact' || cue.kind === 'break').slice(0, 32),
+        // Preserve late-song evidence too; a first-32 cap biased all downstream cue consumers.
+        significantMoments: cueBuilder.cues.filter(cue => cue.kind === 'impact' || cue.kind === 'break'),
         features: featureFrames,
         buildupConfidence: dramaturgy.buildupConfidence,
         spectralPivot,

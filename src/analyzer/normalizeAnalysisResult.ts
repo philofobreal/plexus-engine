@@ -39,6 +39,11 @@ export const EMPTY_TRACK_ANALYSIS: TrackAnalysis = {
     timingConfidence: { tempo: 0, beat: 0, grid: 0, overall: 0 }
 };
 
+/** Fresh deep copy of the empty template, so nested arrays/objects are never shared across owners. */
+export function createEmptyTrackAnalysis(): TrackAnalysis {
+    return JSON.parse(JSON.stringify(EMPTY_TRACK_ANALYSIS));
+}
+
 export function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis, fallbackBpm = 0): TrackAnalysis {
     return {
         ...EMPTY_TRACK_ANALYSIS,

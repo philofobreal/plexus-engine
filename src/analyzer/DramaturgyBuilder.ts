@@ -270,6 +270,9 @@ export class DramaturgyBuilder {
     }
 
     private buildCues(featureFrames: VisualFeatureFrame[], outFrames: AudioFrame[]): void {
+        // A sustained dense plateau is not a new impact every time a cooldown expires.
+        // Only already-detected audible transient frames may carry an impact cue.
+        const onsetFrames = new Set(this.events.map(event => Math.round(event.time * this.sampleRate / this.hopSize)));
         const lastCueTimes: Record<VisualCueKind, number> = { melody: -999, vocal: -999, fx: -999, impact: -999, break: -999, pattern: -999 };
         const addCue = (frameIdx: number, kind: VisualCueKind, intensity: number, confidence: number, minGap: number, duration: number, reasons?: AnalysisReason[]) => {
             let time = frameIdx * this.hopSize / this.sampleRate;
@@ -290,7 +293,7 @@ export class DramaturgyBuilder {
             if (f.melody > 0.52 && f.melody >= prev.melody && f.melody > next.melody) addCue(i, 'melody', f.melody, f.melody, 2.4, secondsPerBeat * 4);
             if (f.vocal > 0.48 && f.vocal >= prev.vocal && f.vocal > next.vocal) addCue(i, 'vocal', f.vocal, f.vocal, 3.2, secondsPerBeat * 8);
             if (f.fx > 0.62 && f.fx >= prev.fx && f.fx > next.fx) addCue(i, 'fx', f.fx, f.fx, 1.2, secondsPerBeat * 2);
-            if (f.density > 0.72 && outFrames[i].eRatio > 0.5) addCue(i, 'impact', f.density, 1.0, 1.8, secondsPerBeat, ['high-transient', 'percussive-onset']);
+            if (onsetFrames.has(i) && f.density > 0.72 && outFrames[i].eRatio > 0.5) addCue(i, 'impact', f.density, 1.0, 1.8, secondsPerBeat, ['high-transient', 'percussive-onset']);
             if (outFrames[i].state === 'LOW_DROP' && outFrames[i - 1].state !== 'LOW_DROP') addCue(i, 'break', 1 - f.density * 0.5, 0.85, 4.0, secondsPerBeat * 8, ['energy-drop']);
         }
     }
