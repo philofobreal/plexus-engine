@@ -51,7 +51,7 @@ function harness({ saveSucceeds = () => true } = {}) {
         'src/state/visualTransitionState.ts': { setActiveVisualTransitionComponent: () => {} },
         'src/ui/mvp/metaTuningStorage.ts': {
             normalizeStoredMetaTuning: value => ({ ...value,
-                advancedBoosts: { ...load(path.resolve(root, 'src/ui/mvp/metaTuningBoost.ts')).defaultAdvancedBoosts(), ...value.advancedBoosts } }),
+                advancedBoosts: { ...load(path.resolve(root, 'src/config/metaTuningBoost.ts')).defaultAdvancedBoosts(), ...value.advancedBoosts } }),
             computeTrackFingerprint: analysis => { const result = deferred(); hashes.push({ analysis, ...result }); return result.promise; },
             loadMetaTuning: key => storage.get(key) ?? null,
             saveTrackChanges: (key, changes) => {

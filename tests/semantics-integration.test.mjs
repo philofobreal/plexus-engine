@@ -152,7 +152,7 @@ test('semantic tuning ownership requires an active plan on the enabled semantic 
 
 test('preset automation still selects new points while both semantic feature flags are enabled', () => {
   const load = createLoader();
-  const { findActiveAutomationPoint } = load('ui/performanceAutomationRuntime.ts');
+  const { findActiveAutomationPoint } = load('automation/performanceAutomationRuntime.ts');
   const point = (id, time, preset) => ({
     id, time, preset, sectionId: id, confidence: 1, intensity: 1, reason: 'drop',
     morphDurationSec: 1, morphCurve: 'easeInOut'
@@ -170,7 +170,7 @@ test('preset automation still selects new points while both semantic feature fla
 
 test('automation morph authority survives preset-applied morph values', () => {
   const load = createLoader();
-  const { applyAutomationMorphAuthority } = load('ui/performanceAutomationRuntime.ts');
+  const { applyAutomationMorphAuthority } = load('automation/performanceAutomationRuntime.ts');
   const { defaultVisualTuning } = load('config/visualTuning.ts');
   const target = { ...defaultVisualTuning, audioSensitivity: 0.4, morphDurationSec: 0.5, morphCurveValue: 0 };
   const scaledPoint = { intensity: 1.7, morphDurationSec: 9.25, morphCurve: 'exponential' };
@@ -187,7 +187,7 @@ test('Visual OS preset changes compose with semantic identity instead of being o
     resetActiveVisualTransitions,
     setActiveVisualTransitionComponent
   } = load('state/visualTransitionState.ts');
-  const { findActiveAutomationPoint } = load('ui/performanceAutomationRuntime.ts');
+  const { findActiveAutomationPoint } = load('automation/performanceAutomationRuntime.ts');
   const point = (id, time, preset) => ({
     id, time, preset, sectionId: id, confidence: 1, intensity: 1, reason: 'drop',
     morphDurationSec: 1, morphCurve: 'easeInOut'

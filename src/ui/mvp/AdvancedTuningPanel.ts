@@ -1,5 +1,5 @@
 import { visualTuningControls, type VisualTuningKey } from '../../config/visualTuning';
-import { ADVANCED_BOOST_GROUPS, boostFactor, NEUTRAL_BOOST, type AdvancedBoosts } from './metaTuningBoost';
+import { ADVANCED_BOOST_GROUPS, boostFactor, NEUTRAL_BOOST, type AdvancedBoosts } from '../../config/metaTuningBoost';
 
 function fractionToSliderValue(fraction: number): string {
     return String(Math.round(fraction * 100));

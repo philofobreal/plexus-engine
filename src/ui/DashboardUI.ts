@@ -33,7 +33,7 @@ import { PlaybackController } from './controllers/PlaybackController';
 import { TuningController } from './controllers/TuningController';
 import { ExportController } from './controllers/ExportController';
 import { isSemanticTuningActive } from './semanticAutomationPolicy';
-import { applyAutomationMorphAuthority, findActiveAutomationPoint } from './performanceAutomationRuntime';
+import { applyAutomationMorphAuthority, findActiveAutomationPoint } from '../automation/performanceAutomationRuntime';
 import { shouldApplyVisualModePlanGeneration } from './visualModePlanRegeneration';
 import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
 import { requestVisualModeChange } from '../state/visualModeTransition';

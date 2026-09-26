@@ -1,5 +1,5 @@
-import type { VisualTuningKey } from '../../config/visualTuning';
-import type { VisualTuningConfig } from '../../types';
+import type { VisualTuningKey } from './visualTuning';
+import type { VisualTuningConfig } from '../types';
 import { boostFactor, clampToControlBounds } from './metaTuningBoost';
 
 /** The MVP's four consumer-facing macro knobs, each normalized 0..1 (0.5 = neutral/no change). */

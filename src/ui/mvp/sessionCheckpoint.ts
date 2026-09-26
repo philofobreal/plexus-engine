@@ -1,7 +1,7 @@
 import { EditHistory, type HistoryArchive, type HistoryDomain, type HistorySnapshot } from './EditHistory';
 import { normalizeStoredJourney } from './journeyStorage';
 import { normalizeStoredMetaTuning } from './metaTuningStorage';
-import { advancedBoostKeys } from './metaTuningBoost';
+import { advancedBoostKeys } from '../../config/metaTuningBoost';
 import { normalizeVisualTuningConfig, cloneDefaultVisualTuning } from '../../config/visualTuning';
 import type { VisualTuningConfig, TimelineLayers } from '../../types';
 

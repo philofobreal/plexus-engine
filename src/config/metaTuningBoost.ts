@@ -1,4 +1,4 @@
-import { visualTuningControls, type VisualTuningKey } from '../../config/visualTuning';
+import { visualTuningControls, type VisualTuningKey } from './visualTuning';
 
 /**
  * The MVP's "meta tuning" layer (Visual character macros + Advanced tuning per-parameter sliders):

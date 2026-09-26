@@ -1,8 +1,8 @@
 import type { TrackAnalysis } from '../../types';
 import type { VisualTuningKey } from '../../config/visualTuning';
-import type { MvpMacroTuning } from './macroTuningMapper';
-import { defaultMvpMacroTuning } from './macroTuningMapper';
-import { advancedBoostKeys, defaultAdvancedBoosts } from './metaTuningBoost';
+import type { MvpMacroTuning } from '../../config/macroTuningMapper';
+import { defaultMvpMacroTuning } from '../../config/macroTuningMapper';
+import { advancedBoostKeys, defaultAdvancedBoosts } from '../../config/metaTuningBoost';
 import { normalizeStoredJourney, type StoredJourney } from './journeyStorage';
 
 export interface StoredMetaTuning {

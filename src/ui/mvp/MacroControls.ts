@@ -1,4 +1,4 @@
-import type { MvpMacroTuning } from './macroTuningMapper';
+import type { MvpMacroTuning } from '../../config/macroTuningMapper';
 
 type MacroKey = keyof MvpMacroTuning;
 

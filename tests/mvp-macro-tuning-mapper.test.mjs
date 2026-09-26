@@ -26,15 +26,15 @@ function loadVisualTuningModule() {
 }
 
 function loadMetaTuningBoostModule(visualTuningModule) {
-  return runInSandbox('src/ui/mvp/metaTuningBoost.ts', (request) => {
-    if (request === '../../config/visualTuning') return visualTuningModule;
+  return runInSandbox('src/config/metaTuningBoost.ts', (request) => {
+    if (request === './visualTuning') return visualTuningModule;
     throw new Error(`Unsupported import in test loader: ${request}`);
   });
 }
 
 function loadMacroTuningMapperModule(visualTuningModule, metaTuningBoostModule) {
-  return runInSandbox('src/ui/mvp/macroTuningMapper.ts', (request) => {
-    if (request === '../../config/visualTuning') return visualTuningModule;
+  return runInSandbox('src/config/macroTuningMapper.ts', (request) => {
+    if (request === './visualTuning') return visualTuningModule;
     if (request === './metaTuningBoost') return metaTuningBoostModule;
     throw new Error(`Unsupported import in test loader: ${request}`);
   });

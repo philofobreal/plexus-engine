@@ -2,7 +2,7 @@ import { AudioEngine } from '../../audio/AudioEngine';
 import { generatePerformancePlan } from '../../automation/performancePlanGenerator';
 import { generateVisualOsPerformancePlan } from '../../automation/visualOsPlanLoader';
 import { shouldUseVisualOs, stylePackForVisualMode } from '../../automation/generatorRouting';
-import { wormholeMorphDurationFloor } from '../../automation/morphFloor';
+import { applyMvpWormholePreset } from '../../automation/applyMvpWormholePreset';
 import { clampMorphScale, computeMaxMorphScale } from '../../automation/morphScale';
 import { AutomationPlanViewCache } from '../../automation/automationPlanView';
 import {
@@ -15,14 +15,14 @@ import {
     updateAutomationPointById,
     type AutomationPointEdit
 } from '../../automation/automationPlanEditing';
-import { applyAutomationMorphAuthority, resolveAutomationTrigger } from '../performanceAutomationRuntime';
+import { resolveAutomationTrigger } from '../../automation/performanceAutomationRuntime';
 import { computeAndPublishSemanticPlan, snapshotSemanticBaseTuning } from '../semanticPlanRuntime';
 import { setActiveVisualTransitionComponent } from '../../state/visualTransitionState';
 import { featureFlags } from '../../config/featureFlags';
-import { filterForeignIdentityTuningForAutomation } from '../../config/identityTuningRegistry';
-import { cloneDefaultVisualTuning, mvpSurfaceTuningOverrides, normalizeVisualTuningConfig, type VisualTuningKey } from '../../config/visualTuning';
-import { defaultMvpMacroTuning, mapMvpMacrosToTuning, type MvpMacroTuning } from './macroTuningMapper';
-import { advancedBoostKeys, resolveAdvancedTuningValue, defaultAdvancedBoosts, type AdvancedBoosts } from './metaTuningBoost';
+import { cloneDefaultVisualTuning, type VisualTuningKey } from '../../config/visualTuning';
+import { defaultMvpMacroTuning, type MvpMacroTuning } from '../../config/macroTuningMapper';
+import { advancedBoostKeys, defaultAdvancedBoosts, type AdvancedBoosts } from '../../config/metaTuningBoost';
+import { resolveMetaTuning } from '../../config/resolveMetaTuning';
 import { computeTrackFingerprint, loadMetaTuning, saveTrackChanges, type TrackSaveChanges } from './metaTuningStorage';
 import type { TrackSaveSection, TrackSaveSignatures, UnsavedTrackChanges } from './trackSaveState';
 import type { StoredJourney } from './journeyStorage';
@@ -381,39 +381,7 @@ export class MvpVisualController {
      * same whichever UI drives it.
      */
     private applyAutomationPreset(payload: unknown, point: PerformanceAutomationPoint): void {
-        const previousSpeed = State.targetTuning.wormholeSpeed;
-        const previousBend = State.targetTuning.wormholePathBend;
-        const previousBendVertical = State.targetTuning.wormholePathBendVertical;
-
-        const filtered = filterForeignIdentityTuningForAutomation(
-            (payload && typeof payload === 'object' ? payload : {}) as { visualMode?: unknown; visualTuning?: unknown },
-            State.visualMode
-        );
-        Object.assign(State.targetTuning, normalizeVisualTuningConfig(filtered, State.targetTuning));
-        if (point.bendMirror) State.targetTuning.wormholePathBend = -State.targetTuning.wormholePathBend;
-
-        // MVP surface policy (config-owned, see mvpSurfaceTuningOverrides): forced back to its
-        // fixed value after every preset merge regardless of what the preset requested.
-        Object.assign(State.targetTuning, mvpSurfaceTuningOverrides);
-
-        const preset = filtered as { dramaturgyProfile?: Record<string, unknown> };
-        const profile = preset.dramaturgyProfile;
-        if (profile) {
-            if (typeof profile.buildupIntensity === 'number') State.targetTuning.buildupIntensity = profile.buildupIntensity;
-            if (typeof profile.dropDampening === 'number') State.targetTuning.dropDampening = profile.dropDampening;
-            if (typeof profile.breakRestraint === 'number') State.targetTuning.breakRestraint = profile.breakRestraint;
-            if (typeof profile.vocalHighlight === 'number') State.targetTuning.vocalHighlight = profile.vocalHighlight;
-            if (typeof profile.fxChaos === 'number') State.targetTuning.fxChaos = profile.fxChaos;
-        }
-
-        applyAutomationMorphAuthority(State.targetTuning, point);
-        const deltaSpeed = Math.abs(State.targetTuning.wormholeSpeed - previousSpeed);
-        const deltaBend = Math.hypot(
-            State.targetTuning.wormholePathBend - previousBend,
-            State.targetTuning.wormholePathBendVertical - previousBendVertical
-        );
-        State.targetTuning.morphDurationSec = Math.max(point.morphDurationSec, wormholeMorphDurationFloor(deltaSpeed, deltaBend));
-
+        applyMvpWormholePreset(State.targetTuning, payload, point);
         // Re-base the ADR-003/004 semantic layer's anchor on this point's own fully-resolved
         // tuning, mirroring DashboardUI.loadVisualPreset's own re-snapshot after
         // applyPerformancePreset. Without this, the slow modulation channel keeps modulating
@@ -510,12 +478,7 @@ export class MvpVisualController {
      * Discrete Advanced selectors override their key after the continuous gain stages.
      */
     getBoostedTuning(raw: VisualTuningConfig): VisualTuningConfig {
-        Object.assign(this.boostedScratch, raw);
-        mapMvpMacrosToTuning(this.macros, raw, this.boostedScratch);
-        for (const key of advancedBoostKeys) {
-            this.boostedScratch[key] = resolveAdvancedTuningValue(key, this.advancedBoosts[key], this.boostedScratch[key]);
-        }
-        return this.boostedScratch;
+        return resolveMetaTuning(raw, this.macros, this.advancedBoosts, this.boostedScratch);
     }
 
     // ─── Meta tuning persistence (saved once per track, not per preset) ────────────────────────
