@@ -742,7 +742,8 @@ test('dense impact flash preserves former type 2 visual behavior', () => {
   assert.match(state, /denseImpactFlash: 0/);
   assert.match(audio, /State\.denseImpactFlash = 0/);
   assert.match(renderer, /if \(ev\.type === 2\) State\.denseImpactFlash = 1\.0/);
-  assert.match(renderer, /State\.denseImpactFlash \*= 0\.85/);
+  assert.match(renderer, /State\.denseImpactFlash \*= DENSE_IMPACT_DECAY_PER_FRAME/);
+  assert.match(read('src/visuals/transientDecay.ts'), /export const DENSE_IMPACT_DECAY_PER_FRAME = 0\.85;/);
   assert.match(renderer, /State\.denseImpactFlash = 0/);
   assert.match(classic, /State\.denseImpactFlash \* 150 \* State\.visualTuning\.polygonFlash/);
   assert.match(temporal, /Math\.max\(density, State\.denseImpactFlash\)/);

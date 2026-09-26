@@ -19,6 +19,7 @@ import { setActiveVisualTransitionComponent } from '../state/visualTransitionSta
 import { IdentityTransitionController } from './IdentityTransitionController';
 import { P5RenderTargetCompositor } from './P5RenderTargetCompositor';
 import { PostFxPipeline } from './PostFxPipeline';
+import { BEAT_DECAY_PER_FRAME, CUE_DECAY_PER_FRAME, DENSE_IMPACT_DECAY_PER_FRAME } from './transientDecay';
 import { TemporalFragmentationEffect } from './TemporalFragmentationEffect';
 import type { PostFxSurfaceHost } from './CanvasPostFxSurface';
 
@@ -386,9 +387,9 @@ export function startPlexusRenderer(
                 decayCurrentAnalysisFrame();
             }
 
-            State.beatDecay *= 0.88;
-            State.denseImpactFlash *= 0.85;
-            State.cueDecay *= 0.9;
+            State.beatDecay *= BEAT_DECAY_PER_FRAME;
+            State.denseImpactFlash *= DENSE_IMPACT_DECAY_PER_FRAME;
+            State.cueDecay *= CUE_DECAY_PER_FRAME;
             if (State.cueDecay < 0.02) {
                 State.activeCueKind = null;
                 State.activePatternId = null;

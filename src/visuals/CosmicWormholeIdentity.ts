@@ -405,7 +405,11 @@ export function wormholeSkyboxPanHeading(heading: number): number {
     return SKYBOX_PAN_SATURATION_RADIUS * Math.tanh(heading / SKYBOX_PAN_SATURATION_RADIUS);
 }
 
+/** Explicit per-host inputs; the existing MVP defaults to its own State instance. */
+export type WormholeRenderState = Pick<typeof State, 'frames' | 'sampleRate' | 'hopSize' | 'events' | 'trackAnalysis' | 'bpm' | 'visualTuning' | 'currentFrame' | 'currentTime' | 'isExporting' | 'exportTime' | 'currentFeatures' | 'modulation' | 'beatDecay' | 'denseImpactFlash' | 'directorOutput' | 'targetTuning' | 'activeVisualTransitionId' | 'playbackFade'>;
+
 export class CosmicWormholeIdentity implements VisualIdentity {
+    private readonly state: WormholeRenderState;
     readonly id = 'cosmic-wormhole';
     readonly name = 'Cosmic Wormhole';
 
@@ -519,7 +523,8 @@ export class CosmicWormholeIdentity implements VisualIdentity {
     /** Caller-owned output for viewport raster sizing; avoids a per-frame dimensions object. */
     private readonly grainMaterialRasterSize: WormholeGrainMaterialRasterSize = { cols: 0, rows: 0 };
 
-    constructor() {
+    constructor(state: WormholeRenderState = State) {
+        this.state = state;
         this.growGrainPool(1);
         for (let i = 0; i < STAR_COUNT; i++) {
             const seed = (i + 1) * 7.3148;
@@ -637,19 +642,19 @@ export class CosmicWormholeIdentity implements VisualIdentity {
     syncPosition(timeSec: number): void {
         const safeTime = Number.isFinite(timeSec) ? Math.max(0, timeSec) : 0;
         const analysisChanged = this.transport.sync(
-            State.frames,
-            State.sampleRate,
-            State.hopSize,
-            State.events,
-            State.trackAnalysis.features,
-            State.bpm,
-            State.trackAnalysis.timingConfidence?.overall
+            this.state.frames,
+            this.state.sampleRate,
+            this.state.hopSize,
+            this.state.events,
+            this.state.trackAnalysis.features,
+            this.state.bpm,
+            this.state.trackAnalysis.timingConfidence?.overall
         );
         if (analysisChanged) this.authoredSpeedTimeline.reset(safeTime, this.currentAuthoredTravelRate());
         const horizon = this.generationHorizon();
         const travelDistanceNow = this.travelDistanceAt(safeTime);
         const { bendH: syncBendH, bendV: syncBendV } = combinedWormholePathBend(
-            State.visualTuning.wormholePathBend, State.visualTuning.wormholePathBendVertical
+            this.state.visualTuning.wormholePathBend, this.state.visualTuning.wormholePathBendVertical
         );
         this.routePath.resetConverged(travelDistanceNow, syncBendH);
         this.routePathVertical.resetConverged(travelDistanceNow, syncBendV);
@@ -665,13 +670,13 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             grain.releaseKick = 0;
             grain.releaseBass = 0;
             grain.releaseDensity = 0;
-            const spectrum = State.currentFrame.perceptualSpectrum;
+            const spectrum = this.state.currentFrame.perceptualSpectrum;
             grain.releaseBandEnergy = grain.bandIndex < spectrum.length ? clamp01(spectrum[grain.bandIndex]) : 0;
             grain.releaseJitter = 0;
             grain.releaseEmission = 0;
             grain.releaseVariant = 0;
             grain.releaseTrailScale = grain.trailScale;
-            this.snapshotGrainGeometry(grain, State.visualTuning, safeTime);
+            this.snapshotGrainGeometry(grain, this.state.visualTuning, safeTime);
         }
         if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.noteSeek(safeTime);
     }
@@ -682,50 +687,50 @@ export class CosmicWormholeIdentity implements VisualIdentity {
     }
 
     draw(backend: VisualRendererBackend, _particles: Particle[], _shockwaves: Shockwave[]): void {
-        const tuning = State.visualTuning;
-        const timeSec = canonicalWormholeTime(State.currentTime, State.isExporting, State.exportTime);
+        const tuning = this.state.visualTuning;
+        const timeSec = canonicalWormholeTime(this.state.currentTime, this.state.isExporting, this.state.exportTime);
         const analysisChanged = this.transport.sync(
-            State.frames,
-            State.sampleRate,
-            State.hopSize,
-            State.events,
-            State.trackAnalysis.features,
-            State.bpm,
-            State.trackAnalysis.timingConfidence?.overall
+            this.state.frames,
+            this.state.sampleRate,
+            this.state.hopSize,
+            this.state.events,
+            this.state.trackAnalysis.features,
+            this.state.bpm,
+            this.state.trackAnalysis.timingConfidence?.overall
         );
         if (analysisChanged) this.authoredSpeedTimeline.reset(timeSec, this.currentAuthoredTravelRate());
         const travelDistance = this.travelDistanceAt(timeSec);
         const kickEnvelope = wormholeKickEnvelopeAtTime(
-            State.events, State.frames, timeSec, State.sampleRate, State.hopSize
+            this.state.events, this.state.frames, timeSec, this.state.sampleRate, this.state.hopSize
         );
         const impact = kickEnvelope;
         const clear = getBackgroundClearStyle(tuning, impact * 10);
         backend.background(
             Math.min(clear.r + 1, 14),
             Math.min(clear.g + 1, 8),
-            Math.min(clear.b + 6 + State.currentFeatures.tension * 6, 30),
+            Math.min(clear.b + 6 + this.state.currentFeatures.tension * 6, 30),
             clear.a
         );
 
         // --- Dramaturgy / modulation inputs ---
-        const vocal = State.currentFeatures.vocal;
-        const melody = State.currentFeatures.melody;
+        const vocal = this.state.currentFeatures.vocal;
+        const melody = this.state.currentFeatures.melody;
 
         const motion = computeWormholeMotionProfile({
-            lowFrequency: State.currentFrame.subEnergy === undefined ? undefined : State.modulation,
-            bpm: State.bpm,
-            currentFrame: State.currentFrame,
-            currentFeatures: State.currentFeatures,
-            perceptualSpectrum: State.currentFrame.perceptualSpectrum,
-            beatDecay: State.beatDecay,
-            denseImpactFlash: State.denseImpactFlash,
-            directorOutput: State.directorOutput,
-            timingConfidence: State.trackAnalysis.timingConfidence?.overall,
+            lowFrequency: this.state.currentFrame.subEnergy === undefined ? undefined : this.state.modulation,
+            bpm: this.state.bpm,
+            currentFrame: this.state.currentFrame,
+            currentFeatures: this.state.currentFeatures,
+            perceptualSpectrum: this.state.currentFrame.perceptualSpectrum,
+            beatDecay: this.state.beatDecay,
+            denseImpactFlash: this.state.denseImpactFlash,
+            directorOutput: this.state.directorOutput,
+            timingConfidence: this.state.trackAnalysis.timingConfidence?.overall,
             timeSec,
-            bars: State.trackAnalysis.bars,
+            bars: this.state.trackAnalysis.bars,
             kickEnvelope
         });
-        const lowDrop = wormholeLowDropAtTime(State.frames, timeSec, State.sampleRate, State.hopSize);
+        const lowDrop = wormholeLowDropAtTime(this.state.frames, timeSec, this.state.sampleRate, this.state.hopSize);
         const authoredJitter = clamp01(tuning.wormholeJitter);
         // The lens stays fixed. Kick/bass motion belongs to selected dust cohorts at their own
         // release moment, never a whole-image or whole-tunnel transform.
@@ -762,9 +767,9 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         const lineWeight = tuning.lineWeight;
         const frameTick = timeSec;
         const transitionEnvelope = this.transitionDisturbanceEnvelope(
-            State.visualTuning,
-            State.targetTuning,
-            State.activeVisualTransitionId,
+            this.state.visualTuning,
+            this.state.targetTuning,
+            this.state.activeVisualTransitionId,
             timeSec
         );
         // The fixed lens projects camera-local route coordinates. The camera frame follows the
@@ -817,7 +822,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         let waveFrontCount = 0;
         if (opticsEnabled && tuning.wormholeWallWaves > 0 && (lensActive || wallStrength > 0)) {
             waveFrontCount = wormholeWallGatherWaveFronts(
-                State.events, State.frames, timeSec, State.sampleRate, State.hopSize, this.waveFronts
+                this.state.events, this.state.frames, timeSec, this.state.sampleRate, this.state.hopSize, this.waveFronts
             );
         }
         // Uniform (theta-independent) refraction-impulse term: a kick/LOW_DROP pressure front
@@ -1192,7 +1197,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         const g = this.lineColor[1];
         const b = this.lineColor[2];
 
-        const spectrum = State.currentFrame.perceptualSpectrum;
+        const spectrum = this.state.currentFrame.perceptualSpectrum;
         const spectrumLen = spectrum ? spectrum.length : 0;
 
         // Dark-glass vignette (lens-overhaul plan T7): dim the background plate outside the
@@ -1308,7 +1313,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 backend.width,
                 backend.height,
                 grainMaterialDetail,
-                State.isExporting,
+                this.state.isExporting,
                 this.grainMaterialRasterSize,
                 backend.compactMaterialPreview
             );
@@ -1334,7 +1339,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             const grain = this.pool[i];
             const liveEnergy = grain.bandIndex < spectrumLen ? clamp01(spectrum[grain.bandIndex]) : 0;
             if (grain.releaseBandEnergy < 0) grain.releaseBandEnergy = liveEnergy;
-            if (!grain.releaseGeometryInitialized) this.snapshotGrainGeometry(grain, State.visualTuning, timeSec);
+            if (!grain.releaseGeometryInitialized) this.snapshotGrainGeometry(grain, this.state.visualTuning, timeSec);
 
             // Release-time sampling: the grain's generation is an absolute function of current
             // travel distance (see `generationIndexAt`), never a frame-to-frame delta, so an
@@ -1356,7 +1361,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 grain.releaseEmission = lowDrop ? wormholeLowDropGain(grain, lowDrop.envelope) : 0;
                 grain.releaseVariant = lowDrop ? lowDrop.variant : 0;
                 grain.releaseTrailScale = grain.trailScale * (1 + grain.releaseKick * 0.5 + grain.releaseBass * 0.2);
-                this.snapshotGrainGeometry(grain, State.visualTuning, timeSec);
+                this.snapshotGrainGeometry(grain, this.state.visualTuning, timeSec);
             }
 
             const distanceSinceRelease = Math.max(0, travelDistance - grain.releaseDistance);
@@ -1908,9 +1913,9 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         fallbackSpectrum: number[],
         fallbackSpectrumLen: number
     ): number {
-        const frames = State.frames;
-        const frameStep = State.hopSize > 0 && State.sampleRate > 0
-            ? State.sampleRate / State.hopSize
+        const frames = this.state.frames;
+        const frameStep = this.state.hopSize > 0 && this.state.sampleRate > 0
+            ? this.state.sampleRate / this.state.hopSize
             : 0;
         let total = 0;
         let sampleCount = 0;
@@ -2490,7 +2495,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
 
     /**
      * Snapshot the same rendered radius/depth values a live slider adjustment would expose through
-     * `State.visualTuning`. The LFO sits directly behind those authored controls: it changes the
+     * `this.state.visualTuning`. The LFO sits directly behind those authored controls: it changes the
      * effective parameter sampled by a newly released grain, while the grain keeps that geometry
      * for the rest of its generation just like any other radius/depth tuning change.
      */
@@ -2522,14 +2527,14 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         const authoredOffset = this.authoredSpeedTimeline.offsetAt(
             timeSec,
             this.currentAuthoredTravelRate(),
-            State.targetTuning.morphDurationSec
+            this.state.targetTuning.morphDurationSec
         );
         return Math.max(0, baseDistance + authoredOffset);
     }
 
     private currentAuthoredTravelRate(): number {
-        const playbackAuthority = State.isExporting ? 1 : clamp01(State.playbackFade);
-        return 1 + (State.targetTuning.wormholeSpeed - 1) * playbackAuthority;
+        const playbackAuthority = this.state.isExporting ? 1 : clamp01(this.state.playbackFade);
+        return 1 + (this.state.targetTuning.wormholeSpeed - 1) * playbackAuthority;
     }
 
     /** Canonical instantaneous distance rate (world units/sec): transport + authored offset. */

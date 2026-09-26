@@ -142,7 +142,7 @@ test('the renderer feeds canonical-time LFO values through the same release snap
   }
 
   const source = readFileSync(join(process.cwd(), 'src', 'visuals', 'CosmicWormholeIdentity.ts'), 'utf8');
-  assert.match(source, /snapshotGrainGeometry\(grain, State\.visualTuning, timeSec\)/);
+  assert.match(source, /snapshotGrainGeometry\(grain, this\.state\.visualTuning, timeSec\)/);
   assert.match(source, /const grainMaxZ = Z_REFERENCE \* grain\.releaseDepth;/);
   assert.match(source, /const radius = 50 \* grain\.releaseRadius;/);
 });

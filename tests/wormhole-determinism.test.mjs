@@ -455,8 +455,8 @@ test('foreground and background projection use pure camera-local transform, no h
 
 test('release and sync geometry snapshot the rendered tuning, never the morph target', () => {
   const source = readFileSync(join(SRC_ROOT, 'visuals/CosmicWormholeIdentity.ts'), 'utf8');
-  assert.match(source, /snapshotGrainGeometry\(grain, State\.visualTuning, (?:safeTime|timeSec)\)/);
-  assert.doesNotMatch(source, /snapshotGrainGeometry\(grain, State\.targetTuning/);
+  assert.match(source, /snapshotGrainGeometry\(grain, this\.state\.visualTuning, (?:safeTime|timeSec)\)/);
+  assert.doesNotMatch(source, /snapshotGrainGeometry\(grain, this\.state\.targetTuning/);
 });
 
 test('transition turbulence is deterministic, per-grain decorrelated, spectral, and depth-local', () => {
@@ -589,7 +589,7 @@ test('tunnel geometry release-samples canonical-time LFO parameters and has no l
   assert.match(source, /const vz = wormholeTrailSeparation\(canonicalRate, 1\);/);
   assert.match(source, /grain\.releaseRadius = effectiveWormholeGeometryValue\(/);
   assert.match(source, /grain\.releaseDepth = effectiveWormholeGeometryValue\(/);
-  assert.match(source, /snapshotGrainGeometry\(grain, State\.visualTuning, timeSec\)/);
+  assert.match(source, /snapshotGrainGeometry\(grain, this\.state\.visualTuning, timeSec\)/);
   assert.match(source, /const radius = 50 \* grain\.releaseRadius;/);
   assert.match(source, /const grainMaxZ = Z_REFERENCE \* grain\.releaseDepth;/);
   assert.match(source, /const projectedThetaNow = thetaNow \+ transitionEnergyNow\.angularOffset;/);
