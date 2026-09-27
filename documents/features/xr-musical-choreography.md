@@ -6,7 +6,7 @@ facade passes that exact plan to both the pure chart builder and the optional ba
 Turning the background on later does not regenerate the score or its accompanying journey.
 No preset filename is interpreted as gameplay meaning, no new DSP is introduced, and no
 render callback performs narrative or chart planning. Failed planning uses event-driven phrase variation
-and reports it in the launch panel; an empty shared plan prevents an independent background retry.
+and reports it in the command drawer; an empty shared plan prevents an independent background retry.
 
 ## Musical vocabulary
 
@@ -39,6 +39,40 @@ intensity is a 0.3..3 gain and is divided by three only as a legacy fallback. Th
 every fourth bar leaves space for a phrase ending unless the onset is very strong or building.
 These are ceilings and selection rules, not promises of a fixed note count: quiet music stays quiet.
 
+## Player generation settings
+
+The command drawer exposes six game settings. Defaults (Normal / Balanced / Paired / Alternate /
+Even / Own side) reproduce the historical chart byte-for-byte (`tests/fixtures/xr-chart-default-golden.json`).
+
+| Setting | Owns | Behaviour |
+| --- | --- | --- |
+| Difficulty: Easy / Normal / Hard / Expert | Physical demand envelope | Global floor 0.5 / 0.25 / 0.2 / 0.15 s, same-hand floor 0.8 / 0.4 / 0.33 / 0.3 s, hand travel 0.9 / 1.2 / 1.6 / 2.0 m/s, texture ceilings x1.5 / x1 / x0.7 / x0.5, consecutive hard moves 0 / 1 / 2 / 4. Easy frees weak-onset cuts and limits row steps to one; Hard/Expert reverse conflicting cuts instead of freeing them and let the other hand take an onset when the alternate hand is not ready. |
+| Zones: Own side / Shared center / Crossover | How the play space is shared | Own side keeps each saber in its half. Shared center adds the middle lane (rows 0-1) for either saber, exclusive to one hand at a time. Crossover also lets a saber reach into the other half. |
+| Activity: Calm / Balanced / Active | Total target density | Scales every texture's spacing ceiling (x2 / x1 / x0.5); Calm also doubles the 0.25 s global floor, Active never goes below it and keeps playing through the four-bar breathing rest. Also selects the Visual OS activity level. |
+| Variation: Stable / Paired / Expressive | Phrase complexity, cut diversity | Textures per scene 2 (held two phrases) / 4 / 4 with 8-beat phrases; Stable uses no lateral cuts, Expressive adds lateral and diagonal strokes. Also selects the Visual OS variant mode. |
+| Hands: Alternate / Call & Response / Together / Independent | Hand selection, pair propensity, call length | Alternate takes turns; Call & Response gives one hand a 1-bar (impact/drive/strong build) or 2-bar call and the other the answer; Together realizes one salient accent per 1/2/4-bar window as a pair; Independent splits primary (dense impacts, above-median strong-beat onsets) and secondary streams between the hands. |
+| Lead: Left / Even / Right | Hand dominance | Error-diffusion target of 65 % primary work for the lead hand (Alternate, Together); Call & Response uses a 2:1 call/answer cycle; Independent gives the lead hand the denser stream. |
+
+Zone mixing is musical: `RhythmZonePolicy` weighs texture energy (breath lowest, impact highest,
+build rising with energy), onset strength against the phrase median, movement gesture (slice, fragment,
+orbit, swarm and ripple invite crossings; tunnel, drive and lock gather to the center; lock, fade and
+collapse keep the halves apart) and phrase position (the first bar of a scene stays in-lane, fills
+cross more). Difficulty scales crossing propensity. Safety is enforced by the planner: a crossing needs
+the other hand clear for 1 / 0.5 / 0.4 / 0.35 s before and after, never follows another crossing of
+the same hand, counts toward the hard-move chain, must be reachable, and pairs never cross. Crossed
+targets keep their hand colour.
+
+Precedence is fixed: physical constraints (spacing, reach, parity, silence, pair divergence, zone
+safety), then the Difficulty envelope and Activity budget, then the hand pattern and zones, then the
+Variation shape. Activity stays the musical density preference (and the Visual OS level); Difficulty is
+the absolute physical envelope. Automation modulates realization
+inside the chosen pattern (call length, Together window, stream fallback) and never switches it.
+Hand selection is `RhythmHandPolicy` (no randomness: error diffusion plus a deterministic hash).
+Changing a setting stops and rewinds playback and regenerates from the captured analysis: Activity
+and Variation re-prepare the shared Visual OS plan (and the Wormhole) only when they change; hand
+settings reuse it. No re-analysis, reload or second AudioEngine state; stale results are dropped.
+Settings are not persisted across page loads.
+
 ## Pairs, readability and hand flow
 
 Each phrase with at least six real onsets over two seconds reserves one locally salient
@@ -53,7 +87,7 @@ Vertical pairs occupy low/high rows with X +/-0.22 m: deliberately offset hand c
 than a literal shared center column that asks the sabers to cross. Pair arrows point apart;
 gold glyphs distinguish the shared accent without changing the hand colors.
 
-Single targets alternate hands. Direction parity survives automation changes: recent strokes
+With the default Alternate/Even setting single targets alternate hands. Direction parity survives automation changes: recent strokes
 get a return or orthogonal stroke, with diagonals mirrored by hand. Pulse/drive phrases include
 lateral cuts, while simultaneous pairs never require converging horizontal cuts. If an accent direction conflicts
 with the preceding stroke it becomes a free cut. A 1.5 s rest permits a fresh downstroke.

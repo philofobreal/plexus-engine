@@ -114,6 +114,35 @@ Analyzer version 5 requires actual onset evidence for percussive impact cues and
 significant moments across the full track, invalidating older cached analyses. No DSP, cue
 detection or plan regeneration occurs during rendering.
 
+## Addendum C: Wormhole-facing track path (2026-09-27)
+
+`CanvasVisualSource` gains one optional read-only field, `focalPoint` (normalized x/y, +y up). The
+Wormhole identity fills it from its existing horizon projection; no renderer internals are exposed.
+XR owns a single pure track-path projection (`src/xr/scene/XrTrackPath.ts`) applied after canonical
+`notePosition()`; rendering projects through it and XR hit testing un-projects through it.
+`src/gameplay/` is unchanged and remains renderer-independent.
+
+## Addendum D: player generation settings (2026-09-27)
+
+`buildRhythmChart` takes optional `RhythmGenerationSettings` (Difficulty, Activity, Variation, hand
+pattern, hand lead, zones), pure gameplay data; defaults reproduce the historical chart byte-for-byte. Activity and
+Variation keep their ADR-005 meanings and are also forwarded to `prepareWormholePerformance`, so the
+shared plan and the Wormhole follow them as in the MVP. `XrAppController` regenerates from its
+captured analysis snapshot under the existing load-generation token; it never re-analyzes.
+
+## Addendum E: Wormhole depth cues and 2.5D stereo planes (2026-09-27)
+
+`CosmicWormholeIdentity` gains two host presentation options, both default-off (byte-identical
+legacy output): `setDepthCue(amount)` (size constancy, atmospheric attenuation and haze from each
+grain's already-computed depth) and `setDepthLayers({ mid, near })` (routes vector-path grains by
+depth to extra raster targets with complementary crossfades; background layers stay on the main
+backend). The MVP composition root sets depth cue 0.6; the dashboard keeps 0. `CanvasVisualSource`
+gains an optional read-only `layers` list (far -> near). `WormholeCanvasSource({ depthLayers,
+depthCue })` renders one simulation into a 960x540 far plane and two 768x432 nearer planes;
+`WormholeBackdrop` places them at 40 / 22 / 12 m (additive nearer planes, angularly identical,
+anchored to the sampled eye height). `VisualRendererBackend` is unchanged. Material-active frames
+keep a single surface.
+
 ## Consequences
 
 `/xr/` can evolve its own scene complexity, controller model, and performance profile without

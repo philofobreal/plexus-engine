@@ -81,3 +81,23 @@ passed without having actually run it.
   incoming-only contact must not score. Dots allow any direction. Check wrist and mid-blade cuts.
 - Play horizontal, diagonal and vertically separated gold-glyph pairs. Confirm independent
   two-hand scoring, adequate preparation/rest gaps, no forced crossed blades and no target occlusion.
+
+## Redesign, settings, callout and depth additions (2026-09-27)
+
+Record results in the result log above; desktop results never substitute for headset runs.
+
+- Presentation: runway motion comfort at 4 m/s (vection), shimmer on rails/reticle with MSAA
+  off, HUD text legible at 2.8 m and ~13-22 degrees above eye height, target and arrow legibility at
+  spawn distance, hit gate visible in peripheral vision without covering targets.
+- Command drawer: opens by default, closes on play, Escape/keyboard focus behaviour, Enter VR
+  still starts a session from the drawer, no desktop chrome visible inside VR.
+- Track path: on bent presets (spiral, overdrive, galaxy) the far runway and targets curve
+  toward the Wormhole center while targets inside reach never shift; vertical bend comfort.
+- Game settings: Easy -> Expert is clearly felt; Expert remains physically playable; Crossover
+  crossings never make sabers collide; Call & Response one-arm fatigue; Together pairs comfortable;
+  changing settings rewinds and regenerates without reloading the track.
+- Section callout: readable while slicing, countdown and arrival animation noticeable but not
+  distracting, flash intensity comfortable.
+- Wormhole depth: perceivable separation between near streaks and the far field, head-motion
+  parallax, no double vision or eye strain, and stable frame rate (72/90 Hz) with the Wormhole on
+  (record GPU frame time: three planes, two additive).

@@ -25,7 +25,7 @@ An immersive entry pauses desktop playback before relocating the stage.
 - Hit plane: 0.85 m ahead. Horizontal lane centers: -0.45 / 0 / +0.45 m.
 - Middle row: eye height minus 0.55 m, floored at 0.70 m. Low/high rows: +/-0.34 m.
   At 1.65 m eye height the rows are 0.76 / 1.10 / 1.44 m.
-- Notes: 0.32 m cubes. Dots mean free cuts; arrows indicate blade travel, not the entry side.
+- Notes: 0.32 m chamfered target modules (exact cube bounds). Dots mean free cuts; arrows indicate blade travel, not the entry side.
 - Sabers: 0.90 m blade, 0.18 m handle; blade spans grip-local Z -0.10 to -1.00 m.
 - Notes approach at 4 m/s over 2 s. First two seconds contain no targets, without shifting
   music timestamps. Missed notes continue through the plane, underneath/behind the player.
@@ -92,7 +92,45 @@ Desktop drawing now stops after the final invalidated frame in idle, ready, paus
 states; resize, transport, load and the background toggle wake it as needed. Hidden desktop
 tabs stop drawing. Playing is capped at 60 submissions/s and approximately 1920x1080 physical
 pixels (DPR capped at 1.25); MSAA is disabled. XR keeps headset-driven submissions during pause
-for head tracking, but stationary note buffers are reused. The static runway is one instanced batch.
+for head tracking, but stationary note buffers are reused.
+
+Scene visuals (`src/xr/scene/`, decorative only, never gameplay geometry) use three static
+draws plus the unchanged three note batches: `XrRunway` owns a procedurally generated
+floor `DataTexture` (built once, never re-uploaded), one merged additive linework mesh
+(rails, hit-plane floor line, calibration reticle) and one merged additive hit gate in playfield
+space. Floor travel is `phase = frac(songTime * noteSpeedMps / tileLength)` written to the texture
+offset, so seek reproduces the image, pause freezes it and nothing accumulates. Targets are one
+unlit instanced batch whose chamfered geometry bakes per-face shading and a luminous front bevel,
+multiplied by the hand colour. The HUD is a transparent instrument frame redrawn only on change.
+
+The optional Wormhole is a bounded 2.5D, stereoscopic background: the same single simulation and
+projection render into three fixed planes by each grain's existing depth (near < 0.18 <= mid < 0.45 <=
+far, 0.03 crossfades), placed at 12 / 22 / 40 m beyond the gameplay volume and scaled to identical
+angles, so stereo disparity and head-motion parallax separate them. Monocular depth cues (strength
+0.7 in XR, 0.6 in the MVP) thicken near grains and thin, dim and haze far ones. Cost: two more draws
+(additive planes), two 768x432 textures, uploads only on changed Wormhole frames (<= 30 Hz).
+
+The hit gate announces the musical section (`src/xr/scene/XrSectionCallout.ts`). It uses the
+analyzer's published `TrackAnalysis.sections` with the MVP dramaturgy panel's labels and hues
+(repeated labels are numbered, e.g. "DROP 2"), passed by `XrAppController` as plain data. One bar
+before a boundary (4 beats, clamped to 1.2-3 s and to half the previous section) a caption strip on
+the gate's top edge decodes "NEXT > <section>", four blocks count the beats down and an outer frame
+pulses on each beat while its colour drifts to the new section's hue; on arrival the frame snaps
+outward (ease-out-back, 0.6 s) and the caption decodes into the new name. Everything is a pure
+function of song time (pause freezes, seek lands exactly); the caption canvas redraws only when its
+quantized state changes (none while steady, a bounded handful per transition) and the frame is a
+material colour/scale write. Cost: two draws (additive frame, caption strip). The caption sits below
+the line of sight to the highest incoming row, and the in-VR HUD is raised to stay clear of it.
+
+The track bends toward the Wormhole's apparent vanishing point. `CosmicWormholeIdentity` publishes
+`routeFocus` (its horizon projection, the same one that places the lens center) through the optional
+read-only `CanvasVisualSource.focalPoint`; XR never inspects pixels or re-simulates the route.
+`src/xr/scene/XrTrackPath.ts` is the only curve: a lateral/vertical shear `A * u^2` of forward
+distance, exactly zero closer than 2.5 m, saturating at 2.4 m lateral / 1 m vertical, with the far
+tangent aimed at the focal point. Notes, floor and rails project through it; XR blade samples and
+desktop picking un-project through it, so rendered and judged targets cannot diverge. Road length,
+hit plane, gate, lanes and rows are unchanged. Floor/rail vertices are preallocated and rewritten
+only when the path revision changes. With the Wormhole off the track is straight.
 
 The optional **Wormhole background** checkbox uses the actual MVP CosmicWormholeIdentity,
 not a substitute particle shader. It defaults off. Its macro settings are intensity=1, motion=1,

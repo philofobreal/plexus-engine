@@ -133,7 +133,8 @@ UI changes:
 
 XR rhythm game host changes (ADR-009):
 
-- Run `node --test tests/gameplay-purity.test.mjs tests/rhythm-chart.test.mjs tests/rhythm-judge.test.mjs tests/rhythm-session.test.mjs tests/xr-spatial.test.mjs tests/xr-performance.test.mjs tests/xr-audio-integration.test.mjs tests/xr-choreography.test.mjs tests/xr-whole-track-variation.test.mjs tests/xr-wormhole.test.mjs`.
+- Run `node --test tests/gameplay-purity.test.mjs tests/rhythm-chart.test.mjs tests/rhythm-judge.test.mjs tests/rhythm-session.test.mjs tests/xr-spatial.test.mjs tests/xr-performance.test.mjs tests/xr-audio-integration.test.mjs tests/xr-choreography.test.mjs tests/xr-whole-track-variation.test.mjs tests/xr-wormhole.test.mjs tests/xr-runway.test.mjs tests/xr-track-path.test.mjs tests/xr-command-drawer.test.mjs tests/xr-generation-settings.test.mjs tests/xr-section-callout.test.mjs tests/xr-controller-regeneration.test.mjs tests/xr-edge-cases.test.mjs tests/wormhole-depth-layers.test.mjs`.
+- Default chart output is pinned by `tests/fixtures/xr-chart-default-golden.json` (captured before generation settings existed); only an intentional default-behaviour change may regenerate it, with the reason recorded.
 - Changes to the shared MVP Wormhole path (`src/config/` gain resolution, `applyMvpWormholePreset`, injected `WormholeRenderState`) also run `tests/mvp-macro-tuning-mapper.test.mjs`, `tests/mvp-async-lifecycle.test.mjs`, `tests/semantics-integration.test.mjs` and the wormhole determinism/lifecycle suites, because the MVP consumes the same code.
 - `AudioEngine` host-option changes follow the audio playback matrix above and must keep dashboard/MVP defaults unchanged.
 - Desktop, browser or mocked-device results never substitute for physical Quest acceptance; record headset runs in `../audits/xr-rhythm-game-quest3-manual-test.md`.

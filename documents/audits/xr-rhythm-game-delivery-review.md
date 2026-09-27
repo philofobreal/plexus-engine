@@ -106,3 +106,35 @@ Residual risk: uncapped `significantMoments` feed `TimelineCanvas` and `MotifPla
 tracks were not profiled there. The publication gate omits unevidenced legacy section starts
 (pinned by `automation-cue-alignment.test.mjs`); this is intentional product behavior per the
 ADR-005 addendum. `diff_export.ps1` was not generated; the review used the live working tree.
+
+## Presentation, settings and depth delivery (2026-09-27/28)
+
+Delivered task by task with user sign-off after each: premium runway/targets/HUD
+(`XrRunway`, `SceneGeometry`), game-style command drawer (`XrCommandDrawer`), Wormhole-facing
+track path (`XrTrackPath` + `CanvasVisualSource.focalPoint`), player generation settings
+(Difficulty, Activity, Variation, Hands, Lead, Zones; `RhythmGenerationProfile`,
+`RhythmHandPolicy`, `RhythmZonePolicy`), hit-gate section callout (`XrSectionCallout`) and
+Wormhole depth (identity depth cue + three XR stereo planes). Contracts: ACs XR-8..XR-12,
+ADR-009 addenda C-E, the feature and musical-choreography documents.
+
+Final integration pass:
+- Boundaries: `src/gameplay/` imports only gameplay modules and `src/types/`; XR scene/runtime
+  modules import only gameplay, types, `three` and XR modules; `VisualRendererBackend` is
+  unchanged; `src/xr/main.ts` still imports only `WormholeCanvasSource` from visuals.
+- One projection authority (`XrTrackPath`), guarded by a source test; defaults reproduce the
+  historical chart byte-for-byte (`tests/fixtures/xr-chart-default-golden.json`).
+- Hot path: per-frame key/signature strings in `RhythmGameScene.update()` and `XrHud.update()`
+  were replaced by field comparisons; new per-frame work (runway phase, path shear, callout frame,
+  depth routing) is allocation-free. Residual, pre-existing: `RhythmGameSession.getSnapshot()`
+  returns a new small object per frame (gameplay API, left unchanged).
+- Fixed during the review: `XrSectionCallout.update()` crashed on non-finite song time; a setting
+  change during a track load left the section callout without its timeline.
+- Accessibility: menu button announces the status light; every settings group is
+  `aria-describedby` its hint; native radios keep arrow-key navigation.
+- Measured desktop draw calls while playing with the Wormhole: 11-12 (base scene 8 without it).
+
+Validation (2026-09-28): `npm test` 1112 tests, 1103 pass; only the 9 known baseline Wormhole preset failures
+listed above; `npm run build` passes; the XR matrix in `testing-validation.md` passes; browser
+smoke on the built `dist/` (drawer, regeneration without re-analysis, Wormhole planes, callout, MVP
+load) showed no console errors. Physical Quest 3 validation has not been performed; use the
+additions section of the Quest 3 manual test.

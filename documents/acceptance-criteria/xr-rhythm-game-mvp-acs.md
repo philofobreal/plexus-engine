@@ -73,8 +73,10 @@ No targets are invented to fill silence. See `xr-whole-track-variation.test.mjs`
   never validly struck.
 - A miss resets combo; a hit increments score and combo and produces a bounded-lifetime visual
   flash from the preallocated pool, never a newly allocated mesh.
-- The pre-VR DOM screen shows file selection, analysis progress/error, BPM/duration once ready,
-  chart note count, WebXR capability status, and an Enter VR control. The in-VR HUD shows only
+- The pre-VR command drawer (corner menu button, `aria-expanded`, Escape closes, focus returns to
+  the button, overlays without resizing the canvas) shows file selection, track title, analysis
+  progress/error, BPM/duration once ready, chart note count, WebXR capability status, game
+  settings, Play and an Enter VR control; errors reopen it and desktop play closes it. The in-VR HUD shows only
   score, combo, game state, and a start/pause/restart instruction, drawn on a canvas-backed
   texture updated only when its displayed values change (not every frame).
 
@@ -115,4 +117,49 @@ The detailed spatial and input contract is in the [feature](../features/xr-rhyth
 - Desktop left/right clicks use the shared timing/hand/score judge. Space toggles playback;
   no headset, pointer lock, or second game state machine is required.
 - Gameplay import tests inspect multiline imports/re-exports and reject dynamic loading.
+
+## XR-8 Presentation redesign
+
+- Runway, hit gate, calibration reticle and targets are scene-owned decoration: no gameplay
+  dimension, `notePosition()` or judging input changes. Floor travel is
+  `phase = frac(songTime * noteSpeed / 2 m)` (pause freezes, seek reproduces, no accumulation).
+- Targets are one unlit instanced batch (chamfered module, exact `noteSizeMeters` bounds); glyphs
+  keep their batches and `CUT_VECTORS` rotation; hit/missed/paired/free-cut states stay distinct.
+- The HUD and every canvas redraw only when their displayed state changes; nothing allocates in
+  `RhythmGameScene.update()`; every geometry/material/texture is disposed exactly once.
+
+## XR-9 Wormhole-facing track path
+
+- The track bends toward `CanvasVisualSource.focalPoint` (the identity's horizon projection); no
+  pixel inspection or second route simulation.
+- `XrTrackPath` is the only curve: exactly zero within 2.5 m, bounded far displacement, road
+  length unchanged. Rendering projects and XR strikes/desktop picks un-project through it.
+- The path is a pure function of the current focus; seeking or disabling the Wormhole never
+  accumulates curvature (disabled = straight).
+
+## XR-10 Player generation settings
+
+- Difficulty, Activity, Variation, Hands, Lead and Zones are pure gameplay inputs. Defaults
+  (Normal/Balanced/Paired/Alternate/Even/Own side) reproduce the pre-settings chart byte-for-byte.
+- Every combination is deterministic and keeps spacing (Difficulty floors), reach, cut parity,
+  pair, row, onset-only and zone-safety invariants (crossings need the other hand clear; the
+  center lane is exclusive and never uses the high row; pairs never cross).
+- Changing a setting stops and rewinds playback and regenerates from the captured analysis:
+  no re-analysis or reload; Activity/Variation re-prepare the shared plan only when they change;
+  stale asynchronous results never publish; settings are locked while presenting in VR.
+
+## XR-11 Section callout
+
+- The hit gate names the analyzer's current section (MVP labels/hues, numbered repeats), pre-
+  announces the next one a bar ahead with a beat countdown and animates arrival, all as a pure
+  function of song time; non-finite clocks are ignored. The caption stays below the incoming
+  sight line and clear of the HUD; the timeline reaches the scene even if settings change mid-load.
+
+## XR-12 Wormhole depth
+
+- Depth cue and depth layers are host presentation options that default off with byte-identical
+  output; the MVP uses cue 0.6, XR uses 0.7 plus three fixed planes (40/22/12 m, beyond the
+  gameplay volume, angularly identical, additive nearer planes, eye-height anchored).
+- One simulation feeds all planes; grains crossfade between planes (shares always sum to 1);
+  material-active frames keep one surface; textures upload only on changed Wormhole frames.
 
