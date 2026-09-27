@@ -479,6 +479,12 @@ export class CosmicWormholeIdentity implements VisualIdentity {
      */
     private readonly lensHorizonFrame: WormholeRouteFrame = createRouteFrame();
     private readonly lensHorizonFrameV: WormholeRouteFrame = createRouteFrame();
+    /**
+     * Read-only apparent vanishing point of the last drawn frame: the route projected at the
+     * horizon depth (the same projection that places the lens center), normalized to the canvas
+     * half-extent with +y up. Embedded hosts (XR) consume it instead of re-deriving the route.
+     */
+    readonly routeFocus = { x: 0, y: 0 };
     private readonly lensWarpPointA: WormholeLensWarpPoint = { x: 0, y: 0 };
     private readonly lensWarpPointB: WormholeLensWarpPoint = { x: 0, y: 0 };
     /**
@@ -522,6 +528,11 @@ export class CosmicWormholeIdentity implements VisualIdentity {
     private grainCopiesAllocated = 0;
     /** Caller-owned output for viewport raster sizing; avoids a per-frame dimensions object. */
     private readonly grainMaterialRasterSize: WormholeGrainMaterialRasterSize = { cols: 0, rows: 0 };
+
+    /** Host presentation option: monocular depth-cue strength (0 = the legacy output, byte-identical). */
+    private depthCue = 0;
+    /** Optional 2.5D raster targets for grains nearer than the far layer (XR multi-plane output). */
+    private depthLayers: WormholeDepthLayerTargets | null = null;
 
     constructor(state: WormholeRenderState = State) {
         this.state = state;
@@ -686,6 +697,25 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         return Z_REFERENCE;
     }
 
+    /**
+     * Monocular depth cues for the existing projection: near grains draw thicker and brighter, far
+     * grains thinner, dimmer and slightly hazed. A presentation choice of the host (MVP/XR), not an
+     * authored tuning key, so presets, automation and saved sessions are untouched.
+     */
+    setDepthCue(amount: number): void {
+        this.depthCue = Math.min(1, Math.max(0, Number.isFinite(amount) ? amount : 0));
+    }
+
+    /**
+     * Bounded 2.5D output: grains are routed by their already-computed depth to the far (main)
+     * backend or to mid/near raster targets, with complementary crossfades at the bucket edges.
+     * The simulation, projection and background layers are unchanged and drawn once. Only the
+     * vector (material-inactive) path is layered; material frames keep everything on one surface.
+     */
+    setDepthLayers(targets: WormholeDepthLayerTargets | null): void {
+        this.depthLayers = targets;
+    }
+
     draw(backend: VisualRendererBackend, _particles: Particle[], _shockwaves: Shockwave[]): void {
         const tuning = this.state.visualTuning;
         const timeSec = canonicalWormholeTime(this.state.currentTime, this.state.isExporting, this.state.exportTime);
@@ -796,22 +826,27 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         const lensStrength = opticsEnabled ? tuning.wormholeLens : 0;
         const lensActive = lensStrength > 0;
         const lensSwirl = tuning.wormholeLensSwirl;
+        // The route's apparent vanishing point: projected from the smoothed-lookahead frame at the
+        // horizon depth. Sampling only writes route scratch frames, so computing it every frame is
+        // observably identical to the former lens-only computation.
+        this.routePath.sampleSmoothedLookahead(camZ + Z_REFERENCE, this.lensHorizonFrame);
+        this.routePathVertical.sampleSmoothedLookahead(camZ + Z_REFERENCE, this.lensHorizonFrameV);
+        const horizonVerticalDrift = this.lensHorizonFrameV.positionX - this.baseRouteNowV.positionX;
+        const horizonProjection = projectWormholeTubePoint(
+            this.lensHorizonFrame, this.baseRouteNow, Z_REFERENCE, 0, 0, routeTurnVisualGain,
+            cx, cy, fov, horizonVerticalDrift
+        );
+        const focusX = (horizonProjection.screenX - cx) / cx, focusY = (cy - horizonProjection.screenY) / cy;
+        this.routeFocus.x = Number.isFinite(focusX) ? focusX : 0;
+        this.routeFocus.y = Number.isFinite(focusY) ? focusY : 0;
         let lensCenterX = cx;
         let lensCenterY = cy;
         let lensRadiusPx = 0;
         if (lensActive) {
             // The lens center follows the route exactly like every other background layer's
-            // parallax does: projected from the smoothed-lookahead frame at the horizon depth, so a
-            // turning route bends the lens center with the tunnel instead of pinning it to center.
-            this.routePath.sampleSmoothedLookahead(camZ + Z_REFERENCE, this.lensHorizonFrame);
-            this.routePathVertical.sampleSmoothedLookahead(camZ + Z_REFERENCE, this.lensHorizonFrameV);
-            const lensVerticalDrift = this.lensHorizonFrameV.positionX - this.baseRouteNowV.positionX;
-            const lensCenterProjection = projectWormholeTubePoint(
-                this.lensHorizonFrame, this.baseRouteNow, Z_REFERENCE, 0, 0, routeTurnVisualGain,
-                cx, cy, fov, lensVerticalDrift
-            );
-            lensCenterX = lensCenterProjection.screenX;
-            lensCenterY = lensCenterProjection.screenY;
+            // parallax does, so a turning route bends the lens center with the tunnel.
+            lensCenterX = horizonProjection.screenX;
+            lensCenterY = horizonProjection.screenY;
             lensRadiusPx = tuning.wormholeLensRadius * Math.hypot(backend.width, backend.height) * 0.5;
         }
         // Wall-as-refraction-field (true-lens plan F4): gathered once here -- whenever either the
@@ -1523,11 +1558,14 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 : 1;
             const reactiveGrainAlpha = (12 + energy * 188) * grain.alphaScale * materialGain * releaseLift * armFactor;
             const visibilityFloor = wormholeVisibilityFloor(depthT);
+            // Depth cues are exact identities (x1) when disabled, keeping the legacy stream byte-identical.
+            const cueWeight = this.depthCue > 0 ? wormholeDepthCueWeight(depthT, this.depthCue) : 1;
+            const cueAlpha = this.depthCue > 0 ? wormholeDepthCueAlpha(depthT, this.depthCue) : 1;
             const alpha = lineAlpha * fade * emissionGain * Math.max(visibilityFloor, reactiveGrainAlpha)
-                * transitionEnergyNow.alphaScale;
+                * transitionEnergyNow.alphaScale * cueAlpha;
             const weight = wormholeProjectedStrokeWeight(
                 (0.4 + energy * 3.2) * lineWeight * grain.weightScale * materialGain * (1 + kickGain * 0.3)
-                * transitionEnergyNow.strokeScale * (spiralArms > 0 ? 0.55 + 0.45 * armFactor : 1)
+                * transitionEnergyNow.strokeScale * (spiralArms > 0 ? 0.55 + 0.45 * armFactor : 1) * cueWeight
             );
             const trailScale = wormholeProjectedTrailScale(px - sx, py - sy, backend.height);
             if (trailScale < 1) {
@@ -1538,9 +1576,34 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             // Disabled, performance, and refusal frames retain the exact legacy hot path without
             // even populating the material scratch object.
             if (!grainMaterialActive || !grainMaterialL0) {
-                backend.stroke(r, g, b, alpha);
-                backend.strokeWeight(weight);
-                backend.line(px, py, sx, sy, tuning.wormholeGrainShape === 1 ? 'square' : undefined);
+                const cap = tuning.wormholeGrainShape === 1 ? 'square' : undefined;
+                let lr = r, lg = g, lb = b;
+                if (this.depthCue > 0) {
+                    const haze = wormholeDepthCueHaze(depthT, this.depthCue);
+                    lr = r + (DEPTH_HAZE_RGB[0] - r) * haze;
+                    lg = g + (DEPTH_HAZE_RGB[1] - g) * haze;
+                    lb = b + (DEPTH_HAZE_RGB[2] - b) * haze;
+                }
+                // Without depth layers the far share is exactly 1: the single legacy draw below.
+                const layers = this.depthLayers;
+                const farShare = layers ? wormholeFarLayerShare(depthT) : 1;
+                if (farShare > LAYER_SHARE_EPSILON) {
+                    backend.stroke(lr, lg, lb, alpha * farShare);
+                    backend.strokeWeight(weight);
+                    backend.line(px, py, sx, sy, cap);
+                }
+                if (!layers) continue;
+                const nearShare = wormholeNearLayerShare(depthT);
+                const midShare = Math.max(0, 1 - nearShare - farShare);
+                for (let layer = 0; layer < 2; layer++) {
+                    const share = layer === 0 ? midShare : nearShare;
+                    if (share <= LAYER_SHARE_EPSILON) continue;
+                    const target = layer === 0 ? layers.mid : layers.near;
+                    const kx = target.width / backend.width, ky = target.height / backend.height;
+                    target.stroke(lr, lg, lb, alpha * share);
+                    target.strokeWeight(weight * kx);
+                    target.line(px * kx, py * ky, sx * kx, sy * ky, cap);
+                }
                 continue;
             }
 
@@ -2704,6 +2767,51 @@ export class CosmicWormholeIdentity implements VisualIdentity {
 
 }
 
+/** Mid/near raster targets for the XR multi-plane (2.5D) output; the far layer is the main backend. */
+export interface WormholeDepthLayerTargets {
+    readonly mid: VisualRendererBackend;
+    readonly near: VisualRendererBackend;
+}
+
+/** Normalized-depth bucket edges (near | mid | far) and the crossfade half-width around each. */
+export const WORMHOLE_LAYER_NEAR_EDGE = 0.18;
+export const WORMHOLE_LAYER_FAR_EDGE = 0.45;
+export const WORMHOLE_LAYER_BLEND = 0.03;
+const LAYER_SHARE_EPSILON = 0.002;
+/** Cool, dim haze far grains drift toward (atmospheric attenuation against the dark plate). */
+const DEPTH_HAZE_RGB: readonly [number, number, number] = [96, 108, 160];
+
+function smoothstep01(edge0: number, edge1: number, value: number): number {
+    const t = clamp01((value - edge0) / (edge1 - edge0));
+    return t * t * (3 - 2 * t);
+}
+
+/** Share of a grain drawn into the near layer (1 in front, crossfading to 0 at the near edge). */
+export function wormholeNearLayerShare(depthT: number): number {
+    return 1 - smoothstep01(WORMHOLE_LAYER_NEAR_EDGE - WORMHOLE_LAYER_BLEND, WORMHOLE_LAYER_NEAR_EDGE + WORMHOLE_LAYER_BLEND, depthT);
+}
+
+/** Share of a grain drawn into the far layer (0 in front, crossfading to 1 past the far edge). */
+export function wormholeFarLayerShare(depthT: number): number {
+    return smoothstep01(WORMHOLE_LAYER_FAR_EDGE - WORMHOLE_LAYER_BLEND, WORMHOLE_LAYER_FAR_EDGE + WORMHOLE_LAYER_BLEND, depthT);
+}
+
+/** Size constancy: near strokes up to 1.45x, far strokes down to 0.55x, scaled by the cue amount. */
+export function wormholeDepthCueWeight(depthT: number, amount: number): number {
+    const nearness = Math.pow(1 - clamp01(depthT), 1.3);
+    return 1 + amount * (0.55 + 0.9 * nearness - 1);
+}
+
+/** Atmospheric attenuation: far grains lose up to 45 % opacity. */
+export function wormholeDepthCueAlpha(depthT: number, amount: number): number {
+    return 1 - amount * 0.45 * Math.pow(clamp01(depthT), 1.5);
+}
+
+/** Colour drift toward the haze tint for far grains (0..0.35 x amount). */
+export function wormholeDepthCueHaze(depthT: number, amount: number): number {
+    return amount * 0.35 * Math.pow(clamp01(depthT), 1.5);
+}
+
 interface RouteHistorySample extends WormholeRouteFrameWithDistance {}
 
 export class IntegratedWormholeRoute {
@@ -3007,4 +3115,4 @@ function createRouteFrame(): WormholeRouteFrame {
     };
 }
 
-export const cosmicWormholeIdentity: VisualIdentity = new CosmicWormholeIdentity();
+export const cosmicWormholeIdentity: CosmicWormholeIdentity = new CosmicWormholeIdentity();

@@ -96,7 +96,7 @@ function sourceHarness() {
         constructor() { this.canvas = { width: 960, height: 540 }; this.frameCount = 0; canvases.push(this); }
     }
     let draws = 0;
-    class Identity { constructor(state) { this.state = state; } syncPosition() {} draw() { draws++; } }
+    class Identity { constructor(state) { this.state = state; } syncPosition() {} setDepthCue() {} setDepthLayers() {} draw() { draws++; } }
     const load = createLoader({
         './Canvas2DRendererBackend': { Canvas2DRendererBackend: Backend },
         './CosmicWormholeIdentity': { CosmicWormholeIdentity: Identity }

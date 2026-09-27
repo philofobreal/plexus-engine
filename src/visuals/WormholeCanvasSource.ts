@@ -1,4 +1,4 @@
-import type { CanvasVisualSource, VisualAnalysisSnapshot } from '../types/CanvasVisualSource';
+import type { CanvasVisualSource, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
 import type { MotifChoreographyFrame, PerformanceAutomationPlan, VisualChoreographyPlan } from '../types';
 import { createEmptyTrackAnalysis } from '../analyzer/normalizeAnalysisResult';
 import { cloneDefaultVisualTuning, applyTuningMorph, tuningMorphDeltaSec, writeModulationBus } from '../config/visualTuning';
@@ -31,7 +31,15 @@ function emptyState(): WormholeRenderState {
 export interface WormholeCanvasSourceOptions {
     /** Opt-in debug surface (`?xrDiagnostics=1`), decided by the composition root. */
     readonly diagnostics?: boolean;
+    /** Monocular depth-cue strength for the identity (0 = legacy look). */
+    readonly depthCue?: number;
+    /** Emit a fixed far/mid/near multi-plane output for stereoscopic hosts. */
+    readonly depthLayers?: boolean;
 }
+
+/** Mid/near planes hold only nearer grains on black, so a reduced raster is enough. */
+const LAYER_WIDTH = 768;
+const LAYER_HEIGHT = 432;
 
 /** The actual MVP identity, with private state and the same preset/macro/semantic functions.
  * The caller owns cadence. There is no p5 loop, AudioEngine, global State write, or realtime DSP.
@@ -59,9 +67,18 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     private disposed = false;
     private denseEvents: { time: number }[] = [];
     private readonly diagnostics: boolean;
+    private readonly depthCue: number;
+    private readonly midBackend: Canvas2DRendererBackend | null;
+    private readonly nearBackend: Canvas2DRendererBackend | null;
+    readonly layers?: readonly HTMLCanvasElement[];
 
     constructor(options: WormholeCanvasSourceOptions = {}) {
         this.diagnostics = options.diagnostics === true;
+        this.depthCue = options.depthCue ?? 0;
+        this.midBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT) : null;
+        this.nearBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT) : null;
+        if (this.midBackend && this.nearBackend) this.layers = [this.canvas, this.midBackend.canvas, this.nearBackend.canvas];
+        this.configureIdentity();
         if (this.diagnostics) {
             this.canvas.hidden = true;
             this.canvas.dataset.xrWormhole = 'true';
@@ -69,11 +86,15 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         }
     }
 
+    /** The identity's own horizon projection for the last drawn frame (never pixel-derived). */
+    get focalPoint(): VisualFocalPoint { return this.identity.routeFocus; }
+
     async prepare(analysis: VisualAnalysisSnapshot | null): Promise<void> {
         const revision = ++this.revision;
         this.state = emptyState();
         if (analysis) Object.assign(this.state, analysis);
         this.identity = new CosmicWormholeIdentity(this.state);
+        this.configureIdentity();
         this.director = new VisualDirectorFSM();
         this.resolver = new SemanticResolver();
         this.resolver.setPlan(analysis?.trackAnalysis.externalVisualScorePlan ?? null);
@@ -151,6 +172,9 @@ export class WormholeCanvasSource implements CanvasVisualSource {
             state.visualTuning, state.modulation, state.visualTuning.dropAnticipation > 0 ? future : undefined);
         if (jump) this.identity.syncPosition(time);
         this.backend.frameCount++;
+        // Nearer planes start black every frame; the far plane is cleared by the identity itself.
+        this.midBackend?.background(0, 0, 0);
+        this.nearBackend?.background(0, 0, 0);
         this.identity.draw(this.backend, [], []);
         if (this.diagnostics) {
             this.canvas.dataset.frames = String(this.backend.frameCount);
@@ -159,7 +183,16 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         }
         return true;
     }
-    dispose(): void { this.disposed = true; ++this.revision; this.canvas.width = this.canvas.height = 1; if (this.diagnostics) this.canvas.remove(); }
+    dispose(): void {
+        this.disposed = true; ++this.revision; this.canvas.width = this.canvas.height = 1;
+        for (const layer of [this.midBackend, this.nearBackend]) if (layer) layer.canvas.width = layer.canvas.height = 1;
+        if (this.diagnostics) this.canvas.remove();
+    }
+
+    private configureIdentity(): void {
+        this.identity.setDepthCue(this.depthCue);
+        this.identity.setDepthLayers(this.midBackend && this.nearBackend ? { mid: this.midBackend, near: this.nearBackend } : null);
+    }
 }
 
 function lastIndexAt(entries: readonly { time: number }[], time: number): number {

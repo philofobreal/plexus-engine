@@ -6,6 +6,7 @@ import { AudioEngine } from '../../audio/AudioEngine';
 import { SemanticResolver, SemanticRuntimeAdapter } from '../../semantics';
 import { SemanticRendererBridge, startPlexusRenderer } from '../../visuals/PlexusRenderer';
 import { createDefaultStyleRegistry } from '../../visuals/StyleRegistry';
+import { cosmicWormholeIdentity } from '../../visuals/CosmicWormholeIdentity';
 import { State } from '../../state/store';
 import { requestVisualModeChange } from '../../state/visualModeTransition';
 import { MvpUI } from './MvpUI';
@@ -29,6 +30,8 @@ const ui = new MvpUI(engine, () => semanticResolver.hasPlan(), previewQuality);
 document.querySelector<HTMLDivElement>('#mvp-app')!.appendChild(ui.root);
 
 const styleRegistry = createDefaultStyleRegistry();
+// MVP presentation: moderate monocular depth cues on the Wormhole (the dashboard keeps the legacy look).
+cosmicWormholeIdentity.setDepthCue(0.6);
 const semanticBridge = new SemanticRendererBridge();
 semanticBridge.setSemanticAdapter(semanticAdapter);
 
