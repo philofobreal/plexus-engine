@@ -1,0 +1,22 @@
+{
+  "journey-128-confident": {
+    "notes": 161,
+    "pairs": 14,
+    "sha256": "4b2df56f275076daf7005484447e00b7f4a9c06e7534446096b44ec68199b8e6"
+  },
+  "journey-174-confident": {
+    "notes": 206,
+    "pairs": 17,
+    "sha256": "fd20d6ebb71783fe99a32028685d949cdde5cb9f6f3e7ef5668ed6639cd5f278"
+  },
+  "journey-100-unreliable": {
+    "notes": 208,
+    "pairs": 17,
+    "sha256": "96ed7bdd334b8ab373ed8f303742b7f83b7e305cd02304dc97a1f0428f9a60f8"
+  },
+  "sparse-no-plan": {
+    "notes": 62,
+    "pairs": 5,
+    "sha256": "541c3c8f7f90541db834be2644867ffab7ece51b2a033aef225a305bc6146a2e"
+  }
+}

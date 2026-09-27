@@ -2,7 +2,16 @@ import type { RhythmChartSource } from './RhythmChartBuilder';
 import { LANE_HAND, type RhythmGameConfig } from './RhythmGameConfig';
 import { CUT_VECTORS } from './RhythmChoreography';
 import type { CutDirection, RhythmNote, RhythmTexture } from './RhythmTypes';
-import { planRhythmPhrases } from './RhythmPhrasePlanner';
+import { planRhythmPhrases, type RhythmPhrase } from './RhythmPhrasePlanner';
+import { DEFAULT_RHYTHM_GENERATION_SETTINGS, difficultyProfile, motorProfile, type RhythmGenerationSettings } from './RhythmGenerationProfile';
+import { isOnBeat, RhythmHandPolicy } from './RhythmHandPolicy';
+import { zonePreference } from './RhythmZonePolicy';
+
+const REVERSED: Readonly<Record<Exclude<CutDirection, 'any'>, Exclude<CutDirection, 'any'>>> = {
+    up: 'down', down: 'up', left: 'right', right: 'left',
+    'up-left': 'down-right', 'down-right': 'up-left', 'up-right': 'down-left', 'down-left': 'up-right'
+};
+const laneOf = (x: number) => (x < -0.2 ? 0 : x > 0.2 ? 2 : 1);
 
 function lastAt(times: readonly number[], time: number): number {
     let lo = 0, hi = times.length;
@@ -19,7 +28,16 @@ function barAt(times: readonly number[], time: number): number {
 /** Offline motor score: Visual OS supplies meaning; only published onsets supply note times.
  * Meter shapes repetition and accent placement, never generates a silent grid-only target.
  */
-export function choreographRhythmChart(source: RhythmChartSource, config: RhythmGameConfig): RhythmNote[] {
+export function choreographRhythmChart(source: RhythmChartSource, config: RhythmGameConfig,
+    settings: RhythmGenerationSettings = DEFAULT_RHYTHM_GENERATION_SETTINGS): RhythmNote[] {
+    const profile = motorProfile(settings);
+    // Difficulty owns the physical envelope. Normal multiplies by exactly 1 (historical chart).
+    const demand = difficultyProfile(settings.difficulty);
+    const minGlobal = config.minGlobalNoteSpacingSec * demand.globalSpacingScale;
+    const minSame = config.minSameHandSpacingSec * demand.sameHandSpacingScale;
+    const travel = config.maxHandTravelMps * demand.travelScale;
+    // A crossing/center move needs the other hand clear of the space before and after it.
+    const clearSec = demand.crossClearSec;
     const events = source.events.map((event, index) => ({ event, index })).filter(({ event }) =>
         Number.isFinite(event.time) && event.time >= config.approachTimeSec && event.time <= source.durationSec &&
         Number.isFinite(event.intensity) && event.intensity >= config.intensityFloor)
@@ -29,19 +47,53 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
     const meter = bars.length ? bars : beats.filter((_, i) => i % 4 === 0);
     const points = (source.performancePlan?.points ?? []).filter(p => Number.isFinite(p.time)).slice().sort((a, b) => a.time - b.time);
     const reliable = (source.timingConfidence ?? 0) >= 0.5 && beats.length >= 2;
-    const phrases = planRhythmPhrases(events.map(e => e.event), points, source.durationSec, beats, source.timingConfidence ?? 0);
-    const accents = phrases.flatMap(p => p.pairTime === undefined ? [] : [p.pairTime]);
+    const phrases = planRhythmPhrases(events.map(e => e.event), points, source.durationSec, beats, source.timingConfidence ?? 0, settings);
+    const accents = phrases.flatMap(p => p.pairTimes);
     const phraseTimes = phrases.map(p => p.start);
     const result: RhythmNote[] = [];
     const last: Partial<Record<'left' | 'right', RhythmNote>> = {};
     const direction: Partial<Record<'left' | 'right', CutDirection>> = {};
-    let nextHand: 'left' | 'right' = 'left', nextAllowed = 0, lastPair = -Infinity;
+    const hands = new RhythmHandPolicy(settings.handPattern, settings.handLead, demand.strictSequences);
+    let nextAllowed = 0, lastPair = -Infinity;
+    // Zone safety state: a crossing blocks the other hand; the center lane is exclusive; hard-move chains.
+    let crossBlock: { hand: 'left' | 'right'; until: number } | null = null;
+    let centerUse: { hand: 'left' | 'right'; time: number } | null = null;
+    const hardRun: Record<'left' | 'right', number> = { left: 0, right: 0 };
+    // Position inside the bar in beats, from the trusted meter or the phrase's own scaffold.
+    const beatSecAt = (time: number, passage: RhythmPhrase) => {
+        if (!reliable) return passage.beatSec;
+        const beatIndex = Math.max(0, lastAt(beats, time));
+        return Math.max(0.25, Math.min(1, (beats[beatIndex + 1] ?? beats[beatIndex] + 0.5) - beats[beatIndex] || 0.5));
+    };
+    const phaseAt = (time: number, passage: RhythmPhrase, beatSec: number) =>
+        Math.max(0, (time - (reliable ? meter[barAt(meter, time)] ?? 0 : passage.start)) / beatSec) % 4;
+    // Per-phrase median onset intensity: "strong" onsets for zones, Easy free cuts and Independent.
+    const byPhrase = phrases.map(() => [] as typeof events);
+    for (const entry of events) byPhrase[phrases[lastAt(phraseTimes, entry.event.time)].index].push(entry);
+    const phraseMedian = byPhrase.map(members => {
+        const sorted = members.map(m => m.event.intensity).sort((a, b) => a - b);
+        return sorted[Math.floor(sorted.length / 2)] ?? 0;
+    });
+    // Independent hand pattern: per-phrase primary/secondary stream membership and sizes. Primary
+    // onsets are dense impacts or above-median onsets on the strong beats (1 and 3) of the bar.
+    const primaryStream = new Set<number>();
+    const primaryCount = new Array<number>(phrases.length).fill(0), secondaryCount = new Array<number>(phrases.length).fill(0);
+    if (settings.handPattern === 'independent') {
+        byPhrase.forEach((members, phraseIndex) => {
+            const median = phraseMedian[phraseIndex];
+            for (const { event, index } of members) {
+                const passage = phrases[phraseIndex], phase = phaseAt(event.time, passage, beatSecAt(event.time, passage));
+                const primary = event.type === 2 || (isOnBeat(phase) && Math.round(phase) % 2 === 0 && event.intensity >= median);
+                if (primary) { primaryStream.add(index); primaryCount[phraseIndex]++; } else secondaryCount[phraseIndex]++;
+            }
+        });
+    }
     for (const { event, index } of events) {
         const time = event.time;
         // Reserve a preparation gap before authored two-hand accents; otherwise dense singles
         // would consume one hand just before every downbeat and make pairs unreachable.
         const nextAccent = accents[lastAt(accents, time) + 1];
-        if (nextAccent !== undefined && nextAccent - time < Math.max(0.8, config.minSameHandSpacingSec)) continue;
+        if (nextAccent !== undefined && nextAccent - time < Math.max(0.8, minSame)) continue;
         const passage = phrases[lastAt(phraseTimes, time)];
         const point = passage.point;
         const texture: RhythmTexture = passage.texture;
@@ -53,20 +105,30 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
         const barStart = meter[barIndex] ?? 0;
         const phase = Math.max(0, (time - (reliable ? barStart : passage.start)) / beatSec) % 4;
         const phrase = passage.index;
-        const accent = time === passage.pairTime;
+        const accent = passage.pairTimes.includes(time);
         // Echo answers in the second half of alternate bars, with actual syncopated onsets
         // retained inside that window. Empty answers stay empty instead of inventing beats.
         if (!accent && texture === 'echo' && (phrase % 2 === 0 ? phase >= 2 : phase < 2)) continue;
         // A four-bar question/answer has a short breathing space at its tail.
-        if (!accent && reliable && barIndex % 4 === 3 && phase >= 3 && event.intensity < 0.85 && texture !== 'build') continue;
+        // Active keeps playing through it; the other activity levels leave the breath.
+        if (!accent && reliable && profile.densityScale >= 1 && barIndex % 4 === 3 && phase >= 3 && event.intensity < 0.85 && texture !== 'build') continue;
         const density = texture === 'breath' ? 2 : texture === 'pulse' ? 1
             : texture === 'build' ? buildEnergy < 0.65 ? 1 : 0.5 : 0.5;
-        const spacing = Math.max(config.minGlobalNoteSpacingSec, beatSec * density);
+        // Activity owns total density: it scales every texture's ceiling, never below the global floor.
+        // Calm also widens the global floor; Active can never go below it.
+        // Difficulty scales the ceiling and the floors on top of that.
+        const spacing = Math.max(minGlobal * Math.max(1, profile.densityScale), beatSec * density * profile.densityScale * demand.ceilingScale);
         const changedPoint = result.length > 0 && point?.id !== result.at(-1)?.automationId;
-        const requiredGap = accent || changedPoint ? config.minSameHandSpacingSec : spacing;
+        const requiredGap = accent || changedPoint ? minSame : spacing;
         if ((!accent && !changedPoint && time < nextAllowed - 1e-7) || result.length && time - result[result.length - 1].time < requiredGap - 1e-7) continue;
-        const hand: 'left' | 'right' = nextHand;
-        if (last[hand] && time - last[hand]!.time < config.minSameHandSpacingSec) continue;
+        const ready = (side: 'left' | 'right') => (!last[side] || time - last[side]!.time >= minSame)
+            && !(crossBlock && crossBlock.hand !== side && time < crossBlock.until);
+        const strong = event.intensity >= phraseMedian[phrase];
+        const chosen = hands.choose({ time, eventIndex: index, eventType: event.type, beatPhase: phase, beatSec,
+            phraseIndex: phrase, phraseStart: passage.start, texture, energy: buildEnergy, pointChanged: changedPoint,
+            primaryStream: primaryStream.has(index), phrasePrimary: primaryCount[phrase], phraseSecondary: secondaryCount[phrase] }, { ready });
+        if (!chosen) continue;
+        const hand: 'left' | 'right' = chosen;
 
         const make = (side: 'left' | 'right', pairLayout?: RhythmNote['pairLayout']): RhythmNote => {
             const previous = last[side];
@@ -76,13 +138,19 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
             const oldVector = oldCut && oldCut !== 'any' ? CUT_VECTORS[oldCut] : null;
             // Preserve hand parity across automation boundaries. A long rest permits a new downstroke.
             const up = dt < 1.5 && oldVector ? oldVector[1] < 0 : false;
-            const diagonal = texture === 'weave' || texture === 'echo' || (texture === 'impact' && phrase % 2 === 1);
+            // Variation owns cut-direction diversity; parity and pair divergence still apply below.
+            const diagonal = texture === 'weave' || texture === 'echo'
+                || (profile.cutDiversity >= 1 && texture === 'impact' && phrase % 2 === 1)
+                || (profile.cutDiversity === 2 && texture === 'drive' && phrase % 2 === 1);
             let cutDirection: CutDirection = texture === 'breath' && index % 4 === 0 ? 'any'
                 : diagonal ? up ? side === 'left' ? 'up-right' : 'up-left' : side === 'left' ? 'down-left' : 'down-right'
                 : up ? 'up' : 'down';
             // Pulse/drive phrases include lateral call/return strokes as well as vertical ones.
             // Only singles use these inward returns; simultaneous pairs keep divergent corridors.
-            if (!pairLayout && (texture === 'pulse' || texture === 'drive') && Math.floor(phase) % 2 === 0)
+            const lateral = profile.cutDiversity === 0 ? false : profile.cutDiversity === 2
+                ? texture === 'pulse' || texture === 'drive' || texture === 'build' || texture === 'impact'
+                : texture === 'pulse' || texture === 'drive';
+            if (!pairLayout && lateral && Math.floor(phase) % 2 === 0)
                 cutDirection = oldVector?.[0] ? oldVector[0] > 0 ? 'left' : 'right' : side === 'left' ? 'left' : 'right';
             let row = texture === 'breath' ? 1 : up ? 0 : 1;
             if (texture === 'weave') row = [0, 1, 2, 1][Math.floor(phase) % 4];
@@ -97,38 +165,80 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
                 cutDirection = row === 2 ? side === 'left' ? 'up-left' : 'up-right'
                     : side === 'left' ? 'down-left' : 'down-right';
             }
-            // A required reversal that conflicts with the pair geometry becomes a free cut.
+            if (!pairLayout) {
+                // Easy keeps consecutive targets of one hand within one row step.
+                if (previous && Math.abs(row - previous.row) > demand.maxRowStep)
+                    row = previous.row + Math.sign(row - previous.row) * demand.maxRowStep;
+                // Zones: musical context proposes; physical safety decides (first feasible zone).
+                const other: 'left' | 'right' = side === 'left' ? 'right' : 'left';
+                const reach = (cx: number, cr: number) => !previous || Math.hypot(cx - xOf(previous), (cr - previous.row) * config.rowSpacingMeters) <= dt * travel;
+                const preference = zonePreference({ zones: settings.zones, crossRate: demand.crossRate, eventIndex: index, texture,
+                    energy: buildEnergy, strong, gesture: point?.meta?.movementGesture,
+                    beatsIntoScene: point ? (time - point.time) / beatSec : Infinity, fill: passage.end - time <= beatSec * 4 });
+                for (const candidate of preference) {
+                    if (candidate === 'center') {
+                        const centerRow = Math.min(row, 1); // the high center stays clear for the incoming view
+                        if (centerUse && centerUse.hand !== side && time - centerUse.time < clearSec) continue;
+                        if (!reach(0, centerRow)) continue;
+                        x = 0; row = centerRow; break;
+                    }
+                    if (candidate === 'cross') {
+                        const cx = -sideSign * 0.45;
+                        const previousCrossed = previous !== undefined && Math.sign(xOf(previous)) === -sideSign;
+                        if (hardRun[side] >= demand.hardChain || previousCrossed) continue;
+                        if (last[other] && time - last[other]!.time < clearSec) continue;
+                        if (!reach(cx, row)) continue;
+                        x = cx;
+                        // Sweep outward through the far half; parity below may still reverse or free it.
+                        cutDirection = diagonal ? up ? side === 'left' ? 'up-right' : 'up-left' : side === 'left' ? 'down-right' : 'down-left'
+                            : side === 'left' ? 'right' : 'left';
+                        break;
+                    }
+                    break; // own
+                }
+                if (demand.freeCutsOnWeakOnsets && !strong) cutDirection = 'any';
+            }
+            // A required reversal that conflicts with the pair geometry becomes a free cut
+            // (Hard and Expert singles reverse it instead, keeping the sequence directional).
             if (oldVector && dt < 1.5 && cutDirection !== 'any') {
                 const v = CUT_VECTORS[cutDirection];
-                if (oldVector[0] * v[0] + oldVector[1] * v[1] > 0.1) cutDirection = 'any';
+                if (oldVector[0] * v[0] + oldVector[1] * v[1] > 0.1)
+                    cutDirection = demand.strictSequences && !pairLayout ? REVERSED[cutDirection] : 'any';
             }
             if (!pairLayout && previous) {
-                const limit = dt * config.maxHandTravelMps;
+                const limit = dt * travel;
                 while (row !== previous.row && Math.hypot(x - xOf(previous), (row - previous.row) * config.rowSpacingMeters) > limit)
                     row += Math.sign(previous.row - row);
                 if (Math.hypot(x - xOf(previous), (row - previous.row) * config.rowSpacingMeters) > limit) x = xOf(previous);
             }
-            return { id: `note-${index}-${side}`, time, hand: side, lane: side === 'left' ? 0 : 2, row,
+            return { id: `note-${index}-${side}`, time, hand: side, lane: laneOf(x), row,
                 xOffsetMeters: x, intensity: Math.min(1, event.intensity), sourceType: event.type,
                 cutDirection, texture, phrase, automationId: point?.id,
                 ...(pairLayout ? { pairId: `pair-${index}`, pairLayout } : {}) };
         };
         // Every populated phrase reserves a locally salient accent, regardless of grid confidence.
-        const canPair = accent && time - lastPair >= Math.max(2, beatSec * 4) &&
-            (['left', 'right'] as const).every(h => !last[h] || time - last[h]!.time >= Math.max(0.75, config.minSameHandSpacingSec));
+        const pairGap = settings.handPattern === 'together' ? Math.max(1.5, beatSec * 2) : Math.max(2, beatSec * 4);
+        const canPair = accent && time - lastPair >= pairGap &&
+            (['left', 'right'] as const).every(h => !last[h] || time - last[h]!.time >= Math.max(0.75, minSame));
         const layout = (['horizontal', 'diagonal', 'vertical'] as const)[phrase % 3];
         const pair = canPair ? [make('left', layout), make('right', layout)] : null;
         const reachable = pair?.every(n => !last[n.hand as 'left' | 'right'] ||
             Math.hypot(xOf(n) - xOf(last[n.hand as 'left' | 'right']!), (n.row - last[n.hand as 'left' | 'right']!.row) * config.rowSpacingMeters)
-                <= (time - last[n.hand as 'left' | 'right']!.time) * config.maxHandTravelMps);
+                <= (time - last[n.hand as 'left' | 'right']!.time) * travel);
         const group = pair && reachable ? pair : [make(hand)];
         for (const note of group) {
             const h = note.hand as 'left' | 'right';
+            const previous = last[h], x = xOf(note);
+            const crossed = Math.sign(x) === (h === 'left' ? 1 : -1);
+            const rowJump = previous !== undefined && Math.abs(note.row - previous.row) >= 2;
+            hardRun[h] = crossed || rowJump ? hardRun[h] + 1 : 0;
+            if (crossed) crossBlock = { hand: h, until: time + clearSec };
+            if (x === 0) centerUse = { hand: h, time };
             result.push(note); last[h] = note;
             if (note.cutDirection !== 'any') direction[h] = note.cutDirection;
         }
-        nextHand = hand === 'left' ? 'right' : 'left';
-        nextAllowed = time + (group.length === 2 ? Math.max(0.5, config.minSameHandSpacingSec) : spacing);
+        hands.commit(hand, group.length === 2);
+        nextAllowed = time + (group.length === 2 ? Math.max(0.5, minSame) : spacing);
         if (group.length === 2) lastPair = time;
     }
     return result;
