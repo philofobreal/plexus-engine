@@ -3,9 +3,11 @@
 import * as THREE from 'three';
 import { DEFAULT_RHYTHM_GAME_CONFIG, notePosition, type NoteRuntimeState, type StrikeAttempt } from '../gameplay';
 import type { ControllerHand } from './runtime/XrInputAdapter';
+import type { XrTrackPath } from './scene/XrTrackPath';
 
+/** `path` is the shared XR projection: rays test rendered targets, strikes report canonical positions. */
 export function desktopStrikeForRay(ray: THREE.Ray, notes: readonly NoteRuntimeState[], songTime: number,
-    hand: ControllerHand): StrikeAttempt | null {
+    hand: ControllerHand, path?: XrTrackPath): StrikeAttempt | null {
     const target = new THREE.Vector3();
     let closestDepth = Infinity;
     let selected: THREE.Vector3 | null = null;
@@ -13,6 +15,7 @@ export function desktopStrikeForRay(ray: THREE.Ray, notes: readonly NoteRuntimeS
     for (const entry of notes) {
         if (entry.status !== 'pending') continue;
         notePosition(entry.note, songTime, target);
+        path?.projectPlayfieldPoint(target);
         const depth = target.clone().sub(ray.origin).dot(ray.direction);
         if (depth < 0 || depth >= closestDepth) continue;
         // Click targets match rendered block faces, with a small 2 cm pointing tolerance.
@@ -21,6 +24,7 @@ export function desktopStrikeForRay(ray: THREE.Ray, notes: readonly NoteRuntimeS
         if (!ray.intersectsBox(bounds)) continue;
         closestDepth = depth;
         selected = target.clone();
+        path?.unprojectPlayfieldPoint(selected);
         selectedId = entry.note.id;
     }
     // Desktop clicks represent a deliberate cut; physical speed applies only to tracked VR input.

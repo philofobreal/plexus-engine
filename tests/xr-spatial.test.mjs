@@ -131,10 +131,12 @@ test('scene calibration includes viewer translation/yaw and re-entry; stage cros
     const point = new THREE.Vector3(-0.45, 0.34, 0).applyMatrix4(scene.playfield.matrixWorld);
     point.applyMatrix4(scene.getWorldToPlayfield(new THREE.Matrix4()));
     assert.ok(point.distanceTo(new THREE.Vector3(-0.45, 0.34, 0)) < 1e-9);
-    assert.equal(scene.noteField.mesh.geometry.parameters.width, 0.32);
+    scene.noteField.mesh.geometry.computeBoundingBox();
+    const noteSize = scene.noteField.mesh.geometry.boundingBox.getSize(new THREE.Vector3());
+    for (const axis of ['x', 'y', 'z']) assert.ok(Math.abs(noteSize[axis] - 0.32) < 1e-6);
     const runway = scene.root.getObjectByName('runway');
-    const floorMatrix = new THREE.Matrix4(); runway.getMatrixAt(0, floorMatrix);
-    const floorBounds = new THREE.Box3(new THREE.Vector3(-0.5, -0.5, -0.5), new THREE.Vector3(0.5, 0.5, 0.5)).applyMatrix4(floorMatrix);
+    runway.geometry.computeBoundingBox();
+    const floorBounds = runway.geometry.boundingBox.clone().applyMatrix4(runway.matrix);
     assert.equal(floorBounds.min.z, -10); assert.equal(floorBounds.max.z, 2);
     assert.ok(Math.abs(floorBounds.max.x - floorBounds.min.x - 3.4) < 1e-6);
     scene.placeForViewer(-2, 1.4, 1, 0);

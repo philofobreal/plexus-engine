@@ -1,8 +1,11 @@
 import * as THREE from 'three';
-import { DEFAULT_RHYTHM_GAME_CONFIG, LANE_HAND, type NoteRuntimeState, type RhythmGameConfig, type RhythmSessionSnapshot } from '../../gameplay';
+import { DEFAULT_RHYTHM_GAME_CONFIG, type NoteRuntimeState, type RhythmGameConfig, type RhythmSessionSnapshot } from '../../gameplay';
 import { RhythmNoteField } from './RhythmNoteField';
 import { SCENE_CONFIG } from './SceneConfig';
 import { XrHud } from './XrHud';
+import { XrRunway } from './XrRunway';
+import { XrTrackPath } from './XrTrackPath';
+import { XrSectionCallout, type SectionCue } from './XrSectionCallout';
 import { WormholeBackdrop } from './WormholeBackdrop';
 import type { CanvasVisualSourceFactory, VisualAnalysisSnapshot } from '../../types/CanvasVisualSource';
 
@@ -11,52 +14,36 @@ export class RhythmGameScene {
     readonly playfield = new THREE.Group();
     readonly noteField: RhythmNoteField;
     readonly hud: XrHud;
+    readonly runway: XrRunway;
+    /** The single XR path projection shared by note rendering, the runway and XR hit testing. */
+    readonly path = new XrTrackPath();
+    /** Hit-gate section announcer (analyzer sections, song-time driven). */
+    readonly sectionCallout: XrSectionCallout;
     private readonly config: RhythmGameConfig;
     private readonly lights = new THREE.Group();
     private wormhole: WormholeBackdrop | null = null;
     private wormholeAnalysis: VisualAnalysisSnapshot | null = null;
     private wormholeDirty = true;
     private readonly wormholeFactory?: CanvasVisualSourceFactory;
-    private lastNotesKey = '';
+    // Last note-field inputs, compared field by field (no per-frame key string). NaN forces a refresh.
+    private lastNoteTime = Number.NaN;
+    private lastNoteRevision = -1;
+    private lastNoteState = '';
+    private lastNoteScore = -1;
+    private lastNoteMisses = -1;
+    private lastNoteTotal = -1;
+    private eyeHeight: number = SCENE_CONFIG.defaultEyeHeightMeters;
     constructor(scene: THREE.Scene, config: RhythmGameConfig = DEFAULT_RHYTHM_GAME_CONFIG, wormholeFactory?: CanvasVisualSourceFactory) {
         this.wormholeFactory = wormholeFactory;
         this.config = config;
         this.noteField = new RhythmNoteField(config);
         this.hud = new XrHud();
-        const front = SCENE_CONFIG.runwayFrontZMeters;
-        const back = SCENE_CONFIG.runwayBackZMeters;
-        const length = back - front;
-        const center = (front + back) / 2;
-        const boxes: { matrix: THREE.Matrix4; color: number }[] = [];
-        const dummy = new THREE.Object3D();
-        const box = (w: number, h: number, d: number, color: number, x: number, y: number, z: number) => {
-            dummy.position.set(x, y, z); dummy.scale.set(w, h, d); dummy.updateMatrix();
-            boxes.push({ matrix: dummy.matrix.clone(), color });
-        };
-        // Continuous stage extends underneath and two meters behind the starting player.
-        box(SCENE_CONFIG.runwayWidthMeters, 0.06, length, 0x0b1424, 0, -0.04, center);
-        for (const side of [-1, 1]) {
-            box(0.035, 0.018, length, side < 0 ? 0x248daa : 0xa43f79, side * 1.7, 0.002, center);
-            box(0.1, 0.12, length, 0x18243b, side * 1.83, -0.06, center);
-        }
-        for (let z = front; z <= back; z++) box(3.4, 0.008, 0.012, 0x1b3046, 0, -0.002, z);
-        for (const lane of LANE_HAND) box(0.012, 0.008, length, 0x233a4f, lane.xOffsetMeters, 0, center);
-        box(1.55, 0.012, 0.035, 0x85adc0, 0, 0.008, -SCENE_CONFIG.playfieldForwardMeters);
-        const runway = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial(), boxes.length);
-        runway.name = 'runway';
-        boxes.forEach((entry, i) => { runway.setMatrixAt(i, entry.matrix); runway.setColorAt(i, new THREE.Color(entry.color)); });
-        this.root.add(runway);
-        // Starting-position ring remains on the floor, clear of the swing and sight corridor.
-        const ring = new THREE.Mesh(new THREE.RingGeometry(0.36, 0.38, 48),
-            new THREE.MeshBasicMaterial({ color: 0x637f93, side: THREE.DoubleSide }));
-        ring.rotation.x = -Math.PI / 2; ring.position.y = 0.008; this.root.add(ring);
-        // Small side ticks indicate the three rows without a solid plane covering incoming notes.
-        for (const side of [-1, 1]) for (let row = 0; row < 3; row++) {
-            const tick = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.012, 0.018),
-                new THREE.MeshBasicMaterial({ color: side < 0 ? 0x248daa : 0xa43f79 }));
-            tick.position.set(side * 0.78, (row - 1) * config.rowSpacingMeters, 0);
-            this.playfield.add(tick);
-        }
+        // Decorative corridor, reticle and hit gate; never gameplay geometry (see XrRunway).
+        this.runway = new XrRunway(config);
+        this.root.add(this.runway.floor, this.runway.linework);
+        this.playfield.add(this.runway.gate);
+        this.sectionCallout = new XrSectionCallout();
+        this.playfield.add(this.sectionCallout.root);
         this.playfield.add(this.noteField.mesh, this.noteField.markers, this.noteField.arrows, this.hud.mesh);
         this.root.add(this.playfield);
         this.lights.add(new THREE.HemisphereLight(0xc4dfff, 0x182439, 2.2));
@@ -71,7 +58,10 @@ export class RhythmGameScene {
         this.root.rotation.y = yaw;
         const middleHeight = Math.max(0.7, eyeHeight - SCENE_CONFIG.hitHeightBelowEyesMeters);
         this.playfield.position.set(0, middleHeight, -SCENE_CONFIG.playfieldForwardMeters);
-        this.hud.setPosition(0, eyeHeight - middleHeight + 0.65, -2.8);
+        // Raised above the hit gate's section caption so the two never overlap in view.
+        this.hud.setPosition(0, eyeHeight - middleHeight + 1.15, -2.8);
+        this.eyeHeight = eyeHeight;
+        this.wormhole?.setEyeHeight(eyeHeight);
         this.root.updateMatrixWorld(true);
     }
     getWorldToPlayfield(target: THREE.Matrix4): THREE.Matrix4 {
@@ -79,18 +69,30 @@ export class RhythmGameScene {
         return target.copy(this.playfield.matrixWorld).invert();
     }
     update(activeNotes: readonly NoteRuntimeState[], songTime: number, snapshot: RhythmSessionSnapshot, instruction: string): void {
-        const key = `${songTime}:${snapshot.state}:${snapshot.score}:${snapshot.missCount}:${snapshot.totalNotes}`;
-        if (key !== this.lastNotesKey) {
-            this.noteField.update(activeNotes, songTime, this.config);
-            this.lastNotesKey = key;
-        }
+        // The Wormhole renders first so the track follows the focal point of the displayed image.
         if (this.wormhole?.root.visible) this.wormhole.update(songTime, snapshot.state === 'playing');
+        const focus = this.wormhole?.focalPoint;
+        this.path.setFocus(focus ? focus.x : 0, focus ? focus.y : 0);
+        this.runway.update(songTime);
+        this.runway.applyPath(this.path);
+        this.sectionCallout.update(songTime);
+        if (songTime !== this.lastNoteTime || this.path.revision !== this.lastNoteRevision || snapshot.state !== this.lastNoteState
+            || snapshot.score !== this.lastNoteScore || snapshot.missCount !== this.lastNoteMisses || snapshot.totalNotes !== this.lastNoteTotal) {
+            this.noteField.update(activeNotes, songTime, this.config, this.path);
+            this.lastNoteTime = songTime; this.lastNoteRevision = this.path.revision; this.lastNoteState = snapshot.state;
+            this.lastNoteScore = snapshot.score; this.lastNoteMisses = snapshot.missCount; this.lastNoteTotal = snapshot.totalNotes;
+        }
         this.hud.update(snapshot, instruction);
+    }
+    /** Plain-data section timeline from the host (empty clears the callout). */
+    setSectionTimeline(timeline: readonly SectionCue[]): void {
+        this.sectionCallout.setTimeline(timeline);
     }
     async setWormholeEnabled(enabled: boolean): Promise<void> {
         if (enabled && !this.wormhole) {
             if (!this.wormholeFactory) throw new Error('Wormhole renderer is unavailable.');
             this.wormhole = new WormholeBackdrop(this.wormholeFactory()); this.root.add(this.wormhole.root);
+            this.wormhole.setEyeHeight(this.eyeHeight); this.root.updateMatrixWorld(true);
         }
         if (this.wormhole) this.wormhole.root.visible = enabled;
         if (enabled && this.wormholeDirty && this.wormhole) {
@@ -100,12 +102,12 @@ export class RhythmGameScene {
         }
     }
     async setWormholeAnalysis(analysis: VisualAnalysisSnapshot | null): Promise<void> {
-        this.wormholeAnalysis = analysis; this.wormholeDirty = true; this.lastNotesKey = '';
+        this.wormholeAnalysis = analysis; this.wormholeDirty = true; this.lastNoteTime = Number.NaN;
         if (this.wormhole?.root.visible) await this.setWormholeEnabled(true);
     }
     dispose(): void {
         this.wormhole?.dispose();
-        this.noteField.dispose(); this.hud.dispose();
+        this.noteField.dispose(); this.hud.dispose(); this.runway.dispose(); this.sectionCallout.dispose();
         this.playfield.remove(this.noteField.mesh, this.noteField.markers, this.noteField.arrows, this.hud.mesh);
         this.root.traverse(object => {
             if (object instanceof THREE.InstancedMesh) object.dispose();

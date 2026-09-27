@@ -17,4 +17,5 @@ if (!container) throw new Error('#xr-app container missing from xr/index.html');
 const diagnostics = window.location.search.includes('xrDiagnostics=1');
 const engine = new AudioEngine(undefined, { loopPlayback: false, heroMetronome: false });
 const runtime = new XrRuntime(container, { diagnostics });
-new XrAppController(engine, runtime, container, () => new WormholeCanvasSource({ diagnostics }), { diagnostics });
+// Stereoscopic 2.5D background: one simulation, three depth planes, plus monocular depth cues.
+new XrAppController(engine, runtime, container, () => new WormholeCanvasSource({ diagnostics, depthLayers: true, depthCue: 0.7 }), { diagnostics });
