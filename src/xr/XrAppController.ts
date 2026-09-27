@@ -8,20 +8,26 @@
 
 import * as THREE from 'three';
 import type { AudioEngine } from '../audio/AudioEngine';
-import { buildRhythmChart, DEFAULT_RHYTHM_GAME_CONFIG, RhythmGameSession } from '../gameplay';
+import { buildRhythmChart, DEFAULT_RHYTHM_GAME_CONFIG, DEFAULT_RHYTHM_GENERATION_SETTINGS, RhythmGameSession, type RhythmGenerationSettings } from '../gameplay';
 import { State } from '../state/store';
 import { detectImmersiveVrSupport, type ImmersiveVrSupport } from './runtime/XrCapabilityDetector';
 import { XrInputAdapter, type ControllerHand } from './runtime/XrInputAdapter';
 import { applyConservativeFoveation, applyTargetFrameRate } from './runtime/XrPerformanceProfile';
 import type { XrDiagnosticsOptions, XrRuntime } from './runtime/XrRuntime';
 import { RhythmGameScene } from './scene/RhythmGameScene';
+import { buildSectionTimeline } from './scene/XrSectionCallout';
 import { XrPlaybackBinding } from './XrPlaybackBinding';
 import { DesktopInputAdapter, desktopStrikeForRay } from './DesktopInputAdapter';
+import { XrCommandDrawer } from './XrCommandDrawer';
 import type { CanvasVisualSourceFactory, VisualAnalysisSnapshot } from '../types/CanvasVisualSource';
 import type { PerformanceAutomationPlan } from '../types';
 import { prepareWormholePerformance } from '../automation/prepareWormholePerformance';
 
 const HANDS: readonly ControllerHand[] = ['left', 'right'];
+
+/** Immutable analyzer publication captured once per load; regeneration never re-reads or re-analyzes. */
+type PublishedAnalysis = Omit<VisualAnalysisSnapshot, 'performancePlan'>;
+interface PreparedPlan { readonly key: string; readonly plan: PerformanceAutomationPlan; readonly fallback: boolean }
 
 function formatTime(seconds: number): string {
     if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -45,7 +51,13 @@ export class XrAppController {
     private readonly desktopRay = new THREE.Raycaster();
     private readonly pointer = new THREE.Vector2();
     private loading = false;
+    /** Invalidates stale async work for both file loads and generation-setting changes. */
     private loadGeneration = 0;
+    private generationSettings: RhythmGenerationSettings = DEFAULT_RHYTHM_GENERATION_SETTINGS;
+    private published: PublishedAnalysis | null = null;
+    private preparedPlan: PreparedPlan | null = null;
+    /** The current track's section timeline still has to reach the scene (set by whichever compose publishes first). */
+    private sectionTimelinePending = false;
     private disposed = false;
     private activeXrSession: XRSession | null = null;
     private referenceSpace: XRReferenceSpace | null = null;
@@ -61,8 +73,10 @@ export class XrAppController {
     private headsetHeightSampled = false;
 
     // DOM
+    private readonly drawer: XrCommandDrawer;
     private readonly overlay: HTMLDivElement;
     private readonly fileInput: HTMLInputElement;
+    private readonly trackTitleEl: HTMLParagraphElement;
     private readonly progressEl: HTMLParagraphElement;
     private readonly errorEl: HTMLParagraphElement;
     private readonly trackInfoEl: HTMLParagraphElement;
@@ -72,6 +86,7 @@ export class XrAppController {
     private readonly wormholeToggle: HTMLInputElement;
 
     private readonly diagnostics: boolean;
+    private diagnosticPathRevision = -1;
 
     constructor(engine: AudioEngine, runtime: XrRuntime, hostContainer: HTMLElement, wormholeFactory?: CanvasVisualSourceFactory,
         options: XrDiagnosticsOptions = {}) {
@@ -81,7 +96,7 @@ export class XrAppController {
         this.scene = new RhythmGameScene(runtime.scene, DEFAULT_RHYTHM_GAME_CONFIG, wormholeFactory);
         this.inputAdapter = new XrInputAdapter(runtime.renderer, runtime.scene);
         this.playback = new XrPlaybackBinding(engine, this.session, () => this.inputAdapter.resetMotion(),
-            () => this.runtime.setPlaying(this.session.getState() === 'playing'));
+            () => this.handleTransportChanged());
         this.desktopInput = new DesktopInputAdapter(runtime.renderer.domElement);
         this.desktopInput.onTogglePlayback = () => this.toggleDesktopPlayback();
         this.desktopInput.onStrike = (hand, x, y) => {
@@ -90,13 +105,15 @@ export class XrAppController {
             this.pointer.set(x, y);
             this.desktopRay.setFromCamera(this.pointer, this.runtime.camera);
             this.desktopRay.ray.applyMatrix4(this.scene.getWorldToPlayfield(this.worldToPlayfield));
-            const strike = desktopStrikeForRay(this.desktopRay.ray, this.session.getActiveNotes(time), time, hand);
+            const strike = desktopStrikeForRay(this.desktopRay.ray, this.session.getActiveNotes(time), time, hand, this.scene.path);
             if (strike) this.session.attemptStrike(strike);
         };
 
-        const dom = buildLaunchOverlay();
-        this.overlay = dom.overlay;
+        const dom = new XrCommandDrawer();
+        this.drawer = dom;
+        this.overlay = dom.panel;
         this.fileInput = dom.fileInput;
+        this.trackTitleEl = dom.trackTitleEl;
         this.progressEl = dom.progressEl;
         this.errorEl = dom.errorEl;
         this.trackInfoEl = dom.trackInfoEl;
@@ -108,7 +125,9 @@ export class XrAppController {
             void this.scene.setWormholeEnabled(dom.wormholeToggle.checked).then(() => this.runtime.invalidate()).catch(error => this.handleWormholeError(error));
             this.runtime.invalidate();
         });
-        hostContainer.appendChild(this.overlay);
+        dom.setGenerationSettings(this.generationSettings);
+        dom.onGenerationChange = settings => this.handleGenerationChange(settings);
+        hostContainer.appendChild(dom.root);
 
         this.wireAudioEngine();
         this.wireInput();
@@ -128,50 +147,107 @@ export class XrAppController {
         };
         this.engine.onAnalysisComplete = async () => {
             if (this.disposed || !this.loading) return;
-            const generation = this.loadGeneration;
-            const published = { events: State.events, frames: State.frames, trackAnalysis: State.trackAnalysis,
+            this.published = { events: State.events, frames: State.frames, trackAnalysis: State.trackAnalysis,
                 sampleRate: State.sampleRate, hopSize: State.hopSize, bpm: State.bpm, duration: State.duration };
-            this.progressEl.textContent = 'Composing musical patterns...';
-            let fallback = false;
-            let performancePlan: PerformanceAutomationPlan;
-            try { performancePlan = await prepareWormholePerformance(published.trackAnalysis, published.duration); }
-            catch { fallback = true; performancePlan = { version: 1, source: 'auto', points: [] }; }
-            if (this.disposed || generation !== this.loadGeneration || !this.loading) return;
-            // One offline plan, passed as plain data to both gameplay and the optional background.
-            const analysis: VisualAnalysisSnapshot = { ...published, performancePlan };
-            const chart = buildRhythmChart(
-                { events: analysis.events, durationSec: analysis.duration, beats: analysis.trackAnalysis.beats,
-                    barStarts: analysis.trackAnalysis.barStarts, timingConfidence: analysis.trackAnalysis.timingConfidence?.overall,
-                    performancePlan: analysis.performancePlan },
-                DEFAULT_RHYTHM_GAME_CONFIG
-            );
-            this.session.loadChart(chart);
-            this.updateWormholeAnalysis(analysis);
-            this.loading = false;
-            this.progressEl.textContent = chart.length ? (fallback ? 'Analysis complete. Basic patterns (visual plan unavailable).' : 'Analysis complete. Musical choreography ready.') : 'No playable percussive events found. Choose another track.';
-            this.trackInfoEl.textContent =
-                `BPM ${Math.round(State.bpm)} - Duration ${formatTime(State.duration)} - ${chart.length} notes - ` +
-                `${chart.filter(n => n.cutDirection && n.cutDirection !== 'any').length} arrows - ${chart.filter(n => n.pairId).length / 2} pairs`;
-            if (this.diagnostics) {
-                this.overlay.dataset.xrScore = JSON.stringify({ confidence: analysis.trackAnalysis.timingConfidence,
-                    cues: analysis.trackAnalysis.cues, points: analysis.performancePlan?.points,
-                    alignment: analysis.performancePlan?.cueAlignmentReport,
-                    phrases: [...new Set(chart.map(n => n.phrase))].map(phrase => {
-                        const notes = chart.filter(n => n.phrase === phrase);
-                        return { phrase, start: notes[0]?.time, end: notes.at(-1)?.time, texture: notes[0]?.texture,
-                            automationId: notes[0]?.automationId, arrows: notes.filter(n => n.cutDirection !== 'any').length,
-                            pairs: notes.filter(n => n.pairId).length / 2, rows: [...new Set(notes.map(n => n.row))] };
-                    }) });
-            }
-            this.refreshLaunchState();
+            this.preparedPlan = null;
+            this.sectionTimelinePending = true;
+            await this.composeChoreography(this.loadGeneration, true);
         };
         this.engine.onAnalysisError = (message) => {
             if (this.disposed) return;
             this.loading = false;
-            this.errorEl.textContent = `Analysis failed: ${message}`;
+            this.showError(`Analysis failed: ${message}`);
             this.progressEl.textContent = '';
             this.refreshLaunchState();
         };
+    }
+
+    /**
+     * Builds the chart for the current generation settings from the captured analysis. Activity
+     * and Variation also select the Visual OS plan (same meanings as the MVP), which is prepared
+     * only when they change and is shared by gameplay and the Wormhole. Hand settings reuse the
+     * prepared plan. Stale results (newer load or setting change) are discarded.
+     */
+    private async composeChoreography(generation: number, fromLoad: boolean): Promise<void> {
+        const published = this.published;
+        if (!published) return;
+        const settings = this.generationSettings;
+        const key = `${settings.activity}|${settings.variation}`;
+        let prepared = this.preparedPlan;
+        const planChanged = !prepared || prepared.key !== key;
+        if (!prepared || planChanged) {
+            this.progressEl.textContent = fromLoad ? 'Composing musical patterns...' : 'Recomposing choreography...';
+            let fallback = false;
+            let plan: PerformanceAutomationPlan;
+            try {
+                plan = await prepareWormholePerformance(published.trackAnalysis, published.duration,
+                    { activityLevel: settings.activity, variantMode: settings.variation });
+            } catch { fallback = true; plan = { version: 1, source: 'auto', points: [] }; }
+            if (this.disposed || generation !== this.loadGeneration || !this.loading) return;
+            prepared = { key, plan, fallback };
+        }
+        if (this.disposed || generation !== this.loadGeneration || !this.loading) return;
+        // One offline plan, passed as plain data to both gameplay and the optional background.
+        const analysis: VisualAnalysisSnapshot = { ...published, performancePlan: prepared.plan };
+        const chart = buildRhythmChart(
+            { events: analysis.events, durationSec: analysis.duration, beats: analysis.trackAnalysis.beats,
+                barStarts: analysis.trackAnalysis.barStarts, timingConfidence: analysis.trackAnalysis.timingConfidence?.overall,
+                performancePlan: analysis.performancePlan },
+            DEFAULT_RHYTHM_GAME_CONFIG, settings
+        );
+        this.preparedPlan = prepared;
+        this.session.loadChart(chart);
+        if (this.sectionTimelinePending) {
+            this.sectionTimelinePending = false;
+            this.scene.setSectionTimeline(buildSectionTimeline(published.trackAnalysis.sections,
+                published.trackAnalysis.beats, published.trackAnalysis.timingConfidence?.overall ?? 0, published.duration));
+        }
+        if (fromLoad || planChanged) this.updateWormholeAnalysis(analysis);
+        this.loading = false;
+        const fallback = prepared.fallback;
+        this.progressEl.textContent = chart.length ? (fallback ? 'Analysis complete. Basic patterns (visual plan unavailable).'
+            : fromLoad ? 'Analysis complete. Musical choreography ready.' : 'Choreography updated. Press Play to start.')
+            : 'No playable percussive events found. Choose another track.';
+        this.trackInfoEl.textContent =
+            `BPM ${Math.round(State.bpm)} - Duration ${formatTime(State.duration)} - ${chart.length} notes - ` +
+            `${chart.filter(n => n.cutDirection && n.cutDirection !== 'any').length} arrows - ${chart.filter(n => n.pairId).length / 2} pairs`;
+        if (this.diagnostics) {
+            this.overlay.dataset.xrScore = JSON.stringify({ confidence: analysis.trackAnalysis.timingConfidence,
+                sections: analysis.trackAnalysis.sections.map(section => [section.start, section.label]),
+                cues: analysis.trackAnalysis.cues, points: analysis.performancePlan?.points,
+                alignment: analysis.performancePlan?.cueAlignmentReport,
+                phrases: [...new Set(chart.map(n => n.phrase))].map(phrase => {
+                    const notes = chart.filter(n => n.phrase === phrase);
+                    return { phrase, start: notes[0]?.time, end: notes.at(-1)?.time, texture: notes[0]?.texture,
+                        automationId: notes[0]?.automationId, arrows: notes.filter(n => n.cutDirection !== 'any').length,
+                        pairs: notes.filter(n => n.pairId).length / 2, rows: [...new Set(notes.map(n => n.row))] };
+                }) });
+        }
+        this.refreshLaunchState();
+    }
+
+    /**
+     * Generation settings changed. Without an analyzed track they apply to the next load. With one,
+     * playback stops and rewinds (the old score is meaningless for a new chart), and the chart is
+     * regenerated from the captured analysis: no re-analysis, reload or new AudioEngine state.
+     */
+    private handleGenerationChange(settings: RhythmGenerationSettings): void {
+        if (this.disposed) return;
+        this.generationSettings = settings;
+        if (!this.published || this.runtime.isPresenting()) return;
+        this.pauseGame();
+        this.engine.stop(true);
+        const generation = ++this.loadGeneration;
+        this.loading = true;
+        this.inputAdapter.resetMotion();
+        this.errorEl.textContent = '';
+        this.refreshLaunchState();
+        void this.composeChoreography(generation, false).catch(error => {
+            if (this.disposed || generation !== this.loadGeneration) return;
+            this.loading = false;
+            this.showError(`Could not regenerate the chart: ${error instanceof Error ? error.message : String(error)}`);
+            this.refreshLaunchState();
+        });
     }
 
     private updateWormholeAnalysis(analysis: VisualAnalysisSnapshot | null): void {
@@ -180,10 +256,23 @@ export class XrAppController {
 
     private handleWormholeError(error: unknown): void {
         if (this.disposed) return;
-        this.errorEl.textContent = `Wormhole: ${error instanceof Error ? error.message : String(error)}`;
+        this.showError(`Wormhole: ${error instanceof Error ? error.message : String(error)}`);
         this.wormholeToggle.checked = false;
         void this.scene.setWormholeEnabled(false);
         this.runtime.invalidate();
+        this.refreshLaunchState();
+    }
+
+    /** Errors always surface in the command drawer, reopening it if the player had closed it. */
+    private showError(message: string): void {
+        this.errorEl.textContent = message;
+        this.drawer.open();
+    }
+
+    /** Transport changes wake the renderer; starting desktop play hands the viewport to the scene. */
+    private handleTransportChanged(): void {
+        this.runtime.setPlaying(this.session.getState() === 'playing');
+        if (this.session.getState() === 'playing' && !this.runtime.isPresenting()) this.drawer.close();
     }
 
     private wireInput(): void {
@@ -197,17 +286,21 @@ export class XrAppController {
             if (!file || this.loading) return;
             const generation = ++this.loadGeneration;
             this.loading = true;
+            this.published = null;
+            this.preparedPlan = null;
             this.session.clear();
+            this.scene.setSectionTimeline([]);
             this.updateWormholeAnalysis(null);
             this.inputAdapter.resetMotion();
             this.refreshLaunchState();
             this.errorEl.textContent = '';
             this.progressEl.textContent = 'Decoding audio...';
             this.trackInfoEl.textContent = '';
+            this.trackTitleEl.textContent = file.name.replace(/\.[^.]+$/, '');
             void this.engine.loadFile(file).catch(error => {
                 if (this.disposed || generation !== this.loadGeneration) return;
                 this.loading = false;
-                this.errorEl.textContent = String(error);
+                this.showError(String(error));
                 this.refreshLaunchState();
             });
             this.fileInput.value = '';
@@ -254,6 +347,7 @@ export class XrAppController {
         this.fileInput.disabled = this.loading;
         this.previewButton.disabled = this.loading || !chartReady;
         this.enterVrButton.disabled = this.loading || !(this.xrSupport === 'supported' && chartReady);
+        this.drawer.setStatus(this.loading ? 'busy' : this.errorEl.textContent ? 'error' : chartReady ? 'ready' : 'idle');
     }
 
     private async enterVr(): Promise<void> {
@@ -264,7 +358,7 @@ export class XrAppController {
             await applyTargetFrameRate(session);
             applyConservativeFoveation(this.runtime.renderer.xr);
         } catch (error) {
-            this.errorEl.textContent = error instanceof Error ? error.message : 'Could not start the VR session.';
+            this.showError(error instanceof Error ? error.message : 'Could not start the VR session.');
         } finally {
             this.refreshLaunchState();
         }
@@ -278,7 +372,7 @@ export class XrAppController {
         this.activeXrSession?.addEventListener('visibilitychange', this.handleVisibility);
         this.referenceSpace = this.runtime.renderer.xr.getReferenceSpace();
         this.referenceSpace?.addEventListener('reset', this.handleReferenceReset);
-        this.overlay.style.display = 'none';
+        this.drawer.setVisible(false);
     }
 
     private handleSessionEnd(): void {
@@ -288,7 +382,7 @@ export class XrAppController {
         this.referenceSpace?.removeEventListener('reset', this.handleReferenceReset);
         this.activeXrSession = null;
         this.referenceSpace = null;
-        this.overlay.style.display = '';
+        this.drawer.setVisible(true);
         this.headsetHeightSampled = false;
     }
 
@@ -374,6 +468,8 @@ export class XrAppController {
         for (const hand of HANDS) {
             const attempt = this.inputAdapter.getStrikeAttempt(hand, songTime, this.worldToPlayfield);
             if (!attempt) continue;
+            // Blade samples are in rendered playfield space; judge them in canonical space.
+            this.scene.path.unprojectStrike(attempt);
             const result = this.session.attemptStrike(attempt);
             if (result) this.inputAdapter.pulseHaptics(hand, result.grade === 'perfect' ? 1 : 0.55, 35);
         }
@@ -381,6 +477,12 @@ export class XrAppController {
 
         const activeNotes = this.session.getActiveNotes(songTime);
         this.scene.update(activeNotes, songTime, this.session.getSnapshot(), this.currentInstruction());
+        if (this.diagnostics && this.scene.path.revision !== this.diagnosticPathRevision) {
+            const path = this.scene.path;
+            this.diagnosticPathRevision = path.revision;
+            this.overlay.dataset.xrTrackPath = JSON.stringify({ focusX: path.focusX, focusY: path.focusY,
+                bendX: path.amplitudeX, bendY: path.amplitudeY });
+        }
         const previewLabel = this.session.getState() === 'playing' ? 'Pause'
             : this.session.getState() === 'paused' ? 'Resume'
             : this.session.getState() === 'finished' ? 'Restart' : 'Play';
@@ -401,73 +503,6 @@ export class XrAppController {
         this.runtime.onSessionEnd = null;
         this.inputAdapter.dispose();
         this.scene.dispose();
-        this.overlay.remove();
+        this.drawer.dispose();
     }
-}
-
-interface LaunchOverlayDom {
-    overlay: HTMLDivElement;
-    fileInput: HTMLInputElement;
-    progressEl: HTMLParagraphElement;
-    errorEl: HTMLParagraphElement;
-    trackInfoEl: HTMLParagraphElement;
-    capabilityEl: HTMLParagraphElement;
-    enterVrButton: HTMLButtonElement;
-    previewButton: HTMLButtonElement;
-    wormholeToggle: HTMLInputElement;
-}
-
-function buildLaunchOverlay(): LaunchOverlayDom {
-    const overlay = document.createElement('div');
-    overlay.className = 'xr-launch-overlay';
-
-    const title = document.createElement('h1');
-    title.textContent = 'Plexus XR';
-    title.className = 'xr-launch-title';
-
-    const instructions = document.createElement('p');
-    instructions.className = 'xr-launch-instructions';
-    instructions.textContent = 'Desktop: blue = left click, pink = right click; cut direction is assisted. Space: play / pause. VR: follow the arrows with the matching saber; dots allow any direction. Paired targets share a beat. Trigger: start / resume. Grip: pause.';
-
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'audio/*';
-    fileInput.setAttribute('aria-label', 'Choose audio track');
-    fileInput.className = 'xr-file-input';
-
-    const progressEl = document.createElement('p');
-    progressEl.className = 'xr-progress';
-
-    const errorEl = document.createElement('p');
-    errorEl.className = 'xr-error';
-
-    const trackInfoEl = document.createElement('p');
-    trackInfoEl.className = 'xr-track-info';
-
-    const capabilityEl = document.createElement('p');
-    capabilityEl.className = 'xr-capability';
-    capabilityEl.textContent = 'Checking WebXR support...';
-
-    const enterVrButton = document.createElement('button');
-    enterVrButton.type = 'button';
-    enterVrButton.className = 'xr-enter-button';
-    enterVrButton.textContent = 'Enter VR';
-    enterVrButton.disabled = true;
-
-    const previewButton = document.createElement('button');
-    previewButton.type = 'button';
-    previewButton.className = 'xr-preview-button';
-    previewButton.textContent = 'Play';
-    previewButton.disabled = true;
-    const actions = document.createElement('div');
-    actions.className = 'xr-actions';
-    actions.append(enterVrButton, previewButton);
-    const wormholeToggle = document.createElement('input');
-    wormholeToggle.type = 'checkbox';
-    const wormholeLabel = document.createElement('label');
-    wormholeLabel.className = 'xr-wormhole-toggle';
-    wormholeLabel.append(wormholeToggle, document.createTextNode(' Wormhole background'));
-    overlay.append(title, instructions, fileInput, progressEl, errorEl, trackInfoEl, capabilityEl, actions, wormholeLabel);
-
-    return { overlay, fileInput, progressEl, errorEl, trackInfoEl, capabilityEl, enterVrButton, previewButton, wormholeToggle };
 }

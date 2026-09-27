@@ -1,0 +1,177 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import * as THREE from 'three';
+import { createLoader } from './helpers/xr-loader.mjs';
+
+const context = { clearRect() {}, fillRect() {}, fillText() {}, measureText: text => ({ width: text.length * 12 }) };
+const load = createLoader({ three: THREE }, { document: { createElement: () => ({ getContext: () => context }) } });
+const { XrTrackPath, trackBendAmplitude, trackBendWeight } = load('xr/scene/XrTrackPath.ts');
+const { XrRunway } = load('xr/scene/XrRunway.ts');
+const { RhythmNoteField } = load('xr/scene/RhythmNoteField.ts');
+const { RhythmGameScene } = load('xr/scene/RhythmGameScene.ts');
+const { SCENE_CONFIG } = load('xr/scene/SceneConfig.ts');
+const { desktopStrikeForRay } = load('xr/DesktopInputAdapter.ts');
+const { notePosition, judgeStrike, DEFAULT_RHYTHM_GAME_CONFIG: config } = load('gameplay/index.ts');
+
+const FAR_PLAYFIELD_Z = -8; // spawn distance: 2 s at 4 m/s
+const pathWith = (x, y) => { const path = new XrTrackPath(); path.setFocus(x, y); return path; };
+const far = (path, x = 0.45, y = 0.34) => path.projectPlayfieldPoint({ x, y, z: FAR_PLAYFIELD_Z });
+const floorPositions = runway => Array.from(runway.floor.geometry.getAttribute('position').array);
+const idle = { state: 'paused', score: 0, combo: 0, maxCombo: 0, hitCount: 0, missCount: 0, totalNotes: 0 };
+const pending = note => ({ note, status: 'pending', judgement: null });
+
+test('zero Wormhole displacement keeps the exact straight baseline', () => {
+    const path = pathWith(0, 0), runway = new XrRunway(config), before = floorPositions(runway);
+    assert.equal(path.amplitudeX, 0); assert.equal(path.amplitudeY, 0);
+    assert.deepEqual(far(path), { x: 0.45, y: 0.34, z: FAR_PLAYFIELD_Z });
+    runway.applyPath(path); assert.deepEqual(floorPositions(runway), before);
+    runway.dispose();
+});
+
+test('positive/negative X and Y focus bend the far track in the matching direction', () => {
+    for (const [fx, fy, axis, sign] of [[0.3, 0, 'x', 1], [-0.3, 0, 'x', -1], [0, 0.3, 'y', 1], [0, -0.3, 'y', -1]]) {
+        const base = { x: 0.45, y: 0.34 }, bent = far(pathWith(fx, fy));
+        assert.equal(Math.sign(bent[axis] - base[axis]), sign, `${fx},${fy}`);
+        const other = axis === 'x' ? 'y' : 'x';
+        assert.equal(bent[other], base[other]);
+    }
+    // Symmetric: mirrored focus mirrors the displacement exactly.
+    assert.equal(far(pathWith(0.3, 0)).x - 0.45, -(far(pathWith(-0.3, 0)).x - 0.45));
+});
+
+test('combined X/Y is deterministic and the same state always yields the same projection', () => {
+    assert.deepEqual(far(pathWith(0.21, -0.17)), far(pathWith(0.21, -0.17)));
+    const path = new XrTrackPath(), runway = new XrRunway(config);
+    path.setFocus(0.21, -0.17); runway.applyPath(path); const first = floorPositions(runway), firstNote = far(path);
+    path.setFocus(-0.4, 0.5); runway.applyPath(path);
+    path.setFocus(0.21, -0.17); runway.applyPath(path);
+    assert.deepEqual(floorPositions(runway), first); assert.deepEqual(far(path), firstNote);
+    assert.equal(path.setFocus(0.21, -0.17), false, 'unchanged focus is not a new revision');
+    runway.dispose();
+});
+
+test('hit plane, gate, lanes and rows never move; only the far zone bends', () => {
+    const path = pathWith(1.5, -1.5), runway = new XrRunway(config);
+    const gate = Array.from(runway.gate.geometry.getAttribute('position').array);
+    const straightFloor = floorPositions(runway);
+    runway.applyPath(path);
+    assert.deepEqual(Array.from(runway.gate.geometry.getAttribute('position').array), gate);
+    // Every canonical point within reach (and the whole timing window) stays exactly in place.
+    const reachLimit = SCENE_CONFIG.trackBendStartMeters - SCENE_CONFIG.playfieldForwardMeters;
+    for (let z = 2; z >= -reachLimit; z -= 0.05) for (const x of [-0.45, 0, 0.45]) for (const y of [-0.34, 0, 0.34]) {
+        assert.deepEqual(path.projectPlayfieldPoint({ x, y, z }), { x, y, z });
+    }
+    const floor = floorPositions(runway);
+    for (let i = 0; i < floor.length; i += 3) {
+        if (-straightFloor[i + 2] <= SCENE_CONFIG.trackBendStartMeters) {
+            assert.equal(floor[i], straightFloor[i]); assert.equal(floor[i + 1], straightFloor[i + 1]);
+        }
+    }
+    // The bend is a shear: lanes keep their spacing and rows their height difference at any depth.
+    const left = far(path, -0.45, 0), right = far(path, 0.45, 0), high = far(path, 0, 0.34), low = far(path, 0, -0.34);
+    assert.ok(Math.abs(right.x - left.x - 0.9) < 1e-12); assert.ok(Math.abs(high.y - low.y - 0.68) < 1e-12);
+    assert.equal(trackBendWeight(-SCENE_CONFIG.trackBendStartMeters), 0);
+    runway.dispose();
+});
+
+test('far-end displacement saturates inside bounded limits and road length is unchanged', () => {
+    for (const focus of [-1e9, -3, -1, 1, 3, 1e9]) {
+        const path = pathWith(focus, focus);
+        assert.ok(Math.abs(path.amplitudeX) <= SCENE_CONFIG.trackMaxLateralBendMeters);
+        assert.ok(Math.abs(path.amplitudeY) <= SCENE_CONFIG.trackMaxVerticalBendMeters);
+        const runway = new XrRunway(config); runway.applyPath(path);
+        runway.floor.geometry.computeBoundingBox();
+        const box = runway.floor.geometry.boundingBox;
+        assert.equal(box.min.z, SCENE_CONFIG.runwayFrontZMeters); assert.equal(box.max.z, SCENE_CONFIG.runwayBackZMeters);
+        assert.ok(Math.max(Math.abs(box.max.x), Math.abs(box.min.x)) <= SCENE_CONFIG.runwayWidthMeters / 2 + SCENE_CONFIG.trackMaxLateralBendMeters + 1e-6);
+        runway.dispose();
+    }
+    assert.equal(pathWith(Number.NaN, Infinity).amplitudeX, 0);
+    // Unsaturated, the far-end tangent aims at the focal point on the backdrop.
+    const small = trackBendAmplitude(0.01, SCENE_CONFIG.backdropWidthMeters / 2, SCENE_CONFIG.trackMaxLateralBendMeters);
+    const end = -SCENE_CONFIG.runwayFrontZMeters, length = end - SCENE_CONFIG.trackBendStartMeters;
+    const aimedSlope = (0.01 * SCENE_CONFIG.backdropWidthMeters / 2 - small) / (SCENE_CONFIG.backdropDistanceMeters - end);
+    assert.ok(Math.abs(2 * small / length - aimedSlope) / aimedSlope < 1e-3); // tanh is ~linear here
+});
+
+test('rendered targets, desktop picking and XR strike judging share the one path projection', () => {
+    const path = pathWith(0.35, 0.25);
+    const note = { id: 'far', time: 5, lane: 2, row: 2, hand: 'right', cutDirection: 'down' };
+    const canonical = time => notePosition(note, time, new THREE.Vector3());
+    const field = new RhythmNoteField(); field.update([pending(note)], 3, config, path);
+    const matrix = new THREE.Matrix4(); field.mesh.getMatrixAt(0, matrix);
+    const rendered = new THREE.Vector3().setFromMatrixPosition(matrix);
+    const expected = path.projectPlayfieldPoint(canonical(3));
+    assert.ok(rendered.distanceTo(expected) < 1e-6); // instance matrices are float32
+    assert.ok(rendered.x > canonical(3).x, 'far target visibly follows the bend');
+    assert.ok(path.unprojectPlayfieldPoint(expected.clone()).distanceTo(canonical(3)) < 1e-12);
+    // Desktop ray aimed at the rendered (bent) target selects it and reports the canonical position.
+    const origin = new THREE.Vector3(0, 0.5, 3.5);
+    const strike = desktopStrikeForRay(new THREE.Ray(origin, expected.clone().sub(origin).normalize()), [pending(note)], 3, 'right', path);
+    assert.equal(strike.desktopTargetId, 'far');
+    assert.ok(new THREE.Vector3().copy(strike.position).distanceTo(canonical(3)) < 1e-9);
+    // VR strike samples are un-projected through the same path before judging.
+    const free = { ...note, cutDirection: 'any' };
+    const attempt = { songTime: 5, hand: 'right', speed: 2, position: path.projectPlayfieldPoint(notePosition(free, 5, new THREE.Vector3())) };
+    path.unprojectStrike(attempt);
+    assert.ok(judgeStrike(attempt, [pending(free)]));
+    field.dispose();
+    // No other XR module carries its own copy of the curve.
+    const xrFiles = [];
+    const walk = dir => { for (const e of readdirSync(dir, { withFileTypes: true })) { if (e.isDirectory()) walk(join(dir, e.name)); else xrFiles.push(join(dir, e.name)); } };
+    walk(join(process.cwd(), 'src', 'xr'));
+    for (const file of xrFiles.filter(f => !f.endsWith('XrTrackPath.ts') && !f.endsWith('SceneConfig.ts'))) {
+        assert.doesNotMatch(readFileSync(file, 'utf8'), /trackMax(Lateral|Vertical)BendMeters|AIM_GAIN|trackBendAmplitude/, file);
+    }
+    assert.match(readFileSync(join(process.cwd(), 'src', 'xr', 'XrAppController.ts'), 'utf8'), /path\.unprojectStrike\(attempt\)/);
+});
+
+test('scene follows the authoritative source focal point; seeking backwards does not accumulate curvature', async () => {
+    const focusAt = time => ({ x: Math.sin(time) * 0.3, y: Math.cos(time * 0.7) * 0.2 });
+    const makeScene = () => {
+        const source = { canvas: {}, focalPoint: { x: 0, y: 0 }, async prepare() {},
+            render(time) { Object.assign(source.focalPoint, focusAt(time)); return true; }, dispose() {} };
+        return new RhythmGameScene(new THREE.Scene(), undefined, () => source);
+    };
+    const scene = makeScene(); await scene.setWormholeEnabled(true);
+    for (const t of [1, 4.5, 9, 12]) scene.update([], t, idle, '');
+    scene.update([], 2.25, idle, ''); // seek backwards
+    const fresh = makeScene(); await fresh.setWormholeEnabled(true); fresh.update([], 2.25, idle, '');
+    assert.equal(scene.path.amplitudeX, fresh.path.amplitudeX); assert.equal(scene.path.amplitudeY, fresh.path.amplitudeY);
+    assert.deepEqual(floorPositions(scene.runway), floorPositions(fresh.runway));
+    assert.equal(scene.path.focusX, focusAt(2.25).x);
+    // Disabling the Wormhole returns the track to straight.
+    await scene.setWormholeEnabled(false); scene.update([], 2.25, idle, '');
+    assert.equal(scene.path.amplitudeX, 0);
+    // A stationary path does not re-upload floor vertices.
+    const version = scene.runway.floor.geometry.getAttribute('position').version;
+    for (let i = 0; i < 30; i++) scene.update([], 2.25, idle, '');
+    assert.equal(scene.runway.floor.geometry.getAttribute('position').version, version);
+    scene.dispose(); fresh.dispose();
+});
+
+test('Wormhole identity publishes a finite, deterministic route focus: centered when straight, displaced when bent', () => {
+    const wormhole = createLoader();
+    const { CosmicWormholeIdentity } = wormhole('visuals/CosmicWormholeIdentity.ts');
+    const { State } = wormhole('state/store.ts');
+    const backend = () => ({ width: 960, height: 540, frameCount: 1, beginFieldRaster() { return null; }, drawFieldRaster() {},
+        background() {}, noStroke() {}, noFill() {}, fill() {}, stroke() {}, strokeWeight() {}, line() {}, circle() {}, triangle() {},
+        beginShape() {}, vertex() {}, endShape() {}, radialGlow() {}, radialDim() {}, compositeRingTint() {} });
+    State.bpm = 128; State.playbackFade = 1; State.isPlaying = true;
+    const run = (bendH, bendV) => {
+        const tuning = { wormholePathBend: bendH, wormholePathBendVertical: bendV, performanceMode: 0 };
+        Object.assign(State.visualTuning, tuning); Object.assign(State.targetTuning, tuning);
+        const identity = new CosmicWormholeIdentity(); identity.syncPosition(4);
+        const series = [];
+        for (let i = 0; i <= 90; i++) { State.currentTime = 4 + i / 30; identity.draw(backend(), [], []); series.push({ ...identity.routeFocus }); }
+        return series;
+    };
+    const straight = run(0, 0);
+    assert.ok(straight.every(f => Math.abs(f.x) < 1e-9 && Math.abs(f.y) < 1e-9), JSON.stringify(straight.at(-1)));
+    const bent = run(1, 1), again = run(1, 1);
+    assert.deepEqual(bent, again);
+    assert.ok(bent.every(f => Number.isFinite(f.x) && Number.isFinite(f.y)));
+    assert.ok(bent.some(f => Math.abs(f.x) > 1e-3) && bent.some(f => Math.abs(f.y) > 1e-3), JSON.stringify(bent.at(-1)));
+});
