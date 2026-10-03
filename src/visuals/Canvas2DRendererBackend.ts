@@ -1,19 +1,31 @@
 import { CanvasFieldRasterSurface } from './CanvasFieldRasterSurface';
 import type { FieldRasterBlendMode, RingTintCompositeMode, VisualRendererBackend } from './RendererBackend';
 
+/**
+ * Creates a 2D drawing surface of the given size. A worker host passes an `OffscreenCanvas` (typed
+ * as a canvas): every member this backend and its field raster use exists on it.
+ */
+export type Canvas2DSurfaceFactory = (width: number, height: number) => HTMLCanvasElement;
+
+function documentCanvas(width: number, height: number): HTMLCanvasElement {
+    const canvas = document.createElement('canvas');
+    canvas.width = width; canvas.height = height;
+    return canvas;
+}
+
 /** Canvas primitive adapter for embedded identities; no p5 instance or independent render loop. */
 export class Canvas2DRendererBackend implements VisualRendererBackend {
     readonly canvas: HTMLCanvasElement;
     readonly compactMaterialPreview = true;
     frameCount = 0;
     private readonly ctx: CanvasRenderingContext2D;
-    private readonly raster = new CanvasFieldRasterSurface();
+    private readonly raster: CanvasFieldRasterSurface;
     private strokeActive = true;
     private fillActive = true;
     private firstVertex = true;
-    constructor(width: number, height: number) {
-        this.canvas = document.createElement('canvas');
-        this.canvas.width = width; this.canvas.height = height;
+    constructor(width: number, height: number, createSurface: Canvas2DSurfaceFactory = documentCanvas) {
+        this.canvas = createSurface(width, height);
+        this.raster = createSurface === documentCanvas ? new CanvasFieldRasterSurface() : new CanvasFieldRasterSurface(() => createSurface(1, 1));
         const ctx = this.canvas.getContext('2d');
         if (!ctx) throw new Error('Wormhole canvas is unavailable.');
         this.ctx = ctx; ctx.lineCap = 'round';

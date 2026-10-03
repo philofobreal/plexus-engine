@@ -1,4 +1,4 @@
-import type { CanvasVisualSource, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
+import type { CanvasVisualPresentation, CanvasVisualSource, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
 import type { MotifChoreographyFrame, PerformanceAutomationPlan, VisualChoreographyPlan } from '../types';
 import { createEmptyTrackAnalysis } from '../analyzer/normalizeAnalysisResult';
 import { cloneDefaultVisualTuning, applyTuningMorph, tuningMorphDeltaSec, writeModulationBus } from '../config/visualTuning';
@@ -9,7 +9,7 @@ import { applyMvpWormholePreset } from '../automation/applyMvpWormholePreset';
 import { findActiveAutomationPoint } from '../automation/performanceAutomationRuntime';
 import { buildNarrative, generateIntents, processChoreography, resolveSemanticState, SemanticResolver, SemanticRuntimeAdapter } from '../semantics';
 import { motifTransitionId, semanticScoreTransitionId } from './VisualTransitionIdentity';
-import { Canvas2DRendererBackend } from './Canvas2DRendererBackend';
+import { Canvas2DRendererBackend, type Canvas2DSurfaceFactory } from './Canvas2DRendererBackend';
 import { CosmicWormholeIdentity, type WormholeRenderState } from './CosmicWormholeIdentity';
 import { VisualDirectorFSM } from './VisualDirectorFSM';
 import { BEAT_DECAY_PER_FRAME, CUE_DECAY_PER_FRAME, DENSE_IMPACT_DECAY_PER_FRAME, transientDecayAfter } from './transientDecay';
@@ -35,6 +35,20 @@ export interface WormholeCanvasSourceOptions {
     readonly depthCue?: number;
     /** Emit a fixed far/mid/near multi-plane output for stereoscopic hosts. */
     readonly depthLayers?: boolean;
+    /** Main raster size (default 960x540). */
+    readonly width?: number;
+    readonly height?: number;
+    /** Drawing-surface factory (a worker host supplies OffscreenCanvas); defaults to DOM canvases. */
+    readonly createSurface?: Canvas2DSurfaceFactory;
+}
+
+const DEFAULT_WIDTH = 960;
+const DEFAULT_HEIGHT = 540;
+/** Historical redraw cap; a host may lower or raise it through `setPresentation`. */
+const DEFAULT_FRAME_RATE_HZ = 30;
+
+function rasterSize(value: number | undefined, fallback: number): number {
+    return Number.isFinite(value) && (value as number) >= 16 ? Math.round(value as number) : fallback;
 }
 
 /** Mid/near planes hold only nearer grains on black, so a reduced raster is enough. */
@@ -47,10 +61,17 @@ const LAYER_HEIGHT = 432;
  * contract): it consumes the supplied plan and fetches only that plan's preset assets.
  */
 export class WormholeCanvasSource implements CanvasVisualSource {
-    private readonly backend = new Canvas2DRendererBackend(960, 540);
-    readonly canvas = this.backend.canvas;
+    private readonly backend: Canvas2DRendererBackend;
+    readonly canvas: HTMLCanvasElement;
     private state = emptyState();
     private identity = new CosmicWormholeIdentity(this.state);
+    /** Host Line stroke etc. layered on the shared XR boosts; the shared constant is never mutated. */
+    private readonly boosts = { ...XR_WORMHOLE_BOOSTS };
+    /** Host Visual character macros; start at the shared XR defaults (never mutated). */
+    private readonly macros = { ...XR_WORMHOLE_MACROS };
+    private minFrameIntervalSec = 1 / DEFAULT_FRAME_RATE_HZ - 0.001;
+    /** A presentation change must reach the canvas even while steadily paused. */
+    private presentationDirty = false;
     private director = new VisualDirectorFSM();
     private resolver = new SemanticResolver();
     private semanticBase = cloneDefaultVisualTuning();
@@ -74,9 +95,12 @@ export class WormholeCanvasSource implements CanvasVisualSource {
 
     constructor(options: WormholeCanvasSourceOptions = {}) {
         this.diagnostics = options.diagnostics === true;
+        this.backend = new Canvas2DRendererBackend(rasterSize(options.width, DEFAULT_WIDTH), rasterSize(options.height, DEFAULT_HEIGHT),
+            options.createSurface);
+        this.canvas = this.backend.canvas;
         this.depthCue = options.depthCue ?? 0;
-        this.midBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT) : null;
-        this.nearBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT) : null;
+        this.midBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT, options.createSurface) : null;
+        this.nearBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT, options.createSurface) : null;
         if (this.midBackend && this.nearBackend) this.layers = [this.canvas, this.midBackend.canvas, this.nearBackend.canvas];
         this.configureIdentity();
         if (this.diagnostics) {
@@ -104,7 +128,7 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         this.denseEvents = this.state.events.filter(event => event.type === 2);
         this.choreography = analysis && featureFlags.semanticResolver
             ? processChoreography(generateIntents(buildNarrative(analysis.trackAnalysis)), analysis.trackAnalysis) : null;
-        resolveMetaTuning(this.state.targetTuning, XR_WORMHOLE_MACROS, XR_WORMHOLE_BOOSTS, this.state.visualTuning);
+        resolveMetaTuning(this.state.targetTuning, this.macros, this.boosts, this.state.visualTuning);
         if (!analysis) return;
         const baseUrl = import.meta.env.BASE_URL;
         // The facade prepares the shared plan offline; this source never regenerates it.
@@ -123,8 +147,10 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         if (this.disposed) return false;
         const previous = this.lastTime;
         const jump = previous !== null && (time < previous || time - previous > 0.25);
-        // Texture work is capped to 30 Hz, independently of headset pose / gameplay cadence.
-        if (previous !== null && playing === this.lastPlaying && !jump && time - previous < 1 / 30 - 0.001) return false;
+        // Texture work is capped (30 Hz unless the host sets a rate), independently of headset pose / gameplay cadence.
+        const presentationChanged = this.presentationDirty;
+        if (previous !== null && playing === this.lastPlaying && !jump && !presentationChanged && time - previous < this.minFrameIntervalSec) return false;
+        this.presentationDirty = false;
         const dt = tuningMorphDeltaSec(time, previous);
         this.lastTime = time; this.lastPlaying = playing;
         const state = this.state;
@@ -152,8 +178,9 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         }
         const automationId = point ? `automation:${point.id}` : '';
         state.activeVisualTransitionId = automationId && semanticId ? `${automationId}|${semanticId}` : automationId || semanticId || null;
-        resolveMetaTuning(state.targetTuning, XR_WORMHOLE_MACROS, XR_WORMHOLE_BOOSTS, this.boosted);
-        if (previous === null || jump) Object.assign(state.visualTuning, this.boosted);
+        resolveMetaTuning(state.targetTuning, this.macros, this.boosts, this.boosted);
+        // A player's Line stroke / Visual character change is a direct control, not a musical morph.
+        if (previous === null || jump || presentationChanged) Object.assign(state.visualTuning, this.boosted);
         else applyTuningMorph(state.visualTuning, this.boosted, this.boosted.transitionSpeed, dt);
         const index = Math.max(0, Math.floor(time * state.sampleRate / state.hopSize));
         // Copy before the director mutates its live frame; published analysis remains immutable.
@@ -183,6 +210,27 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         }
         return true;
     }
+    /**
+     * Host presentation: Line stroke uses the MVP Advanced slider semantics, the macros the MVP
+     * Visual character sliders; the rate caps redraws.
+     */
+    setPresentation(presentation: CanvasVisualPresentation): void {
+        for (const key of ['intensity', 'motion', 'depth', 'detail'] as const) {
+            const value = presentation.macros?.[key];
+            if (value === undefined || !Number.isFinite(value)) continue;
+            const clamped = Math.min(1, Math.max(0, value));
+            if (clamped !== this.macros[key]) { this.macros[key] = clamped; this.presentationDirty = true; }
+        }
+        const stroke = presentation.lineStroke;
+        if (stroke !== undefined && Number.isFinite(stroke)) {
+            const value = Math.min(1, Math.max(0, stroke));
+            if (value !== this.boosts.lineWeight) { this.boosts.lineWeight = value; this.presentationDirty = true; }
+        }
+        const rate = presentation.maxFrameRateHz;
+        // Tolerates audio-clock jitter so a host pacing on whole display frames is never skipped.
+        if (rate !== undefined && Number.isFinite(rate) && rate > 0) this.minFrameIntervalSec = Math.max(0, 1 / rate - 0.004);
+    }
+
     dispose(): void {
         this.disposed = true; ++this.revision; this.canvas.width = this.canvas.height = 1;
         for (const layer of [this.midBackend, this.nearBackend]) if (layer) layer.canvas.width = layer.canvas.height = 1;

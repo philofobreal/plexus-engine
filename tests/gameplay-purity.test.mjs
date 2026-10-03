@@ -80,7 +80,7 @@ test('only the XR composition root can import the bounded Wormhole canvas source
     const source = readFileSync(file, 'utf8');
     if (file.endsWith(join('xr', 'main.ts'))) {
       const imports = [...source.matchAll(/from ['"]([^'"]*\/visuals\/[^'"]+)['"]/g)].map(match => match[1]);
-      assert.deepEqual(imports, ['../visuals/WormholeCanvasSource']);
+      assert.deepEqual(imports, ['../visuals/WormholeCanvasSource', '../visuals/WormholeWorkerSource']);
     } else assert.doesNotMatch(source, /from ['"].*\/visuals\//, `${file} must not import src/visuals/`);
     assert.doesNotMatch(source, /from ['"].*\/ui\//, `${file} must not import src/ui/`);
   }
