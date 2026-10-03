@@ -86,6 +86,20 @@ test('only the XR composition root can import the bounded Wormhole canvas source
   }
 });
 
+test('src/xr reads src/config only for the authored XR Wormhole defaults, in the background settings', () => {
+  const XR_DIR = join(process.cwd(), 'src', 'xr');
+
+  for (const file of walk(XR_DIR)) {
+    const source = readFileSync(file, 'utf8');
+    const imports = [...source.matchAll(/from ['"]([^'"]*\/config\/[^'"]+)['"]/g)].map(match => match[1]);
+    if (file.endsWith(join('xr', 'XrBackgroundSettings.ts'))) assert.deepEqual(imports, ['../config/xrWormholeTuning']);
+    else assert.deepEqual(imports, [], `${file} must not import src/config/`);
+  }
+  const tuning = readFileSync(join(process.cwd(), 'src', 'config', 'xrWormholeTuning.ts'), 'utf8');
+  const tuningImports = [...tuning.matchAll(/from ['"]([^'"]+)['"]/g)].map(match => match[1]);
+  assert.ok(tuningImports.every(path => path.startsWith('./')), 'the tuning module stays pure config (config-local imports only)');
+});
+
 test('only XrAppController reads the shared State store, and only reads it (never writes)', () => {
   const XR_DIR = join(process.cwd(), 'src', 'xr');
 
