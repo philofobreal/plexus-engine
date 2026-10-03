@@ -55,11 +55,15 @@ export function playSpaceConfig<T extends { readonly rowSpacingMeters: number }>
     return space === 'tall' ? { ...config, rowSpacingMeters: TALL_ROW_SPACING_METERS } : config;
 }
 
-/** Unknown or missing fields fall back to the defaults. */
-export function normalizeGenerationSettings(settings?: Partial<RhythmGenerationSettings>): RhythmGenerationSettings {
+/**
+ * Unknown or missing fields fall back to `defaults` (the historical settings unless a host passes
+ * its own player defaults).
+ */
+export function normalizeGenerationSettings(settings?: Partial<RhythmGenerationSettings>,
+    defaults: RhythmGenerationSettings = DEFAULT_RHYTHM_GENERATION_SETTINGS): RhythmGenerationSettings {
     const pick = <T>(value: T | undefined, allowed: readonly T[], fallback: T): T =>
         value !== undefined && allowed.includes(value) ? value : fallback;
-    const d = DEFAULT_RHYTHM_GENERATION_SETTINGS;
+    const d = defaults;
     return {
         difficulty: pick(settings?.difficulty, DIFFICULTIES, d.difficulty),
         activity: pick(settings?.activity, ACTIVITIES, d.activity),

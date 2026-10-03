@@ -9,7 +9,7 @@
 // Adding a setting means adding one descriptor here; no menu or controller code changes.
 
 import {
-    DEFAULT_RHYTHM_GENERATION_SETTINGS, normalizeGenerationSettings, type PlaySpace, type RhythmGameConfig, type RhythmGenerationSettings
+    normalizeGenerationSettings, type PlaySpace, type RhythmGameConfig, type RhythmGenerationSettings
 } from '../gameplay';
 import { DEFAULT_XR_BACKGROUND_SETTINGS, normalizeBackgroundSettings, type XrBackgroundSettings, type XrVisualCharacter } from './XrBackgroundSettings';
 import { DEFAULT_XR_APPEARANCE_SETTINGS, normalizeAppearanceSettings, type XrAppearanceSettings } from './XrAppearanceSettings';
@@ -89,7 +89,7 @@ type GenerationKey = keyof RhythmGenerationSettings;
 function generationChoice(id: GenerationKey, label: string, choices: readonly XrSettingChoice[]): XrChoiceSetting {
     return { id, section: 'choreography', label, scope: 'chart', kind: 'choice', choices,
         read: settings => String(settings.generation[id]),
-        write: (settings, value) => ({ ...settings, generation: normalizeGenerationSettings({ ...settings.generation, [id]: value }) }) };
+        write: (settings, value) => ({ ...settings, generation: normalizeGenerationSettings({ ...settings.generation, [id]: value }, DEFAULT_XR_GENERATION_SETTINGS) }) };
 }
 
 function playChoice(id: keyof XrPlaySettings, label: string, choices: readonly XrSettingChoice[]): XrChoiceSetting {
@@ -120,7 +120,7 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
             { value: 'standard', label: 'Standard', hint: 'Three rows around chest height.' },
             { value: 'tall', label: 'Tall', hint: 'Wider rows plus a rare overhead row on big moments: reach up and chop down. The start frame grows and the score moves beside the runway.' }],
         read: settings => settings.generation.playSpace,
-        write: (settings, value) => ({ ...settings, generation: normalizeGenerationSettings({ ...settings.generation, playSpace: value as PlaySpace }) }) },
+        write: (settings, value) => ({ ...settings, generation: normalizeGenerationSettings({ ...settings.generation, playSpace: value as PlaySpace }, DEFAULT_XR_GENERATION_SETTINGS) }) },
     playChoice('noteSpeed', 'Note speed', [
         { value: 'normal', label: 'Normal', hint: '4 m/s from 8 m away: two seconds to read each target.' },
         { value: 'fast', label: 'Fast', hint: '7 m/s from 11 m away: 1.6 s to react, a longer runway.' },
@@ -189,9 +189,19 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
         write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background, sharpness: value / 100 }) }) }
 ];
 
+/**
+ * The /xr/ player's default choreography (ADR-009 Addendum T): Ultra, Active, Expressive,
+ * Alternate, Even, Crossover in the Tall play space. The gameplay library keeps its historical
+ * defaults (`DEFAULT_RHYTHM_GENERATION_SETTINGS`), so the pinned default chart is unchanged.
+ */
+export const DEFAULT_XR_GENERATION_SETTINGS: RhythmGenerationSettings = Object.freeze({
+    difficulty: 'ultra', activity: 'active', variation: 'expressive', handPattern: 'alternate', handLead: 'even', zones: 'cross',
+    playSpace: 'tall'
+});
+
 export const DEFAULT_XR_SETTINGS: XrSettings = Object.freeze({
     play: DEFAULT_XR_PLAY_SETTINGS,
-    generation: DEFAULT_RHYTHM_GENERATION_SETTINGS,
+    generation: DEFAULT_XR_GENERATION_SETTINGS,
     background: DEFAULT_XR_BACKGROUND_SETTINGS,
     appearance: DEFAULT_XR_APPEARANCE_SETTINGS
 });
@@ -202,7 +212,8 @@ export function normalizeXrSettings(settings?: { play?: Partial<XrPlaySettings>;
     const source = settings && typeof settings === 'object' ? settings : {};
     return {
         play: normalizePlaySettings(source.play && typeof source.play === 'object' ? source.play : undefined),
-        generation: normalizeGenerationSettings(source.generation && typeof source.generation === 'object' ? source.generation : undefined),
+        generation: normalizeGenerationSettings(source.generation && typeof source.generation === 'object' ? source.generation : undefined,
+            DEFAULT_XR_GENERATION_SETTINGS),
         background: normalizeBackgroundSettings(source.background && typeof source.background === 'object' ? source.background : undefined),
         appearance: normalizeAppearanceSettings(source.appearance && typeof source.appearance === 'object' ? source.appearance : undefined)
     };

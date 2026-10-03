@@ -105,16 +105,17 @@ multiplied by the hand colour. The HUD is a transparent instrument frame redrawn
 
 The optional Wormhole is one world-anchored plane at 40 m (ADR-009 Addendum F; the three-plane 2.5D
 mode of Addendum E is no longer used by `/xr/` because of its frame-time cost). Monocular depth cues
-(strength 0.7 in XR, 0.6 in the MVP) thicken near grains and thin, dim and haze far ones. The drawer's
-**Background** group sets the raster (Performance 640x360 / Balanced 768x432 default / High 960x540),
-the update rate (24 Hz default / 36 Hz, aligned to whole headset frames) and **Line stroke** (the MVP
-Advanced slider, default 100 = the historical XR value). Uploads happen only on changed frames.
+(strength 0.7 in XR, 0.6 in the MVP) thicken near grains and thin, dim and haze far ones. The game
+menu's **Visuals** tab sets the raster (Performance 640x360 / Balanced 768x432 / High 960x540 /
+Ultra 1280x720 default), the update rate (24 Hz / 36 Hz default, aligned to whole headset frames),
+**Line stroke** (the MVP Advanced slider, default 34) and **Sharpness** (default 100). Uploads happen
+only on changed frames.
 Where the browser supports it, the background rasterizes in a dedicated worker on an OffscreenCanvas
 and reaches the scene as a transferred `ImageBitmap` (ADR-009 Addendum G), so the headset frame loop
 never waits for Canvas2D; otherwise the same source runs in-thread.
 
-The **Gameplay** section sets note speed (Normal 4 m/s, Fast 7 m/s, Hyper 10 m/s) and saber length
-(0.9 / 1.0 default / 1.1 m). The start frame's distance is derived from an average adult reach so
+The **Gameplay** section sets note speed (Normal 4 m/s, Fast 7 m/s, Hyper 10 m/s default) and saber
+length (0.9 / 1.0 / 1.1 m default, or Auto). The start frame's distance is derived from an average adult reach so
 that everything the saber can touch is already judged (default 1.20 m with a 0.175 s early "good"
 window); the runway lengthens with speed (12 / 16 / 18 m) and targets emerge from its far end
 (ADR-009 Addendum I). These settings rewind but never change the chart.
@@ -146,14 +147,14 @@ silence while its gate arrives. Judging windows are the same as on every other d
 (ADR-009 Addendum N).
 
 Inside the headset a floating menu runs the game: Start, Pause (grip), Resume / Restart, every
-setting in Gameplay / Choreography / Background tabs, the results after each song, and Exit VR.
-Point with a controller laser and pull the trigger; a thumbstick flick switches tabs. The desktop
-command drawer shows the same settings as tabs in the same order (ADR-009 Addendum O).
+setting in the Gameplay / Choreography / Visuals / Character tabs, the results after each song, and
+Exit VR. Point with a controller laser and pull the trigger; a thumbstick flick switches tabs
+(ADR-009 Addendum O). The same menu is drawn on the desktop (see below).
 
 Visuals > Note design switches the targets between Classic blocks and Shard crystals whose tip
 points the way to cut; a struck target splits into two glowing halves with a burst of sparks
-(ADR-009 Addendum Q). For a sharper Wormhole in the headset choose Background quality Ultra
-(1280 x 720) and adjust Sharpness (ADR-009 Addendum P).
+(ADR-009 Addendum Q). For a sharper Wormhole in the headset, Background quality Ultra
+(1280 x 720) and Sharpness apply a GPU unsharp mask to the plane (ADR-009 Addendum P).
 
 The game menu is drawn in the 3D view on the desktop as well (Escape or the gear button; mouse or
 arrow keys + Enter): Gameplay, Choreography, Visuals (Wormhole on / off, note design, quality,
@@ -163,6 +164,12 @@ Depth, Detail). The HTML panel only loads music and starts play or VR (ADR-009 A
 Every menu setting comes from one description (`src/xr/XrSettings.ts`, ADR-009 Addendum H) and is
 remembered per browser (`plexus.xr.settings`). Game settings regenerate the chart and rewind;
 background settings apply live, even mid-song.
+
+A first visit starts from the authored player defaults (ADR-009 Addendum T): Tall / Hyper / Long;
+Ultra, Active, Expressive, Alternate, Even, Crossover; the Wormhole on with Shard targets at Ultra /
+36 Hz, Line stroke 34, Sharpness 100; Character 100 / 100 / 10 / 100. A browser that already saved
+settings keeps its own values. The gameplay library's historical defaults (and the pinned default
+chart) are unchanged.
 
 The hit gate announces the musical section (`src/xr/scene/XrSectionCallout.ts`). It uses the
 analyzer's published `TrackAnalysis.sections` with the MVP dramaturgy panel's labels and hues
@@ -186,13 +193,14 @@ desktop picking un-project through it, so rendered and judged targets cannot div
 hit plane, gate, lanes and rows are unchanged. Floor/rail vertices are preallocated and rewritten
 only when the path revision changes. With the Wormhole off the track is straight.
 
-The optional **Wormhole background** checkbox uses the actual MVP CosmicWormholeIdentity,
-not a substitute particle shader. It defaults off. Its macro settings are intensity=1, motion=1,
-depth=0.30, detail=1; the user's updated Advanced positions live in
-`src/config/xrWormholeTuning.ts`. These are normalized slider gains, not absolute effect values.
-The shared resolver applies macros, control bounds, then Advanced gains/selectors to each live
-preset. Nebula amount and Spiral are zero, lineWeight is 1; grain shape is square and all
-three Post FX controls are zero. The material-on renderer remains covered by a separate fixture.
+The **Wormhole** background (Visuals > Wormhole) uses the actual MVP CosmicWormholeIdentity,
+not a substitute particle shader. It defaults on (ADR-009 Addendum T). Its macro settings are the
+Character tab's sliders (intensity=1, motion=1, depth=0.10, detail=1 by default); the user's
+authored Advanced positions live in `src/config/xrWormholeTuning.ts`. These are normalized slider
+gains, not absolute effect values. The shared resolver applies macros, control bounds, then
+Advanced gains/selectors to each live preset. Nebula amount is 0.5 (detail, bloom, weave 1), Spiral
+0.04, grain density 0.5, lineWeight 0.34 (the Line stroke default); grain shape is square and all
+three Post FX controls are zero (ADR-009 Addenda R, T).
 
 The default balanced/paired MVP journey, preset merge and semantic functions are reused with
 private render state. No saved edits or playback state are imported from another page. The

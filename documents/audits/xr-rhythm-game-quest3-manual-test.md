@@ -101,6 +101,11 @@ Record results in the result log above; desktop results never substitute for hea
 - Wormhole background (single plane, ADR-009 Addendum F): stable 72 Hz with the Wormhole on at
   Balanced / 24 Hz; compare 36 Hz and High; Line stroke 0 / 50 / 100 visibly thin / neutral / thick;
   record `data-xr-background-ms` and GPU frame time per quality.
+- Authored player defaults (ADR-009 Addendum T): on a browser without saved settings the game
+  starts Tall / Hyper / Long, Ultra / Active / Expressive / Crossover, Shard targets with the
+  Wormhole on at Ultra / 36 Hz, Line stroke 34, Sharpness 100, Depth 10. Record whether the default
+  stays at 72 Hz with a smooth enough background; if not, note which of Balanced / 24 Hz / Nebula
+  would have to change.
 - Authored Wormhole defaults (ADR-009 Addendum R): with the Nebula on, the background's update
   rate in the headset (watch for a visibly choppy background) and whether judging stays smooth;
   Character sliders change the look live; Wormhole on / off works from the in-VR menu.

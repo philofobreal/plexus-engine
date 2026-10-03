@@ -10,7 +10,8 @@ export interface XrAppearanceSettings {
 
 export const XR_NOTE_DESIGNS: readonly XrNoteDesign[] = ['classic', 'shard'];
 
-export const DEFAULT_XR_APPEARANCE_SETTINGS: XrAppearanceSettings = Object.freeze({ noteDesign: 'classic' });
+/** Shard crystals by default (ADR-009 Addendum T). */
+export const DEFAULT_XR_APPEARANCE_SETTINGS: XrAppearanceSettings = Object.freeze({ noteDesign: 'shard' });
 
 export function normalizeAppearanceSettings(settings?: Partial<XrAppearanceSettings> | null): XrAppearanceSettings {
     const design = settings?.noteDesign;

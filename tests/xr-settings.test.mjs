@@ -7,7 +7,7 @@ const load = createLoader();
 const settingsModule = () => load('xr/XrSettings.ts');
 const json = value => JSON.stringify(value);
 
-test('every setting is described once, round-trips through its control value, and defaults reproduce the historical game', () => {
+test('every setting is described once, round-trips through its control value; the gameplay library keeps its historical defaults', () => {
     const { XR_SETTINGS, XR_SETTING_SECTIONS, DEFAULT_XR_SETTINGS, resolveGameConfig } = settingsModule();
     const { DEFAULT_RHYTHM_GAME_CONFIG, DEFAULT_RHYTHM_GENERATION_SETTINGS } = load('gameplay/index.ts');
     const { DEFAULT_XR_BACKGROUND_SETTINGS } = load('xr/XrBackgroundSettings.ts');
@@ -22,16 +22,35 @@ test('every setting is described once, round-trips through its control value, an
             for (const value of [descriptor.min, descriptor.max]) assert.equal(descriptor.read(descriptor.write(DEFAULT_XR_SETTINGS, value)), value);
         }
     }
-    assert.equal(json(DEFAULT_XR_SETTINGS.generation), json(DEFAULT_RHYTHM_GENERATION_SETTINGS));
+    // The pinned golden chart is built from the library's historical settings, not the XR player defaults.
+    assert.equal(json(DEFAULT_RHYTHM_GENERATION_SETTINGS), json({ difficulty: 'normal', activity: 'balanced', variation: 'paired',
+        handPattern: 'alternate', handLead: 'even', zones: 'split', playSpace: 'standard' }));
     assert.equal(json(DEFAULT_XR_SETTINGS.background), json(DEFAULT_XR_BACKGROUND_SETTINGS));
     // Play settings only touch judging and travel; every chart-defining field stays the golden default.
     for (const speed of ['normal', 'fast', 'hyper']) for (const saber of ['short', 'normal', 'long']) {
-        const config = resolveGameConfig({ ...DEFAULT_XR_SETTINGS, play: { noteSpeed: speed, saberLength: saber } });
+        const config = resolveGameConfig({ ...DEFAULT_XR_SETTINGS, generation: DEFAULT_RHYTHM_GENERATION_SETTINGS,
+            play: { noteSpeed: speed, saberLength: saber } });
         for (const key of ['minGlobalNoteSpacingSec', 'minSameHandSpacingSec', 'intensityFloor', 'maxHandTravelMps', 'rowSpacingMeters',
             'cutConeDegrees', 'minCutSpeedMps', 'perfectWindowSec', 'goodWindowSec', 'missWindowSec', 'noteSizeMeters', 'hitRadiusMeters']) {
             assert.equal(config[key], DEFAULT_RHYTHM_GAME_CONFIG[key], `${speed}/${saber}: ${key}`);
         }
     }
+});
+
+test('the /xr/ player defaults are the authored menu values (ADR-009 Addendum T)', () => {
+    const { XR_SETTINGS, DEFAULT_XR_SETTINGS, DEFAULT_XR_GENERATION_SETTINGS, normalizeXrSettings } = settingsModule();
+    const expected = {
+        playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'long',
+        difficulty: 'ultra', activity: 'active', variation: 'expressive', handPattern: 'alternate', handLead: 'even', zones: 'cross',
+        wormhole: 'on', noteDesign: 'shard', quality: 'ultra', rateHz: '36', lineStroke: 34, sharpness: 100,
+        intensity: 100, motion: 100, depth: 10, detail: 100
+    };
+    assert.equal(Object.keys(expected).length, XR_SETTINGS.length, 'every setting has an authored default');
+    for (const descriptor of XR_SETTINGS) assert.equal(String(descriptor.read(DEFAULT_XR_SETTINGS)), String(expected[descriptor.id]), descriptor.id);
+    assert.equal(DEFAULT_XR_SETTINGS.generation, DEFAULT_XR_GENERATION_SETTINGS);
+    // A first visit (no stored record) and any missing field start from the same defaults.
+    assert.equal(json(normalizeXrSettings({})), json(DEFAULT_XR_SETTINGS));
+    assert.equal(normalizeXrSettings({ generation: { difficulty: 'hard' } }).generation.zones, 'cross');
 });
 
 test('changes are classified by their strongest scope; hostile input normalizes to valid settings', () => {
@@ -98,7 +117,7 @@ test('settings persist in one versioned record; corrupt, foreign or unavailable 
         assert.equal(json(createXrSettingsStore(memoryStorage({ [XR_SETTINGS_STORAGE_KEY]: raw })).load()), json(DEFAULT_XR_SETTINGS), raw);
     }
     const partial = createXrSettingsStore(memoryStorage({ [XR_SETTINGS_STORAGE_KEY]: json({ version: 1, generation: { difficulty: 'easy', zones: 7 } }) })).load();
-    assert.equal(partial.generation.difficulty, 'easy'); assert.equal(partial.generation.zones, 'split');
+    assert.equal(partial.generation.difficulty, 'easy'); assert.equal(partial.generation.zones, 'cross', 'an invalid field takes the XR default');
 
     const hostile = { getItem() { throw new Error('SecurityError'); }, setItem() { throw new Error('QuotaExceededError'); } };
     const guarded = createXrSettingsStore(hostile);

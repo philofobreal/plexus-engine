@@ -8,10 +8,12 @@ import * as THREE from 'three';
 import { createLoader } from './helpers/xr-loader.mjs';
 import { fakeDocument, findAll } from './helpers/fake-dom.mjs';
 import { chartSources } from './helpers/xr-chart-sources.mjs';
+import { historicalXrSettings } from './helpers/xr-historical-settings.mjs';
 
 function deferred() { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; }
 const settle = () => new Promise(setImmediate);
 
+/** `settingsStore: 'defaults'` starts from the shipped defaults; otherwise the fixed historical baseline. */
 function harness({ presenting = false, settingsStore } = {}) {
     const doc = fakeDocument();
     const window = new EventTarget();
@@ -68,7 +70,9 @@ function harness({ presenting = false, settingsStore } = {}) {
     const container = doc.createElement('div');
     const { XrAppController } = load('xr/XrAppController.ts');
     const { buildRhythmChart, DEFAULT_RHYTHM_GAME_CONFIG } = load('gameplay/index.ts');
-    const controller = new XrAppController(engine, runtime, container, () => ({}), settingsStore ? { settingsStore } : {});
+    const baseline = historicalXrSettings(load);
+    const store = settingsStore === 'defaults' ? undefined : settingsStore ?? { load: () => baseline, save() {} };
+    const controller = new XrAppController(engine, runtime, container, () => ({}), store ? { settingsStore: store } : {});
     const drawer = controller.drawer;
     const { XR_SETTINGS, changeScope } = load('xr/XrSettings.ts');
     return {
@@ -194,7 +198,8 @@ test('restored settings drive the first chart and background; every change is sa
     assert.deepEqual([first.quality, first.rateHz, first.lineStroke], ['high', 36, 0.3], 'the scene gets the restored background before any plane');
     assert.equal(Object.values(h.controller.settings.generation).slice(0, 6).join(), 'hard,balanced,paired,together,even,shared');
     await h.loadTrack();
-    assert.equal(h.chart(), h.expected(restored.generation));
+    // A field the record lacks (here the play space) takes the /xr/ default, Tall.
+    assert.equal(h.chart(), h.expected({ ...restored.generation, playSpace: 'tall' }));
     h.engine.play(0);
     const stopsBefore = h.engine.stops.length, prepares = h.prepareCalls.length, chart = h.chart();
     h.pick('performance', 'background'); await settle();
@@ -207,10 +212,27 @@ test('restored settings drive the first chart and background; every change is sa
     assert.deepEqual(saved.map(s => [s.background.quality, s.generation.difficulty]), [['performance', 'hard'], ['performance', 'expert']]);
 });
 
+test('a first visit starts from the authored defaults: Wormhole on, Ultra choreography in the Tall space, Hyper / Long, Shard', async () => {
+    const h = harness({ settingsStore: 'defaults' });
+    const { DEFAULT_XR_SETTINGS } = createLoader()('xr/XrSettings.ts');
+    assert.equal(JSON.stringify(h.controller.settings), JSON.stringify(DEFAULT_XR_SETTINGS));
+    const first = h.sceneLog.backgrounds[0];
+    assert.deepEqual([first.wormhole, first.quality, first.rateHz, first.lineStroke, first.sharpness], [true, 'ultra', 36, 0.34, 1]);
+    assert.equal(h.sceneLog.enabled.at(-1), true, 'the Wormhole is switched on without a menu visit');
+    assert.equal(h.sceneLog.designs.at(-1), 'shard');
+    assert.deepEqual(h.sceneLog.blades, [1.1]);
+    assert.equal(h.sceneLog.layouts[0].rowCount, 4, 'the Tall stage');
+    await h.loadTrack();
+    assert.deepEqual({ ...h.prepareCalls[0][2] }, { activityLevel: 'active', variantMode: 'expressive' });
+    assert.equal(h.chart(), h.expected(DEFAULT_XR_SETTINGS.generation));
+    assert.equal(h.controller.session.config.noteSpeedMps, 10, 'Hyper');
+});
+
 test('note speed and saber length rewind without regenerating: same chart, new stage, blade and judging', async () => {
     const h = harness();
     const { resolvePlayProfile } = createLoader()('xr/XrPlayProfile.ts');
-    assert.equal(h.sceneLog.layouts[0].playfieldForwardMeters, resolvePlayProfile().stage.playfieldForwardMeters, 'the derived stage applies at startup');
+    assert.equal(h.sceneLog.layouts[0].playfieldForwardMeters, resolvePlayProfile({ noteSpeed: 'normal', saberLength: 'normal' }).stage.playfieldForwardMeters,
+        'the derived stage applies at startup');
     assert.deepEqual(h.sceneLog.blades, [1]);
     await h.loadTrack();
     const chart = h.chart(), prepares = h.prepareCalls.length;

@@ -20,7 +20,7 @@ export interface XrVisualCharacter {
 export const XR_VISUAL_CHARACTER_KEYS: readonly (keyof XrVisualCharacter)[] = ['intensity', 'motion', 'depth', 'detail'];
 
 export interface XrBackgroundSettings {
-    /** The Wormhole background is shown (off by default: it is the heaviest part of the frame). */
+    /** The Wormhole background is shown (on by default; it is the heaviest part of the frame). */
     readonly wormhole: boolean;
     readonly quality: XrBackgroundQuality;
     readonly rateHz: XrBackgroundRate;
@@ -49,9 +49,13 @@ export const XR_BACKGROUND_RESOLUTION: Readonly<Record<XrBackgroundQuality, { re
     ultra: { width: 1280, height: 720 }
 };
 
-/** The lower rate is the default; Line stroke keeps the historical XR boost. */
+/**
+ * Player defaults (ADR-009 Addendum T): the Wormhole on at Ultra / 36 Hz with full sharpening.
+ * Line stroke and the Visual character come from the XR host's authored tuning, so the source's
+ * starting state and the menu's defaults are one set of values.
+ */
 export const DEFAULT_XR_BACKGROUND_SETTINGS: XrBackgroundSettings = Object.freeze({
-    wormhole: false, quality: 'balanced', rateHz: 24, lineStroke: XR_WORMHOLE_BOOSTS.lineWeight, sharpness: 0.5,
+    wormhole: true, quality: 'ultra', rateHz: 36, lineStroke: XR_WORMHOLE_BOOSTS.lineWeight, sharpness: 1,
     character: Object.freeze({ intensity: XR_WORMHOLE_MACROS.intensity, motion: XR_WORMHOLE_MACROS.motion,
         depth: XR_WORMHOLE_MACROS.depth, detail: XR_WORMHOLE_MACROS.detail })
 });

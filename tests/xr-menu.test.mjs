@@ -3,13 +3,16 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createLoader } from './helpers/xr-loader.mjs';
 import { fakeDocument, findAll } from './helpers/fake-dom.mjs';
+import { historicalXrSettings } from './helpers/xr-historical-settings.mjs';
 
 const doc = fakeDocument();
 const load = createLoader({ three: THREE }, { document: doc });
 const { menuLayout, menuItemAt, activateMenuItem, switchMenuTab, moveMenuFocus, menuHomeScreen, menuResults, formatResults, DEFAULT_MENU_STATE,
     MENU_CANVAS } = load('xr/XrMenuModel.ts');
 const { XrMenuPanel, MENU_PANEL_WIDTH_METERS, MENU_PANEL_HEIGHT_METERS, MENU_DISTANCE_METERS } = load('xr/scene/XrMenuPanel.ts');
-const { XR_SETTINGS, XR_SETTING_SECTIONS, DEFAULT_XR_SETTINGS } = load('xr/XrSettings.ts');
+const { XR_SETTINGS, XR_SETTING_SECTIONS } = load('xr/XrSettings.ts');
+/** Menu mechanics run on a fixed baseline, independent of the shipped defaults. */
+const DEFAULT_XR_SETTINGS = historicalXrSettings(load);
 const { XrCommandDrawer } = load('xr/XrCommandDrawer.ts');
 const { XrInputAdapter, POINTER_DEFAULT_LENGTH_METERS } = load('xr/runtime/XrInputAdapter.ts');
 

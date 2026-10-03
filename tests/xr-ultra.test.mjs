@@ -28,9 +28,11 @@ test('Ultra is the fifth Difficulty: chart scope, same judging windows', () => {
     assert.equal(DIFFICULTIES.at(-1), 'ultra');
     const descriptor = XR_SETTINGS.find(d => d.id === 'difficulty');
     assert.equal(descriptor.choices.at(-1).value, 'ultra'); assert.equal(descriptor.choices.at(-1).label, 'Ultra');
-    const ultra = descriptor.write(DEFAULT_XR_SETTINGS, 'ultra');
-    assert.equal(changeScope(DEFAULT_XR_SETTINGS, ultra), 'chart');
-    assert.equal(resolveGameConfig(ultra), resolveGameConfig(DEFAULT_XR_SETTINGS), 'timing windows and judging are unchanged');
+    assert.equal(descriptor.read(DEFAULT_XR_SETTINGS), 'ultra', 'the /xr/ player default (ADR-009 Addendum T)');
+    const normal = descriptor.write(DEFAULT_XR_SETTINGS, 'normal');
+    const ultra = descriptor.write(normal, 'ultra');
+    assert.equal(changeScope(normal, ultra), 'chart');
+    assert.equal(resolveGameConfig(ultra), resolveGameConfig(normal), 'timing windows and judging are unchanged');
     const expert = difficultyProfile('expert'), profile = difficultyProfile('ultra');
     assert.ok(profile.globalSpacingScale < expert.globalSpacingScale && profile.sameHandSpacingScale < expert.sameHandSpacingScale
         && profile.travelScale > expert.travelScale && profile.ceilingScale < expert.ceilingScale && profile.hardChain > expert.hardChain);

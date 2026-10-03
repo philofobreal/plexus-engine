@@ -468,6 +468,44 @@ lines read soft.
   per-browser store are unchanged, so every setting -- including Play space, Ultra, Note design,
   quality Ultra, Sharpness, Wormhole and the Visual character -- persists like its siblings.
 
+## Addendum T: authored player defaults (2026-10-03)
+
+A first visit (no stored record) now starts from the user's authored menu values instead of the
+historical game:
+
+| Tab | Setting | Default |
+| --- | --- | --- |
+| Gameplay | Play space / Note speed / Saber length | Tall / Hyper / Long |
+| Choreography | Difficulty / Activity / Variation | Ultra / Active / Expressive |
+| Choreography | Hands / Lead / Zones | Alternate / Even / Crossover |
+| Visuals | Wormhole / Note design | On / Shard |
+| Visuals | Background quality / update | Ultra / 36 Hz |
+| Visuals | Line stroke / Sharpness | 34 / 100 |
+| Character | Intensity / Motion / Depth / Detail | 100 / 100 / 10 / 100 |
+
+- **Where they live.** The /xr/ host owns its player defaults: `DEFAULT_XR_GENERATION_SETTINGS`
+  (`src/xr/XrSettings.ts`), `DEFAULT_XR_PLAY_SETTINGS`, `DEFAULT_XR_APPEARANCE_SETTINGS` and
+  `DEFAULT_XR_BACKGROUND_SETTINGS`. Line stroke and the Visual character stay one authored set with
+  the source's starting tuning (`XR_WORMHOLE_BOOSTS.lineWeight` 0.34, `XR_WORMHOLE_MACROS.depth`
+  0.1), which supersedes Addendum R's 0.98 / 0.3. Every other authored Wormhole value is unchanged.
+- **The gameplay library keeps its historical defaults.** `DEFAULT_RHYTHM_GENERATION_SETTINGS`
+  (Normal, Balanced, Paired, Split, Standard) is unchanged, so the pinned default chart
+  (`tests/fixtures/xr-chart-default-golden.json`) is byte-identical. `normalizeGenerationSettings`
+  takes the host's defaults as an optional second argument; the XR host passes its own, so a
+  missing or invalid field falls back to the XR default.
+- **Stored records win.** A browser that already saved settings keeps them (every saved record
+  is complete); only fields missing from an older record take the new defaults. Choosing the
+  values again, or clearing the site's data, returns to the defaults.
+- **Cost.** These are the heaviest presentation values: the Wormhole on at the 1280 x 720 raster,
+  36 Hz requested, the Nebula on (Addendum R's measurement: ~32 ms per redraw on a desktop CPU,
+  so the background updates well below the requested rate) and full sharpening. Judging is
+  unaffected (the worker keeps the main thread free). If the headset run shows a choppy background
+  or frame drops, Balanced / 24 Hz remains one menu choice away; the Quest checklist records it.
+- Tests: `tests/xr-settings.test.mjs` pins every default against the table above; the controller,
+  scene and store suites check a first visit end to end. Mechanics tests (menus, scopes, pacing,
+  regeneration) start from a fixed historical baseline (`tests/helpers/xr-historical-settings.mjs`)
+  so they do not depend on the shipped defaults.
+
 ## Consequences
 
 `/xr/` can evolve its own scene complexity, controller model, and performance profile without

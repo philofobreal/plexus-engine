@@ -152,12 +152,14 @@ test('Play space is a chart-scope Gameplay setting; Auto follows it', () => {
     const descriptor = XR_SETTINGS.find(d => d.id === 'playSpace');
     assert.equal(descriptor.section, 'gameplay'); assert.equal(descriptor.scope, 'chart');
     assert.equal(descriptor.choices.map(c => c.value).join(), 'standard,tall');
-    assert.equal(descriptor.read(DEFAULT_XR_SETTINGS), 'standard');
-    const tallSettings = descriptor.write(DEFAULT_XR_SETTINGS, 'tall');
-    assert.equal(changeScope(DEFAULT_XR_SETTINGS, tallSettings), 'chart');
+    assert.equal(descriptor.read(DEFAULT_XR_SETTINGS), 'tall', 'the /xr/ player default (ADR-009 Addendum T)');
+    const standardSettings = descriptor.write(DEFAULT_XR_SETTINGS, 'standard');
+    assert.equal(resolvePlayFromSettings(standardSettings).stage.rowCount, 3);
+    const tallSettings = descriptor.write(standardSettings, 'tall');
+    assert.equal(changeScope(standardSettings, tallSettings), 'chart');
     assert.equal(resolveGameConfig(tallSettings).rowSpacingMeters, TALL_ROW_SPACING_METERS);
     assert.equal(resolvePlayFromSettings(tallSettings).stage.rowCount, 4);
-    assert.equal(descriptor.write(DEFAULT_XR_SETTINGS, 'huge').generation.playSpace, 'standard');
+    assert.equal(descriptor.write(standardSettings, 'huge').generation.playSpace, 'tall', 'invalid -> the /xr/ default');
     const saber = XR_SETTINGS.find(d => d.id === 'saberLength');
     const auto = saber.write(tallSettings, 'auto');
     assert.equal(resolvePlayFromSettings(auto).bladeLengthMeters, 1.1);

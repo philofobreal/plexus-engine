@@ -8,15 +8,23 @@ import { fakeDocument, findAll } from './helpers/fake-dom.mjs';
 
 const settingsModule = () => createLoader()('xr/XrBackgroundSettings.ts');
 
-test('background settings default to the balanced raster, the lower rate and the authored Line stroke', () => {
+const AUTHORED_DEFAULTS = { wormhole: true, quality: 'ultra', rateHz: 36, lineStroke: 0.34, sharpness: 1, character: { intensity: 1, motion: 1, depth: 0.1, detail: 1 } };
+/** The pre-Addendum-T presentation, for tests about pacing rather than defaults. */
+const BALANCED_24 = { wormhole: true, quality: 'balanced', rateHz: 24, lineStroke: 0.98, sharpness: 0.5, character: { intensity: 1, motion: 1, depth: 0.3, detail: 1 } };
+
+test('background settings default to the authored values: Wormhole on, Ultra raster, 36 Hz, Line stroke 34, full sharpening', () => {
     const { DEFAULT_XR_BACKGROUND_SETTINGS, XR_BACKGROUND_RESOLUTION, normalizeBackgroundSettings } = settingsModule();
-    assert.equal(JSON.stringify(DEFAULT_XR_BACKGROUND_SETTINGS), JSON.stringify({ wormhole: false, quality: 'balanced', rateHz: 24, lineStroke: 0.98, sharpness: 0.5, character: { intensity: 1, motion: 1, depth: 0.3, detail: 1 } }));
+    const { XR_WORMHOLE_BOOSTS, XR_WORMHOLE_MACROS } = createLoader()('config/xrWormholeTuning.ts');
+    assert.equal(JSON.stringify(DEFAULT_XR_BACKGROUND_SETTINGS), JSON.stringify(AUTHORED_DEFAULTS));
+    assert.equal(DEFAULT_XR_BACKGROUND_SETTINGS.lineStroke, XR_WORMHOLE_BOOSTS.lineWeight, 'one authored Line stroke');
+    assert.equal(JSON.stringify(DEFAULT_XR_BACKGROUND_SETTINGS.character), JSON.stringify(XR_WORMHOLE_MACROS), 'one authored Visual character');
+    assert.equal(JSON.stringify(XR_BACKGROUND_RESOLUTION.ultra), JSON.stringify({ width: 1280, height: 720 }));
     assert.equal(JSON.stringify(XR_BACKGROUND_RESOLUTION.balanced), JSON.stringify({ width: 768, height: 432 }));
-    assert.equal(JSON.stringify(normalizeBackgroundSettings({ quality: 'extreme', rateHz: 30, lineStroke: 'x' })),
-        JSON.stringify({ wormhole: false, quality: 'balanced', rateHz: 24, lineStroke: 0.98, sharpness: 0.5, character: { intensity: 1, motion: 1, depth: 0.3, detail: 1 } }));
+    assert.equal(JSON.stringify(normalizeBackgroundSettings({ quality: 'extreme', rateHz: 30, lineStroke: 'x' })), JSON.stringify(AUTHORED_DEFAULTS));
+    assert.equal(normalizeBackgroundSettings({ wormhole: false }).wormhole, false, 'an explicit off is kept');
     assert.equal(normalizeBackgroundSettings({ lineStroke: 7 }).lineStroke, 1, 'clamped');
     assert.equal(normalizeBackgroundSettings({ lineStroke: -2 }).lineStroke, 0);
-    assert.equal(normalizeBackgroundSettings({ lineStroke: Number.NaN }).lineStroke, 0.98, 'invalid -> the authored default');
+    assert.equal(normalizeBackgroundSettings({ lineStroke: Number.NaN }).lineStroke, 0.34, 'invalid -> the authored default');
 });
 
 test('frame divider lands every redraw on a whole display frame and never exceeds the requested rate', () => {
@@ -45,8 +53,21 @@ function sceneHarness() {
     return { scene, sources, snapshot };
 }
 
+test('the scene starts with the authored background: Ultra raster, 36 Hz on a whole frame phase, Line stroke 34', async () => {
+    const { scene, sources, snapshot } = sceneHarness();
+    await scene.setWormholeEnabled(true);
+    const source = sources[0];
+    assert.equal(JSON.stringify(source.options), JSON.stringify({ width: 1280, height: 720 }));
+    scene.setDisplayFrameRate(72);
+    assert.equal(JSON.stringify(source.presentations.at(-1)), JSON.stringify({ lineStroke: 0.34, maxFrameRateHz: 36, macros: AUTHORED_DEFAULTS.character }));
+    for (let i = 0; i < 72; i++) scene.update([], i / 72, snapshot('playing'), '');
+    assert.equal(source.renders.length, 36, '72 Hz / divider 2');
+    scene.dispose();
+});
+
 test('playing redraws are paced on a fixed headset frame phase; paused frames always reach the source', async () => {
     const { scene, sources, snapshot } = sceneHarness();
+    await scene.setBackgroundSettings(BALANCED_24);
     await scene.setWormholeEnabled(true);
     const source = sources[0];
     assert.equal(JSON.stringify(source.options), JSON.stringify({ width: 768, height: 432 }));
@@ -108,10 +129,10 @@ test('Line stroke follows the MVP Advanced slider semantics and redraws even whi
     assert.equal(source.render(1, false), true, 'a stroke change reaches a paused canvas');
     assert.equal(source.state.visualTuning.lineWeight, expected(0.5));
     assert.equal(source.render(1, false), false);
-    assert.equal(XR_WORMHOLE_BOOSTS.lineWeight, 0.98, 'the shared XR boosts are never mutated');
+    assert.equal(XR_WORMHOLE_BOOSTS.lineWeight, 0.34, 'the shared XR boosts are never mutated');
     const motion = () => source.state.visualTuning.wormholeSpeed;
     const before = motion();
-    source.setPresentation({ macros: { intensity: 1, motion: 0, depth: 0.3, detail: 1 } });
+    source.setPresentation({ macros: { intensity: 1, motion: 0, depth: 0.1, detail: 1 } });
     assert.equal(source.render(1, false), true, 'a Visual character change reaches a paused canvas');
     assert.ok(motion() < before, 'Motion lowers the Wormhole speed');
     assert.equal(XR_WORMHOLE_MACROS.motion, 1, 'the shared XR macros are never mutated');
@@ -127,8 +148,8 @@ test('Visuals and Character settings are live presentation settings that never t
     const visuals = XR_SETTINGS.filter(d => d.section === 'background'), character = XR_SETTINGS.filter(d => d.section === 'character');
     assert.equal(visuals.map(d => d.id).join(), 'wormhole,noteDesign,quality,rateHz,lineStroke,sharpness');
     assert.equal(character.map(d => d.id).join(), 'intensity,motion,depth,detail');
-    assert.equal(visuals.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), 'off,classic,balanced,24,98,50');
-    assert.equal(character.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '100,100,30,100', 'the XR host authored Visual character');
+    assert.equal(visuals.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), 'on,shard,ultra,36,34,100');
+    assert.equal(character.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '100,100,10,100', 'the XR host authored Visual character');
     for (const descriptor of [...visuals, ...character]) {
         assert.equal(descriptor.scope, 'presentation', descriptor.id);
         const next = descriptor.kind === 'choice' ? descriptor.write(DEFAULT_XR_SETTINGS, descriptor.choices.at(-1).value === descriptor.read(DEFAULT_XR_SETTINGS)
@@ -139,14 +160,13 @@ test('Visuals and Character settings are live presentation settings that never t
     }
     const detail = character.find(d => d.id === 'detail').write(DEFAULT_XR_SETTINGS, 25);
     assert.equal(detail.background.character.detail, 0.25);
-    assert.equal(detail.background.character.depth, 0.3, 'the other macros stay');
+    assert.equal(detail.background.character.depth, 0.1, 'the other macros stay');
 });
 
 test('Visual character macros reach the Wormhole source and redraw a paused canvas', async () => {
     const { scene, sources } = sceneHarness();
     await scene.setWormholeEnabled(true);
-    await scene.setBackgroundSettings({ wormhole: true, quality: 'balanced', rateHz: 24, lineStroke: 0.98, sharpness: 0.5,
-        character: { intensity: 0.5, motion: 0.2, depth: 0.3, detail: 1 } });
+    await scene.setBackgroundSettings({ ...AUTHORED_DEFAULTS, character: { intensity: 0.5, motion: 0.2, depth: 0.3, detail: 1 } });
     assert.equal(JSON.stringify(sources[0].presentations.at(-1).macros), JSON.stringify({ intensity: 0.5, motion: 0.2, depth: 0.3, detail: 1 }));
     assert.equal(sources.length, 1, 'applied in place');
     scene.dispose();

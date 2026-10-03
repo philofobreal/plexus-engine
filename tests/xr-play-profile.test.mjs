@@ -11,9 +11,11 @@ const { RhythmGameScene } = load('xr/scene/RhythmGameScene.ts');
 const { XrInputAdapter } = load('xr/runtime/XrInputAdapter.ts');
 const { DEFAULT_RHYTHM_GAME_CONFIG: base, judgeStrike, notePosition } = load('gameplay/index.ts');
 const close = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps;
+/** Normal speed with the Normal saber (the /xr/ defaults are Hyper / Long since ADR-009 Addendum T). */
+const NORMAL = { noteSpeed: 'normal', saberLength: 'normal' };
 
-test('the default profile moves the start frame to 1.2 m, widens only the early window and lengthens the runway', () => {
-    const profile = resolvePlayProfile();
+test('the Normal profile moves the start frame to 1.2 m, widens only the early window and lengthens the runway', () => {
+    const profile = resolvePlayProfile(NORMAL);
     assert.equal(profile.bladeLengthMeters, 1);
     assert.ok(close(profile.reachMeters, 1.74));
     assert.ok(close(profile.stage.playfieldForwardMeters, 1.2));
@@ -21,13 +23,16 @@ test('the default profile moves the start frame to 1.2 m, widens only the early 
     assert.equal(profile.config.goodWindowSec, base.goodWindowSec, 'the late window is unchanged');
     assert.equal(profile.config.perfectWindowSec, base.perfectWindowSec);
     assert.equal(profile.stage.runwayFrontZMeters, -12);
-    const fast = resolvePlayProfile({ noteSpeed: 'fast' }), hyper = resolvePlayProfile({ noteSpeed: 'hyper' });
+    const fast = resolvePlayProfile({ ...NORMAL, noteSpeed: 'fast' }), hyper = resolvePlayProfile({ ...NORMAL, noteSpeed: 'hyper' });
     assert.ok(close(fast.stage.playfieldForwardMeters, 1.13)); assert.ok(close(fast.config.earlyGoodWindowSec, base.goodWindowSec));
     assert.equal(fast.stage.runwayFrontZMeters, -16);
     assert.equal(hyper.stage.playfieldForwardMeters, REACH_MODEL.minHitPlaneMeters); assert.equal(hyper.stage.runwayFrontZMeters, -18);
-    assert.ok(close(resolvePlayProfile({ saberLength: 'short' }).config.earlyGoodWindowSec, 0.15));
-    assert.equal(resolvePlayProfile({ noteSpeed: 'fast' }), fast, 'memoized: equal settings, identical profile');
+    assert.ok(close(resolvePlayProfile({ ...NORMAL, saberLength: 'short' }).config.earlyGoodWindowSec, 0.15));
+    assert.equal(resolvePlayProfile({ ...NORMAL, noteSpeed: 'fast' }), fast, 'memoized: equal settings, identical profile');
     assert.equal(resolvePlayProfile({ noteSpeed: 'warp', saberLength: 7 }), resolvePlayProfile(), 'hostile input -> defaults');
+    const defaults = resolvePlayProfile();
+    assert.equal(defaults.settings.noteSpeed, 'hyper');
+    assert.equal(defaults.bladeLengthMeters, 1.1, 'the /xr/ defaults: Hyper with the Long saber');
 });
 
 test('for every speed and saber, everything the saber can touch is judged, inside the straight track zone, on a whole-tile runway', () => {
@@ -48,7 +53,7 @@ test('for every speed and saber, everything the saber can touch is judged, insid
 });
 
 test('the judge accepts the widened early window only before the note; late strikes keep the historical bound', () => {
-    const { config } = resolvePlayProfile();
+    const { config } = resolvePlayProfile(NORMAL);
     const entry = () => ({ note: { id: 'n', time: 5, lane: 0, row: 1, hand: 'left', intensity: 1, sourceType: 1, cutDirection: 'any' }, status: 'pending', judgement: null });
     const strike = (time, cfg) => {
         const position = notePosition(entry().note, time, {}, cfg);

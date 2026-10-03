@@ -27,7 +27,8 @@ export interface XrPlaySettings {
 export const XR_NOTE_SPEEDS: readonly XrNoteSpeed[] = ['normal', 'fast', 'hyper'];
 export const XR_SABER_LENGTHS: readonly XrSaberLength[] = ['short', 'normal', 'long', 'auto'];
 
-export const DEFAULT_XR_PLAY_SETTINGS: XrPlaySettings = Object.freeze({ noteSpeed: 'normal', saberLength: 'normal' });
+/** Player defaults (ADR-009 Addendum T): Hyper note speed with the Long saber. */
+export const DEFAULT_XR_PLAY_SETTINGS: XrPlaySettings = Object.freeze({ noteSpeed: 'hyper', saberLength: 'long' });
 
 /** Travel speed and reaction time; spawn distance = speed x approach time. */
 export const NOTE_SPEED_PRESETS: Readonly<Record<XrNoteSpeed, { readonly speedMps: number; readonly approachSec: number }>> = {
