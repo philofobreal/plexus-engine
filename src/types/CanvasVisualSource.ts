@@ -44,31 +44,7 @@ export interface CanvasVisualSource {
     onError?: ((message: string) => void) | null;
     /** Optional cost of the last redraw, in milliseconds, when the source measures it itself. */
     readonly lastRenderMs?: number;
-    /**
-     * Optional keyframe mode (ADR-009 Addendum U): asks for the frame of exactly `songTime`, which
-     * may lie in the future, bypassing the redraw cap. Returns false (and does nothing) while a
-     * previous request has not been taken or the source is not prepared. Never touches `canvas`:
-     * an asynchronous source renders elsewhere (`onFrameReady` when done), a synchronous one when
-     * the frame is taken.
-     */
-    requestFrame?(songTime: number, playing: boolean): boolean;
-    /**
-     * Keyframe mode: puts the finished requested frame on `canvas` and returns its metadata (once),
-     * or null while none is finished. The only call that changes `canvas` in keyframe mode, so a
-     * host can upload one frame before taking the next while the following one already renders.
-     */
-    takeFrame?(): CanvasVisualFrame | null;
     dispose(): void;
-}
-/** Metadata of a finished keyframe; travel lets a host compensate the forward flight between frames. */
-export interface CanvasVisualFrame {
-    readonly time: number;
-    readonly focalX: number;
-    readonly focalY: number;
-    /** Camera travel along the route (world units) at `time`. */
-    readonly travel: number;
-    /** Raster cost of this frame in milliseconds (0 when unmeasured). */
-    readonly renderMs: number;
 }
 /**
  * Host-owned presentation of an embedded source. Never a tuning-key, preset or plan change: the

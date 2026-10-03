@@ -1,4 +1,4 @@
-import type { CanvasVisualFrame, CanvasVisualPresentation, CanvasVisualSource, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
+import type { CanvasVisualPresentation, CanvasVisualSource, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
 import type { MotifChoreographyFrame, PerformanceAutomationPlan, VisualChoreographyPlan } from '../types';
 import { createEmptyTrackAnalysis } from '../analyzer/normalizeAnalysisResult';
 import { cloneDefaultVisualTuning, applyTuningMorph, tuningMorphDeltaSec, writeModulationBus } from '../config/visualTuning';
@@ -47,16 +47,6 @@ const DEFAULT_HEIGHT = 540;
 /** Historical redraw cap; a host may lower or raise it through `setPresentation`. */
 const DEFAULT_FRAME_RATE_HZ = 30;
 
-/**
- * Forward gaps up to this are continuous playback (tuning morphs, no position resync); larger ones
- * and any backward step are seeks. Beat-blend keyframes (ADR-009 Addendum U) may be half a second
- * apart, so the gap must exceed that.
- */
-export const CONTINUITY_GAP_SEC = 0.6;
-
-/** Raster-cost clock (main thread or worker); absent in exotic hosts, where costs read as 0. */
-const clock: { now(): number } | null = typeof performance !== 'undefined' ? performance : null;
-
 function rasterSize(value: number | undefined, fallback: number): number {
     return Number.isFinite(value) && (value as number) >= 16 ? Math.round(value as number) : fallback;
 }
@@ -94,8 +84,6 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     private readonly boosted = cloneDefaultVisualTuning();
     private lastTime: number | null = null;
     private lastPlaying = false;
-    /** Keyframe mode: the requested time, drawn when the host takes it. */
-    private requested: { time: number; playing: boolean } | null = null;
     private revision = 0;
     private disposed = false;
     private denseEvents: { time: number }[] = [];
@@ -125,9 +113,6 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     /** The identity's own horizon projection for the last drawn frame (never pixel-derived). */
     get focalPoint(): VisualFocalPoint { return this.identity.routeFocus; }
 
-    /** Camera travel along the route of the last drawn frame (world units). */
-    get travel(): number { return this.identity.lastTravelDistance; }
-
     async prepare(analysis: VisualAnalysisSnapshot | null): Promise<void> {
         const revision = ++this.revision;
         this.state = emptyState();
@@ -140,7 +125,6 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         this.semanticBase = cloneDefaultVisualTuning();
         this.semantic = new SemanticRuntimeAdapter(this.resolver, () => this.semanticBase);
         this.plan = null; this.presets.clear(); this.lastPointId = null; this.lastMotif = null; this.lastTime = null;
-        this.requested = null;
         this.denseEvents = this.state.events.filter(event => event.type === 2);
         this.choreography = analysis && featureFlags.semanticResolver
             ? processChoreography(generateIntents(buildNarrative(analysis.trackAnalysis)), analysis.trackAnalysis) : null;
@@ -160,38 +144,12 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     }
 
     render(time: number, playing: boolean): boolean {
-        return this.drawAt(time, playing, false);
-    }
-
-    /**
-     * Keyframe mode (ADR-009 Addendum U): remembers exactly `time`, past or future; `takeFrame` draws
-     * it ignoring the redraw cap. One request at a time.
-     */
-    requestFrame(time: number, playing: boolean): boolean {
-        if (this.disposed || this.requested || !Number.isFinite(time)) return false;
-        this.requested = { time, playing };
-        return true;
-    }
-
-    takeFrame(): CanvasVisualFrame | null {
-        const request = this.requested;
-        if (!request || this.disposed) return null;
-        this.requested = null;
-        const started = clock ? clock.now() : 0;
-        this.drawAt(request.time, request.playing, true);
-        const focus = this.identity.routeFocus;
-        return { time: request.time, focalX: focus.x, focalY: focus.y, travel: this.identity.lastTravelDistance,
-            renderMs: clock ? clock.now() - started : 0 };
-    }
-
-    private drawAt(time: number, playing: boolean, force: boolean): boolean {
         if (this.disposed) return false;
         const previous = this.lastTime;
-        const jump = previous !== null && (time < previous || time - previous > CONTINUITY_GAP_SEC);
+        const jump = previous !== null && (time < previous || time - previous > 0.25);
         // Texture work is capped (30 Hz unless the host sets a rate), independently of headset pose / gameplay cadence.
         const presentationChanged = this.presentationDirty;
-        if (!force && previous !== null && playing === this.lastPlaying && !jump && !presentationChanged
-            && time - previous < this.minFrameIntervalSec) return false;
+        if (previous !== null && playing === this.lastPlaying && !jump && !presentationChanged && time - previous < this.minFrameIntervalSec) return false;
         this.presentationDirty = false;
         const dt = tuningMorphDeltaSec(time, previous);
         this.lastTime = time; this.lastPlaying = playing;
