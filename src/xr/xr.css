@@ -384,6 +384,21 @@ html, body {
 
 .xr-generation:disabled { opacity: 0.55; }
 
+/* Background presentation: same segmented groups plus the MVP-style Line stroke slider. */
+.xr-background { margin-top: 0.9rem; }
+.xr-range { clear: both; padding-top: 0.8rem; }
+.xr-range-row { clear: both; display: flex; align-items: center; gap: 0.6rem; }
+.xr-range-input { flex: 1; min-width: 0; margin: 0; accent-color: var(--xr-cyan); cursor: pointer; }
+.xr-range-input:focus-visible { outline: 2px solid var(--xr-cyan); outline-offset: 2px; }
+.xr-range-value {
+    min-width: 2.2rem;
+    text-align: right;
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--xr-ink);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .xr-launch-overlay, .xr-launch-overlay[data-open="false"], .xr-menu-icon span { transition: none; }
     .xr-menu-button[data-status="busy"] .xr-menu-status { animation: none; }
@@ -395,3 +410,65 @@ html, body {
     .xr-launch-title { font-size: 1.05rem; }
     .xr-launch-instructions { font-size: 0.8rem; margin: 0; }
 }
+
+/* Settings tabs (one section visible at a time, same order as the in-VR menu). */
+.xr-tabs {
+    display: flex;
+    gap: 0;
+    margin-top: 1rem;
+    border-bottom: 1px solid var(--xr-line);
+}
+.xr-tab {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0.55rem 0.15rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--xr-muted);
+    font: 700 0.7rem var(--xr-font);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+.xr-tab:hover { color: var(--xr-ink); background: rgba(79, 216, 255, 0.06); }
+.xr-tab[aria-selected="true"] { color: var(--xr-ink); border-bottom-color: var(--xr-cyan); }
+.xr-tab:focus-visible { outline: 2px solid var(--xr-cyan); outline-offset: -2px; }
+.xr-generation[hidden] { display: none; }
+/* The tab names the panel; its legend stays for assistive technology only. */
+.xr-tabs ~ .xr-generation > .xr-generation-title {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+.xr-results {
+    margin: 0.4rem 0 0;
+    padding: 0.5rem 0.6rem;
+    border-left: 2px solid #ffd35c;
+    background: rgba(255, 211, 92, 0.08);
+    color: #ffe7a6;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+}
+.xr-results[hidden] { display: none; }
+
+.xr-help { margin-top: 1rem; color: var(--xr-muted); font-size: 0.85rem; }
+.xr-help-summary {
+    cursor: pointer;
+    font: 600 0.75rem var(--xr-font);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+.xr-help-summary:focus-visible { outline: 2px solid var(--xr-cyan); outline-offset: 2px; }
+.xr-help .xr-launch-instructions { margin-top: 0.5rem; }
+
+/* Five choices (Difficulty with Ultra): three columns instead of the two-column grid. */
+.xr-segment-options:has(> :nth-child(5)) { grid-template-columns: repeat(3, 1fr); }
+
+/* Game menu button (Addendum S): next to the track panel button; opens the in-canvas menu. */
+.xr-game-menu-button { left: calc(var(--xr-gutter) + env(safe-area-inset-left, 0px) + var(--xr-menu-size) + 0.5rem); }
+.xr-game-menu-icon { display: block; font-size: 22px; line-height: 1; color: var(--xr-ink); }
+.xr-menu-hint { margin: 0.2rem 0 0; color: var(--xr-muted); font-size: 0.8rem; }
+#xr-app > canvas[data-menu-hover="true"] { cursor: pointer; }

@@ -81,3 +81,16 @@ test('dispose releases every runway geometry, material and texture exactly once'
     assert.equal(parent.children.length, 0);
     for (const count of counts.values()) assert.equal(count, 1);
 });
+
+test('a session-scope note speed reaches the floor travel without accumulating state', () => {
+    const scene = new RhythmGameScene(new THREE.Scene());
+    scene.runway.update(1.3);
+    assert.equal(scene.runway.phase, runwayPhase(1.3, config.noteSpeedMps));
+    scene.setGameConfig({ ...config, noteSpeedMps: 7 });
+    scene.runway.update(1.3);
+    assert.equal(scene.runway.phase, runwayPhase(1.3, 7), 'same song time, new speed: re-projected immediately');
+    scene.setGameConfig(config);
+    scene.runway.update(1.3);
+    assert.equal(scene.runway.phase, runwayPhase(1.3, config.noteSpeedMps));
+    scene.dispose();
+});

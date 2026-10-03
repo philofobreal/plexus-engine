@@ -43,6 +43,7 @@ export class XrHud {
     private lastState = '';
     private lastScore = Number.NaN;
     private lastCombo = Number.NaN;
+    private lastMultiplier = Number.NaN;
     private lastInstruction: string | null = null;
 
     constructor() {
@@ -67,10 +68,13 @@ export class XrHud {
     }
 
     update(snapshot: RhythmSessionSnapshot, instruction: string): void {
+        const multiplier = snapshot.multiplier ?? 1;
         if (snapshot.state === this.lastState && snapshot.score === this.lastScore && snapshot.combo === this.lastCombo
+            && multiplier === this.lastMultiplier
             && instruction === this.lastInstruction) return;
         this.lastState = snapshot.state; this.lastScore = snapshot.score; this.lastCombo = snapshot.combo; this.lastInstruction = instruction;
-        this.draw(snapshot.state, snapshot.score, snapshot.combo, instruction);
+        this.lastMultiplier = multiplier;
+        this.draw(snapshot.state, snapshot.score, snapshot.combo, instruction, multiplier);
     }
 
     private rect(color: string, x: number, y: number, w: number, h: number): void {
@@ -96,7 +100,7 @@ export class XrHud {
         for (let i = 0; i < 5; i++) this.rect('rgba(79, 216, 255, 0.5)', left + 8, top + 96 + i * 16, i % 2 ? 6 : 12, 2);
     }
 
-    private draw(state: string, score: number, combo: number, instruction: string): void {
+    private draw(state: string, score: number, combo: number, instruction: string, multiplier = 1): void {
         const ctx = this.ctx;
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
         ctx.globalAlpha = 1;
@@ -123,6 +127,11 @@ export class XrHud {
         ctx.fillStyle = MUTED;
         ctx.font = `600 22px ${FONT}`;
         ctx.fillText('SCORE', 44, 92);
+        // Combo multiplier chip beside the label: muted at 1x, cyan once the streak pays.
+        const chip = `×${multiplier}`;
+        ctx.font = `700 24px ${FONT}`;
+        ctx.fillStyle = multiplier > 1 ? CYAN : 'rgba(139, 166, 196, 0.7)';
+        ctx.fillText(chip, 140, 90);
         ctx.fillStyle = INK;
         const scoreText = String(score);
         ctx.font = `700 104px ${FONT}`;
@@ -152,7 +161,14 @@ export class XrHud {
     }
 
     setPosition(x: number, y: number, z: number): void {
+        this.setPose(x, y, z);
+    }
+
+    /** Position, yaw (turned toward the player when beside the runway) and uniform scale. */
+    setPose(x: number, y: number, z: number, yaw = 0, scale = 1): void {
         this.mesh.position.set(x, y, z);
+        this.mesh.rotation.set(0, yaw, 0);
+        this.mesh.scale.setScalar(scale);
     }
 
     dispose(): void {

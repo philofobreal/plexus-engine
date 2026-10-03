@@ -157,6 +157,8 @@ export class XrSectionCallout {
     private lastKey = Number.NaN;
     private lastTime = Number.NaN;
     private redraws = 0;
+    private frameCenterY = 0;
+    private frameHalfHeight = GATE_Y;
 
     constructor(doc: Document = document) {
         this.canvas = doc.createElement('canvas');
@@ -174,13 +176,28 @@ export class XrSectionCallout {
         this.caption.name = 'sectionCaption';
         this.caption.position.set(0, GATE_Y + 0.04 + CAPTION_PLANE_HEIGHT / 2, 0.004);
         this.caption.renderOrder = -4;
-        this.frame = new THREE.Mesh(mergeColoredParts(XrSectionCallout.frameParts()),
+        this.frame = new THREE.Mesh(mergeColoredParts(XrSectionCallout.frameParts(GATE_Y)),
             new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending,
                 depthWrite: false, toneMapped: false }));
         this.frame.name = 'sectionFrame';
         this.frame.renderOrder = -5;
         this.root.add(this.frame, this.caption);
         this.root.visible = false;
+    }
+
+    /**
+     * Start frame extent (play space, ADR-009 Addendum M): center height and inner half-height in
+     * playfield meters. The outline is rebuilt once and the caption rides on its top edge.
+     */
+    setFrame(centerY: number, halfHeight: number): void {
+        if (!Number.isFinite(centerY) || !(halfHeight > 0)) return;
+        if (centerY === this.frameCenterY && halfHeight === this.frameHalfHeight) return;
+        this.frameCenterY = centerY; this.frameHalfHeight = halfHeight;
+        this.frame.geometry.dispose();
+        this.frame.geometry = mergeColoredParts(XrSectionCallout.frameParts(halfHeight));
+        this.caption.position.y = halfHeight + 0.04 + CAPTION_PLANE_HEIGHT / 2;
+        // The root pivots on the frame's center, so the arrival pulse scales around it.
+        this.root.position.y = centerY;
     }
 
     /** Canvas redraws so far (diagnostics/tests: redraws happen only on display changes). */
@@ -291,15 +308,15 @@ export class XrSectionCallout {
         this.texture.needsUpdate = true;
     }
 
-    private static frameParts(): ColoredPart[] {
+    private static frameParts(halfHeight: number): ColoredPart[] {
         const parts: ColoredPart[] = [];
-        const x = GATE_X + 0.035, y = GATE_Y + 0.035, arm = 0.2, t = 0.008, d = 0.006;
+        const x = GATE_X + 0.035, y = halfHeight + 0.035, arm = 0.2, t = 0.008, d = 0.006;
         for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
             parts.push({ geometry: boxAt(arm, t, d, sx * (x - arm / 2), sy * y, 0.002), color: 0xffffff });
             parts.push({ geometry: boxAt(t, arm, d, sx * x, sy * (y - arm / 2), 0.002), color: 0xffffff });
         }
         // Header rail the caption sits on.
-        parts.push({ geometry: boxAt(CAPTION_PLANE_WIDTH + 0.02, 0.005, d, 0, GATE_Y + 0.036, 0.002), color: 0xffffff });
+        parts.push({ geometry: boxAt(CAPTION_PLANE_WIDTH + 0.02, 0.005, d, 0, halfHeight + 0.036, 0.002), color: 0xffffff });
         return parts;
     }
 }

@@ -5,8 +5,11 @@
 import type { WebXRManager } from 'three';
 
 const TARGET_FRAME_RATE_HZ = 72;
-/** Conservative, centralized foveation level: 0 disables, 1 is maximum. */
-const CONSERVATIVE_FOVEATION = 0.3;
+/**
+ * Centralized foveation level: 0 disables, 1 is maximum. Medium: the full-view Wormhole plane
+ * fills mostly the periphery, while targets and the HUD sit near the view center.
+ */
+const CONSERVATIVE_FOVEATION = 0.5;
 
 /**
  * Requests the MVP's stable frame-rate target when the session exposes frame-rate selection.

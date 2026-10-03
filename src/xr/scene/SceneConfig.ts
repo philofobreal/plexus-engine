@@ -20,3 +20,40 @@ export const SCENE_CONFIG = {
     trackMaxLateralBendMeters: 2.4,
     trackMaxVerticalBendMeters: 1
 } as const;
+
+/**
+ * The player-dependent part of the stage (ADR-009 Addendum I). Everything else in `SCENE_CONFIG` is
+ * fixed. `DEFAULT_STAGE_LAYOUT` is the historical stage; the controller applies the layout derived
+ * from the player's note speed and saber length (`resolvePlayProfile`).
+ */
+export interface XrStageLayout {
+    /** Hit plane (start frame) distance ahead of the player origin, in meters. */
+    readonly playfieldForwardMeters: number;
+    /** Far end of the runway in stage-root z (negative = ahead). */
+    readonly runwayFrontZMeters: number;
+    /** Targets fade in over this distance after spawning (0 = they appear at full strength). */
+    readonly spawnFadeMeters: number;
+    /** Target rows on the start frame (3 standard, 4 with the Tall overhead row, Addendum M). */
+    readonly rowCount: number;
+    /**
+     * The start frame around the rows, in playfield meters (y = 0 is the middle row): its center
+     * height and inner half-height. Gates, the callout and the song map follow it.
+     */
+    readonly frameCenterYMeters: number;
+    readonly frameHalfHeightMeters: number;
+    /** Score HUD placement: above the runway, or beside it when the overhead row needs the space above. */
+    readonly hudPlacement: 'above' | 'side';
+}
+
+/** Inner half-width of the start frame around the lanes (fixed: lanes do not change with the play space). */
+export const START_FRAME_HALF_WIDTH_METERS = 0.8;
+
+export const DEFAULT_STAGE_LAYOUT: XrStageLayout = Object.freeze({
+    playfieldForwardMeters: SCENE_CONFIG.playfieldForwardMeters,
+    runwayFrontZMeters: SCENE_CONFIG.runwayFrontZMeters,
+    spawnFadeMeters: 0,
+    rowCount: 3,
+    frameCenterYMeters: 0,
+    frameHalfHeightMeters: 0.6,
+    hudPlacement: 'above'
+});

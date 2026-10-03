@@ -56,12 +56,7 @@ test('note field: capacity overflow, resolved lifetime, hit/miss/pair colours an
     const color = new THREE.Color();
     const hit = { note: note({ id: 'hit' }), status: 'hit', resolvedAt: 5, judgement: 'perfect' };
     field.update([hit], 5 + config.resolvedNoteLifetimeSec / 2);
-    assert.equal(field.mesh.count, 1);
-    const matrix = new THREE.Matrix4(), position = new THREE.Vector3(), quaternion = new THREE.Quaternion(), scale = new THREE.Vector3();
-    field.mesh.getMatrixAt(0, matrix); matrix.decompose(position, quaternion, scale);
-    assert.ok(scale.x > 0 && scale.x < 1, 'hit flash shrinks'); assert.ok(Math.abs(position.z - notePosition(hit.note, 5, {}).z) < 1e-6, 'at the strike position');
-    field.mesh.getColorAt(0, color); assert.ok(color.r > 0.8 && color.g > 0.8 && color.b > 0.8, 'hit flashes near-white');
-    field.update([hit], 5 + config.resolvedNoteLifetimeSec + 0.01); assert.equal(field.mesh.count, 0, 'expired flashes disappear');
+    assert.equal(field.mesh.count, 0, 'struck targets leave the field: the slice effect splits them (Addendum Q)');
     const missed = { note: note({ id: 'miss', pairId: 'p' }), status: 'missed', resolvedAt: 5.2, judgement: 'miss' };
     field.update([missed, pending(note({ id: 'pair', pairId: 'p', hand: 'right', lane: 2 })), pending(note({ id: 'free', cutDirection: 'any' }))], 5.1);
     field.mesh.getColorAt(0, color); assert.ok(color.r < 0.1 && color.b < 0.1, 'missed targets turn dark');
@@ -142,13 +137,8 @@ test('track path tolerates partial strike attempts and non-finite input; backdro
 });
 
 // ---------------------------------------------------------------- command drawer
-test('drawer normalizes invalid generation settings and survives double dispose', () => {
+test('the track panel survives double dispose', () => {
     const d = new XrCommandDrawer(fakeDocument());
-    d.setGenerationSettings({ difficulty: 'impossible', zones: 42, handLead: 'right' });
-    assert.equal(JSON.stringify(d.generationSettings), JSON.stringify({ difficulty: 'normal', activity: 'balanced', variation: 'paired',
-        handPattern: 'alternate', handLead: 'right', zones: 'split' }));
-    const checked = findAll(d.generationFieldset, n => n.type === 'radio' && n.checked).map(n => n.value);
-    assert.equal(checked.join(), 'normal,balanced,paired,alternate,right,split');
     d.dispose(); d.dispose();
 });
 
@@ -257,4 +247,15 @@ test('depth cue clamps hostile values; removing layers restores legacy output; m
     const material = run((i, mid, near) => i.setDepthLayers({ mid, near }), { material: true });
     assert.equal(material.mid + material.near, 0, 'material frames never route grains to nearer planes');
     assert.ok(material.far.includes('drawFieldRaster'), 'the material composite stays on the main surface');
+});
+
+test('HUD shows the combo multiplier and redraws when only the multiplier changes', () => {
+    const hud = new XrHud(), ctx = hud.mesh.material.map.image.getContext('2d');
+    hud.update(snapshot({ score: 300, combo: 3 }), 'x');
+    assert.ok(ctx.calls.some(c => c[0] === 'fillText' && c[1] === '×1'), 'a snapshot without a multiplier reads 1x');
+    const clears = () => ctx.calls.filter(c => c[0] === 'clearRect').length, before = clears();
+    hud.update(snapshot({ score: 300, combo: 3, multiplier: 2 }), 'x');
+    assert.equal(clears(), before + 1);
+    assert.ok(ctx.calls.some(c => c[0] === 'fillText' && c[1] === '×2'));
+    hud.dispose();
 });
