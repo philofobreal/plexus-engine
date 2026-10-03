@@ -51,20 +51,23 @@ Current failure message fields:
 
 `src/visuals/wormholeRender.worker.ts` is a long-lived *render* worker, not a one-shot compute job
 (ADR-009 Addendum G). Its typed contract lives in `src/types/WormholeWorkerProtocol.ts` (protocol
-version 1):
+version 2):
 
 - Requests: `init` (protocol, raster size, depth cue), `prepare` (generation, analysis snapshot),
-  `render` (generation, time, playing), `presentation` (Line stroke, rate cap, optional Visual
-  character macros; ADR-009 Addendum R), `dispose`. Optional presentation fields are additive and
-  keep protocol version 1; removing or reinterpreting a field requires a version bump.
+  `render` (generation, time, playing), `keyframe` (generation, exact time, playing; ADR-009
+  Addendum U: drawn even past the redraw cap, possibly ahead of playback), `presentation` (Line
+  stroke, rate cap, optional Visual character macros; ADR-009 Addendum R), `dispose`. Optional
+  presentation fields are additive; a new request type or a new required field bumps the version
+  (2: `keyframe`, `frame.travel`).
 - Responses: `prepared` / `prepare-error` (generation), `frame` (generation, time, transferred
-  `ImageBitmap`, focal point, raster ms), `unchanged` (generation), `failure` (message).
+  `ImageBitmap`, focal point, camera travel, raster ms), `unchanged` (generation), `failure` (message).
 - Identification: every `prepare` starts a new generation; the proxy drops (and closes) frames and
   answers from older generations, so a superseded preparation can never overwrite a newer one.
 - Copy vs transfer: the analysis snapshot is structured-cloned (copied) because the host keeps
   using its immutable publication; frame bitmaps are transferred to the host, which consumes each
   exactly once or closes it.
-- Backpressure: at most one `render` is in flight; the host never queues frames.
+- Backpressure: at most one `render` or `keyframe` is in flight; the host never queues frames. A
+  finished keyframe waits in the proxy until the host takes it (the canvas changes only then).
 - Termination: the worker lives as long as its background plane. It is terminated on dispose
   (background off is a pause, not a dispose; quality changes and page teardown dispose), and
   immediately on any worker failure. This is the render-worker reading of the AGENTS.md rule
