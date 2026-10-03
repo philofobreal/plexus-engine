@@ -103,12 +103,66 @@ offset, so seek reproduces the image, pause freezes it and nothing accumulates. 
 unlit instanced batch whose chamfered geometry bakes per-face shading and a luminous front bevel,
 multiplied by the hand colour. The HUD is a transparent instrument frame redrawn only on change.
 
-The optional Wormhole is a bounded 2.5D, stereoscopic background: the same single simulation and
-projection render into three fixed planes by each grain's existing depth (near < 0.18 <= mid < 0.45 <=
-far, 0.03 crossfades), placed at 12 / 22 / 40 m beyond the gameplay volume and scaled to identical
-angles, so stereo disparity and head-motion parallax separate them. Monocular depth cues (strength
-0.7 in XR, 0.6 in the MVP) thicken near grains and thin, dim and haze far ones. Cost: two more draws
-(additive planes), two 768x432 textures, uploads only on changed Wormhole frames (<= 30 Hz).
+The optional Wormhole is one world-anchored plane at 40 m (ADR-009 Addendum F; the three-plane 2.5D
+mode of Addendum E is no longer used by `/xr/` because of its frame-time cost). Monocular depth cues
+(strength 0.7 in XR, 0.6 in the MVP) thicken near grains and thin, dim and haze far ones. The drawer's
+**Background** group sets the raster (Performance 640x360 / Balanced 768x432 default / High 960x540),
+the update rate (24 Hz default / 36 Hz, aligned to whole headset frames) and **Line stroke** (the MVP
+Advanced slider, default 100 = the historical XR value). Uploads happen only on changed frames.
+Where the browser supports it, the background rasterizes in a dedicated worker on an OffscreenCanvas
+and reaches the scene as a transferred `ImageBitmap` (ADR-009 Addendum G), so the headset frame loop
+never waits for Canvas2D; otherwise the same source runs in-thread.
+
+The **Gameplay** section sets note speed (Normal 4 m/s, Fast 7 m/s, Hyper 10 m/s) and saber length
+(0.9 / 1.0 default / 1.1 m). The start frame's distance is derived from an average adult reach so
+that everything the saber can touch is already judged (default 1.20 m with a 0.175 s early "good"
+window); the runway lengthens with speed (12 / 16 / 18 m) and targets emerge from its far end
+(ADR-009 Addendum I). These settings rewind but never change the chart.
+
+Scoring follows the track's dramaturgy (ADR-009 Addendum J): each hit earns 100 (perfect) or 50
+(good) x the combo multiplier (1/2/4/8x) x its section's weight (1-2, from the section's role and
+measured difficulty). A section finished without a miss pays a bonus, all-perfect a second one. The
+finish screen shows the rank (SS/S/A/B/C) and accuracy against the track's maximum.
+
+Under the start frame a thin song map shows the track's sections (width = duration, taller =
+more rewarding) with a playhead, the current section's weight, a flawless diamond and a short
+"CLEAR / FLAWLESS +points" flash when a section completes cleanly. The floor ring at the player's
+origin repeats the timeline clockwise from straight ahead, fills each completed section to its
+accuracy (gold when flawless) and shows the combo multiplier on its side arcs (ADR-009 Addendum K).
+
+Before every new section a gate in that section's colour, labelled with its name and score weight,
+travels down the runway with the targets and docks into the start frame exactly when the section
+begins (ADR-009 Addendum L).
+
+The Tall play space (Gameplay > Play space) widens the rows and adds a rare overhead row a quarter
+meter above the eyes on big moments (drops, peaks, the top of a build): reach up and chop down,
+then the same hand gets a short rest. The start frame grows with the rows, the score display moves
+beside the runway, and the Auto saber length becomes 1.1 m (ADR-009 Addendum M).
+
+Ultra (Choreography > Difficulty) goes beyond Expert: faster hand moves, more two-hand accents,
+always-directional runs and sixteenths where the music has them, but with structure: calm parts
+stay relaxed, a dense run lasts at most four bars, and every section change is preceded by a short
+silence while its gate arrives. Judging windows are the same as on every other difficulty
+(ADR-009 Addendum N).
+
+Inside the headset a floating menu runs the game: Start, Pause (grip), Resume / Restart, every
+setting in Gameplay / Choreography / Background tabs, the results after each song, and Exit VR.
+Point with a controller laser and pull the trigger; a thumbstick flick switches tabs. The desktop
+command drawer shows the same settings as tabs in the same order (ADR-009 Addendum O).
+
+Visuals > Note design switches the targets between Classic blocks and Shard crystals whose tip
+points the way to cut; a struck target splits into two glowing halves with a burst of sparks
+(ADR-009 Addendum Q). For a sharper Wormhole in the headset choose Background quality Ultra
+(1280 x 720) and adjust Sharpness (ADR-009 Addendum P).
+
+The game menu is drawn in the 3D view on the desktop as well (Escape or the gear button; mouse or
+arrow keys + Enter): Gameplay, Choreography, Visuals (Wormhole on / off, note design, quality,
+update rate, Line stroke, Sharpness) and Character (the MVP's Visual character: Intensity, Motion,
+Depth, Detail). The HTML panel only loads music and starts play or VR (ADR-009 Addendums R, S).
+
+Every menu setting comes from one description (`src/xr/XrSettings.ts`, ADR-009 Addendum H) and is
+remembered per browser (`plexus.xr.settings`). Game settings regenerate the chart and rewind;
+background settings apply live, even mid-song.
 
 The hit gate announces the musical section (`src/xr/scene/XrSectionCallout.ts`). It uses the
 analyzer's published `TrackAnalysis.sections` with the MVP dramaturgy panel's labels and hues
@@ -143,7 +197,7 @@ three Post FX controls are zero. The material-on renderer remains covered by a s
 The default balanced/paired MVP journey, preset merge and semantic functions are reused with
 private render state. No saved edits or playback state are imported from another page. The
 original 2D image is projected behind the playfield; it is not a new stereoscopic tunnel. The
-background has a separate 960x540 / 30 Hz maximum budget, with no repeated drawing or texture
+background has a separate budget (player raster, 24/36 Hz frame-aligned), with no repeated drawing or texture
 uploads while paused, and no background work while disabled. Resolution and cadence differ
 from a full-size MVP preview; parameter meaning and identity geometry are shared.
 

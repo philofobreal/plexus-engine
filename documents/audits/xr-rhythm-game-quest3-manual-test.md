@@ -98,6 +98,49 @@ Record results in the result log above; desktop results never substitute for hea
   changing settings rewinds and regenerates without reloading the track.
 - Section callout: readable while slicing, countdown and arrival animation noticeable but not
   distracting, flash intensity comfortable.
-- Wormhole depth: perceivable separation between near streaks and the far field, head-motion
-  parallax, no double vision or eye strain, and stable frame rate (72/90 Hz) with the Wormhole on
-  (record GPU frame time: three planes, two additive).
+- Wormhole background (single plane, ADR-009 Addendum F): stable 72 Hz with the Wormhole on at
+  Balanced / 24 Hz; compare 36 Hz and High; Line stroke 0 / 50 / 100 visibly thin / neutral / thick;
+  record `data-xr-background-ms` and GPU frame time per quality.
+- Authored Wormhole defaults (ADR-009 Addendum R): with the Nebula on, the background's update
+  rate in the headset (watch for a visibly choppy background) and whether judging stays smooth;
+  Character sliders change the look live; Wormhole on / off works from the in-VR menu.
+- Desktop game menu (ADR-009 Addendum S): Escape / gear open it (pausing), mouse hover + click and
+  arrow keys + Enter work, Escape goes back / resumes, the HTML panel only loads music and starts.
+- Wormhole sharpness (ADR-009 Addendum P): compare High vs Ultra and Sharpness 0 / 50 / 100 in the
+  headset: lines read crisper without visible halos or shimmer; Ultra keeps a steady frame rate
+  (watch for stutter in dense scenes; fall back to High if it appears).
+- Note design and slicing (ADR-009 Addendum Q): Shard tips read as the cut direction at full
+  runway distance and at Fast/Hyper speed; the cut line and gems are clear; every hit splits into
+  halves with sparks that feel tied to the swing, never distracting from the next target.
+- In-VR menu (ADR-009 Addendum O): on entering VR the menu floats comfortably in front of you and
+  reads sharply; the lasers hit what you aim at (both hands), hovering ticks, the trigger chooses;
+  Start, grip -> Pause, Resume, Restart, Exit VR all work; Settings tabs switch by laser and by a
+  thumbstick flick; changing Difficulty or Play space in VR regenerates and rewinds without
+  leaving the headset; the Results screen appears after the song; the sabers return when play
+  starts and no stray cut happens while the menu is open.
+- Ultra (ADR-009 Addendum N): on a few real tracks (slow, ~128 BPM, fast) Ultra feels clearly harder
+  than Expert in drops and peaks, yet the breathers are felt: calm parts relax, long runs end, and
+  the moment before each section gate arrives is quiet. No run feels physically impossible.
+- Tall play space (ADR-009 Addendum M): with Play space = Tall, the overhead row is reachable with a
+  comfortable stretch (not a jump) and only appears on big moments; the rest after it is felt; the
+  four rows read clearly inside the taller start frame; the score display beside the runway is
+  readable with a glance and never in the saber's path; Auto saber = 1.1 m feels right. Re-check
+  at a short and a tall player's eye height (the rows follow the measured eye height).
+- Section gates (ADR-009 Addendum L): each new section is announced by a gate that is visible
+  early, never hides a target, follows the bending runway and lands on the start frame exactly on
+  the section change (together with the callout's arrival flash); Fast/Hyper gates stay readable.
+- Displays (ADR-009 Addendum K): the song map under the start frame is readable but not
+  distracting while slicing; the playhead tracks the music; the CLEAR / FLAWLESS flash is noticed;
+  looking down, the floor ring's timeline, section results and multiplier arcs read at a glance.
+- Scoring (ADR-009 Addendum J): the HUD multiplier climbs 1-2-4-8x and drops a tier on a miss;
+  drops/peaks feel more rewarding than intros/breakdowns; the finish line shows a plausible rank
+  and accuracy.
+- Reach and speed (ADR-009 Addendum I): with arms fully extended, every target the saber touches
+  registers (no "touched but not counted" hits) at Normal / Fast / Hyper and Short / Normal / Long;
+  the 1.20 m start frame is comfortable to reach with the blade's middle-to-outer part; early hits
+  grade "good"; Fast/Hyper targets read early enough and emerge smoothly from the runway's end;
+  the longer runway does not cause discomfort when it bends.
+- Off-thread background (ADR-009 Addendum G): compare `/xr/?xrDiagnostics=1` with
+  `/xr/?xrDiagnostics=1&xrBackgroundThread=main` — the worker build must hold 72 Hz where the
+  in-thread one drops frames; background beat flashes stay in sync with the music; toggling
+  quality mid-song does not stall the game.

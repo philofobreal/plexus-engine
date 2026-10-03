@@ -47,6 +47,30 @@ Current failure message fields:
 - `errorCode`.
 - `message`.
 
+## Wormhole Render Worker (XR background)
+
+`src/visuals/wormholeRender.worker.ts` is a long-lived *render* worker, not a one-shot compute job
+(ADR-009 Addendum G). Its typed contract lives in `src/types/WormholeWorkerProtocol.ts` (protocol
+version 1):
+
+- Requests: `init` (protocol, raster size, depth cue), `prepare` (generation, analysis snapshot),
+  `render` (generation, time, playing), `presentation` (Line stroke, rate), `dispose`.
+- Responses: `prepared` / `prepare-error` (generation), `frame` (generation, time, transferred
+  `ImageBitmap`, focal point, raster ms), `unchanged` (generation), `failure` (message).
+- Identification: every `prepare` starts a new generation; the proxy drops (and closes) frames and
+  answers from older generations, so a superseded preparation can never overwrite a newer one.
+- Copy vs transfer: the analysis snapshot is structured-cloned (copied) because the host keeps
+  using its immutable publication; frame bitmaps are transferred to the host, which consumes each
+  exactly once or closes it.
+- Backpressure: at most one `render` is in flight; the host never queues frames.
+- Termination: the worker lives as long as its background plane. It is terminated on dispose
+  (background off is a pause, not a dispose; quality changes and page teardown dispose), and
+  immediately on any worker failure. This is the render-worker reading of the AGENTS.md rule
+  "terminate on success, error, cancellation and superseded load": each rebuild supersedes and
+  terminates the previous worker.
+- The worker must remain free of DOM, `State`, UI, audio and XR modules; it renders only the plan
+  it is given and fetches only that plan's preset assets.
+
 ## Analyzer Worker Structure
 
 `src/audio/analyzer.worker.ts` keeps the worker boundary as a typed message contract, but the analysis implementation is no longer a monolithic `onmessage` function. The message handler is a thin boundary shell that forwards samples into `analyzeAudio()`, relays progress, and posts a typed success or failure payload. The analyzer core now runs as a data-oriented pipeline:
