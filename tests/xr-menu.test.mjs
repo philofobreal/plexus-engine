@@ -107,8 +107,11 @@ test('the VR panel redraws only on change, faces the player and maps a laser to 
     panel.update(DEFAULT_MENU_STATE, context());
     panel.update(DEFAULT_MENU_STATE, context());
     assert.equal(panel.redrawCount, 1);
-    panel.update({ ...DEFAULT_MENU_STATE, hover: 'action:start' }, context());
+    const hovered = { ...DEFAULT_MENU_STATE, hover: 'action:start' }, frameContext = context();
+    const layout = panel.update(hovered, frameContext);
     assert.equal(panel.redrawCount, 2, 'hover redraws once');
+    assert.equal(panel.update(hovered, frameContext), layout, 'the same state and context objects reuse the layout');
+    assert.equal(panel.redrawCount, 2);
     const start = panel.layout.items.find(i => i.id === 'action:start');
     const point = panel.mesh.localToWorld(new THREE.Vector3(((start.x + start.w / 2) / MENU_CANVAS.width - 0.5) * MENU_PANEL_WIDTH_METERS,
         (0.5 - (start.y + start.h / 2) / MENU_CANVAS.height) * MENU_PANEL_HEIGHT_METERS, 0));

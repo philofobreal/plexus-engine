@@ -568,7 +568,8 @@ export class XrAppController {
 
     /**
      * Desktop keys (games' convention): Escape opens the menu (pausing), goes back from Settings,
-     * resumes from Pause and otherwise closes it; arrows / Tab move the focus, Enter chooses.
+     * resumes from Pause and otherwise closes it; arrows move the focus, Enter chooses (Tab stays
+     * the page's focus key).
      * Returns whether the menu used the key.
      */
     private handleMenuKey(key: DesktopMenuKey): boolean {
@@ -704,6 +705,8 @@ export class XrAppController {
                 this.menuPlacementPending = false;
             }
         }
+        // One context per frame: the panel's second update below is then free unless hover changed.
+        const context = this.menuContext();
         for (const hand of HANDS) {
             const x = this.inputAdapter.getThumbstickX(hand);
             if (Math.abs(x) < THUMB_REST) this.thumbArmed[hand] = true;
@@ -713,7 +716,7 @@ export class XrAppController {
             }
         }
         // Layout of the current state (hover is applied below and redraws only if it changed).
-        this.menuPanel.update(this.menuState, this.menuContext());
+        this.menuPanel.update(this.menuState, context);
         for (const hand of HANDS) {
             const hit = this.inputAdapter.getPointerRay(hand, this.pointerRay) ? this.menuPanel.hitTest(this.pointerRay) : null;
             this.menuHits[hand] = hit?.item && !hit.item.disabled ? hit.item.id : null;
@@ -725,7 +728,7 @@ export class XrAppController {
             if (hover) this.inputAdapter.pulseHaptics(this.menuHits[this.menuHand] ? this.menuHand : other, 0.15, 10);
             this.menuState = { ...this.menuState, hover };
         }
-        this.menuPanel.update(this.menuState, this.menuContext());
+        this.menuPanel.update(this.menuState, context);
     }
 
     private pauseGame(): void {

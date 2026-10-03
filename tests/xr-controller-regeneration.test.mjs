@@ -369,6 +369,8 @@ test('on the desktop the game menu lives in the canvas: Escape, the gear button,
     assert.equal(controller.session.getState(), 'playing'); assert.equal(panel.visible, false, 'playing closes the menu');
     assert.ok(key('Escape').defaultPrevented);
     assert.equal(controller.session.getState(), 'paused', 'Escape pauses'); assert.ok(panel.visible); assert.equal(controller.menuState.screen, 'pause');
+    assert.equal(key('Tab').defaultPrevented, false, 'Tab stays the page focus key (the track panel is reachable)');
+    assert.equal(controller.menuState.hover, null);
     key('ArrowDown');
     assert.equal(controller.menuState.hover, 'action:resume', 'the first key focuses the primary action');
     key('Enter');

@@ -36,6 +36,8 @@ export class XrMenuPanel {
     private readonly texture: THREE.CanvasTexture;
     private layoutValue: XrMenuLayout | null = null;
     private key = '';
+    private lastState: XrMenuState | null = null;
+    private lastContext: XrMenuContext | null = null;
     private redraws = 0;
     private readonly inverse = new THREE.Matrix4();
     private readonly localRay = new THREE.Ray();
@@ -67,8 +69,13 @@ export class XrMenuPanel {
     get visible(): boolean { return this.root.visible; }
     setVisible(visible: boolean): void { this.root.visible = visible; }
 
-    /** Rebuilds and redraws only when the displayed menu changed. Returns the current layout. */
+    /**
+     * Rebuilds and redraws only when the displayed menu changed. Returns the current layout. State
+     * and context are treated as immutable: the same two objects again skip even the comparison.
+     */
     update(state: XrMenuState, context: XrMenuContext): XrMenuLayout {
+        if (state === this.lastState && context === this.lastContext && this.layoutValue) return this.layoutValue;
+        this.lastState = state; this.lastContext = context;
         const key = JSON.stringify([state, context]);
         if (key !== this.key || !this.layoutValue) {
             this.key = key;

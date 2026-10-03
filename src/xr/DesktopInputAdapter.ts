@@ -31,7 +31,11 @@ export function desktopStrikeForRay(ray: THREE.Ray, notes: readonly NoteRuntimeS
     return selected ? { songTime, hand, position: selected, speed: config.minStrikeSpeedMps, desktopTargetId: selectedId } : null;
 }
 
-/** Keys the in-canvas game menu understands (Addendum S). */
+/**
+ * Keys the in-canvas game menu understands (Addendum S). Tab is deliberately not one of them: it
+ * keeps moving the page focus, so keyboard users always reach the track panel's file picker and
+ * buttons. `next` / `previous` remain the model's reading-order steps (Enter with nothing focused).
+ */
 export type DesktopMenuKey = 'escape' | 'enter' | 'next' | 'previous' | 'left' | 'right' | 'up' | 'down';
 const MENU_KEYS: Readonly<Record<string, DesktopMenuKey>> = {
     Escape: 'escape', Enter: 'enter', NumpadEnter: 'enter', ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down'
@@ -66,7 +70,7 @@ export class DesktopInputAdapter {
         // Form controls keep their own keys (a focused button activates on Space / Enter).
         const inControl = typeof element?.closest === 'function'
             && !!element.closest('input, button, select, textarea, [contenteditable="true"]');
-        const menuKey = event.key === 'Tab' ? (event.shiftKey ? 'previous' : 'next') : MENU_KEYS[event.key];
+        const menuKey = MENU_KEYS[event.key];
         // Inside the track panel Escape closes the panel (XrCommandDrawer); elsewhere the menu owns it.
         if (menuKey && !inControl && !event.repeat) {
             if (this.onMenuKey?.(menuKey)) event.preventDefault();

@@ -459,11 +459,18 @@ lines read soft.
 - **Desktop.** The panel floats in front of the page camera at the headset distance. It opens on
   the title screen, on pause and at the song's end, with Escape or the gear button next to the
   track-panel button (pausing a playing song), and closes when play starts. Games' conventions:
-  the mouse hovers and a left click chooses (clicks never cut while it is open); arrow keys and
-  Tab move a visible focus (left / right past a row's end flip the tab), Enter chooses; Escape goes
-  back from Settings, resumes from Pause and otherwise closes. Space still plays / pauses; keys in
-  form controls keep their own meaning. No Exit VR item on the desktop; footer hints describe the
-  input in use.
+  the mouse hovers and a left click chooses (clicks never cut while it is open); arrow keys move
+  a visible focus (left / right past a row's end flip the tab), Enter chooses; Escape goes back
+  from Settings, resumes from Pause and otherwise closes. Space still plays / pauses; keys in form
+  controls keep their own meaning. Tab is left to the page, so the track panel's file picker and
+  buttons stay reachable from the keyboard while the menu is open. No Exit VR item on the desktop;
+  footer hints describe the input in use.
+- **Accessibility trade-off.** A canvas menu has no accessibility tree: screen readers do not
+  read the settings, pause or results screens that Addendum O's WAI-ARIA tabbed drawer exposed.
+  What remains accessible is the HTML track panel (labelled file input, Play / Resume, Enter VR,
+  live status and error lines) and the labelled gear button with `aria-expanded` and
+  `aria-keyshortcuts`. Keyboard play is complete (Escape, arrows, Enter, Space). An announced
+  focus (a live region naming the focused item) is the next step if screen-reader use matters.
 - Supersedes Addendum O's tabbed desktop drawer; the shared settings description and the
   per-browser store are unchanged, so every setting -- including Play space, Ultra, Note design,
   quality Ultra, Sharpness, Wormhole and the Visual character -- persists like its siblings.
