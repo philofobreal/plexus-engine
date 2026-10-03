@@ -108,13 +108,8 @@ mode of Addendum E is no longer used by `/xr/` because of its frame-time cost). 
 (strength 0.7 in XR, 0.6 in the MVP) thicken near grains and thin, dim and haze far ones. The game
 menu's **Visuals** tab sets the raster (Performance 640x360 / Balanced 768x432 / High 960x540 /
 Ultra 1280x720 default), the update rate (24 Hz / 36 Hz default, aligned to whole headset frames),
-**Background motion**, **Line stroke** (the MVP Advanced slider, default 34) and **Sharpness**
-(default 100). Uploads happen only on changed frames. Background motion **Beat blend** (default,
-ADR-009 Addendum U) renders the Wormhole only at keyframes on the beat grid -- every beat and as
-many subdivisions as the device sustains, never above the update rate -- ahead of playback, and
-the GPU blends the two keyframes around the song time every headset frame, so the heavy raster
-runs a few times per beat while the image moves continuously. **Every frame** renders each update
-as before.
+**Line stroke** (the MVP Advanced slider, default 34) and **Sharpness** (default 100). Uploads happen
+only on changed frames.
 Where the browser supports it, the background rasterizes in a dedicated worker on an OffscreenCanvas
 and reaches the scene as a transferred `ImageBitmap` (ADR-009 Addendum G), so the headset frame loop
 never waits for Canvas2D; otherwise the same source runs in-thread.

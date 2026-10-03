@@ -513,49 +513,6 @@ historical game:
   regeneration) start from a fixed historical baseline (`tests/helpers/xr-historical-settings.mjs`)
   so they do not depend on the shipped defaults.
 
-## Addendum U: Beat blend -- beat-locked background keyframes blended on the GPU (2026-10-03)
-
-The authored look (Nebula on, Ultra raster, Addenda R and T) costs ~20-30 ms per background frame on
-a desktop CPU and more on the Quest. Rendering it for every update either loads the worker fully or,
-on a slower device, lets the background stutter.
-
-- **Where the cost is.** The Nebula is a CPU field raster inside the worker (grain carriers
-  accumulated into three Float32 layers, blurred and composited by Canvas2D); the GPU only shows one
-  textured plane. So the GPU is the cheap place to fill in motion.
-- **Keyframes on the beat grid** (`src/xr/scene/BackgroundKeyframes.ts`, pure). With a reliable grid
-  (timing confidence >= 0.5, the chart planner's rule) keyframes sit on every beat and on 1/2, 1/4 or
-  1/8 subdivisions; otherwise on a fixed lattice. The subdivision is the finest whose gap covers
-  max(1 / update rate, average raster cost / 0.6), so the worker is busy at most ~60% of the time
-  and a slower device automatically renders fewer keyframes (refining needs 20% headroom). Gaps
-  never exceed 0.5 s; `WormholeCanvasSource` treats forward steps up to 0.6 s
-  (`CONTINUITY_GAP_SEC`, formerly 0.25 s) as continuous playback, larger ones as seeks.
-- **Rendered ahead.** The background is a deterministic function of song time, so keyframes are
-  requested up to two ahead of playback (`CanvasVisualSource.requestFrame` / `takeFrame`; worker
-  protocol 2 adds the `keyframe` request and frames carry the camera travel). A request never
-  touches the canvas; only taking a finished frame does, and only after the previous slot texture
-  was uploaded (three texture slots read the one canvas and each uploads only its own keyframe).
-- **GPU blend.** Every display frame mixes the two keyframes around the song time linearly in time,
-  each shifted by a mild forward-flight flow around its own focal point (r' = r / (1 - k r) with
-  k = travel / (2.4 x 200)); the focal point given to the track path is interpolated too. Measured
-  on real frames (2026-10-03, 117 ms gaps): the main structures barely move between keyframes and
-  mostly change brightness with the music, so the blend is close to the true in-between frame; the
-  mild flow lowered the error by ~8% versus a plain crossfade, the wall-radius flow (k for R = 50)
-  over-zoomed. Sharpening applies to each sample. Beats land exactly on keyframes, so accents stay
-  crisp.
-- **Paused, seek, presentation.** A pause freezes the blend with no new work; a seek or a paused
-  presentation change renders the exact shown time first; playing presentation changes arrive with
-  the next keyframes.
-- **Setting.** Visuals > Background motion: Beat blend (default) or Every frame (the previous
-  per-update redraws, still used for sources without keyframes). The update rate is the upper bound
-  of keyframes. Persisted like every setting (`background.motionMode`).
-- **Measured** (desktop, Ultra, real worker, 72 Hz host clock): Every frame 36 Hz rasterized 31.7
-  frames/s; Beat blend 14.7 (36 Hz cap) / 17.7 (24 Hz cap) keyframes/s at 58.7 ms gaps (1/8 beat at
-  128 BPM), i.e. about half the worker work with continuous motion; 3.4% of updates held the last
-  keyframe (mostly the start). The cost moves to the GPU: two blended samples with sharpening are 10
-  texture reads per background pixel instead of 5.
-- Not in this step: separate layers (sharp lines every frame, Nebula on keyframes) and a GPU port of
-  the Nebula raster; they remain the options if Quest runs show smeared lines or a still-heavy raster.
-
 ## Consequences
 
 `/xr/` can evolve its own scene complexity, controller model, and performance profile without

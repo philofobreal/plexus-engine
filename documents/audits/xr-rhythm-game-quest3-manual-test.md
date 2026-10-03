@@ -101,11 +101,6 @@ Record results in the result log above; desktop results never substitute for hea
 - Wormhole background (single plane, ADR-009 Addendum F): stable 72 Hz with the Wormhole on at
   Balanced / 24 Hz; compare 36 Hz and High; Line stroke 0 / 50 / 100 visibly thin / neutral / thick;
   record `data-xr-background-ms` and GPU frame time per quality.
-- Beat blend (ADR-009 Addendum U): with the default Background motion the background moves
-  continuously (no stutter, no visible double image or pumping between keyframes) and beat accents
-  stay crisp; compare Every frame at the same settings. Record `data-xr-background-ms` and
-  `data-xr-background-keyframe-ms` (`?xrDiagnostics=1`) and the GPU frame time; if lines look
-  smeared, note it (layer split is the next step).
 - Authored player defaults (ADR-009 Addendum T): on a browser without saved settings the game
   starts Tall / Hyper / Long, Ultra / Active / Expressive / Crossover, Shard targets with the
   Wormhole on at Ultra / 36 Hz, Line stroke 34, Sharpness 100, Depth 10. Record whether the default
