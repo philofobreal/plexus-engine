@@ -51,14 +51,18 @@ scope.onmessage = event => {
             case 'presentation':
                 source?.setPresentation(message.presentation);
                 break;
-            case 'render': {
+            case 'render':
+            case 'keyframe': {
                 if (!source || message.generation !== generation) { post({ type: 'unchanged', generation: message.generation }); break; }
                 const started = performance.now();
-                if (!source.render(message.time, message.playing)) { post({ type: 'unchanged', generation: message.generation }); break; }
+                // A keyframe always draws its exact time; a render may be skipped by the redraw cap.
+                const drawn = message.type === 'keyframe' ? source.requestFrame(message.time, message.playing) && !!source.takeFrame()
+                    : source.render(message.time, message.playing);
+                if (!drawn) { post({ type: 'unchanged', generation: message.generation }); break; }
                 const bitmap = (source.canvas as unknown as OffscreenCanvas).transferToImageBitmap();
                 const focus = source.focalPoint;
                 post({ type: 'frame', generation: message.generation, time: message.time, bitmap, focalX: focus.x, focalY: focus.y,
-                    renderMs: performance.now() - started }, [bitmap]);
+                    travel: source.travel, renderMs: performance.now() - started }, [bitmap]);
                 break;
             }
             case 'dispose':

@@ -485,6 +485,13 @@ export class CosmicWormholeIdentity implements VisualIdentity {
      * half-extent with +y up. Embedded hosts (XR) consume it instead of re-deriving the route.
      */
     readonly routeFocus = { x: 0, y: 0 };
+    /**
+     * Read-only camera travel distance (world units along the route) of the last drawn frame.
+     * Embedded hosts that interpolate between rendered frames (XR, ADR-009 Addendum U) use it to
+     * compensate the forward flight; it never feeds back into drawing.
+     */
+    get lastTravelDistance(): number { return this.drawnTravelDistance; }
+    private drawnTravelDistance = 0;
     private readonly lensWarpPointA: WormholeLensWarpPoint = { x: 0, y: 0 };
     private readonly lensWarpPointB: WormholeLensWarpPoint = { x: 0, y: 0 };
     /**
@@ -730,6 +737,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         );
         if (analysisChanged) this.authoredSpeedTimeline.reset(timeSec, this.currentAuthoredTravelRate());
         const travelDistance = this.travelDistanceAt(timeSec);
+        this.drawnTravelDistance = travelDistance;
         const kickEnvelope = wormholeKickEnvelopeAtTime(
             this.state.events, this.state.frames, timeSec, this.state.sampleRate, this.state.hopSize
         );

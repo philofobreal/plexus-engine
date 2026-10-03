@@ -4,8 +4,8 @@
 
 import type { CanvasVisualPresentation, VisualAnalysisSnapshot } from './CanvasVisualSource';
 
-/** Bumped on any incompatible message change. */
-export const WORMHOLE_WORKER_PROTOCOL_VERSION = 1;
+/** Bumped on any incompatible message change (2: keyframe requests, frames carry travel). */
+export const WORMHOLE_WORKER_PROTOCOL_VERSION = 2;
 
 export interface WormholeWorkerInit {
     readonly type: 'init';
@@ -33,6 +33,17 @@ export interface WormholeWorkerRender {
     readonly playing: boolean;
 }
 
+/**
+ * Keyframe mode (ADR-009 Addendum U): render exactly `time` (possibly ahead of playback), ignoring
+ * the redraw cap. Shares the single in-flight slot with `render`; answered by `frame`.
+ */
+export interface WormholeWorkerKeyframe {
+    readonly type: 'keyframe';
+    readonly generation: number;
+    readonly time: number;
+    readonly playing: boolean;
+}
+
 export interface WormholeWorkerPresentation {
     readonly type: 'presentation';
     readonly presentation: CanvasVisualPresentation;
@@ -43,7 +54,7 @@ export interface WormholeWorkerDispose {
 }
 
 export type WormholeWorkerRequest = WormholeWorkerInit | WormholeWorkerPrepare | WormholeWorkerRender
-    | WormholeWorkerPresentation | WormholeWorkerDispose;
+    | WormholeWorkerKeyframe | WormholeWorkerPresentation | WormholeWorkerDispose;
 
 export interface WormholeWorkerPrepared {
     readonly type: 'prepared';
@@ -65,7 +76,9 @@ export interface WormholeWorkerFrame {
     /** The identity's focal point for exactly this frame (+x right, +y up). */
     readonly focalX: number;
     readonly focalY: number;
-    /** Worker-side raster time of this frame, in milliseconds (diagnostics). */
+    /** Camera travel along the route at `time` (world units), for flight-compensated blending. */
+    readonly travel: number;
+    /** Worker-side raster time of this frame, in milliseconds (governs the keyframe rate). */
     readonly renderMs: number;
 }
 

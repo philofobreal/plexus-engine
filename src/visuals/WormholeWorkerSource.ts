@@ -8,8 +8,10 @@
 // one are dropped (their bitmaps closed). While playing, a request targets the time at which its
 // frame will be shown (one host interval ahead), so the background stays in sync with the music
 // despite the asynchronous hop. The analysis is copied (structured clone), never transferred.
+// Keyframe mode (ADR-009 Addendum U): `requestFrame` asks for one exact time through the same
+// in-flight slot, and `takeFrame` presents it with its metadata.
 
-import type { CanvasVisualPresentation, CanvasVisualSource, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
+import type { CanvasVisualFrame, CanvasVisualPresentation, CanvasVisualSource, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
 import { WORMHOLE_WORKER_PROTOCOL_VERSION, type WormholeWorkerRequest, type WormholeWorkerResponse } from '../types/WormholeWorkerProtocol';
 import WormholeRenderWorker from './wormholeRender.worker.ts?worker';
 
@@ -61,7 +63,7 @@ export class WormholeWorkerSource implements CanvasVisualSource {
     private generation = 0;
     private preparedGeneration = -1;
     private preparing: PendingPrepare | null = null;
-    private pending: { bitmap: ImageBitmap; focalX: number; focalY: number; renderMs: number } | null = null;
+    private pending: { bitmap: ImageBitmap; time: number; focalX: number; focalY: number; travel: number; renderMs: number } | null = null;
     private inFlight = false;
     private lastTime = Number.NaN;
     private lastPlaying = false;
@@ -116,16 +118,7 @@ export class WormholeWorkerSource implements CanvasVisualSource {
 
     render(time: number, playing: boolean): boolean {
         if (this.disposed || this.failure) return false;
-        let changed = false;
-        const frame = this.pending;
-        if (frame) {
-            this.pending = null;
-            this.presenter.transferFromImageBitmap(frame.bitmap);
-            this.focus.x = frame.focalX; this.focus.y = frame.focalY;
-            this.renderMs = frame.renderMs;
-            if (this.diagnostics) this.canvas.dataset.frames = String(++this.shownFrames);
-            changed = true;
-        }
+        const changed = this.presentPending() !== null;
         if (!this.inFlight && this.preparedGeneration === this.generation && Number.isFinite(time)) {
             // Steady pauses ask once; the worker answers "unchanged" for anything it would skip.
             const repeat = !playing && !this.lastPlaying && time === this.lastTime && !this.presentationDirty;
@@ -136,6 +129,18 @@ export class WormholeWorkerSource implements CanvasVisualSource {
             }
         }
         return changed;
+    }
+
+    requestFrame(time: number, playing: boolean): boolean {
+        if (this.disposed || this.failure || this.inFlight || this.preparedGeneration !== this.generation || !Number.isFinite(time)) return false;
+        this.inFlight = true;
+        this.lastTime = time; this.lastPlaying = playing; this.presentationDirty = false;
+        this.worker.postMessage({ type: 'keyframe', generation: this.generation, time, playing });
+        return true;
+    }
+
+    takeFrame(): CanvasVisualFrame | null {
+        return this.presentPending();
     }
 
     setPresentation(presentation: CanvasVisualPresentation): void {
@@ -183,7 +188,8 @@ export class WormholeWorkerSource implements CanvasVisualSource {
                 if (message.generation !== this.generation) { message.bitmap.close(); return; }
                 this.inFlight = false;
                 this.pending?.bitmap.close();
-                this.pending = { bitmap: message.bitmap, focalX: message.focalX, focalY: message.focalY, renderMs: message.renderMs };
+                this.pending = { bitmap: message.bitmap, time: message.time, focalX: message.focalX, focalY: message.focalY,
+                    travel: message.travel, renderMs: message.renderMs };
                 this.onFrameReady?.();
                 return;
             case 'unchanged':
@@ -209,6 +215,18 @@ export class WormholeWorkerSource implements CanvasVisualSource {
         // A failure during preparation surfaces through the rejected promise; later ones through onError.
         if (preparing) preparing.reject(new Error(message));
         else this.onError?.(message);
+    }
+
+    /** Shows the newest finished frame (zero-copy) and returns its metadata, or null. */
+    private presentPending(): CanvasVisualFrame | null {
+        const frame = this.pending;
+        if (!frame || this.disposed || this.failure) return null;
+        this.pending = null;
+        this.presenter.transferFromImageBitmap(frame.bitmap);
+        this.focus.x = frame.focalX; this.focus.y = frame.focalY;
+        this.renderMs = frame.renderMs;
+        if (this.diagnostics) this.canvas.dataset.frames = String(++this.shownFrames);
+        return { time: frame.time, focalX: frame.focalX, focalY: frame.focalY, travel: frame.travel, renderMs: frame.renderMs };
     }
 
     private discardPending(): void {

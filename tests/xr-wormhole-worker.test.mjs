@@ -24,9 +24,28 @@ function proxyHarness(options = {}) {
 
 const renders = worker => worker.posted.filter(m => m.type === 'render');
 
+test('keyframe mode: one exact-time request in flight, presented with its time, focal point and travel', async () => {
+    const { source, worker, presenter } = proxyHarness();
+    assert.equal(source.requestFrame(1, true), false, 'nothing before the generation is prepared');
+    const ready = source.prepare(null); worker.reply({ type: 'prepared', generation: 1 }); await ready;
+    assert.equal(source.requestFrame(1.117, true), true);
+    assert.equal(JSON.stringify(worker.posted.at(-1)), JSON.stringify({ type: 'keyframe', generation: 1, time: 1.117, playing: true }),
+        'the exact keyframe time, no lead');
+    assert.equal(source.requestFrame(1.234, true), false, 'backpressure: one request in flight');
+    assert.equal(source.takeFrame(), null);
+    const frame = bitmap('k');
+    worker.reply({ type: 'frame', generation: 1, time: 1.117, bitmap: frame, focalX: 0.1, focalY: 0.2, travel: 268, renderMs: 30 });
+    assert.equal(JSON.stringify(source.takeFrame()), JSON.stringify({ time: 1.117, focalX: 0.1, focalY: 0.2, travel: 268, renderMs: 30 }));
+    assert.deepEqual(presenter.shown, [frame], 'presented zero-copy');
+    assert.equal(source.takeFrame(), null, 'consumed once');
+    assert.equal(source.requestFrame(1.234, true), true, 'the slot is free again');
+    source.dispose();
+    assert.equal(source.requestFrame(2, true), false);
+});
+
 test('proxy initializes the worker once and settles preparations by generation (superseded ones quietly)', async () => {
     const { source, worker } = proxyHarness();
-    assert.equal(JSON.stringify(worker.posted[0]), JSON.stringify({ type: 'init', protocol: 1, width: 768, height: 432, depthCue: 0.7 }));
+    assert.equal(JSON.stringify(worker.posted[0]), JSON.stringify({ type: 'init', protocol: 2, width: 768, height: 432, depthCue: 0.7 }));
     assert.equal(source.canvas.width, 768);
     const first = source.prepare(null);
     const analysis = { frames: [], events: [], duration: 1 };
@@ -55,7 +74,7 @@ test('one request in flight; a finished frame wakes the host, is presented zero-
     assert.equal(source.render(5, false), false);
     assert.equal(renders(worker).length, 1, 'backpressure: no second request while one is in flight');
     const frame = bitmap('a');
-    worker.reply({ type: 'frame', generation: 1, time: 5, bitmap: frame, focalX: 0.2, focalY: -0.1, renderMs: 7.5 });
+    worker.reply({ type: 'frame', generation: 1, time: 5, bitmap: frame, focalX: 0.2, focalY: -0.1, travel: 0, renderMs: 7.5 });
     assert.equal(wakes, 1, 'an idle (paused) host is asked for one more frame');
     assert.equal(source.render(5, false), true);
     assert.deepEqual(presenter.shown, [frame]);
@@ -82,13 +101,13 @@ test('frames from an older generation or after dispose are closed, never shown',
     source.render(1, true);
     const next = source.prepare(null);
     const stale = bitmap('stale');
-    worker.reply({ type: 'frame', generation: 1, time: 1, bitmap: stale, focalX: 0, focalY: 0, renderMs: 1 });
+    worker.reply({ type: 'frame', generation: 1, time: 1, bitmap: stale, focalX: 0, focalY: 0, travel: 0, renderMs: 1 });
     assert.ok(stale.closed);
     worker.reply({ type: 'prepared', generation: 2 }); await next;
     source.render(2, true);
     const superseded = bitmap('superseded'), newest = bitmap('newest');
-    worker.reply({ type: 'frame', generation: 2, time: 2, bitmap: superseded, focalX: 0, focalY: 0, renderMs: 1 });
-    worker.reply({ type: 'frame', generation: 2, time: 2, bitmap: newest, focalX: 0, focalY: 0, renderMs: 1 });
+    worker.reply({ type: 'frame', generation: 2, time: 2, bitmap: superseded, focalX: 0, focalY: 0, travel: 0, renderMs: 1 });
+    worker.reply({ type: 'frame', generation: 2, time: 2, bitmap: newest, focalX: 0, focalY: 0, travel: 0, renderMs: 1 });
     assert.ok(superseded.closed, 'an unshown frame is released when a newer one arrives');
     source.render(3, true);
     assert.deepEqual(presenter.shown, [newest]);
@@ -96,7 +115,7 @@ test('frames from an older generation or after dispose are closed, never shown',
     assert.ok(worker.terminated);
     assert.equal(worker.posted.at(-1).type, 'dispose');
     const late = bitmap('late');
-    worker.onmessage?.({ data: { type: 'frame', generation: 2, time: 3, bitmap: late, focalX: 0, focalY: 0, renderMs: 1 } });
+    worker.onmessage?.({ data: { type: 'frame', generation: 2, time: 3, bitmap: late, focalX: 0, focalY: 0, travel: 0, renderMs: 1 } });
     assert.equal(source.render(4, true), false);
 });
 
@@ -128,7 +147,10 @@ function workerHarness(renderResult = true) {
         constructor(options) { this.options = options; this.presentations = []; this.focalPoint = { x: 0.3, y: 0.4 };
             this.canvas = { transferToImageBitmap: () => bitmap('frame') }; sources.push(this); }
         async prepare(analysis) { this.analysis = analysis; if (analysis === 'bad') throw new Error('preset missing'); }
+        get travel() { return 12.5; }
         render(time, playing) { this.lastRender = [time, playing]; return renderResult; }
+        requestFrame(time, playing) { this.lastKeyframe = [time, playing]; this.ready = { time }; return true; }
+        takeFrame() { const f = this.ready; this.ready = null; return f; }
         setPresentation(p) { this.presentations.push(p); }
         dispose() { this.disposed = true; }
     }
@@ -142,7 +164,7 @@ test('worker adapter: version check, OffscreenCanvas surfaces, generation-filter
     const { posted, sources, send } = workerHarness();
     send({ type: 'init', protocol: 99, width: 640, height: 360, depthCue: 0 });
     assert.equal(posted[0].message.type, 'failure');
-    send({ type: 'init', protocol: 1, width: 640, height: 360, depthCue: 0.7 });
+    send({ type: 'init', protocol: 2, width: 640, height: 360, depthCue: 0.7 });
     const options = sources[0].options;
     assert.equal(options.width, 640); assert.equal(options.depthCue, 0.7);
     const surface = options.createSurface(8, 4);
@@ -156,7 +178,7 @@ test('worker adapter: version check, OffscreenCanvas surfaces, generation-filter
 
 test('worker adapter: changed frames transfer their bitmap with the focal point; skipped or stale requests answer unchanged', async () => {
     const changed = workerHarness(true);
-    changed.send({ type: 'init', protocol: 1, width: 640, height: 360, depthCue: 0 });
+    changed.send({ type: 'init', protocol: 2, width: 640, height: 360, depthCue: 0 });
     changed.send({ type: 'prepare', generation: 3, analysis: null });
     await new Promise(resolve => setTimeout(resolve, 0));
     changed.send({ type: 'render', generation: 3, time: 2.5, playing: true });
@@ -164,6 +186,14 @@ test('worker adapter: changed frames transfer their bitmap with the focal point;
     assert.equal(frame.message.type, 'frame');
     assert.deepEqual([frame.message.focalX, frame.message.focalY, frame.message.time], [0.3, 0.4, 2.5]);
     assert.ok(frame.transfer.length === 1 && frame.transfer[0] === frame.message.bitmap, 'the bitmap is transferred, not copied');
+    assert.equal(frame.message.travel, 12.5, 'frames carry the camera travel for flight-compensated blending');
+    // A keyframe draws its exact (future) time even when a plain render would be capped.
+    changed.send({ type: 'keyframe', generation: 3, time: 2.734, playing: true });
+    const keyframe = changed.posted.at(-1).message;
+    assert.deepEqual([keyframe.type, keyframe.time, keyframe.travel], ['frame', 2.734, 12.5]);
+    assert.deepEqual(changed.sources[0].lastKeyframe, [2.734, true]);
+    changed.send({ type: 'keyframe', generation: 2, time: 3, playing: true });
+    assert.equal(JSON.stringify(changed.posted.at(-1).message), JSON.stringify({ type: 'unchanged', generation: 2 }), 'stale keyframes answer unchanged');
     changed.send({ type: 'render', generation: 2, time: 3, playing: true });
     assert.equal(JSON.stringify(changed.posted.at(-1).message), JSON.stringify({ type: 'unchanged', generation: 2 }));
     changed.send({ type: 'presentation', presentation: { lineStroke: 0.2, macros: { intensity: 1, motion: 1, depth: 0.1, detail: 0.5 } } });
@@ -173,7 +203,7 @@ test('worker adapter: changed frames transfer their bitmap with the focal point;
     assert.ok(changed.sources[0].disposed); assert.ok(changed.scope.closed);
 
     const idle = workerHarness(false);
-    idle.send({ type: 'init', protocol: 1, width: 640, height: 360, depthCue: 0 });
+    idle.send({ type: 'init', protocol: 2, width: 640, height: 360, depthCue: 0 });
     idle.send({ type: 'prepare', generation: 1, analysis: null });
     await new Promise(resolve => setTimeout(resolve, 0));
     idle.send({ type: 'render', generation: 1, time: 1, playing: false });
