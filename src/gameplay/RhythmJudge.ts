@@ -26,7 +26,7 @@ export function attemptStrike(attempt: StrikeAttempt, noteStates: readonly NoteR
     for (const entry of noteStates) {
         if (entry.status !== 'pending' || (entry.note.hand !== 'either' && entry.note.hand !== attempt.hand)) continue;
         if (attempt.desktopTargetId && attempt.desktopTargetId !== entry.note.id) continue;
-        if (attempt.songTime < entry.note.time - config.goodWindowSec || beforeTime > entry.note.time + config.goodWindowSec) continue;
+        if (attempt.songTime < entry.note.time - config.earlyGoodWindowSec || beforeTime > entry.note.time + config.goodWindowSec) continue;
         notePosition(entry.note, attempt.songTime, target, config);
         notePosition(entry.note, beforeTime, oldTarget, config);
         // Nine retained blade fractions cover the 0.9 m blade, including mid-blade contact.
@@ -45,7 +45,7 @@ export function attemptStrike(attempt: StrikeAttempt, noteStates: readonly NoteR
             const distanceSq = (ax + t * dx) ** 2 + (ay + t * dy) ** 2 + (az + t * dz) ** 2;
             if (distanceSq > config.hitRadiusMeters ** 2) continue;
             const error = beforeTime + (attempt.songTime - beforeTime) * t - entry.note.time;
-            if (Math.abs(error) > config.goodWindowSec || Math.abs(error) >= bestError) continue;
+            if (error < -config.earlyGoodWindowSec || error > config.goodWindowSec || Math.abs(error) >= bestError) continue;
             best = entry;
             bestError = Math.abs(error);
             signedError = error;

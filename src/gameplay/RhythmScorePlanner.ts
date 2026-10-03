@@ -1,11 +1,12 @@
 import type { RhythmChartSource } from './RhythmChartBuilder';
 import { LANE_HAND, type RhythmGameConfig } from './RhythmGameConfig';
-import { CUT_VECTORS } from './RhythmChoreography';
+import { CUT_VECTORS, rhythmTexture } from './RhythmChoreography';
 import type { CutDirection, RhythmNote, RhythmTexture } from './RhythmTypes';
 import { planRhythmPhrases, type RhythmPhrase } from './RhythmPhrasePlanner';
 import { DEFAULT_RHYTHM_GENERATION_SETTINGS, difficultyProfile, motorProfile, type RhythmGenerationSettings } from './RhythmGenerationProfile';
 import { isOnBeat, RhythmHandPolicy } from './RhythmHandPolicy';
 import { zonePreference } from './RhythmZonePolicy';
+import { liftOverheadTargets } from './RhythmOverheadPolicy';
 
 const REVERSED: Readonly<Record<Exclude<CutDirection, 'any'>, Exclude<CutDirection, 'any'>>> = {
     up: 'down', down: 'up', left: 'right', right: 'left',
@@ -47,6 +48,10 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
     const meter = bars.length ? bars : beats.filter((_, i) => i % 4 === 0);
     const points = (source.performancePlan?.points ?? []).filter(p => Number.isFinite(p.time)).slice().sort((a, b) => a.time - b.time);
     const reliable = (source.timingConfidence ?? 0) >= 0.5 && beats.length >= 2;
+    // Ultra structure: silences before section changes (sorted starts; the first section has none).
+    const silenceStarts = demand.sectionSilenceBeats > 0
+        ? (source.sectionStarts ?? []).filter(t => Number.isFinite(t) && t > 0).slice().sort((a, b) => a - b) : [];
+    let runStart = -Infinity;
     const phrases = planRhythmPhrases(events.map(e => e.event), points, source.durationSec, beats, source.timingConfidence ?? 0, settings);
     const accents = phrases.flatMap(p => p.pairTimes);
     const phraseTimes = phrases.map(p => p.start);
@@ -93,7 +98,7 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
         // Reserve a preparation gap before authored two-hand accents; otherwise dense singles
         // would consume one hand just before every downbeat and make pairs unreachable.
         const nextAccent = accents[lastAt(accents, time) + 1];
-        if (nextAccent !== undefined && nextAccent - time < Math.max(0.8, minSame)) continue;
+        if (nextAccent !== undefined && nextAccent - time < Math.max(demand.pairPrepSec, minSame)) continue;
         const passage = phrases[lastAt(phraseTimes, time)];
         const point = passage.point;
         const texture: RhythmTexture = passage.texture;
@@ -106,6 +111,16 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
         const phase = Math.max(0, (time - (reliable ? barStart : passage.start)) / beatSec) % 4;
         const phrase = passage.index;
         const accent = passage.pairTimes.includes(time);
+        if (silenceStarts.length) {
+            // A breath before the next section change: two beats at fast tempos, one at slow ones.
+            const boundary = silenceStarts[lastAt(silenceStarts, time) + 1];
+            const silence = beatSec * (beatSec <= 0.5 ? demand.sectionSilenceBeats : Math.max(1, demand.sectionSilenceBeats - 1));
+            if (boundary !== undefined && boundary - time < silence - 1e-7) continue;
+        }
+        // Dense runs (gaps under 0.9 beat) last at most `maxRunBeats`, then breathe for a beat.
+        const previousTime = result.length ? result[result.length - 1].time : -Infinity;
+        const dense = time - previousTime < beatSec * 0.9;
+        if (dense && time - runStart >= demand.maxRunBeats * beatSec - 1e-7) continue;
         // Echo answers in the second half of alternate bars, with actual syncopated onsets
         // retained inside that window. Empty answers stay empty instead of inventing beats.
         if (!accent && texture === 'echo' && (phrase % 2 === 0 ? phase >= 2 : phase < 2)) continue;
@@ -114,10 +129,12 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
         if (!accent && reliable && profile.densityScale >= 1 && barIndex % 4 === 3 && phase >= 3 && event.intensity < 0.85 && texture !== 'build') continue;
         const density = texture === 'breath' ? 2 : texture === 'pulse' ? 1
             : texture === 'build' ? buildEnergy < 0.65 ? 1 : 0.5 : 0.5;
+        // Calm scenes (the breath family) may keep a gentler ceiling than the driving ones (Ultra).
+        const ceilingScale = rhythmTexture(point?.meta) === 'breath' ? demand.calmCeilingScale : demand.ceilingScale;
         // Activity owns total density: it scales every texture's ceiling, never below the global floor.
         // Calm also widens the global floor; Active can never go below it.
         // Difficulty scales the ceiling and the floors on top of that.
-        const spacing = Math.max(minGlobal * Math.max(1, profile.densityScale), beatSec * density * profile.densityScale * demand.ceilingScale);
+        const spacing = Math.max(minGlobal * Math.max(1, profile.densityScale), beatSec * density * profile.densityScale * ceilingScale);
         const changedPoint = result.length > 0 && point?.id !== result.at(-1)?.automationId;
         const requiredGap = accent || changedPoint ? minSame : spacing;
         if ((!accent && !changedPoint && time < nextAllowed - 1e-7) || result.length && time - result[result.length - 1].time < requiredGap - 1e-7) continue;
@@ -142,7 +159,7 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
             const diagonal = texture === 'weave' || texture === 'echo'
                 || (profile.cutDiversity >= 1 && texture === 'impact' && phrase % 2 === 1)
                 || (profile.cutDiversity === 2 && texture === 'drive' && phrase % 2 === 1);
-            let cutDirection: CutDirection = texture === 'breath' && index % 4 === 0 ? 'any'
+            let cutDirection: CutDirection = texture === 'breath' && index % 4 === 0 && !demand.directionalSingles ? 'any'
                 : diagonal ? up ? side === 'left' ? 'up-right' : 'up-left' : side === 'left' ? 'down-left' : 'down-right'
                 : up ? 'up' : 'down';
             // Pulse/drive phrases include lateral call/return strokes as well as vertical ones.
@@ -217,9 +234,9 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
                 ...(pairLayout ? { pairId: `pair-${index}`, pairLayout } : {}) };
         };
         // Every populated phrase reserves a locally salient accent, regardless of grid confidence.
-        const pairGap = settings.handPattern === 'together' ? Math.max(1.5, beatSec * 2) : Math.max(2, beatSec * 4);
+        const pairGap = settings.handPattern === 'together' || demand.extraPairs ? Math.max(1.5, beatSec * 2) : Math.max(2, beatSec * 4);
         const canPair = accent && time - lastPair >= pairGap &&
-            (['left', 'right'] as const).every(h => !last[h] || time - last[h]!.time >= Math.max(0.75, minSame));
+            (['left', 'right'] as const).every(h => !last[h] || time - last[h]!.time >= Math.max(demand.pairClearSec, minSame));
         const layout = (['horizontal', 'diagonal', 'vertical'] as const)[phrase % 3];
         const pair = canPair ? [make('left', layout), make('right', layout)] : null;
         const reachable = pair?.every(n => !last[n.hand as 'left' | 'right'] ||
@@ -238,8 +255,22 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
             if (note.cutDirection !== 'any') direction[h] = note.cutDirection;
         }
         hands.commit(hand, group.length === 2);
+        if (!dense) runStart = time;
         nextAllowed = time + (group.length === 2 ? Math.max(0.5, minSame) : spacing);
         if (group.length === 2) lastPair = time;
     }
-    return result;
+    if (settings.playSpace !== 'tall') return result;
+    // Tall play space: a few big moments move up to the overhead row (rows only, Addendum M). A big
+    // scene is judged by its texture FAMILY (drop / peak = impact, a build above 0.65 energy), not by
+    // the member a phrase developed into.
+    const phraseAt = (time: number) => phrases[Math.max(0, lastAt(phraseTimes, time))];
+    const bigPhrase = phrases.map(passage => {
+        const family = rhythmTexture(passage.point?.meta);
+        const energy = passage.point?.meta?.behaviour?.energy ?? Math.min(1, (passage.point?.intensity ?? 0) / 3);
+        return family === 'impact' || (family === 'build' && energy > 0.65);
+    });
+    return liftOverheadTargets(result, { demand, minSameHandSpacingSec: minSame, maxHandTravelMps: travel,
+        rowSpacingMeters: config.rowSpacingMeters, reliable, bigScene: time => bigPhrase[phraseAt(time).index],
+        beatPhase: time => { const passage = phraseAt(time); return phaseAt(time, passage, beatSecAt(time, passage)); },
+        beatSec: time => beatSecAt(time, phraseAt(time)) });
 }

@@ -4,23 +4,29 @@
 
 import { DEFAULT_RHYTHM_GAME_CONFIG, type RhythmGameConfig } from './RhythmGameConfig';
 import { attemptStrike as judgeStrike } from './RhythmJudge';
+import {
+    advanceMultiplier, buildScoringPlan, createMultiplierState, dropMultiplier, hitPoints, multiplierOf,
+    type RhythmScoringPlan, type ScoringSectionSource
+} from './RhythmScoring';
 import type {
     JudgementGrade,
     NoteRuntimeState,
     RhythmNote,
     RhythmSessionSnapshot,
     RhythmSessionState,
+    SectionResult,
     StrikeAttempt,
     StrikeResult
 } from './RhythmTypes';
 
-function scoreForGrade(grade: JudgementGrade): number {
-    return grade === 'perfect' ? 100 : 50;
-}
-
 export class RhythmGameSession {
-    private readonly config: RhythmGameConfig;
+    private config: RhythmGameConfig;
     private chart: readonly RhythmNote[] = [];
+    private scoring: RhythmScoringPlan = buildScoringPlan([]);
+    private sectionResults: SectionResult[] = [];
+    private readonly multiplier = createMultiplierState();
+    /** Chart index by note id, so a resolved note finds its section without searching. */
+    private noteIndex = new Map<string, number>();
     private noteStates: NoteRuntimeState[] = [];
     private state: RhythmSessionState = 'idle';
     private score = 0;
@@ -36,6 +42,7 @@ export class RhythmGameSession {
 
     clear(): void {
         this.chart = [];
+        this.scoring = buildScoringPlan([]);
         this.resetRuntimeState();
         this.state = 'idle';
     }
@@ -44,15 +51,35 @@ export class RhythmGameSession {
         this.config = config;
     }
 
-    /** Loads a freshly built chart and moves the session to 'ready'. Fully resets runtime state. */
-    loadChart(chart: readonly RhythmNote[]): void {
+    /**
+     * Swaps the gameplay configuration between runs. Refused while playing; a loaded chart keeps
+     * its notes, but every runtime state (score, cursors) is reset and the session is 'ready'.
+     */
+    setConfig(config: RhythmGameConfig): boolean {
+        if (this.state === 'playing') return false;
+        this.config = config;
+        this.resetRuntimeState();
+        if (this.state !== 'idle') this.state = 'ready';
+        return true;
+    }
+
+    /**
+     * Loads a freshly built chart and moves the session to 'ready'. Fully resets runtime state.
+     * `sections` (the analyzer's published sections, plain data) weight the score by dramaturgy.
+     */
+    loadChart(chart: readonly RhythmNote[], sections: readonly ScoringSectionSource[] = []): void {
         this.chart = chart;
+        this.scoring = buildScoringPlan(chart, sections);
         this.resetRuntimeState();
         this.state = 'ready';
     }
 
     private resetRuntimeState(): void {
         this.noteStates = this.chart.map((note) => ({ note, status: 'pending', judgement: null }));
+        this.noteIndex = new Map(this.chart.map((note, index) => [note.id, index]));
+        this.sectionResults = this.scoring.sections.map(section => ({ index: section.index, hits: 0, perfects: 0, misses: 0,
+            resolved: 0, points: 0, bonus: 0, completedAt: null }));
+        this.multiplier.tier = 0; this.multiplier.progress = 0;
         this.score = 0;
         this.combo = 0;
         this.maxCombo = 0;
@@ -87,7 +114,7 @@ export class RhythmGameSession {
     finish(): void {
         if (this.state !== 'playing' && this.state !== 'paused') return;
         for (const entry of this.noteStates) {
-            if (entry.status === 'pending') { entry.status = 'missed'; this.missCount++; }
+            if (entry.status === 'pending') { entry.status = 'missed'; this.missCount++; this.recordMiss(entry, entry.note.time); }
         }
         this.combo = 0;
         this.state = 'finished';
@@ -109,6 +136,8 @@ export class RhythmGameSession {
         let cursor = 0;
         while (cursor < this.noteStates.length && this.noteStates[cursor].note.time + this.config.missWindowSec < songTime) {
             this.noteStates[cursor].status = 'missed';
+            // Skipped notes count as missed for their section (no bonus), without touching the multiplier.
+            this.recordMiss(this.noteStates[cursor], songTime, false);
             cursor++;
         }
         this.missScanCursor = cursor;
@@ -134,6 +163,7 @@ export class RhythmGameSession {
                 entry.resolvedAt = songTime;
                 this.missCount++;
                 this.combo = 0;
+                this.recordMiss(entry, songTime);
                 missedIds.push(entry.note.id);
             }
             this.missScanCursor++;
@@ -149,7 +179,7 @@ export class RhythmGameSession {
             this.hitCount++;
             this.combo++;
             if (this.combo > this.maxCombo) this.maxCombo = this.combo;
-            this.score += scoreForGrade(result.grade);
+            this.recordHit(result.noteId, result.grade, attempt.songTime);
         }
         return result;
     }
@@ -186,7 +216,49 @@ export class RhythmGameSession {
             maxCombo: this.maxCombo,
             hitCount: this.hitCount,
             missCount: this.missCount,
-            totalNotes: this.chart.length
+            totalNotes: this.chart.length,
+            multiplier: multiplierOf(this.multiplier),
+            maxScore: this.scoring.maxScore,
+            sections: this.sectionResults
         };
+    }
+
+    /** The plan behind the score: section weights, bonuses and the maximum. */
+    getScoringPlan(): RhythmScoringPlan {
+        return this.scoring;
+    }
+
+    private recordHit(noteId: string, grade: JudgementGrade, songTime: number): void {
+        const index = this.noteIndex.get(noteId);
+        if (index === undefined) return;
+        const section = this.scoring.sections[this.scoring.noteSection[index]];
+        const result = this.sectionResults[section.index];
+        const points = hitPoints(grade, multiplierOf(this.multiplier), section.weight);
+        advanceMultiplier(this.multiplier);
+        this.score += points;
+        result.hits++;
+        if (grade === 'perfect') result.perfects++;
+        result.points += points;
+        this.resolve(result, songTime);
+    }
+
+    private recordMiss(entry: NoteRuntimeState, songTime: number, breaksMultiplier = true): void {
+        const index = this.noteIndex.get(entry.note.id);
+        if (index === undefined) return;
+        if (breaksMultiplier) dropMultiplier(this.multiplier);
+        const result = this.sectionResults[this.scoring.noteSection[index]];
+        result.misses++;
+        this.resolve(result, songTime);
+    }
+
+    /** Completes a section once its last note resolves; a clean section earns its bonuses. */
+    private resolve(result: SectionResult, songTime: number): void {
+        const section = this.scoring.sections[result.index];
+        if (++result.resolved < section.noteCount || result.completedAt !== null) return;
+        result.completedAt = songTime;
+        if (result.misses > 0) return;
+        result.bonus = section.clearBonus + (result.perfects === section.noteCount ? section.flawlessBonus : 0);
+        result.points += result.bonus;
+        this.score += result.bonus;
     }
 }
