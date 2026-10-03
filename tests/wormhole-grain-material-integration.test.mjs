@@ -133,7 +133,7 @@ function json(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function render({ amount, refuseRaster = false, performanceMode = 0, stubs = new Map(), tuning = {}, compactPreview = false, isExporting = false }) {
+function render({ amount, refuseRaster = false, performanceMode = 0, stubs = new Map(), tuning = {}, compactPreview = false, isExporting = false, clock = null }) {
   const load = createSourceLoader(stubs);
   const { CosmicWormholeIdentity } = load('visuals/CosmicWormholeIdentity.ts');
   const { State } = load('state/store.ts');
@@ -145,9 +145,24 @@ function render({ amount, refuseRaster = false, performanceMode = 0, stubs = new
   identity.syncPosition(State.currentTime);
   const backend = makeBackend(refuseRaster);
   backend.compactMaterialPreview = compactPreview;
+  if (clock) identity.setStageClock(clock);
   identity.draw(backend, [], []);
-  return { backend, State };
+  return { backend, State, identity };
 }
+
+test('stage timing (XR diagnostics) is opt-in and never changes what is drawn', () => {
+  const plain = render({ amount: 0.5 });
+  assert.deepEqual(json(plain.identity.stageTimes), { background: 0, grains: 0, weave: 0, resolve: 0, composite: 0 }, 'off by default');
+  let tick = 0;
+  const timed = render({ amount: 0.5, clock: { now: () => ++tick } });
+  assert.deepEqual(json(timed.backend.lines), json(plain.backend.lines), 'identical line work');
+  assert.deepEqual(json(timed.backend.drawCalls), json(plain.backend.drawCalls), 'identical Nebula raster composite');
+  const stages = json(timed.identity.stageTimes);
+  for (const stage of ['background', 'grains', 'resolve', 'composite']) assert.equal(stages[stage], 1, stage);
+  const legacy = render({ amount: 0, clock: { now: () => ++tick } });
+  assert.equal(legacy.identity.stageTimes.resolve, 0, 'inactive Nebula stages read zero');
+  assert.equal(legacy.identity.stageTimes.composite, 0);
+});
 
 test('compact host reduces all material buffers, preserves square lines and never reduces export quality', () => {
   const options = { amount: 0.3, tuning: { wormholeGrainShape: 1 } };

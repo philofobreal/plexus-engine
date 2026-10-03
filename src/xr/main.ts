@@ -27,6 +27,6 @@ try { storage = window.localStorage; } catch { storage = null; }
 // forces the in-thread source for A/B frame-time comparison.
 const offThread = !window.location.search.includes('xrBackgroundThread=main') && wormholeWorkerSupported();
 new XrAppController(engine, runtime, container, options => {
-    const size = { diagnostics, depthCue: 0.7, width: options?.width, height: options?.height };
+    const size = { diagnostics, profile: diagnostics, depthCue: 0.7, width: options?.width, height: options?.height };
     return offThread ? new WormholeWorkerSource(size) : new WormholeCanvasSource(size);
 }, { diagnostics, settingsStore: createXrSettingsStore(storage) });

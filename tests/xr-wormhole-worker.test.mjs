@@ -15,7 +15,8 @@ function proxyHarness(options = {}) {
         reply(data) { this.onmessage?.({ data }); }
     }
     const presenter = { shown: [], transferFromImageBitmap(b) { this.shown.push(b); } };
-    const document = { createElement: () => ({ width: 0, height: 0, dataset: {}, getContext: kind => (kind === 'bitmaprenderer' ? presenter : null) }) };
+    const document = { body: { appendChild() {} },
+        createElement: () => ({ width: 0, height: 0, dataset: {}, remove() {}, getContext: kind => (kind === 'bitmaprenderer' ? presenter : null) }) };
     const load = createLoader({ './wormholeRender.worker.ts?worker': { __esModule: true, default: FakeWorker } }, { document });
     const { WormholeWorkerSource } = load('visuals/WormholeWorkerSource.ts');
     const source = new WormholeWorkerSource({ width: 768, height: 432, depthCue: 0.7, ...options });
@@ -23,6 +24,22 @@ function proxyHarness(options = {}) {
 }
 
 const renders = worker => worker.posted.filter(m => m.type === 'render');
+
+test('diagnostics: the proxy asks the worker to profile and exposes the stage times of the frame it shows', async () => {
+    const { source, worker } = proxyHarness({ diagnostics: true });
+    assert.equal(worker.posted[0].profile, true);
+    assert.equal(source.stageTimes, null);
+    const ready = source.prepare(null); worker.reply({ type: 'prepared', generation: 1 }); await ready;
+    source.render(1, true);
+    worker.reply({ type: 'frame', generation: 1, time: 1, bitmap: bitmap('p'), focalX: 0, focalY: 0, renderMs: 30,
+        stages: { grains: 14, resolve: 6, transfer: 0.4 } });
+    source.render(1.05, true);
+    assert.equal(JSON.stringify(source.stageTimes), JSON.stringify({ grains: 14, resolve: 6, transfer: 0.4 }));
+    source.dispose();
+    const plain = proxyHarness();
+    assert.equal('profile' in plain.worker.posted[0], false, 'normal runs never profile');
+    plain.source.dispose();
+});
 
 test('proxy initializes the worker once and settles preparations by generation (superseded ones quietly)', async () => {
     const { source, worker } = proxyHarness();
@@ -129,6 +146,7 @@ function workerHarness(renderResult = true) {
             this.canvas = { transferToImageBitmap: () => bitmap('frame') }; sources.push(this); }
         async prepare(analysis) { this.analysis = analysis; if (analysis === 'bad') throw new Error('preset missing'); }
         render(time, playing) { this.lastRender = [time, playing]; return renderResult; }
+        get stageTimes() { return this.options.profile ? { tune: 1, grains: 12, draw: 20 } : null; }
         setPresentation(p) { this.presentations.push(p); }
         dispose() { this.disposed = true; }
     }
@@ -164,8 +182,19 @@ test('worker adapter: changed frames transfer their bitmap with the focal point;
     assert.equal(frame.message.type, 'frame');
     assert.deepEqual([frame.message.focalX, frame.message.focalY, frame.message.time], [0.3, 0.4, 2.5]);
     assert.ok(frame.transfer.length === 1 && frame.transfer[0] === frame.message.bitmap, 'the bitmap is transferred, not copied');
+    assert.equal(frame.message.stages, undefined, 'no stage times unless profiling');
     changed.send({ type: 'render', generation: 2, time: 3, playing: true });
     assert.equal(JSON.stringify(changed.posted.at(-1).message), JSON.stringify({ type: 'unchanged', generation: 2 }));
+
+    const profiled = workerHarness(true);
+    profiled.send({ type: 'init', protocol: 1, width: 640, height: 360, depthCue: 0, profile: true });
+    assert.equal(profiled.sources[0].options.profile, true);
+    profiled.send({ type: 'prepare', generation: 1, analysis: null });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    profiled.send({ type: 'render', generation: 1, time: 1, playing: true });
+    const stages = profiled.posted.at(-1).message.stages;
+    assert.deepEqual([stages.tune, stages.grains, stages.draw], [1, 12, 20]);
+    assert.ok(Number.isFinite(stages.transfer), 'the bitmap transfer is timed too');
     changed.send({ type: 'presentation', presentation: { lineStroke: 0.2, macros: { intensity: 1, motion: 1, depth: 0.1, detail: 0.5 } } });
     assert.deepEqual(changed.sources[0].presentations, [{ lineStroke: 0.2, macros: { intensity: 1, motion: 1, depth: 0.1, detail: 0.5 } }],
         'the worker hands the Visual character to its source');

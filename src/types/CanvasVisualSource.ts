@@ -44,6 +44,11 @@ export interface CanvasVisualSource {
     onError?: ((message: string) => void) | null;
     /** Optional cost of the last redraw, in milliseconds, when the source measures it itself. */
     readonly lastRenderMs?: number;
+    /**
+     * Opt-in diagnostics: wall-clock stage times of the last redraw in milliseconds (names are the
+     * source's own), or null when the source does not profile.
+     */
+    readonly stageTimes?: Readonly<Record<string, number>> | null;
     dispose(): void;
 }
 /**

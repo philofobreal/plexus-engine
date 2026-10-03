@@ -485,6 +485,14 @@ export class CosmicWormholeIdentity implements VisualIdentity {
      * half-extent with +y up. Embedded hosts (XR) consume it instead of re-deriving the route.
      */
     readonly routeFocus = { x: 0, y: 0 };
+    /**
+     * Opt-in diagnostics (XR `?xrDiagnostics=1`): coarse wall-clock stage times of the last draw in
+     * milliseconds -- background layers, the grain loop (lines plus Nebula carrier accumulation),
+     * the weave, the Nebula resolve (bloom / haze) and the three-layer composite. Only written when
+     * a clock is set; it never feeds back into drawing.
+     */
+    readonly stageTimes = { background: 0, grains: 0, weave: 0, resolve: 0, composite: 0 };
+    private stageClock: { now(): number } | null = null;
     private readonly lensWarpPointA: WormholeLensWarpPoint = { x: 0, y: 0 };
     private readonly lensWarpPointB: WormholeLensWarpPoint = { x: 0, y: 0 };
     /**
@@ -716,7 +724,26 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         this.depthLayers = targets;
     }
 
+    /** Diagnostics only: a clock enables `stageTimes`; null (the default) disables all timing. */
+    setStageClock(clock: { now(): number } | null): void {
+        this.stageClock = clock;
+    }
+
+    /** Diagnostics: closes the current stage at `now` and returns it as the next stage's start. */
+    private markStage(stage: keyof CosmicWormholeIdentity['stageTimes'], since: number): number {
+        const now = this.stageClock!.now();
+        this.stageTimes[stage] = now - since;
+        return now;
+    }
+
     draw(backend: VisualRendererBackend, _particles: Particle[], _shockwaves: Shockwave[]): void {
+        const stageClock = this.stageClock;
+        let stageStart = 0;
+        if (stageClock) {
+            const times = this.stageTimes;
+            times.background = times.grains = times.weave = times.resolve = times.composite = 0;
+            stageStart = stageClock.now();
+        }
         const tuning = this.state.visualTuning;
         const timeSec = canonicalWormholeTime(this.state.currentTime, this.state.isExporting, this.state.exportTime);
         const analysisChanged = this.transport.sync(
@@ -1297,6 +1324,8 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             );
         }
 
+        if (stageClock) stageStart = this.markStage('background', stageStart);
+
         // Ring vs. dispersion feature: 0 = the natural random spread, 1 = grains snapped to discrete
         // concentric depth rings (the look the wrap bug used to force — now an opt-in parameter).
         const jitter = authoredJitter;
@@ -1677,12 +1706,15 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             }
         }
 
+        if (stageClock) stageStart = this.markStage('grains', stageStart);
+
         if (grainMaterialActive && grainMaterialL0 && grainMaterialL1 && grainMaterialL2 && grainWeaveAmount > 0) {
             this.drawGrainWeave(
                 grainMaterialL0, grainMaterialL0Cols, grainMaterialL0Rows,
                 backend.width, backend.height, grainMaterialDetail,
                 grainWeaveAmount, activeGrainCount
             );
+            if (stageClock) stageStart = this.markStage('weave', stageStart);
         }
 
         if (grainMaterialActive && grainMaterialL0 && grainMaterialL1 && grainMaterialL2) {
@@ -1692,11 +1724,13 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 grainMaterialL2, grainMaterialL2Cols, grainMaterialL2Rows,
                 grainMaterialAmount, tuning.wormholeNebulaBloom
             );
+            if (stageClock) stageStart = this.markStage('resolve', stageStart);
             // Broad haze first, medium bloom second, sharp carrier material last. All three cover
             // the viewport and occupy the foreground grain slot after the wall.
             backend.drawFieldRaster(2, 0, 0, backend.width, backend.height, 1, 'lighter');
             backend.drawFieldRaster(1, 0, 0, backend.width, backend.height, 1, 'lighter');
             backend.drawFieldRaster(0, 0, 0, backend.width, backend.height, 1, 'lighter');
+            if (stageClock) this.markStage('composite', stageStart);
         }
         if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.endFrame();
     }

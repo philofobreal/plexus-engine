@@ -61,7 +61,8 @@ export class WormholeWorkerSource implements CanvasVisualSource {
     private generation = 0;
     private preparedGeneration = -1;
     private preparing: PendingPrepare | null = null;
-    private pending: { bitmap: ImageBitmap; focalX: number; focalY: number; renderMs: number } | null = null;
+    private pending: { bitmap: ImageBitmap; focalX: number; focalY: number; renderMs: number; stages: Readonly<Record<string, number>> | null } | null = null;
+    private stages: Readonly<Record<string, number>> | null = null;
     private inFlight = false;
     private lastTime = Number.NaN;
     private lastPlaying = false;
@@ -83,7 +84,8 @@ export class WormholeWorkerSource implements CanvasVisualSource {
         this.worker = options.createWorker ? options.createWorker() : new WormholeRenderWorker() as unknown as WormholeWorkerPort;
         this.worker.onmessage = event => this.receive(event.data);
         this.worker.onerror = event => this.fail(event.message || 'Wormhole worker error.');
-        this.worker.postMessage({ type: 'init', protocol: WORMHOLE_WORKER_PROTOCOL_VERSION, width, height, depthCue: options.depthCue ?? 0 });
+        this.worker.postMessage({ type: 'init', protocol: WORMHOLE_WORKER_PROTOCOL_VERSION, width, height, depthCue: options.depthCue ?? 0,
+            ...(this.diagnostics ? { profile: true } : {}) });
         if (this.diagnostics) {
             this.canvas.hidden = true;
             this.canvas.dataset.xrWormhole = 'worker';
@@ -96,6 +98,9 @@ export class WormholeWorkerSource implements CanvasVisualSource {
 
     /** Worker-side raster time of the frame currently shown, in milliseconds. */
     get lastRenderMs(): number { return this.renderMs; }
+
+    /** Worker-side stage times of the frame currently shown (diagnostics only, else null). */
+    get stageTimes(): Readonly<Record<string, number>> | null { return this.stages; }
 
     prepare(analysis: VisualAnalysisSnapshot | null): Promise<void> {
         if (this.disposed) return Promise.resolve();
@@ -123,6 +128,7 @@ export class WormholeWorkerSource implements CanvasVisualSource {
             this.presenter.transferFromImageBitmap(frame.bitmap);
             this.focus.x = frame.focalX; this.focus.y = frame.focalY;
             this.renderMs = frame.renderMs;
+            this.stages = frame.stages;
             if (this.diagnostics) this.canvas.dataset.frames = String(++this.shownFrames);
             changed = true;
         }
@@ -183,7 +189,8 @@ export class WormholeWorkerSource implements CanvasVisualSource {
                 if (message.generation !== this.generation) { message.bitmap.close(); return; }
                 this.inFlight = false;
                 this.pending?.bitmap.close();
-                this.pending = { bitmap: message.bitmap, focalX: message.focalX, focalY: message.focalY, renderMs: message.renderMs };
+                this.pending = { bitmap: message.bitmap, focalX: message.focalX, focalY: message.focalY, renderMs: message.renderMs,
+                    stages: message.stages ?? null };
                 this.onFrameReady?.();
                 return;
             case 'unchanged':

@@ -38,7 +38,7 @@ scope.onmessage = event => {
                 if (message.protocol !== WORMHOLE_WORKER_PROTOCOL_VERSION) throw new Error(`Unsupported Wormhole worker protocol ${message.protocol}`);
                 source?.dispose();
                 source = new WormholeCanvasSource({ width: message.width, height: message.height, depthCue: message.depthCue,
-                    createSurface: offscreenSurface });
+                    createSurface: offscreenSurface, profile: message.profile === true });
                 break;
             case 'prepare': {
                 if (!source) throw new Error('Wormhole worker used before init.');
@@ -55,10 +55,13 @@ scope.onmessage = event => {
                 if (!source || message.generation !== generation) { post({ type: 'unchanged', generation: message.generation }); break; }
                 const started = performance.now();
                 if (!source.render(message.time, message.playing)) { post({ type: 'unchanged', generation: message.generation }); break; }
+                const transferStarted = performance.now();
+                // Canvas2D may defer raster work until the bitmap is taken, so its time is a stage too.
                 const bitmap = (source.canvas as unknown as OffscreenCanvas).transferToImageBitmap();
                 const focus = source.focalPoint;
+                const stages = source.stageTimes ? { ...source.stageTimes, transfer: performance.now() - transferStarted } : undefined;
                 post({ type: 'frame', generation: message.generation, time: message.time, bitmap, focalX: focus.x, focalY: focus.y,
-                    renderMs: performance.now() - started }, [bitmap]);
+                    renderMs: performance.now() - started, ...(stages ? { stages } : {}) }, [bitmap]);
                 break;
             }
             case 'dispose':

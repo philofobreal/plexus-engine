@@ -48,6 +48,7 @@ export class WormholeBackdrop {
     private frameDivider = 1;
     private framePhase = 0;
     private renderMs = 0;
+    private shown = 0;
     /** Sharpening gain and texel size shared by every plane's shader (uniform objects, live). */
     private readonly sharpen = { value: 0 };
     private readonly texel = new THREE.Vector2();
@@ -107,6 +108,10 @@ export class WormholeBackdrop {
     }
     /** Wall-clock cost of the last canvas redraw (diagnostics; CPU raster only, not the upload). */
     get lastRenderMs(): number { return this.renderMs; }
+    /** Background frames put on screen so far (diagnostics). */
+    get framesShown(): number { return this.shown; }
+    /** The source's stage times for the frame on screen (diagnostics; null when it does not profile). */
+    get stageTimes(): Readonly<Record<string, number>> | null { return this.source.stageTimes ?? null; }
 
     /**
      * Host presentation: forwarded to the source, plus a whole-frame divider so redraws land on a
@@ -134,6 +139,7 @@ export class WormholeBackdrop {
         const started = clock ? clock.now() : 0;
         if (this.source.render(songTime, playing)) {
             this.renderMs = this.source.lastRenderMs ?? (clock ? clock.now() - started : 0);
+            this.shown++;
             for (const texture of this.textures) texture.needsUpdate = true;
         }
     }

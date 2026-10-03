@@ -224,6 +224,11 @@ export class RhythmGameScene {
 
     /** Wall-clock cost of the background's last canvas redraw (diagnostics). */
     get backgroundRenderMs(): number { return this.wormhole?.lastRenderMs ?? 0; }
+    /** Background frames put on screen so far, and their source stage times (diagnostics). */
+    get backgroundFramesShown(): number { return this.wormhole?.framesShown ?? 0; }
+    get backgroundStageTimes(): Readonly<Record<string, number>> | null {
+        return this.wormhole?.root.visible ? this.wormhole.stageTimes : null;
+    }
 
     /**
      * Player background presentation. Line stroke and rate apply in place; a quality change

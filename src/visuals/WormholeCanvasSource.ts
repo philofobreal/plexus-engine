@@ -40,7 +40,12 @@ export interface WormholeCanvasSourceOptions {
     readonly height?: number;
     /** Drawing-surface factory (a worker host supplies OffscreenCanvas); defaults to DOM canvases. */
     readonly createSurface?: Canvas2DSurfaceFactory;
+    /** Opt-in stage timing for diagnostics (`stageTimes`); off by default. */
+    readonly profile?: boolean;
 }
+
+/** Wall clock for opt-in stage timing (main thread or worker). */
+const stageClock: { now(): number } | null = typeof performance !== 'undefined' ? performance : null;
 
 const DEFAULT_WIDTH = 960;
 const DEFAULT_HEIGHT = 540;
@@ -88,6 +93,9 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     private disposed = false;
     private denseEvents: { time: number }[] = [];
     private readonly diagnostics: boolean;
+    private readonly profile: boolean;
+    /** Opt-in stage times of the last redraw: tuning / director work, then the identity's stages. */
+    private readonly stages: Record<string, number> | null;
     private readonly depthCue: number;
     private readonly midBackend: Canvas2DRendererBackend | null;
     private readonly nearBackend: Canvas2DRendererBackend | null;
@@ -95,6 +103,8 @@ export class WormholeCanvasSource implements CanvasVisualSource {
 
     constructor(options: WormholeCanvasSourceOptions = {}) {
         this.diagnostics = options.diagnostics === true;
+        this.profile = options.profile === true && stageClock !== null;
+        this.stages = this.profile ? { tune: 0, background: 0, grains: 0, weave: 0, resolve: 0, composite: 0, draw: 0 } : null;
         this.backend = new Canvas2DRendererBackend(rasterSize(options.width, DEFAULT_WIDTH), rasterSize(options.height, DEFAULT_HEIGHT),
             options.createSurface);
         this.canvas = this.backend.canvas;
@@ -112,6 +122,9 @@ export class WormholeCanvasSource implements CanvasVisualSource {
 
     /** The identity's own horizon projection for the last drawn frame (never pixel-derived). */
     get focalPoint(): VisualFocalPoint { return this.identity.routeFocus; }
+
+    /** Stage times of the last redraw in ms (`profile` only; the object is reused). */
+    get stageTimes(): Readonly<Record<string, number>> | null { return this.stages; }
 
     async prepare(analysis: VisualAnalysisSnapshot | null): Promise<void> {
         const revision = ++this.revision;
@@ -145,6 +158,7 @@ export class WormholeCanvasSource implements CanvasVisualSource {
 
     render(time: number, playing: boolean): boolean {
         if (this.disposed) return false;
+        const started = this.stages ? stageClock!.now() : 0;
         const previous = this.lastTime;
         const jump = previous !== null && (time < previous || time - previous > 0.25);
         // Texture work is capped (30 Hz unless the host sets a rate), independently of headset pose / gameplay cadence.
@@ -202,7 +216,13 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         // Nearer planes start black every frame; the far plane is cleared by the identity itself.
         this.midBackend?.background(0, 0, 0);
         this.nearBackend?.background(0, 0, 0);
+        const drawStarted = this.stages ? stageClock!.now() : 0;
         this.identity.draw(this.backend, [], []);
+        if (this.stages) {
+            this.stages.tune = drawStarted - started;
+            Object.assign(this.stages, this.identity.stageTimes);
+            this.stages.draw = stageClock!.now() - drawStarted;
+        }
         if (this.diagnostics) {
             this.canvas.dataset.frames = String(this.backend.frameCount);
             this.canvas.dataset.tuning = JSON.stringify(state.visualTuning);
@@ -238,6 +258,8 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     }
 
     private configureIdentity(): void {
+        // A fresh identity starts without timing; only a profiling source hands it the clock.
+        if (this.profile) this.identity.setStageClock(stageClock);
         this.identity.setDepthCue(this.depthCue);
         this.identity.setDepthLayers(this.midBackend && this.nearBackend ? { mid: this.midBackend, near: this.nearBackend } : null);
     }

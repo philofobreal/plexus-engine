@@ -22,6 +22,7 @@ import {
     activateMenuItem, DEFAULT_MENU_STATE, menuHomeScreen, menuResults, moveMenuFocus, switchMenuTab,
     type XrMenuCommand, type XrMenuContext, type XrMenuScreen, type XrMenuState
 } from './XrMenuModel';
+import { BackgroundDiagnostics } from './BackgroundDiagnostics';
 import { XrPlaybackBinding } from './XrPlaybackBinding';
 import { DesktopInputAdapter, desktopStrikeForRay, type DesktopMenuKey } from './DesktopInputAdapter';
 import { XrCommandDrawer } from './XrCommandDrawer';
@@ -130,6 +131,8 @@ export class XrAppController {
     private readonly diagnostics: boolean;
     private diagnosticPathRevision = -1;
     private diagnosticBackgroundMs = -1;
+    /** Opt-in background profiling summary for headset runs (menu line + overlay dataset). */
+    private readonly backgroundDiagnostics = new BackgroundDiagnostics();
 
     constructor(engine: AudioEngine, runtime: XrRuntime, hostContainer: HTMLElement, wormholeFactory?: CanvasVisualSourceFactory,
         options: XrAppControllerOptions = {}) {
@@ -670,7 +673,8 @@ export class XrAppController {
             canStart: state !== 'idle' && this.session.getSnapshot().totalNotes > 0,
             status: this.loading ? this.progressEl.textContent ?? '' : '',
             results: state === 'finished' ? menuResults(this.session.getSnapshot()) : null,
-            input: this.runtime.isPresenting() ? 'vr' : 'desktop' };
+            input: this.runtime.isPresenting() ? 'vr' : 'desktop',
+            ...(this.diagnostics && this.backgroundDiagnostics.summary ? { diagnostics: this.backgroundDiagnostics.summary } : {}) };
     }
 
     /**
@@ -817,6 +821,15 @@ export class XrAppController {
         if (this.diagnostics && this.scene.backgroundRenderMs !== this.diagnosticBackgroundMs) {
             this.diagnosticBackgroundMs = this.scene.backgroundRenderMs;
             this.overlay.dataset.xrBackgroundMs = this.diagnosticBackgroundMs.toFixed(2);
+        }
+        if (this.diagnostics) {
+            const { quality, rateHz } = this.settings.background;
+            // A worker frame reports its bitmap transfer as a stage ('xfer'); the in-thread source does not.
+            const label = this.settings.background.wormhole ? `${quality}, ${rateHz} Hz` : 'Wormhole off';
+            if (this.backgroundDiagnostics.record(deltaSec, this.session.getState() === 'playing', this.scene.backgroundFramesShown,
+                this.scene.backgroundRenderMs, this.scene.backgroundStageTimes, label)) {
+                this.overlay.dataset.xrBackgroundStages = this.backgroundDiagnostics.summary;
+            }
         }
         const previewLabel = this.session.getState() === 'playing' ? 'Pause'
             : this.session.getState() === 'paused' ? 'Resume'

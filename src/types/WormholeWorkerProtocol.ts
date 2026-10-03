@@ -13,6 +13,8 @@ export interface WormholeWorkerInit {
     readonly width: number;
     readonly height: number;
     readonly depthCue: number;
+    /** Opt-in stage timing (`?xrDiagnostics=1`); frames then carry `stages`. */
+    readonly profile?: boolean;
 }
 
 /**
@@ -67,6 +69,8 @@ export interface WormholeWorkerFrame {
     readonly focalY: number;
     /** Worker-side raster time of this frame, in milliseconds (diagnostics). */
     readonly renderMs: number;
+    /** Opt-in stage times in ms (profiling workers only): the source's stages plus `transfer`. */
+    readonly stages?: Readonly<Record<string, number>>;
 }
 
 /** The source had nothing new to draw (steady pause or rate cap); the request slot is free again. */

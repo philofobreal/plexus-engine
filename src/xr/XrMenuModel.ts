@@ -49,6 +49,8 @@ export interface XrMenuContext {
     readonly results: XrMenuResults | null;
     /** Where the menu is used: the headset (laser + trigger, Exit VR) or the desktop (mouse / keyboard). */
     readonly input?: 'vr' | 'desktop';
+    /** Opt-in performance line (`?xrDiagnostics=1`), shown on the main and pause screens. */
+    readonly diagnostics?: string;
 }
 
 export type XrMenuCommand =
@@ -234,6 +236,8 @@ export function menuLayout(state: XrMenuState, context: XrMenuContext): XrMenuLa
     items.push(...buttonStack(204, withExit(context, paused
         ? [['action:resume', 'Resume', { primary: true }], ['action:restart', 'Restart', {}], ['action:settings', 'Settings', {}]]
         : [['action:start', 'Start', { primary: true, disabled: !ready }], ['action:settings', 'Settings', {}]])));
+    // Below the four-button stack, above the footer hint.
+    if (context.diagnostics) texts.push(text(context.diagnostics, center, 586, 17, 'muted', 'center', 2));
     texts.push(text(context.input === 'desktop'
         ? 'Mouse or arrow keys + Enter to choose. Esc: back / resume. Space: play / pause.'
         : 'Point with a controller, pull the trigger to choose. Grip: pause / back.', center, footerY, 20, 'muted', 'center'));
