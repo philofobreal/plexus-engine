@@ -513,6 +513,36 @@ historical game:
   regeneration) start from a fixed historical baseline (`tests/helpers/xr-historical-settings.mjs`)
   so they do not depend on the shipped defaults.
 
+## Addendum U: background profiling for headset runs (2026-10-04)
+
+A beat-locked keyframe mode ("Beat blend": keyframes on the beat grid, rendered ahead and blended on
+the GPU) was built on 2026-10-03 and reverted the next day: on the Meta Quest 3 it ran worse than
+rendering every update (most likely because blending doubled the texture reads of the largest
+surface on an already GPU-bound headset). Before the next optimization the cost must be measured
+where it matters, on the headset, per stage.
+
+- **Stages.** `CosmicWormholeIdentity.setStageClock` (opt-in, null by default, output-neutral; a test
+  compares the drawn lines and raster composites with and without it) times the background layers,
+  the grain loop (lines plus Nebula carrier accumulation), the weave, the Nebula resolve (bloom /
+  haze) and the three-layer composite. `WormholeCanvasSource({ profile })` adds its tuning / director
+  work (`tune`) and the identity total; the render worker adds the bitmap transfer (Canvas2D may
+  defer raster work until then).
+- **Transport.** Only with `?xrDiagnostics=1`: the worker `init` carries `profile: true` and frames
+  carry optional `stages` (additive, protocol 1); normal runs neither time nor send anything.
+- **Readout in the headset.** `BackgroundDiagnostics` averages two seconds of play into one line --
+  display rate, background frames shown per second and their raster ms, the quality and rate in
+  use, then the stage times -- shown on the game menu's main and pause screens (and mirrored on
+  the overlay's `data-xr-background-stages`). Pausing ends a window without a summary.
+- **First desktop reading** (synthetic 128 BPM track, Ultra / 36 Hz, worker): the weave varied from
+  2.8 to 14.4 ms between song sections and was the largest stage in the drop; grains 3.6-5.3,
+  layers 3.1-3.4, resolve 1.0-1.7, composite 0.4-0.8, transfer 0.2-0.3 ms. So the Nebula's cost is
+  not mainly the blur but the weave and the per-grain carrier work, and it depends on the music.
+- **Next step** decided from Quest readings: moving the Nebula material (carrier accumulation,
+  weave, resolve) to the GPU in the main WebGL context, with the worker sending only the carrier
+  list. Multiple workers were rejected (duplicated simulation, cross-worker state drift, no
+  SharedArrayBuffer on GitHub Pages, faster thermal throttling on the headset); a WebGL / WebGPU
+  context inside the worker was rejected (same physical GPU, a second context and a copy back).
+
 ## Consequences
 
 `/xr/` can evolve its own scene complexity, controller model, and performance profile without

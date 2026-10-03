@@ -53,12 +53,14 @@ Current failure message fields:
 (ADR-009 Addendum G). Its typed contract lives in `src/types/WormholeWorkerProtocol.ts` (protocol
 version 1):
 
-- Requests: `init` (protocol, raster size, depth cue), `prepare` (generation, analysis snapshot),
+- Requests: `init` (protocol, raster size, depth cue, optional `profile` for diagnostics),
+  `prepare` (generation, analysis snapshot),
   `render` (generation, time, playing), `presentation` (Line stroke, rate cap, optional Visual
   character macros; ADR-009 Addendum R), `dispose`. Optional presentation fields are additive and
   keep protocol version 1; removing or reinterpreting a field requires a version bump.
 - Responses: `prepared` / `prepare-error` (generation), `frame` (generation, time, transferred
-  `ImageBitmap`, focal point, raster ms), `unchanged` (generation), `failure` (message).
+  `ImageBitmap`, focal point, raster ms, optional `stages` -- per-stage ms, only when `init`
+  asked to profile; ADR-009 Addendum U), `unchanged` (generation), `failure` (message).
 - Identification: every `prepare` starts a new generation; the proxy drops (and closes) frames and
   answers from older generations, so a superseded preparation can never overwrite a newer one.
 - Copy vs transfer: the analysis snapshot is structured-cloned (copied) because the host keeps
