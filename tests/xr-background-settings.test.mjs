@@ -8,9 +8,9 @@ import { fakeDocument, findAll } from './helpers/fake-dom.mjs';
 
 const settingsModule = () => createLoader()('xr/XrBackgroundSettings.ts');
 
-const AUTHORED_DEFAULTS = { wormhole: true, quality: 'ultra', rateHz: 36, lineStroke: 0.34, sharpness: 1, character: { intensity: 1, motion: 1, depth: 0.1, detail: 1 } };
+const AUTHORED_DEFAULTS = { wormhole: true, quality: 'ultra', rateHz: 36, motionMode: 'beat', lineStroke: 0.34, sharpness: 1, character: { intensity: 1, motion: 1, depth: 0.1, detail: 1 } };
 /** The pre-Addendum-T presentation, for tests about pacing rather than defaults. */
-const BALANCED_24 = { wormhole: true, quality: 'balanced', rateHz: 24, lineStroke: 0.98, sharpness: 0.5, character: { intensity: 1, motion: 1, depth: 0.3, detail: 1 } };
+const BALANCED_24 = { wormhole: true, quality: 'balanced', rateHz: 24, motionMode: 'direct', lineStroke: 0.98, sharpness: 0.5, character: { intensity: 1, motion: 1, depth: 0.3, detail: 1 } };
 
 test('background settings default to the authored values: Wormhole on, Ultra raster, 36 Hz, Line stroke 34, full sharpening', () => {
     const { DEFAULT_XR_BACKGROUND_SETTINGS, XR_BACKGROUND_RESOLUTION, normalizeBackgroundSettings } = settingsModule();
@@ -108,7 +108,8 @@ test('a quality change rebuilds the single background plane at the new raster si
 test('Line stroke follows the MVP Advanced slider semantics and redraws even while steadily paused', async () => {
     const canvases = [];
     class Backend { constructor(width, height) { this.canvas = { width, height }; this.frameCount = 0; canvases.push(this); } background() {} }
-    class Identity { constructor(state) { this.state = state; } syncPosition() {} setDepthCue() {} setDepthLayers() {} draw() {} }
+    class Identity { constructor(state) { this.state = state; this.routeFocus = { x: 0.2, y: 0 }; this.lastTravelDistance = 42; }
+        syncPosition() {} setDepthCue() {} setDepthLayers() {} draw() {} }
     const load = createLoader({
         './Canvas2DRendererBackend': { Canvas2DRendererBackend: Backend },
         './CosmicWormholeIdentity': { CosmicWormholeIdentity: Identity }
@@ -140,15 +141,28 @@ test('Line stroke follows the MVP Advanced slider semantics and redraws even whi
     let draws = 0;
     for (let i = 0; i <= 72; i++) if (source.render(2 + i / 72, true)) draws++;
     assert.ok(draws >= 24 && draws <= 25, `24 Hz cap: ${draws}`);
+    // Keyframe mode (Addendum U): a request never touches the canvas; taking it draws the exact time.
+    const drawsBefore = canvases[0].frameCount;
+    assert.equal(source.requestFrame(3.5, true), true);
+    assert.equal(source.requestFrame(3.6, true), false, 'one request at a time');
+    assert.equal(canvases[0].frameCount, drawsBefore, 'requesting does not draw');
+    const keyframe = source.takeFrame();
+    assert.deepEqual([keyframe.time, keyframe.focalX, keyframe.focalY, keyframe.travel], [3.5, 0.2, 0, 42]);
+    assert.ok(keyframe.renderMs >= 0);
+    assert.equal(canvases[0].frameCount, drawsBefore + 1, 'taking it draws the exact time');
+    assert.equal(source.takeFrame(), null, 'once');
+    assert.equal(source.requestFrame(3.51, true), true);
+    assert.ok(source.takeFrame(), 'keyframes ignore the redraw cap');
     source.dispose();
+    assert.equal(source.requestFrame(4, true), false);
 });
 
 test('Visuals and Character settings are live presentation settings that never touch the game', () => {
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS, changeScope } = createLoader()('xr/XrSettings.ts');
     const visuals = XR_SETTINGS.filter(d => d.section === 'background'), character = XR_SETTINGS.filter(d => d.section === 'character');
-    assert.equal(visuals.map(d => d.id).join(), 'wormhole,noteDesign,quality,rateHz,lineStroke,sharpness');
+    assert.equal(visuals.map(d => d.id).join(), 'wormhole,noteDesign,quality,rateHz,motionMode,lineStroke,sharpness');
     assert.equal(character.map(d => d.id).join(), 'intensity,motion,depth,detail');
-    assert.equal(visuals.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), 'on,shard,ultra,36,34,100');
+    assert.equal(visuals.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), 'on,shard,ultra,36,beat,34,100');
     assert.equal(character.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '100,100,10,100', 'the XR host authored Visual character');
     for (const descriptor of [...visuals, ...character]) {
         assert.equal(descriptor.scope, 'presentation', descriptor.id);
@@ -178,13 +192,13 @@ test('the XR composition root requests a single background plane at the scene-se
     assert.match(main, /width: options\?\.width, height: options\?\.height/);
 });
 
-test('Ultra rasterizes at 1280 x 720 and the plane sharpens its magnified texture on the GPU, live and halo-limited', async () => {
+test('Ultra rasterizes at 1280 x 720 and the plane blends and sharpens its magnified texture on the GPU, live and halo-limited', async () => {
     const { scene, sources } = sceneHarness();
     await scene.setBackgroundSettings({ quality: 'ultra', rateHz: 24, lineStroke: 1, sharpness: 0.5 });
     await scene.setWormholeEnabled(true);
     assert.equal(JSON.stringify(sources[0].options), JSON.stringify({ width: 1280, height: 720 }));
-    const plane = scene.root.children.find(c => c.material?.customProgramCacheKey?.() === 'wormhole-sharpen');
-    assert.ok(plane, 'the background plane carries the sharpening shader');
+    const plane = scene.root.children.find(c => c.material?.customProgramCacheKey?.() === 'wormhole-keyframe-blend');
+    assert.ok(plane, 'the background plane carries the keyframe blend + sharpening shader');
     const shader = { uniforms: {}, fragmentShader: 'void main() {\n#include <map_fragment>\n}' };
     plane.material.onBeforeCompile(shader);
     assert.ok(!shader.fragmentShader.includes('#include <map_fragment>') && shader.fragmentShader.includes('clamp( c + uSharpen'));

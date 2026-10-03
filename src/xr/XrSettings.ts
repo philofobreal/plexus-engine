@@ -98,7 +98,7 @@ function playChoice(id: keyof XrPlaySettings, label: string, choices: readonly X
         write: (settings, value) => ({ ...settings, play: normalizePlaySettings({ ...settings.play, [id]: value }) }) };
 }
 
-function backgroundChoice(id: 'quality' | 'rateHz', label: string, choices: readonly XrSettingChoice[]): XrChoiceSetting {
+function backgroundChoice(id: 'quality' | 'rateHz' | 'motionMode', label: string, choices: readonly XrSettingChoice[]): XrChoiceSetting {
     return { id, section: 'background', label, scope: 'presentation', kind: 'choice', choices,
         read: settings => String(settings.background[id]),
         write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background,
@@ -175,8 +175,11 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
         { value: 'high', label: 'High', hint: '960 x 540 raster: sharper, heavier on the CPU.' },
         { value: 'ultra', label: 'Ultra', hint: '1280 x 720 raster: the sharpest image in the headset, the heaviest on the CPU (drawn off the main thread).' }]),
     backgroundChoice('rateHz', 'Background update', [
-        { value: '24', label: '24 Hz', hint: 'Every third headset frame: the lightest, steadiest load.' },
-        { value: '36', label: '36 Hz', hint: 'Every second headset frame: more fluid motion, higher cost.' }]),
+        { value: '24', label: '24 Hz', hint: 'At most every third headset frame: the lightest, steadiest load.' },
+        { value: '36', label: '36 Hz', hint: 'At most every second headset frame: more fluid motion, higher cost.' }]),
+    backgroundChoice('motionMode', 'Background motion', [
+        { value: 'direct', label: 'Every frame', hint: 'Renders every background update: the heaviest, and it stutters when the device falls behind.' },
+        { value: 'beat', label: 'Beat blend', hint: 'Renders the Wormhole on the beat (as often as this device keeps up) and blends smoothly in between: far less work, no stutter.' }]),
     { id: 'lineStroke', section: 'background', label: 'Line stroke', scope: 'presentation', kind: 'range', min: 0, max: 100, step: 1,
         read: settings => Math.round(settings.background.lineStroke * 100),
         write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background, lineStroke: value / 100 }) }) },

@@ -817,6 +817,8 @@ export class XrAppController {
         if (this.diagnostics && this.scene.backgroundRenderMs !== this.diagnosticBackgroundMs) {
             this.diagnosticBackgroundMs = this.scene.backgroundRenderMs;
             this.overlay.dataset.xrBackgroundMs = this.diagnosticBackgroundMs.toFixed(2);
+            // Beat blend (Addendum U): the keyframe gap the device currently sustains.
+            this.overlay.dataset.xrBackgroundKeyframeMs = (this.scene.backgroundKeyframeIntervalSec * 1000).toFixed(1);
         }
         const previewLabel = this.session.getState() === 'playing' ? 'Pause'
             : this.session.getState() === 'paused' ? 'Resume'
