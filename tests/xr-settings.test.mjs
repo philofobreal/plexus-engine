@@ -13,6 +13,8 @@ test('every setting is described once, round-trips through its control value; th
     const { DEFAULT_XR_BACKGROUND_SETTINGS } = load('xr/XrBackgroundSettings.ts');
     const ids = XR_SETTINGS.map(d => `${d.section}/${d.id}`);
     assert.equal(new Set(ids).size, ids.length);
+    // The menu finds descriptors by id alone, so ids are unique across sections too.
+    assert.equal(new Set(XR_SETTINGS.map(d => d.id)).size, XR_SETTINGS.length, 'setting ids are globally unique');
     assert.ok(XR_SETTINGS.every(d => XR_SETTING_SECTIONS.some(s => s.id === d.section)));
     assert.ok(XR_SETTINGS.every(d => ['chart', 'session', 'presentation'].includes(d.scope)));
     for (const descriptor of XR_SETTINGS) {
