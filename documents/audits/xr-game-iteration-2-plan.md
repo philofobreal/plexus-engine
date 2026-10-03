@@ -1,7 +1,13 @@
 # XR ritmusjáték — 2. fejlesztési kör terve
 
 Hatókör: `src/xr/`, `src/gameplay/`, `src/visuals/WormholeCanvasSource.ts` (és az új worker-adapter),
-`src/types/CanvasVisualSource.ts`, ADR-009 kiegészítések, `tests/`.
+`src/types/CanvasVisualSource.ts`, `src/config/xrWormholeTuning.ts` (csak az XR-host szerzői
+Wormhole-értékei, R és T kiegészítés), ADR-009 kiegészítések, `tests/`.
+
+Érintett tulajdonosok (AGENTS.md): gameplay (`src/gameplay/`), XR runtime/scene/UI (`src/xr/`),
+visuals és worker (`src/visuals/` Wormhole-adapter + render worker, `src/types/` szerződések),
+config (`src/config/xrWormholeTuning.ts`), docs. Az audio, az analyzer, a `State` és a dashboard /
+MVP host nem érintett.
 
 Előzmény: a 2026-09-27-i redesign (drawer, track path, game settings, section callout, 2.5D
 Wormhole) után a szerzői kérések (2026-10-03): hátrébb álló játékos, dramaturgiai pontozás és
@@ -26,7 +32,7 @@ Munkamód: egyszerre egy task, utána megállás és kézi Quest-ellenőrzőlist
 | T6 | Pályán érkező szakaszkapuk | 8 | T3, T5 | KÉSZ (2026-10-03, Quest-elfogadás függőben) — ADR-009 Addendum L |
 | T8 | Nagyobb/magasabb játéktér | 4 | T3 | KÉSZ (2026-10-03, Quest-elfogadás függőben; Aréna később) — ADR-009 Addendum M |
 | T9 | Ultra fokozat | 10 | T4, T8 | KÉSZ (2026-10-03, Quest-elfogadás függőben) — ADR-009 Addendum N |
-| T10 | VR-menü + DOM-menü újraépítése közös sémából | 7 | T2… | KÉSZ (2026-10-03, Quest-elfogadás függőben) — ADR-009 Addendum O |
+| T10 | VR-menü + DOM-menü újraépítése közös sémából | 7 | T2… | KÉSZ (2026-10-03, Quest-elfogadás függőben) — ADR-009 Addendum O; a DOM-beállításmenüt az S kiegészítés kiváltotta (vászon-menü desktopon is) |
 | T11 | Választható kockadizájn (menüből) + vágási effekt | 9 | T10 a menühöz | KÉSZ (2026-10-03, Quest-elfogadás függőben) — ADR-009 Addendum Q; + Wormhole-élesség: Addendum P |
 
 ## 1. Kiinduló tények (kódból)
@@ -163,3 +169,15 @@ Zene betöltése VR előtt, a böngészőben.
 
 Classic (mostani) és Shard (az irányt a forma is mutatja, világító vágási vonal), menüből
 választható; találatkor két félre hasadás a vágás síkjában + szikra, példányosítva.
+
+## 4. A terven kívüli, szerzői kérésre készült kiegészítések (2026-10-03)
+
+| Kiegészítés | Tartalom | Állapot |
+|---|---|---|
+| ADR-009 Addendum P | Wormhole-élesség: Ultra raszter (1280x720) + GPU-élesítés (Sharpness) | KÉSZ, Quest-elfogadás függőben |
+| ADR-009 Addendum R | Szerzői XR Wormhole-értékek (Nebula be), Character fül (Visual character), Wormhole be/ki a menüben; mért költség | KÉSZ, Quest-elfogadás függőben |
+| ADR-009 Addendum S | A játékmenü csak a vásznon, desktopon is (Esc / fogaskerék / egér / nyilak + Enter); a HTML-panel csak zenét tölt és indít | KÉSZ, Quest-elfogadás függőben |
+| ADR-009 Addendum T | Szerzői játékos-alapértékek (Tall / Hyper / Long, Ultra / Active / Expressive / Crossover, Wormhole be, Shard, Ultra / 36 Hz, Line stroke 34, Sharpness 100, Depth 10); a gameplay-könyvtár és a golden chart változatlan | KÉSZ, Quest-elfogadás függőben |
+
+Nyitott következő lépés: a Nebula XR-raszterének olcsóbbá tétele, ha a Quest-futás szaggató
+hátteret mutat (R és T kiegészítés).

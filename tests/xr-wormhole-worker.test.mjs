@@ -62,8 +62,10 @@ test('one request in flight; a finished frame wakes the host, is presented zero-
     assert.equal(source.focalPoint.x, 0.2); assert.equal(source.focalPoint.y, -0.1);
     assert.equal(source.lastRenderMs, 7.5);
     assert.equal(renders(worker).length, 1, 'a steady pause does not ask again');
-    source.setPresentation({ lineStroke: 0.4, maxFrameRateHz: 24 });
-    assert.equal(JSON.stringify(worker.posted.at(-1)), JSON.stringify({ type: 'presentation', presentation: { lineStroke: 0.4, maxFrameRateHz: 24 } }));
+    const macros = { intensity: 1, motion: 0.5, depth: 0.1, detail: 1 };
+    source.setPresentation({ lineStroke: 0.4, maxFrameRateHz: 24, macros });
+    assert.equal(JSON.stringify(worker.posted.at(-1)), JSON.stringify({ type: 'presentation', presentation: { lineStroke: 0.4, maxFrameRateHz: 24, macros } }),
+        'Line stroke, rate and the Visual character cross the boundary as plain data');
     source.render(5, false);
     assert.equal(renders(worker).length, 2, 'a presentation change reaches a paused background');
     worker.reply({ type: 'unchanged', generation: 1 });
@@ -164,8 +166,9 @@ test('worker adapter: changed frames transfer their bitmap with the focal point;
     assert.ok(frame.transfer.length === 1 && frame.transfer[0] === frame.message.bitmap, 'the bitmap is transferred, not copied');
     changed.send({ type: 'render', generation: 2, time: 3, playing: true });
     assert.equal(JSON.stringify(changed.posted.at(-1).message), JSON.stringify({ type: 'unchanged', generation: 2 }));
-    changed.send({ type: 'presentation', presentation: { lineStroke: 0.2 } });
-    assert.deepEqual(changed.sources[0].presentations, [{ lineStroke: 0.2 }]);
+    changed.send({ type: 'presentation', presentation: { lineStroke: 0.2, macros: { intensity: 1, motion: 1, depth: 0.1, detail: 0.5 } } });
+    assert.deepEqual(changed.sources[0].presentations, [{ lineStroke: 0.2, macros: { intensity: 1, motion: 1, depth: 0.1, detail: 0.5 } }],
+        'the worker hands the Visual character to its source');
     changed.send({ type: 'dispose' });
     assert.ok(changed.sources[0].disposed); assert.ok(changed.scope.closed);
 
