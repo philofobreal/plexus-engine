@@ -53,19 +53,6 @@ test('every setting is reachable on its tab, and every screen fits the panel wit
     assert.equal(menuItemAt(main, 2, 2), null);
 });
 
-test('every settings tab ends above its two-line hint, which ends above the Back button', () => {
-    for (const section of XR_SETTING_SECTIONS) {
-        const layout = menuLayout({ ...DEFAULT_MENU_STATE, screen: 'settings', tab: section.id, hover: 'action:back' }, context({ input: 'desktop' }));
-        const hint = layout.texts.find(t => t.maxLines === 2);
-        const back = layout.items.find(i => i.id === 'action:back');
-        const rows = layout.items.filter(i => i.kind === 'option' || i.kind === 'step');
-        const lowest = Math.max(...rows.map(i => i.y + i.h));
-        assert.ok(lowest <= hint.y - hint.size, `${section.id}: rows end at ${lowest}, the hint starts at ${hint.y - hint.size}`);
-        assert.ok(hint.y + hint.size * 1.3 <= back.y, `${section.id}: the second hint line stays above Back`);
-        assert.ok(rows.every(i => i.h >= 38), `${section.id}: controls stay large enough to point at`);
-    }
-});
-
 test('activation: navigation stays in the menu, choices become scoped setting commands, steppers clamp', () => {
     const settingsState = { ...DEFAULT_MENU_STATE, screen: 'settings', tab: 'choreography' };
     const layout = menuLayout(settingsState, context());

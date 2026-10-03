@@ -101,11 +101,6 @@ const BUTTON_W = 440;
 const BUTTON_H = 64;
 const BUTTON_GAP = 14;
 const ROW_H = 66;
-/** Settings rows shrink (never below this) so a long tab still ends above the hint line. */
-const MIN_ROW_H = 52;
-/** Baseline of the settings hint (two lines) and the lowest point a settings row may reach. */
-const HINT_Y = MENU_CANVAS.height - 122;
-const ROWS_BOTTOM = HINT_Y - 30;
 const LABEL_W = 250;
 const OPTION_GAP = 8;
 /** A VR stepper moves a range setting in tenths of its span (a slider is too fiddly with a laser). */
@@ -171,26 +166,22 @@ function scopeNote(scope: XrSettingScope): string {
 function settingRows(settings: XrSettings, tab: XrSettingSectionId, top: number): { items: XrMenuItem[]; texts: XrMenuText[] } {
     const items: XrMenuItem[] = [], texts: XrMenuText[] = [];
     const left = MARGIN + LABEL_W, width = MENU_CANVAS.width - MARGIN - left;
-    const descriptors = XR_SETTINGS.filter(d => d.section === tab);
-    // The last row's controls (ROW_H - 14 tall) must end above the hint line.
-    const rowH = Math.max(MIN_ROW_H, Math.min(ROW_H, Math.floor((ROWS_BOTTOM - top + 14) / Math.max(1, descriptors.length))));
-    const controlH = rowH - 14;
     let y = top;
-    for (const descriptor of descriptors) {
-        texts.push(text(descriptor.label, MARGIN, y + rowH / 2 - 4, 24, 'label'));
+    for (const descriptor of XR_SETTINGS.filter(d => d.section === tab)) {
+        texts.push(text(descriptor.label, MARGIN, y + ROW_H / 2 - 4, 24, 'label'));
         if (descriptor.kind === 'choice') {
             const current = descriptor.read(settings), n = descriptor.choices.length;
             const w = (width - (n - 1) * OPTION_GAP) / n;
             descriptor.choices.forEach((choice, i) => items.push(item(`opt:${descriptor.id}:${choice.value}`, 'option', choice.label,
-                left + i * (w + OPTION_GAP), y, w, controlH, { selected: choice.value === current, hint: choice.hint + scopeNote(descriptor.scope) })));
+                left + i * (w + OPTION_GAP), y, w, ROW_H - 14, { selected: choice.value === current, hint: choice.hint + scopeNote(descriptor.scope) })));
         } else {
             const value = descriptor.read(settings), stepW = 90;
             const hint = `${descriptor.label}: ${value} (${descriptor.min}-${descriptor.max}).${descriptor.hint ? ` ${descriptor.hint}` : ''}${scopeNote(descriptor.scope)}`;
-            items.push(item(`step:${descriptor.id}:-1`, 'step', '-', left, y, stepW, controlH, { disabled: value <= descriptor.min, hint }));
-            items.push(item(`step:${descriptor.id}:1`, 'step', '+', left + width - stepW, y, stepW, controlH, { disabled: value >= descriptor.max, hint }));
-            texts.push(text(String(value), left + width / 2, y + controlH / 2 + 2, 30, 'value', 'center'));
+            items.push(item(`step:${descriptor.id}:-1`, 'step', '-', left, y, stepW, ROW_H - 14, { disabled: value <= descriptor.min, hint }));
+            items.push(item(`step:${descriptor.id}:1`, 'step', '+', left + width - stepW, y, stepW, ROW_H - 14, { disabled: value >= descriptor.max, hint }));
+            texts.push(text(String(value), left + width / 2, y + (ROW_H - 14) / 2 + 2, 30, 'value', 'center'));
         }
-        y += rowH;
+        y += ROW_H;
     }
     return { items, texts };
 }
@@ -210,7 +201,7 @@ export function menuLayout(state: XrMenuState, context: XrMenuContext): XrMenuLa
         const rows = settingRows(context.settings, state.tab, 168);
         items.push(...rows.items); texts.push(...rows.texts);
         const hovered = items.find(i => i.id === state.hover);
-        texts.push(text(hovered?.hint ?? '', MARGIN, HINT_Y, 21, 'muted', 'left', 2));
+        texts.push(text(hovered?.hint ?? '', MARGIN, MENU_CANVAS.height - 122, 21, 'muted', 'left', 2));
         items.push(item('action:back', 'button', 'Back', MARGIN, MENU_CANVAS.height - 24 - 56, 220, 56));
         return { items, texts };
     }

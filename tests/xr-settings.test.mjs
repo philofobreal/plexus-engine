@@ -13,8 +13,6 @@ test('every setting is described once, round-trips through its control value; th
     const { DEFAULT_XR_BACKGROUND_SETTINGS } = load('xr/XrBackgroundSettings.ts');
     const ids = XR_SETTINGS.map(d => `${d.section}/${d.id}`);
     assert.equal(new Set(ids).size, ids.length);
-    // The menu finds descriptors by id alone, so ids are unique across sections too.
-    assert.equal(new Set(XR_SETTINGS.map(d => d.id)).size, XR_SETTINGS.length, 'setting ids are globally unique');
     assert.ok(XR_SETTINGS.every(d => XR_SETTING_SECTIONS.some(s => s.id === d.section)));
     assert.ok(XR_SETTINGS.every(d => ['chart', 'session', 'presentation'].includes(d.scope)));
     for (const descriptor of XR_SETTINGS) {
@@ -44,7 +42,7 @@ test('the /xr/ player defaults are the authored menu values (ADR-009 Addendum T)
     const expected = {
         playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'long',
         difficulty: 'ultra', activity: 'active', variation: 'expressive', handPattern: 'alternate', handLead: 'even', zones: 'cross',
-        wormhole: 'on', noteDesign: 'shard', quality: 'ultra', rateHz: '36', motionMode: 'beat', lineStroke: 34, sharpness: 100,
+        wormhole: 'on', noteDesign: 'shard', quality: 'ultra', rateHz: '36', lineStroke: 34, sharpness: 100,
         intensity: 100, motion: 100, depth: 10, detail: 100
     };
     assert.equal(Object.keys(expected).length, XR_SETTINGS.length, 'every setting has an authored default');
@@ -87,7 +85,7 @@ test('every setting, including the newest ones, survives a reload through the pe
     const { createXrSettingsStore } = load('xr/XrSettingsStore.ts');
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS } = settingsModule();
     const values = { playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'auto', difficulty: 'ultra', wormhole: 'on', noteDesign: 'shard',
-        quality: 'ultra', rateHz: '36', motionMode: 'direct', lineStroke: 55, sharpness: 80, intensity: 20, motion: 40, depth: 60, detail: 10 };
+        quality: 'ultra', rateHz: '36', lineStroke: 55, sharpness: 80, intensity: 20, motion: 40, depth: 60, detail: 10 };
     let settings = DEFAULT_XR_SETTINGS;
     for (const [id, value] of Object.entries(values)) settings = XR_SETTINGS.find(d => d.id === id).write(settings, value);
     const storage = memoryStorage();

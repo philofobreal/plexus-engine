@@ -224,8 +224,6 @@ export class RhythmGameScene {
 
     /** Wall-clock cost of the background's last canvas redraw (diagnostics). */
     get backgroundRenderMs(): number { return this.wormhole?.lastRenderMs ?? 0; }
-    /** Gap between background keyframes in seconds with Beat blend (0 otherwise; diagnostics). */
-    get backgroundKeyframeIntervalSec(): number { return this.wormhole?.keyframeIntervalSec ?? 0; }
 
     /**
      * Player background presentation. Line stroke and rate apply in place; a quality change
@@ -252,10 +250,8 @@ export class RhythmGameScene {
         this.wormhole?.setSharpness(this.background.sharpness * MAX_BACKGROUND_SHARPEN);
         const divider = backgroundFrameDivider(this.displayHz, this.background.rateHz);
         // The source learns the effective rate (display cadence / divider), never above the request.
-        // Beat blend (Addendum U): the update rate bounds the keyframe rate; GPU blends fill every display frame.
         this.wormhole?.configure({ lineStroke: this.background.lineStroke, maxFrameRateHz: this.displayHz / divider,
-            ...(this.background.character ? { macros: this.background.character } : {}) }, divider,
-            { motion: this.background.motionMode === 'direct' ? 'direct' : 'beat', maxKeyframeRateHz: this.background.rateHz });
+            ...(this.background.character ? { macros: this.background.character } : {}) }, divider);
     }
 
     async setWormholeAnalysis(analysis: VisualAnalysisSnapshot | null): Promise<void> {

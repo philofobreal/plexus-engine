@@ -6,16 +6,8 @@ import { XR_WORMHOLE_BOOSTS, XR_WORMHOLE_MACROS } from '../config/xrWormholeTuni
 
 /** Raster resolution of the single background plane. */
 export type XrBackgroundQuality = 'performance' | 'balanced' | 'high' | 'ultra';
-/**
- * Background redraws per second while playing; both divide the 72 Hz headset rate evenly. With
- * Beat blend motion it is the upper bound of the keyframe rate.
- */
+/** Background redraws per second while playing; both divide the 72 Hz headset rate evenly. */
 export type XrBackgroundRate = 24 | 36;
-/**
- * How the background moves (ADR-009 Addendum U). `beat`: keyframes on the beat grid, as often as
- * the device sustains, blended on the GPU every display frame. `direct`: every redraw rendered.
- */
-export type XrBackgroundMotion = 'beat' | 'direct';
 
 /** MVP "Visual character" macro slider positions in [0, 1] (0.5 = neutral, no change). */
 export interface XrVisualCharacter {
@@ -32,7 +24,6 @@ export interface XrBackgroundSettings {
     readonly wormhole: boolean;
     readonly quality: XrBackgroundQuality;
     readonly rateHz: XrBackgroundRate;
-    readonly motionMode: XrBackgroundMotion;
     /** MVP Advanced "Line stroke" slider position in [0, 1] (0.5 = neutral gain, 1 = maximum boost). */
     readonly lineStroke: number;
     /**
@@ -50,7 +41,6 @@ export const MAX_BACKGROUND_SHARPEN = 1.5;
 
 export const XR_BACKGROUND_QUALITIES: readonly XrBackgroundQuality[] = ['performance', 'balanced', 'high', 'ultra'];
 export const XR_BACKGROUND_RATES: readonly XrBackgroundRate[] = [24, 36];
-export const XR_BACKGROUND_MOTIONS: readonly XrBackgroundMotion[] = ['direct', 'beat'];
 
 export const XR_BACKGROUND_RESOLUTION: Readonly<Record<XrBackgroundQuality, { readonly width: number; readonly height: number }>> = {
     performance: { width: 640, height: 360 },
@@ -65,7 +55,7 @@ export const XR_BACKGROUND_RESOLUTION: Readonly<Record<XrBackgroundQuality, { re
  * starting state and the menu's defaults are one set of values.
  */
 export const DEFAULT_XR_BACKGROUND_SETTINGS: XrBackgroundSettings = Object.freeze({
-    wormhole: true, quality: 'ultra', rateHz: 36, motionMode: 'beat', lineStroke: XR_WORMHOLE_BOOSTS.lineWeight, sharpness: 1,
+    wormhole: true, quality: 'ultra', rateHz: 36, lineStroke: XR_WORMHOLE_BOOSTS.lineWeight, sharpness: 1,
     character: Object.freeze({ intensity: XR_WORMHOLE_MACROS.intensity, motion: XR_WORMHOLE_MACROS.motion,
         depth: XR_WORMHOLE_MACROS.depth, detail: XR_WORMHOLE_MACROS.detail })
 });
@@ -83,7 +73,6 @@ export function normalizeBackgroundSettings(settings?: Partial<XrBackgroundSetti
         wormhole: typeof settings?.wormhole === 'boolean' ? settings.wormhole : d.wormhole,
         quality: settings?.quality && XR_BACKGROUND_QUALITIES.includes(settings.quality) ? settings.quality : d.quality,
         rateHz: settings?.rateHz && XR_BACKGROUND_RATES.includes(settings.rateHz) ? settings.rateHz : d.rateHz,
-        motionMode: settings?.motionMode && XR_BACKGROUND_MOTIONS.includes(settings.motionMode) ? settings.motionMode : d.motionMode,
         lineStroke: Number.isFinite(stroke) ? Math.min(1, Math.max(0, stroke)) : d.lineStroke,
         sharpness: settings?.sharpness !== undefined && Number.isFinite(sharpness) ? Math.min(1, Math.max(0, sharpness)) : d.sharpness,
         character: {
