@@ -23,6 +23,7 @@ import {
     type XrMenuCommand, type XrMenuContext, type XrMenuScreen, type XrMenuState
 } from './XrMenuModel';
 import { BackgroundDiagnostics } from './BackgroundDiagnostics';
+import { supportsGpuGrainMaterial } from './scene/GrainMaterialRenderer';
 import { XrPlaybackBinding } from './XrPlaybackBinding';
 import { DesktopInputAdapter, desktopStrikeForRay, type DesktopMenuKey } from './DesktopInputAdapter';
 import { XrCommandDrawer } from './XrCommandDrawer';
@@ -41,6 +42,11 @@ const THUMB_REST = 0.3;
 export interface XrAppControllerOptions extends XrDiagnosticsOptions {
     /** Per-viewer settings persistence, injected by the composition root (memory-only when absent). */
     readonly settingsStore?: XrSettingsStore;
+    /**
+     * Render the Wormhole grain material on the GPU when the renderer supports it (ADR-009
+     * Addendum W; default true). The composition root may force the CPU raster for comparison.
+     */
+    readonly gpuMaterial?: boolean;
 }
 
 /** Immutable analyzer publication captured once per load; regeneration never re-reads or re-analyzes. */
@@ -146,6 +152,7 @@ export class XrAppController {
         this.gameConfig = this.playProfile.config;
         this.session = new RhythmGameSession(this.gameConfig);
         this.scene = new RhythmGameScene(runtime.scene, this.gameConfig, wormholeFactory);
+        this.scene.setGpuMaterial(options.gpuMaterial !== false && supportsGpuGrainMaterial(runtime.renderer as unknown as THREE.WebGLRenderer));
         this.scene.setStageLayout(this.playProfile.stage);
         // Restored presentation applies before any background is created.
         void this.scene.setBackgroundSettings(this.settings.background);
@@ -825,7 +832,8 @@ export class XrAppController {
         if (this.diagnostics) {
             const { quality, rateHz } = this.settings.background;
             // A worker frame reports its bitmap transfer as a stage ('xfer'); the in-thread source does not.
-            const label = this.settings.background.wormhole ? `${quality}, ${rateHz} Hz` : 'Wormhole off';
+            const label = this.settings.background.wormhole
+                ? `${quality}, ${rateHz} Hz, ${this.scene.gpuMaterialEnabled ? 'GPU' : 'CPU'} material` : 'Wormhole off';
             if (this.backgroundDiagnostics.record(deltaSec, this.session.getState() === 'playing', this.scene.backgroundFramesShown,
                 this.scene.backgroundRenderMs, this.scene.backgroundStageTimes, label)) {
                 this.overlay.dataset.xrBackgroundStages = this.backgroundDiagnostics.summary;

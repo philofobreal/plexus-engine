@@ -34,6 +34,7 @@ function harness({ presenting = false, settingsStore } = {}) {
         async setBackgroundSettings(b) { (sceneLog.backgrounds ??= []).push(b); }
         setDisplayFrameRate() {} get backgroundRenderMs() { return 0; } setGameConfig(c) { (sceneLog.configs ??= []).push(c); } setStageLayout(l) { (sceneLog.layouts ??= []).push(l); } setScoreOverview(o) { (sceneLog.overviews ??= []).push(o); }
         setNoteDesign(d) { (sceneLog.designs ??= []).push(d); }
+        setGpuMaterial(enabled) { sceneLog.gpuMaterial = enabled; } get gpuMaterialEnabled() { return sceneLog.gpuMaterial === true; }
         placeForViewer() {} update() {} dispose() { sceneLog.disposed = true; }
     }
     const inputLog = { pointerMode: [], haptics: [], lengths: {}, rays: { left: null, right: null }, thumb: { left: 0, right: 0 }, instance: null };

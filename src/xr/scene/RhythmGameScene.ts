@@ -56,6 +56,8 @@ export class RhythmGameScene {
     /** The background failed after preparation; the host reports it and turns the background off. */
     onBackgroundError: ((message: string) => void) | null = null;
     private displayHz = DESKTOP_DISPLAY_HZ;
+    /** The renderer supports the GPU grain material and the host allows it (ADR-009 Addendum W). */
+    private gpuMaterial = false;
     // Last note-field inputs, compared field by field (no per-frame key string). NaN forces a refresh.
     private lastNoteTime = Number.NaN;
     private lastNoteRevision = -1;
@@ -161,7 +163,9 @@ export class RhythmGameScene {
     async setWormholeEnabled(enabled: boolean): Promise<void> {
         if (enabled && !this.wormhole) {
             if (!this.wormholeFactory) throw new Error('Wormhole renderer is unavailable.');
-            this.wormhole = new WormholeBackdrop(this.wormholeFactory(XR_BACKGROUND_RESOLUTION[this.background.quality]));
+            const gpuMaterial = this.gpuMaterial;
+            this.wormhole = new WormholeBackdrop(this.wormholeFactory({ ...XR_BACKGROUND_RESOLUTION[this.background.quality],
+                ...(gpuMaterial ? { externalMaterial: true } : {}) }), { gpuMaterial });
             this.root.add(this.wormhole.root);
             this.wormhole.onFrameReady = () => this.onBackgroundFrame?.();
             this.wormhole.onError = message => this.onBackgroundError?.(message);
@@ -224,6 +228,13 @@ export class RhythmGameScene {
 
     /** Wall-clock cost of the background's last canvas redraw (diagnostics). */
     get backgroundRenderMs(): number { return this.wormhole?.lastRenderMs ?? 0; }
+
+    /**
+     * Grain material on the GPU (Addendum W) for backgrounds created from now on; the host sets it
+     * once, from the renderer's capabilities, before the Wormhole is first enabled.
+     */
+    setGpuMaterial(enabled: boolean): void { this.gpuMaterial = enabled; }
+    get gpuMaterialEnabled(): boolean { return this.gpuMaterial; }
     /** Background frames put on screen so far, and their source stage times (diagnostics). */
     get backgroundFramesShown(): number { return this.wormhole?.framesShown ?? 0; }
     get backgroundStageTimes(): Readonly<Record<string, number>> | null {

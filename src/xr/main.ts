@@ -27,6 +27,10 @@ try { storage = window.localStorage; } catch { storage = null; }
 // forces the in-thread source for A/B frame-time comparison.
 const offThread = !window.location.search.includes('xrBackgroundThread=main') && wormholeWorkerSupported();
 new XrAppController(engine, runtime, container, options => {
-    const size = { diagnostics, profile: diagnostics, depthCue: 0.7, width: options?.width, height: options?.height };
+    const size = { diagnostics, profile: diagnostics, depthCue: 0.7, width: options?.width, height: options?.height,
+        externalMaterial: options?.externalMaterial === true };
     return offThread ? new WormholeWorkerSource(size) : new WormholeCanvasSource(size);
-}, { diagnostics, settingsStore: createXrSettingsStore(storage) });
+}, { diagnostics, settingsStore: createXrSettingsStore(storage),
+    // The grain material renders on the GPU when supported (ADR-009 Addendum W); `?xrMaterial=cpu` forces
+    // the worker's CPU raster for A/B frame-time comparison.
+    gpuMaterial: !window.location.search.includes('xrMaterial=cpu') });
