@@ -98,7 +98,8 @@ The user requested the actual MVP Wormhole and exact MVP macro/Advanced slider s
   implementations or derive a second musical narrative. See the
   [musical score rules](../features/xr-musical-choreography.md).
 - The opt-in `?xrDiagnostics=1` flag is parsed once by `src/xr/main.ts` and injected; runtime and
-  visual modules never read `window.location`.
+  visual modules never read `window.location`. (Since Addendum X the player can also switch the
+  in-headset diagnostics on in Settings > System; the flag forces them on.)
 
 ## Addendum B: whole-track phrases (2026-09-26)
 
@@ -527,7 +528,8 @@ where it matters, on the headset, per stage.
   haze) and the three-layer composite. `WormholeCanvasSource({ profile })` adds its tuning / director
   work (`tune`) and the identity total; the render worker adds the bitmap transfer (Canvas2D may
   defer raster work until then).
-- **Transport.** Only with `?xrDiagnostics=1`: the worker `init` carries `profile: true` and frames
+- **Transport.** Only with `?xrDiagnostics=1` (since Addendum X also with Settings > System >
+  Diagnostics On): the worker `init` carries `profile: true` and frames
   carry optional `stages` (additive, protocol 1); normal runs neither time nor send anything.
 - **Readout in the headset.** `BackgroundDiagnostics` averages two seconds of play into one line --
   display rate, background frames shown per second and their raster ms, the quality and rate in
@@ -592,14 +594,42 @@ grain material moves to the GPU in the main WebGL context.
   state and viewport restored), once per new background frame. The backdrop shader adds the three
   layers in sRGB space and clamps, as Canvas2D 'lighter' did.
 - **Fallback.** Used when the renderer can render to half-float targets (`supportsGpuGrainMaterial`);
-  otherwise, or with `?xrMaterial=cpu` (A/B comparison), the worker keeps the CPU raster. The
-  diagnostics line names the path ("GPU material" / "CPU material").
+  otherwise, or with `?xrMaterial=cpu` (A/B comparison; replaced by Settings > System > Material
+  renderer in Addendum X), the worker keeps the CPU raster. The diagnostics line names the path
+  ("GPU material" / "CPU material").
 - **Measured** (desktop, Ultra 1280 x 720, real worker and WebGL): GPU vs CPU image mean absolute
   difference 0.16 / 255 with no pixel above 16, material brightness 95% of the CPU's; the
   background's CPU time per frame fell from ~26 ms (weave 14.4, grains 5.3) to 8.4 ms (weave 0.2,
   blur / composite 0) in the drop; the GPU passes cost ~0.7 ms per new background frame. Quest
   numbers are pending (the GPU share is larger on a mobile GPU, but only on frames with a new
   background image).
+
+## Addendum X: Material renderer and Diagnostics switches in Settings > System (2026-10-04)
+
+**Context.** On the Meta Quest 3 the GPU grain material (Addendum W) holds an enjoyable frame rate
+with any Material setting (user reading, 2026-10-04). The CPU path and the profiling line were only
+reachable through URL flags, which a headset player cannot type comfortably.
+
+**Decision.** A sixth game-menu tab, **System**, holds two presentation switches, saved in the
+per-viewer record (`plexus.xr.settings`, still version 1: the new `system` group is optional and a
+record without it takes the defaults):
+
+- **Material renderer** -- GPU (default) / CPU. GPU applies where the renderer supports it
+  (`supportsGpuGrainMaterial`); elsewhere the CPU raster runs and the diagnostics line says
+  "CPU material". It replaces the `?xrMaterial=cpu` flag, which is removed.
+- **Diagnostics** -- Off (default) / On. On profiles the background's stages and shows the
+  two-second line of Addendum U on the menu's main and pause screens (and its overlay mirrors).
+  Off measures nothing. `?xrDiagnostics=1` still forces it on (and keeps the runtime's canvas
+  counters for automation) without changing the saved switch. Switching it drops the previous line
+  and the overlay mirrors, so nothing stale is shown.
+
+**Mechanics.** `src/xr/XrSystemSettings.ts` holds the pure group (normalized: unknown values take
+the defaults). Carrier output (`externalMaterial`) and stage profiling (`profile`) are fixed when a
+background source is created (worker `init`), so the controller hands the scene one *background
+pipeline* (`RhythmGameScene.setBackgroundPipeline({ gpuMaterial, profile })`) and a change rebuilds
+an existing background plane exactly like a Background quality change (re-prepared from the
+captured analysis; the chart, score and playback are untouched). Before the first background the
+pipeline is only recorded. The worker protocol is unchanged.
 
 ## Consequences
 

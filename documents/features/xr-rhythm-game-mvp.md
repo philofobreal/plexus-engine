@@ -112,13 +112,16 @@ Ultra 1280x720 default), the update rate (24 Hz / 36 Hz default, aligned to whol
 only on changed frames.
 Where the browser supports it, the background rasterizes in a dedicated worker on an OffscreenCanvas
 and reaches the scene as a transferred `ImageBitmap` (ADR-009 Addendum G), so the headset frame loop
-never waits for Canvas2D; otherwise the same source runs in-thread. Opened with `?xrDiagnostics=1`,
-the game menu's main and pause screens show a two-second performance line -- display fps,
+never waits for Canvas2D; otherwise the same source runs in-thread. With **Diagnostics** on (System
+tab, default Off; `?xrDiagnostics=1` forces it on), the game menu's main and pause screens show a
+two-second performance line -- display fps,
 background fps and ms, and the background's stage times (tune, layers, grains, weave, blur, comp,
 xfer) -- so the cost can be read inside the headset (ADR-009 Addendum U). The grain material
 (Nebula) is rendered on the GPU from the worker's carrier list when the renderer supports
-half-float targets (ADR-009 Addendum W); `?xrMaterial=cpu` forces the former worker raster for
-comparison.
+half-float targets (ADR-009 Addendum W). The **System** tab's **Material renderer** (GPU default /
+CPU) selects it; CPU runs the former worker raster for comparison, and devices without half-float
+targets use it automatically (ADR-009 Addendum X). Both System switches are saved like every other
+setting; changing one rebuilds the background plane, like a quality change.
 
 The **Gameplay** section sets note speed (Normal 4 m/s, Fast 7 m/s, Hyper 10 m/s default) and saber
 length (0.9 / 1.0 / 1.1 m default, or Auto). The start frame's distance is derived from an average adult reach so
@@ -153,7 +156,7 @@ silence while its gate arrives. Judging windows are the same as on every other d
 (ADR-009 Addendum N).
 
 Inside the headset a floating menu runs the game: Start, Pause (grip), Resume / Restart, every
-setting in the Gameplay / Choreography / Visuals / Character tabs, the results after each song, and
+setting in the Gameplay / Choreography / Visuals / Character / Material / System tabs, the results after each song, and
 Exit VR. Point with a controller laser and pull the trigger; a thumbstick flick switches tabs
 (ADR-009 Addendum O). The same menu is drawn on the desktop (see below).
 
@@ -170,6 +173,8 @@ The **Material** tab holds the MVP Advanced tuning panel's Grain material slider
 Material detail, Material bloom, Material weave, Spiral twist, Spiral arms, Grain density; 50 is
 neutral, defaults 50 / 100 / 100 / 100 / 4 / 50 / 50), live and remembered like every setting
 (ADR-009 Addendum V).
+The **System** tab holds Material renderer (GPU default / CPU) and Diagnostics (Off default / On),
+also remembered (ADR-009 Addendum X).
 
 Every menu setting comes from one description (`src/xr/XrSettings.ts`, ADR-009 Addendum H) and is
 remembered per browser (`plexus.xr.settings`). Game settings regenerate the chart and rewind;

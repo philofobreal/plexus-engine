@@ -103,10 +103,14 @@ Record results in the result log above; desktop results never substitute for hea
   record `data-xr-background-ms` and GPU frame time per quality.
 - GPU grain material (ADR-009 Addendum W): with the material on (Grain material 50, Detail 100,
   Weave 100) the display stays at the headset rate and the background looks like before; the
-  diagnostics line says "GPU material". Compare `/xr/?xrDiagnostics=1` with
-  `/xr/?xrDiagnostics=1&xrMaterial=cpu` (display fps, background ms, weave / grains times) in a
-  calm part and in the drop.
-- Background profiling (ADR-009 Addendum U): open `/xr/?xrDiagnostics=1`, play a real track and
+  diagnostics line says "GPU material". Compare Settings > System > Material renderer GPU with CPU
+  (display fps, background ms, weave / grains times) in a calm part and in the drop.
+- System tab (ADR-009 Addendum X): a browser without saved settings starts with Material renderer
+  GPU and Diagnostics Off (no performance line on the main / pause screens). Diagnostics On shows
+  the line after two seconds of play; Off removes it. Switching the renderer mid-song keeps playing
+  and the background returns within a moment. Both switches survive a reload.
+- Background profiling (ADR-009 Addendum U): switch Settings > System > Diagnostics On (or open
+  `/xr/?xrDiagnostics=1`), play a real track and
   pause (grip) in a calm part and in the drop; write down the menu's performance line each time
   (display fps, background fps / ms, tune, layers, grains, weave, blur, comp, xfer). Repeat with
   Background quality High and Balanced, and once with Character Detail 50. These readings decide
