@@ -3,6 +3,7 @@
 // implements `CanvasVisualSource` over these messages. Plain data only.
 
 import type { CanvasVisualPresentation, VisualAnalysisSnapshot } from './CanvasVisualSource';
+import type { GrainMaterialFrame } from './GrainMaterialFrame';
 
 /** Bumped on any incompatible message change. */
 export const WORMHOLE_WORKER_PROTOCOL_VERSION = 1;
@@ -15,6 +16,8 @@ export interface WormholeWorkerInit {
     readonly depthCue: number;
     /** Opt-in stage timing (`?xrDiagnostics=1`); frames then carry `stages`. */
     readonly profile?: boolean;
+    /** Host-rendered grain material (ADR-009 Addendum W); frames then carry `material`. */
+    readonly externalMaterial?: boolean;
 }
 
 /**
@@ -71,6 +74,11 @@ export interface WormholeWorkerFrame {
     readonly renderMs: number;
     /** Opt-in stage times in ms (profiling workers only): the source's stages plus `transfer`. */
     readonly stages?: Readonly<Record<string, number>>;
+    /**
+     * External material only: this frame's grain material as packed carriers; `data` is a fresh
+     * buffer holding exactly `count` records and is transferred with the bitmap.
+     */
+    readonly material?: GrainMaterialFrame;
 }
 
 /** The source had nothing new to draw (steady pause or rate cap); the request slot is free again. */

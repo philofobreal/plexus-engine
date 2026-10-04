@@ -108,7 +108,8 @@ import {
     resolveWormholeGrainMaterial,
     resolveWormholeGrainMaterialRasterSize,
     type ResolvedWormholeGrainCarrier,
-    type WormholeGrainMaterialRasterSize
+    type WormholeGrainMaterialRasterSize,
+    type WormholeMaterialSink
 } from './wormholeGrainMaterialRaster';
 
 const TWO_PI = Math.PI * 2;
@@ -116,6 +117,8 @@ const BANDS = 24;
 const DEPTH_LAYERS = 15;
 /** One grain per (band, depth layer) in one copy of the field. */
 const COPY_SIZE = BANDS * DEPTH_LAYERS;
+/** Stand-in L0 for a weave pass whose carriers go to a material sink (never written). */
+const NO_FIELD_RASTER = new Float32Array(0);
 /**
  * Opt-in density copies (spiral material plan S5). Copy 0 occupies pool indices `0..COPY_SIZE-1`
  * with the unchanged seed/theta/depth-phase formulas, so the default active set is exactly the
@@ -493,6 +496,8 @@ export class CosmicWormholeIdentity implements VisualIdentity {
      */
     readonly stageTimes = { background: 0, grains: 0, weave: 0, resolve: 0, composite: 0 };
     private stageClock: { now(): number } | null = null;
+    /** Opt-in (XR GPU material, ADR-009 Addendum W): material carriers go here instead of the CPU raster. */
+    private materialSink: WormholeMaterialSink | null = null;
     private readonly lensWarpPointA: WormholeLensWarpPoint = { x: 0, y: 0 };
     private readonly lensWarpPointB: WormholeLensWarpPoint = { x: 0, y: 0 };
     /**
@@ -722,6 +727,15 @@ export class CosmicWormholeIdentity implements VisualIdentity {
      */
     setDepthLayers(targets: WormholeDepthLayerTargets | null): void {
         this.depthLayers = targets;
+    }
+
+    /**
+     * Opt-in: with a sink, a material frame hands every grain and weave carrier to it and skips the
+     * CPU raster, resolve and composite (the host renders the material); line work is unchanged.
+     * Null (the default everywhere but the XR GPU path) keeps the CPU raster.
+     */
+    setMaterialSink(sink: WormholeMaterialSink | null): void {
+        this.materialSink = sink;
     }
 
     /** Diagnostics only: a clock enables `stageTimes`; null (the default) disables all timing. */
@@ -1387,7 +1401,15 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             grainMaterialL1Rows = Math.max(1, Math.round(grainMaterialL0Rows / 3));
             grainMaterialL2Cols = Math.max(1, Math.round(grainMaterialL0Cols / 8));
             grainMaterialL2Rows = Math.max(1, Math.round(grainMaterialL0Rows / 8));
+        }
 
+        const materialSink = grainMaterialAmount > 0 ? this.materialSink : null;
+        if (materialSink) {
+            // Host-rendered material: same raster size and laws, no CPU buffers.
+            materialSink.begin(grainMaterialL0Cols, grainMaterialL0Rows, backend.width, backend.height,
+                grainMaterialDetail, grainMaterialAmount, tuning.wormholeNebulaBloom);
+            grainMaterialActive = true;
+        } else if (grainMaterialAmount > 0) {
             grainMaterialL0 = backend.beginFieldRaster(0, grainMaterialL0Cols, grainMaterialL0Rows);
             grainMaterialL1 = backend.beginFieldRaster(1, grainMaterialL1Cols, grainMaterialL1Rows);
             grainMaterialL2 = backend.beginFieldRaster(2, grainMaterialL2Cols, grainMaterialL2Rows);
@@ -1604,7 +1626,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
 
             // Disabled, performance, and refusal frames retain the exact legacy hot path without
             // even populating the material scratch object.
-            if (!grainMaterialActive || !grainMaterialL0) {
+            if (!grainMaterialActive || (!grainMaterialL0 && !materialSink)) {
                 const cap = tuning.wormholeGrainShape === 1 ? 'square' : undefined;
                 let lr = r, lg = g, lb = b;
                 if (this.depthCue > 0) {
@@ -1687,8 +1709,9 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 this.grainWeaveVisible[i] = 1;
             }
 
-            accumulateWormholeGrainCarrier(
-                grainMaterialL0,
+            if (materialSink) materialSink.carrier(carrier);
+            else accumulateWormholeGrainCarrier(
+                grainMaterialL0!,
                 grainMaterialL0Cols,
                 grainMaterialL0Rows,
                 backend.width,
@@ -1708,9 +1731,9 @@ export class CosmicWormholeIdentity implements VisualIdentity {
 
         if (stageClock) stageStart = this.markStage('grains', stageStart);
 
-        if (grainMaterialActive && grainMaterialL0 && grainMaterialL1 && grainMaterialL2 && grainWeaveAmount > 0) {
+        if (grainMaterialActive && grainWeaveAmount > 0 && (materialSink || (grainMaterialL0 && grainMaterialL1 && grainMaterialL2))) {
             this.drawGrainWeave(
-                grainMaterialL0, grainMaterialL0Cols, grainMaterialL0Rows,
+                grainMaterialL0 ?? NO_FIELD_RASTER, grainMaterialL0Cols, grainMaterialL0Rows,
                 backend.width, backend.height, grainMaterialDetail,
                 grainWeaveAmount, activeGrainCount
             );
@@ -1775,6 +1798,13 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         }
     }
 
+    /** A weave carrier goes to the material sink when one is set, else into the CPU raster. */
+    private depositWeave(l0: Float32Array, cols: number, rows: number, viewportWidth: number, viewportHeight: number,
+        carrier: ResolvedWormholeGrainCarrier, detail: number): void {
+        if (this.materialSink) this.materialSink.carrier(carrier);
+        else accumulateWormholeGrainCarrier(l0, cols, rows, viewportWidth, viewportHeight, carrier, detail);
+    }
+
     /** Emits one weave connection, as a Hermite arc along an arm or a straight chord around a ring. */
     private weaveNeighbour(
         l0: Float32Array,
@@ -1837,7 +1867,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             carrier.tailY = ay;
             carrier.headX = bx;
             carrier.headY = by;
-            accumulateWormholeGrainCarrier(l0, cols, rows, viewportWidth, viewportHeight, carrier, detail);
+            this.depositWeave(l0, cols, rows, viewportWidth, viewportHeight, carrier, detail);
             return;
         }
 
@@ -1864,7 +1894,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             carrier.tailY = previousY;
             carrier.headX = x;
             carrier.headY = y;
-            accumulateWormholeGrainCarrier(l0, cols, rows, viewportWidth, viewportHeight, carrier, detail);
+            this.depositWeave(l0, cols, rows, viewportWidth, viewportHeight, carrier, detail);
             previousX = x;
             previousY = y;
         }

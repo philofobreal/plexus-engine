@@ -62,6 +62,17 @@ export interface ResolvedWormholeGrainCarrier {
     weave?: number;
 }
 
+/**
+ * Opt-in receiver of a frame's grain material as carriers instead of a CPU raster (ADR-009
+ * Addendum W): `begin` once per material frame with the L0 raster size and resolve parameters, then
+ * `carrier` for every grain and weave carrier in deposit order. The carrier object is reused by the
+ * caller, so a sink copies what it keeps.
+ */
+export interface WormholeMaterialSink {
+    begin(cols: number, rows: number, viewportWidth: number, viewportHeight: number, detail: number, amount: number, bloom: number): void;
+    carrier(carrier: ResolvedWormholeGrainCarrier): void;
+}
+
 export interface WormholeGrainMaterialRasterSize {
     cols: number;
     rows: number;
@@ -124,28 +135,73 @@ export function clearWormholeGrainMaterialBuffers(
 }
 
 /**
- * Deposits one already-corrected carrier into L0. Every write stays within the exported maximum
- * dilation of the exact tail-to-head segment in raster space, and the evaluated area is capped per
- * carrier. The deposited body is a depth-stratified capsule: a tight core, a flux-scaled haze halo,
- * a head-weighted taper, multi-octave along-carrier filament breakup, and carrier-local fibre and
- * micro-detail. All modulation lives inside the carrier support; none of it moves the carrier.
+ * Per-carrier material constants in raster space: everything the per-pixel capsule shading needs,
+ * computed once per carrier (ADR-009 Addendum W). The CPU deposit below and the XR GPU material
+ * renderer evaluate the same per-pixel law from these values.
  */
-export function accumulateWormholeGrainCarrier(
-    l0: Float32Array,
+export interface PreparedWormholeGrainCarrier {
+    tailX: number;
+    tailY: number;
+    headX: number;
+    headY: number;
+    length: number;
+    invLength: number;
+    tangentX: number;
+    tangentY: number;
+    normalX: number;
+    normalY: number;
+    radius: number;
+    coreRadius: number;
+    flux: number;
+    depositGain: number;
+    colorR: number;
+    colorG: number;
+    colorB: number;
+    haloGain: number;
+    identity: number;
+    phase: number;
+    filamentPhase: number;
+    fibrePhase: number;
+    filamentFrequency: number;
+    fibreAcross: number;
+    fibreAlong: number;
+    filamentBias: number;
+    filamentFloor: number;
+    negligible: number;
+    detail: number;
+    isWeave: boolean;
+    filamented: boolean;
+}
+
+export function createPreparedWormholeGrainCarrier(): PreparedWormholeGrainCarrier {
+    return {
+        tailX: 0, tailY: 0, headX: 0, headY: 0, length: 0, invLength: 0, tangentX: 1, tangentY: 0, normalX: 0, normalY: 1,
+        radius: 0, coreRadius: 0, flux: 0, depositGain: 0, colorR: 0, colorG: 0, colorB: 0, haloGain: 0, identity: 0, phase: 0,
+        filamentPhase: 0, fibrePhase: 0, filamentFrequency: 0, fibreAcross: 0, fibreAlong: 0, filamentBias: 0, filamentFloor: 0,
+        negligible: 0, detail: 0, isWeave: false, filamented: false
+    };
+}
+
+/**
+ * Resolves one already-corrected carrier into raster-space material constants (`out`). Returns
+ * false, leaving `out` unspecified, when the carrier deposits nothing: transparent, outside the
+ * raster with its whole support, or extinguished by depth.
+ */
+export function prepareWormholeGrainCarrier(
     cols: number,
     rows: number,
     viewportWidth: number,
     viewportHeight: number,
     carrier: ResolvedWormholeGrainCarrier,
-    detail: number
-): void {
+    detail: number,
+    out: PreparedWormholeGrainCarrier
+): boolean {
     const safeCols = Math.max(1, Math.floor(cols));
     const safeRows = Math.max(1, Math.floor(rows));
-    if (l0.length < safeCols * safeRows * 4) return;
-    if (!(viewportWidth > 0) || !(viewportHeight > 0)) return;
+    if (!(viewportWidth > 0) || !(viewportHeight > 0)) return false;
 
     const alpha01 = clamp01(finiteOr(carrier.alpha, 0) / 255);
-    if (alpha01 <= 0) return;
+    if (alpha01 <= 0) return false;
 
     const tailX = finiteOr(carrier.tailX, 0) * safeCols / viewportWidth;
     const tailY = finiteOr(carrier.tailY, 0) * safeRows / viewportHeight;
@@ -159,7 +215,7 @@ export function accumulateWormholeGrainCarrier(
     if ((tailX < -margin && headX < -margin)
         || (tailX > safeCols + margin && headX > safeCols + margin)
         || (tailY < -margin && headY < -margin)
-        || (tailY > safeRows + margin && headY > safeRows + margin)) return;
+        || (tailY > safeRows + margin && headY > safeRows + margin)) return false;
 
     const dx = headX - tailX;
     const dy = headY - tailY;
@@ -179,7 +235,7 @@ export function accumulateWormholeGrainCarrier(
     const throatT = clamp01((depth - THROAT_DAMP_START) / (1 - THROAT_DAMP_START));
     const throatDamp = 1 - THROAT_DAMP_STRENGTH * throatT * throatT * (3 - 2 * throatT);
     const flux = alpha01 * (0.42 + 0.58 * energy) * throatDamp * Math.exp(-TUNNEL_EXTINCTION * depth);
-    if (flux <= 1e-5) return;
+    if (flux <= 1e-5) return false;
 
     // A weave link is gas between two grains, so its haze scales with the gap it spans rather than
     // with nearness; scaling it by nearness would erase it exactly where the arms are.
@@ -205,37 +261,73 @@ export function accumulateWormholeGrainCarrier(
     const fallbackAngle = hashUnit(identity, 3, 17) * Math.PI * 2;
     const tangentX = invLength > 0 ? dx * invLength : Math.cos(fallbackAngle);
     const tangentY = invLength > 0 ? dy * invLength : Math.sin(fallbackAngle);
-    const normalX = -tangentY;
-    const normalY = tangentX;
 
     // Atmospheric perspective: far strata cool toward the tunnel's own blue, near strata warm
     // toward its complement, so depth is readable as colour and not only as size.
-    const colorR = clamp01(finiteOr(carrier.colorR, 0) / 255 * (0.72 + 0.62 * near));
-    const colorG = clamp01(finiteOr(carrier.colorG, 0) / 255 * (0.94 - 0.06 * near));
-    const colorB = clamp01(finiteOr(carrier.colorB, 0) / 255 * (1.22 - 0.16 * near));
+    out.colorR = clamp01(finiteOr(carrier.colorR, 0) / 255 * (0.72 + 0.62 * near));
+    out.colorG = clamp01(finiteOr(carrier.colorG, 0) / 255 * (0.94 - 0.06 * near));
+    out.colorB = clamp01(finiteOr(carrier.colorB, 0) / 255 * (1.22 - 0.16 * near));
+
+    out.haloGain = (0.1 + 0.4 * safeDetail) * (0.15 + 0.85 * near);
+    out.filamentPhase = hashUnit(identity, 11, 5) * 37;
+    out.fibrePhase = hashUnit(identity, 23, 9) * 53;
+    // Far strata are fine-grained; near strata carry broad structure.
+    out.filamentFrequency = (1.6 + 4.4 * safeDetail) * (0.7 + 1.6 * depth);
+    out.fibreAcross = (0.45 + 0.85 * safeDetail) * (0.6 + 1.3 * depth);
+    out.fibreAlong = (0.12 + 0.18 * safeDetail) * (0.7 + 0.8 * depth);
+    out.filamentBias = 0.28 + 0.22 * safeDetail;
+    // Breakup thins and brightens a strand; it must not chop it into a bead chain, so the
+    // modulation keeps a floor. Weave gas is allowed to break up much further than a grain.
+    out.filamentFloor = isWeave ? 0.3 : 0.6 - 0.3 * safeDetail;
+    // Deposited energy is spread over the covered area, so a wide haze must not also be as intense
+    // per pixel as a tight core.
+    const depositGain = (isWeave ? 1.6 : 1.7) / (0.5 + radius * 0.34);
+    // Cost control. The faint outer skirt of a capsule is most of its area and none of its image:
+    // below this pre-noise shape value the final contribution cannot reach a quarter of an 8-bit
+    // code even after the resolve gain, so the noise evaluations are skipped there entirely.
+    out.negligible = 6e-5 / Math.max(1e-6, flux * depositGain);
+
+    out.tailX = tailX; out.tailY = tailY; out.headX = headX; out.headY = headY;
+    out.length = length; out.invLength = invLength;
+    out.tangentX = tangentX; out.tangentY = tangentY; out.normalX = -tangentY; out.normalY = tangentX;
+    out.radius = radius; out.coreRadius = coreRadius; out.flux = flux; out.depositGain = depositGain;
+    out.identity = identity; out.phase = phase; out.detail = safeDetail;
+    out.isWeave = isWeave; out.filamented = length > 1.4;
+    return true;
+}
+
+const depositScratch = createPreparedWormholeGrainCarrier();
+
+/**
+ * Deposits one already-corrected carrier into L0. Every write stays within the exported maximum
+ * dilation of the exact tail-to-head segment in raster space, and the evaluated area is capped per
+ * carrier. The deposited body is a depth-stratified capsule: a tight core, a flux-scaled haze halo,
+ * a head-weighted taper, multi-octave along-carrier filament breakup, and carrier-local fibre and
+ * micro-detail. All modulation lives inside the carrier support; none of it moves the carrier.
+ */
+export function accumulateWormholeGrainCarrier(
+    l0: Float32Array,
+    cols: number,
+    rows: number,
+    viewportWidth: number,
+    viewportHeight: number,
+    carrier: ResolvedWormholeGrainCarrier,
+    detail: number
+): void {
+    const safeCols = Math.max(1, Math.floor(cols));
+    const safeRows = Math.max(1, Math.floor(rows));
+    if (l0.length < safeCols * safeRows * 4) return;
+    const prepared = depositScratch;
+    if (!prepareWormholeGrainCarrier(cols, rows, viewportWidth, viewportHeight, carrier, detail, prepared)) return;
+
+    const { tailX, tailY, headX, headY, length, invLength, tangentX, tangentY, normalX, normalY, radius, coreRadius,
+        flux, depositGain, colorR, colorG, colorB, haloGain, identity, phase, filamentPhase, fibrePhase, filamentFrequency,
+        fibreAcross, fibreAlong, filamentBias, filamentFloor, negligible, isWeave, filamented } = prepared;
+    const safeDetail = prepared.detail;
 
     const radiusSq = radius * radius;
     const invRadiusSq = 1 / Math.max(1e-6, radiusSq);
     const invCoreSq = 1 / Math.max(1e-6, coreRadius * coreRadius);
-    const haloGain = (0.1 + 0.4 * safeDetail) * (0.15 + 0.85 * near);
-    const filamentPhase = hashUnit(identity, 11, 5) * 37;
-    const fibrePhase = hashUnit(identity, 23, 9) * 53;
-    // Far strata are fine-grained; near strata carry broad structure.
-    const filamentFrequency = (1.6 + 4.4 * safeDetail) * (0.7 + 1.6 * depth);
-    const fibreAcross = (0.45 + 0.85 * safeDetail) * (0.6 + 1.3 * depth);
-    const fibreAlong = (0.12 + 0.18 * safeDetail) * (0.7 + 0.8 * depth);
-    const filamentBias = 0.28 + 0.22 * safeDetail;
-    // Breakup thins and brightens a strand; it must not chop it into a bead chain, so the
-    // modulation keeps a floor. Weave gas is allowed to break up much further than a grain.
-    const filamentFloor = isWeave ? 0.3 : 0.6 - 0.3 * safeDetail;
-    // Deposited energy is spread over the covered area, so a wide haze must not also be as intense
-    // per pixel as a tight core.
-    const depositGain = (isWeave ? 1.6 : 1.7) / (0.5 + radius * 0.34);
-    const filamented = length > 1.4;
-    // Cost control. The faint outer skirt of a capsule is most of its area and none of its image:
-    // below this pre-noise shape value the final contribution cannot reach a quarter of an 8-bit
-    // code even after the resolve gain, so the noise evaluations are skipped there entirely.
-    const negligible = 6e-5 / Math.max(1e-6, flux * depositGain);
 
     const minX = Math.max(0, Math.floor(Math.min(tailX, headX) - radius));
     const maxX = Math.min(safeCols - 1, Math.ceil(Math.max(tailX, headX) + radius));

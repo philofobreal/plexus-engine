@@ -1,4 +1,6 @@
 import type { CanvasVisualPresentation, CanvasVisualSource, GrainMaterialBoostKey, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
+import type { GrainMaterialFrame } from '../types/GrainMaterialFrame';
+import { GrainCarrierCollector } from './GrainCarrierCollector';
 import type { MotifChoreographyFrame, PerformanceAutomationPlan, VisualChoreographyPlan } from '../types';
 import { createEmptyTrackAnalysis } from '../analyzer/normalizeAnalysisResult';
 import { cloneDefaultVisualTuning, applyTuningMorph, tuningMorphDeltaSec, writeModulationBus } from '../config/visualTuning';
@@ -42,6 +44,8 @@ export interface WormholeCanvasSourceOptions {
     readonly createSurface?: Canvas2DSurfaceFactory;
     /** Opt-in stage timing for diagnostics (`stageTimes`); off by default. */
     readonly profile?: boolean;
+    /** Hand the grain material to the host as carriers (`materialFrame`; ADR-009 Addendum W). */
+    readonly externalMaterial?: boolean;
 }
 
 /** Wall clock for opt-in stage timing (main thread or worker). */
@@ -98,6 +102,9 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     private denseEvents: { time: number }[] = [];
     private readonly diagnostics: boolean;
     private readonly profile: boolean;
+    /** External material (Addendum W): the identity hands its carriers here instead of rasterizing. */
+    private readonly collector: GrainCarrierCollector | null;
+    private material: GrainMaterialFrame | null = null;
     /** Opt-in stage times of the last redraw: tuning / director work, then the identity's stages. */
     private readonly stages: Record<string, number> | null;
     private readonly depthCue: number;
@@ -108,6 +115,7 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     constructor(options: WormholeCanvasSourceOptions = {}) {
         this.diagnostics = options.diagnostics === true;
         this.profile = options.profile === true && stageClock !== null;
+        this.collector = options.externalMaterial === true ? new GrainCarrierCollector() : null;
         this.stages = this.profile ? { tune: 0, background: 0, grains: 0, weave: 0, resolve: 0, composite: 0, draw: 0 } : null;
         this.backend = new Canvas2DRendererBackend(rasterSize(options.width, DEFAULT_WIDTH), rasterSize(options.height, DEFAULT_HEIGHT),
             options.createSurface);
@@ -126,6 +134,12 @@ export class WormholeCanvasSource implements CanvasVisualSource {
 
     /** The identity's own horizon projection for the last drawn frame (never pixel-derived). */
     get focalPoint(): VisualFocalPoint { return this.identity.routeFocus; }
+
+    /**
+     * The grain material of the last drawn frame as carriers (external material only). `data` is
+     * reused by the next draw: copy or transfer it before rendering again.
+     */
+    get materialFrame(): GrainMaterialFrame | null { return this.material; }
 
     /** Stage times of the last redraw in ms (`profile` only; the object is reused). */
     get stageTimes(): Readonly<Record<string, number>> | null { return this.stages; }
@@ -221,7 +235,9 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         this.midBackend?.background(0, 0, 0);
         this.nearBackend?.background(0, 0, 0);
         const drawStarted = this.stages ? stageClock!.now() : 0;
+        this.collector?.reset();
         this.identity.draw(this.backend, [], []);
+        this.material = this.collector?.frame ?? null;
         if (this.stages) {
             this.stages.tune = drawStarted - started;
             Object.assign(this.stages, this.identity.stageTimes);
@@ -270,6 +286,7 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     private configureIdentity(): void {
         // A fresh identity starts without timing; only a profiling source hands it the clock.
         if (this.profile) this.identity.setStageClock(stageClock);
+        if (this.collector) this.identity.setMaterialSink(this.collector);
         this.identity.setDepthCue(this.depthCue);
         this.identity.setDepthLayers(this.midBackend && this.nearBackend ? { mid: this.midBackend, near: this.nearBackend } : null);
     }

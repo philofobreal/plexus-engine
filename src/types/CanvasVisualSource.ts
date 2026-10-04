@@ -1,4 +1,5 @@
 import type { AudioFrame, BeatEvent, TrackAnalysis, PerformanceAutomationPlan } from './index';
+import type { GrainMaterialFrame } from './GrainMaterialFrame';
 
 /** Immutable analyzer publication, passed explicitly across the XR/visuals composition seam. */
 export interface VisualAnalysisSnapshot {
@@ -49,6 +50,12 @@ export interface CanvasVisualSource {
      * source's own), or null when the source does not profile.
      */
     readonly stageTimes?: Readonly<Record<string, number>> | null;
+    /**
+     * Host-rendered grain material of the frame currently on `canvas` (sources created with
+     * `externalMaterial`; ADR-009 Addendum W), or null when that frame has none. The canvas then
+     * holds everything except the material, which the host composites additively on top.
+     */
+    readonly materialFrame?: GrainMaterialFrame | null;
     dispose(): void;
 }
 /**
@@ -78,5 +85,7 @@ export type GrainMaterialBoostKey = 'wormholeNebulaAmount' | 'wormholeNebulaDeta
 export interface CanvasVisualSourceOptions {
     readonly width?: number;
     readonly height?: number;
+    /** Hand the grain material to the host as carriers (`materialFrame`) instead of rasterizing it. */
+    readonly externalMaterial?: boolean;
 }
 export type CanvasVisualSourceFactory = (options?: CanvasVisualSourceOptions) => CanvasVisualSource;

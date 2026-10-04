@@ -223,7 +223,7 @@ test('off-thread adapter and proxy stay inside their bounded imports', () => {
         const source = readFileSync(join(process.cwd(), 'src', 'visuals', file), 'utf8');
         const imports = [...source.matchAll(/from ['"]([^'"]+)['"]/g)].map(match => match[1]);
         for (const specifier of imports) {
-            assert.match(specifier, /^\.\.\/types\/(CanvasVisualSource|WormholeWorkerProtocol)$|^\.\/(WormholeCanvasSource|wormholeRender\.worker\.ts\?worker)$/,
+            assert.match(specifier, /^\.\.\/types\/(CanvasVisualSource|WormholeWorkerProtocol|GrainMaterialFrame)$|^\.\/(WormholeCanvasSource|wormholeRender\.worker\.ts\?worker)$/,
                 `${file} must not import ${specifier}`);
         }
         assert.doesNotMatch(source, /window\.location|\/state\/store/);

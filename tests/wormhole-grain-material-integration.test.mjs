@@ -133,7 +133,7 @@ function json(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function render({ amount, refuseRaster = false, performanceMode = 0, stubs = new Map(), tuning = {}, compactPreview = false, isExporting = false, clock = null }) {
+function render({ amount, refuseRaster = false, performanceMode = 0, stubs = new Map(), tuning = {}, compactPreview = false, isExporting = false, clock = null, sink = null }) {
   const load = createSourceLoader(stubs);
   const { CosmicWormholeIdentity } = load('visuals/CosmicWormholeIdentity.ts');
   const { State } = load('state/store.ts');
@@ -146,9 +146,38 @@ function render({ amount, refuseRaster = false, performanceMode = 0, stubs = new
   const backend = makeBackend(refuseRaster);
   backend.compactMaterialPreview = compactPreview;
   if (clock) identity.setStageClock(clock);
+  if (sink) identity.setMaterialSink(sink);
   identity.draw(backend, [], []);
   return { backend, State, identity };
 }
+
+test('a material sink (XR GPU material) receives exactly the carriers the CPU raster would deposit, and the lines stay identical', () => {
+  // Count the CPU deposits by wrapping the raster module's accumulate.
+  const countingStubs = (counter) => {
+    const load = createSourceLoader();
+    const real = load('visuals/wormholeGrainMaterialRaster.ts');
+    return new Map([[MATERIAL_PATH, { ...real, accumulateWormholeGrainCarrier: (...args) => { counter.n++; return real.accumulateWormholeGrainCarrier(...args); } }]]);
+  };
+  const deposits = { n: 0 };
+  const cpu = render({ amount: 0.5, tuning: { wormholeNebulaWeave: 1 }, stubs: countingStubs(deposits) });
+  const received = [];
+  const sink = { begins: [], begin(...args) { this.begins.push(args); }, carrier(c) { received.push({ ...c }); } };
+  const gpu = render({ amount: 0.5, tuning: { wormholeNebulaWeave: 1 }, sink });
+  assert.ok(deposits.n > 0, 'the fixture deposits material');
+  assert.equal(received.length, deposits.n, 'every grain and weave carrier, none dropped or added');
+  assert.ok(received.some(c => c.weave > 0) || received.length > 0);
+  assert.equal(sink.begins.length, 1);
+  const [cols, rows, viewportWidth, viewportHeight, , amount] = sink.begins[0];
+  assert.deepEqual([cols, rows, viewportWidth, viewportHeight], [cpu.backend.beginCalls[0][1], cpu.backend.beginCalls[0][2], 640, 360], 'the CPU raster size');
+  assert.ok(amount > 0);
+  assert.equal(gpu.backend.beginCalls.length, 0, 'no CPU raster buffers');
+  assert.equal(gpu.backend.drawCalls.length, 0, 'no CPU composite');
+  assert.deepEqual(json(gpu.backend.lines), json(cpu.backend.lines), 'identical line work (including the partial-amount crossfade)');
+  const none = { begins: [], begin(...args) { this.begins.push(args); }, carrier() { throw new Error('no material at amount 0'); } };
+  const legacy = render({ amount: 0, sink: none });
+  assert.equal(none.begins.length, 0, 'amount zero: no material frame at all');
+  assert.ok(legacy.backend.lines.length > 0);
+});
 
 test('stage timing (XR diagnostics) is opt-in and never changes what is drawn', () => {
   const plain = render({ amount: 0.5 });
@@ -374,8 +403,12 @@ test('identity contains one carrier loop handoff and no superseded background/le
   const weaveBodyStart = source.indexOf('private weaveNeighbour(', weaveStart);
   const afterWeave = source.indexOf('private ', weaveBodyStart + 'private '.length);
   const weavePass = source.slice(weaveStart, afterWeave > weaveBodyStart ? afterWeave : source.length);
-  assert.equal((weavePass.match(/accumulateWormholeGrainCarrier\(/g) ?? []).length, 2,
+  assert.equal((weavePass.match(/this\.depositWeave\(/g) ?? []).length, 2,
     'one straight ring chord and one Hermite arm segment call site');
+  // depositWeave is the single weave handoff: the CPU raster, or the host's material sink (Addendum W).
+  assert.equal((weavePass.match(/accumulateWormholeGrainCarrier\(/g) ?? []).length, 1);
+  assert.equal((weavePass.match(/this\.materialSink\.carrier\(/g) ?? []).length, 1);
+  assert.equal((grainLoop.match(/materialSink\.carrier\(/g) ?? []).length, 1, 'the grain loop hands the same carrier to a sink');
   assert.doesNotMatch(weavePass, /projectWormholeTubePoint|routePath|sampleSmoothedLookahead/);
 });
 

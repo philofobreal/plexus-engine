@@ -10,6 +10,7 @@
 // despite the asynchronous hop. The analysis is copied (structured clone), never transferred.
 
 import type { CanvasVisualPresentation, CanvasVisualSource, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
+import type { GrainMaterialFrame } from '../types/GrainMaterialFrame';
 import { WORMHOLE_WORKER_PROTOCOL_VERSION, type WormholeWorkerRequest, type WormholeWorkerResponse } from '../types/WormholeWorkerProtocol';
 import WormholeRenderWorker from './wormholeRender.worker.ts?worker';
 
@@ -27,6 +28,8 @@ export interface WormholeWorkerSourceOptions {
     readonly depthCue?: number;
     /** Opt-in debug surface (`?xrDiagnostics=1`), decided by the composition root. */
     readonly diagnostics?: boolean;
+    /** Host-rendered grain material: frames carry carriers (`materialFrame`; ADR-009 Addendum W). */
+    readonly externalMaterial?: boolean;
     readonly createWorker?: () => WormholeWorkerPort;
 }
 
@@ -61,8 +64,10 @@ export class WormholeWorkerSource implements CanvasVisualSource {
     private generation = 0;
     private preparedGeneration = -1;
     private preparing: PendingPrepare | null = null;
-    private pending: { bitmap: ImageBitmap; focalX: number; focalY: number; renderMs: number; stages: Readonly<Record<string, number>> | null } | null = null;
+    private pending: { bitmap: ImageBitmap; focalX: number; focalY: number; renderMs: number; stages: Readonly<Record<string, number>> | null;
+        material: GrainMaterialFrame | null } | null = null;
     private stages: Readonly<Record<string, number>> | null = null;
+    private material: GrainMaterialFrame | null = null;
     private inFlight = false;
     private lastTime = Number.NaN;
     private lastPlaying = false;
@@ -85,7 +90,7 @@ export class WormholeWorkerSource implements CanvasVisualSource {
         this.worker.onmessage = event => this.receive(event.data);
         this.worker.onerror = event => this.fail(event.message || 'Wormhole worker error.');
         this.worker.postMessage({ type: 'init', protocol: WORMHOLE_WORKER_PROTOCOL_VERSION, width, height, depthCue: options.depthCue ?? 0,
-            ...(this.diagnostics ? { profile: true } : {}) });
+            ...(this.diagnostics ? { profile: true } : {}), ...(options.externalMaterial ? { externalMaterial: true } : {}) });
         if (this.diagnostics) {
             this.canvas.hidden = true;
             this.canvas.dataset.xrWormhole = 'worker';
@@ -98,6 +103,9 @@ export class WormholeWorkerSource implements CanvasVisualSource {
 
     /** Worker-side raster time of the frame currently shown, in milliseconds. */
     get lastRenderMs(): number { return this.renderMs; }
+
+    /** The grain material carriers of the frame currently shown (external material only). */
+    get materialFrame(): GrainMaterialFrame | null { return this.material; }
 
     /** Worker-side stage times of the frame currently shown (diagnostics only, else null). */
     get stageTimes(): Readonly<Record<string, number>> | null { return this.stages; }
@@ -129,6 +137,7 @@ export class WormholeWorkerSource implements CanvasVisualSource {
             this.focus.x = frame.focalX; this.focus.y = frame.focalY;
             this.renderMs = frame.renderMs;
             this.stages = frame.stages;
+            this.material = frame.material;
             if (this.diagnostics) this.canvas.dataset.frames = String(++this.shownFrames);
             changed = true;
         }
@@ -190,7 +199,7 @@ export class WormholeWorkerSource implements CanvasVisualSource {
                 this.inFlight = false;
                 this.pending?.bitmap.close();
                 this.pending = { bitmap: message.bitmap, focalX: message.focalX, focalY: message.focalY, renderMs: message.renderMs,
-                    stages: message.stages ?? null };
+                    stages: message.stages ?? null, material: message.material ?? null };
                 this.onFrameReady?.();
                 return;
             case 'unchanged':
