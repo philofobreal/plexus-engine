@@ -101,6 +101,11 @@ Record results in the result log above; desktop results never substitute for hea
 - Wormhole background (single plane, ADR-009 Addendum F): stable 72 Hz with the Wormhole on at
   Balanced / 24 Hz; compare 36 Hz and High; Line stroke 0 / 50 / 100 visibly thin / neutral / thick;
   record `data-xr-background-ms` and GPU frame time per quality.
+- GPU grain material (ADR-009 Addendum W): with the material on (Grain material 50, Detail 100,
+  Weave 100) the display stays at the headset rate and the background looks like before; the
+  diagnostics line says "GPU material". Compare `/xr/?xrDiagnostics=1` with
+  `/xr/?xrDiagnostics=1&xrMaterial=cpu` (display fps, background ms, weave / grains times) in a
+  calm part and in the drop.
 - Background profiling (ADR-009 Addendum U): open `/xr/?xrDiagnostics=1`, play a real track and
   pause (grip) in a calm part and in the drop; write down the menu's performance line each time
   (display fps, background fps / ms, tune, layers, grains, weave, blur, comp, xfer). Repeat with

@@ -180,6 +180,7 @@ választható; találatkor két félre hasadás a vágás síkjában + szikra, p
 | ADR-009 Addendum T | Szerzői játékos-alapértékek (Tall / Hyper / Long, Ultra / Active / Expressive / Crossover, Wormhole be, Shard, Ultra / 36 Hz, Line stroke 34, Sharpness 100, Depth 10); a gameplay-könyvtár és a golden chart változatlan | KÉSZ, Quest-elfogadás függőben |
 | ADR-009 Addendum U | Háttér-profilozás Questre: szakaszonkénti mérés a workerben, 2 mp-es átlag a játékmenüben (`?xrDiagnostics=1`). A korábbi "Beat blend" (ütemre igazított kulcskockák) Queston rosszabbul futott, visszavonva (2026-10-04) | KÉSZ, Quest-mérés függőben |
 | ADR-009 Addendum V | Az MVP Advanced panel teljes "Grain material" csoportja a vászon-menü új Material fülén (7 csúszka, 50 = semleges), élőben hat, mentődik | KÉSZ, Quest-elfogadás függőben |
+| ADR-009 Addendum W | A Material (Nebula) GPU-ra került: a worker csak a szemcsék listáját küldi, a GPU ugyanazzal a képlettel rajzol, old fel, bloomol és kever; asztali mérés: a háttér CPU-ideje ~26 -> 8,4 ms, a kép eltérése 0,16/255; `?xrMaterial=cpu` a régi útra | KÉSZ, Quest-mérés függőben |
 
-Nyitott következő lépés: a Quest-mérés alapján a Nebula anyag (hordozók felhalmozása, szövés,
-elmosás) GPU-ra vitele a fő WebGL-kontextusban; a worker csak a hordozók listáját küldi (U kiegészítés).
+Nyitott következő lépés: Quest-mérés a GPU-s Materiallal (W kiegészítés); ha a háttér még mindig
+drága, a következő jelölt a háttérrétegek ("layers") és a szemcse-szimuláció.

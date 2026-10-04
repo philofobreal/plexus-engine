@@ -115,7 +115,10 @@ and reaches the scene as a transferred `ImageBitmap` (ADR-009 Addendum G), so th
 never waits for Canvas2D; otherwise the same source runs in-thread. Opened with `?xrDiagnostics=1`,
 the game menu's main and pause screens show a two-second performance line -- display fps,
 background fps and ms, and the background's stage times (tune, layers, grains, weave, blur, comp,
-xfer) -- so the cost can be read inside the headset (ADR-009 Addendum U).
+xfer) -- so the cost can be read inside the headset (ADR-009 Addendum U). The grain material
+(Nebula) is rendered on the GPU from the worker's carrier list when the renderer supports
+half-float targets (ADR-009 Addendum W); `?xrMaterial=cpu` forces the former worker raster for
+comparison.
 
 The **Gameplay** section sets note speed (Normal 4 m/s, Fast 7 m/s, Hyper 10 m/s default) and saber
 length (0.9 / 1.0 / 1.1 m default, or Auto). The start frame's distance is derived from an average adult reach so

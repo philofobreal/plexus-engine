@@ -561,6 +561,46 @@ where it matters, on the headset, per stage.
   as in the MVP). These sliders are the knobs to try against the profiling line (Addendum U):
   Material detail and weave are the expensive ones.
 
+## Addendum W: the grain material renders on the GPU (2026-10-04)
+
+**Problem.** On the Meta Quest 3 any grain material (any Grain material / detail / weave setting
+above zero) dropped the frame rate. The material was a CPU raster inside the background worker:
+every carrier evaluated per covered raster pixel (up to 1024) with three or four integer-hash value
+noises, then a resolve, two bloom gathers with recursive smoothing and three full-canvas 'lighter'
+composites. That fixed cost starts the moment the material is on, whatever its detail, and the
+worker competes with the main thread for the headset's CPU.
+
+**Decision.** The background keeps simulating the Wormhole and drawing its lines on the CPU; the
+grain material moves to the GPU in the main WebGL context.
+
+- **Shared per-carrier setup.** `prepareWormholeGrainCarrier` (src/visuals/wormholeGrainMaterialRaster.ts)
+  now holds the per-carrier part of `accumulateWormholeGrainCarrier`, which runs it and then the
+  unchanged per-pixel law. The split is byte-identical (4000 random carriers compared against the
+  previous implementation: 0 differing values), so the MVP's CPU material is exactly as before.
+- **Carrier output.** `CosmicWormholeIdentity.setMaterialSink` (opt-in, null by default): with a
+  sink, a material frame hands every grain and weave carrier to it -- the same carriers, in the
+  same order, as the CPU deposits (tested) -- and requests no CPU raster, resolve or composite; line
+  work is identical. `GrainCarrierCollector` packs the prepared constants (24 floats per carrier,
+  `src/types/GrainMaterialFrame.ts`); `WormholeCanvasSource({ externalMaterial })` exposes them as
+  `materialFrame`, and the render worker transfers an exactly sized copy with each frame.
+- **GPU rendering** (`src/xr/scene/GrainMaterialRenderer.ts`): instanced capsule quads evaluate the
+  per-pixel law in GLSL 3 (the integer hash and value noises operation for operation) into a
+  half-float L0 with additive blending; full-screen passes resolve L0 (premultiplied), gather L1 /
+  L2 with the CPU's emission-weighted means and smooth them with separable Gaussians of the CPU
+  filters' variance (sigma 3.46 / 6.12 texels). The passes run in the backdrop plane's
+  onBeforeRender (the three.js Reflector pattern: XR camera handling off, render target, clear
+  state and viewport restored), once per new background frame. The backdrop shader adds the three
+  layers in sRGB space and clamps, as Canvas2D 'lighter' did.
+- **Fallback.** Used when the renderer can render to half-float targets (`supportsGpuGrainMaterial`);
+  otherwise, or with `?xrMaterial=cpu` (A/B comparison), the worker keeps the CPU raster. The
+  diagnostics line names the path ("GPU material" / "CPU material").
+- **Measured** (desktop, Ultra 1280 x 720, real worker and WebGL): GPU vs CPU image mean absolute
+  difference 0.16 / 255 with no pixel above 16, material brightness 95% of the CPU's; the
+  background's CPU time per frame fell from ~26 ms (weave 14.4, grains 5.3) to 8.4 ms (weave 0.2,
+  blur / composite 0) in the drop; the GPU passes cost ~0.7 ms per new background frame. Quest
+  numbers are pending (the GPU share is larger on a mobile GPU, but only on frames with a new
+  background image).
+
 ## Consequences
 
 `/xr/` can evolve its own scene complexity, controller model, and performance profile without
