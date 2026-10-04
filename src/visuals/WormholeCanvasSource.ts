@@ -1,4 +1,4 @@
-import type { CanvasVisualPresentation, CanvasVisualSource, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
+import type { CanvasVisualPresentation, CanvasVisualSource, GrainMaterialBoostKey, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
 import type { MotifChoreographyFrame, PerformanceAutomationPlan, VisualChoreographyPlan } from '../types';
 import { createEmptyTrackAnalysis } from '../analyzer/normalizeAnalysisResult';
 import { cloneDefaultVisualTuning, applyTuningMorph, tuningMorphDeltaSec, writeModulationBus } from '../config/visualTuning';
@@ -51,6 +51,10 @@ const DEFAULT_WIDTH = 960;
 const DEFAULT_HEIGHT = 540;
 /** Historical redraw cap; a host may lower or raise it through `setPresentation`. */
 const DEFAULT_FRAME_RATE_HZ = 30;
+
+/** The host may set exactly these Advanced boosts as Grain material presentation. */
+const GRAIN_MATERIAL_BOOST_KEYS: readonly GrainMaterialBoostKey[] = ['wormholeNebulaAmount', 'wormholeNebulaDetail',
+    'wormholeNebulaBloom', 'wormholeNebulaWeave', 'wormholeSpiral', 'wormholeSpiralArms', 'wormholeGrainDensity'];
 
 function rasterSize(value: number | undefined, fallback: number): number {
     return Number.isFinite(value) && (value as number) >= 16 ? Math.round(value as number) : fallback;
@@ -240,6 +244,12 @@ export class WormholeCanvasSource implements CanvasVisualSource {
             if (value === undefined || !Number.isFinite(value)) continue;
             const clamped = Math.min(1, Math.max(0, value));
             if (clamped !== this.macros[key]) { this.macros[key] = clamped; this.presentationDirty = true; }
+        }
+        // MVP Advanced "Grain material" sliders (ADR-009 Addendum V): direct controls on the same boosts.
+        for (const [key, value] of Object.entries(presentation.grainMaterial ?? {}) as [GrainMaterialBoostKey, number][]) {
+            if (!GRAIN_MATERIAL_BOOST_KEYS.includes(key) || value === undefined || !Number.isFinite(value)) continue;
+            const clamped = Math.min(1, Math.max(0, value));
+            if (clamped !== this.boosts[key]) { this.boosts[key] = clamped; this.presentationDirty = true; }
         }
         const stroke = presentation.lineStroke;
         if (stroke !== undefined && Number.isFinite(stroke)) {

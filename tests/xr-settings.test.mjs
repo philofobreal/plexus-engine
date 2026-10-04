@@ -45,7 +45,8 @@ test('the /xr/ player defaults are the authored menu values (ADR-009 Addendum T)
         playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'long',
         difficulty: 'ultra', activity: 'active', variation: 'expressive', handPattern: 'alternate', handLead: 'even', zones: 'cross',
         wormhole: 'on', noteDesign: 'shard', quality: 'ultra', rateHz: '36', lineStroke: 34, sharpness: 100,
-        intensity: 100, motion: 100, depth: 10, detail: 100
+        intensity: 100, motion: 100, depth: 10, detail: 100,
+        grainAmount: 50, grainDetail: 100, grainBloom: 100, grainWeave: 100, grainSpiral: 4, grainArms: 50, grainDensity: 50
     };
     assert.equal(Object.keys(expected).length, XR_SETTINGS.length, 'every setting has an authored default');
     for (const descriptor of XR_SETTINGS) assert.equal(String(descriptor.read(DEFAULT_XR_SETTINGS)), String(expected[descriptor.id]), descriptor.id);
@@ -87,7 +88,8 @@ test('every setting, including the newest ones, survives a reload through the pe
     const { createXrSettingsStore } = load('xr/XrSettingsStore.ts');
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS } = settingsModule();
     const values = { playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'auto', difficulty: 'ultra', wormhole: 'on', noteDesign: 'shard',
-        quality: 'ultra', rateHz: '36', lineStroke: 55, sharpness: 80, intensity: 20, motion: 40, depth: 60, detail: 10 };
+        quality: 'ultra', rateHz: '36', lineStroke: 55, sharpness: 80, intensity: 20, motion: 40, depth: 60, detail: 10,
+        grainAmount: 70, grainDetail: 30, grainBloom: 60, grainWeave: 0, grainSpiral: 25, grainArms: 80, grainDensity: 10 };
     let settings = DEFAULT_XR_SETTINGS;
     for (const [id, value] of Object.entries(values)) settings = XR_SETTINGS.find(d => d.id === id).write(settings, value);
     const storage = memoryStorage();

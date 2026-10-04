@@ -8,7 +8,10 @@ import { fakeDocument, findAll } from './helpers/fake-dom.mjs';
 
 const settingsModule = () => createLoader()('xr/XrBackgroundSettings.ts');
 
-const AUTHORED_DEFAULTS = { wormhole: true, quality: 'ultra', rateHz: 36, lineStroke: 0.34, sharpness: 1, character: { intensity: 1, motion: 1, depth: 0.1, detail: 1 } };
+const AUTHORED_GRAIN = { amount: 0.5, detail: 1, bloom: 1, weave: 1, spiral: 0.04, arms: 0.5, density: 0.5 };
+const AUTHORED_GRAIN_BOOSTS = { wormholeNebulaAmount: 0.5, wormholeNebulaDetail: 1, wormholeNebulaBloom: 1, wormholeNebulaWeave: 1, wormholeSpiral: 0.04, wormholeSpiralArms: 0.5, wormholeGrainDensity: 0.5 };
+const AUTHORED_DEFAULTS = { wormhole: true, quality: 'ultra', rateHz: 36, lineStroke: 0.34, sharpness: 1, character: { intensity: 1, motion: 1, depth: 0.1, detail: 1 },
+    grain: AUTHORED_GRAIN };
 /** The pre-Addendum-T presentation, for tests about pacing rather than defaults. */
 const BALANCED_24 = { wormhole: true, quality: 'balanced', rateHz: 24, lineStroke: 0.98, sharpness: 0.5, character: { intensity: 1, motion: 1, depth: 0.3, detail: 1 } };
 
@@ -59,7 +62,8 @@ test('the scene starts with the authored background: Ultra raster, 36 Hz on a wh
     const source = sources[0];
     assert.equal(JSON.stringify(source.options), JSON.stringify({ width: 1280, height: 720 }));
     scene.setDisplayFrameRate(72);
-    assert.equal(JSON.stringify(source.presentations.at(-1)), JSON.stringify({ lineStroke: 0.34, maxFrameRateHz: 36, macros: AUTHORED_DEFAULTS.character }));
+    assert.equal(JSON.stringify(source.presentations.at(-1)), JSON.stringify({ lineStroke: 0.34, maxFrameRateHz: 36, macros: AUTHORED_DEFAULTS.character,
+        grainMaterial: AUTHORED_GRAIN_BOOSTS }));
     for (let i = 0; i < 72; i++) scene.update([], i / 72, snapshot('playing'), '');
     assert.equal(source.renders.length, 36, '72 Hz / divider 2');
     scene.dispose();
@@ -136,6 +140,17 @@ test('Line stroke follows the MVP Advanced slider semantics and redraws even whi
     assert.equal(source.render(1, false), true, 'a Visual character change reaches a paused canvas');
     assert.ok(motion() < before, 'Motion lowers the Wormhole speed');
     assert.equal(XR_WORMHOLE_MACROS.motion, 1, 'the shared XR macros are never mutated');
+    // Grain material (Addendum V): the MVP Advanced boost semantics, applied directly.
+    const weave = () => source.state.visualTuning.wormholeNebulaWeave;
+    const weaveBefore = weave();
+    source.setPresentation({ grainMaterial: { wormholeNebulaWeave: 0, notAGrainKey: 1 } });
+    assert.equal(source.render(1, false), true, 'a Grain material change reaches a paused canvas');
+    assert.ok(weave() < weaveBefore || weaveBefore === 0, 'Material weave 0 removes the weave');
+    assert.equal(weave(), 0);
+    assert.equal(XR_WORMHOLE_BOOSTS.wormholeNebulaWeave, 1, 'the shared XR boosts are never mutated');
+    assert.equal(source.render(1, false), false, 'unchanged values do not redraw');
+    source.setPresentation({ grainMaterial: { wormholeNebulaWeave: 0 } });
+    assert.equal(source.render(1, false), false);
     source.setPresentation({ maxFrameRateHz: 24 });
     let draws = 0;
     for (let i = 0; i <= 72; i++) if (source.render(2 + i / 72, true)) draws++;
@@ -161,6 +176,41 @@ test('Visuals and Character settings are live presentation settings that never t
     const detail = character.find(d => d.id === 'detail').write(DEFAULT_XR_SETTINGS, 25);
     assert.equal(detail.background.character.detail, 0.25);
     assert.equal(detail.background.character.depth, 0.1, 'the other macros stay');
+});
+
+test('the Material tab holds the MVP Advanced Grain material sliders as live presentation settings', () => {
+    const { XR_SETTINGS, XR_SETTING_SECTIONS, DEFAULT_XR_SETTINGS, changeScope } = createLoader()('xr/XrSettings.ts');
+    const { ADVANCED_BOOST_GROUPS } = createLoader()('config/metaTuningBoost.ts');
+    const { XR_GRAIN_MATERIAL_KEYS, grainMaterialBoosts } = settingsModule();
+    assert.equal(XR_SETTING_SECTIONS.at(-1).title, 'Material');
+    const material = XR_SETTINGS.filter(d => d.section === 'material');
+    assert.equal(material.map(d => d.label).join(), 'Grain material,Material detail,Material bloom,Material weave,Spiral twist,Spiral arms,Grain density',
+        'the MVP panel labels, in its order');
+    const mvpGroup = ADVANCED_BOOST_GROUPS.find(g => g.title === 'Grain material');
+    assert.equal(Object.values(XR_GRAIN_MATERIAL_KEYS).join(), mvpGroup.keys.join(), 'exactly the MVP Grain material group');
+    assert.equal(material.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '50,100,100,100,4,50,50', 'the authored XR values');
+    for (const descriptor of material) {
+        assert.equal(descriptor.scope, 'presentation'); assert.equal(descriptor.kind, 'range');
+        assert.equal(descriptor.min, 0); assert.equal(descriptor.max, 100);
+        assert.match(descriptor.hint, /50 is neutral/);
+        const next = descriptor.write(DEFAULT_XR_SETTINGS, 20);
+        assert.equal(changeScope(DEFAULT_XR_SETTINGS, next), 'presentation', descriptor.id);
+        assert.equal(JSON.stringify(next.generation), JSON.stringify(DEFAULT_XR_SETTINGS.generation));
+    }
+    const weave = material.find(d => d.id === 'grainWeave').write(DEFAULT_XR_SETTINGS, 30);
+    assert.equal(weave.background.grain.weave, 0.3);
+    assert.equal(weave.background.grain.detail, 1, 'the other sliders stay');
+    assert.equal(JSON.stringify(grainMaterialBoosts(weave.background.grain)), JSON.stringify({ ...AUTHORED_GRAIN_BOOSTS, wormholeNebulaWeave: 0.3 }));
+});
+
+test('Grain material sliders reach the Wormhole source in place', async () => {
+    const { scene, sources } = sceneHarness();
+    await scene.setWormholeEnabled(true);
+    await scene.setBackgroundSettings({ ...AUTHORED_DEFAULTS, grain: { ...AUTHORED_GRAIN, detail: 0.25, weave: 0 } });
+    assert.equal(JSON.stringify(sources[0].presentations.at(-1).grainMaterial),
+        JSON.stringify({ ...AUTHORED_GRAIN_BOOSTS, wormholeNebulaDetail: 0.25, wormholeNebulaWeave: 0 }));
+    assert.equal(sources.length, 1, 'applied in place');
+    scene.dispose();
 });
 
 test('Visual character macros reach the Wormhole source and redraw a paused canvas', async () => {

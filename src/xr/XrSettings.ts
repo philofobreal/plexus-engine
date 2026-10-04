@@ -11,7 +11,8 @@
 import {
     normalizeGenerationSettings, type PlaySpace, type RhythmGameConfig, type RhythmGenerationSettings
 } from '../gameplay';
-import { DEFAULT_XR_BACKGROUND_SETTINGS, normalizeBackgroundSettings, type XrBackgroundSettings, type XrVisualCharacter } from './XrBackgroundSettings';
+import { DEFAULT_XR_BACKGROUND_SETTINGS, normalizeBackgroundSettings, type XrBackgroundSettings, type XrGrainMaterial,
+    type XrVisualCharacter } from './XrBackgroundSettings';
 import { DEFAULT_XR_APPEARANCE_SETTINGS, normalizeAppearanceSettings, type XrAppearanceSettings } from './XrAppearanceSettings';
 import { DEFAULT_XR_PLAY_SETTINGS, normalizePlaySettings, resolvePlayProfile, type XrPlayProfile, type XrPlaySettings } from './XrPlayProfile';
 
@@ -30,7 +31,7 @@ export type XrSettingScope = 'chart' | 'session' | 'presentation';
 /** Strongest first: a change set is handled by its strongest scope. */
 const SCOPE_ORDER: readonly XrSettingScope[] = ['chart', 'session', 'presentation'];
 
-export type XrSettingSectionId = 'gameplay' | 'choreography' | 'background' | 'character';
+export type XrSettingSectionId = 'gameplay' | 'choreography' | 'background' | 'character' | 'material';
 
 export interface XrSettingSection {
     readonly id: XrSettingSectionId;
@@ -45,7 +46,9 @@ export const XR_SETTING_SECTIONS: readonly XrSettingSection[] = [
     // "Visuals": the Wormhole background and the target style (DOM names keep the historical prefix).
     { id: 'background', title: 'Visuals', prefix: 'xr-background' },
     // The MVP's "Visual character" macros for the Wormhole (Addendum R).
-    { id: 'character', title: 'Character', prefix: 'xr-character' }
+    { id: 'character', title: 'Character', prefix: 'xr-character' },
+    // The MVP Advanced tuning panel's "Grain material" group (Addendum V).
+    { id: 'material', title: 'Material', prefix: 'xr-material' }
 ];
 
 export interface XrSettingChoice {
@@ -103,6 +106,15 @@ function backgroundChoice(id: 'quality' | 'rateHz', label: string, choices: read
         read: settings => String(settings.background[id]),
         write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background,
             [id]: id === 'rateHz' ? Number(value) : value } as Partial<XrBackgroundSettings>) }) };
+}
+
+/** One MVP Advanced "Grain material" slider; ids are prefixed so they stay unique across tabs. */
+function grainRange(field: keyof XrGrainMaterial, label: string, hint: string): XrRangeSetting {
+    return { id: `grain${field[0].toUpperCase()}${field.slice(1)}`, section: 'material', label, scope: 'presentation', kind: 'range',
+        min: 0, max: 100, step: 1, hint: `${hint} 50 is neutral (the presets as authored).`,
+        read: settings => Math.round(settings.background.grain[field] * 100),
+        write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background,
+            grain: { ...settings.background.grain, [field]: value / 100 } }) }) };
 }
 
 function characterRange(id: keyof XrVisualCharacter, label: string, hint: string): XrRangeSetting {
@@ -184,6 +196,14 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
     characterRange('motion', 'Motion', 'Flight speed, warp and turbulence of the Wormhole.'),
     characterRange('depth', 'Depth', 'Sense of distance: depth, galaxy, starfield and ring.'),
     characterRange('detail', 'Detail', 'The grain material end to end: amount, detail, bloom, weave, spiral and density.'),
+    // Labels and descriptions follow the MVP Advanced tuning panel (src/config/visualTuning.ts).
+    grainRange('amount', 'Grain material', 'Crossfades the grain trails from lines into continuous filament material; 0 skips the raster work.'),
+    grainRange('detail', 'Material detail', 'Carrier breakup, micro-detail, kernel character and the raster quality tier (the heaviest on the CPU).'),
+    grainRange('bloom', 'Material bloom', 'Strength of the bloom derived from the grain material.'),
+    grainRange('weave', 'Material weave', 'Connective filaments between neighbouring grains along a spiral arm and around a depth ring.'),
+    grainRange('spiral', 'Spiral twist', 'Coherent twist that organises the grains onto shared spiral arms.'),
+    grainRange('arms', 'Spiral arms', 'Number of density-wave arms brightening the grains on their crest.'),
+    grainRange('density', 'Grain density', 'Additional grain copies for a denser tunnel.'),
     { id: 'sharpness', section: 'background', label: 'Sharpness', scope: 'presentation', kind: 'range', min: 0, max: 100, step: 1,
         read: settings => Math.round(settings.background.sharpness * 100),
         write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background, sharpness: value / 100 }) }) }

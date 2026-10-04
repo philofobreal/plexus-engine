@@ -65,7 +65,15 @@ export interface CanvasVisualPresentation {
      * Depth and Detail, applied through the shared macro -> clamp -> advanced order.
      */
     readonly macros?: Readonly<Record<'intensity' | 'motion' | 'depth' | 'detail', number>>;
+    /**
+     * MVP Advanced "Grain material" slider positions in [0, 1] (0.5 = neutral gain on the authored
+     * value), with the same Advanced boost semantics as `lineStroke`.
+     */
+    readonly grainMaterial?: Readonly<Partial<Record<GrainMaterialBoostKey, number>>>;
 }
+/** The MVP Advanced tuning panel's "Grain material" group, by tuning key (ADR-009 Addendum V). */
+export type GrainMaterialBoostKey = 'wormholeNebulaAmount' | 'wormholeNebulaDetail' | 'wormholeNebulaBloom' | 'wormholeNebulaWeave'
+    | 'wormholeSpiral' | 'wormholeSpiralArms' | 'wormholeGrainDensity';
 /** Construction-time raster size; omitted fields keep the source's default. */
 export interface CanvasVisualSourceOptions {
     readonly width?: number;

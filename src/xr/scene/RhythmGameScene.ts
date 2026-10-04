@@ -14,7 +14,7 @@ import { XrSliceEffect } from './XrSliceEffect';
 import type { XrNoteDesign } from '../XrAppearanceSettings';
 import type { ScoreOverview } from './XrScoreOverview';
 import type { CanvasVisualSourceFactory, VisualAnalysisSnapshot } from '../../types/CanvasVisualSource';
-import { backgroundFrameDivider, DEFAULT_XR_BACKGROUND_SETTINGS, MAX_BACKGROUND_SHARPEN, XR_BACKGROUND_RESOLUTION,
+import { backgroundFrameDivider, DEFAULT_XR_BACKGROUND_SETTINGS, grainMaterialBoosts, MAX_BACKGROUND_SHARPEN, XR_BACKGROUND_RESOLUTION,
     type XrBackgroundSettings } from '../XrBackgroundSettings';
 
 /** Desktop preview cadence (XrRuntime caps the desktop loop near 60 Hz). */
@@ -256,7 +256,8 @@ export class RhythmGameScene {
         const divider = backgroundFrameDivider(this.displayHz, this.background.rateHz);
         // The source learns the effective rate (display cadence / divider), never above the request.
         this.wormhole?.configure({ lineStroke: this.background.lineStroke, maxFrameRateHz: this.displayHz / divider,
-            ...(this.background.character ? { macros: this.background.character } : {}) }, divider);
+            ...(this.background.character ? { macros: this.background.character } : {}),
+            ...(this.background.grain ? { grainMaterial: grainMaterialBoosts(this.background.grain) } : {}) }, divider);
     }
 
     async setWormholeAnalysis(analysis: VisualAnalysisSnapshot | null): Promise<void> {

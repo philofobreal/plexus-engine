@@ -3,6 +3,7 @@
 // rasterized, paced, stroked and sharpened on the GPU.
 
 import { XR_WORMHOLE_BOOSTS, XR_WORMHOLE_MACROS } from '../config/xrWormholeTuning';
+import type { GrainMaterialBoostKey } from '../types/CanvasVisualSource';
 
 /** Raster resolution of the single background plane. */
 export type XrBackgroundQuality = 'performance' | 'balanced' | 'high' | 'ultra';
@@ -19,6 +20,33 @@ export interface XrVisualCharacter {
 
 export const XR_VISUAL_CHARACTER_KEYS: readonly (keyof XrVisualCharacter)[] = ['intensity', 'motion', 'depth', 'detail'];
 
+/**
+ * The MVP Advanced tuning panel's "Grain material" sliders in [0, 1] (0.5 = neutral gain on what the
+ * preset authors; ADR-009 Addendum V).
+ */
+export interface XrGrainMaterial {
+    readonly amount: number;
+    readonly detail: number;
+    readonly bloom: number;
+    readonly weave: number;
+    readonly spiral: number;
+    readonly arms: number;
+    readonly density: number;
+}
+
+/** Each slider's Advanced boost key, in the MVP panel's order. */
+export const XR_GRAIN_MATERIAL_KEYS: Readonly<Record<keyof XrGrainMaterial, GrainMaterialBoostKey>> = Object.freeze({
+    amount: 'wormholeNebulaAmount', detail: 'wormholeNebulaDetail', bloom: 'wormholeNebulaBloom', weave: 'wormholeNebulaWeave',
+    spiral: 'wormholeSpiral', arms: 'wormholeSpiralArms', density: 'wormholeGrainDensity'
+});
+
+/** The Grain material sliders as Advanced boosts by tuning key (the source's presentation). */
+export function grainMaterialBoosts(grain: XrGrainMaterial): Record<GrainMaterialBoostKey, number> {
+    const out = {} as Record<GrainMaterialBoostKey, number>;
+    for (const [id, key] of Object.entries(XR_GRAIN_MATERIAL_KEYS) as [keyof XrGrainMaterial, GrainMaterialBoostKey][]) out[key] = grain[id];
+    return out;
+}
+
 export interface XrBackgroundSettings {
     /** The Wormhole background is shown (on by default; it is the heaviest part of the frame). */
     readonly wormhole: boolean;
@@ -34,6 +62,8 @@ export interface XrBackgroundSettings {
     readonly sharpness: number;
     /** Visual character of the Wormhole (ADR-009 Addendum R); defaults to the XR host's authored macros. */
     readonly character: XrVisualCharacter;
+    /** MVP Advanced "Grain material" sliders (ADR-009 Addendum V); defaults to the authored XR boosts. */
+    readonly grain: XrGrainMaterial;
 }
 
 /** Strongest unsharp-mask gain (sharpness 1). */
@@ -57,7 +87,9 @@ export const XR_BACKGROUND_RESOLUTION: Readonly<Record<XrBackgroundQuality, { re
 export const DEFAULT_XR_BACKGROUND_SETTINGS: XrBackgroundSettings = Object.freeze({
     wormhole: true, quality: 'ultra', rateHz: 36, lineStroke: XR_WORMHOLE_BOOSTS.lineWeight, sharpness: 1,
     character: Object.freeze({ intensity: XR_WORMHOLE_MACROS.intensity, motion: XR_WORMHOLE_MACROS.motion,
-        depth: XR_WORMHOLE_MACROS.depth, detail: XR_WORMHOLE_MACROS.detail })
+        depth: XR_WORMHOLE_MACROS.depth, detail: XR_WORMHOLE_MACROS.detail }),
+    grain: Object.freeze(Object.fromEntries((Object.entries(XR_GRAIN_MATERIAL_KEYS) as [keyof XrGrainMaterial, GrainMaterialBoostKey][])
+        .map(([id, key]) => [id, XR_WORMHOLE_BOOSTS[key]])) as unknown as XrGrainMaterial)
 });
 
 /** Unknown or missing fields fall back to the defaults; Line stroke and sharpness are clamped to [0, 1]. */
@@ -69,6 +101,7 @@ export function normalizeBackgroundSettings(settings?: Partial<XrBackgroundSetti
         return value !== undefined && value !== null && Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback;
     };
     const character = settings?.character && typeof settings.character === 'object' ? settings.character : undefined;
+    const grain = settings?.grain && typeof settings.grain === 'object' ? settings.grain : undefined;
     return {
         wormhole: typeof settings?.wormhole === 'boolean' ? settings.wormhole : d.wormhole,
         quality: settings?.quality && XR_BACKGROUND_QUALITIES.includes(settings.quality) ? settings.quality : d.quality,
@@ -78,7 +111,9 @@ export function normalizeBackgroundSettings(settings?: Partial<XrBackgroundSetti
         character: {
             intensity: unit(character?.intensity, d.character.intensity), motion: unit(character?.motion, d.character.motion),
             depth: unit(character?.depth, d.character.depth), detail: unit(character?.detail, d.character.detail)
-        }
+        },
+        grain: Object.fromEntries((Object.keys(XR_GRAIN_MATERIAL_KEYS) as (keyof XrGrainMaterial)[])
+            .map(id => [id, unit(grain?.[id], d.grain[id])])) as unknown as XrGrainMaterial
     };
 }
 

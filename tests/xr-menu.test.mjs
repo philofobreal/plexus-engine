@@ -94,7 +94,7 @@ test('activation: navigation stays in the menu, choices become scoped setting co
     assert.equal(activateMenuItem(DEFAULT_MENU_STATE, context(), main, 'action:exit').command.type, 'exit-vr');
     assert.equal(activateMenuItem(DEFAULT_MENU_STATE, context(), main, 'action:settings').state.screen, 'settings');
     assert.equal(switchMenuTab(settingsState, 1).tab, 'background');
-    assert.equal(switchMenuTab({ ...settingsState, tab: 'character' }, 1).tab, 'gameplay', 'wraps');
+    assert.equal(switchMenuTab({ ...settingsState, tab: 'material' }, 1).tab, 'gameplay', 'wraps');
     assert.equal(switchMenuTab(DEFAULT_MENU_STATE, 1), DEFAULT_MENU_STATE, 'only on Settings');
     assert.deepEqual(['idle', 'ready', 'playing', 'paused', 'finished'].map(menuHomeScreen), ['main', 'main', 'pause', 'pause', 'results']);
     const hovered = menuLayout({ ...settingsState, hover: 'opt:difficulty:ultra' }, context());
