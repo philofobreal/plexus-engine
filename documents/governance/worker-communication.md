@@ -56,7 +56,7 @@ version 1):
 - Requests: `init` (protocol, raster size, depth cue, optional `profile` for diagnostics),
   `prepare` (generation, analysis snapshot),
   `render` (generation, time, playing), `presentation` (Line stroke, rate cap, optional Visual
-  character macros; ADR-009 Addendum R), `dispose`. Optional presentation fields are additive and
+  character macros, ADR-009 Addendum R; optional Grain material boosts, Addendum V), `dispose`. Optional presentation fields are additive and
   keep protocol version 1; removing or reinterpreting a field requires a version bump.
 - Responses: `prepared` / `prepare-error` (generation), `frame` (generation, time, transferred
   `ImageBitmap`, focal point, raster ms, optional `stages` -- per-stage ms, only when `init`

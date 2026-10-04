@@ -105,7 +105,8 @@ Record results in the result log above; desktop results never substitute for hea
   pause (grip) in a calm part and in the drop; write down the menu's performance line each time
   (display fps, background fps / ms, tune, layers, grains, weave, blur, comp, xfer). Repeat with
   Background quality High and Balanced, and once with Character Detail 50. These readings decide
-  what moves to the GPU next.
+  what moves to the GPU next. Material tab (ADR-009 Addendum V): note how Material detail and
+  Material weave change the line's weave / grains / blur times and the look.
 - Authored player defaults (ADR-009 Addendum T): on a browser without saved settings the game
   starts Tall / Hyper / Long, Ultra / Active / Expressive / Crossover, Shard targets with the
   Wormhole on at Ultra / 36 Hz, Line stroke 34, Sharpness 100, Depth 10. Record whether the default

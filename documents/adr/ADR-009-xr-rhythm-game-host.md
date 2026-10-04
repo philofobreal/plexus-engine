@@ -543,6 +543,24 @@ where it matters, on the headset, per stage.
   SharedArrayBuffer on GitHub Pages, faster thermal throttling on the headset); a WebGL / WebGPU
   context inside the worker was rejected (same physical GPU, a second context and a copy back).
 
+## Addendum V: the MVP Grain material sliders in the game menu (2026-10-04)
+
+- **What.** A fifth settings tab, **Material**, holds the MVP Advanced tuning panel's whole "Grain
+  material" group (`ADVANCED_BOOST_GROUPS`): Grain material, Material detail, Material bloom,
+  Material weave, Spiral twist, Spiral arms, Grain density -- the MVP labels and order, 0-100 with
+  50 = neutral gain on what the preset authors (the MVP Advanced boost semantics, exactly like Line
+  stroke). A test pins the tab to the MVP group, so a key added there must be added here too.
+- **Defaults** are the authored XR boosts (`XR_WORMHOLE_BOOSTS`, Addendum R): 50 / 100 / 100 / 100
+  / 4 / 50 / 50, one authored set with the source's starting tuning.
+- **Plumbing.** `background.grain` (presentation scope, persisted with every other setting in
+  `plexus.xr.settings`) reaches the source as `CanvasVisualPresentation.grainMaterial` (boosts by
+  tuning key, through the worker unchanged). The source accepts only the seven Grain material keys,
+  clamps to [0, 1], and applies a change directly (no musical morph), redrawing a paused canvas.
+  Setting ids are prefixed (`grainAmount` ...) to stay unique across tabs.
+- The Character tab's Detail macro still scales the same family (macro -> clamp -> Advanced order,
+  as in the MVP). These sliders are the knobs to try against the profiling line (Addendum U):
+  Material detail and weave are the expensive ones.
+
 ## Consequences
 
 `/xr/` can evolve its own scene complexity, controller model, and performance profile without

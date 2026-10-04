@@ -163,6 +163,10 @@ The game menu is drawn in the 3D view on the desktop as well (Escape or the gear
 arrow keys + Enter): Gameplay, Choreography, Visuals (Wormhole on / off, note design, quality,
 update rate, Line stroke, Sharpness) and Character (the MVP's Visual character: Intensity, Motion,
 Depth, Detail). The HTML panel only loads music and starts play or VR (ADR-009 Addendums R, S).
+The **Material** tab holds the MVP Advanced tuning panel's Grain material sliders (Grain material,
+Material detail, Material bloom, Material weave, Spiral twist, Spiral arms, Grain density; 50 is
+neutral, defaults 50 / 100 / 100 / 100 / 4 / 50 / 50), live and remembered like every setting
+(ADR-009 Addendum V).
 
 Every menu setting comes from one description (`src/xr/XrSettings.ts`, ADR-009 Addendum H) and is
 remembered per browser (`plexus.xr.settings`). Game settings regenerate the chart and rewind;
