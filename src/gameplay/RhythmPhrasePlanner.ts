@@ -1,7 +1,7 @@
 import type { BeatEvent, PerformanceAutomationPoint } from '../types';
 import type { RhythmTexture } from './RhythmTypes';
 import { GESTURE_ENTRY_TEXTURE, rhythmTexture } from './RhythmChoreography';
-import { DEFAULT_RHYTHM_GENERATION_SETTINGS, motorProfile, type RhythmGenerationSettings } from './RhythmGenerationProfile';
+import { DEFAULT_RHYTHM_GENERATION_SETTINGS, difficultyProfile, motorProfile, type RhythmGenerationSettings } from './RhythmGenerationProfile';
 
 export interface RhythmPhrase {
     index: number;
@@ -71,6 +71,8 @@ export function planRhythmPhrases(events: readonly BeatEvent[], points: readonly
         }
         const pairTimes = pairTime === undefined ? [] : [pairTime];
         if (settings.handPattern === 'together') togetherAccents(events, cursor, next, start, end, beatSec, texture, point, pairTimes);
+        // Ultra: more two-hand accents for every other pattern, on windows twice Together's length.
+        else if (difficultyProfile(settings.difficulty).extraPairs) togetherAccents(events, cursor, next, start, end, beatSec, texture, point, pairTimes, 2);
         phrases.push({ index: phrases.length, start, end, texture, point, pairTime, pairTimes, beatSec });
         previous = texture; cursor = next;
     }
@@ -83,10 +85,10 @@ export function planRhythmPhrases(events: readonly BeatEvent[], points: readonly
  * with fewer than three real onsets stay singles: isolated events never become invented pairs.
  */
 function togetherAccents(events: readonly BeatEvent[], from: number, to: number, start: number, end: number,
-    beatSec: number, texture: RhythmTexture, point: PerformanceAutomationPoint | undefined, out: number[]): void {
+    beatSec: number, texture: RhythmTexture, point: PerformanceAutomationPoint | undefined, out: number[], barScale = 1): void {
     const energy = point?.meta?.behaviour?.energy ?? Math.min(1, (point?.intensity ?? 0) / 3);
-    const bars = texture === 'impact' || texture === 'drive' || (texture === 'build' && energy >= 0.65) ? 1
-        : texture === 'breath' ? 4 : 2;
+    const bars = (texture === 'impact' || texture === 'drive' || (texture === 'build' && energy >= 0.65) ? 1
+        : texture === 'breath' ? 4 : 2) * barScale;
     const window = beatSec * 4 * bars;
     for (let windowStart = start + 1; windowStart < end - 0.5; windowStart += window) {
         let best = -Infinity, bestTime: number | undefined, count = 0;

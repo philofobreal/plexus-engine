@@ -10,8 +10,14 @@ export interface RhythmGameConfig {
     readonly approachTimeSec: number;
     /** Symmetric timing window for a "perfect" grade, in seconds. */
     readonly perfectWindowSec: number;
-    /** Symmetric timing window for a "good" grade, in seconds. */
+    /** Timing window for a "good" grade after the note time (and before it, unless overridden), in seconds. */
     readonly goodWindowSec: number;
+    /**
+     * How early (seconds before the note time) a strike may still count as "good". Equal to
+     * `goodWindowSec` by default; a host widens it so a target is judged everywhere the player can
+     * physically reach it (no "touched but not sensed" zone in front of the hit plane).
+     */
+    readonly earlyGoodWindowSec: number;
     /** Beyond this offset (either direction) a note can no longer be struck. */
     readonly missWindowSec: number;
     /** Spatial hit-detection radius around a note's target position, in meters. */
@@ -42,6 +48,7 @@ export const DEFAULT_RHYTHM_GAME_CONFIG: RhythmGameConfig = {
     approachTimeSec: 2.0,
     perfectWindowSec: 0.08,
     goodWindowSec: 0.11,
+    earlyGoodWindowSec: 0.11,
     missWindowSec: 0.16,
     hitRadiusMeters: 0.22,
     minStrikeSpeedMps: 0.6,

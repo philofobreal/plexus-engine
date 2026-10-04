@@ -1,10 +1,14 @@
 export { DEFAULT_RHYTHM_GAME_CONFIG, LANE_HAND, type RhythmGameConfig } from './RhythmGameConfig';
 export { buildRhythmChart, type RhythmChartSource } from './RhythmChartBuilder';
 export { DEFAULT_RHYTHM_GENERATION_SETTINGS, DIFFICULTIES, HAND_LEADS, HAND_PATTERNS, HAND_ZONES, normalizeGenerationSettings,
-    type HandLead, type HandPattern, type HandZones, type RhythmDifficulty, type RhythmGenerationSettings } from './RhythmGenerationProfile';
+    PLAY_SPACES, playSpaceConfig, TALL_ROW_SPACING_METERS,
+    type HandLead, type HandPattern, type HandZones, type PlaySpace, type RhythmDifficulty, type RhythmGenerationSettings } from './RhythmGenerationProfile';
 export { attemptStrike as judgeStrike, markExpiredNotesAsMissed } from './RhythmJudge';
 export { RhythmGameSession } from './RhythmGameSession';
+export { buildScoringPlan, scoreRank, SECTION_LABEL_FACTOR, MULTIPLIER_TIERS, type RhythmScoringPlan, type ScoreRank,
+    type ScoringSectionSource, type SectionScoreProfile } from './RhythmScoring';
 export { notePosition } from './RhythmLayout';
+export { OVERHEAD_ROW } from './RhythmOverheadPolicy';
 export { CUT_VECTORS } from './RhythmChoreography';
 export type {
     CutDirection,
@@ -16,6 +20,7 @@ export type {
     RhythmNote,
     RhythmSessionSnapshot,
     RhythmSessionState,
+    SectionResult,
     StrikeAttempt,
     StrikeResult,
     Vector3Like

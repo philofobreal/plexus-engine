@@ -5,8 +5,8 @@
 
 import * as THREE from 'three';
 import type { RhythmGameConfig } from '../../gameplay';
-import { SCENE_CONFIG } from './SceneConfig';
-import { boxAt, floorArc, floorTick, mergeColoredParts, type ColoredPart } from './SceneGeometry';
+import { DEFAULT_STAGE_LAYOUT, SCENE_CONFIG, START_FRAME_HALF_WIDTH_METERS, type XrStageLayout } from './SceneConfig';
+import { boxAt, floorTick, mergeColoredParts, type ColoredPart } from './SceneGeometry';
 import type { TrackPathOffset, XrTrackPath } from './XrTrackPath';
 
 export const RUNWAY_PALETTE = {
@@ -19,9 +19,8 @@ export const RUNWAY_PALETTE = {
 
 const TEXTURE_WIDTH = 256;
 const TEXTURE_HEIGHT = 128;
-/** Half-width of the playable gate frame around the three lanes/rows, in playfield meters. */
-const GATE_X = 0.8;
-const GATE_Y = 0.6;
+/** Half-width of the playable gate frame around the lanes, in playfield meters (height: the stage layout). */
+const GATE_X = START_FRAME_HALF_WIDTH_METERS;
 
 /** Normalized [0, 1) floor-pattern phase for a song time; pure and seek-safe. */
 export function runwayPhase(songTime: number, scrollSpeedMps: number, tileLengthMeters: number = SCENE_CONFIG.runwayTileLengthMeters): number {
@@ -82,8 +81,8 @@ export function createRunwayPixels(width = TEXTURE_WIDTH, height = TEXTURE_HEIGH
 }
 
 /** Floor opacity along the stage: glassy near the player, dissolving toward the Wormhole. */
-export function runwayFloorAlpha(z: number): number {
-    return 0.9 * (1 - smoothstep(-2.5, SCENE_CONFIG.runwayFrontZMeters, z)) * (1 - 0.4 * smoothstep(0.5, SCENE_CONFIG.runwayBackZMeters, z));
+export function runwayFloorAlpha(z: number, frontZ: number = DEFAULT_STAGE_LAYOUT.runwayFrontZMeters): number {
+    return 0.9 * (1 - smoothstep(-2.5, frontZ, z)) * (1 - 0.4 * smoothstep(0.5, SCENE_CONFIG.runwayBackZMeters, z));
 }
 
 /**
@@ -146,16 +145,17 @@ export class XrRunway {
     /** Hit gate brackets/row ticks in playfield space; frames the targets without covering them. */
     readonly gate: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
     readonly texture: THREE.DataTexture;
-    private readonly scrollSpeedMps: number;
+    private scrollSpeedMps: number;
     private readonly floorVertices: BendableVertices;
     private readonly railVertices: BendableVertices;
     private lastSongTime = Number.NaN;
     private currentPhase = 0;
 
     /** Scrolls at the note approach speed so targets and floor read as one travelling space. */
-    constructor(config: Pick<RhythmGameConfig, 'noteSpeedMps' | 'rowSpacingMeters'>) {
+    /** `layout` sets the hit-plane line, the runway length and the gate's rows (default: the historical stage). */
+    constructor(config: Pick<RhythmGameConfig, 'noteSpeedMps' | 'rowSpacingMeters'>, layout: XrStageLayout = DEFAULT_STAGE_LAYOUT) {
         this.scrollSpeedMps = config.noteSpeedMps;
-        const front = SCENE_CONFIG.runwayFrontZMeters, back = SCENE_CONFIG.runwayBackZMeters;
+        const front = layout.runwayFrontZMeters, back = SCENE_CONFIG.runwayBackZMeters;
         const length = back - front, tile = SCENE_CONFIG.runwayTileLengthMeters;
 
         this.texture = new THREE.DataTexture(createRunwayPixels(), TEXTURE_WIDTH, TEXTURE_HEIGHT, THREE.RGBAFormat);
@@ -174,7 +174,7 @@ export class XrRunway {
             .rotateX(-Math.PI / 2).translate(0, 0, (front + back) / 2);
         const positions = floorGeometry.getAttribute('position');
         const colors = new Float32Array(positions.count * 4);
-        for (let i = 0; i < positions.count; i++) colors.set([1, 1, 1, runwayFloorAlpha(positions.getZ(i))], i * 4);
+        for (let i = 0; i < positions.count; i++) colors.set([1, 1, 1, runwayFloorAlpha(positions.getZ(i), front)], i * 4);
         floorGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 4));
         this.floor = new THREE.Mesh(floorGeometry, new THREE.MeshBasicMaterial({ map: this.texture, vertexColors: true,
             transparent: true, depthWrite: false, toneMapped: false }));
@@ -183,19 +183,26 @@ export class XrRunway {
         // Bent vertices can leave the straight bounding sphere; the stage is always in view anyway.
         this.floor.frustumCulled = false;
 
-        this.linework = new THREE.Mesh(mergeColoredParts(XrRunway.lineworkParts()), additiveMaterial());
+        this.linework = new THREE.Mesh(mergeColoredParts(XrRunway.lineworkParts(layout)), additiveMaterial());
         this.linework.name = 'runwayLinework';
         this.linework.renderOrder = -5;
         this.linework.frustumCulled = false;
         this.floorVertices = new BendableVertices(floorGeometry);
         this.railVertices = new BendableVertices(this.linework.geometry);
-        this.gate = new THREE.Mesh(mergeColoredParts(XrRunway.gateParts(config.rowSpacingMeters)), additiveMaterial());
+        this.gate = new THREE.Mesh(mergeColoredParts(XrRunway.gateParts(config.rowSpacingMeters, layout)), additiveMaterial());
         this.gate.name = 'hitGate';
         this.gate.renderOrder = -5;
         this.update(0);
     }
 
     get phase(): number { return this.currentPhase; }
+
+    /** Floor travel follows the note speed; the next `update` re-projects the phase. */
+    setScrollSpeed(speedMps: number): void {
+        if (!Number.isFinite(speedMps) || speedMps === this.scrollSpeedMps) return;
+        this.scrollSpeedMps = speedMps;
+        this.lastSongTime = Number.NaN;
+    }
 
     /** Vertices that can ever bend (floor rows and rail segments beyond the straight zone). */
     get bendableVertexCount(): number { return this.floorVertices.bendableCount + this.railVertices.bendableCount; }
@@ -228,55 +235,55 @@ export class XrRunway {
         this.texture.dispose();
     }
 
-    private static lineworkParts(): ColoredPart[] {
+    private static lineworkParts(layout: XrStageLayout): ColoredPart[] {
         const parts: ColoredPart[] = [];
         const y = 0.006;
-        const railFade = (z: number) => (1 - smoothstep(-2.5, SCENE_CONFIG.runwayFrontZMeters, z)) * (1 - 0.45 * smoothstep(0.5, SCENE_CONFIG.runwayBackZMeters, z));
+        const railFade = (z: number) => (1 - smoothstep(-2.5, layout.runwayFrontZMeters, z)) * (1 - 0.45 * smoothstep(0.5, SCENE_CONFIG.runwayBackZMeters, z));
         // Rails are split so per-vertex fading follows the floor dissolve, and every 0.5 m inside the
         // bend zone so they follow the curved track as a smooth polyline.
         const stops: number[] = [SCENE_CONFIG.runwayBackZMeters, 0.5];
-        for (let z = -SCENE_CONFIG.trackBendStartMeters; z >= SCENE_CONFIG.runwayFrontZMeters - 1e-9; z -= 0.5) stops.push(z);
+        for (let z = -SCENE_CONFIG.trackBendStartMeters; z >= layout.runwayFrontZMeters - 1e-9; z -= 0.5) stops.push(z);
+        // A runway length that is not a whole number of 0.5 m steps still ends exactly at its front.
+        if (stops[stops.length - 1] > layout.runwayFrontZMeters + 1e-9) stops.push(layout.runwayFrontZMeters);
         for (const side of [-1, 1]) for (let i = 0; i < stops.length - 1; i++) {
             const near = stops[i], far = stops[i + 1];
             parts.push({ geometry: boxAt(0.03, 0.01, near - far, side * SCENE_CONFIG.runwayWidthMeters / 2, y, (near + far) / 2),
                 color: side < 0 ? RUNWAY_PALETTE.left : RUNWAY_PALETTE.right, shade: (_x, _y, z) => railFade(z) });
         }
         // Hit-plane floor line with hand-coloured end caps.
-        const hitZ = -SCENE_CONFIG.playfieldForwardMeters;
+        const hitZ = -layout.playfieldForwardMeters;
         parts.push({ geometry: boxAt(1.5, 0.004, 0.022, 0, y + 0.001, hitZ), color: RUNWAY_PALETTE.trace, shade: () => 0.8 });
         for (const side of [-1, 1]) parts.push({ geometry: boxAt(0.05, 0.004, 0.05, side * 0.78, y + 0.001, hitZ),
             color: side < 0 ? RUNWAY_PALETTE.left : RUNWAY_PALETTE.right });
-        // Calibration reticle at the player's origin: segmented ring, cardinal ticks, hand arcs.
+        // Orientation ticks at the player's origin. The rings themselves are the live progress ring
+        // (XrProgressRing, Addendum K); ticks sit between its timeline band and its multiplier arcs.
         for (const cardinal of [0, 90, 180, 270]) {
-            parts.push({ geometry: floorArc(0.36, 0.375, cardinal + 8, 74, y), color: RUNWAY_PALETTE.dim, shade: () => 0.85 });
             const forward = cardinal === 90;
-            parts.push({ geometry: floorTick(0.395, forward ? 0.47 : 0.44, cardinal, forward ? 0.018 : 0.012, y),
+            parts.push({ geometry: floorTick(0.415, forward ? 0.46 : 0.445, cardinal, forward ? 0.018 : 0.012, y),
                 color: forward ? RUNWAY_PALETTE.trace : RUNWAY_PALETTE.dim, shade: () => (forward ? 1 : 0.7) });
         }
-        for (let dash = 0; dash < 12; dash++) parts.push({ geometry: floorArc(0.2, 0.208, dash * 30 + 6, 18, y), color: RUNWAY_PALETTE.faint });
-        parts.push({ geometry: floorArc(0.5, 0.51, 150, 60, y), color: RUNWAY_PALETTE.left, shade: () => 0.6 });
-        parts.push({ geometry: floorArc(0.5, 0.51, -30, 60, y), color: RUNWAY_PALETTE.right, shade: () => 0.6 });
         return parts;
     }
 
-    private static gateParts(rowSpacing: number): ColoredPart[] {
+    private static gateParts(rowSpacing: number, layout: XrStageLayout): ColoredPart[] {
         const parts: ColoredPart[] = [];
         const arm = 0.14, thick = 0.014, depth = 0.01;
+        const cy = layout.frameCenterYMeters, halfY = layout.frameHalfHeightMeters;
         for (const sx of [-1, 1]) {
             const color = sx < 0 ? RUNWAY_PALETTE.left : RUNWAY_PALETTE.right;
             for (const sy of [-1, 1]) {
-                parts.push({ geometry: boxAt(arm, thick, depth, sx * (GATE_X - arm / 2), sy * GATE_Y, 0), color });
-                parts.push({ geometry: boxAt(thick, arm, depth, sx * GATE_X, sy * (GATE_Y - arm / 2), 0), color });
+                parts.push({ geometry: boxAt(arm, thick, depth, sx * (GATE_X - arm / 2), cy + sy * halfY, 0), color });
+                parts.push({ geometry: boxAt(thick, arm, depth, sx * GATE_X, cy + sy * (halfY - arm / 2), 0), color });
             }
-            // Row ticks mark the three hit heights; a thin pylon links them.
-            for (let row = -1; row <= 1; row++) {
+            // Row ticks mark the hit heights (row 0 is y = -spacing); a thin pylon links them.
+            for (let row = -1; row <= layout.rowCount - 2; row++) {
                 parts.push({ geometry: boxAt(0.06, 0.012, depth, sx * (GATE_X - 0.045), row * rowSpacing, 0), color });
                 parts.push({ geometry: boxAt(0.03, 0.008, depth, sx * (GATE_X + 0.07), row * rowSpacing, 0), color, shade: () => 0.5 });
             }
-            parts.push({ geometry: boxAt(0.008, 2 * GATE_Y - 0.3, depth, sx * (GATE_X + 0.1), 0, 0), color, shade: () => 0.3 });
+            parts.push({ geometry: boxAt(0.008, 2 * halfY - 0.3, depth, sx * (GATE_X + 0.1), cy, 0), color, shade: () => 0.3 });
         }
         // Bottom center notch; the top center is reserved for the section callout caption.
-        parts.push({ geometry: boxAt(0.08, 0.01, depth, 0, -(GATE_Y + 0.04), 0), color: RUNWAY_PALETTE.trace, shade: () => 0.6 });
+        parts.push({ geometry: boxAt(0.08, 0.01, depth, 0, cy - (halfY + 0.04), 0), color: RUNWAY_PALETTE.trace, shade: () => 0.6 });
         return parts;
     }
 }

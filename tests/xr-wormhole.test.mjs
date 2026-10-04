@@ -9,10 +9,12 @@ test('requested XR slider positions follow the exact shared MVP macro -> clamp -
     const { advancedBoostKeys, resolveAdvancedTuningValue } = load('config/metaTuningBoost.ts');
     const { resolveMetaTuning } = load('config/resolveMetaTuning.ts');
     const { XR_WORMHOLE_MACROS: macros, XR_WORMHOLE_BOOSTS: boosts } = load('config/xrWormholeTuning.ts');
-    assert.deepEqual(JSON.parse(JSON.stringify(macros)), { intensity: 1, motion: 1, depth: 0.3, detail: 1 });
-    assert.equal(boosts.wormholeNebulaAmount, 0);
-    assert.equal(boosts.wormholeSpiral, 0);
-    assert.equal(boosts.lineWeight, 1);
+    assert.deepEqual(JSON.parse(JSON.stringify(macros)), { intensity: 1, motion: 1, depth: 0.1, detail: 1 });
+    // The user's authored XR defaults (2026-10-03; Line stroke 34 and Depth 10 since ADR-009 Addendum T).
+    const authored = { wormholeNebulaAmount: 0.5, wormholeNebulaDetail: 1, wormholeNebulaBloom: 1, wormholeNebulaWeave: 1,
+        wormholeSpiral: 0.04, wormholeSpiralArms: 0.5, wormholeGrainDensity: 0.5, postFxFragmentAmount: 0, postFxFragmentDisplacement: 0,
+        postFxFragmentDensity: 0, lineAlpha: 1, lineWeight: 0.34, wormholeGrainShape: 1 };
+    for (const [key, value] of Object.entries(authored)) assert.equal(boosts[key], value, key);
     for (const scale of [0.1, 0.5, 1, 2, 4]) {
         const raw = cloneDefaultVisualTuning(); raw.wormholeNebulaAmount = scale; raw.wormholeSpeed = scale; raw.lineWeight = scale;
         Object.freeze(raw);
@@ -21,8 +23,8 @@ test('requested XR slider positions follow the exact shared MVP macro -> clamp -
         const out = cloneDefaultVisualTuning();
         for (let n = 0; n < 3; n++) assert.deepEqual(JSON.parse(JSON.stringify(resolveMetaTuning(raw, macros, boosts, out))), expected);
         assert.equal(out.wormholeGrainShape, 1);
-        assert.equal(out.wormholeNebulaAmount, 0);
-        assert.equal(out.wormholeSpiral, 0);
+        assert.ok(out.wormholeNebulaAmount > 0, 'Nebula is on');
+        assert.ok(out.wormholeSpiral > 0, 'a hint of spiral');
         for (const key of ['postFxFragmentAmount', 'postFxFragmentDisplacement', 'postFxFragmentDensity']) assert.equal(out[key], 0);
     }
 });
@@ -74,20 +76,24 @@ test('MVP and injected identity agree with explicitly enabled material, square g
     for (let i = 0; i < 3; i++) assert.deepEqual(isolated.layers[i], original.layers[i]);
 });
 
-test('current XR settings bypass all Nebula raster work with the zero amount', () => {
+test('the XR defaults run the Nebula raster; a zero amount still bypasses all of its work', () => {
     const load = createLoader();
     const { State } = load('state/store.ts');
     const { CosmicWormholeIdentity } = load('visuals/CosmicWormholeIdentity.ts');
     const { resolveMetaTuning } = load('config/resolveMetaTuning.ts');
     const { XR_WORMHOLE_MACROS, XR_WORMHOLE_BOOSTS } = load('config/xrWormholeTuning.ts');
     State.targetTuning.wormholeNebulaAmount = 0.9;
-    resolveMetaTuning(State.targetTuning, XR_WORMHOLE_MACROS, XR_WORMHOLE_BOOSTS, State.visualTuning);
     State.playbackFade = 1; State.currentTime = 1;
-    let rasters = 0;
-    const backend = new Proxy({ width: 960, height: 540, frameCount: 60, compactMaterialPreview: true,
-        beginFieldRaster() { rasters++; return null; } }, { get(target, key) { return key in target ? target[key] : () => {}; } });
-    new CosmicWormholeIdentity().draw(backend, [], []);
-    assert.equal(rasters, 0);
+    const rastersWith = boosts => {
+        resolveMetaTuning(State.targetTuning, XR_WORMHOLE_MACROS, boosts, State.visualTuning);
+        let rasters = 0;
+        const backend = new Proxy({ width: 960, height: 540, frameCount: 60, compactMaterialPreview: true,
+            beginFieldRaster() { rasters++; return null; } }, { get(target, key) { return key in target ? target[key] : () => {}; } });
+        new CosmicWormholeIdentity().draw(backend, [], []);
+        return rasters;
+    };
+    assert.ok(rastersWith(XR_WORMHOLE_BOOSTS) > 0, 'the authored defaults draw the Nebula');
+    assert.equal(rastersWith({ ...XR_WORMHOLE_BOOSTS, wormholeNebulaAmount: 0 }), 0, 'amount 0 skips it entirely');
 });
 
 function sourceHarness() {

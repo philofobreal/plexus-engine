@@ -1,4 +1,6 @@
-import type { CanvasVisualSource, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
+import type { CanvasVisualPresentation, CanvasVisualSource, GrainMaterialBoostKey, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
+import type { GrainMaterialFrame } from '../types/GrainMaterialFrame';
+import { GrainCarrierCollector } from './GrainCarrierCollector';
 import type { MotifChoreographyFrame, PerformanceAutomationPlan, VisualChoreographyPlan } from '../types';
 import { createEmptyTrackAnalysis } from '../analyzer/normalizeAnalysisResult';
 import { cloneDefaultVisualTuning, applyTuningMorph, tuningMorphDeltaSec, writeModulationBus } from '../config/visualTuning';
@@ -9,7 +11,7 @@ import { applyMvpWormholePreset } from '../automation/applyMvpWormholePreset';
 import { findActiveAutomationPoint } from '../automation/performanceAutomationRuntime';
 import { buildNarrative, generateIntents, processChoreography, resolveSemanticState, SemanticResolver, SemanticRuntimeAdapter } from '../semantics';
 import { motifTransitionId, semanticScoreTransitionId } from './VisualTransitionIdentity';
-import { Canvas2DRendererBackend } from './Canvas2DRendererBackend';
+import { Canvas2DRendererBackend, type Canvas2DSurfaceFactory } from './Canvas2DRendererBackend';
 import { CosmicWormholeIdentity, type WormholeRenderState } from './CosmicWormholeIdentity';
 import { VisualDirectorFSM } from './VisualDirectorFSM';
 import { BEAT_DECAY_PER_FRAME, CUE_DECAY_PER_FRAME, DENSE_IMPACT_DECAY_PER_FRAME, transientDecayAfter } from './transientDecay';
@@ -35,6 +37,31 @@ export interface WormholeCanvasSourceOptions {
     readonly depthCue?: number;
     /** Emit a fixed far/mid/near multi-plane output for stereoscopic hosts. */
     readonly depthLayers?: boolean;
+    /** Main raster size (default 960x540). */
+    readonly width?: number;
+    readonly height?: number;
+    /** Drawing-surface factory (a worker host supplies OffscreenCanvas); defaults to DOM canvases. */
+    readonly createSurface?: Canvas2DSurfaceFactory;
+    /** Opt-in stage timing for diagnostics (`stageTimes`); off by default. */
+    readonly profile?: boolean;
+    /** Hand the grain material to the host as carriers (`materialFrame`; ADR-009 Addendum W). */
+    readonly externalMaterial?: boolean;
+}
+
+/** Wall clock for opt-in stage timing (main thread or worker). */
+const stageClock: { now(): number } | null = typeof performance !== 'undefined' ? performance : null;
+
+const DEFAULT_WIDTH = 960;
+const DEFAULT_HEIGHT = 540;
+/** Historical redraw cap; a host may lower or raise it through `setPresentation`. */
+const DEFAULT_FRAME_RATE_HZ = 30;
+
+/** The host may set exactly these Advanced boosts as Grain material presentation. */
+const GRAIN_MATERIAL_BOOST_KEYS: readonly GrainMaterialBoostKey[] = ['wormholeNebulaAmount', 'wormholeNebulaDetail',
+    'wormholeNebulaBloom', 'wormholeNebulaWeave', 'wormholeSpiral', 'wormholeSpiralArms', 'wormholeGrainDensity'];
+
+function rasterSize(value: number | undefined, fallback: number): number {
+    return Number.isFinite(value) && (value as number) >= 16 ? Math.round(value as number) : fallback;
 }
 
 /** Mid/near planes hold only nearer grains on black, so a reduced raster is enough. */
@@ -47,10 +74,17 @@ const LAYER_HEIGHT = 432;
  * contract): it consumes the supplied plan and fetches only that plan's preset assets.
  */
 export class WormholeCanvasSource implements CanvasVisualSource {
-    private readonly backend = new Canvas2DRendererBackend(960, 540);
-    readonly canvas = this.backend.canvas;
+    private readonly backend: Canvas2DRendererBackend;
+    readonly canvas: HTMLCanvasElement;
     private state = emptyState();
     private identity = new CosmicWormholeIdentity(this.state);
+    /** Host Line stroke etc. layered on the shared XR boosts; the shared constant is never mutated. */
+    private readonly boosts = { ...XR_WORMHOLE_BOOSTS };
+    /** Host Visual character macros; start at the shared XR defaults (never mutated). */
+    private readonly macros = { ...XR_WORMHOLE_MACROS };
+    private minFrameIntervalSec = 1 / DEFAULT_FRAME_RATE_HZ - 0.001;
+    /** A presentation change must reach the canvas even while steadily paused. */
+    private presentationDirty = false;
     private director = new VisualDirectorFSM();
     private resolver = new SemanticResolver();
     private semanticBase = cloneDefaultVisualTuning();
@@ -67,6 +101,12 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     private disposed = false;
     private denseEvents: { time: number }[] = [];
     private readonly diagnostics: boolean;
+    private readonly profile: boolean;
+    /** External material (Addendum W): the identity hands its carriers here instead of rasterizing. */
+    private readonly collector: GrainCarrierCollector | null;
+    private material: GrainMaterialFrame | null = null;
+    /** Opt-in stage times of the last redraw: tuning / director work, then the identity's stages. */
+    private readonly stages: Record<string, number> | null;
     private readonly depthCue: number;
     private readonly midBackend: Canvas2DRendererBackend | null;
     private readonly nearBackend: Canvas2DRendererBackend | null;
@@ -74,9 +114,15 @@ export class WormholeCanvasSource implements CanvasVisualSource {
 
     constructor(options: WormholeCanvasSourceOptions = {}) {
         this.diagnostics = options.diagnostics === true;
+        this.profile = options.profile === true && stageClock !== null;
+        this.collector = options.externalMaterial === true ? new GrainCarrierCollector() : null;
+        this.stages = this.profile ? { tune: 0, background: 0, grains: 0, weave: 0, resolve: 0, composite: 0, draw: 0 } : null;
+        this.backend = new Canvas2DRendererBackend(rasterSize(options.width, DEFAULT_WIDTH), rasterSize(options.height, DEFAULT_HEIGHT),
+            options.createSurface);
+        this.canvas = this.backend.canvas;
         this.depthCue = options.depthCue ?? 0;
-        this.midBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT) : null;
-        this.nearBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT) : null;
+        this.midBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT, options.createSurface) : null;
+        this.nearBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT, options.createSurface) : null;
         if (this.midBackend && this.nearBackend) this.layers = [this.canvas, this.midBackend.canvas, this.nearBackend.canvas];
         this.configureIdentity();
         if (this.diagnostics) {
@@ -88,6 +134,15 @@ export class WormholeCanvasSource implements CanvasVisualSource {
 
     /** The identity's own horizon projection for the last drawn frame (never pixel-derived). */
     get focalPoint(): VisualFocalPoint { return this.identity.routeFocus; }
+
+    /**
+     * The grain material of the last drawn frame as carriers (external material only). `data` is
+     * reused by the next draw: copy or transfer it before rendering again.
+     */
+    get materialFrame(): GrainMaterialFrame | null { return this.material; }
+
+    /** Stage times of the last redraw in ms (`profile` only; the object is reused). */
+    get stageTimes(): Readonly<Record<string, number>> | null { return this.stages; }
 
     async prepare(analysis: VisualAnalysisSnapshot | null): Promise<void> {
         const revision = ++this.revision;
@@ -104,7 +159,7 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         this.denseEvents = this.state.events.filter(event => event.type === 2);
         this.choreography = analysis && featureFlags.semanticResolver
             ? processChoreography(generateIntents(buildNarrative(analysis.trackAnalysis)), analysis.trackAnalysis) : null;
-        resolveMetaTuning(this.state.targetTuning, XR_WORMHOLE_MACROS, XR_WORMHOLE_BOOSTS, this.state.visualTuning);
+        resolveMetaTuning(this.state.targetTuning, this.macros, this.boosts, this.state.visualTuning);
         if (!analysis) return;
         const baseUrl = import.meta.env.BASE_URL;
         // The facade prepares the shared plan offline; this source never regenerates it.
@@ -121,10 +176,13 @@ export class WormholeCanvasSource implements CanvasVisualSource {
 
     render(time: number, playing: boolean): boolean {
         if (this.disposed) return false;
+        const started = this.stages ? stageClock!.now() : 0;
         const previous = this.lastTime;
         const jump = previous !== null && (time < previous || time - previous > 0.25);
-        // Texture work is capped to 30 Hz, independently of headset pose / gameplay cadence.
-        if (previous !== null && playing === this.lastPlaying && !jump && time - previous < 1 / 30 - 0.001) return false;
+        // Texture work is capped (30 Hz unless the host sets a rate), independently of headset pose / gameplay cadence.
+        const presentationChanged = this.presentationDirty;
+        if (previous !== null && playing === this.lastPlaying && !jump && !presentationChanged && time - previous < this.minFrameIntervalSec) return false;
+        this.presentationDirty = false;
         const dt = tuningMorphDeltaSec(time, previous);
         this.lastTime = time; this.lastPlaying = playing;
         const state = this.state;
@@ -152,8 +210,9 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         }
         const automationId = point ? `automation:${point.id}` : '';
         state.activeVisualTransitionId = automationId && semanticId ? `${automationId}|${semanticId}` : automationId || semanticId || null;
-        resolveMetaTuning(state.targetTuning, XR_WORMHOLE_MACROS, XR_WORMHOLE_BOOSTS, this.boosted);
-        if (previous === null || jump) Object.assign(state.visualTuning, this.boosted);
+        resolveMetaTuning(state.targetTuning, this.macros, this.boosts, this.boosted);
+        // A player's Line stroke / Visual character change is a direct control, not a musical morph.
+        if (previous === null || jump || presentationChanged) Object.assign(state.visualTuning, this.boosted);
         else applyTuningMorph(state.visualTuning, this.boosted, this.boosted.transitionSpeed, dt);
         const index = Math.max(0, Math.floor(time * state.sampleRate / state.hopSize));
         // Copy before the director mutates its live frame; published analysis remains immutable.
@@ -175,7 +234,15 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         // Nearer planes start black every frame; the far plane is cleared by the identity itself.
         this.midBackend?.background(0, 0, 0);
         this.nearBackend?.background(0, 0, 0);
+        const drawStarted = this.stages ? stageClock!.now() : 0;
+        this.collector?.reset();
         this.identity.draw(this.backend, [], []);
+        this.material = this.collector?.frame ?? null;
+        if (this.stages) {
+            this.stages.tune = drawStarted - started;
+            Object.assign(this.stages, this.identity.stageTimes);
+            this.stages.draw = stageClock!.now() - drawStarted;
+        }
         if (this.diagnostics) {
             this.canvas.dataset.frames = String(this.backend.frameCount);
             this.canvas.dataset.tuning = JSON.stringify(state.visualTuning);
@@ -183,6 +250,33 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         }
         return true;
     }
+    /**
+     * Host presentation: Line stroke uses the MVP Advanced slider semantics, the macros the MVP
+     * Visual character sliders; the rate caps redraws.
+     */
+    setPresentation(presentation: CanvasVisualPresentation): void {
+        for (const key of ['intensity', 'motion', 'depth', 'detail'] as const) {
+            const value = presentation.macros?.[key];
+            if (value === undefined || !Number.isFinite(value)) continue;
+            const clamped = Math.min(1, Math.max(0, value));
+            if (clamped !== this.macros[key]) { this.macros[key] = clamped; this.presentationDirty = true; }
+        }
+        // MVP Advanced "Grain material" sliders (ADR-009 Addendum V): direct controls on the same boosts.
+        for (const [key, value] of Object.entries(presentation.grainMaterial ?? {}) as [GrainMaterialBoostKey, number][]) {
+            if (!GRAIN_MATERIAL_BOOST_KEYS.includes(key) || value === undefined || !Number.isFinite(value)) continue;
+            const clamped = Math.min(1, Math.max(0, value));
+            if (clamped !== this.boosts[key]) { this.boosts[key] = clamped; this.presentationDirty = true; }
+        }
+        const stroke = presentation.lineStroke;
+        if (stroke !== undefined && Number.isFinite(stroke)) {
+            const value = Math.min(1, Math.max(0, stroke));
+            if (value !== this.boosts.lineWeight) { this.boosts.lineWeight = value; this.presentationDirty = true; }
+        }
+        const rate = presentation.maxFrameRateHz;
+        // Tolerates audio-clock jitter so a host pacing on whole display frames is never skipped.
+        if (rate !== undefined && Number.isFinite(rate) && rate > 0) this.minFrameIntervalSec = Math.max(0, 1 / rate - 0.004);
+    }
+
     dispose(): void {
         this.disposed = true; ++this.revision; this.canvas.width = this.canvas.height = 1;
         for (const layer of [this.midBackend, this.nearBackend]) if (layer) layer.canvas.width = layer.canvas.height = 1;
@@ -190,6 +284,9 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     }
 
     private configureIdentity(): void {
+        // A fresh identity starts without timing; only a profiling source hands it the clock.
+        if (this.profile) this.identity.setStageClock(stageClock);
+        if (this.collector) this.identity.setMaterialSink(this.collector);
         this.identity.setDepthCue(this.depthCue);
         this.identity.setDepthLayers(this.midBackend && this.nearBackend ? { mid: this.midBackend, near: this.nearBackend } : null);
     }

@@ -1,7 +1,8 @@
 # Session Persistence
 
 This document extends `../../AGENTS.md`. The root remains authoritative; this contract
-applies to opt-in MVP history/workspace checkpoints, not the separate dashboard.
+applies to opt-in MVP history/workspace checkpoints, not the separate dashboard. The `/xr/`
+player-settings preference record is outside it (see ADR-009 Addendum H).
 
 ## Ownership and lifecycle
 

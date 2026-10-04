@@ -1,4 +1,5 @@
 import type { AudioFrame, BeatEvent, TrackAnalysis, PerformanceAutomationPlan } from './index';
+import type { GrainMaterialFrame } from './GrainMaterialFrame';
 
 /** Immutable analyzer publication, passed explicitly across the XR/visuals composition seam. */
 export interface VisualAnalysisSnapshot {
@@ -33,6 +34,60 @@ export interface CanvasVisualSource {
     prepare(analysis: VisualAnalysisSnapshot | null): Promise<void>;
     /** Returns true only when the canvas changed, so its texture needs one upload. */
     render(songTime: number, playing: boolean): boolean;
+    /** Optional host presentation controls; applied from the next `render` (which then redraws). */
+    setPresentation?(presentation: CanvasVisualPresentation): void;
+    /**
+     * Asynchronous sources only: set by the host and called when a new frame became available
+     * outside `render` (e.g. while paused), so an idle host can schedule one more frame.
+     */
+    onFrameReady?: (() => void) | null;
+    /** Asynchronous sources only: unrecoverable failure outside `prepare` (the source stops updating). */
+    onError?: ((message: string) => void) | null;
+    /** Optional cost of the last redraw, in milliseconds, when the source measures it itself. */
+    readonly lastRenderMs?: number;
+    /**
+     * Opt-in diagnostics: wall-clock stage times of the last redraw in milliseconds (names are the
+     * source's own), or null when the source does not profile.
+     */
+    readonly stageTimes?: Readonly<Record<string, number>> | null;
+    /**
+     * Host-rendered grain material of the frame currently on `canvas` (sources created with
+     * `externalMaterial`; ADR-009 Addendum W), or null when that frame has none. The canvas then
+     * holds everything except the material, which the host composites additively on top.
+     */
+    readonly materialFrame?: GrainMaterialFrame | null;
     dispose(): void;
 }
-export type CanvasVisualSourceFactory = () => CanvasVisualSource;
+/**
+ * Host-owned presentation of an embedded source. Never a tuning-key, preset or plan change: the
+ * source keeps resolving its own tuning and only layers these on top.
+ */
+export interface CanvasVisualPresentation {
+    /** MVP Advanced "Line stroke" slider position in [0, 1] (0.5 = neutral gain). */
+    readonly lineStroke?: number;
+    /** Upper bound on canvas redraws per second while playing. */
+    readonly maxFrameRateHz?: number;
+    /**
+     * MVP "Visual character" macro slider positions in [0, 1] (0.5 = neutral): Intensity, Motion,
+     * Depth and Detail, applied through the shared macro -> clamp -> advanced order.
+     */
+    readonly macros?: Readonly<Record<'intensity' | 'motion' | 'depth' | 'detail', number>>;
+    /**
+     * MVP Advanced "Grain material" slider positions in [0, 1] (0.5 = neutral gain on the authored
+     * value), with the same Advanced boost semantics as `lineStroke`.
+     */
+    readonly grainMaterial?: Readonly<Partial<Record<GrainMaterialBoostKey, number>>>;
+}
+/** The MVP Advanced tuning panel's "Grain material" group, by tuning key (ADR-009 Addendum V). */
+export type GrainMaterialBoostKey = 'wormholeNebulaAmount' | 'wormholeNebulaDetail' | 'wormholeNebulaBloom' | 'wormholeNebulaWeave'
+    | 'wormholeSpiral' | 'wormholeSpiralArms' | 'wormholeGrainDensity';
+/** Construction-time raster size; omitted fields keep the source's default. */
+export interface CanvasVisualSourceOptions {
+    readonly width?: number;
+    readonly height?: number;
+    /** Hand the grain material to the host as carriers (`materialFrame`) instead of rasterizing it. */
+    readonly externalMaterial?: boolean;
+    /** Measure per-stage redraw times (`stageTimes`) for the host's diagnostics. */
+    readonly profile?: boolean;
+}
+export type CanvasVisualSourceFactory = (options?: CanvasVisualSourceOptions) => CanvasVisualSource;

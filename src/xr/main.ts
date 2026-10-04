@@ -9,6 +9,8 @@ import { AudioEngine } from '../audio/AudioEngine';
 import { XrAppController } from './XrAppController';
 import { XrRuntime } from './runtime/XrRuntime';
 import { WormholeCanvasSource } from '../visuals/WormholeCanvasSource';
+import { WormholeWorkerSource, wormholeWorkerSupported } from '../visuals/WormholeWorkerSource';
+import { createXrSettingsStore } from './XrSettingsStore';
 
 const container = document.querySelector<HTMLDivElement>('#xr-app');
 if (!container) throw new Error('#xr-app container missing from xr/index.html');
@@ -17,5 +19,17 @@ if (!container) throw new Error('#xr-app container missing from xr/index.html');
 const diagnostics = window.location.search.includes('xrDiagnostics=1');
 const engine = new AudioEngine(undefined, { loopPlayback: false, heroMetronome: false });
 const runtime = new XrRuntime(container, { diagnostics });
-// Stereoscopic 2.5D background: one simulation, three depth planes, plus monocular depth cues.
-new XrAppController(engine, runtime, container, () => new WormholeCanvasSource({ diagnostics, depthLayers: true, depthCue: 0.7 }), { diagnostics });
+// Player settings persist per viewer; storage can be unavailable (private mode, policy).
+let storage: Storage | null = null;
+try { storage = window.localStorage; } catch { storage = null; }
+// One background plane with monocular depth cues; the scene picks the raster size (player quality).
+// It rasterizes in a worker when the browser can (ADR-009 Addendum G); `?xrBackgroundThread=main`
+// forces the in-thread source for A/B frame-time comparison.
+const offThread = !window.location.search.includes('xrBackgroundThread=main') && wormholeWorkerSupported();
+// Settings > System picks the grain material renderer (GPU when supported) and diagnostics (ADR-009
+// Addendum X); the controller asks the factory for carriers and stage profiling accordingly.
+new XrAppController(engine, runtime, container, options => {
+    const size = { diagnostics, profile: options?.profile === true, depthCue: 0.7, width: options?.width, height: options?.height,
+        externalMaterial: options?.externalMaterial === true };
+    return offThread ? new WormholeWorkerSource(size) : new WormholeCanvasSource(size);
+}, { diagnostics, settingsStore: createXrSettingsStore(storage) });

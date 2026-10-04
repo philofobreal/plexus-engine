@@ -10,6 +10,10 @@ export function fakeContext2d() {
         fillText(text, x, y) { this.calls.push(['fillText', text, x, y, this.font]); },
         measureText(text) { const size = Number(/(\d+)px/.exec(this.font)?.[1] ?? 10); return { width: String(text).length * size * 0.6 }; }
     };
+    // Path and transform calls are recorded by name only (no geometry is simulated).
+    for (const name of ['save', 'restore', 'translate', 'rotate', 'strokeRect', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'fill', 'stroke']) {
+        ctx[name] = (...args) => { ctx.calls.push([name, ...args]); };
+    }
     return ctx;
 }
 

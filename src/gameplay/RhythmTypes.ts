@@ -9,7 +9,7 @@ export interface RhythmNote {
     readonly id: string;
     readonly time: number;
     readonly lane: number;
-    /** Low / middle / high body-relative target row. */
+    /** Low / middle / high body-relative target row (0..2); 3 is the Tall play space overhead row. */
     readonly row: number;
     readonly hand: RhythmHand;
     readonly intensity: number;
@@ -63,6 +63,22 @@ export interface StrikeResult {
 
 export type RhythmSessionState = 'idle' | 'ready' | 'playing' | 'paused' | 'finished';
 
+/** Live result of one scoring section (ADR-009 Addendum J). Mutated in place by the session. */
+export interface SectionResult {
+    readonly index: number;
+    hits: number;
+    perfects: number;
+    misses: number;
+    /** Notes of this section resolved so far (hit or missed). */
+    resolved: number;
+    /** Points earned in this section, bonuses included. */
+    points: number;
+    /** Bonus awarded when the section completed (0 until then, or when a note was missed). */
+    bonus: number;
+    /** Song time at which the last note of the section resolved; null while incomplete. */
+    completedAt: number | null;
+}
+
 export interface RhythmSessionSnapshot {
     readonly state: RhythmSessionState;
     readonly score: number;
@@ -71,4 +87,10 @@ export interface RhythmSessionSnapshot {
     readonly hitCount: number;
     readonly missCount: number;
     readonly totalNotes: number;
+    /** Current combo multiplier (1, 2, 4 or 8). */
+    readonly multiplier?: number;
+    /** Score with every note perfect; accuracy = score / maxScore. */
+    readonly maxScore?: number;
+    /** Per-section results in section order (live objects owned by the session; read-only for consumers). */
+    readonly sections?: readonly SectionResult[];
 }
