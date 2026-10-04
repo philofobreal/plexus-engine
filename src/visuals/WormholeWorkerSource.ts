@@ -28,6 +28,8 @@ export interface WormholeWorkerSourceOptions {
     readonly depthCue?: number;
     /** Opt-in debug surface (`?xrDiagnostics=1`), decided by the composition root. */
     readonly diagnostics?: boolean;
+    /** The worker measures per-stage redraw times (`stageTimes`; ADR-009 Addenda U and X). */
+    readonly profile?: boolean;
     /** Host-rendered grain material: frames carry carriers (`materialFrame`; ADR-009 Addendum W). */
     readonly externalMaterial?: boolean;
     readonly createWorker?: () => WormholeWorkerPort;
@@ -90,7 +92,7 @@ export class WormholeWorkerSource implements CanvasVisualSource {
         this.worker.onmessage = event => this.receive(event.data);
         this.worker.onerror = event => this.fail(event.message || 'Wormhole worker error.');
         this.worker.postMessage({ type: 'init', protocol: WORMHOLE_WORKER_PROTOCOL_VERSION, width, height, depthCue: options.depthCue ?? 0,
-            ...(this.diagnostics ? { profile: true } : {}), ...(options.externalMaterial ? { externalMaterial: true } : {}) });
+            ...(options.profile ? { profile: true } : {}), ...(options.externalMaterial ? { externalMaterial: true } : {}) });
         if (this.diagnostics) {
             this.canvas.hidden = true;
             this.canvas.dataset.xrWormhole = 'worker';

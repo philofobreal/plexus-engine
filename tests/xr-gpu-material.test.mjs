@@ -181,9 +181,19 @@ test('the scene creates GPU-material backgrounds only when the host enables it',
     assert.equal(requests[0].externalMaterial, undefined);
     cpuScene.dispose();
     const gpuScene = new RhythmGameScene(new THREE.Scene(), undefined, factory);
-    gpuScene.setGpuMaterial(true);
+    await gpuScene.setBackgroundPipeline({ gpuMaterial: true, profile: false });
+    assert.equal(requests.length, 1, 'recorded only: no background yet');
     await gpuScene.setWormholeEnabled(true);
     assert.equal(requests[1].externalMaterial, true);
+    assert.equal(requests[1].profile, undefined);
     assert.equal(gpuScene.gpuMaterialEnabled, true);
+    // Switching the renderer or profiling rebuilds the shown background with the new options (Addendum X).
+    await gpuScene.setBackgroundPipeline({ gpuMaterial: false, profile: true });
+    assert.equal(requests.length, 3);
+    assert.equal(requests[2].externalMaterial, undefined);
+    assert.equal(requests[2].profile, true);
+    assert.equal(gpuScene.gpuMaterialEnabled, false);
+    await gpuScene.setBackgroundPipeline({ gpuMaterial: false, profile: true });
+    assert.equal(requests.length, 3, 'an unchanged pipeline keeps the background');
     gpuScene.dispose();
 });

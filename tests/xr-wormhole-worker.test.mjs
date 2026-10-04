@@ -25,8 +25,8 @@ function proxyHarness(options = {}) {
 
 const renders = worker => worker.posted.filter(m => m.type === 'render');
 
-test('diagnostics: the proxy asks the worker to profile and exposes the stage times of the frame it shows', async () => {
-    const { source, worker } = proxyHarness({ diagnostics: true });
+test('profile: the proxy asks the worker to profile and exposes the stage times of the frame it shows', async () => {
+    const { source, worker } = proxyHarness({ profile: true });
     assert.equal(worker.posted[0].profile, true);
     assert.equal(source.stageTimes, null);
     const ready = source.prepare(null); worker.reply({ type: 'prepared', generation: 1 }); await ready;
@@ -39,6 +39,10 @@ test('diagnostics: the proxy asks the worker to profile and exposes the stage ti
     const plain = proxyHarness();
     assert.equal('profile' in plain.worker.posted[0], false, 'normal runs never profile');
     plain.source.dispose();
+    // The debug surface and profiling are separate: the System > Diagnostics switch asks for profiling alone (Addendum X).
+    const debug = proxyHarness({ diagnostics: true });
+    assert.equal('profile' in debug.worker.posted[0], false);
+    debug.source.dispose();
 });
 
 test('proxy initializes the worker once and settles preparations by generation (superseded ones quietly)', async () => {

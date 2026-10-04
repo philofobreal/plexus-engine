@@ -14,7 +14,7 @@ function deferred() { let resolve, reject; const promise = new Promise((a, b) =>
 const settle = () => new Promise(setImmediate);
 
 /** `settingsStore: 'defaults'` starts from the shipped defaults; otherwise the fixed historical baseline. */
-function harness({ presenting = false, settingsStore } = {}) {
+function harness({ presenting = false, settingsStore, gpu = false, diagnostics = false } = {}) {
     const doc = fakeDocument();
     const window = new EventTarget();
     const source = chartSources()['journey-128-confident'];
@@ -34,7 +34,9 @@ function harness({ presenting = false, settingsStore } = {}) {
         async setBackgroundSettings(b) { (sceneLog.backgrounds ??= []).push(b); }
         setDisplayFrameRate() {} get backgroundRenderMs() { return 0; } setGameConfig(c) { (sceneLog.configs ??= []).push(c); } setStageLayout(l) { (sceneLog.layouts ??= []).push(l); } setScoreOverview(o) { (sceneLog.overviews ??= []).push(o); }
         setNoteDesign(d) { (sceneLog.designs ??= []).push(d); }
-        setGpuMaterial(enabled) { sceneLog.gpuMaterial = enabled; } get gpuMaterialEnabled() { return sceneLog.gpuMaterial === true; }
+        async setBackgroundPipeline(p) { (sceneLog.pipelines ??= []).push(p); sceneLog.gpuMaterial = p.gpuMaterial; } get gpuMaterialEnabled() { return sceneLog.gpuMaterial === true; }
+        // Every display frame shows a new background frame (diagnostics counting).
+        get backgroundFramesShown() { return (this.shown = (this.shown ?? 0) + 1); } get backgroundStageTimes() { return null; }
         placeForViewer() {} update() {} dispose() { sceneLog.disposed = true; }
     }
     const inputLog = { pointerMode: [], haptics: [], lengths: {}, rays: { left: null, right: null }, thumb: { left: 0, right: 0 }, instance: null };
@@ -65,7 +67,9 @@ function harness({ presenting = false, settingsStore } = {}) {
     const canvas = Object.assign(new EventTarget(), { dataset: {}, getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }) });
     const referenceSpace = new EventTarget();
     const runtime = { scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(),
-        renderer: { domElement: canvas, xr: { getReferenceSpace: () => (presenting ? referenceSpace : null), getSession: () => null } },
+        renderer: { domElement: canvas, xr: { getReferenceSpace: () => (presenting ? referenceSpace : null), getSession: () => null },
+            // A renderer that can draw the GPU grain material (half-float targets), when asked.
+            ...(gpu ? { capabilities: { isWebGL2: true }, extensions: { has: () => true } } : {}) },
         setPlaying() {}, invalidate() {}, setUpdateCallback(cb) { this.callback = cb; }, isPresenting: () => presenting,
         requestImmersiveSession: async () => ({}), onSessionStart: null, onSessionEnd: null, ended: 0, endActiveSession() { this.ended++; } };
     const container = doc.createElement('div');
@@ -73,7 +77,8 @@ function harness({ presenting = false, settingsStore } = {}) {
     const { buildRhythmChart, DEFAULT_RHYTHM_GAME_CONFIG } = load('gameplay/index.ts');
     const baseline = historicalXrSettings(load);
     const store = settingsStore === 'defaults' ? undefined : settingsStore ?? { load: () => baseline, save() {} };
-    const controller = new XrAppController(engine, runtime, container, () => ({}), store ? { settingsStore: store } : {});
+    const controller = new XrAppController(engine, runtime, container, () => ({}),
+        { ...(store ? { settingsStore: store } : {}), ...(diagnostics ? { diagnostics: true } : {}) });
     const drawer = controller.drawer;
     const { XR_SETTINGS, changeScope } = load('xr/XrSettings.ts');
     return {
@@ -227,6 +232,50 @@ test('a first visit starts from the authored defaults: Wormhole on, Ultra choreo
     assert.deepEqual({ ...h.prepareCalls[0][2] }, { activityLevel: 'active', variantMode: 'expressive' });
     assert.equal(h.chart(), h.expected(DEFAULT_XR_SETTINGS.generation));
     assert.equal(h.controller.session.config.noteSpeedMps, 10, 'Hyper');
+});
+
+test('the System switches rebuild the background pipeline live, are saved and never regenerate (ADR-009 Addendum X)', async () => {
+    const { DEFAULT_XR_SETTINGS } = createLoader()('xr/XrSettings.ts');
+    const saved = [];
+    const h = harness({ gpu: true, settingsStore: { load: () => DEFAULT_XR_SETTINGS, save: s => saved.push(JSON.parse(JSON.stringify(s))) } });
+    assert.deepEqual({ ...h.sceneLog.pipelines[0] }, { gpuMaterial: true, profile: false }, 'GPU material, no profiling by default');
+    await h.loadTrack();
+    h.engine.play(0);
+    const prepares = h.prepareCalls.length, chart = h.chart(), stops = h.engine.stops.length;
+    const overlay = h.controller.overlay, frames = n => { for (let i = 0; i < n; i++) h.runtime.callback(null, 1 / 60); };
+    frames(150);
+    assert.equal(overlay.dataset.xrBackgroundStages, undefined, 'diagnostics off: nothing is measured or shown');
+    assert.equal(h.controller.menuContext().diagnostics, undefined);
+
+    h.pick('cpu', 'system'); await settle();
+    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: false, profile: false });
+    h.pick('on', 'system'); await settle();
+    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: false, profile: true });
+    frames(150);
+    assert.match(overlay.dataset.xrBackgroundStages, /^Display .* fps/, 'the line after two seconds of play');
+    assert.match(h.controller.menuContext().diagnostics, /CPU material/);
+    h.pick('gpu', 'system'); await settle();
+    frames(150);
+    assert.match(h.controller.menuContext().diagnostics, /GPU material/);
+
+    h.pick('off', 'system'); await settle();
+    assert.equal(overlay.dataset.xrBackgroundStages, undefined, 'switching off clears the mirrors');
+    assert.equal(h.controller.menuContext().diagnostics, undefined);
+    h.pick('on', 'system'); await settle();
+    assert.equal(h.controller.menuContext().diagnostics, undefined, 'no stale line when switched on again');
+    assert.equal(h.controller.session.getState(), 'playing', 'presentation: playback continues');
+    assert.equal(h.engine.stops.length, stops);
+    assert.equal(h.prepareCalls.length, prepares); assert.equal(h.chart(), chart);
+    assert.deepEqual(saved.slice(-5).map(s => [s.system.materialRenderer, s.system.diagnostics]),
+        [['cpu', false], ['cpu', true], ['gpu', true], ['gpu', false], ['gpu', true]], 'every switch is saved');
+});
+
+test('GPU material needs a capable renderer; ?xrDiagnostics=1 forces profiling whatever the switch says', () => {
+    const plain = harness({ settingsStore: 'defaults' });
+    assert.deepEqual({ ...plain.sceneLog.pipelines[0] }, { gpuMaterial: false, profile: false }, 'no half-float targets: the CPU raster');
+    const forced = harness({ settingsStore: 'defaults', diagnostics: true });
+    assert.deepEqual({ ...forced.sceneLog.pipelines[0] }, { gpuMaterial: false, profile: true });
+    assert.equal(forced.controller.settings.system.diagnostics, false, 'the stored switch is untouched');
 });
 
 test('note speed and saber length rewind without regenerating: same chart, new stage, blade and judging', async () => {

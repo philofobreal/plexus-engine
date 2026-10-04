@@ -182,7 +182,7 @@ test('the Material tab holds the MVP Advanced Grain material sliders as live pre
     const { XR_SETTINGS, XR_SETTING_SECTIONS, DEFAULT_XR_SETTINGS, changeScope } = createLoader()('xr/XrSettings.ts');
     const { ADVANCED_BOOST_GROUPS } = createLoader()('config/metaTuningBoost.ts');
     const { XR_GRAIN_MATERIAL_KEYS, grainMaterialBoosts } = settingsModule();
-    assert.equal(XR_SETTING_SECTIONS.at(-1).title, 'Material');
+    assert.equal(XR_SETTING_SECTIONS.find(s => s.id === 'material').title, 'Material');
     const material = XR_SETTINGS.filter(d => d.section === 'material');
     assert.equal(material.map(d => d.label).join(), 'Grain material,Material detail,Material bloom,Material weave,Spiral twist,Spiral arms,Grain density',
         'the MVP panel labels, in its order');

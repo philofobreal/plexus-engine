@@ -56,8 +56,9 @@ export class RhythmGameScene {
     /** The background failed after preparation; the host reports it and turns the background off. */
     onBackgroundError: ((message: string) => void) | null = null;
     private displayHz = DESKTOP_DISPLAY_HZ;
-    /** The renderer supports the GPU grain material and the host allows it (ADR-009 Addendum W). */
+    /** Grain material on the GPU (ADR-009 Addendum W) and stage profiling for the background (Addendum X). */
     private gpuMaterial = false;
+    private profile = false;
     // Last note-field inputs, compared field by field (no per-frame key string). NaN forces a refresh.
     private lastNoteTime = Number.NaN;
     private lastNoteRevision = -1;
@@ -165,7 +166,7 @@ export class RhythmGameScene {
             if (!this.wormholeFactory) throw new Error('Wormhole renderer is unavailable.');
             const gpuMaterial = this.gpuMaterial;
             this.wormhole = new WormholeBackdrop(this.wormholeFactory({ ...XR_BACKGROUND_RESOLUTION[this.background.quality],
-                ...(gpuMaterial ? { externalMaterial: true } : {}) }), { gpuMaterial });
+                ...(gpuMaterial ? { externalMaterial: true } : {}), ...(this.profile ? { profile: true } : {}) }), { gpuMaterial });
             this.root.add(this.wormhole.root);
             this.wormhole.onFrameReady = () => this.onBackgroundFrame?.();
             this.wormhole.onError = message => this.onBackgroundError?.(message);
@@ -230,10 +231,16 @@ export class RhythmGameScene {
     get backgroundRenderMs(): number { return this.wormhole?.lastRenderMs ?? 0; }
 
     /**
-     * Grain material on the GPU (Addendum W) for backgrounds created from now on; the host sets it
-     * once, from the renderer's capabilities, before the Wormhole is first enabled.
+     * How the background is built: grain material on the GPU (Addendum W) and stage profiling
+     * (Addendum X). Both are fixed when a source is created, so a change rebuilds an existing
+     * background plane, like a quality change; before the first background it only records them.
      */
-    setGpuMaterial(enabled: boolean): void { this.gpuMaterial = enabled; }
+    async setBackgroundPipeline(pipeline: { readonly gpuMaterial: boolean; readonly profile: boolean }): Promise<void> {
+        if (pipeline.gpuMaterial === this.gpuMaterial && pipeline.profile === this.profile) return;
+        this.gpuMaterial = pipeline.gpuMaterial;
+        this.profile = pipeline.profile;
+        await this.rebuildWormhole();
+    }
     get gpuMaterialEnabled(): boolean { return this.gpuMaterial; }
     /** Background frames put on screen so far, and their source stage times (diagnostics). */
     get backgroundFramesShown(): number { return this.wormhole?.framesShown ?? 0; }
@@ -248,9 +255,15 @@ export class RhythmGameScene {
     async setBackgroundSettings(settings: XrBackgroundSettings): Promise<void> {
         const rebuild = settings.quality !== this.background.quality && this.wormhole !== null;
         this.background = settings;
-        if (!rebuild) { this.configureWormhole(); return; }
-        const visible = this.wormhole!.root.visible;
-        this.wormhole!.dispose();
+        if (rebuild) await this.rebuildWormhole();
+        else this.configureWormhole();
+    }
+
+    /** Replaces the background plane with a new source (re-prepared if it was shown). */
+    private async rebuildWormhole(): Promise<void> {
+        if (!this.wormhole) return;
+        const visible = this.wormhole.root.visible;
+        this.wormhole.dispose();
         this.wormhole = null;
         this.wormholeDirty = true;
         if (visible) await this.setWormholeEnabled(true);

@@ -26,11 +26,10 @@ try { storage = window.localStorage; } catch { storage = null; }
 // It rasterizes in a worker when the browser can (ADR-009 Addendum G); `?xrBackgroundThread=main`
 // forces the in-thread source for A/B frame-time comparison.
 const offThread = !window.location.search.includes('xrBackgroundThread=main') && wormholeWorkerSupported();
+// Settings > System picks the grain material renderer (GPU when supported) and diagnostics (ADR-009
+// Addendum X); the controller asks the factory for carriers and stage profiling accordingly.
 new XrAppController(engine, runtime, container, options => {
-    const size = { diagnostics, profile: diagnostics, depthCue: 0.7, width: options?.width, height: options?.height,
+    const size = { diagnostics, profile: options?.profile === true, depthCue: 0.7, width: options?.width, height: options?.height,
         externalMaterial: options?.externalMaterial === true };
     return offThread ? new WormholeWorkerSource(size) : new WormholeCanvasSource(size);
-}, { diagnostics, settingsStore: createXrSettingsStore(storage),
-    // The grain material renders on the GPU when supported (ADR-009 Addendum W); `?xrMaterial=cpu` forces
-    // the worker's CPU raster for A/B frame-time comparison.
-    gpuMaterial: !window.location.search.includes('xrMaterial=cpu') });
+}, { diagnostics, settingsStore: createXrSettingsStore(storage) });

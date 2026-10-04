@@ -87,5 +87,7 @@ export interface CanvasVisualSourceOptions {
     readonly height?: number;
     /** Hand the grain material to the host as carriers (`materialFrame`) instead of rasterizing it. */
     readonly externalMaterial?: boolean;
+    /** Measure per-stage redraw times (`stageTimes`) for the host's diagnostics. */
+    readonly profile?: boolean;
 }
 export type CanvasVisualSourceFactory = (options?: CanvasVisualSourceOptions) => CanvasVisualSource;

@@ -15,6 +15,7 @@ import { DEFAULT_XR_BACKGROUND_SETTINGS, normalizeBackgroundSettings, type XrBac
     type XrVisualCharacter } from './XrBackgroundSettings';
 import { DEFAULT_XR_APPEARANCE_SETTINGS, normalizeAppearanceSettings, type XrAppearanceSettings } from './XrAppearanceSettings';
 import { DEFAULT_XR_PLAY_SETTINGS, normalizePlaySettings, resolvePlayProfile, type XrPlayProfile, type XrPlaySettings } from './XrPlayProfile';
+import { DEFAULT_XR_SYSTEM_SETTINGS, normalizeSystemSettings, type XrSystemSettings } from './XrSystemSettings';
 
 export interface XrSettings {
     /** Note speed and saber length (session scope: the chart stays, the stage and judging change). */
@@ -25,13 +26,15 @@ export interface XrSettings {
     readonly background: XrBackgroundSettings;
     /** Target style (Addendum Q). */
     readonly appearance: XrAppearanceSettings;
+    /** Material renderer and diagnostics (Addendum X). */
+    readonly system: XrSystemSettings;
 }
 
 export type XrSettingScope = 'chart' | 'session' | 'presentation';
 /** Strongest first: a change set is handled by its strongest scope. */
 const SCOPE_ORDER: readonly XrSettingScope[] = ['chart', 'session', 'presentation'];
 
-export type XrSettingSectionId = 'gameplay' | 'choreography' | 'background' | 'character' | 'material';
+export type XrSettingSectionId = 'gameplay' | 'choreography' | 'background' | 'character' | 'material' | 'system';
 
 export interface XrSettingSection {
     readonly id: XrSettingSectionId;
@@ -48,7 +51,9 @@ export const XR_SETTING_SECTIONS: readonly XrSettingSection[] = [
     // The MVP's "Visual character" macros for the Wormhole (Addendum R).
     { id: 'character', title: 'Character', prefix: 'xr-character' },
     // The MVP Advanced tuning panel's "Grain material" group (Addendum V).
-    { id: 'material', title: 'Material', prefix: 'xr-material' }
+    { id: 'material', title: 'Material', prefix: 'xr-material' },
+    // Where the grain material is rendered, and the in-headset diagnostics line (Addendum X).
+    { id: 'system', title: 'System', prefix: 'xr-system' }
 ];
 
 export interface XrSettingChoice {
@@ -206,7 +211,20 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
     grainRange('density', 'Grain density', 'Additional grain copies for a denser tunnel.'),
     { id: 'sharpness', section: 'background', label: 'Sharpness', scope: 'presentation', kind: 'range', min: 0, max: 100, step: 1,
         read: settings => Math.round(settings.background.sharpness * 100),
-        write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background, sharpness: value / 100 }) }) }
+        write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background, sharpness: value / 100 }) }) },
+    // Both switches rebuild the background plane, like a Background quality change (Addendum X).
+    { id: 'materialRenderer', section: 'system', label: 'Material renderer', scope: 'presentation', kind: 'choice',
+        choices: [
+            { value: 'gpu', label: 'GPU', hint: 'The headset GPU draws the grain material from the background\'s carrier list: full frame rate with any Material setting. Falls back to CPU where the GPU cannot.' },
+            { value: 'cpu', label: 'CPU', hint: 'The background thread rasterizes the grain material (the original path, heavy on the headset CPU). For comparison.' }],
+        read: settings => settings.system.materialRenderer,
+        write: (settings, value) => ({ ...settings, system: normalizeSystemSettings({ ...settings.system, materialRenderer: value as XrSystemSettings['materialRenderer'] }) }) },
+    { id: 'diagnostics', section: 'system', label: 'Diagnostics', scope: 'presentation', kind: 'choice',
+        choices: [
+            { value: 'off', label: 'Off', hint: 'No profiling: the background measures nothing.' },
+            { value: 'on', label: 'On', hint: 'Display fps, background fps and cost per stage, averaged over two seconds of play, on the main and pause screens.' }],
+        read: settings => (settings.system.diagnostics ? 'on' : 'off'),
+        write: (settings, value) => ({ ...settings, system: normalizeSystemSettings({ ...settings.system, diagnostics: value === 'on' }) }) }
 ];
 
 /**
@@ -223,19 +241,21 @@ export const DEFAULT_XR_SETTINGS: XrSettings = Object.freeze({
     play: DEFAULT_XR_PLAY_SETTINGS,
     generation: DEFAULT_XR_GENERATION_SETTINGS,
     background: DEFAULT_XR_BACKGROUND_SETTINGS,
-    appearance: DEFAULT_XR_APPEARANCE_SETTINGS
+    appearance: DEFAULT_XR_APPEARANCE_SETTINGS,
+    system: DEFAULT_XR_SYSTEM_SETTINGS
 });
 
 /** Any partial or hostile input becomes a complete, valid settings object. */
 export function normalizeXrSettings(settings?: { play?: Partial<XrPlaySettings>; generation?: Partial<RhythmGenerationSettings>;
-    background?: Partial<XrBackgroundSettings>; appearance?: Partial<XrAppearanceSettings> } | null): XrSettings {
+    background?: Partial<XrBackgroundSettings>; appearance?: Partial<XrAppearanceSettings>; system?: Partial<XrSystemSettings> } | null): XrSettings {
     const source = settings && typeof settings === 'object' ? settings : {};
     return {
         play: normalizePlaySettings(source.play && typeof source.play === 'object' ? source.play : undefined),
         generation: normalizeGenerationSettings(source.generation && typeof source.generation === 'object' ? source.generation : undefined,
             DEFAULT_XR_GENERATION_SETTINGS),
         background: normalizeBackgroundSettings(source.background && typeof source.background === 'object' ? source.background : undefined),
-        appearance: normalizeAppearanceSettings(source.appearance && typeof source.appearance === 'object' ? source.appearance : undefined)
+        appearance: normalizeAppearanceSettings(source.appearance && typeof source.appearance === 'object' ? source.appearance : undefined),
+        system: normalizeSystemSettings(source.system && typeof source.system === 'object' ? source.system : undefined)
     };
 }
 

@@ -1,4 +1,4 @@
-// Opt-in background profiling for headset runs (`?xrDiagnostics=1`): the worker's stage times reach
+// Opt-in background profiling for headset runs (Settings > System > Diagnostics, or `?xrDiagnostics=1`): the worker's stage times reach
 // the host, are averaged over two seconds of play and shown in the game menu.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -34,6 +34,19 @@ test('pausing ends the window without a summary; no new background frames is sai
     for (let i = 0; i < 200 && !produced; i++) produced = diagnostics.record(1 / 72, true, 0, 0, null);
     assert.match(diagnostics.summary, /^Display 72\.0 fps \| Background: no new frames$/);
     assert.equal(diagnostics.record(Number.NaN, true, 5, 0, null), false, 'invalid steps are ignored');
+});
+
+test('clear() forgets the last line and the open window (diagnostics switched off or on again)', () => {
+    const diagnostics = new BackgroundDiagnostics();
+    for (let i = 0; i < 150; i++) diagnostics.record(1 / 72, true, i, 10, null);
+    assert.notEqual(diagnostics.summary, '');
+    for (let i = 0; i < 100; i++) diagnostics.record(1 / 72, true, 150 + i, 10, null);
+    diagnostics.clear();
+    assert.equal(diagnostics.summary, '');
+    let produced = false, frames = 0;
+    for (; !produced; frames++) produced = diagnostics.record(1 / 72, true, 400 + frames, 10, null);
+    assert.ok(frames >= 144, 'a full new window, not the remainder of the old one');
+    assert.match(diagnostics.summary, /^Display 72\.0 fps \| Background 7[12]\.\d fps/);
 });
 
 test('the main and pause screens show the line (headset readable); other screens and normal runs do not', () => {

@@ -43,8 +43,8 @@ export interface XrAppControllerOptions extends XrDiagnosticsOptions {
     /** Per-viewer settings persistence, injected by the composition root (memory-only when absent). */
     readonly settingsStore?: XrSettingsStore;
     /**
-     * Render the Wormhole grain material on the GPU when the renderer supports it (ADR-009
-     * Addendum W; default true). The composition root may force the CPU raster for comparison.
+     * The host may render the Wormhole grain material on the GPU (ADR-009 Addendum W; default true).
+     * It does when the renderer supports it and the player's Material renderer setting is GPU.
      */
     readonly gpuMaterial?: boolean;
 }
@@ -134,7 +134,12 @@ export class XrAppController {
     private readonly enterVrButton: HTMLButtonElement;
     private readonly previewButton: HTMLButtonElement;
 
-    private readonly diagnostics: boolean;
+    /** `?xrDiagnostics=1`: diagnostics stay on whatever the System setting says. */
+    private readonly forcedDiagnostics: boolean;
+    /** The diagnostics state the overlay and the menu line were last prepared for. */
+    private diagnosticsShown = false;
+    /** The renderer supports the GPU grain material and the host allows it (Addendum W). */
+    private readonly gpuMaterialSupported: boolean;
     private diagnosticPathRevision = -1;
     private diagnosticBackgroundMs = -1;
     /** Opt-in background profiling summary for headset runs (menu line + overlay dataset). */
@@ -142,17 +147,20 @@ export class XrAppController {
 
     constructor(engine: AudioEngine, runtime: XrRuntime, hostContainer: HTMLElement, wormholeFactory?: CanvasVisualSourceFactory,
         options: XrAppControllerOptions = {}) {
-        this.diagnostics = options.diagnostics === true;
+        this.forcedDiagnostics = options.diagnostics === true;
         this.engine = engine;
         this.runtime = runtime;
         this.settingsStore = options.settingsStore ?? MEMORY_ONLY_SETTINGS_STORE;
         // Normalized again: an injected store may predate newer setting groups.
         this.settings = normalizeXrSettings(this.settingsStore.load());
+        this.diagnosticsShown = this.diagnostics;
         this.playProfile = resolvePlayFromSettings(this.settings);
         this.gameConfig = this.playProfile.config;
         this.session = new RhythmGameSession(this.gameConfig);
         this.scene = new RhythmGameScene(runtime.scene, this.gameConfig, wormholeFactory);
-        this.scene.setGpuMaterial(options.gpuMaterial !== false && supportsGpuGrainMaterial(runtime.renderer as unknown as THREE.WebGLRenderer));
+        this.gpuMaterialSupported = options.gpuMaterial !== false && supportsGpuGrainMaterial(runtime.renderer as unknown as THREE.WebGLRenderer);
+        // Before any background exists this only records the pipeline (no rebuild).
+        void this.scene.setBackgroundPipeline(this.backgroundPipeline());
         this.scene.setStageLayout(this.playProfile.stage);
         // Restored presentation applies before any background is created.
         void this.scene.setBackgroundSettings(this.settings.background);
@@ -371,10 +379,33 @@ export class XrAppController {
     /** Presentation only: never touches the chart, plan, score or playback. */
     private applyPresentation(): void {
         this.scene.setNoteDesign(this.settings.appearance.noteDesign);
+        this.applyDiagnosticsSetting();
+        // A changed material renderer or profiling rebuilds the background plane (Addendum X).
+        const pipeline = this.scene.setBackgroundPipeline(this.backgroundPipeline());
         this.applyWormholeSetting();
-        void this.scene.setBackgroundSettings(this.settings.background).then(() => this.runtime.invalidate())
+        void Promise.all([pipeline, this.scene.setBackgroundSettings(this.settings.background)]).then(() => this.runtime.invalidate())
             .catch(error => this.handleWormholeError(error));
         this.runtime.invalidate();
+    }
+
+    /** Diagnostics are on when the player switched them on, or `?xrDiagnostics=1` forced them. */
+    private get diagnostics(): boolean { return this.forcedDiagnostics || this.settings.system.diagnostics; }
+
+    /** The background's build options implied by the renderer, the host and the System settings. */
+    private backgroundPipeline(): { gpuMaterial: boolean; profile: boolean } {
+        return { gpuMaterial: this.gpuMaterialSupported && this.settings.system.materialRenderer === 'gpu', profile: this.diagnostics };
+    }
+
+    /** Switching diagnostics drops the previous line and its overlay mirrors, so nothing stale shows. */
+    private applyDiagnosticsSetting(): void {
+        if (this.diagnostics === this.diagnosticsShown) return;
+        this.diagnosticsShown = this.diagnostics;
+        this.backgroundDiagnostics.clear();
+        this.diagnosticPathRevision = -1;
+        this.diagnosticBackgroundMs = -1;
+        delete this.overlay.dataset.xrTrackPath;
+        delete this.overlay.dataset.xrBackgroundMs;
+        delete this.overlay.dataset.xrBackgroundStages;
     }
 
     private updateWormholeAnalysis(analysis: VisualAnalysisSnapshot | null): void {

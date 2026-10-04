@@ -1,4 +1,5 @@
-// Opt-in background profiling for headset runs (`?xrDiagnostics=1`). Pure accumulator: the host
+// Opt-in background profiling for headset runs (Settings > System > Diagnostics, or `?xrDiagnostics=1`;
+// ADR-009 Addenda U and X). Pure accumulator: the host
 // feeds it one sample per display frame while playing; every two seconds it averages the display
 // rate, the background frames actually shown and the worker's stage times into one readable line
 // (shown in the game menu, where a headset user can read it, and mirrored on the overlay dataset).
@@ -65,6 +66,13 @@ export class BackgroundDiagnostics {
             parts.push('Background: no new frames');
         }
         return parts.join(' | ');
+    }
+
+    /** Forgets the open window and the last line (diagnostics switched off, or on again). */
+    clear(): void {
+        this.reset(this.lastShown ?? 0);
+        this.lastShown = null;
+        this.line = '';
     }
 
     private reset(framesShown: number): void {
