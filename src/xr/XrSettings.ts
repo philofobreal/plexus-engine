@@ -190,7 +190,9 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
         { value: 'performance', label: 'Performance', hint: '640 x 360 raster: lightest, softest image.' },
         { value: 'balanced', label: 'Balanced', hint: '768 x 432 raster: the recommended headset setting.' },
         { value: 'high', label: 'High', hint: '960 x 540 raster: sharper, heavier on the CPU.' },
-        { value: 'ultra', label: 'Ultra', hint: '1280 x 720 raster: the sharpest image in the headset, the heaviest on the CPU (drawn off the main thread).' }]),
+        { value: 'ultra', label: 'Ultra', hint: '1280 x 720 raster: a sharp image in the headset, heavy on the CPU (drawn off the main thread).' },
+        { value: 'crystal', label: 'Crystal', hint: '1920 x 1080 raster: crisp lines (1.5x Ultra) at almost the same headset cost.' },
+        { value: 'max', label: 'Max', hint: '2560 x 1440 raster, mipmapped: the finest lines (2x Ultra); the most GPU memory and upload per frame.' }]),
     backgroundChoice('rateHz', 'Background update', [
         { value: '24', label: '24 Hz', hint: 'Every third headset frame: the lightest, steadiest load.' },
         { value: '36', label: '36 Hz', hint: 'Every second headset frame: more fluid motion, higher cost.' }]),
@@ -224,7 +226,21 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
             { value: 'off', label: 'Off', hint: 'No profiling: the background measures nothing.' },
             { value: 'on', label: 'On', hint: 'Display fps, background fps and cost per stage, averaged over two seconds of play, on the main and pause screens.' }],
         read: settings => (settings.system.diagnostics ? 'on' : 'off'),
-        write: (settings, value) => ({ ...settings, system: normalizeSystemSettings({ ...settings.system, diagnostics: value === 'on' }) }) }
+        write: (settings, value) => ({ ...settings, system: normalizeSystemSettings({ ...settings.system, diagnostics: value === 'on' }) }) },
+    // Rebuilds the background plane (the worker is created with or without the line list; Addendum AA).
+    { id: 'grainLines', section: 'system', label: 'Grain lines', scope: 'presentation', kind: 'choice',
+        choices: [
+            { value: 'canvas', label: 'Canvas', hint: 'The background thread strokes the grain trails into its image (the original path).' },
+            { value: 'gpu', label: 'GPU', hint: 'The headset GPU draws the grain trails from a line list instead of the background thread. Needs the GPU material renderer.' }],
+        read: settings => settings.system.grainLines,
+        write: (settings, value) => ({ ...settings, system: normalizeSystemSettings({ ...settings.system, grainLines: value as XrSystemSettings['grainLines'] }) }) },
+    // Applies live (Addendum Z).
+    { id: 'backgroundPacing', section: 'system', label: 'Background pacing', scope: 'presentation', kind: 'choice',
+        choices: [
+            { value: 'fixed', label: 'Fixed', hint: 'Redraws on the requested whole-frame cadence; a late frame waits for the next one.' },
+            { value: 'adaptive', label: 'Adaptive', hint: 'Widens the cadence to fit late frames (24 Hz instead of 18): smoother, but more background work for the headset GPU.' }],
+        read: settings => settings.system.backgroundPacing,
+        write: (settings, value) => ({ ...settings, system: normalizeSystemSettings({ ...settings.system, backgroundPacing: value as XrSystemSettings['backgroundPacing'] }) }) }
 ];
 
 /**

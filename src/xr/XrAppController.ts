@@ -144,6 +144,10 @@ export class XrAppController {
     private diagnosticBackgroundMs = -1;
     /** Opt-in background profiling summary for headset runs (menu line + overlay dataset). */
     private readonly backgroundDiagnostics = new BackgroundDiagnostics();
+    /** Results line cache (keyed by the session snapshot, which is reused while unchanged). */
+    private resultSnapshot: object | null = null;
+    private resultHint = '';
+    private resultText = '';
 
     constructor(engine: AudioEngine, runtime: XrRuntime, hostContainer: HTMLElement, wormholeFactory?: CanvasVisualSourceFactory,
         options: XrAppControllerOptions = {}) {
@@ -161,6 +165,7 @@ export class XrAppController {
         this.gpuMaterialSupported = options.gpuMaterial !== false && supportsGpuGrainMaterial(runtime.renderer as unknown as THREE.WebGLRenderer);
         // Before any background exists this only records the pipeline (no rebuild).
         void this.scene.setBackgroundPipeline(this.backgroundPipeline());
+        this.scene.setAdaptivePacing(this.settings.system.backgroundPacing === 'adaptive');
         this.scene.setStageLayout(this.playProfile.stage);
         // Restored presentation applies before any background is created.
         void this.scene.setBackgroundSettings(this.settings.background);
@@ -382,6 +387,7 @@ export class XrAppController {
         this.applyDiagnosticsSetting();
         // A changed material renderer or profiling rebuilds the background plane (Addendum X).
         const pipeline = this.scene.setBackgroundPipeline(this.backgroundPipeline());
+        this.scene.setAdaptivePacing(this.settings.system.backgroundPacing === 'adaptive');
         this.applyWormholeSetting();
         void Promise.all([pipeline, this.scene.setBackgroundSettings(this.settings.background)]).then(() => this.runtime.invalidate())
             .catch(error => this.handleWormholeError(error));
@@ -392,8 +398,9 @@ export class XrAppController {
     private get diagnostics(): boolean { return this.forcedDiagnostics || this.settings.system.diagnostics; }
 
     /** The background's build options implied by the renderer, the host and the System settings. */
-    private backgroundPipeline(): { gpuMaterial: boolean; profile: boolean } {
-        return { gpuMaterial: this.gpuMaterialSupported && this.settings.system.materialRenderer === 'gpu', profile: this.diagnostics };
+    private backgroundPipeline(): { gpuMaterial: boolean; profile: boolean; gpuLines: boolean } {
+        const gpuMaterial = this.gpuMaterialSupported && this.settings.system.materialRenderer === 'gpu';
+        return { gpuMaterial, profile: this.diagnostics, gpuLines: gpuMaterial && this.settings.system.grainLines === 'gpu' };
     }
 
     /** Switching diagnostics drops the previous line and its overlay mirrors, so nothing stale shows. */
@@ -800,7 +807,7 @@ export class XrAppController {
             if (this.session.getState() === 'playing') return 'Blue: left click. Pink: right click. Space: pause.';
             if (this.session.getState() === 'paused') return 'Paused. Space to resume.';
             if (this.session.getState() === 'ready') return 'Space or Play to start.';
-            if (this.session.getState() === 'finished') return `${this.resultLine()} Space to restart.`;
+            if (this.session.getState() === 'finished') return this.resultInstruction('Space to restart.');
         }
         switch (this.session.getState()) {
             case 'idle':
@@ -812,17 +819,24 @@ export class XrAppController {
             case 'paused':
                 return 'Paused. Choose Resume in the menu.';
             case 'finished':
-                return `${this.resultLine()} Play again from the menu.`;
+                return this.resultInstruction('Play again from the menu.');
             default:
                 return '';
         }
     }
 
-    /** Final rank and accuracy, e.g. "Rank S - 91.4%.". */
-    private resultLine(): string {
-        const { score, maxScore } = this.session.getSnapshot();
-        const accuracy = maxScore ? score / maxScore : 0;
-        return `Rank ${scoreRank(accuracy)} - ${(accuracy * 100).toFixed(1)}%.`;
+    /**
+     * Final rank and accuracy plus a hint, e.g. "Rank S - 91.4%. Space to restart.". The results
+     * screen is drawn every headset frame, so the text is rebuilt only when the result changes.
+     */
+    private resultInstruction(hint: string): string {
+        const snapshot = this.session.getSnapshot();
+        if (snapshot !== this.resultSnapshot || hint !== this.resultHint) {
+            const accuracy = snapshot.maxScore ? snapshot.score / snapshot.maxScore : 0;
+            this.resultSnapshot = snapshot; this.resultHint = hint;
+            this.resultText = `Rank ${scoreRank(accuracy)} - ${(accuracy * 100).toFixed(1)}%. ${hint}`;
+        }
+        return this.resultText;
     }
 
     private handleFrame(frame: XRFrame | null, deltaSec: number): void {
@@ -863,8 +877,11 @@ export class XrAppController {
         if (this.diagnostics) {
             const { quality, rateHz } = this.settings.background;
             // A worker frame reports its bitmap transfer as a stage ('xfer'); the in-thread source does not.
+            // The cadence actually paced (whole display frames; wider when worker frames arrive late) and the measured latency.
+            const paced = Math.round(this.scene.backgroundPacedHz), latency = this.scene.backgroundLatencyMs;
+            const pacing = `${rateHz} Hz${paced > 0 ? ` paced ${paced} Hz` : ''}${latency > 0 ? `, ${latency.toFixed(0)} ms latency` : ''}`;
             const label = this.settings.background.wormhole
-                ? `${quality}, ${rateHz} Hz, ${this.scene.gpuMaterialEnabled ? 'GPU' : 'CPU'} material` : 'Wormhole off';
+                ? `${quality}, ${pacing}, ${this.scene.gpuMaterialEnabled ? 'GPU' : 'CPU'} material${this.scene.gpuLinesEnabled ? ', GPU lines' : ''}` : 'Wormhole off';
             if (this.backgroundDiagnostics.record(deltaSec, this.session.getState() === 'playing', this.scene.backgroundFramesShown,
                 this.scene.backgroundRenderMs, this.scene.backgroundStageTimes, label)) {
                 this.overlay.dataset.xrBackgroundStages = this.backgroundDiagnostics.summary;

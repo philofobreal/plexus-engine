@@ -79,7 +79,7 @@ test('an external-material source hands its frame\'s carriers over instead of co
     plain.dispose(); external.dispose();
 });
 
-test('the render worker transfers an exactly sized carrier buffer with its frame; the proxy exposes it', async () => {
+test('the render worker transfers exactly the valid carrier records with its frame; the proxy exposes them', async () => {
     const posted = [];
     const scope = { onmessage: null, postMessage(message, transfer) { posted.push({ message, transfer }); }, close() {} };
     const sources = [];
@@ -116,6 +116,171 @@ test('the render worker transfers an exactly sized carrier buffer with its frame
     worker.reply({ type: 'frame', generation: 1, time: 1, bitmap: { close() {} }, focalX: 0, focalY: 0, renderMs: 5, material: message.material });
     proxy.render(1.03, true);
     assert.equal(proxy.materialFrame, message.material);
+    proxy.dispose();
+});
+
+// ---------------------------------------------------------------- pooled carrier buffers
+const isArrayBuffer = value => Object.prototype.toString.call(value) === '[object ArrayBuffer]';
+
+/** Worker harness whose posts really transfer (detach) carrier buffers, counting worker-side allocations. */
+function pooledWorker(counts = [2]) {
+    const posted = [], sources = [];
+    let allocations = 0, frame = 0;
+    class CountingArrayBuffer extends ArrayBuffer { constructor(length) { super(length); allocations++; } }
+    const scope = { onmessage: null, closed: false, close() { this.closed = true; },
+        postMessage(message, transfer = []) {
+            // A real postMessage detaches transferred buffers; the sender's (now detached) view stays for inspection.
+            const material = message.material ? structuredClone(message.material, { transfer: transfer.filter(isArrayBuffer) }) : undefined;
+            posted.push({ message, material, transfer });
+        } };
+    class FakeSource {
+        constructor(options) { this.options = options; this.focalPoint = { x: 0, y: 0 }; this.collected = new Float32Array(4096 * GRAIN_CARRIER_STRIDE); sources.push(this);
+            this.canvas = { transferToImageBitmap: () => ({ close() {} }) }; }
+        async prepare() {} render() { frame++; return true; } setPresentation() {} dispose() { this.disposed = true; }
+        get stageTimes() { return null; }
+        get materialFrame() {
+            const count = counts[(frame - 1) % counts.length];
+            if (count === null) return null;
+            this.collected.fill(frame, 0, count * GRAIN_CARRIER_STRIDE);
+            return { cols: 320, rows: 180, amount: 0.5, bloom: 1, detail: 1, count, data: this.collected };
+        }
+    }
+    createLoader({ './WormholeCanvasSource': { WormholeCanvasSource: FakeSource } },
+        { self: scope, performance: { now: () => 0 }, OffscreenCanvas: class {}, ArrayBuffer: CountingArrayBuffer })('visuals/wormholeRender.worker.ts');
+    const send = data => scope.onmessage({ data });
+    return { posted, sources, send, scope, get allocations() { return allocations; } };
+}
+
+async function readyWorker(harness) {
+    harness.send({ type: 'init', protocol: 1, width: 640, height: 360, depthCue: 0, externalMaterial: true });
+    harness.send({ type: 'prepare', generation: 1, analysis: null });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    let time = 0;
+    return () => { harness.send({ type: 'render', generation: 1, time: ++time, playing: true }); return harness.posted.at(-1); };
+}
+
+test('worker carrier buffers cycle through a bounded pool: transferred out, returned, reused, never written while lent', async () => {
+    const worker = pooledWorker();
+    const render = await readyWorker(worker);
+    const first = render();
+    assert.equal(worker.allocations, 1);
+    assert.equal(first.material.count, 2);
+    assert.equal(first.material.data.length, 2 * GRAIN_CARRIER_STRIDE, 'exactly the valid records');
+    assert.ok(first.material.data.buffer.byteLength >= 2 * GRAIN_CARRIER_STRIDE * 4);
+    assert.ok(first.material.data.every(value => value === 1), 'carriers of that frame');
+    assert.ok(first.transfer.includes(first.message.material.data.buffer), 'transferred with the bitmap');
+    assert.equal(first.message.material.data.byteLength, 0, 'the worker no longer holds the lent buffer');
+    // Nothing returned yet: the next frame needs its own buffer (a lent one is never reused).
+    const second = render();
+    assert.equal(worker.allocations, 2);
+    assert.ok(second.material.data.every(value => value === 2));
+    // Returned buffers are reused: the steady state allocates nothing.
+    worker.send({ type: 'release-material', buffer: first.material.data.buffer });
+    worker.send({ type: 'release-material', buffer: second.material.data.buffer });
+    const third = render(), fourth = render();
+    assert.equal(worker.allocations, 2);
+    assert.ok(third.material.data.every(value => value === 3) && fourth.material.data.every(value => value === 4));
+    // Detached or malformed returns are ignored.
+    worker.send({ type: 'release-material', buffer: first.material.data.buffer }); // detached again by the frame-3/4 transfer
+    worker.send({ type: 'release-material', buffer: null });
+    render();
+    assert.equal(worker.allocations, 3);
+});
+
+test('the worker pool is bounded, keeps its largest buffers and grows only for larger frames', async () => {
+    const worker = pooledWorker([2, 2, 2, 2, 2, 2, 2, 2, 2, 400, null, 2]);
+    const render = await readyWorker(worker);
+    const lent = Array.from({ length: 6 }, () => render());
+    assert.equal(worker.allocations, 6);
+    for (const frame of lent) worker.send({ type: 'release-material', buffer: frame.material.data.buffer });
+    // Six returned, at most three kept: three frames reuse, the fourth allocates.
+    render(); render(); render();
+    assert.equal(worker.allocations, 6);
+    const big = render(); // frame 10: 400 carriers, no pooled buffer fits
+    assert.equal(worker.allocations, 7);
+    assert.equal(big.material.count, 400);
+    assert.ok(big.material.data.buffer.byteLength >= 400 * GRAIN_CARRIER_STRIDE * 4 * 1.2, 'allocated with headroom');
+    const none = render(); // frame 11: no material
+    assert.equal(none.message.material, undefined, 'frames without material stay without material');
+    assert.equal(none.transfer.length, 1, 'only the bitmap travels');
+    assert.equal(worker.allocations, 7);
+    worker.send({ type: 'dispose' });
+    assert.ok(worker.sources[0].disposed && worker.scope.closed);
+});
+
+test('the proxy returns each carrier buffer once: after the next frame, for stale frames and discarded ones; never after dispose', async () => {
+    const workers = [];
+    class FakeWorker {
+        constructor() { this.posted = []; workers.push(this); }
+        postMessage(m, transfer) { this.posted.push({ m, transfer }); } terminate() { this.terminated = true; }
+        reply(data) { this.onmessage?.({ data }); }
+        get releases() { return this.posted.filter(p => p.m.type === 'release-material'); }
+    }
+    const presenter = { transferFromImageBitmap() {} };
+    const document = { createElement: () => ({ width: 0, height: 0, dataset: {}, getContext: () => presenter }) };
+    const { WormholeWorkerSource } = createLoader({ './wormholeRender.worker.ts?worker': { __esModule: true, default: FakeWorker } }, { document })('visuals/WormholeWorkerSource.ts');
+    const carriers = () => ({ cols: 320, rows: 180, amount: 0.5, bloom: 1, detail: 1, count: 1, data: new Float32Array(GRAIN_CARRIER_STRIDE) });
+    const bitmap = () => ({ closed: false, close() { this.closed = true; } });
+    const proxy = new WormholeWorkerSource({ width: 640, height: 360, externalMaterial: true });
+    const worker = workers[0];
+    let ready = proxy.prepare(null); worker.reply({ type: 'prepared', generation: 1 }); await ready;
+    const frame = (generation, material) => ({ type: 'frame', generation, time: 1, bitmap: bitmap(), focalX: 0, focalY: 0, renderMs: 1, ...(material ? { material } : {}) });
+
+    const a = carriers(), b = carriers();
+    proxy.render(1, true); worker.reply(frame(1, a));
+    assert.equal(proxy.render(1.03, true), true); assert.equal(proxy.materialFrame, a);
+    assert.equal(worker.releases.length, 0, 'the shown frame keeps its buffer');
+    worker.reply(frame(1, b)); proxy.render(1.06, true);
+    assert.equal(proxy.materialFrame, b);
+    assert.equal(worker.releases.length, 1);
+    assert.equal(worker.releases[0].m.buffer, a.data.buffer);
+    assert.ok(worker.releases[0].transfer.length === 1 && worker.releases[0].transfer[0] === a.data.buffer, 'returned by transfer, not copy');
+
+    // A frame without material releases the shown one; a second empty frame releases nothing.
+    worker.reply(frame(1)); proxy.render(1.09, true);
+    assert.equal(proxy.materialFrame, null); assert.equal(worker.releases.length, 2); assert.equal(worker.releases[1].m.buffer, b.data.buffer);
+    worker.reply(frame(1)); proxy.render(1.12, true);
+    assert.equal(worker.releases.length, 2);
+
+    // A pending frame discarded by a new preparation, and a stale frame, both return their buffers.
+    const pending = carriers(), stale = carriers();
+    worker.reply(frame(1, pending));
+    ready = proxy.prepare(null);
+    assert.equal(worker.releases.at(-1).m.buffer, pending.data.buffer);
+    const staleFrame = frame(1, stale); worker.reply(staleFrame);
+    assert.ok(staleFrame.bitmap.closed); assert.equal(worker.releases.at(-1).m.buffer, stale.data.buffer);
+    worker.reply({ type: 'prepared', generation: 2 }); await ready;
+    assert.equal(worker.releases.length, 4);
+
+    // Still at most one render request in flight.
+    proxy.render(2, true); proxy.render(2.03, true);
+    assert.equal(worker.posted.filter(p => p.m.type === 'render' && p.m.generation === 2).length, 1);
+
+    // Dispose drops buffers instead of posting to a terminated worker.
+    worker.reply(frame(2, carriers())); proxy.render(2.06, true);
+    worker.reply(frame(2, carriers()));
+    const before = worker.releases.length;
+    proxy.dispose();
+    assert.equal(worker.releases.length, before);
+    assert.equal(proxy.materialFrame, null);
+    assert.ok(worker.terminated);
+});
+
+test('after a worker failure carrier buffers are dropped, never posted', async () => {
+    const workers = [];
+    class FakeWorker { constructor() { this.posted = []; workers.push(this); } postMessage(m) { this.posted.push(m); } terminate() {} reply(data) { this.onmessage?.({ data }); } }
+    const document = { createElement: () => ({ width: 0, height: 0, dataset: {}, getContext: () => ({ transferFromImageBitmap() {} }) }) };
+    const { WormholeWorkerSource } = createLoader({ './wormholeRender.worker.ts?worker': { __esModule: true, default: FakeWorker } }, { document })('visuals/WormholeWorkerSource.ts');
+    const proxy = new WormholeWorkerSource({ externalMaterial: true });
+    const worker = workers[0];
+    const ready = proxy.prepare(null); worker.reply({ type: 'prepared', generation: 1 }); await ready;
+    proxy.render(1, true);
+    const material = { cols: 1, rows: 1, amount: 1, bloom: 0, detail: 0, count: 1, data: new Float32Array(GRAIN_CARRIER_STRIDE) };
+    worker.reply({ type: 'frame', generation: 1, time: 1, bitmap: { close() {} }, focalX: 0, focalY: 0, renderMs: 1, material });
+    let error = null; proxy.onError = message => { error = message; };
+    worker.reply({ type: 'failure', message: 'boom' });
+    assert.equal(error, 'boom');
+    assert.equal(worker.posted.filter(m => m.type === 'release-material').length, 0);
     proxy.dispose();
 });
 

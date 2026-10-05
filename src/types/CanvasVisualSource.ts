@@ -1,5 +1,6 @@
 import type { AudioFrame, BeatEvent, TrackAnalysis, PerformanceAutomationPlan } from './index';
 import type { GrainMaterialFrame } from './GrainMaterialFrame';
+import type { GrainLineFrame } from './GrainLineFrame';
 
 /** Immutable analyzer publication, passed explicitly across the XR/visuals composition seam. */
 export interface VisualAnalysisSnapshot {
@@ -46,6 +47,12 @@ export interface CanvasVisualSource {
     /** Optional cost of the last redraw, in milliseconds, when the source measures it itself. */
     readonly lastRenderMs?: number;
     /**
+     * Asynchronous sources only: smoothed wall-clock time from requesting a frame to receiving it, in
+     * milliseconds (0 until measured). A host redrawing on a fixed cadence widens it to whole frames
+     * that fit, instead of a late frame missing a redraw and waiting a whole extra interval.
+     */
+    readonly frameLatencyMs?: number;
+    /**
      * Opt-in diagnostics: wall-clock stage times of the last redraw in milliseconds (names are the
      * source's own), or null when the source does not profile.
      */
@@ -56,6 +63,12 @@ export interface CanvasVisualSource {
      * holds everything except the material, which the host composites additively on top.
      */
     readonly materialFrame?: GrainMaterialFrame | null;
+    /**
+     * The grain trail strokes of the frame currently shown, as a line list (`externalLines`; ADR-009
+     * Addendum AA), or null when that frame stroked them itself. The canvas then lacks exactly these
+     * strokes; the host draws them over it before anything else. Valid until the next `render`.
+     */
+    readonly lineFrame?: GrainLineFrame | null;
     dispose(): void;
 }
 /**
@@ -87,6 +100,8 @@ export interface CanvasVisualSourceOptions {
     readonly height?: number;
     /** Hand the grain material to the host as carriers (`materialFrame`) instead of rasterizing it. */
     readonly externalMaterial?: boolean;
+    /** With `externalMaterial`: hand the grain trail strokes to the host as lines (`lineFrame`) instead of stroking them. */
+    readonly externalLines?: boolean;
     /** Measure per-stage redraw times (`stageTimes`) for the host's diagnostics. */
     readonly profile?: boolean;
 }
