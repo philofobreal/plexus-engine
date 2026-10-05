@@ -54,22 +54,44 @@ Current failure message fields:
 version 1):
 
 - Requests: `init` (protocol, raster size, depth cue, optional `profile` for diagnostics,
-  optional `externalMaterial` for the host-rendered grain material, ADR-009 Addendum W),
-  `prepare` (generation, analysis snapshot),
+  optional `externalMaterial` for the host-rendered grain material, ADR-009 Addendum W, and with it
+  optional `externalLines` for host-drawn grain trail lines, Addendum AA),
+  `prepare` (generation, analysis snapshot), `prepare-plan` (generation, performance plan),
   `render` (generation, time, playing), `presentation` (Line stroke, rate cap, optional Visual
   character macros, ADR-009 Addendum R; optional Grain material boosts, Addendum V), `dispose`. Optional presentation fields are additive and
   keep protocol version 1; removing or reinterpreting a field requires a version bump.
 - Responses: `prepared` / `prepare-error` (generation), `frame` (generation, time, transferred
   `ImageBitmap`, focal point, raster ms, optional `stages` -- per-stage ms, only when `init`
   asked to profile; ADR-009 Addendum U; optional `material` -- the frame's grain carriers, only
-  with `externalMaterial`, in a fresh exactly sized Float32Array transferred with the bitmap;
-  Addendum W), `unchanged` (generation), `failure` (message).
-- Identification: every `prepare` starts a new generation; the proxy drops (and closes) frames and
-  answers from older generations, so a superseded preparation can never overwrite a newer one.
+  with `externalMaterial`, a Float32Array viewing exactly `count` records of a pooled buffer
+  transferred with the bitmap; Addendum W), `unchanged` (generation), `failure` (message).
+- Trail lines (additive `init.externalLines` and frame field `lines`, still protocol version 1):
+  with external material, a frame's grain trail strokes travel as a `GrainLineFrame` whose data views
+  the same pooled buffer right after the carriers. It is transferred and returned with them, and
+  the host reads it only while that frame is shown.
+- Carrier buffer pool (additive request `release-material`, still protocol version 1): the host
+  transfers a frame's carrier buffer back once the next frame replaces it, or when the frame is
+  stale or discarded. Each buffer is in exactly one place (worker pool, host, or in transit); the
+  worker writes only pooled buffers, keeps at most three and allocates (with headroom) only when
+  none fits. After dispose or a failure the host drops buffers instead of posting them.
+- Plan updates (additive request `prepare-plan`, still protocol version 1): the worker keeps its
+  copy of the last `prepare` analysis. When a new snapshot differs from the one last sent in full
+  only in its `performancePlan` (Activity / Variation regenerated the plan over the same
+  publication), the proxy sends the plan alone, and the worker re-prepares its source from the
+  kept copy with that plan. This avoids re-cloning the per-hop analysis (~23-36 ms of
+  main-thread `postMessage` for a 5-minute track on a desktop CPU; ~0.1 ms for the plan). Any
+  other difference, a `null` preparation or a `prepare` that failed to post sends the analysis in
+  full again. A worker without a kept analysis answers `prepare-error`.
+- Identification: every `prepare` / `prepare-plan` starts a new generation; the proxy drops (and
+  closes) frames and answers from older generations, so a superseded preparation can never
+  overwrite a newer one.
 - Copy vs transfer: the analysis snapshot is structured-cloned (copied) because the host keeps
-  using its immutable publication; frame bitmaps are transferred to the host, which consumes each
-  exactly once or closes it.
+  using its immutable publication, and neither side mutates its copy; frame bitmaps are
+  transferred to the host, which consumes each exactly once or closes it.
 - Backpressure: at most one `render` is in flight; the host never queues frames.
+- No `SharedArrayBuffer`: it would require cross-origin isolation (COOP/COEP headers on every
+  deployment) and an atomic ownership protocol. The transferable carrier pool and plan-only updates
+  remove the measured allocation and copy costs without them (decision of 2026-10-05).
 - Termination: the worker lives as long as its background plane. It is terminated on dispose
   (background off is a pause, not a dispose; quality changes and page teardown dispose), and
   immediately on any worker failure. This is the render-worker reading of the AGENTS.md rule

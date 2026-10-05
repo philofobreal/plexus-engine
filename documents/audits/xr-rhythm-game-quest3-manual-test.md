@@ -129,6 +129,18 @@ Record results in the result log above; desktop results never substitute for hea
 - Wormhole sharpness (ADR-009 Addendum P): compare High vs Ultra and Sharpness 0 / 50 / 100 in the
   headset: lines read crisper without visible halos or shimmer; Ultra keeps a steady frame rate
   (watch for stutter in dense scenes; fall back to High if it appears).
+- Crystal quality (ADR-009 Addendum Y): Ultra vs Crystal at 24 Hz and 36 Hz in a dense drop. Lines
+  read clearly crisper and do not shimmer when you look toward the plane's edges. The game keeps
+  its frame rate at 24 Hz; record whether 36 Hz holds too, plus `data-xr-background-ms` with
+  Diagnostics on.
+- Background cadence and Max (ADR-009 Addendum Z): with Diagnostics on and Background pacing
+  Adaptive (opt-in), raise Grain density step by step at 36 Hz and note the line's `paced` rate,
+  latency and the Display fps. Fixed pacing (the default) must keep the display at the headset rate.
+  Compare Max with Crystal: finer lines and no shimmer toward the plane's edges. Record the Display fps,
+  because Max costs the most GPU.
+- GPU grain lines (ADR-009 Addendum AA): Grain lines Canvas vs GPU at the same density and rate. The
+  trails should look the same, round ends perhaps a hair softer. Record the Display and Background fps
+  of both at density 50 and 100. GPU lines are worth keeping only if they hold the display better.
 - Note design and slicing (ADR-009 Addendum Q): Shard tips read as the cut direction at full
   runway distance and at Fast/Hyper speed; the cut line and gems are clear; every hit splits into
   halves with sparks that feel tied to the swing, never distracting from the next target.
