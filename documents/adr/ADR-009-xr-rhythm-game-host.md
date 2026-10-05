@@ -123,6 +123,32 @@ XR owns a single pure track-path projection (`src/xr/scene/XrTrackPath.ts`) appl
 `notePosition()`; rendering projects through it and XR hit testing un-projects through it.
 `src/gameplay/` is unchanged and remains renderer-independent.
 
+*Update (2026-10-05, XR performance pass):* the runway floor and rails no longer rewrite and
+re-upload vertex positions when the path changes. Their geometry is static; `XrTrackPath` exports
+`TRACK_BEND_GLSL`, the vertex-shader twin of `trackBendWeight` / `trackPathOffset` (operation for
+operation), and `installTrackBend` adds it after `begin_vertex` of the runway materials. The path
+writes one `uTrackBend` vec4 (far-end amplitudes, bend start, bend end); CPU projection and strike
+un-projection still use the TypeScript functions. Tests pin the GLSL text, a float32 mirror of it
+against CPU samples, the exact straight zone and unchanged buffer versions.
+
+*Update (2026-10-05, XR performance pass):* targets travel on the GPU too. `RhythmNoteField` keeps
+choosing the drawn targets on the CPU (the session's bounded active window, the same pools and
+order) and writes event-scope instance data -- canonical lane/row x, y from `notePosition`, note
+time relative to a write epoch, cut angle or gem phase, base colour and mode -- only when the drawn
+set or a target's status changes. `NOTE_MOTION_GLSL` derives the canonical travel z from a
+song-time uniform and bends the centre with the same `TRACK_BEND_GLSL` and `uTrackBend` (plus the
+hit-plane distance), then applies spawn growth / brightness, cut roll, the Classic glyph lift and
+the turning gem. A path change is a uniform update; judging keeps `notePosition` and
+`unprojectStrike`. A WebGL transform-feedback check against the former CPU matrices (both designs,
+spawn fade, three paths, song times up to 300 s) measured at most 5.2e-6 m and 1.5e-7 colour
+difference.
+
+*Update (2026-10-05, XR performance pass, per-frame state):* `RhythmGameSession.getSnapshot()`
+returns a frozen snapshot and hands out the same object while no field changed (any change yields
+a new one; `sections` stays the run's live read-only results). The progress ring re-projects its
+section arcs only when a note resolves or a new run starts, the song map keys its caption
+numerically, and the results line is rebuilt only when the result changes.
+
 ## Addendum D: player generation settings (2026-09-27)
 
 `buildRhythmChart` takes optional `RhythmGenerationSettings` (Difficulty, Activity, Variation, hand
@@ -130,6 +156,19 @@ pattern, hand lead, zones), pure gameplay data; defaults reproduce the historica
 Variation keep their ADR-005 meanings and are also forwarded to `prepareWormholePerformance`, so the
 shared plan and the Wormhole follow them as in the MVP. `XrAppController` regenerates from its
 captured analysis snapshot under the existing load-generation token; it never re-analyzes.
+
+*Update (2026-10-05, XR performance pass):* chart and plan preparation stay on the main thread.
+Measured in desktop Chromium on a 5-minute track (14,062 analysis hops, 43 sections, ~480 notes):
+`prepareWormholePerformance` 5-7 ms per Activity/Variation combination, `buildRhythmChart` ~1 ms,
+`loadChart` (scoring plan) ~0.2 ms, score overview and section timeline <0.1 ms. A planning worker
+would first have to receive `trackAnalysis`, which carries per-hop arrays: `structuredClone` of it
+alone took 12-18 ms, more than the work it would move. Revisit if preparation exceeds ~50 ms on
+the target headset, or if the analysis comes to live in a worker that could plan without a copy.
+The larger hitch was the Wormhole worker `prepare` message, which copied the whole analysis,
+frames included, on every plan change too, although only `performancePlan` differs then (~23-36
+ms `postMessage` for the same track). A regenerated plan now crosses alone (`prepare-plan`, ~0.1
+ms); the worker re-prepares from its kept copy (see worker communication). Load and turning the
+background on still send the analysis once.
 
 ## Addendum E: Wormhole depth cues and 2.5D stereo planes (2026-09-27)
 
@@ -430,6 +469,20 @@ lines read soft.
   white-hot cooling to the hand colour while fading, plus ten sparks fanned along the cut with
   gravity. A pure function of song time and `resolvedAt` (pause freezes, seeks are exact), 0.32 s,
   at most 12 concurrent slices from preallocated pools: two additive instanced draws.
+- *Update (2026-10-05, XR performance pass):* the note and slice pools stream their instance
+  buffers (`DynamicDrawUsage`, colour buffers preallocated) and flag only the drawn prefix for
+  upload (`src/xr/scene/InstanceUploads.ts`); an empty batch uploads nothing. On a dense
+  synthetic chart this cut instance uploads from ~25.5 KB to ~2 KB per frame (Node count of what
+  three.js would send, not a headset measurement).
+- *Update (2026-10-05, XR performance pass):* slice halves and sparks move on the GPU. The CPU
+  still decides which hits are live (chart order, at most 12) and writes event-scope instance
+  attributes only when that set or its inputs change: hit origin (through the track path), hit
+  time relative to a write epoch, cut frame and side, the hashed spark direction / speed / drift
+  and the hand colour. `SLICE_HALF_GLSL` / `SLICE_SPARK_GLSL` evaluate separation, follow-through,
+  carry, gravity, rotation, scale and fade from one song-time uniform; instance matrices are no
+  longer written. Instance data is rebuilt from canonical session state, so seeks stay exact. A
+  WebGL transform-feedback check against the former CPU matrices measured at most 4.3e-6 m and
+  2.7e-8 colour difference.
 - The settings tab formerly titled "Background" is now "Visuals" (target style + Wormhole); DOM
   control names keep the `xr-background-` prefix.
 
@@ -585,6 +638,10 @@ grain material moves to the GPU in the main WebGL context.
   work is identical. `GrainCarrierCollector` packs the prepared constants (24 floats per carrier,
   `src/types/GrainMaterialFrame.ts`); `WormholeCanvasSource({ externalMaterial })` exposes them as
   `materialFrame`, and the render worker transfers an exactly sized copy with each frame.
+  *Update (2026-10-05, XR performance pass):* the copy now goes into a buffer from a bounded pool
+  (at most three) that the host transfers back after copying the carriers (`release-material`), so
+  steady play allocates no carrier arrays on either thread (browser check: 48 frames of ~3900
+  carriers, ~370 KB each, cycled through 2 buffers). See worker communication.
 - **GPU rendering** (`src/xr/scene/GrainMaterialRenderer.ts`): instanced capsule quads evaluate the
   per-pixel law in GLSL 3 (the integer hash and value noises operation for operation) into a
   half-float L0 with additive blending; full-screen passes resolve L0 (premultiplied), gather L1 /
@@ -630,6 +687,128 @@ pipeline* (`RhythmGameScene.setBackgroundPipeline({ gpuMaterial, profile })`) an
 an existing background plane exactly like a Background quality change (re-prepared from the
 captured analysis; the chart, score and playback are untouched). Before the first background the
 pipeline is only recorded. The worker protocol is unchanged.
+
+## Addendum Y: optional Crystal background quality (2026-10-05)
+
+**Context.** The player asked for a crystal-clear Wormhole that can be chosen from the game menu.
+The plane is 106 x 60 m at 40 m, so it spans ~106 x 74 degrees, and a flat plane's texel density
+rises toward its edges (1 / cos^2 of the view angle). Ultra (1280 x 720) gives ~8.4 px/degree
+straight ahead, against a Quest 3 eye buffer of ~20 px/degree: the image is magnified.
+
+**Decision.** A fifth Background quality, **Crystal**, rasterizes at 1920 x 1080: ~12.6 px/degree
+straight ahead (1.5x Ultra's line detail). It is optional and listed last; the default stays Ultra
+(Addendum T). The menu hint first recommended 24 Hz with it on Quest 3. The headset showed no
+frame-rate cost, and Addendum Z's cadence fitting covers late frames, so the hint no longer does.
+
+- 2560 x 1440 was rejected. At ~16.9 px/degree straight ahead it would exceed the eye buffer off
+  axis (beyond ~25 degrees), so the unmipmapped `LinearFilter` texture would be minified and its
+  thin lines would shimmer. It would also upload 14.7 MB per background frame. (Addendum Z later
+  adds it as the optional, mipmapped Max quality.)
+- **Measured** (desktop Chromium, real app, GPU material, the same track section): worker raster
+  8.5 ms at Crystal vs 7.6-8.4 ms at Ultra. A direct per-size benchmark gave 7.4 / 7.8 / 8.5 / 9.8 ms
+  for 1280 / 1600 / 1920 / 2560 widths. The GPU grain material grid is a fixed pixel budget
+  (`resolveWormholeGrainMaterialRasterSize`), so it does not grow with the raster.
+- **Main-thread copy.** None on desktop: `ImageBitmap` to texture is a GPU-side copy. The cost moves
+  to the headset GPU: 8.3 MB per new background frame (2.25x Ultra), plus the Canvas2D fill. On
+  the Quest these share the GPU with the XR frame; 24 Hz caps that work. Quest numbers are pending.
+- **Mechanics.** No new setting group or protocol. `XrBackgroundQuality` gains `crystal`, and a
+  saved choice survives normalization. Switching to Crystal rebuilds the one plane like any other
+  quality change. The sharpening texel size follows the canvas.
+
+## Addendum Z: background cadence that fits the worker, cheaper strokes, and Max quality (2026-10-05)
+
+**Context.** On the Quest 3, Crystal cost no frame rate. The diagnostics line, however, read 72
+display fps against ~18 background fps at most settings, and Grain density moved the background
+rate more than anything else.
+
+**Why 18.** The background only receives a new request on its whole-frame redraw ticks (Addendum
+F): at 36 Hz on a 72 Hz display, every second frame (27.8 ms). A worker frame that takes longer
+than one tick misses the next one and is shown on the tick after, so any worker time between 27.8
+and 55.6 ms yields exactly 72 / 4 = 18 fps, and the worker idles for the rest of the interval.
+The display stays at 72 because the raster is off the main thread (Addendum G).
+
+The worker's time hardly depends on resolution: desktop raster 7.4 / 7.8 / 8.5 / 9.8 ms for 1280 /
+1600 / 1920 / 2560 widths. It does scale with Grain density, which activates 1-4 copies of the
+360-grain field, each grain stroked in Canvas2D. A frame strokes ~2750 lines; without them the
+worker's draw time fell by ~40% (desktop).
+
+**Decision.**
+
+- **Cadence that fits.** `WormholeWorkerSource` measures the request -> frame latency
+  (`CanvasVisualSource.frameLatencyMs`, smoothed). `WormholeBackdrop` widens its divider to the
+  smallest whole number of display frames the latency fits (plus 2 ms slack). It never goes below
+  the requested rate, and it narrows only with 15% headroom. A worker slightly slower than 27.8
+  ms now runs at 24 fps instead of 18, still on a steady whole-frame phase. The proxy also
+  calibrates its presentation lead to the song-time delay at which frames are actually shown.
+  This corrects the ~1 interval by which late frames lagged the music. Neither feeds gameplay or
+  the song clock.
+- **Cheaper strokes.** `Canvas2DRendererBackend` (used only by the XR Wormhole) sets one opaque
+  `strokeStyle` per colour and carries stroke alpha in `globalAlpha`, instead of a fresh `rgba()`
+  string per line. Fills, gradients, field rasters and the frame clear draw at alpha 1. An
+  out-of-range alpha clamps like `rgba()` would. An A/B on the same frames was pixel-identical
+  (max difference 0) and cut the worker's recording time 5.5 -> 4.4 ms (density 0.5) and 6.2 -> 4.4
+  ms (density 1); full frames 8.2 -> 7.0 and 9.1 -> 7.4 ms (desktop).
+- **Max quality** (2560 x 1440, ~16.9 px/degree straight ahead) is listed after Crystal. It
+  exceeds the eye-buffer density beyond ~25 degrees off axis, so its plane texture alone is
+  mipmapped (`XR_BACKGROUND_MIPMAPPED`; trilinear, regenerated with each new background frame).
+  The centre is magnified and unchanged.
+- The diagnostics line names the paced rate and latency, e.g. `36 Hz paced 24 Hz, 31 ms latency`.
+
+Quest numbers are pending. The expected effect is a higher background rate at the same density,
+or a higher density at the same rate.
+
+*Update (2026-10-05, Quest 3 reading):* the display frame rate dropped noticeably with these
+changes in the headset. More background frames per second means more GPU work, and that work
+competes with the XR frame: the Canvas2D raster in the browser's GPU process, the upload, the
+GPU material, and with Max the mipmap chain. Adaptive cadence is therefore opt-in: Settings >
+System > **Background pacing**, Fixed (the pre-Addendum-Z behaviour, default) / Adaptive (live).
+The cheaper strokes stay; they never exceed the requested rate, and 24 Hz caps the background's
+GPU work.
+
+## Addendum AA: GPU grain trail lines (2026-10-05)
+
+**Context.** Grain density multiplies the grains (1-4 copies), and each grain also strokes a
+Canvas2D trail line: the part of the line-to-material crossfade that is not material. A
+1920 x 1080 frame strokes ~1845 background lines plus 311 (one copy) to ~1240 (four copies)
+grain trail lines. On the headset, those anti-aliased strokes are rasterized by the browser's GPU
+process on the same GPU as the XR frame.
+
+**Decision.** An opt-in Settings > System > **Grain lines**: Canvas (default) / GPU. GPU needs the
+GPU material (Addendum W); with the CPU material the lines stay on the canvas. A change rebuilds
+the background plane, like the Material renderer.
+
+- **Producer.** `CosmicWormholeIdentity.setLineSink` (only with a material sink, only on material
+  frames): the crossfade strokes go to the sink instead of the backend. The identity's other lines
+  are unchanged, and so are frames without material. `GrainLineCollector` stores exactly what
+  `Canvas2DRendererBackend` would have used (`GrainLineFrame`, 9 floats per line). Colour is
+  rounded and clamped like a CSS colour, alpha clamped like `rgba()`, with the backend's minimum
+  width and the frame's cap shape. Transparent strokes are skipped.
+- **Transport.** The worker is told at `init` (`externalLines`). The lines travel right after the
+  carriers in the frame's pooled buffer (Addendum W / pool), so they are transferred once and
+  returned with it. The proxy exposes `lineFrame` with the material's lifetime. Additive, protocol
+  version 1.
+- **GPU.** `GrainLineRenderer` runs in the backdrop plane's onBeforeRender, once per new
+  background frame, in two steps:
+  1. One instanced quad per line goes into an RGBA8 target. Coverage is capsule (round cap) or
+     box (square cap) distance with a one-pixel ramp; sub-pixel widths fade like a hairline.
+     Lines are composited premultiplied source-over in record order, in sRGB-encoded values, as
+     Canvas2D blends.
+  2. A composite pass lays the re-encoded canvas under them into an sRGB target at canvas size.
+     It carries Max's mipmaps when chosen.
+
+  The plane samples that target where it sampled the canvas, so sharpening and the GPU material
+  apply on top exactly as before. The per-display-frame cost is unchanged.
+- **Measured** (desktop Chromium, real WebGL, 1280 x 720, five frames of a real track): image mean
+  absolute difference against the CPU-stroked canvas 0.000-0.037 / 255. Fewer than 0.1% of channel
+  values differ by more than 8. On line pixels the mean difference is 0.3-3.3 against a mean line
+  contribution of 3.4-43.
+  - Synthetic strokes (widths 0.3-7) match in total energy within 0.99-1.05. Square caps differ
+    by ~0.5 per touched pixel. Round caps differ by 2-3 because Skia shapes the cap end
+    differently.
+  - Cost (1920 x 1080, four copies): the line pass plus composite take 0.4 ms of GPU time per new
+    background frame (timer query). The canvas raster falls from 7.3 to 6.4 ms, and the worker's
+    recording time is about unchanged (4.4 vs 4.2 ms). The worker-side gain is small on a desktop.
+    The point is the headset GPU's Canvas2D stroke raster, which Quest numbers must confirm.
 
 ## Consequences
 

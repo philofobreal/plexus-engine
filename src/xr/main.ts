@@ -27,9 +27,10 @@ try { storage = window.localStorage; } catch { storage = null; }
 // forces the in-thread source for A/B frame-time comparison.
 const offThread = !window.location.search.includes('xrBackgroundThread=main') && wormholeWorkerSupported();
 // Settings > System picks the grain material renderer (GPU when supported) and diagnostics (ADR-009
-// Addendum X); the controller asks the factory for carriers and stage profiling accordingly.
+// Addendum X) and where grain trail lines are drawn (Addendum AA); the controller asks the factory for
+// carriers, lines and stage profiling accordingly.
 new XrAppController(engine, runtime, container, options => {
     const size = { diagnostics, profile: options?.profile === true, depthCue: 0.7, width: options?.width, height: options?.height,
-        externalMaterial: options?.externalMaterial === true };
+        externalMaterial: options?.externalMaterial === true, externalLines: options?.externalLines === true };
     return offThread ? new WormholeWorkerSource(size) : new WormholeCanvasSource(size);
 }, { diagnostics, settingsStore: createXrSettingsStore(storage) });

@@ -4,21 +4,25 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import * as THREE from 'three';
 import { createLoader } from './helpers/xr-loader.mjs';
+import { noteMatrixAt } from './helpers/xr-note-motion.mjs';
+import { glslTrackOffset, renderedPositions } from './helpers/xr-track-bend.mjs';
 
 const context = { clearRect() {}, fillRect() {}, fillText() {}, measureText: text => ({ width: text.length * 12 }) };
 const load = createLoader({ three: THREE }, { document: { createElement: () => ({ getContext: () => context }) } });
-const { XrTrackPath, trackBendAmplitude, trackBendWeight } = load('xr/scene/XrTrackPath.ts');
+const { XrTrackPath, trackBendAmplitude, trackBendWeight, TRACK_BEND_GLSL, TRACK_BEND_VERTEX_STATEMENT } = load('xr/scene/XrTrackPath.ts');
 const { XrRunway } = load('xr/scene/XrRunway.ts');
 const { RhythmNoteField } = load('xr/scene/RhythmNoteField.ts');
 const { RhythmGameScene } = load('xr/scene/RhythmGameScene.ts');
-const { SCENE_CONFIG } = load('xr/scene/SceneConfig.ts');
+const { SCENE_CONFIG, DEFAULT_STAGE_LAYOUT } = load('xr/scene/SceneConfig.ts');
+const { resolvePlayProfile } = load('xr/XrPlayProfile.ts');
 const { desktopStrikeForRay } = load('xr/DesktopInputAdapter.ts');
 const { notePosition, judgeStrike, DEFAULT_RHYTHM_GAME_CONFIG: config } = load('gameplay/index.ts');
 
 const FAR_PLAYFIELD_Z = -8; // spawn distance: 2 s at 4 m/s
 const pathWith = (x, y) => { const path = new XrTrackPath(); path.setFocus(x, y); return path; };
 const far = (path, x = 0.45, y = 0.34) => path.projectPlayfieldPoint({ x, y, z: FAR_PLAYFIELD_Z });
-const floorPositions = runway => Array.from(runway.floor.geometry.getAttribute('position').array);
+/** What the GPU draws: the static floor geometry bent by the runway's `uTrackBend` uniform. */
+const floorPositions = runway => Array.from(renderedPositions(runway.floor.geometry, runway.bendUniform.value));
 const idle = { state: 'paused', score: 0, combo: 0, maxCombo: 0, hitCount: 0, missCount: 0, totalNotes: 0 };
 const pending = note => ({ note, status: 'pending', judgement: null });
 
@@ -82,8 +86,7 @@ test('far-end displacement saturates inside bounded limits and road length is un
         assert.ok(Math.abs(path.amplitudeX) <= SCENE_CONFIG.trackMaxLateralBendMeters);
         assert.ok(Math.abs(path.amplitudeY) <= SCENE_CONFIG.trackMaxVerticalBendMeters);
         const runway = new XrRunway(config); runway.applyPath(path);
-        runway.floor.geometry.computeBoundingBox();
-        const box = runway.floor.geometry.boundingBox;
+        const box = new THREE.Box3().setFromArray(floorPositions(runway));
         assert.equal(box.min.z, SCENE_CONFIG.runwayFrontZMeters); assert.equal(box.max.z, SCENE_CONFIG.runwayBackZMeters);
         assert.ok(Math.max(Math.abs(box.max.x), Math.abs(box.min.x)) <= SCENE_CONFIG.runwayWidthMeters / 2 + SCENE_CONFIG.trackMaxLateralBendMeters + 1e-6);
         runway.dispose();
@@ -101,10 +104,10 @@ test('rendered targets, desktop picking and XR strike judging share the one path
     const note = { id: 'far', time: 5, lane: 2, row: 2, hand: 'right', cutDirection: 'down' };
     const canonical = time => notePosition(note, time, new THREE.Vector3());
     const field = new RhythmNoteField(); field.update([pending(note)], 3, config, path);
-    const matrix = new THREE.Matrix4(); field.mesh.getMatrixAt(0, matrix);
+    const matrix = noteMatrixAt(field, 'mesh', 0); // the shader's placement through the shared track bend
     const rendered = new THREE.Vector3().setFromMatrixPosition(matrix);
     const expected = path.projectPlayfieldPoint(canonical(3));
-    assert.ok(rendered.distanceTo(expected) < 1e-6); // instance matrices are float32
+    assert.ok(rendered.distanceTo(expected) < 1e-6); // float32 instance data and uniforms
     assert.ok(rendered.x > canonical(3).x, 'far target visibly follows the bend');
     assert.ok(path.unprojectPlayfieldPoint(expected.clone()).distanceTo(canonical(3)) < 1e-12);
     // Desktop ray aimed at the rendered (bent) target selects it and reports the canonical position.
@@ -123,7 +126,7 @@ test('rendered targets, desktop picking and XR strike judging share the one path
     const walk = dir => { for (const e of readdirSync(dir, { withFileTypes: true })) { if (e.isDirectory()) walk(join(dir, e.name)); else xrFiles.push(join(dir, e.name)); } };
     walk(join(process.cwd(), 'src', 'xr'));
     for (const file of xrFiles.filter(f => !f.endsWith('XrTrackPath.ts') && !f.endsWith('SceneConfig.ts'))) {
-        assert.doesNotMatch(readFileSync(file, 'utf8'), /trackMax(Lateral|Vertical)BendMeters|AIM_GAIN|trackBendAmplitude/, file);
+        assert.doesNotMatch(readFileSync(file, 'utf8'), /trackMax(Lateral|Vertical)BendMeters|AIM_GAIN|trackBendAmplitude|vec2 xrTrackPathOffset|uTrackBend\.xy/, file);
     }
     assert.match(readFileSync(join(process.cwd(), 'src', 'xr', 'XrAppController.ts'), 'utf8'), /path\.unprojectStrike\(attempt\)/);
 });
@@ -150,6 +153,104 @@ test('scene follows the authoritative source focal point; seeking backwards does
     for (let i = 0; i < 30; i++) scene.update([], 2.25, idle, '');
     assert.equal(scene.runway.floor.geometry.getAttribute('position').version, version);
     scene.dispose(); fresh.dispose();
+});
+
+// ---------------------------------------------------------------- GPU runway bend (static geometry)
+const fakeCompile = material => {
+    const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.basic.vertexShader, fragmentShader: THREE.ShaderLib.basic.fragmentShader };
+    material.onBeforeCompile(shader, null);
+    return shader;
+};
+
+test('the GLSL twin is the CPU bend operation for operation, and the runway materials install it', () => {
+    // The float32 mirror in tests/helpers/xr-track-bend.mjs follows exactly this text.
+    assert.match(TRACK_BEND_GLSL, /uniform vec4 uTrackBend;/);
+    assert.match(TRACK_BEND_GLSL, /float u = clamp\( \( -rootZ - uTrackBend\.z \) \/ \( uTrackBend\.w - uTrackBend\.z \), 0\.0, 1\.0 \);/);
+    assert.match(TRACK_BEND_GLSL, /return uTrackBend\.xy \* \( u \* u \);/);
+    const runway = new XrRunway(config);
+    for (const mesh of [runway.floor, runway.linework]) {
+        const shader = fakeCompile(mesh.material);
+        assert.equal(shader.uniforms.uTrackBend, runway.bendUniform, `${mesh.name}: live shared uniform`);
+        assert.ok(shader.vertexShader.startsWith(TRACK_BEND_GLSL));
+        assert.ok(shader.vertexShader.includes(`#include <begin_vertex>\n\t${TRACK_BEND_VERTEX_STATEMENT}`), mesh.name);
+        assert.equal(mesh.material.customProgramCacheKey(), 'xr-track-bend');
+        assert.equal(mesh.position.lengthSq(), 0, 'object space is stage-root space');
+    }
+    // The hit gate lives in playfield space and never bends.
+    assert.equal(runway.gate.material.onBeforeCompile.toString().includes('uTrackBend'), false);
+    // Floor texture and blending are untouched by the bend.
+    assert.equal(runway.floor.material.map, runway.texture);
+    assert.equal(runway.linework.material.blending, THREE.AdditiveBlending);
+    runway.dispose();
+});
+
+test('GPU bend matches CPU path samples at every runway vertex; the straight zone is exact', () => {
+    const hyper = resolvePlayProfile({ noteSpeed: 'hyper' }).stage;
+    for (const layout of [DEFAULT_STAGE_LAYOUT, hyper]) for (const [fx, fy] of [[0, 0], [0.3, 0], [-0.3, 0], [0, 0.4], [0, -0.4], [0.21, -0.17], [1e9, -1e9]]) {
+        const path = new XrTrackPath(); path.setLayout(layout); path.setFocus(fx, fy);
+        const runway = new XrRunway(config, layout); runway.applyPath(path);
+        const offset = { x: 0, y: 0 };
+        let farX = 0, farY = 0;
+        for (const geometry of [runway.floor.geometry, runway.linework.geometry]) {
+            const base = geometry.getAttribute('position').array, rendered = renderedPositions(geometry, runway.bendUniform.value);
+            for (let i = 0; i < base.length; i += 3) {
+                const z = base[i + 2];
+                assert.equal(rendered[i + 2], z, 'z (road length) is unchanged');
+                if (-z <= SCENE_CONFIG.trackBendStartMeters) {
+                    assert.equal(rendered[i], base[i]); assert.equal(rendered[i + 1], base[i + 1]);
+                    continue;
+                }
+                path.offsetAtRootZ(z, offset);
+                assert.ok(Math.abs(rendered[i] - (base[i] + offset.x)) < 1e-5, `${fx},${fy} x at z=${z}`);
+                assert.ok(Math.abs(rendered[i + 1] - (base[i + 1] + offset.y)) < 1e-5, `${fx},${fy} y at z=${z}`);
+                farX = Math.max(farX, Math.abs(rendered[i] - base[i])); farY = Math.max(farY, Math.abs(rendered[i + 1] - base[i + 1]));
+            }
+        }
+        // Far end reaches the CPU amplitude: horizontal, vertical, zero and saturated.
+        assert.ok(Math.abs(farX - Math.abs(path.amplitudeX)) < 1e-5 && Math.abs(farY - Math.abs(path.amplitudeY)) < 1e-5, `${fx},${fy}`);
+        assert.ok(farX <= SCENE_CONFIG.trackMaxLateralBendMeters + 1e-6 && farY <= SCENE_CONFIG.trackMaxVerticalBendMeters + 1e-6);
+        if (fx === 0 && fy === 0) assert.equal(farX + farY, 0, 'zero focus is the exact straight track');
+        assert.equal(runway.bendUniform.value.w, path.bendEndMeters, 'the far end follows the runway length');
+        runway.dispose();
+    }
+});
+
+test('a changing path is a uniform update: runway vertex buffers are never rewritten or re-uploaded', () => {
+    const runway = new XrRunway(config), path = new XrTrackPath();
+    const attributes = [runway.floor.geometry, runway.linework.geometry].flatMap(g => [g.getAttribute('position'), g.getAttribute('color')]);
+    const versions = attributes.map(a => a.version), arrays = attributes.map(a => Array.from(a.array));
+    for (const a of attributes) assert.equal(a.usage, THREE.StaticDrawUsage);
+    for (let i = 0; i < 50; i++) {
+        path.setFocus(Math.sin(i) * 0.4, Math.cos(i * 0.7) * 0.3);
+        assert.equal(runway.applyPath(path), true);
+        assert.equal(runway.applyPath(path), false, 'same revision does nothing');
+        assert.deepEqual({ x: runway.bendUniform.value.x, y: runway.bendUniform.value.y }, { x: path.amplitudeX, y: path.amplitudeY });
+    }
+    assert.deepEqual(attributes.map(a => a.version), versions);
+    assert.deepEqual(attributes.map(a => Array.from(a.array)), arrays);
+    runway.dispose();
+});
+
+test('XR strike un-projection maps every rendered (GPU-bent) far point back onto its canonical point', () => {
+    const path = pathWith(0.35, -0.25), runway = new XrRunway(config); runway.applyPath(path);
+    const forward = SCENE_CONFIG.playfieldForwardMeters;
+    const base = runway.linework.geometry.getAttribute('position').array;
+    const rendered = renderedPositions(runway.linework.geometry, runway.bendUniform.value);
+    let checked = 0;
+    for (let i = 0; i < base.length; i += 3) {
+        // Root space -> playfield space is a pure z shift (the playfield sits `forward` ahead of the root).
+        const point = { x: rendered[i], y: rendered[i + 1], z: rendered[i + 2] + forward };
+        path.unprojectPlayfieldPoint(point);
+        assert.ok(Math.abs(point.x - base[i]) < 1e-5 && Math.abs(point.y - base[i + 1]) < 1e-5, `z=${base[i + 2]}`);
+        const projected = path.projectPlayfieldPoint({ x: base[i], y: base[i + 1], z: base[i + 2] + forward });
+        assert.ok(Math.abs(projected.x - rendered[i]) < 1e-5 && Math.abs(projected.y - rendered[i + 1]) < 1e-5);
+        if (-base[i + 2] > SCENE_CONFIG.trackBendStartMeters) checked++;
+    }
+    assert.ok(checked > 100);
+    // The float32 mirror of the shader and the CPU agree on the far end itself.
+    const end = glslTrackOffset(runway.bendUniform.value, SCENE_CONFIG.runwayFrontZMeters);
+    assert.ok(Math.abs(end.x - path.amplitudeX) < 1e-6 && Math.abs(end.y - path.amplitudeY) < 1e-6);
+    runway.dispose();
 });
 
 test('Wormhole identity publishes a finite, deterministic route focus: centered when straight, displaced when bent', () => {

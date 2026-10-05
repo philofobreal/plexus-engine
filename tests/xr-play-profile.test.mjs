@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createLoader } from './helpers/xr-loader.mjs';
+import { noteColorAt, noteMatrixAt } from './helpers/xr-note-motion.mjs';
 
 const context = { clearRect() {}, fillRect() {}, fillText() {}, measureText: () => ({ width: 0 }) };
 const load = createLoader({ three: THREE }, { document: { createElement: () => ({ getContext: () => context }) } });
@@ -100,7 +101,7 @@ test('targets emerge from the far end only when the stage asks for it', () => {
     const color = new THREE.Color(), matrix = new THREE.Matrix4(), scale = new THREE.Vector3();
     const sample = time => {
         scene.noteField.update(notes, time, config, scene.path);
-        scene.noteField.mesh.getColorAt(0, color); scene.noteField.mesh.getMatrixAt(0, matrix);
+        noteColorAt(scene.noteField, 'mesh', 0, color); noteMatrixAt(scene.noteField, 'mesh', 0, matrix);
         matrix.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
         return { r: color.r, s: scale.x };
     };

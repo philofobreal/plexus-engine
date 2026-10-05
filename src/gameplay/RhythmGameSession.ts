@@ -39,6 +39,8 @@ export class RhythmGameSession {
     /** Monotonic bounded cursor for the active/visible-note window; reset explicitly on seek/restart/load. */
     private activeWindowStart = 0;
     private readonly activeNotes: NoteRuntimeState[] = [];
+    /** Last snapshot handed out (reused while every field is unchanged). */
+    private snapshot: RhythmSessionSnapshot | null = null;
 
     clear(): void {
         this.chart = [];
@@ -208,8 +210,17 @@ export class RhythmGameSession {
         return active;
     }
 
+    /**
+     * Immutable (frozen) view of the scalar session state. The host reads it every frame, so an
+     * unchanged state returns the previous object instead of allocating a new one; any changed field
+     * yields a new object. `sections` stays the session's live, read-only results array.
+     */
     getSnapshot(): RhythmSessionSnapshot {
-        return {
+        const last = this.snapshot, multiplier = multiplierOf(this.multiplier);
+        if (last && last.state === this.state && last.score === this.score && last.combo === this.combo && last.maxCombo === this.maxCombo
+            && last.hitCount === this.hitCount && last.missCount === this.missCount && last.totalNotes === this.chart.length
+            && last.multiplier === multiplier && last.maxScore === this.scoring.maxScore && last.sections === this.sectionResults) return last;
+        this.snapshot = Object.freeze({
             state: this.state,
             score: this.score,
             combo: this.combo,
@@ -217,10 +228,11 @@ export class RhythmGameSession {
             hitCount: this.hitCount,
             missCount: this.missCount,
             totalNotes: this.chart.length,
-            multiplier: multiplierOf(this.multiplier),
+            multiplier,
             maxScore: this.scoring.maxScore,
             sections: this.sectionResults
-        };
+        });
+        return this.snapshot;
     }
 
     /** The plan behind the score: section weights, bonuses and the maximum. */

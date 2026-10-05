@@ -14,8 +14,8 @@ import { XrSliceEffect } from './XrSliceEffect';
 import type { XrNoteDesign } from '../XrAppearanceSettings';
 import type { ScoreOverview } from './XrScoreOverview';
 import type { CanvasVisualSourceFactory, VisualAnalysisSnapshot } from '../../types/CanvasVisualSource';
-import { backgroundFrameDivider, DEFAULT_XR_BACKGROUND_SETTINGS, grainMaterialBoosts, MAX_BACKGROUND_SHARPEN, XR_BACKGROUND_RESOLUTION,
-    type XrBackgroundSettings } from '../XrBackgroundSettings';
+import { backgroundFrameDivider, DEFAULT_XR_BACKGROUND_SETTINGS, grainMaterialBoosts, MAX_BACKGROUND_SHARPEN, XR_BACKGROUND_MIPMAPPED,
+    XR_BACKGROUND_RESOLUTION, type XrBackgroundSettings } from '../XrBackgroundSettings';
 
 /** Desktop preview cadence (XrRuntime caps the desktop loop near 60 Hz). */
 const DESKTOP_DISPLAY_HZ = 60;
@@ -58,6 +58,10 @@ export class RhythmGameScene {
     private displayHz = DESKTOP_DISPLAY_HZ;
     /** Grain material on the GPU (ADR-009 Addendum W) and stage profiling for the background (Addendum X). */
     private gpuMaterial = false;
+    /** GPU grain trail lines (Addendum AA); only with the GPU material. */
+    private gpuLines = false;
+    /** Background cadence fitted to the worker's latency (Addendum Z); off = the requested divider. */
+    private adaptivePacing = false;
     private profile = false;
     // Last note-field inputs, compared field by field (no per-frame key string). NaN forces a refresh.
     private lastNoteTime = Number.NaN;
@@ -166,7 +170,10 @@ export class RhythmGameScene {
             if (!this.wormholeFactory) throw new Error('Wormhole renderer is unavailable.');
             const gpuMaterial = this.gpuMaterial;
             this.wormhole = new WormholeBackdrop(this.wormholeFactory({ ...XR_BACKGROUND_RESOLUTION[this.background.quality],
-                ...(gpuMaterial ? { externalMaterial: true } : {}), ...(this.profile ? { profile: true } : {}) }), { gpuMaterial });
+                ...(gpuMaterial ? { externalMaterial: true } : {}), ...(gpuMaterial && this.gpuLines ? { externalLines: true } : {}),
+                ...(this.profile ? { profile: true } : {}) }),
+                { gpuMaterial, gpuLines: gpuMaterial && this.gpuLines, mipmaps: XR_BACKGROUND_MIPMAPPED.has(this.background.quality) });
+            this.wormhole.setAdaptivePacing(this.adaptivePacing);
             this.root.add(this.wormhole.root);
             this.wormhole.onFrameReady = () => this.onBackgroundFrame?.();
             this.wormhole.onError = message => this.onBackgroundError?.(message);
@@ -229,19 +236,33 @@ export class RhythmGameScene {
 
     /** Wall-clock cost of the background's last canvas redraw (diagnostics). */
     get backgroundRenderMs(): number { return this.wormhole?.lastRenderMs ?? 0; }
+    /** Background redraw rate as currently paced (Hz; widened from the requested rate when frames arrive late). */
+    get backgroundPacedHz(): number { return this.wormhole ? this.displayHz / this.wormhole.redrawDivider : 0; }
+    /** Measured request -> frame latency of an off-thread background, in ms (0 when unknown or in-thread). */
+    get backgroundLatencyMs(): number { return this.wormhole?.frameLatencyMs ?? 0; }
 
     /**
      * How the background is built: grain material on the GPU (Addendum W) and stage profiling
      * (Addendum X). Both are fixed when a source is created, so a change rebuilds an existing
      * background plane, like a quality change; before the first background it only records them.
      */
-    async setBackgroundPipeline(pipeline: { readonly gpuMaterial: boolean; readonly profile: boolean }): Promise<void> {
-        if (pipeline.gpuMaterial === this.gpuMaterial && pipeline.profile === this.profile) return;
+    async setBackgroundPipeline(pipeline: { readonly gpuMaterial: boolean; readonly profile: boolean; readonly gpuLines?: boolean }): Promise<void> {
+        const gpuLines = pipeline.gpuLines === true;
+        if (pipeline.gpuMaterial === this.gpuMaterial && pipeline.profile === this.profile && gpuLines === this.gpuLines) return;
         this.gpuMaterial = pipeline.gpuMaterial;
         this.profile = pipeline.profile;
+        this.gpuLines = gpuLines;
         await this.rebuildWormhole();
     }
     get gpuMaterialEnabled(): boolean { return this.gpuMaterial; }
+    /** GPU trail lines are drawn (they need the GPU material). */
+    get gpuLinesEnabled(): boolean { return this.gpuMaterial && this.gpuLines; }
+
+    /** Background pacing (Settings > System): adaptive widens the cadence to late worker frames; live. */
+    setAdaptivePacing(enabled: boolean): void {
+        this.adaptivePacing = enabled === true;
+        this.wormhole?.setAdaptivePacing(this.adaptivePacing);
+    }
     /** Background frames put on screen so far, and their source stage times (diagnostics). */
     get backgroundFramesShown(): number { return this.wormhole?.framesShown ?? 0; }
     get backgroundStageTimes(): Readonly<Record<string, number>> | null {
@@ -281,7 +302,7 @@ export class RhythmGameScene {
         // The source learns the effective rate (display cadence / divider), never above the request.
         this.wormhole?.configure({ lineStroke: this.background.lineStroke, maxFrameRateHz: this.displayHz / divider,
             ...(this.background.character ? { macros: this.background.character } : {}),
-            ...(this.background.grain ? { grainMaterial: grainMaterialBoosts(this.background.grain) } : {}) }, divider);
+            ...(this.background.grain ? { grainMaterial: grainMaterialBoosts(this.background.grain) } : {}) }, divider, this.displayHz);
     }
 
     async setWormholeAnalysis(analysis: VisualAnalysisSnapshot | null): Promise<void> {

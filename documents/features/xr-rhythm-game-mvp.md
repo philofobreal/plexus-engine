@@ -107,7 +107,8 @@ The optional Wormhole is one world-anchored plane at 40 m (ADR-009 Addendum F; t
 mode of Addendum E is no longer used by `/xr/` because of its frame-time cost). Monocular depth cues
 (strength 0.7 in XR, 0.6 in the MVP) thicken near grains and thin, dim and haze far ones. The game
 menu's **Visuals** tab sets the raster (Performance 640x360 / Balanced 768x432 / High 960x540 /
-Ultra 1280x720 default), the update rate (24 Hz / 36 Hz default, aligned to whole headset frames),
+Ultra 1280x720 default / optional Crystal 1920x1080 and mipmapped Max 2560x1440, ADR-009 Addenda
+Y and Z), the update rate (24 Hz / 36 Hz default, aligned to whole headset frames),
 **Line stroke** (the MVP Advanced slider, default 34) and **Sharpness** (default 100). Uploads happen
 only on changed frames.
 Where the browser supports it, the background rasterizes in a dedicated worker on an OffscreenCanvas
@@ -163,7 +164,9 @@ Exit VR. Point with a controller laser and pull the trigger; a thumbstick flick 
 Visuals > Note design switches the targets between Classic blocks and Shard crystals whose tip
 points the way to cut; a struck target splits into two glowing halves with a burst of sparks
 (ADR-009 Addendum Q). For a sharper Wormhole in the headset, Background quality Ultra
-(1280 x 720) and Sharpness apply a GPU unsharp mask to the plane (ADR-009 Addendum P).
+(1280 x 720) and Sharpness apply a GPU unsharp mask to the plane (ADR-009 Addendum P); the optional
+Crystal (1920 x 1080) and Max (2560 x 1440, mipmapped) qualities are sharper still (Addenda Y and
+Z).
 
 The game menu is drawn in the 3D view on the desktop as well (Escape or the gear button; mouse or
 arrow keys + Enter): Gameplay, Choreography, Visuals (Wormhole on / off, note design, quality,
@@ -173,8 +176,10 @@ The **Material** tab holds the MVP Advanced tuning panel's Grain material slider
 Material detail, Material bloom, Material weave, Spiral twist, Spiral arms, Grain density; 50 is
 neutral, defaults 50 / 100 / 100 / 100 / 4 / 50 / 50), live and remembered like every setting
 (ADR-009 Addendum V).
-The **System** tab holds Material renderer (GPU default / CPU) and Diagnostics (Off default / On),
-also remembered (ADR-009 Addendum X).
+The **System** tab holds Material renderer (GPU default / CPU) and Diagnostics (Off default / On)
+(ADR-009 Addendum X). It also holds Grain lines (Canvas default / GPU: the headset GPU draws the grain
+trails, Addendum AA) and Background pacing (Fixed default / Adaptive: a late background frame
+widens the cadence to whole frames that fit, 24 Hz instead of 18, Addendum Z). All are remembered.
 
 Every menu setting comes from one description (`src/xr/XrSettings.ts`, ADR-009 Addendum H) and is
 remembered per browser (`plexus.xr.settings`). Game settings regenerate the chart and rewind;

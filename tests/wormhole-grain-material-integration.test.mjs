@@ -133,7 +133,7 @@ function json(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function render({ amount, refuseRaster = false, performanceMode = 0, stubs = new Map(), tuning = {}, compactPreview = false, isExporting = false, clock = null, sink = null }) {
+function render({ amount, refuseRaster = false, performanceMode = 0, stubs = new Map(), tuning = {}, compactPreview = false, isExporting = false, clock = null, sink = null, lineSink = null }) {
   const load = createSourceLoader(stubs);
   const { CosmicWormholeIdentity } = load('visuals/CosmicWormholeIdentity.ts');
   const { State } = load('state/store.ts');
@@ -147,6 +147,7 @@ function render({ amount, refuseRaster = false, performanceMode = 0, stubs = new
   backend.compactMaterialPreview = compactPreview;
   if (clock) identity.setStageClock(clock);
   if (sink) identity.setMaterialSink(sink);
+  if (lineSink) identity.setLineSink(lineSink);
   identity.draw(backend, [], []);
   return { backend, State, identity };
 }
@@ -177,6 +178,30 @@ test('a material sink (XR GPU material) receives exactly the carriers the CPU ra
   const legacy = render({ amount: 0, sink: none });
   assert.equal(none.begins.length, 0, 'amount zero: no material frame at all');
   assert.ok(legacy.backend.lines.length > 0);
+});
+
+test('a line sink (XR GPU lines) receives exactly the crossfade strokes the canvas then omits, in order and unchanged', () => {
+  for (const tuning of [{ wormholeNebulaWeave: 1 }, { wormholeNebulaWeave: 1, wormholeGrainShape: 1 }]) {
+    const sink = { begin() {}, carrier() {} };
+    const canvasLines = render({ amount: 0.5, tuning, sink }).backend;
+    const received = [];
+    const lineSink = { line(...args) { received.push(args); } };
+    const withSink = render({ amount: 0.5, tuning, sink, lineSink }).backend;
+    assert.ok(received.length > 0, 'the crossfade strokes reach the sink');
+    const kept = canvasLines.lines.length - received.length;
+    assert.deepEqual(json(withSink.lines), json(canvasLines.lines.slice(0, kept)), 'every other line stays on the canvas, unchanged');
+    const moved = canvasLines.lines.slice(kept), caps = canvasLines.caps.slice(kept);
+    for (let i = 0; i < received.length; i++) {
+      const [x1, y1, x2, y2, weight, r, g, b, alpha, square] = received[i];
+      assert.deepEqual(json({ coords: [x1, y1, x2, y2], stroke: [r, g, b, alpha], weight }), json(moved[i]), 'stroke ' + i);
+      assert.equal(square, caps[i] === 'square');
+    }
+  }
+  const none = { line() { throw new Error('no lines without a material frame'); } };
+  const legacy = render({ amount: 0, sink: { begin() {}, carrier() {} }, lineSink: none });
+  assert.ok(legacy.backend.lines.length > 0, 'amount zero: the legacy strokes stay on the canvas');
+  const noMaterialSink = render({ amount: 0.5, lineSink: none });
+  assert.ok(noMaterialSink.backend.lines.length > 0, 'without a material sink the line sink is never used');
 });
 
 test('stage timing (XR diagnostics) is opt-in and never changes what is drawn', () => {

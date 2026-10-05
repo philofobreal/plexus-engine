@@ -4,7 +4,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createLoader } from './helpers/xr-loader.mjs';
+import { noteColorAt } from './helpers/xr-note-motion.mjs';
 import { fakeDocument, findAll } from './helpers/fake-dom.mjs';
+import { renderedPositions } from './helpers/xr-track-bend.mjs';
 
 const doc = fakeDocument();
 const load = createLoader({ three: THREE }, { document: doc });
@@ -59,9 +61,9 @@ test('note field: capacity overflow, resolved lifetime, hit/miss/pair colours an
     assert.equal(field.mesh.count, 0, 'struck targets leave the field: the slice effect splits them (Addendum Q)');
     const missed = { note: note({ id: 'miss', pairId: 'p' }), status: 'missed', resolvedAt: 5.2, judgement: 'miss' };
     field.update([missed, pending(note({ id: 'pair', pairId: 'p', hand: 'right', lane: 2 })), pending(note({ id: 'free', cutDirection: 'any' }))], 5.1);
-    field.mesh.getColorAt(0, color); assert.ok(color.r < 0.1 && color.b < 0.1, 'missed targets turn dark');
-    field.arrows.getColorAt(0, color); assert.ok(color.r < 0.2 && Math.abs(color.r - color.b) < 0.1, 'missed glyph is grey even when paired');
-    field.arrows.getColorAt(1, color); assert.ok(color.r > color.b, 'paired glyph is gold');
+    noteColorAt(field, 'mesh', 0, color); assert.ok(color.r < 0.1 && color.b < 0.1, 'missed targets turn dark');
+    noteColorAt(field, 'arrows', 0, color); assert.ok(color.r < 0.2 && Math.abs(color.r - color.b) < 0.1, 'missed glyph is grey even when paired');
+    noteColorAt(field, 'arrows', 1, color); assert.ok(color.r > color.b, 'paired glyph is gold');
     assert.equal(field.markers.count, 1, "'any' notes use the dot/ring glyph");
     field.dispose();
     for (const size of [0.2, 0.32, 0.5]) {
@@ -109,12 +111,17 @@ test('runway ignores non-finite time, handles negative time and zero speed, and 
     const path = new XrTrackPath(); path.setFocus(0.3, 0.2);
     assert.equal(runway.applyPath(path), true); assert.equal(runway.applyPath(path), false, 'unchanged revision does no work');
     const straight = new XrRunway(config);
-    const floorA = runway.floor.geometry.getAttribute('position'), floorB = straight.floor.geometry.getAttribute('position');
-    for (let i = 0; i < floorA.count; i++) {
-        const moved = floorA.getX(i) !== floorB.getX(i) || floorA.getY(i) !== floorB.getY(i);
-        if (moved) assert.ok(-floorA.getZ(i) > SCENE_CONFIG.trackBendStartMeters, 'only beyond the straight zone');
+    // Rendered = static geometry bent on the GPU by the runway's track uniform.
+    const floorA = renderedPositions(runway.floor.geometry, runway.bendUniform.value);
+    const floorB = renderedPositions(straight.floor.geometry, straight.bendUniform.value);
+    let moved = 0;
+    for (let i = 0; i < floorA.length; i += 3) {
+        if (floorA[i] === floorB[i] && floorA[i + 1] === floorB[i + 1]) continue;
+        moved++;
+        assert.ok(-floorA[i + 2] > SCENE_CONFIG.trackBendStartMeters, 'only beyond the straight zone');
     }
-    assert.ok(runway.bendableVertexCount > 0 && runway.bendableVertexCount < floorA.count + runway.linework.geometry.getAttribute('position').count);
+    assert.ok(moved > 0);
+    assert.ok(runway.bendableVertexCount > 0 && runway.bendableVertexCount < floorA.length / 3 + runway.linework.geometry.getAttribute('position').count);
     runway.dispose(); straight.dispose();
 });
 

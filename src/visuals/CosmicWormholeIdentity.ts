@@ -408,6 +408,14 @@ export function wormholeSkyboxPanHeading(heading: number): number {
     return SKYBOX_PAN_SATURATION_RADIUS * Math.tanh(heading / SKYBOX_PAN_SATURATION_RADIUS);
 }
 
+/**
+ * Opt-in receiver of a material frame's grain trail strokes (ADR-009 Addendum AA): the stroke the
+ * crossfade would put on the backend, in the backend's units (0-255 colour and alpha), in draw order.
+ */
+export interface WormholeLineSink {
+    line(x1: number, y1: number, x2: number, y2: number, weight: number, r: number, g: number, b: number, alpha: number, square: boolean): void;
+}
+
 /** Explicit per-host inputs; the existing MVP defaults to its own State instance. */
 export type WormholeRenderState = Pick<typeof State, 'frames' | 'sampleRate' | 'hopSize' | 'events' | 'trackAnalysis' | 'bpm' | 'visualTuning' | 'currentFrame' | 'currentTime' | 'isExporting' | 'exportTime' | 'currentFeatures' | 'modulation' | 'beatDecay' | 'denseImpactFlash' | 'directorOutput' | 'targetTuning' | 'activeVisualTransitionId' | 'playbackFade'>;
 
@@ -498,6 +506,8 @@ export class CosmicWormholeIdentity implements VisualIdentity {
     private stageClock: { now(): number } | null = null;
     /** Opt-in (XR GPU material, ADR-009 Addendum W): material carriers go here instead of the CPU raster. */
     private materialSink: WormholeMaterialSink | null = null;
+    /** Opt-in (XR GPU lines, ADR-009 Addendum AA): a material frame's grain trail strokes go here. */
+    private lineSink: WormholeLineSink | null = null;
     private readonly lensWarpPointA: WormholeLensWarpPoint = { x: 0, y: 0 };
     private readonly lensWarpPointB: WormholeLensWarpPoint = { x: 0, y: 0 };
     /**
@@ -736,6 +746,15 @@ export class CosmicWormholeIdentity implements VisualIdentity {
      */
     setMaterialSink(sink: WormholeMaterialSink | null): void {
         this.materialSink = sink;
+    }
+
+    /**
+     * Opt-in, with a material sink: a material frame's grain trail strokes (the line part of the
+     * crossfade) go to this sink instead of the backend, for the host to draw on the GPU. Weave
+     * and every other line keep the backend. Null (the default) draws them on the backend.
+     */
+    setLineSink(sink: WormholeLineSink | null): void {
+        this.lineSink = sink;
     }
 
     /** Diagnostics only: a clock enables `stageTimes`; null (the default) disables all timing. */
@@ -1404,6 +1423,8 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         }
 
         const materialSink = grainMaterialAmount > 0 ? this.materialSink : null;
+        // GPU trail lines only ride along a material frame (the strokes they replace are its crossfade).
+        const lineSink = materialSink ? this.lineSink : null;
         if (materialSink) {
             // Host-rendered material: same raster size and laws, no CPU buffers.
             materialSink.begin(grainMaterialL0Cols, grainMaterialL0Rows, backend.width, backend.height,
@@ -1723,9 +1744,14 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             // During a valid partial material frame the same carrier is crossfaded, without another
             // geometry evaluation or retained segment list.
             if (grainMaterialAmount < 1) {
-                backend.stroke(carrier.colorR, carrier.colorG, carrier.colorB, carrier.alpha * (1 - grainMaterialAmount));
-                backend.strokeWeight(carrier.strokeWeight);
-                backend.line(carrier.tailX, carrier.tailY, carrier.headX, carrier.headY, tuning.wormholeGrainShape === 1 ? 'square' : undefined);
+                if (lineSink) {
+                    lineSink.line(carrier.tailX, carrier.tailY, carrier.headX, carrier.headY, carrier.strokeWeight,
+                        carrier.colorR, carrier.colorG, carrier.colorB, carrier.alpha * (1 - grainMaterialAmount), tuning.wormholeGrainShape === 1);
+                } else {
+                    backend.stroke(carrier.colorR, carrier.colorG, carrier.colorB, carrier.alpha * (1 - grainMaterialAmount));
+                    backend.strokeWeight(carrier.strokeWeight);
+                    backend.line(carrier.tailX, carrier.tailY, carrier.headX, carrier.headY, tuning.wormholeGrainShape === 1 ? 'square' : undefined);
+                }
             }
         }
 

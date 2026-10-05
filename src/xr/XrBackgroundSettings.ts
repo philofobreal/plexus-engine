@@ -6,7 +6,7 @@ import { XR_WORMHOLE_BOOSTS, XR_WORMHOLE_MACROS } from '../config/xrWormholeTuni
 import type { GrainMaterialBoostKey } from '../types/CanvasVisualSource';
 
 /** Raster resolution of the single background plane. */
-export type XrBackgroundQuality = 'performance' | 'balanced' | 'high' | 'ultra';
+export type XrBackgroundQuality = 'performance' | 'balanced' | 'high' | 'ultra' | 'crystal' | 'max';
 /** Background redraws per second while playing; both divide the 72 Hz headset rate evenly. */
 export type XrBackgroundRate = 24 | 36;
 
@@ -69,15 +69,24 @@ export interface XrBackgroundSettings {
 /** Strongest unsharp-mask gain (sharpness 1). */
 export const MAX_BACKGROUND_SHARPEN = 1.5;
 
-export const XR_BACKGROUND_QUALITIES: readonly XrBackgroundQuality[] = ['performance', 'balanced', 'high', 'ultra'];
+export const XR_BACKGROUND_QUALITIES: readonly XrBackgroundQuality[] = ['performance', 'balanced', 'high', 'ultra', 'crystal', 'max'];
 export const XR_BACKGROUND_RATES: readonly XrBackgroundRate[] = [24, 36];
 
 export const XR_BACKGROUND_RESOLUTION: Readonly<Record<XrBackgroundQuality, { readonly width: number; readonly height: number }>> = {
     performance: { width: 640, height: 360 },
     balanced: { width: 768, height: 432 },
     high: { width: 960, height: 540 },
-    ultra: { width: 1280, height: 720 }
+    ultra: { width: 1280, height: 720 },
+    // Optional (ADR-009 Addendum Y): ~12.6 px/degree straight ahead (Ultra ~8.4), still below the ~20
+    // px/degree eye buffer; a larger raster would minify the unmipmapped texture off-axis and shimmer.
+    crystal: { width: 1920, height: 1080 },
+    // ~16.9 px/degree straight ahead: denser than the eye buffer beyond ~25 degrees off axis, so this
+    // tier is mipmapped (`XR_BACKGROUND_MIPMAPPED`; ADR-009 Addendum Z).
+    max: { width: 2560, height: 1440 }
 };
+
+/** Qualities whose plane texture is mipmapped (minified off axis; trilinear filtering keeps lines from shimmering). */
+export const XR_BACKGROUND_MIPMAPPED: ReadonlySet<XrBackgroundQuality> = new Set(['max']);
 
 /**
  * Player defaults (ADR-009 Addendum T): the Wormhole on at Ultra / 36 Hz with full sharpening.

@@ -35,6 +35,7 @@ function harness({ presenting = false, settingsStore, gpu = false, diagnostics =
         setDisplayFrameRate() {} get backgroundRenderMs() { return 0; } setGameConfig(c) { (sceneLog.configs ??= []).push(c); } setStageLayout(l) { (sceneLog.layouts ??= []).push(l); } setScoreOverview(o) { (sceneLog.overviews ??= []).push(o); }
         setNoteDesign(d) { (sceneLog.designs ??= []).push(d); }
         async setBackgroundPipeline(p) { (sceneLog.pipelines ??= []).push(p); sceneLog.gpuMaterial = p.gpuMaterial; } get gpuMaterialEnabled() { return sceneLog.gpuMaterial === true; }
+        setAdaptivePacing(on) { (sceneLog.pacing ??= []).push(on); }
         // Every display frame shows a new background frame (diagnostics counting).
         get backgroundFramesShown() { return (this.shown = (this.shown ?? 0) + 1); } get backgroundStageTimes() { return null; }
         placeForViewer() {} update() {} dispose() { sceneLog.disposed = true; }
@@ -148,6 +149,10 @@ test('Activity/Variation re-prepare the shared plan and the Wormhole; stale over
     first.resolve(h.source.performancePlan); await settle();
     assert.equal(h.chart(), h.expected({ activity: 'active', variation: 'expressive' }, latestPlan), 'only the newest request applies');
     assert.equal(h.sceneLog.analyses.filter(Boolean).at(-1).performancePlan, latestPlan);
+    // Only the plan differs: the worker proxy then posts the plan alone (`prepare-plan`), not the analysis.
+    const [loaded, regenerated] = [h.sceneLog.analyses.filter(Boolean)[0], h.sceneLog.analyses.filter(Boolean).at(-1)];
+    assert.notEqual(regenerated, loaded);
+    for (const key of ['frames', 'events', 'trackAnalysis', 'sampleRate', 'hopSize', 'bpm', 'duration']) assert.equal(regenerated[key], loaded[key], key);
 });
 
 test('settings chosen before a track apply to the next load; changes during loading supersede it; file input locks while regenerating', async () => {
@@ -238,7 +243,7 @@ test('the System switches rebuild the background pipeline live, are saved and ne
     const { DEFAULT_XR_SETTINGS } = createLoader()('xr/XrSettings.ts');
     const saved = [];
     const h = harness({ gpu: true, settingsStore: { load: () => DEFAULT_XR_SETTINGS, save: s => saved.push(JSON.parse(JSON.stringify(s))) } });
-    assert.deepEqual({ ...h.sceneLog.pipelines[0] }, { gpuMaterial: true, profile: false }, 'GPU material, no profiling by default');
+    assert.deepEqual({ ...h.sceneLog.pipelines[0] }, { gpuMaterial: true, profile: false, gpuLines: false }, 'GPU material, no profiling by default');
     await h.loadTrack();
     h.engine.play(0);
     const prepares = h.prepareCalls.length, chart = h.chart(), stops = h.engine.stops.length;
@@ -248,9 +253,9 @@ test('the System switches rebuild the background pipeline live, are saved and ne
     assert.equal(h.controller.menuContext().diagnostics, undefined);
 
     h.pick('cpu', 'system'); await settle();
-    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: false, profile: false });
+    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: false, profile: false, gpuLines: false });
     h.pick('on', 'system'); await settle();
-    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: false, profile: true });
+    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: false, profile: true, gpuLines: false });
     frames(150);
     assert.match(overlay.dataset.xrBackgroundStages, /^Display .* fps/, 'the line after two seconds of play');
     assert.match(h.controller.menuContext().diagnostics, /CPU material/);
@@ -268,13 +273,36 @@ test('the System switches rebuild the background pipeline live, are saved and ne
     assert.equal(h.prepareCalls.length, prepares); assert.equal(h.chart(), chart);
     assert.deepEqual(saved.slice(-5).map(s => [s.system.materialRenderer, s.system.diagnostics]),
         [['cpu', false], ['cpu', true], ['gpu', true], ['gpu', false], ['gpu', true]], 'every switch is saved');
+
+    // Grain lines (Addendum AA) rebuild the pipeline too; GPU lines need the GPU material.
+    const { XR_SETTINGS, changeScope } = createLoader()('xr/XrSettings.ts');
+    const set = (id, value) => {
+        const next = XR_SETTINGS.find(d => d.id === id).write(h.controller.settings, value);
+        h.controller.runMenuCommand({ type: 'settings-changed', settings: next, scope: changeScope(h.controller.settings, next) });
+    };
+    set('grainLines', 'gpu'); await settle();
+    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: true, profile: true, gpuLines: true });
+    frames(150);
+    set('materialRenderer', 'cpu'); await settle();
+    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: false, profile: true, gpuLines: false }, 'no GPU lines without the GPU material');
+    set('materialRenderer', 'gpu'); await settle();
+    assert.equal(h.sceneLog.pipelines.at(-1).gpuLines, true, 'the choice is kept and applies again');
+    // Background pacing (Addendum Z) applies live, fixed by default.
+    assert.equal(h.sceneLog.pacing[0], false, 'fixed pacing at startup');
+    set('backgroundPacing', 'adaptive'); await settle();
+    assert.equal(h.sceneLog.pacing.at(-1), true);
+    set('backgroundPacing', 'fixed'); await settle();
+    assert.equal(h.sceneLog.pacing.at(-1), false);
+    assert.equal(h.controller.session.getState(), 'playing', 'presentation: playback continues');
+    assert.equal(h.prepareCalls.length, prepares); assert.equal(h.chart(), chart);
+    assert.deepEqual(saved.at(-1).system, { materialRenderer: 'gpu', diagnostics: true, grainLines: 'gpu', backgroundPacing: 'fixed' });
 });
 
 test('GPU material needs a capable renderer; ?xrDiagnostics=1 forces profiling whatever the switch says', () => {
     const plain = harness({ settingsStore: 'defaults' });
-    assert.deepEqual({ ...plain.sceneLog.pipelines[0] }, { gpuMaterial: false, profile: false }, 'no half-float targets: the CPU raster');
+    assert.deepEqual({ ...plain.sceneLog.pipelines[0] }, { gpuMaterial: false, profile: false, gpuLines: false }, 'no half-float targets: the CPU raster');
     const forced = harness({ settingsStore: 'defaults', diagnostics: true });
-    assert.deepEqual({ ...forced.sceneLog.pipelines[0] }, { gpuMaterial: false, profile: true });
+    assert.deepEqual({ ...forced.sceneLog.pipelines[0] }, { gpuMaterial: false, profile: true, gpuLines: false });
     assert.equal(forced.controller.settings.system.diagnostics, false, 'the stored switch is untouched');
 });
 

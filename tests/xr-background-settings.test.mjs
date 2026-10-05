@@ -109,6 +109,80 @@ test('a quality change rebuilds the single background plane at the new raster si
     scene.dispose();
 });
 
+test('Crystal (1920 x 1080) and Max (2560 x 1440, mipmapped) are optional rasters: offered last, persisted, never the default', async () => {
+    const { XR_BACKGROUND_RESOLUTION, XR_BACKGROUND_QUALITIES, XR_BACKGROUND_MIPMAPPED, normalizeBackgroundSettings, DEFAULT_XR_BACKGROUND_SETTINGS } = settingsModule();
+    assert.equal(JSON.stringify(XR_BACKGROUND_RESOLUTION.crystal), JSON.stringify({ width: 1920, height: 1080 }));
+    assert.equal(JSON.stringify(XR_BACKGROUND_RESOLUTION.max), JSON.stringify({ width: 2560, height: 1440 }));
+    assert.equal(XR_BACKGROUND_QUALITIES.join(), 'performance,balanced,high,ultra,crystal,max');
+    assert.equal([...XR_BACKGROUND_MIPMAPPED].join(), 'max', 'only the raster dense enough to be minified off axis');
+    for (const quality of ['crystal', 'max']) assert.equal(normalizeBackgroundSettings({ quality }).quality, quality, 'a saved choice survives');
+    assert.equal(DEFAULT_XR_BACKGROUND_SETTINGS.quality, 'ultra');
+    const { XR_SETTINGS, DEFAULT_XR_SETTINGS, changeScope } = createLoader()('xr/XrSettings.ts');
+    const quality = XR_SETTINGS.find(d => d.id === 'quality');
+    assert.equal(quality.choices.map(c => c.label).join(), 'Performance,Balanced,High,Ultra,Crystal,Max');
+    assert.match(quality.choices.at(-2).hint, /1920 x 1080/);
+    assert.match(quality.choices.at(-1).hint, /2560 x 1440.*mipmapped/);
+    const max = quality.write(DEFAULT_XR_SETTINGS, 'max');
+    assert.equal(max.background.quality, 'max');
+    assert.equal(changeScope(DEFAULT_XR_SETTINGS, max), 'presentation', 'no regeneration, no rewind');
+    // Each change rebuilds the one plane at the new raster; only Max filters its texture through mipmaps.
+    const { scene, sources } = sceneHarness();
+    const planeMap = () => scene.root.children.find(c => c.material?.customProgramCacheKey?.() === 'wormhole-sharpen').material.map;
+    await scene.setBackgroundSettings({ quality: 'ultra', rateHz: 24, lineStroke: 1, sharpness: 1 });
+    await scene.setWormholeEnabled(true);
+    assert.deepEqual([planeMap().generateMipmaps, planeMap().minFilter], [false, THREE.LinearFilter]);
+    await scene.setBackgroundSettings({ quality: 'crystal', rateHz: 24, lineStroke: 1, sharpness: 1 });
+    assert.equal(sources.length, 2); assert.ok(sources[0].disposed);
+    assert.equal(JSON.stringify(sources[1].options), JSON.stringify({ width: 1920, height: 1080 }));
+    assert.deepEqual([planeMap().generateMipmaps, planeMap().minFilter], [false, THREE.LinearFilter]);
+    await scene.setBackgroundSettings({ quality: 'max', rateHz: 24, lineStroke: 1, sharpness: 1 });
+    assert.equal(JSON.stringify(sources[2].options), JSON.stringify({ width: 2560, height: 1440 }));
+    assert.deepEqual([planeMap().generateMipmaps, planeMap().minFilter], [true, THREE.LinearMipmapLinearFilter]);
+    scene.dispose();
+});
+
+test('adaptive pacing (opt-in) widens a late off-thread background to whole frames that fit, never above the requested rate', async () => {
+    const { scene, sources, snapshot } = sceneHarness();
+    await scene.setWormholeEnabled(true);
+    scene.setDisplayFrameRate(72);
+    const source = sources[0];
+    const rendersOver = (from, frames) => { source.renders.length = 0; for (let i = 0; i < frames; i++) scene.update([], from + i / 72, snapshot('playing'), ''); return source.renders.length; };
+    // Fixed pacing (the default): the requested divider whatever the latency.
+    source.frameLatencyMs = 31;
+    assert.equal(rendersOver(-2, 72), 36, 'fixed: a late frame simply waits for the next redraw');
+    assert.equal(scene.backgroundPacedHz, 36);
+    scene.setAdaptivePacing(true);
+    source.frameLatencyMs = 0;
+    assert.equal(rendersOver(0, 72), 36, '36 Hz while the latency is unknown');
+    source.frameLatencyMs = 20;
+    assert.equal(rendersOver(1, 72), 36, 'a frame that fits one 27.8 ms interval keeps 36 Hz');
+    assert.equal(scene.backgroundPacedHz, 36);
+    // 31 ms misses the 27.8 ms interval: instead of every second interval (18 Hz) the cadence widens to 3 frames.
+    source.frameLatencyMs = 31;
+    assert.equal(rendersOver(2, 72), 24);
+    assert.equal(scene.backgroundPacedHz, 24); assert.equal(scene.backgroundLatencyMs, 31);
+    source.frameLatencyMs = 50;
+    assert.equal(rendersOver(3, 72), 18, '4 frames when 3 do not fit');
+    // Narrowing needs a clear margin (no flapping around a boundary).
+    source.frameLatencyMs = 39;
+    assert.equal(rendersOver(4, 72), 18, '39 ms fits 41.7 ms only without headroom: stays at 4 frames');
+    source.frameLatencyMs = 30;
+    assert.equal(rendersOver(5, 72), 24);
+    source.frameLatencyMs = 5;
+    assert.equal(rendersOver(6, 72), 36, 'never faster than the requested 36 Hz');
+    // A rate change restarts from the requested divider.
+    source.frameLatencyMs = 31;
+    await scene.setBackgroundSettings({ quality: 'ultra', rateHz: 24, lineStroke: 0.34, sharpness: 1 });
+    assert.equal(rendersOver(7, 72), 24, '24 Hz requested: 31 ms already fits');
+    // Switching back to fixed restores the requested divider at once.
+    await scene.setBackgroundSettings({ quality: 'ultra', rateHz: 36, lineStroke: 0.34, sharpness: 1 });
+    source.frameLatencyMs = 50;
+    assert.equal(rendersOver(8, 72), 18);
+    scene.setAdaptivePacing(false);
+    assert.equal(rendersOver(9, 72), 36);
+    scene.dispose();
+});
+
 test('Line stroke follows the MVP Advanced slider semantics and redraws even while steadily paused', async () => {
     const canvases = [];
     class Backend { constructor(width, height) { this.canvas = { width, height }; this.frameCount = 0; canvases.push(this); } background() {} }

@@ -2,12 +2,15 @@
 // here is gameplay geometry, and the gameplay coordinate system is never moved. Floor travel is
 // a pure projection of canonical song time onto a texture offset (phase = f(songTime)), so
 // seeking reproduces the exact image, pausing freezes it, and nothing accumulates per frame.
+// Floor and rail geometry is static after construction: the track bend is applied in the vertex
+// shader from the shared `XrTrackPath` uniform (`installTrackBend`), so a path change uploads four
+// floats instead of rewriting and re-uploading vertex positions.
 
 import * as THREE from 'three';
 import type { RhythmGameConfig } from '../../gameplay';
 import { DEFAULT_STAGE_LAYOUT, SCENE_CONFIG, START_FRAME_HALF_WIDTH_METERS, type XrStageLayout } from './SceneConfig';
 import { boxAt, floorTick, mergeColoredParts, type ColoredPart } from './SceneGeometry';
-import type { TrackPathOffset, XrTrackPath } from './XrTrackPath';
+import { installTrackBend, writeTrackBendUniform, type XrTrackPath } from './XrTrackPath';
 
 export const RUNWAY_PALETTE = {
     left: 0x39cfff,
@@ -85,51 +88,12 @@ export function runwayFloorAlpha(z: number, frontZ: number = DEFAULT_STAGE_LAYOU
     return 0.9 * (1 - smoothstep(-2.5, frontZ, z)) * (1 - 0.4 * smoothstep(0.5, SCENE_CONFIG.runwayBackZMeters, z));
 }
 
-/**
- * Preallocated bendable vertex set: the straight base positions are copied once and only vertices
- * far enough ahead to ever bend are rewritten, in place, when the track path changes.
- */
-class BendableVertices {
-    private readonly attribute: THREE.BufferAttribute;
-    private readonly base: Float32Array;
-    private readonly indices: Uint32Array;
-    private readonly offset: TrackPathOffset = { x: 0, y: 0 };
-    private appliedRevision = -1;
-
-    constructor(geometry: THREE.BufferGeometry) {
-        this.attribute = geometry.getAttribute('position') as THREE.BufferAttribute;
-        this.attribute.setUsage(THREE.DynamicDrawUsage);
-        this.base = Float32Array.from(this.attribute.array as ArrayLike<number>);
-        const bendable: number[] = [];
-        for (let i = 0; i < this.attribute.count; i++) {
-            if (-this.base[i * 3 + 2] > SCENE_CONFIG.trackBendStartMeters - 1e-6) bendable.push(i);
-        }
-        this.indices = Uint32Array.from(bendable);
-        // Bendable vertices (rail segments are merged first) form one contiguous upload range.
-        if (bendable.length) {
-            const first = bendable[0], last = bendable[bendable.length - 1];
-            this.attribute.clearUpdateRanges();
-            this.attribute.addUpdateRange(first * 3, (last - first + 1) * 3);
-        }
-    }
-
-    get bendableCount(): number { return this.indices.length; }
-
-    /** Rewrites bendable vertices from the base copy; returns true when an upload was flagged. */
-    apply(path: XrTrackPath): boolean {
-        if (path.revision === this.appliedRevision) return false;
-        this.appliedRevision = path.revision;
-        const array = this.attribute.array as Float32Array;
-        for (let n = 0; n < this.indices.length; n++) {
-            const o = this.indices[n] * 3;
-            path.offsetAtRootZ(this.base[o + 2], this.offset);
-            array[o] = this.base[o] + this.offset.x;
-            array[o + 1] = this.base[o + 1] + this.offset.y;
-            array[o + 2] = this.base[o + 2];
-        }
-        if (this.indices.length) this.attribute.needsUpdate = true;
-        return this.indices.length > 0;
-    }
+/** Vertices beyond the straight zone (the only ones the GPU bend can move); counted once. */
+function bendableCount(geometry: THREE.BufferGeometry): number {
+    const position = geometry.getAttribute('position');
+    let count = 0;
+    for (let i = 0; i < position.count; i++) if (-position.getZ(i) > SCENE_CONFIG.trackBendStartMeters - 1e-6) count++;
+    return count;
 }
 
 function additiveMaterial(): THREE.MeshBasicMaterial {
@@ -146,8 +110,10 @@ export class XrRunway {
     readonly gate: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
     readonly texture: THREE.DataTexture;
     private scrollSpeedMps: number;
-    private readonly floorVertices: BendableVertices;
-    private readonly railVertices: BendableVertices;
+    /** `uTrackBend` shared by the floor and rail materials; written only from the track path. */
+    readonly bendUniform = { value: new THREE.Vector4() };
+    private readonly bendable: number;
+    private appliedPathRevision = -1;
     private lastSongTime = Number.NaN;
     private currentPhase = 0;
 
@@ -187,8 +153,11 @@ export class XrRunway {
         this.linework.name = 'runwayLinework';
         this.linework.renderOrder = -5;
         this.linework.frustumCulled = false;
-        this.floorVertices = new BendableVertices(floorGeometry);
-        this.railVertices = new BendableVertices(this.linework.geometry);
+        // Exactly straight until a path is applied (zero amplitudes; the path supplies the bend end).
+        writeTrackBendUniform(this.bendUniform.value);
+        installTrackBend(this.floor.material, this.bendUniform, 'xr-track-bend');
+        installTrackBend(this.linework.material, this.bendUniform, 'xr-track-bend');
+        this.bendable = bendableCount(floorGeometry) + bendableCount(this.linework.geometry);
         this.gate = new THREE.Mesh(mergeColoredParts(XrRunway.gateParts(config.rowSpacingMeters, layout)), additiveMaterial());
         this.gate.name = 'hitGate';
         this.gate.renderOrder = -5;
@@ -205,16 +174,18 @@ export class XrRunway {
     }
 
     /** Vertices that can ever bend (floor rows and rail segments beyond the straight zone). */
-    get bendableVertexCount(): number { return this.floorVertices.bendableCount + this.railVertices.bendableCount; }
+    get bendableVertexCount(): number { return this.bendable; }
 
     /**
-     * Bends floor and rails along the shared track path. The hit gate (playfield space) and every
-     * vertex inside the straight zone stay put. Only runs when the path revision changed.
+     * Bends floor and rails along the shared track path (GPU, uniform only). The hit gate (playfield
+     * space) and every vertex inside the straight zone stay put. Returns true only when the path
+     * revision changed; vertex buffers are never rewritten or re-uploaded.
      */
     applyPath(path: XrTrackPath): boolean {
-        const floor = this.floorVertices.apply(path);
-        const rails = this.railVertices.apply(path);
-        return floor || rails;
+        if (path.revision === this.appliedPathRevision) return false;
+        this.appliedPathRevision = path.revision;
+        path.writeBendUniform(this.bendUniform.value);
+        return true;
     }
 
     /** Projects song time onto the floor pattern. Returns true only when the offset changed. */

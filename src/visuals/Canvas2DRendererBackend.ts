@@ -13,7 +13,14 @@ function documentCanvas(width: number, height: number): HTMLCanvasElement {
     return canvas;
 }
 
-/** Canvas primitive adapter for embedded identities; no p5 instance or independent render loop. */
+/**
+ * Canvas primitive adapter for embedded identities; no p5 instance or independent render loop.
+ *
+ * Strokes keep one opaque `strokeStyle` per colour and carry their alpha in `globalAlpha`: a
+ * Wormhole frame strokes thousands of lines in one colour with varying alpha, and a fresh
+ * `rgba(...)` style per line costs a colour parse and breaks the rasterizer's batching (measured
+ * ~2x raster time for 3000 lines). Every non-stroke primitive draws at `globalAlpha` 1.
+ */
 export class Canvas2DRendererBackend implements VisualRendererBackend {
     readonly canvas: HTMLCanvasElement;
     readonly compactMaterialPreview = true;
@@ -23,6 +30,11 @@ export class Canvas2DRendererBackend implements VisualRendererBackend {
     private strokeActive = true;
     private fillActive = true;
     private firstVertex = true;
+    /** Current stroke colour (0-255 channels and alpha) and what the context last received. */
+    private strokeR = 0; private strokeG = 0; private strokeB = 0; private strokeA = 255;
+    private appliedR = Number.NaN; private appliedG = Number.NaN; private appliedB = Number.NaN;
+    private alpha = 1;
+    private cap: CanvasLineCap = 'round';
     constructor(width: number, height: number, createSurface: Canvas2DSurfaceFactory = documentCanvas) {
         this.canvas = createSurface(width, height);
         this.raster = createSurface === documentCanvas ? new CanvasFieldRasterSurface() : new CanvasFieldRasterSurface(() => createSurface(1, 1));
@@ -33,19 +45,39 @@ export class Canvas2DRendererBackend implements VisualRendererBackend {
     get width(): number { return this.canvas.width; }
     get height(): number { return this.canvas.height; }
     background(r: number, g: number, b: number, a = 255): void {
-        this.ctx.save(); this.ctx.fillStyle = `rgba(${r},${g},${b},${a / 255})`;
+        this.opaque(); this.ctx.save(); this.ctx.fillStyle = `rgba(${r},${g},${b},${a / 255})`;
         this.ctx.clearRect(0, 0, this.width, this.height); this.ctx.fillRect(0, 0, this.width, this.height); this.ctx.restore();
     }
     noStroke(): void { this.strokeActive = false; }
     noFill(): void { this.fillActive = false; }
     fill(r: number, g: number, b: number, a = 255): void { this.fillActive = true; this.ctx.fillStyle = `rgba(${r},${g},${b},${a / 255})`; }
-    stroke(r: number, g: number, b: number, a = 255): void { this.strokeActive = true; this.ctx.strokeStyle = `rgba(${r},${g},${b},${a / 255})`; }
+    stroke(r: number, g: number, b: number, a = 255): void {
+        this.strokeActive = true; this.strokeR = r; this.strokeG = g; this.strokeB = b; this.strokeA = a;
+    }
     strokeWeight(weight: number): void { this.ctx.lineWidth = Math.max(0.0001, weight); }
     line(x1: number, y1: number, x2: number, y2: number, cap?: 'round' | 'square'): void {
         if (!this.strokeActive) return;
-        this.ctx.lineCap = cap ?? 'round'; this.ctx.beginPath(); this.ctx.moveTo(x1, y1); this.ctx.lineTo(x2, y2); this.ctx.stroke();
+        const lineCap = cap ?? 'round';
+        if (lineCap !== this.cap) { this.cap = lineCap; this.ctx.lineCap = lineCap; }
+        this.applyStroke(); this.ctx.beginPath(); this.ctx.moveTo(x1, y1); this.ctx.lineTo(x2, y2); this.ctx.stroke();
     }
-    private paint(): void { if (this.fillActive) this.ctx.fill(); if (this.strokeActive) this.ctx.stroke(); }
+    private paint(): void {
+        if (this.fillActive) { this.opaque(); this.ctx.fill(); }
+        if (this.strokeActive) { this.applyStroke(); this.ctx.stroke(); }
+    }
+    /** Opaque stroke style only when the colour changed; alpha through `globalAlpha`. */
+    private applyStroke(): void {
+        const r = this.strokeR, g = this.strokeG, b = this.strokeB;
+        if (r !== this.appliedR || g !== this.appliedG || b !== this.appliedB) {
+            this.appliedR = r; this.appliedG = g; this.appliedB = b;
+            this.ctx.strokeStyle = `rgb(${r},${g},${b})`;
+        }
+        // CSS clamps an rgba() alpha; globalAlpha would ignore an out-of-range value instead.
+        const alpha = this.strokeA / 255;
+        this.setAlpha(alpha > 0 ? Math.min(1, alpha) : 0);
+    }
+    private opaque(): void { this.setAlpha(1); }
+    private setAlpha(alpha: number): void { if (alpha !== this.alpha) { this.alpha = alpha; this.ctx.globalAlpha = alpha; } }
     circle(x: number, y: number, diameter: number): void { this.ctx.beginPath(); this.ctx.arc(x, y, Math.max(0, diameter / 2), 0, Math.PI * 2); this.paint(); }
     triangle(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
         this.ctx.beginPath(); this.ctx.moveTo(x1, y1); this.ctx.lineTo(x2, y2); this.ctx.lineTo(x3, y3); this.ctx.closePath(); this.paint();
@@ -54,17 +86,20 @@ export class Canvas2DRendererBackend implements VisualRendererBackend {
     vertex(x: number, y: number): void { if (this.firstVertex) this.ctx.moveTo(x, y); else this.ctx.lineTo(x, y); this.firstVertex = false; }
     endShape(): void { this.paint(); }
     radialGlow(cx: number, cy: number, radius: number, color: [number, number, number], alpha: number): void {
+        this.opaque();
         const glow = this.ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
         glow.addColorStop(0, `rgba(${color.join(',')},${alpha})`); glow.addColorStop(1, 'rgba(8,5,14,0)');
         this.ctx.save(); this.ctx.fillStyle = glow; this.ctx.beginPath(); this.ctx.arc(cx, cy, radius, 0, Math.PI * 2); this.ctx.fill(); this.ctx.restore();
     }
     radialDim(cx: number, cy: number, inner: number, outer: number, alpha: number): void {
+        this.opaque();
         const dim = this.ctx.createRadialGradient(cx, cy, Math.max(0, inner), cx, cy, Math.max(inner + 1, outer));
         dim.addColorStop(0, 'rgba(0,0,0,0)'); dim.addColorStop(1, `rgba(0,0,0,${Math.min(1, Math.max(0, alpha))})`);
         this.ctx.save(); this.ctx.fillStyle = dim; this.ctx.fillRect(0, 0, this.width, this.height); this.ctx.restore();
     }
     compositeRingTint(cx: number, cy: number, inner: number, outer: number, color: [number, number, number], alpha: number,
         mode: RingTintCompositeMode, start?: number, end?: number): void {
+        this.opaque();
         const tint = this.ctx.createRadialGradient(cx, cy, Math.max(0, inner), cx, cy, Math.max(inner + 1, outer));
         const rgba = `rgba(${color.join(',')},${Math.min(1, Math.max(0, alpha))})`;
         tint.addColorStop(0, 'rgba(0,0,0,0)'); tint.addColorStop(0.38, rgba); tint.addColorStop(0.68, rgba); tint.addColorStop(1, 'rgba(0,0,0,0)');
@@ -79,6 +114,7 @@ export class Canvas2DRendererBackend implements VisualRendererBackend {
     }
     beginFieldRaster(layer: 0 | 1 | 2, cols: number, rows: number): Float32Array | null { return this.raster.beginFieldRaster(layer, cols, rows); }
     drawFieldRaster(layer: 0 | 1 | 2, x: number, y: number, w: number, h: number, gain: number, blend: FieldRasterBlendMode): void {
+        this.opaque();
         this.raster.drawFieldRaster(layer, this.ctx, x, y, w, h, gain, blend);
     }
 }
