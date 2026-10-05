@@ -11,7 +11,7 @@
 // when a section's outcome changes. No geometry or texture is ever uploaded during play.
 
 import * as THREE from 'three';
-import type { RhythmSessionSnapshot } from '../../gameplay';
+import type { RhythmSessionSnapshot, SectionResult } from '../../gameplay';
 import { RUNWAY_PALETTE } from './XrRunway';
 import { FLAWLESS_COLOR, sectionAccuracy, sectionOutcome, type ScoreOverview } from './XrScoreOverview';
 
@@ -87,6 +87,10 @@ export class XrProgressRing {
     private readonly colors: THREE.Color[];
     private overview: ScoreOverview | null = null;
     private count = 0;
+    /** Results the section vectors were last projected from (they change only with a hit, a miss or a new run). */
+    private lastResults: readonly SectionResult[] | undefined | null = null;
+    private lastHits = -1;
+    private lastMisses = -1;
 
     constructor() {
         this.sections = Array.from({ length: RING_MAX_SECTIONS }, () => new THREE.Vector4());
@@ -116,6 +120,7 @@ export class XrProgressRing {
         this.overview = overview && overview.sections.length ? overview : null;
         this.mesh.visible = this.overview !== null;
         this.count = 0;
+        this.lastResults = null;
         if (!this.overview) { this.uniforms.uCount.value = 0; return; }
         const { sections, durationSec } = this.overview;
         this.count = Math.min(RING_MAX_SECTIONS, sections.length);
@@ -138,6 +143,9 @@ export class XrProgressRing {
         const tier = Math.max(0, Math.log2(snapshot.multiplier ?? 1));
         if (this.uniforms.uTier.value !== tier) this.uniforms.uTier.value = tier;
         const results = snapshot.sections;
+        // Section outcomes change only when a note resolves (hit / miss) or a new run starts (new results array).
+        if (results === this.lastResults && snapshot.hitCount === this.lastHits && snapshot.missCount === this.lastMisses) return;
+        this.lastResults = results; this.lastHits = snapshot.hitCount; this.lastMisses = snapshot.missCount;
         for (let i = 0; i < this.count; i++) {
             const result = results?.[i], section = overview.sections[i];
             const outcome = OUTCOME_CODE[sectionOutcome(section, result)];

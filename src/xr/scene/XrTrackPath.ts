@@ -7,11 +7,19 @@
 // length) are preserved and the inverse is exact. Near the player (closer than
 // `trackBendStartMeters`) the offset is exactly zero: the hit plane, lanes and rows never move.
 // Nothing here integrates over time; the path is a pure function of the current focal point.
+//
+// Static stage geometry (floor, rails) bends on the GPU: `TRACK_BEND_GLSL` is the vertex-shader
+// twin of `trackBendWeight` / `trackPathOffset`, operation for operation, fed only by the
+// `uTrackBend` uniform this module writes. A path change is then a four-float uniform update, never
+// a vertex upload. CPU projection, strike un-projection and the GLSL twin share this one parameter
+// authority; nothing else may carry its own curve.
 
+import type * as THREE from 'three';
 import { DEFAULT_STAGE_LAYOUT, SCENE_CONFIG, type XrStageLayout } from './SceneConfig';
 
 export interface MutableVector3Like { x: number; y: number; z: number }
 export interface TrackPathOffset { x: number; y: number }
+export interface MutableVector4Like { x: number; y: number; z: number; w: number }
 
 const BEND_START = SCENE_CONFIG.trackBendStartMeters;
 /** Historical far end (the default stage); a longer runway moves it (Addendum I). */
@@ -51,6 +59,45 @@ export function trackPathOffset(rootZ: number, amplitudeX: number, amplitudeY: n
     return out;
 }
 
+/**
+ * `uTrackBend` = (far-end amplitude x, far-end amplitude y, bend start, bend end), in meters; the
+ * only input of `TRACK_BEND_GLSL`. Zero amplitudes are the exact straight track.
+ */
+export function writeTrackBendUniform(out: MutableVector4Like, amplitudeX = 0, amplitudeY = 0,
+    bendEndMeters: number = DEFAULT_BEND_END): MutableVector4Like {
+    out.x = amplitudeX; out.y = amplitudeY; out.z = BEND_START; out.w = bendEndMeters;
+    return out;
+}
+
+/**
+ * GLSL twin of `trackBendWeight` + `trackPathOffset` for a stage-root z. The straight zone clamps
+ * `u` to exactly 0, so near vertices receive an exact zero offset (the hit plane never moves).
+ */
+export const TRACK_BEND_GLSL = /* glsl */ `
+uniform vec4 uTrackBend;
+vec2 xrTrackPathOffset( float rootZ ) {
+    float u = clamp( ( -rootZ - uTrackBend.z ) / ( uTrackBend.w - uTrackBend.z ), 0.0, 1.0 );
+    return uTrackBend.xy * ( u * u );
+}`;
+
+/** The vertex statement a stage-root mesh adds after `begin_vertex` (object space = stage-root space). */
+export const TRACK_BEND_VERTEX_STATEMENT = 'transformed.xy += xrTrackPathOffset( transformed.z );';
+
+/**
+ * Bends a built-in material's vertices along the track on the GPU. For meshes whose object space is
+ * the stage root (identity transform under it). `uniform` is shared live: writing it re-bends
+ * every material it was installed on, with no recompilation and no buffer upload.
+ */
+export function installTrackBend(material: THREE.Material, uniform: { value: MutableVector4Like }, cacheKey: string): void {
+    material.onBeforeCompile = shader => {
+        shader.uniforms.uTrackBend = uniform;
+        if (!shader.vertexShader.includes('#include <begin_vertex>')) throw new Error('Track bend: vertex shader has no begin_vertex chunk.');
+        shader.vertexShader = `${TRACK_BEND_GLSL}\n${shader.vertexShader}`
+            .replace('#include <begin_vertex>', `#include <begin_vertex>\n\t${TRACK_BEND_VERTEX_STATEMENT}`);
+    };
+    material.customProgramCacheKey = () => cacheKey;
+}
+
 export class XrTrackPath {
     /** Increments whenever the projection changes, so dependents re-project only then. */
     revision = 0;
@@ -83,6 +130,17 @@ export class XrTrackPath {
         this.layout = layout;
         this.bendEnd = Math.max(BEND_START + 1, -layout.runwayFrontZMeters);
         this.recompute();
+    }
+
+    /** Far end of the bend zone (meters ahead of the player; follows the runway length). */
+    get bendEndMeters(): number { return this.bendEnd; }
+
+    /** Hit-plane distance: a playfield z maps to stage-root z `z - playfieldForwardMeters` (GPU projection of playfield points). */
+    get playfieldForwardMeters(): number { return this.layout.playfieldForwardMeters; }
+
+    /** Current projection as `TRACK_BEND_GLSL`'s `uTrackBend` (no allocation). */
+    writeBendUniform(out: MutableVector4Like): MutableVector4Like {
+        return writeTrackBendUniform(out, this.amplitudeXValue, this.amplitudeYValue, this.bendEnd);
     }
 
     /** Offset for a stage-root z (floor/rails live in root space). */

@@ -1,7 +1,20 @@
+// Instanced targets of the /xr/ host (ADR-009): three draws (bodies, free-cut markers, directed
+// glyphs) from fixed-capacity pools, in Classic or Shard design.
+//
+// Travel runs on the GPU. Which targets are drawn stays a CPU decision over the session's bounded
+// active window, and the CPU writes event-scope instance data -- canonical lane/row position, note
+// time (relative to a write epoch), cut angle or gem phase, base colour, drawing mode -- only when
+// that drawn set or a target's status changes (spawn, hit, miss, expiry, seek, design, config).
+// Every frame the vertex shader derives the canonical travel z from the song-time uniform, bends
+// it with the shared track path (`TRACK_BEND_GLSL`; `XrTrackPath` stays the one parameter
+// authority and CPU judging keeps `notePosition`), and applies spawn growth / brightness, cut
+// rotation, the Classic glyph lift and the turning gem. A path change is a uniform update.
+
 import * as THREE from 'three';
-import { CUT_VECTORS, DEFAULT_RHYTHM_GAME_CONFIG, notePosition, type NoteRuntimeState, type RhythmGameConfig } from '../../gameplay';
+import { CUT_VECTORS, DEFAULT_RHYTHM_GAME_CONFIG, notePosition, type CutDirection, type NoteRuntimeState, type RhythmGameConfig } from '../../gameplay';
 import { mergeColoredParts } from './SceneGeometry';
-import type { XrTrackPath } from './XrTrackPath';
+import { markAttributesWritten } from './InstanceUploads';
+import { TRACK_BEND_GLSL, writeTrackBendUniform, type XrTrackPath } from './XrTrackPath';
 import type { XrNoteDesign } from '../XrAppearanceSettings';
 /** Hand colours of the targets (shared with the slice effect). */
 export const TARGET_COLORS = { left: new THREE.Color(0x39cfff), right: new THREE.Color(0xff4fae), either: new THREE.Color(0xffd35c) } as const;
@@ -147,29 +160,141 @@ function createDotGeometry(size: number): THREE.BufferGeometry {
     ]);
 }
 
+const glslFloat = (value: number): string => (Number.isInteger(value) ? `${value}.0` : String(value));
+const TWO_PI = Math.PI * 2;
+/** Free-cut gems turn at this rate (radians per song second). */
+const GEM_SPIN = 1.6;
+/** Instance drawing modes (`aNoteStyle.w`, plus 4 when the target emerges from spawn). */
+const MODE_ROLL = 0, MODE_GLYPH = 1, MODE_GEM = 2, EMERGES = 4;
+/** Roll of each directed cut (the judge's finite vector set, computed once): local +Y onto CUT_VECTORS. */
+const CUT_ANGLES = Object.fromEntries(Object.entries(CUT_VECTORS).map(([cut, [x, y]]) => [cut, Math.atan2(y, x) - Math.PI / 2])) as
+    Record<Exclude<CutDirection, 'any'>, number>;
+
+const NOTE_DECLARATIONS = /* glsl */ `
+attribute vec4 aNoteBase;
+attribute vec4 aNoteStyle;
+uniform float uNoteTime;
+uniform float uNoteSpeed;
+uniform float uNoteApproach;
+uniform float uNoteSpawnFade;
+uniform float uNoteSize;
+uniform float uTrackForward;
+varying vec3 vNoteColor;
+${TRACK_BEND_GLSL}`;
+
+/**
+ * Target placement (`aNoteBase` = canonical x, y, epoch-relative note time, cut angle or gem phase;
+ * `aNoteStyle` = base colour, mode). Canonical z is `notePosition`'s (song time - note time) x
+ * speed; the centre then follows the track path exactly like `XrTrackPath.projectPlayfieldPoint`.
+ */
+export const NOTE_MOTION_GLSL = /* glsl */ `
+	float noteEmergeOn = step( 3.5, aNoteStyle.w );
+	float noteMode = aNoteStyle.w - 4.0 * noteEmergeOn;
+	float noteAhead = aNoteBase.z - uNoteTime;
+	float noteEmerge = ( noteEmergeOn > 0.5 && uNoteSpawnFade > 0.0 )
+		? clamp( ( uNoteApproach - noteAhead ) * uNoteSpeed / uNoteSpawnFade, 0.0, 1.0 ) : 1.0;
+	float noteScale = ${glslFloat(SPAWN_SCALE)} + ( 1.0 - ${glslFloat(SPAWN_SCALE)} ) * noteEmerge;
+	vec3 noteCentre = vec3( aNoteBase.xy, ( uNoteTime - aNoteBase.z ) * uNoteSpeed );
+	noteCentre.xy += xrTrackPathOffset( noteCentre.z - uTrackForward );
+	vec3 noteLocal = transformed * noteScale;
+	if ( noteMode > 1.5 ) {
+		float noteSpin = aNoteBase.w + uNoteTime * ${glslFloat(GEM_SPIN)};
+		noteLocal = vec3( cos( noteSpin ) * noteLocal.x + sin( noteSpin ) * noteLocal.z, noteLocal.y, -sin( noteSpin ) * noteLocal.x + cos( noteSpin ) * noteLocal.z );
+	} else {
+		if ( noteMode > 0.5 ) noteCentre.z += uNoteSize * noteScale * 0.5 + 0.003;
+		noteLocal = vec3( cos( aNoteBase.w ) * noteLocal.x - sin( aNoteBase.w ) * noteLocal.y, sin( aNoteBase.w ) * noteLocal.x + cos( aNoteBase.w ) * noteLocal.y, noteLocal.z );
+	}
+	transformed = noteCentre + noteLocal;
+	vNoteColor = aNoteStyle.rgb * ( ${glslFloat(SPAWN_BRIGHTNESS)} + ( 1.0 - ${glslFloat(SPAWN_BRIGHTNESS)} ) * noteEmerge );`;
+
+/** Uniforms shared by the three note materials (live objects; written by `update`). */
+export interface NoteUniforms {
+    readonly uNoteTime: { value: number };
+    readonly uNoteSpeed: { value: number };
+    readonly uNoteApproach: { value: number };
+    readonly uNoteSpawnFade: { value: number };
+    readonly uNoteSize: { value: number };
+    readonly uTrackBend: { value: THREE.Vector4 };
+    readonly uTrackForward: { value: number };
+}
+
+function installNoteMotion(material: THREE.MeshBasicMaterial, uniforms: NoteUniforms, cacheKey: string): void {
+    material.onBeforeCompile = shader => {
+        Object.assign(shader.uniforms, uniforms);
+        if (!shader.vertexShader.includes('#include <begin_vertex>') || !shader.fragmentShader.includes('#include <color_fragment>')) {
+            throw new Error('Note field: unexpected built-in shader chunks.');
+        }
+        shader.vertexShader = `${NOTE_DECLARATIONS}\n${shader.vertexShader}`.replace('#include <begin_vertex>', `#include <begin_vertex>${NOTE_MOTION_GLSL}`);
+        shader.fragmentShader = `varying vec3 vNoteColor;\n${shader.fragmentShader}`
+            .replace('#include <color_fragment>', '#include <color_fragment>\n\tdiffuseColor.rgb *= vNoteColor;');
+    };
+    material.customProgramCacheKey = () => cacheKey;
+}
+
+const NOTE_ATTRIBUTES = ['aNoteBase', 'aNoteStyle'] as const;
+
+/** Per-instance event data of one pool (`aNoteBase`, `aNoteStyle`), allocated once. */
+function noteAttributes(capacity: number): THREE.InstancedBufferAttribute[] {
+    return NOTE_ATTRIBUTES.map(() => new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4).setUsage(THREE.DynamicDrawUsage));
+}
+
+function attach(geometry: THREE.BufferGeometry, attributes: readonly THREE.InstancedBufferAttribute[]): THREE.BufferGeometry {
+    attributes.forEach((attribute, i) => geometry.setAttribute(NOTE_ATTRIBUTES[i], attribute));
+    return geometry;
+}
+
+/** Which pool an entry draws into, given the design (the same rules as the former CPU path). */
+function drawsBody(shard: boolean, directed: boolean): boolean { return !shard || directed; }
+
 export class RhythmNoteField {
     readonly mesh: THREE.InstancedMesh;
     readonly markers: THREE.InstancedMesh;
     readonly arrows: THREE.InstancedMesh;
-    private readonly dummy = new THREE.Object3D();
+    /** Shader inputs shared by the three draws. */
+    readonly uniforms: NoteUniforms;
     private readonly capacity: number;
-    private readonly bodyColor = new THREE.Color();
-    private readonly glyphColor = new THREE.Color();
     private readonly size: number;
     private designValue: XrNoteDesign = 'classic';
     /** Distance over which pending targets grow and brighten after spawning (0 = off, historical). */
     private spawnFadeMeters = 0;
+    private readonly attributes: Map<THREE.InstancedMesh, THREE.InstancedBufferAttribute[]> = new Map();
+    private readonly position = { x: 0, y: 0, z: 0 };
+    /** The written drawn set (entry, note id and status per slot) and the inputs it was built from. */
+    private readonly slotEntries: (NoteRuntimeState | null)[] = [];
+    private readonly slotIds: string[] = [];
+    private readonly slotStatus: string[] = [];
+    private slotCount = 0;
+    private writtenConfig: RhythmGameConfig | null = null;
+    private writtenDesign: XrNoteDesign | null = null;
+    private writtenPath: XrTrackPath | undefined;
+    private writtenPathRevision = -1;
+    private epoch = 0;
+    /** Instance-data writes so far: once per changed drawn set, never per frame (diagnostics/tests). */
+    writes = 0;
+
     constructor(config: RhythmGameConfig = DEFAULT_RHYTHM_GAME_CONFIG) {
         this.capacity = config.maxActiveNotes;
         const size = config.noteSizeMeters;
         this.size = size;
-        this.mesh = new THREE.InstancedMesh(createTargetGeometry(size),
-            new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }), this.capacity);
+        this.uniforms = { uNoteTime: { value: 0 }, uNoteSpeed: { value: config.noteSpeedMps }, uNoteApproach: { value: config.approachTimeSec },
+            uNoteSpawnFade: { value: 0 }, uNoteSize: { value: size }, uTrackBend: { value: writeTrackBendUniform(new THREE.Vector4()) as THREE.Vector4 },
+            uTrackForward: { value: 0 } };
+        const material = (options: THREE.MeshBasicMaterialParameters, key: string) => {
+            const created = new THREE.MeshBasicMaterial(options);
+            installNoteMotion(created, this.uniforms, key);
+            return created;
+        };
+        const pool = (geometry: THREE.BufferGeometry, options: THREE.MeshBasicMaterialParameters, key: string) => {
+            const attributes = noteAttributes(this.capacity);
+            const mesh = new THREE.InstancedMesh(attach(geometry, attributes), material(options, key), this.capacity);
+            this.attributes.set(mesh, attributes);
+            return mesh;
+        };
+        this.mesh = pool(createTargetGeometry(size), { vertexColors: true, toneMapped: false }, 'xr-note-bodies');
         // Separate reusable glyph batches: dots are free cuts, arrows show blade travel direction.
-        this.markers = new THREE.InstancedMesh(createDotGeometry(size),
-            new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), this.capacity);
-        this.arrows = new THREE.InstancedMesh(createArrowGeometry(size),
-            new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), this.capacity);
+        this.markers = pool(createDotGeometry(size), { color: 0xffffff, toneMapped: false }, 'xr-note-markers');
+        this.arrows = pool(createArrowGeometry(size), { color: 0xffffff, toneMapped: false }, 'xr-note-arrows');
+        // Instance matrices stay identity and are never re-uploaded: the shader places every instance.
         for (const mesh of [this.mesh, this.markers, this.arrows]) { mesh.count = 0; mesh.frustumCulled = false; }
     }
     get design(): XrNoteDesign { return this.designValue; }
@@ -183,7 +308,9 @@ export class RhythmNoteField {
         if (design === this.designValue) return;
         this.designValue = design;
         const shard = design === 'shard', size = this.size;
-        const swap = (mesh: THREE.InstancedMesh, geometry: THREE.BufferGeometry) => { mesh.geometry.dispose(); mesh.geometry = geometry; };
+        const swap = (mesh: THREE.InstancedMesh, geometry: THREE.BufferGeometry) => {
+            mesh.geometry.dispose(); mesh.geometry = attach(geometry, this.attributes.get(mesh)!);
+        };
         swap(this.mesh, shard ? createShardGeometry(size) : createTargetGeometry(size));
         swap(this.markers, shard ? createGemGeometry(size) : createDotGeometry(size));
         swap(this.arrows, shard ? createCutLineGeometry(size) : createArrowGeometry(size));
@@ -195,70 +322,99 @@ export class RhythmNoteField {
 
     setSpawnFade(meters: number): void {
         this.spawnFadeMeters = Number.isFinite(meters) && meters > 0 ? meters : 0;
+        this.uniforms.uNoteSpawnFade.value = this.spawnFadeMeters;
     }
 
     /**
-     * `path` is the shared XR track projection; rendering never uses its own curve formula. Struck
+     * `path` is the shared XR track projection; rendering never uses its own curve parameters. Struck
      * targets are not drawn here: the slice effect (`XrSliceEffect`) splits them from the hit time.
      */
     update(notes: readonly NoteRuntimeState[], songTime: number, config: RhythmGameConfig = DEFAULT_RHYTHM_GAME_CONFIG, path?: XrTrackPath): void {
-        let count = 0, dots = 0, arrows = 0;
+        // Which targets are drawn (and in which pool) is decided here, over the bounded active window.
+        let count = 0, dots = 0, slots = 0;
+        let changed = config !== this.writtenConfig || this.designValue !== this.writtenDesign || path !== this.writtenPath;
         const shard = this.designValue === 'shard';
         for (const entry of notes) {
             if (count + dots >= this.capacity) break;
             if (entry.status === 'hit') continue;
             const age = songTime - (entry.resolvedAt ?? entry.note.time);
             if (entry.status === 'missed' && age > config.resolvedNoteLifetimeSec) continue;
-            notePosition(entry.note, songTime, this.dummy.position, config);
-            path?.projectPlayfieldPoint(this.dummy.position);
-            // Pending targets emerge from the far end: a pure function of their distance from spawn.
-            const emerge = this.spawnFadeMeters > 0 && entry.status === 'pending'
-                ? Math.min(1, Math.max(0, (config.approachTimeSec - (entry.note.time - songTime)) * config.noteSpeedMps / this.spawnFadeMeters)) : 1;
-            const scale = SPAWN_SCALE + (1 - SPAWN_SCALE) * emerge;
-            const brightness = SPAWN_BRIGHTNESS + (1 - SPAWN_BRIGHTNESS) * emerge;
-            const cut = entry.note.cutDirection;
-            const directed = !!cut && cut !== 'any';
-            const angle = directed ? Math.atan2(CUT_VECTORS[cut][1], CUT_VECTORS[cut][0]) - Math.PI / 2 : 0;
-            this.bodyColor.copy(entry.status === 'missed' ? MISSED : COLORS[entry.note.hand]);
-            if (brightness < 1) this.bodyColor.multiplyScalar(brightness);
-            this.glyphColor.copy(entry.status === 'missed' ? GLYPH_MISSED : entry.note.pairId ? PAIRED : WHITE);
-            if (brightness < 1) this.glyphColor.multiplyScalar(brightness);
-            this.dummy.scale.setScalar(scale);
+            if (this.slotEntries[slots] !== entry || this.slotIds[slots] !== entry.note.id || this.slotStatus[slots] !== entry.status) changed = true;
+            this.slotEntries[slots] = entry; this.slotIds[slots] = entry.note.id; this.slotStatus[slots] = entry.status;
+            slots++;
+            const cut = entry.note.cutDirection, directed = !!cut && cut !== 'any';
+            if (drawsBody(shard, directed)) count++; else dots++;
+            if (!shard && !directed) dots++;
+        }
+        if (slots !== this.slotCount) changed = true;
+        if (changed) this.write(slots, songTime, config, path);
+        if (path && path.revision !== this.writtenPathRevision) {
+            this.writtenPathRevision = path.revision;
+            path.writeBendUniform(this.uniforms.uTrackBend.value);
+            this.uniforms.uTrackForward.value = path.playfieldForwardMeters;
+        }
+        const u = this.uniforms;
+        u.uNoteTime.value = songTime - this.epoch;
+        u.uNoteSpeed.value = config.noteSpeedMps; u.uNoteApproach.value = config.approachTimeSec; u.uNoteSize.value = config.noteSizeMeters;
+    }
+
+    dispose(): void {
+        for (const mesh of [this.mesh, this.markers, this.arrows]) { mesh.dispose(); mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); }
+    }
+
+    /** Rewrites every drawn target's event-scope data from canonical state (note, status, config). */
+    private write(slots: number, songTime: number, config: RhythmGameConfig, path: XrTrackPath | undefined): void {
+        this.writes++;
+        this.epoch = songTime;
+        this.slotCount = slots;
+        this.writtenConfig = config; this.writtenDesign = this.designValue;
+        if (path !== this.writtenPath) {
+            this.writtenPath = path;
+            this.writtenPathRevision = -1;
+            // Without a path the targets travel straight.
+            if (!path) { writeTrackBendUniform(this.uniforms.uTrackBend.value); this.uniforms.uTrackForward.value = 0; }
+        }
+        const shard = this.designValue === 'shard';
+        const [bodyBase, bodyStyle] = this.attributes.get(this.mesh)!.map(a => a.array as Float32Array);
+        const [markerBase, markerStyle] = this.attributes.get(this.markers)!.map(a => a.array as Float32Array);
+        const [arrowBase, arrowStyle] = this.attributes.get(this.arrows)!.map(a => a.array as Float32Array);
+        let count = 0, dots = 0, arrows = 0;
+        const position = this.position;
+        let noteTime = 0;
+        const put = (base: Float32Array, style: Float32Array, i: number, angle: number, color: THREE.Color, mode: number) => {
+            const o = i * 4;
+            base[o] = position.x; base[o + 1] = position.y; base[o + 2] = noteTime; base[o + 3] = angle;
+            style[o] = color.r; style[o + 1] = color.g; style[o + 2] = color.b; style[o + 3] = mode;
+        };
+        for (let slot = 0; slot < slots; slot++) {
+            const entry = this.slotEntries[slot]!, note = entry.note;
+            // Canonical lane/row placement from the gameplay authority (z = 0 at the note time; travel is the GPU's).
+            notePosition(note, note.time, position, config);
+            noteTime = note.time - this.epoch;
+            const emerges = entry.status === 'pending' ? EMERGES : 0;
+            const cut = note.cutDirection, directed = !!cut && cut !== 'any';
+            const angle = directed ? CUT_ANGLES[cut] : 0;
+            const body = entry.status === 'missed' ? MISSED : COLORS[note.hand];
+            const glyph = entry.status === 'missed' ? GLYPH_MISSED : note.pairId ? PAIRED : WHITE;
             if (shard) {
                 if (directed) {
                     // Shard body and its cut line share one transform: the tip points along the cut.
-                    this.dummy.rotation.set(0, 0, angle);
-                    this.dummy.updateMatrix();
-                    this.mesh.setMatrixAt(count, this.dummy.matrix); this.mesh.setColorAt(count, this.bodyColor);
-                    this.arrows.setMatrixAt(arrows, this.dummy.matrix); this.arrows.setColorAt(arrows, this.glyphColor);
-                    count++; arrows++;
+                    put(bodyBase, bodyStyle, count++, angle, body, MODE_ROLL + emerges);
+                    put(arrowBase, arrowStyle, arrows++, angle, glyph, MODE_ROLL + emerges);
                 } else {
                     // Free cut: a turning gem in the hand colour (rotation is a pure function of song time).
-                    this.dummy.rotation.set(0, songTime * 1.6 + entry.note.time, 0);
-                    this.dummy.updateMatrix();
-                    this.markers.setMatrixAt(dots, this.dummy.matrix); this.markers.setColorAt(dots, this.bodyColor);
-                    dots++;
+                    put(markerBase, markerStyle, dots++, (this.epoch * GEM_SPIN + note.time) % TWO_PI, body, MODE_GEM + emerges);
                 }
                 continue;
             }
-            this.dummy.rotation.set(0, 0, 0);
-            this.dummy.updateMatrix(); this.mesh.setMatrixAt(count, this.dummy.matrix);
-            this.mesh.setColorAt(count, this.bodyColor);
-            this.dummy.position.z += config.noteSizeMeters * scale / 2 + 0.003;
-            this.dummy.rotation.z = angle;
-            const glyph = directed ? this.arrows : this.markers;
-            const glyphIndex = directed ? arrows++ : dots++;
-            this.dummy.updateMatrix(); glyph.setMatrixAt(glyphIndex, this.dummy.matrix);
-            glyph.setColorAt(glyphIndex, this.glyphColor);
-            count++;
+            put(bodyBase, bodyStyle, count++, 0, body, MODE_ROLL + emerges);
+            if (directed) put(arrowBase, arrowStyle, arrows++, angle, glyph, MODE_GLYPH + emerges);
+            else put(markerBase, markerStyle, dots++, 0, glyph, MODE_GLYPH + emerges);
         }
         this.mesh.count = count; this.markers.count = dots; this.arrows.count = arrows;
-        for (const mesh of [this.mesh, this.markers, this.arrows]) {
-            mesh.instanceMatrix.needsUpdate = true;
-            if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-        }
-    }
-    dispose(): void {
-        for (const mesh of [this.mesh, this.markers, this.arrows]) { mesh.dispose(); mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); }
+        // Only the drawn prefix of each pool is uploaded; an empty batch uploads nothing.
+        markAttributesWritten(this.attributes.get(this.mesh)!, count);
+        markAttributesWritten(this.attributes.get(this.markers)!, dots);
+        markAttributesWritten(this.attributes.get(this.arrows)!, arrows);
     }
 }

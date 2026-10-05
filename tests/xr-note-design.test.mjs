@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createLoader } from './helpers/xr-loader.mjs';
 import { fakeDocument } from './helpers/fake-dom.mjs';
+import { gpuSlicePose } from './helpers/xr-slice-motion.mjs';
+import { noteColorAt, noteMatrixAt } from './helpers/xr-note-motion.mjs';
 
 const doc = fakeDocument();
 const load = createLoader({ three: THREE }, { document: doc });
@@ -17,8 +19,11 @@ const size = config.noteSizeMeters;
 const note = (over = {}) => ({ id: 'n', time: 5, lane: 0, row: 1, hand: 'left', intensity: 1, sourceType: 1, cutDirection: 'up-right', ...over });
 const pending = n => ({ note: n, status: 'pending', judgement: null });
 const hit = (n, at) => ({ note: n, status: 'hit', judgement: 'perfect', resolvedAt: at });
-const position = (mesh, i) => { const m = new THREE.Matrix4(); mesh.getMatrixAt(i, m); return new THREE.Vector3().setFromMatrixPosition(m); };
-const axisY = (mesh, i) => { const m = new THREE.Matrix4(); mesh.getMatrixAt(i, m); return new THREE.Vector3(0, 1, 0).transformDirection(m); };
+/** Rendered (shader-placed) target transforms of a note field pool. */
+const position = (field, key, i) => new THREE.Vector3().setFromMatrixPosition(noteMatrixAt(field, key, i));
+/** Rendered (shader-placed) slice instance position and colour. */
+const slicePosition = (effect, kind, i) => gpuSlicePose(effect, kind, i).apply(new THREE.Vector3());
+const axisY = (field, key, i) => new THREE.Vector3(0, 1, 0).transformDirection(noteMatrixAt(field, key, i));
 
 test('a Shard points its long tip along the cut, carries a front cut line, and stays inside the target footprint', () => {
     const shard = createShardGeometry(size); shard.computeBoundingBox();
@@ -50,15 +55,15 @@ test('the note field switches designs in place: shards and cut lines share the c
     field.update([...directed, free], 4.5, config);
     assert.equal(field.mesh.count, 8); assert.equal(field.arrows.count, 8); assert.equal(field.markers.count, 1);
     directed.forEach((entry, i) => {
-        const [x, y] = CUT_VECTORS[entry.note.cutDirection], tip = axisY(field.mesh, i);
+        const [x, y] = CUT_VECTORS[entry.note.cutDirection], tip = axisY(field, 'mesh', i);
         assert.ok(Math.abs(tip.x - x) < 1e-6 && Math.abs(tip.y - y) < 1e-6, `${entry.note.cutDirection}: the tip points along the cut`);
-        assert.ok(axisY(field.arrows, i).distanceTo(tip) < 1e-9 && position(field.arrows, i).distanceTo(position(field.mesh, i)) < 1e-9, 'line on its shard');
-        assert.ok(position(field.mesh, i).distanceTo(new THREE.Vector3().copy(notePosition(entry.note, 4.5, {}, config))) < 1e-6, 'same place as judged');
+        assert.ok(axisY(field, 'arrows', i).distanceTo(tip) < 1e-9 && position(field, 'arrows', i).distanceTo(position(field, 'mesh', i)) < 1e-9, 'line on its shard');
+        assert.ok(position(field, 'mesh', i).distanceTo(new THREE.Vector3().copy(notePosition(entry.note, 4.5, {}, config))) < 1e-6, 'same place as judged');
     });
-    const color = new THREE.Color(); field.markers.getColorAt(0, color);
+    const color = noteColorAt(field, 'markers', 0);
     assert.equal(color.getHex(), TARGET_COLORS.right.getHex(), 'gems carry the hand colour');
     assert.equal(field.markers.material.vertexColors, true);
-    const spin = () => { const m = new THREE.Matrix4(); field.markers.getMatrixAt(0, m); return new THREE.Quaternion().setFromRotationMatrix(m); };
+    const spin = () => new THREE.Quaternion().setFromRotationMatrix(noteMatrixAt(field, 'markers', 0));
     const a = spin(); field.update([free], 4.6, config); assert.ok(spin().angleTo(a) > 0.05, 'gems turn with song time');
     field.update([free], 4.6, config); const still = spin(); field.update([free], 4.6, config);
     assert.ok(spin().angleTo(still) < 1e-3, 'and freeze when it stops (float32 matrices)');
@@ -74,19 +79,18 @@ test('a struck target splits across its cut, flies apart with sparks and is gone
     const entry = hit(n, 5);
     effect.update([entry, pending(note({ id: 'p' }))], 5.1, config);
     assert.equal(effect.halves.count, 2); assert.equal(effect.sparks.count, SPARKS_PER_SLICE); assert.equal(effect.activeSlices, 1);
-    const a = position(effect.halves, 0), b = position(effect.halves, 1), origin = new THREE.Vector3().copy(notePosition(n, 5, {}, config));
+    const a = slicePosition(effect, 'halves', 0), b = slicePosition(effect, 'halves', 1), origin = new THREE.Vector3().copy(notePosition(n, 5, {}, config));
     const apart = b.clone().sub(a);
     assert.ok(Math.abs(apart.x) < 1e-6 && apart.y < -0.2, 'a horizontal cut separates the halves vertically');
     assert.ok(a.z > origin.z && b.z > origin.z, 'the debris keeps moving toward the player');
-    const early = new THREE.Color(), late = new THREE.Color();
     effect.update([entry], 5.01, config);
-    effect.halves.getColorAt(0, early);
+    const early = gpuSlicePose(effect, 'halves', 0).color;
     effect.update([entry], 5 + SLICE_EFFECT_SEC * 0.8, config);
-    effect.halves.getColorAt(0, late);
+    const late = gpuSlicePose(effect, 'halves', 0).color;
     assert.ok(early.g > early.r * 0.8 && late.r + late.g + late.b < (early.r + early.g + early.b) * 0.2, 'white-hot, then fading');
-    const frozen = position(effect.halves, 0);
+    const frozen = slicePosition(effect, 'halves', 0);
     effect.update([entry], 5 + SLICE_EFFECT_SEC * 0.8, config);
-    assert.ok(position(effect.halves, 0).distanceTo(frozen) < 1e-12, 'a pure function of song time');
+    assert.ok(slicePosition(effect, 'halves', 0).distanceTo(frozen) < 1e-12, 'a pure function of song time');
     effect.update([entry], 5 + SLICE_EFFECT_SEC + 0.01, config);
     assert.equal(effect.halves.count, 0); assert.equal(effect.sparks.count, 0);
     effect.update([entry], 4.9, config); assert.equal(effect.halves.count, 0, 'nothing before the hit (seeking back)');

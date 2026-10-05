@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createLoader } from './helpers/xr-loader.mjs';
+import { noteMatrixAt } from './helpers/xr-note-motion.mjs';
 import { readFileSync } from 'node:fs';
 const load = createLoader({ three: THREE });
 const { buildRhythmChart, judgeStrike, notePosition, CUT_VECTORS, DEFAULT_RHYTHM_GAME_CONFIG: config } = load('gameplay/index.ts');
@@ -153,7 +154,7 @@ test('instanced glyph rotation agrees with judge vectors and changing batches cl
     field.update(notes, 5); assert.equal(field.arrows.count, 8); assert.equal(field.markers.count, 0);
     const matrix = new THREE.Matrix4();
     for (let i = 0; i < notes.length; i++) {
-        field.arrows.getMatrixAt(i, matrix);
+        noteMatrixAt(field, 'arrows', i, matrix); // the shader's placement (GPU travel)
         const v = new THREE.Vector3(0, 1, 0).transformDirection(matrix), expected = CUT_VECTORS[notes[i].note.cutDirection];
         assert.ok(Math.abs(v.x - expected[0]) < 1e-6 && Math.abs(v.y - expected[1]) < 1e-6);
     }

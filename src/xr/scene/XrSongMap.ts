@@ -62,7 +62,8 @@ export class XrSongMap {
     private lastTime = Number.NaN;
     private lastScore = Number.NaN;
     private lastMisses = Number.NaN;
-    private lastKey = '';
+    /** Caption state last drawn (numeric: no per-frame string). NaN forces a redraw. */
+    private lastKey = Number.NaN;
     private redraws = 0;
 
     constructor(doc: Document = document) {
@@ -104,7 +105,7 @@ export class XrSongMap {
     setOverview(overview: ScoreOverview | null): void {
         this.overview = overview && overview.sections.length ? overview : null;
         this.root.visible = this.overview !== null;
-        this.lastTime = Number.NaN; this.lastKey = '';
+        this.lastTime = Number.NaN; this.lastKey = Number.NaN;
         if (this.overview) this.drawStrips(this.overview);
     }
 
@@ -120,7 +121,8 @@ export class XrSongMap {
         this.litTexture.repeat.x = Math.max(1e-4, p);
         this.playhead.position.x = -SONG_MAP_WIDTH / 2 + p * SONG_MAP_WIDTH;
         const flashStep = state.hasFlash ? Math.min(FLASH_STEPS - 1, Math.floor(state.flash.age / SECTION_FLASH_SEC * FLASH_STEPS)) : -1;
-        const key = state.hasFlash ? `f${state.flash.index}|${flashStep}` : `s${state.current}|${state.flawless ? 1 : 0}`;
+        // Flash captions are negative keys, steady captions non-negative (current >= -1).
+        const key = state.hasFlash ? -1 - (state.flash.index * FLASH_STEPS + flashStep) : (state.current + 1) * 2 + (state.flawless ? 1 : 0);
         if (key !== this.lastKey) { this.lastKey = key; this.drawCaption(overview, state, flashStep); }
     }
 

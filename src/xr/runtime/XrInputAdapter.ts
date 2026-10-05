@@ -146,7 +146,9 @@ export class XrInputAdapter {
     }
 
     getStrikeAttempt(hand: ControllerHand, songTime: number, worldToPlayfield: THREE.Matrix4): StrikeAttempt | null {
-        const state = this.controllers.find(c => c.hand === hand && c.validStrike);
+        // Plain loop: called for both hands every XR frame (no per-call closure).
+        let state: ControllerState | undefined;
+        for (const candidate of this.controllers) if (candidate.hand === hand && candidate.validStrike) { state = candidate; break; }
         if (!state) return null;
         const a = state.attempt;
         a.hand = hand; a.songTime = songTime; a.previousSongTime = state.previousSongTime; a.speed = state.speed;
