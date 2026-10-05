@@ -1,4 +1,5 @@
-import type { CanvasVisualPresentation, CanvasVisualSource, GrainMaterialBoostKey, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
+import { CONTINUOUS_PLAYBACK_MAX_STEP_SEC, isContinuousPlaybackStep, type CanvasVisualPresentation, type CanvasVisualSource, type GrainMaterialBoostKey,
+    type VisualAnalysisSnapshot, type VisualFocalPoint } from '../types/CanvasVisualSource';
 import type { GrainMaterialFrame } from '../types/GrainMaterialFrame';
 import type { GrainLineFrame } from '../types/GrainLineFrame';
 import { GrainCarrierCollector } from './GrainCarrierCollector';
@@ -104,6 +105,8 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     private readonly boosted = cloneDefaultVisualTuning();
     private lastTime: number | null = null;
     private lastPlaying = false;
+    /** Wall clock (seconds) of the last drawn frame; classifies the next step when the caller does not. */
+    private lastWallSec = Number.NaN;
     private revision = 0;
     private disposed = false;
     private denseEvents: { time: number }[] = [];
@@ -191,17 +194,24 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         this.plan = plan; this.presets = presets; this.lastTime = null;
     }
 
-    render(time: number, playing: boolean): boolean {
+    render(time: number, playing: boolean, continuous?: boolean): boolean {
         if (this.disposed) return false;
         const started = this.stages ? stageClock!.now() : 0;
         const previous = this.lastTime;
-        const jump = previous !== null && (time < previous || time - previous > 0.25);
+        // A slow frame during playback is a longer step, not a seek: it morphs and keeps integrating the
+        // route instead of snapping both to their targets. The caller classifies the step (the worker
+        // proxy does); without that, the wall clock since the last drawn frame does.
+        const wallNow = stageClock ? stageClock.now() / 1000 : Number.NaN;
+        const step = previous === null ? Number.NaN : time - previous;
+        const continuousStep = playing && this.lastPlaying && step >= 0 && (continuous === undefined
+            ? isContinuousPlaybackStep(step, wallNow - this.lastWallSec) : continuous);
+        const jump = previous !== null && !continuousStep && (time < previous || step > 0.25);
         // Texture work is capped (30 Hz unless the host sets a rate), independently of headset pose / gameplay cadence.
         const presentationChanged = this.presentationDirty;
-        if (previous !== null && playing === this.lastPlaying && !jump && !presentationChanged && time - previous < this.minFrameIntervalSec) return false;
+        if (previous !== null && playing === this.lastPlaying && !jump && !presentationChanged && step < this.minFrameIntervalSec) return false;
         this.presentationDirty = false;
-        const dt = tuningMorphDeltaSec(time, previous);
-        this.lastTime = time; this.lastPlaying = playing;
+        const dt = continuousStep ? Math.min(step, CONTINUOUS_PLAYBACK_MAX_STEP_SEC) : tuningMorphDeltaSec(time, previous);
+        this.lastTime = time; this.lastPlaying = playing; this.lastWallSec = wallNow;
         const state = this.state;
         state.currentTime = time;
         state.playbackFade = playing ? Math.min(1, state.playbackFade + dt) : state.playbackFade;

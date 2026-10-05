@@ -7,7 +7,10 @@
 // another. Generations: every `prepare` starts a new generation, and frames/answers from an older
 // one are dropped (their bitmaps closed). While playing, a request targets the time at which its
 // frame will be shown (one host interval ahead), so the background stays in sync with the music
-// despite the asynchronous hop. The analysis is copied (structured clone), never transferred, and
+// despite the asynchronous hop. Each playing request says whether it continues uninterrupted playback
+// (`continuous`: host song time advanced with the wall clock), so a slow frame keeps morphing instead
+// of being snapped like a seek; continuous requests never ask for an earlier time than the last one,
+// whatever the lead calibration does. The analysis is copied (structured clone), never transferred, and
 // only once per published analysis: a regenerated plan over it is sent alone (`prepare-plan`).
 //
 // Carrier buffers (external material) are lent by the worker's pool: the proxy owns a frame's
@@ -16,7 +19,8 @@
 // synchronously after `render` (`GrainMaterialRenderer.setFrame`), so `materialFrame` is valid only
 // until the next frame is presented. After dispose or a failure buffers are simply dropped.
 
-import type { CanvasVisualPresentation, CanvasVisualSource, VisualAnalysisSnapshot, VisualFocalPoint } from '../types/CanvasVisualSource';
+import { isContinuousPlaybackStep, type CanvasVisualPresentation, type CanvasVisualSource, type VisualAnalysisSnapshot,
+    type VisualFocalPoint } from '../types/CanvasVisualSource';
 import type { GrainMaterialFrame } from '../types/GrainMaterialFrame';
 import type { GrainLineFrame } from '../types/GrainLineFrame';
 import { WORMHOLE_WORKER_PROTOCOL_VERSION, type WormholeWorkerRequest, type WormholeWorkerResponse } from '../types/WormholeWorkerProtocol';
@@ -103,6 +107,8 @@ export class WormholeWorkerSource implements CanvasVisualSource {
     private requestedAt = 0;
     private requestedSongTime = Number.NaN;
     private requestedPlaying = false;
+    /** Song time the worker was last asked to render (lead included). */
+    private requestedRenderTime = Number.NaN;
     private latencyMs = 0;
     private renderMs = 0;
     private shownFrames = 0;
@@ -195,11 +201,15 @@ export class WormholeWorkerSource implements CanvasVisualSource {
             // Steady pauses ask once; the worker answers "unchanged" for anything it would skip.
             const repeat = !playing && !this.lastPlaying && time === this.lastTime && !this.presentationDirty;
             if (!repeat) {
+                const now = latencyClock ? latencyClock.now() : Number.NaN;
+                const continuous = playing && this.lastPlaying && Number.isFinite(this.lastTime)
+                    && isContinuousPlaybackStep(time - this.lastTime, (now - this.requestedAt) / 1000);
+                const requestTime = !playing ? time : continuous ? Math.max(time + this.leadSec, this.requestedRenderTime) : time + this.leadSec;
                 this.inFlight = true;
                 this.lastTime = time; this.lastPlaying = playing; this.presentationDirty = false;
-                this.requestedAt = latencyClock ? latencyClock.now() : 0;
-                this.requestedSongTime = time; this.requestedPlaying = playing;
-                this.worker.postMessage({ type: 'render', generation: this.generation, time: playing ? time + this.leadSec : time, playing });
+                this.requestedAt = now;
+                this.requestedSongTime = time; this.requestedPlaying = playing; this.requestedRenderTime = requestTime;
+                this.worker.postMessage({ type: 'render', generation: this.generation, time: requestTime, playing, ...(continuous ? { continuous: true } : {}) });
             }
         }
         return changed;

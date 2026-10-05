@@ -810,6 +810,45 @@ the background plane, like the Material renderer.
     recording time is about unchanged (4.4 vs 4.2 ms). The worker-side gain is small on a desktop.
     The point is the headset GPU's Canvas2D stroke raster, which Quest numbers must confirm.
 
+## Addendum AB: a slow background frame is playback, not a seek (2026-10-05)
+
+**Context.** During XR playback the Wormhole centre sometimes jumped to its next position instead
+of gliding there during an automation transition. This showed up with Crystal / Max and Addendum Z.
+`WormholeCanvasSource.render` treated any playing step longer than 0.25 s (or backward) as a seek.
+It then put the tuning on its target at once and called `identity.syncPosition`, which rebuilds the
+integrated route converged on the final bend. With the worker, one slow background frame on the
+Quest produces exactly such a step in normal playback. The per-frame lead calibration (Addendum Z)
+adds to the step, so the effective threshold fell to ~0.2 s. Reproduced in Node: one 0.3 s frame in
+the middle of a 0 -> 0.8 turn resynchronized the route, and the bend went 0.719 -> 0.800 in one step.
+The desktop request sequence had no backward requests; the lead alone never makes them go back.
+
+**Decision.**
+
+- **One rule** in the source contract: `isContinuousPlaybackStep(songStep, wallStep)` in
+  `src/types/CanvasVisualSource.ts`. A playing step is uninterrupted playback when song time
+  advanced by about as much as the wall clock (`CONTINUOUS_PLAYBACK_TOLERANCE_SEC` = 0.1 s) and by
+  at most `CONTINUOUS_PLAYBACK_MAX_STEP_SEC` (1 s). A seek moves song time with no wall time
+  passing. The wall clock only classifies the step. Positions always come from the song clock (no
+  second song clock).
+- **Proxy.** `WormholeWorkerSource` classifies each playing request against the previous one, using
+  host song time and the wall time between the requests. A continuous request carries
+  `continuous: true` (additive, protocol version 1), and its time is never earlier than the previous
+  request's. Pauses, the first frame after a pause or a preparation, and seeks are never continuous.
+- **Source.** `CanvasVisualSource.render(songTime, playing, continuous?)`. A continuous step is never
+  a jump: the tuning morphs over the real step (`applyTuningMorph` composes exponentially, so one long
+  step equals the frames it replaced) and the route keeps integrating, in sub-steps. The worker always
+  passes a boolean. An in-thread caller that omits the flag gets the same rule, applied to the
+  source's own wall clock since its last drawn frame. Steps that are not continuous keep the
+  historical rule (backward, or more than 0.25 s, is a seek). The change therefore only removes
+  resynchronizations of real playback.
+
+`tests/xr-wormhole-continuity.test.mjs` covers this:
+- a slow frame mid-transition equals uniform playback, with no route resync;
+- seeks, restarts, backward steps and steps over 1 s still resync;
+- the in-thread wall-clock classification;
+- the proxy flags and monotonic request times;
+- the worker forwarding the flag.
+
 ## Consequences
 
 `/xr/` can evolve its own scene complexity, controller model, and performance profile without

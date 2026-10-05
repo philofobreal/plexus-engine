@@ -57,7 +57,7 @@ version 1):
   optional `externalMaterial` for the host-rendered grain material, ADR-009 Addendum W, and with it
   optional `externalLines` for host-drawn grain trail lines, Addendum AA),
   `prepare` (generation, analysis snapshot), `prepare-plan` (generation, performance plan),
-  `render` (generation, time, playing), `presentation` (Line stroke, rate cap, optional Visual
+  `render` (generation, time, playing, optional `continuous`), `presentation` (Line stroke, rate cap, optional Visual
   character macros, ADR-009 Addendum R; optional Grain material boosts, Addendum V), `dispose`. Optional presentation fields are additive and
   keep protocol version 1; removing or reinterpreting a field requires a version bump.
 - Responses: `prepared` / `prepare-error` (generation), `frame` (generation, time, transferred
@@ -74,6 +74,14 @@ version 1):
   stale or discarded. Each buffer is in exactly one place (worker pool, host, or in transit); the
   worker writes only pooled buffers, keeps at most three and allocates (with headroom) only when
   none fits. After dispose or a failure the host drops buffers instead of posting them.
+- Continuity (additive `render.continuous`, still protocol version 1; ADR-009 Addendum AB): the proxy
+  sets it when a playing request continues uninterrupted playback from the previous one: host song
+  time advanced by about the wall-clock time elapsed (within 0.1 s) and by at most 1 s
+  (`isContinuousPlaybackStep` in `src/types/CanvasVisualSource.ts`). The worker passes it to
+  `WormholeCanvasSource.render` as a boolean, and the source then morphs and integrates its route
+  through the step instead of resynchronizing it like a seek. A continuous request never asks for
+  an earlier time than the previous request, whatever the lead calibration does. The wall clock
+  only classifies the step; the requested time always comes from the song clock.
 - Plan updates (additive request `prepare-plan`, still protocol version 1): the worker keeps its
   copy of the last `prepare` analysis. When a new snapshot differs from the one last sent in full
   only in its `performancePlan` (Activity / Variation regenerated the plan over the same

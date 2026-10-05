@@ -22,6 +22,20 @@ export interface VisualFocalPoint {
     readonly x: number;
     readonly y: number;
 }
+/** Longest song-time step that may still count as uninterrupted playback (one slow frame), in seconds. */
+export const CONTINUOUS_PLAYBACK_MAX_STEP_SEC = 1;
+/** How far the song-time step may differ from the elapsed wall-clock time and still be playback, in seconds. */
+export const CONTINUOUS_PLAYBACK_TOLERANCE_SEC = 0.1;
+/**
+ * True when a playing step of `songStep` seconds is uninterrupted playback rather than a seek: the
+ * song advanced (at most `CONTINUOUS_PLAYBACK_MAX_STEP_SEC`) by about as much as the wall clock did
+ * (`wallStep` seconds). A seek moves song time without wall time passing. The wall clock only
+ * classifies the step; positions always come from song time (never a second song clock).
+ */
+export function isContinuousPlaybackStep(songStep: number, wallStep: number): boolean {
+    return Number.isFinite(songStep) && Number.isFinite(wallStep) && songStep >= 0
+        && songStep <= CONTINUOUS_PLAYBACK_MAX_STEP_SEC && Math.abs(songStep - wallStep) <= CONTINUOUS_PLAYBACK_TOLERANCE_SEC;
+}
 export interface CanvasVisualSource {
     readonly canvas: HTMLCanvasElement;
     /** Optional authoritative focal point of the last rendered frame; hosts never derive it from pixels. */
@@ -33,8 +47,13 @@ export interface CanvasVisualSource {
      */
     readonly layers?: readonly HTMLCanvasElement[];
     prepare(analysis: VisualAnalysisSnapshot | null): Promise<void>;
-    /** Returns true only when the canvas changed, so its texture needs one upload. */
-    render(songTime: number, playing: boolean): boolean;
+    /**
+     * Returns true only when the canvas changed, so its texture needs one upload. `continuous`
+     * (optional) is the caller's classification of the step since the previous call: true for
+     * uninterrupted playback (`isContinuousPlaybackStep`), which the source then morphs through
+     * however long the step is; omitted, the source classifies the step itself.
+     */
+    render(songTime: number, playing: boolean, continuous?: boolean): boolean;
     /** Optional host presentation controls; applied from the next `render` (which then redraws). */
     setPresentation?(presentation: CanvasVisualPresentation): void;
     /**

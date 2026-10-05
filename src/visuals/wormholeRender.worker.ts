@@ -102,7 +102,7 @@ scope.onmessage = event => {
             case 'render': {
                 if (!source || message.generation !== generation) { post({ type: 'unchanged', generation: message.generation }); break; }
                 const started = performance.now();
-                if (!source.render(message.time, message.playing)) { post({ type: 'unchanged', generation: message.generation }); break; }
+                if (!source.render(message.time, message.playing, message.continuous === true)) { post({ type: 'unchanged', generation: message.generation }); break; }
                 const transferStarted = performance.now();
                 // Canvas2D may defer raster work until the bitmap is taken, so its time is a stage too.
                 const bitmap = (source.canvas as unknown as OffscreenCanvas).transferToImageBitmap();
