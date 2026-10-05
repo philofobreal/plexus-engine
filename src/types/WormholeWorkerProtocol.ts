@@ -52,6 +52,13 @@ export interface WormholeWorkerRender {
     readonly generation: number;
     readonly time: number;
     readonly playing: boolean;
+    /**
+     * Set (true) when this playing request continues uninterrupted playback from the previous one
+     * (`isContinuousPlaybackStep`), however long the step: the worker then morphs through it instead
+     * of treating it as a seek. Its `time` is then never earlier than the previous request's. Additive
+     * (protocol version 1); absent means not known to be continuous.
+     */
+    readonly continuous?: boolean;
 }
 
 export interface WormholeWorkerPresentation {
