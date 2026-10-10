@@ -16,6 +16,7 @@ import { DEFAULT_XR_BACKGROUND_SETTINGS, normalizeBackgroundSettings, type XrBac
 import { DEFAULT_XR_APPEARANCE_SETTINGS, normalizeAppearanceSettings, type XrAppearanceSettings } from './XrAppearanceSettings';
 import { DEFAULT_XR_PLAY_SETTINGS, normalizePlaySettings, resolvePlayProfile, type XrPlayProfile, type XrPlaySettings } from './XrPlayProfile';
 import { DEFAULT_XR_SYSTEM_SETTINGS, normalizeSystemSettings, type XrSystemSettings } from './XrSystemSettings';
+import { DEFAULT_XR_WORLD_SETTINGS, normalizeWorldSettings, type XrWorldMode, type XrWorldSettings } from './XrWorldSettings';
 
 export interface XrSettings {
     /** Note speed and saber length (session scope: the chart stays, the stage and judging change). */
@@ -28,6 +29,8 @@ export interface XrSettings {
     readonly appearance: XrAppearanceSettings;
     /** Material renderer and diagnostics (Addendum X). */
     readonly system: XrSystemSettings;
+    /** World Formation presentation (ADR-010). */
+    readonly world: XrWorldSettings;
 }
 
 export type XrSettingScope = 'chart' | 'session' | 'presentation';
@@ -131,6 +134,14 @@ function characterRange(id: keyof XrVisualCharacter, label: string, hint: string
 }
 
 export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
+    // World Formation (ADR-010): presentation only; the chart, judging and score never depend on it.
+    { id: 'world', section: 'gameplay', label: 'World', scope: 'presentation', kind: 'choice',
+        choices: [
+            { value: 'off', label: 'Off', hint: 'The original game: the runway in dark space, no world around it.' },
+            { value: 'reduced', label: 'Reduced', hint: 'World Formation with half the machines, drones and flow particles: lighter on the headset.' },
+            { value: 'full', label: 'Full', hint: 'World Formation: your hits build an industrial hall into an information network, and a late climax lets you stabilize a distant anomaly. Gold, white and violet halos mark the targets that matter to the world.' }],
+        read: settings => settings.world.mode,
+        write: (settings, value) => ({ ...settings, world: normalizeWorldSettings({ mode: value as XrWorldMode }) }) },
     // Play space shapes the chart (overhead row) as well as the stage, so it regenerates.
     { id: 'playSpace', section: 'gameplay', label: 'Play space', scope: 'chart', kind: 'choice',
         choices: [
@@ -258,12 +269,14 @@ export const DEFAULT_XR_SETTINGS: XrSettings = Object.freeze({
     generation: DEFAULT_XR_GENERATION_SETTINGS,
     background: DEFAULT_XR_BACKGROUND_SETTINGS,
     appearance: DEFAULT_XR_APPEARANCE_SETTINGS,
-    system: DEFAULT_XR_SYSTEM_SETTINGS
+    system: DEFAULT_XR_SYSTEM_SETTINGS,
+    world: DEFAULT_XR_WORLD_SETTINGS
 });
 
 /** Any partial or hostile input becomes a complete, valid settings object. */
 export function normalizeXrSettings(settings?: { play?: Partial<XrPlaySettings>; generation?: Partial<RhythmGenerationSettings>;
-    background?: Partial<XrBackgroundSettings>; appearance?: Partial<XrAppearanceSettings>; system?: Partial<XrSystemSettings> } | null): XrSettings {
+    background?: Partial<XrBackgroundSettings>; appearance?: Partial<XrAppearanceSettings>; system?: Partial<XrSystemSettings>;
+    world?: Partial<XrWorldSettings> } | null): XrSettings {
     const source = settings && typeof settings === 'object' ? settings : {};
     return {
         play: normalizePlaySettings(source.play && typeof source.play === 'object' ? source.play : undefined),
@@ -271,7 +284,8 @@ export function normalizeXrSettings(settings?: { play?: Partial<XrPlaySettings>;
             DEFAULT_XR_GENERATION_SETTINGS),
         background: normalizeBackgroundSettings(source.background && typeof source.background === 'object' ? source.background : undefined),
         appearance: normalizeAppearanceSettings(source.appearance && typeof source.appearance === 'object' ? source.appearance : undefined),
-        system: normalizeSystemSettings(source.system && typeof source.system === 'object' ? source.system : undefined)
+        system: normalizeSystemSettings(source.system && typeof source.system === 'object' ? source.system : undefined),
+        world: normalizeWorldSettings(source.world && typeof source.world === 'object' ? source.world : undefined)
     };
 }
 
