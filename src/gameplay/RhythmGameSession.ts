@@ -19,8 +19,19 @@ import type {
     StrikeResult
 } from './RhythmTypes';
 
+/**
+ * Notification-only view of what the session decides (ADR-010): every runtime reset and every
+ * resolved note, from strikes (desktop and headset alike), the miss scan, `finish` and the notes a
+ * seek skips (`skipped`). An observer cannot change judging, timing or score.
+ */
+export interface RhythmResolutionObserver {
+    onRunReset(): void;
+    onNoteResolved(note: RhythmNote, grade: JudgementGrade | null, songTime: number, skipped: boolean): void;
+}
+
 export class RhythmGameSession {
     private config: RhythmGameConfig;
+    private observer: RhythmResolutionObserver | null = null;
     private chart: readonly RhythmNote[] = [];
     private scoring: RhythmScoringPlan = buildScoringPlan([]);
     private sectionResults: SectionResult[] = [];
@@ -51,6 +62,11 @@ export class RhythmGameSession {
 
     constructor(config: RhythmGameConfig = DEFAULT_RHYTHM_GAME_CONFIG) {
         this.config = config;
+    }
+
+    /** One observer at a time (null removes it). */
+    setResolutionObserver(observer: RhythmResolutionObserver | null): void {
+        this.observer = observer;
     }
 
     /**
@@ -89,6 +105,7 @@ export class RhythmGameSession {
         this.missCount = 0;
         this.missScanCursor = 0;
         this.activeWindowStart = 0;
+        this.observer?.onRunReset();
     }
 
     start(): void {
@@ -252,6 +269,7 @@ export class RhythmGameSession {
         if (grade === 'perfect') result.perfects++;
         result.points += points;
         this.resolve(result, songTime);
+        this.observer?.onNoteResolved(this.chart[index], grade, songTime, false);
     }
 
     private recordMiss(entry: NoteRuntimeState, songTime: number, breaksMultiplier = true): void {
@@ -261,6 +279,8 @@ export class RhythmGameSession {
         const result = this.sectionResults[this.scoring.noteSection[index]];
         result.misses++;
         this.resolve(result, songTime);
+        // A miss that does not break the multiplier is a note skipped by a seek.
+        this.observer?.onNoteResolved(entry.note, null, songTime, !breaksMultiplier);
     }
 
     /** Completes a section once its last note resolves; a clean section earns its bonuses. */
