@@ -42,7 +42,7 @@ test('every setting is described once, round-trips through its control value; th
 test('the /xr/ player defaults are the authored menu values (ADR-009 Addendum T)', () => {
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS, DEFAULT_XR_GENERATION_SETTINGS, normalizeXrSettings } = settingsModule();
     const expected = {
-        playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'long',
+        world: 'full', playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'long',
         difficulty: 'ultra', activity: 'active', variation: 'expressive', handPattern: 'alternate', handLead: 'even', zones: 'cross',
         wormhole: 'on', noteDesign: 'shard', quality: 'ultra', rateHz: '36', lineStroke: 34, sharpness: 100,
         intensity: 100, motion: 100, depth: 10, detail: 100,

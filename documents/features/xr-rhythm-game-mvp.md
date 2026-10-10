@@ -19,6 +19,18 @@ scores; trigger presses during play do not pause. Exit, hidden session, viewer t
 loss, or reference-space reset pauses audio and clears motion history. Resume is explicit.
 An immersive entry pauses desktop playback before relocating the stage.
 
+## World Formation
+
+With Settings > Gameplay > World = Full (default) or Reduced, the song builds a world around the
+runway ([ADR-010](../adr/ADR-010-xr-world-formation.md)): an industrial hall powers up with the
+first music, Seeder machines raise pylons, conduits and arches, the hall opens into a crystalline
+information network with flowing light, and at a suitable climax a distant anomaly is stabilized.
+The music decides when each stage happens; accepted hits and misses decide how well it forms.
+Haloed targets matter to the world -- gold energy (completes a structure), white signal (connects
+the network), violet field anchors and the pink lock (align and stabilize the anomaly) -- but are
+judged and scored exactly like any other target. A plate by the score names the stage and the
+objective; the results add one world line. World = Off is the original game.
+
 ## Spatial contract (meters)
 
 - Stage: 3.4 m wide, from 10 m ahead to 2 m behind the starting player, at floor level.

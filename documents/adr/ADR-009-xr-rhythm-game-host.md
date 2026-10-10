@@ -861,6 +861,9 @@ and `src/xr/` alongside the existing owners. The Wormhole adapter is a second co
 MVP preset/tuning pipeline, so changes to `src/config/` gain resolution or
 `applyMvpWormholePreset` affect both hosts.
 
+World Formation, the evolving environment and its stabilization encounter, is a separate decision
+built on this host: see [ADR-010](ADR-010-xr-world-formation.md).
+
 See [XR rhythm game MVP feature](../features/xr-rhythm-game-mvp.md),
 [acceptance criteria](../acceptance-criteria/xr-rhythm-game-mvp-acs.md),
 [delivery review](../audits/xr-rhythm-game-delivery-review.md), and

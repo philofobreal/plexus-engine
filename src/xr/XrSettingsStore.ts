@@ -40,7 +40,7 @@ export function createXrSettingsStore(storage: XrSettingsStorage | null | undefi
         },
         save(settings: XrSettings): void {
             const value = JSON.stringify({ version: RECORD_VERSION, play: settings.play, generation: settings.generation, background: settings.background,
-                appearance: settings.appearance, system: settings.system });
+                appearance: settings.appearance, system: settings.system, world: settings.world });
             if (value === lastWritten) return;
             try {
                 storage.setItem(XR_SETTINGS_STORAGE_KEY, value);

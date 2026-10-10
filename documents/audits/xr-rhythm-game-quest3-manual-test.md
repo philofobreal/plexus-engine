@@ -176,3 +176,28 @@ Record results in the result log above; desktop results never substitute for hea
   `/xr/?xrDiagnostics=1&xrBackgroundThread=main` — the worker build must hold 72 Hz where the
   in-thread one drops frames; background beat flashes stay in sync with the music; toggling
   quality mid-song does not stall the game.
+
+## World Formation additions (ADR-010, 2026-10-09)
+
+Run with Settings > Gameplay > World = Full (the default), then Reduced and Off; record each.
+
+- **Frame pacing.** With the Wormhole at its defaults, World Full holds the same display rate as
+  World Off (read the diagnostics line: display fps). If not, record the drop for Full and Reduced
+  separately; Reduced is the fallback if Full costs frames.
+- **Readability.** No hall, construction, lattice, drone or anomaly geometry ever covers an
+  approaching target, the hit frame, the HUD or the song map, at every play space (Standard,
+  Tall), note speed and when the runway bends hardest. The anomaly sits above the targets' spawn.
+- **Comfort.** The floor, runway and hit frame never move; the walls dematerializing, surges and
+  the encounter cause no sense of motion or disorientation; no flash is uncomfortable. Look around
+  in every era: nothing near the player moves suddenly.
+- **Story by sight.** Without explanation, a tester can tell: the hall powers up when the music
+  starts; machines build the pylons, conduits and arches; the hall opens into a crystal network
+  with flowing light in the break; a distant anomaly appears near the climax and the violet
+  targets pull its rings into one plane; the world settles at the end.
+- **Special targets.** Gold / white / violet / pink halos are distinguishable from the hand colours
+  and from each other; a halo never hides the cut direction; a hit bursts at the strike point and
+  its structure lights up (a drone flies to it); a miss shows a short fault.
+- **Status and results.** The world plate (under the side HUD in Tall, above the HUD in Standard)
+  reads at a glance; the results screen shows the world line under the rhythm result.
+- **Lifecycle.** Pause freezes the world; restart and a new track start a clean world; Exit VR and
+  re-entry keep it aligned with the runway; World Off mid-song returns to the original look at once.
