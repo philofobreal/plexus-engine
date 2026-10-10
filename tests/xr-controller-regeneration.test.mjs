@@ -34,6 +34,7 @@ function harness({ presenting = false, settingsStore, gpu = false, diagnostics =
         async setBackgroundSettings(b) { (sceneLog.backgrounds ??= []).push(b); }
         setDisplayFrameRate() {} get backgroundRenderMs() { return 0; } setGameConfig(c) { (sceneLog.configs ??= []).push(c); } setStageLayout(l) { (sceneLog.layouts ??= []).push(l); } setScoreOverview(o) { (sceneLog.overviews ??= []).push(o); }
         setNoteDesign(d) { (sceneLog.designs ??= []).push(d); }
+        setWorldPlan(p) { (sceneLog.worldPlans ??= []).push(p); } setWorldMode(m) { (sceneLog.worldModes ??= []).push(m); }
         async setBackgroundPipeline(p) { (sceneLog.pipelines ??= []).push(p); sceneLog.gpuMaterial = p.gpuMaterial; } get gpuMaterialEnabled() { return sceneLog.gpuMaterial === true; }
         setAdaptivePacing(on) { (sceneLog.pacing ??= []).push(on); }
         // Every display frame shows a new background frame (diagnostics counting).
@@ -475,4 +476,67 @@ test('on the desktop the game menu lives in the canvas: Escape, the gear button,
     const strikes = controller.session.getSnapshot().hitCount;
     controller.desktopInput.onStrike('right', 0, 0);
     assert.equal(controller.session.getSnapshot().hitCount, strikes, 'clicks never cut while the menu is open');
+});
+
+// ---- World Formation (ADR-010) ------------------------------------------------------------
+const worldGameplay = createLoader({})('gameplay/index.ts');
+const expectedWorld = (h, plan = h.source.performancePlan) => JSON.stringify(worldGameplay.buildWorldPlan({ durationSec: h.State.duration,
+    chart: h.controller.session.chart, sections: h.State.trackAnalysis.sections, cues: h.State.trackAnalysis.cues,
+    timingConfidence: h.State.trackAnalysis.timingConfidence.overall, planPoints: plan.points }));
+
+test('World Formation: one plan per chart, authored from the same chart and evidence, cleared on a new file', async () => {
+    const h = harness(); await h.loadTrack();
+    const plans = h.sceneLog.worldPlans;
+    assert.equal(JSON.stringify(plans.at(-1)), expectedWorld(h));
+    assert.equal(h.controller.world.worldPlan, plans.at(-1), 'the world session holds the published plan');
+    h.pick('expert'); await settle();
+    assert.equal(JSON.stringify(plans.at(-1)), expectedWorld(h), 'regeneration re-authors the world for the new chart');
+    const before = plans.length;
+    await h.loadTrack();
+    assert.equal(plans[before], null, 'a new file clears the world before its analysis');
+    assert.equal(JSON.stringify(plans.at(-1)), expectedWorld(h));
+});
+
+test('World Formation: a stale regeneration never publishes its world', async () => {
+    const h = harness(); await h.loadTrack();
+    const first = deferred(), second = deferred(), plans = [first, second]; let call = 0;
+    h.setPrepare(() => plans[call++].promise);
+    h.pick('active'); await settle();
+    h.pick('expressive'); await settle();
+    const latest = { ...h.source.performancePlan, points: h.source.performancePlan.points.slice(0, 3) };
+    second.resolve(latest); await settle();
+    const published = h.sceneLog.worldPlans.length;
+    first.resolve(h.source.performancePlan); await settle();
+    assert.equal(h.sceneLog.worldPlans.length, published, 'the superseded result is discarded before the world');
+    assert.equal(JSON.stringify(h.sceneLog.worldPlans.at(-1)), expectedWorld(h, latest));
+});
+
+test('World Formation: the World setting applies live without regenerating or rewinding; the session feeds the world', async () => {
+    const h = harness(); await h.loadTrack();
+    h.engine.play(0);
+    assert.equal(h.controller.session.getState(), 'playing');
+    const prepares = h.prepareCalls.length, stops = h.engine.stops.length, chart = h.chart();
+    h.pick('off', 'gameplay');
+    assert.equal(h.sceneLog.worldModes.at(-1), 'off');
+    h.pick('reduced', 'gameplay');
+    assert.equal(h.sceneLog.worldModes.at(-1), 'reduced');
+    assert.equal(h.prepareCalls.length, prepares);
+    assert.equal(h.engine.stops.length, stops, 'no rewind');
+    assert.equal(h.chart(), chart);
+    assert.equal(h.controller.session.getState(), 'playing');
+    h.controller.session.update(1e6);
+    const world = h.controller.world.getSnapshot();
+    assert.equal(world.misses, h.controller.session.getSnapshot().missCount, 'misses reach the world through the session');
+});
+
+test('World Formation: results carry one world line, only while the world is on', async () => {
+    const h = harness(); await h.loadTrack();
+    h.engine.play(0);
+    h.controller.session.finish(); h.controller.handleTransportChanged();
+    const results = h.controller.menuContext().results;
+    assert.match(results.world, /^(Field|World) [a-z ]+ - formation \d+% - coherence \d+%/);
+    assert.match(h.controller.currentInstruction(), /(Field|World) [a-z ]+\./);
+    h.pick('off', 'gameplay');
+    assert.equal(h.controller.menuContext().results.world, undefined);
+    assert.doesNotMatch(h.controller.currentInstruction(), /Field|World/);
 });

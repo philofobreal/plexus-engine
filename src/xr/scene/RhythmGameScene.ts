@@ -11,6 +11,13 @@ import { XrSongMap } from './XrSongMap';
 import { XrProgressRing } from './XrProgressRing';
 import { XrSectionGates } from './XrSectionGates';
 import { XrSliceEffect } from './XrSliceEffect';
+import { XrWorld } from './XrWorld';
+import { XrNoteHalos } from './XrNoteHalos';
+import { WORLD_STATUS_SIZE, XrWorldStatus, type WorldStatusView } from './XrWorldStatus';
+import { currentWorldObjective } from '../../gameplay/WorldObjectives';
+import { encounterStageAt, phaseIndexAt } from '../../gameplay/WorldTimeline';
+import type { WorldInteractionSnapshot, WorldPlan } from '../../gameplay/WorldTypes';
+import type { XrWorldMode } from '../XrWorldSettings';
 import type { XrNoteDesign } from '../XrAppearanceSettings';
 import type { ScoreOverview } from './XrScoreOverview';
 import type { CanvasVisualSourceFactory, VisualAnalysisSnapshot } from '../../types/CanvasVisualSource';
@@ -44,6 +51,18 @@ export class RhythmGameScene {
     readonly sectionGates: XrSectionGates;
     /** Halves and sparks of struck targets (Addendum Q). */
     readonly sliceEffect: XrSliceEffect;
+    /** World Formation around the stage (ADR-010); hidden when the World setting is Off. */
+    readonly world: XrWorld;
+    /** Role halos of special notes (ADR-010); the notes themselves are unchanged. */
+    readonly halos: XrNoteHalos;
+    /** Era, objective, formation and coherence under the score HUD (ADR-010). */
+    readonly worldStatus: XrWorldStatus;
+    private worldMode: XrWorldMode = 'full';
+    // The status view is rebuilt only when the snapshot, the phase or the encounter stage changes.
+    private statusSnapshot: WorldInteractionSnapshot | null = null;
+    private statusPhase = -1;
+    private statusStage: string | null = null;
+    private statusView: WorldStatusView | null = null;
     private config: RhythmGameConfig;
     private readonly lights = new THREE.Group();
     private wormhole: WormholeBackdrop | null = null;
@@ -97,7 +116,13 @@ export class RhythmGameScene {
         this.playfield.add(this.noteField.mesh, this.noteField.markers, this.noteField.arrows, this.hud.mesh);
         this.sliceEffect = new XrSliceEffect(config.noteSizeMeters);
         this.playfield.add(this.sliceEffect.halves, this.sliceEffect.sparks);
+        this.halos = new XrNoteHalos(config.noteSizeMeters);
+        this.playfield.add(this.halos.mesh);
+        this.worldStatus = new XrWorldStatus();
+        this.hud.mesh.add(this.worldStatus.mesh);
         this.root.add(this.playfield);
+        this.world = new XrWorld();
+        this.root.add(this.world.root);
         this.lights.add(new THREE.HemisphereLight(0xc4dfff, 0x182439, 2.2));
         const key = new THREE.DirectionalLight(0xffffff, 2); key.position.set(1, 3, 1); this.lights.add(key);
         scene.add(this.root, this.lights);
@@ -119,6 +144,8 @@ export class RhythmGameScene {
             // Raised above the hit gate's section caption so the two never overlap in view.
             this.hud.setPose(0, eyeHeight - middleHeight + 1.15, -2.8);
         }
+        // The world plate goes under a side HUD, but above a HUD over the runway (clear of the caption).
+        this.worldStatus.mesh.position.y = this.layout.hudPlacement === 'side' ? WORLD_STATUS_SIZE.offsetY : -WORLD_STATUS_SIZE.offsetY;
         this.eyeHeight = eyeHeight;
         this.wormhole?.setEyeHeight(eyeHeight);
         this.root.updateMatrixWorld(true);
@@ -127,9 +154,12 @@ export class RhythmGameScene {
         this.playfield.updateWorldMatrix(true, false);
         return target.copy(this.playfield.matrixWorld).invert();
     }
-    update(activeNotes: readonly NoteRuntimeState[], songTime: number, snapshot: RhythmSessionSnapshot, instruction: string): void {
+    update(activeNotes: readonly NoteRuntimeState[], songTime: number, snapshot: RhythmSessionSnapshot, instruction: string,
+        worldSnapshot: WorldInteractionSnapshot | null = null): void {
         // The Wormhole renders first so the track follows the focal point of the displayed image.
         if (this.wormhole?.root.visible) this.wormhole.update(songTime, snapshot.state === 'playing');
+        if (this.world.root.visible) this.world.update(songTime, worldSnapshot);
+        this.updateWorldStatus(songTime, worldSnapshot);
         const focus = this.wormhole?.focalPoint;
         this.path.setFocus(focus ? focus.x : 0, focus ? focus.y : 0);
         this.runway.update(songTime);
@@ -142,6 +172,7 @@ export class RhythmGameScene {
             || snapshot.score !== this.lastNoteScore || snapshot.missCount !== this.lastNoteMisses || snapshot.totalNotes !== this.lastNoteTotal) {
             this.noteField.update(activeNotes, songTime, this.config, this.path);
             this.sliceEffect.update(activeNotes, songTime, this.config, this.path);
+            if (this.halos.mesh.visible) this.halos.update(activeNotes, songTime, this.config, this.path);
             this.lastNoteTime = songTime; this.lastNoteRevision = this.path.revision; this.lastNoteState = snapshot.state;
             this.lastNoteScore = snapshot.score; this.lastNoteMisses = snapshot.missCount; this.lastNoteTotal = snapshot.totalNotes;
         }
@@ -153,6 +184,37 @@ export class RhythmGameScene {
         this.progressRing.setOverview(overview);
         this.sectionGates.setOverview(overview);
     }
+
+    private updateWorldStatus(songTime: number, snapshot: WorldInteractionSnapshot | null): void {
+        const plan = this.world.worldPlan;
+        if (this.worldMode === 'off' || !snapshot || !(plan.durationSec > 0)) { this.worldStatus.update(null); return; }
+        const phase = phaseIndexAt(plan, songTime), stage = encounterStageAt(plan, songTime);
+        if (snapshot !== this.statusSnapshot || phase !== this.statusPhase || stage !== this.statusStage || !this.statusView) {
+            this.statusSnapshot = snapshot; this.statusPhase = phase; this.statusStage = stage;
+            const objective = currentWorldObjective(plan, snapshot, songTime);
+            this.statusView = { title: objective.title, line: objective.line, role: objective.role, formation: snapshot.formation, coherence: snapshot.coherence };
+        }
+        this.worldStatus.update(this.statusView);
+    }
+
+    /** The authored World Plan of the current chart (null: the dormant hall before a track). */
+    setWorldPlan(plan: WorldPlan | null): void {
+        this.world.setPlan(plan);
+        this.halos.setPlan(plan);
+        this.statusView = null;
+        this.lastNoteTime = Number.NaN;
+    }
+
+    /** World setting (presentation only): Off hides the world entirely, Reduced lightens it. */
+    setWorldMode(mode: XrWorldMode): void {
+        this.worldMode = mode;
+        this.world.root.visible = mode !== 'off';
+        this.halos.mesh.visible = mode !== 'off';
+        this.world.setDetail(mode === 'reduced' ? 'reduced' : 'full');
+        this.lastNoteTime = Number.NaN;
+    }
+
+    get worldModeValue(): XrWorldMode { return this.worldMode; }
 
     /** Target style (presentation only): the note field and the slice halves switch together. */
     setNoteDesign(design: XrNoteDesign): void {
@@ -198,6 +260,7 @@ export class RhythmGameScene {
         const previous = this.layout;
         this.layout = layout;
         this.noteField.setSpawnFade(layout.spawnFadeMeters);
+        this.halos.setSpawnFade(layout.spawnFadeMeters);
         this.sectionGates.setSpawnFade(layout.spawnFadeMeters);
         this.path.setLayout(layout);
         this.sectionCallout.setFrame(layout.frameCenterYMeters, layout.frameHalfHeightMeters);
@@ -311,6 +374,10 @@ export class RhythmGameScene {
     }
     dispose(): void {
         this.wormhole?.dispose();
+        this.world.dispose();
+        this.halos.dispose();
+        this.playfield.remove(this.halos.mesh);
+        this.worldStatus.dispose();
         this.noteField.dispose(); this.hud.dispose(); this.runway.dispose(); this.sectionCallout.dispose();
         this.songMap.dispose(); this.progressRing.dispose(); this.sectionGates.dispose(); this.sliceEffect.dispose();
         this.playfield.remove(this.noteField.mesh, this.noteField.markers, this.noteField.arrows, this.hud.mesh);

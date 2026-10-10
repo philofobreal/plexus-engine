@@ -8,7 +8,10 @@
 
 import * as THREE from 'three';
 import type { AudioEngine } from '../audio/AudioEngine';
-import { buildRhythmChart, DEFAULT_RHYTHM_GAME_CONFIG, RhythmGameSession, scoreRank, type RhythmGameConfig } from '../gameplay';
+import {
+    buildRhythmChart, buildWorldPlan, DEFAULT_RHYTHM_GAME_CONFIG, RhythmGameSession, scoreRank, WorldInteractionSession, type RhythmGameConfig,
+    type WorldPlan
+} from '../gameplay';
 import { State } from '../state/store';
 import { detectImmersiveVrSupport, type ImmersiveVrSupport } from './runtime/XrCapabilityDetector';
 import { XrInputAdapter, type ControllerHand } from './runtime/XrInputAdapter';
@@ -19,8 +22,8 @@ import { buildSectionTimeline } from './scene/XrSectionCallout';
 import { buildScoreOverview } from './scene/XrScoreOverview';
 import { XrMenuPanel } from './scene/XrMenuPanel';
 import {
-    activateMenuItem, DEFAULT_MENU_STATE, menuHomeScreen, menuResults, moveMenuFocus, switchMenuTab,
-    type XrMenuCommand, type XrMenuContext, type XrMenuScreen, type XrMenuState
+    activateMenuItem, DEFAULT_MENU_STATE, formatWorldOutcome, menuHomeScreen, menuResults, moveMenuFocus, switchMenuTab,
+    type XrMenuCommand, type XrMenuContext, type XrMenuResults, type XrMenuScreen, type XrMenuState
 } from './XrMenuModel';
 import { BackgroundDiagnostics } from './BackgroundDiagnostics';
 import { supportsGpuGrainMaterial } from './scene/GrainMaterialRenderer';
@@ -67,6 +70,8 @@ export class XrAppController {
     private readonly scene: RhythmGameScene;
     private readonly inputAdapter: XrInputAdapter;
     private readonly session: RhythmGameSession;
+    /** The player's effect on the world; fed only by the session's resolution observer (ADR-010). */
+    private readonly world = new WorldInteractionSession();
     private readonly worldToPlayfield = new THREE.Matrix4();
     private readonly viewerForward = new THREE.Vector3();
     private readonly viewerRotation = new THREE.Quaternion();
@@ -86,6 +91,8 @@ export class XrAppController {
     private readonly settingsStore: XrSettingsStore;
     private published: PublishedAnalysis | null = null;
     private preparedPlan: PreparedPlan | null = null;
+    /** The authored World Plan of the current chart (ADR-010); rebuilt with every chart. */
+    private worldPlan: WorldPlan | null = null;
     /** The current track's section timeline still has to reach the scene (set by whichever compose publishes first). */
     private sectionTimelinePending = false;
     private disposed = false;
@@ -148,6 +155,7 @@ export class XrAppController {
     private resultSnapshot: object | null = null;
     private resultHint = '';
     private resultText = '';
+    private resultWorld = false;
 
     constructor(engine: AudioEngine, runtime: XrRuntime, hostContainer: HTMLElement, wormholeFactory?: CanvasVisualSourceFactory,
         options: XrAppControllerOptions = {}) {
@@ -161,6 +169,7 @@ export class XrAppController {
         this.playProfile = resolvePlayFromSettings(this.settings);
         this.gameConfig = this.playProfile.config;
         this.session = new RhythmGameSession(this.gameConfig);
+        this.session.setResolutionObserver(this.world);
         this.scene = new RhythmGameScene(runtime.scene, this.gameConfig, wormholeFactory);
         this.gpuMaterialSupported = options.gpuMaterial !== false && supportsGpuGrainMaterial(runtime.renderer as unknown as THREE.WebGLRenderer);
         // Before any background exists this only records the pipeline (no rebuild).
@@ -170,6 +179,7 @@ export class XrAppController {
         // Restored presentation applies before any background is created.
         void this.scene.setBackgroundSettings(this.settings.background);
         this.scene.setNoteDesign(this.settings.appearance.noteDesign);
+        this.scene.setWorldMode(this.settings.world.mode);
         this.inputAdapter = new XrInputAdapter(runtime.renderer, runtime.scene);
         this.inputAdapter.setBladeLength(this.playProfile.bladeLengthMeters);
         this.menuPanel = new XrMenuPanel();
@@ -293,6 +303,12 @@ export class XrAppController {
         this.preparedPlan = prepared;
         // Published sections weight the score by dramaturgy (plain data; Addendum J).
         this.session.loadChart(chart, published.trackAnalysis.sections);
+        // The world follows the same chart and evidence, authored once (ADR-010); notes are never edited.
+        this.worldPlan = buildWorldPlan({ durationSec: published.duration, chart, sections: published.trackAnalysis.sections,
+            cues: published.trackAnalysis.cues, timingConfidence: published.trackAnalysis.timingConfidence?.overall,
+            planPoints: prepared.plan.points });
+        this.world.load(this.worldPlan);
+        this.scene.setWorldPlan(this.worldPlan);
         this.scene.setScoreOverview(buildScoreOverview(this.session.getScoringPlan(), published.duration));
         if (this.sectionTimelinePending) {
             this.sectionTimelinePending = false;
@@ -309,6 +325,9 @@ export class XrAppController {
             `BPM ${Math.round(State.bpm)} - Duration ${formatTime(State.duration)} - ${chart.length} notes - ` +
             `${chart.filter(n => n.cutDirection && n.cutDirection !== 'any').length} arrows - ${chart.filter(n => n.pairId).length / 2} pairs`;
         if (this.diagnostics) {
+            const world = this.worldPlan;
+            this.overlay.dataset.xrWorld = JSON.stringify({ eras: world.eras, encounter: world.encounter,
+                roles: world.roles.map(r => [r.time, r.role]), events: world.events.map(e => [e.time, e.id, e.variant]) });
             this.overlay.dataset.xrScore = JSON.stringify({ confidence: analysis.trackAnalysis.timingConfidence,
                 sections: analysis.trackAnalysis.sections.map(section => [section.start, section.label]),
                 cues: analysis.trackAnalysis.cues, points: analysis.performancePlan?.points,
@@ -384,6 +403,7 @@ export class XrAppController {
     /** Presentation only: never touches the chart, plan, score or playback. */
     private applyPresentation(): void {
         this.scene.setNoteDesign(this.settings.appearance.noteDesign);
+        this.scene.setWorldMode(this.settings.world.mode);
         this.applyDiagnosticsSetting();
         // A changed material renderer or profiling rebuilds the background plane (Addendum X).
         const pipeline = this.scene.setBackgroundPipeline(this.backgroundPipeline());
@@ -475,7 +495,10 @@ export class XrAppController {
             this.loading = true;
             this.published = null;
             this.preparedPlan = null;
+            this.worldPlan = null;
             this.session.clear();
+            this.world.load(null);
+            this.scene.setWorldPlan(null);
             this.scene.setSectionTimeline([]);
             this.scene.setScoreOverview(null);
             this.updateWormholeAnalysis(null);
@@ -717,9 +740,16 @@ export class XrAppController {
         return { settings: this.settings, sessionState: state, trackTitle: this.trackTitleEl.textContent ?? '', busy: this.loading,
             canStart: state !== 'idle' && this.session.getSnapshot().totalNotes > 0,
             status: this.loading ? this.progressEl.textContent ?? '' : '',
-            results: state === 'finished' ? menuResults(this.session.getSnapshot()) : null,
+            results: state === 'finished' ? this.finishedResults() : null,
             input: this.runtime.isPresenting() ? 'vr' : 'desktop',
             ...(this.diagnostics && this.backgroundDiagnostics.summary ? { diagnostics: this.backgroundDiagnostics.summary } : {}) };
+    }
+
+    /** The finished song's results, with the world outcome when World Formation is on. */
+    private finishedResults(): XrMenuResults | null {
+        const results = menuResults(this.session.getSnapshot());
+        if (!results || this.settings.world.mode === 'off' || !this.worldPlan) return results;
+        return { ...results, world: formatWorldOutcome(this.world.getOutcome()) };
     }
 
     /**
@@ -831,10 +861,12 @@ export class XrAppController {
      */
     private resultInstruction(hint: string): string {
         const snapshot = this.session.getSnapshot();
-        if (snapshot !== this.resultSnapshot || hint !== this.resultHint) {
+        const worldShown = this.settings.world.mode !== 'off' && this.worldPlan !== null;
+        if (snapshot !== this.resultSnapshot || hint !== this.resultHint || worldShown !== this.resultWorld) {
             const accuracy = snapshot.maxScore ? snapshot.score / snapshot.maxScore : 0;
-            this.resultSnapshot = snapshot; this.resultHint = hint;
-            this.resultText = `Rank ${scoreRank(accuracy)} - ${(accuracy * 100).toFixed(1)}%. ${hint}`;
+            this.resultSnapshot = snapshot; this.resultHint = hint; this.resultWorld = worldShown;
+            const world = worldShown ? ` ${this.world.getOutcome().title}.` : '';
+            this.resultText = `Rank ${scoreRank(accuracy)} - ${(accuracy * 100).toFixed(1)}%.${world} ${hint}`;
         }
         return this.resultText;
     }
@@ -863,7 +895,7 @@ export class XrAppController {
         this.session.update(songTime);
 
         const activeNotes = this.session.getActiveNotes(songTime);
-        this.scene.update(activeNotes, songTime, this.session.getSnapshot(), this.currentInstruction());
+        this.scene.update(activeNotes, songTime, this.session.getSnapshot(), this.currentInstruction(), this.world.getSnapshot());
         if (this.diagnostics && this.scene.path.revision !== this.diagnosticPathRevision) {
             const path = this.scene.path;
             this.diagnosticPathRevision = path.revision;
@@ -898,6 +930,7 @@ export class XrAppController {
         this.loadGeneration++;
         this.handleSessionEnd();
         this.playback.dispose();
+        this.session.setResolutionObserver(null);
         this.desktopInput.dispose();
         this.engine.onProgress = undefined;
         this.engine.onAnalysisComplete = undefined;

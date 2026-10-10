@@ -8,7 +8,7 @@
 // section). "Back" always returns to the screen the session state implies, so a setting that
 // rewinds the song lands the player on Main, not on a stale Pause.
 
-import { scoreRank, type RhythmSessionSnapshot, type RhythmSessionState } from '../gameplay';
+import { scoreRank, type RhythmSessionSnapshot, type RhythmSessionState, type WorldOutcome } from '../gameplay';
 import {
     changeScope, XR_SETTING_SECTIONS, XR_SETTINGS, type XrSettingDescriptor, type XrSettings, type XrSettingScope,
     type XrSettingSectionId
@@ -34,6 +34,8 @@ export interface XrMenuResults {
     readonly misses: number;
     readonly flawlessSections: number;
     readonly sections: number;
+    /** World Formation outcome line (ADR-010); absent when the World setting is Off. */
+    readonly world?: string;
 }
 
 /** Everything the menu shows that the host owns (plain data, rebuilt whenever it changes). */
@@ -132,11 +134,19 @@ export function menuResults(snapshot: RhythmSessionSnapshot): XrMenuResults | nu
         sections: completed.length };
 }
 
+/** World line, e.g. "Field stabilized - formation 86% - coherence 78% - anchors 5/5" (ASCII). */
+export function formatWorldOutcome(outcome: WorldOutcome): string {
+    const pct = (value: number) => `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`;
+    return `${outcome.title} - formation ${pct(outcome.formation)} - coherence ${pct(outcome.coherence)}`
+        + (outcome.stability !== null ? ` - anchors ${outcome.anchorsHit}/${outcome.anchorsTotal}` : '');
+}
+
 /** One-line summary, e.g. "Rank S - 91.4% - 123 456 pts - max combo 87 - 3/5 flawless sections". */
 export function formatResults(results: XrMenuResults): string {
     const points = String(Math.round(results.score)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     return `Rank ${results.rank} - ${(results.accuracy * 100).toFixed(1)}% - ${points} pts - max combo ${results.maxCombo}`
-        + (results.sections ? ` - ${results.flawlessSections}/${results.sections} flawless sections` : '');
+        + (results.sections ? ` - ${results.flawlessSections}/${results.sections} flawless sections` : '')
+        + (results.world ? ` - ${results.world}` : '');
 }
 
 function item(id: string, kind: XrMenuItemKind, label: string, x: number, y: number, w: number, h: number,
@@ -225,7 +235,9 @@ export function menuLayout(state: XrMenuState, context: XrMenuContext): XrMenuLa
         const points = String(Math.round(r.score)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
         texts.push(text(`${points} pts  -  max combo ${r.maxCombo}  -  ${r.hits} hits, ${r.misses} misses`, center, 312, 22, 'body', 'center'));
         if (r.sections) texts.push(text(`${r.flawlessSections} / ${r.sections} sections flawless`, center, 344, 22, 'body', 'center'));
-        items.push(...buttonStack(388, withExit(context, [['action:restart', 'Play again', { primary: true }], ['action:settings', 'Settings', {}]])));
+        // The world outcome sits under the rhythm result; the buttons move down to make room.
+        if (r.world) texts.push(text(r.world, center, 378, 21, 'accent', 'center'));
+        items.push(...buttonStack(r.world ? 412 : 388, withExit(context, [['action:restart', 'Play again', { primary: true }], ['action:settings', 'Settings', {}]])));
         return { items, texts };
     }
     const paused = state.screen === 'pause';
