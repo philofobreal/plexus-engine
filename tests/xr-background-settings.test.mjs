@@ -8,14 +8,15 @@ import { fakeDocument, findAll } from './helpers/fake-dom.mjs';
 
 const settingsModule = () => createLoader()('xr/XrBackgroundSettings.ts');
 
-const AUTHORED_GRAIN = { amount: 0.5, detail: 1, bloom: 1, weave: 1, spiral: 0.04, arms: 0.5, density: 0.5 };
-const AUTHORED_GRAIN_BOOSTS = { wormholeNebulaAmount: 0.5, wormholeNebulaDetail: 1, wormholeNebulaBloom: 1, wormholeNebulaWeave: 1, wormholeSpiral: 0.04, wormholeSpiralArms: 0.5, wormholeGrainDensity: 0.5 };
-const AUTHORED_DEFAULTS = { wormhole: true, quality: 'ultra', rateHz: 36, lineStroke: 0.34, sharpness: 1, character: { intensity: 1, motion: 1, depth: 0.1, detail: 1 },
+// Authored by the user on 2026-10-11 (ADR-009 Addendum AC).
+const AUTHORED_GRAIN = { amount: 0.3, detail: 1, bloom: 1, weave: 1, spiral: 0.3, arms: 0.5, density: 0.5 };
+const AUTHORED_GRAIN_BOOSTS = { wormholeNebulaAmount: 0.3, wormholeNebulaDetail: 1, wormholeNebulaBloom: 1, wormholeNebulaWeave: 1, wormholeSpiral: 0.3, wormholeSpiralArms: 0.5, wormholeGrainDensity: 0.5 };
+const AUTHORED_DEFAULTS = { wormhole: true, quality: 'ultra', rateHz: 36, distanceMeters: 200, spatialField: 'particles', lineStroke: 0.2, sharpness: 1, character: { intensity: 1, motion: 1, depth: 0.3, detail: 1 },
     grain: AUTHORED_GRAIN };
 /** The pre-Addendum-T presentation, for tests about pacing rather than defaults. */
 const BALANCED_24 = { wormhole: true, quality: 'balanced', rateHz: 24, lineStroke: 0.98, sharpness: 0.5, character: { intensity: 1, motion: 1, depth: 0.3, detail: 1 } };
 
-test('background settings default to the authored values: Wormhole on, Ultra raster, 36 Hz, Line stroke 34, full sharpening', () => {
+test('background settings default to the authored values: Wormhole on, Ultra raster, 36 Hz, 200 m, Line stroke 20, full sharpening', () => {
     const { DEFAULT_XR_BACKGROUND_SETTINGS, XR_BACKGROUND_RESOLUTION, normalizeBackgroundSettings } = settingsModule();
     const { XR_WORMHOLE_BOOSTS, XR_WORMHOLE_MACROS } = createLoader()('config/xrWormholeTuning.ts');
     assert.equal(JSON.stringify(DEFAULT_XR_BACKGROUND_SETTINGS), JSON.stringify(AUTHORED_DEFAULTS));
@@ -27,7 +28,7 @@ test('background settings default to the authored values: Wormhole on, Ultra ras
     assert.equal(normalizeBackgroundSettings({ wormhole: false }).wormhole, false, 'an explicit off is kept');
     assert.equal(normalizeBackgroundSettings({ lineStroke: 7 }).lineStroke, 1, 'clamped');
     assert.equal(normalizeBackgroundSettings({ lineStroke: -2 }).lineStroke, 0);
-    assert.equal(normalizeBackgroundSettings({ lineStroke: Number.NaN }).lineStroke, 0.34, 'invalid -> the authored default');
+    assert.equal(normalizeBackgroundSettings({ lineStroke: Number.NaN }).lineStroke, 0.2, 'invalid -> the authored default');
 });
 
 test('frame divider lands every redraw on a whole display frame and never exceeds the requested rate', () => {
@@ -62,7 +63,7 @@ test('the scene starts with the authored background: Ultra raster, 36 Hz on a wh
     const source = sources[0];
     assert.equal(JSON.stringify(source.options), JSON.stringify({ width: 1280, height: 720 }));
     scene.setDisplayFrameRate(72);
-    assert.equal(JSON.stringify(source.presentations.at(-1)), JSON.stringify({ lineStroke: 0.34, maxFrameRateHz: 36, macros: AUTHORED_DEFAULTS.character,
+    assert.equal(JSON.stringify(source.presentations.at(-1)), JSON.stringify({ lineStroke: 0.2, maxFrameRateHz: 36, macros: AUTHORED_DEFAULTS.character,
         grainMaterial: AUTHORED_GRAIN_BOOSTS }));
     for (let i = 0; i < 72; i++) scene.update([], i / 72, snapshot('playing'), '');
     assert.equal(source.renders.length, 36, '72 Hz / divider 2');
@@ -186,7 +187,7 @@ test('adaptive pacing (opt-in) widens a late off-thread background to whole fram
 test('Line stroke follows the MVP Advanced slider semantics and redraws even while steadily paused', async () => {
     const canvases = [];
     class Backend { constructor(width, height) { this.canvas = { width, height }; this.frameCount = 0; canvases.push(this); } background() {} }
-    class Identity { constructor(state) { this.state = state; } syncPosition() {} setDepthCue() {} setDepthLayers() {} draw() {} }
+    class Identity { constructor(state) { this.state = state; this.frameDrive = { travel: 0, travelRate: 0, hue: 0 }; } syncPosition() {} setDepthCue() {} setDepthLayers() {} draw() {} }
     const load = createLoader({
         './Canvas2DRendererBackend': { Canvas2DRendererBackend: Backend },
         './CosmicWormholeIdentity': { CosmicWormholeIdentity: Identity }
@@ -207,7 +208,7 @@ test('Line stroke follows the MVP Advanced slider semantics and redraws even whi
     assert.equal(source.render(1, false), true, 'a stroke change reaches a paused canvas');
     assert.equal(source.state.visualTuning.lineWeight, expected(0.5));
     assert.equal(source.render(1, false), false);
-    assert.equal(XR_WORMHOLE_BOOSTS.lineWeight, 0.34, 'the shared XR boosts are never mutated');
+    assert.equal(XR_WORMHOLE_BOOSTS.lineWeight, 0.2, 'the shared XR boosts are never mutated');
     const motion = () => source.state.visualTuning.wormholeSpeed;
     const before = motion();
     source.setPresentation({ macros: { intensity: 1, motion: 0, depth: 0.1, detail: 1 } });
@@ -235,10 +236,10 @@ test('Line stroke follows the MVP Advanced slider semantics and redraws even whi
 test('Visuals and Character settings are live presentation settings that never touch the game', () => {
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS, changeScope } = createLoader()('xr/XrSettings.ts');
     const visuals = XR_SETTINGS.filter(d => d.section === 'background'), character = XR_SETTINGS.filter(d => d.section === 'character');
-    assert.equal(visuals.map(d => d.id).join(), 'wormhole,noteDesign,quality,rateHz,lineStroke,sharpness');
+    assert.equal(visuals.map(d => d.id).join(), 'wormhole,noteDesign,quality,rateHz,distanceMeters,lineStroke,sharpness');
     assert.equal(character.map(d => d.id).join(), 'intensity,motion,depth,detail');
-    assert.equal(visuals.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), 'on,shard,ultra,36,34,100');
-    assert.equal(character.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '100,100,10,100', 'the XR host authored Visual character');
+    assert.equal(visuals.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), 'on,shard,ultra,36,200,20,100');
+    assert.equal(character.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '100,100,30,100', 'the XR host authored Visual character');
     for (const descriptor of [...visuals, ...character]) {
         assert.equal(descriptor.scope, 'presentation', descriptor.id);
         const next = descriptor.kind === 'choice' ? descriptor.write(DEFAULT_XR_SETTINGS, descriptor.choices.at(-1).value === descriptor.read(DEFAULT_XR_SETTINGS)
@@ -249,7 +250,7 @@ test('Visuals and Character settings are live presentation settings that never t
     }
     const detail = character.find(d => d.id === 'detail').write(DEFAULT_XR_SETTINGS, 25);
     assert.equal(detail.background.character.detail, 0.25);
-    assert.equal(detail.background.character.depth, 0.1, 'the other macros stay');
+    assert.equal(detail.background.character.depth, 0.3, 'the other macros stay');
 });
 
 test('the Material tab holds the MVP Advanced Grain material sliders as live presentation settings', () => {
@@ -262,7 +263,7 @@ test('the Material tab holds the MVP Advanced Grain material sliders as live pre
         'the MVP panel labels, in its order');
     const mvpGroup = ADVANCED_BOOST_GROUPS.find(g => g.title === 'Grain material');
     assert.equal(Object.values(XR_GRAIN_MATERIAL_KEYS).join(), mvpGroup.keys.join(), 'exactly the MVP Grain material group');
-    assert.equal(material.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '50,100,100,100,4,50,50', 'the authored XR values');
+    assert.equal(material.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '30,100,100,100,30,50,50', 'the authored XR values');
     for (const descriptor of material) {
         assert.equal(descriptor.scope, 'presentation'); assert.equal(descriptor.kind, 'range');
         assert.equal(descriptor.min, 0); assert.equal(descriptor.max, 100);
@@ -321,5 +322,84 @@ test('Ultra rasterizes at 1280 x 720 and the plane sharpens its magnified textur
     assert.ok(Math.abs(shader.uniforms.uSharpen.value - 1.5) < 1e-12, 'the compiled program sees the new gain');
     await scene.setBackgroundSettings({ quality: 'ultra', rateHz: 24, lineStroke: 1, sharpness: 0 });
     assert.equal(shader.uniforms.uSharpen.value, 0, 'off = the plain sample');
+    scene.dispose();
+});
+
+// ---------------------------------------------------------------- Background distance
+test('Background distance: 200 m by default, 40 / 100 / 200 m offered, anything else falls back', () => {
+    const { normalizeBackgroundSettings, XR_BACKGROUND_DISTANCES } = settingsModule();
+    const { XR_SETTINGS, DEFAULT_XR_SETTINGS, changeScope } = createLoader()('xr/XrSettings.ts');
+    assert.deepEqual([...XR_BACKGROUND_DISTANCES], [40, 100, 200]);
+    for (const value of [undefined, 0, 70, -100, Number.NaN, '100', null]) assert.equal(normalizeBackgroundSettings({ distanceMeters: value }).distanceMeters, 200, String(value));
+    for (const value of [40, 100]) assert.equal(normalizeBackgroundSettings({ distanceMeters: value }).distanceMeters, value);
+    const descriptor = XR_SETTINGS.find(d => d.id === 'distanceMeters');
+    assert.equal(descriptor.section, 'background'); assert.equal(descriptor.scope, 'presentation');
+    assert.equal(descriptor.choices.map(c => c.value).join(), '40,100,200');
+    const far = descriptor.write(DEFAULT_XR_SETTINGS, '40');
+    assert.equal(far.background.distanceMeters, 40, 'the menu string becomes the numeric distance');
+    assert.equal(changeScope(DEFAULT_XR_SETTINGS, far), 'presentation', 'live: the chart and the session stay');
+});
+
+test('Spatial field: Particles by default, Off / Particles / Full offered live, anything else falls back', () => {
+    const { normalizeBackgroundSettings, XR_SPATIAL_FIELD_SETTINGS } = settingsModule();
+    const { XR_SETTINGS, DEFAULT_XR_SETTINGS, changeScope } = createLoader()('xr/XrSettings.ts');
+    assert.deepEqual([...XR_SPATIAL_FIELD_SETTINGS], ['off', 'particles', 'full']);
+    for (const value of [undefined, null, 'on', 1, true]) assert.equal(normalizeBackgroundSettings({ spatialField: value }).spatialField, 'particles', String(value));
+    for (const value of ['off', 'full']) assert.equal(normalizeBackgroundSettings({ spatialField: value }).spatialField, value);
+    const descriptor = XR_SETTINGS.find(d => d.id === 'spatialField');
+    assert.equal(descriptor.section, 'system', 'beside the other headset-load switches'); assert.equal(descriptor.scope, 'presentation');
+    assert.equal(descriptor.choices.map(c => c.value).join(), 'off,particles,full');
+    const off = descriptor.write(DEFAULT_XR_SETTINGS, 'off');
+    assert.equal(off.background.spatialField, 'off'); assert.equal(descriptor.read(off), 'off');
+    assert.equal(changeScope(DEFAULT_XR_SETTINGS, off), 'presentation', 'live: the chart and the session stay');
+});
+
+test('a backdrop at any distance keeps its angular size; nearer stereo planes keep their own distances', () => {
+    const load = createLoader({ three: THREE });
+    const { WormholeBackdrop } = load('xr/scene/WormholeBackdrop.ts');
+    const { SCENE_CONFIG } = load('xr/scene/SceneConfig.ts');
+    const angle = backdrop => 2 * Math.atan(SCENE_CONFIG.backdropWidthMeters * backdrop.root.scale.x / 2 / -backdrop.root.position.z);
+    const canvases = [{}, {}, {}];
+    const backdrop = new WormholeBackdrop({ canvas: canvases[0], layers: canvases, async prepare() {}, render: () => true, dispose() {} });
+    const reference = angle(backdrop);
+    const layerWorld = () => {
+        backdrop.root.updateMatrixWorld(true);
+        return backdrop.root.children.map(child => {
+            const position = new THREE.Vector3(), scale = new THREE.Vector3();
+            child.matrixWorld.decompose(position, new THREE.Quaternion(), scale);
+            return { z: Math.round(position.z * 1e6) / 1e6, scale: Math.round(scale.x * 1e9) / 1e9 };
+        });
+    };
+    const layersAt40 = layerWorld();
+    for (const distance of [100, 200, 40]) {
+        backdrop.setDistance(distance);
+        assert.equal(backdrop.distanceMeters, distance);
+        assert.ok(Math.abs(angle(backdrop) - reference) < 1e-12, `${distance} m: same angles, same raster density`);
+        assert.deepEqual(layerWorld(), layersAt40, `${distance} m: the 22 m and 12 m stereo planes do not move`);
+    }
+    backdrop.setDistance(Number.NaN); assert.equal(backdrop.distanceMeters, SCENE_CONFIG.backdropDistanceMeters);
+    backdrop.dispose();
+    // The camera sees the farthest plane's corners off axis.
+    const maxScale = 200 / SCENE_CONFIG.backdropDistanceMeters;
+    const corner = Math.hypot(200, maxScale * SCENE_CONFIG.backdropWidthMeters / 2, maxScale * SCENE_CONFIG.backdropHeightMeters / 2);
+    assert.ok(SCENE_CONFIG.cameraFarMeters > corner, `far plane ${SCENE_CONFIG.cameraFarMeters} m beyond the ${corner.toFixed(0)} m corner`);
+    assert.match(readFileSync(join(process.cwd(), 'src', 'xr', 'runtime', 'XrRuntime.ts'), 'utf8'), /SCENE_CONFIG\.cameraFarMeters/, 'the runtime camera uses it');
+});
+
+test('the scene applies the Background distance live to the plane and to the track aim', async () => {
+    const { scene, sources, snapshot } = sceneHarness();
+    assert.equal(scene.path.backdropDistanceMeters, 200, 'the default distance aims the track before any background exists');
+    await scene.setWormholeEnabled(true);
+    const backdrop = scene.wormhole;
+    assert.equal(backdrop.distanceMeters, 200, 'a new plane starts at the chosen distance');
+    const { normalizeBackgroundSettings } = settingsModule();
+    const revision = scene.path.revision;
+    await scene.setBackgroundSettings(normalizeBackgroundSettings({ distanceMeters: 40 }));
+    assert.equal(backdrop.distanceMeters, 40); assert.equal(scene.path.backdropDistanceMeters, 40);
+    assert.ok(scene.path.revision > revision, 'the track re-aims (notes and runway re-project)');
+    assert.equal(sources.length, 1, 'no rebuild: the same plane and raster');
+    scene.update([], 1, snapshot('paused'), '');
+    await scene.setBackgroundSettings(normalizeBackgroundSettings({ distanceMeters: 200, quality: 'high' }));
+    assert.equal(sources.length, 2); assert.equal(scene.wormhole.distanceMeters, 200, 'a rebuilt plane keeps the distance');
     scene.dispose();
 });

@@ -11,8 +11,9 @@
 //
 // The backdrop plane samples the composite where it sampled the canvas, so sharpening and the GPU
 // grain material apply on top of the lines exactly as they did on the CPU-stroked canvas. Rendering
-// happens inside the plane's onBeforeRender, like `GrainMaterialRenderer` (XR camera handling off;
-// render target, clear state and viewport restored).
+// happens before the eye pass (`WormholeBackdrop.prerender`), with the plane's onBeforeRender as a
+// fallback, like `GrainMaterialRenderer` (XR camera handling off; render target, clear state and
+// viewport restored).
 
 import * as THREE from 'three';
 import { GRAIN_LINE_STRIDE, type GrainLineFrame } from '../../types/GrainLineFrame';
@@ -80,6 +81,10 @@ layout(location = 0) out highp vec4 outColor;
 uniform sampler2D uCanvas;
 uniform sampler2D uLines;
 uniform float uHasLines;
+// 1: uCanvas is the worker's ImageBitmap uploaded ahead (ADR-009 Addendum AE): raw bytes (no sRGB
+// decode), premultiplied, top row first (WebGL ignores the flip and premultiply unpack flags for
+// ImageBitmaps). 0: the canvas texture (sRGB, straight alpha, bottom row first).
+uniform float uCanvasAhead;
 vec3 encodeSrgb(vec3 c) {
     return mix(c * 12.92, 1.055 * pow(max(c, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c));
 }
@@ -88,7 +93,14 @@ vec3 decodeSrgb(vec3 c) {
 }
 void main() {
     ivec2 p = ivec2(gl_FragCoord.xy);
-    vec3 encoded = encodeSrgb(texelFetch(uCanvas, p, 0).rgb);
+    vec3 encoded;
+    if (uCanvasAhead > 0.5) {
+        // Exactly what the canvas texture holds: the same bytes, un-premultiplied, rows flipped.
+        vec4 raw = texelFetch(uCanvas, ivec2(p.x, textureSize(uCanvas, 0).y - 1 - p.y), 0);
+        encoded = raw.a > 0.0 ? min(raw.rgb / raw.a, vec3(1.0)) : vec3(0.0);
+    } else {
+        encoded = encodeSrgb(texelFetch(uCanvas, p, 0).rgb);
+    }
     if (uHasLines > 0.5) {
         vec4 lines = texelFetch(uLines, p, 0);
         encoded = lines.rgb + encoded * (1.0 - lines.a);
@@ -99,11 +111,17 @@ void main() {
 export interface GrainLineRendererOptions {
     /** Trilinear mipmaps on the composite (the plane's texture; ADR-009 Addendum Z). */
     readonly mipmaps?: boolean;
+    /**
+     * Two composites (ADR-009 Addendum AE): `render` draws into the one not shown and `present` shows
+     * it, so a frame can be composited ahead, while the plane still shows the previous one.
+     */
+    readonly doubleBuffered?: boolean;
 }
 
 export class GrainLineRenderer {
-    /** The canvas with the lines laid over it: the texture the backdrop plane shows. */
-    readonly output: THREE.WebGLRenderTarget;
+    /** The composites (one, or two when double-buffered); `output` is the one shown. */
+    private readonly outputs: readonly THREE.WebGLRenderTarget[];
+    private front = 0;
     private readonly lines: THREE.WebGLRenderTarget;
     private readonly camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     private readonly lineScene = new THREE.Scene();
@@ -123,10 +141,11 @@ export class GrainLineRenderer {
         this.lines = new THREE.WebGLRenderTarget(w, h, { type: THREE.UnsignedByteType, format: THREE.RGBAFormat,
             minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: false, stencilBuffer: false, generateMipmaps: false });
         const mipmaps = options.mipmaps === true;
-        this.output = new THREE.WebGLRenderTarget(w, h, { type: THREE.UnsignedByteType, format: THREE.RGBAFormat,
+        const composite = () => new THREE.WebGLRenderTarget(w, h, { type: THREE.UnsignedByteType, format: THREE.RGBAFormat,
             colorSpace: THREE.SRGBColorSpace, magFilter: THREE.LinearFilter,
             minFilter: mipmaps ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter, generateMipmaps: mipmaps,
             depthBuffer: false, stencilBuffer: false });
+        this.outputs = options.doubleBuffered === true ? [composite(), composite()] : [composite()];
         // Line quads: corner (u along 0..1, v across -1..1) per vertex, the line per instance.
         this.lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute([0, -1, 0, 1, -1, 0, 0, 1, 0, 1, 1, 0], 3));
         this.lineGeometry.setIndex([0, 1, 2, 2, 1, 3]);
@@ -144,7 +163,7 @@ export class GrainLineRenderer {
         this.lineScene.add(lineMesh);
         this.compositeMaterial = new THREE.ShaderMaterial({
             glslVersion: THREE.GLSL3, vertexShader: PASS_VERTEX, fragmentShader: COMPOSITE_FRAGMENT,
-            uniforms: { uCanvas: { value: canvasTexture }, uLines: { value: this.lines.texture }, uHasLines: { value: 0 } },
+            uniforms: { uCanvas: { value: canvasTexture }, uLines: { value: this.lines.texture }, uHasLines: { value: 0 }, uCanvasAhead: { value: 0 } },
             depthTest: false, depthWrite: false, blending: THREE.NoBlending
         });
         // One triangle covering the whole target.
@@ -154,6 +173,14 @@ export class GrainLineRenderer {
         passMesh.frustumCulled = false;
         this.passScene.add(passMesh);
     }
+
+    /** The canvas with the lines laid over it: the texture the backdrop plane shows. */
+    get output(): THREE.WebGLRenderTarget { return this.outputs[this.front]; }
+    /** Where the next `render` draws: the composite not shown when double-buffered, else the one. */
+    private get drawTarget(): THREE.WebGLRenderTarget { return this.outputs[(this.front + 1) % this.outputs.length]; }
+
+    /** Shows the composite the last `render` drew (double-buffered; a no-op with one composite). */
+    present(): void { this.front = (this.front + 1) % this.outputs.length; }
 
     /** Lines of the current frame. */
     get lineCount(): number { return this.count; }
@@ -181,9 +208,22 @@ export class GrainLineRenderer {
         this.dirty = true;
     }
 
-    /** Draws the pending frame (once per frame); called from the backdrop plane's onBeforeRender. */
-    render(renderer: THREE.WebGLRenderer, camera?: THREE.Camera): void {
-        if (!this.dirty) return;
+    /**
+     * The image the next composite lays under the lines: the canvas texture, or (`ahead`) the
+     * worker's ImageBitmap uploaded ahead into a raw texture (ADR-009 Addendum AE).
+     */
+    setCanvas(texture: THREE.Texture, ahead: boolean): void {
+        this.compositeMaterial.uniforms.uCanvas.value = texture;
+        this.compositeMaterial.uniforms.uCanvasAhead.value = ahead ? 1 : 0;
+    }
+
+    /**
+     * Draws the pending frame (once per frame) into `drawTarget`; true when it drew (then `present`
+     * shows it). Called by the backdrop when a frame arrives, before the eye pass, or from the plane's
+     * onBeforeRender.
+     */
+    render(renderer: THREE.WebGLRenderer, camera?: THREE.Camera): boolean {
+        if (!this.dirty) return false;
         this.dirty = false;
         this.passes++;
         const previousTarget = renderer.getRenderTarget();
@@ -201,7 +241,7 @@ export class GrainLineRenderer {
                 renderer.render(this.lineScene, this.camera);
             }
             this.compositeMaterial.uniforms.uHasLines.value = this.count > 0 ? 1 : 0;
-            renderer.setRenderTarget(this.output);
+            renderer.setRenderTarget(this.drawTarget);
             renderer.render(this.passScene, this.camera);
         } finally {
             renderer.setClearColor(this.clearColor, previousClearAlpha);
@@ -211,11 +251,12 @@ export class GrainLineRenderer {
             const viewport = (camera as THREE.Camera & { viewport?: THREE.Vector4 } | undefined)?.viewport;
             if (viewport) renderer.state.viewport(viewport);
         }
+        return true;
     }
 
     dispose(): void {
         this.lines.dispose();
-        this.output.dispose();
+        for (const output of this.outputs) output.dispose();
         this.lineGeometry.dispose();
         this.passGeometry.dispose();
         this.lineMaterial.dispose();

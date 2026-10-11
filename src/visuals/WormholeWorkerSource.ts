@@ -1,7 +1,8 @@
 // Main-thread proxy for the off-thread Wormhole renderer (ADR-009 Addendum G). Implements the
 // synchronous `CanvasVisualSource` contract over the typed worker protocol: the host keeps calling
 // `render(time, playing)` on its own cadence; each call presents the newest finished frame (zero-copy
-// `ImageBitmap` transfer into a `bitmaprenderer` canvas) and asks the worker for the next one.
+// `ImageBitmap` transfer into a `bitmaprenderer` canvas) and asks the worker for the next one. A
+// received frame waits as `stagedImage` until then, so the host can upload it ahead (Addendum AE).
 //
 // Backpressure: at most one render request is in flight; a slow frame is never queued behind
 // another. Generations: every `prepare` starts a new generation, and frames/answers from an older
@@ -23,6 +24,7 @@ import { isContinuousPlaybackStep, type CanvasVisualPresentation, type CanvasVis
     type VisualFocalPoint } from '../types/CanvasVisualSource';
 import type { GrainMaterialFrame } from '../types/GrainMaterialFrame';
 import type { GrainLineFrame } from '../types/GrainLineFrame';
+import type { MutableWormholeSpatialFrame, WormholeSpatialFrame } from '../types/WormholeSpatialFrame';
 import { WORMHOLE_WORKER_PROTOCOL_VERSION, type WormholeWorkerRequest, type WormholeWorkerResponse } from '../types/WormholeWorkerProtocol';
 import WormholeRenderWorker from './wormholeRender.worker.ts?worker';
 
@@ -46,6 +48,10 @@ export interface WormholeWorkerSourceOptions {
     readonly externalMaterial?: boolean;
     /** With `externalMaterial`: grain trail strokes as a line list (`lineFrame`; ADR-009 Addendum AA). */
     readonly externalLines?: boolean;
+    /** The worker rasterizes in software (CPU), off the browser's GPU thread (ADR-009 Addendum AE). */
+    readonly softwareRaster?: boolean;
+    /** The worker rasterizes with WebGL2, Canvas2D where unavailable (ADR-009 Addendum AF). */
+    readonly webglRaster?: boolean;
     readonly createWorker?: () => WormholeWorkerPort;
 }
 
@@ -58,13 +64,21 @@ const LEAD_SMOOTHING = 0.3;
 const latencyClock: { now(): number } | null = typeof performance !== 'undefined' ? performance : null;
 
 /**
- * True when this browser can run the off-thread path: module workers, OffscreenCanvas with
- * `transferToImageBitmap`, and a `bitmaprenderer` context (probed on a throwaway canvas).
+ * Why this browser cannot run the off-thread path, or '' when it can: it needs module workers,
+ * OffscreenCanvas with `transferToImageBitmap`, and a `bitmaprenderer` context (probed on a
+ * throwaway canvas). The reason is shown in the diagnostics line, so a headset run says which.
  */
+export function wormholeWorkerUnsupportedReason(doc: Document | undefined = typeof document === 'undefined' ? undefined : document): string {
+    if (typeof Worker === 'undefined') return 'no Worker';
+    if (typeof OffscreenCanvas === 'undefined') return 'no OffscreenCanvas';
+    if (!doc) return 'no document';
+    if (typeof OffscreenCanvas.prototype.transferToImageBitmap !== 'function') return 'no transferToImageBitmap';
+    try { return doc.createElement('canvas').getContext('bitmaprenderer') ? '' : 'no bitmaprenderer'; } catch { return 'no bitmaprenderer'; }
+}
+
+/** True when this browser can run the off-thread path (`wormholeWorkerUnsupportedReason` is empty). */
 export function wormholeWorkerSupported(doc: Document | undefined = typeof document === 'undefined' ? undefined : document): boolean {
-    if (typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined' || !doc) return false;
-    if (typeof OffscreenCanvas.prototype.transferToImageBitmap !== 'function') return false;
-    try { return !!doc.createElement('canvas').getContext('bitmaprenderer'); } catch { return false; }
+    return wormholeWorkerUnsupportedReason(doc) === '';
 }
 
 /** True when two snapshots differ at most in their performance plan (same published analysis). */
@@ -93,7 +107,16 @@ export class WormholeWorkerSource implements CanvasVisualSource {
     /** The analysis last posted in full (`prepare`); the worker keeps its copy of it. */
     private sentAnalysis: VisualAnalysisSnapshot | null = null;
     private pending: { bitmap: ImageBitmap; focalX: number; focalY: number; renderMs: number; stages: Readonly<Record<string, number>> | null;
-        material: GrainMaterialFrame | null; lines: GrainLineFrame | null; requestedSongTime: number; requestedPlaying: boolean } | null = null;
+        material: GrainMaterialFrame | null; lines: GrainLineFrame | null; spatial: WormholeSpatialFrame | null;
+        requestedSongTime: number; requestedPlaying: boolean; serial: number } | null = null;
+    /** Received frames, numbered (the pending frame's serial lets a host upload it ahead; Addendum AE). */
+    private receivedSerial = 0;
+    /** What the worker reported rasterizing with on its last preparation (null until then). */
+    private rasterKindValue: 'webgl' | 'canvas2d' | null = null;
+    private shownSerialValue = 0;
+    /** Spatial state of the frame shown, copied into one record when that frame is presented (never a pending frame's). */
+    private readonly spatial = {} as MutableWormholeSpatialFrame;
+    private spatialShown = false;
     private stages: Readonly<Record<string, number>> | null = null;
     private material: GrainMaterialFrame | null = null;
     /** Trail lines of the frame shown; they share the material's pooled buffer (released with it). */
@@ -128,7 +151,8 @@ export class WormholeWorkerSource implements CanvasVisualSource {
         this.worker.onerror = event => this.fail(event.message || 'Wormhole worker error.');
         this.worker.postMessage({ type: 'init', protocol: WORMHOLE_WORKER_PROTOCOL_VERSION, width, height, depthCue: options.depthCue ?? 0,
             ...(options.profile ? { profile: true } : {}), ...(options.externalMaterial ? { externalMaterial: true } : {}),
-            ...(options.externalMaterial && options.externalLines ? { externalLines: true } : {}) });
+            ...(options.externalMaterial && options.externalLines ? { externalLines: true } : {}),
+            ...(options.softwareRaster ? { softwareRaster: true } : {}), ...(options.webglRaster ? { webglRaster: true } : {}) });
         if (this.diagnostics) {
             this.canvas.hidden = true;
             this.canvas.dataset.xrWormhole = 'worker';
@@ -150,6 +174,22 @@ export class WormholeWorkerSource implements CanvasVisualSource {
 
     /** The grain trail lines of the frame currently shown (external lines only; same lifetime as `materialFrame`). */
     get lineFrame(): GrainLineFrame | null { return this.lines; }
+
+    /** Spatial state of the frame currently shown (it travels with the frame from the worker), or null. */
+    get spatialFrame(): WormholeSpatialFrame | null { return this.spatialShown ? this.spatial : null; }
+
+    /**
+     * The received frame the next `render` presents, for a host's upload ahead (Addendum AE): its
+     * bitmap (valid until presented or discarded), its serial (0: none), and the shown frame's serial.
+     */
+    get stagedImage(): ImageBitmap | null { return this.pending?.bitmap ?? null; }
+    get stagedSerial(): number { return this.pending?.serial ?? 0; }
+    /** The staged frame's carriers and lines (its pooled buffer stays the proxy's until it is shown or discarded). */
+    get stagedMaterialFrame(): GrainMaterialFrame | null { return this.pending?.material ?? null; }
+    get stagedLineFrame(): GrainLineFrame | null { return this.pending?.lines ?? null; }
+    get shownSerial(): number { return this.shownSerialValue; }
+    /** What rasterizes the worker's frames (Addendum AF), as reported when it prepared; null before. */
+    get rasterKind(): 'webgl' | 'canvas2d' | null { return this.rasterKindValue; }
 
     /** Worker-side stage times of the frame currently shown (diagnostics only, else null). */
     get stageTimes(): Readonly<Record<string, number>> | null { return this.stages; }
@@ -181,8 +221,12 @@ export class WormholeWorkerSource implements CanvasVisualSource {
         const frame = this.pending;
         if (frame) {
             this.pending = null;
+            // Zero-copy onto `canvas`; a host that uploaded this bitmap ahead (stagedImage) already has it.
             this.presenter.transferFromImageBitmap(frame.bitmap);
+            this.shownSerialValue = frame.serial;
             this.focus.x = frame.focalX; this.focus.y = frame.focalY;
+            if (frame.spatial) Object.assign(this.spatial, frame.spatial);
+            this.spatialShown = frame.spatial !== null;
             this.renderMs = frame.renderMs;
             this.stages = frame.stages;
             // The previous frame's carriers were copied when it was shown; its buffer goes back to the pool.
@@ -231,6 +275,7 @@ export class WormholeWorkerSource implements CanvasVisualSource {
         this.discardPending();
         this.material = null;
         this.lines = null;
+        this.spatialShown = false;
         this.onFrameReady = null;
         this.onError = null;
         this.worker.onmessage = null;
@@ -250,6 +295,7 @@ export class WormholeWorkerSource implements CanvasVisualSource {
             case 'prepared':
                 if (this.preparing?.generation !== message.generation) return;
                 this.preparedGeneration = message.generation;
+                if (message.raster === 'webgl' || message.raster === 'canvas2d') this.rasterKindValue = message.raster;
                 this.preparing.resolve();
                 this.preparing = null;
                 return;
@@ -271,8 +317,8 @@ export class WormholeWorkerSource implements CanvasVisualSource {
                     this.latencyMs = this.latencyMs > 0 ? this.latencyMs + (latency - this.latencyMs) * LATENCY_SMOOTHING : latency;
                 }
                 this.pending = { bitmap: message.bitmap, focalX: message.focalX, focalY: message.focalY, renderMs: message.renderMs,
-                    stages: message.stages ?? null, material: message.material ?? null, lines: message.lines ?? null,
-                    requestedSongTime: this.requestedSongTime, requestedPlaying: this.requestedPlaying };
+                    stages: message.stages ?? null, material: message.material ?? null, lines: message.lines ?? null, spatial: message.spatial ?? null,
+                    requestedSongTime: this.requestedSongTime, requestedPlaying: this.requestedPlaying, serial: ++this.receivedSerial };
                 this.onFrameReady?.();
                 return;
             case 'unchanged':

@@ -18,7 +18,7 @@ const point = (id, time, preset) => ({ id, time, sectionId: id, preset, confiden
 async function sourceHarness(clock = null) {
     const syncs = [], drawn = [];
     class FakeIdentity {
-        constructor(state) { this.state = state; this.routeFocus = { x: 0, y: 0 }; this.stageTimes = {}; }
+        constructor(state) { this.state = state; this.routeFocus = { x: 0, y: 0 }; this.frameDrive = { travel: 0, travelRate: 0, hue: 0 }; this.stageTimes = {}; }
         setStageClock() {} setMaterialSink() {} setLineSink() {} setDepthCue() {} setDepthLayers() {}
         syncPosition(time) { syncs.push(time); }
         draw() { drawn.push({ time: this.state.currentTime, bend: this.state.visualTuning.wormholePathBend }); }

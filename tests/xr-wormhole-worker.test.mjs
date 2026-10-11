@@ -25,6 +25,25 @@ function proxyHarness(options = {}, globals = {}) {
 
 const renders = worker => worker.posted.filter(m => m.type === 'render');
 
+const WORKER_STUB = { './wormholeRender.worker.ts?worker': { __esModule: true, default: class {} } };
+test('the off-thread path is used when the browser can run it; otherwise the reason names the missing piece', () => {
+    class FakeOffscreen { transferToImageBitmap() {} }
+    const doc = renderer => ({ createElement: () => ({ getContext: type => (type === 'bitmaprenderer' ? renderer : null) }) });
+    const reasonWith = (globals, document) => createLoader(WORKER_STUB, globals)('visuals/WormholeWorkerSource.ts').wormholeWorkerUnsupportedReason(document);
+    const all = { Worker: class {}, OffscreenCanvas: FakeOffscreen };
+    assert.equal(reasonWith(all, doc({})), '');
+    assert.equal(reasonWith({ OffscreenCanvas: FakeOffscreen }, doc({})), 'no Worker');
+    assert.equal(reasonWith({ Worker: class {} }, doc({})), 'no OffscreenCanvas');
+    assert.equal(reasonWith({ Worker: class {}, OffscreenCanvas: class {} }, doc({})), 'no transferToImageBitmap');
+    assert.equal(reasonWith(all, doc(null)), 'no bitmaprenderer');
+    assert.equal(reasonWith(all, undefined), 'no document');
+    const supported = createLoader(WORKER_STUB, all)('visuals/WormholeWorkerSource.ts');
+    assert.equal(supported.wormholeWorkerSupported(doc({})), true); assert.equal(supported.wormholeWorkerSupported(doc(null)), false);
+    // The composition root names the thread in the diagnostics label (worker, or the main thread and why).
+    const main = readFileSync('src/xr/main.ts', 'utf8');
+    assert.match(main, /backgroundThread = offThread \? 'worker' : `MAIN THREAD/);
+});
+
 test('profile: the proxy asks the worker to profile and exposes the stage times of the frame it shows', async () => {
     const { source, worker } = proxyHarness({ profile: true });
     assert.equal(worker.posted[0].profile, true);
@@ -297,6 +316,37 @@ test('the proxy measures request -> frame latency and calibrates its lead to whe
     source.dispose();
 });
 
+test('Background raster CPU: the proxy asks for it, the worker passes it on, and every surface gets a software 2D context (Addendum AE)', () => {
+    const cpu = proxyHarness({ softwareRaster: true });
+    assert.equal(cpu.worker.posted[0].softwareRaster, true);
+    assert.equal('softwareRaster' in proxyHarness().worker.posted[0], false, 'additive: absent means the browser\'s GPU canvas');
+    const { sources, send } = workerHarness();
+    send({ type: 'init', protocol: 1, width: 640, height: 360, depthCue: 0, softwareRaster: true });
+    assert.equal(sources[0].options.softwareRaster, true);
+    send({ type: 'init', protocol: 1, width: 640, height: 360, depthCue: 0 });
+    assert.equal(sources[1].options.softwareRaster, false);
+    // The source fixes the 2D context attributes with the first getContext call on each surface.
+    const calls = [];
+    const surface = (width, height) => {
+        const canvas = { width, height, ctx: null, getContext(kind, attributes) {
+            calls.push({ canvas, kind, attributes });
+            return canvas.ctx ??= { lineCap: '' };
+        } };
+        return canvas;
+    };
+    const source = readFileSync(join('src', 'visuals', 'WormholeCanvasSource.ts'), 'utf8');
+    assert.match(source, /getContext\('2d', \{ willReadFrequently: true \}\)/);
+    const { WormholeCanvasSource } = createLoader()('visuals/WormholeCanvasSource.ts');
+    for (const softwareRaster of [true, false]) {
+        calls.length = 0;
+        const wormhole = new WormholeCanvasSource({ width: 64, height: 36, createSurface: surface, softwareRaster });
+        const first = calls[0];
+        assert.equal(first.canvas, wormhole.canvas);
+        assert.equal(JSON.stringify(first.attributes), softwareRaster ? '{"willReadFrequently":true}' : undefined, `software raster ${softwareRaster}`);
+        wormhole.dispose();
+    }
+});
+
 test('the Canvas2D backend draws on an injected surface (worker OffscreenCanvas) instead of the DOM', () => {
     const contexts = [];
     const surface = (width, height) => ({ width, height, getContext: () => { const ctx = { lineCap: '' }; contexts.push(ctx); return ctx; } });
@@ -339,12 +389,84 @@ test('Canvas2D strokes set one opaque style per colour and carry alpha in global
     assert.equal(ctx.globalAlpha, 0, 'a NaN alpha draws nothing instead of keeping a stale alpha');
 });
 
+// ---------------------------------------------------------------- spatial frame (XR spatial field)
+const spatialOf = (time, hue) => ({ time, travel: 12.5, travelRate: 0.3, amount: 1, density: 0.7, radius: 0.4, depth: 0.5, twist: 0.2,
+    turbulence: 0.1, streak: 0.6, wisp: 0.3, ring: 0.1, hue, pulse: 0.2, impact: 0 });
+
+test('worker adapter: a changed frame carries its own spatial state as plain data, never transferred', async () => {
+    const harness = workerHarness(true);
+    harness.send({ type: 'init', protocol: 1, width: 640, height: 360, depthCue: 0 });
+    harness.send({ type: 'prepare', generation: 1, analysis: null });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    harness.send({ type: 'render', generation: 1, time: 1, playing: true });
+    assert.equal('spatial' in harness.posted.at(-1).message, false, 'a source without spatial state sends none');
+    const live = spatialOf(2, 210);
+    harness.sources[0].spatialFrame = live;
+    harness.send({ type: 'render', generation: 1, time: 2, playing: true });
+    const { message, transfer } = harness.posted.at(-1);
+    assert.deepEqual(message.spatial, live);
+    assert.ok(transfer.length === 1 && transfer[0] === message.bitmap, 'only the bitmap is transferred; the record is cloned by postMessage');
+    assert.equal(createLoader()('types/WormholeWorkerProtocol.ts').WORMHOLE_WORKER_PROTOCOL_VERSION, 1, 'additive field: protocol version unchanged');
+});
+
+test('the proxy adopts a frame\'s spatial state only when it shows that frame, in step with the focal point', async () => {
+    const { source, worker } = proxyHarness();
+    assert.equal(source.spatialFrame, null);
+    const ready = source.prepare(null); worker.reply({ type: 'prepared', generation: 1 }); await ready;
+    source.render(1, true);
+    worker.reply({ type: 'frame', generation: 1, time: 1.03, bitmap: bitmap('a'), focalX: 0.2, focalY: 0, renderMs: 1, spatial: spatialOf(1.03, 200) });
+    assert.equal(source.spatialFrame, null, 'pending, not shown');
+    source.render(1.03, true);
+    const shown = source.spatialFrame;
+    assert.equal(shown.hue, 200); assert.equal(shown.time, 1.03); assert.equal(source.focalPoint.x, 0.2);
+    // The next frame arrives while this one is still on screen: nothing changes until it is presented.
+    worker.reply({ type: 'frame', generation: 1, time: 1.06, bitmap: bitmap('b'), focalX: 0.4, focalY: 0, renderMs: 1, spatial: spatialOf(1.06, 330) });
+    assert.equal(source.spatialFrame.hue, 200); assert.equal(source.focalPoint.x, 0.2);
+    source.render(1.06, true);
+    assert.equal(source.spatialFrame, shown, 'one record, copied into on presentation');
+    assert.equal(shown.hue, 330); assert.equal(source.focalPoint.x, 0.4);
+    // A stale generation's state never reaches the screen.
+    const next = source.prepare(null);
+    worker.reply({ type: 'frame', generation: 1, time: 9, bitmap: bitmap('stale'), focalX: 0, focalY: 0, renderMs: 1, spatial: spatialOf(9, 10) });
+    worker.reply({ type: 'prepared', generation: 2 }); await next;
+    source.render(2, true);
+    assert.equal(source.spatialFrame.hue, 330, 'the frame still on screen keeps describing it');
+    // A shown frame without spatial state clears it (the image no longer has one).
+    worker.reply({ type: 'frame', generation: 2, time: 2.03, bitmap: bitmap('c'), focalX: 0, focalY: 0, renderMs: 1 });
+    source.render(2.03, true);
+    assert.equal(source.spatialFrame, null);
+    worker.reply({ type: 'frame', generation: 2, time: 2.06, bitmap: bitmap('d'), focalX: 0, focalY: 0, renderMs: 1, spatial: spatialOf(2.06, 90) });
+    source.render(2.06, true);
+    assert.equal(source.spatialFrame.hue, 90);
+    source.dispose();
+    assert.equal(source.spatialFrame, null, 'disposed');
+});
+
+test('spatial state rides along material frames without changing carrier buffer lifetime', async () => {
+    const { source, worker } = proxyHarness({ externalMaterial: true });
+    const ready = source.prepare(null); worker.reply({ type: 'prepared', generation: 1 }); await ready;
+    const material = n => ({ cols: 320, rows: 180, amount: 0.5, bloom: 1, detail: 1, count: 1, data: new Float32Array(new ArrayBuffer(96 + n * 4), 0, 24) });
+    const first = material(1), second = material(2);
+    source.render(1, true);
+    worker.reply({ type: 'frame', generation: 1, time: 1, bitmap: bitmap('a'), focalX: 0, focalY: 0, renderMs: 1, material: first, spatial: spatialOf(1, 200) });
+    source.render(1.03, true);
+    assert.equal(source.materialFrame, first); assert.equal(source.spatialFrame.hue, 200);
+    worker.reply({ type: 'frame', generation: 1, time: 1.03, bitmap: bitmap('b'), focalX: 0, focalY: 0, renderMs: 1, material: second, spatial: spatialOf(1.03, 250) });
+    const releasesBefore = worker.posted.filter(m => m.type === 'release-material').length;
+    source.render(1.06, true);
+    const releases = worker.posted.filter(m => m.type === 'release-material');
+    assert.equal(releases.length, releasesBefore + 1);
+    assert.equal(releases.at(-1).buffer, first.data.buffer, 'the replaced frame\'s buffer goes back once');
+    assert.equal(source.materialFrame, second); assert.equal(source.spatialFrame.hue, 250);
+    source.dispose();
+});
+
 test('off-thread adapter and proxy stay inside their bounded imports', () => {
     for (const file of ['WormholeWorkerSource.ts', 'wormholeRender.worker.ts']) {
         const source = readFileSync(join(process.cwd(), 'src', 'visuals', file), 'utf8');
         const imports = [...source.matchAll(/from ['"]([^'"]+)['"]/g)].map(match => match[1]);
         for (const specifier of imports) {
-            assert.match(specifier, /^\.\.\/types\/(CanvasVisualSource|WormholeWorkerProtocol|GrainMaterialFrame|GrainLineFrame)$|^\.\/(WormholeCanvasSource|wormholeRender\.worker\.ts\?worker)$/,
+            assert.match(specifier, /^\.\.\/types\/(CanvasVisualSource|WormholeWorkerProtocol|GrainMaterialFrame|GrainLineFrame|WormholeSpatialFrame)$|^\.\/(WormholeCanvasSource|wormholeRender\.worker\.ts\?worker)$/,
                 `${file} must not import ${specifier}`);
         }
         assert.doesNotMatch(source, /window\.location|\/state\/store/);

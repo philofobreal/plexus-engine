@@ -9,7 +9,7 @@ import { AudioEngine } from '../audio/AudioEngine';
 import { XrAppController } from './XrAppController';
 import { XrRuntime } from './runtime/XrRuntime';
 import { WormholeCanvasSource } from '../visuals/WormholeCanvasSource';
-import { WormholeWorkerSource, wormholeWorkerSupported } from '../visuals/WormholeWorkerSource';
+import { WormholeWorkerSource, wormholeWorkerUnsupportedReason } from '../visuals/WormholeWorkerSource';
 import { createXrSettingsStore } from './XrSettingsStore';
 
 const container = document.querySelector<HTMLDivElement>('#xr-app');
@@ -25,12 +25,17 @@ try { storage = window.localStorage; } catch { storage = null; }
 // One background plane with monocular depth cues; the scene picks the raster size (player quality).
 // It rasterizes in a worker when the browser can (ADR-009 Addendum G); `?xrBackgroundThread=main`
 // forces the in-thread source for A/B frame-time comparison.
-const offThread = !window.location.search.includes('xrBackgroundThread=main') && wormholeWorkerSupported();
+const forcedMainThread = window.location.search.includes('xrBackgroundThread=main');
+const workerUnsupported = forcedMainThread ? '' : wormholeWorkerUnsupportedReason();
+const offThread = !forcedMainThread && workerUnsupported === '';
+// Where the background is drawn, and why when it is not the worker (shown in the diagnostics line).
+const backgroundThread = offThread ? 'worker' : `MAIN THREAD (${forcedMainThread ? '?xrBackgroundThread=main' : workerUnsupported})`;
 // Settings > System picks the grain material renderer (GPU when supported) and diagnostics (ADR-009
-// Addendum X) and where grain trail lines are drawn (Addendum AA); the controller asks the factory for
-// carriers, lines and stage profiling accordingly.
+// Addendum X), where grain trail lines are drawn (Addendum AA) and how the background is rasterized
+// (Addendum AE); the controller asks the factory for carriers, lines, raster and stage profiling accordingly.
 new XrAppController(engine, runtime, container, options => {
     const size = { diagnostics, profile: options?.profile === true, depthCue: 0.7, width: options?.width, height: options?.height,
-        externalMaterial: options?.externalMaterial === true, externalLines: options?.externalLines === true };
+        externalMaterial: options?.externalMaterial === true, externalLines: options?.externalLines === true,
+        softwareRaster: options?.softwareRaster === true, webglRaster: options?.webglRaster === true };
     return offThread ? new WormholeWorkerSource(size) : new WormholeCanvasSource(size);
-}, { diagnostics, settingsStore: createXrSettingsStore(storage) });
+}, { diagnostics, settingsStore: createXrSettingsStore(storage), backgroundThread });

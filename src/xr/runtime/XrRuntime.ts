@@ -3,6 +3,8 @@
 // competing manual `requestAnimationFrame`. Delta is only controller-velocity timing.
 
 import * as THREE from 'three';
+import { SCENE_CONFIG } from '../scene/SceneConfig';
+import { GpuFrameTimer } from './GpuFrameTimer';
 
 export type XrFrameUpdateCallback = (frame: XRFrame | null, deltaSec: number) => void;
 
@@ -26,6 +28,15 @@ export class XrRuntime {
     private enteringXr = false;
     private renderedFrames = 0;
     private readonly diagnostics: boolean;
+    /** Measure each frame's main-thread cost (on while the player's Diagnostics are on). */
+    measureFrameCost = false;
+    private lastUpdateMsValue = 0;
+    private lastRenderMsValue = 0;
+    /** GPU timer of the render call (created on the first measured frame; null when the browser has none). */
+    private gpuTimer: GpuFrameTimer | null = null;
+    private gpuTimerProbed = false;
+    /** GPU times (ms) of earlier frames whose results arrived this frame (reused array). */
+    private readonly gpuSamplesValue: number[] = [];
     private readonly animate = (time: number, frame?: XRFrame) => this.handleFrame(time, frame ?? null);
     private readonly visibilityChanged = () => { this.lastFrameTimeMs = null; this.invalidate(); };
     private readonly handleResizeBound = () => this.handleResize();
@@ -59,7 +70,7 @@ export class XrRuntime {
             70,
             Math.max(1, container.clientWidth) / Math.max(1, container.clientHeight),
             0.05,
-            50
+            SCENE_CONFIG.cameraFarMeters
         );
         this.camera.position.set(0, 1.65, 2.6);
 
@@ -86,10 +97,17 @@ export class XrRuntime {
         const deltaSec = this.lastFrameTimeMs === null ? 0 : (timeMs - this.lastFrameTimeMs) / 1000;
         this.lastFrameTimeMs = timeMs;
         this.dirty = false;
-        const updateStarted = this.diagnostics ? performance.now() : 0;
+        const measure = this.diagnostics || this.measureFrameCost;
+        const updateStarted = measure ? performance.now() : 0;
         this.updateCallback?.(frame, deltaSec);
-        const updateMs = this.diagnostics ? performance.now() - updateStarted : 0;
+        const updateMs = measure ? performance.now() - updateStarted : 0;
+        const renderStarted = measure ? performance.now() : 0;
+        const timer = measure ? this.frameTimer() : null;
+        if (timer) timer.poll(this.gpuSamplesValue); else this.gpuSamplesValue.length = 0;
+        timer?.begin();
         this.renderer.render(this.scene, this.camera);
+        timer?.end();
+        if (measure) { this.lastUpdateMsValue = updateMs; this.lastRenderMsValue = performance.now() - renderStarted; }
         if (this.diagnostics) {
             const canvas = this.renderer.domElement;
             canvas.dataset.xrFrames = String(++this.renderedFrames);
@@ -98,6 +116,19 @@ export class XrRuntime {
             canvas.dataset.xrUpdateMs = updateMs.toFixed(2);
         }
         this.syncLoop();
+    }
+
+    /** Main-thread cost of the last measured frame (`measureFrameCost` or `?xrDiagnostics=1`), in ms. */
+    get lastUpdateMs(): number { return this.lastUpdateMsValue; }
+    get lastRenderMs(): number { return this.lastRenderMsValue; }
+    /** GPU times (ms) of earlier render calls that became available this frame (empty without a timer). */
+    get gpuSamples(): readonly number[] { return this.gpuSamplesValue; }
+    /** Whether GPU frame times can be measured here (known after the first measured frame). */
+    get gpuTimerAvailable(): boolean { return this.gpuTimer !== null; }
+
+    private frameTimer(): GpuFrameTimer | null {
+        if (!this.gpuTimerProbed) { this.gpuTimerProbed = true; this.gpuTimer = GpuFrameTimer.create(this.renderer.getContext()); }
+        return this.gpuTimer;
     }
 
     /** The facade supplies transport state; rendering never decides audio lifecycle. */
@@ -172,6 +203,7 @@ export class XrRuntime {
         window.removeEventListener('resize', this.handleResizeBound);
         document.removeEventListener('visibilitychange', this.visibilityChanged);
         this.endActiveSession();
+        this.gpuTimer?.dispose(); this.gpuTimer = null;
         this.renderer.dispose();
         if (this.renderer.domElement.parentElement === this.container) {
             this.container.removeChild(this.renderer.domElement);

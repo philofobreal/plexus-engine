@@ -7,6 +7,8 @@ import { XrRunway } from './XrRunway';
 import { XrTrackPath } from './XrTrackPath';
 import { XrSectionCallout, type SectionCue } from './XrSectionCallout';
 import { WormholeBackdrop } from './WormholeBackdrop';
+import { XrWormholeSpatialField } from './XrWormholeSpatialField';
+import { XrFrameSignal } from './XrFrameSignal';
 import { XrSongMap } from './XrSongMap';
 import { XrProgressRing } from './XrProgressRing';
 import { XrSectionGates } from './XrSectionGates';
@@ -44,9 +46,17 @@ export class RhythmGameScene {
     readonly sectionGates: XrSectionGates;
     /** Halves and sparks of struck targets (Addendum Q). */
     readonly sliceEffect: XrSliceEffect;
+    /** The Wormhole continued into the room around the route (decorative; shown only with the background). */
+    readonly spatialField = new XrWormholeSpatialField();
     private config: RhythmGameConfig;
     private readonly lights = new THREE.Group();
     private wormhole: WormholeBackdrop | null = null;
+    /**
+     * The displayed frame's focal point, continued to the song time drawn: the background redraws at
+     * 24-36 Hz, and a raw focus would bend the runway (and everything on it) in visible steps.
+     */
+    private readonly focusX = new XrFrameSignal();
+    private readonly focusY = new XrFrameSignal();
     private wormholeAnalysis: VisualAnalysisSnapshot | null = null;
     private wormholeDirty = true;
     private readonly wormholeFactory?: CanvasVisualSourceFactory;
@@ -60,6 +70,10 @@ export class RhythmGameScene {
     private gpuMaterial = false;
     /** GPU grain trail lines (Addendum AA); only with the GPU material. */
     private gpuLines = false;
+    /** Software (CPU) background raster, off the browser's GPU thread (Addendum AE). */
+    private softwareRaster = false;
+    /** WebGL2 background raster in batched draw calls (Addendum AF). */
+    private webglRaster = false;
     /** Background cadence fitted to the worker's latency (Addendum Z); off = the requested divider. */
     private adaptivePacing = false;
     private profile = false;
@@ -98,9 +112,13 @@ export class RhythmGameScene {
         this.sliceEffect = new XrSliceEffect(config.noteSizeMeters);
         this.playfield.add(this.sliceEffect.halves, this.sliceEffect.sparks);
         this.root.add(this.playfield);
+        // Stage-root space like the floor: never under the playfield, never part of hit testing.
+        this.root.add(this.spatialField.root);
         this.lights.add(new THREE.HemisphereLight(0xc4dfff, 0x182439, 2.2));
         const key = new THREE.DirectionalLight(0xffffff, 2); key.position.set(1, 3, 1); this.lights.add(key);
         scene.add(this.root, this.lights);
+        this.path.setBackdropDistance(this.background.distanceMeters);
+        this.spatialField.setMode(this.background.spatialField);
         this.placeForViewer(0, SCENE_CONFIG.defaultEyeHeightMeters, 0, 0);
     }
     /** Called once for each immersive entry/reference-space reset, never continuously recentered. */
@@ -111,6 +129,7 @@ export class RhythmGameScene {
         this.root.rotation.y = yaw;
         const middleHeight = Math.max(0.7, eyeHeight - SCENE_CONFIG.hitHeightBelowEyesMeters);
         this.playfield.position.set(0, middleHeight, -this.layout.playfieldForwardMeters);
+        this.spatialField.setCenterHeight(middleHeight);
         if (this.layout.hudPlacement === 'side') {
             // The overhead row and the taller frame own the space above the runway.
             const pose = SIDE_HUD_POSE;
@@ -131,7 +150,16 @@ export class RhythmGameScene {
         // The Wormhole renders first so the track follows the focal point of the displayed image.
         if (this.wormhole?.root.visible) this.wormhole.update(songTime, snapshot.state === 'playing');
         const focus = this.wormhole?.focalPoint;
-        this.path.setFocus(focus ? focus.x : 0, focus ? focus.y : 0);
+        // The spatial state of the same displayed frame as the focus (null hides the field); its
+        // time stamps the focus, so the path follows it smoothly between background frames.
+        const spatial = this.wormhole?.spatialFrame ?? null;
+        if (focus && spatial) {
+            this.path.setFocus(this.focusX.sample(songTime, spatial.time, focus.x), this.focusY.sample(songTime, spatial.time, focus.y));
+        } else {
+            this.focusX.reset(); this.focusY.reset();
+            this.path.setFocus(focus ? focus.x : 0, focus ? focus.y : 0);
+        }
+        this.spatialField.update(songTime, spatial, this.path);
         this.runway.update(songTime);
         this.runway.applyPath(this.path);
         this.sectionCallout.update(songTime);
@@ -146,6 +174,13 @@ export class RhythmGameScene {
             this.lastNoteScore = snapshot.score; this.lastNoteMisses = snapshot.missCount; this.lastNoteTotal = snapshot.totalNotes;
         }
         this.hud.update(snapshot, instruction);
+    }
+    /**
+     * Off-screen GPU work of a new background frame (upload, line composite, material layers), after
+     * `update` and before the scene render, so none of it switches render targets inside the eye pass.
+     */
+    prerender(renderer: THREE.WebGLRenderer): void {
+        if (this.wormhole?.root.visible) this.wormhole.prerender(renderer);
     }
     /** Structure + score overview for the song map and the floor ring (null clears both). */
     setScoreOverview(overview: ScoreOverview | null): void {
@@ -171,13 +206,15 @@ export class RhythmGameScene {
             const gpuMaterial = this.gpuMaterial;
             this.wormhole = new WormholeBackdrop(this.wormholeFactory({ ...XR_BACKGROUND_RESOLUTION[this.background.quality],
                 ...(gpuMaterial ? { externalMaterial: true } : {}), ...(gpuMaterial && this.gpuLines ? { externalLines: true } : {}),
-                ...(this.profile ? { profile: true } : {}) }),
+                ...(this.profile ? { profile: true } : {}), ...(this.softwareRaster ? { softwareRaster: true } : {}),
+                ...(this.webglRaster ? { webglRaster: true } : {}) }),
                 { gpuMaterial, gpuLines: gpuMaterial && this.gpuLines, mipmaps: XR_BACKGROUND_MIPMAPPED.has(this.background.quality) });
             this.wormhole.setAdaptivePacing(this.adaptivePacing);
             this.root.add(this.wormhole.root);
             this.wormhole.onFrameReady = () => this.onBackgroundFrame?.();
             this.wormhole.onError = message => this.onBackgroundError?.(message);
             this.configureWormhole();
+            this.wormhole.setDistance(this.background.distanceMeters);
             this.wormhole.setEyeHeight(this.eyeHeight); this.root.updateMatrixWorld(true);
         }
         if (this.wormhole) this.wormhole.root.visible = enabled;
@@ -236,27 +273,45 @@ export class RhythmGameScene {
 
     /** Wall-clock cost of the background's last canvas redraw (diagnostics). */
     get backgroundRenderMs(): number { return this.wormhole?.lastRenderMs ?? 0; }
+    /** The display cadence the background paces against (headset frame rate, or the desktop cap). */
+    get displayFrameRate(): number { return this.displayHz; }
     /** Background redraw rate as currently paced (Hz; widened from the requested rate when frames arrive late). */
     get backgroundPacedHz(): number { return this.wormhole ? this.displayHz / this.wormhole.redrawDivider : 0; }
     /** Measured request -> frame latency of an off-thread background, in ms (0 when unknown or in-thread). */
     get backgroundLatencyMs(): number { return this.wormhole?.frameLatencyMs ?? 0; }
 
     /**
-     * How the background is built: grain material on the GPU (Addendum W) and stage profiling
-     * (Addendum X). Both are fixed when a source is created, so a change rebuilds an existing
+     * How the background is built: grain material on the GPU (Addendum W), stage profiling (Addendum
+     * X), GPU lines (Addendum AA) and software raster (Addendum AE). All are fixed when a source is created, so a change rebuilds an existing
      * background plane, like a quality change; before the first background it only records them.
      */
-    async setBackgroundPipeline(pipeline: { readonly gpuMaterial: boolean; readonly profile: boolean; readonly gpuLines?: boolean }): Promise<void> {
-        const gpuLines = pipeline.gpuLines === true;
-        if (pipeline.gpuMaterial === this.gpuMaterial && pipeline.profile === this.profile && gpuLines === this.gpuLines) return;
+    async setBackgroundPipeline(pipeline: { readonly gpuMaterial: boolean; readonly profile: boolean; readonly gpuLines?: boolean;
+        readonly softwareRaster?: boolean; readonly webglRaster?: boolean }): Promise<void> {
+        const gpuLines = pipeline.gpuLines === true, softwareRaster = pipeline.softwareRaster === true, webglRaster = pipeline.webglRaster === true;
+        if (pipeline.gpuMaterial === this.gpuMaterial && pipeline.profile === this.profile && gpuLines === this.gpuLines
+            && softwareRaster === this.softwareRaster && webglRaster === this.webglRaster) return;
         this.gpuMaterial = pipeline.gpuMaterial;
         this.profile = pipeline.profile;
         this.gpuLines = gpuLines;
+        this.softwareRaster = softwareRaster;
+        this.webglRaster = webglRaster;
         await this.rebuildWormhole();
     }
     get gpuMaterialEnabled(): boolean { return this.gpuMaterial; }
     /** GPU trail lines are drawn (they need the GPU material). */
     get gpuLinesEnabled(): boolean { return this.gpuMaterial && this.gpuLines; }
+    /** The background is rasterized in software (CPU). */
+    get softwareRasterEnabled(): boolean { return this.softwareRaster; }
+    /**
+     * What rasterizes the background, for the diagnostics line: WebGL (Addendum AF), CPU or GPU
+     * (Canvas2D); a requested WebGL raster that fell back says so.
+     */
+    get backgroundRasterLabel(): string {
+        const kind = this.wormhole?.rasterKind ?? null;
+        if (kind === 'webgl') return 'WebGL';
+        const canvas = this.softwareRaster ? 'CPU' : 'GPU';
+        return this.webglRaster && kind === 'canvas2d' ? `${canvas} (no WebGL)` : this.webglRaster ? 'WebGL (starting)' : canvas;
+    }
 
     /** Background pacing (Settings > System): adaptive widens the cadence to late worker frames; live. */
     setAdaptivePacing(enabled: boolean): void {
@@ -265,17 +320,26 @@ export class RhythmGameScene {
     }
     /** Background frames put on screen so far, and their source stage times (diagnostics). */
     get backgroundFramesShown(): number { return this.wormhole?.framesShown ?? 0; }
+    /** Main-thread ms of the background's ahead work since the host last emptied this list (diagnostics). */
+    get backgroundAheadSamples(): number[] | null { return this.wormhole?.aheadSamples ?? null; }
+    /** The background frame on screen was uploaded ahead, outside the headset frame (Addendum AE). */
+    get backgroundUploadedAhead(): boolean { return this.wormhole?.uploadedAhead ?? false; }
     get backgroundStageTimes(): Readonly<Record<string, number>> | null {
         return this.wormhole?.root.visible ? this.wormhole.stageTimes : null;
     }
 
     /**
-     * Player background presentation. Line stroke and rate apply in place; a quality change
-     * rebuilds the single background plane at the new raster size (re-preparing it if shown).
+     * Player background presentation. Line stroke, rate and distance apply in place; a quality change
+     * rebuilds the single background plane at the new raster size (re-preparing it if shown). The
+     * distance also re-aims the track's far tangent at the moved plane (one path authority).
      */
     async setBackgroundSettings(settings: XrBackgroundSettings): Promise<void> {
         const rebuild = settings.quality !== this.background.quality && this.wormhole !== null;
         this.background = settings;
+        this.wormhole?.setDistance(settings.distanceMeters);
+        this.spatialField.setMode(settings.spatialField);
+        if (this.path.setBackdropDistance(settings.distanceMeters)) { this.runway.applyPath(this.path); this.lastNoteTime = Number.NaN; }
+        this.root.updateMatrixWorld(true);
         if (rebuild) await this.rebuildWormhole();
         else this.configureWormhole();
     }
@@ -312,7 +376,7 @@ export class RhythmGameScene {
     dispose(): void {
         this.wormhole?.dispose();
         this.noteField.dispose(); this.hud.dispose(); this.runway.dispose(); this.sectionCallout.dispose();
-        this.songMap.dispose(); this.progressRing.dispose(); this.sectionGates.dispose(); this.sliceEffect.dispose();
+        this.songMap.dispose(); this.progressRing.dispose(); this.sectionGates.dispose(); this.sliceEffect.dispose(); this.spatialField.dispose();
         this.playfield.remove(this.noteField.mesh, this.noteField.markers, this.noteField.arrows, this.hud.mesh);
         this.root.traverse(object => {
             if (object instanceof THREE.InstancedMesh) object.dispose();

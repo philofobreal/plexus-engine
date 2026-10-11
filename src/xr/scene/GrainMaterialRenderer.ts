@@ -6,8 +6,10 @@
 // and smooths the bloom with separable Gaussians matching the CPU filters' spread. The backdrop
 // composites the three layers additively in sRGB space, like Canvas2D 'lighter'.
 //
-// Rendering happens inside the backdrop plane's onBeforeRender (the three.js Reflector pattern:
-// XR camera handling off, render target and viewport restored) and only when a new frame arrived.
+// Rendering happens before the headset's eye pass (`WormholeBackdrop.prerender`; switching render
+// targets inside it is costly on Quest's tiled GPU), with the backdrop plane's onBeforeRender as a
+// fallback (the three.js Reflector pattern: XR camera handling off, render target and viewport
+// restored), and only when a new frame arrived.
 
 import * as THREE from 'three';
 import { GRAIN_CARRIER_STRIDE, type GrainMaterialFrame } from '../../types/GrainMaterialFrame';
@@ -286,15 +288,39 @@ export function supportsGpuGrainMaterial(renderer: { capabilities?: { isWebGL2?:
     } catch { return false; }
 }
 
+/** The layers the backdrop samples: resolved L0 and the smoothed L1 / L2 (each with its blur spare). */
+interface MaterialLayers {
+    readonly resolved: THREE.WebGLRenderTarget;
+    readonly l1: readonly THREE.WebGLRenderTarget[];
+    readonly l2: readonly THREE.WebGLRenderTarget[];
+}
+
+function materialLayers(): MaterialLayers {
+    return { resolved: halfFloatTarget(THREE.LinearFilter),
+        l1: [halfFloatTarget(THREE.LinearFilter), halfFloatTarget(THREE.LinearFilter)],
+        l2: [halfFloatTarget(THREE.LinearFilter), halfFloatTarget(THREE.LinearFilter)] };
+}
+
+export interface GrainMaterialRendererOptions {
+    /**
+     * Two layer sets (ADR-009 Addendum AE): `render` draws into the set not shown and `present`
+     * shows it, so a frame's material can be rendered ahead while the plane shows the previous one.
+     */
+    readonly doubleBuffered?: boolean;
+}
+
 export class GrainMaterialRenderer {
-    /** Premultiplied resolved L0, and the smoothed L1 / L2 bloom (unpremultiplied); sampled bilinearly. */
-    readonly layer0: THREE.Texture;
-    get layer1(): THREE.Texture { return this.l1[0].texture; }
-    get layer2(): THREE.Texture { return this.l2[0].texture; }
+    /** Premultiplied resolved L0, and the smoothed L1 / L2 bloom (unpremultiplied); sampled bilinearly (the set shown). */
+    get layer0(): THREE.Texture { return this.sets[this.front].resolved.texture; }
+    get layer1(): THREE.Texture { return this.sets[this.front].l1[0].texture; }
+    get layer2(): THREE.Texture { return this.sets[this.front].l2[0].texture; }
     private readonly accum = halfFloatTarget(THREE.NearestFilter);
-    private readonly resolved = halfFloatTarget(THREE.LinearFilter);
-    private readonly l1 = [halfFloatTarget(THREE.LinearFilter), halfFloatTarget(THREE.LinearFilter)];
-    private readonly l2 = [halfFloatTarget(THREE.LinearFilter), halfFloatTarget(THREE.LinearFilter)];
+    private readonly sets: readonly MaterialLayers[];
+    private front = 0;
+    /** A set was rendered since the last `present`; the last setFrame carried no material; the set shown has material. */
+    private drawn = false;
+    private cleared = true;
+    private shownActive = false;
     private readonly camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     private readonly carrierScene = new THREE.Scene();
     private readonly passScene = new THREE.Scene();
@@ -310,8 +336,8 @@ export class GrainMaterialRenderer {
     private dirty = false;
     private passes = 0;
 
-    constructor() {
-        this.layer0 = this.resolved.texture;
+    constructor(options: GrainMaterialRendererOptions = {}) {
+        this.sets = options.doubleBuffered === true ? [materialLayers(), materialLayers()] : [materialLayers()];
         // Carrier quads: corner (u along 0..1, v across -1..1) per vertex, constants per instance.
         this.carrierGeometry.setAttribute('position', new THREE.Float32BufferAttribute([0, -1, 0, 1, -1, 0, 0, 1, 0, 1, 1, 0], 3));
         this.carrierGeometry.setIndex([0, 1, 2, 2, 1, 3]);
@@ -340,8 +366,15 @@ export class GrainMaterialRenderer {
         this.passScene.add(this.passMesh);
     }
 
-    /** Whether the last frame carried material (the backdrop composites only then). */
-    get active(): boolean { return this.frame !== null; }
+    /** Whether the frame shown carries material (the backdrop composites only then). */
+    get active(): boolean { return this.sets.length > 1 ? this.shownActive : this.frame !== null; }
+
+    /** Shows the set the last `render` drew, or none after a frame without material (double-buffered; else a no-op). */
+    present(): void {
+        if (this.sets.length < 2) return;
+        if (this.drawn) { this.front = 1 - this.front; this.shownActive = true; this.drawn = false; }
+        else if (this.cleared) this.shownActive = false;
+    }
     /** GPU material passes run so far (diagnostics and tests). */
     get renderedFrames(): number { return this.passes; }
     /** Carriers of the current frame. */
@@ -349,7 +382,8 @@ export class GrainMaterialRenderer {
 
     /** Takes a frame's carriers (copied into the instance buffer); null = no material in that frame. */
     setFrame(frame: GrainMaterialFrame | null): void {
-        if (!frame) { this.frame = null; this.dirty = false; return; }
+        if (!frame) { this.frame = null; this.dirty = false; this.drawn = false; this.cleared = true; return; }
+        this.cleared = false;
         const count = Math.max(0, Math.min(frame.count, Math.floor(frame.data.length / GRAIN_CARRIER_STRIDE)));
         if (count * GRAIN_CARRIER_STRIDE > this.carrierBuffer.array.length) {
             this.carrierBuffer = this.createCarrierBuffer(Math.max(count, this.carrierBuffer.count * 2));
@@ -365,20 +399,25 @@ export class GrainMaterialRenderer {
     }
 
     /**
-     * Renders the pending frame's layers (once per frame). Called from the backdrop's
-     * onBeforeRender; restores the render target, XR camera handling, clear state and viewport.
+     * Renders the pending frame's layers (once per frame) into the set not shown when double-buffered
+     * (else the one set); true when it rendered (then `present` shows it). Called by the backdrop when
+     * a frame arrives, before the eye pass, or from its onBeforeRender; restores the render target, XR
+     * camera handling, clear state and viewport.
      */
-    render(renderer: THREE.WebGLRenderer, camera?: THREE.Camera): void {
+    render(renderer: THREE.WebGLRenderer, camera?: THREE.Camera): boolean {
         const frame = this.frame;
-        if (!this.dirty || !frame) return;
+        if (!this.dirty || !frame) return false;
         this.dirty = false;
         this.passes++;
+        this.drawn = true;
+        const set = this.sets[(this.front + 1) % this.sets.length];
+        const resolved = set.resolved, l1 = set.l1, l2 = set.l2;
         const l1Cols = Math.max(1, Math.round(frame.cols / 3)), l1Rows = Math.max(1, Math.round(frame.rows / 3));
         const l2Cols = Math.max(1, Math.round(frame.cols / 8)), l2Rows = Math.max(1, Math.round(frame.rows / 8));
         this.resize(this.accum, frame.cols, frame.rows);
-        this.resize(this.resolved, frame.cols, frame.rows);
-        for (const target of this.l1) this.resize(target, l1Cols, l1Rows);
-        for (const target of this.l2) this.resize(target, l2Cols, l2Rows);
+        this.resize(resolved, frame.cols, frame.rows);
+        for (const target of l1) this.resize(target, l1Cols, l1Rows);
+        for (const target of l2) this.resize(target, l2Cols, l2Rows);
 
         const previousTarget = renderer.getRenderTarget();
         const previousXr = renderer.xr.enabled;
@@ -398,17 +437,17 @@ export class GrainMaterialRenderer {
             // 2. Resolve L0 (premultiplied).
             this.resolveMaterial.uniforms.uSource.value = this.accum.texture;
             this.resolveMaterial.uniforms.uAmount.value = frame.amount;
-            this.pass(renderer, this.resolveMaterial, this.resolved);
+            this.pass(renderer, this.resolveMaterial, resolved);
             // 3. Bloom: gather L1 from L0, smooth; gather L2 from the smooth L1, smooth.
             const bloom = Math.min(1, Math.max(0, frame.bloom));
             const amount = Math.min(1, Math.max(0, frame.amount));
             if (amount > 0 && bloom > 0) {
-                this.gather(renderer, this.resolved.texture, frame.cols, frame.rows, this.l1[0], l1Cols, l1Rows, bloom * 2.6, 0.004, true);
-                this.blur(renderer, this.l1, l1Cols, l1Rows, BLOOM_SIGMA_L1);
-                this.gather(renderer, this.l1[0].texture, l1Cols, l1Rows, this.l2[0], l2Cols, l2Rows, 1.5, 0, false);
-                this.blur(renderer, this.l2, l2Cols, l2Rows, BLOOM_SIGMA_L2);
+                this.gather(renderer, resolved.texture, frame.cols, frame.rows, l1[0], l1Cols, l1Rows, bloom * 2.6, 0.004, true);
+                this.blur(renderer, l1, l1Cols, l1Rows, BLOOM_SIGMA_L1);
+                this.gather(renderer, l1[0].texture, l1Cols, l1Rows, l2[0], l2Cols, l2Rows, 1.5, 0, false);
+                this.blur(renderer, l2, l2Cols, l2Rows, BLOOM_SIGMA_L2);
             } else {
-                for (const target of [this.l1[0], this.l2[0]]) { renderer.setRenderTarget(target); renderer.clear(true, false, false); }
+                for (const target of [l1[0], l2[0]]) { renderer.setRenderTarget(target); renderer.clear(true, false, false); }
             }
         } finally {
             renderer.setClearColor(this.clearColor, previousClearAlpha);
@@ -418,10 +457,12 @@ export class GrainMaterialRenderer {
             const viewport = (camera as THREE.Camera & { viewport?: THREE.Vector4 } | undefined)?.viewport;
             if (viewport) renderer.state.viewport(viewport);
         }
+        return true;
     }
 
     dispose(): void {
-        for (const target of [this.accum, this.resolved, ...this.l1, ...this.l2]) target.dispose();
+        this.accum.dispose();
+        for (const set of this.sets) for (const target of [set.resolved, ...set.l1, ...set.l2]) target.dispose();
         this.carrierGeometry.dispose();
         this.passMesh.geometry.dispose();
         for (const material of [this.carrierMaterial, this.resolveMaterial, this.gatherMaterial, this.blurMaterial]) material.dispose();
@@ -455,7 +496,7 @@ export class GrainMaterialRenderer {
     }
 
     /** Horizontal into the spare target, vertical back: the result lands in `targets[0]`. */
-    private blur(renderer: THREE.WebGLRenderer, targets: THREE.WebGLRenderTarget[], cols: number, rows: number, sigma: number): void {
+    private blur(renderer: THREE.WebGLRenderer, targets: readonly THREE.WebGLRenderTarget[], cols: number, rows: number, sigma: number): void {
         const u = this.blurMaterial.uniforms;
         u.uSize.value.set(cols, rows);
         u.uSigma.value = sigma;

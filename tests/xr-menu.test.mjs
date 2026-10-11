@@ -8,7 +8,9 @@ import { historicalXrSettings } from './helpers/xr-historical-settings.mjs';
 const doc = fakeDocument();
 const load = createLoader({ three: THREE }, { document: doc });
 const { menuLayout, menuItemAt, activateMenuItem, switchMenuTab, moveMenuFocus, menuHomeScreen, menuResults, formatResults, DEFAULT_MENU_STATE,
-    MENU_CANVAS } = load('xr/XrMenuModel.ts');
+    MENU_CANVAS, settingsReport, diagnosticsReport } = load('xr/XrMenuModel.ts');
+const clipboardNavigator = {};
+const { copyTextToClipboard } = createLoader({}, { navigator: clipboardNavigator })('xr/XrClipboard.ts');
 const { XrMenuPanel, MENU_PANEL_WIDTH_METERS, MENU_PANEL_HEIGHT_METERS, MENU_DISTANCE_METERS } = load('xr/scene/XrMenuPanel.ts');
 const { XR_SETTINGS, XR_SETTING_SECTIONS } = load('xr/XrSettings.ts');
 /** Menu mechanics run on a fixed baseline, independent of the shipped defaults. */
@@ -99,6 +101,105 @@ test('activation: navigation stays in the menu, choices become scoped setting co
     assert.deepEqual(['idle', 'ready', 'playing', 'paused', 'finished'].map(menuHomeScreen), ['main', 'main', 'pause', 'pause', 'results']);
     const hovered = menuLayout({ ...settingsState, hover: 'opt:difficulty:ultra' }, context());
     assert.ok(hovered.texts.some(t => t.text.startsWith('Beyond Expert') && t.text.endsWith('restarts the song.')), 'the hovered hint explains the choice');
+});
+
+test('Settings has one-click Copy settings and Copy diagnostics buttons beside Back; the outcome is shown there', () => {
+    const settings = { ...DEFAULT_MENU_STATE, screen: 'settings' };
+    for (const section of XR_SETTING_SECTIONS) {
+        const layout = menuLayout({ ...settings, tab: section.id }, context({ diagnostics: 'Display 72.0 fps' }));
+        const back = layout.items.find(i => i.id === 'action:back');
+        const copy = ['action:copy-settings', 'action:copy-diagnostics'].map(id => layout.items.find(i => i.id === id));
+        for (const button of copy) {
+            assert.ok(button && button.kind === 'button', `${section.id}: ${button?.id}`);
+            inside(button, section.id); assert.equal(button.y, back.y, 'one bottom bar');
+            for (const other of layout.items) if (other !== button) assert.ok(!overlaps(button, other), `${button.id} vs ${other.id}`);
+        }
+        assert.equal(copy[1].disabled, false);
+    }
+    const layout = menuLayout(settings, context({ diagnostics: 'Display 72.0 fps' }));
+    assert.equal(JSON.stringify(activateMenuItem(settings, context(), layout, 'action:copy-settings').command), '{"type":"copy-settings"}');
+    assert.equal(JSON.stringify(activateMenuItem(settings, context(), layout, 'action:copy-diagnostics').command), '{"type":"copy-diagnostics"}');
+    assert.equal(activateMenuItem(settings, context(), layout, 'action:copy-settings').state.screen, 'settings', 'stays on Settings');
+    // Without a diagnostics line the button is disabled and says why.
+    const empty = menuLayout(settings, context());
+    const diagnostics = empty.items.find(i => i.id === 'action:copy-diagnostics');
+    assert.equal(diagnostics.disabled, true); assert.match(diagnostics.hint, /System > Diagnostics/);
+    assert.equal(activateMenuItem(settings, context(), empty, 'action:copy-diagnostics').command, null);
+    // The outcome takes the hint line's place (full width, above the bar) until the next menu action.
+    const noticed = menuLayout({ ...settings, hover: 'action:copy-settings' }, context({ notice: 'Diagnostics + settings copied.' }));
+    const notice = noticed.texts.find(t => t.text === 'Diagnostics + settings copied.');
+    assert.ok(notice && notice.role === 'accent' && notice.maxLines === 2 && notice.y + notice.size * 1.3 <= layout.items.find(i => i.id === 'action:back').y);
+    assert.ok(!noticed.texts.some(t => t.text === noticed.items.find(i => i.id === 'action:copy-settings').hint), 'instead of the hover hint');
+});
+
+test('Reset defaults sits in the bottom bar and needs a second click; it restores every authored default and restarts only when gameplay changes', () => {
+    const { resetXrSettings } = load('xr/XrMenuModel.ts');
+    const { DEFAULT_XR_SETTINGS: SHIPPED, changeScope } = load('xr/XrSettings.ts');
+    const custom = { ...SHIPPED, background: { ...SHIPPED.background, rateHz: 24 }, system: { ...SHIPPED.system, diagnostics: false, backgroundPacing: 'fixed', backgroundRaster: 'cpu' } };
+    const state = { ...DEFAULT_MENU_STATE, screen: 'settings', hover: 'action:reset' };
+    for (const section of XR_SETTING_SECTIONS) {
+        const layout = menuLayout({ ...state, tab: section.id }, context({ settings: custom, diagnostics: 'x' }));
+        const reset = layout.items.find(i => i.id === 'action:reset'), back = layout.items.find(i => i.id === 'action:back');
+        assert.ok(reset && reset.kind === 'button' && !reset.disabled); inside(reset, section.id); assert.equal(reset.y, back.y, 'one bottom bar');
+        for (const other of layout.items) if (other !== reset) assert.ok(!overlaps(reset, other), `${reset.id} vs ${other.id}`);
+    }
+    // First click arms (no command), the second resets; the label and hint say so.
+    const layout = menuLayout(state, context({ settings: custom }));
+    assert.equal(layout.items.find(i => i.id === 'action:reset').label, 'Reset defaults');
+    const armed = activateMenuItem(state, context({ settings: custom }), layout, 'action:reset');
+    assert.equal(armed.command, null); assert.equal(armed.state.confirm, 'reset');
+    const armedLayout = menuLayout(armed.state, context({ settings: custom }));
+    const confirm = armedLayout.items.find(i => i.id === 'action:reset');
+    assert.equal(confirm.label, 'Confirm reset'); assert.match(confirm.hint, /Click again/);
+    const done = activateMenuItem(armed.state, context({ settings: custom }), armedLayout, 'action:reset');
+    assert.equal(done.state.confirm, null); assert.equal(done.command.type, 'settings-changed');
+    assert.equal(JSON.stringify(done.command.settings), JSON.stringify(SHIPPED), 'every setting at its default, Diagnostics included');
+    assert.equal(done.command.settings.system.backgroundRaster, 'webgl', 'Background raster back to WebGL');
+    assert.equal(done.command.scope, changeScope(custom, done.command.settings));
+    assert.equal(done.command.scope, 'presentation', 'presentation-only differences do not restart the song');
+    // Anything else, or moving the pointer away, cancels the armed reset.
+    assert.equal(activateMenuItem(armed.state, context({ settings: custom }), armedLayout, 'tab:background').state.confirm, null);
+    const away = { ...armed.state, hover: 'action:back' };
+    assert.equal(menuLayout(away, context({ settings: custom })).items.find(i => i.id === 'action:reset').label, 'Reset defaults');
+    assert.equal(activateMenuItem(away, context({ settings: custom }), layout, 'action:back').state.confirm, null, 'another choice disarms it');
+    // At the defaults there is nothing to reset.
+    const atDefaults = menuLayout(state, context({ settings: resetXrSettings() }));
+    assert.equal(atDefaults.items.find(i => i.id === 'action:reset').disabled, true);
+    assert.equal(changeScope(SHIPPED, resetXrSettings()), null);
+});
+
+test('the settings report lists every setting as the menu shows it, plus the exact record', () => {
+    const report = settingsReport(DEFAULT_XR_SETTINGS, 'Song');
+    assert.ok(report.startsWith('Plexus XR settings - Song'));
+    for (const section of XR_SETTING_SECTIONS) assert.ok(report.includes(`[${section.title}]`), section.title);
+    for (const descriptor of XR_SETTINGS) {
+        const value = descriptor.read(DEFAULT_XR_SETTINGS);
+        const shown = descriptor.kind === 'choice' ? descriptor.choices.find(c => c.value === value).label : String(value);
+        assert.ok(report.includes(`${descriptor.label}: ${shown}`), descriptor.id);
+    }
+    const json = report.split('\n').find(line => line.startsWith('JSON: '));
+    assert.equal(json.slice(6), JSON.stringify(DEFAULT_XR_SETTINGS), 'reproducible');
+    // Copy diagnostics: the line first, then the whole settings report (one paste per measurement).
+    const diagnostics = diagnosticsReport('Display 72.0 fps | Background 24.0 fps', DEFAULT_XR_SETTINGS, 'Song');
+    assert.equal(diagnostics, `Plexus XR diagnostics\nDisplay 72.0 fps | Background 24.0 fps\n\n${report}`);
+});
+
+test('the clipboard helper reports whether the text arrived: Clipboard API first, then the copy command', async () => {
+    const written = [];
+    const withNavigator = async (clipboard, run) => {
+        if (clipboard) clipboardNavigator.clipboard = clipboard; else delete clipboardNavigator.clipboard;
+        return run();
+    };
+    assert.equal(await withNavigator({ writeText: async text => { written.push(text); } }, () => copyTextToClipboard('a', undefined)), true);
+    assert.deepEqual(written, ['a']);
+    // Blocked API, no document: false (the menu says so).
+    assert.equal(await withNavigator({ writeText: async () => { throw new Error('blocked'); } }, () => copyTextToClipboard('b', undefined)), false);
+    // Fallback: a hidden text area and the copy command, removed afterwards.
+    const removed = [], appended = [];
+    const fake = { body: { appendChild: el => appended.push(el) }, execCommand: command => command === 'copy',
+        createElement: () => ({ style: {}, setAttribute() {}, select() {}, remove() { removed.push(this); } }) };
+    assert.equal(await withNavigator(null, () => copyTextToClipboard('c', fake)), true);
+    assert.equal(appended[0].value, 'c'); assert.equal(removed.length, 1);
 });
 
 test('results count flawless sections like the song map and read the same on both menus', () => {

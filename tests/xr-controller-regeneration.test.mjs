@@ -28,6 +28,7 @@ function harness({ presenting = false, settingsStore, gpu = false, diagnostics =
     class FakeScene {
         constructor() { this.path = { revision: 0, unprojectStrike() {} }; }
         getWorldToPlayfield(m) { return m; }
+        prerender() {}
         async setWormholeEnabled(v) { sceneLog.enabled.push(v); }
         async setWormholeAnalysis(a) { sceneLog.analyses.push(a); }
         setSectionTimeline(t) { sceneLog.timelines.push(t); }
@@ -228,7 +229,7 @@ test('a first visit starts from the authored defaults: Wormhole on, Ultra choreo
     const { DEFAULT_XR_SETTINGS } = createLoader()('xr/XrSettings.ts');
     assert.equal(JSON.stringify(h.controller.settings), JSON.stringify(DEFAULT_XR_SETTINGS));
     const first = h.sceneLog.backgrounds[0];
-    assert.deepEqual([first.wormhole, first.quality, first.rateHz, first.lineStroke, first.sharpness], [true, 'ultra', 36, 0.34, 1]);
+    assert.deepEqual([first.wormhole, first.quality, first.rateHz, first.lineStroke, first.sharpness], [true, 'ultra', 36, 0.2, 1]);
     assert.equal(h.sceneLog.enabled.at(-1), true, 'the Wormhole is switched on without a menu visit');
     assert.equal(h.sceneLog.designs.at(-1), 'shard');
     assert.deepEqual(h.sceneLog.blades, [1.1]);
@@ -242,8 +243,11 @@ test('a first visit starts from the authored defaults: Wormhole on, Ultra choreo
 test('the System switches rebuild the background pipeline live, are saved and never regenerate (ADR-009 Addendum X)', async () => {
     const { DEFAULT_XR_SETTINGS } = createLoader()('xr/XrSettings.ts');
     const saved = [];
-    const h = harness({ gpu: true, settingsStore: { load: () => DEFAULT_XR_SETTINGS, save: s => saved.push(JSON.parse(JSON.stringify(s))) } });
-    assert.deepEqual({ ...h.sceneLog.pipelines[0] }, { gpuMaterial: true, profile: false, gpuLines: false }, 'GPU material, no profiling by default');
+    // A stored classic System setup (diagnostics off, canvas lines, fixed pacing); the shipped defaults differ.
+    const classic = { ...DEFAULT_XR_SETTINGS, system: { materialRenderer: 'gpu', diagnostics: false, grainLines: 'canvas', backgroundPacing: 'fixed' } };
+    const h = harness({ gpu: true, settingsStore: { load: () => classic, save: s => saved.push(JSON.parse(JSON.stringify(s))) } });
+    assert.deepEqual({ ...h.sceneLog.pipelines[0] }, { gpuMaterial: true, profile: false, gpuLines: false, softwareRaster: false, webglRaster: true },
+        'GPU material, no profiling with Diagnostics off; a record without a raster choice takes the WebGL raster');
     await h.loadTrack();
     h.engine.play(0);
     const prepares = h.prepareCalls.length, chart = h.chart(), stops = h.engine.stops.length;
@@ -253,9 +257,9 @@ test('the System switches rebuild the background pipeline live, are saved and ne
     assert.equal(h.controller.menuContext().diagnostics, undefined);
 
     h.pick('cpu', 'system'); await settle();
-    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: false, profile: false, gpuLines: false });
+    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: false, profile: false, gpuLines: false, softwareRaster: false, webglRaster: true });
     h.pick('on', 'system'); await settle();
-    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: false, profile: true, gpuLines: false });
+    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: false, profile: true, gpuLines: false, softwareRaster: false, webglRaster: true });
     frames(150);
     assert.match(overlay.dataset.xrBackgroundStages, /^Display .* fps/, 'the line after two seconds of play');
     assert.match(h.controller.menuContext().diagnostics, /CPU material/);
@@ -281,28 +285,45 @@ test('the System switches rebuild the background pipeline live, are saved and ne
         h.controller.runMenuCommand({ type: 'settings-changed', settings: next, scope: changeScope(h.controller.settings, next) });
     };
     set('grainLines', 'gpu'); await settle();
-    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: true, profile: true, gpuLines: true });
+    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: true, profile: true, gpuLines: true, softwareRaster: false, webglRaster: true });
     frames(150);
     set('materialRenderer', 'cpu'); await settle();
-    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: false, profile: true, gpuLines: false }, 'no GPU lines without the GPU material');
+    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: false, profile: true, gpuLines: false, softwareRaster: false, webglRaster: true }, 'no GPU lines without the GPU material');
     set('materialRenderer', 'gpu'); await settle();
     assert.equal(h.sceneLog.pipelines.at(-1).gpuLines, true, 'the choice is kept and applies again');
-    // Background pacing (Addendum Z) applies live, fixed by default.
-    assert.equal(h.sceneLog.pacing[0], false, 'fixed pacing at startup');
+    // Background raster (Addendum AE) rebuilds the pipeline; the other choices stay.
+    set('backgroundRaster', 'cpu'); await settle();
+    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: true, profile: true, gpuLines: true, softwareRaster: true, webglRaster: false });
+    set('backgroundRaster', 'gpu'); await settle();
+    assert.equal(h.sceneLog.pipelines.at(-1).softwareRaster, false);
+    // Background raster WebGL (Addendum AF): the batched WebGL raster, rebuilt like the others.
+    set('backgroundRaster', 'webgl'); await settle();
+    assert.deepEqual({ ...h.sceneLog.pipelines.at(-1) }, { gpuMaterial: true, profile: true, gpuLines: true, softwareRaster: false, webglRaster: true });
+    set('backgroundRaster', 'gpu'); await settle();
+    assert.equal(h.sceneLog.pipelines.at(-1).webglRaster, false);
+    // Background pacing (Addendum Z) applies live.
+    assert.equal(h.sceneLog.pacing[0], false, 'the stored fixed pacing at startup');
     set('backgroundPacing', 'adaptive'); await settle();
     assert.equal(h.sceneLog.pacing.at(-1), true);
     set('backgroundPacing', 'fixed'); await settle();
     assert.equal(h.sceneLog.pacing.at(-1), false);
     assert.equal(h.controller.session.getState(), 'playing', 'presentation: playback continues');
     assert.equal(h.prepareCalls.length, prepares); assert.equal(h.chart(), chart);
-    assert.deepEqual(saved.at(-1).system, { materialRenderer: 'gpu', diagnostics: true, grainLines: 'gpu', backgroundPacing: 'fixed' });
+    assert.deepEqual(saved.at(-1).system, { materialRenderer: 'gpu', diagnostics: true, grainLines: 'gpu', backgroundPacing: 'fixed',
+        backgroundRaster: 'gpu' });
 });
 
 test('GPU material needs a capable renderer; ?xrDiagnostics=1 forces profiling whatever the switch says', () => {
     const plain = harness({ settingsStore: 'defaults' });
-    assert.deepEqual({ ...plain.sceneLog.pipelines[0] }, { gpuMaterial: false, profile: false, gpuLines: false }, 'no half-float targets: the CPU raster');
-    const forced = harness({ settingsStore: 'defaults', diagnostics: true });
-    assert.deepEqual({ ...forced.sceneLog.pipelines[0] }, { gpuMaterial: false, profile: true, gpuLines: false });
+    assert.deepEqual({ ...plain.sceneLog.pipelines[0] }, { gpuMaterial: false, profile: true, gpuLines: false, softwareRaster: false, webglRaster: true },
+        'no half-float targets: the CPU material raster (and no GPU lines without it); Diagnostics on and WebGL background raster by default');
+    const { DEFAULT_XR_SETTINGS: defaults } = createLoader()('xr/XrSettings.ts');
+    const gpuRaster = harness({ settingsStore: { load: () => ({ ...defaults, system: { ...defaults.system, backgroundRaster: 'cpu' } }), save() {} } });
+    assert.equal(gpuRaster.sceneLog.pipelines[0].softwareRaster, true, 'Background raster CPU: software raster');
+    const { DEFAULT_XR_SETTINGS } = createLoader()('xr/XrSettings.ts');
+    const quiet = { ...DEFAULT_XR_SETTINGS, system: { ...DEFAULT_XR_SETTINGS.system, diagnostics: false } };
+    const forced = harness({ settingsStore: { load: () => quiet, save() {} }, diagnostics: true });
+    assert.deepEqual({ ...forced.sceneLog.pipelines[0] }, { gpuMaterial: false, profile: true, gpuLines: false, softwareRaster: false, webglRaster: true });
     assert.equal(forced.controller.settings.system.diagnostics, false, 'the stored switch is untouched');
 });
 
