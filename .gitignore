@@ -28,3 +28,5 @@ branch_pr_snapshot.md
 plexus-source-export.md
 
 graphify-out/
+# Local test audio (copyrighted music, never committed)
+*.mp3
