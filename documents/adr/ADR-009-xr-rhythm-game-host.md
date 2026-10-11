@@ -849,6 +849,334 @@ The desktop request sequence had no backward requests; the lead alone never make
 - the proxy flags and monotonic request times;
 - the worker forwarding the flag.
 
+## Addendum AC: the Wormhole spatial field (2026-10-11)
+
+**Context.** The Wormhole is a distant image. The player stands on a runway in real space, but
+nothing of the tunnel reaches that space, so the background reads as a screen rather than a place.
+The goal: the tunnel's energy continues into the room around the route, while the 2D Wormhole stays
+dominant at distance and gameplay stays readable and untouched.
+
+**Decision.** A decorative, opt-out spatial field (`src/xr/scene/XrWormholeSpatialField.ts`) driven
+only by the displayed background frame. It is never gameplay: it does not hit-test, does not judge,
+and does not touch the chart or the session.
+
+- **Data seam.** `CosmicWormholeIdentity.frameDrive` records what a drawn frame actually used: the
+  travel in horizons, the canonical travel rate, the coherent spiral in turns (0 without the grain
+  material it conditions), the grain hue and colour, and the depth-haze colour.
+  It is write-only and changes nothing in the identity's output. `resolveWormholeSpatialFrame`
+  (`src/visuals/wormholeSpatialFrame.ts`) turns that, plus the source's morphed `state.visualTuning`,
+  into a plain-data `WormholeSpatialFrame` (`src/types/`). The fields are presence, occupancy, radius,
+  depth, the projected tube spread, the spiral turns, turbulence, streak, wisp, colours and transients;
+  all are finite and clamped. The resolver reads tuning values, never preset names or semantic
+  metadata, and no XR module reads `State`.
+- **Worker synchronization.** The record travels with its frame: in thread through
+  `WormholeCanvasSource.spatialFrame`, off thread as the frame's structured-cloned `spatial` field
+  (additive, protocol version 1). The proxy adopts it only when it presents that frame, like the
+  focal point. `CanvasVisualSource.spatialFrame` therefore always describes the image on screen.
+  `WormholeBackdrop.spatialFrame` is null while the background is off, not ready, or hidden.
+- **The 2D grain law, in real depth.** A 2D grain is released on the tube wall at the tunnel's far
+  end and approaches at normalized depth u (1 at release, falling by exactly one per horizon of
+  travel). It appears `tubeSpread / u` canvas heights from the vanishing point, and the backdrop
+  shows a canvas height across height / distance of tangent (`BACKDROP_TAN_PER_HEIGHT`). So the
+  grains emerge on a circle of tangent `BACKDROP_TAN_PER_HEIGHT x tubeSpread` that follows the
+  Wormhole's radius and depth, and they race outward as 1 / u toward the edges. A spatial entity
+  released at distance d0 on that circle (radius tangent x d0 around the route) and placed at
+  d0 x u, with the grains' own u (`XrSpatialFlights`), appears on exactly the same circle at
+  release, flows at the image's speed and accelerates toward the edges exactly like it. It then
+  passes beside and behind the player (u < 0).
+- **Spiral.** The coherent twist is the image's own: the frame's spiral turns times forward progress
+  (1 - u), live as in the 2D image and continued between frames by `XrFrameSignal`. The image's
+  angles grow clockwise on the canvas (y down), so the field mirrors them for its y-up space: both
+  turn the same way on screen. Each particle adds its own flow current (signed by its seed), fixed
+  per flight.
+- **Particles (one draw).** 80 fixed seeds in one `THREE.Points`. A release samples the circle, the
+  release distance and occupancy once, into a dynamic `aRelease` attribute (distance, radius, flow,
+  shown; written only when a particle restarts). The particles' u (80 floats) is uploaded per frame
+  from double-precision travel. A particle in flight never sways with the music; brightness, colour
+  and streaks follow the displayed frame live.
+  - Release distances lie between 0.25 x and 0.8 x the backdrop distance (at least 12 m), in front of
+    the plane. The radius stays between the 2.4 m clearance (outside the start frame, the note
+    corridor and the rails) and 16 m. Where it can, the release keeps the along-route speed
+    (distance x travel rate) under 30 m/s. A tunnel too narrow for the clearance at any distance in
+    range releases nothing.
+  - Streaks are the particle's own recent path, as long as the 2D grain trails (streak x 2/24 s of
+    travel), bounded at 0.9 m and 40 px. Points are capped at 22 px.
+- **Wisps (at most one more draw).** Eight instanced, camera-facing soft quads: the Nebula's soft
+  volume, carried by the same law. They are released on the same circle, 4.4-12 m from the route, and
+  turn with the same spiral plus a slow drift of their own. They dissolve between 18 and 8 m ahead of
+  the player and fade below the runway floor's level. Peak opacity is 0.12, toward the Wormhole's haze.
+  They are shown by the soft-volume (Nebula / weave) tendency, and each quad hugs its ellipse, so no
+  fill is wasted. With no tendency, every quad collapses to a point while the draw stays submitted,
+  so the shader never compiles mid-song.
+- **Time authority.** Song time only, with no new clock. `XrFrameSignal` (`src/xr/scene/`) continues
+  a value of the displayed frame to the song time being drawn. It extrapolates along the frame's
+  rate or the slope between frames, bounded (0.25 s for travel, 0.1 s for the spiral and the focal
+  point), and crossfades into each new frame over 60 ms of song time. Travel never steps back
+  between fresh starts. Pause holds the field. A seek (any step back, or a jump over 1 s), a hidden
+  field, or a moved backdrop releases every particle anew from the current frame, so the same song
+  time and frame give the same placement after any seek. So does a restart: the old playthrough's
+  stale frame stays on screen until the first new frame arrives, and that frame is older and its
+  travel lower. A frame older than the last one, or a travel drop of more than 1.5 horizons (beyond
+  any extrapolation overshoot), starts the flow over from it. Otherwise the field held the old,
+  larger travel and froze until the song caught up. `XrFrameSignal` likewise treats an older frame as
+  a seek, so the runway's focal point does not blend from the stale one either.
+- **Path authority.** `XrTrackPath` remains the single curve. Past the runway the route continues
+  along its far-end tangent (`trackBendWeightExtended` and its GLSL twin
+  `TRACK_BEND_EXTENDED_GLSL`), which by construction reaches the focal point on the backdrop while
+  the runway's bend is unsaturated. The runway's bend saturates for comfort (2.4 m lateral, 1 m
+  vertical), so a focal point near the image's edge (a role whose centre sits low, or a hard turn)
+  would leave the tangent far short of it. A far-aim remainder (`uTrackFarAim`, weight
+  ((d - end) / (backdrop - end))^2: zero value and slope at the runway's end) carries the rest, so the
+  extension always lands on the focal point at the backdrop. Like the 2D tunnel's centre line, the
+  field's centre turns toward the vanishing point with depth. Gameplay never uses the extension. The runway's focal point passes through `XrFrameSignal` too: a
+  raw focus that steps at 24-36 Hz bent the runway, and everything on it, in visible steps.
+- **Background distance.** Visuals > Background distance is 40 / 100 / 200 m (default 200). The plane
+  scales with its distance, so the image keeps its angles, raster density and fill. The track's far
+  tangent re-aims at the moved plane, and the field's release distances follow it. The camera far
+  plane is 600 m.
+- **Rendering layers.** Backdrop -100..-98, wisps -22, particles -20, floor -10, then the stage
+  linework. The field and wisps blend additively, test depth and never write it.
+- **Disabled and fallback behaviour.** Settings > System > **Spatial field** is Off / Particles /
+  Full (default Particles; stored with the background settings). Off means no draw at all. The field
+  hides itself, with no draw, whenever:
+  - there is no background frame (Wormhole off, not ready, hidden, or a source without spatial
+    state);
+  - the frame has no presence;
+  - the song time or the travel is not finite.
+- **Performance.** At most 2 draw calls, fixed buffers, no textures, and no per-frame JS
+  allocation. Per frame the field writes uniforms and 88 depth floats, plus 4 floats for each
+  particle or wisp that restarts (one upload per frame however many restart).
+  Quest 3, with the background on the worker: 72 fps at Crystal 24 / 36 Hz with Spatial field Off,
+  Particles and Full. Full showed about 3% timing-late frames where Particles showed 0%; this was
+  accepted.
+
+An earlier rare-ring layer was removed after the headset review (it did not belong to the image).
+A first field moved at a matched speed from a fixed far end. The headset review found it turned the
+wrong way, did not emerge from the image's circle, and its wisps stood still. It was replaced by the
+grain law above.
+- **Authored defaults (2026-10-11).** The user's setup is the new default:
+  - Ultra / 36 Hz at 200 m, Line stroke 20, Sharpness 100;
+  - Character 100 / 100 / 30 / 100;
+  - Material 30 / 100 / 100 / 100, spiral 30, arms 50, density 50;
+  - System: GPU material, Diagnostics on, GPU grain lines, adaptive pacing, WebGL background raster (Addendum AF);
+  - Spatial field Particles (Full adds the wisps).
+
+  Depth 30 makes every role's radius / depth fall between about 0.35 and 2.8, so the spatial depth
+  reading spans log2 scale -2 to 3.5. Gameplay defaults are unchanged.
+`tests/xr-wormhole-spatial.test.mjs` covers the seam: the resolver, the worker transport and the
+presentation timing. `tests/xr-wormhole-spatial-field.test.mjs` covers the field:
+- the grain law (circle, 1 / u acceleration, spiral direction against `wormholeGrainFlowAngle`) and seeks;
+- the frame signal;
+- clearances, layers and modes;
+- streaks and wisps.
+
+## Addendum AD: measuring and sharing a headset run (2026-10-11)
+
+**Context.** A Quest report "drops to 56-65 fps with the Wormhole on" could not be explained from
+the existing line. The cause turned out to be the A/B checklist URL `?xrBackgroundThread=main`,
+which forces the background onto the main thread, and nothing on screen said so.
+
+**Decision.** These are diagnostics only; nothing is measured while Diagnostics is off.
+
+- The label names the background's thread: `worker`, or `MAIN THREAD (<reason>)`. The reason is
+  the URL switch or the missing capability (`wormholeWorkerUnsupportedReason`).
+- `Main ms bg a/m, other a/m`: the main-thread cost (update plus render call), split between display
+  frames that showed a new background frame and the others.
+- `late N% (bg x%, other y%)`: display intervals over 1.5 nominal frames, split by the kind of frame
+  that ran long. A late share at a full display rate is timing jitter, not a lost frame.
+- `GPU ms a/m`: `EXT_disjoint_timer_query_webgl2` around the render call (`GpuFrameTimer`), polled
+  without stalling, with disjoint results dropped. The Quest Browser exposes no timer, so the line
+  then reads `GPU ms n/a (no timer)`.
+- Settings bar: **Copy settings** copies every setting as the menu shows it, plus the exact JSON.
+  **Copy diagnostics** copies the line followed by the same settings report. Each copy uses the
+  Clipboard API, falling back to the copy command; when both are blocked, the text goes to the
+  console. The outcome replaces the hint line until the next menu action.
+- **Reset defaults** returns every setting, Diagnostics included, to its authored default after a
+  second click; any other choice cancels it. Gameplay changes restart the song as usual.
+
+`tests/xr-background-diagnostics.test.mjs` and `tests/xr-menu.test.mjs` cover these.
+
+## Addendum AE: background passes before the eye pass (2026-10-11)
+
+In the headset, fast-moving sabers juddered now and then with the Wormhole on, and never with it
+off. The display rate and the main-thread costs stayed clean (72 fps, late 0%). The judder is the
+signature of a headset frame the GPU finished too late: the compositor shows the previous frame
+again, the head motion is reprojected, but the controllers stop for a frame.
+
+On a frame that brings a new background, the backdrop uploads the 1920 x 1080 canvas (Crystal) and
+runs its off-screen passes: the line composite (Addendum AA) and the material layers (Addendum W,
+about eight passes). They ran inside the plane's onBeforeRender, that is, in the middle of the
+headset's eye pass. On Quest's tiled GPU, each switch away from the eye framebuffer stores its tiles
+to memory and loads them back afterwards, which is a large extra cost on exactly those frames.
+
+- `WormholeBackdrop.prerender(renderer)` uploads the new canvas (`initTexture`) and runs the line
+  and material passes. The host calls it after the scene update and before the render, while the
+  frame's XR target is bound but not yet drawn (`RhythmGameScene.prerender`, called from the
+  controller's frame).
+- The plane's onBeforeRender stays as a fallback for a host that skips `prerender`. Each pass runs
+  once per new frame, so the eye pass then finds nothing left to do.
+- Images and timing are unchanged: the same passes run on the same frame, just earlier.
+- The desktop GPU timer brackets only the scene render, so these passes no longer count toward its
+  GPU ms.
+
+**Background raster (follow-up, same day).** The judder lessened but stayed, even at Performance
+quality, 24 Hz and every Character and Material slider at 0. The runway and the targets stopped
+together with the sabers, so whole headset frames were missed. With everything that runs on the
+headset GPU per frame already minimal, the remaining suspect is the worker's own canvas. A Chromium
+OffscreenCanvas 2D context is GPU-accelerated by default: its strokes are recorded in the worker
+but replayed on the browser's GPU thread, the same thread that runs the headset frame's WebGL
+commands. Each background redraw therefore competes with the headset frame there, and the worker's
+measured milliseconds do not show it.
+
+- Settings > System > **Background raster**: GPU (default, the earlier path) or CPU.
+  - CPU creates every drawing surface's 2D context with `willReadFrequently: true`, which keeps it
+    in software. The worker then rasterizes on its own thread, and the headset GPU only receives the
+    finished image through one texture upload.
+  - The option travels as the additive `init.softwareRaster` (still protocol version 1). It also
+    applies to the in-thread source.
+  - Changing it rebuilds the background plane, like the other System switches. Reset restores GPU.
+- The diagnostics line names the raster (`CPU raster` / `GPU raster`). With the CPU raster the
+  worker's stage times include the real raster cost.
+- **Headset result:** the CPU raster judders *more* often, and with the GPU raster the judder does not
+  grow from the lowest to the highest background resolution. So the raster's amount of work is not
+  the cause, and GPU stayed the default (until WebGL replaced it, Addendum AF). CPU remains as a
+  comparison option. The cause still open is
+  a fixed per-update cost: the frame's hand-off from the worker to the headset's WebGL context.
+
+**Upload ahead (follow-up).** Until now a worker frame waited until the redraw slot. There it was laid
+on the `bitmaprenderer` canvas, and that canvas was re-uploaded into the one texture the previous
+headset frames had been sampling, inside the headset frame. Both the cross-context hand-off and the
+re-specification of a texture still in use can make the GPU wait, whatever the resolution.
+
+- The worker proxy keeps a received frame as `stagedImage` (with `stagedSerial`; `shownSerial`
+  names the frame presented). These are optional `CanvasVisualSource` members; the protocol is
+  unchanged.
+- When the frame arrives (`onFrameReady`, a worker message, between headset frames), the backdrop
+  uploads the ImageBitmap straight into the one of two raw textures that is not shown, and calls
+  `flush`. The browser then runs the upload before the next headset frame instead of inside it.
+- When `render` presents that frame, the backdrop switches the line composite to that texture and
+  uploads nothing in the headset frame. The canvas still receives the bitmap (zero copy), and a frame
+  that could not go ahead takes the canvas path as before. This applies, for example, to the first
+  frame (before a renderer is known) or while the plane is hidden.
+- WebGL ignores the flip and premultiply unpack flags for an ImageBitmap. So the composite reads the
+  raw texture flipped back and un-premultiplied in the encoded bytes, which is exactly what the
+  canvas texture holds. In Chromium the two paths differ by at most 1 / 255 per channel.
+- Scope: GPU grain lines only, the default. Only the line composite reads the canvas with
+  `texelFetch`; the plane's own filtered sampling keeps the canvas path.
+- The diagnostics line says `upload ahead` when the frame on screen came this way.
+
+**Passes ahead (follow-up).** The upload ahead made the judder rarer, but not gone. The line
+composite and the material layers still ran inside the headset frame that presented a frame, and
+they rendered into the very targets the previous headset frames had been sampling.
+
+- Both renderers are double-buffered when the backdrop works ahead (`doubleBuffered`). The line
+  composite has two outputs. The material has two sets of its sampled layers (resolved L0 and
+  smoothed L1 / L2, each with its blur spare); the carrier accumulation stays shared. `render`
+  draws into the one not shown, and `present` shows it. A material set is shown only once it has
+  been rendered; a frame without material switches the material off at presentation.
+- When a frame arrives, the backdrop also takes the staged frame's lines and carriers
+  (`stagedLineFrame`, `stagedMaterialFrame`, copied synchronously), renders the composite and the
+  layers, and flushes once.
+- Presenting it switches the plane to the new composite, the material uniforms to the new set (the
+  layer uniforms follow the set shown) and the material switch to that frame's. In the headset
+  frame nothing is uploaded, rendered or re-specified.
+- The fallback (canvas path) renders into the target not shown and presents it immediately. Single
+  buffering (without ahead) behaves exactly as before.
+- In Chromium the composites and the material layers of both paths agree to within 1 / 255
+  (composite) and bit for bit (layers).
+
+**Right after a headset frame (follow-up).** The judder became much rarer. What remained followed the
+Background quality: none at the lowest quality, rare at the highest. That is the resolution-bound
+ahead work (upload, composite, material). It ran at the moment the frame arrived, which is random
+relative to the headset frames, so it could land just before one and delay it.
+
+A tried fix queued the work right after the next headset frame (a `MessageChannel` task). It put
+off a redraw slot by one display frame whenever its frame was not prepared yet. In the headset it
+juddered more, even at the lowest quality. Adaptive pacing sizes the cadence so that frames arrive
+just before their slot, so nearly every slot was put off, and the background cadence became uneven.
+It was reverted: the work runs again the moment a frame arrives, which measured best.
+
+**What the measurements show (Ultra, OVR Metrics Tool).** 72 fps, 0 stale frames, GPU utilization
+27 %, app GPU time 2.3-2.5 ms of the 13.9 ms budget, CPU utilization 43 %, CPU / GPU clock level 2.
+The FPS graph still dips now and then. So the headset GPU is far from its budget, and the remaining
+hitches are not GPU load. Two readings the line could not show were added to it:
+
+- `max N ms`: the longest display interval of the window, after the late share. A hitch shorter
+  than the 1.5-interval late threshold now shows too.
+- `ahead a/m`: the main-thread ms of the work done when a frame arrives, listed with Main ms. It
+  runs between display frames, so the frame costs never included it.
+
+`tests/xr-gpu-lines.test.mjs` covers the order: upload, then the passes, nothing inside the eye
+pass, and nothing on frames without a new background. `tests/xr-wormhole-worker.test.mjs` covers
+the raster option from the proxy to the surfaces; `tests/xr-gpu-lines.test.mjs` also covers the upload
+and passes ahead (on arrival, flushed, double-buffered, nothing uploaded or rendered when presented,
+fallbacks) and the proxy's staged frame; `tests/xr-gpu-material.test.mjs` covers the double-buffered
+layers; `tests/xr-settings.test.mjs`,
+`tests/xr-menu.test.mjs` and `tests/xr-controller-regeneration.test.mjs` cover the setting, its
+default, its reset and the rebuild. The headset check (sabers, runway and targets smooth with the
+Wormhole on, CPU against GPU raster) is in the Quest manual test.
+
+## Addendum AF: a WebGL raster for the background (2026-10-11)
+
+After Addendum AE the headset's own frames were clean, at Crystal and at Performance:
+- the longest display interval stayed at 14.9-16.0 ms, so no frame was missed;
+- the main thread spent 1-2 ms per frame;
+- the GPU used 2.3-2.8 ms of the 13.9 ms budget (26-35 %);
+- there were no stale frames.
+
+Rare hitches were still felt, and at Crystal more than at Performance. What these measurements cannot
+see is the browser's own GPU thread. A Chromium OffscreenCanvas 2D context records the worker's
+strokes and replays them there one Skia operation at a time, thousands per Wormhole frame. That
+thread also submits the headset's frames.
+
+- `WebGLRendererBackend` (`src/visuals/`) implements the identity's `VisualRendererBackend` with
+  WebGL2 on the same surface factory (an OffscreenCanvas in the worker). The identity's drawing
+  code is unchanged.
+  - Every line and filled circle is recorded in painter's order and drawn as one instance of one
+    instanced draw. A filled circle is a zero-length round line as wide as the circle. Line
+    coverage is `GrainLineRenderer`'s Canvas2D match: capsule or box, a one-pixel ramp, sub-pixel
+    widths fading like a hairline.
+  - A radial gradient, a ring tint, a field raster or a clear first draws the batch, so the order
+    is kept. A frame takes a handful of draw calls.
+  - Blending is premultiplied source-over on the stored (sRGB-encoded) values, like Canvas2D.
+  - Radial gradients interpolate their stops unpremultiplied (concentric, padded).
+  - `compositeRingTint` copies the frame drawn so far and applies the W3C blend formulas
+    (saturation, overlay, screen, soft-light) without fixed-function blending, clipped to the
+    angular wedge.
+  - Field rasters (the CPU material) use the Canvas path's exact 8-bit pixels; the conversion is
+    now the shared `writeFieldRasterPixels`. They are premultiplied on upload, filtered bilinearly,
+    and blended source-over, `screen` (exact as ONE, ONE_MINUS_SRC_COLOR) or `lighter`.
+  - Triangles and shapes, which the Wormhole does not use, fill without antialiasing.
+  - The source calls `finish()` after the identity drew, which draws the batch and flushes.
+- Settings > System > **Background raster** gains **WebGL**, the new default (user decision,
+  2026-10-11). GPU, the Canvas2D path, and CPU stay selectable for comparison. Reset restores WebGL.
+  - The option travels as the additive `init.webglRaster`. The worker reports what runs in
+    `prepared.raster`, and the proxy exposes it as `rasterKind`. Both are protocol version 1.
+  - `WormholeCanvasSource` falls back to Canvas2D when WebGL2 or its shaders are unavailable.
+  - The diagnostics line says `WebGL raster`, or `GPU (no WebGL)` after a fallback.
+  - Depth-layer planes, the MVP's, stay Canvas2D.
+- The image leaves the worker as before: an ImageBitmap with its top row first, premultiplied. The
+  upload ahead and the passes ahead (Addendum AE) take it unchanged.
+
+Checked in Chromium on real Wormhole frames (galaxy, overdrive and collapse plans, 960 x 540), against
+Canvas2D:
+- with the XR pipeline (GPU material and lines), the mean difference was 0.04-0.06 / 255 per channel,
+  with identical mean levels, and about 100 of 518 000 pixels differed by more than 24 / 255 (line
+  edges);
+- with the CPU material, the mean difference was 0.2-0.6 / 255;
+- in the worker at 1920 x 1080, every frame arrived and the worker reported `webgl`.
+
+In the headset the user judged it good and made it the default.
+
+`tests/xr-webgl-backend.test.mjs` covers, against a recording WebGL double:
+- the batching and its order, the records, and the Canvas2D state rules;
+- the premultiplied clear, the ring tint's copy and blend, and the field raster's bytes and blend
+  functions;
+- the fallback, the worker's report and the proxy.
+
+`tests/raster-conversion.test.mjs` keeps the shared conversion byte-identical to the frozen legacy
+loop.
+
 ## Consequences
 
 `/xr/` can evolve its own scene complexity, controller model, and performance profile without

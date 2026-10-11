@@ -103,7 +103,7 @@ offset, so seek reproduces the image, pause freezes it and nothing accumulates. 
 unlit instanced batch whose chamfered geometry bakes per-face shading and a luminous front bevel,
 multiplied by the hand colour. The HUD is a transparent instrument frame redrawn only on change.
 
-The optional Wormhole is one world-anchored plane at 40 m (ADR-009 Addendum F; the three-plane 2.5D
+The optional Wormhole is one world-anchored plane, 200 m ahead by default (Visuals > Background distance 40 / 100 / 200 m; the plane scales with it, ADR-009 Addenda F, AC; the three-plane 2.5D
 mode of Addendum E is no longer used by `/xr/` because of its frame-time cost). Monocular depth cues
 (strength 0.7 in XR, 0.6 in the MVP) thicken near grains and thin, dim and haze far ones. The game
 menu's **Visuals** tab sets the raster (Performance 640x360 / Balanced 768x432 / High 960x540 /
@@ -114,7 +114,7 @@ only on changed frames.
 Where the browser supports it, the background rasterizes in a dedicated worker on an OffscreenCanvas
 and reaches the scene as a transferred `ImageBitmap` (ADR-009 Addendum G), so the headset frame loop
 never waits for Canvas2D; otherwise the same source runs in-thread. With **Diagnostics** on (System
-tab, default Off; `?xrDiagnostics=1` forces it on), the game menu's main and pause screens show a
+tab, default On; `?xrDiagnostics=1` forces it on), the game menu's main and pause screens show a
 two-second performance line -- display fps,
 background fps and ms, and the background's stage times (tune, layers, grains, weave, blur, comp,
 xfer) -- so the cost can be read inside the headset (ADR-009 Addendum U). The grain material
@@ -123,6 +123,11 @@ half-float targets (ADR-009 Addendum W). The **System** tab's **Material rendere
 CPU) selects it; CPU runs the former worker raster for comparison, and devices without half-float
 targets use it automatically (ADR-009 Addendum X). Both System switches are saved like every other
 setting; changing one rebuilds the background plane, like a quality change.
+The Wormhole also continues into the room (ADR-009 Addendum AC): sparse particles follow the 2D grains'
+own law. They emerge on the image's emergence circle, race outward with it toward the edges, turn with
+its spiral and pass beside the player. Soft wisps farther out, carried the same way, appear when the
+Nebula calls for them. They never enter the note corridor and never
+take part in gameplay. **System > Spatial field** chooses Off / Particles (default) / Full (with the wisps).
 
 The **Gameplay** section sets note speed (Normal 4 m/s, Fast 7 m/s, Hyper 10 m/s default) and saber
 length (0.9 / 1.0 / 1.1 m default, or Auto). The start frame's distance is derived from an average adult reach so
@@ -176,18 +181,24 @@ The **Material** tab holds the MVP Advanced tuning panel's Grain material slider
 Material detail, Material bloom, Material weave, Spiral twist, Spiral arms, Grain density; 50 is
 neutral, defaults 50 / 100 / 100 / 100 / 4 / 50 / 50), live and remembered like every setting
 (ADR-009 Addendum V).
-The **System** tab holds Material renderer (GPU default / CPU) and Diagnostics (Off default / On)
-(ADR-009 Addendum X). It also holds Grain lines (Canvas default / GPU: the headset GPU draws the grain
-trails, Addendum AA) and Background pacing (Fixed default / Adaptive: a late background frame
-widens the cadence to whole frames that fit, 24 Hz instead of 18, Addendum Z). All are remembered.
+The **System** tab holds Material renderer (GPU default / CPU) and Diagnostics (Off / On default)
+(ADR-009 Addenda X, AC). It also holds Grain lines (Canvas / GPU default: the headset GPU draws the grain
+trails, Addendum AA) and Background pacing (Fixed / Adaptive default: a late background frame
+widens the cadence to whole frames that fit, 24 Hz instead of 18, Addendum Z), Background raster
+(WebGL default: the background thread draws with WebGL in a few batched draw calls, Addendum AF /
+GPU: the browser's Canvas2D path / CPU: the background thread draws in software, Addendum AE) and Spatial field (Addendum AC). All are remembered. The Settings bar copies every setting, or the diagnostics line
+followed by every setting, to the clipboard. **Reset defaults** (two clicks) returns every setting to
+its authored default (Addenda AC, AD).
 
 Every menu setting comes from one description (`src/xr/XrSettings.ts`, ADR-009 Addendum H) and is
 remembered per browser (`plexus.xr.settings`). Game settings regenerate the chart and rewind;
 background settings apply live, even mid-song.
 
-A first visit starts from the authored player defaults (ADR-009 Addendum T): Tall / Hyper / Long;
-Ultra, Active, Expressive, Alternate, Even, Crossover; the Wormhole on with Shard targets at Ultra /
-36 Hz, Line stroke 34, Sharpness 100; Character 100 / 100 / 10 / 100. A browser that already saved
+A first visit (and Settings > Reset defaults) starts from the authored player defaults (ADR-009
+Addenda T, AC): Tall / Hyper / Long; Ultra, Active, Expressive, Alternate, Even, Crossover; the
+Wormhole on with Shard targets at Ultra / 36 Hz / 200 m, Line stroke 20, Sharpness 100; Character
+100 / 100 / 30 / 100; Material 30 / 100 / 100 / 100 / 30 / 50 / 50; System GPU material, Diagnostics
+on, GPU grain lines, adaptive pacing, Spatial field Particles. A browser that already saved
 settings keeps its own values. The gameplay library's historical defaults (and the pinned default
 chart) are unchanged.
 
