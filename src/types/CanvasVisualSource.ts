@@ -1,6 +1,7 @@
 import type { AudioFrame, BeatEvent, TrackAnalysis, PerformanceAutomationPlan } from './index';
 import type { GrainMaterialFrame } from './GrainMaterialFrame';
 import type { GrainLineFrame } from './GrainLineFrame';
+import type { WormholeSpatialFrame } from './WormholeSpatialFrame';
 
 /** Immutable analyzer publication, passed explicitly across the XR/visuals composition seam. */
 export interface VisualAnalysisSnapshot {
@@ -88,6 +89,28 @@ export interface CanvasVisualSource {
      * strokes; the host draws them over it before anything else. Valid until the next `render`.
      */
     readonly lineFrame?: GrainLineFrame | null;
+    /**
+     * Optional spatial state of the frame currently on `canvas` (XR spatial field), resolved by the
+     * source from its own morphed tuning; null until a frame is shown. Like `focalPoint`, it always
+     * describes the displayed frame, never a pending one. Read-only plain data, reused by the source.
+     */
+    readonly spatialFrame?: WormholeSpatialFrame | null;
+    /**
+     * Asynchronous sources only (ADR-009 Addendum AE): the image of the frame the next `render` will
+     * present, available as soon as it arrives (null while none waits), so a host can upload it ahead
+     * into a second texture, outside its display frame. Owned by the source and valid until `render`
+     * presents or discards it. `stagedSerial` identifies it (0: none), `shownSerial` the frame on
+     * `canvas`; a host that uploaded the frame `shownSerial` names may show that texture instead of
+     * uploading `canvas`.
+     */
+    readonly stagedImage?: ImageBitmap | null;
+    /** What rasterizes the frames (a requested WebGL raster may have fallen back to Canvas2D); absent when unknown. */
+    readonly rasterKind?: 'webgl' | 'canvas2d' | null;
+    readonly stagedSerial?: number;
+    /** The staged frame's grain material and trail lines (as `materialFrame` / `lineFrame` will be once it is shown). */
+    readonly stagedMaterialFrame?: GrainMaterialFrame | null;
+    readonly stagedLineFrame?: GrainLineFrame | null;
+    readonly shownSerial?: number;
     dispose(): void;
 }
 /**
@@ -123,5 +146,9 @@ export interface CanvasVisualSourceOptions {
     readonly externalLines?: boolean;
     /** Measure per-stage redraw times (`stageTimes`) for the host's diagnostics. */
     readonly profile?: boolean;
+    /** Rasterize in software (CPU) instead of the browser's GPU canvas (ADR-009 Addendum AE). */
+    readonly softwareRaster?: boolean;
+    /** Rasterize with WebGL2 instead of Canvas2D, falling back where unavailable (ADR-009 Addendum AF). */
+    readonly webglRaster?: boolean;
 }
 export type CanvasVisualSourceFactory = (options?: CanvasVisualSourceOptions) => CanvasVisualSource;

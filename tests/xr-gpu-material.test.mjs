@@ -58,7 +58,7 @@ test('an external-material source hands its frame\'s carriers over instead of co
     class Backend { constructor(width, height) { this.canvas = { width, height }; this.frameCount = 0; this.width = width; this.height = height; } background() {} }
     const sinks = [];
     class Identity {
-        constructor(state) { this.state = state; this.routeFocus = { x: 0, y: 0 }; }
+        constructor(state) { this.state = state; this.routeFocus = { x: 0, y: 0 }; this.frameDrive = { travel: 0, travelRate: 0, hue: 0 }; }
         setMaterialSink(sink) { sinks.push(sink); this.sink = sink; } syncPosition() {} setDepthCue() {} setDepthLayers() {}
         draw() { this.sink?.begin(320, 180, 1280, 720, 1, 0.5, 1); this.sink?.carrier({ headX: 640, headY: 300, tailX: 600, tailY: 280, alpha: 200,
             strokeWeight: 2, colorR: 180, colorG: 90, colorB: 220, seed: 1, generation: 1, materialPhase: 0, energy: 1, depth: 0.2 }); }
@@ -296,7 +296,14 @@ test('the backdrop feeds each new frame\'s carriers to the GPU renderer and comp
     assert.match(shader.fragmentShader, /sRGBTransferOETF/, 'composited in sRGB space like Canvas2D lighter');
     assert.equal(typeof backdrop.root.onBeforeRender, 'function');
     assert.equal(backdrop.root.frustumCulled, false);
+    // A renderer double: the passes need only target, clear and draw calls.
+    let target = null;
+    const renderer = { xr: { enabled: true }, autoClear: true, getRenderTarget: () => target, setRenderTarget(next) { target = next; },
+        getClearAlpha: () => 1, getClearColor(color) { return color; }, setClearColor() {}, clear() {}, render() {}, initTexture() {},
+        state: { viewport() {} } };
     backdrop.update(1, true);
+    assert.equal(shader.uniforms.uMaterialOn.value, 0, 'composited once its layers are rendered, not before');
+    backdrop.prerender(renderer);
     assert.equal(shader.uniforms.uMaterialOn.value, 1);
     assert.ok(shader.uniforms.uMaterial0.value, 'the resolved layer texture is bound');
     material = null;
@@ -361,4 +368,37 @@ test('the scene creates GPU-material backgrounds only when the host enables it',
     await gpuScene.setBackgroundPipeline({ gpuMaterial: false, profile: true });
     assert.equal(requests.length, 3, 'an unchanged pipeline keeps the background');
     gpuScene.dispose();
+});
+
+test('double-buffered layers (Addendum AE): render draws the set not shown, present shows it; a frame without material shows none', () => {
+    let target = null;
+    const drawn = [];
+    const renderer = { xr: { enabled: true }, autoClear: true, getRenderTarget: () => target, setRenderTarget(next) { target = next; if (next) drawn.push(next); },
+        getClearAlpha: () => 1, getClearColor(color) { return color; }, setClearColor() {}, clear() {}, render() {}, state: { viewport() {} } };
+    const frame = { cols: 32, rows: 18, amount: 0.5, bloom: 1, detail: 1, count: 1, data: new Float32Array(GRAIN_CARRIER_STRIDE) };
+    const grain = new GrainMaterialRenderer({ doubleBuffered: true });
+    const shown = () => [grain.layer0, grain.layer1, grain.layer2];
+    const before = shown();
+    grain.setFrame(frame);
+    assert.equal(grain.render(renderer), true);
+    const sampled = new Set(before.map(t => t.uuid));
+    assert.ok(drawn.every(t => !sampled.has(t.texture.uuid)), 'nothing shown is rendered into');
+    assert.deepEqual(shown(), before, 'still the previous layers'); assert.equal(grain.active, false);
+    grain.present();
+    assert.equal(grain.active, true);
+    assert.ok(shown().every((t, i) => t !== before[i]), 'now the new set');
+    assert.equal(grain.render(renderer), false, 'once per frame');
+    // The next frame goes back into the first set; a frame without material switches it off.
+    grain.setFrame(frame); grain.render(renderer); grain.present();
+    assert.deepEqual(shown(), before);
+    grain.setFrame(null); grain.present();
+    assert.equal(grain.active, false, 'no material shown');
+    assert.deepEqual(shown(), before, 'the layers stay (unsampled)');
+    grain.dispose();
+    // Single-buffered: present changes nothing, and active follows the last frame as before.
+    const single = new GrainMaterialRenderer();
+    const one = single.layer0;
+    single.setFrame(frame); single.render(renderer); single.present();
+    assert.equal(single.layer0, one); assert.equal(single.active, true);
+    single.dispose();
 });

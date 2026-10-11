@@ -130,7 +130,7 @@ export class XrMenuPanel {
             if (!line.text) continue;
             ctx.fillStyle = TEXT_COLORS[line.role];
             ctx.textAlign = line.align;
-            const maxWidth = w - 2 * 40;
+            const maxWidth = line.width ?? w - 2 * 40;
             const lines = this.wrap(line.text, line.size, TEXT_WEIGHTS[line.role], maxWidth, line.maxLines);
             lines.forEach((part, i) => {
                 this.fitFont(part, line.size, TEXT_WEIGHTS[line.role], maxWidth);

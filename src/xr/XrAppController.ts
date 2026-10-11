@@ -19,9 +19,10 @@ import { buildSectionTimeline } from './scene/XrSectionCallout';
 import { buildScoreOverview } from './scene/XrScoreOverview';
 import { XrMenuPanel } from './scene/XrMenuPanel';
 import {
-    activateMenuItem, DEFAULT_MENU_STATE, menuHomeScreen, menuResults, moveMenuFocus, switchMenuTab,
+    activateMenuItem, DEFAULT_MENU_STATE, diagnosticsReport, menuHomeScreen, menuResults, moveMenuFocus, settingsReport, switchMenuTab,
     type XrMenuCommand, type XrMenuContext, type XrMenuScreen, type XrMenuState
 } from './XrMenuModel';
+import { copyTextToClipboard } from './XrClipboard';
 import { BackgroundDiagnostics } from './BackgroundDiagnostics';
 import { supportsGpuGrainMaterial } from './scene/GrainMaterialRenderer';
 import { XrPlaybackBinding } from './XrPlaybackBinding';
@@ -47,6 +48,8 @@ export interface XrAppControllerOptions extends XrDiagnosticsOptions {
      * It does when the renderer supports it and the player's Material renderer setting is GPU.
      */
     readonly gpuMaterial?: boolean;
+    /** Where the Wormhole background is drawn ('worker', or the main thread and why), for the diagnostics line. */
+    readonly backgroundThread?: string;
 }
 
 /** Immutable analyzer publication captured once per load; regeneration never re-reads or re-analyzes. */
@@ -60,6 +63,8 @@ function formatTime(seconds: number): string {
     const s = total % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
+
+const EMPTY_SAMPLES: readonly number[] = [];
 
 export class XrAppController {
     private readonly engine: AudioEngine;
@@ -136,6 +141,13 @@ export class XrAppController {
 
     /** `?xrDiagnostics=1`: diagnostics stay on whatever the System setting says. */
     private readonly forcedDiagnostics: boolean;
+    /** Where the background is drawn (composition root), shown in the diagnostics label. */
+    private readonly backgroundThread: string;
+    /** The measured frame cost handed to the diagnostics (one reused record: no per-frame garbage). */
+    private readonly frameCost: { updateMs: number; renderMs: number; displayHz: number; gpuSamples: readonly number[]; gpuTimer: boolean;
+        aheadSamples: readonly number[] } = { updateMs: 0, renderMs: 0, displayHz: 0, gpuSamples: [], gpuTimer: false, aheadSamples: [] };
+    /** Outcome of the last Copy button, shown on the Settings screen until the next menu action. */
+    private copyNotice = '';
     /** The diagnostics state the overlay and the menu line were last prepared for. */
     private diagnosticsShown = false;
     /** The renderer supports the GPU grain material and the host allows it (Addendum W). */
@@ -152,12 +164,14 @@ export class XrAppController {
     constructor(engine: AudioEngine, runtime: XrRuntime, hostContainer: HTMLElement, wormholeFactory?: CanvasVisualSourceFactory,
         options: XrAppControllerOptions = {}) {
         this.forcedDiagnostics = options.diagnostics === true;
+        this.backgroundThread = options.backgroundThread ?? '';
         this.engine = engine;
         this.runtime = runtime;
         this.settingsStore = options.settingsStore ?? MEMORY_ONLY_SETTINGS_STORE;
         // Normalized again: an injected store may predate newer setting groups.
         this.settings = normalizeXrSettings(this.settingsStore.load());
         this.diagnosticsShown = this.diagnostics;
+        this.runtime.measureFrameCost = this.diagnostics;
         this.playProfile = resolvePlayFromSettings(this.settings);
         this.gameConfig = this.playProfile.config;
         this.session = new RhythmGameSession(this.gameConfig);
@@ -398,15 +412,17 @@ export class XrAppController {
     private get diagnostics(): boolean { return this.forcedDiagnostics || this.settings.system.diagnostics; }
 
     /** The background's build options implied by the renderer, the host and the System settings. */
-    private backgroundPipeline(): { gpuMaterial: boolean; profile: boolean; gpuLines: boolean } {
+    private backgroundPipeline(): { gpuMaterial: boolean; profile: boolean; gpuLines: boolean; softwareRaster: boolean; webglRaster: boolean } {
         const gpuMaterial = this.gpuMaterialSupported && this.settings.system.materialRenderer === 'gpu';
-        return { gpuMaterial, profile: this.diagnostics, gpuLines: gpuMaterial && this.settings.system.grainLines === 'gpu' };
+        return { gpuMaterial, profile: this.diagnostics, gpuLines: gpuMaterial && this.settings.system.grainLines === 'gpu',
+            softwareRaster: this.settings.system.backgroundRaster === 'cpu', webglRaster: this.settings.system.backgroundRaster === 'webgl' };
     }
 
     /** Switching diagnostics drops the previous line and its overlay mirrors, so nothing stale shows. */
     private applyDiagnosticsSetting(): void {
         if (this.diagnostics === this.diagnosticsShown) return;
         this.diagnosticsShown = this.diagnostics;
+        this.runtime.measureFrameCost = this.diagnostics;
         this.backgroundDiagnostics.clear();
         this.diagnosticPathRevision = -1;
         this.diagnosticBackgroundMs = -1;
@@ -602,6 +618,7 @@ export class XrAppController {
         const context = this.menuContext();
         const result = activateMenuItem(this.menuState, context, this.menuPanel.update(this.menuState, context), id);
         this.menuState = result.state;
+        this.copyNotice = '';
         if (result.command) this.runMenuCommand(result.command);
         this.runtime.invalidate();
     }
@@ -678,7 +695,28 @@ export class XrAppController {
             case 'settings-changed':
                 this.handleSettingsChange(command.settings, command.scope);
                 return;
+            case 'copy-settings':
+                this.copyToClipboard(settingsReport(this.settings, this.trackTitleEl.textContent ?? ''), 'Settings');
+                return;
+            case 'copy-diagnostics':
+                if (this.backgroundDiagnostics.summary) {
+                    this.copyToClipboard(diagnosticsReport(this.backgroundDiagnostics.summary, this.settings, this.trackTitleEl.textContent ?? ''), 'Diagnostics + settings');
+                }
+                return;
         }
+    }
+
+    /**
+     * Runs inside the click / trigger handler (the clipboard needs its user activation); the menu then
+     * says how it went, briefly (on the hint line, until the next menu action). When the browser
+     * blocks the clipboard (possible inside VR), the text also goes to the console.
+     */
+    private copyToClipboard(text: string, what: string): void {
+        void copyTextToClipboard(text).then(copied => {
+            this.copyNotice = copied ? `${what} copied.` : 'Clipboard blocked: try outside VR.';
+            if (!copied) console.info(text);
+            this.runtime.invalidate();
+        });
     }
 
     private openMenu(screen: XrMenuScreen): void {
@@ -719,7 +757,8 @@ export class XrAppController {
             status: this.loading ? this.progressEl.textContent ?? '' : '',
             results: state === 'finished' ? menuResults(this.session.getSnapshot()) : null,
             input: this.runtime.isPresenting() ? 'vr' : 'desktop',
-            ...(this.diagnostics && this.backgroundDiagnostics.summary ? { diagnostics: this.backgroundDiagnostics.summary } : {}) };
+            ...(this.diagnostics && this.backgroundDiagnostics.summary ? { diagnostics: this.backgroundDiagnostics.summary } : {}),
+            ...(this.copyNotice ? { notice: this.copyNotice } : {}) };
     }
 
     /**
@@ -864,6 +903,8 @@ export class XrAppController {
 
         const activeNotes = this.session.getActiveNotes(songTime);
         this.scene.update(activeNotes, songTime, this.session.getSnapshot(), this.currentInstruction());
+        // The background's off-screen passes run here, before the render's eye pass (ADR-009 Addendum AE).
+        this.scene.prerender(this.runtime.renderer);
         if (this.diagnostics && this.scene.path.revision !== this.diagnosticPathRevision) {
             const path = this.scene.path;
             this.diagnosticPathRevision = path.revision;
@@ -881,11 +922,18 @@ export class XrAppController {
             const paced = Math.round(this.scene.backgroundPacedHz), latency = this.scene.backgroundLatencyMs;
             const pacing = `${rateHz} Hz${paced > 0 ? ` paced ${paced} Hz` : ''}${latency > 0 ? `, ${latency.toFixed(0)} ms latency` : ''}`;
             const label = this.settings.background.wormhole
-                ? `${quality}, ${pacing}, ${this.scene.gpuMaterialEnabled ? 'GPU' : 'CPU'} material${this.scene.gpuLinesEnabled ? ', GPU lines' : ''}` : 'Wormhole off';
+                ? `${quality}, ${pacing}${this.backgroundThread ? `, ${this.backgroundThread}` : ''}, ${this.scene.gpuMaterialEnabled ? 'GPU' : 'CPU'} material${this.scene.gpuLinesEnabled ? ', GPU lines' : ''}, ${this.scene.backgroundRasterLabel} raster${this.scene.backgroundUploadedAhead ? ', upload ahead' : ''}` : 'Wormhole off';
+            const cost = this.frameCost;
+            cost.updateMs = this.runtime.lastUpdateMs; cost.renderMs = this.runtime.lastRenderMs; cost.displayHz = this.scene.displayFrameRate;
+            cost.gpuSamples = this.runtime.gpuSamples; cost.gpuTimer = this.runtime.gpuTimerAvailable;
+            // The background's work ahead since the last frame (between display frames; Addendum AE), read once.
+            const ahead = this.scene.backgroundAheadSamples;
+            cost.aheadSamples = ahead ?? EMPTY_SAMPLES;
             if (this.backgroundDiagnostics.record(deltaSec, this.session.getState() === 'playing', this.scene.backgroundFramesShown,
-                this.scene.backgroundRenderMs, this.scene.backgroundStageTimes, label)) {
+                this.scene.backgroundRenderMs, this.scene.backgroundStageTimes, label, cost)) {
                 this.overlay.dataset.xrBackgroundStages = this.backgroundDiagnostics.summary;
             }
+            if (ahead) ahead.length = 0;
         }
         const previewLabel = this.session.getState() === 'playing' ? 'Pause'
             : this.session.getState() === 'paused' ? 'Resume'

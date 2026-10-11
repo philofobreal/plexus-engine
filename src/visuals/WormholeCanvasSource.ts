@@ -2,6 +2,7 @@ import { CONTINUOUS_PLAYBACK_MAX_STEP_SEC, isContinuousPlaybackStep, type Canvas
     type VisualAnalysisSnapshot, type VisualFocalPoint } from '../types/CanvasVisualSource';
 import type { GrainMaterialFrame } from '../types/GrainMaterialFrame';
 import type { GrainLineFrame } from '../types/GrainLineFrame';
+import type { WormholeSpatialFrame } from '../types/WormholeSpatialFrame';
 import { GrainCarrierCollector } from './GrainCarrierCollector';
 import { GrainLineCollector } from './GrainLineCollector';
 import type { MotifChoreographyFrame, PerformanceAutomationPlan, VisualChoreographyPlan } from '../types';
@@ -15,8 +16,10 @@ import { findActiveAutomationPoint } from '../automation/performanceAutomationRu
 import { buildNarrative, generateIntents, processChoreography, resolveSemanticState, SemanticResolver, SemanticRuntimeAdapter } from '../semantics';
 import { motifTransitionId, semanticScoreTransitionId } from './VisualTransitionIdentity';
 import { Canvas2DRendererBackend, type Canvas2DSurfaceFactory } from './Canvas2DRendererBackend';
+import { WebGLRendererBackend } from './WebGLRendererBackend';
 import { CosmicWormholeIdentity, type WormholeRenderState } from './CosmicWormholeIdentity';
 import { VisualDirectorFSM } from './VisualDirectorFSM';
+import { createWormholeSpatialFrame, resolveWormholeSpatialFrame } from './wormholeSpatialFrame';
 import { BEAT_DECAY_PER_FRAME, CUE_DECAY_PER_FRAME, DENSE_IMPACT_DECAY_PER_FRAME, transientDecayAfter } from './transientDecay';
 
 function emptyState(): WormholeRenderState {
@@ -54,6 +57,37 @@ export interface WormholeCanvasSourceOptions {
      * list (`lineFrame`; ADR-009 Addendum AA) instead of being stroked on the raster.
      */
     readonly externalLines?: boolean;
+    /**
+     * Rasterize every drawing surface in software (CPU) instead of the browser's GPU canvas (ADR-009
+     * Addendum AE). A GPU canvas replays its strokes on the browser's GPU thread, the one that also
+     * runs the headset's frame.
+     */
+    readonly softwareRaster?: boolean;
+    /**
+     * Rasterize the main plane with WebGL2 (`WebGLRendererBackend`; ADR-009 Addendum AF) instead of
+     * Canvas2D: a frame becomes a handful of batched draw calls. Falls back to Canvas2D where WebGL2
+     * is unavailable (`rasterKind` says which runs).
+     */
+    readonly webglRaster?: boolean;
+}
+
+/**
+ * Surfaces whose 2D context is created for software raster: the first `getContext` call fixes a
+ * canvas's attributes, and every later '2d' request (backend, field raster) returns this context.
+ */
+function softwareSurfaces(create?: Canvas2DSurfaceFactory): Canvas2DSurfaceFactory {
+    return (width, height) => {
+        const canvas = create ? create(width, height) : Object.assign(document.createElement('canvas'), { width, height });
+        canvas.getContext('2d', { willReadFrequently: true });
+        return canvas;
+    };
+}
+
+/** The WebGL plane, or null (Canvas2D takes over) where WebGL2 or its shaders are unavailable. */
+function createWebGLBackend(width: number, height: number, createSurface?: Canvas2DSurfaceFactory): WebGLRendererBackend | null {
+    const surface: Canvas2DSurfaceFactory = createSurface
+        ?? ((w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h }));
+    try { return new WebGLRendererBackend(width, height, surface); } catch { return null; }
 }
 
 /** Wall clock for opt-in stage timing (main thread or worker). */
@@ -82,8 +116,10 @@ const LAYER_HEIGHT = 432;
  * contract): it consumes the supplied plan and fetches only that plan's preset assets.
  */
 export class WormholeCanvasSource implements CanvasVisualSource {
-    private readonly backend: Canvas2DRendererBackend;
+    private readonly backend: Canvas2DRendererBackend | WebGLRendererBackend;
     readonly canvas: HTMLCanvasElement;
+    /** What rasterizes the main plane (a requested WebGL raster falls back to Canvas2D when unavailable). */
+    readonly rasterKind: 'webgl' | 'canvas2d';
     private state = emptyState();
     private identity = new CosmicWormholeIdentity(this.state);
     /** Host Line stroke etc. layered on the shared XR boosts; the shared constant is never mutated. */
@@ -118,6 +154,9 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     /** External lines (Addendum AA): the identity's grain trail strokes, recorded instead of drawn. */
     private readonly lineCollector: GrainLineCollector | null;
     private lines: GrainLineFrame | null = null;
+    /** Spatial state of the last drawn frame (one reused record); null until a frame is drawn after `prepare`. */
+    private readonly spatial = createWormholeSpatialFrame();
+    private spatialDrawn = false;
     /** Opt-in stage times of the last redraw: tuning / director work, then the identity's stages. */
     private readonly stages: Record<string, number> | null;
     private readonly depthCue: number;
@@ -131,12 +170,15 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         this.collector = options.externalMaterial === true ? new GrainCarrierCollector() : null;
         this.lineCollector = this.collector && options.externalLines === true ? new GrainLineCollector() : null;
         this.stages = this.profile ? { tune: 0, background: 0, grains: 0, weave: 0, resolve: 0, composite: 0, draw: 0 } : null;
-        this.backend = new Canvas2DRendererBackend(rasterSize(options.width, DEFAULT_WIDTH), rasterSize(options.height, DEFAULT_HEIGHT),
-            options.createSurface);
+        const createSurface = options.softwareRaster === true ? softwareSurfaces(options.createSurface) : options.createSurface;
+        const width = rasterSize(options.width, DEFAULT_WIDTH), height = rasterSize(options.height, DEFAULT_HEIGHT);
+        this.backend = (options.webglRaster === true ? createWebGLBackend(width, height, options.createSurface) : null)
+            ?? new Canvas2DRendererBackend(width, height, createSurface);
+        this.rasterKind = this.backend instanceof WebGLRendererBackend ? 'webgl' : 'canvas2d';
         this.canvas = this.backend.canvas;
         this.depthCue = options.depthCue ?? 0;
-        this.midBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT, options.createSurface) : null;
-        this.nearBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT, options.createSurface) : null;
+        this.midBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT, createSurface) : null;
+        this.nearBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT, createSurface) : null;
         if (this.midBackend && this.nearBackend) this.layers = [this.canvas, this.midBackend.canvas, this.nearBackend.canvas];
         this.configureIdentity();
         if (this.diagnostics) {
@@ -161,6 +203,12 @@ export class WormholeCanvasSource implements CanvasVisualSource {
      */
     get lineFrame(): GrainLineFrame | null { return this.lines; }
 
+    /**
+     * Spatial state of the last drawn frame (XR spatial field), resolved from the same morphed tuning
+     * and identity drive that frame used; null until a frame is drawn. Reused by the next draw.
+     */
+    get spatialFrame(): WormholeSpatialFrame | null { return this.spatialDrawn ? this.spatial : null; }
+
     /** Stage times of the last redraw in ms (`profile` only; the object is reused). */
     get stageTimes(): Readonly<Record<string, number>> | null { return this.stages; }
 
@@ -170,6 +218,7 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         if (analysis) Object.assign(this.state, analysis);
         this.identity = new CosmicWormholeIdentity(this.state);
         this.configureIdentity();
+        this.spatialDrawn = false;
         this.director = new VisualDirectorFSM();
         this.resolver = new SemanticResolver();
         this.resolver.setPlan(analysis?.trackAnalysis.externalVisualScorePlan ?? null);
@@ -265,9 +314,13 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         this.collector?.reset();
         this.lineCollector?.reset(this.backend.width, this.backend.height);
         this.identity.draw(this.backend, [], []);
+        // A WebGL plane draws its batched strokes now; the frame is then complete for transfer or upload.
+        if (this.backend instanceof WebGLRendererBackend) this.backend.finish();
         this.material = this.collector?.frame ?? null;
         // Lines ride along a material frame only (they replace its crossfade strokes).
         this.lines = this.material && this.lineCollector ? this.lineCollector.frame : null;
+        resolveWormholeSpatialFrame(this.spatial, time, state.visualTuning, this.identity.frameDrive, state);
+        this.spatialDrawn = true;
         if (this.stages) {
             this.stages.tune = drawStarted - started;
             Object.assign(this.stages, this.identity.stageTimes);
@@ -308,7 +361,9 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     }
 
     dispose(): void {
-        this.disposed = true; ++this.revision; this.canvas.width = this.canvas.height = 1;
+        this.disposed = true; ++this.revision;
+        if (this.backend instanceof WebGLRendererBackend) this.backend.dispose();
+        this.canvas.width = this.canvas.height = 1;
         for (const layer of [this.midBackend, this.nearBackend]) if (layer) layer.canvas.width = layer.canvas.height = 1;
         if (this.diagnostics) this.canvas.remove();
     }

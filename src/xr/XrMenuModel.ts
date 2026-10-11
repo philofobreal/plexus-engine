@@ -10,7 +10,7 @@
 
 import { scoreRank, type RhythmSessionSnapshot, type RhythmSessionState } from '../gameplay';
 import {
-    changeScope, XR_SETTING_SECTIONS, XR_SETTINGS, type XrSettingDescriptor, type XrSettings, type XrSettingScope,
+    changeScope, DEFAULT_XR_SETTINGS, XR_SETTING_SECTIONS, XR_SETTINGS, type XrSettingDescriptor, type XrSettings, type XrSettingScope,
     type XrSettingSectionId
 } from './XrSettings';
 
@@ -21,6 +21,11 @@ export interface XrMenuState {
     readonly tab: XrSettingSectionId;
     /** Item under the active pointer (null = none). */
     readonly hover: string | null;
+    /**
+     * Settings > Reset to defaults was chosen once and waits for a second click (any other item
+     * cancels it). Optional: absent means nothing is armed.
+     */
+    readonly confirm?: 'reset' | null;
 }
 
 /** Final numbers of a finished song (shared by the VR Results screen and the desktop drawer). */
@@ -51,6 +56,8 @@ export interface XrMenuContext {
     readonly input?: 'vr' | 'desktop';
     /** Opt-in performance line (`?xrDiagnostics=1`), shown on the main and pause screens. */
     readonly diagnostics?: string;
+    /** Outcome of the last Copy button (e.g. "Settings copied."), shown on the Settings hint line. */
+    readonly notice?: string;
 }
 
 export type XrMenuCommand =
@@ -58,6 +65,9 @@ export type XrMenuCommand =
     | { readonly type: 'resume' }
     | { readonly type: 'restart' }
     | { readonly type: 'exit-vr' }
+    /** Copy the whole menu (every setting) or the diagnostics line to the clipboard. */
+    | { readonly type: 'copy-settings' }
+    | { readonly type: 'copy-diagnostics' }
     | { readonly type: 'settings-changed'; readonly settings: XrSettings; readonly scope: XrSettingScope };
 
 export type XrMenuItemKind = 'button' | 'tab' | 'option' | 'step';
@@ -89,6 +99,8 @@ export interface XrMenuText {
     readonly align: 'left' | 'center' | 'right';
     /** Long text wraps onto up to this many lines (line height 1.2 x size) before shrinking. */
     readonly maxLines: number;
+    /** Wrap width in canvas pixels (default: the panel width inside its margins). */
+    readonly width?: number;
 }
 
 export interface XrMenuLayout {
@@ -109,6 +121,11 @@ const MIN_ROW_H = 52;
 const HINT_Y = MENU_CANVAS.height - 122;
 const ROWS_BOTTOM = HINT_Y - 30;
 const LABEL_W = 250;
+/** Widths of the Settings screen's bottom bar: Back and Reset on the left, the Copy buttons on the right. */
+const BACK_W = 170;
+const RESET_W = 210;
+const COPY_SETTINGS_W = 200;
+const COPY_DIAGNOSTICS_W = 230;
 const OPTION_GAP = 8;
 /** A VR stepper moves a range setting in tenths of its span (a slider is too fiddly with a laser). */
 const STEPS_PER_RANGE = 10;
@@ -211,9 +228,29 @@ export function menuLayout(state: XrMenuState, context: XrMenuContext): XrMenuLa
             { selected: section.id === state.tab, hint: tabHint })));
         const rows = settingRows(context.settings, state.tab, 168);
         items.push(...rows.items); texts.push(...rows.texts);
+        const barY = MENU_CANVAS.height - 24 - 56;
+        items.push(item('action:back', 'button', 'Back', MARGIN, barY, BACK_W, 56));
+        // Reset to defaults: a second click confirms (the first only arms it), so a stray click never
+        // throws a whole setup away. Already at the defaults: nothing to reset.
+        const atDefaults = changeScope(context.settings, resetXrSettings()) === null;
+        const armed = resetArmed(state);
+        items.push(item('action:reset', 'button', armed ? 'Confirm reset' : 'Reset defaults', MARGIN + BACK_W + OPTION_GAP, barY, RESET_W, 56, {
+            disabled: atDefaults, primary: armed,
+            hint: atDefaults ? 'Every setting is at its default.'
+                : armed ? 'Click again: every setting returns to its default. Gameplay changes restart the song.'
+                    : 'Returns every setting to its default, after a second click.' }));
+        // Copy buttons (one click each): every setting as text, or the diagnostics line.
+        const copyRight = MENU_CANVAS.width - MARGIN;
+        items.push(item('action:copy-diagnostics', 'button', 'Copy diagnostics', copyRight - COPY_DIAGNOSTICS_W, barY, COPY_DIAGNOSTICS_W, 56,
+            { disabled: !context.diagnostics, hint: context.diagnostics
+                ? 'Copies the diagnostics line and every setting to the clipboard.'
+                : 'No diagnostics yet: switch on System > Diagnostics and play for two seconds.' }));
+        items.push(item('action:copy-settings', 'button', 'Copy settings', copyRight - COPY_DIAGNOSTICS_W - OPTION_GAP - COPY_SETTINGS_W, barY,
+            COPY_SETTINGS_W, 56, { hint: 'Copies every setting of the menu to the clipboard as text.' }));
+        // The hint line explains the item under the pointer; the outcome of a Copy button takes its place
+        // until the next menu action.
         const hovered = items.find(i => i.id === state.hover);
-        texts.push(text(hovered?.hint ?? '', MARGIN, HINT_Y, 21, 'muted', 'left', 2));
-        items.push(item('action:back', 'button', 'Back', MARGIN, MENU_CANVAS.height - 24 - 56, 220, 56));
+        texts.push(context.notice ? text(context.notice, MARGIN, HINT_Y, 21, 'accent', 'left', 2) : text(hovered?.hint ?? '', MARGIN, HINT_Y, 21, 'muted', 'left', 2));
         return { items, texts };
     }
     if (state.screen === 'results' && context.results) {
@@ -308,6 +345,13 @@ export function activateMenuItem(state: XrMenuState, context: XrMenuContext, lay
     { readonly state: XrMenuState; readonly command: XrMenuCommand | null } {
     const target = layout.items.find(i => i.id === id);
     if (!target || target.disabled) return { state, command: null };
+    if (id === 'action:reset') {
+        if (!resetArmed(state)) return { state: { ...state, confirm: 'reset' }, command: null };
+        const next = resetXrSettings(), scope = changeScope(context.settings, next);
+        return { state: { ...state, confirm: null }, command: scope ? { type: 'settings-changed', settings: next, scope } : null };
+    }
+    // Any other choice cancels an armed reset.
+    if (state.confirm) state = { ...state, confirm: null };
     const [kind, key, value] = id.split(':');
     if (kind === 'tab') return { state: { ...state, tab: key as XrSettingSectionId }, command: null };
     if (kind === 'action') {
@@ -318,6 +362,8 @@ export function activateMenuItem(state: XrMenuState, context: XrMenuContext, lay
             case 'resume': return { state, command: { type: 'resume' } };
             case 'restart': return { state, command: { type: 'restart' } };
             case 'exit': return { state, command: { type: 'exit-vr' } };
+            case 'copy-settings': return { state, command: { type: 'copy-settings' } };
+            case 'copy-diagnostics': return { state, command: { type: 'copy-diagnostics' } };
             default: return { state, command: null };
         }
     }
@@ -328,6 +374,42 @@ export function activateMenuItem(state: XrMenuState, context: XrMenuContext, lay
             descriptor.read(context.settings) + Number(value) * rangeStep(descriptor))));
     const scope = changeScope(context.settings, next);
     return { state, command: scope ? { type: 'settings-changed', settings: next, scope } : null };
+}
+
+/**
+ * Every setting of the menu as text, tab by tab, as the menu shows it ("Label: Choice"), followed by
+ * the exact settings record (JSON) so a reported setup can be reproduced.
+ */
+export function settingsReport(settings: XrSettings, trackTitle = ''): string {
+    const lines = ['Plexus XR settings' + (trackTitle ? ` - ${trackTitle}` : '')];
+    for (const section of XR_SETTING_SECTIONS) {
+        lines.push('', `[${section.title}]`);
+        for (const descriptor of XR_SETTINGS.filter(d => d.section === section.id)) {
+            if (descriptor.kind === 'choice') {
+                const value = descriptor.read(settings);
+                lines.push(`${descriptor.label}: ${descriptor.choices.find(c => c.value === value)?.label ?? value}`);
+            } else {
+                lines.push(`${descriptor.label}: ${descriptor.read(settings)}`);
+            }
+        }
+    }
+    lines.push('', `JSON: ${JSON.stringify(settings)}`);
+    return lines.join('\n');
+}
+
+/** The settings Reset to defaults leads to: every setting at its authored default. */
+export function resetXrSettings(): XrSettings {
+    return DEFAULT_XR_SETTINGS;
+}
+
+/** A reset waits for its confirmation while the pointer stays on it (or no pointer is known). */
+function resetArmed(state: XrMenuState): boolean {
+    return state.confirm === 'reset' && (state.hover === null || state.hover === 'action:reset');
+}
+
+/** The diagnostics line followed by the full settings report: one paste says what was measured under which setup. */
+export function diagnosticsReport(summary: string, settings: XrSettings, trackTitle = ''): string {
+    return `Plexus XR diagnostics\n${summary}\n\n${settingsReport(settings, trackTitle)}`;
 }
 
 /** Thumbstick tab switching on the Settings screen (wraps around). */

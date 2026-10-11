@@ -13,9 +13,17 @@
 // `uTrackBend` uniform this module writes. A path change is then a four-float uniform update, never
 // a vertex upload. CPU projection, strike un-projection and the GLSL twin share this one parameter
 // authority; nothing else may carry its own curve.
+//
+// Decorative depth beyond the runway (the Wormhole spatial field) continues the same curve along its
+// far-end tangent (`trackBendWeightExtended` / `TRACK_BEND_EXTENDED_GLSL`), which by construction
+// reaches the focal point on the backdrop while the bend is unsaturated. The runway's bend saturates
+// for comfort (`trackMax*BendMeters`), so a focal point near the image's edge would leave the
+// tangent far short of it: a far-aim term (`trackFarAimWeight`, zero value and slope at the runway's
+// end) carries the remainder, so the extension always lands on the focal point at the backdrop's
+// distance. With an unsaturated bend that remainder is zero. Gameplay never uses the extension.
 
 import type * as THREE from 'three';
-import { DEFAULT_STAGE_LAYOUT, SCENE_CONFIG, type XrStageLayout } from './SceneConfig';
+import { backdropScale, DEFAULT_STAGE_LAYOUT, SCENE_CONFIG, type XrStageLayout } from './SceneConfig';
 
 export interface MutableVector3Like { x: number; y: number; z: number }
 export interface TrackPathOffset { x: number; y: number }
@@ -29,8 +37,8 @@ const DEFAULT_BEND_END = -DEFAULT_STAGE_LAYOUT.runwayFrontZMeters;
  * Choosing A = F / (1 + 2 (D - end) / L) makes that far-end tangent aim exactly at the focal point
  * F on the backdrop at distance D, before saturation.
  */
-function aimGain(bendEnd: number): number {
-    return 1 / (1 + 2 * (SCENE_CONFIG.backdropDistanceMeters - bendEnd) / (bendEnd - BEND_START));
+function aimGain(bendEnd: number, backdropDistance: number): number {
+    return 1 / (1 + 2 * (backdropDistance - bendEnd) / (bendEnd - BEND_START));
 }
 
 function finiteOrZero(value: number): number {
@@ -39,8 +47,8 @@ function finiteOrZero(value: number): number {
 
 /** Far-end displacement for a normalized focal coordinate; smoothly saturates at `maxBend`. */
 export function trackBendAmplitude(focus: number, backdropHalfExtentMeters: number, maxBendMeters: number,
-    bendEndMeters: number = DEFAULT_BEND_END): number {
-    const raw = finiteOrZero(focus) * backdropHalfExtentMeters * aimGain(bendEndMeters);
+    bendEndMeters: number = DEFAULT_BEND_END, backdropDistanceMeters: number = SCENE_CONFIG.backdropDistanceMeters): number {
+    const raw = finiteOrZero(focus) * backdropHalfExtentMeters * aimGain(bendEndMeters, backdropDistanceMeters);
     return maxBendMeters > 0 ? maxBendMeters * Math.tanh(raw / maxBendMeters) : 0;
 }
 
@@ -48,6 +56,26 @@ export function trackBendAmplitude(focus: number, backdropHalfExtentMeters: numb
 export function trackBendWeight(rootZ: number, bendEndMeters: number = DEFAULT_BEND_END): number {
     const u = Math.min(1, Math.max(0, (-rootZ - BEND_START) / (bendEndMeters - BEND_START)));
     return u * u;
+}
+
+/**
+ * `trackBendWeight` continued past the bend end along its far-end tangent: u^2 up to u = 1, then
+ * 2u - 1 (equal value and slope at u = 1). Decorative depth only; gameplay uses `trackBendWeight`.
+ */
+export function trackBendWeightExtended(rootZ: number, bendEndMeters: number = DEFAULT_BEND_END): number {
+    const u = Math.max(0, (-rootZ - BEND_START) / (bendEndMeters - BEND_START));
+    return u <= 1 ? u * u : 2 * u - 1;
+}
+
+/**
+ * Weight of the far-aim remainder at `rootZ`: 0 up to the runway's end, then ((d - end) / (backdrop -
+ * end))^2, so it starts with zero value and slope (the extension stays C1) and reaches 1 at the backdrop.
+ */
+export function trackFarAimWeight(rootZ: number, bendEndMeters: number, backdropDistanceMeters: number): number {
+    const span = backdropDistanceMeters - bendEndMeters;
+    if (!(span > 0)) return 0;
+    const q = Math.max(0, (-rootZ - bendEndMeters) / span);
+    return q * q;
 }
 
 /** Pure offset of a stage-root point at `rootZ` for the given far-end amplitudes. */
@@ -80,6 +108,19 @@ vec2 xrTrackPathOffset( float rootZ ) {
     return uTrackBend.xy * ( u * u );
 }`;
 
+/**
+ * `TRACK_BEND_GLSL` plus the GLSL twin of `trackBendWeightExtended` (same `uTrackBend` uniform) and
+ * the far-aim remainder (`uTrackFarAim` = remainder x, y, backdrop distance): the route continued past
+ * the runway along its far-end tangent and onto the focal point, for decorative depth layers.
+ */
+export const TRACK_BEND_EXTENDED_GLSL = /* glsl */ `${TRACK_BEND_GLSL}
+uniform vec4 uTrackFarAim;
+vec2 xrTrackPathOffsetExtended( float rootZ ) {
+    float u = max( ( -rootZ - uTrackBend.z ) / ( uTrackBend.w - uTrackBend.z ), 0.0 );
+    float q = uTrackFarAim.z > uTrackBend.w ? max( ( -rootZ - uTrackBend.w ) / ( uTrackFarAim.z - uTrackBend.w ), 0.0 ) : 0.0;
+    return uTrackBend.xy * ( u <= 1.0 ? u * u : 2.0 * u - 1.0 ) + uTrackFarAim.xy * ( q * q );
+}`;
+
 /** The vertex statement a stage-root mesh adds after `begin_vertex` (object space = stage-root space). */
 export const TRACK_BEND_VERTEX_STATEMENT = 'transformed.xy += xrTrackPathOffset( transformed.z );';
 
@@ -108,6 +149,11 @@ export class XrTrackPath {
     private readonly scratch: TrackPathOffset = { x: 0, y: 0 };
     private layout: XrStageLayout = DEFAULT_STAGE_LAYOUT;
     private bendEnd = DEFAULT_BEND_END;
+    /** What the far tangent misses of the focal point at the backdrop (decorative extension only). */
+    private farAimXValue = 0;
+    private farAimYValue = 0;
+    /** Distance of the backdrop the far tangent aims at (the player's Background distance). */
+    private backdropDistance: number = SCENE_CONFIG.backdropDistanceMeters;
 
     get focusX(): number { return this.focusXValue; }
     get focusY(): number { return this.focusYValue; }
@@ -132,6 +178,20 @@ export class XrTrackPath {
         this.recompute();
     }
 
+    /**
+     * The backdrop moved (Background distance): the far tangent re-aims at the same focal point on
+     * the moved, proportionally scaled plane. Returns true only when the path changed.
+     */
+    setBackdropDistance(distanceMeters: number): boolean {
+        const distance = Number.isFinite(distanceMeters) && distanceMeters > this.bendEnd ? distanceMeters : SCENE_CONFIG.backdropDistanceMeters;
+        if (distance === this.backdropDistance) return false;
+        this.backdropDistance = distance;
+        this.recompute();
+        return true;
+    }
+
+    get backdropDistanceMeters(): number { return this.backdropDistance; }
+
     /** Far end of the bend zone (meters ahead of the player; follows the runway length). */
     get bendEndMeters(): number { return this.bendEnd; }
 
@@ -143,9 +203,24 @@ export class XrTrackPath {
         return writeTrackBendUniform(out, this.amplitudeXValue, this.amplitudeYValue, this.bendEnd);
     }
 
+    /** The extension's far-aim uniform (`uTrackFarAim`): remainder x, y and the backdrop distance. */
+    writeFarAimUniform(out: MutableVector4Like): MutableVector4Like {
+        out.x = this.farAimXValue; out.y = this.farAimYValue; out.z = this.backdropDistance; out.w = 0;
+        return out;
+    }
+
     /** Offset for a stage-root z (floor/rails live in root space). */
     offsetAtRootZ(rootZ: number, out: TrackPathOffset): TrackPathOffset {
         return trackPathOffset(rootZ, this.amplitudeXValue, this.amplitudeYValue, out, this.bendEnd);
+    }
+
+    /** Offset continued past the runway along the far tangent (`TRACK_BEND_EXTENDED_GLSL`'s CPU twin; decorative only). */
+    offsetAtRootZExtended(rootZ: number, out: TrackPathOffset): TrackPathOffset {
+        const weight = trackBendWeightExtended(rootZ, this.bendEnd);
+        const aim = trackFarAimWeight(rootZ, this.bendEnd, this.backdropDistance);
+        out.x = this.amplitudeXValue * weight + this.farAimXValue * aim;
+        out.y = this.amplitudeYValue * weight + this.farAimYValue * aim;
+        return out;
     }
 
     /** Canonical playfield point -> rendered playfield point, in place. */
@@ -163,8 +238,17 @@ export class XrTrackPath {
     }
 
     private recompute(): void {
-        this.amplitudeXValue = trackBendAmplitude(this.focusXValue, SCENE_CONFIG.backdropWidthMeters / 2, SCENE_CONFIG.trackMaxLateralBendMeters, this.bendEnd);
-        this.amplitudeYValue = trackBendAmplitude(this.focusYValue, SCENE_CONFIG.backdropHeightMeters / 2, SCENE_CONFIG.trackMaxVerticalBendMeters, this.bendEnd);
+        // The plane scales with its distance, so its half extents do too (the focal angle is unchanged).
+        const scale = backdropScale(this.backdropDistance);
+        this.amplitudeXValue = trackBendAmplitude(this.focusXValue, scale * SCENE_CONFIG.backdropWidthMeters / 2, SCENE_CONFIG.trackMaxLateralBendMeters,
+            this.bendEnd, this.backdropDistance);
+        this.amplitudeYValue = trackBendAmplitude(this.focusYValue, scale * SCENE_CONFIG.backdropHeightMeters / 2, SCENE_CONFIG.trackMaxVerticalBendMeters,
+            this.bendEnd, this.backdropDistance);
+        // The focal point on the (scaled) plane, and what the saturated far tangent leaves of it there.
+        const tangentAtBackdrop = trackBendWeightExtended(-this.backdropDistance, this.bendEnd);
+        const reaches = this.backdropDistance > this.bendEnd;
+        this.farAimXValue = reaches ? this.focusXValue * scale * SCENE_CONFIG.backdropWidthMeters / 2 - this.amplitudeXValue * tangentAtBackdrop : 0;
+        this.farAimYValue = reaches ? this.focusYValue * scale * SCENE_CONFIG.backdropHeightMeters / 2 - this.amplitudeYValue * tangentAtBackdrop : 0;
         this.revision++;
     }
 

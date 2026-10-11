@@ -7,11 +7,19 @@ export const SCENE_CONFIG = {
     runwayBackZMeters: 2,
     /** Length of one repeat of the procedural floor pattern; the floor length is a whole multiple. */
     runwayTileLengthMeters: 2,
-    /** World-anchored Wormhole backdrop plane, in stage-root space. */
+    /**
+     * World-anchored Wormhole backdrop plane, in stage-root space: its size at the reference distance.
+     * The player's Background distance moves it (`backdropScale`), scaled so its angles stay these.
+     */
     backdropWidthMeters: 106,
     backdropHeightMeters: 60,
     backdropCenterYMeters: 1.65,
     backdropDistanceMeters: 40,
+    /**
+     * Camera far plane: beyond the farthest backdrop corner seen off axis (200 m plane: ~1.7 x 200 m
+     * view depth). With the 0.05 m near plane the depth buffer still resolves millimetres at 20 m.
+     */
+    cameraFarMeters: 600,
     /** Far -> near stereo plane distances; all lie beyond the gameplay volume (runway <= 10 m). */
     backdropLayerDistancesMeters: [40, 22, 12],
     /** Distance ahead of the player where the track starts bending; nearer is exactly straight. */
@@ -20,6 +28,11 @@ export const SCENE_CONFIG = {
     trackMaxLateralBendMeters: 2.4,
     trackMaxVerticalBendMeters: 1
 } as const;
+
+/** Uniform scale of the backdrop plane at `distanceMeters` that keeps the reference plane's angles. */
+export function backdropScale(distanceMeters: number): number {
+    return Number.isFinite(distanceMeters) && distanceMeters > 0 ? distanceMeters / SCENE_CONFIG.backdropDistanceMeters : 1;
+}
 
 /**
  * The player-dependent part of the stage (ADR-009 Addendum I). Everything else in `SCENE_CONFIG` is
