@@ -1,0 +1,93 @@
+[
+  {
+    "path": "tests/helpers/xr-track-bend.mjs",
+    "predecessorSha256": "49b322fefeb20c3673154f6d542d924d4137def6f7f9679074097c06175e262c",
+    "replacementSha256": "8133225150e78e31b782298088d7f901831d872d51414d47b9f2f134c83d3e27",
+    "reviewedBy": "Codex / root integration owner",
+    "reviewedReason": "Import the authored XR track-bend helper with the upstream distance-scaled default configuration; the pre-existing helper bytes remain archived. Exact upstream master source; predecessor retained in immutable v0010.sources.zip; cumulative execution required."
+  },
+  {
+    "path": "tests/raster-conversion.test.mjs",
+    "predecessorSha256": "d12aa043dbc514a4893be866d1736eef93656fb602a8b58504d2f221d642b62d",
+    "replacementSha256": "01b99ad286c4a4b6e839e8c0e3b58eeb6139af820d2c7a8810c8486e2256ae9e",
+    "reviewedBy": "Codex / root integration owner",
+    "reviewedReason": "Adapt the legacy comparison splice to the shared writeFieldRasterPixels raster conversion entrypoint. Exact upstream master source; predecessor retained in immutable v0010.sources.zip; cumulative execution required."
+  },
+  {
+    "path": "tests/xr-background-diagnostics.test.mjs",
+    "predecessorSha256": "d45328dc41220bf607e3b84b30e1a1ff0369d65f7a17694090f5d11baae277db",
+    "replacementSha256": "7466489102a6c23d079d73b6cee5aee514b4a937dabce9065b2cf483769b55bc",
+    "reviewedBy": "Codex / root integration owner",
+    "reviewedReason": "Import CPU/GPU timing diagnostics coverage and the spatial frameDrive source double. Exact upstream master source; predecessor retained in immutable v0010.sources.zip; cumulative execution required."
+  },
+  {
+    "path": "tests/xr-background-settings.test.mjs",
+    "predecessorSha256": "b36941744b0290a097c35c7bc3920f63a6fcf5df74629a9b9ecd991b9b57ccae",
+    "replacementSha256": "a16950e890cb0d8219506551c38fbe48a0a9b8a0a33ac30b001cf61234a7bb21",
+    "reviewedBy": "Codex / root integration owner",
+    "reviewedReason": "Import authored XR defaults, backdrop distance, spatial field and associated presentation tests. Exact upstream master source; predecessor retained in immutable v0010.sources.zip; cumulative execution required."
+  },
+  {
+    "path": "tests/xr-controller-regeneration.test.mjs",
+    "predecessorSha256": "d2641177d5ad320b0bd9ce4ad08744d611e3025a04becffa2fbf303275f67c25",
+    "replacementSha256": "bbec8afa2b6ee59232e9e5d64ad09d21fb330e40a64517aca8acb31aff2aee1c",
+    "reviewedBy": "Codex / root integration owner",
+    "reviewedReason": "Import prerender and raster pipeline options while retaining presentation-versus-gameplay regeneration coverage. Exact upstream master source; predecessor retained in immutable v0010.sources.zip; cumulative execution required."
+  },
+  {
+    "path": "tests/xr-gpu-lines.test.mjs",
+    "predecessorSha256": "231cf29f5cb54109aa6ba2e9e226a1bad9e25f757ae5dead6a00203ac5964ada",
+    "replacementSha256": "ffc09802f6ec6cbcd931cb5265110ecfde34958f5476d03331b34c998f3d6c36",
+    "reviewedBy": "Codex / root integration owner",
+    "reviewedReason": "Import pre-eye-pass upload/compositing and staged worker frame coverage. Exact upstream master source; predecessor retained in immutable v0010.sources.zip; cumulative execution required."
+  },
+  {
+    "path": "tests/xr-gpu-material.test.mjs",
+    "predecessorSha256": "df8bd207b559c1bdee23fe698473424951bd9696262e5e7e120116e2b7177728",
+    "replacementSha256": "0a65b7a765dc8486cd723ef2833a80fcb00058e40edfdc1acfd56eadb99a449d",
+    "reviewedBy": "Codex / root integration owner",
+    "reviewedReason": "Import spatial frameDrive mocks and current raster/material integration coverage. Exact upstream master source; predecessor retained in immutable v0010.sources.zip; cumulative execution required."
+  },
+  {
+    "path": "tests/xr-menu.test.mjs",
+    "predecessorSha256": "bcc78f7fa658c239f569a953a1fc92842aa3181e9dd3d16ff5453cbdf9441068",
+    "replacementSha256": "8e164bb508a3a207ed2b530476ee833dbbc90ab1a9a9aee24127c5b61d0b03a8",
+    "reviewedBy": "Codex / root integration owner",
+    "reviewedReason": "Import spatial field settings, diagnostics copy, reset confirmation and clipboard coverage. Exact upstream master source; predecessor retained in immutable v0010.sources.zip; cumulative execution required."
+  },
+  {
+    "path": "tests/xr-settings.test.mjs",
+    "predecessorSha256": "77b2cd9abcc9fd113648066fd685d714a2d14d742166596251c2d449422f080a",
+    "replacementSha256": "098666b50e935273a80d1cfb3b9956f83dadf096c524f1c88ce5f705fbfa5952",
+    "reviewedBy": "Codex / root integration owner",
+    "reviewedReason": "Import the authored defaults and CPU/GPU/WebGL raster settings contract. Exact upstream master source; predecessor retained in immutable v0010.sources.zip; cumulative execution required."
+  },
+  {
+    "path": "tests/xr-track-path.test.mjs",
+    "predecessorSha256": "40039e073c23ff83ddc376ca9b5fa71193843613238ac0f1c3790eca797800f0",
+    "replacementSha256": "141467a0223f8e95679255b4c6296b060244ec33f3b377a68927e0f559db7880",
+    "reviewedBy": "Codex / root integration owner",
+    "reviewedReason": "Import backdrop-distance projection and far-focus path coverage. Exact upstream master source; predecessor retained in immutable v0010.sources.zip; cumulative execution required."
+  },
+  {
+    "path": "tests/xr-wormhole-continuity.test.mjs",
+    "predecessorSha256": "6e37f7a99b7a4ec53a896b761db81823733e2166efeccf7bc3e25b1b2cd571dd",
+    "replacementSha256": "b341ddc3e61511a320971a0a6a9948f557c8171158c87fb8384bd2999036c218",
+    "reviewedBy": "Codex / root integration owner",
+    "reviewedReason": "Adapt the source double to the additive spatial frameDrive contract; continuity assertions remain active. Exact upstream master source; predecessor retained in immutable v0010.sources.zip; cumulative execution required."
+  },
+  {
+    "path": "tests/xr-wormhole-worker.test.mjs",
+    "predecessorSha256": "dbb4a7bf5d3ce7602d5c45596980696cae6de00731ac838d79a6ec7f171bfb26",
+    "replacementSha256": "20d4a7e06419c3a6322e95baad1f55e7fb711dedd07070d4b573a8d39c935905",
+    "reviewedBy": "Codex / root integration owner",
+    "reviewedReason": "Import feature-support diagnostics, software raster and spatial frame transfer/lifetime coverage. Exact upstream master source; predecessor retained in immutable v0010.sources.zip; cumulative execution required."
+  },
+  {
+    "path": "tests/xr-wormhole.test.mjs",
+    "predecessorSha256": "5598cb4da18c3d846fa0698584f18b161e771861212efaa393ed469f8efb4bd6",
+    "replacementSha256": "3c9534c3ebcc6d074664f5d1c7d6cd9fc1b473ebf3042dcaf92d4502b7838da8",
+    "reviewedBy": "Codex / root integration owner",
+    "reviewedReason": "Import revised authored XR tuning defaults and the spatial frameDrive source double. Exact upstream master source; predecessor retained in immutable v0010.sources.zip; cumulative execution required."
+  }
+]
