@@ -252,3 +252,26 @@ A három valódi részlet új kompatibilitási feltételt teljesítő ablak nél
 A korábbi hangmagasságadatok és külső egyezések megmaradnak. A réteg ezért
 kiegészítő diagnosztika; a következő kör változó burkolójú/hangmagasságú modelleket,
 valóban előzményből becsült frekvenciát és független többsávos annotációt igényel.
+
+## AN-04D: előzményből illesztett harmonikus előrejelzés
+
+Az [AN-04D](../../research/analyzer-lab/docs/AN-04D-VALIDATION.md) a frekvenciát
+és az együtthatókat egy külön, saját hash-sel azonosított tanulási ablakból
+becsüli. A későbbi hangrész csak ellenőrzésre kerül az API-ba. Az állandó
+harmonikus modell mellé időben lineárisan változó szinusz/koszinusz együtthatók
+kerültek; mindkettő eredményét megőrizzük, automatikus modellválasztás nélkül.
+A koszinusz/szinusz meredeksége helyi fáziseltérést is elnyelhet, ezért a kisebb
+maradék nem bizonyítja a hangmagasság-becslés javulását.
+
+A két külső pitch könyvtár most ténylegesen a külön kivágott, azonos tanulási
+ablakokat elemzi. NumPy és SciPy külön a kiválasztott illesztések matematikáját
+ellenőrzik. A mintavételes egyezés nem helyettesít zenetudományi annotációt.
+A fokozatos hangerőváltozás javul, de az ugrások, vibrato és keverékek
+megmaradó hibái miatt a szemantikai felhasználás továbbra is diagnosztikai,
+az XR pontozás számára nem alkalmas. A régi tesztek, első mérési verziók,
+elutasított futás és az összes új kód/forráspillanatkép megmarad.
+
+A következő feladat a modellválasztás kizárólag előzményen belüli validálása,
+majd külön hangmagasság-változási hipotézis mérése. A hangszer-, énekhang- és
+motívumazonosság fejlesztéséhez továbbra is független, annotált többsávos
+adat szükséges; a jó harmonikus illeszkedés nem pótolja ezt.

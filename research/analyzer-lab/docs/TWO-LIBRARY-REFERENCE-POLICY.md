@@ -83,3 +83,13 @@ there is no new librosa/audioFlux inference claim. Coefficient holdout does not
 make frequency independent of the full frame. Harmonic fit and temporal stability
 remain unverified-source diagnostics, preserving octave/unison ambiguity and
 one-source nonstationarity counterexamples. No new trusted source labels follow.
+
+[AN-04D](AN-04D-VALIDATION.md) calls actual librosa-YIN/audioFlux-NCF on
+separately hashed and isolated prefix PCM for deterministic first/last complete
+frames, including no-pitch controls. A later suffix cannot enter either provider
+or the Plexus fit. Only original two-vote agreement and own agreement with BOTH
+votes qualify sampled pitch references. This is not a whole-clip reference run.
+Actual NumPy/SciPy separately verify first/last available model frames, both
+stationary and linear-envelope hypotheses. Numerical agreement, acoustic
+prediction error and source identity remain distinct evidence categories.
+No successful fit turns into musical truth, resolved source/motif or XR scoring.
