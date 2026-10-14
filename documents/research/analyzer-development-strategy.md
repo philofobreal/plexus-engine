@@ -233,3 +233,22 @@ A hangmagasság ezért nem válik automatikusan hangszer-, énekes- vagy motívu
 a követőhöz átadott nyers keverékjelöltek feloldatlanok maradnak. A következő
 fejlesztési cél a harmonikus maradék és az időbeli folytonosság külön mérése,
 majd független többsávos annotációval igazolt forrásjelöltek és hangjegyhatárok.
+
+## AN-04C: harmonikus maradék és megfigyelt időbeli folytonosság
+
+Az [AN-04C modell](../../research/analyzer-lab/docs/AN-04C-VALIDATION.md) külön
+méri, mennyire magyarázza az állandó harmonikus jelmodell az ablakot, és mennyire
+folytonos a három egymást követő hangmagasság-jelölt. A QR-illesztés a nem
+ortogonális véges ablakos szinusz/oszlopokat helyesen kezeli; a kiválasztott
+számításokat két tényleges numerikus könyvtár, NumPy és SciPy is ellenőrzi.
+
+Az együtthatókat az első kétharmadon illesztjük, a maradék harmadon külön mérjük
+a hibát. Az alapfrekvencia azonban a korábbi, teljes ablakból számított jelölt:
+ez feltételes modellvizsgálat, nem vak jövőbeli előrejelzés. A két oktávban vagy
+unisonóban játszó forrás kis maradékot adhat, egyetlen vibratós/erősséget változtató
+hang nagyot; ebből önmagában nincs hangszerazonosság vagy hangszerszám.
+
+A három valódi részlet új kompatibilitási feltételt teljesítő ablak nélkül marad.
+A korábbi hangmagasságadatok és külső egyezések megmaradnak. A réteg ezért
+kiegészítő diagnosztika; a következő kör változó burkolójú/hangmagasságú modelleket,
+valóban előzményből becsült frekvenciát és független többsávos annotációt igényel.

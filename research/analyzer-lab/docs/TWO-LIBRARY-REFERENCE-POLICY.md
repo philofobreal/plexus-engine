@@ -74,3 +74,12 @@ identity. Actual shared guesses on noise/below-floor PCM are retained and
 withheld by the own gate. Mixture periodicity can agree without resolving any
 source; downstream parts therefore stay unresolved, diagnostic-only and XR
 ineligible. No source/motif training uses these pitch pairs.
+
+[AN-04C](AN-04C-VALIDATION.md) separately checks harmonic-model least-squares
+arithmetic against actual NumPy/SciPy outputs. This is a fixed-frequency numerical
+comparison, not a MIR source-isolation or instrument-identity reference. Existing
+actual AN-04B pitch votes are reused only after PCM/raw-output identity checks;
+there is no new librosa/audioFlux inference claim. Coefficient holdout does not
+make frequency independent of the full frame. Harmonic fit and temporal stability
+remain unverified-source diagnostics, preserving octave/unison ambiguity and
+one-source nonstationarity counterexamples. No new trusted source labels follow.
