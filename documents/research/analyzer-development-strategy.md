@@ -199,3 +199,20 @@ a korábbi library-futások befagyasztott eredményeit újrahasználva. A kutat�
 jelölt továbbra is diagnosztika: nem lesz automatikus dramaturgiai tény,
 koreográfiai esemény vagy XR-pontozási cél. A production integráció előtt
 független zenei annotáció és fogyasztói időzítés/költség mérés szükséges.
+
+## AN-04A: forrás–szólam–zenei motívum nyilvántartás
+
+Az [első követési prototípus](../../research/analyzer-lab/docs/AN-04A-VALIDATION.md)
+külön forrásazonosságot és zenei motívumazonosságot tart nyilván. A saját analyzer
+új harmonikus hangszínleíróval és időbeli társítással dolgozik, a szemantikai réteg
+pedig bizonyítékhoz kötött együttjátszást, visszatérést és dallamátvételt képez.
+Ezek kutatási hipotézisek; a meglévő vizuális motívumrendszer külön marad.
+
+A 8 fejlesztési és 12 új paraméterfeltétel támogatja a három ismert forrás és
+három motívum követését. A szétválasztás, az aktivitási/frázishatárok, az alapfrekvencia
+és a hangjegyek azonban megadott bemenetek. Az egymás után megszólaló azonos
+hangszínek téves összemosása és a hangszínt váltó forrás széttöredezése külön
+megőrzött ellenpélda. Nem történt kész zenéből általános hangszerfelismerés,
+neuronháló-tanítás vagy XR-publikáció. A következő lépés a jelöltkinyerés és a
+bizonytalan hangjegyadatok külön mérése, majd független többsávos annotáció és
+további forrásazonossági fejlesztés a kumulatív tesztek megtartásával.

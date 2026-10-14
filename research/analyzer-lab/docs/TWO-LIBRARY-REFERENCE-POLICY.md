@@ -56,3 +56,12 @@ agreement remains diagnostic for dramaturgy/choreography and ineligible for XR
 scoring. The recording diagnostic verifies exact retained PCM while reusing
 immutable actual AN-03F provider predictions; it does not claim another native
 library run or independently annotated recorded-music accuracy.
+
+[AN-04A](AN-04A-VALIDATION.md) adds source/musical-motif association on authored
+isolated candidate descriptors and supplied symbolic notes. It does not have an
+actual compatible two-provider identity/motif reference. That reference is
+explicitly unavailable; authored association truth has its own evidence category.
+Onset agreement is not repurposed as instrument, singer, source or motif truth.
+Source/phrase predictions and evidence relations remain diagnostic-only with
+null confidence and no XR scoring eligibility, including known source merge and
+fragmentation failures. No external prediction was used for training in this slice.
