@@ -1,0 +1,131 @@
+{
+  "schemaVersion": "regression-harness-1.0",
+  "sourceSummary": "research/analyzer-lab/fixtures/an01-signal-contract.summary.json",
+  "sourceSummaryHash": "2ce309bed6e8c56de7de5615148d25c1e55e572a5b56a04b7fa8c14507777ae4",
+  "baselineCommit": "29371e4fd65b5fc9defa6ebb4bca0b1488ed5e14",
+  "baselineProofHash": "7fb14ecff844cb5b91772d3cbc69aba2c39f5c470d49a716f1cee088ed7438b8",
+  "baselineLogHash": "bb5eb47a2b1757757de189d7ba705da72673d065b8a02d6a559670216c97f5db",
+  "structuredBaselineHash": "9409d86f5cce0e8bf9b14867bdb85588ca63b958e082d05b817d01b002e32471",
+  "classificationRule": "Exact file, name, assertion fields and normalized message; only EPERM rename quoted temporary paths are normalized. Known failures never change suite exit status.",
+  "failures": [
+    {
+      "name": "development preset save updates existing keys, appends edited keys, and preserves metadata",
+      "file": "tests/dev-preset-save.test.mjs",
+      "failure": {
+        "message": "EPERM: operation not permitted, rename 'C:\\Users\\budap\\AppData\\Local\\Packages\\sandbox.{e5d8dec7-e534-4c46-8a57-34439a8bcb13}\\AC\\Temp\\plexus-preset-save-Gg1dEb\\public\\visual-tuning-presets\\test.json.11140.6fadafd5-52a0-4f39-aadc-51663c3325ce.tmp' -> 'C:\\Users\\budap\\AppData\\Local\\Packages\\sandbox.{e5d8dec7-e534-4c46-8a57-34439a8bcb13}\\AC\\Temp\\plexus-preset-save-Gg1dEb\\public\\visual-tuning-presets\\test.json'",
+        "code": "EPERM",
+        "errno": -4048,
+        "syscall": "rename"
+      },
+      "signature": "90819727bfbbdaeb610f5662d51193d5f4e8e5c7651de62f1090b11745a5c3a0"
+    },
+    {
+      "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+      "file": "tests/wormhole-clip-profile.test.mjs",
+      "failure": {
+        "message": "vos-wh-drift.json must not reset user-global wormholeStarfield",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "b658ddb8ee818274fb04536684e720dc210fdc25b6675414161067b8ffb2d3c6"
+    },
+    {
+      "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+      "file": "tests/wormhole-clip-profile.test.mjs",
+      "failure": {
+        "message": "establish remains visibly above the opacity floor",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "cbd69f0a631f5c3d7660d1d6cb479d9cbc976b0bc5cdaf35be779a3498c21c13"
+    },
+    {
+      "name": "weak roles pin a deep-perspective depth and continuity profile",
+      "file": "tests/wormhole-clip-profile.test.mjs",
+      "failure": {
+        "message": "establish depth\n\n2.03136 !== 4\n",
+        "code": "ERR_ASSERTION",
+        "actual": 2.03136,
+        "expected": 4,
+        "operator": "strictEqual"
+      },
+      "signature": "04f7be3bda53bed3a235bf38f3b4e298d7defe3d9038704748b458344b968fcb"
+    },
+    {
+      "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+      "file": "tests/wormhole-clip-profile.test.mjs",
+      "failure": {
+        "message": "deep drift deeper than establish",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "551fef9b661af70672a77922b1e3307321fa77ff5650c9fce8596b2b257ef92c"
+    },
+    {
+      "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+      "file": "tests/wormhole-geometry-lfo-integration.test.mjs",
+      "failure": {
+        "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "01f438951b078978dfa308ea25817c11baa7a2345276b9a3235d3852e8c52875"
+    },
+    {
+      "name": "wormhole factory presets keep a minimum normalized weighted separation",
+      "file": "tests/wormhole-preset-differentiation.test.mjs",
+      "failure": {
+        "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "3985a70cce49ac51d1e836f3ca4a329ed2cd3263a98db37869a3dcf15826f39c"
+    },
+    {
+      "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+      "file": "tests/wormhole-preset-differentiation.test.mjs",
+      "failure": {
+        "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))\n",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "16c6fb2b2e8efc6f272647a9324b0b2161ff0d74aaf9052c51d0001a70845fc3"
+    },
+    {
+      "name": "projected forward motion preserves overdrive > punch > drive > drift",
+      "file": "tests/wormhole-projected-motion.test.mjs",
+      "failure": {
+        "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "ad3e3ca725305e16f8636c8ba2f9acb9e7c615d0c12b60681c41c412583ca9e4"
+    },
+    {
+      "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+      "file": "tests/wormhole-projected-motion.test.mjs",
+      "failure": {
+        "message": "389.64890777178124 vs 471.543038051684",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "f1217d4e8f656a5deb49de9a294f8adf273e794cc595f30db7aa24c38939e3cd"
+    }
+  ]
+}

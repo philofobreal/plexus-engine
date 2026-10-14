@@ -1,5 +1,11 @@
 import type { AudioFrame, TrackAnalysis } from '../types';
 import { DEFAULT_ANALYSIS_HOP_SIZE } from './constants';
+import { normalizeFeatureClock } from '../types/featureClock';
+import { normalizeAcousticOnsets } from '../types/acousticOnsets';
+import { normalizePredictiveOnsets } from '../types/predictiveOnsets';
+import { normalizeAdaptiveOnsets } from '../types/adaptiveOnsets';
+import { normalizeResidualOnsets } from '../types/residualOnsets';
+import { normalizeDifferenceOnsets } from '../types/differenceOnsets';
 
 /** Additive v4 frame fields: legacy absence and malformed numbers are silent, never inferred
  * from independently normalized display-spectrum bars. Preserve the worker-owned source. */
@@ -45,9 +51,18 @@ export function createEmptyTrackAnalysis(): TrackAnalysis {
 }
 
 export function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis, fallbackBpm = 0): TrackAnalysis {
+    const featureClock = normalizeFeatureClock(trackAnalysis);
     return {
         ...EMPTY_TRACK_ANALYSIS,
         ...trackAnalysis,
+        featureClock,
+        ...(trackAnalysis.acousticOnsets !== undefined ? { acousticOnsets: normalizeAcousticOnsets(trackAnalysis.acousticOnsets, trackAnalysis.duration, featureClock) } : {}),
+        ...(trackAnalysis.predictiveOnsets !== undefined ? { predictiveOnsets: normalizePredictiveOnsets(trackAnalysis.predictiveOnsets, trackAnalysis.duration, featureClock) } : {}),
+        ...(trackAnalysis.adaptiveOnsets !== undefined ? { adaptiveOnsets: trackAnalysis.adaptiveOnsets?.algorithm === 'confirmed-difference-v5'
+            ? normalizeDifferenceOnsets(trackAnalysis.adaptiveOnsets, trackAnalysis.duration, featureClock)
+            : trackAnalysis.adaptiveOnsets?.algorithm === 'residual-innovation-v4'
+            ? normalizeResidualOnsets(trackAnalysis.adaptiveOnsets, trackAnalysis.duration, featureClock)
+            : normalizeAdaptiveOnsets(trackAnalysis.adaptiveOnsets, trackAnalysis.duration, featureClock) } : {}),
         bpm: trackAnalysis.bpm || fallbackBpm || 0,
         bpmConfidence: trackAnalysis.bpmConfidence ?? 0,
         gridConfidence: trackAnalysis.gridConfidence ?? 0,

@@ -1,5 +1,6 @@
 import type { SpectralCalibration } from './SpectralCalibration';
 import { FFT } from './math/FFT';
+import { validateAnalysisClock } from './signalContract';
 
 export interface FrequencyBand {
     min: number;
@@ -64,6 +65,7 @@ export class FeatureExtractor {
     private bandsHz: FrequencyBands;
     private perceptualSpectrumBoundariesHz: number[];
     public totalFrames: number;
+    public readonly sampleCount: number;
     public rmsT: Float32Array;
     public fluxT: Float32Array;
     public subT: Float32Array;
@@ -98,6 +100,7 @@ export class FeatureExtractor {
     public typOnset: number = 0;
 
     constructor(channel: Float32Array, sampleRate: number, hopSize: number, calibration?: SpectralCalibration) {
+        validateAnalysisClock(sampleRate, hopSize);
         this.channel = channel;
         this.sampleRate = sampleRate;
         this.hopSize = hopSize;
@@ -110,7 +113,8 @@ export class FeatureExtractor {
             PERCEPTUAL_SPECTRUM_BAND_COUNT,
             this.nyquist
         );
-        this.totalFrames = Math.floor(channel.length / hopSize);
+        this.sampleCount = channel.length;
+        this.totalFrames = Math.ceil(channel.length / hopSize);
         this.rmsT = new Float32Array(this.totalFrames);
         this.fluxT = new Float32Array(this.totalFrames);
         this.subT = new Float32Array(this.totalFrames);
@@ -150,19 +154,21 @@ export class FeatureExtractor {
 
         for (let i = 0; i < this.totalFrames; i++) {
             let start = i * this.hopSize;
+            const validSamples = Math.min(this.hopSize, this.sampleCount - start);
             let sumE = 0;
             let zeroCrossings = 0;
             let prevSample = this.channel[start] || 0;
             for (let j = 0; j < this.hopSize; j++) {
                 let sample = this.channel[start + j] || 0;
                 sumE += sample * sample;
-                if (j > 0 && ((prevSample < 0 && sample >= 0) || (prevSample >= 0 && sample < 0))) zeroCrossings++;
+                if (j > 0 && j < validSamples && ((prevSample < 0 && sample >= 0) || (prevSample >= 0 && sample < 0))) zeroCrossings++;
                 prevSample = sample;
                 re[j] = sample * fft.window[j];
                 im[j] = 0;
             }
-            this.rmsT[i] = Math.sqrt(sumE / this.hopSize);
-            this.zcrT[i] = zeroCrossings / Math.max(1, this.hopSize - 1);
+            // Zero padding supplies FFT support; it is not observed silence for RMS/ZCR.
+            this.rmsT[i] = Math.sqrt(sumE / validSamples);
+            this.zcrT[i] = zeroCrossings / Math.max(1, validSamples - 1);
 
             fft.transform();
 
@@ -260,7 +266,10 @@ export class FeatureExtractor {
         }
 
         const getTypicalMax = (arr: Float32Array) => {
-            let sorted = new Float32Array(arr).sort();
+            // Partial support has different statistics; do not retune all complete windows
+            // from an end-cut spectrum. A sub-hop clip has only its observed support.
+            const completeFrames = Math.floor(this.sampleCount / this.hopSize);
+            let sorted = new Float32Array(arr.subarray(0, completeFrames || arr.length)).sort();
             return sorted[Math.floor(sorted.length * 0.98)] || 0.001;
         };
         this.typRms = getTypicalMax(this.rmsT);
@@ -295,6 +304,7 @@ export class FeatureExtractor {
             let futureRms = 0;
             let futureCount = 0;
             for (let j = i + 1; j <= Math.min(this.totalFrames - 1, i + 5); j++) {
+                if ((j + 1) * this.hopSize > this.sampleCount) continue;
                 futureRms += this.rmsT[j] || 0;
                 futureCount++;
             }
@@ -330,7 +340,22 @@ export class FeatureExtractor {
                 (1 - midHighFlux * 0.45);
 
             this.bassSustainT[i] = Math.max(bassSustain, futureBassHold);
-            this.percussiveT[i] = this.clampUnit(transient * (0.66 + sharpness * 0.34) - sustainedTonePenalty - pureLowTonePenalty * 1.05);
+            // Phase-dependent Hann-bin leakage can dominate a track-relative flux
+            // normalization on a sustained oscillator at any pitch. Stable narrowband
+            // energy has no new attack: keep the timing envelope, suppress its visual
+            // percussive interpretation. Decaying plucks and broadband percussion
+            // fail the plateau checks and retain their ordinary transient evidence.
+            const currentRms = this.rmsT[i] || 0;
+            const steadyTonalPlateau = previousCount >= 3 && currentRms > 1e-4
+                && (this.flatnessT[i] || 0) < 0.005
+                && (this.spectralCrestT[i] || 0) > 32
+                && Math.abs(currentRms - previousAvgRms) < currentRms * 0.03
+                && (futureCount === 0 || Math.abs(currentRms - futureAvgRms) < currentRms * 0.03);
+            // A partial end window can turn a cutoff into positive broadband flux.
+            // Retain raw evidence, but abstain from accepting visual attacks until
+            // endpoint-aware overlapping onset analysis supplies reliable support.
+            const completeSupport = (i + 1) * this.hopSize <= this.sampleCount;
+            this.percussiveT[i] = !completeSupport || steadyTonalPlateau ? 0 : this.clampUnit(transient * (0.66 + sharpness * 0.34) - sustainedTonePenalty - pureLowTonePenalty * 1.05);
         }
         this.typOnset = getTypicalMax(this.onsetEnvT);
     }

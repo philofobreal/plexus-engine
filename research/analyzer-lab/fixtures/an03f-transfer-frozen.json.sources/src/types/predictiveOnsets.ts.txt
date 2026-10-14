@@ -1,0 +1,60 @@
+/** Optional predictive attack evidence; scores are not probabilities or accepted XR targets. */
+export interface PredictiveCandidate {
+    time: number;
+    sampleIndex: number;
+    proposalSample: number;
+    /** Mean innovation power above eight times the fitted background; PCM squared. */
+    strength: number;
+    innovationRatio: number;
+    predictorCoefficient: number;
+    supportStartSample: number;
+    supportEndSample: number;
+    endpointAmbiguous: boolean;
+}
+
+export interface PredictiveOnsetAnalysis {
+    algorithm: 'predictive-innovation-v2';
+    sampleRate: number;
+    sampleCount: number;
+    historySamples: number;
+    lookaheadSamples: number;
+    hopSize: number;
+    timestamp: 'refined-sample';
+    localization: 'maximum-positive-innovation-power-step';
+    selection: 'candidate-only';
+    candidates: PredictiveCandidate[];
+}
+
+export function normalizePredictiveOnsets(value: PredictiveOnsetAnalysis | undefined, duration: number,
+    clock?: {sampleRate: number; sampleCount: number}): PredictiveOnsetAnalysis | undefined {
+    if (!value || value.algorithm !== 'predictive-innovation-v2' || value.timestamp !== 'refined-sample'
+        || value.localization !== 'maximum-positive-innovation-power-step' || value.selection !== 'candidate-only'
+        || !Number.isSafeInteger(value.sampleRate) || value.sampleRate < 1000 || value.sampleRate > 384000
+        || !Number.isSafeInteger(value.sampleCount) || value.sampleCount <= 0
+        || !Number.isFinite(duration) || Math.abs(duration - value.sampleCount / value.sampleRate) > 1e-9
+        || value.historySamples !== Math.max(1, Math.round(.030 * value.sampleRate))
+        || value.lookaheadSamples !== Math.max(1, Math.round(.004 * value.sampleRate))
+        || value.hopSize !== Math.max(1, Math.round(.002 * value.sampleRate))
+        || !Array.isArray(value.candidates)
+        || (clock && (clock.sampleRate !== value.sampleRate || clock.sampleCount !== value.sampleCount))) return undefined;
+    let previous = -1;
+    for (const c of value.candidates) {
+        if (!c || !Number.isSafeInteger(c.sampleIndex) || c.sampleIndex <= previous || c.sampleIndex >= value.sampleCount
+            || !Number.isSafeInteger(c.proposalSample) || c.proposalSample < 0 || c.proposalSample % value.hopSize !== 0
+            || c.sampleIndex < c.proposalSample || c.sampleIndex >= c.proposalSample + value.lookaheadSamples
+            || !Number.isFinite(c.time) || Math.abs(c.time - c.sampleIndex / value.sampleRate) > 1e-9
+            || !Number.isFinite(c.strength) || c.strength <= 0 || !Number.isFinite(c.innovationRatio) || c.innovationRatio < 8
+            || !Number.isFinite(c.predictorCoefficient) || Math.abs(c.predictorCoefficient) > 2
+            || c.supportStartSample !== Math.max(0, c.proposalSample - value.historySamples - 2)
+            || c.supportEndSample !== Math.min(value.sampleCount, c.proposalSample + value.lookaheadSamples)
+            || c.endpointAmbiguous !== (c.proposalSample < value.historySamples + 2
+                || value.sampleCount - c.proposalSample < value.lookaheadSamples)) return undefined;
+        previous = c.sampleIndex;
+    }
+    return {algorithm: value.algorithm, sampleRate: value.sampleRate, sampleCount: value.sampleCount,
+        historySamples: value.historySamples, lookaheadSamples: value.lookaheadSamples, hopSize: value.hopSize,
+        timestamp: value.timestamp, localization: value.localization, selection: value.selection,
+        candidates: value.candidates.map(c => ({time: c.time, sampleIndex: c.sampleIndex, proposalSample: c.proposalSample,
+            strength: c.strength, innovationRatio: c.innovationRatio, predictorCoefficient: c.predictorCoefficient,
+            supportStartSample: c.supportStartSample, supportEndSample: c.supportEndSample, endpointAmbiguous: c.endpointAmbiguous}))};
+}

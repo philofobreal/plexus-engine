@@ -1,0 +1,73 @@
+// AN-03G fixed predeclared grid on all previously viewed cases; no holdout claim.
+import assert from 'node:assert/strict';
+import {readFileSync,writeFileSync,mkdirSync,existsSync} from 'node:fs';
+import {resolve,dirname} from 'node:path';
+import {createLoader} from '../../../tests/helpers/xr-loader.mjs';
+import {matchOnsets} from '../../../tests/helpers/onset-matching.mjs';
+import {challengeSpecs,challengeFixture,sha256} from '../../../tests/fixtures/acoustic-onset-challenges.mjs';
+import {robustnessSpecs,robustnessFixture} from '../../../tests/fixtures/predictive-onset-robustness.mjs';
+import {adaptiveSpecs,adaptiveFixture} from '../../../tests/fixtures/adaptive-onset-robustness.mjs';
+import {residualSpecs,residualFixture} from '../../../tests/fixtures/residual-onset-robustness.mjs';
+import {differenceSpecs,differenceFixture} from '../../../tests/fixtures/difference-onset-robustness.mjs';
+import {continuationSpecs,continuationFixture} from '../../../tests/fixtures/continuation-onset-robustness.mjs';
+import {peakSpecs,peakFixture} from '../../../tests/fixtures/peak-onset-robustness.mjs';
+
+if (process.argv.length!==4 || process.argv[2]!=='--output') throw new Error('Use --output NEW_JSON');
+const output=resolve(process.argv[3]);
+if (existsSync(output)||existsSync(output+'.sources')) throw new Error('Exclusive new output required');
+const load=createLoader({}, {Float32Array,Float64Array});
+const {extractBandOnsets}=load('analyzer/BandOnsets.ts');
+const grid=[1e-5,1e-4].map(physicalFloor=>({innovationContrast:16,continuationRatio:1.3,physicalPeakContrast:8,physicalFloor}));
+const previous=['an03f-development-final.json','an03f-transfer-frozen.json'].map(n=>'research/analyzer-lab/fixtures/'+n);
+const old=previous.flatMap(p=>JSON.parse(readFileSync(p)).cases), cases=[],totals={};
+const sourcePaths=['src/analyzer/BandOnsets.ts','src/types/bandOnsets.ts','src/analyzer/ContinuationOnsets.ts',
+    'src/analyzer/DifferenceOnsets.ts','src/analyzer/ResidualOnsets.ts','src/analyzer/signalContract.ts',
+    'tests/helpers/xr-loader.mjs','tests/helpers/onset-matching.mjs',
+    ...['acoustic-onset-challenges','predictive-onset-robustness','adaptive-onset-robustness',
+        'residual-onset-robustness','difference-onset-robustness','continuation-onset-robustness',
+        'peak-onset-robustness'].map(n=>'tests/fixtures/'+n+'.mjs'),
+    'research/analyzer-lab/diagnostics/measure-an03g.mjs','research/analyzer-lab/docs/AN-03G-EXPERIMENT.md'];
+const sourceBytes=Object.fromEntries(sourcePaths.map(p=>[p,readFileSync(p)]));
+let cursor=0;
+for (const [matrix,specs,fixture] of [
+    ['c2',challengeSpecs(),challengeFixture],['an03',robustnessSpecs(),robustnessFixture],
+    ['an03b',adaptiveSpecs(),adaptiveFixture],['an03c',residualSpecs(),residualFixture],
+    ['an03d',differenceSpecs(),differenceFixture],['an03e',continuationSpecs(),continuationFixture],
+    ['an03f',peakSpecs(),peakFixture]]) {
+    for (const spec of specs) {
+        const f=fixture(spec),prior=old[cursor++];
+        assert.equal(f.pcmSha256,prior.pcmSha256);assert.equal(f.truthSha256,prior.truthSha256);
+        const variants={},measurements={},baseTimes=prior.eventTimes.continuationV6;
+        for (const options of grid) {
+            const key=JSON.stringify(options),result=extractBandOnsets(f.samples,spec.sampleRate,options);
+            const times=result.candidates.map(c=>c.time);
+            for (const t of baseTimes) assert.ok(times.includes(t),'Previous v6 timestamp lost');
+            variants[key]={metadata:Object.fromEntries(Object.entries(result).filter(([k])=>k!=='candidates')),candidates:result.candidates};
+            measurements[key]=f.negativeStart!==null
+                ? {negativeCount:times.filter(t=>t>=f.negativeStart).length,exposure:f.duration-f.negativeStart}
+                : Object.fromEntries([.002,.025].map(t=>[t,matchOnsets(f.truthSamples.map(i=>i/spec.sampleRate),times,t)]));
+        }
+        measurements.v6=f.negativeStart!==null
+            ? {negativeCount:baseTimes.filter(t=>t>=f.negativeStart).length,exposure:f.duration-f.negativeStart}
+            : Object.fromEntries([.002,.025].map(t=>[t,matchOnsets(f.truthSamples.map(i=>i/spec.sampleRate),baseTimes,t)]));
+        cases.push({matrix,spec,pcmSha256:f.pcmSha256,truthSha256:f.truthSha256,truthSamples:f.truthSamples,
+            duration:f.duration,negativeStart:f.negativeStart,baseTimes,variants,measurements});
+    }
+    console.log(JSON.stringify({matrix,completed:cursor}));
+}
+assert.equal(cursor,old.length);
+for (const c of cases) for (const [variant,m] of Object.entries(c.measurements)) {
+    const s=totals[c.matrix]??={};const v=s[variant]??={matched2ms:0,extras2ms:0,matched25ms:0,extras25ms:0,negatives:0,negativeExposure:0};
+    if (c.negativeStart!==null) {v.negatives+=m.negativeCount;v.negativeExposure+=m.exposure;}
+    else {v.matched2ms+=m['0.002'].matchedCount;v.extras2ms+=m['0.002'].falsePositives;
+        v.matched25ms+=m['0.025'].matchedCount;v.extras25ms+=m['0.025'].falsePositives;}
+}
+const sourceHashes={};
+for (const [p,bytes] of Object.entries(sourceBytes)) {
+    assert.equal(sha256(readFileSync(p)),sha256(bytes),'Source changed during measurement');
+    sourceHashes[p]=sha256(bytes);const target=output+'.sources/'+p+'.txt';
+    mkdirSync(dirname(target),{recursive:true});writeFileSync(target,bytes,{flag:'wx'});
+}
+writeFileSync(output,JSON.stringify({protocol:'AN-03G declared physical-band grid; all conditions previously viewed',
+    nodeVersion:process.version,grid,sourceHashes,previousHashes:Object.fromEntries(previous.map(p=>[p,sha256(readFileSync(p))])),totals,cases},null,2)+'\n',{flag:'wx'});
+console.log(JSON.stringify({output,cases:cases.length,totals}));

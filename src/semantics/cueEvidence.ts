@@ -1,4 +1,5 @@
 import type { TrackAnalysis } from '../types';
+import { featureFrameStepSeconds } from '../types/featureClock.ts';
 
 // Musical evidence for automatic automation placement (ADR-005 publication gate).
 // Pure and offline: reads only already-published TrackAnalysis cues, novelty peaks, boundary
@@ -14,7 +15,8 @@ const finite = (n: number) => Number.isFinite(n);
 export function cueContext(analysis: TrackAnalysis, time: number): CueContext {
     const frames = analysis.features ?? [];
     if (!finite(time) || !frames.length || !(analysis.duration > 0)) return { before: 0, after: 0, contrast: 0, peak: 0 };
-    const at = (t: number) => Math.max(0, Math.min(frames.length - 1, Math.floor(t / analysis.duration * frames.length)));
+    const frameStep = featureFrameStepSeconds(analysis);
+    const at = (t: number) => Math.max(0, Math.min(frames.length - 1, Math.floor(t / frameStep)));
     const mean = (start: number, end: number) => {
         const values = [0, 0, 0, 0, 0, 0];
         const a = at(start), b = Math.max(a, at(end));

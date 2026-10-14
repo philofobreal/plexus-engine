@@ -19,7 +19,7 @@ export interface LowFrequencyFeatures {
 export function extractLowFrequencies(samples: Float32Array, sampleRate: number, hopSize: number): LowFrequencyFeatures {
     if (!Number.isFinite(sampleRate) || sampleRate < 1000 || sampleRate > 384000
         || !Number.isSafeInteger(hopSize) || hopSize < 1) throw new Error('Invalid low-frequency analysis clock');
-    const count = Math.floor(samples.length / hopSize);
+    const count = Math.ceil(samples.length / hopSize);
     const result: LowFrequencyFeatures = {
         subEnergy: new Float32Array(count), bassEnergy: new Float32Array(count),
         subFlux: new Float32Array(count), bassFlux: new Float32Array(count)

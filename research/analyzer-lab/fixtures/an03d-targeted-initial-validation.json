@@ -1,0 +1,17 @@
+{
+  "kind": "targeted-validation-initial",
+  "nodeCommand": "node --test tests/analyzer-difference-onsets.test.mjs",
+  "nodeCounts": {
+    "tests": 6,
+    "passed": 5,
+    "failed": 1
+  },
+  "sourceSha256": "858eaaea92877a7c8581614bee5284ef2242e8764ec69a46dca77e176e133e0d",
+  "failure": "Frozen transfer test line 83 shadows outer fixture index inside truthSamples.map, reading specs[sampleIndex].sampleRate; TypeError. DSP and measured frozen result remain unchanged. Correct the test clock expression and rerun all six Node tests.",
+  "pythonCommand": "python -m pytest research/analyzer-lab/tests/test_difference_transport.py -q -p no:cacheprovider --basetemp=research/analyzer-lab/.cache/an03d-schema-unique-a",
+  "pythonCounts": {
+    "passed": 12,
+    "failed": 0
+  },
+  "note": "The compound shell returned its final Python status. Node output was separately reviewed and the initial failure remains recorded."
+}

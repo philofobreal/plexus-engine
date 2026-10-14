@@ -1,0 +1,32 @@
+import json
+import subprocess
+from pathlib import Path
+
+root = Path(__file__).resolve().parents[3]
+path = root / 'tests/fixtures/analyzer/analysis-result.schema.json'
+text = subprocess.check_output(['git', 'show', 'HEAD:tests/fixtures/analyzer/analysis-result.schema.json'], cwd=root).decode('utf-8')
+text = text.replace('        "avgRms": { "type": "number" },',
+                    '        "avgRms": { "type": "number" },\n        "rmsAmplitude": { "type": "number" },')
+text = text.replace('        "featureHopSize": { "type": "number" },',
+                    '        "featureHopSize": { "type": "number" },\n        "featureClock": { "$ref": "#/$defs/featureClock" },')
+definition = '''    "featureClock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sampleRate", "sampleCount", "hopSize", "windowSize", "originSample", "timestamp", "tailPolicy"],
+      "properties": {
+        "sampleRate": { "type": "number" },
+        "sampleCount": { "type": "number" },
+        "hopSize": { "type": "number" },
+        "windowSize": { "type": "number" },
+        "originSample": { "type": "number", "enum": [0] },
+        "timestamp": { "type": "string", "enum": ["window-start"] },
+        "tailPolicy": { "type": "string", "enum": ["zero-pad"] }
+      }
+    },
+'''
+text = text.replace('    "trackAnalysis": {\n', definition + '    "trackAnalysis": {\n')
+data = json.loads(text)
+assert 'featureClock' in data['$defs']['trackAnalysis']['properties']
+assert 'rmsAmplitude' in data['$defs']['barAnalysis']['properties']
+assert 'rmsAmplitude' in data['$defs']['trackSection']['properties']
+path.write_text(text, encoding='utf-8')

@@ -564,7 +564,7 @@ test('analysis worker uses spectral FFT features instead of legacy crossover fil
   assert.match(featureExtractor, /const hz = k \* this\.binHz/);
   assert.match(featureExtractor, /this\.centroidT\[i\] = sumMag > 0 && this\.nyquist > 0 \? \(sumFreqMag \/ sumMag\) \/ this\.nyquist : 0/);
   assert.match(featureExtractor, /this\.flatnessT\[i\] = sumMag > 0 && meanMag > 0 \? Math\.exp\(sumLogMag \/ Math\.max\(1, activeBins\)\) \/ meanMag : 0/);
-  assert.match(featureExtractor, /this\.zcrT\[i\] = zeroCrossings \/ Math\.max\(1, this\.hopSize - 1\)/);
+  assert.match(featureExtractor, /this\.zcrT\[i\] = zeroCrossings \/ Math\.max\(1, validSamples - 1\)/);
   assert.match(featureExtractor, /this\.spectralRolloffT\[i\] = this\.nyquist > 0 \? Math\.min\(1, \(rolloffBin \* this\.binHz\) \/ this\.nyquist\) : 0/);
   assert.match(featureExtractor, /this\.spectralCrestT\[i\] = sumMag > 0 && meanMag > 0 \? maxMag \/ meanMag : 0/);
   assert.doesNotMatch(featureExtractor, /k <= 6|k <= 93|k <= 465|\/ 512|\/ 511/);

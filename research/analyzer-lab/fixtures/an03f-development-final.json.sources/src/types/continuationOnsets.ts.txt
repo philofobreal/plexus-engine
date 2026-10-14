@@ -1,0 +1,18 @@
+import type {DifferenceCandidate, DifferenceOnsetAnalysis} from './differenceOnsets';
+
+export interface ContinuationRejection {
+    candidate: DifferenceCandidate;
+    reason: 'weak-continuation-with-falling-curvature-power';
+    continuationPower: number;
+    continuationFloor: number;
+    beforeSecondPower: number;
+    afterSecondPower: number;
+}
+
+/** Research function result; deliberately absent from TrackAnalysis/worker payloads. */
+export interface ContinuationOnsetAnalysis extends Omit<DifferenceOnsetAnalysis, 'algorithm'> {
+    algorithm: 'experimental-continuation-v6';
+    directionalWindowSamples: number;
+    directionalFilterCoefficients: number[];
+    rejected: ContinuationRejection[];
+}

@@ -101,7 +101,13 @@ test('extraction is deterministic, does not mutate samples and handles empty/sho
   const a = extractLowFrequencies(samples, 22050, 1024), b = extractLowFrequencies(samples, 22050, 1024);
   for (const key of Object.keys(a)) assert.deepEqual(a[key], b[key]);
   assert.deepEqual(samples, original);
-  for (const length of [0, 1, 1023]) assert.equal(extractLowFrequencies(new Float32Array(length), 22050, 1024).subEnergy.length, 0);
+  for (const length of [0, 1, 1023, 1024, 1025]) {
+    const silent = extractLowFrequencies(new Float32Array(length), 22050, 1024);
+    for (const values of Object.values(silent)) {
+      assert.equal(values.length, Math.ceil(length / 1024));
+      assert.ok(Array.from(values).every(value => value === 0));
+    }
+  }
   for (const [rate, hop] of [[0,1024], [NaN,1024], [Infinity,1024], [44100,0], [44100,0.5]]) assert.throws(() => extractLowFrequencies(samples, rate, hop));
 });
 

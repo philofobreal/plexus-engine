@@ -1,0 +1,9 @@
+[
+  {
+    "path": "tests/fixtures/analyzer/analysis-result.schema.json",
+    "predecessorSha256": "b616aaa220de5e5fb11d2c98c661d2cadbf9cc3552f8abcb614d04b0dbd7901d",
+    "replacementSha256": "f1d7fcf637eb8798dbb62f85c888008a38d750f84e1dbd32058788aa76785b87",
+    "reviewedBy": "root integration owner",
+    "reviewedReason": "Adds only strict optional adaptive-innovation-v3 definition/property, with local contrast and minimum spacing metadata. Formatting is normalized; JSON structure after removing these two additions is identical to immutable v4, including all required fields and v1/v2 schemas. The predecessor remains in v4 ZIP. Original tests stay active; six new Node tests verify core quality, clocks, malformed transport and default parity; nine independent Python actual-payload/schema tests pass. Full cumulative validation follows."
+  }
+]

@@ -1,0 +1,25 @@
+import json
+import re
+import subprocess
+from pathlib import Path
+
+root = Path(__file__).resolve().parents[3]
+names = subprocess.check_output(['git','ls-files','--others','--exclude-standard'],cwd=root,text=True).splitlines()
+issues=[]
+for name in names:
+    path=root/name
+    text=path.read_text(encoding='utf-8')
+    for number,line in enumerate(text.splitlines(),1):
+        if line.rstrip()!=line: issues.append(f'{name}:{number}: trailing whitespace')
+    if not text.endswith('\n'): issues.append(f'{name}: no final newline')
+    if path.suffix=='.json': json.loads(text)
+    if path.suffix=='.md':
+        for link in re.findall(r'\]\(([^)]+)\)',text):
+            if '://' in link or link.startswith('#'): continue
+            destination=(path.parent/link.split('#')[0]).resolve()
+            if not destination.exists(): issues.append(f'{name}: missing link {link}')
+    if path.suffix in ('.wav','.flac','.mp3','.npz','.npy','.f32le','.onnx','.pth','.pt','.h5'):
+        issues.append(f'Unexpected binary artifact: {name}')
+print(f'Reviewed {len(names)} new text files; issues: {len(issues)}')
+print('\n'.join(issues))
+raise SystemExit(bool(issues))

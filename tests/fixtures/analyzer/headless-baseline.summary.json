@@ -3,7 +3,7 @@
     "id": "synthetic-vst-saas-contract-v1",
     "sampleRate": 44100,
     "totalSamples": 98304,
-    "algorithmVersion": 2,
+    "algorithmVersion": 7,
     "phraseSize": 8,
     "requestId": 9001
   },
@@ -69,7 +69,7 @@
       "energy": 0,
       "density": 0.130377,
       "dominantFeature": "melody",
-      "avgRms": 0,
+      "avgRms": 0.519683,
       "peakRms": 1
     },
     "tensionTrends": {

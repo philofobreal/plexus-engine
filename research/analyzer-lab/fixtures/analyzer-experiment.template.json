@@ -1,0 +1,19 @@
+{
+  "recordVersion": "1.0.0",
+  "status": "draft",
+  "policy": "configs/analyzer-evaluation-policy.v1.json",
+  "experimentId": null,
+  "hypothesis": null,
+  "taskAndConsumer": null,
+  "scopeAndStageOwners": [],
+  "baseline": {"gitRevision": null, "sourceHash": null, "algorithmVersion": null, "configHash": null, "modelHash": null},
+  "candidate": {"sourceHashBeforeTest": null, "algorithmVersion": null, "configHash": null, "modelHashBeforeTest": null},
+  "environmentArtifactHash": null,
+  "data": {"manifestHash": null, "annotationHash": null, "licenseReviewArtifact": null, "independentOriginGroupDefinition": null, "trainGroups": [], "validationGroups": [], "reservedTestGroups": [], "knownRegressionGroups": [], "inspectedTestAtDeclaration": false},
+  "signalContract": {"decodedPcmHashPolicy": null, "channelProjection": null, "sampleRates": [], "resamplingAndDelay": null, "fftWindowAndHop": null, "frameOriginAndSupport": null, "partialFramePolicy": null, "acousticLabelDefinitionAndUncertainty": null},
+  "selection": {"fitPartition": "train", "selectionPartition": "validation", "normalizationFitPartition": "train", "hyperparameterGrid": null, "thresholdGrid": null, "validationObjectiveAndTieRule": null, "ablations": []},
+  "evaluation": {"primaryObjective": null, "matchingAndToleranceCurve": [], "protectedConditions": [], "coverageFloor": null, "negativeExposureRequirement": null, "pairedStatistic": null, "groupBootstrapMethodSeedReplicates": null, "undefinedReplicatePolicy": null, "maximumProtectedRegression": null, "timingLimits": null, "runtimeMemoryBudget": null, "exclusionRules": [], "requiredProviderCoverage": []},
+  "freeze": {"declarationArtifactHash": null, "timestampBeforeTest": null, "independentReview": null},
+  "results": {"rawAndCanonicalArtifacts": [], "allTrackAndStratumReports": [], "stageLosses": null, "pairedUncertainty": null, "negativeExposure": null, "governanceValidation": null, "physicalConsumerValidation": null},
+  "decision": {"status": "not_evaluated", "reasons": [], "permittedDomain": null, "rollbackIdentity": null}
+}

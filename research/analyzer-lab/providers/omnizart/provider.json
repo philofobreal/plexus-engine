@@ -1,0 +1,40 @@
+{
+  "id": "omnizart",
+  "displayName": "Omnizart",
+  "providerVersion": "0.6.3",
+  "executionMode": "external-process",
+  "pythonRequirement": ">=3.8 (PyPI metadata); dependency/platform compatibility requires isolated validation",
+  "capabilities": [
+    "beats",
+    "drumEvents",
+    "vocalPitch",
+    "noteTranscription",
+    "instrumentTranscription",
+    "chords"
+  ],
+  "codeLicense": "MIT",
+  "modelLicense": "unknown",
+  "modelLicenseSource": "https://github.com/Music-and-Culture-Technology-Lab/omnizart",
+  "datasetDependencies": [
+    {
+      "id": "task-specific-training-corpora",
+      "requiredForInference": false,
+      "license": "requires-review",
+      "notes": "Choose a specific task/checkpoint and record its training corpus references. Repository constants include dataset loaders; their existence does not grant dataset rights."
+    }
+  ],
+  "usagePolicy": "requires-review",
+  "enabledByDefault": false,
+  "status": "planned",
+  "command": null,
+  "licenseEvidence": {
+    "checkedAt": "2026-10-10",
+    "sources": [
+      "https://pypi.org/project/omnizart/0.6.3/",
+      "https://github.com/Music-and-Culture-Technology-Lab/omnizart/blob/master/LICENSE",
+      "https://github.com/Music-and-Culture-Technology-Lab/omnizart/blob/master/README.md",
+      "https://github.com/Music-and-Culture-Technology-Lab/omnizart/blob/master/omnizart/constants/datasets.py"
+    ],
+    "notes": "Latest checked PyPI is 0.6.3, released 2026-05-31; master packaging files still show 0.6.0, so do not infer release metadata from master. Code MIT does not establish a separately verified checkpoint grant. Checkpoints require explicit download. Upstream documents a drum training convergence bug; transcription is advertised with supplied checkpoints."
+  }
+}

@@ -1,0 +1,27 @@
+import {normalizePredictiveOnsets} from './predictiveOnsets';
+import type {PredictiveOnsetAnalysis} from './predictiveOnsets';
+
+/** V3 uses local contrast only on poorly predicted histories; no accepted targets. */
+export interface AdaptiveOnsetAnalysis extends Omit<PredictiveOnsetAnalysis, 'algorithm'> {
+    algorithm: 'adaptive-innovation-v3';
+    contrastSamples: number;
+    minimumSeparationSamples: number;
+}
+
+export function normalizeAdaptiveOnsets(value: AdaptiveOnsetAnalysis | undefined, duration: number,
+    clock?: {sampleRate: number; sampleCount: number}): AdaptiveOnsetAnalysis | undefined {
+    if (!value || value.algorithm !== 'adaptive-innovation-v3'
+        || value.contrastSamples !== Math.max(1, Math.round(.002 * value.sampleRate))
+        || value.minimumSeparationSamples !== Math.max(1, Math.round(.003 * value.sampleRate))) return undefined;
+    // Timing/support/finite candidate fields are identical to v2. Reuse its
+    // dependency-light validator, without calling any DSP or changing v2 input.
+    const normalized = normalizePredictiveOnsets({...value, algorithm: 'predictive-innovation-v2'}, duration, clock);
+    if (!normalized) return undefined;
+    for (let i = 1; i < normalized.candidates.length; i++)
+        if (normalized.candidates[i].sampleIndex - normalized.candidates[i - 1].sampleIndex < value.minimumSeparationSamples) return undefined;
+    return {algorithm: value.algorithm, sampleRate: normalized.sampleRate, sampleCount: normalized.sampleCount,
+        historySamples: normalized.historySamples, lookaheadSamples: normalized.lookaheadSamples, hopSize: normalized.hopSize,
+        contrastSamples: value.contrastSamples, minimumSeparationSamples: value.minimumSeparationSamples,
+        timestamp: normalized.timestamp, localization: normalized.localization, selection: normalized.selection,
+        candidates: normalized.candidates};
+}

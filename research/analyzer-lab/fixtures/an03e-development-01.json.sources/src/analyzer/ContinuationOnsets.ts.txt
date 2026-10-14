@@ -1,0 +1,25 @@
+import {extractDifferenceOnsets} from './DifferenceOnsets';
+import type {DifferenceCandidate} from '../types/differenceOnsets';
+
+/** Research-only continuation gate. Does not publish accepted musical events. */
+export function extractContinuationOnsets(samples: Float32Array, sampleRate: number) {
+    const base = extractDifferenceOnsets(samples, sampleRate);
+    const value = (i: number) => i >= 0 ? samples[i] : 0;
+    const residual = (i: number) => (value(i) - 4 * value(i - 1) + 6 * value(i - 2)
+        - 4 * value(i - 3) + value(i - 4)) / 16;
+    const candidates: DifferenceCandidate[] = [], rejected: DifferenceCandidate[] = [];
+    for (const p of base.candidates) {
+        const start = Math.max(0, p.proposalSample - base.historySamples);
+        let raw = 0, continuation = 0;
+        for (let i = start; i < p.proposalSample; i++) raw += samples[i] ** 2;
+        raw = p.proposalSample > start ? raw / (p.proposalSample - start) : 0;
+        const end = Math.min(samples.length, p.sampleIndex + 5 + base.contrastSamples);
+        for (let i = p.sampleIndex + 5; i < end; i++) continuation += residual(i) ** 2;
+        const count = Math.max(0, end - p.sampleIndex - 5);
+        const floor = Math.max(1e-20, raw * 1e-5 * (8000 / sampleRate) ** 2);
+        if (p.evidenceSource === 'residual-v4-confirmed' && count > 0 && continuation / count < floor) {
+            rejected.push({...p});
+        } else candidates.push({...p, supportEndSample: Math.max(p.supportEndSample, end)});
+    }
+    return {...base, algorithm: 'experimental-continuation-v6' as const, candidates, rejected};
+}

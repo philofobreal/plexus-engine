@@ -1,0 +1,23 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const base = resolve('research/analyzer-lab/.cache/baseline-check');
+const baseline = readFileSync(resolve(base, 'baseline-test.log'), 'utf8');
+const current = readFileSync(resolve(base, '../npm-test-improvement.log'), 'utf8');
+const names = text => [...new Set([...text.matchAll(/^✖ (.+) \([\d.]+ms\)$/gm)].map(match => match[1]))].sort();
+const assertions = text => [...text.matchAll(/^\s*AssertionError \[ERR_ASSERTION\]: (.+)$/gm)].map(match => match[1]).sort();
+const baselineNames = names(baseline);
+const currentNames = names(current);
+const summary = {
+  baselineSummary: baseline.split(/\r?\n/).filter(line => /^ℹ (tests|pass|fail|duration_ms) /.test(line)),
+  currentSummary: current.split(/\r?\n/).filter(line => /^ℹ (tests|pass|fail|duration_ms) /.test(line)),
+  baselineFailureNames: baselineNames,
+  currentFailureNames: currentNames,
+  identicalFailureNames: JSON.stringify(baselineNames) === JSON.stringify(currentNames),
+  identicalAssertionMessages: JSON.stringify(assertions(baseline)) === JSON.stringify(assertions(current)),
+  baselineRenameEPERM: /EPERM: operation not permitted, rename/.test(baseline),
+  currentRenameEPERM: /EPERM: operation not permitted, rename/.test(current),
+};
+writeFileSync(resolve(base, 'comparison.json'), JSON.stringify(summary, null, 2) + '\n');
+console.log(JSON.stringify(summary, null, 2));
+if (baselineNames.length !== 10 || !summary.identicalFailureNames || !summary.identicalAssertionMessages || !summary.baselineRenameEPERM || !summary.currentRenameEPERM) process.exitCode = 1;

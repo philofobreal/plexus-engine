@@ -1,0 +1,129 @@
+{
+  "scope": "Single observation per condition, isolated child VM loader excluded from duration; not a production benchmark",
+  "sourceHashes": {
+    "src/analyzer/PredictiveOnsets.ts": "45534e7e0f232bff0fde918e49f53bc511dbba9b51af81afde7af3f1e320fc92",
+    "src/analyzer/AdaptiveOnsets.ts": "d6d6632dd2db6eced6062783bd4e9e7d9eaa5087e156f222aa5a4ad9419d93c3",
+    "src/analyzer/signalContract.ts": "fb64a5fcb50b6ad61e3b86717f80ace34c993e8d948c2865b9c05369861f294a",
+    "tests/helpers/xr-loader.mjs": "65f5c9bd8264f10e569d5d5b158e7ebda64f59ee8188e2040f1a2d9754e5ed3e",
+    "research/analyzer-lab/diagnostics/profile-adaptive-onsets.mjs": "0cd74e2003e7d5931a764f1547eb44a0255d070dd344fbe29f24540cf42485e5"
+  },
+  "cases": [
+    {
+      "seconds": 30,
+      "method": "v2",
+      "sampleRate": 16000,
+      "sampleCount": 480000,
+      "pcmSha256": "b405b05fe47f4831882d89f6433e8795c84ea5329874c76a65032789c0bcd080",
+      "durationMs": 179.20920000000007,
+      "memoryBefore": {
+        "rss": 104620032,
+        "heapTotal": 49078272,
+        "heapUsed": 43502840,
+        "external": 4259275,
+        "arrayBuffers": 1944851
+      },
+      "memoryAfter": {
+        "rss": 110673920,
+        "heapTotal": 56418304,
+        "heapUsed": 40168392,
+        "external": 4379315,
+        "arrayBuffers": 2064851
+      },
+      "maxRssKiB": 110352,
+      "candidateCount": 7,
+      "initialCandidateCount": 1,
+      "laterCandidateCount": 6,
+      "expectedAddedHits": 6,
+      "nodeVersion": "v25.2.1"
+    },
+    {
+      "seconds": 30,
+      "method": "v3",
+      "sampleRate": 16000,
+      "sampleCount": 480000,
+      "pcmSha256": "b405b05fe47f4831882d89f6433e8795c84ea5329874c76a65032789c0bcd080",
+      "durationMs": 191.5673,
+      "memoryBefore": {
+        "rss": 107540480,
+        "heapTotal": 49340416,
+        "heapUsed": 43815880,
+        "external": 4259275,
+        "arrayBuffers": 1944851
+      },
+      "memoryAfter": {
+        "rss": 111067136,
+        "heapTotal": 56680448,
+        "heapUsed": 43335008,
+        "external": 4379315,
+        "arrayBuffers": 2064851
+      },
+      "maxRssKiB": 110908,
+      "candidateCount": 7,
+      "initialCandidateCount": 1,
+      "laterCandidateCount": 6,
+      "expectedAddedHits": 6,
+      "nodeVersion": "v25.2.1"
+    },
+    {
+      "seconds": 180,
+      "method": "v3",
+      "sampleRate": 16000,
+      "sampleCount": 2880000,
+      "pcmSha256": "c4b7420e5a47d8212d675bacf81bb09d2a19d9778d1b3ad01083b43f86d96b6e",
+      "durationMs": 1022.1756,
+      "memoryBefore": {
+        "rss": 123957248,
+        "heapTotal": 53272576,
+        "heapUsed": 37978808,
+        "external": 13859239,
+        "arrayBuffers": 11544815
+      },
+      "memoryAfter": {
+        "rss": 120156160,
+        "heapTotal": 55566336,
+        "heapUsed": 37600008,
+        "external": 14579279,
+        "arrayBuffers": 12264815
+      },
+      "maxRssKiB": 123456,
+      "candidateCount": 37,
+      "initialCandidateCount": 1,
+      "laterCandidateCount": 36,
+      "expectedAddedHits": 36,
+      "nodeVersion": "v25.2.1"
+    },
+    {
+      "seconds": 600,
+      "method": "v3",
+      "sampleRate": 16000,
+      "sampleCount": 9600000,
+      "pcmSha256": "5c66f331f88ac44cca72b342fe30f8ef5efe876c5d7c33596fc2fd64ff91a04a",
+      "durationMs": 3285.0434999999998,
+      "memoryBefore": {
+        "rss": 147554304,
+        "heapTotal": 54059008,
+        "heapUsed": 37914992,
+        "external": 40739239,
+        "arrayBuffers": 38424815
+      },
+      "memoryAfter": {
+        "rss": 148676608,
+        "heapTotal": 57769984,
+        "heapUsed": 42500024,
+        "external": 43139279,
+        "arrayBuffers": 40824815
+      },
+      "maxRssKiB": 146944,
+      "candidateCount": 121,
+      "initialCandidateCount": 1,
+      "laterCandidateCount": 120,
+      "expectedAddedHits": 120,
+      "nodeVersion": "v25.2.1"
+    }
+  ],
+  "limitations": [
+    "RSS includes Node/TypeScript VM loader; null high-water is unavailable on this platform.",
+    "Before/after memory is not peak live DSP allocation; no controlled GC or replicated performance interval.",
+    "V2 measured only at 30 s; no extrapolated long-track ratio."
+  ]
+}

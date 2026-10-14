@@ -958,7 +958,10 @@ export interface TrackSection {
     energy: number;
     density: number;
     dominantFeature: VisualCueKind | 'rhythm';
+    /** v7: physical interval RMS / typical block RMS, clipped to [0,1]. Legacy values may be relative energy. */
     avgRms: number;
+    /** Physical amplitude RMS over real PCM support, independent of track normalization. */
+    rmsAmplitude?: number;
     peakRms: number;
     reasons?: AnalysisReason[];
 }
@@ -969,7 +972,9 @@ export interface BarAnalysis {
     end: number;
     energy: number;
     density: number;
+    /** v7: physical interval RMS / typical block RMS, clipped to [0,1]. */
     avgRms: number;
+    rmsAmplitude?: number;
     peakRms: number;
     bass: number;
     mid: number;
@@ -1013,6 +1018,12 @@ export interface TensionTrends {
 
 export interface TrackAnalysis {
     duration: number;
+    /** Optional for legacy publications; current analyzer publishes exact PCM clock/support. */
+    featureClock?: import('./featureClock').FeatureClock;
+    /** Optional research acoustic candidates; not accepted visual events or XR targets. */
+    acousticOnsets?: import('./acousticOnsets').AcousticOnsetAnalysis;
+    predictiveOnsets?: import('./predictiveOnsets').PredictiveOnsetAnalysis;
+    adaptiveOnsets?: import('./adaptiveOnsets').AdaptiveOnsetAnalysis | import('./residualOnsets').ResidualOnsetAnalysis | import('./differenceOnsets').DifferenceOnsetAnalysis;
     bpm: number;
     bpmConfidence: number;
     gridConfidence: number;

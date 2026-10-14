@@ -1,0 +1,264 @@
+{
+  "schemaVersion": "analyzer-contract-experiment-1.0",
+  "snapshotDate": "2026-10-10",
+  "status": "implemented_and_checked_contract_correctness_not_generalization",
+  "experiment": "AN-01",
+  "baselineAlgorithmVersion": 6,
+  "algorithmVersion": 7,
+  "baseCommit": "29371e4fd65b5fc9defa6ebb4bca0b1488ed5e14",
+  "sourceHash": "e8ae7d0bb9e83366bc96e92aeb70017d5be15e57f5a8a55f077aad35441a4316",
+  "sourceIdentity": "Lab source_fingerprint covers dirty analyzer/types/lab implementation, schemas, bridge, configs and dependency declarations. Consumer owners are hashed separately.",
+  "pairedSourceIdentity": {
+    "baselineSourceHash": "5a5e2233156336d542540c624424909ed527f47a27a178b89af1da5425577cc6",
+    "candidateSourceHash": "db119fcefe2c57e2ecc417857d2efd6e72dce96d1ebb9e55d969dedbfd689c91",
+    "hashConvention": "sha256 sorted analyzer/types TS relative path + NUL + file bytes"
+  },
+  "consumerSourceHashes": {
+    "src/semantics/cueEvidence.ts": "cedfe9caba1685cd39123102896739de51d9a234261625da0208ca9a239fe3a2",
+    "src/automation/transitionDynamics.ts": "f7784d7f870cc3bcf6177f5d68041d9ca6ebdc84c7230b1cd6e00984e5310a50",
+    "src/automation/performancePlanGenerator.ts": "914d061179f3c5331339ab139bd40aa722a0b911d124dfed954d72fd287ea7ab"
+  },
+  "protectedTestHashes": {
+    "tests/analyzer-signal-contract.test.mjs": "6d8a98a43f1c571476528d1d539763e15d088324983bf38262d76841a5760ef8",
+    "tests/analyzer-low-frequency.test.mjs": "1f066234486312d3fe870d88c6b63d2e6f8ed6f52e2bb7370050abb6401b84ff",
+    "tests/contracts.test.mjs": "a88694c2f722fcab2898ffdf473b231771d36db0fbd1943891ce1ff5555a3313",
+    "research/analyzer-lab/tests/test_pcm_identity.py": "d247bff0ec56ab25a03d5aec112b6d0dd0548fd5da001ebc46cdf5240480f34a",
+    "research/analyzer-lab/tests/test_canonical.py": "5b7535d5dc766373475de8cf212accd380bd463d7cf7334071e704a80af5e059"
+  },
+  "diagnosticScriptHashes": {
+    "research/analyzer-lab/diagnostics/audit-dsp-principles.mjs": "762d409e0dd4b9a4c5d0dd0031894393e4dac002cf78a10dcc27efada47f1e84",
+    "research/analyzer-lab/diagnostics/audit-musical-contracts.mjs": "7433426f1aee0789f3d6e844dedbf5c35dc344ea35c0571e1d26f333c2cac0b5",
+    "research/analyzer-lab/diagnostics/compare-an01-contracts.mjs": "c679681fb664e47e4cc0e8fa373763e9c86a910f9033a15cf935ad48da425e28"
+  },
+  "environment": {
+    "node": "25.2.1",
+    "npm": "11.6.2",
+    "python": "3.12.14",
+    "dependenciesChanged": false
+  },
+  "scope": {
+    "input": "Nonempty finite Float32 PCM [-8,8], integer fs 1000..384000, radix-2 H=N 4..65536; public boundary rejects before progress/DSP.",
+    "clock": "ceil(L/H), window-start H/fs, true L/fs duration, legacy duration/count fallback.",
+    "level": "Real-support sample-weighted physical RMS; normalized avgRms separate from arrangement energy.",
+    "tail": "Acoustic features retained; partial terminal window abstains from visual attacks and grid inference.",
+    "projection": "Host/lab default channel 0; explicit mean and decoded f32le hash preserved; differing PCM identity cannot be compared."
+  },
+  "diagnosticObservations": {
+    "sectionRms": {
+      "inputBlockRms": 0.25,
+      "typicalRms": 0.5,
+      "barAvgRms": 0.5,
+      "sectionAvgRms": 0.5,
+      "sectionRmsAmplitude": 0.25,
+      "sectionEnergy": 0
+    },
+    "spectralPivot": {
+      "beforeFx": 0.4,
+      "afterFeatureFx": 0.53552,
+      "afterFrameFx": 0.4,
+      "afterFeatureMelody": 0.2198,
+      "afterFrameMelody": 0.2198
+    },
+    "buildup": {
+      "authoredStepSec": 40,
+      "alignmentSpanSec": 32,
+      "preStepProbeSec": 32,
+      "unalignedProbe": 0.018000000000000602,
+      "alignedProbe": 0.1448352696078353,
+      "changedTemporalMeaning": true
+    },
+    "tailClock": {
+      "sampleCount": 441777,
+      "sampleRate": 44100,
+      "hop": 1024,
+      "frameCount": 432,
+      "duration": 10.017619047619048,
+      "trueFrameStep": 0.023219954648526078,
+      "publishedFrameStep": 0.023219954648526078,
+      "lastFrameTimeDisagreement": 0,
+      "unprocessedTailSamples": 0,
+      "zeroPaddingSamples": 591,
+      "legacy": {
+        "frameCount": 431,
+        "inferredFrameStep": 0.023242735609324938,
+        "lastFrameTimeDisagreement": 0.009795813143510072,
+        "unprocessedTailSamples": 433
+      }
+    },
+    "stereo": {
+      "channels": [
+        1,
+        -1
+      ],
+      "hostLeftProjection": 1,
+      "labDefaultChannel0Projection": 1,
+      "explicitArithmeticMeanProjection": 0,
+      "interpretation": "Declared projection policy agrees; actual browser/SoundFile decoder and resampling parity remains unmeasured. WAV parity is tested in test_pcm_identity.py."
+    }
+  },
+  "pairedKnownRegression": {
+    "fixtureCount": 9,
+    "originalBaselineSnapshotDrift": [],
+    "acceptedSummaryChanges": [
+      {
+        "id": "house-120",
+        "changes": [
+          {
+            "path": "counts.frames",
+            "before": 301,
+            "after": 302
+          }
+        ]
+      },
+      {
+        "id": "house-128",
+        "changes": [
+          {
+            "path": "counts.frames",
+            "before": 301,
+            "after": 302
+          }
+        ]
+      },
+      {
+        "id": "techno-140",
+        "changes": [
+          {
+            "path": "counts.frames",
+            "before": 301,
+            "after": 302
+          },
+          {
+            "path": "counts.bars",
+            "before": 5,
+            "after": 6
+          }
+        ]
+      },
+      {
+        "id": "trance-150",
+        "changes": [
+          {
+            "path": "counts.frames",
+            "before": 301,
+            "after": 302
+          }
+        ]
+      },
+      {
+        "id": "dnb-176",
+        "changes": [
+          {
+            "path": "counts.frames",
+            "before": 301,
+            "after": 302
+          }
+        ]
+      },
+      {
+        "id": "breakbeat-140",
+        "changes": [
+          {
+            "path": "counts.frames",
+            "before": 301,
+            "after": 302
+          }
+        ]
+      },
+      {
+        "id": "sparse-techno-90",
+        "changes": [
+          {
+            "path": "counts.frames",
+            "before": 344,
+            "after": 345
+          }
+        ]
+      },
+      {
+        "id": "slow-floor-70",
+        "changes": [
+          {
+            "path": "counts.frames",
+            "before": 387,
+            "after": 388
+          }
+        ]
+      },
+      {
+        "id": "breakdown-124",
+        "changes": [
+          {
+            "path": "counts.frames",
+            "before": 387,
+            "after": 388
+          }
+        ]
+      }
+    ],
+    "tempoCandidatesConfidencePhaseEventsAndBeatsUnchanged": true,
+    "snapshotUpdates": "Ten count fields explicitly patched; headless firstSection.avgRms 0 -> 0.519683 and fixture identity 7; no golden generator run."
+  },
+  "validation": {
+    "build": {
+      "command": "npm run build",
+      "passed": true
+    },
+    "fullNode": {
+      "command": "npm test",
+      "tests": 1303,
+      "pass": 1293,
+      "fail": 10,
+      "duration_ms": 504110.8055,
+      "knownBaselineFailuresOnly": true,
+      "failureNames": [
+        "all presets stay visible and ring quantization is limited to authored ring roles",
+        "clip roles have materially different wormhole behaviour (role-level contrast)",
+        "development preset save updates existing keys, appends edited keys, and preserves metadata",
+        "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+        "factory preset pairs preserve their authored near/far projected tunnel geometry",
+        "projected forward motion preserves overdrive > punch > drive > drift",
+        "raising wormholeSpeed increases projected travel rather than only trail length",
+        "weak roles pin a deep-perspective depth and continuity profile",
+        "wormhole factory presets keep a minimum normalized weighted separation",
+        "wormhole preset speeds retain the authored dramaturgical ordering"
+      ],
+      "assertionMessagesMatchBaseline": true,
+      "baselineProof": "DRUM-IMPROVEMENT-VALIDATION.md; exact clean-HEAD archive, 566 blobs, zero mismatches"
+    },
+    "targetedIntegration": {
+      "tests": 64,
+      "pass": 64,
+      "fail": 0,
+      "durationMs": 1843.8646
+    },
+    "fullLab": {
+      "tests": 205,
+      "pass": 205,
+      "fail": 0,
+      "durationSeconds": 156.88,
+      "tempFallback": "Fresh --basetemp directory under workspace after default Windows temp numbering failed"
+    },
+    "newContractTests": 12,
+    "newPcmIdentityTests": 6
+  },
+  "rejectedIntermediateChanges": [
+    "Sustain cutoff falsely accepted as visual attack",
+    "Partial cutoff shifted final DNB beat ~46ms and breakdown beat ~70ms",
+    "Direct Node imports required explicit .ts on shared helper dependencies; stale ZCR source assertion updated to real support"
+  ],
+  "limitations": [
+    "Known synthetic/golden regression inputs, no new independent test or model selection",
+    "Partial terminal onset recall deferred to AN-02; excluded window support is less than H/fs, not a general timing-error or recall bound",
+    "Actual browser/SoundFile decoding/resampling parity unmeasured",
+    "Production stage time/memory, recorded-music/role generalization and confidence calibration unmeasured",
+    "Physical Quest audio/input/display precision unmeasured; proposed millisecond targets not achieved",
+    "Remaining algorithm-6 principles-audit issues outside AN-01 still apply"
+  ],
+  "next": "AN-02 overlapping windows, complete hop-phase coverage, endpoint attacks, flatness and clock-based smoothing",
+  "publication": {
+    "commit": false,
+    "pullRequest": false,
+    "deployment": false
+  }
+}

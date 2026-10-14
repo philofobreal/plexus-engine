@@ -1,0 +1,108 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "datasetId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rights": {
+      "type": "object",
+      "properties": {
+        "reviewed": {
+          "type": "boolean"
+        },
+        "trainingAllowed": {
+          "type": "boolean"
+        },
+        "evaluationAllowed": {
+          "type": "boolean"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reviewNote": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "reviewed",
+        "trainingAllowed",
+        "evaluationAllowed",
+        "source",
+        "license",
+        "reviewNote"
+      ],
+      "additionalProperties": false
+    },
+    "tracks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "trackId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "groupId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "split": {
+            "enum": [
+              "train",
+              "validation",
+              "test"
+            ]
+          },
+          "audioPath": {
+            "type": "string",
+            "minLength": 1
+          },
+          "annotationPath": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contentHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "oraclePaths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "trackId",
+          "groupId",
+          "split",
+          "audioPath",
+          "annotationPath",
+          "contentHash"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "datasetId",
+    "rights",
+    "tracks"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "drum-dataset"
+}
