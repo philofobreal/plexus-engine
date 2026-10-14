@@ -65,3 +65,12 @@ Onset agreement is not repurposed as instrument, singer, source or motif truth.
 Source/phrase predictions and evidence relations remain diagnostic-only with
 null confidence and no XR scoring eligibility, including known source merge and
 fragmentation failures. No external prediction was used for training in this slice.
+
+[AN-04B](AN-04B-VALIDATION.md) adds actual librosa-YIN/audioFlux-NCF pitch inference
+on identical original-clock full frames. Eligible pairs require <=25 cents and
+retain both original frequencies; Plexus qualification checks both votes.
+These are pitch pseudo-labels, never note boundaries, source isolation or singer
+identity. Actual shared guesses on noise/below-floor PCM are retained and
+withheld by the own gate. Mixture periodicity can agree without resolving any
+source; downstream parts therefore stay unresolved, diagnostic-only and XR
+ineligible. No source/motif training uses these pitch pairs.

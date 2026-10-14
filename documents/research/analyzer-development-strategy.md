@@ -216,3 +216,20 @@ megőrzött ellenpélda. Nem történt kész zenéből általános hangszerfelis
 neuronháló-tanítás vagy XR-publikáció. A következő lépés a jelöltkinyerés és a
 bizonytalan hangjegyadatok külön mérése, majd független többsávos annotáció és
 további forrásazonossági fejlesztés a kumulatív tesztek megtartásával.
+
+## AN-04B: hangmagasság-jelöltek közvetlenül a keverék PCM-jéből
+
+Az [AN-04B kör](../../research/analyzer-lab/docs/AN-04B-VALIDATION.md) már megadott
+alapfrekvencia nélkül állít elő periódus- és hangmagasság-jelölteket. Az ellenőrzött
+egyhangú példákon a tört periódushossz finomítása javítja a frekvenciahibát.
+Tényleges librosa-YIN és audioFlux-NCF futások azonos PCM-et és időablakokat
+kapnak; az egyezés 25 centes, a saját jelöltnek mindkét eredeti becsléshez illenie kell.
+
+A három valódi zenéből hat másodpercet külön mértünk: 107 külső egyezésből 38
+illeszkedik a saját jelölthöz, a másik két részlet saját stabil jelölt nélkül marad.
+Ez lefedettségi adat, nem igazolt zenei pontosság. Zajon és nagyon halk jeleken
+a két könyvtár is ad közös téves/alkalmatlan javaslatot; ezeket külön őrizzük.
+A hangmagasság ezért nem válik automatikusan hangszer-, énekes- vagy motívumazonossággá:
+a követőhöz átadott nyers keverékjelöltek feloldatlanok maradnak. A következő
+fejlesztési cél a harmonikus maradék és az időbeli folytonosság külön mérése,
+majd független többsávos annotációval igazolt forrásjelöltek és hangjegyhatárok.
