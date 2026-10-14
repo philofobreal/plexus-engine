@@ -80,7 +80,8 @@ scope.onmessage = event => {
                 source?.dispose();
                 source = new WormholeCanvasSource({ width: message.width, height: message.height, depthCue: message.depthCue,
                     createSurface: offscreenSurface, profile: message.profile === true, externalMaterial: message.externalMaterial === true,
-                    externalLines: message.externalLines === true });
+                    externalLines: message.externalLines === true, softwareRaster: message.softwareRaster === true,
+                    webglRaster: message.webglRaster === true });
                 break;
             case 'prepare':
             case 'prepare-plan': {
@@ -92,7 +93,7 @@ scope.onmessage = event => {
                 // The kept copy is reused unchanged (the source never mutates it); only the plan is new.
                 else prepared = source.prepare(analysis = { ...analysis, performancePlan: message.performancePlan });
                 prepared.then(
-                    () => { if (requested === generation) post({ type: 'prepared', generation: requested }); },
+                    () => { if (requested === generation) post({ type: 'prepared', generation: requested, raster: source?.rasterKind }); },
                     error => { if (requested === generation) post({ type: 'prepare-error', generation: requested, message: errorMessage(error) }); });
                 break;
             }
@@ -125,8 +126,11 @@ scope.onmessage = event => {
                     }
                 }
                 const stages = source.stageTimes ? { ...source.stageTimes, transfer: performance.now() - transferStarted } : undefined;
+                // The source's reused record is structured-cloned by postMessage, so it travels as this frame's own copy.
+                const spatial = source.spatialFrame;
                 post({ type: 'frame', generation: message.generation, time: message.time, bitmap, focalX: focus.x, focalY: focus.y,
-                    renderMs: performance.now() - started, ...(stages ? { stages } : {}), ...(material ? { material } : {}), ...(lines ? { lines } : {}) },
+                    renderMs: performance.now() - started, ...(stages ? { stages } : {}), ...(material ? { material } : {}), ...(lines ? { lines } : {}),
+                    ...(spatial ? { spatial } : {}) },
                     material ? [bitmap, material.data.buffer] : [bitmap]);
                 break;
             }

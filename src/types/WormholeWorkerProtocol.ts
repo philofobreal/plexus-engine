@@ -5,6 +5,7 @@
 import type { CanvasVisualPresentation, VisualAnalysisSnapshot } from './CanvasVisualSource';
 import type { GrainMaterialFrame } from './GrainMaterialFrame';
 import type { GrainLineFrame } from './GrainLineFrame';
+import type { WormholeSpatialFrame } from './WormholeSpatialFrame';
 import type { PerformanceAutomationPlan } from './index';
 
 /** Bumped on any incompatible message change. */
@@ -22,6 +23,10 @@ export interface WormholeWorkerInit {
     readonly externalMaterial?: boolean;
     /** With `externalMaterial`: grain trail strokes as a line list (ADR-009 Addendum AA); frames then carry `lines`. Additive. */
     readonly externalLines?: boolean;
+    /** Software (CPU) raster on the worker's OffscreenCanvas surfaces (ADR-009 Addendum AE). Additive. */
+    readonly softwareRaster?: boolean;
+    /** WebGL2 raster of the main plane, Canvas2D where unavailable (ADR-009 Addendum AF). Additive. */
+    readonly webglRaster?: boolean;
 }
 
 /**
@@ -86,6 +91,8 @@ export type WormholeWorkerRequest = WormholeWorkerInit | WormholeWorkerPrepare |
 export interface WormholeWorkerPrepared {
     readonly type: 'prepared';
     readonly generation: number;
+    /** What rasterizes the frames (ADR-009 Addendum AF): a requested WebGL raster may fall back to Canvas2D. Additive. */
+    readonly raster?: 'webgl' | 'canvas2d';
 }
 
 export interface WormholeWorkerPrepareError {
@@ -119,6 +126,12 @@ export interface WormholeWorkerFrame {
      * transferred and returned with them (ADR-009 Addendum AA).
      */
     readonly lines?: GrainLineFrame;
+    /**
+     * The spatial state of exactly this frame (XR spatial field), structured-cloned plain numbers.
+     * The host adopts it only when it shows this frame, like the focal point. Additive (protocol
+     * version 1); absent means the frame carries none.
+     */
+    readonly spatial?: WormholeSpatialFrame;
 }
 
 /** The source had nothing new to draw (steady pause or rate cap); the request slot is free again. */

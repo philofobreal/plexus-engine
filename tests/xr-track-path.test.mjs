@@ -5,11 +5,12 @@ import { join } from 'node:path';
 import * as THREE from 'three';
 import { createLoader } from './helpers/xr-loader.mjs';
 import { noteMatrixAt } from './helpers/xr-note-motion.mjs';
-import { glslTrackOffset, renderedPositions } from './helpers/xr-track-bend.mjs';
+import { glslTrackOffset, glslTrackOffsetExtended, renderedPositions } from './helpers/xr-track-bend.mjs';
 
 const context = { clearRect() {}, fillRect() {}, fillText() {}, measureText: text => ({ width: text.length * 12 }) };
 const load = createLoader({ three: THREE }, { document: { createElement: () => ({ getContext: () => context }) } });
-const { XrTrackPath, trackBendAmplitude, trackBendWeight, TRACK_BEND_GLSL, TRACK_BEND_VERTEX_STATEMENT } = load('xr/scene/XrTrackPath.ts');
+const { XrTrackPath, trackBendAmplitude, trackBendWeight, trackBendWeightExtended, TRACK_BEND_GLSL, TRACK_BEND_EXTENDED_GLSL,
+    TRACK_BEND_VERTEX_STATEMENT, trackFarAimWeight } = load('xr/scene/XrTrackPath.ts');
 const { XrRunway } = load('xr/scene/XrRunway.ts');
 const { RhythmNoteField } = load('xr/scene/RhythmNoteField.ts');
 const { RhythmGameScene } = load('xr/scene/RhythmGameScene.ts');
@@ -275,4 +276,89 @@ test('Wormhole identity publishes a finite, deterministic route focus: centered 
     assert.deepEqual(bent, again);
     assert.ok(bent.every(f => Number.isFinite(f.x) && Number.isFinite(f.y)));
     assert.ok(bent.some(f => Math.abs(f.x) > 1e-3) && bent.some(f => Math.abs(f.y) > 1e-3), JSON.stringify(bent.at(-1)));
+});
+
+// ---------------------------------------------------------------- Background distance and the decorative extension
+test('the extended route equals the gameplay route on the runway and continues along its far tangent (C1)', () => {
+    const path = pathWith(0.3, -0.2), end = path.bendEndMeters, a = { x: 0, y: 0 }, b = { x: 0, y: 0 };
+    for (let z = 0; z >= -end; z -= 0.25) {
+        path.offsetAtRootZ(z, a); path.offsetAtRootZExtended(z, b);
+        assert.ok(Math.abs(a.x - b.x) < 1e-12 && Math.abs(a.y - b.y) < 1e-12, `identical on the runway at ${z}`);
+    }
+    const h = 1e-6, slope = w => (w(-end - h) - w(-end + h)) / (2 * h);
+    assert.ok(Math.abs(trackBendWeightExtended(-end) - 1) < 1e-12);
+    assert.ok(Math.abs(slope(z => trackBendWeightExtended(z)) - 2 / (end - SCENE_CONFIG.trackBendStartMeters)) < 1e-4, 'same slope across the end');
+    for (const z of [-end - 5, -40, -100]) {
+        path.offsetAtRootZExtended(z, b);
+        const slopeX = path.amplitudeX * 2 / (end - SCENE_CONFIG.trackBendStartMeters);
+        // The far tangent, plus the far-aim remainder of a (partly) saturated bend.
+        const remainder = path.writeFarAimUniform({ x: 0, y: 0, z: 0, w: 0 }).x * trackFarAimWeight(z, end, path.backdropDistanceMeters);
+        assert.ok(Math.abs(b.x - (path.amplitudeX + slopeX * (-z - end) + remainder)) < 1e-9, `tangent plus remainder at ${z}`);
+    }
+    assert.equal(trackBendWeightExtended(1), 0, 'behind the player: straight');
+    // The GLSL twin agrees (float32 mirror), and gameplay shaders never receive the extension.
+    const uniform = path.writeBendUniform({ x: 0, y: 0, z: 0, w: 0 });
+    for (const z of [-1, -5, -end, -30, -90]) {
+        path.offsetAtRootZExtended(z, b); const g = glslTrackOffsetExtended(uniform, z, path.writeFarAimUniform({ x: 0, y: 0, z: 0, w: 0 }));
+        assert.ok(Math.abs(g.x - b.x) < 1e-4 && Math.abs(g.y - b.y) < 1e-4, `GLSL twin at ${z}`);
+    }
+    assert.ok(TRACK_BEND_EXTENDED_GLSL.startsWith(TRACK_BEND_GLSL), 'one curve: the extension reuses the shared uniform and function');
+    assert.ok(TRACK_BEND_EXTENDED_GLSL.includes('2.0 * u - 1.0'));
+    for (const file of ['XrRunway.ts', 'RhythmNoteField.ts', 'XrSliceEffect.ts', 'XrSectionGates.ts', 'RhythmGameScene.ts']) {
+        assert.doesNotMatch(readFileSync(join('src', 'xr', 'scene', file), 'utf8'), /TRACK_BEND_EXTENDED_GLSL|offsetAtRootZExtended/, `${file} stays on the gameplay curve`);
+    }
+});
+
+test('beyond a saturated bend, the far-aim remainder still lands the extension on the focal point (C1 at the runway end)', () => {
+    for (const distance of [40, 100, 200]) for (const [fx, fy] of [[0, -1], [1, 0], [-0.7, 0.9]]) {
+        const path = new XrTrackPath(); path.setBackdropDistance(distance); path.setFocus(fx, fy);
+        const scale = distance / SCENE_CONFIG.backdropDistanceMeters, out = { x: 0, y: 0 };
+        path.offsetAtRootZExtended(-distance, out);
+        const target = { x: fx * scale * SCENE_CONFIG.backdropWidthMeters / 2, y: fy * scale * SCENE_CONFIG.backdropHeightMeters / 2 };
+        assert.ok(Math.abs(out.x - target.x) < 1e-9 && Math.abs(out.y - target.y) < 1e-9, `${distance} m, ${fx},${fy}: on the focal point`);
+        // The runway itself is untouched (saturated), and the extension leaves its end with the same value and slope.
+        assert.ok(Math.abs(path.amplitudeY) <= SCENE_CONFIG.trackMaxVerticalBendMeters + 1e-12 && Math.abs(path.amplitudeX) <= SCENE_CONFIG.trackMaxLateralBendMeters + 1e-12);
+        const end = path.bendEndMeters, h = 1e-5, at = z => { const o = { x: 0, y: 0 }; path.offsetAtRootZExtended(z, o); return o; };
+        const tangent = z => ({ x: path.amplitudeX * trackBendWeightExtended(z, end), y: path.amplitudeY * trackBendWeightExtended(z, end) });
+        for (const axis of ['x', 'y']) {
+            assert.ok(Math.abs(at(-end)[axis] - tangent(-end)[axis]) < 1e-12, 'same value at the runway end');
+            const slope = g => (g(-end - h)[axis] - g(-end + h)[axis]) / (2 * h);
+            assert.ok(Math.abs(slope(at) - slope(tangent)) < 1e-4, 'same slope at the runway end');
+        }
+        assert.equal(trackFarAimWeight(-end, end, distance), 0); assert.equal(trackFarAimWeight(-distance, end, distance), 1);
+        // The GLSL twin agrees.
+        const bend = path.writeBendUniform({ x: 0, y: 0, z: 0, w: 0 }), aim = path.writeFarAimUniform({ x: 0, y: 0, z: 0, w: 0 });
+        for (const z of [-end - 3, -distance * 0.5, -distance * 0.8]) {
+            const cpu = at(z), gpu = glslTrackOffsetExtended(bend, z, aim);
+            assert.ok(Math.abs(cpu.x - gpu.x) < 1e-3 * Math.max(1, Math.abs(cpu.x)) && Math.abs(cpu.y - gpu.y) < 1e-3 * Math.max(1, Math.abs(cpu.y)), `GLSL twin at ${z}`);
+        }
+    }
+    // An unsaturated bend already aims at the focal point: no remainder, the plain tangent.
+    const calm = new XrTrackPath(); calm.setBackdropDistance(100); calm.setFocus(0.001, -0.001);
+    const aim = calm.writeFarAimUniform({ x: 0, y: 0, z: 0, w: 0 });
+    assert.ok(Math.abs(aim.x) < 1e-6 && Math.abs(aim.y) < 1e-6 && aim.z === 100);
+    assert.equal(trackFarAimWeight(-50, 30, 20), 0, 'a backdrop nearer than the runway end: none');
+});
+
+test('the far tangent aims at the focal point of the backdrop at whatever distance the player puts it', () => {
+    for (const distance of [40, 100, 200]) {
+        const path = new XrTrackPath(); path.setBackdropDistance(distance); path.setFocus(0.001, -0.001);
+        const scale = distance / SCENE_CONFIG.backdropDistanceMeters, out = { x: 0, y: 0 };
+        path.offsetAtRootZExtended(-distance, out);
+        // A small focus stays far below saturation: the extension lands on the image's focal point.
+        const targetX = 0.001 * scale * SCENE_CONFIG.backdropWidthMeters / 2, targetY = -0.001 * scale * SCENE_CONFIG.backdropHeightMeters / 2;
+        assert.ok(Math.abs(out.x - targetX) / targetX < 1e-3, `x at ${distance} m: ${out.x} vs ${targetX}`);
+        assert.ok(Math.abs(out.y - targetY) / -targetY < 1e-3, `y at ${distance} m: ${out.y} vs ${targetY}`);
+        assert.equal(path.backdropDistanceMeters, distance);
+    }
+    const path = pathWith(0.3, 0.2), revision = path.revision, before = path.amplitudeX;
+    assert.equal(path.setBackdropDistance(100), true); assert.ok(path.revision > revision);
+    assert.ok(Math.abs(path.amplitudeX - before) / before < 0.15, 'a farther plane keeps the bend close to the 40 m one');
+    assert.equal(path.setBackdropDistance(100), false, 'unchanged distance: no re-projection');
+    path.setBackdropDistance(Number.NaN); assert.equal(path.backdropDistanceMeters, SCENE_CONFIG.backdropDistanceMeters, 'invalid -> the reference');
+    // Rendering and judging still share the one projection at any distance.
+    path.setBackdropDistance(200);
+    const point = { x: 0.3, y: 0.2, z: -6 }, rendered = path.projectPlayfieldPoint({ ...point });
+    path.unprojectPlayfieldPoint(rendered);
+    assert.ok(Math.abs(rendered.x - point.x) < 1e-12 && Math.abs(rendered.y - point.y) < 1e-12);
 });

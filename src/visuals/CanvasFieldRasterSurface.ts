@@ -44,6 +44,31 @@ function buildDitherThresholds(): Float32Array {
     return thresholds;
 }
 
+/**
+ * Converts a filled RGBA float layer into 8-bit straight-alpha pixels: gain-scaled, ordered-dithered
+ * and clamped (`Uint8ClampedArray` rounding). Shared by every backend that blits a field raster, so
+ * Canvas2D and WebGL show exactly the same pixels.
+ */
+export function writeFieldRasterPixels(src: Float32Array, cols: number, rows: number, gain: number, pixels: Uint8ClampedArray): void {
+    const safeGain = Number.isFinite(gain) ? gain : 0;
+    let index = 0;
+    for (let y = 0; y < rows; y++) {
+        const ditherRow = (y & DITHER_MASK) * DITHER_SIZE;
+        for (let x = 0; x < cols; x++) {
+            // The threshold stays below half a code, so an exactly zero channel still rounds to
+            // 0 and a fully cleared layer stays fully transparent.
+            const threshold = DITHER_THRESHOLDS[ditherRow + (x & DITHER_MASK)];
+            // Visit RGBA together without a per-channel loop. Preserve multiplication order
+            // and Uint8ClampedArray rounding (including malformed channels) exactly.
+            pixels[index] = src[index] * safeGain * 255 + threshold;
+            pixels[index + 1] = src[index + 1] * safeGain * 255 + threshold;
+            pixels[index + 2] = src[index + 2] * safeGain * 255 + threshold;
+            pixels[index + 3] = src[index + 3] * safeGain * 255 + threshold;
+            index += 4;
+        }
+    }
+}
+
 export type FieldRasterCanvasFactory = () => HTMLCanvasElement;
 
 function defaultFieldRasterCanvasFactory(): HTMLCanvasElement {
@@ -158,25 +183,7 @@ export class CanvasFieldRasterSurface {
         if (!(dstW > 0) || !(dstH > 0)) return;
         if (!Number.isFinite(dstX) || !Number.isFinite(dstY)) return;
 
-        const safeGain = Number.isFinite(gain) ? gain : 0;
-        const src = state.buffer;
-        const pixels = state.imageData.data;
-        let index = 0;
-        for (let y = 0; y < state.rows; y++) {
-            const ditherRow = (y & DITHER_MASK) * DITHER_SIZE;
-            for (let x = 0; x < state.cols; x++) {
-                // The threshold stays below half a code, so an exactly zero channel still rounds to
-                // 0 and a fully cleared layer stays fully transparent.
-                const threshold = DITHER_THRESHOLDS[ditherRow + (x & DITHER_MASK)];
-                // Visit RGBA together without a per-channel loop. Preserve multiplication order
-                // and Uint8ClampedArray rounding (including malformed channels) exactly.
-                pixels[index] = src[index] * safeGain * 255 + threshold;
-                pixels[index + 1] = src[index + 1] * safeGain * 255 + threshold;
-                pixels[index + 2] = src[index + 2] * safeGain * 255 + threshold;
-                pixels[index + 3] = src[index + 3] * safeGain * 255 + threshold;
-                index += 4;
-            }
-        }
+        writeFieldRasterPixels(state.buffer, state.cols, state.rows, gain, state.imageData.data);
         state.ctx.putImageData(state.imageData, 0, 0);
 
         const safeBlend: FieldRasterBlendMode =

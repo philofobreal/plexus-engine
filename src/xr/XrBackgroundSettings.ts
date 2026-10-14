@@ -9,6 +9,17 @@ import type { GrainMaterialBoostKey } from '../types/CanvasVisualSource';
 export type XrBackgroundQuality = 'performance' | 'balanced' | 'high' | 'ultra' | 'crystal' | 'max';
 /** Background redraws per second while playing; both divide the 72 Hz headset rate evenly. */
 export type XrBackgroundRate = 24 | 36;
+/**
+ * Distance of the background plane ahead of the player, in meters. The plane scales with it, so the
+ * image keeps its angular size, raster density and screen coverage (no quality or fill-rate change);
+ * only stereo disparity and head-motion parallax shrink, so a farther plane reads as deeper space.
+ */
+export type XrBackgroundDistance = 40 | 100 | 200;
+/**
+ * The Wormhole's spatial field around the runway (shown only with the Wormhole): off, the particles
+ * alone, or the particles and the soft wisps. A cost switch for the headset: every step is one draw.
+ */
+export type XrSpatialFieldSetting = 'off' | 'particles' | 'full';
 
 /** MVP "Visual character" macro slider positions in [0, 1] (0.5 = neutral, no change). */
 export interface XrVisualCharacter {
@@ -52,6 +63,8 @@ export interface XrBackgroundSettings {
     readonly wormhole: boolean;
     readonly quality: XrBackgroundQuality;
     readonly rateHz: XrBackgroundRate;
+    readonly distanceMeters: XrBackgroundDistance;
+    readonly spatialField: XrSpatialFieldSetting;
     /** MVP Advanced "Line stroke" slider position in [0, 1] (0.5 = neutral gain, 1 = maximum boost). */
     readonly lineStroke: number;
     /**
@@ -71,6 +84,8 @@ export const MAX_BACKGROUND_SHARPEN = 1.5;
 
 export const XR_BACKGROUND_QUALITIES: readonly XrBackgroundQuality[] = ['performance', 'balanced', 'high', 'ultra', 'crystal', 'max'];
 export const XR_BACKGROUND_RATES: readonly XrBackgroundRate[] = [24, 36];
+export const XR_BACKGROUND_DISTANCES: readonly XrBackgroundDistance[] = [40, 100, 200];
+export const XR_SPATIAL_FIELD_SETTINGS: readonly XrSpatialFieldSetting[] = ['off', 'particles', 'full'];
 
 export const XR_BACKGROUND_RESOLUTION: Readonly<Record<XrBackgroundQuality, { readonly width: number; readonly height: number }>> = {
     performance: { width: 640, height: 360 },
@@ -89,12 +104,13 @@ export const XR_BACKGROUND_RESOLUTION: Readonly<Record<XrBackgroundQuality, { re
 export const XR_BACKGROUND_MIPMAPPED: ReadonlySet<XrBackgroundQuality> = new Set(['max']);
 
 /**
- * Player defaults (ADR-009 Addendum T): the Wormhole on at Ultra / 36 Hz with full sharpening.
+ * Player defaults (ADR-009 Addendum T): the Wormhole on at Ultra / 36 Hz with full sharpening, 200 m away,
+ * with the spatial field's particles.
  * Line stroke and the Visual character come from the XR host's authored tuning, so the source's
  * starting state and the menu's defaults are one set of values.
  */
 export const DEFAULT_XR_BACKGROUND_SETTINGS: XrBackgroundSettings = Object.freeze({
-    wormhole: true, quality: 'ultra', rateHz: 36, lineStroke: XR_WORMHOLE_BOOSTS.lineWeight, sharpness: 1,
+    wormhole: true, quality: 'ultra', rateHz: 36, distanceMeters: 200, spatialField: 'particles', lineStroke: XR_WORMHOLE_BOOSTS.lineWeight, sharpness: 1,
     character: Object.freeze({ intensity: XR_WORMHOLE_MACROS.intensity, motion: XR_WORMHOLE_MACROS.motion,
         depth: XR_WORMHOLE_MACROS.depth, detail: XR_WORMHOLE_MACROS.detail }),
     grain: Object.freeze(Object.fromEntries((Object.entries(XR_GRAIN_MATERIAL_KEYS) as [keyof XrGrainMaterial, GrainMaterialBoostKey][])
@@ -115,6 +131,8 @@ export function normalizeBackgroundSettings(settings?: Partial<XrBackgroundSetti
         wormhole: typeof settings?.wormhole === 'boolean' ? settings.wormhole : d.wormhole,
         quality: settings?.quality && XR_BACKGROUND_QUALITIES.includes(settings.quality) ? settings.quality : d.quality,
         rateHz: settings?.rateHz && XR_BACKGROUND_RATES.includes(settings.rateHz) ? settings.rateHz : d.rateHz,
+        distanceMeters: settings?.distanceMeters && XR_BACKGROUND_DISTANCES.includes(settings.distanceMeters) ? settings.distanceMeters : d.distanceMeters,
+        spatialField: settings?.spatialField && XR_SPATIAL_FIELD_SETTINGS.includes(settings.spatialField) ? settings.spatialField : d.spatialField,
         lineStroke: Number.isFinite(stroke) ? Math.min(1, Math.max(0, stroke)) : d.lineStroke,
         sharpness: settings?.sharpness !== undefined && Number.isFinite(sharpness) ? Math.min(1, Math.max(0, sharpness)) : d.sharpness,
         character: {

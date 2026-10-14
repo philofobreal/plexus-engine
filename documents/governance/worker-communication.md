@@ -55,12 +55,15 @@ version 1):
 
 - Requests: `init` (protocol, raster size, depth cue, optional `profile` for diagnostics,
   optional `externalMaterial` for the host-rendered grain material, ADR-009 Addendum W, and with it
-  optional `externalLines` for host-drawn grain trail lines, Addendum AA),
+  optional `externalLines` for host-drawn grain trail lines, Addendum AA, and optional
+  `softwareRaster` for a software (CPU) Canvas2D raster, Addendum AE, and optional `webglRaster` for
+  a WebGL2 raster, Addendum AF),
   `prepare` (generation, analysis snapshot), `prepare-plan` (generation, performance plan),
   `render` (generation, time, playing, optional `continuous`), `presentation` (Line stroke, rate cap, optional Visual
   character macros, ADR-009 Addendum R; optional Grain material boosts, Addendum V), `dispose`. Optional presentation fields are additive and
   keep protocol version 1; removing or reinterpreting a field requires a version bump.
-- Responses: `prepared` / `prepare-error` (generation), `frame` (generation, time, transferred
+- Responses: `prepared` (generation, optional `raster`: `webgl` or `canvas2d`, what rasterizes the
+  frames, Addendum AF) / `prepare-error` (generation), `frame` (generation, time, transferred
   `ImageBitmap`, focal point, raster ms, optional `stages` -- per-stage ms, only when `init`
   asked to profile; ADR-009 Addendum U; optional `material` -- the frame's grain carriers, only
   with `externalMaterial`, a Float32Array viewing exactly `count` records of a pooled buffer
@@ -74,6 +77,10 @@ version 1):
   stale or discarded. Each buffer is in exactly one place (worker pool, host, or in transit); the
   worker writes only pooled buffers, keeps at most three and allocates (with headroom) only when
   none fits. After dispose or a failure the host drops buffers instead of posting them.
+- Spatial state (additive frame field `spatial`, still protocol version 1; ADR-009 Addendum AC): a frame
+  may carry its `WormholeSpatialFrame`, plain numbers that are structured-cloned and not
+  transferred. The host adopts it only when it presents that frame, never a pending frame's, so the
+  XR spatial field and the focal point always describe the image on screen.
 - Continuity (additive `render.continuous`, still protocol version 1; ADR-009 Addendum AB): the proxy
   sets it when a playing request continues uninterrupted playback from the previous one: host song
   time advanced by about the wall-clock time elapsed (within 0.1 s) and by at most 1 s

@@ -5,10 +5,14 @@ import ts from 'typescript';
 import {legacyConvert} from './helpers/legacy-raster-conversion.mjs';
 
 const source=readFileSync('src/visuals/CanvasFieldRasterSurface.ts','utf8');
-const start=source.indexOf('        let index = 0;'),end=source.indexOf('        state.ctx.putImageData',start);
-assert.ok(start>0 && end>start);
-const oldBody=legacyConvert.toString().slice(legacyConvert.toString().indexOf('{')+1,-1)
-  .replaceAll('rows','state.rows').replaceAll('cols','state.cols').replaceAll('thresholds','DITHER_THRESHOLDS');
+// The surface converts through the shared `writeFieldRasterPixels` (also used by the WebGL backend,
+// ADR-009 Addendum AF); "Previous" splices the frozen legacy loop in place of that call.
+const call='        writeFieldRasterPixels(state.buffer, state.cols, state.rows, gain, state.imageData.data);';
+const start=source.indexOf(call),end=start+call.length;
+assert.ok(start>0, 'the surface converts through writeFieldRasterPixels');
+const oldBody='{ const safeGain = Number.isFinite(gain) ? gain : 0; const src = state.buffer; const pixels = state.imageData.data;\n'
+  +legacyConvert.toString().slice(legacyConvert.toString().indexOf('{')+1,-1)
+  .replaceAll('rows','state.rows').replaceAll('cols','state.cols').replaceAll('thresholds','DITHER_THRESHOLDS')+'}\n';
 function load(text){
   const exports={};
   new Function('exports',ts.transpileModule(text,{

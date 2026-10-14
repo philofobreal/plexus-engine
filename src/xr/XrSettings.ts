@@ -106,11 +106,11 @@ function playChoice(id: keyof XrPlaySettings, label: string, choices: readonly X
         write: (settings, value) => ({ ...settings, play: normalizePlaySettings({ ...settings.play, [id]: value }) }) };
 }
 
-function backgroundChoice(id: 'quality' | 'rateHz', label: string, choices: readonly XrSettingChoice[]): XrChoiceSetting {
+function backgroundChoice(id: 'quality' | 'rateHz' | 'distanceMeters', label: string, choices: readonly XrSettingChoice[]): XrChoiceSetting {
     return { id, section: 'background', label, scope: 'presentation', kind: 'choice', choices,
         read: settings => String(settings.background[id]),
         write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background,
-            [id]: id === 'rateHz' ? Number(value) : value } as Partial<XrBackgroundSettings>) }) };
+            [id]: id === 'quality' ? value : Number(value) } as Partial<XrBackgroundSettings>) }) };
 }
 
 /** One MVP Advanced "Grain material" slider; ids are prefixed so they stay unique across tabs. */
@@ -196,6 +196,11 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
     backgroundChoice('rateHz', 'Background update', [
         { value: '24', label: '24 Hz', hint: 'Every third headset frame: the lightest, steadiest load.' },
         { value: '36', label: '36 Hz', hint: 'Every second headset frame: more fluid motion, higher cost.' }]),
+    // Applies live; the plane scales with its distance, so image size, sharpness and cost stay the same.
+    backgroundChoice('distanceMeters', 'Background distance', [
+        { value: '40', label: '40 m', hint: 'The original distance: the image keeps a slight stereo depth and parallax.' },
+        { value: '100', label: '100 m', hint: 'Deep space: the image reads as far away, behind everything else.' },
+        { value: '200', label: '200 m', hint: 'Practically at infinity: no stereo depth or parallax left in the image.' }]),
     { id: 'lineStroke', section: 'background', label: 'Line stroke', scope: 'presentation', kind: 'range', min: 0, max: 100, step: 1,
         read: settings => Math.round(settings.background.lineStroke * 100),
         write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background, lineStroke: value / 100 }) }) },
@@ -240,7 +245,25 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
             { value: 'fixed', label: 'Fixed', hint: 'Redraws on the requested whole-frame cadence; a late frame waits for the next one.' },
             { value: 'adaptive', label: 'Adaptive', hint: 'Widens the cadence to fit late frames (24 Hz instead of 18): smoother, but more background work for the headset GPU.' }],
         read: settings => settings.system.backgroundPacing,
-        write: (settings, value) => ({ ...settings, system: normalizeSystemSettings({ ...settings.system, backgroundPacing: value as XrSystemSettings['backgroundPacing'] }) }) }
+        write: (settings, value) => ({ ...settings, system: normalizeSystemSettings({ ...settings.system, backgroundPacing: value as XrSystemSettings['backgroundPacing'] }) }) },
+    // Rebuilds the background plane (the worker's surfaces are created for one raster; Addenda AE, AF).
+    { id: 'backgroundRaster', section: 'system', label: 'Background raster', scope: 'presentation', kind: 'choice',
+        choices: [
+            { value: 'gpu', label: 'GPU', hint: 'The browser draws the background image on the GPU, stroke by stroke (Canvas2D, the original path).' },
+            { value: 'cpu', label: 'CPU', hint: 'The background thread draws its image in software, off the GPU. Busier on the headset CPU. For comparison.' },
+            { value: 'webgl', label: 'WebGL', hint: 'The background thread draws its image with WebGL in a few batched draw calls instead of thousands of strokes. Falls back to GPU where WebGL is unavailable.' }],
+        read: settings => settings.system.backgroundRaster,
+        write: (settings, value) => ({ ...settings, system: normalizeSystemSettings({ ...settings.system, backgroundRaster: value as XrSystemSettings['backgroundRaster'] }) }) },
+    // Applies live: the Wormhole's particles (and wisps) in the space around the runway, one draw each.
+    // A cost switch beside the other headset-load switches; stored with the Visuals (background) settings.
+    { id: 'spatialField', section: 'system', label: 'Spatial field', scope: 'presentation', kind: 'choice',
+        choices: [
+            { value: 'off', label: 'Off', hint: 'Only the background image: no Wormhole particles around the runway (the lightest).' },
+            { value: 'particles', label: 'Particles', hint: 'The Wormhole\'s particles stream past you around the runway (one light draw).' },
+            { value: 'full', label: 'Full', hint: 'Particles plus soft wisps of the Wormhole\'s nebula (two draws; the wisps cost the most fill).' }],
+        read: settings => settings.background.spatialField,
+        write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background,
+            spatialField: value as XrBackgroundSettings['spatialField'] }) }) }
 ];
 
 /**

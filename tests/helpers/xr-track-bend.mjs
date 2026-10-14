@@ -12,6 +12,19 @@ export function glslTrackOffset(uniform, rootZ) {
     return { x: f(f(uniform.x) * weight), y: f(f(uniform.y) * weight) };
 }
 
+/**
+ * `xrTrackPathOffsetExtended(rootZ)` (`TRACK_BEND_EXTENDED_GLSL`): the far-end tangent continued past
+ * the runway, plus the far-aim remainder (`uTrackFarAim`: x, y, backdrop distance; absent = none).
+ */
+export function glslTrackOffsetExtended(uniform, rootZ, farAim = { x: 0, y: 0, z: 0, w: 0 }) {
+    const start = f(uniform.z), end = f(uniform.w);
+    const u = Math.max(0, f(f(f(-f(rootZ)) - start) / f(end - start)));
+    const weight = u <= 1 ? f(u * u) : f(f(2 * u) - 1);
+    const q = f(farAim.z) > end ? Math.max(0, f(f(f(-f(rootZ)) - end) / f(f(farAim.z) - end))) : 0;
+    const aim = f(q * q);
+    return { x: f(f(f(uniform.x) * weight) + f(f(farAim.x) * aim)), y: f(f(f(uniform.y) * weight) + f(f(farAim.y) * aim)) };
+}
+
 /** Rendered (shader-bent) positions of a stage-root mesh: `transformed.xy += xrTrackPathOffset(transformed.z)`. */
 export function renderedPositions(geometry, uniform) {
     const source = geometry.getAttribute('position').array, out = new Float32Array(source.length);

@@ -497,6 +497,15 @@ export class CosmicWormholeIdentity implements VisualIdentity {
      */
     readonly routeFocus = { x: 0, y: 0 };
     /**
+     * Read-only drive of the last drawn frame for embedded hosts (XR spatial field), written from the
+     * very values that frame used: the travel distance in horizons (`Z_REFERENCE`, unwrapped), the
+     * canonical travel rate in horizons per second, the coherent spiral twist in turns (0 without the
+     * grain material), the grain line hue in degrees, the grain colour it stroked (0-255) and the
+     * depth-haze colour far grains fade toward (0-255).
+     */
+    readonly frameDrive = { travel: 0, travelRate: 0, spiralTurns: 0, hue: 0, red: 0, green: 0, blue: 0,
+        hazeRed: DEPTH_HAZE_RGB[0], hazeGreen: DEPTH_HAZE_RGB[1], hazeBlue: DEPTH_HAZE_RGB[2] };
+    /**
      * Opt-in diagnostics (XR `?xrDiagnostics=1`): coarse wall-clock stage times of the last draw in
      * milliseconds -- background layers, the grain loop (lines plus Nebula carrier accumulation),
      * the weave, the Nebula resolve (bloom / haze) and the three-layer composite. Only written when
@@ -845,6 +854,8 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         );
         const effectiveContinuity = Math.max(0, tuning.wormholeContinuity);
         const canonicalRate = this.travelRateAt(timeSec);
+        this.frameDrive.travel = travelDistance / Z_REFERENCE;
+        this.frameDrive.travelRate = canonicalRate / Z_REFERENCE;
         const smearRateGain = wormholeSmearRateGain(canonicalRate);
         const vz = wormholeTrailSeparation(canonicalRate, 1);
         if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.beginFrame(diagnosticMaxZ, vz);
@@ -1287,10 +1298,12 @@ export class CosmicWormholeIdentity implements VisualIdentity {
 
         // --- Color: GC-free, shifted by vocal (+) and melody (-) ---
         const hue = tuning.circleHue + vocal * 40 - melody * 30;
+        this.frameDrive.hue = hue;
         hueToRgbInto(this.lineColor, hue, 0.82, Math.min(0.85, 0.55 + impact * 0.18));
         const r = this.lineColor[0];
         const g = this.lineColor[1];
         const b = this.lineColor[2];
+        this.frameDrive.red = r; this.frameDrive.green = g; this.frameDrive.blue = b;
 
         const spectrum = this.state.currentFrame.perceptualSpectrum;
         const spectrumLen = spectrum ? spectrum.length : 0;
@@ -1378,6 +1391,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         // the material is active they default to the tuned "optimal" look instead of a bare zero, so
         // turning the master Amount on gives the intended read without five additional knob turns.
         const spiralTurns = grainMaterialAmount > 0 ? Math.max(0, finiteOr(tuning.wormholeSpiral, 0)) : 0;
+        this.frameDrive.spiralTurns = spiralTurns;
         // Left unrounded on purpose: this feeds the density-wave crest formula below as a cosine
         // frequency, which is continuous in a fractional arm count. Automation morphs this value
         // smoothly between preset arm counts (e.g. 1 -> 6); rounding it every frame would make the

@@ -116,9 +116,11 @@ Record results in the result log above; desktop results never substitute for hea
   Background quality High and Balanced, and once with Character Detail 50. These readings decide
   what moves to the GPU next. Material tab (ADR-009 Addendum V): note how Material detail and
   Material weave change the line's weave / grains / blur times and the look.
-- Authored player defaults (ADR-009 Addendum T): on a browser without saved settings the game
-  starts Tall / Hyper / Long, Ultra / Active / Expressive / Crossover, Shard targets with the
-  Wormhole on at Ultra / 36 Hz, Line stroke 34, Sharpness 100, Depth 10. Record whether the default
+- Authored player defaults (ADR-009 Addenda T, AC): on a browser without saved settings (or after
+  Settings > Reset defaults) the game starts Tall / Hyper / Long, Ultra / Active / Expressive /
+  Crossover, Shard targets with the Wormhole on at Ultra / 36 Hz / 200 m, Line stroke 20, Sharpness
+  100, Character 100 / 100 / 30 / 100, Material 30 / 100 / 100 / 100 / 30 / 50 / 50, GPU material and
+  lines, Diagnostics on, adaptive pacing, Spatial field Particles. Record whether the default
   stays at 72 Hz with a smooth enough background; if not, note which of Balanced / 24 Hz / Nebula
   would have to change.
 - Authored Wormhole defaults (ADR-009 Addendum R): with the Nebula on, the background's update
@@ -172,6 +174,26 @@ Record results in the result log above; desktop results never substitute for hea
   the 1.20 m start frame is comfortable to reach with the blade's middle-to-outer part; early hits
   grade "good"; Fast/Hyper targets read early enough and emerge smoothly from the runway's end;
   the longer runway does not cause discomfort when it bends.
+- Wormhole spatial field (ADR-009 Addendum AC): with the Wormhole on, particles come out of the
+  image's emergence circle (they follow it as the tunnel widens and narrows), race outward toward
+  the edges with the 2D grains, turn the same way as the image's spiral, and stream past beside you.
+  The wisps (Spatial field Full) fly with the tunnel and dissolve before reaching you. With a role whose
+  centre sits low, or a hard left / right turn, the field's centre follows the image's vanishing point. They surge and settle with
+  the music and never sway in flight. They never cross the note corridor or hide a target. Check
+  establish, drive, spiral, overdrive, sparse, galaxy (wisps), punch, collapse and drift scenes, a
+  straight and a strongly bent runway, pause / resume and repeated seeks: the field freezes on
+  pause, and each seek reproduces the same placement. After a song restart the particles keep
+  flowing, with no freeze until a menu resume. The runway and the sabers do not judder with the
+  background's 24 / 36 Hz updates (ADR-009 Addendum AE): swing the sabers fast in a dense section
+  with the Wormhole on, then off; they are equally smooth, with no occasional stop or double image.
+  The runway and the targets never stop together with them. System > Background raster WebGL (ADR-009 Addendum AF) is the
+  default and draws the image in batched WebGL calls; GPU (Canvas2D) and CPU are for comparison:
+  the image looks the same with each. The diagnostics line names the raster in use (`WebGL raster`, or `GPU (no WebGL)` after a
+  fallback) and, with GPU grain
+  lines, says `upload ahead` (the background frame was uploaded between headset frames). Background distance 40 / 100 / 200 m keeps the image's size
+  and sharpness, and the track still aims at its focal point. System > Spatial field Off /
+  Particles / Full: copy the diagnostics line of each (Copy diagnostics). The label must say
+  `worker`, and Display should read about 72 fps.
 - Off-thread background (ADR-009 Addendum G): compare `/xr/?xrDiagnostics=1` with
   `/xr/?xrDiagnostics=1&xrBackgroundThread=main` — the worker build must hold 72 Hz where the
   in-thread one drops frames; background beat flashes stay in sync with the music; toggling

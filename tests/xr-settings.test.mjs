@@ -39,15 +39,15 @@ test('every setting is described once, round-trips through its control value; th
     }
 });
 
-test('the /xr/ player defaults are the authored menu values (ADR-009 Addendum T)', () => {
+test('the /xr/ player defaults are the authored menu values (ADR-009 Addenda T, AC)', () => {
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS, DEFAULT_XR_GENERATION_SETTINGS, normalizeXrSettings } = settingsModule();
     const expected = {
         playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'long',
         difficulty: 'ultra', activity: 'active', variation: 'expressive', handPattern: 'alternate', handLead: 'even', zones: 'cross',
-        wormhole: 'on', noteDesign: 'shard', quality: 'ultra', rateHz: '36', lineStroke: 34, sharpness: 100,
-        intensity: 100, motion: 100, depth: 10, detail: 100,
-        grainAmount: 50, grainDetail: 100, grainBloom: 100, grainWeave: 100, grainSpiral: 4, grainArms: 50, grainDensity: 50,
-        materialRenderer: 'gpu', diagnostics: 'off', grainLines: 'canvas', backgroundPacing: 'fixed'
+        wormhole: 'on', noteDesign: 'shard', quality: 'ultra', rateHz: '36', distanceMeters: '200', lineStroke: 20, sharpness: 100,
+        intensity: 100, motion: 100, depth: 30, detail: 100,
+        grainAmount: 30, grainDetail: 100, grainBloom: 100, grainWeave: 100, grainSpiral: 30, grainArms: 50, grainDensity: 50,
+        materialRenderer: 'gpu', diagnostics: 'on', grainLines: 'gpu', backgroundPacing: 'adaptive', backgroundRaster: 'webgl', spatialField: 'particles'
     };
     assert.equal(Object.keys(expected).length, XR_SETTINGS.length, 'every setting has an authored default');
     for (const descriptor of XR_SETTINGS) assert.equal(String(descriptor.read(DEFAULT_XR_SETTINGS)), String(expected[descriptor.id]), descriptor.id);
@@ -61,11 +61,11 @@ test('changes are classified by their strongest scope; hostile input normalizes 
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS, changeScope, normalizeXrSettings } = settingsModule();
     const by = id => XR_SETTINGS.find(d => d.id === id);
     const harder = by('difficulty').write(DEFAULT_XR_SETTINGS, 'expert');
-    const thinner = by('lineStroke').write(DEFAULT_XR_SETTINGS, 20);
+    const thinner = by('lineStroke').write(DEFAULT_XR_SETTINGS, 10);
     assert.equal(changeScope(DEFAULT_XR_SETTINGS, DEFAULT_XR_SETTINGS), null);
     assert.equal(changeScope(DEFAULT_XR_SETTINGS, harder), 'chart');
     assert.equal(changeScope(DEFAULT_XR_SETTINGS, thinner), 'presentation');
-    assert.equal(changeScope(DEFAULT_XR_SETTINGS, by('lineStroke').write(harder, 20)), 'chart', 'a mixed change takes the strongest scope');
+    assert.equal(changeScope(DEFAULT_XR_SETTINGS, by('lineStroke').write(harder, 10)), 'chart', 'a mixed change takes the strongest scope');
     assert.equal(json(normalizeXrSettings(null)), json(DEFAULT_XR_SETTINGS));
     assert.equal(json(normalizeXrSettings({ generation: 'x', background: { quality: 'extreme', lineStroke: 'thick' } })), json(DEFAULT_XR_SETTINGS));
     assert.equal(normalizeXrSettings({ generation: { difficulty: 'hard' } }).generation.difficulty, 'hard');
@@ -101,12 +101,12 @@ test('every setting, including the newest ones, survives a reload through the pe
     assert.equal(json(restored), json(settings));
 });
 
-test('the System tab: Material renderer (GPU), Diagnostics (Off), Grain lines (Canvas) and Background pacing (Fixed) normalize safely (Addenda X, Z, AA)', () => {
+test('the System tab: Material renderer (GPU), Diagnostics (On), Grain lines (GPU) and Background pacing (Adaptive) normalize safely (Addenda X, Z, AA, AC)', () => {
     const { XR_SETTINGS, XR_SETTING_SECTIONS, DEFAULT_XR_SETTINGS, changeScope, normalizeXrSettings } = settingsModule();
     assert.deepEqual({ ...XR_SETTING_SECTIONS.at(-1) }, { id: 'system', title: 'System', prefix: 'xr-system' });
     const system = XR_SETTINGS.filter(d => d.section === 'system');
-    assert.equal(system.map(d => `${d.id}:${d.choices.map(c => c.value).join('/')}`).join(), 'materialRenderer:gpu/cpu,diagnostics:off/on,grainLines:canvas/gpu,backgroundPacing:fixed/adaptive');
-    const defaults = { materialRenderer: 'gpu', diagnostics: false, grainLines: 'canvas', backgroundPacing: 'fixed' };
+    assert.equal(system.map(d => `${d.id}:${d.choices.map(c => c.value).join('/')}`).join(), 'materialRenderer:gpu/cpu,diagnostics:off/on,grainLines:canvas/gpu,backgroundPacing:fixed/adaptive,backgroundRaster:gpu/cpu/webgl,spatialField:off/particles/full');
+    const defaults = { materialRenderer: 'gpu', diagnostics: true, grainLines: 'gpu', backgroundPacing: 'adaptive', backgroundRaster: 'webgl' };
     assert.deepEqual({ ...DEFAULT_XR_SETTINGS.system }, defaults);
     for (const descriptor of system) {
         assert.equal(descriptor.scope, 'presentation');
@@ -114,14 +114,16 @@ test('the System tab: Material renderer (GPU), Diagnostics (Off), Grain lines (C
         const next = descriptor.write(DEFAULT_XR_SETTINGS, other);
         assert.equal(descriptor.read(next), other);
         assert.equal(changeScope(DEFAULT_XR_SETTINGS, next), 'presentation', descriptor.id);
-        assert.equal(json({ ...next, system: DEFAULT_XR_SETTINGS.system }), json(DEFAULT_XR_SETTINGS), 'only the System group changes');
+        // Spatial field sits on this tab but is stored with the background it decorates.
+        const background = descriptor.id === 'spatialField' ? { ...next.background, spatialField: DEFAULT_XR_SETTINGS.background.spatialField } : next.background;
+        assert.equal(json({ ...next, background, system: DEFAULT_XR_SETTINGS.system }), json(DEFAULT_XR_SETTINGS), 'only the System group changes');
     }
-    assert.deepEqual({ ...normalizeXrSettings({ system: { materialRenderer: 'webgpu', diagnostics: 'yes', grainLines: 'svg', backgroundPacing: 'turbo' } }).system },
+    assert.deepEqual({ ...normalizeXrSettings({ system: { materialRenderer: 'webgpu', diagnostics: 'yes', grainLines: 'svg', backgroundPacing: 'turbo', backgroundRaster: 'npu' } }).system },
         defaults, 'unknown values take the defaults');
-    assert.deepEqual({ ...normalizeXrSettings({ system: { diagnostics: true } }).system }, { ...defaults, diagnostics: true },
-        'a record saved before Addenda Z / AA keeps canvas lines and fixed pacing');
-    assert.deepEqual({ ...normalizeXrSettings({ system: { grainLines: 'gpu', backgroundPacing: 'adaptive' } }).system },
-        { ...defaults, grainLines: 'gpu', backgroundPacing: 'adaptive' });
+    assert.deepEqual({ ...normalizeXrSettings({ system: { diagnostics: false } }).system }, { ...defaults, diagnostics: false },
+        'a partial record takes the defaults for the rest');
+    assert.deepEqual({ ...normalizeXrSettings({ system: { grainLines: 'canvas', backgroundPacing: 'fixed' } }).system },
+        { ...defaults, grainLines: 'canvas', backgroundPacing: 'fixed' });
     assert.deepEqual({ ...normalizeXrSettings({ system: 7 }).system }, { ...DEFAULT_XR_SETTINGS.system });
 });
 
