@@ -10,10 +10,10 @@ test('requested XR slider positions follow the exact shared MVP macro -> clamp -
     const { resolveMetaTuning } = load('config/resolveMetaTuning.ts');
     const { XR_WORMHOLE_MACROS: macros, XR_WORMHOLE_BOOSTS: boosts } = load('config/xrWormholeTuning.ts');
     assert.deepEqual(JSON.parse(JSON.stringify(macros)), { intensity: 1, motion: 1, depth: 0.3, detail: 1 });
-    // The user's authored XR defaults (2026-10-03, revised 2026-10-11 in ADR-009 Addendum AC: Line stroke 20, Depth 30).
+    // The user's authored XR defaults, revised 2026-10-16: Line stroke 30, arms and density 100.
     const authored = { wormholeNebulaAmount: 0.3, wormholeNebulaDetail: 1, wormholeNebulaBloom: 1, wormholeNebulaWeave: 1,
-        wormholeSpiral: 0.3, wormholeSpiralArms: 0.5, wormholeGrainDensity: 0.5, postFxFragmentAmount: 0, postFxFragmentDisplacement: 0,
-        postFxFragmentDensity: 0, lineAlpha: 1, lineWeight: 0.2, wormholeGrainShape: 1 };
+        wormholeSpiral: 0.3, wormholeSpiralArms: 1, wormholeGrainDensity: 1, postFxFragmentAmount: 0, postFxFragmentDisplacement: 0,
+        postFxFragmentDensity: 0, lineAlpha: 1, lineWeight: 0.3, wormholeGrainShape: 1 };
     for (const [key, value] of Object.entries(authored)) assert.equal(boosts[key], value, key);
     for (const scale of [0.1, 0.5, 1, 2, 4]) {
         const raw = cloneDefaultVisualTuning(); raw.wormholeNebulaAmount = scale; raw.wormholeSpeed = scale; raw.lineWeight = scale;

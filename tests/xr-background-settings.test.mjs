@@ -8,15 +8,15 @@ import { fakeDocument, findAll } from './helpers/fake-dom.mjs';
 
 const settingsModule = () => createLoader()('xr/XrBackgroundSettings.ts');
 
-// Authored by the user on 2026-10-11 (ADR-009 Addendum AC).
-const AUTHORED_GRAIN = { amount: 0.3, detail: 1, bloom: 1, weave: 1, spiral: 0.3, arms: 0.5, density: 0.5 };
-const AUTHORED_GRAIN_BOOSTS = { wormholeNebulaAmount: 0.3, wormholeNebulaDetail: 1, wormholeNebulaBloom: 1, wormholeNebulaWeave: 1, wormholeSpiral: 0.3, wormholeSpiralArms: 0.5, wormholeGrainDensity: 0.5 };
-const AUTHORED_DEFAULTS = { wormhole: true, quality: 'ultra', rateHz: 36, distanceMeters: 200, spatialField: 'particles', lineStroke: 0.2, sharpness: 1, character: { intensity: 1, motion: 1, depth: 0.3, detail: 1 },
+// Authored by the user on 2026-10-16.
+const AUTHORED_GRAIN = { amount: 0.3, detail: 1, bloom: 1, weave: 1, spiral: 0.3, arms: 1, density: 1 };
+const AUTHORED_GRAIN_BOOSTS = { wormholeNebulaAmount: 0.3, wormholeNebulaDetail: 1, wormholeNebulaBloom: 1, wormholeNebulaWeave: 1, wormholeSpiral: 0.3, wormholeSpiralArms: 1, wormholeGrainDensity: 1 };
+const AUTHORED_DEFAULTS = { wormhole: true, quality: 'max', rateHz: 36, distanceMeters: 200, spatialField: 'particles', lineStroke: 0.3, sharpness: 1, character: { intensity: 1, motion: 1, depth: 0.3, detail: 1 },
     grain: AUTHORED_GRAIN };
 /** The pre-Addendum-T presentation, for tests about pacing rather than defaults. */
 const BALANCED_24 = { wormhole: true, quality: 'balanced', rateHz: 24, lineStroke: 0.98, sharpness: 0.5, character: { intensity: 1, motion: 1, depth: 0.3, detail: 1 } };
 
-test('background settings default to the authored values: Wormhole on, Ultra raster, 36 Hz, 200 m, Line stroke 20, full sharpening', () => {
+test('background settings default to the authored values: Wormhole on, Max raster, 36 Hz, 200 m, Line stroke 30, full sharpening', () => {
     const { DEFAULT_XR_BACKGROUND_SETTINGS, XR_BACKGROUND_RESOLUTION, normalizeBackgroundSettings } = settingsModule();
     const { XR_WORMHOLE_BOOSTS, XR_WORMHOLE_MACROS } = createLoader()('config/xrWormholeTuning.ts');
     assert.equal(JSON.stringify(DEFAULT_XR_BACKGROUND_SETTINGS), JSON.stringify(AUTHORED_DEFAULTS));
@@ -28,7 +28,7 @@ test('background settings default to the authored values: Wormhole on, Ultra ras
     assert.equal(normalizeBackgroundSettings({ wormhole: false }).wormhole, false, 'an explicit off is kept');
     assert.equal(normalizeBackgroundSettings({ lineStroke: 7 }).lineStroke, 1, 'clamped');
     assert.equal(normalizeBackgroundSettings({ lineStroke: -2 }).lineStroke, 0);
-    assert.equal(normalizeBackgroundSettings({ lineStroke: Number.NaN }).lineStroke, 0.2, 'invalid -> the authored default');
+    assert.equal(normalizeBackgroundSettings({ lineStroke: Number.NaN }).lineStroke, 0.3, 'invalid -> the authored default');
 });
 
 test('frame divider lands every redraw on a whole display frame and never exceeds the requested rate', () => {
@@ -57,13 +57,13 @@ function sceneHarness() {
     return { scene, sources, snapshot };
 }
 
-test('the scene starts with the authored background: Ultra raster, 36 Hz on a whole frame phase, Line stroke 34', async () => {
+test('the scene starts with the authored background: Max raster, 36 Hz on a whole frame phase, Line stroke 30', async () => {
     const { scene, sources, snapshot } = sceneHarness();
     await scene.setWormholeEnabled(true);
     const source = sources[0];
-    assert.equal(JSON.stringify(source.options), JSON.stringify({ width: 1280, height: 720 }));
+    assert.equal(JSON.stringify(source.options), JSON.stringify({ width: 2560, height: 1440 }));
     scene.setDisplayFrameRate(72);
-    assert.equal(JSON.stringify(source.presentations.at(-1)), JSON.stringify({ lineStroke: 0.2, maxFrameRateHz: 36, macros: AUTHORED_DEFAULTS.character,
+    assert.equal(JSON.stringify(source.presentations.at(-1)), JSON.stringify({ lineStroke: 0.3, maxFrameRateHz: 36, macros: AUTHORED_DEFAULTS.character,
         grainMaterial: AUTHORED_GRAIN_BOOSTS }));
     for (let i = 0; i < 72; i++) scene.update([], i / 72, snapshot('playing'), '');
     assert.equal(source.renders.length, 36, '72 Hz / divider 2');
@@ -110,23 +110,25 @@ test('a quality change rebuilds the single background plane at the new raster si
     scene.dispose();
 });
 
-test('Crystal (1920 x 1080) and Max (2560 x 1440, mipmapped) are optional rasters: offered last, persisted, never the default', async () => {
+test('Crystal, Max and 4K rasters are offered and persisted; Max and 4K use mipmaps', async () => {
     const { XR_BACKGROUND_RESOLUTION, XR_BACKGROUND_QUALITIES, XR_BACKGROUND_MIPMAPPED, normalizeBackgroundSettings, DEFAULT_XR_BACKGROUND_SETTINGS } = settingsModule();
     assert.equal(JSON.stringify(XR_BACKGROUND_RESOLUTION.crystal), JSON.stringify({ width: 1920, height: 1080 }));
     assert.equal(JSON.stringify(XR_BACKGROUND_RESOLUTION.max), JSON.stringify({ width: 2560, height: 1440 }));
-    assert.equal(XR_BACKGROUND_QUALITIES.join(), 'performance,balanced,high,ultra,crystal,max');
-    assert.equal([...XR_BACKGROUND_MIPMAPPED].join(), 'max', 'only the raster dense enough to be minified off axis');
-    for (const quality of ['crystal', 'max']) assert.equal(normalizeBackgroundSettings({ quality }).quality, quality, 'a saved choice survives');
-    assert.equal(DEFAULT_XR_BACKGROUND_SETTINGS.quality, 'ultra');
+    assert.equal(JSON.stringify(XR_BACKGROUND_RESOLUTION['4k']), JSON.stringify({ width: 3840, height: 2160 }));
+    assert.equal(XR_BACKGROUND_QUALITIES.join(), 'performance,balanced,high,ultra,crystal,max,4k');
+    assert.equal([...XR_BACKGROUND_MIPMAPPED].join(), 'max,4k', 'dense rasters are minified off axis');
+    for (const quality of ['crystal', 'max', '4k']) assert.equal(normalizeBackgroundSettings({ quality }).quality, quality, 'a saved choice survives');
+    assert.equal(DEFAULT_XR_BACKGROUND_SETTINGS.quality, 'max');
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS, changeScope } = createLoader()('xr/XrSettings.ts');
     const quality = XR_SETTINGS.find(d => d.id === 'quality');
-    assert.equal(quality.choices.map(c => c.label).join(), 'Performance,Balanced,High,Ultra,Crystal,Max');
-    assert.match(quality.choices.at(-2).hint, /1920 x 1080/);
-    assert.match(quality.choices.at(-1).hint, /2560 x 1440.*mipmapped/);
-    const max = quality.write(DEFAULT_XR_SETTINGS, 'max');
-    assert.equal(max.background.quality, 'max');
+    assert.equal(quality.choices.map(c => c.label).join(), 'Performance,Balanced,High,Ultra,Crystal,Max,4K');
+    assert.match(quality.choices.at(-3).hint, /1920 x 1080/);
+    assert.match(quality.choices.at(-2).hint, /2560 x 1440.*mipmapped/);
+    assert.match(quality.choices.at(-1).hint, /3840 x 2160.*mipmapped/);
+    const max = quality.write(DEFAULT_XR_SETTINGS, '4k');
+    assert.equal(max.background.quality, '4k');
     assert.equal(changeScope(DEFAULT_XR_SETTINGS, max), 'presentation', 'no regeneration, no rewind');
-    // Each change rebuilds the one plane at the new raster; only Max filters its texture through mipmaps.
+    // Each change rebuilds the one plane; Max and 4K filter their textures through mipmaps.
     const { scene, sources } = sceneHarness();
     const planeMap = () => scene.root.children.find(c => c.material?.customProgramCacheKey?.() === 'wormhole-sharpen').material.map;
     await scene.setBackgroundSettings({ quality: 'ultra', rateHz: 24, lineStroke: 1, sharpness: 1 });
@@ -139,11 +141,16 @@ test('Crystal (1920 x 1080) and Max (2560 x 1440, mipmapped) are optional raster
     await scene.setBackgroundSettings({ quality: 'max', rateHz: 24, lineStroke: 1, sharpness: 1 });
     assert.equal(JSON.stringify(sources[2].options), JSON.stringify({ width: 2560, height: 1440 }));
     assert.deepEqual([planeMap().generateMipmaps, planeMap().minFilter], [true, THREE.LinearMipmapLinearFilter]);
+    await scene.setBackgroundSettings({ quality: '4k', rateHz: 36, lineStroke: 1, sharpness: 1 });
+    assert.equal(JSON.stringify(sources[3].options), JSON.stringify({ width: 3840, height: 2160 }));
+    assert.ok(sources[2].disposed);
+    assert.deepEqual([planeMap().generateMipmaps, planeMap().minFilter], [true, THREE.LinearMipmapLinearFilter]);
     scene.dispose();
 });
 
 test('adaptive pacing (opt-in) widens a late off-thread background to whole frames that fit, never above the requested rate', async () => {
     const { scene, sources, snapshot } = sceneHarness();
+    await scene.setBackgroundSettings({ quality: 'ultra', rateHz: 36, lineStroke: 0.34, sharpness: 1 });
     await scene.setWormholeEnabled(true);
     scene.setDisplayFrameRate(72);
     const source = sources[0];
@@ -208,7 +215,7 @@ test('Line stroke follows the MVP Advanced slider semantics and redraws even whi
     assert.equal(source.render(1, false), true, 'a stroke change reaches a paused canvas');
     assert.equal(source.state.visualTuning.lineWeight, expected(0.5));
     assert.equal(source.render(1, false), false);
-    assert.equal(XR_WORMHOLE_BOOSTS.lineWeight, 0.2, 'the shared XR boosts are never mutated');
+    assert.equal(XR_WORMHOLE_BOOSTS.lineWeight, 0.3, 'the shared XR boosts are never mutated');
     const motion = () => source.state.visualTuning.wormholeSpeed;
     const before = motion();
     source.setPresentation({ macros: { intensity: 1, motion: 0, depth: 0.1, detail: 1 } });
@@ -238,7 +245,7 @@ test('Visuals and Character settings are live presentation settings that never t
     const visuals = XR_SETTINGS.filter(d => d.section === 'background'), character = XR_SETTINGS.filter(d => d.section === 'character');
     assert.equal(visuals.map(d => d.id).join(), 'wormhole,noteDesign,quality,rateHz,distanceMeters,lineStroke,sharpness');
     assert.equal(character.map(d => d.id).join(), 'intensity,motion,depth,detail');
-    assert.equal(visuals.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), 'on,shard,ultra,36,200,20,100');
+    assert.equal(visuals.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), 'on,shard,max,36,200,30,100');
     assert.equal(character.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '100,100,30,100', 'the XR host authored Visual character');
     for (const descriptor of [...visuals, ...character]) {
         assert.equal(descriptor.scope, 'presentation', descriptor.id);
@@ -263,7 +270,7 @@ test('the Material tab holds the MVP Advanced Grain material sliders as live pre
         'the MVP panel labels, in its order');
     const mvpGroup = ADVANCED_BOOST_GROUPS.find(g => g.title === 'Grain material');
     assert.equal(Object.values(XR_GRAIN_MATERIAL_KEYS).join(), mvpGroup.keys.join(), 'exactly the MVP Grain material group');
-    assert.equal(material.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '30,100,100,100,30,50,50', 'the authored XR values');
+    assert.equal(material.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '30,100,100,100,30,100,100', 'the authored XR values');
     for (const descriptor of material) {
         assert.equal(descriptor.scope, 'presentation'); assert.equal(descriptor.kind, 'range');
         assert.equal(descriptor.min, 0); assert.equal(descriptor.max, 100);

@@ -6,7 +6,7 @@ import { XR_WORMHOLE_BOOSTS, XR_WORMHOLE_MACROS } from '../config/xrWormholeTuni
 import type { GrainMaterialBoostKey } from '../types/CanvasVisualSource';
 
 /** Raster resolution of the single background plane. */
-export type XrBackgroundQuality = 'performance' | 'balanced' | 'high' | 'ultra' | 'crystal' | 'max';
+export type XrBackgroundQuality = 'performance' | 'balanced' | 'high' | 'ultra' | 'crystal' | 'max' | '4k';
 /** Background redraws per second while playing; both divide the 72 Hz headset rate evenly. */
 export type XrBackgroundRate = 24 | 36;
 /**
@@ -82,7 +82,7 @@ export interface XrBackgroundSettings {
 /** Strongest unsharp-mask gain (sharpness 1). */
 export const MAX_BACKGROUND_SHARPEN = 1.5;
 
-export const XR_BACKGROUND_QUALITIES: readonly XrBackgroundQuality[] = ['performance', 'balanced', 'high', 'ultra', 'crystal', 'max'];
+export const XR_BACKGROUND_QUALITIES: readonly XrBackgroundQuality[] = ['performance', 'balanced', 'high', 'ultra', 'crystal', 'max', '4k'];
 export const XR_BACKGROUND_RATES: readonly XrBackgroundRate[] = [24, 36];
 export const XR_BACKGROUND_DISTANCES: readonly XrBackgroundDistance[] = [40, 100, 200];
 export const XR_SPATIAL_FIELD_SETTINGS: readonly XrSpatialFieldSetting[] = ['off', 'particles', 'full'];
@@ -97,20 +97,21 @@ export const XR_BACKGROUND_RESOLUTION: Readonly<Record<XrBackgroundQuality, { re
     crystal: { width: 1920, height: 1080 },
     // ~16.9 px/degree straight ahead: denser than the eye buffer beyond ~25 degrees off axis, so this
     // tier is mipmapped (`XR_BACKGROUND_MIPMAPPED`; ADR-009 Addendum Z).
-    max: { width: 2560, height: 1440 }
+    max: { width: 2560, height: 1440 },
+    '4k': { width: 3840, height: 2160 }
 };
 
 /** Qualities whose plane texture is mipmapped (minified off axis; trilinear filtering keeps lines from shimmering). */
-export const XR_BACKGROUND_MIPMAPPED: ReadonlySet<XrBackgroundQuality> = new Set(['max']);
+export const XR_BACKGROUND_MIPMAPPED: ReadonlySet<XrBackgroundQuality> = new Set(['max', '4k']);
 
 /**
- * Player defaults (ADR-009 Addendum T): the Wormhole on at Ultra / 36 Hz with full sharpening, 200 m away,
+ * Player defaults (updated 2026-10-16): the Wormhole on at Max / 36 Hz with full sharpening, 200 m away,
  * with the spatial field's particles.
  * Line stroke and the Visual character come from the XR host's authored tuning, so the source's
  * starting state and the menu's defaults are one set of values.
  */
 export const DEFAULT_XR_BACKGROUND_SETTINGS: XrBackgroundSettings = Object.freeze({
-    wormhole: true, quality: 'ultra', rateHz: 36, distanceMeters: 200, spatialField: 'particles', lineStroke: XR_WORMHOLE_BOOSTS.lineWeight, sharpness: 1,
+    wormhole: true, quality: 'max', rateHz: 36, distanceMeters: 200, spatialField: 'particles', lineStroke: XR_WORMHOLE_BOOSTS.lineWeight, sharpness: 1,
     character: Object.freeze({ intensity: XR_WORMHOLE_MACROS.intensity, motion: XR_WORMHOLE_MACROS.motion,
         depth: XR_WORMHOLE_MACROS.depth, detail: XR_WORMHOLE_MACROS.detail }),
     grain: Object.freeze(Object.fromEntries((Object.entries(XR_GRAIN_MATERIAL_KEYS) as [keyof XrGrainMaterial, GrainMaterialBoostKey][])

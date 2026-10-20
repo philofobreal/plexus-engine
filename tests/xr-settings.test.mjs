@@ -42,11 +42,11 @@ test('every setting is described once, round-trips through its control value; th
 test('the /xr/ player defaults are the authored menu values (ADR-009 Addenda T, AC)', () => {
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS, DEFAULT_XR_GENERATION_SETTINGS, normalizeXrSettings } = settingsModule();
     const expected = {
-        playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'long',
+        playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'auto',
         difficulty: 'ultra', activity: 'active', variation: 'expressive', handPattern: 'alternate', handLead: 'even', zones: 'cross',
-        wormhole: 'on', noteDesign: 'shard', quality: 'ultra', rateHz: '36', distanceMeters: '200', lineStroke: 20, sharpness: 100,
+        wormhole: 'on', noteDesign: 'shard', quality: 'max', rateHz: '36', distanceMeters: '200', lineStroke: 30, sharpness: 100,
         intensity: 100, motion: 100, depth: 30, detail: 100,
-        grainAmount: 30, grainDetail: 100, grainBloom: 100, grainWeave: 100, grainSpiral: 30, grainArms: 50, grainDensity: 50,
+        grainAmount: 30, grainDetail: 100, grainBloom: 100, grainWeave: 100, grainSpiral: 30, grainArms: 100, grainDensity: 100,
         materialRenderer: 'gpu', diagnostics: 'on', grainLines: 'gpu', backgroundPacing: 'adaptive', backgroundRaster: 'webgl', spatialField: 'particles'
     };
     assert.equal(Object.keys(expected).length, XR_SETTINGS.length, 'every setting has an authored default');
@@ -89,7 +89,7 @@ test('every setting, including the newest ones, survives a reload through the pe
     const { createXrSettingsStore } = load('xr/XrSettingsStore.ts');
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS } = settingsModule();
     const values = { playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'auto', difficulty: 'ultra', wormhole: 'on', noteDesign: 'shard',
-        quality: 'ultra', rateHz: '36', lineStroke: 55, sharpness: 80, intensity: 20, motion: 40, depth: 60, detail: 10,
+        quality: '4k', rateHz: '36', lineStroke: 55, sharpness: 80, intensity: 20, motion: 40, depth: 60, detail: 10,
         grainAmount: 70, grainDetail: 30, grainBloom: 60, grainWeave: 0, grainSpiral: 25, grainArms: 80, grainDensity: 10,
         materialRenderer: 'cpu', diagnostics: 'on' };
     let settings = DEFAULT_XR_SETTINGS;

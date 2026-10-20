@@ -192,7 +192,8 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
         { value: 'high', label: 'High', hint: '960 x 540 raster: sharper, heavier on the CPU.' },
         { value: 'ultra', label: 'Ultra', hint: '1280 x 720 raster: a sharp image in the headset, heavy on the CPU (drawn off the main thread).' },
         { value: 'crystal', label: 'Crystal', hint: '1920 x 1080 raster: crisp lines (1.5x Ultra) at almost the same headset cost.' },
-        { value: 'max', label: 'Max', hint: '2560 x 1440 raster, mipmapped: the finest lines (2x Ultra); the most GPU memory and upload per frame.' }]),
+        { value: 'max', label: 'Max', hint: '2560 x 1440 raster, mipmapped: fine lines (2x Ultra), with more GPU memory and upload per frame.' },
+        { value: '4k', label: '4K', hint: '3840 x 2160 raster, mipmapped: the highest background resolution, with the most GPU memory and upload per frame.' }]),
     backgroundChoice('rateHz', 'Background update', [
         { value: '24', label: '24 Hz', hint: 'Every third headset frame: the lightest, steadiest load.' },
         { value: '36', label: '36 Hz', hint: 'Every second headset frame: more fluid motion, higher cost.' }]),
