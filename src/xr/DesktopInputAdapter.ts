@@ -49,20 +49,68 @@ export class DesktopInputAdapter {
     onPointerMove: ((x: number | null, y: number | null) => void) | null = null;
     /** A menu key; return true when the menu used it (the browser default is then suppressed). */
     onMenuKey: ((key: DesktopMenuKey) => boolean) | null = null;
+    /** Drag distances in viewport-height units; an ordinary click/tap still activates its target. */
+    onLook: ((dx: number, dy: number) => void) | null = null;
+    canLook: (() => boolean) | null = null;
+    /** Gameplay claims the press immediately: true = hit, false = miss, null = ordinary menu/idle tap. */
+    onGameplayPress: ((x: number, y: number) => boolean | null) | null = null;
+    private gesture: { id: number; startX: number; startY: number; x: number; y: number;
+        dragged: boolean; look: boolean; tap: boolean } | null = null;
     private readonly pointerMove = (event: PointerEvent) => {
         const bounds = this.canvas.getBoundingClientRect();
         if (!bounds.width || !bounds.height) return;
+        const gesture = this.gesture;
+        if (gesture && event.pointerId !== gesture.id) return;
+        if (gesture) {
+            if (Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > 6) gesture.dragged = true;
+            if (gesture.dragged) {
+                event.preventDefault();
+                if (gesture.look && this.canLook?.() !== false) {
+                    this.onLook?.((event.clientX - gesture.x) / bounds.height, (event.clientY - gesture.y) / bounds.height);
+                }
+                gesture.x = event.clientX; gesture.y = event.clientY;
+            }
+        }
         this.onPointerMove?.((event.clientX - bounds.left) / bounds.width * 2 - 1, -(event.clientY - bounds.top) / bounds.height * 2 + 1);
     };
     private readonly pointerLeave = () => this.onPointerMove?.(null, null);
     private readonly pointerDown = (event: PointerEvent) => {
-        if (event.button !== 0 && event.button !== 2) return;
+        if (this.gesture || event.isPrimary === false || (event.button !== 0 && event.button !== 2)) return;
         const bounds = this.canvas.getBoundingClientRect();
         if (!bounds.width || !bounds.height) return;
         event.preventDefault();
+        if (event.button === 0 && this.onLook) {
+            const press = this.onGameplayPress?.((event.clientX - bounds.left) / bounds.width * 2 - 1,
+                -(event.clientY - bounds.top) / bounds.height * 2 + 1) ?? null;
+            this.gesture = { id: event.pointerId, startX: event.clientX, startY: event.clientY,
+                x: event.clientX, y: event.clientY, dragged: false,
+                look: press !== true && this.canLook?.() !== false, tap: press === null };
+            this.canvas.setPointerCapture?.(event.pointerId);
+            return;
+        }
         this.onStrike?.(event.button === 0 ? 'left' : 'right',
             (event.clientX - bounds.left) / bounds.width * 2 - 1,
             -(event.clientY - bounds.top) / bounds.height * 2 + 1);
+    };
+    private readonly pointerUp = (event: PointerEvent) => {
+        const gesture = this.gesture;
+        if (!gesture || event.pointerId !== gesture.id || event.button !== 0) return;
+        // Account for a final movement even when the browser coalesces the last pointermove.
+        this.pointerMove(event);
+        this.cancelGesture();
+        if (gesture.dragged || !gesture.tap) return;
+        const bounds = this.canvas.getBoundingClientRect();
+        if (!bounds.width || !bounds.height) return;
+        this.onStrike?.('left', (event.clientX - bounds.left) / bounds.width * 2 - 1,
+            -(event.clientY - bounds.top) / bounds.height * 2 + 1);
+    };
+    private readonly pointerCancel = (event: PointerEvent) => {
+        if (this.gesture?.id === event.pointerId) this.cancelGesture();
+    };
+    private readonly cancelGesture = () => {
+        const gesture = this.gesture;
+        this.gesture = null;
+        if (gesture && this.canvas.hasPointerCapture?.(gesture.id)) this.canvas.releasePointerCapture(gesture.id);
     };
     private readonly contextMenu = (event: Event) => event.preventDefault();
     private readonly keyDown = (event: KeyboardEvent) => {
@@ -84,15 +132,27 @@ export class DesktopInputAdapter {
         this.canvas = canvas;
         canvas.addEventListener('pointerdown', this.pointerDown);
         canvas.addEventListener('pointermove', this.pointerMove);
+        canvas.addEventListener('pointerup', this.pointerUp);
+        canvas.addEventListener('pointercancel', this.pointerCancel);
+        canvas.addEventListener('lostpointercapture', this.pointerCancel);
         canvas.addEventListener('pointerleave', this.pointerLeave);
         canvas.addEventListener('contextmenu', this.contextMenu);
         window.addEventListener('keydown', this.keyDown);
+        window.addEventListener('blur', this.cancelGesture);
     }
+    /** A menu/session transition must not carry an unfinished drag into the next interaction. */
+    cancelPointerGesture(): void { this.cancelGesture(); }
+
     dispose(): void {
+        this.cancelGesture();
         this.canvas.removeEventListener('pointerdown', this.pointerDown);
         this.canvas.removeEventListener('pointermove', this.pointerMove);
+        this.canvas.removeEventListener('pointerup', this.pointerUp);
+        this.canvas.removeEventListener('pointercancel', this.pointerCancel);
+        this.canvas.removeEventListener('lostpointercapture', this.pointerCancel);
         this.canvas.removeEventListener('pointerleave', this.pointerLeave);
         this.canvas.removeEventListener('contextmenu', this.contextMenu);
         window.removeEventListener('keydown', this.keyDown);
+        window.removeEventListener('blur', this.cancelGesture);
     }
 }

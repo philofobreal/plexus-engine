@@ -21,6 +21,26 @@ const TEXT_COLORS: Record<XrMenuTextRole, string> = {
 };
 const TEXT_WEIGHTS: Record<XrMenuTextRole, number> = { title: 800, heading: 700, label: 600, body: 500, muted: 500, value: 700, accent: 800 };
 
+const COMPACT_LABELS: Readonly<Record<string, string>> = {
+    Performance: 'Perf.', Balanced: 'Bal.', Crystal: 'Cryst.', Choreography: 'Choreo',
+    Expressive: 'Expr.', Alternate: 'Alt.', Crossover: 'Cross',
+    'Background quality': 'BG quality', 'Background update': 'BG update', 'Background distance': 'BG distance',
+    'Background pacing': 'BG pacing', 'Background raster': 'BG raster', 'Material renderer': 'Renderer',
+    'Copy settings': 'Copy config', 'Copy diagnostics': 'Copy stats', 'Reset defaults': 'Reset',
+    'Confirm reset?': 'Reset?'
+};
+
+/** Keep the authored font readable: use a recognizable short name, then ellipsize if still needed. */
+export function shortenMenuText(value: string, maxWidth: number, measure: (text: string) => number): string {
+    if (measure(value) <= maxWidth) return value;
+    const compact = COMPACT_LABELS[value] ?? value;
+    if (measure(compact) <= maxWidth) return compact;
+    if (measure('…') > maxWidth) return '';
+    let end = compact.length;
+    while (end > 0 && measure(compact.slice(0, end) + '…') > maxWidth) end--;
+    return compact.slice(0, end).trimEnd() + '…';
+}
+
 export interface XrMenuHit {
     /** Item under the ray, or null on the panel's background. */
     readonly item: XrMenuItem | null;
@@ -93,6 +113,14 @@ export class XrMenuPanel {
         this.root.updateMatrixWorld(true);
     }
 
+    /** Desktop menus follow pitch as well as yaw, remaining reachable after looking up or down. */
+    placeForCamera(camera: THREE.PerspectiveCamera): void {
+        this.root.position.set(0, -MENU_BELOW_EYES_METERS, -MENU_DISTANCE_METERS)
+            .applyQuaternion(camera.quaternion).add(camera.position);
+        this.root.quaternion.copy(camera.quaternion);
+        this.root.updateMatrixWorld(true);
+    }
+
     /** Where a world-space ray meets the visible panel (front side only), or null. */
     hitTest(ray: THREE.Ray): XrMenuHit | null {
         if (!this.root.visible || !this.layoutValue) return null;
@@ -133,8 +161,8 @@ export class XrMenuPanel {
             const maxWidth = line.width ?? w - 2 * 40;
             const lines = this.wrap(line.text, line.size, TEXT_WEIGHTS[line.role], maxWidth, line.maxLines);
             lines.forEach((part, i) => {
-                this.fitFont(part, line.size, TEXT_WEIGHTS[line.role], maxWidth);
-                ctx.fillText(part, line.x, line.y + i * line.size * 1.2);
+                const label = this.fitText(part, line.size, TEXT_WEIGHTS[line.role], maxWidth);
+                ctx.fillText(label, line.x, line.y + i * line.size * 1.2);
             });
         }
         this.texture.needsUpdate = true;
@@ -156,8 +184,9 @@ export class XrMenuPanel {
         ctx.fillStyle = entry.selected || hovered ? '#ffffff' : '#dbeaf8';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        this.fitFont(entry.label, entry.kind === 'step' ? 34 : entry.kind === 'button' ? 28 : 22, entry.selected || entry.primary ? 800 : 600, entry.w - 16);
-        ctx.fillText(entry.label, entry.x + entry.w / 2, entry.y + entry.h / 2 + 1);
+        const label = this.fitText(entry.label, entry.kind === 'step' ? 34 : entry.kind === 'button' ? 28 : 22,
+            entry.selected || entry.primary ? 800 : 600, entry.w - 16);
+        ctx.fillText(label, entry.x + entry.w / 2, entry.y + entry.h / 2 + 1);
         ctx.globalAlpha = 1;
     }
 
@@ -179,13 +208,8 @@ export class XrMenuPanel {
         return lines;
     }
 
-    /** Largest font up to `size` that fits `maxWidth` (labels never overflow their item). */
-    private fitFont(value: string, size: number, weight: number, maxWidth: number): void {
-        let px = size;
-        this.ctx.font = `${weight} ${px}px ${FONT}`;
-        while (px > 12 && this.ctx.measureText(value).width > maxWidth) {
-            px -= 2;
-            this.ctx.font = `${weight} ${px}px ${FONT}`;
-        }
+    private fitText(value: string, size: number, weight: number, maxWidth: number): string {
+        this.ctx.font = `${weight} ${size}px ${FONT}`;
+        return shortenMenuText(value, maxWidth, text => this.ctx.measureText(text).width);
     }
 }

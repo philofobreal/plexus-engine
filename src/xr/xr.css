@@ -30,7 +30,7 @@ html, body {
     height: 100%;
 }
 
-#xr-app > canvas { cursor: crosshair; }
+#xr-app > canvas { cursor: crosshair; touch-action: none; }
 
 /* Pointer-transparent chrome layer: only the button and the open drawer take input, and the
    renderer canvas is never resized or reflowed by it. */

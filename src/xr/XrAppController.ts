@@ -191,6 +191,12 @@ export class XrAppController {
         this.playback = new XrPlaybackBinding(engine, this.session, () => this.inputAdapter.resetMotion(),
             () => this.handleTransportChanged());
         this.desktopInput = new DesktopInputAdapter(runtime.renderer.domElement);
+        this.desktopInput.canLook = () => !this.runtime.isPresenting() && !this.menuOpen;
+        this.desktopInput.onLook = (dx, dy) => this.runtime.rotateDesktopView(dx, dy);
+        this.desktopInput.onGameplayPress = (x, y) => {
+            if (this.runtime.isPresenting() || this.menuOpen || this.session.getState() !== 'playing') return null;
+            return this.attemptDesktopStrike('left', x, y);
+        };
         this.desktopInput.onTogglePlayback = () => this.toggleDesktopPlayback();
         this.desktopInput.onPointerMove = (x, y) => {
             this.desktopPointerInside = x !== null && y !== null;
@@ -208,13 +214,7 @@ export class XrAppController {
                 if (hand === 'left' && this.menuState.hover) this.activateMenu(this.menuState.hover);
                 return;
             }
-            if (this.session.getState() !== 'playing') return;
-            const time = this.engine.getCurrentTime();
-            this.pointer.set(x, y);
-            this.desktopRay.setFromCamera(this.pointer, this.runtime.camera);
-            this.desktopRay.ray.applyMatrix4(this.scene.getWorldToPlayfield(this.worldToPlayfield));
-            const strike = desktopStrikeForRay(this.desktopRay.ray, this.session.getActiveNotes(time), time, hand, this.scene.path, this.gameConfig);
-            if (strike) this.session.attemptStrike(strike);
+            this.attemptDesktopStrike(hand, x, y);
         };
 
         const dom = new XrCommandDrawer();
@@ -639,6 +639,7 @@ export class XrAppController {
      */
     private handleMenuKey(key: DesktopMenuKey): boolean {
         if (this.runtime.isPresenting()) return false;
+        if (this.menuOpen) this.desktopInput.cancelPointerGesture();
         if (key === 'escape') {
             if (!this.menuOpen) this.toggleGameMenu();
             else if (this.menuState.screen === 'settings') this.menuState = { ...this.menuState, screen: menuHomeScreen(this.session.getState()) };
@@ -719,7 +720,19 @@ export class XrAppController {
         });
     }
 
+    /** Both hands score at press time. A successful primary hit owns that gesture instead of looking. */
+    private attemptDesktopStrike(hand: ControllerHand, x: number, y: number): boolean {
+        if (this.session.getState() !== 'playing') return false;
+        const time = this.engine.getCurrentTime();
+        this.pointer.set(x, y);
+        this.desktopRay.setFromCamera(this.pointer, this.runtime.camera);
+        this.desktopRay.ray.applyMatrix4(this.scene.getWorldToPlayfield(this.worldToPlayfield));
+        const strike = desktopStrikeForRay(this.desktopRay.ray, this.session.getActiveNotes(time), time, hand, this.scene.path, this.gameConfig);
+        return strike !== null && this.session.attemptStrike(strike) !== null;
+    }
+
     private openMenu(screen: XrMenuScreen): void {
+        this.desktopInput.cancelPointerGesture();
         this.menuState = { ...this.menuState, screen, hover: null };
         if (!this.menuOpen) this.menuPlacementPending = true;
         this.menuOpen = true;
@@ -732,6 +745,7 @@ export class XrAppController {
     }
 
     private closeMenu(): void {
+        this.desktopInput.cancelPointerGesture();
         if (!this.menuOpen) return;
         this.menuOpen = false;
         this.menuPanel.setVisible(false);
@@ -744,8 +758,7 @@ export class XrAppController {
     private placeMenuForDesktop(): void {
         const camera = this.runtime.camera;
         camera.updateMatrixWorld();
-        camera.getWorldDirection(this.viewerForward);
-        this.menuPanel.placeFacing(camera.position.x, camera.position.y, camera.position.z, Math.atan2(-this.viewerForward.x, -this.viewerForward.z));
+        this.menuPanel.placeForCamera(camera);
         this.menuPlacementPending = false;
     }
 
@@ -843,7 +856,7 @@ export class XrAppController {
 
     private currentInstruction(): string {
         if (!this.runtime.isPresenting()) {
-            if (this.session.getState() === 'playing') return 'Blue: left click. Pink: right click. Space: pause.';
+            if (this.session.getState() === 'playing') return 'Blue: click / tap. Pink: right click. Drag empty space to look. Space: pause.';
             if (this.session.getState() === 'paused') return 'Paused. Space to resume.';
             if (this.session.getState() === 'ready') return 'Space or Play to start.';
             if (this.session.getState() === 'finished') return this.resultInstruction('Space to restart.');
