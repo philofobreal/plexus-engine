@@ -1,0 +1,23 @@
+[
+  {
+    "path": "research/analyzer-lab/bridge/run-plexus-analysis.mjs",
+    "predecessorSha256": "b9350e7ff3c4714b6f5bfc0652e25130cbd4e720a2671d0ceebd61d5976f0304",
+    "replacementSha256": "19efb9ae8bb7eae476cb2c31389233bc7f2645a15d2645c221018e89193fce74",
+    "reviewedBy": "Codex integration owner; follow-up review of authoritative transport contract",
+    "reviewedReason": "Preserve numeric options and PCM validation; explicitly permit only the two opt-in eventTiming string modes before the existing numeric loop. Real bridge default/v1/v2 and invalid-before-PCM tests pass."
+  },
+  {
+    "path": "research/analyzer-lab/src/plexus_analyzer_lab/config.py",
+    "predecessorSha256": "82902afe7d454bd4d4f644c19ea9ef11a185ec3304d43918c3a3e88a01612d04",
+    "replacementSha256": "477b4d79b96afae49b4ae569362228e55ce0a08556a48046868a26f554305e35",
+    "reviewedBy": "Codex integration owner; follow-up review of authoritative transport contract",
+    "reviewedReason": "Preserve previous validation and defaults; add optional strict eventTiming enum and allowlist entry, never enable it by default. Standard adapter and seven invalid-value tests pass."
+  },
+  {
+    "path": "tests/fixtures/analyzer/analysis-result.schema.json",
+    "predecessorSha256": "b2e9a3947a1325aa0032012bee477c000b964742c334793e27b5a1201e5eb4f0",
+    "replacementSha256": "0bd9495098fadf25b97317477fb6e55c7439905437ab05e4faef49cd636fce98",
+    "reviewedBy": "Codex integration owner; follow-up review of authoritative transport contract",
+    "reviewedReason": "Preserve all predecessor definitions and requirements; add strict optional timing-report definitions and status-dependent constraints. Verified all unchanged predecessor definitions semantically identical; actual worker/lab publications and malformed reports checked by new independent tests."
+  }
+]
