@@ -2,6 +2,16 @@
 
 This document extends `../../AGENTS.md`. If there is a conflict, `AGENTS.md` is authoritative.
 
+## Cumulative regression and research retention
+
+The project retains every previously active regression alongside new tests. `npm test` recursively discovers active `tests/**/*.test.mjs`; the analyzer lab runs its entire Python test tree. The cumulative harness records discovered tests, helpers/fixtures, source identities, commands, outcomes and omissions. Historical mirrors in `documents/tests/` remain source archives: verified aliases refer to canonical tests, and detached unmatched snapshots are explicitly unexecuted, never claimed as coverage. Do not execute detached copies with invented import context.
+
+Protected predecessor sources and results are immutable historical evidence. A legitimate replacement or snapshot change requires a reviewed reason, predecessor/replacement identities and retention of the predecessor; a better new score must not rewrite the old experiment. Known baseline failures remain failures and are separately classified only when names and assertion evidence match. New failures block acceptance regardless of average scores.
+
+Reusable Python/JavaScript programs, generators, diagnostics, evaluators and reproduction tools belong in versioned research source, with purpose, input/output contract, invocation and provenance. Keep generated audio, models, environments, large logs and temporary checkouts outside source control; retain compact result summaries and artifact hashes/locations. Inert historical script snapshots are evidence, not automatically runnable current tools. No helper may overwrite protected fixtures/results as an incidental step of testing.
+
+See [analyzer development method](../../research/analyzer-lab/docs/ANALYZER-DEVELOPMENT-METHOD.md) for musical task definitions and experiment/promotion gates. Retention does not establish musical independence, library truth or physical XR precision.
+
 ## Validation Matrix
 
 Documentation-only governance changes:

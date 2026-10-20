@@ -1,0 +1,230 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "algorithm": {
+      "const": "plexus-drum-ridge-v1"
+    },
+    "classes": {
+      "const": [
+        "kick",
+        "snare",
+        "hihat"
+      ]
+    },
+    "featureVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "featureNames": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 17,
+      "maxItems": 17
+    },
+    "mean": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 17,
+      "maxItems": 17
+    },
+    "scale": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      },
+      "minItems": 17,
+      "maxItems": 17
+    },
+    "weights": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "minItems": 3,
+        "maxItems": 3
+      },
+      "minItems": 18,
+      "maxItems": 18
+    },
+    "thresholds": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "ridge": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "labelTolerance": {
+      "const": 0.03
+    },
+    "matchTolerance": {
+      "const": 0.05
+    },
+    "minSeparation": {
+      "const": 0.05
+    },
+    "scoreMeaning": {
+      "type": "string",
+      "minLength": 1
+    },
+    "validationSelection": {
+      "type": "object"
+    },
+    "fitting": {
+      "type": "object",
+      "properties": {
+        "datasetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rights": {
+          "type": "object",
+          "properties": {
+            "reviewed": {
+              "type": "boolean"
+            },
+            "trainingAllowed": {
+              "type": "boolean"
+            },
+            "evaluationAllowed": {
+              "type": "boolean"
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "license": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reviewNote": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "reviewed",
+            "trainingAllowed",
+            "evaluationAllowed",
+            "source",
+            "license",
+            "reviewNote"
+          ],
+          "additionalProperties": false
+        },
+        "tracks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "trackId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "groupId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "split": {
+                "enum": [
+                  "train",
+                  "validation"
+                ]
+              },
+              "contentHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "annotationHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "trackId",
+              "groupId",
+              "split",
+              "contentHash",
+              "annotationHash"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "annotationProvenance": {
+          "type": "object"
+        },
+        "candidateCoverage": {
+          "type": "object"
+        },
+        "trainingCandidates": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "datasetId",
+        "rights",
+        "tracks",
+        "annotationProvenance",
+        "candidateCoverage",
+        "trainingCandidates"
+      ],
+      "additionalProperties": false
+    },
+    "environment": {
+      "type": "object"
+    },
+    "sourceHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 1
+    },
+    "modelChecksum": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "algorithm",
+    "classes",
+    "featureVersion",
+    "featureNames",
+    "mean",
+    "scale",
+    "weights",
+    "thresholds",
+    "ridge",
+    "labelTolerance",
+    "matchTolerance",
+    "minSeparation",
+    "scoreMeaning",
+    "validationSelection",
+    "fitting",
+    "environment",
+    "sourceHash",
+    "timestamp",
+    "modelChecksum"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "drum-model"
+}

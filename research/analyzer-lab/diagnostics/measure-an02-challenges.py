@@ -1,0 +1,209 @@
+"""AN-02 C2 same-PCM comparison. Run from repo root: --output NEW_JSON.
+
+Node streams f32le PCM and actual/instrumented outputs; Python checks identities,
+executes the installed librosa reference and applies shared mir_eval matching.
+No resampling, timestamp shifting, fitting, installation or protected-file writes.
+"""
+from __future__ import annotations
+
+import argparse
+import base64
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import warnings
+
+import librosa
+import mir_eval
+import numpy as np
+
+LAB = Path(__file__).resolve().parents[1]
+ROOT = LAB.parents[1]
+sys.path.insert(0, str(LAB / "src"))
+from plexus_analyzer_lab.metrics.events import event_metrics
+
+TOLERANCES = [.01, .02, .025, .03, .05, .07]
+PROVIDERS = ["plexusV1", "gatedStrengthNms", "ungatedStrengthNms", "librosa512"]
+STAGES = ["refinedBeforeGate", "gatedBeforeNms"]
+LIBROSA_OPTIONS = {"onsetStrength": {"n_fft": 512, "hop_length": 128, "center": True},
+                   "onsetDetect": {"hop_length": 128, "backtrack": False, "units": "frames", "normalize": True},
+                   "otherKwargs": "installed librosa 0.11.0 defaults", "timestamp": "frame * 128 / actual sample rate"}
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def decode_case(row):
+    if row.get("type") != "case" or row.get("instrumentationParity") is not True:
+        raise ValueError("Missing case or instrumentation parity")
+    raw = base64.b64decode(row["pcmF32leBase64"], validate=True)
+    if len(raw) != row["sampleCount"] * 4 or digest(raw) != row["pcmSha256"]:
+        raise ValueError("PCM identity mismatch")
+    samples = np.frombuffer(raw, dtype="<f4").copy()
+    if not np.all(np.isfinite(samples)):
+        raise ValueError("Nonfinite PCM")
+    fs = row["spec"]["sampleRate"]
+    if fs not in [8000, 44100, 48000] or row["duration"] != len(samples) / fs:
+        raise ValueError("Clock mismatch")
+    truth = row["truthSamples"]
+    if any(type(i) is not int or i < 0 or i >= len(samples) for i in truth) or truth != sorted(set(truth)):
+        raise ValueError("Malformed truth samples")
+    encoded = json.dumps(truth, separators=(",", ":")).encode()
+    if digest(encoded) != row["truthSha256"]:
+        raise ValueError("Truth identity mismatch")
+    for provider in PROVIDERS[:3]:
+        points = row["candidates"][provider]
+        indices = [p["sampleIndex"] for p in points]
+        if indices != sorted(set(indices)):
+            raise ValueError("Duplicate or unordered selected candidates")
+        for p in points:
+            if type(p["sampleIndex"]) is not int or not 0 <= p["sampleIndex"] < len(samples) or p["time"] != p["sampleIndex"] / fs:
+                raise ValueError("Invalid candidate clock")
+    negative = row["spec"]["family"] == "negative"
+    if negative != (row["negativeStart"] == .1) or negative != (not truth):
+        raise ValueError("Incomplete negative/truth contract")
+    return samples, np.asarray(truth, dtype=np.float64) / fs
+
+
+def reference_onsets(samples, fs):
+    with warnings.catch_warnings(record=True) as observed:
+        warnings.simplefilter("always")
+        envelope = librosa.onset.onset_strength(y=samples, sr=fs, **LIBROSA_OPTIONS["onsetStrength"])
+        frames = librosa.onset.onset_detect(onset_envelope=envelope, sr=fs, **LIBROSA_OPTIONS["onsetDetect"])
+    times = np.asarray(frames, dtype=np.float64) * 128 / fs
+    if np.any(~np.isfinite(times)) or np.any(times < 0) or np.any(np.diff(times) <= 0):
+        raise ValueError("Invalid librosa event clock")
+    return times.tolist(), sorted(set(str(w.message) for w in observed))
+
+
+def evaluate_case(row, reference=reference_onsets):
+    samples, truth = decode_case(row)
+    fs = row["spec"]["sampleRate"]
+    times = {p: [c["time"] for c in row["candidates"][p]] for p in PROVIDERS[:3]}
+    times["librosa512"], reference_warnings = reference(samples, fs)
+    times["refinedBeforeGate"] = sorted(set(p["time"] for p in row["stages"]["refined"]))
+    times["gatedBeforeNms"] = sorted(set(p["time"] for p in row["stages"]["gated"]))
+    result = {k: row[k] for k in ["spec", "sampleCount", "duration", "negativeStart", "truthSamples", "truthSha256", "pcmSha256", "instrumentationParity"]}
+    result["eventTimes"] = times
+    result["outOfDomainOutputs"] = {p: [t for t in times[p] if t >= row["duration"]] for p in PROVIDERS}
+    refined = row["stages"]["refined"]
+    result["stages"] = {"peakCount": len(row["stages"]["peakFrames"]), "positiveStepRefinedProposalCount": len(refined),
+                        "gatedProposalCount": len(row["stages"]["gated"]),
+                        "rejectedFloor": sum(p["floorRejected"] for p in refined),
+                        "rejectedRelativeRise": sum(p["relativeRejected"] for p in refined),
+                        "rejectedContinuation": sum(p["endpointRejected"] for p in refined),
+                        "rejectionCountsOverlap": True,
+                        "gateObservations": [{k: p[k] for k in ["sampleIndex", "before", "after", "floorRejected", "relativeRejected", "endpointRejected"]} for p in refined]}
+    result["referenceWarnings"] = reference_warnings
+    if row["negativeStart"] is not None:
+        start = row["negativeStart"]
+        result["negative"] = {"exposureSeconds": row["duration"] - start,
+            # Preserve padded-context output as an extra false hit, never clamp/drop it.
+            "providers": {p: {"falsePositiveCount": sum(start <= t for t in times[p]),
+                              "excludedInitialCount": sum(t < start for t in times[p])} for p in PROVIDERS}}
+        result["curves"] = None  # No perfect F fabricated for both-empty truth.
+    else:
+        result["curves"] = {p: [event_metrics(truth.tolist(), times[p], tolerance) for tolerance in TOLERANCES]
+                            for p in PROVIDERS + STAGES}
+    return result
+
+
+def aggregate(cases):
+    groups = {}
+    for family in ["isolated", "mixture", "density"]:
+        rows = [c for c in cases if c["spec"]["family"] == family]
+        groups[family] = {}
+        for provider in PROVIDERS + STAGES:
+            curves = []
+            for i, tolerance in enumerate(TOLERANCES):
+                values = [c["curves"][provider][i] for c in rows]
+                if any(v["status"] != "available" for v in values):
+                    raise ValueError("Missing positive metric evidence")
+                matched = sum(v["matchedCount"] for v in values)
+                total_truth = sum(v["referenceCount"] for v in values)
+                estimated = sum(v["estimatedCount"] for v in values)
+                precision, recall = matched / estimated if estimated else 0, matched / total_truth
+                curves.append({"tolerance": tolerance, "caseCount": len(rows), "truthCount": total_truth,
+                    "estimatedCount": estimated, "matchedCount": matched, "misses": total_truth - matched,
+                    "falsePositives": estimated - matched, "microPrecision": precision, "microRecall": recall,
+                    "microF": 2 * precision * recall / (precision + recall) if precision + recall else 0,
+                    "macroPrecision": sum(v["precision"] for v in values) / len(values),
+                    "macroRecall": sum(v["recall"] for v in values) / len(values),
+                    "macroF": sum(v["fMeasure"] for v in values) / len(values)})
+            groups[family][provider] = curves
+    negative = [c for c in cases if c["negativeStart"] is not None]
+    exposure = sum(c["negative"]["exposureSeconds"] for c in negative)
+    rates = {}
+    for p in PROVIDERS:
+        counts = [c["negative"]["providers"][p]["falsePositiveCount"] for c in negative]
+        rates[p] = {"caseCount": len(negative), "exposureSeconds": exposure, "falsePositiveCount": sum(counts),
+                    "falsePositivesPerMinute": sum(counts) / exposure * 60,
+                    "cleanConditionFraction": sum(n == 0 for n in counts) / len(counts)}
+    return {"positiveByFamily": groups, "negatives": rates,
+            "outOfDomainOutputCounts": {p: sum(len(c["outOfDomainOutputs"][p]) for c in cases) for p in PROVIDERS}}
+
+
+def run(output):
+    if output.exists() or output.is_symlink():
+        raise FileExistsError("Output must be new")
+    if (librosa.__version__, mir_eval.__version__) != ("0.11.0", "0.8.2"):
+        raise ValueError("Unreviewed reference environment")
+    cases, identity = [], None
+    cache = LAB / ".cache"
+    cache.mkdir(exist_ok=True)
+    # Disk-backed stderr avoids pipe deadlock without logging raw PCM to disk.
+    with tempfile.TemporaryFile(dir=cache) as error_log:
+        process = subprocess.Popen(["node", "research/analyzer-lab/diagnostics/export-an02-challenges.mjs", "--stream"],
+                                   cwd=ROOT, stdout=subprocess.PIPE, stderr=error_log, text=True, encoding="utf-8")
+        try:
+            for line in process.stdout:
+                row = json.loads(line)
+                if row["type"] == "identity":
+                    if identity is not None:
+                        raise ValueError("Duplicate identity")
+                    identity = row
+                else:
+                    if identity is not None:
+                        raise ValueError("Cases after final identity")
+                    cases.append(evaluate_case(row))
+            if process.wait(timeout=30) != 0:
+                error_log.seek(0)
+                raise RuntimeError(error_log.read().decode("utf-8", errors="replace"))
+        finally:
+            process.stdout.close()
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+    if identity is None or len(cases) != 144 or [c["spec"]["id"] for c in cases] != [f"c2-{i:03}" for i in range(144)]:
+        raise ValueError("Incomplete case coverage")
+    if len(set(c["pcmSha256"] for c in cases)) != len(cases):
+        raise ValueError("Duplicate PCM cases require explicit alias review")
+    local_sources = ["research/analyzer-lab/diagnostics/measure-an02-challenges.py",
+                     "research/analyzer-lab/src/plexus_analyzer_lab/metrics/events.py"]
+    result = {"protocol": "AN-02 C2 protocol v2: padded-context outputs retained as FP; known generator, no independent holdout",
+        "status": "measured_research_only", "productionChanged": False, "defaultAlgorithmVersion": 7,
+        "acousticAlgorithm": "overlap-energy-rise-v1", "caseCount": len(cases), "truthCount": sum(len(c["truthSamples"]) for c in cases),
+        "environment": {"python": sys.version.split()[0], "numpy": np.__version__, "librosa": librosa.__version__, "mir_eval": mir_eval.__version__},
+        "nodeIdentity": identity, "sourceHashes": {p: digest((ROOT / p).read_bytes()) for p in local_sources},
+        "referenceOptions": LIBROSA_OPTIONS, "toleranceCurveSeconds": TOLERANCES,
+        "aggregate": aggregate(cases), "cases": cases,
+        "limitations": ["Generator starts are not human audibility or source-identity labels.",
+                        "All cases share a synthetic family; no independent generalization statistic.",
+                        "Timing errors are matched-only and truncated by each tolerance; misses remain visible.",
+                        "Ablations have no consumer acceptance policy; gate bypass can admit periodic signal changes.",
+                        "Short negative exposure cannot certify a low population FP rate.",
+                        "No recorded audio, decoder parity, long-track cost, browser or physical XR measurement."]}
+    with output.open("x", encoding="utf-8") as stream:
+        json.dump(result, stream, ensure_ascii=False, allow_nan=False, indent=2)
+        stream.write("\n")
+    print(json.dumps({"output": str(output), "caseCount": len(cases), "truthCount": result["truthCount"], "negativeRates": result["aggregate"]["negatives"]}))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", required=True, type=Path)
+    run(parser.parse_args().output)

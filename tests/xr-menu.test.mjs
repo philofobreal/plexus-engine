@@ -211,6 +211,56 @@ test('results count flawless sections like the song map and read the same on bot
     assert.equal(menuResults({ state: 'idle', score: 0, combo: 0, maxCombo: 0, hitCount: 0, missCount: 0, totalNotes: 0 }), null);
 });
 
+test('crowded menu labels abbreviate without reducing the readable font or overflowing controls', () => {
+    const { shortenMenuText } = load('xr/scene/XrMenuPanel.ts');
+    const measure = value => value.length * 12;
+    assert.equal(shortenMenuText('Performance', 80, measure), 'Perf.');
+    assert.equal(shortenMenuText('Balanced', 80, measure), 'Bal.');
+    assert.equal(shortenMenuText('4K', 80, measure), '4K');
+    assert.equal(shortenMenuText('Unknown long name', 80, measure), 'Unkno…');
+    assert.equal(shortenMenuText('Unknown', 1, measure), '');
+    for (const section of XR_SETTING_SECTIONS) {
+        const layout = menuLayout({ ...DEFAULT_MENU_STATE, screen: 'settings', tab: section.id }, context());
+        for (const item of layout.items) assert.ok(measure(shortenMenuText(item.label, item.w - 16, measure)) <= item.w - 16);
+        for (const label of layout.texts.filter(t => t.role === 'label')) assert.ok(label.width <= 234, 'row labels stay out of controls');
+    }
+});
+
+test('every settings tab actually draws fitted labels at its authored font size', () => {
+    const panel = new XrMenuPanel(doc), ctx = panel.canvas.context;
+    for (const section of XR_SETTING_SECTIONS) {
+        ctx.calls.length = 0;
+        const layout = panel.update({ ...DEFAULT_MENU_STATE, screen: 'settings', tab: section.id }, context());
+        const draws = ctx.calls.filter(c => c[0] === 'fillText');
+        for (const item of layout.items) {
+            const draw = draws.find(c => c[2] === item.x + item.w / 2 && c[3] === item.y + item.h / 2 + 1);
+            assert.ok(draw, item.id);
+            const size = item.kind === 'step' ? 34 : item.kind === 'button' ? 28 : 22;
+            assert.match(draw[4], new RegExp(` ${size}px `), item.id);
+            ctx.font = draw[4];
+            assert.ok(ctx.measureText(draw[1]).width <= item.w - 16, `${item.id}: rendered width`);
+            if (item.id === 'opt:backgroundQuality:4k') assert.equal(draw[1], '4K');
+        }
+        for (const line of layout.texts.filter(t => t.role === 'label' && t.text)) {
+            const draw = draws.find(c => c[2] === line.x && c[3] === line.y);
+            assert.ok(draw, line.text);
+            assert.match(draw[4], new RegExp(` ${line.size}px `));
+            ctx.font = draw[4];
+            assert.ok(ctx.measureText(draw[1]).width <= line.width, line.text);
+        }
+    }
+    panel.dispose();
+});
+
+test('desktop menu remains in front of a camera that has looked up and turned around', () => {
+    const panel = new XrMenuPanel(doc), camera = new THREE.PerspectiveCamera();
+    camera.position.set(0, 1.65, 2.6); camera.rotation.set(1.2, 2.5, 0, 'YXZ'); camera.updateMatrixWorld(true);
+    panel.placeForCamera(camera); panel.setVisible(true); panel.update(DEFAULT_MENU_STATE, context());
+    const ray = new THREE.Ray(camera.position.clone(), panel.root.position.clone().sub(camera.position).normalize());
+    assert.ok(panel.hitTest(ray)); assert.ok(panel.root.quaternion.equals(camera.quaternion));
+    panel.dispose();
+});
+
 test('the VR panel redraws only on change, faces the player and maps a laser to the item it points at', () => {
     const panel = new XrMenuPanel(doc);
     assert.equal(panel.visible, false);

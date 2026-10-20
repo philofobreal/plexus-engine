@@ -1,0 +1,42 @@
+{
+  "id": "essentia",
+  "displayName": "Essentia reference provider",
+  "providerVersion": "2.1b6.dev1438",
+  "executionMode": "external-process",
+  "pythonRequirement": "Latest checked wheel release: CPython 3.14, Linux/macOS; no Windows wheel or general Requires-Python verified",
+  "capabilities": [
+    "tempo",
+    "beats",
+    "onsets",
+    "predominantPitch",
+    "chords",
+    "key",
+    "instrumentPresence"
+  ],
+  "codeLicense": "AGPL-3.0-only",
+  "modelLicense": "unknown",
+  "modelLicenseSource": "https://essentia.upf.edu/models.html",
+  "datasetDependencies": [
+    {
+      "id": "selected-model-training-corpus",
+      "requiredForInference": false,
+      "license": "requires-review",
+      "notes": "Model-free algorithms need no training dataset. Any selected pretrained model must record per-artifact metadata, dataset provenance and license; external third-party models may differ from MTG models."
+    }
+  ],
+  "usagePolicy": "reference-only",
+  "enabledByDefault": false,
+  "status": "planned",
+  "command": null,
+  "licenseEvidence": {
+    "checkedAt": "2026-10-10",
+    "sources": [
+      "https://pypi.org/project/essentia/2.1b6.dev1438/",
+      "https://github.com/MTG/essentia/blob/master/COPYING.txt",
+      "https://essentia.upf.edu/licensing_information.html",
+      "https://essentia.upf.edu/models.html",
+      "https://essentia.upf.edu/download.html"
+    ],
+    "notes": "Latest checked package is explicitly a development prerelease, not a stable recommendation or lab Python 3.11 pin. models.html says MTG models CC-BY-NC-SA-4.0, whereas licensing_information.html says CC-BY-NC-ND-4.0. Resolve the exact model license from its own metadata/LICENSE before use. AGPL code and third-party dependency obligations need review; process isolation is architectural, not a legal exemption."
+  }
+}

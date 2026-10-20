@@ -1,0 +1,66 @@
+import {extractContinuationOnsets} from './ContinuationOnsets';
+import type {PeakCandidate, PeakOnsetAnalysis} from '../types/peakOnsets';
+
+/** Independent research design: sharp peak plus continued positive curvature. */
+export function extractPeakOnsets(samples: Float32Array, sampleRate: number): PeakOnsetAnalysis {
+    const base = extractContinuationOnsets(samples, sampleRate);
+    const candidates: PeakCandidate[] = base.candidates.map(c => ({...c}));
+    const added: PeakCandidate[] = [];
+    const window = Math.max(1, Math.round(.012 * sampleRate));
+    const value = (i: number) => i >= 0 ? samples[i] : 0;
+    const fourth = (i: number) => (value(i) - 4 * value(i - 1) + 6 * value(i - 2)
+        - 4 * value(i - 3) + value(i - 4)) / 16;
+    const second = (i: number) => (value(i) - 2 * value(i - 1) + value(i - 2)) / 4;
+    let rawPower = 0, cursor = 0, frame = 0;
+    for (let anchor = base.historySamples + 4; anchor < samples.length; anchor += base.hopSize) {
+        while (cursor < anchor) {
+            rawPower += samples[cursor] ** 2;
+            if (cursor >= base.historySamples) rawPower -= samples[cursor - base.historySamples] ** 2;
+            cursor++;
+        }
+        if (frame++ % 1024 === 0) {
+            rawPower = 0;
+            for (let i = anchor - base.historySamples; i < anchor; i++) rawPower += samples[i] ** 2;
+        }
+        const raw = Math.max(0, rawPower) / base.historySamples;
+        let before = 0;
+        for (let i = anchor - base.contrastSamples; i < anchor; i++) before += fourth(i) ** 2;
+        before /= base.contrastSamples;
+        let peak = 0, rise = 0, index = anchor, previous = fourth(anchor - 1) ** 2;
+        const end = Math.min(samples.length, anchor + base.refinementSamples);
+        for (let i = anchor; i < end; i++) {
+            const power = fourth(i) ** 2;
+            peak = Math.max(peak, power);
+            if (power - previous > rise) {rise = power - previous; index = i;}
+            previous = power;
+        }
+        const floor = Math.max(1e-20, raw * 1e-5 * (8000 / sampleRate) ** 2);
+        if (rise <= 0 || peak < Math.max(8 * floor, 8 * Math.max(before, 1e-20))) continue;
+        const afterStart = index + 5, afterEnd = afterStart + window;
+        if (index < window + 2 || afterEnd > samples.length) continue;
+        let beforeSecond = 0, afterSecond = 0;
+        for (let i = index - window; i < index; i++) beforeSecond += second(i) ** 2;
+        for (let i = afterStart; i < afterEnd; i++) afterSecond += second(i) ** 2;
+        beforeSecond /= window; afterSecond /= window;
+        if (afterSecond < 1.3 * Math.max(beforeSecond, 1e-20)) continue;
+        added.push({time: index / sampleRate, sampleIndex: index, proposalSample: anchor,
+            strength: peak, innovationRatio: peak / Math.max(before, 1e-20),
+            supportStartSample: Math.max(0, Math.min(anchor - base.historySamples - 4, index - window - 2)),
+            supportEndSample: Math.max(end, afterEnd),
+            endpointAmbiguous: anchor < base.historySamples + 4 || samples.length - anchor < base.lookaheadSamples,
+            evidenceSource: 'peak-curvature-rise'});
+    }
+    added.sort((a, b) => b.strength - a.strength || a.sampleIndex - b.sampleIndex);
+    for (const p of added) {
+        if (!candidates.some(c => Math.abs(c.sampleIndex - p.sampleIndex) < base.minimumSeparationSamples)) candidates.push(p);
+    }
+    candidates.sort((a, b) => a.sampleIndex - b.sampleIndex);
+    return {algorithm: 'experimental-peak-curvature-v7', sampleRate, sampleCount: samples.length,
+        historySamples: base.historySamples, hopSize: base.hopSize, refinementSamples: base.refinementSamples,
+        lookaheadSamples: base.lookaheadSamples, minimumSeparationSamples: base.minimumSeparationSamples,
+        contrastSamples: base.contrastSamples, directionalWindowSamples: window, directionalRiseRatio: 1.3,
+        peakFloorMultiplier: 8, directionalFilterCoefficients: [.25, -.5, .25],
+        peakFilterCoefficients: [1, -4, 6, -4, 1].map(c => c / 16),
+        filterMemorySamples: 4, timestamp: 'refined-sample', localization: 'maximum-positive-innovation-power-step',
+        selection: 'candidate-only', candidates};
+}

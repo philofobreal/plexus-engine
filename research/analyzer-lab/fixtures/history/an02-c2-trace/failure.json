@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-11",
+  "command": "node --test tests/analyzer-acoustic-challenges.test.mjs",
+  "counts": {"tests": 6, "pass": 5, "fail": 1, "skipped": 0},
+  "failingTest": "C2 actual kernel and observation-only trace agree on every case without input mutation",
+  "errorCode": "ERR_ASSERTION",
+  "operator": "deepStrictEqual",
+  "actual": [1601, 3201, 4801],
+  "expected": [1601, 3201, 4801],
+  "cause": "Diagnostic gated array retained its VM Array prototype; identical values failed strict cross-realm comparison.",
+  "fix": "Copy refined/gated trace arrays with host Array.from; keep every original test assertion and production kernel unchanged.",
+  "evidence": "Compact transcription of tool output; original diagnostic and unchanged test sources retained as inert .txt snapshots. Not a musical detector failure."
+}

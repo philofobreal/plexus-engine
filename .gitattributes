@@ -1,0 +1,28 @@
+# Research evidence and cumulative inventories bind exact bytes. These scopes must
+# survive checkout independently of core.autocrlf; preserve the verified source
+# working bytes when importing pre-existing evidence, without rewriting its hashes.
+/research/analyzer-lab/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/documents/tests/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/tests/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/scripts/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/src/analyzer/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/src/types/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/src/semantics/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/src/automation/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/package.json -text
+# The full harness also records the complete production source/build identity.
+/src/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/tsconfig.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/vite.config.ts -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/documents/research/onset-placement*.md -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Existing explicit AN-04D rules are retained below.
+/src/analyzer/HarmonicForecast.ts -text
+/src/types/harmonicForecast.ts -text
+/tests/fixtures/harmonic-forecast-corpus.mjs -text
+/tests/harmonic-forecast*.test.mjs -text
+/research/analyzer-lab/diagnostics/measure-an04d.mjs -text
+/research/analyzer-lab/diagnostics/check_an04d_projection.py -text
+/research/analyzer-lab/docs/AN-04D-EXPERIMENT.md -text
+/research/analyzer-lab/fixtures/an04d-* -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/research/analyzer-lab/fixtures/an04d-*/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/package-lock.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

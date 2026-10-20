@@ -1,3 +1,4 @@
+import { featureFrameStepSeconds } from '../types/featureClock.ts';
 import type {
     BarAnalysis,
     MusicPattern,
@@ -271,7 +272,7 @@ function generatePass2Dramaturgy(
 
     let inHighBuildup = false;
     let highBuildupStart = 0;
-    const secPerFrame = buildupConfidence.length > 0 ? duration / buildupConfidence.length : 1;
+    const secPerFrame = featureFrameStepSeconds(trackAnalysis, buildupConfidence.length);
 
     for (let fi = 0; fi < buildupConfidence.length; fi++) {
         const conf = buildupConfidence[fi];

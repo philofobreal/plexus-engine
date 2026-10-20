@@ -12,6 +12,8 @@ Current analysis request fields:
 - `algorithmVersion`.
 - `samples` as an `ArrayBuffer`.
 - `sampleRate`.
+- Optional `eventTiming`: `local-band-v1` or `local-band-v2`. Absence preserves default event timing.
+  The current v2 publishes `accepted-frame-band-timing-v2-dc1`; historical v2 reports remain readable.
 
 Current analysis success message fields:
 
@@ -30,6 +32,10 @@ Current analysis success message fields:
 - `barStarts` — authoritative downbeat (bar start) times (seconds).
 - `timingConfidence` — unified `{ tempo, beat, grid, overall }` confidence model, each in `[0, 1]`.
 - `trackAnalysis`.
+- Optional nested `trackAnalysis.eventTiming`: algorithm/policy identity, original PCM clock and
+  per-accepted-event status/time/sample-support provenance. It localizes existing events only;
+  beats, bars and the playback clock retain their original ownership. The strict result schema
+  describes its shape; runtime normalization additionally binds it to the published events/clock.
 
 The authoritative musical timing model (`tempo`, `tempoConfidence`, `beats`, `beatConfidence`,
 `barStarts`, `alternativeTempos`, `timingConfidence`) is carried on the nested `TrackAnalysis`

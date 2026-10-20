@@ -188,7 +188,7 @@ test('visual track analysis is precomputed and exposed through shared state', ()
   assert.match(featureExtractor, /flatnessT\[i\]/);
   assert.match(featureExtractor, /centroidT\[i\]/);
   assert.match(audio, /ANALYSIS_ALGORITHM_VERSION/);
-  assert.match(audio, /State\.trackAnalysis = normalizeTrackAnalysis\(e\.data\.trackAnalysis, State\.bpm\)/);
+  assert.match(audio, /State\.trackAnalysis = normalizeTrackAnalysis\(e\.data\.trackAnalysis, State\.bpm, e\.data\.events\)/);
   assert.match(store, /currentFeatures/);
   assert.match(renderer, /State\.trackAnalysis\.cues/);
   assert.match(renderer, /State\.trackAnalysis\.features/);
@@ -328,7 +328,7 @@ test('ADR-004 analysis plan is bound to the injected resolver consumer', () => {
   const main = read('src/main.ts');
   assert.match(types, /externalVisualScorePlan\?: VisualScorePlan/);
   assert.match(audio, /this\.onVisualScorePlan\(State\.trackAnalysis\.externalVisualScorePlan \?\? null\)/);
-  assert.match(main, /new AudioEngine\(plan => \{\s*semanticResolver\.setPlan\(plan\);\s*\}\)/);
+  assert.match(main, /new AudioEngine\(plan => \{\s*semanticResolver\.setPlan\(plan\);\s*\},\s*\{ eventTiming \}\)/);
   assert.doesNotMatch(main, /new AudioEngine\(plan => \{[\s\S]*setBaseTuning/);
   assert.match(main, /new SemanticRendererBridge\(\)/);
 });
@@ -564,7 +564,7 @@ test('analysis worker uses spectral FFT features instead of legacy crossover fil
   assert.match(featureExtractor, /const hz = k \* this\.binHz/);
   assert.match(featureExtractor, /this\.centroidT\[i\] = sumMag > 0 && this\.nyquist > 0 \? \(sumFreqMag \/ sumMag\) \/ this\.nyquist : 0/);
   assert.match(featureExtractor, /this\.flatnessT\[i\] = sumMag > 0 && meanMag > 0 \? Math\.exp\(sumLogMag \/ Math\.max\(1, activeBins\)\) \/ meanMag : 0/);
-  assert.match(featureExtractor, /this\.zcrT\[i\] = zeroCrossings \/ Math\.max\(1, this\.hopSize - 1\)/);
+  assert.match(featureExtractor, /this\.zcrT\[i\] = zeroCrossings \/ Math\.max\(1, validSamples - 1\)/);
   assert.match(featureExtractor, /this\.spectralRolloffT\[i\] = this\.nyquist > 0 \? Math\.min\(1, \(rolloffBin \* this\.binHz\) \/ this\.nyquist\) : 0/);
   assert.match(featureExtractor, /this\.spectralCrestT\[i\] = sumMag > 0 && meanMag > 0 \? maxMag \/ meanMag : 0/);
   assert.doesNotMatch(featureExtractor, /k <= 6|k <= 93|k <= 465|\/ 512|\/ 511/);

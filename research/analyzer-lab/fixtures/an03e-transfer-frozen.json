@@ -1,0 +1,4326 @@
+{
+  "protocol": "AN-03E predeclared synthetic transfer; not independent music",
+  "nodeVersion": "v25.2.1",
+  "baselineHashes": {},
+  "sourceHashes": {
+    "tests/fixtures/continuation-onset-robustness.mjs": "3042e054770fbdf3a0d38d11a2d3f982ba2c10bb0a57da524006c18ad477c57b",
+    "src/analyzer/ContinuationOnsets.ts": "374762a7c8382fc8499a1103e364331956773a51516e7066226ca5536acd4af1",
+    "src/types/continuationOnsets.ts": "98ee96cad16c3a2884bb6510a351bf707f588449752e2582353634984dc89c50",
+    "src/analyzer/DifferenceOnsets.ts": "a2914d0c5555ffbef70405c87811809b7e25389aa768dd49d1ba07a99ac38bf2",
+    "src/analyzer/ResidualOnsets.ts": "247ffab22e8f7b1ddcb24343ccba102eddf692955b699a665211571488096084",
+    "src/analyzer/signalContract.ts": "fb64a5fcb50b6ad61e3b86717f80ace34c993e8d948c2865b9c05369861f294a",
+    "tests/helpers/xr-loader.mjs": "65f5c9bd8264f10e569d5d5b158e7ebda64f59ee8188e2040f1a2d9754e5ed3e",
+    "tests/fixtures/acoustic-onset-challenges.mjs": "9d5014b10ee347a783b7505d416f0c25206bd5865a9017dedbb3fd3fb21587c1",
+    "tests/fixtures/predictive-onset-robustness.mjs": "94de30c647efd574d18e926a64f8e90cc00f1883f95f45d5049e02e0ca9da247",
+    "tests/fixtures/adaptive-onset-robustness.mjs": "68dacad05123035cbd6fc4b0d557ca97d83540cf15164e920ff9f01dfb7e0455",
+    "tests/fixtures/residual-onset-robustness.mjs": "79d45f945a8e10ea29663233aa8aa59ec10c6896793e9b5d4ae3a5f407b6e8cb",
+    "tests/fixtures/difference-onset-robustness.mjs": "63fd96b91f6a358813c3b0feb122f6ae95ef25ec64c422ba498dc11cfc2b46f9",
+    "src/types/differenceOnsets.ts": "9a5efb8c6e59fa2fe6fe045293387ae7b283b88bb368afccfc845ce60eb1a292",
+    "src/types/residualOnsets.ts": "b14d55abacd9a7cf35e330197647561f96bb6c0e056c6437bb001e3dbe013bc3",
+    "src/types/adaptiveOnsets.ts": "55998ddc78b97de016b7722f5f1dd209d97fa885c86c0b5937f0b996b13cbece",
+    "src/types/predictiveOnsets.ts": "8d727f4b32b4abba5cd1b886fb44f85dc3c27cb5a852bc22390cf11aba7766bf",
+    "src/analyzer/analyzeAudio.ts": "faf8b70601143c80bfe645b577e16509aecba99a1052b9487176af928280792b",
+    "src/analyzer/normalizeAnalysisResult.ts": "a4d3f8c8276776378fd0e758e42baf196ef305be03e6473f9405c46806185997",
+    "src/analyzer/types.ts": "9e7800f91593bfd55cb615d5da42ac86bec85c4716d5520bc45cbd67196ad0e8",
+    "src/types/index.ts": "36d9e07826d9809945281e11f16448cef69ec52f7b1ebafdaa41a1de568e2781",
+    "tests/fixtures/analyzer/analysis-result.schema.json": "b2e9a3947a1325aa0032012bee477c000b964742c334793e27b5a1201e5eb4f0",
+    "research/analyzer-lab/diagnostics/measure-an03e-transfer.mjs": "1b25e79fba96524b598f8a98895eae907871c3463f104405176740fcaaea6b49",
+    "research/analyzer-lab/diagnostics/score-an03e.py": "9e80ab252050039b417f0dd1b32dc4cf10fdbfad58c24f8c9477ae54b5cc40d4"
+  },
+  "cases": [
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "two",
+        "kind": "noise",
+        "amplitude": 0.012,
+        "phase": 0.4,
+        "id": "an03e-000"
+      },
+      "pcmSha256": "73246828df132ae9d7dfe1ecbab461620e0bdb9121e0f306a2b57640f0749149",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00006990344162394039,
+          "innovationRatio": 6990344162394039,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.224,
+          "sampleIndex": 5376,
+          "proposalSample": 5328,
+          "strength": 0.000032469752176239076,
+          "innovationRatio": 3701917200.4561434,
+          "supportStartSample": 4604,
+          "supportEndSample": 5669,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2365,
+          "sampleIndex": 5676,
+          "proposalSample": 5664,
+          "strength": 0.000004013061948460386,
+          "innovationRatio": 412732360.8286937,
+          "supportStartSample": 4940,
+          "supportEndSample": 5969,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2495,
+          "sampleIndex": 5988,
+          "proposalSample": 5952,
+          "strength": 0.000003952836334937429,
+          "innovationRatio": 506366280.9491404,
+          "supportStartSample": 5228,
+          "supportEndSample": 6281,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2625,
+          "sampleIndex": 6300,
+          "proposalSample": 6288,
+          "strength": 0.0000040130618982954665,
+          "innovationRatio": 469439941.1959788,
+          "supportStartSample": 5564,
+          "supportEndSample": 6593,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2755,
+          "sampleIndex": 6612,
+          "proposalSample": 6576,
+          "strength": 0.000003952835216164929,
+          "innovationRatio": 381087485.6065683,
+          "supportStartSample": 5852,
+          "supportEndSample": 6905,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2885,
+          "sampleIndex": 6924,
+          "proposalSample": 6912,
+          "strength": 0.000004013061711360256,
+          "innovationRatio": 414717436.5500351,
+          "supportStartSample": 6188,
+          "supportEndSample": 7217,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.224
+        ],
+        "differenceV5": [
+          0,
+          0.224,
+          0.2365,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ],
+        "continuationV6": [
+          0,
+          0.224,
+          0.2365,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "two",
+        "kind": "noise",
+        "amplitude": 0.012,
+        "phase": 1.6,
+        "id": "an03e-001"
+      },
+      "pcmSha256": "0c74629179dc74a1ab99aa50cab8843e54ed8dcae75059cc58dc21e58a4b221e",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005070371342570572,
+          "innovationRatio": 50703713425705720,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.224,
+          "sampleIndex": 5376,
+          "proposalSample": 5328,
+          "strength": 0.000032471297658833137,
+          "innovationRatio": 3054688605.44192,
+          "supportStartSample": 4604,
+          "supportEndSample": 5669,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2365,
+          "sampleIndex": 5676,
+          "proposalSample": 5664,
+          "strength": 0.000004013061053556631,
+          "innovationRatio": 391808836.8729442,
+          "supportStartSample": 4940,
+          "supportEndSample": 5969,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2495,
+          "sampleIndex": 5988,
+          "proposalSample": 5952,
+          "strength": 0.00000395283520771239,
+          "innovationRatio": 499811981.3236362,
+          "supportStartSample": 5228,
+          "supportEndSample": 6281,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2625,
+          "sampleIndex": 6300,
+          "proposalSample": 6288,
+          "strength": 0.000004013063457966882,
+          "innovationRatio": 645257552.4947186,
+          "supportStartSample": 5564,
+          "supportEndSample": 6593,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2755,
+          "sampleIndex": 6612,
+          "proposalSample": 6576,
+          "strength": 0.000003952835889266005,
+          "innovationRatio": 471102114.09302187,
+          "supportStartSample": 5852,
+          "supportEndSample": 6905,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2885,
+          "sampleIndex": 6924,
+          "proposalSample": 6912,
+          "strength": 0.00000401306214536898,
+          "innovationRatio": 444892804.11881065,
+          "supportStartSample": 6188,
+          "supportEndSample": 7217,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.224
+        ],
+        "differenceV5": [
+          0,
+          0.224,
+          0.2365,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ],
+        "continuationV6": [
+          0,
+          0.224,
+          0.2365,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "two",
+        "kind": "noise",
+        "amplitude": 0.04,
+        "phase": 0.4,
+        "id": "an03e-002"
+      },
+      "pcmSha256": "01e62261b790f87777216d688806725f759fe46f192d56c272c2fa7a5c0bbf60",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00006990344162394039,
+          "innovationRatio": 6990344162394039,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.224,
+          "sampleIndex": 5376,
+          "proposalSample": 5328,
+          "strength": 0.00036077891885434723,
+          "innovationRatio": 41132857375.062874,
+          "supportStartSample": 4604,
+          "supportEndSample": 5669,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2365,
+          "sampleIndex": 5676,
+          "proposalSample": 5664,
+          "strength": 0.00004458957861764294,
+          "innovationRatio": 4585915184.704491,
+          "supportStartSample": 4940,
+          "supportEndSample": 5969,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2495,
+          "sampleIndex": 5988,
+          "proposalSample": 5952,
+          "strength": 0.000043920396226685644,
+          "innovationRatio": 5626290969.552888,
+          "supportStartSample": 5228,
+          "supportEndSample": 6281,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2625,
+          "sampleIndex": 6300,
+          "proposalSample": 6288,
+          "strength": 0.00004458957838193401,
+          "innovationRatio": 5215999468.597109,
+          "supportStartSample": 5564,
+          "supportEndSample": 6593,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2755,
+          "sampleIndex": 6612,
+          "proposalSample": 6576,
+          "strength": 0.000043920393209689994,
+          "innovationRatio": 4234305499.7448025,
+          "supportStartSample": 5852,
+          "supportEndSample": 6905,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2885,
+          "sampleIndex": 6924,
+          "proposalSample": 6912,
+          "strength": 0.0000445895784897482,
+          "innovationRatio": 4607971841.338768,
+          "supportStartSample": 6188,
+          "supportEndSample": 7217,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.224
+        ],
+        "differenceV5": [
+          0,
+          0.224,
+          0.2365,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ],
+        "continuationV6": [
+          0,
+          0.224,
+          0.2365,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "two",
+        "kind": "noise",
+        "amplitude": 0.04,
+        "phase": 1.6,
+        "id": "an03e-003"
+      },
+      "pcmSha256": "4248d7c69b840dc059d6b44648cd0c54a875bb8495cc69dc31e4212b6eca3be7",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005070371342570572,
+          "innovationRatio": 50703713425705720,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.224,
+          "sampleIndex": 5376,
+          "proposalSample": 5328,
+          "strength": 0.0003607841483937347,
+          "innovationRatio": 33940227418.740364,
+          "supportStartSample": 4604,
+          "supportEndSample": 5669,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2365,
+          "sampleIndex": 5676,
+          "proposalSample": 5664,
+          "strength": 0.000044589577509972294,
+          "innovationRatio": 4353432440.491418,
+          "supportStartSample": 4940,
+          "supportEndSample": 5969,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2495,
+          "sampleIndex": 5988,
+          "proposalSample": 5952,
+          "strength": 0.00004392039201965728,
+          "innovationRatio": 5553466482.307375,
+          "supportStartSample": 5228,
+          "supportEndSample": 6281,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2625,
+          "sampleIndex": 6300,
+          "proposalSample": 6288,
+          "strength": 0.00004458957931949714,
+          "innovationRatio": 7169525923.328463,
+          "supportStartSample": 5564,
+          "supportEndSample": 6593,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2755,
+          "sampleIndex": 6612,
+          "proposalSample": 6576,
+          "strength": 0.00004392039657098064,
+          "innovationRatio": 5234467591.442171,
+          "supportStartSample": 5852,
+          "supportEndSample": 6905,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2885,
+          "sampleIndex": 6924,
+          "proposalSample": 6912,
+          "strength": 0.00004458957932311615,
+          "innovationRatio": 4943253290.462856,
+          "supportStartSample": 6188,
+          "supportEndSample": 7217,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.224
+        ],
+        "differenceV5": [
+          0,
+          0.224,
+          0.2365,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ],
+        "continuationV6": [
+          0,
+          0.224,
+          0.2365,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "two",
+        "kind": "pluck",
+        "amplitude": 0.012,
+        "phase": 0.4,
+        "id": "an03e-004"
+      },
+      "pcmSha256": "d33759de60b865d32d5bd5f6711e6810a87eed0700783e6690790727556b7be4",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00006990344162394039,
+          "innovationRatio": 6990344162394039,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.22304166666666667,
+          "sampleIndex": 5353,
+          "proposalSample": 5328,
+          "strength": 1.7152510064393812e-7,
+          "innovationRatio": 19555792.016436435,
+          "supportStartSample": 4604,
+          "supportEndSample": 5646,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.22304166666666667
+        ],
+        "differenceV5": [
+          0,
+          0.22304166666666667
+        ],
+        "continuationV6": [
+          0,
+          0.22304166666666667
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "two",
+        "kind": "pluck",
+        "amplitude": 0.012,
+        "phase": 1.6,
+        "id": "an03e-005"
+      },
+      "pcmSha256": "a0fa8ffc300ea8c094c6967bf2ac730754598c014cdbd4894d5a0a3bd3e0546f",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005070371342570572,
+          "innovationRatio": 50703713425705720,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.22304166666666667,
+          "sampleIndex": 5353,
+          "proposalSample": 5328,
+          "strength": 1.7164372781176005e-7,
+          "innovationRatio": 16147126.14971604,
+          "supportStartSample": 4604,
+          "supportEndSample": 5646,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.22304166666666667
+        ],
+        "differenceV5": [
+          0,
+          0.22304166666666667
+        ],
+        "continuationV6": [
+          0,
+          0.22304166666666667
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "two",
+        "kind": "pluck",
+        "amplitude": 0.04,
+        "phase": 0.4,
+        "id": "an03e-006"
+      },
+      "pcmSha256": "37e9ff68444ad890e1f624dc588ecd22ec06e393f15134670e33c3c4120e9a83",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00006990344162394039,
+          "innovationRatio": 6990344162394039,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.22304166666666667,
+          "sampleIndex": 5353,
+          "proposalSample": 5328,
+          "strength": 0.0000019063624860380171,
+          "innovationRatio": 217346779.829531,
+          "supportStartSample": 4604,
+          "supportEndSample": 5646,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.22304166666666667
+        ],
+        "differenceV5": [
+          0,
+          0.22304166666666667
+        ],
+        "continuationV6": [
+          0,
+          0.22304166666666667
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "two",
+        "kind": "pluck",
+        "amplitude": 0.04,
+        "phase": 1.6,
+        "id": "an03e-007"
+      },
+      "pcmSha256": "87653669b2df6c25469d5372f2a34976222d4d269bb2592ab39d03b8a6c71840",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005070371342570572,
+          "innovationRatio": 50703713425705720,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.22304166666666667,
+          "sampleIndex": 5353,
+          "proposalSample": 5328,
+          "strength": 0.0000019067553448139638,
+          "innovationRatio": 179375148.0573875,
+          "supportStartSample": 4604,
+          "supportEndSample": 5646,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.22304166666666667
+        ],
+        "differenceV5": [
+          0,
+          0.22304166666666667
+        ],
+        "continuationV6": [
+          0,
+          0.22304166666666667
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 24000,
+        "bed": "two",
+        "kind": "remove-low",
+        "phase": 0.4,
+        "id": "an03e-008"
+      },
+      "pcmSha256": "addeb33e9fe19bc5d1483a19182c672ce4d5d41c078cd098a940fb08eb56f094",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00006990344162394039,
+          "innovationRatio": 6990344162394039,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [
+        {
+          "candidate": {
+            "time": 0.63,
+            "sampleIndex": 15120,
+            "proposalSample": 15072,
+            "strength": 0.0000046542025255308915,
+            "innovationRatio": 647407536.1686193,
+            "supportStartSample": 14348,
+            "supportEndSample": 15413,
+            "endpointAmbiguous": false,
+            "evidenceSource": "residual-v4-confirmed"
+          },
+          "reason": "weak-continuation-with-falling-curvature-power",
+          "continuationPower": 9.541549804114837e-15,
+          "continuationFloor": 3.971270357191007e-9,
+          "beforeSecondPower": 4.085508077735619e-9,
+          "afterSecondPower": 3.905959616282302e-9
+        }
+      ],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.63
+        ],
+        "differenceV5": [
+          0,
+          0.63
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 24000,
+        "bed": "two",
+        "kind": "remove-low",
+        "phase": 1.6,
+        "id": "an03e-009"
+      },
+      "pcmSha256": "42a938b43ca528d08100c21bfba98644fcaec45d03b0b49e53ca3f6899179da5",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005070371342570572,
+          "innovationRatio": 50703713425705720,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [
+        {
+          "candidate": {
+            "time": 0.63,
+            "sampleIndex": 15120,
+            "proposalSample": 15072,
+            "strength": 0.00009205523988643438,
+            "innovationRatio": 9847151083.410212,
+            "supportStartSample": 14348,
+            "supportEndSample": 15413,
+            "endpointAmbiguous": false,
+            "evidenceSource": "residual-v4-confirmed"
+          },
+          "reason": "weak-continuation-with-falling-curvature-power",
+          "continuationPower": 7.803496923966688e-15,
+          "continuationFloor": 3.950719292182114e-9,
+          "beforeSecondPower": 3.937565525211296e-9,
+          "afterSecondPower": 3.8866113226467895e-9
+        }
+      ],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.63
+        ],
+        "differenceV5": [
+          0,
+          0.63
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 24000,
+        "bed": "two",
+        "kind": "remove-high",
+        "phase": 0.4,
+        "id": "an03e-010"
+      },
+      "pcmSha256": "f0496d19da76e0e2976d0d7ad1daaf2f68940dc16277ff32833dec6336ccf488",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00006990344162394039,
+          "innovationRatio": 6990344162394039,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [
+        {
+          "candidate": {
+            "time": 0.63,
+            "sampleIndex": 15120,
+            "proposalSample": 15072,
+            "strength": 0.00008275210965946056,
+            "innovationRatio": 11510960069.636353,
+            "supportStartSample": 14348,
+            "supportEndSample": 15413,
+            "endpointAmbiguous": false,
+            "evidenceSource": "residual-v4-confirmed"
+          },
+          "reason": "weak-continuation-with-falling-curvature-power",
+          "continuationPower": 6.462017896400878e-17,
+          "continuationFloor": 3.971270357191007e-9,
+          "beforeSecondPower": 4.085508077735619e-9,
+          "afterSecondPower": 3.33941570245229e-10
+        }
+      ],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.63
+        ],
+        "differenceV5": [
+          0,
+          0.63
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 24000,
+        "bed": "two",
+        "kind": "remove-high",
+        "phase": 1.6,
+        "id": "an03e-011"
+      },
+      "pcmSha256": "9495cf4f1a3acc0354ed20f190c2ee2dbf106bd058fb8dcb46a572593e2384d6",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005070371342570572,
+          "innovationRatio": 50703713425705720,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [
+        {
+          "candidate": {
+            "time": 0.63,
+            "sampleIndex": 15120,
+            "proposalSample": 15072,
+            "strength": 0.00009295898554273088,
+            "innovationRatio": 9943824776.613403,
+            "supportStartSample": 14348,
+            "supportEndSample": 15413,
+            "endpointAmbiguous": false,
+            "evidenceSource": "residual-v4-confirmed"
+          },
+          "reason": "weak-continuation-with-falling-curvature-power",
+          "continuationPower": 6.957040730048853e-17,
+          "continuationFloor": 3.950719292182114e-9,
+          "beforeSecondPower": 3.937565525211296e-9,
+          "afterSecondPower": 3.199677552310743e-10
+        }
+      ],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.63
+        ],
+        "differenceV5": [
+          0,
+          0.63
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 24000,
+        "bed": "two",
+        "kind": "remove-both",
+        "phase": 0.4,
+        "id": "an03e-012"
+      },
+      "pcmSha256": "d86f3326479095f5f50016e099c91a4a4eaafa3cefa2d859999492510e9c762e",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00006990344162394039,
+          "innovationRatio": 6990344162394039,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0
+        ],
+        "differenceV5": [
+          0
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 24000,
+        "bed": "two",
+        "kind": "remove-both",
+        "phase": 1.6,
+        "id": "an03e-013"
+      },
+      "pcmSha256": "59fc393b1ee7333bde2a3d1cb736022eee6bd5e175111976af8de2c4f42dc79b",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005070371342570572,
+          "innovationRatio": 50703713425705720,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0
+        ],
+        "differenceV5": [
+          0
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "four",
+        "kind": "noise",
+        "amplitude": 0.012,
+        "phase": 0.4,
+        "id": "an03e-014"
+      },
+      "pcmSha256": "56fd9c59f9b6ceb2ecd2f128e053dc9d16f693e58fbf423d5938f9e55767667e",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00006497467848425118,
+          "innovationRatio": 6497467848425119,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.224,
+          "sampleIndex": 5376,
+          "proposalSample": 5328,
+          "strength": 0.000032463493007912696,
+          "innovationRatio": 20105565.016174182,
+          "supportStartSample": 4604,
+          "supportEndSample": 5669,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2365,
+          "sampleIndex": 5676,
+          "proposalSample": 5664,
+          "strength": 0.000004013050036522218,
+          "innovationRatio": 2380719.8332689023,
+          "supportStartSample": 4940,
+          "supportEndSample": 5969,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2495,
+          "sampleIndex": 5988,
+          "proposalSample": 5952,
+          "strength": 0.000003952816940120386,
+          "innovationRatio": 2350875.8413866414,
+          "supportStartSample": 5228,
+          "supportEndSample": 6281,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2625,
+          "sampleIndex": 6300,
+          "proposalSample": 6288,
+          "strength": 0.000004013049670616383,
+          "innovationRatio": 2433036.9656686275,
+          "supportStartSample": 5564,
+          "supportEndSample": 6593,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2755,
+          "sampleIndex": 6612,
+          "proposalSample": 6576,
+          "strength": 0.000003952835904746115,
+          "innovationRatio": 1816670.1231804518,
+          "supportStartSample": 5852,
+          "supportEndSample": 6905,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2885,
+          "sampleIndex": 6924,
+          "proposalSample": 6912,
+          "strength": 0.000004013047862146715,
+          "innovationRatio": 1755458.347551377,
+          "supportStartSample": 6188,
+          "supportEndSample": 7217,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.224
+        ],
+        "differenceV5": [
+          0,
+          0.224,
+          0.2365,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ],
+        "continuationV6": [
+          0,
+          0.224,
+          0.2365,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "four",
+        "kind": "noise",
+        "amplitude": 0.012,
+        "phase": 1.6,
+        "id": "an03e-015"
+      },
+      "pcmSha256": "0efdea036e515bff8abc5ed90e430370848294028e04b1d652d4ed3625bff9e1",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005091445815175177,
+          "innovationRatio": 50914458151751780,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.224,
+          "sampleIndex": 5376,
+          "proposalSample": 5328,
+          "strength": 0.00003248949894303389,
+          "innovationRatio": 17407868.165007878,
+          "supportStartSample": 4604,
+          "supportEndSample": 5669,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2365,
+          "sampleIndex": 5676,
+          "proposalSample": 5664,
+          "strength": 0.000004013050316304934,
+          "innovationRatio": 1970542.6748690922,
+          "supportStartSample": 4940,
+          "supportEndSample": 5969,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2495,
+          "sampleIndex": 5988,
+          "proposalSample": 5952,
+          "strength": 0.000003952809990111112,
+          "innovationRatio": 2306033.6585143153,
+          "supportStartSample": 5228,
+          "supportEndSample": 6281,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2625,
+          "sampleIndex": 6300,
+          "proposalSample": 6288,
+          "strength": 0.0000040130509111028705,
+          "innovationRatio": 2659029.4766954985,
+          "supportStartSample": 5564,
+          "supportEndSample": 6593,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2755,
+          "sampleIndex": 6612,
+          "proposalSample": 6576,
+          "strength": 0.000003952810059339709,
+          "innovationRatio": 1593652.540109391,
+          "supportStartSample": 5852,
+          "supportEndSample": 6905,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2885,
+          "sampleIndex": 6924,
+          "proposalSample": 6912,
+          "strength": 0.000004013039374458493,
+          "innovationRatio": 1477996.399871591,
+          "supportStartSample": 6188,
+          "supportEndSample": 7217,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.224
+        ],
+        "differenceV5": [
+          0,
+          0.224,
+          0.2365,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ],
+        "continuationV6": [
+          0,
+          0.224,
+          0.2365,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "four",
+        "kind": "noise",
+        "amplitude": 0.04,
+        "phase": 0.4,
+        "id": "an03e-016"
+      },
+      "pcmSha256": "dbfef6f9abdc41b3ae37a868c54fab124b4184e4b7838452d172a5ffed304ce4",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00006497467848425118,
+          "innovationRatio": 6497467848425119,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.224,
+          "sampleIndex": 5376,
+          "proposalSample": 5328,
+          "strength": 0.0003607581514339983,
+          "innovationRatio": 223427789.08613276,
+          "supportStartSample": 4604,
+          "supportEndSample": 5669,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2365,
+          "sampleIndex": 5676,
+          "proposalSample": 5664,
+          "strength": 0.00004458956449451004,
+          "innovationRatio": 26452432.681049507,
+          "supportStartSample": 4940,
+          "supportEndSample": 5969,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.25,
+          "sampleIndex": 6000,
+          "proposalSample": 5952,
+          "strength": 0.0003606998059651255,
+          "innovationRatio": 214519818.92487788,
+          "supportStartSample": 5228,
+          "supportEndSample": 6293,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.263,
+          "sampleIndex": 6312,
+          "proposalSample": 6288,
+          "strength": 0.0003607310288714334,
+          "innovationRatio": 218703757.51537558,
+          "supportStartSample": 5564,
+          "supportEndSample": 6605,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.276,
+          "sampleIndex": 6624,
+          "proposalSample": 6576,
+          "strength": 0.00036078806449223313,
+          "innovationRatio": 165812603.1671743,
+          "supportStartSample": 5852,
+          "supportEndSample": 6917,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.289,
+          "sampleIndex": 6936,
+          "proposalSample": 6912,
+          "strength": 0.00036084160686025176,
+          "innovationRatio": 157844996.10602155,
+          "supportStartSample": 6188,
+          "supportEndSample": 7229,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.224,
+          0.25,
+          0.263,
+          0.276,
+          0.289
+        ],
+        "differenceV5": [
+          0,
+          0.224,
+          0.2365,
+          0.25,
+          0.263,
+          0.276,
+          0.289
+        ],
+        "continuationV6": [
+          0,
+          0.224,
+          0.2365,
+          0.25,
+          0.263,
+          0.276,
+          0.289
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "four",
+        "kind": "noise",
+        "amplitude": 0.04,
+        "phase": 1.6,
+        "id": "an03e-017"
+      },
+      "pcmSha256": "3538c51b3d9ac8cbde97000b2ea37a00ce49c81dc15076d0a040cfdebbb0d4a7",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005091445815175177,
+          "innovationRatio": 50914458151751780,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.224,
+          "sampleIndex": 5376,
+          "proposalSample": 5328,
+          "strength": 0.00036084481382044666,
+          "innovationRatio": 193340591.6178335,
+          "supportStartSample": 4604,
+          "supportEndSample": 5669,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2365,
+          "sampleIndex": 5676,
+          "proposalSample": 5664,
+          "strength": 0.000044589571149020775,
+          "innovationRatio": 21894898.210993163,
+          "supportStartSample": 4940,
+          "supportEndSample": 5969,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.25,
+          "sampleIndex": 6000,
+          "proposalSample": 5952,
+          "strength": 0.000360760113555962,
+          "innovationRatio": 210463462.83019826,
+          "supportStartSample": 5228,
+          "supportEndSample": 6293,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.263,
+          "sampleIndex": 6312,
+          "proposalSample": 6288,
+          "strength": 0.00036072764152481545,
+          "innovationRatio": 239015793.04624262,
+          "supportStartSample": 5564,
+          "supportEndSample": 6605,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.276,
+          "sampleIndex": 6624,
+          "proposalSample": 6576,
+          "strength": 0.00036073029811417595,
+          "innovationRatio": 145434731.5989473,
+          "supportStartSample": 5852,
+          "supportEndSample": 6917,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.289,
+          "sampleIndex": 6936,
+          "proposalSample": 6912,
+          "strength": 0.0003607650856339469,
+          "innovationRatio": 132868522.30738552,
+          "supportStartSample": 6188,
+          "supportEndSample": 7229,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.224,
+          0.25,
+          0.263,
+          0.276,
+          0.289
+        ],
+        "differenceV5": [
+          0,
+          0.224,
+          0.2365,
+          0.25,
+          0.263,
+          0.276,
+          0.289
+        ],
+        "continuationV6": [
+          0,
+          0.224,
+          0.2365,
+          0.25,
+          0.263,
+          0.276,
+          0.289
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "four",
+        "kind": "pluck",
+        "amplitude": 0.012,
+        "phase": 0.4,
+        "id": "an03e-018"
+      },
+      "pcmSha256": "bcd353991da6248c0cc2c943485391d43243aaad64fc82c760a4f9c1365d4afb",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00006497467848425118,
+          "innovationRatio": 6497467848425119,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0
+        ],
+        "differenceV5": [
+          0
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "four",
+        "kind": "pluck",
+        "amplitude": 0.012,
+        "phase": 1.6,
+        "id": "an03e-019"
+      },
+      "pcmSha256": "3d83f9968cdd20fa292ccabacec691b06b4290bbe082ea14292c230181f66dc8",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005091445815175177,
+          "innovationRatio": 50914458151751780,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0
+        ],
+        "differenceV5": [
+          0
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "four",
+        "kind": "pluck",
+        "amplitude": 0.04,
+        "phase": 0.4,
+        "id": "an03e-020"
+      },
+      "pcmSha256": "a66e43fd980541863472b8c8a7f09cde57c06eb7c76005abe3bf5efa1f22f9d2",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00006497467848425118,
+          "innovationRatio": 6497467848425119,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.22304166666666667,
+          "sampleIndex": 5353,
+          "proposalSample": 5280,
+          "strength": 0.0000019015935448787272,
+          "innovationRatio": 1170942.1051512822,
+          "supportStartSample": 4556,
+          "supportEndSample": 5646,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.22304166666666667
+        ],
+        "differenceV5": [
+          0,
+          0.22304166666666667
+        ],
+        "continuationV6": [
+          0,
+          0.22304166666666667
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 24000,
+        "bed": "four",
+        "kind": "pluck",
+        "amplitude": 0.04,
+        "phase": 1.6,
+        "id": "an03e-021"
+      },
+      "pcmSha256": "d9f2a84a4edef30144f331068a27c82ad1a619bdad3242b8efffc5ef82e0da8c",
+      "truthSha256": "97da77dcd5fca7c96fac5476efd06652d2e428d7953312ae2f05dcc201161185",
+      "truthSamples": [
+        5352,
+        5664,
+        5976,
+        6288,
+        6600,
+        6912
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005091445815175177,
+          "innovationRatio": 50914458151751780,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.22304166666666667,
+          "sampleIndex": 5353,
+          "proposalSample": 5328,
+          "strength": 0.0000019080152091363687,
+          "innovationRatio": 1022314.2337686741,
+          "supportStartSample": 4604,
+          "supportEndSample": 5646,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.22304166666666667
+        ],
+        "differenceV5": [
+          0,
+          0.22304166666666667
+        ],
+        "continuationV6": [
+          0,
+          0.22304166666666667
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 24000,
+        "bed": "four",
+        "kind": "remove-low",
+        "phase": 0.4,
+        "id": "an03e-022"
+      },
+      "pcmSha256": "c4b8bedb0de6e2b37ead7a07dd956704360a07d2b5cbf69883e8f5c3f7b1ed10",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00006497467848425118,
+          "innovationRatio": 6497467848425119,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0
+        ],
+        "differenceV5": [
+          0
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 24000,
+        "bed": "four",
+        "kind": "remove-low",
+        "phase": 1.6,
+        "id": "an03e-023"
+      },
+      "pcmSha256": "826307d539f2760249cec9d116eb28a0d5e298d81317895df97ada36339f0b43",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005091445815175177,
+          "innovationRatio": 50914458151751780,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [
+        {
+          "candidate": {
+            "time": 0.63,
+            "sampleIndex": 15120,
+            "proposalSample": 15120,
+            "strength": 0.000023013304065070544,
+            "innovationRatio": 9837270.192901868,
+            "supportStartSample": 14396,
+            "supportEndSample": 15413,
+            "endpointAmbiguous": false,
+            "evidenceSource": "residual-v4-confirmed"
+          },
+          "reason": "weak-continuation-with-falling-curvature-power",
+          "continuationPower": 1.8500083539999772e-12,
+          "continuationFloor": 1.9857606554849e-9,
+          "beforeSecondPower": 3.585050631874953e-8,
+          "afterSecondPower": 3.430897194829432e-8
+        }
+      ],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.63
+        ],
+        "differenceV5": [
+          0,
+          0.63
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 24000,
+        "bed": "four",
+        "kind": "remove-high",
+        "phase": 0.4,
+        "id": "an03e-024"
+      },
+      "pcmSha256": "befe572d05cbc41acfdb1ed6b687dbbe87adb35c0b4f021cadeca7208f2ab0c7",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00006497467848425118,
+          "innovationRatio": 6497467848425119,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [
+        {
+          "candidate": {
+            "time": 0.63,
+            "sampleIndex": 15120,
+            "proposalSample": 15072,
+            "strength": 0.00002384487403740812,
+            "innovationRatio": 16164392.246933755,
+            "supportStartSample": 14348,
+            "supportEndSample": 15413,
+            "endpointAmbiguous": false,
+            "evidenceSource": "residual-v4-confirmed"
+          },
+          "reason": "weak-continuation-with-falling-curvature-power",
+          "continuationPower": 9.319569514688246e-14,
+          "continuationFloor": 1.930820213164565e-9,
+          "beforeSecondPower": 3.637197891069459e-8,
+          "afterSecondPower": 7.275905575367166e-9
+        }
+      ],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.63
+        ],
+        "differenceV5": [
+          0,
+          0.63
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 24000,
+        "bed": "four",
+        "kind": "remove-high",
+        "phase": 1.6,
+        "id": "an03e-025"
+      },
+      "pcmSha256": "7cbd09c6a31296454422e2c1b1c36858e904f562a65f1f0755056565257d07b0",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005091445815175177,
+          "innovationRatio": 50914458151751780,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0
+        ],
+        "differenceV5": [
+          0
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 24000,
+        "bed": "four",
+        "kind": "remove-both",
+        "phase": 0.4,
+        "id": "an03e-026"
+      },
+      "pcmSha256": "8545655e8b285f1fe0d0d281c274d9ddd14f6eef378fa78480c0f2a1b9497f67",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00006497467848425118,
+          "innovationRatio": 6497467848425119,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0
+        ],
+        "differenceV5": [
+          0
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 24000,
+        "bed": "four",
+        "kind": "remove-both",
+        "phase": 1.6,
+        "id": "an03e-027"
+      },
+      "pcmSha256": "5ff9373f2ff558cb281692d96f25d316f173f3c7e098d0acd2c9bea7d6708f01",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005091445815175177,
+          "innovationRatio": 50914458151751780,
+          "supportStartSample": 0,
+          "supportEndSample": 293,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0
+        ],
+        "differenceV5": [
+          0
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "two",
+        "kind": "noise",
+        "amplitude": 0.012,
+        "phase": 0.4,
+        "id": "an03e-028"
+      },
+      "pcmSha256": "cd079097c37be0bf9eb071b23b792b9dce5d8244f408dc2d7e075edb51019254",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00007327148718881183,
+          "innovationRatio": 7327148718881184,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2235,
+          "sampleIndex": 10728,
+          "proposalSample": 10656,
+          "strength": 0.000036053594889425835,
+          "innovationRatio": 1010480790730.9554,
+          "supportStartSample": 9212,
+          "supportEndSample": 11309,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.23652083333333335,
+          "sampleIndex": 11353,
+          "proposalSample": 11328,
+          "strength": 0.00000380619444394051,
+          "innovationRatio": 95862203672.26863,
+          "supportStartSample": 9884,
+          "supportEndSample": 11934,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.24952083333333333,
+          "sampleIndex": 11977,
+          "proposalSample": 11904,
+          "strength": 0.00000375490010838323,
+          "innovationRatio": 118508693830.94444,
+          "supportStartSample": 10460,
+          "supportEndSample": 12558,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2625208333333333,
+          "sampleIndex": 12601,
+          "proposalSample": 12576,
+          "strength": 0.00000380619486063366,
+          "innovationRatio": 114303753795.75359,
+          "supportStartSample": 11132,
+          "supportEndSample": 13182,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2755208333333333,
+          "sampleIndex": 13225,
+          "proposalSample": 13152,
+          "strength": 0.0000037548992324923836,
+          "innovationRatio": 92071656349.95439,
+          "supportStartSample": 11708,
+          "supportEndSample": 13806,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.28852083333333334,
+          "sampleIndex": 13849,
+          "proposalSample": 13824,
+          "strength": 0.0000038061946183572017,
+          "innovationRatio": 99971324584.77634,
+          "supportStartSample": 12380,
+          "supportEndSample": 14430,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.2235
+        ],
+        "differenceV5": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.24952083333333333,
+          0.2625208333333333,
+          0.2755208333333333,
+          0.28852083333333334
+        ],
+        "continuationV6": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.24952083333333333,
+          0.2625208333333333,
+          0.2755208333333333,
+          0.28852083333333334
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "two",
+        "kind": "noise",
+        "amplitude": 0.012,
+        "phase": 1.6,
+        "id": "an03e-029"
+      },
+      "pcmSha256": "edc5bc4e9799208fece9a5fd0b86726b3a91e58decd0d6c270ee75a19cdbb4be",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005063992700659605,
+          "innovationRatio": 50639927006596056,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2235,
+          "sampleIndex": 10728,
+          "proposalSample": 10656,
+          "strength": 0.00003605369379964589,
+          "innovationRatio": 837696070781.52,
+          "supportStartSample": 9212,
+          "supportEndSample": 11309,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.23652083333333335,
+          "sampleIndex": 11353,
+          "proposalSample": 11328,
+          "strength": 0.000003806194431821047,
+          "innovationRatio": 94692703825.89412,
+          "supportStartSample": 9884,
+          "supportEndSample": 11934,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.24952083333333333,
+          "sampleIndex": 11977,
+          "proposalSample": 11904,
+          "strength": 0.0000037548994877561545,
+          "innovationRatio": 124249672572.1166,
+          "supportStartSample": 10460,
+          "supportEndSample": 12558,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2625208333333333,
+          "sampleIndex": 12601,
+          "proposalSample": 12576,
+          "strength": 0.000003806194809254299,
+          "innovationRatio": 159210054585.40942,
+          "supportStartSample": 11132,
+          "supportEndSample": 13182,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2755208333333333,
+          "sampleIndex": 13225,
+          "proposalSample": 13152,
+          "strength": 0.0000037548988659773213,
+          "innovationRatio": 112060819460.683,
+          "supportStartSample": 11708,
+          "supportEndSample": 13806,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.28852083333333334,
+          "sampleIndex": 13849,
+          "proposalSample": 13824,
+          "strength": 0.000003806194735951107,
+          "innovationRatio": 102411708659.2658,
+          "supportStartSample": 12380,
+          "supportEndSample": 14430,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.2235
+        ],
+        "differenceV5": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.24952083333333333,
+          0.2625208333333333,
+          0.2755208333333333,
+          0.28852083333333334
+        ],
+        "continuationV6": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.24952083333333333,
+          0.2625208333333333,
+          0.2755208333333333,
+          0.28852083333333334
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "two",
+        "kind": "noise",
+        "amplitude": 0.04,
+        "phase": 0.4,
+        "id": "an03e-030"
+      },
+      "pcmSha256": "f9d13807174606800671c35389eac26becefbde2d01ae725843d90dbcfdfc8d8",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00007327148718881183,
+          "innovationRatio": 7327148718881184,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2235,
+          "sampleIndex": 10728,
+          "proposalSample": 10656,
+          "strength": 0.0004005957752693979,
+          "innovationRatio": 11227572090915.78,
+          "supportStartSample": 9212,
+          "supportEndSample": 11309,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.23652083333333335,
+          "sampleIndex": 11353,
+          "proposalSample": 11328,
+          "strength": 0.000042291050252143,
+          "innovationRatio": 1065135618315.9218,
+          "supportStartSample": 9884,
+          "supportEndSample": 11934,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.24952083333333333,
+          "sampleIndex": 11977,
+          "proposalSample": 11904,
+          "strength": 0.00004172109972747229,
+          "innovationRatio": 1316762867419.7905,
+          "supportStartSample": 10460,
+          "supportEndSample": 12558,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2625208333333333,
+          "sampleIndex": 12601,
+          "proposalSample": 12576,
+          "strength": 0.00004229105184910247,
+          "innovationRatio": 1270041643955.8235,
+          "supportStartSample": 11132,
+          "supportEndSample": 13182,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2755208333333333,
+          "sampleIndex": 13225,
+          "proposalSample": 13152,
+          "strength": 0.000041721101049201154,
+          "innovationRatio": 1023018366192.0233,
+          "supportStartSample": 11708,
+          "supportEndSample": 13806,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.28852083333333334,
+          "sampleIndex": 13849,
+          "proposalSample": 13824,
+          "strength": 0.00004229105077746888,
+          "innovationRatio": 1110792481184.929,
+          "supportStartSample": 12380,
+          "supportEndSample": 14430,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.2235
+        ],
+        "differenceV5": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.24952083333333333,
+          0.2625208333333333,
+          0.2755208333333333,
+          0.28852083333333334
+        ],
+        "continuationV6": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.24952083333333333,
+          0.2625208333333333,
+          0.2755208333333333,
+          0.28852083333333334
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "two",
+        "kind": "noise",
+        "amplitude": 0.04,
+        "phase": 1.6,
+        "id": "an03e-031"
+      },
+      "pcmSha256": "40958fd5d90d16472436cf94be621a454e6fe2d3a1a97d03a412f4766479bf93",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005063992700659605,
+          "innovationRatio": 50639927006596056,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2235,
+          "sampleIndex": 10728,
+          "proposalSample": 10656,
+          "strength": 0.0004005961049700869,
+          "innovationRatio": 9307722669656.643,
+          "supportStartSample": 9212,
+          "supportEndSample": 11309,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.23652083333333335,
+          "sampleIndex": 11353,
+          "proposalSample": 11328,
+          "strength": 0.00004229105024115856,
+          "innovationRatio": 1052141178386.4542,
+          "supportStartSample": 9884,
+          "supportEndSample": 11934,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.24952083333333333,
+          "sampleIndex": 11977,
+          "proposalSample": 11904,
+          "strength": 0.00004172110051463294,
+          "innovationRatio": 1380551755084.5344,
+          "supportStartSample": 10460,
+          "supportEndSample": 12558,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2625208333333333,
+          "sampleIndex": 12601,
+          "proposalSample": 12576,
+          "strength": 0.000042291048860951064,
+          "innovationRatio": 1769000415046.4126,
+          "supportStartSample": 11132,
+          "supportEndSample": 13182,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2755208333333333,
+          "sampleIndex": 13225,
+          "proposalSample": 13152,
+          "strength": 0.00004172110077212006,
+          "innovationRatio": 1245120283633.7634,
+          "supportStartSample": 11708,
+          "supportEndSample": 13806,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.28852083333333334,
+          "sampleIndex": 13849,
+          "proposalSample": 13824,
+          "strength": 0.000042291049636579656,
+          "innovationRatio": 1137907793592.1196,
+          "supportStartSample": 12380,
+          "supportEndSample": 14430,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.2235
+        ],
+        "differenceV5": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.24952083333333333,
+          0.2625208333333333,
+          0.2755208333333333,
+          0.28852083333333334
+        ],
+        "continuationV6": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.24952083333333333,
+          0.2625208333333333,
+          0.2755208333333333,
+          0.28852083333333334
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "two",
+        "kind": "pluck",
+        "amplitude": 0.012,
+        "phase": 0.4,
+        "id": "an03e-032"
+      },
+      "pcmSha256": "1afb4a2755a21440ef1f033a505bb977b05d54afd061f48b5ad62904610f0555",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00007327148718881183,
+          "innovationRatio": 7327148718881184,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.22302083333333333,
+          "sampleIndex": 10705,
+          "proposalSample": 10656,
+          "strength": 4.146838286840128e-8,
+          "innovationRatio": 1162242057.684125,
+          "supportStartSample": 9212,
+          "supportEndSample": 11286,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.22302083333333333
+        ],
+        "differenceV5": [
+          0,
+          0.22302083333333333
+        ],
+        "continuationV6": [
+          0,
+          0.22302083333333333
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "two",
+        "kind": "pluck",
+        "amplitude": 0.012,
+        "phase": 1.6,
+        "id": "an03e-033"
+      },
+      "pcmSha256": "27b9472f80de1d880a72251549e0ad2347b3827396cfa4fc6dce6a452f1f12cc",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005063992700659605,
+          "innovationRatio": 50639927006596056,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.22302083333333333,
+          "sampleIndex": 10705,
+          "proposalSample": 10656,
+          "strength": 4.14719389298931e-8,
+          "innovationRatio": 963587267.4328816,
+          "supportStartSample": 9212,
+          "supportEndSample": 11286,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.22302083333333333
+        ],
+        "differenceV5": [
+          0,
+          0.22302083333333333
+        ],
+        "continuationV6": [
+          0,
+          0.22302083333333333
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "two",
+        "kind": "pluck",
+        "amplitude": 0.04,
+        "phase": 0.4,
+        "id": "an03e-034"
+      },
+      "pcmSha256": "cded02a322c68acd4240ba985ae0e76415be4ae0fd421e0bc68953bfdd0d32ff",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00007327148718881183,
+          "innovationRatio": 7327148718881184,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.22302083333333333,
+          "sampleIndex": 10705,
+          "proposalSample": 10656,
+          "strength": 4.6077456052062704e-7,
+          "innovationRatio": 12914214066.352333,
+          "supportStartSample": 9212,
+          "supportEndSample": 11286,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.22302083333333333
+        ],
+        "differenceV5": [
+          0,
+          0.22302083333333333
+        ],
+        "continuationV6": [
+          0,
+          0.22302083333333333
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "two",
+        "kind": "pluck",
+        "amplitude": 0.04,
+        "phase": 1.6,
+        "id": "an03e-035"
+      },
+      "pcmSha256": "4df6a89dd8c14e1ab81d81e1ee133d827ea30f27ab18dba8ec1022bee5492bf0",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005063992700659605,
+          "innovationRatio": 50639927006596056,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.22302083333333333,
+          "sampleIndex": 10705,
+          "proposalSample": 10656,
+          "strength": 4.6078609797414185e-7,
+          "innovationRatio": 10706217950.61338,
+          "supportStartSample": 9212,
+          "supportEndSample": 11286,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.22302083333333333
+        ],
+        "differenceV5": [
+          0,
+          0.22302083333333333
+        ],
+        "continuationV6": [
+          0,
+          0.22302083333333333
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 48000,
+        "bed": "two",
+        "kind": "remove-low",
+        "phase": 0.4,
+        "id": "an03e-036"
+      },
+      "pcmSha256": "4d30ee788c2d8910ab806f339ccd222119877b3f41405818da43480f49b81201",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00007327148718881183,
+          "innovationRatio": 7327148718881184,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [
+        {
+          "candidate": {
+            "time": 0.63,
+            "sampleIndex": 30240,
+            "proposalSample": 30144,
+            "strength": 0.0000040211609333049795,
+            "innovationRatio": 141573822462.7898,
+            "supportStartSample": 28700,
+            "supportEndSample": 30821,
+            "endpointAmbiguous": false,
+            "evidenceSource": "residual-v4-confirmed"
+          },
+          "reason": "weak-continuation-with-falling-curvature-power",
+          "continuationPower": 3.714724504848621e-17,
+          "continuationFloor": 9.927309174640672e-10,
+          "beforeSecondPower": 2.5549187165604937e-10,
+          "afterSecondPower": 2.4410907914882384e-10
+        }
+      ],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.63
+        ],
+        "differenceV5": [
+          0,
+          0.63
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 48000,
+        "bed": "two",
+        "kind": "remove-low",
+        "phase": 1.6,
+        "id": "an03e-037"
+      },
+      "pcmSha256": "2d4b91dab142567d41bf0fb6ad4f0e10113d009606dd33f0f8a9ca7dacf1c46e",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005063992700659605,
+          "innovationRatio": 50639927006596056,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [
+        {
+          "candidate": {
+            "time": 0.63,
+            "sampleIndex": 30240,
+            "proposalSample": 30144,
+            "strength": 0.00009277456373659524,
+            "innovationRatio": 2467757536136.158,
+            "supportStartSample": 28700,
+            "supportEndSample": 30821,
+            "endpointAmbiguous": false,
+            "evidenceSource": "residual-v4-confirmed"
+          },
+          "reason": "weak-continuation-with-falling-curvature-power",
+          "continuationPower": 3.1527433182087014e-17,
+          "continuationFloor": 9.873577601125927e-10,
+          "beforeSecondPower": 2.449519376688929e-10,
+          "afterSecondPower": 2.433860096540692e-10
+        }
+      ],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.63
+        ],
+        "differenceV5": [
+          0,
+          0.63
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 48000,
+        "bed": "two",
+        "kind": "remove-high",
+        "phase": 0.4,
+        "id": "an03e-038"
+      },
+      "pcmSha256": "4da2ace0d24d3ca9cdb7a42200780e6753a5842a97125385d2cde701365e7c92",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00007327148718881183,
+          "innovationRatio": 7327148718881184,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [
+        {
+          "candidate": {
+            "time": 0.63,
+            "sampleIndex": 30240,
+            "proposalSample": 30144,
+            "strength": 0.00008411864459602111,
+            "innovationRatio": 2961582053882.046,
+            "supportStartSample": 28700,
+            "supportEndSample": 30821,
+            "endpointAmbiguous": false,
+            "evidenceSource": "residual-v4-confirmed"
+          },
+          "reason": "weak-continuation-with-falling-curvature-power",
+          "continuationPower": 5.708445570120425e-19,
+          "continuationFloor": 9.927309174640672e-10,
+          "beforeSecondPower": 2.5549187165604937e-10,
+          "afterSecondPower": 2.075430445553795e-11
+        }
+      ],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.63
+        ],
+        "differenceV5": [
+          0,
+          0.63
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 48000,
+        "bed": "two",
+        "kind": "remove-high",
+        "phase": 1.6,
+        "id": "an03e-039"
+      },
+      "pcmSha256": "766649dcd0ea658f04877cd263ed33bea4780f68b9158fa1c59a089a255ea417",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005063992700659605,
+          "innovationRatio": 50639927006596056,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [
+        {
+          "candidate": {
+            "time": 0.63,
+            "sampleIndex": 30240,
+            "proposalSample": 30144,
+            "strength": 0.00008986767324428131,
+            "innovationRatio": 2390435685941.344,
+            "supportStartSample": 28700,
+            "supportEndSample": 30821,
+            "endpointAmbiguous": false,
+            "evidenceSource": "residual-v4-confirmed"
+          },
+          "reason": "weak-continuation-with-falling-curvature-power",
+          "continuationPower": 5.266361175104608e-19,
+          "continuationFloor": 9.873577601125927e-10,
+          "beforeSecondPower": 2.449519376688929e-10,
+          "afterSecondPower": 2.0164484429005213e-11
+        }
+      ],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.63
+        ],
+        "differenceV5": [
+          0,
+          0.63
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 48000,
+        "bed": "two",
+        "kind": "remove-both",
+        "phase": 0.4,
+        "id": "an03e-040"
+      },
+      "pcmSha256": "24fc13c7228676d17626e32fc3512eb5aa2602cda3a548eb5a905f9e4d0fd786",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00007327148718881183,
+          "innovationRatio": 7327148718881184,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0
+        ],
+        "differenceV5": [
+          0
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 48000,
+        "bed": "two",
+        "kind": "remove-both",
+        "phase": 1.6,
+        "id": "an03e-041"
+      },
+      "pcmSha256": "d9b67972dbc0ea302003115762d0c6b50b218d69efb24d63b648d56fb0f56d90",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005063992700659605,
+          "innovationRatio": 50639927006596056,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0
+        ],
+        "differenceV5": [
+          0
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "four",
+        "kind": "noise",
+        "amplitude": 0.012,
+        "phase": 0.4,
+        "id": "an03e-042"
+      },
+      "pcmSha256": "e352e10fd5de438c7a4186bebf89cd6f405cdfe942a092846f3b22ca10da9c87",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00007065199732388773,
+          "innovationRatio": 7065199732388773,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2235,
+          "sampleIndex": 10728,
+          "proposalSample": 10656,
+          "strength": 0.00003605268058794967,
+          "innovationRatio": 5569132416.771766,
+          "supportStartSample": 9212,
+          "supportEndSample": 11309,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.23652083333333335,
+          "sampleIndex": 11353,
+          "proposalSample": 11328,
+          "strength": 0.00000380619520329926,
+          "innovationRatio": 543710625.6780977,
+          "supportStartSample": 9884,
+          "supportEndSample": 11934,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.24952083333333333,
+          "sampleIndex": 11977,
+          "proposalSample": 11904,
+          "strength": 0.0000037548985670771353,
+          "innovationRatio": 562281064.9975092,
+          "supportStartSample": 10460,
+          "supportEndSample": 12558,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2625208333333333,
+          "sampleIndex": 12601,
+          "proposalSample": 12576,
+          "strength": 0.00000380619511377395,
+          "innovationRatio": 591640670.9980584,
+          "supportStartSample": 11132,
+          "supportEndSample": 13182,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2755208333333333,
+          "sampleIndex": 13225,
+          "proposalSample": 13152,
+          "strength": 0.000003754899213776734,
+          "innovationRatio": 442353677.7014844,
+          "supportStartSample": 11708,
+          "supportEndSample": 13806,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.28852083333333334,
+          "sampleIndex": 13849,
+          "proposalSample": 13824,
+          "strength": 0.0000038061944699902567,
+          "innovationRatio": 413948627.90256494,
+          "supportStartSample": 12380,
+          "supportEndSample": 14430,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.2235
+        ],
+        "differenceV5": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.24952083333333333,
+          0.2625208333333333,
+          0.2755208333333333,
+          0.28852083333333334
+        ],
+        "continuationV6": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.24952083333333333,
+          0.2625208333333333,
+          0.2755208333333333,
+          0.28852083333333334
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "four",
+        "kind": "noise",
+        "amplitude": 0.012,
+        "phase": 1.6,
+        "id": "an03e-043"
+      },
+      "pcmSha256": "3a7a7021bafde342ae4d2adccd3919361c26ef36598c075db008d19deb850ca4",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005069082963593734,
+          "innovationRatio": 50690829635937340,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2235,
+          "sampleIndex": 10728,
+          "proposalSample": 10656,
+          "strength": 0.00003605452213437641,
+          "innovationRatio": 4682358045.555968,
+          "supportStartSample": 9212,
+          "supportEndSample": 11309,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.23652083333333335,
+          "sampleIndex": 11353,
+          "proposalSample": 11328,
+          "strength": 0.000003806194259725754,
+          "innovationRatio": 462893603.95673954,
+          "supportStartSample": 9884,
+          "supportEndSample": 11934,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.24952083333333333,
+          "sampleIndex": 11977,
+          "proposalSample": 11904,
+          "strength": 0.0000037548991658315925,
+          "innovationRatio": 591016805.534631,
+          "supportStartSample": 10460,
+          "supportEndSample": 12558,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2625208333333333,
+          "sampleIndex": 12601,
+          "proposalSample": 12576,
+          "strength": 0.0000038061949277352386,
+          "innovationRatio": 672963050.6888008,
+          "supportStartSample": 11132,
+          "supportEndSample": 13182,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2755208333333333,
+          "sampleIndex": 13225,
+          "proposalSample": 13152,
+          "strength": 0.000003754898972826182,
+          "innovationRatio": 369917735.2138987,
+          "supportStartSample": 11708,
+          "supportEndSample": 13806,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.28852083333333334,
+          "sampleIndex": 13849,
+          "proposalSample": 13824,
+          "strength": 0.0000038061949298888427,
+          "innovationRatio": 351104512.8079034,
+          "supportStartSample": 12380,
+          "supportEndSample": 14430,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.2235
+        ],
+        "differenceV5": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.24952083333333333,
+          0.2625208333333333,
+          0.2755208333333333,
+          0.28852083333333334
+        ],
+        "continuationV6": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.24952083333333333,
+          0.2625208333333333,
+          0.2755208333333333,
+          0.28852083333333334
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "four",
+        "kind": "noise",
+        "amplitude": 0.04,
+        "phase": 0.4,
+        "id": "an03e-044"
+      },
+      "pcmSha256": "07dad5261404383f306714e19401f2a951cd3cedf52c2a152900ec1c041d2633",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00007065199732388773,
+          "innovationRatio": 7065199732388773,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2235,
+          "sampleIndex": 10728,
+          "proposalSample": 10656,
+          "strength": 0.0004005926903027405,
+          "innovationRatio": 61880384512.44825,
+          "supportStartSample": 9212,
+          "supportEndSample": 11309,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.23652083333333335,
+          "sampleIndex": 11353,
+          "proposalSample": 11328,
+          "strength": 0.000042291049956970166,
+          "innovationRatio": 6041227970.882187,
+          "supportStartSample": 9884,
+          "supportEndSample": 11934,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2495,
+          "sampleIndex": 11976,
+          "proposalSample": 11904,
+          "strength": 0.0004005906585184994,
+          "innovationRatio": 59986850475.81554,
+          "supportStartSample": 10460,
+          "supportEndSample": 12557,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2625,
+          "sampleIndex": 12600,
+          "proposalSample": 12576,
+          "strength": 0.0004005938133055374,
+          "innovationRatio": 62268901675.408035,
+          "supportStartSample": 11132,
+          "supportEndSample": 13181,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2755,
+          "sampleIndex": 13224,
+          "proposalSample": 13152,
+          "strength": 0.00040059784434734593,
+          "innovationRatio": 47193257776.76897,
+          "supportStartSample": 11708,
+          "supportEndSample": 13805,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2885,
+          "sampleIndex": 13848,
+          "proposalSample": 13824,
+          "strength": 0.00040060073826938506,
+          "innovationRatio": 43567958507.11881,
+          "supportStartSample": 12380,
+          "supportEndSample": 14429,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.2235,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ],
+        "differenceV5": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ],
+        "continuationV6": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "four",
+        "kind": "noise",
+        "amplitude": 0.04,
+        "phase": 1.6,
+        "id": "an03e-045"
+      },
+      "pcmSha256": "88ec64f098be67c6b7aec276b10b4d04135f173173ddf863b3c2766696c6c18b",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005069082963593734,
+          "innovationRatio": 50690829635937340,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2235,
+          "sampleIndex": 10728,
+          "proposalSample": 10656,
+          "strength": 0.0004005988794708359,
+          "innovationRatio": 52025301551.35606,
+          "supportStartSample": 9212,
+          "supportEndSample": 11309,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.23652083333333335,
+          "sampleIndex": 11353,
+          "proposalSample": 11328,
+          "strength": 0.000042291050857993515,
+          "innovationRatio": 5143262614.322277,
+          "supportStartSample": 9884,
+          "supportEndSample": 11934,
+          "endpointAmbiguous": false,
+          "evidenceSource": "fourth-difference"
+        },
+        {
+          "time": 0.2495,
+          "sampleIndex": 11976,
+          "proposalSample": 11904,
+          "strength": 0.0004005929139857241,
+          "innovationRatio": 63052862589.047516,
+          "supportStartSample": 10460,
+          "supportEndSample": 12557,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2625,
+          "sampleIndex": 12600,
+          "proposalSample": 12576,
+          "strength": 0.0004005919283830463,
+          "innovationRatio": 70827576653.2106,
+          "supportStartSample": 11132,
+          "supportEndSample": 13181,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2755,
+          "sampleIndex": 13224,
+          "proposalSample": 13152,
+          "strength": 0.00040059346853339023,
+          "innovationRatio": 39464876815.332596,
+          "supportStartSample": 11708,
+          "supportEndSample": 13805,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.2885,
+          "sampleIndex": 13848,
+          "proposalSample": 13728,
+          "strength": 0.0004005965674832963,
+          "innovationRatio": 76115077558.07953,
+          "supportStartSample": 12284,
+          "supportEndSample": 14429,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.2235,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ],
+        "differenceV5": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ],
+        "continuationV6": [
+          0,
+          0.2235,
+          0.23652083333333335,
+          0.2495,
+          0.2625,
+          0.2755,
+          0.2885
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "four",
+        "kind": "pluck",
+        "amplitude": 0.012,
+        "phase": 0.4,
+        "id": "an03e-046"
+      },
+      "pcmSha256": "c66279bf0ef0e402a03924ea05e88ec56d382da0803d30682489502826c4aafd",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00007065199732388773,
+          "innovationRatio": 7065199732388773,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0
+        ],
+        "differenceV5": [
+          0
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "four",
+        "kind": "pluck",
+        "amplitude": 0.012,
+        "phase": 1.6,
+        "id": "an03e-047"
+      },
+      "pcmSha256": "24b0259b9d8d4950799cee38e51f66d40bf5f120e16bd7dc4941b2bc14f21c96",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005069082963593734,
+          "innovationRatio": 50690829635937340,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0
+        ],
+        "differenceV5": [
+          0
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "four",
+        "kind": "pluck",
+        "amplitude": 0.04,
+        "phase": 0.4,
+        "id": "an03e-048"
+      },
+      "pcmSha256": "283f8190d9311308dea236f5407d948e33e2231c0ea39853654b27443c7a08cb",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00007065199732388773,
+          "innovationRatio": 7065199732388773,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.22302083333333333,
+          "sampleIndex": 10705,
+          "proposalSample": 10560,
+          "strength": 4.6062853729261256e-7,
+          "innovationRatio": 71993140.36665319,
+          "supportStartSample": 9116,
+          "supportEndSample": 11286,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.22302083333333333
+        ],
+        "differenceV5": [
+          0,
+          0.22302083333333333
+        ],
+        "continuationV6": [
+          0,
+          0.22302083333333333
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 48000,
+        "bed": "four",
+        "kind": "pluck",
+        "amplitude": 0.04,
+        "phase": 1.6,
+        "id": "an03e-049"
+      },
+      "pcmSha256": "fa0c077afa812350d2e0d7d4e0fae4b8ec7406464bd65a97f032e275ed3c911f",
+      "truthSha256": "dba44256251bea48a93850b509f3020e73edf37c687e7d3ad3315a17195eb25c",
+      "truthSamples": [
+        10704,
+        11328,
+        11952,
+        12576,
+        13200,
+        13824
+      ],
+      "duration": 0.9,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005069082963593734,
+          "innovationRatio": 50690829635937340,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        },
+        {
+          "time": 0.22302083333333333,
+          "sampleIndex": 10705,
+          "proposalSample": 10656,
+          "strength": 4.6082482062058264e-7,
+          "innovationRatio": 59846773.12828268,
+          "supportStartSample": 9212,
+          "supportEndSample": 11286,
+          "endpointAmbiguous": false,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.22302083333333333
+        ],
+        "differenceV5": [
+          0,
+          0.22302083333333333
+        ],
+        "continuationV6": [
+          0,
+          0.22302083333333333
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 48000,
+        "bed": "four",
+        "kind": "remove-low",
+        "phase": 0.4,
+        "id": "an03e-050"
+      },
+      "pcmSha256": "5a4d9ed1c7c46d1fa7244a4c6929a3772f1f9dfd62ee2824da2773b588b714c8",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00007065199732388773,
+          "innovationRatio": 7065199732388773,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [
+        {
+          "candidate": {
+            "time": 0.63,
+            "sampleIndex": 30240,
+            "proposalSample": 30144,
+            "strength": 0.0000010055320976126562,
+            "innovationRatio": 173321023.81747833,
+            "supportStartSample": 28700,
+            "supportEndSample": 30821,
+            "endpointAmbiguous": false,
+            "evidenceSource": "residual-v4-confirmed"
+          },
+          "reason": "weak-continuation-with-falling-curvature-power",
+          "continuationPower": 6.259560486580491e-15,
+          "continuationFloor": 4.824853073815673e-10,
+          "beforeSecondPower": 2.292751055007212e-9,
+          "afterSecondPower": 2.083301069732699e-9
+        }
+      ],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.63
+        ],
+        "differenceV5": [
+          0,
+          0.63
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 48000,
+        "bed": "four",
+        "kind": "remove-low",
+        "phase": 1.6,
+        "id": "an03e-051"
+      },
+      "pcmSha256": "76f9607091691989f7f2eb7568e147ff4ba294343cd3d5d1eaf27c208093bb70",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005069082963593734,
+          "innovationRatio": 50690829635937340,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [
+        {
+          "candidate": {
+            "time": 0.63,
+            "sampleIndex": 30240,
+            "proposalSample": 30240,
+            "strength": 0.00002319349101978204,
+            "innovationRatio": 2575716178.042674,
+            "supportStartSample": 28796,
+            "supportEndSample": 30821,
+            "endpointAmbiguous": false,
+            "evidenceSource": "residual-v4-confirmed"
+          },
+          "reason": "weak-continuation-with-falling-curvature-power",
+          "continuationPower": 7.411809101617414e-15,
+          "continuationFloor": 4.963119554669546e-10,
+          "beforeSecondPower": 2.243551064180174e-9,
+          "afterSecondPower": 2.162826759639054e-9
+        }
+      ],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.63
+        ],
+        "differenceV5": [
+          0,
+          0.63
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 48000,
+        "bed": "four",
+        "kind": "remove-high",
+        "phase": 0.4,
+        "id": "an03e-052"
+      },
+      "pcmSha256": "d6a34ad229ab8f5f0ebe7c02ac211fc7ba8dbfa68382312f2a189287578869e0",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00007065199732388773,
+          "innovationRatio": 7065199732388773,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [
+        {
+          "candidate": {
+            "time": 0.63,
+            "sampleIndex": 30240,
+            "proposalSample": 30144,
+            "strength": 0.000021875936895735218,
+            "innovationRatio": 3770699899.821531,
+            "supportStartSample": 28700,
+            "supportEndSample": 30821,
+            "endpointAmbiguous": false,
+            "evidenceSource": "residual-v4-confirmed"
+          },
+          "reason": "weak-continuation-with-falling-curvature-power",
+          "continuationPower": 3.520031534846241e-16,
+          "continuationFloor": 4.824853073815673e-10,
+          "beforeSecondPower": 2.292751055007212e-9,
+          "afterSecondPower": 4.5671626273968313e-10
+        }
+      ],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.63
+        ],
+        "differenceV5": [
+          0,
+          0.63
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 48000,
+        "bed": "four",
+        "kind": "remove-high",
+        "phase": 1.6,
+        "id": "an03e-053"
+      },
+      "pcmSha256": "a49814ae5ee5995f8678707195a353a9d97bc5f8a1c0fdfd694448598edaa9c0",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005069082963593734,
+          "innovationRatio": 50690829635937340,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [
+        {
+          "candidate": {
+            "time": 0.63,
+            "sampleIndex": 30240,
+            "proposalSample": 30240,
+            "strength": 0.000001956074707951231,
+            "innovationRatio": 217228758.98383978,
+            "supportStartSample": 28796,
+            "supportEndSample": 30821,
+            "endpointAmbiguous": false,
+            "evidenceSource": "residual-v4-confirmed"
+          },
+          "reason": "weak-continuation-with-falling-curvature-power",
+          "continuationPower": 4.135558772271947e-16,
+          "continuationFloor": 4.963119554669546e-10,
+          "beforeSecondPower": 2.243551064180174e-9,
+          "afterSecondPower": 4.512013374834902e-10
+        }
+      ],
+      "eventTimes": {
+        "residualV4": [
+          0,
+          0.63
+        ],
+        "differenceV5": [
+          0,
+          0.63
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 48000,
+        "bed": "four",
+        "kind": "remove-both",
+        "phase": 0.4,
+        "id": "an03e-054"
+      },
+      "pcmSha256": "37f2e4a52b96a50385f308df611e4b01e02fbf3a7dc28f08cfff0f7166c92886",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00007065199732388773,
+          "innovationRatio": 7065199732388773,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0
+        ],
+        "differenceV5": [
+          0
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "transfer",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 48000,
+        "bed": "four",
+        "kind": "remove-both",
+        "phase": 1.6,
+        "id": "an03e-055"
+      },
+      "pcmSha256": "314bedebd31757f65cb68c0e9507e8bc16dafac2e0ab1f6d7c7b39b4ba220526",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.9,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0005069082963593734,
+          "innovationRatio": 50690829635937340,
+          "supportStartSample": 0,
+          "supportEndSample": 581,
+          "endpointAmbiguous": true,
+          "evidenceSource": "residual-v4-confirmed"
+        }
+      ],
+      "rejected": [],
+      "eventTimes": {
+        "residualV4": [
+          0
+        ],
+        "differenceV5": [
+          0
+        ],
+        "continuationV6": [
+          0
+        ]
+      }
+    }
+  ]
+}

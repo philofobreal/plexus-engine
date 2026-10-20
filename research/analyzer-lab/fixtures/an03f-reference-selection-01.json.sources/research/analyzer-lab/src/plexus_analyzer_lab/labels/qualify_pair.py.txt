@@ -1,0 +1,37 @@
+"""Qualify Plexus candidates against BOTH timestamps of each accepted oracle pair."""
+from math import isfinite
+
+import numpy as np
+from mir_eval.util import match_events
+
+
+def qualify_pair(candidates, references, tolerance=.025):
+    if not isfinite(tolerance) or tolerance < 0:
+        raise ValueError('Invalid qualification tolerance')
+    for c in candidates:
+        if not isfinite(c['time']) or c['time'] < 0 or not isinstance(c['class'], str):
+            raise ValueError('Invalid physical candidate')
+    for r in references:
+        votes = r.get('votes', [])
+        if r.get('acceptance') != 'two-library-agreement' or r.get('groundTruthStatus') is not False or len(votes) != 2:
+            raise ValueError('Only accepted two-library pseudo references are eligible')
+        if votes[0]['provider'] == votes[1]['provider'] or any(not isfinite(v['time']) or v['time'] < 0 for v in votes):
+            raise ValueError('Invalid reference votes')
+        if abs(votes[0]['time'] - votes[1]['time']) > tolerance:
+            raise ValueError('Reference votes outside declared tolerance')
+    qualified = []
+    for kind in sorted({r['class'] for r in references}):
+        refs = [r for r in references if r['class'] == kind]
+        predictions = [c for c in candidates if c['class'] == kind]
+        if not predictions: continue
+        a = np.asarray([r['votes'][0]['time'] for r in refs])[:, None]
+        b = np.asarray([r['votes'][1]['time'] for r in refs])[:, None]
+        matches = match_events(np.asarray([r['time'] for r in refs]), np.asarray([c['time'] for c in predictions]),
+                               tolerance, distance=lambda ref, est: np.maximum(np.abs(a - est), np.abs(b - est)))
+        qualified.extend({'candidate': dict(predictions[j]), 'reference': refs[i]} for i,j in matches)
+    return {'status': 'available', 'toleranceSeconds': tolerance,
+            'qualified': sorted(qualified, key=lambda p:p['candidate']['time']),
+            'candidateCount': len(candidates), 'referenceCount': len(references),
+            'unqualifiedCandidateCount': len(candidates) - len(qualified),
+            'uncoveredReferenceCount': len(references) - len(qualified),
+            'groundTruthStatus': False, 'unqualifiedAreNegatives': False}

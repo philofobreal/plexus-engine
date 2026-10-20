@@ -109,7 +109,7 @@ export class XrCommandDrawer {
         const actions = el('div', 'xr-actions');
         actions.append(this.previewButton, this.enterVrButton);
         const hint = el('p', 'xr-menu-hint');
-        hint.textContent = 'Settings, pause and results: game menu (⚙ or Esc).';
+        hint.textContent = 'Settings, pause and results: game menu (⚙ or Esc). During play, drag with the mouse or swipe with one finger to look around.';
 
         this.panel.append(title, this.fileInput, this.trackTitleEl, this.progressEl, this.errorEl, this.trackInfoEl,
             actions, this.capabilityEl, hint);

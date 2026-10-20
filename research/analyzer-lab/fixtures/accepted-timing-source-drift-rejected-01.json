@@ -1,0 +1,101 @@
+{
+  "protocol": "accepted-frame-local-timing-authored-v1",
+  "status": "rejected-source-drift",
+  "baselineCommit": "72800fe",
+  "resultAccepted": false,
+  "resultWritten": false,
+  "completedRecordedRows": 9,
+  "nominalExcerptSeconds": 180,
+  "source": "src/types/eventTiming.ts",
+  "expectedSha256": "153a3dd2e727e0b0670106d872d99dcfb88e45eba3be16a59724ab4aac6d0060",
+  "actualSha256": "bf0dfb507db68a069e7644999dba222608c0295890beb9f2b3c22f12c53ac40d",
+  "reason": "The post-run source identity check rejected publication because eventTiming.ts changed during the full run. All nine recorded row invariant checks had run, but their measurements are not accepted as a stable-source result.",
+  "groundTruth": null,
+  "accuracy": null,
+  "command": "node research/analyzer-lab/diagnostics/measure-accepted-timing.mjs --output research/analyzer-lab/fixtures/accepted-timing-authored-01.json --pcm-cache <other-worktree>/research/analyzer-lab/.cache/an03f-prodigy-pcm-01",
+  "recordedRows": [
+    {
+      "accepted": 73,
+      "request": "0-15",
+      "statuses": {
+        "no-candidate": 47,
+        "refined": 16,
+        "insufficient-support": 1,
+        "ambiguous": 9
+      }
+    },
+    {
+      "accepted": 71,
+      "request": "0-45",
+      "statuses": {
+        "no-candidate": 54,
+        "refined": 12,
+        "insufficient-support": 1,
+        "ambiguous": 4
+      }
+    },
+    {
+      "accepted": 62,
+      "request": "0-75",
+      "statuses": {
+        "no-candidate": 27,
+        "refined": 28,
+        "ambiguous": 7
+      }
+    },
+    {
+      "accepted": 77,
+      "request": "1-15",
+      "statuses": {
+        "no-candidate": 72,
+        "refined": 3,
+        "insufficient-support": 1,
+        "ambiguous": 1
+      }
+    },
+    {
+      "accepted": 77,
+      "request": "1-45",
+      "statuses": {
+        "no-candidate": 74,
+        "refined": 2,
+        "insufficient-support": 1
+      }
+    },
+    {
+      "accepted": 88,
+      "request": "1-75",
+      "statuses": {
+        "no-candidate": 83,
+        "refined": 4,
+        "ambiguous": 1
+      }
+    },
+    {
+      "accepted": 42,
+      "request": "2-15",
+      "statuses": {
+        "no-candidate": 14,
+        "refined": 23,
+        "ambiguous": 5
+      }
+    },
+    {
+      "accepted": 86,
+      "request": "2-45",
+      "statuses": {
+        "no-candidate": 82,
+        "refined": 3,
+        "insufficient-support": 1
+      }
+    },
+    {
+      "accepted": 83,
+      "request": "2-75",
+      "statuses": {
+        "insufficient-support": 1,
+        "no-candidate": 82
+      }
+    }
+  ]
+}

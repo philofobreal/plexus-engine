@@ -1,0 +1,92 @@
+import type { AudioFrame, TrackAnalysis } from '../types';
+import { DEFAULT_ANALYSIS_HOP_SIZE } from './constants';
+import { normalizeFeatureClock } from '../types/featureClock';
+import { normalizeAcousticOnsets } from '../types/acousticOnsets';
+import { normalizeEventTiming } from '../types/eventTiming';
+import { normalizePredictiveOnsets } from '../types/predictiveOnsets';
+import { normalizeAdaptiveOnsets } from '../types/adaptiveOnsets';
+import { normalizeResidualOnsets } from '../types/residualOnsets';
+import { normalizeDifferenceOnsets } from '../types/differenceOnsets';
+
+/** Additive v4 frame fields: legacy absence and malformed numbers are silent, never inferred
+ * from independently normalized display-spectrum bars. Preserve the worker-owned source. */
+export function normalizeAudioFrame(frame: AudioFrame): AudioFrame {
+    const unit = (value: number | undefined) => Number.isFinite(value) ? Math.min(1, Math.max(0, value!)) : 0;
+    return { ...frame, subEnergy: unit(frame.subEnergy), bassEnergy: unit(frame.bassEnergy),
+        subFlux: unit(frame.subFlux), bassFlux: unit(frame.bassFlux) };
+}
+
+export const EMPTY_TRACK_ANALYSIS: TrackAnalysis = {
+    duration: 0,
+    bpm: 0,
+    bpmConfidence: 0,
+    gridConfidence: 0,
+    downbeatConfidence: 0,
+    tempoCandidates: [],
+    bars: [],
+    sections: [],
+    patterns: [],
+    cues: [],
+    significantMoments: [],
+    features: [],
+    buildupConfidence: [],
+    spectralPivot: [],
+    tensionTrends: { globalSlope: 0, peakTime: 0, peakValue: 0, segments: [] },
+    noveltyCurve: [],
+    noveltyPeaks: [],
+    boundaryCandidates: [],
+    featureHopSize: DEFAULT_ANALYSIS_HOP_SIZE,
+    gridOffset: 0,
+    tempo: 0,
+    tempoConfidence: 0,
+    beats: [],
+    beatConfidence: 0,
+    barStarts: [],
+    alternativeTempos: [],
+    timingConfidence: { tempo: 0, beat: 0, grid: 0, overall: 0 }
+};
+
+/** Fresh deep copy of the empty template, so nested arrays/objects are never shared across owners. */
+export function createEmptyTrackAnalysis(): TrackAnalysis {
+    return JSON.parse(JSON.stringify(EMPTY_TRACK_ANALYSIS));
+}
+
+export function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis, fallbackBpm = 0): TrackAnalysis {
+    const featureClock = normalizeFeatureClock(trackAnalysis);
+    return {
+        ...EMPTY_TRACK_ANALYSIS,
+        ...trackAnalysis,
+        featureClock,
+        ...(trackAnalysis.eventTiming !== undefined ? { eventTiming: normalizeEventTiming(trackAnalysis.eventTiming, trackAnalysis.duration, featureClock) } : {}),
+        ...(trackAnalysis.acousticOnsets !== undefined ? { acousticOnsets: normalizeAcousticOnsets(trackAnalysis.acousticOnsets, trackAnalysis.duration, featureClock) } : {}),
+        ...(trackAnalysis.predictiveOnsets !== undefined ? { predictiveOnsets: normalizePredictiveOnsets(trackAnalysis.predictiveOnsets, trackAnalysis.duration, featureClock) } : {}),
+        ...(trackAnalysis.adaptiveOnsets !== undefined ? { adaptiveOnsets: trackAnalysis.adaptiveOnsets?.algorithm === 'confirmed-difference-v5'
+            ? normalizeDifferenceOnsets(trackAnalysis.adaptiveOnsets, trackAnalysis.duration, featureClock)
+            : trackAnalysis.adaptiveOnsets?.algorithm === 'residual-innovation-v4'
+            ? normalizeResidualOnsets(trackAnalysis.adaptiveOnsets, trackAnalysis.duration, featureClock)
+            : normalizeAdaptiveOnsets(trackAnalysis.adaptiveOnsets, trackAnalysis.duration, featureClock) } : {}),
+        bpm: trackAnalysis.bpm || fallbackBpm || 0,
+        bpmConfidence: trackAnalysis.bpmConfidence ?? 0,
+        gridConfidence: trackAnalysis.gridConfidence ?? 0,
+        downbeatConfidence: trackAnalysis.downbeatConfidence ?? 0,
+        tempoCandidates: trackAnalysis.tempoCandidates || [],
+        bars: (trackAnalysis.bars || []).map(bar => ({ ...bar, avgRms: bar.avgRms ?? 0, peakRms: bar.peakRms ?? 0, bass: bar.bass ?? 0, mid: bar.mid ?? 0, treble: bar.treble ?? 0 })),
+        sections: (trackAnalysis.sections || []).map(section => ({ ...section, avgRms: section.avgRms ?? 0, peakRms: section.peakRms ?? 0, reasons: section.reasons ?? [] })),
+        cues: (trackAnalysis.cues || []).map(cue => ({ ...cue, reasons: cue.reasons ?? [] })),
+        significantMoments: (trackAnalysis.significantMoments || []).map(cue => ({ ...cue, reasons: cue.reasons ?? [] })),
+        spectralPivot: trackAnalysis.spectralPivot || [],
+        noveltyCurve: trackAnalysis.noveltyCurve || [],
+        noveltyPeaks: trackAnalysis.noveltyPeaks || [],
+        boundaryCandidates: trackAnalysis.boundaryCandidates || [],
+        tensionTrends: trackAnalysis.tensionTrends || EMPTY_TRACK_ANALYSIS.tensionTrends,
+        featureHopSize: trackAnalysis.featureHopSize || DEFAULT_ANALYSIS_HOP_SIZE,
+        gridOffset: trackAnalysis.gridOffset || 0,
+        tempo: trackAnalysis.tempo || trackAnalysis.bpm || fallbackBpm || 0,
+        tempoConfidence: trackAnalysis.tempoConfidence ?? 0,
+        beats: trackAnalysis.beats || [],
+        beatConfidence: trackAnalysis.beatConfidence ?? 0,
+        barStarts: trackAnalysis.barStarts || [],
+        alternativeTempos: trackAnalysis.alternativeTempos || [],
+        timingConfidence: trackAnalysis.timingConfidence || EMPTY_TRACK_ANALYSIS.timingConfidence
+    };
+}

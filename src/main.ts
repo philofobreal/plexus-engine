@@ -269,9 +269,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
 const semanticResolver = new SemanticResolver();
 const semanticAdapter = new SemanticRuntimeAdapter(semanticResolver, () => State.semanticBaseTuning);
+const timingMode = new URLSearchParams(window.location.search).get('eventTiming');
+const eventTiming = timingMode === 'local-band-v1' || timingMode === 'local-band-v2' ? timingMode : undefined;
 const engine = new AudioEngine(plan => {
   semanticResolver.setPlan(plan);
-});
+}, { eventTiming });
 const ui = new DashboardUI(engine, semanticResolver);
 const styleRegistry = createDefaultStyleRegistry();
 const semanticBridge = new SemanticRendererBridge();

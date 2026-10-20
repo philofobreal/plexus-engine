@@ -1,0 +1,23 @@
+from pathlib import Path
+import re
+
+root = Path(__file__).resolve().parents[3]
+lab = root / 'research/analyzer-lab'
+diagnostics = lab / 'diagnostics'
+diagnostics.mkdir(exist_ok=True)
+contracts = (lab / '.cache/analyzer-audit-root.mjs').read_text(encoding='utf-8')
+(diagnostics / 'audit-musical-contracts.mjs').write_text(
+    '// Diagnostic snapshot, not a golden test: fixes should change these observations.\n' + contracts,
+    encoding='utf-8')
+dsp = (lab / '.cache/analyzer-audit-evaluation/dsp-diagnostics.mjs').read_text(encoding='utf-8')
+dsp = dsp.replace('../../../../tests/helpers/', '../../../tests/helpers/')
+dsp = dsp.replace('.cache/analyzer-audit-evaluation', '.cache/analyzer-principles-audit')
+(diagnostics / 'audit-dsp-principles.mjs').write_text(
+    '// Diagnostic snapshot, not a golden test. Loader timings are not production benchmarks.\n' + dsp,
+    encoding='utf-8')
+for name in ['analyzer-principles-audit.md', 'analyzer-development-strategy.md']:
+    path = root / 'documents/research' / name
+    text = path.read_text(encoding='utf-8')
+    text = re.sub(r'(\]\([^\)\n]+\.(?:ts|py|mjs)):(\d+)\)', r'\1#L\2)', text)
+    path.write_text(text, encoding='utf-8')
+print('Persisted two diagnostic entrypoints; fixed repository source-link anchors.')

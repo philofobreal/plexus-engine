@@ -1,0 +1,18 @@
+import copy
+import json
+from pathlib import Path
+from plexus_analyzer_lab.drums.features_v2 import FEATURE_NAMES
+from plexus_analyzer_lab.drums.classifier_v2 import BASIS_NAMES
+
+root=Path(__file__).resolve().parents[1]/'schemas'
+schema=copy.deepcopy(json.loads((root/'drum-model.schema.json').read_text(encoding='utf-8')))
+schema['title']='drum-model-v2'
+p=schema['properties']
+p['algorithm']={'const':'plexus-drum-ridge-v2'}
+for name in ('featureNames','mean','scale'):
+    p[name]['minItems']=p[name]['maxItems']=len(FEATURE_NAMES)
+p['basisNames']={'const':BASIS_NAMES}
+p['weights']['minItems']=p['weights']['maxItems']=len(BASIS_NAMES)+1
+p['hyperparameterSelection']={'type':'object'}
+schema['required'] += ['basisNames','hyperparameterSelection']
+(root/'drum-model-v2.schema.json').write_text(json.dumps(schema,indent=2)+'\n',encoding='utf-8')

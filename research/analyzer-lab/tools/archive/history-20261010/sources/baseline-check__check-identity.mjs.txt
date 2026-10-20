@@ -1,0 +1,34 @@
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+
+const repo = process.cwd();
+const target = resolve('research/analyzer-lab/.cache/baseline-check');
+const checkout = resolve(target, 'checkout');
+const commit = execFileSync('git', ['rev-parse', 'HEAD'], {cwd:repo,encoding:'utf8'}).trim();
+const records = execFileSync('git', ['ls-tree', '-rz', '--full-tree', 'HEAD'], {cwd:repo,encoding:'utf8'}).split('\0').filter(Boolean);
+const mismatches = [];
+const restoredMissingArchiveNames = [];
+let checked = 0;
+for (const record of records) {
+  const [header, name] = record.split('\t');
+  const [, type, hash] = header.split(' ');
+  if (type !== 'blob') continue;
+  const path = resolve(checkout, name);
+  if (!existsSync(path)) {
+    // Windows tar extracts one accented audit filename under an altered name.
+    // Restore the exact tracked spelling and bytes directly from its HEAD blob.
+    mkdirSync(dirname(path), {recursive:true});
+    writeFileSync(path, execFileSync('git', ['cat-file', 'blob', hash], {cwd:repo}));
+    restoredMissingArchiveNames.push(name);
+  }
+  const data = readFileSync(path);
+  const actual = createHash('sha1').update(Buffer.from(`blob ${data.length}\0`)).update(data).digest('hex');
+  checked++;
+  if (actual !== hash) mismatches.push({name,expected:hash,actual});
+}
+const result = {commit,checked,mismatches,restoredMissingArchiveNames,source:'git -c core.autocrlf=false archive --format=tar HEAD; missing Unicode filename restored from HEAD blob',dependencyResolution:'existing ancestor node_modules; no junction created'};
+writeFileSync(resolve(target, 'identity.json'), JSON.stringify(result,null,2)+'\n');
+console.log(JSON.stringify({...result,mismatches:mismatches.length}));
+if (mismatches.length) process.exitCode = 1;

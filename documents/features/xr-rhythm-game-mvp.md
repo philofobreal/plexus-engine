@@ -14,6 +14,15 @@ not score. The context menu is suppressed only on the game canvas. No pointer lo
 keyboard movement, or extra control mode is needed. Desktop clicks assist the arrow direction;
 VR must follow it. Dot targets accept any direction, and gold glyphs identify a paired accent.
 
+In browser play, hold the primary mouse button and drag, or touch and slide one finger, to look
+around from the same eye position. Horizontal look wraps around freely; vertical look stops just
+before the poles, with no roll or movement through the stage. During play a blue target is judged
+immediately on contact, like a right-click; a successful hit owns that gesture. Drag empty space
+past the six-pixel tolerance to look. Release never retries a missed press. Menus activate short
+clicks/taps on release and discard drags. Menus keep
+their own input; when opened, the panel follows the browser camera's current pitch and yaw.
+Cancelled touches, lost pointer capture, window blur and menu transitions discard unfinished drags.
+
 In VR, trigger starts/resumes/restarts and grip squeeze pauses. Physical blade movement
 scores; trigger presses during play do not pause. Exit, hidden session, viewer tracking
 loss, or reference-space reset pauses audio and clears motion history. Resume is explicit.
@@ -107,10 +116,14 @@ The optional Wormhole is one world-anchored plane, 200 m ahead by default (Visua
 mode of Addendum E is no longer used by `/xr/` because of its frame-time cost). Monocular depth cues
 (strength 0.7 in XR, 0.6 in the MVP) thicken near grains and thin, dim and haze far ones. The game
 menu's **Visuals** tab sets the raster (Performance 640x360 / Balanced 768x432 / High 960x540 /
-Ultra 1280x720 default / optional Crystal 1920x1080 and mipmapped Max 2560x1440, ADR-009 Addenda
-Y and Z), the update rate (24 Hz / 36 Hz default, aligned to whole headset frames),
-**Line stroke** (the MVP Advanced slider, default 34) and **Sharpness** (default 100). Uploads happen
+Ultra 1280x720 / Crystal 1920x1080 / Max 2560x1440 default / optional 4K 3840x2160). Max and 4K
+use mipmaps. The same tab sets the update rate (24 Hz / 36 Hz default, aligned to whole headset frames),
+**Line stroke** (the MVP Advanced slider, default 30) and **Sharpness** (default 100). Uploads happen
 only on changed frames.
+Menu text retains its readable font size: labels use short forms such as Perf., Bal. and BG distance
+only when the full name does not fit, then an ellipsis if needed. Setting identities and descriptions
+keep their full names. The 4K choice changes the background raster; the desktop framebuffer retains
+its existing pixel budget, and headset eye buffers remain WebXR-owned.
 Where the browser supports it, the background rasterizes in a dedicated worker on an OffscreenCanvas
 and reaches the scene as a transferred `ImageBitmap` (ADR-009 Addendum G), so the headset frame loop
 never waits for Canvas2D; otherwise the same source runs in-thread. With **Diagnostics** on (System
@@ -130,7 +143,8 @@ Nebula calls for them. They never enter the note corridor and never
 take part in gameplay. **System > Spatial field** chooses Off / Particles (default) / Full (with the wisps).
 
 The **Gameplay** section sets note speed (Normal 4 m/s, Fast 7 m/s, Hyper 10 m/s default) and saber
-length (0.9 / 1.0 / 1.1 m default, or Auto). The start frame's distance is derived from an average adult reach so
+length (0.9 / 1.0 / 1.1 m, or Auto default). Auto uses 1.0 m in Standard and 1.1 m in Tall.
+The start frame's distance is derived from an average adult reach so
 that everything the saber can touch is already judged (default 1.20 m with a 0.175 s early "good"
 window); the runway lengthens with speed (12 / 16 / 18 m) and targets emerge from its far end
 (ADR-009 Addendum I). These settings rewind but never change the chart.
@@ -170,8 +184,8 @@ Visuals > Note design switches the targets between Classic blocks and Shard crys
 points the way to cut; a struck target splits into two glowing halves with a burst of sparks
 (ADR-009 Addendum Q). For a sharper Wormhole in the headset, Background quality Ultra
 (1280 x 720) and Sharpness apply a GPU unsharp mask to the plane (ADR-009 Addendum P); the optional
-Crystal (1920 x 1080) and Max (2560 x 1440, mipmapped) qualities are sharper still (Addenda Y and
-Z).
+Crystal (1920 x 1080), Max (2560 x 1440, the default) and 4K (3840 x 2160) qualities are sharper
+still; Max and 4K are mipmapped (Addenda Y, Z and AG).
 
 The game menu is drawn in the 3D view on the desktop as well (Escape or the gear button; mouse or
 arrow keys + Enter): Gameplay, Choreography, Visuals (Wormhole on / off, note design, quality,
@@ -179,7 +193,7 @@ update rate, Line stroke, Sharpness) and Character (the MVP's Visual character: 
 Depth, Detail). The HTML panel only loads music and starts play or VR (ADR-009 Addendums R, S).
 The **Material** tab holds the MVP Advanced tuning panel's Grain material sliders (Grain material,
 Material detail, Material bloom, Material weave, Spiral twist, Spiral arms, Grain density; 50 is
-neutral, defaults 50 / 100 / 100 / 100 / 4 / 50 / 50), live and remembered like every setting
+neutral, defaults 30 / 100 / 100 / 100 / 30 / 100 / 100), live and remembered like every setting
 (ADR-009 Addendum V).
 The **System** tab holds Material renderer (GPU default / CPU) and Diagnostics (Off / On default)
 (ADR-009 Addenda X, AC). It also holds Grain lines (Canvas / GPU default: the headset GPU draws the grain
@@ -195,10 +209,10 @@ remembered per browser (`plexus.xr.settings`). Game settings regenerate the char
 background settings apply live, even mid-song.
 
 A first visit (and Settings > Reset defaults) starts from the authored player defaults (ADR-009
-Addenda T, AC): Tall / Hyper / Long; Ultra, Active, Expressive, Alternate, Even, Crossover; the
-Wormhole on with Shard targets at Ultra / 36 Hz / 200 m, Line stroke 20, Sharpness 100; Character
-100 / 100 / 30 / 100; Material 30 / 100 / 100 / 100 / 30 / 50 / 50; System GPU material, Diagnostics
-on, GPU grain lines, adaptive pacing, Spatial field Particles. A browser that already saved
+Addendum AG): Tall / Hyper / Auto; Ultra, Active, Expressive, Alternate, Even, Crossover; the
+Wormhole on with Shard targets at Max / 36 Hz / 200 m, Line stroke 30, Sharpness 100; Character
+100 / 100 / 30 / 100; Material 30 / 100 / 100 / 100 / 30 / 100 / 100; System GPU material, Diagnostics
+on, GPU grain lines, adaptive pacing, WebGL background raster, Spatial field Particles. A browser that already saved
 settings keeps its own values. The gameplay library's historical defaults (and the pinned default
 chart) are unchanged.
 
@@ -226,12 +240,19 @@ only when the path revision changes. With the Wormhole off the track is straight
 
 The **Wormhole** background (Visuals > Wormhole) uses the actual MVP CosmicWormholeIdentity,
 not a substitute particle shader. It defaults on (ADR-009 Addendum T). Its macro settings are the
-Character tab's sliders (intensity=1, motion=1, depth=0.10, detail=1 by default); the user's
+Character tab's sliders (intensity=1, motion=1, depth=0.30, detail=1 by default); the user's
 authored Advanced positions live in `src/config/xrWormholeTuning.ts`. These are normalized slider
 gains, not absolute effect values. The shared resolver applies macros, control bounds, then
-Advanced gains/selectors to each live preset. Nebula amount is 0.5 (detail, bloom, weave 1), Spiral
-0.04, grain density 0.5, lineWeight 0.34 (the Line stroke default); grain shape is square and all
+Advanced gains/selectors to each live preset. Nebula amount is 0.3 (detail, bloom, weave 1), Spiral
+0.30, spiral arms and grain density 1, lineWeight 0.30 (the Line stroke default); grain shape is square and all
 three Post FX controls are zero (ADR-009 Addenda R, T).
+
+The player defaults were updated to the user's complete configuration on 2026-10-16: Tall,
+Hyper, Auto; Ultra / Active / Expressive / Alternate / Even / Crossover; Wormhole on, Shard,
+Max, 36 Hz, 200 m; GPU material and grain lines, Diagnostics on, Adaptive pacing, WebGL raster,
+Particles spatial field. Existing saved choices still restore as before. First visits, missing fields
+and Settings > Reset defaults use the new values. Gameplay-library defaults and its golden chart
+remain unchanged.
 
 The default balanced/paired MVP journey, preset merge and semantic functions are reused with
 private render state. No saved edits or playback state are imported from another page. The

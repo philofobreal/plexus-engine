@@ -1,0 +1,38 @@
+{
+  "status": "runtime-and-integration-repaired",
+  "firstRunId": "20261014T204226-c6feaa67b25f",
+  "firstNodeCounts": {
+    "passed": 1487,
+    "tests": 1502,
+    "failed": 15
+  },
+  "knownFailures": 9,
+  "newFailures": 6,
+  "targetedRepairTests": 64,
+  "targetedRepairPassed": 64,
+  "nativeProbe": {
+    "stack": [
+      "tempfile._mkstemp_inner",
+      "tempfile.NamedTemporaryFile",
+      "numba.core.caching.ensure_cache_path"
+    ],
+    "test": "test_librosa_silence_is_empty_evidence",
+    "algorithmsUnchanged": true,
+    "replacementEnvironment": {
+      "NUMBA_CACHE_DIR": "research/analyzer-lab/.cache/numba-placement-validation",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "firstStatus": "interrupted-native-cache-creation",
+    "seconds": 27.91,
+    "cacheLocation": "old read-only dependency environment",
+    "jitEnabled": true,
+    "secondStatus": "passed"
+  },
+  "sourceByteRepairs": [
+    "src/analyzer/AdaptiveOnsets.ts",
+    "src/analyzer/ResidualOnsets.ts"
+  ],
+  "codeRepair": "Native Node ESM runtime import now carries .ts extension",
+  "contractRepair": "Two retained static contract assertions updated to require event association and explicit timing option handoff",
+  "predecessorContractArchive": "research/analyzer-lab/tools/harness/inventories/v0015.sources.zip"
+}

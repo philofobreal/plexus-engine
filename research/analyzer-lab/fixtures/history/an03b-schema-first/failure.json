@@ -1,0 +1,7 @@
+{
+  "stage": "targeted Python schema",
+  "tests": 9,
+  "failed": 9,
+  "reason": "The formatting-preservation attempt inserted the adaptive property reference but failed to insert its definition. All nine tests caught unresolved #/$defs/adaptiveOnsets. No DSP changes or assertion weakening.",
+  "schemaSha256": "b2740a8f8186c9033be0d9dd231d9170e5f96ff06befb42bb42a524e5a746293"
+}

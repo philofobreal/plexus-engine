@@ -1,0 +1,61 @@
+{
+  "protocol": "AN-03G one host/excerpt, one warmup then three runs; no memory peak or XR readiness claim",
+  "nodeVersion": "v25.2.1",
+  "sampleRate": 44100,
+  "sampleCount": 890820,
+  "duration": 20.2,
+  "pcmSha256": "45261c19ceb1d1fd2a9cd8c3106d8361ba54dfc8a73bc7f03752dfb00b42823d",
+  "perBandBufferBytes": 7126560,
+  "sourceHashes": {
+    "research/analyzer-lab/diagnostics/profile-an03g.mjs": "5119cfe8be82b0ecefcc07f3f7a391faa49eee4b0d4d97824741488966b36a68",
+    "src/analyzer/BandOnsets.ts": "ae9031a2b11d609c36592a2ec029bf625e54e6a0970150e828bbb5ee8aaa7a0d",
+    "src/analyzer/ContinuationOnsets.ts": "374762a7c8382fc8499a1103e364331956773a51516e7066226ca5536acd4af1",
+    "src/analyzer/DifferenceOnsets.ts": "a2914d0c5555ffbef70405c87811809b7e25389aa768dd49d1ba07a99ac38bf2",
+    "src/analyzer/ResidualOnsets.ts": "247ffab22e8f7b1ddcb24343ccba102eddf692955b699a665211571488096084",
+    "src/analyzer/signalContract.ts": "fb64a5fcb50b6ad61e3b86717f80ace34c993e8d948c2865b9c05369861f294a",
+    "tests/helpers/xr-loader.mjs": "65f5c9bd8264f10e569d5d5b158e7ebda64f59ee8188e2040f1a2d9754e5ed3e",
+    "tests/fixtures/acoustic-onset-challenges.mjs": "9d5014b10ee347a783b7505d416f0c25206bd5865a9017dedbb3fd3fb21587c1"
+  },
+  "measurements": {
+    "v6": {
+      "runs": [
+        {
+          "elapsedMs": 797.0885999999998,
+          "candidateCount": 137,
+          "resultSha256": "a5a926a82b2283168f3beb02e02490078648de2f9fceedcbb8ac6a140166fcfe"
+        },
+        {
+          "elapsedMs": 750.3246999999997,
+          "candidateCount": 137,
+          "resultSha256": "a5a926a82b2283168f3beb02e02490078648de2f9fceedcbb8ac6a140166fcfe"
+        },
+        {
+          "elapsedMs": 1010.357,
+          "candidateCount": 137,
+          "resultSha256": "a5a926a82b2283168f3beb02e02490078648de2f9fceedcbb8ac6a140166fcfe"
+        }
+      ],
+      "medianMs": 797.0885999999998
+    },
+    "v8": {
+      "runs": [
+        {
+          "elapsedMs": 1597.3423999999995,
+          "candidateCount": 165,
+          "resultSha256": "f11298988dca6c152c8a6c6e8ed871dba43f2ebf3e03af590cfdaf36da4f0c43"
+        },
+        {
+          "elapsedMs": 2614.6108999999988,
+          "candidateCount": 165,
+          "resultSha256": "f11298988dca6c152c8a6c6e8ed871dba43f2ebf3e03af590cfdaf36da4f0c43"
+        },
+        {
+          "elapsedMs": 2959.5565000000006,
+          "candidateCount": 165,
+          "resultSha256": "f11298988dca6c152c8a6c6e8ed871dba43f2ebf3e03af590cfdaf36da4f0c43"
+        }
+      ],
+      "medianMs": 2614.6108999999988
+    }
+  }
+}

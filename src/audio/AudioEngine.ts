@@ -9,6 +9,8 @@ import { HeroMetronome } from './HeroMetronome';
 const EMPTY_FEATURES: VisualFeatureFrame = { melody: 0, vocal: 0, fx: 0, density: 0, brightness: 0, tension: 0 };
 
 export interface AudioEngineOptions {
+    /** Host-owned opt-in, carried across the request-id-protected worker boundary. */
+    readonly eventTiming?: 'local-band-v1' | 'local-band-v2';
     /** Omit to retain the dashboard's live State.loopPlayback preference. */
     readonly loopPlayback?: boolean;
     readonly heroMetronome?: boolean;
@@ -146,7 +148,8 @@ export class AudioEngine {
                 algorithmVersion: ANALYSIS_ALGORITHM_VERSION,
                 samples: analysisSamples.buffer,
                 sampleRate: State.sampleRate,
-                phraseSize: State.targetTuning.phraseSize
+                phraseSize: State.targetTuning.phraseSize,
+                ...(this.options.eventTiming ? { eventTiming: this.options.eventTiming } : {})
             }, [analysisSamples.buffer]);
 
             worker.onmessage = (e: MessageEvent<AnalysisWorkerMessage>) => {
@@ -166,7 +169,7 @@ export class AudioEngine {
                     State.frames = e.data.frames.map(normalizeAudioFrame);
                     State.events = e.data.events;
                     // Strict normalization mapping incoming generic objects to rigorous domain models
-                    State.trackAnalysis = normalizeTrackAnalysis(e.data.trackAnalysis, State.bpm);
+                    State.trackAnalysis = normalizeTrackAnalysis(e.data.trackAnalysis, State.bpm, e.data.events);
                     this.onVisualScorePlan(State.trackAnalysis.externalVisualScorePlan ?? null);
                     State.trackAnalysis.bpm = e.data.bpm;
                     State.hopSize = e.data.hopSize;

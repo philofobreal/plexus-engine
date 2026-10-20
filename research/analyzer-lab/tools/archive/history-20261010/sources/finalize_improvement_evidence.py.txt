@@ -1,0 +1,55 @@
+import json
+import subprocess
+from pathlib import Path
+
+import numpy as np
+
+from plexus_analyzer_lab.drums.synthetic import _write_float_wave
+from plexus_analyzer_lab.hashing import content_hash, object_hash
+from plexus_analyzer_lab.reports.json_report import write_json
+from plexus_analyzer_lab.runner import source_fingerprint
+
+root = Path(__file__).resolve().parents[3]
+lab = root / "research/analyzer-lab"
+output = lab / "runs/tonal-sustain-final"
+output.mkdir(exist_ok=False)
+records = []
+for hz in (440, 1000):
+    rate = 44100
+    t = np.arange(rate * 8) / rate
+    y = (.3 * np.sin(2 * np.pi * hz * t) * np.minimum(1, t / .1)).astype(np.float32)
+    pcm = output / f"tone-{hz}.f32le"
+    _write_float_wave(output / f"tone-{hz}.wav", y, rate)
+    y.astype("<f4").tofile(pcm)
+    measurements = []
+    for baseline in (True, False):
+        result = subprocess.run(["node", "research/analyzer-lab/.cache/measure_tonal_sustain.mjs"], cwd=root,
+                   input=json.dumps({"pcmPath": str(pcm), "sampleRate": rate, "baseline": baseline}),
+                   text=True, capture_output=True, check=True)
+        raw = json.loads(result.stdout)
+        write_json(output / f"tone-{hz}-{'before' if baseline else 'after'}.json", raw)
+        measurements.append(raw)
+    record = {"frequencyHz": hz, "sampleRate": rate, "duration": 8, "truthPlateauOnsets": 0,
+              "beforeFalseHits": sum(e["time"] >= 1 for e in measurements[0]["events"]),
+              "afterFalseHits": sum(e["time"] >= 1 for e in measurements[1]["events"]),
+              "timingUnchanged": all(measurements[0][k] == measurements[1][k] for k in ("beats", "bpm", "barStarts", "timingConfidence"))}
+    assert record["afterFalseHits"] == 0 and record["timingUnchanged"]
+    records.append(record)
+    pcm.unlink()
+freeze = json.loads((lab / ".cache/drum-freeze-decision.json").read_text())
+paired = json.loads((lab / "runs/drums-v2-paired-final/comparison.json").read_text())
+reference = json.loads((lab / "runs/music-reference-v2-final/report.json").read_text())
+historical = json.loads((lab / "runs/drums-v2-historical/report.json").read_text())
+summary = {"schemaVersion": "1.0.0", "measurementDate": "2026-10-10", "sourceHash": source_fingerprint(),
+           "freezeDecision": freeze, "paired": paired,
+           "musicReference": {k: v for k, v in reference.items() if k != "tracks"},
+           "musicReferenceArtifacts": "runs/music-reference-v2-final",
+           "historicalV2": {"datasetId": historical["datasetId"], "modelChecksum": historical["modelChecksum"],
+                            "byClass": historical["byClass"], "interpretation": "Known historical regression set; different training data from original P0."},
+           "productionTonalSustain": {"beforeFeatureExtractorHash": content_hash(lab / ".cache/FeatureExtractor.algorithm5.ts"),
+                "afterFeatureExtractorHash": content_hash(root / "src/analyzer/FeatureExtractor.ts"),
+                "beforeAlgorithm": 5, "afterAlgorithm": 6, "records": records,
+                "measurementScope": "Actual headless analyzer; baseline loader substitutes the saved algorithm-5 FeatureExtractor only. Other DSP is identical."},
+           "limitations": ["Procedural drum identities; real-recording generalization unvalidated", "No actual drum-specific oracle", "Historical kick/snare regression; v2 remains opt-in"]}
+write_json(lab / "fixtures/drum-v2-cycle.summary.json", summary)
+print(json.dumps({"tones": records, "reference": reference["byProvider"], "summaryHash": object_hash(summary)}))

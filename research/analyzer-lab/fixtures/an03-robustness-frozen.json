@@ -1,0 +1,2575 @@
+{
+  "protocol": "AN-03 frozen synthetic robustness; not independent recordings",
+  "nodeVersion": "v25.2.1",
+  "sourceHashes": {
+    "src/analyzer/PredictiveOnsets.ts": "45534e7e0f232bff0fde918e49f53bc511dbba9b51af81afde7af3f1e320fc92",
+    "src/types/predictiveOnsets.ts": "8d727f4b32b4abba5cd1b886fb44f85dc3c27cb5a852bc22390cf11aba7766bf",
+    "src/analyzer/AcousticOnsets.ts": "eba437661861f0d14d411246e6f6f093059f3e085a1cff8da65e9c39c3458491",
+    "src/analyzer/signalContract.ts": "fb64a5fcb50b6ad61e3b86717f80ace34c993e8d948c2865b9c05369861f294a",
+    "tests/fixtures/predictive-onset-robustness.mjs": "94de30c647efd574d18e926a64f8e90cc00f1883f95f45d5049e02e0ca9da247",
+    "research/analyzer-lab/diagnostics/measure-an03-robustness.mjs": "171517ba242ef90d4f7988d4cc9632f29f822e588c188f0272a04c2d0a6faa64",
+    "research/analyzer-lab/docs/AN-03-EXPERIMENT.md": "11cba4381e0dfde1abec00dcdb202c5552e3f7fa6759e19d712f7d6601a9bd81"
+  },
+  "cases": [
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 16000,
+        "bed": "mono",
+        "kind": "noise",
+        "amplitude": 0.03,
+        "id": "an03-r000"
+      },
+      "pcmSha256": "678bcea0a35825d5eb63339f4a6cd070b6bee9ed57f3b83d2e72f5bc25517f09",
+      "truthSha256": "44d3970897d943b66cf05a2f0c28781fe6e4ae3d828718cbf07131d37bb3f288",
+      "truthSamples": [
+        2720,
+        5920,
+        9120
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000026335199795493627,
+          "innovationRatio": 2633519979549363,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.1708125,
+          "sampleIndex": 2733,
+          "proposalSample": 2720,
+          "strength": 0.00039306472668703215,
+          "innovationRatio": 39306472668703220,
+          "predictorCoefficient": 1.9925407529041712,
+          "supportStartSample": 2238,
+          "supportEndSample": 2784,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.3708125,
+          "sampleIndex": 5933,
+          "proposalSample": 5920,
+          "strength": 0.00039306472668703275,
+          "innovationRatio": 39306472668703280,
+          "predictorCoefficient": 1.9925407529041732,
+          "supportStartSample": 5438,
+          "supportEndSample": 5984,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.5708125,
+          "sampleIndex": 9133,
+          "proposalSample": 9120,
+          "strength": 0.0003930647266870333,
+          "innovationRatio": 39306472668703330,
+          "predictorCoefficient": 1.9925407529041752,
+          "supportStartSample": 8638,
+          "supportEndSample": 9184,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [],
+        "predictiveV2": [
+          0,
+          0.1708125,
+          0.3708125,
+          0.5708125
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 16000,
+        "bed": "mono",
+        "kind": "noise",
+        "amplitude": 0.15,
+        "id": "an03-r001"
+      },
+      "pcmSha256": "9d4e23c0d8feafa8b24072aaab86822f37dcb12a662d44bc622db16cd6552989",
+      "truthSha256": "44d3970897d943b66cf05a2f0c28781fe6e4ae3d828718cbf07131d37bb3f288",
+      "truthSamples": [
+        2720,
+        5920,
+        9120
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000026335199795493627,
+          "innovationRatio": 2633519979549363,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.1708125,
+          "sampleIndex": 2733,
+          "proposalSample": 2720,
+          "strength": 0.009826616856684307,
+          "innovationRatio": 982661685668430700,
+          "predictorCoefficient": 1.9925407529041712,
+          "supportStartSample": 2238,
+          "supportEndSample": 2784,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.3708125,
+          "sampleIndex": 5933,
+          "proposalSample": 5920,
+          "strength": 0.00982661685668432,
+          "innovationRatio": 982661685668432100,
+          "predictorCoefficient": 1.9925407529041739,
+          "supportStartSample": 5438,
+          "supportEndSample": 5984,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.5708125,
+          "sampleIndex": 9133,
+          "proposalSample": 9120,
+          "strength": 0.009826616856684341,
+          "innovationRatio": 982661685668434200,
+          "predictorCoefficient": 1.9925407529041765,
+          "supportStartSample": 8638,
+          "supportEndSample": 9184,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [],
+        "predictiveV2": [
+          0,
+          0.1708125,
+          0.3708125,
+          0.5708125
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 16000,
+        "bed": "mono",
+        "kind": "tone",
+        "amplitude": 0.03,
+        "id": "an03-r002"
+      },
+      "pcmSha256": "ae418a3cafa722e2c9a333a543cd6539f6fb86226c1856bc7f9f6b6eed02355a",
+      "truthSha256": "44d3970897d943b66cf05a2f0c28781fe6e4ae3d828718cbf07131d37bb3f288",
+      "truthSamples": [
+        2720,
+        5920,
+        9120
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000026335199795493627,
+          "innovationRatio": 2633519979549363,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17,
+          "sampleIndex": 2720,
+          "proposalSample": 2720,
+          "strength": 0.0000013803287918790157,
+          "innovationRatio": 138032879187901.58,
+          "predictorCoefficient": 1.9925407529041712,
+          "supportStartSample": 2238,
+          "supportEndSample": 2784,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37,
+          "sampleIndex": 5920,
+          "proposalSample": 5920,
+          "strength": 0.0000013803287918789926,
+          "innovationRatio": 138032879187899.27,
+          "predictorCoefficient": 1.9925407529041705,
+          "supportStartSample": 5438,
+          "supportEndSample": 5984,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.57,
+          "sampleIndex": 9120,
+          "proposalSample": 9120,
+          "strength": 0.0000013803287918789666,
+          "innovationRatio": 138032879187896.67,
+          "predictorCoefficient": 1.9925407529041699,
+          "supportStartSample": 8638,
+          "supportEndSample": 9184,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [],
+        "predictiveV2": [
+          0,
+          0.17,
+          0.37,
+          0.57
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 16000,
+        "bed": "mono",
+        "kind": "tone",
+        "amplitude": 0.15,
+        "id": "an03-r003"
+      },
+      "pcmSha256": "dd3047dad54cc441275defc914a5312e25e2c92e971edc32d6d50740c7a80185",
+      "truthSha256": "44d3970897d943b66cf05a2f0c28781fe6e4ae3d828718cbf07131d37bb3f288",
+      "truthSamples": [
+        2720,
+        5920,
+        9120
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000026335199795493627,
+          "innovationRatio": 2633519979549363,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17,
+          "sampleIndex": 2720,
+          "proposalSample": 2720,
+          "strength": 0.000034508228028590173,
+          "innovationRatio": 3450822802859017.5,
+          "predictorCoefficient": 1.9925407529041712,
+          "supportStartSample": 2238,
+          "supportEndSample": 2784,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37,
+          "sampleIndex": 5920,
+          "proposalSample": 5920,
+          "strength": 0.0000345082280285897,
+          "innovationRatio": 3450822802858970,
+          "predictorCoefficient": 1.9925407529041705,
+          "supportStartSample": 5438,
+          "supportEndSample": 5984,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.57,
+          "sampleIndex": 9120,
+          "proposalSample": 9120,
+          "strength": 0.000034508228028589245,
+          "innovationRatio": 3450822802858924.5,
+          "predictorCoefficient": 1.9925407529041699,
+          "supportStartSample": 8638,
+          "supportEndSample": 9184,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [],
+        "predictiveV2": [
+          0,
+          0.17,
+          0.37,
+          0.57
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 16000,
+        "bed": "poly",
+        "kind": "noise",
+        "amplitude": 0.03,
+        "id": "an03-r004"
+      },
+      "pcmSha256": "fda861a3cdf85cb01a6552ba6fddd7475dc9da0aafc15ecc94f77e476a67a5e9",
+      "truthSha256": "44d3970897d943b66cf05a2f0c28781fe6e4ae3d828718cbf07131d37bb3f288",
+      "truthSamples": [
+        2720,
+        5920,
+        9120
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00002616459877414545,
+          "innovationRatio": 2616459877414545,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.1708125,
+          "sampleIndex": 2733,
+          "proposalSample": 2720,
+          "strength": 0.00039179995923693773,
+          "innovationRatio": 2976.1566648338926,
+          "predictorCoefficient": 1.9911776723776013,
+          "supportStartSample": 2238,
+          "supportEndSample": 2784,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.3708125,
+          "sampleIndex": 5933,
+          "proposalSample": 5920,
+          "strength": 0.0003917512758746796,
+          "innovationRatio": 2905.560068921054,
+          "predictorCoefficient": 1.9910670683754033,
+          "supportStartSample": 5438,
+          "supportEndSample": 5984,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.5708125,
+          "sampleIndex": 9133,
+          "proposalSample": 9120,
+          "strength": 0.0003915919562279177,
+          "innovationRatio": 2774.4087333967427,
+          "predictorCoefficient": 1.990904945708432,
+          "supportStartSample": 8638,
+          "supportEndSample": 9184,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [],
+        "predictiveV2": [
+          0,
+          0.1708125,
+          0.3708125,
+          0.5708125
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 16000,
+        "bed": "poly",
+        "kind": "noise",
+        "amplitude": 0.15,
+        "id": "an03-r005"
+      },
+      "pcmSha256": "d4071eaa9518c7af884e3318efe963cee75b5f00116a640c280ecc56e262e1f1",
+      "truthSha256": "44d3970897d943b66cf05a2f0c28781fe6e4ae3d828718cbf07131d37bb3f288",
+      "truthSamples": [
+        2720,
+        5920,
+        9120
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00002616459877414545,
+          "innovationRatio": 2616459877414545,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.1708125,
+          "sampleIndex": 2733,
+          "proposalSample": 2720,
+          "strength": 0.009816116790623825,
+          "innovationRatio": 74371.89868856105,
+          "predictorCoefficient": 1.9911776723776013,
+          "supportStartSample": 2238,
+          "supportEndSample": 2784,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.3708125,
+          "sampleIndex": 5933,
+          "proposalSample": 5920,
+          "strength": 0.009815260967985408,
+          "innovationRatio": 72605.87013396813,
+          "predictorCoefficient": 1.9910670683754053,
+          "supportStartSample": 5438,
+          "supportEndSample": 5984,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.5708125,
+          "sampleIndex": 9133,
+          "proposalSample": 9120,
+          "strength": 0.009813886002025202,
+          "innovationRatio": 69338.3820777441,
+          "predictorCoefficient": 1.990904945708431,
+          "supportStartSample": 8638,
+          "supportEndSample": 9184,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [],
+        "predictiveV2": [
+          0,
+          0.1708125,
+          0.3708125,
+          0.5708125
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 16000,
+        "bed": "poly",
+        "kind": "tone",
+        "amplitude": 0.03,
+        "id": "an03-r006"
+      },
+      "pcmSha256": "76f384f2e640b2c337098255166c7387c31d3b5877502d070d50cb5a16dfa7e7",
+      "truthSha256": "44d3970897d943b66cf05a2f0c28781fe6e4ae3d828718cbf07131d37bb3f288",
+      "truthSamples": [
+        2720,
+        5920,
+        9120
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00002616459877414545,
+          "innovationRatio": 2616459877414545,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17,
+          "sampleIndex": 2720,
+          "proposalSample": 2720,
+          "strength": 4.6169199228389e-7,
+          "innovationRatio": 11.497637331731175,
+          "predictorCoefficient": 1.9911776723776013,
+          "supportStartSample": 2238,
+          "supportEndSample": 2784,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37,
+          "sampleIndex": 5920,
+          "proposalSample": 5920,
+          "strength": 4.034171116718341e-7,
+          "innovationRatio": 10.983845582352894,
+          "predictorCoefficient": 1.9910670683754044,
+          "supportStartSample": 5438,
+          "supportEndSample": 5984,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.57,
+          "sampleIndex": 9120,
+          "proposalSample": 9120,
+          "strength": 2.8727920963820656e-7,
+          "innovationRatio": 10.0294893748612,
+          "predictorCoefficient": 1.9909049457084327,
+          "supportStartSample": 8638,
+          "supportEndSample": 9184,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [],
+        "predictiveV2": [
+          0,
+          0.17,
+          0.37,
+          0.57
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 16000,
+        "bed": "poly",
+        "kind": "tone",
+        "amplitude": 0.15,
+        "id": "an03-r007"
+      },
+      "pcmSha256": "69b74f315983319c6cf5ec1d296dab4c920fcf36cb60c293c7ac9c5abfd313e4",
+      "truthSha256": "44d3970897d943b66cf05a2f0c28781fe6e4ae3d828718cbf07131d37bb3f288",
+      "truthSamples": [
+        2720,
+        5920,
+        9120
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00002616459877414545,
+          "innovationRatio": 2616459877414545,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17,
+          "sampleIndex": 2720,
+          "proposalSample": 2720,
+          "strength": 0.00003273516299951532,
+          "innovationRatio": 255.9915833086564,
+          "predictorCoefficient": 1.9911776723776013,
+          "supportStartSample": 2238,
+          "supportEndSample": 2784,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37,
+          "sampleIndex": 5920,
+          "proposalSample": 5920,
+          "strength": 0.00003239939418685713,
+          "innovationRatio": 247.63978309035875,
+          "predictorCoefficient": 1.9910670683754033,
+          "supportStartSample": 5438,
+          "supportEndSample": 5984,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.57,
+          "sampleIndex": 9120,
+          "proposalSample": 9120,
+          "strength": 0.000032073264719006416,
+          "innovationRatio": 234.58218093801236,
+          "predictorCoefficient": 1.990904945708417,
+          "supportStartSample": 8638,
+          "supportEndSample": 9184,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [],
+        "predictiveV2": [
+          0,
+          0.17,
+          0.37,
+          0.57
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 16000,
+        "bed": "mono",
+        "kind": "sustain",
+        "id": "an03-r008"
+      },
+      "pcmSha256": "d4071c978a65c6425d125bb28e9e862281f9f84f9988d68808bd1348a6e330bf",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000026335199795493627,
+          "innovationRatio": 2633519979549363,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 16000,
+        "bed": "mono",
+        "kind": "linear-rise",
+        "id": "an03-r009"
+      },
+      "pcmSha256": "3f34855587dd0cf030bc8b99d2f1c0a836be070adb16b0d9aee25642c57f9354",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 2.6335194171164626e-7,
+          "innovationRatio": 26335194171164.63,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0.23
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 16000,
+        "bed": "mono",
+        "kind": "am",
+        "id": "an03-r010"
+      },
+      "pcmSha256": "1a12c6b17a70c4d85f2c86628d9da9d10ae0c5c6c31be3712818f0ff71c496a2",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00000797181937380766,
+          "innovationRatio": 797181937380766,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0.270875,
+          0.518625,
+          0.766375
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 16000,
+        "bed": "poly",
+        "kind": "sustain",
+        "id": "an03-r011"
+      },
+      "pcmSha256": "07199aa8aee251fc319f357e3509d4e3ba3246eeb527b15e536995ab2be06fcf",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00002616459877414545,
+          "innovationRatio": 2616459877414545,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 16000,
+        "bed": "poly",
+        "kind": "linear-rise",
+        "id": "an03-r012"
+      },
+      "pcmSha256": "3c92a7ad75b292ed4b62ca2cb32732dfe37c5393c22e78d278e9a8957f2f97ae",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 2.6164596164843885e-7,
+          "innovationRatio": 26164596164843.887,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0.2280625
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 16000,
+        "bed": "poly",
+        "kind": "am",
+        "id": "an03-r013"
+      },
+      "pcmSha256": "b70886298d4cf311bb7cf1e4a65585b1071c1344567a04b034310a70ecf44b75",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000007909092281703378,
+          "innovationRatio": 790909228170337.9,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0.2645,
+          0.515625,
+          0.761625
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 16000,
+        "bed": "mono",
+        "kind": "cutoff",
+        "id": "an03-r014"
+      },
+      "pcmSha256": "c74abe0fb21667f442b98e94ce59db40da318f7b8394795e60a2f6d9e2c1ce0a",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000026335199795493627,
+          "innovationRatio": 2633519979549363,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 64,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 44100,
+        "bed": "mono",
+        "kind": "noise",
+        "amplitude": 0.03,
+        "id": "an03-r015"
+      },
+      "pcmSha256": "8471990b625c7d6e68595254ea8d0a635ad12ffa274dc542a9cdf188ab341508",
+      "truthSha256": "fe34aea719678e7d518e2d81b884ddded2d5ca6a52e3de8b937ae374ca59c12b",
+      "truthSamples": [
+        7497,
+        16317,
+        25137
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000011646871933679785,
+          "innovationRatio": 1164687193367978.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17029478458049888,
+          "sampleIndex": 7510,
+          "proposalSample": 7480,
+          "strength": 0.0004277057067972954,
+          "innovationRatio": 42770570679729544,
+          "predictorCoefficient": 1.9990175909232701,
+          "supportStartSample": 6155,
+          "supportEndSample": 7656,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37029478458049886,
+          "sampleIndex": 16330,
+          "proposalSample": 16280,
+          "strength": 0.00039876255553585835,
+          "innovationRatio": 39876255553585840,
+          "predictorCoefficient": 1.999017590989566,
+          "supportStartSample": 14955,
+          "supportEndSample": 16456,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.5702947845804989,
+          "sampleIndex": 25150,
+          "proposalSample": 25080,
+          "strength": 0.0003726410772861275,
+          "innovationRatio": 37264107728612750,
+          "predictorCoefficient": 1.9990175909357029,
+          "supportStartSample": 23755,
+          "supportEndSample": 25256,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17029478458049888,
+          0.37029478458049886,
+          0.5702947845804989
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 44100,
+        "bed": "mono",
+        "kind": "noise",
+        "amplitude": 0.15,
+        "id": "an03-r016"
+      },
+      "pcmSha256": "14dda020f306947fed581d61cc3b9c21dcd26c5c7d11a8f1a3636f3f7f7981ba",
+      "truthSha256": "fe34aea719678e7d518e2d81b884ddded2d5ca6a52e3de8b937ae374ca59c12b",
+      "truthSamples": [
+        7497,
+        16317,
+        25137
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000011646871933679785,
+          "innovationRatio": 1164687193367978.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17029478458049888,
+          "sampleIndex": 7510,
+          "proposalSample": 7480,
+          "strength": 0.010692644161125609,
+          "innovationRatio": 1069264416112560900,
+          "predictorCoefficient": 1.9990175909232701,
+          "supportStartSample": 6155,
+          "supportEndSample": 7656,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37029478458049886,
+          "sampleIndex": 16330,
+          "proposalSample": 16280,
+          "strength": 0.00996906508189923,
+          "innovationRatio": 996906508189923100,
+          "predictorCoefficient": 1.9990175909895664,
+          "supportStartSample": 14955,
+          "supportEndSample": 16456,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.5702947845804989,
+          "sampleIndex": 25150,
+          "proposalSample": 25080,
+          "strength": 0.009316027933172537,
+          "innovationRatio": 931602793317253800,
+          "predictorCoefficient": 1.9990175909357037,
+          "supportStartSample": 23755,
+          "supportEndSample": 25256,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17029478458049888,
+          0.37029478458049886,
+          0.5702947845804989
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 44100,
+        "bed": "mono",
+        "kind": "tone",
+        "amplitude": 0.03,
+        "id": "an03-r017"
+      },
+      "pcmSha256": "006e94c0a6871bce1b8e27dfa7cf42e0775060dac3e916be527626796e6354bd",
+      "truthSha256": "fe34aea719678e7d518e2d81b884ddded2d5ca6a52e3de8b937ae374ca59c12b",
+      "truthSamples": [
+        7497,
+        16317,
+        25137
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000011646871933679785,
+          "innovationRatio": 1164687193367978.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17,
+          "sampleIndex": 7497,
+          "proposalSample": 7480,
+          "strength": 2.7612058185578127e-7,
+          "innovationRatio": 27612058185578.13,
+          "predictorCoefficient": 1.9990175909232701,
+          "supportStartSample": 6155,
+          "supportEndSample": 7656,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37,
+          "sampleIndex": 16317,
+          "proposalSample": 16280,
+          "strength": 2.7486253198770144e-7,
+          "innovationRatio": 27486253198770.145,
+          "predictorCoefficient": 1.999017590989556,
+          "supportStartSample": 14955,
+          "supportEndSample": 16456,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.57,
+          "sampleIndex": 25137,
+          "proposalSample": 25080,
+          "strength": 2.7427768900122087e-7,
+          "innovationRatio": 27427768900122.09,
+          "predictorCoefficient": 1.9990175909356827,
+          "supportStartSample": 23755,
+          "supportEndSample": 25256,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17,
+          0.37,
+          0.57
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 44100,
+        "bed": "mono",
+        "kind": "tone",
+        "amplitude": 0.15,
+        "id": "an03-r018"
+      },
+      "pcmSha256": "34b1fb7ea5dddc6ba3b24bd42f8d08fd451ac3d3aeb55f07ca9609764b02e64c",
+      "truthSha256": "fe34aea719678e7d518e2d81b884ddded2d5ca6a52e3de8b937ae374ca59c12b",
+      "truthSamples": [
+        7497,
+        16317,
+        25137
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000011646871933679785,
+          "innovationRatio": 1164687193367978.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17,
+          "sampleIndex": 7497,
+          "proposalSample": 7480,
+          "strength": 0.000006903016115876037,
+          "innovationRatio": 690301611587603.8,
+          "predictorCoefficient": 1.9990175909232701,
+          "supportStartSample": 6155,
+          "supportEndSample": 7656,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37,
+          "sampleIndex": 16317,
+          "proposalSample": 16280,
+          "strength": 0.000006871564759383771,
+          "innovationRatio": 60926466222.31931,
+          "predictorCoefficient": 1.9990175909895467,
+          "supportStartSample": 14955,
+          "supportEndSample": 16456,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.57,
+          "sampleIndex": 25137,
+          "proposalSample": 25080,
+          "strength": 0.000006856943669418854,
+          "innovationRatio": 10551515763.887705,
+          "predictorCoefficient": 1.9990175909356636,
+          "supportStartSample": 23755,
+          "supportEndSample": 25256,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17,
+          0.37,
+          0.57
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 44100,
+        "bed": "poly",
+        "kind": "noise",
+        "amplitude": 0.03,
+        "id": "an03-r019"
+      },
+      "pcmSha256": "ad458eb08d692dc8f43494e0b4776d00f7acb6e945d36c37535afee3dda59148",
+      "truthSha256": "fe34aea719678e7d518e2d81b884ddded2d5ca6a52e3de8b937ae374ca59c12b",
+      "truthSamples": [
+        7497,
+        16317,
+        25137
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00001164670448507276,
+          "innovationRatio": 1164670448507276,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17029478458049888,
+          "sampleIndex": 7510,
+          "proposalSample": 7480,
+          "strength": 0.00042763543757532227,
+          "innovationRatio": 186277.70401457447,
+          "predictorCoefficient": 1.9988360829201257,
+          "supportStartSample": 6155,
+          "supportEndSample": 7656,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37029478458049886,
+          "sampleIndex": 16330,
+          "proposalSample": 16280,
+          "strength": 0.000398683931163231,
+          "innovationRatio": 162139.20437741381,
+          "predictorCoefficient": 1.9987960209367601,
+          "supportStartSample": 14955,
+          "supportEndSample": 16456,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.5702947845804989,
+          "sampleIndex": 25150,
+          "proposalSample": 25080,
+          "strength": 0.0003725715964245418,
+          "innovationRatio": 160129.63995907467,
+          "predictorCoefficient": 1.9988203427352729,
+          "supportStartSample": 23755,
+          "supportEndSample": 25256,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17029478458049888,
+          0.37029478458049886,
+          0.5702947845804989
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 44100,
+        "bed": "poly",
+        "kind": "noise",
+        "amplitude": 0.15,
+        "id": "an03-r020"
+      },
+      "pcmSha256": "f499deb548c515e556d724790efec74c60e212b4d5cbeec8b19c24e174f40978",
+      "truthSha256": "fe34aea719678e7d518e2d81b884ddded2d5ca6a52e3de8b937ae374ca59c12b",
+      "truthSamples": [
+        7497,
+        16317,
+        25137
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00001164670448507276,
+          "innovationRatio": 1164670448507276,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17029478458049888,
+          "sampleIndex": 7510,
+          "proposalSample": 7480,
+          "strength": 0.010691258945142283,
+          "innovationRatio": 4656913.074439851,
+          "predictorCoefficient": 1.9988360829201257,
+          "supportStartSample": 6155,
+          "supportEndSample": 7656,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37029478458049886,
+          "sampleIndex": 16330,
+          "proposalSample": 16280,
+          "strength": 0.009967486865079419,
+          "innovationRatio": 4053446.134153775,
+          "predictorCoefficient": 1.9987960209367601,
+          "supportStartSample": 14955,
+          "supportEndSample": 16456,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.5702947845804989,
+          "sampleIndex": 25150,
+          "proposalSample": 25080,
+          "strength": 0.009314693073593824,
+          "innovationRatio": 4003222.30034328,
+          "predictorCoefficient": 1.9988203427352742,
+          "supportStartSample": 23755,
+          "supportEndSample": 25256,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17029478458049888,
+          0.37029478458049886,
+          0.5702947845804989
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 44100,
+        "bed": "poly",
+        "kind": "tone",
+        "amplitude": 0.03,
+        "id": "an03-r021"
+      },
+      "pcmSha256": "b7ee97473552a06eb5fda268f0d058d5c68c0914e45999ae849d6acc2108b5b5",
+      "truthSha256": "fe34aea719678e7d518e2d81b884ddded2d5ca6a52e3de8b937ae374ca59c12b",
+      "truthSamples": [
+        7497,
+        16317,
+        25137
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00001164670448507276,
+          "innovationRatio": 1164670448507276,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17,
+          "sampleIndex": 7497,
+          "proposalSample": 7480,
+          "strength": 2.6012375361030824e-7,
+          "innovationRatio": 121.30486282165946,
+          "predictorCoefficient": 1.9988360829201257,
+          "supportStartSample": 6155,
+          "supportEndSample": 7656,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37,
+          "sampleIndex": 16317,
+          "proposalSample": 16280,
+          "strength": 2.57897638137812e-7,
+          "innovationRatio": 112.87820311714752,
+          "predictorCoefficient": 1.9987960209367586,
+          "supportStartSample": 14955,
+          "supportEndSample": 16456,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.57,
+          "sampleIndex": 25137,
+          "proposalSample": 25080,
+          "strength": 2.578386424590026e-7,
+          "innovationRatio": 118.81238691186277,
+          "predictorCoefficient": 1.9988203427352795,
+          "supportStartSample": 23755,
+          "supportEndSample": 25256,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17,
+          0.37,
+          0.57
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 44100,
+        "bed": "poly",
+        "kind": "tone",
+        "amplitude": 0.15,
+        "id": "an03-r022"
+      },
+      "pcmSha256": "c7d9a29d3230a079898e02a195703dd7735737b3892709be186aa80436c96a71",
+      "truthSha256": "fe34aea719678e7d518e2d81b884ddded2d5ca6a52e3de8b937ae374ca59c12b",
+      "truthSamples": [
+        7497,
+        16317,
+        25137
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00001164670448507276,
+          "innovationRatio": 1164670448507276,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17,
+          "sampleIndex": 7497,
+          "proposalSample": 7480,
+          "strength": 0.000006871033402065704,
+          "innovationRatio": 3000.8889086784393,
+          "predictorCoefficient": 1.9988360829201257,
+          "supportStartSample": 6155,
+          "supportEndSample": 7656,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37,
+          "sampleIndex": 16317,
+          "proposalSample": 16280,
+          "strength": 0.000006839773107461043,
+          "innovationRatio": 2789.5032442174283,
+          "predictorCoefficient": 1.9987960209367592,
+          "supportStartSample": 14955,
+          "supportEndSample": 16456,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.57,
+          "sampleIndex": 25137,
+          "proposalSample": 25080,
+          "strength": 0.0000068268130527425226,
+          "innovationRatio": 2941.9878699359247,
+          "predictorCoefficient": 1.9988203427352795,
+          "supportStartSample": 23755,
+          "supportEndSample": 25256,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17,
+          0.37,
+          0.57
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 44100,
+        "bed": "mono",
+        "kind": "sustain",
+        "id": "an03-r023"
+      },
+      "pcmSha256": "3f817c219b02048681868fb0659bcddceeaea8152d92a9b45d2b773dbd721c34",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000011646871933679785,
+          "innovationRatio": 1164687193367978.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 44100,
+        "bed": "mono",
+        "kind": "linear-rise",
+        "id": "an03-r024"
+      },
+      "pcmSha256": "5b21b4a06656fe9ff6cb6a1a0a5cfee2b4a6e2db79a628c8db157151d357fbe3",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 1.1646869170970647e-7,
+          "innovationRatio": 11646869170970.648,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0,
+          0.22768707482993197,
+          0.2595011337868481
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 44100,
+        "bed": "mono",
+        "kind": "am",
+        "id": "an03-r025"
+      },
+      "pcmSha256": "d1672c0043a06b753613bf183c555879e4acac140fb376f1a1f39ee6fd419c5f",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000003521652199187195,
+          "innovationRatio": 352165219918719.56,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0,
+          0.25952380952380955,
+          0.5095238095238095,
+          0.7617913832199547
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 44100,
+        "bed": "poly",
+        "kind": "sustain",
+        "id": "an03-r026"
+      },
+      "pcmSha256": "0435a5c2d96e046be3c0291286bd18a2c9c2c03006f8cdef5f56534cd08ed2d9",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00001164670448507276,
+          "innovationRatio": 1164670448507276,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 44100,
+        "bed": "poly",
+        "kind": "linear-rise",
+        "id": "an03-r027"
+      },
+      "pcmSha256": "a7c485768548722a0ee62732e084252048e8d8abcead3c59b41be25c29529976",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 1.164670203625436e-7,
+          "innovationRatio": 11646702036254.361,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0,
+          0.21895691609977325,
+          0.26448979591836735,
+          0.28272108843537413
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 44100,
+        "bed": "poly",
+        "kind": "am",
+        "id": "an03-r028"
+      },
+      "pcmSha256": "1a5277a6d30a910baae74ce6cb915b2459adab1defd291220a5dc01bd3605499",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0000035214048547141156,
+          "innovationRatio": 352140485471411.56,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0,
+          0.26448979591836735,
+          0.5246938775510204,
+          0.7615873015873016
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 44100,
+        "bed": "mono",
+        "kind": "cutoff",
+        "id": "an03-r029"
+      },
+      "pcmSha256": "52b2ce0272e1094de4a81d4537100427b3942e7d3d62d8cffa8ad35fd5b79111",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000011646871933679785,
+          "innovationRatio": 1164687193367978.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 176,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 96000,
+        "bed": "mono",
+        "kind": "noise",
+        "amplitude": 0.03,
+        "id": "an03-r030"
+      },
+      "pcmSha256": "0edc61d0dd8fa81b6dbdf63b1f1e1ded1352d6971f141e330fe6fc235e12c704",
+      "truthSha256": "bc517934bf25ee67c85217164ade09a65e5f33e6c236746370dd70692c99ee78",
+      "truthSamples": [
+        16320,
+        35520,
+        54720
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000005728781745994713,
+          "innovationRatio": 572878174599471.4,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17061458333333332,
+          "sampleIndex": 16379,
+          "proposalSample": 16320,
+          "strength": 0.0005114546139351932,
+          "innovationRatio": 609720037614.4445,
+          "predictorCoefficient": 1.999792673324522,
+          "supportStartSample": 13438,
+          "supportEndSample": 16704,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37061458333333336,
+          "sampleIndex": 35579,
+          "proposalSample": 35520,
+          "strength": 0.000511454613926166,
+          "innovationRatio": 260433181895.60324,
+          "predictorCoefficient": 1.9997926733244464,
+          "supportStartSample": 32638,
+          "supportEndSample": 35904,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.5706145833333334,
+          "sampleIndex": 54779,
+          "proposalSample": 54720,
+          "strength": 0.0005114546139171399,
+          "innovationRatio": 165578923952.78732,
+          "predictorCoefficient": 1.999792673324371,
+          "supportStartSample": 51838,
+          "supportEndSample": 55104,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17061458333333332,
+          0.37061458333333336,
+          0.5706145833333334
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 96000,
+        "bed": "mono",
+        "kind": "noise",
+        "amplitude": 0.15,
+        "id": "an03-r031"
+      },
+      "pcmSha256": "9be06a48226bb0a56e23a23150eb16b4c95417115968e3e6481c9a1a4315a6c7",
+      "truthSha256": "bc517934bf25ee67c85217164ade09a65e5f33e6c236746370dd70692c99ee78",
+      "truthSamples": [
+        16320,
+        35520,
+        54720
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000005728781745994713,
+          "innovationRatio": 572878174599471.4,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17061458333333332,
+          "sampleIndex": 16379,
+          "proposalSample": 16320,
+          "strength": 0.012786365355874142,
+          "innovationRatio": 15243000949103.3,
+          "predictorCoefficient": 1.999792673324522,
+          "supportStartSample": 13438,
+          "supportEndSample": 16704,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37061458333333336,
+          "sampleIndex": 35579,
+          "proposalSample": 35520,
+          "strength": 0.012786365355866363,
+          "innovationRatio": 7403743318135.499,
+          "predictorCoefficient": 1.9997926733244473,
+          "supportStartSample": 32638,
+          "supportEndSample": 35904,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.5706145833333334,
+          "sampleIndex": 54779,
+          "proposalSample": 54720,
+          "strength": 0.012786365355858607,
+          "innovationRatio": 4889264455372.25,
+          "predictorCoefficient": 1.9997926733243727,
+          "supportStartSample": 51838,
+          "supportEndSample": 55104,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17061458333333332,
+          0.37061458333333336,
+          0.5706145833333334
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 96000,
+        "bed": "mono",
+        "kind": "tone",
+        "amplitude": 0.03,
+        "id": "an03-r032"
+      },
+      "pcmSha256": "4ae2b6747178f582e65f061b4d33117ef5cf0a7f6b1812a58a2b8d492fbab3d7",
+      "truthSha256": "bc517934bf25ee67c85217164ade09a65e5f33e6c236746370dd70692c99ee78",
+      "truthSamples": [
+        16320,
+        35520,
+        54720
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000005728781745994713,
+          "innovationRatio": 572878174599471.4,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17,
+          "sampleIndex": 16320,
+          "proposalSample": 16320,
+          "strength": 1.5090598187111507e-7,
+          "innovationRatio": 179899452.514841,
+          "predictorCoefficient": 1.999792673324522,
+          "supportStartSample": 13438,
+          "supportEndSample": 16704,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37,
+          "sampleIndex": 35520,
+          "proposalSample": 35520,
+          "strength": 1.5090596955494762e-7,
+          "innovationRatio": 63450014.37241504,
+          "predictorCoefficient": 1.999792673324441,
+          "supportStartSample": 32638,
+          "supportEndSample": 35904,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.57,
+          "sampleIndex": 54720,
+          "proposalSample": 54720,
+          "strength": 1.50905957238781e-7,
+          "innovationRatio": 38517515.02202178,
+          "predictorCoefficient": 1.9997926733243603,
+          "supportStartSample": 51838,
+          "supportEndSample": 55104,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17,
+          0.37,
+          0.57
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 96000,
+        "bed": "mono",
+        "kind": "tone",
+        "amplitude": 0.15,
+        "id": "an03-r033"
+      },
+      "pcmSha256": "7cd6f2b3f2107c7942c602f40a466302a5cf62d26557eb42d62d04af61dba29e",
+      "truthSha256": "bc517934bf25ee67c85217164ade09a65e5f33e6c236746370dd70692c99ee78",
+      "truthSamples": [
+        16320,
+        35520,
+        54720
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000005728781745994713,
+          "innovationRatio": 572878174599471.4,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17,
+          "sampleIndex": 16320,
+          "proposalSample": 16320,
+          "strength": 0.0000037726466314397964,
+          "innovationRatio": 4497482645.411041,
+          "predictorCoefficient": 1.999792673324522,
+          "supportStartSample": 13438,
+          "supportEndSample": 16704,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37,
+          "sampleIndex": 35520,
+          "proposalSample": 35520,
+          "strength": 0.0000037726466214904635,
+          "innovationRatio": 1811782108.340108,
+          "predictorCoefficient": 1.999792673324449,
+          "supportStartSample": 32638,
+          "supportEndSample": 35904,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.57,
+          "sampleIndex": 54720,
+          "proposalSample": 54720,
+          "strength": 0.0000037726466115411286,
+          "innovationRatio": 1134379895.725777,
+          "predictorCoefficient": 1.999792673324376,
+          "supportStartSample": 51838,
+          "supportEndSample": 55104,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17,
+          0.37,
+          0.57
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 96000,
+        "bed": "poly",
+        "kind": "noise",
+        "amplitude": 0.03,
+        "id": "an03-r034"
+      },
+      "pcmSha256": "e459ad0d2da6c3485213854667562d5f565e7c83ad8aaa14d2e63fa6a7b7c6b0",
+      "truthSha256": "bc517934bf25ee67c85217164ade09a65e5f33e6c236746370dd70692c99ee78",
+      "truthSamples": [
+        16320,
+        35520,
+        54720
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000005729258466855301,
+          "innovationRatio": 572925846685530.1,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17061458333333332,
+          "sampleIndex": 16379,
+          "proposalSample": 16320,
+          "strength": 0.0005114406887894298,
+          "innovationRatio": 5003159.867769442,
+          "predictorCoefficient": 1.9997548413585806,
+          "supportStartSample": 13438,
+          "supportEndSample": 16704,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37061458333333336,
+          "sampleIndex": 35579,
+          "proposalSample": 35520,
+          "strength": 0.000511439559574945,
+          "innovationRatio": 4898567.972575048,
+          "predictorCoefficient": 1.999751900171382,
+          "supportStartSample": 32638,
+          "supportEndSample": 35904,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.5706145833333334,
+          "sampleIndex": 54779,
+          "proposalSample": 54720,
+          "strength": 0.0005114379038152571,
+          "innovationRatio": 4679966.471333179,
+          "predictorCoefficient": 1.9997478462681875,
+          "supportStartSample": 51838,
+          "supportEndSample": 55104,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17061458333333332,
+          0.37061458333333336,
+          0.5706145833333334
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 96000,
+        "bed": "poly",
+        "kind": "noise",
+        "amplitude": 0.15,
+        "id": "an03-r035"
+      },
+      "pcmSha256": "3493df81eae4e0b5f4a184a1e6b3f8ca2b0823eb831d10f9c35827fe95c718c5",
+      "truthSha256": "bc517934bf25ee67c85217164ade09a65e5f33e6c236746370dd70692c99ee78",
+      "truthSamples": [
+        16320,
+        35520,
+        54720
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000005729258466855301,
+          "innovationRatio": 572925846685530.1,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17061458333333332,
+          "sampleIndex": 16379,
+          "proposalSample": 16320,
+          "strength": 0.012786032962719468,
+          "innovationRatio": 125078958.69946116,
+          "predictorCoefficient": 1.9997548413585806,
+          "supportStartSample": 13438,
+          "supportEndSample": 16704,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37061458333333336,
+          "sampleIndex": 35579,
+          "proposalSample": 35520,
+          "strength": 0.01278600673083762,
+          "innovationRatio": 122464104.89482072,
+          "predictorCoefficient": 1.999751900171377,
+          "supportStartSample": 32638,
+          "supportEndSample": 35904,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.5706145833333334,
+          "sampleIndex": 54779,
+          "proposalSample": 54720,
+          "strength": 0.012785970401688832,
+          "innovationRatio": 116999138.8539255,
+          "predictorCoefficient": 1.999747846268184,
+          "supportStartSample": 51838,
+          "supportEndSample": 55104,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17061458333333332,
+          0.37061458333333336,
+          0.5706145833333334
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 96000,
+        "bed": "poly",
+        "kind": "tone",
+        "amplitude": 0.03,
+        "id": "an03-r036"
+      },
+      "pcmSha256": "c3201f260aa8db964cbdc5120637277256d8a8b6b61e10e1b14835ecdaf93da6",
+      "truthSha256": "bc517934bf25ee67c85217164ade09a65e5f33e6c236746370dd70692c99ee78",
+      "truthSamples": [
+        16320,
+        35520,
+        54720
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000005729258466855301,
+          "innovationRatio": 572925846685530.1,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17,
+          "sampleIndex": 16320,
+          "proposalSample": 16320,
+          "strength": 1.5018757942048346e-7,
+          "innovationRatio": 1477.2051003449471,
+          "predictorCoefficient": 1.9997548413585806,
+          "supportStartSample": 13438,
+          "supportEndSample": 16704,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37,
+          "sampleIndex": 35520,
+          "proposalSample": 35520,
+          "strength": 1.5015027708317967e-7,
+          "innovationRatio": 1446.137511092715,
+          "predictorCoefficient": 1.9997519001713868,
+          "supportStartSample": 32638,
+          "supportEndSample": 35904,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.57,
+          "sampleIndex": 54720,
+          "proposalSample": 54720,
+          "strength": 1.5007458629881992e-7,
+          "innovationRatio": 1381.2714452389084,
+          "predictorCoefficient": 1.9997478462681915,
+          "supportStartSample": 51838,
+          "supportEndSample": 55104,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17,
+          0.37,
+          0.57
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "positive",
+        "sampleRate": 96000,
+        "bed": "poly",
+        "kind": "tone",
+        "amplitude": 0.15,
+        "id": "an03-r037"
+      },
+      "pcmSha256": "3e65d77e73b3a7f15250b11273f3be024f8d4c7fd0faa99e9009501477a39281",
+      "truthSha256": "bc517934bf25ee67c85217164ade09a65e5f33e6c236746370dd70692c99ee78",
+      "truthSamples": [
+        16320,
+        35520,
+        54720
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000005729258466855301,
+          "innovationRatio": 572925846685530.1,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.17,
+          "sampleIndex": 16320,
+          "proposalSample": 16320,
+          "strength": 0.000003771118977593894,
+          "innovationRatio": 36898.848479397755,
+          "predictorCoefficient": 1.9997548413585806,
+          "supportStartSample": 13438,
+          "supportEndSample": 16704,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.37,
+          "sampleIndex": 35520,
+          "proposalSample": 35520,
+          "strength": 0.000003770878325236099,
+          "innovationRatio": 36125.40242155593,
+          "predictorCoefficient": 1.9997519001713806,
+          "supportStartSample": 32638,
+          "supportEndSample": 35904,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.57,
+          "sampleIndex": 54720,
+          "proposalSample": 54720,
+          "strength": 0.0000037706657978540143,
+          "innovationRatio": 34511.79343871861,
+          "predictorCoefficient": 1.9997478462681832,
+          "supportStartSample": 51838,
+          "supportEndSample": 55104,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0,
+          0.17,
+          0.37,
+          0.57
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 96000,
+        "bed": "mono",
+        "kind": "sustain",
+        "id": "an03-r038"
+      },
+      "pcmSha256": "a072d339a8fc19498452af67590f26fe333ac1e1426d8b9d7aeac22f92ab0702",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000005728781745994713,
+          "innovationRatio": 572878174599471.4,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 96000,
+        "bed": "mono",
+        "kind": "linear-rise",
+        "id": "an03-r039"
+      },
+      "pcmSha256": "0b173e9145ba786092ab8a5de4e3fdf11f51fa2d7dcd2ec1db41e0f2ca85f418",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 5.728781102916509e-8,
+          "innovationRatio": 5728781102916.51,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0,
+          0.26398958333333333
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 96000,
+        "bed": "mono",
+        "kind": "am",
+        "id": "an03-r040"
+      },
+      "pcmSha256": "f60b307679b9aee407adbcfac68f5f725a4e60f9253146cfec03b3f48713a03d",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0000017325771705991303,
+          "innovationRatio": 173257717059913.03,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0,
+          0.26398958333333333,
+          0.51859375,
+          0.7639895833333333
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 96000,
+        "bed": "poly",
+        "kind": "sustain",
+        "id": "an03-r041"
+      },
+      "pcmSha256": "c448a764b96f16d630fb4527eddaa0c0b4e79818b9146c1dfe5a16e016fa7d51",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000005729258466855301,
+          "innovationRatio": 572925846685530.1,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 96000,
+        "bed": "poly",
+        "kind": "linear-rise",
+        "id": "an03-r042"
+      },
+      "pcmSha256": "e7edd8814e43d6108252f4617d153d5bcefc30c9b56f0bcf1d084559833e58fe",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 5.729257668151657e-8,
+          "innovationRatio": 5729257668151.657,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0,
+          0.28270833333333334
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 96000,
+        "bed": "poly",
+        "kind": "am",
+        "id": "an03-r043"
+      },
+      "pcmSha256": "821c378938fa8918745619dff67c60ac9759c5ffd2e435ac4a5eb04423bb4911",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000001732712531296055,
+          "innovationRatio": 173271253129605.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0,
+          0.27360416666666665,
+          0.51959375,
+          0.7615729166666667
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    },
+    {
+      "spec": {
+        "family": "negative",
+        "sampleRate": 96000,
+        "bed": "mono",
+        "kind": "cutoff",
+        "id": "an03-r044"
+      },
+      "pcmSha256": "1aec6b6fe9f14cf6850c754a55801d4e92202948ba4d34ffb49544bc90943780",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000005728781745994713,
+          "innovationRatio": 572878174599471.4,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 384,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "plexusV1": [
+          0
+        ],
+        "predictiveV2": [
+          0
+        ]
+      }
+    }
+  ]
+}

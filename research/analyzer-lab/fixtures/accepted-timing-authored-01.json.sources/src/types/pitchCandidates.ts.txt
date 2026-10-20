@@ -1,0 +1,42 @@
+import type { AcousticEvidenceIdentity } from './acousticEvidence';
+
+export interface PitchPeriodCandidate {
+    frequencyHz: number;
+    integerLagFrequencyHz: number;
+    normalizedDifference: number; // Engineering periodicity score, not probability.
+}
+
+export interface PitchCandidateFrame {
+    frameIndex: number;
+    supportStartSample: number;
+    supportEndSample: number;
+    rmsAmplitude: number;
+    primary: PitchPeriodCandidate | null;
+    alternatives: PitchPeriodCandidate[]; // Period aliases, never a source count.
+    reason: 'periodicity-proposal' | 'below-floor' | 'no-periodic-trough';
+}
+
+export interface PitchCandidateAnalysis {
+    algorithm: 'experimental-pitch-periodicity-v1';
+    identity: AcousticEvidenceIdentity;
+    frameLength: number;
+    hopLength: number;
+    rangeHz: [number, number];
+    status: 'available' | 'insufficient-support';
+    unobservedTailSamples: number;
+    confidence: null;
+    sourceIsolation: 'unverified-mixture';
+    frames: PitchCandidateFrame[];
+}
+
+export interface PairedPitchReference {
+    frameIndex: number;
+    supportStartSample: number;
+    supportEndSample: number;
+    identity: AcousticEvidenceIdentity;
+    votes: {provider: 'librosa-yin' | 'audioflux-ncf'; frequencyHz: number}[];
+    evidenceType: 'pseudo_label';
+    acceptance: 'two-library-agreement';
+    confidence: null;
+    groundTruthStatus: false;
+}

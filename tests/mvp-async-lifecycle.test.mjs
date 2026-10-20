@@ -5,6 +5,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import ts from 'typescript';
 import { webcrypto } from 'node:crypto';
+import { createLoader } from './helpers/xr-loader.mjs';
 
 const deferred = () => {
     let resolve, reject;
@@ -484,6 +485,39 @@ test('history attaches by content hash, accepts renames, and never attaches to a
     await reload('a'.repeat(64), 'renamed.wav', 2);
     assert.equal(h.controller.getHistoryStatus().undoCount, 1);
     assert.equal(h.controller.getPlan().points[0].intensity, 2);
+    assert.equal(h.controller.pendingCheckpoint, null);
+});
+
+test('same-file mode switches cannot restore another timing algorithm workspace; returning to its fingerprint may restore', async () => {
+    const h = harness(); await ready(h); enableSession(h);
+    const { computeTrackFingerprint } = createLoader({}, { crypto: webcrypto, TextEncoder })('ui/mvp/metaTuningStorage.ts');
+    const analysis = { bpm: 120, duration: 60, sections: [], bars: [] };
+    const modes = [null, 'accepted-frame-band-timing-v1', 'accepted-frame-band-timing-v2', 'accepted-frame-band-timing-v2-dc1'];
+    const keys = await Promise.all(modes.map(algorithm => computeTrackFingerprint({ ...analysis, ...(algorithm ? { eventTiming: { algorithm } } : {}) })));
+    h.controller.trackFingerprint = keys[0];
+    h.controller.updateMoment('p', { intensity: 2 }); h.engine.position = 12.345;
+    const saving = h.controller.saveSessionForTrack(); h.sessionSaves[0].resolve(true); await saving;
+    const checkpoint = h.normalizeCheckpoint(h.sessionSaves[0].checkpoint);
+    assert.equal(checkpoint.fingerprint, keys[0]);
+    h.controller.pendingCheckpoint = checkpoint;
+    const seeks = []; h.engine.seek = time => { h.engine.position = time; seeks.push(time); };
+    for (const index of [1, 2, 3, 4]) {
+        h.engine.position = 0;
+        await h.controller.loadFile({ name: 'same-content.wav', hash: 'a'.repeat(64), size: 1024 });
+        h.state.trackAnalysis = { ...analysis, ...(index < 4 ? { eventTiming: { algorithm: modes[index] } } : {}) };
+        h.engine.onAnalysisComplete(); await flush();
+        h.requests[index].resolve(JSON.parse(checkpoint.current.journey.data).generatedPlan);
+        await flush(); h.hashes[index].resolve(keys[index % 4]); await flush();
+        if (index < 4) {
+            assert.equal(h.controller.getPlan().points[0].intensity, 1);
+            assert.equal(h.controller.getHistoryStatus().undoCount, 0);
+            assert.equal(seeks.length, 0, 'mismatched mode cannot seek to an old workspace position');
+            assert.ok(h.controller.pendingCheckpoint);
+        }
+    }
+    assert.equal(h.controller.getPlan().points[0].intensity, 2);
+    assert.equal(h.controller.getHistoryStatus().undoCount, 1);
+    assert.deepEqual(seeks, [12.345]);
     assert.equal(h.controller.pendingCheckpoint, null);
 });
 

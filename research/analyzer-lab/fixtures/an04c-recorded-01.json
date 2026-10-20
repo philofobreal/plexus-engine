@@ -1,0 +1,3197 @@
+{
+  "experiment": "AN-04C",
+  "split": "recorded",
+  "sourceHashes": {
+    "src/analyzer/HarmonicEvidence.ts": "291aad90420ef30956ca4d0cc2444e03fd7c7092901f9f52c1409f6f39f2c503",
+    "src/types/harmonicEvidence.ts": "fdb62b9ef214719080a6d8acf625029bbd67290711a3c756ea21acc269ec5832",
+    "src/analyzer/PitchCandidates.ts": "3e30c4f0c49037f61dfc955bd14745ad5f1f039d7a167ec20e85d2460694e387",
+    "src/types/pitchCandidates.ts": "0725afe665384283b1b9404404d644b63f409762f50ef48c9927b6c395eea2a9",
+    "tests/helpers/xr-loader.mjs": "65f5c9bd8264f10e569d5d5b158e7ebda64f59ee8188e2040f1a2d9754e5ed3e",
+    "tests/fixtures/musical-entity-corpus.mjs": "b1ad229224b5f5486f1bfd28533ce2a201744307949971dbf81c0bf3fb5eb50e",
+    "tests/fixtures/pitch-candidate-corpus.mjs": "80758391e47bf2aba3df7f9fd23120950d916291343c6f77c98cb229d7bceef1",
+    "tests/fixtures/harmonic-evidence-corpus.mjs": "be1a0397ae9680a158c2309eef0e1da9fb547f3df78a1b86adc4cd2bce2d0af8",
+    "tests/harmonic-evidence.test.mjs": "f55c776a4578ef2cbddf9931e02ebabb568dc3b1c093b0832a2a31f9486d5c94",
+    "research/analyzer-lab/diagnostics/measure-an04c.mjs": "8acdd4ba02c1b11bff6d7182d568fd625fe35abddde3f4147e21b24bac9d12df",
+    "research/analyzer-lab/diagnostics/check_an04c_projection.py": "2080f9f4fd801122e3d4ada11affa552bbce297db8c52c411cb21c4284e73a7a",
+    "research/analyzer-lab/docs/AN-04C-EXPERIMENT.md": "424fd7f951e11055b0073adfb9db5291f6b6d61838b610767ddd678cc08aaf78"
+  },
+  "frozenReference": null,
+  "baselineReference": {
+    "path": "research/analyzer-lab/fixtures/an04b-recorded-01.json",
+    "sha256": "1962c2203d315c8ccba5b6a6ff1b8ca1cc4bd6294bf53ca7947426fce43fa90a"
+  },
+  "runtime": {
+    "node": "v25.2.1"
+  },
+  "summary": {
+    "cases": 3,
+    "frames": 288,
+    "stationaryMonophonicModelFrames": 0,
+    "fitMean": null,
+    "heldOutMean": null,
+    "independentFitMean": null,
+    "independentHeldOutMean": null,
+    "steadyCompatibleFrames": 0,
+    "steadyAndExistingPitchQualified": 0,
+    "arithmeticSamples": 2,
+    "arithmeticAgreed": 2,
+    "arithmeticMaxPlexusDifference": 1.887379141862766e-15
+  },
+  "cases": [
+    {
+      "caseId": "recorded-0",
+      "spec": {
+        "kind": "recorded",
+        "original": {
+          "path": "C:\\novy\\Plexus Engine (VJ System)\\plexus-engine\\tests\\audio\\Prodigy\\The_Prodigy_More_Music_For_The_Jilted_Generation_-_Goa_The_Heat_The_Energy_Part_2_(mp3.pm).mp3",
+          "sha256": "ec7d6a28605d05ba763913fc5f05ab983bd23be27b5e7856c7ecadec00687e69",
+          "channels": 2,
+          "frames": 16130351
+        }
+      },
+      "truth": null,
+      "identity": {
+        "pcmSha256": "174a4b339b6ed8a472646000d97c370f59ac27b2c375a504523406c693824746",
+        "sampleRate": 44100,
+        "sampleCount": 88200,
+        "timelineOffsetSeconds": 10
+      },
+      "evidence": {
+        "algorithm": "experimental-harmonic-evidence-v1",
+        "identity": {
+          "pcmSha256": "174a4b339b6ed8a472646000d97c370f59ac27b2c375a504523406c693824746",
+          "sampleRate": 44100,
+          "sampleCount": 88200,
+          "timelineOffsetSeconds": 10
+        },
+        "confidence": null,
+        "groundTruthStatus": false,
+        "sourceIsolation": "unverified-mixture",
+        "consumerUse": "diagnostic-only",
+        "xrScoring": "ineligible",
+        "frames": [
+          {
+            "frameIndex": 0,
+            "fitSupportStartSample": 0,
+            "supportStartSample": 0,
+            "supportEndSample": 4096,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 1,
+            "fitSupportStartSample": 882,
+            "supportStartSample": 882,
+            "supportEndSample": 4978,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 2,
+            "fitSupportStartSample": 1764,
+            "supportStartSample": 1764,
+            "supportEndSample": 5860,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 3,
+            "fitSupportStartSample": 2646,
+            "supportStartSample": 2646,
+            "supportEndSample": 6742,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 4,
+            "fitSupportStartSample": 3528,
+            "supportStartSample": 3528,
+            "supportEndSample": 7624,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 5,
+            "fitSupportStartSample": 4410,
+            "supportStartSample": 4410,
+            "supportEndSample": 8506,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 6,
+            "fitSupportStartSample": 5292,
+            "supportStartSample": 5292,
+            "supportEndSample": 9388,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 7,
+            "fitSupportStartSample": 6174,
+            "supportStartSample": 6174,
+            "supportEndSample": 10270,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 8,
+            "fitSupportStartSample": 7056,
+            "supportStartSample": 7056,
+            "supportEndSample": 11152,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 9,
+            "fitSupportStartSample": 7938,
+            "supportStartSample": 7938,
+            "supportEndSample": 12034,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 10,
+            "fitSupportStartSample": 8820,
+            "supportStartSample": 8820,
+            "supportEndSample": 12916,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 11,
+            "fitSupportStartSample": 9702,
+            "supportStartSample": 9702,
+            "supportEndSample": 13798,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 12,
+            "fitSupportStartSample": 10584,
+            "supportStartSample": 10584,
+            "supportEndSample": 14680,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 13,
+            "fitSupportStartSample": 11466,
+            "supportStartSample": 11466,
+            "supportEndSample": 15562,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 14,
+            "fitSupportStartSample": 12348,
+            "supportStartSample": 12348,
+            "supportEndSample": 16444,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 15,
+            "fitSupportStartSample": 13230,
+            "supportStartSample": 13230,
+            "supportEndSample": 17326,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 16,
+            "fitSupportStartSample": 14112,
+            "supportStartSample": 14112,
+            "supportEndSample": 18208,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 17,
+            "fitSupportStartSample": 14994,
+            "supportStartSample": 14994,
+            "supportEndSample": 19090,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 18,
+            "fitSupportStartSample": 15876,
+            "supportStartSample": 15876,
+            "supportEndSample": 19972,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 19,
+            "fitSupportStartSample": 16758,
+            "supportStartSample": 16758,
+            "supportEndSample": 20854,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 20,
+            "fitSupportStartSample": 17640,
+            "supportStartSample": 17640,
+            "supportEndSample": 21736,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 21,
+            "fitSupportStartSample": 18522,
+            "supportStartSample": 18522,
+            "supportEndSample": 22618,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 22,
+            "fitSupportStartSample": 19404,
+            "supportStartSample": 19404,
+            "supportEndSample": 23500,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 23,
+            "fitSupportStartSample": 20286,
+            "supportStartSample": 20286,
+            "supportEndSample": 24382,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 24,
+            "fitSupportStartSample": 21168,
+            "supportStartSample": 21168,
+            "supportEndSample": 25264,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 25,
+            "fitSupportStartSample": 22050,
+            "supportStartSample": 22050,
+            "supportEndSample": 26146,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 26,
+            "fitSupportStartSample": 22932,
+            "supportStartSample": 22932,
+            "supportEndSample": 27028,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 27,
+            "fitSupportStartSample": 23814,
+            "supportStartSample": 23814,
+            "supportEndSample": 27910,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 28,
+            "fitSupportStartSample": 24696,
+            "supportStartSample": 24696,
+            "supportEndSample": 28792,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 29,
+            "fitSupportStartSample": 25578,
+            "supportStartSample": 25578,
+            "supportEndSample": 29674,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 30,
+            "fitSupportStartSample": 26460,
+            "supportStartSample": 26460,
+            "supportEndSample": 30556,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 31,
+            "fitSupportStartSample": 27342,
+            "supportStartSample": 27342,
+            "supportEndSample": 31438,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 32,
+            "fitSupportStartSample": 28224,
+            "supportStartSample": 28224,
+            "supportEndSample": 32320,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 33,
+            "fitSupportStartSample": 29106,
+            "supportStartSample": 29106,
+            "supportEndSample": 33202,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 34,
+            "fitSupportStartSample": 29988,
+            "supportStartSample": 29988,
+            "supportEndSample": 34084,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 35,
+            "fitSupportStartSample": 30870,
+            "supportStartSample": 30870,
+            "supportEndSample": 34966,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 36,
+            "fitSupportStartSample": 31752,
+            "supportStartSample": 31752,
+            "supportEndSample": 35848,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 37,
+            "fitSupportStartSample": 32634,
+            "supportStartSample": 32634,
+            "supportEndSample": 36730,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 38,
+            "fitSupportStartSample": 33516,
+            "supportStartSample": 33516,
+            "supportEndSample": 37612,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 39,
+            "fitSupportStartSample": 34398,
+            "supportStartSample": 34398,
+            "supportEndSample": 38494,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 40,
+            "fitSupportStartSample": 35280,
+            "supportStartSample": 35280,
+            "supportEndSample": 39376,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 41,
+            "fitSupportStartSample": 36162,
+            "supportStartSample": 36162,
+            "supportEndSample": 40258,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 42,
+            "fitSupportStartSample": 37044,
+            "supportStartSample": 37044,
+            "supportEndSample": 41140,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 43,
+            "fitSupportStartSample": 37926,
+            "supportStartSample": 37926,
+            "supportEndSample": 42022,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 44,
+            "fitSupportStartSample": 38808,
+            "supportStartSample": 38808,
+            "supportEndSample": 42904,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 45,
+            "fitSupportStartSample": 39690,
+            "supportStartSample": 39690,
+            "supportEndSample": 43786,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 46,
+            "fitSupportStartSample": 40572,
+            "supportStartSample": 40572,
+            "supportEndSample": 44668,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 47,
+            "fitSupportStartSample": 41454,
+            "supportStartSample": 41454,
+            "supportEndSample": 45550,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 48,
+            "fitSupportStartSample": 42336,
+            "supportStartSample": 42336,
+            "supportEndSample": 46432,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 49,
+            "fitSupportStartSample": 43218,
+            "supportStartSample": 43218,
+            "supportEndSample": 47314,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 50,
+            "fitSupportStartSample": 44100,
+            "supportStartSample": 44100,
+            "supportEndSample": 48196,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 51,
+            "fitSupportStartSample": 44982,
+            "supportStartSample": 44982,
+            "supportEndSample": 49078,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 52,
+            "fitSupportStartSample": 45864,
+            "supportStartSample": 45864,
+            "supportEndSample": 49960,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 53,
+            "fitSupportStartSample": 46746,
+            "supportStartSample": 46746,
+            "supportEndSample": 50842,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 54,
+            "fitSupportStartSample": 47628,
+            "supportStartSample": 47628,
+            "supportEndSample": 51724,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 55,
+            "fitSupportStartSample": 48510,
+            "supportStartSample": 48510,
+            "supportEndSample": 52606,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 56,
+            "fitSupportStartSample": 49392,
+            "supportStartSample": 49392,
+            "supportEndSample": 53488,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 57,
+            "fitSupportStartSample": 50274,
+            "supportStartSample": 50274,
+            "supportEndSample": 54370,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 58,
+            "fitSupportStartSample": 51156,
+            "supportStartSample": 51156,
+            "supportEndSample": 55252,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 59,
+            "fitSupportStartSample": 52038,
+            "supportStartSample": 52038,
+            "supportEndSample": 56134,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 60,
+            "fitSupportStartSample": 52920,
+            "supportStartSample": 52920,
+            "supportEndSample": 57016,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 61,
+            "fitSupportStartSample": 53802,
+            "supportStartSample": 53802,
+            "supportEndSample": 57898,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 62,
+            "fitSupportStartSample": 54684,
+            "supportStartSample": 54684,
+            "supportEndSample": 58780,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 63,
+            "fitSupportStartSample": 55566,
+            "supportStartSample": 55566,
+            "supportEndSample": 59662,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 64,
+            "fitSupportStartSample": 56448,
+            "supportStartSample": 56448,
+            "supportEndSample": 60544,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 65,
+            "fitSupportStartSample": 57330,
+            "supportStartSample": 57330,
+            "supportEndSample": 61426,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 66,
+            "fitSupportStartSample": 58212,
+            "supportStartSample": 58212,
+            "supportEndSample": 62308,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 67,
+            "fitSupportStartSample": 59094,
+            "supportStartSample": 59094,
+            "supportEndSample": 63190,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 68,
+            "fitSupportStartSample": 59976,
+            "supportStartSample": 59976,
+            "supportEndSample": 64072,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 69,
+            "fitSupportStartSample": 60858,
+            "supportStartSample": 60858,
+            "supportEndSample": 64954,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 70,
+            "fitSupportStartSample": 61740,
+            "supportStartSample": 61740,
+            "supportEndSample": 65836,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 71,
+            "fitSupportStartSample": 62622,
+            "supportStartSample": 62622,
+            "supportEndSample": 66718,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 72,
+            "fitSupportStartSample": 63504,
+            "supportStartSample": 63504,
+            "supportEndSample": 67600,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 73,
+            "fitSupportStartSample": 64386,
+            "supportStartSample": 64386,
+            "supportEndSample": 68482,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 74,
+            "fitSupportStartSample": 65268,
+            "supportStartSample": 65268,
+            "supportEndSample": 69364,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 75,
+            "fitSupportStartSample": 66150,
+            "supportStartSample": 66150,
+            "supportEndSample": 70246,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 76,
+            "fitSupportStartSample": 67032,
+            "supportStartSample": 67032,
+            "supportEndSample": 71128,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 77,
+            "fitSupportStartSample": 67914,
+            "supportStartSample": 67914,
+            "supportEndSample": 72010,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 78,
+            "fitSupportStartSample": 68796,
+            "supportStartSample": 68796,
+            "supportEndSample": 72892,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 79,
+            "fitSupportStartSample": 69678,
+            "supportStartSample": 69678,
+            "supportEndSample": 73774,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 80,
+            "fitSupportStartSample": 70560,
+            "supportStartSample": 70560,
+            "supportEndSample": 74656,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 81,
+            "fitSupportStartSample": 71442,
+            "supportStartSample": 71442,
+            "supportEndSample": 75538,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 82,
+            "fitSupportStartSample": 72324,
+            "supportStartSample": 72324,
+            "supportEndSample": 76420,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 83,
+            "fitSupportStartSample": 73206,
+            "supportStartSample": 73206,
+            "supportEndSample": 77302,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 84,
+            "fitSupportStartSample": 74088,
+            "supportStartSample": 74088,
+            "supportEndSample": 78184,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 85,
+            "fitSupportStartSample": 74970,
+            "supportStartSample": 74970,
+            "supportEndSample": 79066,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 86,
+            "fitSupportStartSample": 75852,
+            "supportStartSample": 75852,
+            "supportEndSample": 79948,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 87,
+            "fitSupportStartSample": 76734,
+            "supportStartSample": 76734,
+            "supportEndSample": 80830,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 88,
+            "fitSupportStartSample": 77616,
+            "supportStartSample": 77616,
+            "supportEndSample": 81712,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 89,
+            "fitSupportStartSample": 78498,
+            "supportStartSample": 78498,
+            "supportEndSample": 82594,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 90,
+            "fitSupportStartSample": 79380,
+            "supportStartSample": 79380,
+            "supportEndSample": 83476,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 91,
+            "fitSupportStartSample": 80262,
+            "supportStartSample": 80262,
+            "supportEndSample": 84358,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 92,
+            "fitSupportStartSample": 81144,
+            "supportStartSample": 81144,
+            "supportEndSample": 85240,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 93,
+            "fitSupportStartSample": 82026,
+            "supportStartSample": 82026,
+            "supportEndSample": 86122,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 94,
+            "fitSupportStartSample": 82908,
+            "supportStartSample": 82908,
+            "supportEndSample": 87004,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 95,
+            "fitSupportStartSample": 83790,
+            "supportStartSample": 83790,
+            "supportEndSample": 87886,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          }
+        ]
+      },
+      "modelMilliseconds": 8.034899999999993,
+      "baselineCaseId": "recorded-0",
+      "rawPitchSha256": "c8c70830a83cedb264abf98cde6be840b0cb29f280f0c7160b10bc66b836df78",
+      "statusCounts": {
+        "no-pitch": 96
+      },
+      "existingPitchQualified": 0,
+      "steadyAndExistingPitchQualified": 0,
+      "externalPitchReferences": "immutable-AN-04B-reuse",
+      "sourceIsolation": "unverified-mixture"
+    },
+    {
+      "caseId": "recorded-1",
+      "spec": {
+        "kind": "recorded",
+        "original": {
+          "path": "C:\\novy\\Plexus Engine (VJ System)\\plexus-engine\\tests\\audio\\Prodigy\\The_Prodigy_More_Music_For_The_Jilted_Generation_-_No_Good_Start_The_Dance_Bad_For_You_Mix_(mp3.pm).mp3",
+          "sha256": "95cb3354d324829ab8f62d7ff8e9679db7c44b146f39d07e21d38bd60fbf8da1",
+          "channels": 2,
+          "frames": 18107183
+        }
+      },
+      "truth": null,
+      "identity": {
+        "pcmSha256": "87db9db6fdaf086749e57d9e6b0c40ef449c90e317d400ed0b666606e6df3588",
+        "sampleRate": 44100,
+        "sampleCount": 88200,
+        "timelineOffsetSeconds": 10
+      },
+      "evidence": {
+        "algorithm": "experimental-harmonic-evidence-v1",
+        "identity": {
+          "pcmSha256": "87db9db6fdaf086749e57d9e6b0c40ef449c90e317d400ed0b666606e6df3588",
+          "sampleRate": 44100,
+          "sampleCount": 88200,
+          "timelineOffsetSeconds": 10
+        },
+        "confidence": null,
+        "groundTruthStatus": false,
+        "sourceIsolation": "unverified-mixture",
+        "consumerUse": "diagnostic-only",
+        "xrScoring": "ineligible",
+        "frames": [
+          {
+            "frameIndex": 0,
+            "fitSupportStartSample": 0,
+            "supportStartSample": 0,
+            "supportEndSample": 4096,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 1,
+            "fitSupportStartSample": 882,
+            "supportStartSample": 882,
+            "supportEndSample": 4978,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 2,
+            "fitSupportStartSample": 1764,
+            "supportStartSample": 1764,
+            "supportEndSample": 5860,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 3,
+            "fitSupportStartSample": 2646,
+            "supportStartSample": 2646,
+            "supportEndSample": 6742,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 4,
+            "fitSupportStartSample": 3528,
+            "supportStartSample": 3528,
+            "supportEndSample": 7624,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 5,
+            "fitSupportStartSample": 4410,
+            "supportStartSample": 4410,
+            "supportEndSample": 8506,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 6,
+            "fitSupportStartSample": 5292,
+            "supportStartSample": 5292,
+            "supportEndSample": 9388,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 7,
+            "fitSupportStartSample": 6174,
+            "supportStartSample": 6174,
+            "supportEndSample": 10270,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 8,
+            "fitSupportStartSample": 7056,
+            "supportStartSample": 7056,
+            "supportEndSample": 11152,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 9,
+            "fitSupportStartSample": 7938,
+            "supportStartSample": 7938,
+            "supportEndSample": 12034,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 10,
+            "fitSupportStartSample": 8820,
+            "supportStartSample": 8820,
+            "supportEndSample": 12916,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 11,
+            "fitSupportStartSample": 9702,
+            "supportStartSample": 9702,
+            "supportEndSample": 13798,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 12,
+            "fitSupportStartSample": 10584,
+            "supportStartSample": 10584,
+            "supportEndSample": 14680,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 13,
+            "fitSupportStartSample": 11466,
+            "supportStartSample": 11466,
+            "supportEndSample": 15562,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 14,
+            "fitSupportStartSample": 12348,
+            "supportStartSample": 12348,
+            "supportEndSample": 16444,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 15,
+            "fitSupportStartSample": 13230,
+            "supportStartSample": 13230,
+            "supportEndSample": 17326,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 16,
+            "fitSupportStartSample": 14112,
+            "supportStartSample": 14112,
+            "supportEndSample": 18208,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 17,
+            "fitSupportStartSample": 14994,
+            "supportStartSample": 14994,
+            "supportEndSample": 19090,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 18,
+            "fitSupportStartSample": 15876,
+            "supportStartSample": 15876,
+            "supportEndSample": 19972,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 19,
+            "fitSupportStartSample": 16758,
+            "supportStartSample": 16758,
+            "supportEndSample": 20854,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 20,
+            "fitSupportStartSample": 17640,
+            "supportStartSample": 17640,
+            "supportEndSample": 21736,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 21,
+            "fitSupportStartSample": 18522,
+            "supportStartSample": 18522,
+            "supportEndSample": 22618,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 22,
+            "fitSupportStartSample": 19404,
+            "supportStartSample": 19404,
+            "supportEndSample": 23500,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 23,
+            "fitSupportStartSample": 20286,
+            "supportStartSample": 20286,
+            "supportEndSample": 24382,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 24,
+            "fitSupportStartSample": 21168,
+            "supportStartSample": 21168,
+            "supportEndSample": 25264,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 25,
+            "fitSupportStartSample": 22050,
+            "supportStartSample": 22050,
+            "supportEndSample": 26146,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 26,
+            "fitSupportStartSample": 22932,
+            "supportStartSample": 22932,
+            "supportEndSample": 27028,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 27,
+            "fitSupportStartSample": 23814,
+            "supportStartSample": 23814,
+            "supportEndSample": 27910,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 28,
+            "fitSupportStartSample": 24696,
+            "supportStartSample": 24696,
+            "supportEndSample": 28792,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 29,
+            "fitSupportStartSample": 25578,
+            "supportStartSample": 25578,
+            "supportEndSample": 29674,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 30,
+            "fitSupportStartSample": 26460,
+            "supportStartSample": 26460,
+            "supportEndSample": 30556,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 31,
+            "fitSupportStartSample": 27342,
+            "supportStartSample": 27342,
+            "supportEndSample": 31438,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 32,
+            "fitSupportStartSample": 28224,
+            "supportStartSample": 28224,
+            "supportEndSample": 32320,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 33,
+            "fitSupportStartSample": 29106,
+            "supportStartSample": 29106,
+            "supportEndSample": 33202,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 34,
+            "fitSupportStartSample": 29988,
+            "supportStartSample": 29988,
+            "supportEndSample": 34084,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 35,
+            "fitSupportStartSample": 30870,
+            "supportStartSample": 30870,
+            "supportEndSample": 34966,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 36,
+            "fitSupportStartSample": 31752,
+            "supportStartSample": 31752,
+            "supportEndSample": 35848,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 37,
+            "fitSupportStartSample": 32634,
+            "supportStartSample": 32634,
+            "supportEndSample": 36730,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 38,
+            "fitSupportStartSample": 33516,
+            "supportStartSample": 33516,
+            "supportEndSample": 37612,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 39,
+            "fitSupportStartSample": 34398,
+            "supportStartSample": 34398,
+            "supportEndSample": 38494,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 40,
+            "fitSupportStartSample": 35280,
+            "supportStartSample": 35280,
+            "supportEndSample": 39376,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 41,
+            "fitSupportStartSample": 36162,
+            "supportStartSample": 36162,
+            "supportEndSample": 40258,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 42,
+            "fitSupportStartSample": 37044,
+            "supportStartSample": 37044,
+            "supportEndSample": 41140,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 43,
+            "fitSupportStartSample": 37926,
+            "supportStartSample": 37926,
+            "supportEndSample": 42022,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 44,
+            "fitSupportStartSample": 38808,
+            "supportStartSample": 38808,
+            "supportEndSample": 42904,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 45,
+            "fitSupportStartSample": 39690,
+            "supportStartSample": 39690,
+            "supportEndSample": 43786,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 46,
+            "fitSupportStartSample": 40572,
+            "supportStartSample": 40572,
+            "supportEndSample": 44668,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 47,
+            "fitSupportStartSample": 41454,
+            "supportStartSample": 41454,
+            "supportEndSample": 45550,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 48,
+            "fitSupportStartSample": 42336,
+            "supportStartSample": 42336,
+            "supportEndSample": 46432,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 49,
+            "fitSupportStartSample": 43218,
+            "supportStartSample": 43218,
+            "supportEndSample": 47314,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 50,
+            "fitSupportStartSample": 44100,
+            "supportStartSample": 44100,
+            "supportEndSample": 48196,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 51,
+            "fitSupportStartSample": 44982,
+            "supportStartSample": 44982,
+            "supportEndSample": 49078,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 52,
+            "fitSupportStartSample": 45864,
+            "supportStartSample": 45864,
+            "supportEndSample": 49960,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 53,
+            "fitSupportStartSample": 46746,
+            "supportStartSample": 46746,
+            "supportEndSample": 50842,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 54,
+            "fitSupportStartSample": 47628,
+            "supportStartSample": 47628,
+            "supportEndSample": 51724,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 55,
+            "fitSupportStartSample": 48510,
+            "supportStartSample": 48510,
+            "supportEndSample": 52606,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 56,
+            "fitSupportStartSample": 49392,
+            "supportStartSample": 49392,
+            "supportEndSample": 53488,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 57,
+            "fitSupportStartSample": 50274,
+            "supportStartSample": 50274,
+            "supportEndSample": 54370,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 58,
+            "fitSupportStartSample": 51156,
+            "supportStartSample": 51156,
+            "supportEndSample": 55252,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 59,
+            "fitSupportStartSample": 52038,
+            "supportStartSample": 52038,
+            "supportEndSample": 56134,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 60,
+            "fitSupportStartSample": 52920,
+            "supportStartSample": 52920,
+            "supportEndSample": 57016,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 61,
+            "fitSupportStartSample": 53802,
+            "supportStartSample": 53802,
+            "supportEndSample": 57898,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 62,
+            "fitSupportStartSample": 54684,
+            "supportStartSample": 54684,
+            "supportEndSample": 58780,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 63,
+            "fitSupportStartSample": 55566,
+            "supportStartSample": 55566,
+            "supportEndSample": 59662,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 64,
+            "fitSupportStartSample": 56448,
+            "supportStartSample": 56448,
+            "supportEndSample": 60544,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 65,
+            "fitSupportStartSample": 57330,
+            "supportStartSample": 57330,
+            "supportEndSample": 61426,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 66,
+            "fitSupportStartSample": 58212,
+            "supportStartSample": 58212,
+            "supportEndSample": 62308,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 67,
+            "fitSupportStartSample": 59094,
+            "supportStartSample": 59094,
+            "supportEndSample": 63190,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 68,
+            "fitSupportStartSample": 59976,
+            "supportStartSample": 59976,
+            "supportEndSample": 64072,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 69,
+            "fitSupportStartSample": 60858,
+            "supportStartSample": 60858,
+            "supportEndSample": 64954,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 70,
+            "fitSupportStartSample": 61740,
+            "supportStartSample": 61740,
+            "supportEndSample": 65836,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 71,
+            "fitSupportStartSample": 62622,
+            "supportStartSample": 62622,
+            "supportEndSample": 66718,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 72,
+            "fitSupportStartSample": 63504,
+            "supportStartSample": 63504,
+            "supportEndSample": 67600,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 73,
+            "fitSupportStartSample": 64386,
+            "supportStartSample": 64386,
+            "supportEndSample": 68482,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 74,
+            "fitSupportStartSample": 65268,
+            "supportStartSample": 65268,
+            "supportEndSample": 69364,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 75,
+            "fitSupportStartSample": 66150,
+            "supportStartSample": 66150,
+            "supportEndSample": 70246,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 76,
+            "fitSupportStartSample": 67032,
+            "supportStartSample": 67032,
+            "supportEndSample": 71128,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 77,
+            "fitSupportStartSample": 67914,
+            "supportStartSample": 67914,
+            "supportEndSample": 72010,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 78,
+            "fitSupportStartSample": 68796,
+            "supportStartSample": 68796,
+            "supportEndSample": 72892,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 79,
+            "fitSupportStartSample": 69678,
+            "supportStartSample": 69678,
+            "supportEndSample": 73774,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 80,
+            "fitSupportStartSample": 70560,
+            "supportStartSample": 70560,
+            "supportEndSample": 74656,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 81,
+            "fitSupportStartSample": 71442,
+            "supportStartSample": 71442,
+            "supportEndSample": 75538,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 82,
+            "fitSupportStartSample": 72324,
+            "supportStartSample": 72324,
+            "supportEndSample": 76420,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 83,
+            "fitSupportStartSample": 73206,
+            "supportStartSample": 73206,
+            "supportEndSample": 77302,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 84,
+            "fitSupportStartSample": 74088,
+            "supportStartSample": 74088,
+            "supportEndSample": 78184,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 85,
+            "fitSupportStartSample": 74970,
+            "supportStartSample": 74970,
+            "supportEndSample": 79066,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 86,
+            "fitSupportStartSample": 75852,
+            "supportStartSample": 75852,
+            "supportEndSample": 79948,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 87,
+            "fitSupportStartSample": 76734,
+            "supportStartSample": 76734,
+            "supportEndSample": 80830,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 88,
+            "fitSupportStartSample": 77616,
+            "supportStartSample": 77616,
+            "supportEndSample": 81712,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 89,
+            "fitSupportStartSample": 78498,
+            "supportStartSample": 78498,
+            "supportEndSample": 82594,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 90,
+            "fitSupportStartSample": 79380,
+            "supportStartSample": 79380,
+            "supportEndSample": 83476,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 91,
+            "fitSupportStartSample": 80262,
+            "supportStartSample": 80262,
+            "supportEndSample": 84358,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 92,
+            "fitSupportStartSample": 81144,
+            "supportStartSample": 81144,
+            "supportEndSample": 85240,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 93,
+            "fitSupportStartSample": 82026,
+            "supportStartSample": 82026,
+            "supportEndSample": 86122,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 94,
+            "fitSupportStartSample": 82908,
+            "supportStartSample": 82908,
+            "supportEndSample": 87004,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 95,
+            "fitSupportStartSample": 83790,
+            "supportStartSample": 83790,
+            "supportEndSample": 87886,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          }
+        ]
+      },
+      "modelMilliseconds": 6.992200000000025,
+      "baselineCaseId": "recorded-1",
+      "rawPitchSha256": "bb34bf484bb3d322c967d6101ccba6e006589de106c671b4f47139844cd39260",
+      "statusCounts": {
+        "no-pitch": 96
+      },
+      "existingPitchQualified": 0,
+      "steadyAndExistingPitchQualified": 0,
+      "externalPitchReferences": "immutable-AN-04B-reuse",
+      "sourceIsolation": "unverified-mixture"
+    },
+    {
+      "caseId": "recorded-2",
+      "spec": {
+        "kind": "recorded",
+        "original": {
+          "path": "C:\\novy\\Plexus Engine (VJ System)\\plexus-engine\\tests\\audio\\Prodigy\\The_Prodigy_More_Music_For_The_Jilted_Generation_-_Scienide_(mp3.pm).mp3",
+          "sha256": "805a5c2038c8be448a33350c8d1f13e35c04998c1999008c511a535b8c307ddd",
+          "channels": 2,
+          "frames": 15455279
+        }
+      },
+      "truth": null,
+      "identity": {
+        "pcmSha256": "5c8042fa15c88a1e52c1f4bea0811947c802904ce6f646b5bcf675ded3b9fec4",
+        "sampleRate": 44100,
+        "sampleCount": 88200,
+        "timelineOffsetSeconds": 10
+      },
+      "evidence": {
+        "algorithm": "experimental-harmonic-evidence-v1",
+        "identity": {
+          "pcmSha256": "5c8042fa15c88a1e52c1f4bea0811947c802904ce6f646b5bcf675ded3b9fec4",
+          "sampleRate": 44100,
+          "sampleCount": 88200,
+          "timelineOffsetSeconds": 10
+        },
+        "confidence": null,
+        "groundTruthStatus": false,
+        "sourceIsolation": "unverified-mixture",
+        "consumerUse": "diagnostic-only",
+        "xrScoring": "ineligible",
+        "frames": [
+          {
+            "frameIndex": 0,
+            "fitSupportStartSample": 0,
+            "supportStartSample": 0,
+            "supportEndSample": 4096,
+            "consecutiveStableFrames": 1,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.788686451457262,
+              "heldOutResidualFraction": 0.9087153904948562,
+              "independentColumnFitResidual": 0.7896901228436473,
+              "independentColumnHeldOutResidual": 0.9060487111531235,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 1,
+            "fitSupportStartSample": 882,
+            "supportStartSample": 882,
+            "supportEndSample": 4978,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 2,
+            "fitSupportStartSample": 1764,
+            "supportStartSample": 1764,
+            "supportEndSample": 5860,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 3,
+            "fitSupportStartSample": 2646,
+            "supportStartSample": 2646,
+            "supportEndSample": 6742,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 4,
+            "fitSupportStartSample": 3528,
+            "supportStartSample": 3528,
+            "supportEndSample": 7624,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 5,
+            "fitSupportStartSample": 4410,
+            "supportStartSample": 4410,
+            "supportEndSample": 8506,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 6,
+            "fitSupportStartSample": 5292,
+            "supportStartSample": 5292,
+            "supportEndSample": 9388,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 7,
+            "fitSupportStartSample": 6174,
+            "supportStartSample": 6174,
+            "supportEndSample": 10270,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 8,
+            "fitSupportStartSample": 7056,
+            "supportStartSample": 7056,
+            "supportEndSample": 11152,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 9,
+            "fitSupportStartSample": 7938,
+            "supportStartSample": 7938,
+            "supportEndSample": 12034,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 10,
+            "fitSupportStartSample": 8820,
+            "supportStartSample": 8820,
+            "supportEndSample": 12916,
+            "consecutiveStableFrames": 1,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.5616433727109281,
+              "heldOutResidualFraction": 0.8461239081401267,
+              "independentColumnFitResidual": 0.5629852940127804,
+              "independentColumnHeldOutResidual": 0.8461503192274185,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 11,
+            "fitSupportStartSample": 9702,
+            "supportStartSample": 9702,
+            "supportEndSample": 13798,
+            "consecutiveStableFrames": 2,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.6914825419414403,
+              "heldOutResidualFraction": 0.884602262993761,
+              "independentColumnFitResidual": 0.6928975282193994,
+              "independentColumnHeldOutResidual": 0.8854072865609905,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 12,
+            "fitSupportStartSample": 10584,
+            "supportStartSample": 8820,
+            "supportEndSample": 14680,
+            "consecutiveStableFrames": 3,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.745000663404999,
+              "heldOutResidualFraction": 0.8948605384285861,
+              "independentColumnFitResidual": 0.7460259563290959,
+              "independentColumnHeldOutResidual": 0.8988858682314769,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 13,
+            "fitSupportStartSample": 11466,
+            "supportStartSample": 9702,
+            "supportEndSample": 15562,
+            "consecutiveStableFrames": 4,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.8165028850299496,
+              "heldOutResidualFraction": 0.7628997114178631,
+              "independentColumnFitResidual": 0.817506112367316,
+              "independentColumnHeldOutResidual": 0.7645846176390982,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 14,
+            "fitSupportStartSample": 12348,
+            "supportStartSample": 10584,
+            "supportEndSample": 16444,
+            "consecutiveStableFrames": 5,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.8173445428551034,
+              "heldOutResidualFraction": 0.6937065602210309,
+              "independentColumnFitResidual": 0.8181874507821101,
+              "independentColumnHeldOutResidual": 0.689156214142714,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 15,
+            "fitSupportStartSample": 13230,
+            "supportStartSample": 11466,
+            "supportEndSample": 17326,
+            "consecutiveStableFrames": 6,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.7521646351732454,
+              "heldOutResidualFraction": 0.921467510037135,
+              "independentColumnFitResidual": 0.7533033551321352,
+              "independentColumnHeldOutResidual": 0.9195848404054789,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 16,
+            "fitSupportStartSample": 14112,
+            "supportStartSample": 12348,
+            "supportEndSample": 18208,
+            "consecutiveStableFrames": 7,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.7242070055746966,
+              "heldOutResidualFraction": 1.1101340460490756,
+              "independentColumnFitResidual": 0.7253083516895795,
+              "independentColumnHeldOutResidual": 1.1101669912784111,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 17,
+            "fitSupportStartSample": 14994,
+            "supportStartSample": 13230,
+            "supportEndSample": 19090,
+            "consecutiveStableFrames": 8,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.8377713412148494,
+              "heldOutResidualFraction": 1.0607890936261093,
+              "independentColumnFitResidual": 0.8383479041920388,
+              "independentColumnHeldOutResidual": 1.05865456338908,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 18,
+            "fitSupportStartSample": 15876,
+            "supportStartSample": 14112,
+            "supportEndSample": 19972,
+            "consecutiveStableFrames": 9,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.915865114641391,
+              "heldOutResidualFraction": 1.1148470088024824,
+              "independentColumnFitResidual": 0.9163144327691816,
+              "independentColumnHeldOutResidual": 1.119199942810772,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 19,
+            "fitSupportStartSample": 16758,
+            "supportStartSample": 16758,
+            "supportEndSample": 20854,
+            "consecutiveStableFrames": 1,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.39169195173219895,
+              "heldOutResidualFraction": 4.547009098073676,
+              "independentColumnFitResidual": 0.39189306549420666,
+              "independentColumnHeldOutResidual": 4.55121616236569,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 20,
+            "fitSupportStartSample": 17640,
+            "supportStartSample": 17640,
+            "supportEndSample": 21736,
+            "consecutiveStableFrames": 2,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.5358807167685242,
+              "heldOutResidualFraction": 3.4576036062722673,
+              "independentColumnFitResidual": 0.5359874197260109,
+              "independentColumnHeldOutResidual": 3.4187999349369984,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 21,
+            "fitSupportStartSample": 18522,
+            "supportStartSample": 18522,
+            "supportEndSample": 22618,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 22,
+            "fitSupportStartSample": 19404,
+            "supportStartSample": 19404,
+            "supportEndSample": 23500,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 23,
+            "fitSupportStartSample": 20286,
+            "supportStartSample": 20286,
+            "supportEndSample": 24382,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 24,
+            "fitSupportStartSample": 21168,
+            "supportStartSample": 21168,
+            "supportEndSample": 25264,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 25,
+            "fitSupportStartSample": 22050,
+            "supportStartSample": 22050,
+            "supportEndSample": 26146,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 26,
+            "fitSupportStartSample": 22932,
+            "supportStartSample": 22932,
+            "supportEndSample": 27028,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 27,
+            "fitSupportStartSample": 23814,
+            "supportStartSample": 23814,
+            "supportEndSample": 27910,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 28,
+            "fitSupportStartSample": 24696,
+            "supportStartSample": 24696,
+            "supportEndSample": 28792,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 29,
+            "fitSupportStartSample": 25578,
+            "supportStartSample": 25578,
+            "supportEndSample": 29674,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 30,
+            "fitSupportStartSample": 26460,
+            "supportStartSample": 26460,
+            "supportEndSample": 30556,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 31,
+            "fitSupportStartSample": 27342,
+            "supportStartSample": 27342,
+            "supportEndSample": 31438,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 32,
+            "fitSupportStartSample": 28224,
+            "supportStartSample": 28224,
+            "supportEndSample": 32320,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 33,
+            "fitSupportStartSample": 29106,
+            "supportStartSample": 29106,
+            "supportEndSample": 33202,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 34,
+            "fitSupportStartSample": 29988,
+            "supportStartSample": 29988,
+            "supportEndSample": 34084,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 35,
+            "fitSupportStartSample": 30870,
+            "supportStartSample": 30870,
+            "supportEndSample": 34966,
+            "consecutiveStableFrames": 1,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.6649250240287908,
+              "heldOutResidualFraction": 0.8693659327159146,
+              "independentColumnFitResidual": 0.66576760662906,
+              "independentColumnHeldOutResidual": 0.8683207018808421,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 36,
+            "fitSupportStartSample": 31752,
+            "supportStartSample": 31752,
+            "supportEndSample": 35848,
+            "consecutiveStableFrames": 2,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.7610021450668898,
+              "heldOutResidualFraction": 0.8608955699590345,
+              "independentColumnFitResidual": 0.7623347469939301,
+              "independentColumnHeldOutResidual": 0.8619001129619251,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 37,
+            "fitSupportStartSample": 32634,
+            "supportStartSample": 30870,
+            "supportEndSample": 36730,
+            "consecutiveStableFrames": 3,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.7736761556663979,
+              "heldOutResidualFraction": 0.8716946473372238,
+              "independentColumnFitResidual": 0.7747375146828103,
+              "independentColumnHeldOutResidual": 0.8778251396980136,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 38,
+            "fitSupportStartSample": 33516,
+            "supportStartSample": 31752,
+            "supportEndSample": 37612,
+            "consecutiveStableFrames": 4,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.8203832542557902,
+              "heldOutResidualFraction": 0.7687406604279567,
+              "independentColumnFitResidual": 0.8214939660502478,
+              "independentColumnHeldOutResidual": 0.7705602081486177,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 39,
+            "fitSupportStartSample": 34398,
+            "supportStartSample": 32634,
+            "supportEndSample": 38494,
+            "consecutiveStableFrames": 5,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.8049547691960625,
+              "heldOutResidualFraction": 0.7343877829568422,
+              "independentColumnFitResidual": 0.8059517063709012,
+              "independentColumnHeldOutResidual": 0.7304781574296986,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 40,
+            "fitSupportStartSample": 35280,
+            "supportStartSample": 33516,
+            "supportEndSample": 39376,
+            "consecutiveStableFrames": 6,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.7521676148874392,
+              "heldOutResidualFraction": 0.9324862857732606,
+              "independentColumnFitResidual": 0.7533402276456002,
+              "independentColumnHeldOutResidual": 0.9279475321194257,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 41,
+            "fitSupportStartSample": 36162,
+            "supportStartSample": 36162,
+            "supportEndSample": 40258,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 42,
+            "fitSupportStartSample": 37044,
+            "supportStartSample": 37044,
+            "supportEndSample": 41140,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 43,
+            "fitSupportStartSample": 37926,
+            "supportStartSample": 37926,
+            "supportEndSample": 42022,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 44,
+            "fitSupportStartSample": 38808,
+            "supportStartSample": 38808,
+            "supportEndSample": 42904,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 45,
+            "fitSupportStartSample": 39690,
+            "supportStartSample": 39690,
+            "supportEndSample": 43786,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 46,
+            "fitSupportStartSample": 40572,
+            "supportStartSample": 40572,
+            "supportEndSample": 44668,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 47,
+            "fitSupportStartSample": 41454,
+            "supportStartSample": 41454,
+            "supportEndSample": 45550,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 48,
+            "fitSupportStartSample": 42336,
+            "supportStartSample": 42336,
+            "supportEndSample": 46432,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 49,
+            "fitSupportStartSample": 43218,
+            "supportStartSample": 43218,
+            "supportEndSample": 47314,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 50,
+            "fitSupportStartSample": 44100,
+            "supportStartSample": 44100,
+            "supportEndSample": 48196,
+            "consecutiveStableFrames": 1,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.7447092276674927,
+              "heldOutResidualFraction": 0.913448005757905,
+              "independentColumnFitResidual": 0.7454427743617256,
+              "independentColumnHeldOutResidual": 0.9140848897041,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 51,
+            "fitSupportStartSample": 44982,
+            "supportStartSample": 44982,
+            "supportEndSample": 49078,
+            "consecutiveStableFrames": 2,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.8150669374377632,
+              "heldOutResidualFraction": 0.8840932551964866,
+              "independentColumnFitResidual": 0.8160199613139795,
+              "independentColumnHeldOutResidual": 0.8844928209174902,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 52,
+            "fitSupportStartSample": 45864,
+            "supportStartSample": 44100,
+            "supportEndSample": 49960,
+            "consecutiveStableFrames": 3,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.8245772239971688,
+              "heldOutResidualFraction": 0.8831470391301185,
+              "independentColumnFitResidual": 0.8254526900824317,
+              "independentColumnHeldOutResidual": 0.8902428682544581,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 53,
+            "fitSupportStartSample": 46746,
+            "supportStartSample": 44982,
+            "supportEndSample": 50842,
+            "consecutiveStableFrames": 4,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.8445913478722361,
+              "heldOutResidualFraction": 0.807486993627442,
+              "independentColumnFitResidual": 0.8456003103386632,
+              "independentColumnHeldOutResidual": 0.8094677307197674,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 54,
+            "fitSupportStartSample": 47628,
+            "supportStartSample": 45864,
+            "supportEndSample": 51724,
+            "consecutiveStableFrames": 5,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.8254083339689657,
+              "heldOutResidualFraction": 0.7680906714398096,
+              "independentColumnFitResidual": 0.8263191711050816,
+              "independentColumnHeldOutResidual": 0.7649070095439086,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 55,
+            "fitSupportStartSample": 48510,
+            "supportStartSample": 46746,
+            "supportEndSample": 52606,
+            "consecutiveStableFrames": 6,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.7722465758777319,
+              "heldOutResidualFraction": 0.9442372547128326,
+              "independentColumnFitResidual": 0.7733749110039945,
+              "independentColumnHeldOutResidual": 0.9399489715115295,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 56,
+            "fitSupportStartSample": 49392,
+            "supportStartSample": 47628,
+            "supportEndSample": 53488,
+            "consecutiveStableFrames": 7,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.770183385467152,
+              "heldOutResidualFraction": 1.0887283899321416,
+              "independentColumnFitResidual": 0.7709466274135743,
+              "independentColumnHeldOutResidual": 1.0873196219252748,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 57,
+            "fitSupportStartSample": 50274,
+            "supportStartSample": 48510,
+            "supportEndSample": 54370,
+            "consecutiveStableFrames": 8,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.866825198893101,
+              "heldOutResidualFraction": 1.0652529811871163,
+              "independentColumnFitResidual": 0.8674428016115616,
+              "independentColumnHeldOutResidual": 1.0642131945555962,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 58,
+            "fitSupportStartSample": 51156,
+            "supportStartSample": 49392,
+            "supportEndSample": 55252,
+            "consecutiveStableFrames": 9,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.9287049319804244,
+              "heldOutResidualFraction": 1.0436136169126609,
+              "independentColumnFitResidual": 0.9290286501351279,
+              "independentColumnHeldOutResidual": 1.044428421517246,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 59,
+            "fitSupportStartSample": 52038,
+            "supportStartSample": 52038,
+            "supportEndSample": 56134,
+            "consecutiveStableFrames": 1,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.3205636064901241,
+              "heldOutResidualFraction": 4.159703238822397,
+              "independentColumnFitResidual": 0.32078385296086337,
+              "independentColumnHeldOutResidual": 4.174201618203748,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 60,
+            "fitSupportStartSample": 52920,
+            "supportStartSample": 52920,
+            "supportEndSample": 57016,
+            "consecutiveStableFrames": 2,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.45350352197333466,
+              "heldOutResidualFraction": 2.6457645993270242,
+              "independentColumnFitResidual": 0.4535703774256077,
+              "independentColumnHeldOutResidual": 2.616283375943607,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 61,
+            "fitSupportStartSample": 53802,
+            "supportStartSample": 53802,
+            "supportEndSample": 57898,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 62,
+            "fitSupportStartSample": 54684,
+            "supportStartSample": 54684,
+            "supportEndSample": 58780,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 63,
+            "fitSupportStartSample": 55566,
+            "supportStartSample": 55566,
+            "supportEndSample": 59662,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 64,
+            "fitSupportStartSample": 56448,
+            "supportStartSample": 56448,
+            "supportEndSample": 60544,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 65,
+            "fitSupportStartSample": 57330,
+            "supportStartSample": 57330,
+            "supportEndSample": 61426,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 66,
+            "fitSupportStartSample": 58212,
+            "supportStartSample": 58212,
+            "supportEndSample": 62308,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 67,
+            "fitSupportStartSample": 59094,
+            "supportStartSample": 59094,
+            "supportEndSample": 63190,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 68,
+            "fitSupportStartSample": 59976,
+            "supportStartSample": 59976,
+            "supportEndSample": 64072,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 69,
+            "fitSupportStartSample": 60858,
+            "supportStartSample": 60858,
+            "supportEndSample": 64954,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 70,
+            "fitSupportStartSample": 61740,
+            "supportStartSample": 61740,
+            "supportEndSample": 65836,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 71,
+            "fitSupportStartSample": 62622,
+            "supportStartSample": 62622,
+            "supportEndSample": 66718,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 72,
+            "fitSupportStartSample": 63504,
+            "supportStartSample": 63504,
+            "supportEndSample": 67600,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 73,
+            "fitSupportStartSample": 64386,
+            "supportStartSample": 64386,
+            "supportEndSample": 68482,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 74,
+            "fitSupportStartSample": 65268,
+            "supportStartSample": 65268,
+            "supportEndSample": 69364,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 75,
+            "fitSupportStartSample": 66150,
+            "supportStartSample": 66150,
+            "supportEndSample": 70246,
+            "consecutiveStableFrames": 1,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.6949827652149759,
+              "heldOutResidualFraction": 0.8738237408418891,
+              "independentColumnFitResidual": 0.6961617553244348,
+              "independentColumnHeldOutResidual": 0.8733406311026913,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 76,
+            "fitSupportStartSample": 67032,
+            "supportStartSample": 67032,
+            "supportEndSample": 71128,
+            "consecutiveStableFrames": 2,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.7925582519415606,
+              "heldOutResidualFraction": 0.8513617595002811,
+              "independentColumnFitResidual": 0.7934854349248673,
+              "independentColumnHeldOutResidual": 0.8510570838866219,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 77,
+            "fitSupportStartSample": 67914,
+            "supportStartSample": 66150,
+            "supportEndSample": 72010,
+            "consecutiveStableFrames": 3,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.7897429226451406,
+              "heldOutResidualFraction": 0.9154650946929096,
+              "independentColumnFitResidual": 0.7911573585793387,
+              "independentColumnHeldOutResidual": 0.9215395913031846,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 78,
+            "fitSupportStartSample": 68796,
+            "supportStartSample": 67032,
+            "supportEndSample": 72892,
+            "consecutiveStableFrames": 4,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.8225509223943548,
+              "heldOutResidualFraction": 0.8226277519072452,
+              "independentColumnFitResidual": 0.8233457072379052,
+              "independentColumnHeldOutResidual": 0.8216190636314824,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 79,
+            "fitSupportStartSample": 69678,
+            "supportStartSample": 67914,
+            "supportEndSample": 73774,
+            "consecutiveStableFrames": 5,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.811257107183551,
+              "heldOutResidualFraction": 0.73347371267665,
+              "independentColumnFitResidual": 0.8121351703874367,
+              "independentColumnHeldOutResidual": 0.730750517973395,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 80,
+            "fitSupportStartSample": 70560,
+            "supportStartSample": 68796,
+            "supportEndSample": 74656,
+            "consecutiveStableFrames": 6,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.7666855020239676,
+              "heldOutResidualFraction": 0.9362162532784858,
+              "independentColumnFitResidual": 0.7675023691829074,
+              "independentColumnHeldOutResidual": 0.9255624377967956,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 81,
+            "fitSupportStartSample": 71442,
+            "supportStartSample": 71442,
+            "supportEndSample": 75538,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 82,
+            "fitSupportStartSample": 72324,
+            "supportStartSample": 72324,
+            "supportEndSample": 76420,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 83,
+            "fitSupportStartSample": 73206,
+            "supportStartSample": 73206,
+            "supportEndSample": 77302,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 84,
+            "fitSupportStartSample": 74088,
+            "supportStartSample": 74088,
+            "supportEndSample": 78184,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 85,
+            "fitSupportStartSample": 74970,
+            "supportStartSample": 74970,
+            "supportEndSample": 79066,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 86,
+            "fitSupportStartSample": 75852,
+            "supportStartSample": 75852,
+            "supportEndSample": 79948,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 87,
+            "fitSupportStartSample": 76734,
+            "supportStartSample": 76734,
+            "supportEndSample": 80830,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 88,
+            "fitSupportStartSample": 77616,
+            "supportStartSample": 77616,
+            "supportEndSample": 81712,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 89,
+            "fitSupportStartSample": 78498,
+            "supportStartSample": 78498,
+            "supportEndSample": 82594,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 90,
+            "fitSupportStartSample": 79380,
+            "supportStartSample": 79380,
+            "supportEndSample": 83476,
+            "consecutiveStableFrames": 0,
+            "residual": null,
+            "status": "no-pitch"
+          },
+          {
+            "frameIndex": 91,
+            "fitSupportStartSample": 80262,
+            "supportStartSample": 80262,
+            "supportEndSample": 84358,
+            "consecutiveStableFrames": 1,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.8455425836446528,
+              "heldOutResidualFraction": 0.8555215224765087,
+              "independentColumnFitResidual": 0.8461807339667635,
+              "independentColumnHeldOutResidual": 0.8542530466314507,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 92,
+            "fitSupportStartSample": 81144,
+            "supportStartSample": 81144,
+            "supportEndSample": 85240,
+            "consecutiveStableFrames": 2,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.828636324508546,
+              "heldOutResidualFraction": 0.8855018504172545,
+              "independentColumnFitResidual": 0.8299967586225276,
+              "independentColumnHeldOutResidual": 0.8923997098440567,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 93,
+            "fitSupportStartSample": 82026,
+            "supportStartSample": 80262,
+            "supportEndSample": 86122,
+            "consecutiveStableFrames": 3,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.8306583537779331,
+              "heldOutResidualFraction": 0.8273544807155421,
+              "independentColumnFitResidual": 0.8312611323176029,
+              "independentColumnHeldOutResidual": 0.8271319926241913,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 94,
+            "fitSupportStartSample": 82908,
+            "supportStartSample": 81144,
+            "supportEndSample": 87004,
+            "consecutiveStableFrames": 4,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.8155673743797175,
+              "heldOutResidualFraction": 0.7585964615389015,
+              "independentColumnFitResidual": 0.816593321949385,
+              "independentColumnHeldOutResidual": 0.7581588601826968,
+              "status": "available"
+            },
+            "status": "large-residual"
+          },
+          {
+            "frameIndex": 95,
+            "fitSupportStartSample": 83790,
+            "supportStartSample": 82026,
+            "supportEndSample": 87886,
+            "consecutiveStableFrames": 5,
+            "residual": {
+              "harmonics": 8,
+              "trainingSamples": 2730,
+              "fitResidualFraction": 0.7655430056559238,
+              "heldOutResidualFraction": 0.9458867124830489,
+              "independentColumnFitResidual": 0.7661920772997174,
+              "independentColumnHeldOutResidual": 0.9388587197290988,
+              "status": "available"
+            },
+            "status": "large-residual"
+          }
+        ]
+      },
+      "modelMilliseconds": 370.2555000000001,
+      "baselineCaseId": "recorded-2",
+      "rawPitchSha256": "0dbe6f2cae72a8e43040be9e30dd90369c2d06e174f795705e97b1edb0568bbb",
+      "statusCounts": {
+        "large-residual": 40,
+        "no-pitch": 56
+      },
+      "existingPitchQualified": 38,
+      "steadyAndExistingPitchQualified": 0,
+      "externalPitchReferences": "immutable-AN-04B-reuse",
+      "sourceIsolation": "unverified-mixture"
+    }
+  ],
+  "arithmetic": {
+    "kind": "actual-two-library-arithmetic",
+    "versions": {
+      "numpy": "2.2.6",
+      "scipy": "1.15.3"
+    },
+    "inputSha256": "2de17e9fd1b885bc2ec2fe400475d9650d097a0282e161d3db04abe75cfa6757",
+    "cutoff": 1e-10,
+    "scipyDriver": "gelsd",
+    "sources": [
+      {
+        "path": "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.venv\\Lib\\site-packages\\numpy\\linalg\\_linalg.py",
+        "sha256": "caa02a0fb04547f0bccb5238049f4a0226249a1509d7af37839850a31bd88e5e"
+      },
+      {
+        "path": "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.venv\\Lib\\site-packages\\scipy\\linalg\\_basic.py",
+        "sha256": "bc5652fe071c25864bbd0accdd40d85b7085840a506ad6dfe5f8ed3e7cab8b59"
+      }
+    ],
+    "binaries": [
+      {
+        "path": "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.venv\\Lib\\site-packages\\numpy.libs\\libscipy_openblas64_-13e2df515630b4a41f92893938845698.dll",
+        "sha256": "6547e9fb966e9773caee2755e91a8bf4d6f3a2f0eebf9646b0158f8675ea4ab5"
+      },
+      {
+        "path": "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.venv\\Lib\\site-packages\\numpy.libs\\msvcp140-263139962577ecda4cd9469ca360a746.dll",
+        "sha256": "a4c2229bdc2a2a630acdc095b4d86008e5c3e3bc7773174354f3da4f5beb9cde"
+      },
+      {
+        "path": "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.venv\\Lib\\site-packages\\scipy.libs\\libscipy_openblas-f07f5a5d207a3a47104dca54d6d0c86a.dll",
+        "sha256": "6b2103f2ae4d8547998b5d188e9801fba6cb12404ae8e4bfff319e8cc1949000"
+      }
+    ],
+    "frames": [
+      {
+        "caseId": "recorded-2",
+        "frameIndex": 0,
+        "frequencyHz": 85.59751084310034,
+        "support": [
+          0,
+          4096
+        ],
+        "pcmSha256": "5c8042fa15c88a1e52c1f4bea0811947c802904ce6f646b5bcf675ded3b9fec4",
+        "trainingSamples": 2730,
+        "columns": 17,
+        "results": {
+          "numpy": {
+            "rank": 17,
+            "fitResidualFraction": 0.7886864514572635,
+            "heldOutResidualFraction": 0.908715390494858
+          },
+          "scipy": {
+            "rank": 17,
+            "fitResidualFraction": 0.7886864514572635,
+            "heldOutResidualFraction": 0.908715390494858
+          }
+        },
+        "maxAbsoluteDifference": 0,
+        "arithmeticAgreement": true,
+        "musicalTruth": false,
+        "plexusMaxDifference": 1.887379141862766e-15
+      },
+      {
+        "caseId": "recorded-2",
+        "frameIndex": 95,
+        "frequencyHz": 85.59841917165674,
+        "support": [
+          83790,
+          87886
+        ],
+        "pcmSha256": "5c8042fa15c88a1e52c1f4bea0811947c802904ce6f646b5bcf675ded3b9fec4",
+        "trainingSamples": 2730,
+        "columns": 17,
+        "results": {
+          "numpy": {
+            "rank": 17,
+            "fitResidualFraction": 0.7655430056559244,
+            "heldOutResidualFraction": 0.9458867124830473
+          },
+          "scipy": {
+            "rank": 17,
+            "fitResidualFraction": 0.7655430056559244,
+            "heldOutResidualFraction": 0.9458867124830473
+          }
+        },
+        "maxAbsoluteDifference": 0,
+        "arithmeticAgreement": true,
+        "musicalTruth": false,
+        "plexusMaxDifference": 1.5543122344752192e-15
+      }
+    ],
+    "sampleCoverage": "first/last available primary frame per case",
+    "sourceIsolationReference": "unavailable",
+    "rawOutputSha256": "8773f143bcc13a8d5ac27b5040595844878a8e5d7e898abc050005194a79f88e",
+    "command": [
+      "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.venv\\Scripts\\python.exe",
+      "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\diagnostics\\check_an04c_projection.py",
+      "--input",
+      "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.cache\\an04c\\fb23ab74-c8ab-4e04-9d4b-e6b62d43c8ec\\arithmetic-input.json",
+      "--output",
+      "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.cache\\an04c\\fb23ab74-c8ab-4e04-9d4b-e6b62d43c8ec\\arithmetic-output.json"
+    ]
+  },
+  "sourceIsolationReference": "unavailable",
+  "recordedAccuracy": null,
+  "confidence": null,
+  "productionPromotion": false
+}

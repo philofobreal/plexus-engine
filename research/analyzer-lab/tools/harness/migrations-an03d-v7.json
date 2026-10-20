@@ -1,0 +1,16 @@
+[
+  {
+    "path": "tests/fixtures/analyzer/analysis-result.schema.json",
+    "predecessorSha256": "32dc30cc75a506ac581eb38baa814b6b4b5fae6285966dafc4a918fe76a88851",
+    "replacementSha256": "b2e9a3947a1325aa0032012bee477c000b964742c334793e27b5a1201e5eb4f0",
+    "reviewedBy": "root integration owner",
+    "reviewedReason": "Only adds strict confirmed-difference-v5 definition and reference. Reversing both yields identical v6 JSON; existing definitions and required fields remain intact. Actual mixed v1/v2/v5 payload is independently schema-validated. No failure exclusion or baseline refresh; cumulative full validation follows."
+  },
+  {
+    "path": "tests/analyzer-residual-onsets.test.mjs",
+    "predecessorSha256": "c03ce56e26f66c4b7234f186b90e26ac6484317c4f016c7eabb1e0cdd0780cca",
+    "replacementSha256": "c18b54db6560ba7389f3026b58cea1c8c55bda5268b5a61899bf0059ab35a38d",
+    "reviewedBy": "root integration owner",
+    "reviewedReason": "Version 5 is now deliberately supported; move only its unsupported numeric example to 6. All other v4 assertions remain identical. New v5 tests explicitly cover supported 5 and unsupported 6. Exact predecessor retained in v6 ZIP. No failure exclusion or baseline refresh; cumulative full validation follows."
+  }
+]

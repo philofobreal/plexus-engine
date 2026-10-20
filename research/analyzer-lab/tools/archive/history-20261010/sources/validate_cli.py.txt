@@ -1,0 +1,46 @@
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+from plexus_analyzer_lab.audio import synthetic
+from plexus_analyzer_lab.hashing import content_hash
+
+root = Path(__file__).resolve().parents[3]
+lab = root / 'research/analyzer-lab'
+tmp = lab / 'tmp'
+tracks = []
+for name, kind, bpm, split in [('click120','click',120,'train'), ('pulse128','pulse',128,'validation'), ('silence','silence',120,'test')]:
+    path = tmp / f'{name}.wav'
+    synthetic(path,kind,bpm,8 if kind != 'silence' else 2)
+    tracks.append({'trackId':name,'split':split,'audio':str(path),'contentHash':content_hash(path),'stems':[], 'midi':None,
+                   'annotations':[], 'license':'generated-in-this-lab', 'licenseSource':'audio.synthetic',
+                   'allowedResearchUsage':'synthetic validation only', 'tags':['synthetic',kind]})
+manifest = tmp / 'synthetic.dataset.json'
+manifest.write_text(json.dumps({'schemaVersion':'1.0.0','datasetId':'synthetic-validation','datasetVersion':'1','tracks':tracks}),encoding='utf-8')
+
+def cli(*args):
+    result = subprocess.run([sys.executable,'-m','plexus_analyzer_lab',*args],cwd=root,text=True,capture_output=True)
+    print('COMMAND:', 'python -m plexus_analyzer_lab',*args)
+    print(result.stdout.strip())
+    if result.returncode:
+        print(result.stderr)
+        raise RuntimeError(f'CLI failed: {result.returncode}')
+    return result.stdout.strip()
+
+cli('doctor')
+cli('oracle','list')
+index = Path(cli('benchmark','--manifest',str(manifest),'--runs-dir',str(lab/'runs')))
+summary = json.loads(index.read_text(encoding='utf-8'))
+for item in summary['tracks']:
+    run = item['run']
+    cli('report','--run',run)
+    output = tmp/f"{item['trackId']}.jsonl"
+    cli('export-training','--run',run,'--output',str(output))
+    report = json.loads((Path(run)/'report.json').read_text(encoding='utf-8'))
+    examples = [json.loads(line) for line in output.read_text(encoding='utf-8').splitlines()]
+    print('MEASURED:', item['trackId'],json.dumps(report['comparisons'][0]['metrics'].get('tempo')), 'examples:',len(examples))
+    assert all(e['split'] == next(t['split'] for t in tracks if t['trackId']==item['trackId']) for e in examples)
+    if item['trackId']=='silence': assert len(examples)==0
+    else: assert len(examples)>0
+    assert all(not e['groundTruthStatus'] for e in examples)

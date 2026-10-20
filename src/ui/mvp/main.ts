@@ -22,7 +22,9 @@ requestVisualModeChange('cosmic-wormhole');
 
 const semanticResolver = new SemanticResolver();
 const semanticAdapter = new SemanticRuntimeAdapter(semanticResolver, () => State.semanticBaseTuning);
-const engine = new AudioEngine((plan) => semanticResolver.setPlan(plan));
+const timingMode = new URLSearchParams(window.location.search).get('eventTiming');
+const eventTiming = timingMode === 'local-band-v1' || timingMode === 'local-band-v2' ? timingMode : undefined;
+const engine = new AudioEngine((plan) => semanticResolver.setPlan(plan), { eventTiming });
 
 const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
 const previewQuality = createPreviewQualityControl(!isDesktop);

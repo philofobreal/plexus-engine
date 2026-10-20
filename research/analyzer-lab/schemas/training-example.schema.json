@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plexus.local/research/training-example/1.0.0",
+  "title": "training-example",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "trackId": {
+      "type": "string"
+    },
+    "contentHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "start": {
+      "type": "number",
+      "minimum": 0
+    },
+    "end": {
+      "type": "number",
+      "minimum": 0
+    },
+    "features": {
+      "type": "object"
+    },
+    "targetLabel": {
+      "type": "string"
+    },
+    "targetProvenance": {
+      "type": "object"
+    },
+    "oracleAgreement": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "groundTruthStatus": {
+      "type": "boolean"
+    },
+    "confidence": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "split": {
+      "enum": [
+        "train",
+        "validation",
+        "test"
+      ]
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "trackId",
+    "contentHash",
+    "start",
+    "end",
+    "features",
+    "targetLabel",
+    "targetProvenance",
+    "oracleAgreement",
+    "groundTruthStatus",
+    "confidence",
+    "split"
+  ],
+  "additionalProperties": false
+}

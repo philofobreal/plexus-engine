@@ -1,0 +1,3 @@
+# Manual installation into this provider's isolated environment only.
+# Does not implement a canonical wrapper or authorize a model download.
+basic-pitch==0.4.0

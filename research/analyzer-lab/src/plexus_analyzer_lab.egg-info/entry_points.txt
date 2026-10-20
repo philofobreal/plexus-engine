@@ -1,0 +1,2 @@
+[console_scripts]
+plexus-analyzer-lab = plexus_analyzer_lab.cli:main

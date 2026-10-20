@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "1.0.0",
+  "metadata": {"trackId": "silence", "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "duration": 2, "sampleRate": 22050},
+  "provenance": {"provider": "librosa", "toolVersion": "0.11.0", "evidenceType": "oracle_prediction", "parameters": {"eventClasses": ["onset"]}, "timestamp": "2026-10-10T00:00:00Z", "schemaVersion": "1.0.0", "modelIdentifier": null, "modelVersion": null, "modelChecksum": null},
+  "timing": {"tempo": null, "tempoCandidates": [], "beats": [], "downbeats": null, "bars": null, "confidence": {}},
+  "events": [], "sourceActivity": null, "pitchTracks": null, "notes": null, "chords": null, "key": null,
+  "sections": null, "stems": null, "tags": [], "confidence": {}, "artifacts": []
+}

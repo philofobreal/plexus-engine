@@ -1,0 +1,23 @@
+[
+  {
+    "path": "research/analyzer-lab/tools/harness/regression.py",
+    "predecessorSha256": "1a72f49ea699be3c2297d0753075eeed36ac54eb3a4ea33d2f313b2cfb3dcee3",
+    "replacementSha256": "105534db6584bad3eafbe56f391fe0001e1956d6d350331bfff6af0a844ed414",
+    "reviewedBy": "Codex /root integration owner, user-authorized continuation",
+    "reviewedReason": "Integration review of exact v1/current diff after full run 20261010T211125-3e0984f08408. Preserves all execution/failure/inventory gates; replaces excessively long pytest temp with fresh short workspace paths; adds retained global Node counts/executed-file evidence, pytest XML identity and full-evidence digest. Original v1 source and failed run retained unchanged. Focused harness checks pass; corrected full run remains required."
+  },
+  {
+    "path": "research/analyzer-lab/tests/test_regression_harness.py",
+    "predecessorSha256": "be40946bb81036e0d01da271cc0e563134dcbb62ce2a0dc384934c7811866664",
+    "replacementSha256": "dc1cf8b228e4e532d2c32abcaf06f1c4fe21cde79df5d8fa8584c5b1026d1afd",
+    "reviewedBy": "Codex /root integration owner, user-authorized continuation",
+    "reviewedReason": "Exact v1/current diff retains every prior test and assertion. Adds four meaningful cases for fresh short temp collision/preservation, actual subprocess temp propagation, durable counts/XML/report hashing and non-duplicated global counts. Extends earlier immutable-history assertion. All 28 focused cases pass; no coverage removed."
+  },
+  {
+    "path": "tests/analyzer-acoustic-onsets.test.mjs",
+    "predecessorSha256": "2a4a5073d1283ff33cef2b28e1f76fb7906b96794461b0684d7dcfb08f3dc385",
+    "replacementSha256": "b70f01ac712a02aa4f7d73387c5bd47582f61401cc005da718be761bbd802719",
+    "reviewedBy": "Codex /root integration owner, user-authorized continuation",
+    "reviewedReason": "Exact v1/current diff only adds four malformed optional payload assertions (null, false, zero, empty string). Every prior phase, endpoint, negative, math, parity and transport assertion remains. Normalization now rejects falsy malformed evidence rather than retaining it through spread. All 24 focused Node integration cases pass."
+  }
+]
