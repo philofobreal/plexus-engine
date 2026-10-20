@@ -1,5 +1,16 @@
-# AN-04D uses exact-byte identities. Preserve its new sources and source snapshots
-# independently of a checkout's core.autocrlf setting. Older stages are unchanged.
+# Research evidence and cumulative inventories bind exact bytes. These scopes must
+# survive checkout independently of core.autocrlf; preserve the verified source
+# working bytes when importing pre-existing evidence, without rewriting its hashes.
+/research/analyzer-lab/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/documents/tests/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/tests/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/scripts/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/src/analyzer/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/src/types/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/src/semantics/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/src/automation/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/package.json -text
+# Existing explicit AN-04D rules are retained below.
 /src/analyzer/HarmonicForecast.ts -text
 /src/types/harmonicForecast.ts -text
 /tests/fixtures/harmonic-forecast-corpus.mjs -text

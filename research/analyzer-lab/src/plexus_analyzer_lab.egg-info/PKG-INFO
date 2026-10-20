@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: plexus-analyzer-lab
+Version: 0.1.0
+Summary: Isolated MIR measurement and evidence pipeline for Plexus
+Requires-Python: >=3.11
+Requires-Dist: numpy==2.2.6
+Requires-Dist: scipy==1.15.3
+Requires-Dist: soundfile==0.13.1
+Requires-Dist: librosa==0.11.0
+Requires-Dist: mir_eval==0.8.2
+Requires-Dist: jsonschema==4.25.1
+Provides-Extra: test
+Requires-Dist: pytest==8.4.2; extra == "test"
