@@ -25,3 +25,4 @@
 /research/analyzer-lab/docs/AN-04D-EXPERIMENT.md -text
 /research/analyzer-lab/fixtures/an04d-* -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /research/analyzer-lab/fixtures/an04d-*/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/package-lock.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
