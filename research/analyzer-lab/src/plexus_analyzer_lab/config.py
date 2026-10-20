@@ -38,7 +38,9 @@ def load_config(path=None):
             value = config["plexus"][name]
             if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
                 raise ValueError(f"plexus.{name} must be an integer >= {minimum}")
-    if config["plexus"].keys() - {"hopSize", "phraseSize", "algorithmVersion", "requestId"}:
+    if "eventTiming" in config["plexus"] and config["plexus"]["eventTiming"] not in ("local-band-v1", "local-band-v2"):
+        raise ValueError("plexus.eventTiming must be local-band-v1 or local-band-v2")
+    if config["plexus"].keys() - {"hopSize", "phraseSize", "algorithmVersion", "requestId", "eventTiming"}:
         raise ValueError("Unknown Plexus analyzer option")
     if not isinstance(config["providers"], dict):
         raise ValueError("providers must map provider ids to process options")

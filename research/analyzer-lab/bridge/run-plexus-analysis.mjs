@@ -45,6 +45,10 @@ try {
     if (!Number.isInteger(input.sampleRate) || input.sampleRate <= 0) throw new Error('Invalid sample rate');
     const options = input.options || {};
     for (const key of Object.keys(options)) {
+      if (key === 'eventTiming') {
+        if (!['local-band-v1', 'local-band-v2'].includes(options[key])) throw new Error(`Invalid analyzer option: ${key}`);
+        continue;
+      }
       if (!['hopSize', 'requestId', 'algorithmVersion', 'phraseSize'].includes(key)) throw new Error(`Unknown analyzer option: ${key}`);
       if (!Number.isInteger(options[key]) || options[key] < (key === 'requestId' ? 0 : 1)) throw new Error(`Invalid analyzer option: ${key}`);
     }

@@ -75,6 +75,12 @@ reviewer/provenance fields and `human-reviewed` status. Annotation seconds are
 relative to this exact PCM start, not automatically the original file's start.
 No annotation or truth is inferred from external-library agreement.
 
+The standard Oracle lab adapter also accepts `plexus.eventTiming` in an explicit
+config override (`local-band-v1` or `local-band-v2`). Both Python config and the
+Node bridge validate this string enum separately from numeric options. The raw
+analysis artifact preserves the report; the canonical lab projection retains its
+existing format and records the requested mode in provenance parameters.
+
 Then evaluate without overwriting either input or prior results:
 
 ```powershell

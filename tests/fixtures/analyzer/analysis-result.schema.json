@@ -1089,6 +1089,9 @@
         },
         "timingConfidence": {
           "$ref": "#/$defs/timingConfidence"
+        },
+        "eventTiming": {
+          "$ref": "#/$defs/eventTiming"
         }
       }
     },
@@ -1489,6 +1492,232 @@
           ]
         }
       }
+    },
+    "eventTiming": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "policy",
+        "sampleRate",
+        "sampleCount",
+        "hopSize",
+        "observations"
+      ],
+      "properties": {
+        "algorithm": {
+          "enum": [
+            "accepted-frame-band-timing-v1",
+            "accepted-frame-band-timing-v2",
+            "accepted-frame-band-timing-v2-dc1"
+          ]
+        },
+        "policy": {
+          "const": "experimental-opt-in"
+        },
+        "sampleRate": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 384000
+        },
+        "sampleCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "hopSize": {
+          "enum": [
+            4,
+            8,
+            16,
+            32,
+            64,
+            128,
+            256,
+            512,
+            1024,
+            2048,
+            4096,
+            8192,
+            16384,
+            32768,
+            65536
+          ]
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/eventTimingObservation"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "algorithm": {
+                "const": "accepted-frame-band-timing-v1"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "observations": {
+                "items": {
+                  "properties": {
+                    "status": {
+                      "not": {
+                        "const": "gradual-attack"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "eventTimingObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventIndex",
+        "originalTime",
+        "time",
+        "status",
+        "sampleIndex",
+        "supportStartSample",
+        "supportEndSample",
+        "candidateCount"
+      ],
+      "properties": {
+        "eventIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "originalTime": {
+          "type": "number",
+          "minimum": 0
+        },
+        "time": {
+          "type": "number",
+          "minimum": 0
+        },
+        "status": {
+          "enum": [
+            "refined",
+            "ambiguous",
+            "no-candidate",
+            "insufficient-support",
+            "below-floor",
+            "gradual-attack"
+          ]
+        },
+        "sampleIndex": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "supportStartSample": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "supportEndSample": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "candidateCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "refined"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "sampleIndex": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "candidateCount": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "sampleIndex": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "ambiguous"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "candidateCount": {
+                "type": "integer",
+                "minimum": 2
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "no-candidate",
+                  "insufficient-support",
+                  "below-floor"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "candidateCount": {
+                "const": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "gradual-attack"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "candidateCount": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }
