@@ -1193,3 +1193,38 @@ See [XR rhythm game MVP feature](../features/xr-rhythm-game-mvp.md),
 [acceptance criteria](../acceptance-criteria/xr-rhythm-game-mvp-acs.md),
 [delivery review](../audits/xr-rhythm-game-delivery-review.md), and
 [ADR-008](ADR-008-mvp-host-and-shared-renderer.md) for the sibling composition-root precedent.
+
+## Addendum AG: browser look, 4K and revised player defaults (2026-10-16; reviewed 2026-10-20)
+
+The browser preview supports primary-button mouse dragging and one-finger touch dragging around
+a fixed eye position. Horizontal look wraps, pitch stops just short of either pole, and roll stays
+zero. Gameplay judges primary contact immediately at the song clock, matching right-click timing;
+a successful hit consumes that gesture without camera motion. Empty-space drags cross a six-CSS-pixel
+tolerance to look, and release never retries a missed press. Menu taps activate on release while drags
+are discarded. Input owns gesture recognition, runtime owns camera orientation, and the
+facade gates it while a menu or immersive tracking owns input. A held pointer is cancelled on menu
+opening, closing, or keyboard navigation, pointer cancellation/capture loss, window blur and disposal.
+The desktop menu follows camera pitch and yaw when opened. WebXR retains headset orientation ownership.
+
+Visuals > Background quality adds `4k` (3840 x 2160) after Max. Both Max and 4K use mipmaps to avoid
+off-axis shimmer; selecting a quality rebuilds the single background plane through the existing
+source lifecycle. This setting controls the background raster, not the desktop framebuffer or
+WebXR eye-buffer resolution. 4K headset performance remains unmeasured.
+
+Display labels keep their authored font size. When a name exceeds its measured space, a recognizable
+abbreviation is tried before ellipsis. Row-label widths stop before the controls. Full setting names,
+values, descriptions and stored identities are unchanged by display shortening.
+
+The complete player defaults supersede the default values recorded in Addenda T and AC:
+
+- Gameplay: Tall / Hyper / Auto (Auto resolves to a 1.1 m blade in Tall, 1.0 m in Standard).
+- Choreography: Ultra / Active / Expressive / Alternate / Even / Crossover.
+- Visuals: Wormhole on / Shard / Max / 36 Hz / 200 m / Line stroke 30 / Sharpness 100.
+- Character: Intensity 100 / Motion 100 / Depth 30 / Detail 100.
+- Material: Grain material 30 / Detail 100 / Bloom 100 / Weave 100 / Spiral twist 30 / Arms 100 / Density 100.
+- System: GPU material / Diagnostics on / GPU lines / Adaptive pacing / WebGL raster / Particles.
+
+Existing stored preferences remain valid and keep precedence. First visits, missing fields and Reset
+defaults use these values; gameplay-library defaults and the pinned historical chart remain unchanged.
+Verification commands, browser evidence and physical-device limitations are in the
+[browser look / 4K validation record](../audits/xr-browser-look-4k-validation.md).

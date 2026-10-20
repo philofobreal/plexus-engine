@@ -157,9 +157,26 @@ The detailed spatial and input contract is in the [feature](../features/xr-rhyth
 
 ## XR-12 Wormhole depth
 
-- Depth cue and depth layers are host presentation options that default off with byte-identical
-  output; the MVP uses cue 0.6, XR uses 0.7 plus three fixed planes (40/22/12 m, beyond the
-  gameplay volume, angularly identical, additive nearer planes, eye-height anchored).
-- One simulation feeds all planes; grains crossfade between planes (shares always sum to 1);
-  material-active frames keep one surface; textures upload only on changed Wormhole frames.
+- Depth cue and optional depth layers preserve byte-identical output when disabled. The MVP uses
+  cue 0.6; XR uses cue 0.7 and one plane, 200 m away by default. The former 40/22/12 m layered mode
+  is retained as an optional source capability and is not enabled by the XR host.
+- One simulation supplies the active background surfaces; textures upload only on changed frames.
+
+## XR-13 Browser look, compact labels and 4K
+
+- Mouse primary-button drag and single-finger touch drag rotate the browser camera at its fixed
+  position. Pitch is bounded, yaw wraps, roll remains zero, and immersive tracking owns XR rotation.
+- During play targets are judged on primary contact at the current song time; a scored gesture
+  cannot also turn the camera. Empty-space drags turn after six CSS pixels and release cannot retry
+  a missed press. Menu taps activate on release; cancelled gestures and pointers held across menu
+  opening, closing or keyboard navigation cannot create a later strike.
+- Browser menu placement follows pitch and yaw, and remains hit-testable after looking around.
+- Every settings tab renders text within each row/control at the authored font size, using
+  recognizable abbreviations before ellipsis; 4K remains visible among all seven quality choices.
+- `4k` persists and allocates a 3840 x 2160 mipmapped background, replacing the former plane.
+  Max remains the default; desktop framebuffer and headset eye-buffer budgets are unchanged.
+- First-visit, partial-record normalization and confirmed Reset defaults agree with ADR-009 Addendum AG.
+  Valid existing saved choices keep precedence, and the gameplay-library golden chart is unchanged.
+- Automated gesture and renderer tests supplement browser smoke validation; they do not establish
+  physical mobile behavior, Quest performance or sustained 4K throughput.
 
