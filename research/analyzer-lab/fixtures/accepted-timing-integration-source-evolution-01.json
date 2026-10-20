@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "reviewed-source-evolution-1",
+  "predecessor": "research/analyzer-lab/fixtures/accepted-timing-v2-development-01.json",
+  "predecessorSha256": "04f569013caf5c8d9ecf64cde3b8cde76bf5ce9e69e9313a6d3a65499df89b59",
+  "oldMeasurementsRewritten": false,
+  "numericalComparison": "Historical source tree replays all original outputs; current DC-corrected v2 preserves the 340 controls timing/status/tradeoffs while widening support and using a new algorithm identity.",
+  "changes": [
+    {
+      "path": "src/analyzer/AcceptedEventTiming.ts",
+      "predecessorSha256": "37c126fa384589e67a7b98cc8c7ea7008ccbe6f7b73eac25ff6f16811a7de0be",
+      "replacementSha256": "bd8aa9b6ae994deed37dd307dbc3642218e8cdb30e002d51db0ff254180f11ca",
+      "reviewedBy": "Codex integration owner with independent onset code reviewer",
+      "reviewedReason": "Subtract only the observed 60 ms pre-frame baseline from v2 sharpness power; retain thresholds and v1 behavior, expand honest sample support and publish distinct v2-dc1 identity. Real-PCM DC counterexamples, 840 ramp, 114 sharp attack, 720 isolated gate controls, full v1 replay and current-v2 timing/status parity cover the change."
+    },
+    {
+      "path": "src/types/eventTiming.ts",
+      "predecessorSha256": "c079d092284e546548c9862c33a4be50445aa97d17a2f88adaef1032204dca79",
+      "replacementSha256": "70149b8ef2549517433dd451a038704705fa4481f0eebda0149497ed95cb9d66",
+      "reviewedBy": "Codex integration owner with independent onset code reviewer",
+      "reviewedReason": "Accept the distinct corrected v2-dc1 publication without dropping historical v1/v2; retain all clock/count/support/order gates and restrict gradual-attack to v2 families. Unknown identity and historical-publication regression checks remain."
+    }
+  ]
+}

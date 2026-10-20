@@ -1,0 +1,80 @@
+import type { BeatEvent, VisualCueEvent } from '../types';
+import type { EventTimingAnalysis, EventTimingObservation } from '../types/eventTiming';
+import { extractBandOnsets } from './BandOnsets';
+import { validateAnalysisClock, validateAnalysisSamples } from './signalContract';
+
+/** Local, opt-in timing suggestions. An accepted frame owns its event; no new event is invented. */
+export function refineAcceptedEventTiming(samples: Float32Array, sampleRate: number, hopSize: number,
+    events: readonly BeatEvent[], version: 1 | 2 = 1): { events: BeatEvent[]; report: EventTimingAnalysis } {
+    validateAnalysisClock(sampleRate, hopSize);
+    validateAnalysisSamples(samples);
+    if (version !== 1 && version !== 2) throw new Error('Invalid accepted timing version');
+    const history = Math.ceil(.06 * sampleRate), tail = Math.ceil(.03 * sampleRate);
+    const width = Math.min(hopSize, Math.ceil(.03 * sampleRate));
+    const clusterSpan = Math.max(1, Math.round(.003 * sampleRate));
+    let work = 0, prior = -1;
+    // Validate and budget before any expensive extraction; callers get no partially refined plan.
+    for (const event of events) {
+        const start = Math.round(event.time * sampleRate);
+        if (!Number.isFinite(event.time) || event.time <= prior || start < 0 || start >= samples.length
+            || Math.abs(start / sampleRate - event.time) > 1e-9 || start % hopSize !== 0
+            || !Number.isFinite(event.intensity) || event.intensity < 0 || ![1, 2, 3].includes(event.type))
+            throw new Error('Invalid accepted event timing input');
+        work += Math.min(samples.length, start + width + tail) - Math.max(0, start - history);
+        prior = event.time;
+    }
+    if (work > 50000000) throw new Error('Accepted event timing work budget exceeded');
+    const observations: EventTimingObservation[] = events.map((event, eventIndex) => {
+        const frameStart = Math.round(event.time * sampleRate);
+        const frameEnd = Math.min(frameStart + width, Math.round((events[eventIndex + 1]?.time ?? samples.length / sampleRate) * sampleRate));
+        const start = Math.max(0, frameStart - history), end = Math.min(samples.length, frameEnd + tail);
+        const base: EventTimingObservation = { eventIndex, originalTime: event.time, time: event.time,
+            status: 'insufficient-support', sampleIndex: null, supportStartSample: start,
+            supportEndSample: end, candidateCount: 0 };
+        if (frameStart < history || frameEnd + tail > samples.length || frameEnd <= frameStart) return base;
+        let peak = 0;
+        for (let i = frameStart; i < frameEnd; i++) peak = Math.max(peak, Math.abs(samples[i]));
+        if (peak <= 1e-6) return { ...base, status: 'below-floor' };
+        const candidates = extractBandOnsets(samples.subarray(start, end), sampleRate).candidates
+            .filter(c => !c.endpointAmbiguous && c.sampleIndex + start >= frameStart && c.sampleIndex + start < frameEnd);
+        base.candidateCount = candidates.length;
+        if (!candidates.length) return { ...base, status: 'no-candidate' };
+        const first = candidates[0];
+        if (candidates.some(c => c.sampleIndex - first.sampleIndex > clusterSpan)) return { ...base, status: 'ambiguous' };
+        const sampleIndex = start + first.sampleIndex;
+        if (version === 2) {
+            const quick = Math.max(1, Math.round(.001 * sampleRate)), body = Math.max(quick, Math.round(.012 * sampleRate));
+            if (sampleIndex + body > end) return { ...base, status: 'insufficient-support', candidateCount: 0 };
+            // Measure attack energy relative to the existing, observed pre-frame baseline.
+            // Raw squared PCM lets a constant DC offset masquerade as immediate attack power.
+            // Stop at frameStart: including the candidate's preceding samples could include an
+            // impulse itself and create fictitious residual power in its subsequent silence.
+            let baseline = 0;
+            for (let i = start; i < frameStart; i++) baseline += samples[i];
+            baseline /= frameStart - start;
+            let quickPower = 0, bodyPower = 0;
+            for (let i = 0; i < body; i++) {
+                const power = (samples[sampleIndex + i] - baseline) ** 2;
+                bodyPower += power; if (i < quick) quickPower += power;
+            }
+            if (bodyPower <= 1e-20 || quickPower / quick < .25 * bodyPower / body)
+                return { ...base, status: 'gradual-attack' };
+        }
+        return { ...base, status: 'refined', sampleIndex, time: sampleIndex / sampleRate,
+            supportStartSample: version === 2 ? start : start + Math.min(...candidates.map(c => c.supportStartSample)),
+            supportEndSample: Math.max(start + Math.max(...candidates.map(c => c.supportEndSample)),
+                version === 2 ? sampleIndex + Math.max(1, Math.round(.012 * sampleRate)) : 0) };
+    });
+    return { events: events.map((event, i) => ({ ...event, time: observations[i].time })),
+        report: { algorithm: version === 1 ? 'accepted-frame-band-timing-v1' : 'accepted-frame-band-timing-v2-dc1', policy: 'experimental-opt-in',
+            sampleRate, sampleCount: samples.length, hopSize, observations } };
+}
+
+/** Only a cue explicitly tied to the accepted percussive event follows its proposed correction. */
+export function retimePercussiveCues(cues: readonly VisualCueEvent[], report: EventTimingAnalysis): VisualCueEvent[] {
+    const times = new Map(report.observations.filter(o => o.status === 'refined').map(o => [o.originalTime, o.time]));
+    return cues.map(cue => ({ ...cue,
+        ...(cue.kind === 'impact' && cue.reasons?.includes('percussive-onset') && times.has(cue.time)
+            ? { time: times.get(cue.time)! } : {}), ...(cue.reasons ? { reasons: [...cue.reasons] } : {}) }))
+        .sort((a, b) => a.time - b.time);
+}
