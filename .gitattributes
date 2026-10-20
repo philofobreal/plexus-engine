@@ -1,0 +1,11 @@
+# AN-04D uses exact-byte identities. Preserve its new sources and source snapshots
+# independently of a checkout's core.autocrlf setting. Older stages are unchanged.
+/src/analyzer/HarmonicForecast.ts -text
+/src/types/harmonicForecast.ts -text
+/tests/fixtures/harmonic-forecast-corpus.mjs -text
+/tests/harmonic-forecast*.test.mjs -text
+/research/analyzer-lab/diagnostics/measure-an04d.mjs -text
+/research/analyzer-lab/diagnostics/check_an04d_projection.py -text
+/research/analyzer-lab/docs/AN-04D-EXPERIMENT.md -text
+/research/analyzer-lab/fixtures/an04d-* -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/research/analyzer-lab/fixtures/an04d-*/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

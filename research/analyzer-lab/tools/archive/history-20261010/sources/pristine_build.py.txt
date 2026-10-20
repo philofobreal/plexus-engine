@@ -1,0 +1,14 @@
+import subprocess
+from pathlib import Path
+
+root = Path(__file__).resolve().parents[3]
+target = Path(__file__).parent / 'pristine-build'
+files = subprocess.check_output(['git','ls-files'],cwd=root,text=True).splitlines()
+for name in files:
+    if not (name.startswith(('src/','public/','xr/','mvp/','scripts/')) or name in ('index.html','package.json','tsconfig.json','vite.config.ts')):
+        continue
+    destination = target/name
+    destination.parent.mkdir(parents=True,exist_ok=True)
+    destination.write_bytes(subprocess.check_output(['git','cat-file','--filters',f'HEAD:{name}'],cwd=root))
+result = subprocess.run(['node',str(root/'node_modules/vite/bin/vite.js'),'build'],cwd=target)
+raise SystemExit(result.returncode)

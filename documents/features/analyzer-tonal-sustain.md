@@ -1,0 +1,13 @@
+# Stable tonal sustain in percussive interpretation
+
+Algorithm 6 suppresses false visual impacts on stable narrowband tones while retaining attack evidence. This correction belongs to `src/analyzer/FeatureExtractor.ts`, under [ADR-002](../adr/ADR-002-headless-analyzer-core.md). The analyzer owns offline DSP; downstream event/cue consumers receive its ordinary normalized result.
+
+A Hann FFT on a finite window has small phase-dependent leakage even for a stationary oscillator. Track-relative p98 flux normalization can magnify that leakage when the whole track is tonal. The previous bass-focused penalty did not reject all higher tones, producing repeated visual `BeatEvent` impacts without authored attacks. On eight-second 44.1 kHz fixtures, 440/1000 Hz sustained tones produced 40/36 plateau impacts from one second onward.
+
+The original guard requires at least three past context frames, audible RMS above 1e-4, spectral flatness below 0.005, spectral crest above 32 and RMS agreement within 3% of surrounding context. Available future context is checked even at the final frames; absent future context uses the past stability test. Only qualifying `percussiveT` values become zero. Decay, amplitude attacks and broadband percussion fail these simultaneous stability checks and preserve ordinary transient evidence. Existing bounded context is reused, adding constant arithmetic per frame and no new DSP pass.
+
+The temporal grid, raw onset/flux formulas, worker payload, audio lifecycle and renderer event indexing are unchanged. The algorithm version increments to 6 so cached analysis does not silently retain algorithm 5 results. This is a scoped tonal-sustain correction, not validated instrument transcription or a general replacement for onset detection.
+
+Evidence in [33 deterministic fixtures](../../tests/analyzer-tonal-sustain.test.mjs) covers five frequencies at 44.1/48 kHz and two phases, decaying plucks, kick/snare/hat mixed with sustained tones, end-of-file attacks, eight-second regression negatives and no input mutation. Corrected long-tone plateau counts are 0/0. Existing golden/parity/percussive/known-tempo/edge-case checks retain their baselines; golden snapshots were not regenerated.
+
+[Research measurements](../../research/analyzer-lab/docs/DRUM-IMPROVEMENT-CYCLE.md) distinguish actual librosa observations from procedural ground truth. Pure-tone negatives expose errors in both providers in some conditions; a library vote alone cannot authorize a musical interpretation. Physical playback/XR/render smoke was not performed in this offline analyzer cycle. See [exact validation commands and limitations](../../research/analyzer-lab/docs/DRUM-IMPROVEMENT-VALIDATION.md).

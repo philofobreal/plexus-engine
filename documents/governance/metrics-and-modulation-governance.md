@@ -23,7 +23,7 @@ A metric must not have multiple meanings.
 
 ### Layer 1 - Raw Analysis
 
-Owner: `src/audio/analyzer.worker.ts`
+Owner: `src/analyzer/`; `src/audio/analyzer.worker.ts` forwards the offline result as a thin adapter, following `../../AGENTS.md`.
 
 Examples:
 

@@ -1,4 +1,5 @@
 import type { AutomationEnvelope, PerformanceAutomationPoint, TrackAnalysis, TrackSection, VisualFeatureFrame } from '../types';
+import { featureFrameStepSeconds } from '../types/featureClock.ts';
 
 export interface TransitionDynamicsProfile {
     energyDelta: number;
@@ -94,9 +95,7 @@ function sampleLocalFeatures(analysis: TrackAnalysis, timeSec: number, windowSec
     const features = analysis.features;
     const duration = finite(analysis.duration);
     if (!features?.length || !(duration > 0)) return { energyDelta: 0, densityDelta: 0, transientness: 0, hasEvidence: false };
-    // Feature frames are uniformly spaced across the offline analysis duration. TrackAnalysis does
-    // not carry sampleRate, so duration/frame-count is the canonical downstream time projection.
-    const secondsPerFrame = duration / features.length;
+    const secondsPerFrame = featureFrameStepSeconds(analysis);
     const center = clamp(Math.floor(timeSec / secondsPerFrame), 0, features.length - 1);
     const radius = Math.max(1, Math.round(windowSec / secondsPerFrame));
     const before = averageFeatures(features, Math.max(0, center - radius), center);

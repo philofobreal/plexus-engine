@@ -1,0 +1,128 @@
+{
+  "schemaVersion": "retention-validation-1.0",
+  "checkedAt": "2026-10-10",
+  "status": "targeted_retention_checks",
+  "pythonVersion": "3.12.14",
+  "nodeVersion": "v25.2.1",
+  "checkCount": 24,
+  "checks": [
+    {
+      "name": "capture_history.py --help",
+      "exitCode": 0
+    },
+    {
+      "name": "check_identity.py --help",
+      "exitCode": 0
+    },
+    {
+      "name": "compare_failures.py --help",
+      "exitCode": 0
+    },
+    {
+      "name": "measure_tonal_sustain.py --help",
+      "exitCode": 0
+    },
+    {
+      "name": "model_validation.py --help",
+      "exitCode": 0
+    },
+    {
+      "name": "pristine_build.py --help",
+      "exitCode": 0
+    },
+    {
+      "name": "review_files.py --help",
+      "exitCode": 0
+    },
+    {
+      "name": "schema_snapshot.py --help",
+      "exitCode": 0
+    },
+    {
+      "name": "summarize_an01.py --help",
+      "exitCode": 0
+    },
+    {
+      "name": "verify_archive.py --help",
+      "exitCode": 0
+    },
+    {
+      "name": "21 retained source byte identities",
+      "count": 21,
+      "passed": true
+    },
+    {
+      "name": "Node syntax",
+      "exitCode": 0
+    },
+    {
+      "name": "schema_snapshot.py --root <repo>",
+      "exitCode": 0
+    },
+    {
+      "name": "schema_snapshot.py --root <repo>",
+      "exitCode": 0
+    },
+    {
+      "name": "schema_snapshot.py --root <repo>",
+      "exitCode": 0
+    },
+    {
+      "name": "schema_snapshot.py --root <repo>",
+      "exitCode": 0
+    },
+    {
+      "name": "schema_snapshot.py --root <repo>",
+      "exitCode": 0
+    },
+    {
+      "name": "schema_snapshot.py --root <repo>",
+      "exitCode": 1
+    },
+    {
+      "name": "model_validation.py --model <repo>\\research\\analyzer-lab\\models\\drums-v2-development.json",
+      "exitCode": 1
+    },
+    {
+      "name": "model_validation.py --model <repo>\\research\\analyzer-lab\\models\\drums-v2-development.json",
+      "exitCode": 0
+    },
+    {
+      "name": "measure_tonal_sustain.py --root <repo>",
+      "exitCode": 0
+    },
+    {
+      "name": "compare_failures.py --baseline-log <repo>\\research\\analyzer-lab\\.cache\\baseline-check\\baseline-test.log",
+      "exitCode": 0
+    },
+    {
+      "name": "summarize_an01.py --node-log <repo>\\research\\analyzer-lab\\.cache\\an01-node-accepted.log",
+      "exitCode": 0
+    },
+    {
+      "name": "check_identity.py --root <repo>",
+      "exitCode": 0
+    }
+  ],
+  "programHashes": {
+    "capture_history.py": "f825e720c45f255945a379cff13907e762c598e2f38e629930f54077f6c0a10f",
+    "check_identity.py": "941d478cf83dc27cbfbd9bf8ceecc85b1b1c181c5cd8bce0a1f02afbb3208df8",
+    "compare_failures.py": "316826e0653be49f1f21733881d6b3e6a679e1ea983d707623532c00e18d5bbb",
+    "measure_tonal_sustain.py": "637c24d53da24c393a8244f67cb253330cdccd93e4bb6c79454fe19010ff4bc1",
+    "model_validation.py": "d99fa9fe5f1787cd9084b8e262a9ade894eb413e94a6fd892f2d34a68dff9886",
+    "pristine_build.py": "3dca3091bb92692d2e6244189f6bec810e72f2d0f8e698acf73c10a0f36207f7",
+    "review_files.py": "1d306583b376ce09895fe7b19fa75a118a8f80ed7561fdf502ea039900b4e87a",
+    "schema_snapshot.py": "e2560cdfd78d5c310490ad2ab4fb1d70b2ca840c9c6d67962682fa6ce0ebced6",
+    "summarize_an01.py": "607d60d35fb24ac4ad7086b7fe8b3fa679aef5d045fdf01f3c2bf49b669f7469",
+    "verify_archive.py": "5449122cce01de5ec45489cc4d49b56e8700ef3d359ef9bb5b0832092ed69a36",
+    "_common.py": "d1a25969ffa17e98bf208182f89993aa1c7627c6e398bca36b7a19776b7a961b"
+  },
+  "tonalLoaderHash": "92ca3338d6d61d54fa4be602fb36d3b263bf07a896e5b967a02b1c97fb60e404",
+  "inventoryHash": "53e901da4b0f81bd01abeed00c993989593a0333d1a35ba73d84dd00ad12def1",
+  "liveSchemaHashesUnchanged": true,
+  "dependenciesInstalled": false,
+  "command": "<existing lab Python> tools/archive/verify_archive.py --root <repo> --output <fresh diagnostics> --historical-evidence-dir <supplied originals> --tonal-smoke --record-output <fresh record>",
+  "limitations": [
+    "No full suite/build/training or physical timing measurement; historical replay checks are not new analyzer generalization evidence."
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "basic-pitch",
+  "displayName": "Spotify Basic Pitch",
+  "providerVersion": "0.4.0",
+  "executionMode": "external-process",
+  "pythonRequirement": "3.8-3.11 advertised classifiers; README also mentions 3.7; no Requires-Python field verified",
+  "capabilities": [
+    "predominantPitch",
+    "noteTranscription"
+  ],
+  "codeLicense": "Apache-2.0",
+  "modelLicense": "unknown",
+  "modelLicenseSource": "https://github.com/spotify/basic-pitch/tree/v0.4.0/basic_pitch/saved_models/icassp_2022",
+  "datasetDependencies": [
+    {
+      "id": "training-corpora",
+      "requiredForInference": false,
+      "license": "requires-review",
+      "notes": "Inference uses shipped ICASSP 2022 model. Training/data extras and every source corpus need separate provenance and rights review."
+    }
+  ],
+  "usagePolicy": "requires-review",
+  "enabledByDefault": false,
+  "status": "planned",
+  "command": null,
+  "licenseEvidence": {
+    "checkedAt": "2026-10-10",
+    "sources": [
+      "https://pypi.org/project/basic-pitch/0.4.0/",
+      "https://github.com/spotify/basic-pitch/blob/v0.4.0/LICENSE",
+      "https://github.com/spotify/basic-pitch/blob/v0.4.0/README.md",
+      "https://github.com/spotify/basic-pitch/blob/v0.4.0/pyproject.toml",
+      "https://github.com/spotify/basic-pitch/tree/v0.4.0/basic_pitch/saved_models/icassp_2022"
+    ],
+    "notes": "Code grant is explicit Apache-2.0. A distinct grant specifically naming model weights was not verified; unknown is an evidence gap, not a claim that use is forbidden. Polyphonic pitch output does not identify instruments or guarantee predominant melody. Best on one instrument at a time."
+  }
+}

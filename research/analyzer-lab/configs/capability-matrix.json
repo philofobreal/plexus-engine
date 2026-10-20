@@ -1,0 +1,224 @@
+{
+  "schemaVersion": "1.0.0",
+  "capabilities": [
+    {
+      "id": "tempo",
+      "providers": [
+        {
+          "id": "plexus",
+          "status": "implemented",
+          "notes": "Canonical adapter projection; an estimate, not ground truth."
+        },
+        {
+          "id": "librosa",
+          "status": "implemented",
+          "notes": "Canonical adapter projection; an estimate, not ground truth."
+        },
+        {
+          "id": "essentia",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        }
+      ]
+    },
+    {
+      "id": "beats",
+      "providers": [
+        {
+          "id": "plexus",
+          "status": "implemented",
+          "notes": "Canonical adapter projection; an estimate, not ground truth."
+        },
+        {
+          "id": "librosa",
+          "status": "implemented",
+          "notes": "Canonical adapter projection; an estimate, not ground truth."
+        },
+        {
+          "id": "omnizart",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        },
+        {
+          "id": "essentia",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        }
+      ]
+    },
+    {
+      "id": "downbeats",
+      "providers": [
+        {
+          "id": "plexus",
+          "status": "implemented",
+          "notes": "Canonical adapter projection; an estimate, not ground truth."
+        }
+      ]
+    },
+    {
+      "id": "onsets",
+      "providers": [
+        {
+          "id": "plexus",
+          "status": "implemented",
+          "notes": "Accepted visual BeatEvent timing projected as onset evidence; no raw or instrument-specific onset certainty."
+        },
+        {
+          "id": "librosa",
+          "status": "implemented",
+          "notes": "Canonical adapter projection; an estimate, not ground truth."
+        },
+        {
+          "id": "essentia",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        }
+      ]
+    },
+    {
+      "id": "drumEvents",
+      "researchImplementation": {
+        "id": "plexus-drum-research",
+        "status": "implemented",
+        "notes": "Separate research drum CLI, original ridge baseline and reviewed corpus; canonical kick/snare/hihat evidence with unknown calibrated confidence. Synthetic validation only; no production or oracle-registry integration."
+      },
+      "providers": [
+        {
+          "id": "omnizart",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        }
+      ]
+    },
+    {
+      "id": "vocalActivity",
+      "providers": []
+    },
+    {
+      "id": "sourceSeparation",
+      "providers": [
+        {
+          "id": "spleeter",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        }
+      ]
+    },
+    {
+      "id": "predominantPitch",
+      "providers": [
+        {
+          "id": "basic-pitch",
+          "status": "planned",
+          "notes": "Multipitch/frame evidence needs a separate predominant-pitch projection; not a dominant melody guarantee."
+        },
+        {
+          "id": "essentia",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        }
+      ]
+    },
+    {
+      "id": "vocalPitch",
+      "providers": [
+        {
+          "id": "omnizart",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        }
+      ]
+    },
+    {
+      "id": "noteTranscription",
+      "providers": [
+        {
+          "id": "basic-pitch",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        },
+        {
+          "id": "omnizart",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        }
+      ]
+    },
+    {
+      "id": "instrumentTranscription",
+      "providers": [
+        {
+          "id": "omnizart",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        }
+      ]
+    },
+    {
+      "id": "chords",
+      "providers": [
+        {
+          "id": "omnizart",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        },
+        {
+          "id": "essentia",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        }
+      ]
+    },
+    {
+      "id": "key",
+      "providers": [
+        {
+          "id": "essentia",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        }
+      ]
+    },
+    {
+      "id": "sectionBoundaries",
+      "providers": [
+        {
+          "id": "plexus",
+          "status": "implemented",
+          "notes": "Canonical adapter projection; an estimate, not ground truth."
+        },
+        {
+          "id": "msaf",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        }
+      ]
+    },
+    {
+      "id": "sectionLabels",
+      "providers": [
+        {
+          "id": "plexus",
+          "status": "implemented",
+          "notes": "Canonical adapter projection; an estimate, not ground truth."
+        },
+        {
+          "id": "msaf",
+          "status": "planned",
+          "notes": "Upstream capability target; no bundled wrapper, environment or model; explicit opt-in and configuration required."
+        }
+      ]
+    },
+    {
+      "id": "instrumentPresence",
+      "providers": [
+        {
+          "id": "essentia",
+          "status": "planned",
+          "notes": "Requires a selected, reviewed model and wrapper."
+        }
+      ]
+    }
+  ]
+}

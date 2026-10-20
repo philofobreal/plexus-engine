@@ -1,0 +1,18 @@
+import json
+from pathlib import Path
+from plexus_analyzer_lab.reports.json_report import write_json
+root=Path(__file__).resolve().parents[1]
+trials=[]
+for name in ('drums-v1-on-v2','drums-v1-on-v2-ridge10','drums-v1-on-v2-ridge100'):
+    model=json.loads((root/'models'/(name+'.json')).read_text(encoding='utf-8'))
+    metrics=list(model['validationSelection']['byClass'].values())
+    key=(sum(m['fMeasure'] for m in metrics)/3,min(m['fMeasure'] for m in metrics),sum(m['precision'] for m in metrics)/3,model['ridge'])
+    trials.append({'model':name,'selectionKey':key,'modelChecksum':model['modelChecksum'],'ridge':model['ridge']})
+chosen=max(trials,key=lambda m:m['selectionKey'])
+candidate=json.loads((root/'models/drums-v2-development.json').read_text(encoding='utf-8'))
+decision={'rule':'Select baseline from same ridge grid on validation macro F,worst F,precision,higher ridge',
+          'baselineTrials':trials,'chosenBaseline':chosen,'candidateModel':'drums-v2-development',
+          'candidateModelChecksum':candidate['modelChecksum'],'candidateValidationSelection':candidate['hyperparameterSelection'],
+          'testScoresInspectedBeforeFreeze':False}
+write_json(root/'.cache/drum-freeze-decision.json',decision)
+print(json.dumps(decision,indent=2))

@@ -133,6 +133,8 @@ Single-agent ownership required:
 
 ## Testing Gates
 
+- Preserve cumulative regression coverage and reusable research code. Earlier active tests must run with new tests; reviewed replacements retain predecessor source/identity and reasons. Follow the retention and cumulative-run rules in [Testing and Validation](documents/governance/testing-validation.md). Never hide a failing test by deletion, exclusion, silent snapshot replacement, or rewriting its historical result.
+
 - Any change touching `src/audio`, `src/audio/*.worker.ts`, `src/state`, event indexes, or playback timing requires a build plus targeted regression notes.
 - Any visual-only change requires render smoke validation.
 - Any worker algorithm change requires deterministic fixture-style validation where practical.

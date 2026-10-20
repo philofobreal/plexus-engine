@@ -1,0 +1,3053 @@
+{
+  "protocol": "AN-03F authored synthetic oracle calibration; consensus remains pseudo-label",
+  "librosaVersion": "0.11.0",
+  "numpyVersion": "2.2.6",
+  "librosaParameters": {
+    "nFft": 2048,
+    "hopLength": 512,
+    "center": true,
+    "backtrack": false
+  },
+  "sourceHashes": {
+    "research/analyzer-lab/diagnostics/calibrate-dual-onsets.py": "4f3abe0ac81bb6f5d1a3d32109cb0128e32975ac3dc7f7740acf9149bea80709",
+    "research/analyzer-lab/src/plexus_analyzer_lab/adapters/audioflux_onsets.py": "2eefeef9e85a92749695b3c3bc2bce58a855be7bd985d1670db657c915b3c880",
+    "research/analyzer-lab/src/plexus_analyzer_lab/labels/strict_pair.py": "63c7048a57a4a68c2fd5d4c083ad9c8f66299f881f8e1a318bf2a2ba65c56e16",
+    "research/analyzer-lab/src/plexus_analyzer_lab/metrics/events.py": "67b2bde23746d5f97d93f944885904fdac0e94a392f03ac5ce90fcae0ba0d95b",
+    "research/analyzer-lab/fixtures/audioflux-runtime-lock-01.json": "34d900a12887996ae7168c643f727f0549c259c6ca38b1accb50b6cd2a129519"
+  },
+  "rows": [
+    {
+      "kind": "impulse",
+      "sampleRate": 44100,
+      "sampleCount": 52920,
+      "truth": [
+        0.22299319727891156,
+        0.4629931972789116,
+        0.7029931972789115
+      ],
+      "negativeStart": 0.1,
+      "pcmSha256": "3de2868adb23fc461c6829acf08b319f499bf1be3a3993c303f4f882601ae89b",
+      "eventTimes": {
+        "librosa": [
+          0.23219954648526078,
+          0.46439909297052157,
+          0.7082086167800453
+        ],
+        "audioflux": [
+          0.2089795918367347,
+          0.4527891156462585,
+          0.6849886621315193
+        ],
+        "agreed": [
+          0.22058956916099776,
+          0.45859410430839004,
+          0.6965986394557824
+        ]
+      },
+      "strictReference": {
+        "status": "available",
+        "algorithm": "strict-class-pair-v1",
+        "toleranceSeconds": 0.025,
+        "requiredProviders": [
+          "librosa",
+          "audioflux"
+        ],
+        "minimumAgreement": 1,
+        "groundTruthStatus": false,
+        "acceptedReferences": [
+          {
+            "time": 0.22058956916099776,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.2089795918367347,
+              0.23219954648526078
+            ],
+            "disagreementSeconds": 0.02321995464852608,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.23219954648526078
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.2089795918367347
+              }
+            ]
+          },
+          {
+            "time": 0.45859410430839004,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.4527891156462585,
+              0.46439909297052157
+            ],
+            "disagreementSeconds": 0.011609977324263054,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.46439909297052157
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.4527891156462585
+              }
+            ]
+          },
+          {
+            "time": 0.6965986394557824,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.6849886621315193,
+              0.7082086167800453
+            ],
+            "disagreementSeconds": 0.023219954648525998,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.7082086167800453
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.6849886621315193
+              }
+            ]
+          }
+        ],
+        "unacceptedLeft": [],
+        "unacceptedRight": [],
+        "unacceptedAreNegatives": false
+      },
+      "audiofluxProvenance": {
+        "provider": "audioflux",
+        "version": "0.1.9",
+        "pcmSha256": "3de2868adb23fc461c6829acf08b319f499bf1be3a3993c303f4f882601ae89b",
+        "nativeBinarySha256": "321bc7b2c3f5cf8fb5ecf966c70d19408968d3906805e8dcaea677d40a42c3d7",
+        "parameters": {
+          "sampleRate": 44100,
+          "nFft": 2048,
+          "hopLength": 512,
+          "window": "HANN",
+          "padding": "center-constant-zero",
+          "spectrum": "linear-magnitude",
+          "novelty": "FLUX",
+          "filterOrder": 1,
+          "noveltyParam": [
+            1,
+            1,
+            1,
+            0,
+            1,
+            0,
+            1,
+            1
+          ],
+          "timestamp": "library frame index times hop/sampleRate",
+          "timestampCorrection": 0
+        }
+      },
+      "truthComparison": {
+        "librosa": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.002,
+            "matchedCount": 1,
+            "falsePositiveCount": 2,
+            "missedCount": 2,
+            "precision": 0.3333333333333333,
+            "recall": 0.3333333333333333,
+            "fMeasure": 0.3333333333333333,
+            "meanAbsoluteTimingError": 0.0014058956916099818,
+            "timingErrors": {
+              "sampleCount": 1,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.0014058956916099818,
+              "medianSignedError": 0.0014058956916099818,
+              "medianAbsoluteError": 0.0014058956916099818,
+              "p95AbsoluteError": 0.0014058956916099818,
+              "p99AbsoluteError": 0.0014058956916099818,
+              "maximumAbsoluteError": 0.0014058956916099818,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.005275888133031,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.005275888133031,
+              "medianSignedError": 0.0052154195011338,
+              "medianAbsoluteError": 0.0052154195011338,
+              "p95AbsoluteError": 0.008807256235827676,
+              "p99AbsoluteError": 0.00912653061224491,
+              "maximumAbsoluteError": 0.009206349206349218,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.005275888133031,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.005275888133031,
+              "medianSignedError": 0.0052154195011338,
+              "medianAbsoluteError": 0.0052154195011338,
+              "p95AbsoluteError": 0.008807256235827676,
+              "p99AbsoluteError": 0.00912653061224491,
+              "maximumAbsoluteError": 0.009206349206349218,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ],
+        "audioflux": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 3,
+            "missedCount": 3,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.014074074074074044,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.014074074074074044,
+              "medianSignedError": -0.014013605442176863,
+              "medianAbsoluteError": 0.014013605442176863,
+              "p95AbsoluteError": 0.017605442176870663,
+              "p99AbsoluteError": 0.01792471655328789,
+              "maximumAbsoluteError": 0.018004535147392198,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.014074074074074044,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.014074074074074044,
+              "medianSignedError": -0.014013605442176863,
+              "medianAbsoluteError": 0.014013605442176863,
+              "p95AbsoluteError": 0.017605442176870663,
+              "p99AbsoluteError": 0.01792471655328789,
+              "maximumAbsoluteError": 0.018004535147392198,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ],
+        "agreed": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 3,
+            "missedCount": 3,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.004399092970521499,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.004399092970521499,
+              "medianSignedError": -0.004399092970521545,
+              "medianAbsoluteError": 0.004399092970521545,
+              "p95AbsoluteError": 0.006195011337868383,
+              "p99AbsoluteError": 0.006354648526076992,
+              "maximumAbsoluteError": 0.006394557823129143,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.004399092970521499,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.004399092970521499,
+              "medianSignedError": -0.004399092970521545,
+              "medianAbsoluteError": 0.004399092970521545,
+              "p95AbsoluteError": 0.006195011337868383,
+              "p99AbsoluteError": 0.006354648526076992,
+              "maximumAbsoluteError": 0.006394557823129143,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "noise",
+      "sampleRate": 44100,
+      "sampleCount": 52920,
+      "truth": [
+        0.22299319727891156,
+        0.4629931972789116,
+        0.7029931972789115
+      ],
+      "negativeStart": 0.1,
+      "pcmSha256": "fcf582a9ceeac4c5e0e08347cd08008ffe4ef973be0bfdbed15d22d86876af13",
+      "eventTimes": {
+        "librosa": [
+          0.23219954648526078,
+          0.46439909297052157,
+          0.7082086167800453
+        ],
+        "audioflux": [
+          0.2089795918367347,
+          0.4527891156462585,
+          0.6965986394557823
+        ],
+        "agreed": [
+          0.22058956916099776,
+          0.45859410430839004,
+          0.7024036281179138
+        ]
+      },
+      "strictReference": {
+        "status": "available",
+        "algorithm": "strict-class-pair-v1",
+        "toleranceSeconds": 0.025,
+        "requiredProviders": [
+          "librosa",
+          "audioflux"
+        ],
+        "minimumAgreement": 1,
+        "groundTruthStatus": false,
+        "acceptedReferences": [
+          {
+            "time": 0.22058956916099776,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.2089795918367347,
+              0.23219954648526078
+            ],
+            "disagreementSeconds": 0.02321995464852608,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.23219954648526078
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.2089795918367347
+              }
+            ]
+          },
+          {
+            "time": 0.45859410430839004,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.4527891156462585,
+              0.46439909297052157
+            ],
+            "disagreementSeconds": 0.011609977324263054,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.46439909297052157
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.4527891156462585
+              }
+            ]
+          },
+          {
+            "time": 0.7024036281179138,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.6965986394557823,
+              0.7082086167800453
+            ],
+            "disagreementSeconds": 0.011609977324263054,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.7082086167800453
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.6965986394557823
+              }
+            ]
+          }
+        ],
+        "unacceptedLeft": [],
+        "unacceptedRight": [],
+        "unacceptedAreNegatives": false
+      },
+      "audiofluxProvenance": {
+        "provider": "audioflux",
+        "version": "0.1.9",
+        "pcmSha256": "fcf582a9ceeac4c5e0e08347cd08008ffe4ef973be0bfdbed15d22d86876af13",
+        "nativeBinarySha256": "321bc7b2c3f5cf8fb5ecf966c70d19408968d3906805e8dcaea677d40a42c3d7",
+        "parameters": {
+          "sampleRate": 44100,
+          "nFft": 2048,
+          "hopLength": 512,
+          "window": "HANN",
+          "padding": "center-constant-zero",
+          "spectrum": "linear-magnitude",
+          "novelty": "FLUX",
+          "filterOrder": 1,
+          "noveltyParam": [
+            1,
+            1,
+            1,
+            0,
+            1,
+            0,
+            1,
+            1
+          ],
+          "timestamp": "library frame index times hop/sampleRate",
+          "timestampCorrection": 0
+        }
+      },
+      "truthComparison": {
+        "librosa": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.002,
+            "matchedCount": 1,
+            "falsePositiveCount": 2,
+            "missedCount": 2,
+            "precision": 0.3333333333333333,
+            "recall": 0.3333333333333333,
+            "fMeasure": 0.3333333333333333,
+            "meanAbsoluteTimingError": 0.0014058956916099818,
+            "timingErrors": {
+              "sampleCount": 1,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.0014058956916099818,
+              "medianSignedError": 0.0014058956916099818,
+              "medianAbsoluteError": 0.0014058956916099818,
+              "p95AbsoluteError": 0.0014058956916099818,
+              "p99AbsoluteError": 0.0014058956916099818,
+              "maximumAbsoluteError": 0.0014058956916099818,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.005275888133031,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.005275888133031,
+              "medianSignedError": 0.0052154195011338,
+              "medianAbsoluteError": 0.0052154195011338,
+              "p95AbsoluteError": 0.008807256235827676,
+              "p99AbsoluteError": 0.00912653061224491,
+              "maximumAbsoluteError": 0.009206349206349218,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.005275888133031,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.005275888133031,
+              "medianSignedError": 0.0052154195011338,
+              "medianAbsoluteError": 0.0052154195011338,
+              "p95AbsoluteError": 0.008807256235827676,
+              "p99AbsoluteError": 0.00912653061224491,
+              "maximumAbsoluteError": 0.009206349206349218,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ],
+        "audioflux": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 3,
+            "missedCount": 3,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.010204081632653064,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.010204081632653064,
+              "medianSignedError": -0.010204081632653073,
+              "medianAbsoluteError": 0.010204081632653073,
+              "p95AbsoluteError": 0.013632653061224484,
+              "p99AbsoluteError": 0.013937414965986387,
+              "maximumAbsoluteError": 0.014013605442176863,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.010204081632653064,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.010204081632653064,
+              "medianSignedError": -0.010204081632653073,
+              "medianAbsoluteError": 0.010204081632653073,
+              "p95AbsoluteError": 0.013632653061224484,
+              "p99AbsoluteError": 0.013937414965986387,
+              "maximumAbsoluteError": 0.014013605442176863,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ],
+        "agreed": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.002,
+            "matchedCount": 1,
+            "falsePositiveCount": 2,
+            "missedCount": 2,
+            "precision": 0.3333333333333333,
+            "recall": 0.3333333333333333,
+            "fMeasure": 0.3333333333333333,
+            "meanAbsoluteTimingError": 0.0005895691609977272,
+            "timingErrors": {
+              "sampleCount": 1,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.0005895691609977272,
+              "medianSignedError": -0.0005895691609977272,
+              "medianAbsoluteError": 0.0005895691609977272,
+              "p95AbsoluteError": 0.0005895691609977272,
+              "p99AbsoluteError": 0.0005895691609977272,
+              "maximumAbsoluteError": 0.0005895691609977272,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.002464096749811027,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.002464096749811027,
+              "medianSignedError": -0.0024036281179138086,
+              "medianAbsoluteError": 0.0024036281179138086,
+              "p95AbsoluteError": 0.004199546485260771,
+              "p99AbsoluteError": 0.0043591836734693905,
+              "maximumAbsoluteError": 0.004399092970521545,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.002464096749811027,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.002464096749811027,
+              "medianSignedError": -0.0024036281179138086,
+              "medianAbsoluteError": 0.0024036281179138086,
+              "p95AbsoluteError": 0.004199546485260771,
+              "p99AbsoluteError": 0.0043591836734693905,
+              "maximumAbsoluteError": 0.004399092970521545,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "pluck",
+      "sampleRate": 44100,
+      "sampleCount": 52920,
+      "truth": [
+        0.22299319727891156,
+        0.4629931972789116,
+        0.7029931972789115
+      ],
+      "negativeStart": 0.1,
+      "pcmSha256": "36a5b3ac69ae7b847947ea11bc06bc987436a409487db55cd1229dd29a7521ad",
+      "eventTimes": {
+        "librosa": [
+          0.23219954648526078,
+          0.46439909297052157,
+          0.7082086167800453
+        ],
+        "audioflux": [
+          0.2089795918367347,
+          0.4527891156462585,
+          0.6965986394557823
+        ],
+        "agreed": [
+          0.22058956916099776,
+          0.45859410430839004,
+          0.7024036281179138
+        ]
+      },
+      "strictReference": {
+        "status": "available",
+        "algorithm": "strict-class-pair-v1",
+        "toleranceSeconds": 0.025,
+        "requiredProviders": [
+          "librosa",
+          "audioflux"
+        ],
+        "minimumAgreement": 1,
+        "groundTruthStatus": false,
+        "acceptedReferences": [
+          {
+            "time": 0.22058956916099776,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.2089795918367347,
+              0.23219954648526078
+            ],
+            "disagreementSeconds": 0.02321995464852608,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.23219954648526078
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.2089795918367347
+              }
+            ]
+          },
+          {
+            "time": 0.45859410430839004,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.4527891156462585,
+              0.46439909297052157
+            ],
+            "disagreementSeconds": 0.011609977324263054,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.46439909297052157
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.4527891156462585
+              }
+            ]
+          },
+          {
+            "time": 0.7024036281179138,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.6965986394557823,
+              0.7082086167800453
+            ],
+            "disagreementSeconds": 0.011609977324263054,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.7082086167800453
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.6965986394557823
+              }
+            ]
+          }
+        ],
+        "unacceptedLeft": [],
+        "unacceptedRight": [],
+        "unacceptedAreNegatives": false
+      },
+      "audiofluxProvenance": {
+        "provider": "audioflux",
+        "version": "0.1.9",
+        "pcmSha256": "36a5b3ac69ae7b847947ea11bc06bc987436a409487db55cd1229dd29a7521ad",
+        "nativeBinarySha256": "321bc7b2c3f5cf8fb5ecf966c70d19408968d3906805e8dcaea677d40a42c3d7",
+        "parameters": {
+          "sampleRate": 44100,
+          "nFft": 2048,
+          "hopLength": 512,
+          "window": "HANN",
+          "padding": "center-constant-zero",
+          "spectrum": "linear-magnitude",
+          "novelty": "FLUX",
+          "filterOrder": 1,
+          "noveltyParam": [
+            1,
+            1,
+            1,
+            0,
+            1,
+            0,
+            1,
+            1
+          ],
+          "timestamp": "library frame index times hop/sampleRate",
+          "timestampCorrection": 0
+        }
+      },
+      "truthComparison": {
+        "librosa": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.002,
+            "matchedCount": 1,
+            "falsePositiveCount": 2,
+            "missedCount": 2,
+            "precision": 0.3333333333333333,
+            "recall": 0.3333333333333333,
+            "fMeasure": 0.3333333333333333,
+            "meanAbsoluteTimingError": 0.0014058956916099818,
+            "timingErrors": {
+              "sampleCount": 1,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.0014058956916099818,
+              "medianSignedError": 0.0014058956916099818,
+              "medianAbsoluteError": 0.0014058956916099818,
+              "p95AbsoluteError": 0.0014058956916099818,
+              "p99AbsoluteError": 0.0014058956916099818,
+              "maximumAbsoluteError": 0.0014058956916099818,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.005275888133031,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.005275888133031,
+              "medianSignedError": 0.0052154195011338,
+              "medianAbsoluteError": 0.0052154195011338,
+              "p95AbsoluteError": 0.008807256235827676,
+              "p99AbsoluteError": 0.00912653061224491,
+              "maximumAbsoluteError": 0.009206349206349218,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.005275888133031,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.005275888133031,
+              "medianSignedError": 0.0052154195011338,
+              "medianAbsoluteError": 0.0052154195011338,
+              "p95AbsoluteError": 0.008807256235827676,
+              "p99AbsoluteError": 0.00912653061224491,
+              "maximumAbsoluteError": 0.009206349206349218,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ],
+        "audioflux": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 3,
+            "missedCount": 3,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.010204081632653064,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.010204081632653064,
+              "medianSignedError": -0.010204081632653073,
+              "medianAbsoluteError": 0.010204081632653073,
+              "p95AbsoluteError": 0.013632653061224484,
+              "p99AbsoluteError": 0.013937414965986387,
+              "maximumAbsoluteError": 0.014013605442176863,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.010204081632653064,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.010204081632653064,
+              "medianSignedError": -0.010204081632653073,
+              "medianAbsoluteError": 0.010204081632653073,
+              "p95AbsoluteError": 0.013632653061224484,
+              "p99AbsoluteError": 0.013937414965986387,
+              "maximumAbsoluteError": 0.014013605442176863,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ],
+        "agreed": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.002,
+            "matchedCount": 1,
+            "falsePositiveCount": 2,
+            "missedCount": 2,
+            "precision": 0.3333333333333333,
+            "recall": 0.3333333333333333,
+            "fMeasure": 0.3333333333333333,
+            "meanAbsoluteTimingError": 0.0005895691609977272,
+            "timingErrors": {
+              "sampleCount": 1,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.0005895691609977272,
+              "medianSignedError": -0.0005895691609977272,
+              "medianAbsoluteError": 0.0005895691609977272,
+              "p95AbsoluteError": 0.0005895691609977272,
+              "p99AbsoluteError": 0.0005895691609977272,
+              "maximumAbsoluteError": 0.0005895691609977272,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.002464096749811027,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.002464096749811027,
+              "medianSignedError": -0.0024036281179138086,
+              "medianAbsoluteError": 0.0024036281179138086,
+              "p95AbsoluteError": 0.004199546485260771,
+              "p99AbsoluteError": 0.0043591836734693905,
+              "maximumAbsoluteError": 0.004399092970521545,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.002464096749811027,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.002464096749811027,
+              "medianSignedError": -0.0024036281179138086,
+              "medianAbsoluteError": 0.0024036281179138086,
+              "p95AbsoluteError": 0.004199546485260771,
+              "p99AbsoluteError": 0.0043591836734693905,
+              "maximumAbsoluteError": 0.004399092970521545,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "mixed-noise",
+      "sampleRate": 44100,
+      "sampleCount": 52920,
+      "truth": [
+        0.22299319727891156,
+        0.4629931972789116,
+        0.7029931972789115
+      ],
+      "negativeStart": 0.1,
+      "pcmSha256": "2ec0f2d0e95d9d56a1c19aaf78764904037733146100d9f0dbf1b2270b3ea990",
+      "eventTimes": {
+        "librosa": [
+          0.23219954648526078,
+          0.47600907029478456,
+          0.7082086167800453
+        ],
+        "audioflux": [
+          0.2089795918367347,
+          0.4527891156462585,
+          0.6965986394557823,
+          1.18421768707483
+        ],
+        "agreed": [
+          0.22058956916099776,
+          0.4643990929705215,
+          0.7024036281179138
+        ]
+      },
+      "strictReference": {
+        "status": "available",
+        "algorithm": "strict-class-pair-v1",
+        "toleranceSeconds": 0.025,
+        "requiredProviders": [
+          "librosa",
+          "audioflux"
+        ],
+        "minimumAgreement": 1,
+        "groundTruthStatus": false,
+        "acceptedReferences": [
+          {
+            "time": 0.22058956916099776,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.2089795918367347,
+              0.23219954648526078
+            ],
+            "disagreementSeconds": 0.02321995464852608,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.23219954648526078
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.2089795918367347
+              }
+            ]
+          },
+          {
+            "time": 0.4643990929705215,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.4527891156462585,
+              0.47600907029478456
+            ],
+            "disagreementSeconds": 0.023219954648526053,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.47600907029478456
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.4527891156462585
+              }
+            ]
+          },
+          {
+            "time": 0.7024036281179138,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.6965986394557823,
+              0.7082086167800453
+            ],
+            "disagreementSeconds": 0.011609977324263054,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.7082086167800453
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.6965986394557823
+              }
+            ]
+          }
+        ],
+        "unacceptedLeft": [],
+        "unacceptedRight": [
+          {
+            "time": 1.18421768707483,
+            "class": "onset"
+          }
+        ],
+        "unacceptedAreNegatives": false
+      },
+      "audiofluxProvenance": {
+        "provider": "audioflux",
+        "version": "0.1.9",
+        "pcmSha256": "2ec0f2d0e95d9d56a1c19aaf78764904037733146100d9f0dbf1b2270b3ea990",
+        "nativeBinarySha256": "321bc7b2c3f5cf8fb5ecf966c70d19408968d3906805e8dcaea677d40a42c3d7",
+        "parameters": {
+          "sampleRate": 44100,
+          "nFft": 2048,
+          "hopLength": 512,
+          "window": "HANN",
+          "padding": "center-constant-zero",
+          "spectrum": "linear-magnitude",
+          "novelty": "FLUX",
+          "filterOrder": 1,
+          "noveltyParam": [
+            1,
+            1,
+            1,
+            0,
+            1,
+            0,
+            1,
+            1
+          ],
+          "timestamp": "library frame index times hop/sampleRate",
+          "timestampCorrection": 0
+        }
+      },
+      "truthComparison": {
+        "librosa": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 3,
+            "missedCount": 3,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.009145880574452,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.009145880574452,
+              "medianSignedError": 0.009206349206349218,
+              "medianAbsoluteError": 0.009206349206349218,
+              "p95AbsoluteError": 0.012634920634920603,
+              "p99AbsoluteError": 0.012939682539682505,
+              "maximumAbsoluteError": 0.01301587301587298,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.009145880574452,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.009145880574452,
+              "medianSignedError": 0.009206349206349218,
+              "medianAbsoluteError": 0.009206349206349218,
+              "p95AbsoluteError": 0.012634920634920603,
+              "p99AbsoluteError": 0.012939682539682505,
+              "maximumAbsoluteError": 0.01301587301587298,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ],
+        "audioflux": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 4,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 4,
+            "missedCount": 3,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 4,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 1,
+            "missedCount": 0,
+            "precision": 0.75,
+            "recall": 1.0,
+            "fMeasure": 0.8571428571428571,
+            "meanAbsoluteTimingError": 0.010204081632653064,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.010204081632653064,
+              "medianSignedError": -0.010204081632653073,
+              "medianAbsoluteError": 0.010204081632653073,
+              "p95AbsoluteError": 0.013632653061224484,
+              "p99AbsoluteError": 0.013937414965986387,
+              "maximumAbsoluteError": 0.014013605442176863,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 4,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 1,
+            "missedCount": 0,
+            "precision": 0.75,
+            "recall": 1.0,
+            "fMeasure": 0.8571428571428571,
+            "meanAbsoluteTimingError": 0.010204081632653064,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.010204081632653064,
+              "medianSignedError": -0.010204081632653073,
+              "medianAbsoluteError": 0.010204081632653073,
+              "p95AbsoluteError": 0.013632653061224484,
+              "p99AbsoluteError": 0.013937414965986387,
+              "maximumAbsoluteError": 0.014013605442176863,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ],
+        "agreed": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.002,
+            "matchedCount": 2,
+            "falsePositiveCount": 1,
+            "missedCount": 1,
+            "precision": 0.6666666666666666,
+            "recall": 0.6666666666666666,
+            "fMeasure": 0.6666666666666666,
+            "meanAbsoluteTimingError": 0.0009977324263038267,
+            "timingErrors": {
+              "sampleCount": 2,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.0004081632653060996,
+              "medianSignedError": 0.0004081632653060996,
+              "medianAbsoluteError": 0.0009977324263038267,
+              "p95AbsoluteError": 0.0013650793650793163,
+              "p99AbsoluteError": 0.0013977324263038044,
+              "maximumAbsoluteError": 0.0014058956916099263,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.001466364323507154,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.0005291005291005365,
+              "medianSignedError": -0.0005895691609977272,
+              "medianAbsoluteError": 0.0014058956916099263,
+              "p95AbsoluteError": 0.0023038548752834205,
+              "p99AbsoluteError": 0.002383673469387731,
+              "maximumAbsoluteError": 0.0024036281179138086,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.001466364323507154,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.0005291005291005365,
+              "medianSignedError": -0.0005895691609977272,
+              "medianAbsoluteError": 0.0014058956916099263,
+              "p95AbsoluteError": 0.0023038548752834205,
+              "p99AbsoluteError": 0.002383673469387731,
+              "maximumAbsoluteError": 0.0024036281179138086,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "mixed-pluck",
+      "sampleRate": 44100,
+      "sampleCount": 52920,
+      "truth": [
+        0.22299319727891156,
+        0.4629931972789116,
+        0.7029931972789115
+      ],
+      "negativeStart": 0.1,
+      "pcmSha256": "8e9b95d20068e89f49db77db95043021c7204fabb3176547675b333475f2c67a",
+      "eventTimes": {
+        "librosa": [
+          0.23219954648526078,
+          0.47600907029478456,
+          0.7082086167800453
+        ],
+        "audioflux": [
+          0.2089795918367347,
+          0.4527891156462585,
+          0.6965986394557823,
+          1.18421768707483
+        ],
+        "agreed": [
+          0.22058956916099776,
+          0.4643990929705215,
+          0.7024036281179138
+        ]
+      },
+      "strictReference": {
+        "status": "available",
+        "algorithm": "strict-class-pair-v1",
+        "toleranceSeconds": 0.025,
+        "requiredProviders": [
+          "librosa",
+          "audioflux"
+        ],
+        "minimumAgreement": 1,
+        "groundTruthStatus": false,
+        "acceptedReferences": [
+          {
+            "time": 0.22058956916099776,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.2089795918367347,
+              0.23219954648526078
+            ],
+            "disagreementSeconds": 0.02321995464852608,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.23219954648526078
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.2089795918367347
+              }
+            ]
+          },
+          {
+            "time": 0.4643990929705215,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.4527891156462585,
+              0.47600907029478456
+            ],
+            "disagreementSeconds": 0.023219954648526053,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.47600907029478456
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.4527891156462585
+              }
+            ]
+          },
+          {
+            "time": 0.7024036281179138,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.6965986394557823,
+              0.7082086167800453
+            ],
+            "disagreementSeconds": 0.011609977324263054,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.7082086167800453
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.6965986394557823
+              }
+            ]
+          }
+        ],
+        "unacceptedLeft": [],
+        "unacceptedRight": [
+          {
+            "time": 1.18421768707483,
+            "class": "onset"
+          }
+        ],
+        "unacceptedAreNegatives": false
+      },
+      "audiofluxProvenance": {
+        "provider": "audioflux",
+        "version": "0.1.9",
+        "pcmSha256": "8e9b95d20068e89f49db77db95043021c7204fabb3176547675b333475f2c67a",
+        "nativeBinarySha256": "321bc7b2c3f5cf8fb5ecf966c70d19408968d3906805e8dcaea677d40a42c3d7",
+        "parameters": {
+          "sampleRate": 44100,
+          "nFft": 2048,
+          "hopLength": 512,
+          "window": "HANN",
+          "padding": "center-constant-zero",
+          "spectrum": "linear-magnitude",
+          "novelty": "FLUX",
+          "filterOrder": 1,
+          "noveltyParam": [
+            1,
+            1,
+            1,
+            0,
+            1,
+            0,
+            1,
+            1
+          ],
+          "timestamp": "library frame index times hop/sampleRate",
+          "timestampCorrection": 0
+        }
+      },
+      "truthComparison": {
+        "librosa": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 3,
+            "missedCount": 3,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.009145880574452,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.009145880574452,
+              "medianSignedError": 0.009206349206349218,
+              "medianAbsoluteError": 0.009206349206349218,
+              "p95AbsoluteError": 0.012634920634920603,
+              "p99AbsoluteError": 0.012939682539682505,
+              "maximumAbsoluteError": 0.01301587301587298,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.009145880574452,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.009145880574452,
+              "medianSignedError": 0.009206349206349218,
+              "medianAbsoluteError": 0.009206349206349218,
+              "p95AbsoluteError": 0.012634920634920603,
+              "p99AbsoluteError": 0.012939682539682505,
+              "maximumAbsoluteError": 0.01301587301587298,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ],
+        "audioflux": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 4,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 4,
+            "missedCount": 3,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 4,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 1,
+            "missedCount": 0,
+            "precision": 0.75,
+            "recall": 1.0,
+            "fMeasure": 0.8571428571428571,
+            "meanAbsoluteTimingError": 0.010204081632653064,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.010204081632653064,
+              "medianSignedError": -0.010204081632653073,
+              "medianAbsoluteError": 0.010204081632653073,
+              "p95AbsoluteError": 0.013632653061224484,
+              "p99AbsoluteError": 0.013937414965986387,
+              "maximumAbsoluteError": 0.014013605442176863,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 4,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 1,
+            "missedCount": 0,
+            "precision": 0.75,
+            "recall": 1.0,
+            "fMeasure": 0.8571428571428571,
+            "meanAbsoluteTimingError": 0.010204081632653064,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.010204081632653064,
+              "medianSignedError": -0.010204081632653073,
+              "medianAbsoluteError": 0.010204081632653073,
+              "p95AbsoluteError": 0.013632653061224484,
+              "p99AbsoluteError": 0.013937414965986387,
+              "maximumAbsoluteError": 0.014013605442176863,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ],
+        "agreed": [
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.002,
+            "matchedCount": 2,
+            "falsePositiveCount": 1,
+            "missedCount": 1,
+            "precision": 0.6666666666666666,
+            "recall": 0.6666666666666666,
+            "fMeasure": 0.6666666666666666,
+            "meanAbsoluteTimingError": 0.0009977324263038267,
+            "timingErrors": {
+              "sampleCount": 2,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": 0.0004081632653060996,
+              "medianSignedError": 0.0004081632653060996,
+              "medianAbsoluteError": 0.0009977324263038267,
+              "p95AbsoluteError": 0.0013650793650793163,
+              "p99AbsoluteError": 0.0013977324263038044,
+              "maximumAbsoluteError": 0.0014058956916099263,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.025,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.001466364323507154,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.0005291005291005365,
+              "medianSignedError": -0.0005895691609977272,
+              "medianAbsoluteError": 0.0014058956916099263,
+              "p95AbsoluteError": 0.0023038548752834205,
+              "p99AbsoluteError": 0.002383673469387731,
+              "maximumAbsoluteError": 0.0024036281179138086,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          },
+          {
+            "status": "available",
+            "referenceCount": 3,
+            "estimatedCount": 3,
+            "tolerance": 0.05,
+            "matchedCount": 3,
+            "falsePositiveCount": 0,
+            "missedCount": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "fMeasure": 1.0,
+            "meanAbsoluteTimingError": 0.001466364323507154,
+            "timingErrors": {
+              "sampleCount": 3,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": -0.0005291005291005365,
+              "medianSignedError": -0.0005895691609977272,
+              "medianAbsoluteError": 0.0014058956916099263,
+              "p95AbsoluteError": 0.0023038548752834205,
+              "p99AbsoluteError": 0.002383673469387731,
+              "maximumAbsoluteError": 0.0024036281179138086,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "mir_eval.util.match_events"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "sustain",
+      "sampleRate": 44100,
+      "sampleCount": 52920,
+      "truth": [],
+      "negativeStart": 0.1,
+      "pcmSha256": "4171cd1b7ec70ef8597cf740077c6d770c1060201e946cc542b9acfaf93238b4",
+      "eventTimes": {
+        "librosa": [
+          0.11609977324263039,
+          0.16253968253968254,
+          0.301859410430839,
+          0.34829931972789113,
+          0.3831292517006803,
+          0.47600907029478456,
+          0.5340589569160997,
+          0.5688888888888889,
+          0.615328798185941,
+          0.6501587301587302,
+          0.6849886621315193,
+          0.7198185941043084,
+          0.8010884353741496,
+          0.8359183673469388,
+          0.8707482993197279,
+          0.9868480725623583,
+          1.0216780045351475,
+          1.1029478458049886
+        ],
+        "audioflux": [
+          1.18421768707483
+        ],
+        "agreed": []
+      },
+      "strictReference": {
+        "status": "available",
+        "algorithm": "strict-class-pair-v1",
+        "toleranceSeconds": 0.025,
+        "requiredProviders": [
+          "librosa",
+          "audioflux"
+        ],
+        "minimumAgreement": 1,
+        "groundTruthStatus": false,
+        "acceptedReferences": [],
+        "unacceptedLeft": [
+          {
+            "time": 0.11609977324263039,
+            "class": "onset"
+          },
+          {
+            "time": 0.16253968253968254,
+            "class": "onset"
+          },
+          {
+            "time": 0.301859410430839,
+            "class": "onset"
+          },
+          {
+            "time": 0.34829931972789113,
+            "class": "onset"
+          },
+          {
+            "time": 0.3831292517006803,
+            "class": "onset"
+          },
+          {
+            "time": 0.47600907029478456,
+            "class": "onset"
+          },
+          {
+            "time": 0.5340589569160997,
+            "class": "onset"
+          },
+          {
+            "time": 0.5688888888888889,
+            "class": "onset"
+          },
+          {
+            "time": 0.615328798185941,
+            "class": "onset"
+          },
+          {
+            "time": 0.6501587301587302,
+            "class": "onset"
+          },
+          {
+            "time": 0.6849886621315193,
+            "class": "onset"
+          },
+          {
+            "time": 0.7198185941043084,
+            "class": "onset"
+          },
+          {
+            "time": 0.8010884353741496,
+            "class": "onset"
+          },
+          {
+            "time": 0.8359183673469388,
+            "class": "onset"
+          },
+          {
+            "time": 0.8707482993197279,
+            "class": "onset"
+          },
+          {
+            "time": 0.9868480725623583,
+            "class": "onset"
+          },
+          {
+            "time": 1.0216780045351475,
+            "class": "onset"
+          },
+          {
+            "time": 1.1029478458049886,
+            "class": "onset"
+          }
+        ],
+        "unacceptedRight": [
+          {
+            "time": 1.18421768707483,
+            "class": "onset"
+          }
+        ],
+        "unacceptedAreNegatives": false
+      },
+      "audiofluxProvenance": {
+        "provider": "audioflux",
+        "version": "0.1.9",
+        "pcmSha256": "4171cd1b7ec70ef8597cf740077c6d770c1060201e946cc542b9acfaf93238b4",
+        "nativeBinarySha256": "321bc7b2c3f5cf8fb5ecf966c70d19408968d3906805e8dcaea677d40a42c3d7",
+        "parameters": {
+          "sampleRate": 44100,
+          "nFft": 2048,
+          "hopLength": 512,
+          "window": "HANN",
+          "padding": "center-constant-zero",
+          "spectrum": "linear-magnitude",
+          "novelty": "FLUX",
+          "filterOrder": 1,
+          "noveltyParam": [
+            1,
+            1,
+            1,
+            0,
+            1,
+            0,
+            1,
+            1
+          ],
+          "timestamp": "library frame index times hop/sampleRate",
+          "timestampCorrection": 0
+        }
+      },
+      "truthComparison": {
+        "librosa": [
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 18,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 18,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          },
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 18,
+            "tolerance": 0.025,
+            "matchedCount": 0,
+            "falsePositiveCount": 18,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          },
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 18,
+            "tolerance": 0.05,
+            "matchedCount": 0,
+            "falsePositiveCount": 18,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          }
+        ],
+        "audioflux": [
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 1,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 1,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          },
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 1,
+            "tolerance": 0.025,
+            "matchedCount": 0,
+            "falsePositiveCount": 1,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          },
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 1,
+            "tolerance": 0.05,
+            "matchedCount": 0,
+            "falsePositiveCount": 1,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          }
+        ],
+        "agreed": [
+          {
+            "status": "not_available",
+            "reason": "Both event lists are empty; agreement is undefined",
+            "referenceCount": 0,
+            "estimatedCount": 0,
+            "tolerance": 0.002
+          },
+          {
+            "status": "not_available",
+            "reason": "Both event lists are empty; agreement is undefined",
+            "referenceCount": 0,
+            "estimatedCount": 0,
+            "tolerance": 0.025
+          },
+          {
+            "status": "not_available",
+            "reason": "Both event lists are empty; agreement is undefined",
+            "referenceCount": 0,
+            "estimatedCount": 0,
+            "tolerance": 0.05
+          }
+        ]
+      }
+    },
+    {
+      "kind": "ramp",
+      "sampleRate": 44100,
+      "sampleCount": 52920,
+      "truth": [],
+      "negativeStart": 0.1,
+      "pcmSha256": "b8563fc3aeeb42c039e911097fd8597f2c3f81ae780c3b48b9058eb0729320ff",
+      "eventTimes": {
+        "librosa": [
+          0.313469387755102,
+          0.615328798185941,
+          0.6501587301587302,
+          0.6849886621315193,
+          0.8010884353741496,
+          0.8359183673469388,
+          0.9868480725623583,
+          1.0216780045351475
+        ],
+        "audioflux": [
+          0.4876190476190476,
+          1.18421768707483
+        ],
+        "agreed": []
+      },
+      "strictReference": {
+        "status": "available",
+        "algorithm": "strict-class-pair-v1",
+        "toleranceSeconds": 0.025,
+        "requiredProviders": [
+          "librosa",
+          "audioflux"
+        ],
+        "minimumAgreement": 1,
+        "groundTruthStatus": false,
+        "acceptedReferences": [],
+        "unacceptedLeft": [
+          {
+            "time": 0.313469387755102,
+            "class": "onset"
+          },
+          {
+            "time": 0.615328798185941,
+            "class": "onset"
+          },
+          {
+            "time": 0.6501587301587302,
+            "class": "onset"
+          },
+          {
+            "time": 0.6849886621315193,
+            "class": "onset"
+          },
+          {
+            "time": 0.8010884353741496,
+            "class": "onset"
+          },
+          {
+            "time": 0.8359183673469388,
+            "class": "onset"
+          },
+          {
+            "time": 0.9868480725623583,
+            "class": "onset"
+          },
+          {
+            "time": 1.0216780045351475,
+            "class": "onset"
+          }
+        ],
+        "unacceptedRight": [
+          {
+            "time": 0.4876190476190476,
+            "class": "onset"
+          },
+          {
+            "time": 1.18421768707483,
+            "class": "onset"
+          }
+        ],
+        "unacceptedAreNegatives": false
+      },
+      "audiofluxProvenance": {
+        "provider": "audioflux",
+        "version": "0.1.9",
+        "pcmSha256": "b8563fc3aeeb42c039e911097fd8597f2c3f81ae780c3b48b9058eb0729320ff",
+        "nativeBinarySha256": "321bc7b2c3f5cf8fb5ecf966c70d19408968d3906805e8dcaea677d40a42c3d7",
+        "parameters": {
+          "sampleRate": 44100,
+          "nFft": 2048,
+          "hopLength": 512,
+          "window": "HANN",
+          "padding": "center-constant-zero",
+          "spectrum": "linear-magnitude",
+          "novelty": "FLUX",
+          "filterOrder": 1,
+          "noveltyParam": [
+            1,
+            1,
+            1,
+            0,
+            1,
+            0,
+            1,
+            1
+          ],
+          "timestamp": "library frame index times hop/sampleRate",
+          "timestampCorrection": 0
+        }
+      },
+      "truthComparison": {
+        "librosa": [
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 8,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 8,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          },
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 8,
+            "tolerance": 0.025,
+            "matchedCount": 0,
+            "falsePositiveCount": 8,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          },
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 8,
+            "tolerance": 0.05,
+            "matchedCount": 0,
+            "falsePositiveCount": 8,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          }
+        ],
+        "audioflux": [
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 2,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 2,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          },
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 2,
+            "tolerance": 0.025,
+            "matchedCount": 0,
+            "falsePositiveCount": 2,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          },
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 2,
+            "tolerance": 0.05,
+            "matchedCount": 0,
+            "falsePositiveCount": 2,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          }
+        ],
+        "agreed": [
+          {
+            "status": "not_available",
+            "reason": "Both event lists are empty; agreement is undefined",
+            "referenceCount": 0,
+            "estimatedCount": 0,
+            "tolerance": 0.002
+          },
+          {
+            "status": "not_available",
+            "reason": "Both event lists are empty; agreement is undefined",
+            "referenceCount": 0,
+            "estimatedCount": 0,
+            "tolerance": 0.025
+          },
+          {
+            "status": "not_available",
+            "reason": "Both event lists are empty; agreement is undefined",
+            "referenceCount": 0,
+            "estimatedCount": 0,
+            "tolerance": 0.05
+          }
+        ]
+      }
+    },
+    {
+      "kind": "removal",
+      "sampleRate": 44100,
+      "sampleCount": 52920,
+      "truth": [],
+      "negativeStart": 0.1,
+      "pcmSha256": "9ab9e9520bfa598fca50b8b03436e7012a4505b29bfb5b70d2cc8b07845017ce",
+      "eventTimes": {
+        "librosa": [
+          0.6385487528344671
+        ],
+        "audioflux": [
+          0.615328798185941,
+          1.18421768707483
+        ],
+        "agreed": [
+          0.626938775510204
+        ]
+      },
+      "strictReference": {
+        "status": "available",
+        "algorithm": "strict-class-pair-v1",
+        "toleranceSeconds": 0.025,
+        "requiredProviders": [
+          "librosa",
+          "audioflux"
+        ],
+        "minimumAgreement": 1,
+        "groundTruthStatus": false,
+        "acceptedReferences": [
+          {
+            "time": 0.626938775510204,
+            "class": "onset",
+            "evidenceType": "pseudo_label",
+            "acceptance": "two-library-agreement",
+            "groundTruthStatus": false,
+            "confidence": null,
+            "timeInterval": [
+              0.615328798185941,
+              0.6385487528344671
+            ],
+            "disagreementSeconds": 0.02321995464852611,
+            "votes": [
+              {
+                "provider": "librosa",
+                "time": 0.6385487528344671
+              },
+              {
+                "provider": "audioflux",
+                "time": 0.615328798185941
+              }
+            ]
+          }
+        ],
+        "unacceptedLeft": [],
+        "unacceptedRight": [
+          {
+            "time": 1.18421768707483,
+            "class": "onset"
+          }
+        ],
+        "unacceptedAreNegatives": false
+      },
+      "audiofluxProvenance": {
+        "provider": "audioflux",
+        "version": "0.1.9",
+        "pcmSha256": "9ab9e9520bfa598fca50b8b03436e7012a4505b29bfb5b70d2cc8b07845017ce",
+        "nativeBinarySha256": "321bc7b2c3f5cf8fb5ecf966c70d19408968d3906805e8dcaea677d40a42c3d7",
+        "parameters": {
+          "sampleRate": 44100,
+          "nFft": 2048,
+          "hopLength": 512,
+          "window": "HANN",
+          "padding": "center-constant-zero",
+          "spectrum": "linear-magnitude",
+          "novelty": "FLUX",
+          "filterOrder": 1,
+          "noveltyParam": [
+            1,
+            1,
+            1,
+            0,
+            1,
+            0,
+            1,
+            1
+          ],
+          "timestamp": "library frame index times hop/sampleRate",
+          "timestampCorrection": 0
+        }
+      },
+      "truthComparison": {
+        "librosa": [
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 1,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 1,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          },
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 1,
+            "tolerance": 0.025,
+            "matchedCount": 0,
+            "falsePositiveCount": 1,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          },
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 1,
+            "tolerance": 0.05,
+            "matchedCount": 0,
+            "falsePositiveCount": 1,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          }
+        ],
+        "audioflux": [
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 2,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 2,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          },
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 2,
+            "tolerance": 0.025,
+            "matchedCount": 0,
+            "falsePositiveCount": 2,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          },
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 2,
+            "tolerance": 0.05,
+            "matchedCount": 0,
+            "falsePositiveCount": 2,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          }
+        ],
+        "agreed": [
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 1,
+            "tolerance": 0.002,
+            "matchedCount": 0,
+            "falsePositiveCount": 1,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          },
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 1,
+            "tolerance": 0.025,
+            "matchedCount": 0,
+            "falsePositiveCount": 1,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          },
+          {
+            "status": "available",
+            "referenceCount": 0,
+            "estimatedCount": 1,
+            "tolerance": 0.05,
+            "matchedCount": 0,
+            "falsePositiveCount": 1,
+            "missedCount": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "fMeasure": 0.0,
+            "meanAbsoluteTimingError": null,
+            "timingErrors": {
+              "sampleCount": 0,
+              "matchedOnly": true,
+              "units": "seconds",
+              "signConvention": "estimated minus reference; positive means late",
+              "quantileMethod": "linear interpolation at (n-1)*q",
+              "meanSignedError": null,
+              "medianSignedError": null,
+              "medianAbsoluteError": null,
+              "p95AbsoluteError": null,
+              "p99AbsoluteError": null,
+              "maximumAbsoluteError": null,
+              "interpretation": "Conditional on matches within tolerance; misses and false positives are separate. mir_eval matching maximizes cardinality; collision pairing is not a minimum-error assignment. Small-sample quantiles do not establish population tail bounds."
+            },
+            "implementation": "empty-side convention"
+          }
+        ]
+      }
+    }
+  ]
+}

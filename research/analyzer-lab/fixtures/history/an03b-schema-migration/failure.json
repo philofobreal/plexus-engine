@@ -1,0 +1,5 @@
+{
+  "stage": "exact predecessor schema migration",
+  "reason": "Unexpected adaptiveOnsets definition was inserted into root properties as well as the intended $defs. Existing payload tests passed, but exact predecessor comparison caught the extra root property. Remove only that accidental property; keep all assertions and both prior schema bytes.",
+  "schemaSha256": "15c072f7021aec692c1bc76a1fe0e0d63d66712ae5aede93d63215e78c924227"
+}

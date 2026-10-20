@@ -1,0 +1,229 @@
+{
+  "schemaVersion": "research-code-retention-1.0",
+  "capturedAt": "2026-10-10",
+  "scope": "Direct authored cache scripts, two baseline tools, original nested DSP diagnostic; no broad disk scan",
+  "authoredPrograms": [
+    {
+      "originalRelativePath": "analyzer-audit-root.mjs",
+      "sha256": "82b32583e9a8f9e32fd18240a8d7f8ddcdda9e4dc95733ceda6e754d35c8ef6b",
+      "bytes": 2731,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/analyzer-audit-root.mjs.txt",
+      "safeRefactor": null,
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "build_schemas.py",
+      "sha256": "13aa4d40556b620e6404f49ac4bafcc852f30e13b247f344e82cb26d4677812a",
+      "bytes": 5974,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/build_schemas.py.txt",
+      "safeRefactor": "schema_snapshot.py",
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "create_drum_schemas.py",
+      "sha256": "0fe8535a212d1e7d6f130fab55c7854b890e13b9e24a35ad7c2dc41298e6a9c7",
+      "bytes": 2318,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/create_drum_schemas.py.txt",
+      "safeRefactor": "schema_snapshot.py",
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "create_drum_v2_schema.py",
+      "sha256": "300a3a6a34879b1838d3a52ccf2a688ea3ac7ec2016b98f143522d44507ffff7",
+      "bytes": 848,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/create_drum_v2_schema.py.txt",
+      "safeRefactor": "schema_snapshot.py",
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "finalize-principles-audit.py",
+      "sha256": "b734d14f65b0f9ccecdc7f0984e26e8462e0326bda3c33c480f6d7043af3718c",
+      "bytes": 1270,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/finalize-principles-audit.py.txt",
+      "safeRefactor": null,
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "finalize_improvement_evidence.py",
+      "sha256": "27b584a8ceec73da2b33cd6a7be020ca343d5d70d4d47c9aa21d147659022e9d",
+      "bytes": 3561,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/finalize_improvement_evidence.py.txt",
+      "safeRefactor": null,
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "freeze_drum_models.py",
+      "sha256": "50fa38debaec601ad866340558c937c7cca29e453dddc6e95dda7faa900d9676",
+      "bytes": 1266,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/freeze_drum_models.py.txt",
+      "safeRefactor": "model_validation.py",
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "inspect_validation.py",
+      "sha256": "dfb69d84a0c9058efe6403282eda80904c24fa823d5e6c15d8d1904378de2bab",
+      "bytes": 396,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/inspect_validation.py.txt",
+      "safeRefactor": "model_validation.py",
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "measure_tonal_sustain.mjs",
+      "sha256": "d5dbe71f3bece761448f456695f765071d0833daa9f538a056e11677e668f6b6",
+      "bytes": 1503,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/measure_tonal_sustain.mjs.txt",
+      "safeRefactor": "measure_tonal_sustain.mjs",
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "measure_tonal_sustain.py",
+      "sha256": "f68cba308dd4a3c3914f12855838676f3d5664096c1f401082bd0504cec938d4",
+      "bytes": 2319,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/measure_tonal_sustain.py.txt",
+      "safeRefactor": "measure_tonal_sustain.py",
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "minimize-an01-schema.py",
+      "sha256": "d4bee483a0c18d0f5905b4149f8a143aa4933964f51f31b4e2248fb867a02244",
+      "bytes": 1661,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/minimize-an01-schema.py.txt",
+      "safeRefactor": "schema_snapshot.py",
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "pristine_build.py",
+      "sha256": "59f9463795c193a081b8a4e7982e28673df1c29cf651933b04580cdb87ff2868",
+      "bytes": 732,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/pristine_build.py.txt",
+      "safeRefactor": "pristine_build.py",
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "review_files.py",
+      "sha256": "4cc96ab8d8b1308f5415bdd7c5c4f6ec4fd233b86a8424269de7b66ad90a856a",
+      "bytes": 1161,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/review_files.py.txt",
+      "safeRefactor": "review_files.py",
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "summarize-an01.py",
+      "sha256": "e7f28139e8ca443843eb5ba8d6274bbc8d0214a9dc22431c69951c855bce9246",
+      "bytes": 7024,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/summarize-an01.py.txt",
+      "safeRefactor": "summarize_an01.py",
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "summarize-principles-audit.py",
+      "sha256": "25547ba0be3191f01c3a641a2105c507b81e9e1cbd9804dbff6b5c78dd6d1664",
+      "bytes": 3592,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/summarize-principles-audit.py.txt",
+      "safeRefactor": null,
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "update-an01-schemas.py",
+      "sha256": "3f37a73410e48a6f0ae2db0efa8e0b8ff234729141921ceef90df63f04a78111",
+      "bytes": 1561,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/update-an01-schemas.py.txt",
+      "safeRefactor": "schema_snapshot.py",
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "validate_cli.py",
+      "sha256": "1dfab5b7dcd79e0f2edd3151160bfdf36798d881ae471cb3a6cba39ce0bf7547",
+      "bytes": 2344,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/validate_cli.py.txt",
+      "safeRefactor": null,
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "validate_drum_cli.py",
+      "sha256": "df5ec2ae95e328676860d71c9bc3dd42c303816a0b34a380f5df427e162d5dff",
+      "bytes": 3096,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/validate_drum_cli.py.txt",
+      "safeRefactor": null,
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "baseline-check/check-identity.mjs",
+      "sha256": "308f9f4838723b17eb580889d926468d61091aec0264d02f6e312d6a4608a3b1",
+      "bytes": 1924,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/baseline-check__check-identity.mjs.txt",
+      "safeRefactor": "check_identity.py",
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "baseline-check/compare-failures.mjs",
+      "sha256": "83031a52918ca05b62888e16eb4881c2c600f9a634a841f02a039ae4753c5fb6",
+      "bytes": 1634,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/baseline-check__compare-failures.mjs.txt",
+      "safeRefactor": "compare_failures.py",
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    },
+    {
+      "originalRelativePath": "analyzer-audit-evaluation/dsp-diagnostics.mjs",
+      "sha256": "6c764b6d3490791d984d780cebb63093d52af8d0974fa6448a109691fb98c88b",
+      "bytes": 8808,
+      "retention": "exact_inert_source_snapshot",
+      "snapshot": "sources/analyzer-audit-evaluation__dsp-diagnostics.mjs.txt",
+      "safeRefactor": null,
+      "reason": "Authored research code retained. Refactor is explicit-input and fresh-output where listed; original publication paths and assertions remain historical only."
+    }
+  ],
+  "disposable": [
+    {
+      "originalRelativePath": "baseline-check/checkout",
+      "programCount": 422,
+      "retention": "disposable_generated_or_copied",
+      "reason": "Temporary copied clean-HEAD checkout; reconstruct from Git, do not duplicate production source"
+    },
+    {
+      "originalRelativePath": "pristine-build",
+      "programCount": 237,
+      "retention": "disposable_generated_or_copied",
+      "reason": "Temporary tracked-source build copy; reconstruct from Git"
+    },
+    {
+      "originalRelativePath": "build-baseline",
+      "programCount": 9,
+      "retention": "disposable_generated_or_copied",
+      "reason": "Generated Vite bundles; recreate with existing build tools"
+    },
+    {
+      "originalRelativePath": "pytest*/**/*.py",
+      "programCount": 25,
+      "retention": "disposable_generated_test_stubs",
+      "reason": "External-provider fixture code is already authored in versioned tests; runtime copies are not independent programs"
+    },
+    {
+      "originalRelativePath": "FeatureExtractor.algorithm5.ts",
+      "sha256": "6947f74de58b069ccc87f22536f03f5850f909efaeded1179d99fcd153023cb6",
+      "retention": "do_not_duplicate_production_source",
+      "reason": "Historical comparison substituted this saved production source; exact original comparison requires its recorded bytes or matching Git revision, not today's implementation"
+    }
+  ],
+  "unrecoverableInlineCode": "Shell/REPL snippets without a surviving file cannot be recovered verbatim. Versioned corpus generators, comparison modules, tests and fixture summaries preserve available implementations; no missing source has been invented."
+}

@@ -1,0 +1,890 @@
+{
+  "schemaVersion": "historical-evidence-capture-1.0",
+  "capturedAt": "2026-10-10",
+  "status": "historical_extract_not_current_validation",
+  "logs": [
+    {
+      "originalRelativePath": "an01-build-accepted.log",
+      "sha256": "1649e829cd3ab9a51eea0b21c15681aa590f95905858334d3159a5a4e7a65cee",
+      "bytes": 1833,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [
+        "✓ built in 578ms"
+      ],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-build-final.log",
+      "sha256": "b37a109b1d42c5f41a8a261ec7efcec7849d9341e9e478cc97694ac624ca9ac4",
+      "bytes": 1833,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [
+        "✓ built in 1.19s"
+      ],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-build.log",
+      "sha256": "d80a80e0470a13bb10fbdb7194692a1514068657eeb41f2db1ad2162b230a319",
+      "bytes": 1468,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [
+        "✓ built in 2.91s"
+      ],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-correctness.log",
+      "sha256": "2afd75f0beb511ec1f343367ee41ae8fb05b0147772cfb9b47b15edd9cc839a8",
+      "bytes": 7305,
+      "node": {
+        "summary": {
+          "tests": 76,
+          "pass": 75,
+          "fail": 1,
+          "duration_ms": 87698.8485
+        },
+        "failureNames": [
+          "extraction is deterministic, does not mutate samples and handles empty/short/invalid input"
+        ],
+        "assertionMessages": [
+          "Expected values to be strictly equal:"
+        ],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-focused-final.log",
+      "sha256": "ff4b8d334093280ef15cb3359aed9a0731cf138c04b083132e18a3a5816cc012",
+      "bytes": 18200,
+      "node": {
+        "summary": {
+          "tests": 170,
+          "pass": 168,
+          "fail": 2,
+          "duration_ms": 73531.7311
+        },
+        "failureNames": [
+          "tests\\automation.test.mjs",
+          "tests\\dramaturgy.test.mjs"
+        ],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-initial-tests.log",
+      "sha256": "310d2a67a5edc352c3b59b65f86e0c5606db300a679704a7d250fa21d56772c4",
+      "bytes": 37101,
+      "node": {
+        "summary": {
+          "tests": 58,
+          "pass": 32,
+          "fail": 26,
+          "duration_ms": 87636.0806
+        },
+        "failureNames": [
+          "analyzeAudio fixture output matches the SaaS/VST baseline summary",
+          "eight-second 1000 Hz sustain has no false attacks where final future context is truncated",
+          "eight-second 440 Hz sustain has no false attacks where final future context is truncated",
+          "golden master: breakbeat-140",
+          "golden master: breakdown-124",
+          "golden master: dnb-176",
+          "golden master: house-120",
+          "golden master: house-128",
+          "golden master: slow-floor-70",
+          "golden master: sparse-techno-90",
+          "golden master: techno-140",
+          "golden master: trance-150",
+          "sustained 1000 Hz at 44100 Hz, phase 0.000, has no plateau BeatEvents",
+          "sustained 1000 Hz at 44100 Hz, phase 1.047, has no plateau BeatEvents",
+          "sustained 1000 Hz at 48000 Hz, phase 0.000, has no plateau BeatEvents",
+          "sustained 1000 Hz at 48000 Hz, phase 1.047, has no plateau BeatEvents",
+          "sustained 110 Hz at 44100 Hz, phase 1.047, has no plateau BeatEvents",
+          "sustained 220 Hz at 44100 Hz, phase 1.047, has no plateau BeatEvents",
+          "sustained 220 Hz at 48000 Hz, phase 1.047, has no plateau BeatEvents",
+          "sustained 440 Hz at 44100 Hz, phase 0.000, has no plateau BeatEvents",
+          "sustained 440 Hz at 44100 Hz, phase 1.047, has no plateau BeatEvents",
+          "sustained 440 Hz at 48000 Hz, phase 0.000, has no plateau BeatEvents",
+          "sustained 440 Hz at 48000 Hz, phase 1.047, has no plateau BeatEvents",
+          "sustained 55 Hz at 44100 Hz, phase 1.047, has no plateau BeatEvents",
+          "sustained 55 Hz at 48000 Hz, phase 0.000, has no plateau BeatEvents",
+          "sustained 55 Hz at 48000 Hz, phase 1.047, has no plateau BeatEvents"
+        ],
+        "assertionMessages": [
+          "Expected values to be strictly deep-equal:",
+          "Golden master drift for breakbeat-140:",
+          "Golden master drift for breakdown-124:",
+          "Golden master drift for dnb-176:",
+          "Golden master drift for house-120:",
+          "Golden master drift for house-128:",
+          "Golden master drift for slow-floor-70:",
+          "Golden master drift for sparse-techno-90:",
+          "Golden master drift for techno-140:",
+          "Golden master drift for trance-150:",
+          "steady tone leaked 1 false attacks: 5.991",
+          "steady tone leaked 1 false attacks: 5.991",
+          "steady tone leaked 1 false attacks: 5.991",
+          "steady tone leaked 1 false attacks: 5.991",
+          "steady tone leaked 1 false attacks: 5.991",
+          "steady tone leaked 1 false attacks: 5.991",
+          "steady tone leaked 1 false attacks: 5.991",
+          "steady tone leaked 1 false attacks: 5.995",
+          "steady tone leaked 1 false attacks: 5.995",
+          "steady tone leaked 1 false attacks: 5.995",
+          "steady tone leaked 1 false attacks: 5.995",
+          "steady tone leaked 1 false attacks: 5.995",
+          "steady tone leaked 1 false attacks: 5.995",
+          "steady tone leaked 1 false attacks: 5.995",
+          "steady tone leaked 1 false attacks: 7.988",
+          "steady tone leaked 1 false attacks: 7.988"
+        ],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-integration-final.log",
+      "sha256": "f6cbfcc9fbd1ca0b843bc0291182febcdb8802a4fd6625cbc0255286d8c23ad9",
+      "bytes": 5909,
+      "node": {
+        "summary": {
+          "tests": 64,
+          "pass": 64,
+          "fail": 0,
+          "duration_ms": 1843.8646
+        },
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-node-accepted.log",
+      "sha256": "0c2728f1655e76ba1a30bdbbac537fc9091f2b771ba47f6e3f359d3f8e64c9ca",
+      "bytes": 138935,
+      "node": {
+        "summary": {
+          "tests": 1303,
+          "pass": 1293,
+          "fail": 10,
+          "duration_ms": 504110.8055
+        },
+        "failureNames": [
+          "all presets stay visible and ring quantization is limited to authored ring roles",
+          "clip roles have materially different wormhole behaviour (role-level contrast)",
+          "development preset save updates existing keys, appends edited keys, and preserves metadata",
+          "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+          "factory preset pairs preserve their authored near/far projected tunnel geometry",
+          "projected forward motion preserves overdrive > punch > drive > drift",
+          "raising wormholeSpeed increases projected travel rather than only trail length",
+          "weak roles pin a deep-perspective depth and continuity profile",
+          "wormhole factory presets keep a minimum normalized weighted separation",
+          "wormhole preset speeds retain the authored dramaturgical ordering"
+        ],
+        "assertionMessages": [
+          "389.64890777178124 vs 471.543038051684",
+          "The expression evaluated to a falsy value:",
+          "deep drift deeper than establish",
+          "establish depth",
+          "establish remains visibly above the opacity floor",
+          "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492",
+          "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09",
+          "vos-wh-drift.json must not reset user-global wormholeStarfield",
+          "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+        ],
+        "renameEPERM": true
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-node-full.log",
+      "sha256": "40d212e690a23d69d897cd3950a46579dd3bd498dadd6db4085d9ac8ffb95fbc",
+      "bytes": 164278,
+      "node": {
+        "summary": {
+          "tests": 1289,
+          "pass": 1276,
+          "fail": 13,
+          "duration_ms": 482445.9329
+        },
+        "failureNames": [
+          "all presets stay visible and ring quantization is limited to authored ring roles",
+          "analysis worker uses spectral FFT features instead of legacy crossover filters",
+          "clip roles have materially different wormhole behaviour (role-level contrast)",
+          "development preset save updates existing keys, appends edited keys, and preserves metadata",
+          "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+          "factory preset pairs preserve their authored near/far projected tunnel geometry",
+          "projected forward motion preserves overdrive > punch > drive > drift",
+          "raising wormholeSpeed increases projected travel rather than only trail length",
+          "tests\\automation.test.mjs",
+          "tests\\dramaturgy.test.mjs",
+          "weak roles pin a deep-perspective depth and continuity profile",
+          "wormhole factory presets keep a minimum normalized weighted separation",
+          "wormhole preset speeds retain the authored dramaturgical ordering"
+        ],
+        "assertionMessages": [
+          "389.64890777178124 vs 471.543038051684",
+          "The expression evaluated to a falsy value:",
+          "The input did not match the regular expression /this\\.zcrT\\[i\\] = zeroCrossings \\/ Math\\.max\\(1, this\\.hopSize - 1\\)/. Input:",
+          "deep drift deeper than establish",
+          "establish depth",
+          "establish remains visibly above the opacity floor",
+          "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492",
+          "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09",
+          "vos-wh-drift.json must not reset user-global wormholeStarfield",
+          "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+        ],
+        "renameEPERM": true
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-paired-accepted.log",
+      "sha256": "ffc0e84fac3355f0b6055dac7dd45ac28db3190cf60f7b4ac80dd867a248e6a8",
+      "bytes": 1448,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-paired-final.log",
+      "sha256": "5b4d424639a6f9baa9f7406f39ce1e60791f3f1a77900e820f6aac470d111268",
+      "bytes": 1044,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-paired-review.log",
+      "sha256": "b1f65dfd7e81d3f764a91b910dc79e3795ca09d10dc229d9c6cb5cd6c0a1e0aa",
+      "bytes": 5635,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-python-contracts.log",
+      "sha256": "bd982fd37a4ed78ad92eb4bcd5bddcf6b17d3145b4fcdb4f319e969d0a80a32a",
+      "bytes": 102,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [
+        "24 passed in 20.03s"
+      ],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-python-final.log",
+      "sha256": "54fe186957b212901fdcffe372f00bf2771103c2f4ff3635b7f1ae1125ab6427",
+      "bytes": 276,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [
+        "205 passed in 156.88s (0:02:36)"
+      ],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-python-full.log",
+      "sha256": "1dc20b703812cd1768799e8c9136998da1f08fbebc639ef214460a2e02f51d5c",
+      "bytes": 265,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [
+        "205 passed in 42.70s"
+      ],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-python-initial.log",
+      "sha256": "ced8cb357fd9dacdf56c494f5392cf991fe52d903db21e0073c6771a26206ee9",
+      "bytes": 71238,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [
+        "14 passed, 10 errors in 8.23s"
+      ],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "an01-signal-tests.log",
+      "sha256": "c8fd023686852740b51c47211debe5ac72d18a3abb7ada44817ccb862e20a4fc",
+      "bytes": 980,
+      "node": {
+        "summary": {
+          "tests": 10,
+          "pass": 10,
+          "fail": 0,
+          "duration_ms": 913.0946
+        },
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "audit-summary-replay.log",
+      "sha256": "229eb1e60649696d8980085f728520c6cff731b8e35c8120dd9bf3d0dd55e55a",
+      "bytes": 2240,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "build-improvement.log",
+      "sha256": "0d2b971c23256bd38d48affd4fa16de3cfc08cc133f41b7ce3b7d9ce0ce339ad",
+      "bytes": 1833,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [
+        "✓ built in 985ms"
+      ],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "cli-validation.final.log",
+      "sha256": "3ad6935c151f5476985bb3957b2960db006f0f93cd4eb9610bff346ff8f92bd0",
+      "bytes": 16968,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "cli-validation.log",
+      "sha256": "7dd7d63e9b5d8aea15583cd136bed2671d5bf47759e010b14c7e470435bb42c8",
+      "bytes": 16962,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "node-principles-audit.log",
+      "sha256": "e09fabfadb7105b3db1b6150dacfe0f77caa262a7983f4fa7ee4a874ed57d769",
+      "bytes": 8545,
+      "node": {
+        "summary": {
+          "tests": 95,
+          "pass": 95,
+          "fail": 0,
+          "duration_ms": 6629.0475
+        },
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "npm-test-improvement.log",
+      "sha256": "253e92f271f94d405c7f5d106617dddfdcb0c6c2018324c79fc09c74e7f2eb78",
+      "bytes": 137898,
+      "node": {
+        "summary": {
+          "tests": 1291,
+          "pass": 1281,
+          "fail": 10,
+          "duration_ms": 357115.6354
+        },
+        "failureNames": [
+          "all presets stay visible and ring quantization is limited to authored ring roles",
+          "clip roles have materially different wormhole behaviour (role-level contrast)",
+          "development preset save updates existing keys, appends edited keys, and preserves metadata",
+          "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+          "factory preset pairs preserve their authored near/far projected tunnel geometry",
+          "projected forward motion preserves overdrive > punch > drive > drift",
+          "raising wormholeSpeed increases projected travel rather than only trail length",
+          "weak roles pin a deep-perspective depth and continuity profile",
+          "wormhole factory presets keep a minimum normalized weighted separation",
+          "wormhole preset speeds retain the authored dramaturgical ordering"
+        ],
+        "assertionMessages": [
+          "389.64890777178124 vs 471.543038051684",
+          "The expression evaluated to a falsy value:",
+          "deep drift deeper than establish",
+          "establish depth",
+          "establish remains visibly above the opacity floor",
+          "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492",
+          "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09",
+          "vos-wh-drift.json must not reset user-global wormholeStarfield",
+          "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+        ],
+        "renameEPERM": true
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "pristine-build.log",
+      "sha256": "bf3c6480b27276ef5682bff42ac17a001da550ddeef4bd2dc7c202ddb35a299c",
+      "bytes": 1391,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [
+        "✓ built in 2.23s"
+      ],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "pytest-improvement-full.log",
+      "sha256": "c06f3582f52cda07a95c558e19f0c1d6a7989704b470f0446ff2534fce0c2b0a",
+      "bytes": 275,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [
+        "191 passed in 86.09s (0:01:26)"
+      ],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "pytest-principles-audit.log",
+      "sha256": "75db8aba0ffa94be5cbf3b2dfecdb04c4ef61dfc97d25ab8717ae3deeb751905",
+      "bytes": 265,
+      "node": {
+        "summary": {},
+        "failureNames": [],
+        "assertionMessages": [],
+        "renameEPERM": false
+      },
+      "pytestFinalLines": [
+        "199 passed in 59.50s"
+      ],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    },
+    {
+      "originalRelativePath": "baseline-check/baseline-test.log",
+      "sha256": "bb5eb47a2b1757757de189d7ba705da72673d065b8a02d6a559670216c97f5db",
+      "bytes": 15010,
+      "node": {
+        "summary": {
+          "tests": 40,
+          "pass": 30,
+          "fail": 10,
+          "duration_ms": 2348.4407
+        },
+        "failureNames": [
+          "all presets stay visible and ring quantization is limited to authored ring roles",
+          "clip roles have materially different wormhole behaviour (role-level contrast)",
+          "development preset save updates existing keys, appends edited keys, and preserves metadata",
+          "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+          "factory preset pairs preserve their authored near/far projected tunnel geometry",
+          "projected forward motion preserves overdrive > punch > drive > drift",
+          "raising wormholeSpeed increases projected travel rather than only trail length",
+          "weak roles pin a deep-perspective depth and continuity profile",
+          "wormhole factory presets keep a minimum normalized weighted separation",
+          "wormhole preset speeds retain the authored dramaturgical ordering"
+        ],
+        "assertionMessages": [
+          "389.64890777178124 vs 471.543038051684",
+          "The expression evaluated to a falsy value:",
+          "deep drift deeper than establish",
+          "establish depth",
+          "establish remains visibly above the opacity floor",
+          "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492",
+          "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09",
+          "vos-wh-drift.json must not reset user-global wormholeStarfield",
+          "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+        ],
+        "renameEPERM": true
+      },
+      "pytestFinalLines": [],
+      "buildFinalLines": [],
+      "interpretation": "Observed historical log extract; absence of totals is not success. No command was rerun for this capture."
+    }
+  ],
+  "records": {
+    "baseline-check/comparison.json": {
+      "sha256": "0eb5f02b0c235cc006930c04cf9ad3f758485d05a8bb514f97df8765e0035db1",
+      "record": {
+        "baselineSummary": [
+          "ℹ tests 40",
+          "ℹ pass 30",
+          "ℹ fail 10",
+          "ℹ duration_ms 2348.4407"
+        ],
+        "currentSummary": [
+          "ℹ tests 1291",
+          "ℹ pass 1281",
+          "ℹ fail 10",
+          "ℹ duration_ms 357115.6354"
+        ],
+        "baselineFailureNames": [
+          "all presets stay visible and ring quantization is limited to authored ring roles",
+          "clip roles have materially different wormhole behaviour (role-level contrast)",
+          "development preset save updates existing keys, appends edited keys, and preserves metadata",
+          "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+          "factory preset pairs preserve their authored near/far projected tunnel geometry",
+          "projected forward motion preserves overdrive > punch > drive > drift",
+          "raising wormholeSpeed increases projected travel rather than only trail length",
+          "weak roles pin a deep-perspective depth and continuity profile",
+          "wormhole factory presets keep a minimum normalized weighted separation",
+          "wormhole preset speeds retain the authored dramaturgical ordering"
+        ],
+        "currentFailureNames": [
+          "all presets stay visible and ring quantization is limited to authored ring roles",
+          "clip roles have materially different wormhole behaviour (role-level contrast)",
+          "development preset save updates existing keys, appends edited keys, and preserves metadata",
+          "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+          "factory preset pairs preserve their authored near/far projected tunnel geometry",
+          "projected forward motion preserves overdrive > punch > drive > drift",
+          "raising wormholeSpeed increases projected travel rather than only trail length",
+          "weak roles pin a deep-perspective depth and continuity profile",
+          "wormhole factory presets keep a minimum normalized weighted separation",
+          "wormhole preset speeds retain the authored dramaturgical ordering"
+        ],
+        "identicalFailureNames": true,
+        "identicalAssertionMessages": true,
+        "baselineRenameEPERM": true,
+        "currentRenameEPERM": true
+      }
+    },
+    "baseline-check/identity.json": {
+      "sha256": "7fb14ecff844cb5b91772d3cbc69aba2c39f5c470d49a716f1cee088ed7438b8",
+      "record": {
+        "commit": "29371e4fd65b5fc9defa6ebb4bca0b1488ed5e14",
+        "checked": 566,
+        "mismatches": [],
+        "restoredMissingArchiveNames": [
+          "documents/audits/Plexus Engine — Cosmic Wormhole MVP feltárási jelentés.md"
+        ],
+        "source": "git -c core.autocrlf=false archive --format=tar HEAD; missing Unicode filename restored from HEAD blob",
+        "dependencyResolution": "existing ancestor node_modules; no junction created"
+      }
+    },
+    "doctor.final.json": {
+      "sha256": "92df776837de9dbe979cbc07af14ef24ab7d3b9df314e8c5fc1b35ec9f7a05ed",
+      "record": {
+        "python": {
+          "status": "ok",
+          "version": "3.12.14",
+          "preferred": "3.11",
+          "note": "Use the same interpreter and frozen dependencies for repeat runs"
+        },
+        "numpy": {
+          "status": "ok",
+          "version": "2.2.6"
+        },
+        "scipy": {
+          "status": "ok",
+          "version": "1.15.3"
+        },
+        "soundfile": {
+          "status": "ok",
+          "version": "0.13.1"
+        },
+        "libsndfile": {
+          "status": "ok",
+          "version": "1.2.2"
+        },
+        "librosa": {
+          "status": "ok",
+          "version": "0.11.0"
+        },
+        "mir_eval": {
+          "status": "ok",
+          "version": "0.8.2"
+        },
+        "jsonschema": {
+          "status": "ok",
+          "version": "4.25.1"
+        },
+        "node": {
+          "status": "ok",
+          "path": "C:\\nvm4w\\nodejs\\node.EXE"
+        },
+        "typescript": {
+          "status": "ok"
+        },
+        "bridge": {
+          "status": "ok",
+          "exitCode": 0,
+          "stderr": "",
+          "details": {
+            "node": "v25.2.1",
+            "typescript": "6.0.3",
+            "algorithmVersion": 5
+          }
+        },
+        "optional.basic-pitch": {
+          "status": "unavailable",
+          "fatal": false
+        },
+        "optional.spleeter": {
+          "status": "unavailable",
+          "fatal": false
+        },
+        "optional.omnizart": {
+          "status": "unavailable",
+          "fatal": false
+        },
+        "optional.essentia": {
+          "status": "unavailable",
+          "fatal": false
+        },
+        "optional.msaf": {
+          "status": "unavailable",
+          "fatal": false
+        }
+      }
+    },
+    "drum-freeze-decision.json": {
+      "sha256": "18da5db79b3abad98d61900b349ca9ebec156f70b28db6efdf48784f7973caca",
+      "record": {
+        "baselineTrials": [
+          {
+            "model": "drums-v1-on-v2",
+            "modelChecksum": "9428ecf1288c862ad4f78e9a8c1fe3a27a3e21f320bd68f680e3f17d04f5467f",
+            "ridge": 1.0,
+            "selectionKey": [
+              0.7809005376344086,
+              0.65625,
+              0.8167680865449628,
+              1.0
+            ]
+          },
+          {
+            "model": "drums-v1-on-v2-ridge10",
+            "modelChecksum": "5179f4d33a53de3db523156efb6428dfde17f81b315aa76e8244d10644904972",
+            "ridge": 10.0,
+            "selectionKey": [
+              0.797488532972404,
+              0.676923076923077,
+              0.820954205436964,
+              10.0
+            ]
+          },
+          {
+            "model": "drums-v1-on-v2-ridge100",
+            "modelChecksum": "91421ab02f14d58acbf1cad25db247377560b30c9c567d9854d125412d59b43c",
+            "ridge": 100.0,
+            "selectionKey": [
+              0.8075177064496685,
+              0.7142857142857143,
+              0.7983163554046406,
+              100.0
+            ]
+          }
+        ],
+        "candidateModel": "drums-v2-development",
+        "candidateModelChecksum": "e178de63c842db5e6a1eeb568d5da5b4af90ff336a5733c7567c7915ed0c47b3",
+        "candidateValidationSelection": {
+          "ridgeGrid": [
+            1.0,
+            10.0,
+            100.0
+          ],
+          "rule": "macro class event F, worst class F, macro precision, higher ridge",
+          "split": "validation",
+          "trials": [
+            {
+              "macroF": 0.9012127939140538,
+              "macroPrecision": 0.8733459994071199,
+              "ridge": 1.0,
+              "thresholds": [
+                0.4,
+                0.4,
+                0.4
+              ],
+              "worstClassF": 0.8524590163934426
+            },
+            {
+              "macroF": 0.9072363489592342,
+              "macroPrecision": 0.8896476964769647,
+              "ridge": 10.0,
+              "thresholds": [
+                0.45000000000000007,
+                0.5,
+                0.4
+              ],
+              "worstClassF": 0.8666666666666667
+            },
+            {
+              "macroF": 0.9173995343149572,
+              "macroPrecision": 0.8925381263616557,
+              "ridge": 100.0,
+              "thresholds": [
+                0.6000000000000001,
+                0.45000000000000007,
+                0.45000000000000007
+              ],
+              "worstClassF": 0.8787878787878788
+            }
+          ]
+        },
+        "chosenBaseline": {
+          "model": "drums-v1-on-v2-ridge100",
+          "modelChecksum": "91421ab02f14d58acbf1cad25db247377560b30c9c567d9854d125412d59b43c",
+          "ridge": 100.0,
+          "selectionKey": [
+            0.8075177064496685,
+            0.7142857142857143,
+            0.7983163554046406,
+            100.0
+          ]
+        },
+        "rule": "Select baseline from same ridge grid on validation macro F,worst F,precision,higher ridge",
+        "testScoresInspectedBeforeFreeze": false
+      }
+    }
+  },
+  "versionedSummaries": [
+    {
+      "path": "research/analyzer-lab/fixtures/an01-signal-contract.summary.json",
+      "sha256": "2ce309bed6e8c56de7de5615148d25c1e55e572a5b56a04b7fa8c14507777ae4",
+      "schemaVersion": "analyzer-contract-experiment-1.0",
+      "status": "implemented_and_checked_contract_correctness_not_generalization",
+      "sourceHash": "e8ae7d0bb9e83366bc96e92aeb70017d5be15e57f5a8a55f077aad35441a4316",
+      "limitations": [
+        "Known synthetic/golden regression inputs, no new independent test or model selection",
+        "Partial terminal onset recall deferred to AN-02; excluded window support is less than H/fs, not a general timing-error or recall bound",
+        "Actual browser/SoundFile decoding/resampling parity unmeasured",
+        "Production stage time/memory, recorded-music/role generalization and confidence calibration unmeasured",
+        "Physical Quest audio/input/display precision unmeasured; proposed millisecond targets not achieved",
+        "Remaining algorithm-6 principles-audit issues outside AN-01 still apply"
+      ]
+    },
+    {
+      "path": "research/analyzer-lab/fixtures/analyzer-principles-audit.summary.json",
+      "sha256": "a652591b48f614af976e41c692c37a928ebba03fb3071138ca2ccea3f341109c",
+      "schemaVersion": "diagnostic-snapshot-1.0",
+      "status": "observed_defects_and_contract_limits_not_acceptance",
+      "sourceHash": "b343c6476d5bc832980c88bcb8bce03779d9ad5aadec9518ac8a3fc780c33385",
+      "limitations": [
+        "Snapshot records behavior that fixes should change; never register it as a golden master.",
+        "No recorded-music accuracy, calibrated confidence, population-tail or generalization claim.",
+        "Diagnostic loader wall times excluded; no production performance budget asserted.",
+        "No physical Quest/audio/input/display latency run; engineering policy targets remain proposals.",
+        "Historical drum v2 snare regression and earlier full Node suite failures remain disclosed."
+      ]
+    },
+    {
+      "path": "research/analyzer-lab/fixtures/drum-v2-cycle.summary.json",
+      "sha256": "8c214f77d2f0d67b7eeb292c0a6f46786324a9c8d5d13b1843ff08958a4976c4",
+      "schemaVersion": "1.0.0",
+      "status": null,
+      "sourceHash": "dc127c413e8e9ebe2982fdfc8fc3a9ec8cb682e02240effc8b3a3d43efe1c406",
+      "limitations": [
+        "Procedural drum identities; real-recording generalization unvalidated",
+        "No actual drum-specific oracle",
+        "Historical kick/snare regression; v2 remains opt-in"
+      ]
+    }
+  ],
+  "limitations": [
+    "Raw logs/cache are not versioned by this capture; hashes identify the available originals.",
+    "Known failures remain failures; historical comparison is not a passing-suite claim.",
+    "No recorded-music accuracy, model retraining, fresh benchmark, or physical latency evidence was produced.",
+    "Model-freeze metadata is retained; weights, audio, corpus data, holdout reports and temporary checkouts are excluded."
+  ]
+}

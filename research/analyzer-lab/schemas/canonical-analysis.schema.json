@@ -1,0 +1,698 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plexus.local/research/canonical-analysis/1.0.0",
+  "title": "canonical-analysis",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "trackId": {
+          "type": "string"
+        },
+        "contentHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sampleRate": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sampleCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "monoProjection": {
+          "type": "string"
+        },
+        "decodedPcmHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "trackId",
+        "contentHash",
+        "duration",
+        "sampleRate"
+      ],
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "toolVersion": {
+          "type": "string"
+        },
+        "evidenceType": {
+          "enum": [
+            "ground_truth",
+            "oracle_prediction",
+            "pseudo_label",
+            "plexus_prediction",
+            "human_annotation"
+          ]
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "schemaVersion": {
+          "const": "1.0.0"
+        },
+        "modelIdentifier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "modelVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "modelChecksum": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "provider",
+        "toolVersion",
+        "evidenceType",
+        "parameters",
+        "timestamp",
+        "schemaVersion",
+        "modelIdentifier",
+        "modelVersion",
+        "modelChecksum"
+      ],
+      "additionalProperties": false
+    },
+    "timing": {
+      "type": "object",
+      "properties": {
+        "tempo": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tempoCandidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bpm": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "score": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "bpm",
+              "score"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "beats": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "downbeats": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bars": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "start": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "end": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "start",
+                  "end"
+                ],
+                "additionalProperties": true
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      },
+      "required": [
+        "tempo",
+        "tempoCandidates",
+        "beats",
+        "downbeats",
+        "bars",
+        "confidence"
+      ],
+      "additionalProperties": false
+    },
+    "events": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "time": {
+                "type": "number",
+                "minimum": 0
+              },
+              "duration": {
+                "type": "number",
+                "minimum": 0
+              },
+              "class": {
+                "type": "string"
+              },
+              "subclass": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "provider": {
+                "type": "string"
+              },
+              "attributes": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "time",
+              "class",
+              "confidence",
+              "provider"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sourceActivity": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "number",
+                "minimum": 0
+              },
+              "end": {
+                "type": "number",
+                "minimum": 0
+              },
+              "sourceClass": {
+                "type": "string"
+              },
+              "activity": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "confidence": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "provider": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "start",
+              "end",
+              "sourceClass",
+              "activity",
+              "confidence",
+              "provider"
+            ],
+            "additionalProperties": true
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pitchTracks": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "times": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "frequenciesHz": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "voicing": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              },
+              "confidence": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "sourceClass": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "times",
+              "frequenciesHz",
+              "voicing",
+              "confidence"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "notes": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "number",
+                "minimum": 0
+              },
+              "end": {
+                "type": "number",
+                "minimum": 0
+              },
+              "midiPitch": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 127
+              },
+              "velocity": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "confidence": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "instrument": {
+                "type": "string"
+              },
+              "sourceClass": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "start",
+              "end",
+              "midiPitch",
+              "confidence"
+            ],
+            "additionalProperties": true
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "chords": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "number",
+                "minimum": 0
+              },
+              "end": {
+                "type": "number",
+                "minimum": 0
+              },
+              "label": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "provider": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "start",
+              "end",
+              "label",
+              "confidence",
+              "provider"
+            ],
+            "additionalProperties": true
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "key": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "confidence": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "provider": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "label",
+            "confidence",
+            "provider"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sections": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "number",
+                "minimum": 0
+              },
+              "end": {
+                "type": "number",
+                "minimum": 0
+              },
+              "label": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "boundaryConfidence": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "provider": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "start",
+              "end",
+              "confidence",
+              "provider"
+            ],
+            "additionalProperties": true
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "stems": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sourceClass": {
+                "type": "string"
+              },
+              "reference": {
+                "type": "string"
+              },
+              "contentHash": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "provider": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "sourceClass",
+              "reference",
+              "provider",
+              "confidence"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "data": {}
+        },
+        "required": [
+          "kind"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "metadata",
+    "provenance",
+    "timing",
+    "events",
+    "sourceActivity",
+    "pitchTracks",
+    "notes",
+    "chords",
+    "key",
+    "sections",
+    "stems",
+    "tags",
+    "confidence",
+    "artifacts"
+  ],
+  "additionalProperties": false
+}

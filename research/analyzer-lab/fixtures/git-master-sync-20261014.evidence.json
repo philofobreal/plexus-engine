@@ -1,0 +1,38 @@
+{
+  "kind": "git-master-sync-preservation",
+  "clientDate": "2026-10-14",
+  "baseCommit": "29371e4fd65b5fc9defa6ebb4bca0b1488ed5e14",
+  "checkpointCommit": "55df400097bf7fe13e8e6ff1183d556ce03ee76b",
+  "masterCommit": "398667436d15ab8af78cbdff0141e0151870241f",
+  "mergeCommit": "09ca03d2ff6bf8af13e3e7c03f45c92d840b9d0b",
+  "masterIsAncestor": true,
+  "localChangedPaths": 1085,
+  "localPathsPreservedExactly": 1083,
+  "reviewedCombinedPaths": [
+    ".gitignore",
+    "documents/governance/testing-validation.md"
+  ],
+  "incomingChangedPaths": 55,
+  "incomingPathsImportedExactly": 53,
+  "protectedReplacements": [
+    "tests/helpers/xr-track-bend.mjs",
+    "tests/raster-conversion.test.mjs",
+    "tests/xr-background-diagnostics.test.mjs",
+    "tests/xr-background-settings.test.mjs",
+    "tests/xr-controller-regeneration.test.mjs",
+    "tests/xr-gpu-lines.test.mjs",
+    "tests/xr-gpu-material.test.mjs",
+    "tests/xr-menu.test.mjs",
+    "tests/xr-settings.test.mjs",
+    "tests/xr-track-path.test.mjs",
+    "tests/xr-wormhole-continuity.test.mjs",
+    "tests/xr-wormhole-worker.test.mjs",
+    "tests/xr-wormhole.test.mjs"
+  ],
+  "protectedDeletions": [],
+  "predecessorManifestSha256": "d227d1d34aa71f863f2199eaf23bc8cbf87482b3efc820a3477ad6d9fbb8e711",
+  "predecessorArchive": "inventories/v0010.sources.zip",
+  "predecessorArchiveSha256": "d97ed6327ed3a5bb277a8d1ae61e103fd502858b6e3ce64595d43b37b534f359",
+  "accuracyClaim": null,
+  "testExecution": "Recorded separately by the cumulative harness."
+}

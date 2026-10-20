@@ -1,0 +1,25 @@
+import json
+from pathlib import Path
+
+root = Path(__file__).resolve().parents[3]
+lab = root / 'research/analyzer-lab'
+for name in ['canonical-analysis', 'run-manifest', 'benchmark-report']:
+    path = lab / 'schemas' / f'{name}.schema.json'
+    data = json.loads(path.read_text(encoding='utf-8'))
+    field = 'metadata' if name == 'canonical-analysis' else 'track'
+    data['properties'][field]['properties']['decodedPcmHash'] = {'type': 'string', 'pattern': '^[a-f0-9]{64}$'}
+    path.write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8')
+path = root / 'tests/fixtures/analyzer/analysis-result.schema.json'
+data = json.loads(path.read_text(encoding='utf-8'))
+defs = data['$defs']
+defs['featureClock'] = {'type': 'object', 'additionalProperties': False,
+    'required': ['sampleRate', 'sampleCount', 'hopSize', 'windowSize', 'originSample', 'timestamp', 'tailPolicy'],
+    'properties': {**{name: {'type': 'number'} for name in ['sampleRate', 'sampleCount', 'hopSize', 'windowSize']},
+                   'originSample': {'type': 'number', 'enum': [0]},
+                   'timestamp': {'type': 'string', 'enum': ['window-start']},
+                   'tailPolicy': {'type': 'string', 'enum': ['zero-pad']}}}
+defs['trackAnalysis']['properties']['featureClock'] = {'$ref': '#/$defs/featureClock'}
+for name in ['barAnalysis', 'trackSection']:
+    defs[name]['properties']['rmsAmplitude'] = {'type': 'number'}
+path.write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8')
+print('Added optional featureClock/RMS and decoded PCM hash schema fields.')

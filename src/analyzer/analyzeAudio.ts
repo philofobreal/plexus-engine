@@ -12,12 +12,34 @@ import { applySpectralPivot } from './SpectralPivot';
 import { estimateSpectralCalibration } from './SpectralCalibration';
 import { applyEMA } from './TemporalSmoother';
 import type { AnalyzeAudioInput } from './types';
+import { validateAnalysisClock, validateAnalysisSamples } from './signalContract';
+import { extractAcousticOnsets } from './AcousticOnsets';
+import { extractPredictiveOnsets } from './PredictiveOnsets';
+import { extractAdaptiveOnsets } from './AdaptiveOnsets';
+import { extractResidualOnsets } from './ResidualOnsets';
+import { extractDifferenceOnsets } from './DifferenceOnsets';
 
 export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     const { samples, sampleRate, options, onProgress } = input;
     const channel = samples;
     const hopSize = options?.hopSize ?? DEFAULT_ANALYSIS_HOP_SIZE;
     const requestId = options?.requestId ?? 0;
+    validateAnalysisClock(sampleRate, hopSize);
+    validateAnalysisSamples(channel);
+    if (!Number.isSafeInteger(requestId) || requestId < 0) throw new Error('Analysis request id must be a nonnegative integer');
+    const duration = channel.length / sampleRate;
+    if (options?.predictiveOnsets !== undefined && typeof options.predictiveOnsets !== 'boolean')
+        throw new Error('Predictive onset option must be boolean');
+    if (options?.adaptiveOnsets !== undefined && typeof options.adaptiveOnsets !== 'boolean')
+        throw new Error('Adaptive onset option must be boolean');
+    if (options?.adaptiveOnsetVersion !== undefined && (![4, 5].includes(options.adaptiveOnsetVersion) || options.adaptiveOnsets !== true))
+        throw new Error('Adaptive onset version must be 4 or 5 with adaptiveOnsets enabled');
+    const adaptiveOnsets = options?.adaptiveOnsets ? (options.adaptiveOnsetVersion === 5
+        ? extractDifferenceOnsets(channel, sampleRate) : options.adaptiveOnsetVersion === 4
+        ? extractResidualOnsets(channel, sampleRate) : extractAdaptiveOnsets(channel, sampleRate)) : undefined;
+    const predictiveOnsets = options?.predictiveOnsets ? extractPredictiveOnsets(channel, sampleRate) : undefined;
+    const acousticOnsets = options?.acousticOnsets === undefined ? undefined
+        : extractAcousticOnsets(channel, sampleRate, options.acousticOnsets);
 
     const calibration = estimateSpectralCalibration(channel, sampleRate, hopSize);
     const features = new FeatureExtractor(channel, sampleRate, hopSize, calibration);
@@ -27,6 +49,8 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
 
     const grid = new GridAligner(features, sampleRate, hopSize);
     grid.calculate();
+    grid.beats = grid.beats.filter(time => time >= 0 && time < duration);
+    grid.barStarts = grid.barStarts.filter(time => time >= 0 && time < duration);
 
     const normRms = normalizeArray(features.rmsT, features.typRms);
     const normFlux = normalizeArray(features.fluxT, features.typFlux);
@@ -104,6 +128,7 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     }
 
     const dramaturgy = computeDramaturgyAnalysis(visualFeatures, outFrames, hopSize, sampleRate, Math.round(grid.secondsPerBar * sampleRate / hopSize * 8));
+    for (const segment of dramaturgy.tensionTrends.segments) segment.end = Math.min(duration, segment.end);
     const totalFrames = features.totalFrames;
     const featureFrames = visualFeatures;
     const spectralPivot = applySpectralPivot(featureFrames, outFrames, dramaturgy.buildupConfidence, totalFrames);
@@ -112,7 +137,12 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     cueBuilder.calculate(featureFrames, outFrames);
 
     const trackAnalysis: TrackAnalysis = {
-        duration: channel.length / sampleRate,
+        ...(acousticOnsets ? { acousticOnsets } : {}),
+        ...(predictiveOnsets ? { predictiveOnsets } : {}),
+        ...(adaptiveOnsets ? { adaptiveOnsets } : {}),
+        duration,
+        featureClock: { sampleRate, sampleCount: channel.length, hopSize, windowSize: hopSize,
+            originSample: 0, timestamp: 'window-start', tailPolicy: 'zero-pad' },
         bpm: grid.estimatedBPM,
         bpmConfidence: grid.bpmConfidence,
         gridConfidence: grid.gridConfidence,

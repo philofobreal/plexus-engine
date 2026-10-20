@@ -1,0 +1,39 @@
+import type { HarmonicTimbreDescriptor } from '../types/musicalEntities';
+
+/** A supplied-F0 descriptor on an isolated stationary candidate; no F0 estimator or separator. */
+export function extractHarmonicTimbre(samples: Float32Array, sampleRate: number,
+    fundamentalHz: number | null, supportStartSample = 0): {
+        descriptor: HarmonicTimbreDescriptor | null;
+        reason: 'available' | 'missing-fundamental' | 'insufficient-bandwidth' | 'insufficient-support' | 'below-floor';
+    } {
+    if (!Number.isSafeInteger(sampleRate) || sampleRate < 1000 || sampleRate > 384000
+        || !Number.isSafeInteger(supportStartSample) || supportStartSample < 0
+        || !Number.isSafeInteger(supportStartSample + samples.length) || samples.length > 262144
+        || Array.from(samples).some(x => !Number.isFinite(x))) throw new Error('Invalid timbre PCM or clock');
+    if (fundamentalHz === null) return { descriptor: null, reason: 'missing-fundamental' };
+    if (!Number.isFinite(fundamentalHz) || fundamentalHz <= 0) throw new Error('Invalid fundamental');
+    if (8 * fundamentalHz >= .4 * sampleRate) return { descriptor: null, reason: 'insufficient-bandwidth' };
+    if (samples.length < 8 || samples.length / sampleRate * fundamentalHz < 8)
+        return { descriptor: null, reason: 'insufficient-support' };
+    let mean = 0;
+    for (const x of samples) mean += x;
+    mean /= samples.length;
+    let energy = 0;
+    for (const x of samples) energy += (x - mean) ** 2;
+    if (Math.sqrt(energy / samples.length) <= 1e-6) return { descriptor: null, reason: 'below-floor' };
+    const values: number[] = [];
+    for (let harmonic = 1; harmonic <= 8; harmonic++) {
+        const omega = 2 * Math.PI * fundamentalHz * harmonic / sampleRate;
+        let real = 0, imaginary = 0;
+        for (let i = 0; i < samples.length; i++) {
+            const x = (samples[i] - mean) * .5 * (1 - Math.cos(2 * Math.PI * i / (samples.length - 1)));
+            real += x * Math.cos(omega * i);
+            imaginary -= x * Math.sin(omega * i);
+        }
+        values.push(Math.hypot(real, imaginary));
+    }
+    const total = values.reduce((a, b) => a + b, 0);
+    if (total <= 1e-12) return { descriptor: null, reason: 'below-floor' };
+    return { descriptor: { space: 'harmonic-amplitude-v1', values: values.map(x => x / total),
+        fundamentalHz, supportStartSample, supportEndSample: supportStartSample + samples.length }, reason: 'available' };
+}

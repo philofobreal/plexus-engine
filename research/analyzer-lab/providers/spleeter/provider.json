@@ -1,0 +1,35 @@
+{
+  "id": "spleeter",
+  "displayName": "Deezer Spleeter",
+  "providerVersion": "2.4.2",
+  "executionMode": "external-process",
+  "pythonRequirement": ">=3.8,<3.12",
+  "capabilities": [
+    "sourceSeparation"
+  ],
+  "codeLicense": "MIT",
+  "modelLicense": "MIT",
+  "modelLicenseSource": "https://github.com/deezer/spleeter/blob/master/paper.md",
+  "datasetDependencies": [
+    {
+      "id": "training-corpus",
+      "requiredForInference": false,
+      "license": "unknown",
+      "notes": "Provided weights support inference without training data. Upstream paper says models were not trained, validated or optimized on MUSDB18; benchmark dataset rights remain separate."
+    }
+  ],
+  "usagePolicy": "permissive",
+  "enabledByDefault": false,
+  "status": "planned",
+  "command": null,
+  "licenseEvidence": {
+    "checkedAt": "2026-10-10",
+    "sources": [
+      "https://pypi.org/project/spleeter/2.4.2/",
+      "https://github.com/deezer/spleeter/blob/master/LICENSE",
+      "https://github.com/deezer/spleeter/blob/master/paper.md",
+      "https://github.com/deezer/spleeter/blob/master/pyproject.toml"
+    ],
+    "notes": "Upstream JOSS paper explicitly licenses source code and pretrained models MIT. Pin the exact 2/4/5-stem weight artifact checksum and retain notices before use. Code version and model release identity differ. Stem separation alone is not validated frame activity or instrument presence."
+  }
+}

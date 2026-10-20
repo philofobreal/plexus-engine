@@ -1,0 +1,14 @@
+{
+  "experiment": "AN-04D",
+  "stage": "initial-350-million-budget",
+  "split": "recorded",
+  "exitCode": 1,
+  "error": "Forecast clip work budget exceeded",
+  "inferenceRun": false,
+  "modelChanged": false,
+  "priorDevelopment": "an04d-development-01.json",
+  "priorTransfer": "an04d-transfer-frozen.json",
+  "consoleSha256": "f820a27affb6d5fddf5a2a75848aaaa1d9eed7ed84d64d49737fc6814c3e2b01",
+  "console": "file:///C:/Users/budap/.codex/worktrees/7966/novy/Plexus%20Engine%20(VJ%20System)/plexus-engine/research/analyzer-lab/diagnostics/measure-an04d.mjs:49\r\n    if(count>4096||count*n*33**2>350000000)throw new Error('Forecast clip work budget exceeded');\r\n                                                 ^\r\n\r\nError: Forecast clip work budget exceeded\r\n    at file:///C:/Users/budap/.codex/worktrees/7966/novy/Plexus%20Engine%20(VJ%20System)/plexus-engine/research/analyzer-lab/diagnostics/measure-an04d.mjs:49:50\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:413:25)\r\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:654:26)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\r\n\r\nNode.js v25.2.1\r\n",
+  "resolution": "Refreeze development/transfer02 with 500-million work ceiling; no model or tolerance changes."
+}

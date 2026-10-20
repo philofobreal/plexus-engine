@@ -8,7 +8,7 @@ export class FFT {
     private readonly sinTable: Float32Array;
 
     constructor(size: number) {
-        if (size < 2 || (size & (size - 1)) !== 0) {
+        if (!Number.isSafeInteger(size) || size < 2 || size > 65536 || !Number.isInteger(Math.log2(size))) {
             throw new Error(`FFT size must be a power of two, got ${size}`);
         }
 

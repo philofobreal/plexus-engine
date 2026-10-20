@@ -1,0 +1,121 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createLoader } from './helpers/xr-loader.mjs';
+import { challengeSpecs, challengeFixture, pcmBytes } from './fixtures/acoustic-onset-challenges.mjs';
+import { matchOnsets } from './helpers/onset-matching.mjs';
+
+const load = createLoader({}, {Float32Array, Float64Array});
+const {extractPredictiveOnsets} = load('analyzer/PredictiveOnsets.ts');
+const {normalizePredictiveOnsets} = load('types/predictiveOnsets.ts');
+const {analyzeAudio} = load('analyzer/analyzeAudio.ts');
+const {normalizeTrackAnalysis} = load('analyzer/normalizeAnalysisResult.ts');
+
+test('maximum-cardinality matching retains collisions that nearest greedy loses', () => {
+    assert.deepEqual(matchOnsets([0, .018], [.009, 0], .01), {matchedCount: 2, misses: 0, falsePositives: 0});
+    assert.throws(() => matchOnsets([NaN], [], .01), /Invalid/);
+});
+
+test('predictive v2 recovers known C2 mixtures and quiet isolated attacks with protected dense/negative gates', () => {
+    const totals = {isolated: 0, mixture: 0, density: 0, negative: 0};
+    for (const spec of challengeSpecs()) {
+        const f = challengeFixture(spec), before = pcmBytes(f.samples);
+        const r = extractPredictiveOnsets(f.samples, spec.sampleRate);
+        assert.deepEqual(pcmBytes(f.samples), before);
+        assert.equal(JSON.stringify(normalizePredictiveOnsets(r, f.duration)), JSON.stringify(r));
+        const times = Array.from(r.candidates, c => c.time);
+        if (spec.family === 'negative') {
+            const hits = times.filter(t => t >= .1).length;
+            totals.negative += hits;
+            if (spec.kind === 'cutoff' || spec.kind === 'sustain' || spec.kind === 'beating' || spec.kind === 'am') assert.equal(hits, 0);
+        } else {
+            const m = matchOnsets(f.truthSamples.map(i => i / spec.sampleRate), times, .025);
+            totals[spec.family] += m.matchedCount;
+            if (spec.family === 'mixture' || spec.family === 'isolated') assert.equal(m.misses, 0);
+        }
+        for (let i = 1; i < r.candidates.length; i++)
+            assert.ok(r.candidates[i].sampleIndex - r.candidates[i - 1].sampleIndex >= Math.round(.015 * spec.sampleRate));
+    }
+    assert.equal(totals.isolated, 72);
+    assert.equal(totals.mixture, 144);
+    assert.ok(totals.density >= 120, `dense matches ${totals.density}, baseline 111`);
+    assert.ok(totals.negative <= 1, `negative hits ${totals.negative}, baseline 38`);
+});
+
+test('fitted background coefficient agrees with analytical single-tone recurrence', () => {
+    for (const fs of [8000, 44100, 48000]) {
+        const f = challengeFixture({family: 'mixture', sampleRate: fs, kind: 'noise', ratio: .5, phase: Math.PI / 3});
+        const r = extractPredictiveOnsets(f.samples, fs);
+        const p = r.candidates.find(c => c.time > .18 && c.time < .22);
+        assert.ok(p);
+        assert.ok(Math.abs(p.predictorCoefficient - 2 * Math.cos(2 * Math.PI * 110 / fs)) < 1e-6);
+        assert.ok(p.innovationRatio >= 8);
+    }
+});
+
+test('predictive impulse phases retain real sample clocks and ambiguity at clip edges', () => {
+    for (const fs of [8000, 44100, 48000]) {
+        const hop = Math.round(.002 * fs);
+        for (const phase of [0, 1, Math.floor(hop / 2), hop - 1]) {
+            const x = new Float32Array(Math.round(.4 * fs));
+            const at = Math.round(.2 * fs) + phase; x[at] = .5;
+            const r = extractPredictiveOnsets(x, fs);
+            assert.equal(r.candidates.length, 1);
+            assert.ok(Math.abs(r.candidates[0].sampleIndex - at) <= 1);
+            assert.equal(r.candidates[0].time, r.candidates[0].sampleIndex / fs);
+        }
+        for (const length of [1, 2, 511, 1025]) {
+            const x = new Float32Array(length); x[length - 1] = .5;
+            const r = extractPredictiveOnsets(x, fs);
+            assert.ok(r.candidates.length > 0);
+            for (const p of r.candidates) { assert.ok(p.sampleIndex < length); assert.equal(p.endpointAmbiguous, true); }
+        }
+    }
+});
+
+test('predictive evidence is deterministic and true silence stays empty', () => {
+    const f = challengeFixture({family: 'mixture', sampleRate: 44100, kind: 'pluck', ratio: .1, phase: 0});
+    assert.equal(JSON.stringify(extractPredictiveOnsets(f.samples, 44100)), JSON.stringify(extractPredictiveOnsets(f.samples, 44100)));
+    assert.equal(extractPredictiveOnsets(new Float32Array(1001), 44100).candidates.length, 0);
+    const sparse = challengeFixture({family: 'isolated', sampleRate: 8000, kind: 'noise', gain: 1});
+    assert.ok(extractPredictiveOnsets(sparse.samples, 8000).candidates.every(p => p.predictorCoefficient === 2));
+});
+
+test('predictive public input guards reject malformed PCM and clocks', () => {
+    for (const input of [[], new Float64Array([0]), new Float32Array(), new Float32Array([NaN]), new Float32Array([Infinity]), new Float32Array([9])])
+        assert.throws(() => extractPredictiveOnsets(input, 44100));
+    for (const fs of [0, 999, 384001, 44100.5, NaN]) assert.throws(() => extractPredictiveOnsets(new Float32Array([0]), fs));
+});
+
+test('headless integration publishes optional v2 without altering legacy projection, and validates options before progress', () => {
+    const f = challengeFixture({family: 'isolated', sampleRate: 8000, kind: 'noise', gain: 1});
+    const original = analyzeAudio({samples: f.samples, sampleRate: 8000});
+    const disabled = analyzeAudio({samples: f.samples, sampleRate: 8000, options: {predictiveOnsets: false}});
+    assert.equal(JSON.stringify(disabled), JSON.stringify(original));
+    const enabled = analyzeAudio({samples: f.samples, sampleRate: 8000, options: {predictiveOnsets: true, acousticOnsets: {}}});
+    assert.equal(enabled.trackAnalysis.predictiveOnsets.algorithm, 'predictive-innovation-v2');
+    assert.equal(enabled.trackAnalysis.acousticOnsets.algorithm, 'overlap-energy-rise-v1');
+    const restored = JSON.parse(JSON.stringify(enabled));
+    delete restored.trackAnalysis.predictiveOnsets; delete restored.trackAnalysis.acousticOnsets;
+    assert.equal(JSON.stringify(restored), JSON.stringify(original));
+    assert.equal(JSON.stringify(normalizeTrackAnalysis(enabled.trackAnalysis).predictiveOnsets), JSON.stringify(enabled.trackAnalysis.predictiveOnsets));
+    for (const option of [null, 0, '', {}, []]) {
+        let progress = 0;
+        assert.throws(() => analyzeAudio({samples: f.samples, sampleRate: 8000, options: {predictiveOnsets: option}, onProgress: () => progress++}), /must be boolean/);
+        assert.equal(progress, 0);
+    }
+});
+
+test('predictive normalization rejects corrupted model, timing, support and falsy payloads', () => {
+    const f = challengeFixture({family: 'isolated', sampleRate: 8000, kind: 'noise', gain: 1});
+    const original = extractPredictiveOnsets(f.samples, 8000);
+    for (const mutate of [r => r.algorithm = 'wrong', r => r.hopSize++, r => r.candidates[0].time++,
+        r => r.candidates[0].innovationRatio = 7, r => r.candidates[0].predictorCoefficient = 3,
+        r => r.candidates[0].proposalSample++, r => r.candidates[0].supportStartSample++,
+        r => r.candidates[0].supportEndSample--, r => r.candidates[0].endpointAmbiguous = true,
+        r => r.candidates.reverse()]) {
+        const changed = JSON.parse(JSON.stringify(original)); mutate(changed);
+        assert.equal(normalizePredictiveOnsets(changed, f.duration), undefined);
+    }
+    for (const value of [null, false, 0, '', []]) assert.equal(normalizePredictiveOnsets(value, f.duration), undefined);
+    assert.equal(normalizePredictiveOnsets(original, f.duration, {sampleRate: 44100, sampleCount: f.samples.length}), undefined);
+});

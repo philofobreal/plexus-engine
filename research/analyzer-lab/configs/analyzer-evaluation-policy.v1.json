@@ -1,0 +1,79 @@
+{
+  "policyVersion": "1.0.0",
+  "status": "engineering_proposal",
+  "date": "2026-10-10",
+  "automaticPromotionImplemented": false,
+  "interpretation": "Predeclared development/review policy. Targets are proposed requirements, not current analyzer results or universal perceptual standards.",
+  "units": {"time": "seconds", "falsePositiveRate": "events per annotated negative minute"},
+  "profiles": {
+    "visualSalientEvents": {
+      "truth": "independently annotated salient acoustic events, not all raw onsets",
+      "maximumAbsoluteMedianSignedError": 0.01,
+      "maximumMatchedP95AbsoluteError": 0.03,
+      "tailDiagnosticMatchingTolerance": 0.05,
+      "tailInterpretation": "Evaluate the 30 ms p95 target using separate 50 ms pairing diagnostics; report misses and denominator.",
+      "toleranceCurve": [0.01, 0.02, 0.03, 0.05],
+      "reportWithTiming": ["precision", "recall", "falsePositiveCount", "missedCount", "matchedSampleCount", "negativeExposureMinutes"],
+      "negativeRateTargetProposal": 0.1
+    },
+    "xrAcousticTargets": {
+      "truth": "predeclared complete audible attack target pool, measured before deliberate gameplay filtering",
+      "matchingTolerance": 0.025,
+      "minimumPrecisionProposal": 0.98,
+      "minimumRecallProposal": 0.9,
+      "maximumAbsoluteMedianSignedError": 0.01,
+      "maximumMatchedP95AbsoluteError": 0.025,
+      "maximumMatchedP99AbsoluteError": 0.04,
+      "tailDiagnosticMatchingTolerance": 0.07,
+      "tailInterpretation": "Compute separate 70 ms pairing diagnostics; 25 ms pairs alone truncate both p95 and p99. Always report misses and denominator.",
+      "toleranceCurve": [0.01, 0.02, 0.025, 0.03, 0.05, 0.07],
+      "negativeRateTargetProposal": 0.1
+    },
+    "metricalTiming": {
+      "truth": "annotated pulse level, beats, downbeats and meter with ambiguous intervals declared",
+      "stableTempoP95PhaseErrorProposal": 0.03,
+      "requiredMetrics": ["strictPulseLevel", "CMLc", "CMLt", "AMLc", "AMLt", "Cemgil", "localPhaseError", "gapDrift", "reacquisitionError"],
+      "alternativeMetricalScoreMustNotReplaceStrictScore": true
+    },
+    "structureAndDramaturgy": {
+      "truth": "acoustic boundaries, recurrence and human functional-role labels are separate tasks",
+      "boundaryToleranceCurve": [0.5, 1.0, 3.0],
+      "clearArrivalErrorLimitProposal": {"maximumSeconds": 0.25, "maximumBeatFraction": 0.25, "combine": "minimum"},
+      "requiredMetrics": ["boundaryPrecisionRecall", "boundaryDeviation", "acousticRecurrence", "functionalRoleAccuracy", "falseDramaticTransitionRate"],
+      "labelUncertaintyMustBePreserved": true
+    },
+    "physicalXrTiming": {
+      "status": "not_measured",
+      "maximumTotalP95AbsoluteErrorProposal": 0.05,
+      "maximumAbsoluteBiasProposal": 0.01,
+      "components": ["analysisAnchor", "audioClockPresentation", "inputPoseClock", "collisionInterpolation", "renderDisplayPresentation"],
+      "fullChainMeasurementRequired": true,
+      "componentP95SumIsNotTotalP95Guarantee": true,
+      "physicalHeadsetRequiredForClaims": true
+    }
+  },
+  "metrics": {
+    "implemented": ["singleToleranceOneToOneEventPRF", "matchedSignedTimingStatistics", "matchedAbsoluteTimingQuantiles", "falsePositiveAndMissedCounts", "internalBoundaryMatching", "tempoAndOctaveError"],
+    "planned": ["automaticToleranceCurveReport", "fullBeatContinuity", "pairedIndependentGroupBootstrap", "aggregateNegativeExposure", "groupStrataDashboard", "confidenceCalibration", "recurrenceAndFunctionalRoleEvaluation", "physicalLoopback"]
+  },
+  "protectedConditions": ["silence", "nearSilence", "dc", "tonalSustain", "slowRamp", "broadbandNoise", "quietAttackUnderBass", "overlappingSources", "shortAttackPhase", "subHopOffsets", "trackTail", "stereoAntiPhase", "sparseRhythm", "longBreakdown", "tempoChange", "halfDoubleAmbiguity", "swingSyncopation", "oddMeter", "flatGroove", "nonDropLoudnessChange"],
+  "clockMatrix": {"prioritySampleRates": [44100, 48000], "extendedSampleRates": [16000, 22050, 96000], "hopPoliciesMustBeDeclared": true, "hostDecodedPcmParityRequired": true},
+  "selection": {"fitPartition": "train", "selectionPartition": "validation", "finalEvaluation": "test after code/model freeze", "inspectedTestBecomes": "known regression material", "changingTolerancesAfterInspection": "new protocol version, never retroactive improvement"},
+  "coverage": {
+    "independentFinalTestGroupsPilotMinimumProposal": 30,
+    "minimumIsNotStatisticalSufficiencyClaim": true,
+    "groupBy": ["recordingPerformance", "midiArrangement", "remixStemFamily", "generatorFamily", "soundfontRenderingFamily"],
+    "broadPromotionRequiresIndependentAnnotatedRecordedOrRenderedAudio": true,
+    "groupBootstrapDoesNotRepairMissingDiversity": true
+  },
+  "promotion": {
+    "requiredEvidenceUnavailable": "remain_research",
+    "criticalClockSchemaDeterminismRegressionAllowed": false,
+    "protectedStratumToleranceMustBePredeclared": true,
+    "historicalRegressionCannotBeHiddenByMicroAverage": true,
+    "providerAgreementIsGroundTruth": false,
+    "heuristicConfidenceIsProbability": false,
+    "physicalConsumerClaimsRequirePhysicalMeasurement": true
+  },
+  "performance": {"profileDurationsSeconds": [30, 180, 600], "perStageTimeAndPeakMemory": true, "budgetMustBePredeclaredFromBaseline": true, "diagnosticLoaderTimingIsProductionBenchmark": false, "runtimeDspInRenderLoopAllowed": false}
+}

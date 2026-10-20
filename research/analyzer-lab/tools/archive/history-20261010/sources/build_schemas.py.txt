@@ -1,0 +1,76 @@
+"""Local construction aid; generated JSON schemas are the versioned contracts."""
+import json
+from pathlib import Path
+
+out = Path(__file__).resolve().parents[1] / 'schemas'
+out.mkdir(exist_ok=True)
+S = {'type': 'string'}
+N = {'type': 'number', 'minimum': 0}
+I = {'type': 'integer', 'minimum': 1}
+C = {'type': ['number', 'null'], 'minimum': 0, 'maximum': 1}
+H = {'type': 'string', 'pattern': '^[a-f0-9]{64}$'}
+E = {'enum': ['ground_truth', 'oracle_prediction', 'pseudo_label', 'plexus_prediction', 'human_annotation']}
+
+def arr(item): return {'type': 'array', 'items': item}
+def nullable(item): return {'anyOf': [item, {'type': 'null'}]}
+def obj(props, required=None, extra=False):
+    return {'type': 'object', 'properties': props, 'required': list(props) if required is None else required, 'additionalProperties': extra}
+def interval(extra, required=None):
+    props = {'start': N, 'end': N, **extra}
+    return obj(props, required, True)
+def write(name, props, required=None):
+    value = {'$schema': 'https://json-schema.org/draft/2020-12/schema',
+             '$id': f'https://plexus.local/research/{name}/1.0.0', 'title': name,
+             **obj({'schemaVersion': {'const': '1.0.0'}, **props}, required)}
+    (out / f'{name}.schema.json').write_text(json.dumps(value, indent=2) + '\n', encoding='utf-8')
+
+metadata = obj({'trackId': S, 'contentHash': H, 'duration': N, 'sampleRate': I,
+                'sampleCount': I, 'channels': I, 'monoProjection': S},
+               ['trackId','contentHash','duration','sampleRate'])
+provenance = obj({'provider': S, 'toolVersion': S, 'evidenceType': E, 'parameters': {'type': 'object'},
+                  'timestamp': S, 'schemaVersion': {'const':'1.0.0'}, 'modelIdentifier':nullable(S),
+                  'modelVersion':nullable(S), 'modelChecksum':nullable(H)})
+event = obj({'time':N, 'duration':N, 'class':S, 'subclass':S, 'confidence':C, 'provider':S,
+             'attributes':{'type':'object'}}, ['time','class','confidence','provider'])
+timing = obj({'tempo':nullable({'type':'number','exclusiveMinimum':0}),
+              'tempoCandidates':arr(obj({'bpm':{'type':'number','exclusiveMinimum':0},'score':N})),
+              'beats':nullable(arr(N)), 'downbeats':nullable(arr(N)),
+              'bars':nullable(arr(interval({},['start','end']))), 'confidence': {'type':'object','additionalProperties':C}})
+pitch = obj({'times':arr(N), 'frequenciesHz':arr(nullable(N)), 'voicing':arr({'type':['boolean','null']}),
+             'confidence':arr(C), 'sourceClass':S}, ['times','frequenciesHz','voicing','confidence'])
+note = interval({'midiPitch':{'type':'number','minimum':0,'maximum':127}, 'velocity':C,
+                 'confidence':C, 'instrument':S, 'sourceClass':S}, ['start','end','midiPitch','confidence'])
+section = interval({'label':S,'confidence':C,'boundaryConfidence':C,'provider':S},['start','end','confidence','provider'])
+activity = interval({'sourceClass':S,'activity':C,'confidence':C,'provider':S},['start','end','sourceClass','activity','confidence','provider'])
+stem = obj({'sourceClass':S,'reference':S,'contentHash':nullable(H),'provider':S,'confidence':C},['sourceClass','reference','provider','confidence'])
+write('canonical-analysis', {'metadata':metadata,'provenance':provenance,'timing':timing,'events':nullable(arr(event)),
+ 'sourceActivity':nullable(arr(activity)), 'pitchTracks':nullable(arr(pitch)), 'notes':nullable(arr(note)),
+ 'chords':nullable(arr(interval({'label':S,'confidence':C,'provider':S},['start','end','label','confidence','provider']))),
+ 'key':nullable(obj({'label':S,'confidence':C,'provider':S})), 'sections':nullable(arr(section)),
+ 'stems':nullable(arr(stem)), 'tags':arr(S), 'confidence':{'type':'object','additionalProperties':C},
+ 'artifacts':arr(obj({'kind':S,'path':S,'data':{}},['kind']))})
+
+track = obj({'trackId':S, 'split':{'enum':['train','validation','test']}, 'audio':S, 'contentHash':nullable(H),
+             'license':S,'licenseSource':S,'allowedResearchUsage':S,
+             'stems':arr(obj({'sourceClass':S,'reference':S})), 'midi':nullable(S),
+             'annotations':arr(obj({'reference':S,'evidenceType':E})), 'tags':arr(S)})
+write('dataset-manifest', {'datasetId':S,'datasetVersion':S,'tracks':arr(track)})
+
+provider = obj({'status':{'enum':['success','failed','unavailable','disabled']}, 'reason':S,
+                'canonical':S,'raw':S,'toolVersion':nullable(S),'modelIdentifier':nullable(S),
+                'modelVersion':nullable(S),'modelChecksum':nullable(H),'parameters':{'type':'object'},
+                'exitCode':{'type':['integer','null']},'stderr':S,'providerDiagnostics':{},'elapsedSeconds':N},['status'],True)
+write('run-manifest', {'runId':H,'reproducibilityHash':H,'track':metadata,'configHash':H,'config':{'type':'object'},
+ 'plexusCommit':nullable(S),'timestamp':S,'schemaVersions':{'type':'object','additionalProperties':S},
+ 'environment':{'type':'object'},'randomSeeds':{'type':'object'},'providers':{'type':'object','additionalProperties':provider},
+ 'dataset':nullable(obj({'datasetId':S,'datasetVersion':S,'split':{'enum':['train','validation','test']},
+                       'license':S,'licenseSource':S,'allowedResearchUsage':S}))})
+
+metric = obj({'status':{'enum':['available','not_available','unsupported']}, 'reason':S},['status'],True)
+comparison = obj({'provider':S,'referenceProvider':S,'evidenceOnly':{'const':True},
+                  'metrics':{'type':'object','additionalProperties':metric}})
+write('benchmark-report', {'runId':H,'track':metadata,'providers':{'type':'object','additionalProperties':provider},
+                          'comparisons':arr(comparison),'interpretation':S})
+write('training-example', {'trackId':S,'contentHash':H,'start':N,'end':N,'features':{'type':'object'},
+ 'targetLabel':S,'targetProvenance':{'type':'object'},'oracleAgreement':{'type':'number','minimum':0,'maximum':1},
+ 'groundTruthStatus':{'type':'boolean'},'confidence':C,'split':{'enum':['train','validation','test']}})

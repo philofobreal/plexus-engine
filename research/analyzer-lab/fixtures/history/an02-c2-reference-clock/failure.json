@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-11",
+  "command": "research/analyzer-lab/.venv/Scripts/python.exe research/analyzer-lab/diagnostics/measure-an02-challenges.py --output research/analyzer-lab/fixtures/an02-c2-challenges.summary.json",
+  "exitCode": 1,
+  "error": "ValueError: Invalid librosa event clock",
+  "failedGuard": "nonfinite, negative, at-or-beyond-duration, or unordered reference timestamp",
+  "outcome": "No v1 score report published; reference output was not silently converted into empty success.",
+  "reviewedChange": "Protocol v2 retains padded-context timestamps explicitly and counts them as FP rather than dropping or clamping. Adds positive and negative endpoint-output regression assertions.",
+  "evidence": "Compact transcription of traceback; original Python evaluator, prior tests and original protocol retained byte-for-byte as inert .txt snapshots. Original exception did not include case ID or scores."
+}

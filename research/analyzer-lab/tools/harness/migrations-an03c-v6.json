@@ -1,0 +1,9 @@
+[
+  {
+    "path": "tests/fixtures/analyzer/analysis-result.schema.json",
+    "predecessorSha256": "f1d7fcf637eb8798dbb62f85c888008a38d750f84e1dbd32058788aa76785b87",
+    "replacementSha256": "32dc30cc75a506ac581eb38baa814b6b4b5fae6285966dafc4a918fe76a88851",
+    "reviewedBy": "root integration owner",
+    "reviewedReason": "Adds strict residual-innovation-v4 definition and an anyOf retaining the original exact v3 reference. Reversing those two changes yields the identical v5 JSON; all v1/v2/v3 definitions and required fields are unchanged. Previous bytes remain in v5 ZIP, all old tests remain active. Six new Node tests verify independent authored truth, model support/clock, selector/default parity and malformed output; eleven independent Python actual-payload/schema tests pass. Full cumulative validation follows."
+  }
+]
