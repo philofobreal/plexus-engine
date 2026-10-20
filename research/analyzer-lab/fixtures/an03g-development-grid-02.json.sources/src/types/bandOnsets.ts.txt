@@ -1,0 +1,28 @@
+import type {DifferenceCandidate} from './differenceOnsets';
+
+export interface BandCandidate extends Omit<DifferenceCandidate, 'evidenceSource'> {
+    evidenceSource: DifferenceCandidate['evidenceSource'] | 'physical-band-innovation';
+    bandHz?: number;
+    bandRiseRatio?: number;
+}
+
+export interface BandOnsetAnalysis {
+    algorithm: 'experimental-physical-bands-v8';
+    sampleRate: number;
+    sampleCount: number;
+    bandCentresHz: number[];
+    bandQ: number;
+    cascadedSections: 2;
+    predictorLagSamples: number;
+    historySamples: number;
+    hopSize: number;
+    refinementSamples: number;
+    directionalWindowSamples: number;
+    innovationContrast: number;
+    continuationRatio: number;
+    physicalPeakContrast: number;
+    minimumNewSeparationSamples: number;
+    timestamp: 'original-pcm-refined-sample';
+    selection: 'candidate-only';
+    candidates: BandCandidate[];
+}

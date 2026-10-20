@@ -1,0 +1,63 @@
+import json
+import platform
+import sys
+from hashlib import sha256
+from pathlib import Path
+
+root = Path(__file__).resolve().parents[3]
+lab = root / 'research/analyzer-lab'
+sys.path.insert(0, str(lab / 'src'))
+from plexus_analyzer_lab.runner import source_fingerprint
+from plexus_analyzer_lab.provenance import git_commit, version
+
+def without_timings(value):
+    if isinstance(value, dict):
+        return {k: without_timings(v) for k, v in value.items()
+                if k not in {'elapsedMs', 'curveMs', 'peakMs'}}
+    if isinstance(value, list):
+        return [without_timings(v) for v in value]
+    return value
+
+scripts = ['audit-dsp-principles.mjs', 'audit-musical-contracts.mjs']
+result = {
+    'schemaVersion': 'diagnostic-snapshot-1.0',
+    'snapshotDate': '2026-10-10',
+    'status': 'observed_defects_and_contract_limits_not_acceptance',
+    'algorithmVersion': 6,
+    'baseCommit': git_commit(),
+    'sourceHash': source_fingerprint(),
+    'sourceIdentity': 'Lab source_fingerprint includes dirty analyzer/types/lab code, schemas, bridge, configs and dependency declarations.',
+    'diagnosticScriptHashes': {
+        str((lab / 'diagnostics' / name).relative_to(root)).replace('\\', '/'):
+        sha256((lab / 'diagnostics' / name).read_bytes()).hexdigest()
+        for name in scripts
+    },
+    'environment': {
+        'python': platform.python_version(), 'platform': platform.platform(), 'node': '25.2.1',
+        'dependencies': {name: version(name) for name in ['numpy', 'scipy', 'librosa', 'mir_eval', 'pytest']}
+    },
+    'scope': {
+        'dsp': 'Actual TS FFT/features on generated PCM; DFT reference is independent.',
+        'beatAndTempo': 'Actual tracker/grid on authored envelopes, not raw-audio generalization.',
+        'sectionsPivotBuildup': 'Actual TS modules on controlled feature arrays.',
+        'stereoAndTailClock': 'Arithmetic examples of source-declared policies; no browser decode executed.',
+        'consumers': 'Source audit and 95 headless regressions; no physical timing measurement.'
+    },
+    'encoding': 'Nonfinite numeric raw diagnostics serialize to null; finite flags and public nonfinite counts distinguish them from real values.',
+    'dspObservations': without_timings(json.loads((lab / '.cache/analyzer-principles-audit/dsp-results.json').read_text(encoding='utf-8-sig'))),
+    'musicalContractObservations': json.loads((lab / '.cache/audit-musical-contracts-replay.json').read_text(encoding='utf-8-sig')),
+    'validation': {'pythonTests': {'passed': 199, 'failed': 0}, 'targetedNodeTests': {'passed': 95, 'failed': 0}},
+    'limitations': [
+        'Snapshot records behavior that fixes should change; never register it as a golden master.',
+        'No recorded-music accuracy, calibrated confidence, population-tail or generalization claim.',
+        'Diagnostic loader wall times excluded; no production performance budget asserted.',
+        'No physical Quest/audio/input/display latency run; engineering policy targets remain proposals.',
+        'Historical drum v2 snare regression and earlier full Node suite failures remain disclosed.'
+    ]
+}
+target = lab / 'fixtures/analyzer-principles-audit.summary.json'
+target.write_text(json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False) + '\n', encoding='utf-8')
+print(json.dumps({'sourceHash': result['sourceHash'],
+                  'fftReference': result['dspObservations']['fftReference'],
+                  'phaseSweep': result['dspObservations']['hannTempoPhase'],
+                  'musicalContracts': result['musicalContractObservations']}, indent=2))

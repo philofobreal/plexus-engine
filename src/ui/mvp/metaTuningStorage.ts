@@ -21,6 +21,8 @@ const STORAGE_PREFIX = 'plexus-mvp-meta-tuning:v1:';
  */
 export async function computeTrackFingerprint(analysis: TrackAnalysis): Promise<string> {
     const fingerprintSource = {
+        // Experimental timing gets a separate saved journey; legacy fingerprints stay identical.
+        ...(analysis.eventTiming ? { eventTimingAlgorithm: analysis.eventTiming.algorithm } : {}),
         bpm: Math.round(analysis.bpm * 100) / 100,
         duration: Math.round(analysis.duration * 100) / 100,
         sectionStarts: analysis.sections.map((s) => Math.round(s.start * 10) / 10),

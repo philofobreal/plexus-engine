@@ -1,0 +1,86 @@
+import {validateAnalysisSamples} from './signalContract';
+
+/** Offline experimental fourth-difference evidence; no learned tone identity. */
+export function extractDifferenceOnsets(samples: Float32Array, sampleRate: number) {
+    if (!Number.isSafeInteger(sampleRate) || sampleRate < 1000 || sampleRate > 384000)
+        throw new Error('Difference onset sample rate must be an integer between 1000 and 384000');
+    validateAnalysisSamples(samples);
+    const historySamples = Math.max(1, Math.round(.030 * sampleRate));
+    const lookaheadSamples = Math.max(1, Math.round(.004 * sampleRate));
+    const hopSize = Math.max(1, Math.round(.002 * sampleRate));
+    const contrastSamples = hopSize;
+    const minimumSeparationSamples = Math.max(1, Math.round(.003 * sampleRate));
+    const value = (i: number): number => i >= 0 ? samples[i] : 0;
+    const residual = (i: number): number => (value(i) - 4 * value(i - 1) + 6 * value(i - 2)
+        - 4 * value(i - 3) + value(i - 4)) / 16;
+    const candidates: {time: number; sampleIndex: number; proposalSample: number; strength: number;
+        innovationRatio: number; supportStartSample: number; supportEndSample: number; endpointAmbiguous: boolean}[] = [];
+    const strengths = new Float64Array(Math.ceil(samples.length / hopSize));
+    const proposals: (typeof candidates[number] | undefined)[] = new Array(strengths.length);
+    let power = 0, innovation = 0, cursor = 0;
+    for (let frame = 0; frame < strengths.length; frame++) {
+        const anchor = frame * hopSize;
+        while (cursor < anchor) {
+            power += value(cursor) ** 2; innovation += residual(cursor) ** 2;
+            if (cursor >= historySamples) {
+                power -= value(cursor - historySamples) ** 2;
+                innovation -= residual(cursor - historySamples) ** 2;
+            }
+            cursor++;
+        }
+        if (frame % 1024 === 0 && frame > 0) {
+            power = 0; innovation = 0;
+            for (let i = Math.max(0, anchor - historySamples); i < anchor; i++) {
+                power += value(i) ** 2; innovation += residual(i) ** 2;
+            }
+        }
+        const count = Math.min(anchor, historySamples);
+        const background = count ? Math.max(0, power) / count : 0;
+        const pastInnovation = count ? Math.max(0, innovation) / count : 0;
+        let before = 0;
+        for (let i = Math.max(0, anchor - contrastSamples); i < anchor; i++) before += residual(i) ** 2;
+        before = anchor ? before / Math.min(anchor, contrastSamples) : 0;
+        if (pastInnovation <= .1 * background) before = Math.max(before, pastInnovation);
+        const end = Math.min(samples.length, anchor + lookaheadSamples);
+        let after = 0, previous = anchor ? residual(anchor - 1) ** 2 : 0;
+        let maximumRise = 0, index = anchor;
+        for (let i = anchor; i < end; i++) {
+            const current = residual(i) ** 2;
+            after += current;
+            if (current - previous > maximumRise) {maximumRise = current - previous; index = i;}
+            previous = current;
+        }
+        after /= end - anchor;
+        if (maximumRise <= 0 || after < 8 * Math.max(before, 1e-20)
+            || after < Math.max(1e-20, background * 1e-5 * (8000 / sampleRate) ** 2)) continue;
+        let continuationPower = 0, continuationInnovation = 0;
+        for (let i = index + 5; i < end; i++) {
+            continuationPower += samples[i] ** 2; continuationInnovation += residual(i) ** 2;
+        }
+        if (end - index > 5 && (background > 1e-18 && continuationPower / (end - index - 5) <= 1e-20
+            || before > 1e-20 && continuationInnovation / (end - index - 5) < before / 8)) continue;
+        const strength = after - 8 * before;
+        if (strength <= 0) continue;
+        strengths[frame] = strength;
+        proposals[frame] = {time: index / sampleRate, sampleIndex: index, proposalSample: anchor, strength,
+            innovationRatio: after / Math.max(before, 1e-20), supportStartSample: Math.max(0, anchor - historySamples - 4),
+            supportEndSample: end, endpointAmbiguous: anchor < historySamples + 4 || end - anchor < lookaheadSamples};
+    }
+    const peaks = proposals.filter((p, frame): p is typeof candidates[number] => !!p
+        && strengths[frame] >= (strengths[frame - 1] ?? 0) && strengths[frame] > (strengths[frame + 1] ?? 0));
+    peaks.sort((a, b) => b.strength - a.strength || a.sampleIndex - b.sampleIndex);
+    const cells = new Map<number, typeof candidates[number]>();
+    for (const p of peaks) {
+        const cell = Math.floor(p.sampleIndex / minimumSeparationSamples);
+        if ([-1, 0, 1].some(offset => {
+            const neighbor = cells.get(cell + offset);
+            return neighbor && Math.abs(neighbor.sampleIndex - p.sampleIndex) < minimumSeparationSamples;
+        })) continue;
+        cells.set(cell, p);
+    }
+    return {algorithm: 'fourth-difference-v5' as const, sampleRate, sampleCount: samples.length,
+        historySamples, lookaheadSamples, hopSize, contrastSamples, minimumSeparationSamples,
+        filterCoefficients: [1, -4, 6, -4, 1].map(c => c / 16), filterMemorySamples: 4,
+        timestamp: 'refined-sample' as const, localization: 'maximum-positive-innovation-power-step' as const,
+        selection: 'candidate-only' as const, candidates: Array.from(cells.values()).sort((a, b) => a.sampleIndex - b.sampleIndex)};
+}

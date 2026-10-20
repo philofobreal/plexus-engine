@@ -1,0 +1,36 @@
+import type { TrackAnalysis } from './index';
+
+/** The sample clock of published feature arrays; padding is outside the audible duration. */
+export interface FeatureClock {
+    sampleRate: number;
+    sampleCount: number;
+    hopSize: number;
+    windowSize: number;
+    originSample: 0;
+    timestamp: 'window-start';
+    tailPolicy: 'zero-pad';
+}
+
+/** Invalid/contradictory clocks are unavailable, never repaired by inventing sample identity. */
+export function normalizeFeatureClock(analysis: Pick<TrackAnalysis, 'featureClock' | 'duration' | 'features' | 'featureHopSize'>): FeatureClock | undefined {
+    const clock = analysis.featureClock;
+    if (!clock || !Number.isSafeInteger(clock.sampleRate) || clock.sampleRate < 1000 || clock.sampleRate > 384000
+        || !Number.isSafeInteger(clock.sampleCount) || clock.sampleCount <= 0
+        || !Number.isSafeInteger(clock.hopSize) || clock.hopSize < 4 || clock.hopSize > 65536
+        || !Number.isInteger(Math.log2(clock.hopSize)) || clock.windowSize !== clock.hopSize
+        || clock.hopSize !== analysis.featureHopSize || clock.originSample !== 0
+        || clock.timestamp !== 'window-start' || clock.tailPolicy !== 'zero-pad'
+        || Math.abs(clock.sampleCount / clock.sampleRate - analysis.duration) > 1e-9
+        || !Number.isFinite(analysis.duration)
+        || Math.ceil(clock.sampleCount / clock.hopSize) !== analysis.features?.length) return undefined;
+    return { sampleRate: clock.sampleRate, sampleCount: clock.sampleCount, hopSize: clock.hopSize,
+        windowSize: clock.windowSize, originSample: 0, timestamp: 'window-start', tailPolicy: 'zero-pad' };
+}
+
+/** Legacy payloads lack the sample clock: preserve their historical duration/count projection. */
+export function featureFrameStepSeconds(analysis: TrackAnalysis, frameCount = analysis.features?.length ?? 0): number {
+    const clock = normalizeFeatureClock(analysis);
+    if (clock) return clock.hopSize / clock.sampleRate;
+    return frameCount > 0 && Number.isFinite(analysis.duration) && analysis.duration > 0
+        ? analysis.duration / frameCount : 1;
+}

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "1.0.0",
+  "datasetId": "slakh-like-local-example",
+  "datasetVersion": "example-1",
+  "tracks": [
+    {
+      "trackId": "Train_0001", "split": "train", "audio": "../../data/local/train/Track0001/mixture.wav",
+      "contentHash": null,
+      "stems": [{"sourceClass": "drums", "reference": "../../data/local/train/Track0001/stems/drums.wav"}, {"sourceClass": "bass", "reference": "../../data/local/train/Track0001/stems/bass.wav"}],
+      "midi": "../../data/local/train/Track0001/MIDI/all.mid",
+      "annotations": [], "license": "EXAMPLE: replace with actual dataset license",
+      "licenseSource": "EXAMPLE: reviewed dataset license URL",
+      "allowedResearchUsage": "Example references only. Supply assets and verify rights before any use.",
+      "tags": ["example", "mixture", "stems", "MIDI"]
+    },
+    {
+      "trackId": "Validation_0001", "split": "validation", "audio": "../../data/local/validation/Track0001/mixture.wav",
+      "contentHash": null, "stems": [], "midi": "../../data/local/validation/Track0001/MIDI/all.mid",
+      "annotations": [], "license": "EXAMPLE: replace with actual dataset license",
+      "licenseSource": "EXAMPLE: reviewed dataset license URL",
+      "allowedResearchUsage": "Example references only. Supply assets and verify rights before any use.",
+      "tags": ["example", "mixture", "MIDI"]
+    },
+    {
+      "trackId": "Test_0001", "split": "test", "audio": "../../data/local/test/Track0001/mixture.wav",
+      "contentHash": null, "stems": [], "midi": "../../data/local/test/Track0001/MIDI/all.mid",
+      "annotations": [], "license": "EXAMPLE: replace with actual dataset license",
+      "licenseSource": "EXAMPLE: reviewed dataset license URL",
+      "allowedResearchUsage": "Example references only. Supply assets and verify rights before any use.",
+      "tags": ["example", "mixture", "MIDI"]
+    }
+  ]
+}

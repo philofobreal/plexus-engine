@@ -28,5 +28,21 @@ branch_pr_snapshot.md
 plexus-source-export.md
 
 graphify-out/
+
+# Isolated analyzer research environments and generated measurements
+research/analyzer-lab/.venv/
+research/analyzer-lab/.cache/
+research/analyzer-lab/runs/
+research/analyzer-lab/data/local/
+research/analyzer-lab/models/
+research/analyzer-lab/tmp/
+research/analyzer-lab/**/__pycache__/
+research/analyzer-lab/.pytest_cache/
+research/analyzer-lab/**/*.egg-info/
+research/analyzer-lab/providers/**/.venv/
+research/analyzer-lab/providers/**/.cache/
+research/analyzer-lab/providers/**/checkpoints/
+research/analyzer-lab/providers/**/models/
+
 # Local test audio (copyrighted music, never committed)
 *.mp3

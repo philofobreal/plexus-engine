@@ -12,7 +12,7 @@ const { RhythmGameScene } = load('xr/scene/RhythmGameScene.ts');
 const { XrInputAdapter } = load('xr/runtime/XrInputAdapter.ts');
 const { DEFAULT_RHYTHM_GAME_CONFIG: base, judgeStrike, notePosition } = load('gameplay/index.ts');
 const close = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps;
-/** Normal speed with the Normal saber (the /xr/ defaults are Hyper / Long since ADR-009 Addendum T). */
+/** Normal speed with the Normal saber (the /xr/ defaults are Hyper / Auto). */
 const NORMAL = { noteSpeed: 'normal', saberLength: 'normal' };
 
 test('the Normal profile moves the start frame to 1.2 m, widens only the early window and lengthens the runway', () => {
@@ -33,7 +33,9 @@ test('the Normal profile moves the start frame to 1.2 m, widens only the early w
     assert.equal(resolvePlayProfile({ noteSpeed: 'warp', saberLength: 7 }), resolvePlayProfile(), 'hostile input -> defaults');
     const defaults = resolvePlayProfile();
     assert.equal(defaults.settings.noteSpeed, 'hyper');
-    assert.equal(defaults.bladeLengthMeters, 1.1, 'the /xr/ defaults: Hyper with the Long saber');
+    assert.equal(defaults.settings.saberLength, 'auto');
+    assert.equal(defaults.bladeLengthMeters, 1, 'Auto uses the Normal blade in the Standard space');
+    assert.equal(resolvePlayProfile(undefined, 'tall').bladeLengthMeters, 1.1, 'Auto extends the blade in the Tall space');
 });
 
 test('for every speed and saber, everything the saber can touch is judged, inside the straight track zone, on a whole-tile runway', () => {

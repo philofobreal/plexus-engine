@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1.0.0",
+  "seed": 17,
+  "beatTolerance": 0.07,
+  "eventTolerance": 0.05,
+  "sectionTolerance": 0.5,
+  "consensusTolerance": 0.05,
+  "minimumAgreement": 0.5,
+  "timeoutSeconds": 180,
+  "plexus": {},
+  "librosa": {"hopLength": 512, "startBpm": 120.0, "tightness": 100.0},
+  "providers": {}
+}

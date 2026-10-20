@@ -1,0 +1,9 @@
+[
+  {
+    "path": "tests/contracts.test.mjs",
+    "predecessorSha256": "a88694c2f722fcab2898ffdf473b231771d36db0fbd1943891ce1ff5555a3313",
+    "replacementSha256": "9dcbd74e7d0fb53f24271493eddf0a73cc02c31e73f96fe3880be6e25fd47f66",
+    "reviewedBy": "Codex/root",
+    "reviewedReason": "Preserve all existing contract tests while updating two syntax assertions for intentional AudioEngine timing options and event-bound report normalization; predecessor bytes remain in immutable v0015.sources.zip. The new assertions require actual event association and preserve injected resolver ownership."
+  }
+]

@@ -1,0 +1,26 @@
+import json
+from pathlib import Path
+
+root = Path(__file__).resolve().parents[1] / 'schemas'
+def obj(properties, required=None):
+    return {'type':'object','properties':properties,'required':list(properties) if required is None else required,'additionalProperties':False}
+text = {'type':'string','minLength':1}
+number = {'type':'number'}
+digest = {'type':'string','pattern':'^[a-f0-9]{64}$'}
+def array(item, length=None):
+    value={'type':'array','items':item}
+    if length is not None:
+        value.update(minItems=length,maxItems=length)
+    return value
+rights=obj({**{k:{'type':'boolean'} for k in ('reviewed','trainingAllowed','evaluationAllowed')},**{k:text for k in ('source','license','reviewNote')}})
+track=obj({'trackId':text,'groupId':text,'split':{'enum':['train','validation','test']},'audioPath':text,'annotationPath':text,'contentHash':digest,'oraclePaths':array(text)}, ['trackId','groupId','split','audioPath','annotationPath','contentHash'])
+dataset=obj({'schemaVersion':{'const':'1.0.0'},'datasetId':text,'rights':rights,'tracks':{**array(track),'minItems':1}})
+signature=obj({'trackId':text,'groupId':text,'split':{'enum':['train','validation']},'contentHash':digest,'annotationHash':digest})
+model=obj({'schemaVersion':{'const':'1.0.0'},'algorithm':{'const':'plexus-drum-ridge-v1'},'classes':{'const':['kick','snare','hihat']},'featureVersion':text,'featureNames':array(text,17),
+ 'mean':array(number,17),'scale':array({'type':'number','exclusiveMinimum':0},17),'weights':array(array(number,3),18),'thresholds':array(number,3),'ridge':{'type':'number','exclusiveMinimum':0},
+ 'labelTolerance':{'const':0.03},'matchTolerance':{'const':0.05},'minSeparation':{'const':0.05},'scoreMeaning':text,'validationSelection':{'type':'object'},
+ 'fitting':obj({'datasetId':text,'rights':rights,'tracks':array(signature),'annotationProvenance':{'type':'object'},'candidateCoverage':{'type':'object'},'trainingCandidates':{'type':'integer','minimum':1}}),
+ 'environment':{'type':'object'},'sourceHash':digest,'timestamp':text,'modelChecksum':digest})
+for kind, schema in [('drum-dataset',dataset),('drum-model',model)]:
+    schema.update({'$schema':'https://json-schema.org/draft/2020-12/schema','title':kind})
+    (root / (kind+'.schema.json')).write_text(json.dumps(schema,indent=2)+'\n',encoding='utf-8')

@@ -1,0 +1,75 @@
+import type { AcousticEvidenceIdentity } from './acousticEvidence';
+
+/** Research musical identities are unrelated to the artistic Visual Score motifs. */
+export interface HarmonicTimbreDescriptor {
+    space: 'harmonic-amplitude-v1';
+    values: number[];
+    fundamentalHz: number;
+    supportStartSample: number;
+    supportEndSample: number;
+}
+
+export interface CandidateNote {
+    midi: number;
+    startSample: number;
+    endSample: number;
+}
+
+/** Boundaries, isolation and notes are supplied, not inferred by this registry. */
+export interface MusicalPartObservation {
+    id: string;
+    startSample: number;
+    endSample: number;
+    kind: 'isolated-candidate' | 'unresolved-mixture';
+    timbre: HarmonicTimbreDescriptor | null;
+    notes: CandidateNote[];
+    notesOrigin: 'authored-symbolic' | 'unqualified-estimate';
+}
+
+export interface MusicalEntityOptions {
+    sourceMaxDistance?: number;
+    sourceAmbiguityMargin?: number;
+    motifMaxRhythmError?: number;
+    motifAmbiguityMargin?: number;
+    maxObservations?: number;
+}
+
+export interface MusicalEntityAssignment {
+    observationId: string;
+    startSample: number;
+    endSample: number;
+    sourceId: string | null;
+    sourceStatus: 'new' | 'continued' | 'ambiguous' | 'unavailable';
+    sourceAlternatives: string[];
+    sourceDistance: number | null;
+    motifId: string | null;
+    motifStatus: 'new' | 'recurrence' | 'ambiguous' | 'unavailable';
+    motifAlternatives: string[];
+    transpositionSemitones: number | null;
+    durationScale: number | null;
+    notesOrigin: MusicalPartObservation['notesOrigin'];
+    reasons: string[];
+}
+
+export interface MusicalEntityRegistry {
+    version: 1;
+    algorithm: 'experimental-musical-entities-v1';
+    identity: AcousticEvidenceIdentity;
+    confidence: null;
+    groundTruthStatus: false;
+    consumerUse: 'diagnostic-only';
+    xrScoring: 'ineligible';
+    options: Required<MusicalEntityOptions>;
+    sources: { id: string; anchorObservationId: string; observationIds: string[] }[];
+    musicalMotifs: { id: string; anchorObservationId: string; observationIds: string[] }[];
+    assignments: MusicalEntityAssignment[];
+}
+
+export interface MusicalRelation {
+    kind: 'source-coactivity' | 'motif-return-candidate' | 'motif-handoff-candidate';
+    observationIds: [string, string];
+    sourceIds: [string, string];
+    motifId: string | null;
+    startSample: number;
+    endSample: number;
+}

@@ -178,7 +178,8 @@ export class SectionAnalyzer {
         this.adaptiveThreshold = 0.5;
         this.noveltyPeaks = noveltyPeaks;
         const { totalFrames, rmsT, rawBassT, rawMidT, rawHighT, typRms } = this.features;
-        const totalDuration = totalFrames * this.hopSize / this.sampleRate;
+        const sampleCount = this.features.sampleCount ?? totalFrames * this.hopSize;
+        const totalDuration = sampleCount / this.sampleRate;
         // Fall back to energy boundaries only when the tempo grid is critically unusable.
         const useEnergyReactiveBoundaries = this.grid.gridConfidence < 0.15 && this.grid.bpmConfidence < 0.20;
 
@@ -196,7 +197,8 @@ export class SectionAnalyzer {
         for (let startSec = firstBarStart, barIndex = 0; startSec < totalDuration; startSec += analysisStepSec, barIndex++) {
             let endSec = startSec + analysisStepSec;
             let startIdx = Math.max(0, Math.floor(startSec * this.sampleRate / this.hopSize));
-            let endIdx = Math.min(totalFrames, Math.floor(endSec * this.sampleRate / this.hopSize));
+            let endIdx = endSec >= totalDuration ? totalFrames
+                : Math.min(totalFrames, Math.floor(endSec * this.sampleRate / this.hopSize));
             if (startIdx >= totalFrames) break;
             if (endIdx <= startIdx) continue;
 
@@ -225,6 +227,19 @@ export class SectionAnalyzer {
         this.adaptiveThreshold = Math.min(0.6, Math.max(0.3, (gMaxAvgE - gMinAvgE) > 0 ? (medianEnergy - gMinAvgE) / (gMaxAvgE - gMinAvgE) : 0.45));
 
         const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+        const rmsForInterval = (startIdx: number, endIdx: number) => {
+            let power = 0, support = 0, peak = 0;
+            for (let j = startIdx; j < endIdx; j++) {
+                const valid = Math.max(0, Math.min(this.hopSize, sampleCount - j * this.hopSize));
+                const amplitude = rmsT[j] || 0;
+                power += amplitude * amplitude * valid;
+                support += valid;
+                peak = Math.max(peak, amplitude);
+            }
+            const rmsAmplitude = support > 0 ? Math.sqrt(power / support) : 0;
+            return { rmsAmplitude, avgRms: clamp01(rmsAmplitude / Math.max(typRms, 1e-6)),
+                peakRms: clamp01(peak / Math.max(typRms, 1e-6)) };
+        };
         const averageFeature = (sIdx: number, eIdx: number, pick: (f: VisualFeatureFrame) => number) => {
             let sum = 0, count = Math.max(1, eIdx - sIdx);
             for (let i = sIdx; i < eIdx && i < visualFeatures.length; i++) sum += pick(visualFeatures[i]);
@@ -245,11 +260,10 @@ export class SectionAnalyzer {
             return {
                 index: bar.index,
                 start: bar.startIdx * this.hopSize / this.sampleRate,
-                end: bar.endIdx * this.hopSize / this.sampleRate,
+                end: Math.min(totalDuration, bar.endIdx * this.hopSize / this.sampleRate),
                 energy,
                 density: averageFeature(bar.startIdx, bar.endIdx, f => f.density),
-                avgRms: clamp01(bar.avgE / typRms),
-                peakRms: clamp01(bar.peakE / typRms),
+                ...rmsForInterval(bar.startIdx, bar.endIdx),
                 bass: clamp01(bar.avgBass),
                 mid: clamp01(bar.avgMid),
                 treble: clamp01(bar.avgHigh),
@@ -337,19 +351,17 @@ export class SectionAnalyzer {
                 });
                 let label = scored.label;
 
-                let rms = {
-                    avgRms: clamp01(avgEnergy),
-                    peakRms: clamp01(Math.max(...barBlocks.slice(currentSectionStartIdx, i+1).map(b=>b.peakE))/typRms)
-                };
+                const rms = rmsForInterval(startIdx, endIdx);
 
                 this.trackSections.push({
                     start: startIdx * this.hopSize / this.sampleRate,
-                    end: endIdx * this.hopSize / this.sampleRate,
+                    end: Math.min(totalDuration, endIdx * this.hopSize / this.sampleRate),
                     label,
                     energy: avgEnergy,
                     density: avgDensity,
                     dominantFeature: sectionDominantFeature,
                     avgRms: rms.avgRms,
+                    rmsAmplitude: rms.rmsAmplitude,
                     peakRms: rms.peakRms,
                     reasons: this.dedup([...boundary.reasons, ...scored.reasons])
                 });

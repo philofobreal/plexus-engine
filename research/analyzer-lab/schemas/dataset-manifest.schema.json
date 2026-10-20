@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plexus.local/research/dataset-manifest/1.0.0",
+  "title": "dataset-manifest",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "datasetId": {
+      "type": "string"
+    },
+    "datasetVersion": {
+      "type": "string"
+    },
+    "tracks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "trackId": {
+            "type": "string"
+          },
+          "split": {
+            "enum": [
+              "train",
+              "validation",
+              "test"
+            ]
+          },
+          "audio": {
+            "type": "string"
+          },
+          "contentHash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "license": {
+            "type": "string"
+          },
+          "licenseSource": {
+            "type": "string"
+          },
+          "allowedResearchUsage": {
+            "type": "string"
+          },
+          "stems": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sourceClass": {
+                  "type": "string"
+                },
+                "reference": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "sourceClass",
+                "reference"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "midi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "annotations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "reference": {
+                  "type": "string"
+                },
+                "evidenceType": {
+                  "enum": [
+                    "ground_truth",
+                    "oracle_prediction",
+                    "pseudo_label",
+                    "plexus_prediction",
+                    "human_annotation"
+                  ]
+                }
+              },
+              "required": [
+                "reference",
+                "evidenceType"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "trackId",
+          "split",
+          "audio",
+          "contentHash",
+          "license",
+          "licenseSource",
+          "allowedResearchUsage",
+          "stems",
+          "midi",
+          "annotations",
+          "tags"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "datasetId",
+    "datasetVersion",
+    "tracks"
+  ],
+  "additionalProperties": false
+}

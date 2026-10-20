@@ -1,0 +1,72 @@
+[
+  {
+    "path": "tests/contracts.test.mjs",
+    "predecessorSha256": "a88694c2f722fcab2898ffdf473b231771d36db0fbd1943891ce1ff5555a3313",
+    "replacementSha256": "9dcbd74e7d0fb53f24271493eddf0a73cc02c31e73f96fe3880be6e25fd47f66",
+    "reviewedBy": "Codex integration owner; independent XR and Oracle documentation/test reviewers",
+    "reviewedReason": "Preserve every predecessor test/assertion; strengthen analysis publication assertion to pass published events into normalization and extend composition assertion for explicit optional eventTiming injection. Original bytes retained in Oracle v0015 and original onset snapshot."
+  },
+  {
+    "path": "tests/mvp-async-lifecycle.test.mjs",
+    "predecessorSha256": "79f6f356885533870228cd70ddd893c7f0a8c8caade9d6ecb7b7ac890c1f494f",
+    "replacementSha256": "7d74744dd73f46f27c0cb26bc647de42a190fb69c9e02729c3b8374da8ccf678",
+    "reviewedBy": "Codex integration owner; independent XR and Oracle documentation/test reviewers",
+    "reviewedReason": "Keep every predecessor async/stale/history/workspace test. Add real algorithm fingerprints at the controlled async boundary and exercise the real controller same-file mismatch guard: no history/seek in other modes, valid restoration when returning to the matching mode."
+  },
+  {
+    "path": "tests/mvp-session-persistence.test.mjs",
+    "predecessorSha256": "d8483e57228e331257e4cc8cf3c51480b2b8cc7e6b2dcbbf62a8bbbe6d78110e",
+    "replacementSha256": "e6d1a6458876bbd333b3f5831551b36a7423ca22d7f7c918008b7f33ff0aae49",
+    "reviewedBy": "Codex integration owner; independent XR and Oracle documentation/test reviewers",
+    "reviewedReason": "Keep every predecessor save/consume/storage/corruption/content-hash test. Supply TextEncoder for the real fingerprint helper and add actual SessionStore save/consume across legacy/v1/historical-v2/dc1, preserving ordinary journeys and single-use capability behavior."
+  },
+  {
+    "path": "tests/xr-background-settings.test.mjs",
+    "predecessorSha256": "a16950e890cb0d8219506551c38fbe48a0a9b8a0a33ac30b001cf61234a7bb21",
+    "replacementSha256": "4f27464c4e6b5d06715923adfbb4416cd45332b5be77750998116dd29d245bef",
+    "reviewedBy": "Codex integration owner; independent XR and Oracle documentation/test reviewers",
+    "reviewedReason": "Preserve all source/settings lifecycle assertions; deliberately change default Max/30 and add 4K dimensions/mipmaps/replacement coverage."
+  },
+  {
+    "path": "tests/xr-controller-regeneration.test.mjs",
+    "predecessorSha256": "bbec8afa2b6ee59232e9e5d64ad09d21fb330e40a64517aca8acb31aff2aee1c",
+    "replacementSha256": "a901bcc0a3f5c11b9f3bbd1b27d51b11ab0a01ebfad6fa72716002baff0f6015",
+    "reviewedBy": "Codex integration owner; independent XR and Oracle documentation/test reviewers",
+    "reviewedReason": "Preserve load/regeneration/stale request/VR/menu assertions; update intended defaults, use real native pointer events through ray/judge, and assert held gestures cannot strike across menu keyboard/start transitions. Fake path gains identity projection methods only."
+  },
+  {
+    "path": "tests/xr-menu.test.mjs",
+    "predecessorSha256": "8e164bb508a3a207ed2b530476ee833dbbc90ab1a9a9aee24127c5b61d0b03a8",
+    "replacementSha256": "f2879fe93708a58de2dda62c3c0d106db534542af42ad33af4666b6848a7806a",
+    "reviewedBy": "Codex integration owner; independent XR and Oracle documentation/test reviewers",
+    "reviewedReason": "Preserve settings reachability/hit testing/keyboard/VR-pointer coverage; add readable abbreviation and actual authored-font canvas draw fitting on all tabs plus pitched desktop placement."
+  },
+  {
+    "path": "tests/xr-performance.test.mjs",
+    "predecessorSha256": "e97efd33446a9d188e06423639adbeb001d142751be1ee2a4e03e7fb5a8d680c",
+    "replacementSha256": "e3144dcc4eaa00e542bc647ca3879692d9b86996f53d0b125bf620d739348d13",
+    "reviewedBy": "Codex integration owner; independent XR and Oracle documentation/test reviewers",
+    "reviewedReason": "Preserve frame/pixel/disposal policy coverage; add desktop yaw/pitch bounds, finite-input rejection, on-demand invalidation and immersive handoff."
+  },
+  {
+    "path": "tests/xr-play-profile.test.mjs",
+    "predecessorSha256": "5b99f597934e3067a9f24f4dedbd17bcce14c66e3a610712837774b6796ad015",
+    "replacementSha256": "8d8899a68ca3cbce8f2ea6911b4ac8345b534e16e6028662fdb7e0e9e212a38b",
+    "reviewedBy": "Codex integration owner; independent XR and Oracle documentation/test reviewers",
+    "reviewedReason": "Preserve all gameplay profile formulas and baseline scenarios; update the deliberately requested Hyper/Auto host defaults, retaining pure gameplay golden separately."
+  },
+  {
+    "path": "tests/xr-settings.test.mjs",
+    "predecessorSha256": "098666b50e935273a80d1cfb3b9956f83dadf096c524f1c88ce5f705fbfa5952",
+    "replacementSha256": "76d14bc77aa3aed7bd9aaad1ec9961a8aedf5c16c36039dda09974fd34035526",
+    "reviewedBy": "Codex integration owner; independent XR and Oracle documentation/test reviewers",
+    "reviewedReason": "Preserve schema/storage/descriptors/reset coverage; update expected complete requested startup tuning and selectable 4K quality."
+  },
+  {
+    "path": "tests/xr-wormhole.test.mjs",
+    "predecessorSha256": "3c9534c3ebcc6d074664f5d1c7d6cd9fc1b473ebf3042dcaf92d4502b7838da8",
+    "replacementSha256": "96269c9090d39492342619cffa05157f797effb36cc740892da05059dc9e293e",
+    "reviewedBy": "Codex integration owner; independent XR and Oracle documentation/test reviewers",
+    "reviewedReason": "Preserve supplied-plan ownership/source/runtime checks; change only intentionally authored default material assertions to the requested values."
+  }
+]

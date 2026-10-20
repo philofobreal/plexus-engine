@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0.0",
+  "description": "Generator specifications only; no serialized audio. audio.synthetic is the deterministic generator.",
+  "fixtures": [
+    {"kind": "click", "bpm": 120, "duration": 16, "sampleRate": 22050},
+    {"kind": "pulse", "bpm": 128, "duration": 16, "sampleRate": 44100},
+    {"kind": "tone-click", "bpm": 120, "duration": 8, "sampleRate": 22050},
+    {"kind": "sparse", "bpm": 120, "duration": 8, "sampleRate": 22050},
+    {"kind": "silence", "bpm": 120, "duration": 2, "sampleRate": 22050},
+    {"kind": "ambiguity", "bpm": 128, "duration": 16, "sampleRate": 22050}
+  ]
+}

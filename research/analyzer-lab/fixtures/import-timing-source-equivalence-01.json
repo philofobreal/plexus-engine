@@ -1,0 +1,446 @@
+{
+  "status": "verified-newline-only-final-source",
+  "measuredReportSha256": "04f569013caf5c8d9ecf64cde3b8cde76bf5ce9e69e9313a6d3a65499df89b59",
+  "sources": [
+    {
+      "path": "documents/research/onset-placement-experiment.md",
+      "measuredSha256": "465f408b446f18fd6610d8f24b4c262595a027b5427e785f64286d339a6b083e",
+      "finalSha256": "465f408b446f18fd6610d8f24b4c262595a027b5427e785f64286d339a6b083e",
+      "equality": "exact"
+    },
+    {
+      "path": "documents/research/onset-placement-v2-experiment.md",
+      "measuredSha256": "14112d4fd10e7d6a227165e25916a6f20667561ebf4da6b8a116c0fa1412ebd5",
+      "finalSha256": "14112d4fd10e7d6a227165e25916a6f20667561ebf4da6b8a116c0fa1412ebd5",
+      "equality": "exact"
+    },
+    {
+      "path": "research/analyzer-lab/diagnostics/measure-accepted-timing-v2.mjs",
+      "measuredSha256": "140cd164fcbdb1bfc26a1b99ea6e143bf5e2f79719f3619132818d78c2f063e8",
+      "finalSha256": "140cd164fcbdb1bfc26a1b99ea6e143bf5e2f79719f3619132818d78c2f063e8",
+      "equality": "exact"
+    },
+    {
+      "path": "research/analyzer-lab/diagnostics/measure-accepted-timing.mjs",
+      "measuredSha256": "585b16ad375dc1c811ee4fa6092a4a8ed6216e35466009babe01c878ec7d537c",
+      "finalSha256": "585b16ad375dc1c811ee4fa6092a4a8ed6216e35466009babe01c878ec7d537c",
+      "equality": "exact"
+    },
+    {
+      "path": "src/analyzer/AcceptedEventTiming.ts",
+      "measuredSha256": "37c126fa384589e67a7b98cc8c7ea7008ccbe6f7b73eac25ff6f16811a7de0be",
+      "finalSha256": "37c126fa384589e67a7b98cc8c7ea7008ccbe6f7b73eac25ff6f16811a7de0be",
+      "equality": "exact"
+    },
+    {
+      "path": "src/analyzer/AcousticOnsets.ts",
+      "measuredSha256": "4abd71de6b1868c453bf2d1c3734fb0e82533659fd921fa81e24d3024b71a3b3",
+      "finalSha256": "eba437661861f0d14d411246e6f6f093059f3e085a1cff8da65e9c39c3458491",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/AdaptiveOnsets.ts",
+      "measuredSha256": "d6d6632dd2db6eced6062783bd4e9e7d9eaa5087e156f222aa5a4ad9419d93c3",
+      "finalSha256": "32d0a5ffe0a6501ab8b50bbb55ce94f41d60bdf431612b67cc49d3ec53397f7f",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/BandOnsets.ts",
+      "measuredSha256": "8570f622b05882fd90263ec9ca9e70e9b77289234db4a7e5aac8f022c249dba9",
+      "finalSha256": "ae9031a2b11d609c36592a2ec029bf625e54e6a0970150e828bbb5ee8aaa7a0d",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/BeatEventClassifier.ts",
+      "measuredSha256": "113cc7350f4a1ec3ded9d2cf63cd257f568b78ef1f22f777defe53e86af76bfd",
+      "finalSha256": "88ab0f1c2119922de00d6a50ed96866792e64a116b567c2f96c972cdf4c64323",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/BeatTracker.ts",
+      "measuredSha256": "e4387c0b781f75e857d6ec9f76107177a21c32cd64e7f8f8cbef55858795b945",
+      "finalSha256": "33adf86765f18bc787fcb2783a894a6e40d7b036949df4bb7bb45d9ad0cefe16",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/ContinuationOnsets.ts",
+      "measuredSha256": "f9d52bb2c55ed5b222c042d5e6417a5c0be887a1ee35c192f5b61f63e2e03f79",
+      "finalSha256": "374762a7c8382fc8499a1103e364331956773a51516e7066226ca5536acd4af1",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/DifferenceOnsets.ts",
+      "measuredSha256": "08b2820c3942d78dbb4dc6568f3c74fb567d5a012ba16a7c9a201b21174d695a",
+      "finalSha256": "a2914d0c5555ffbef70405c87811809b7e25389aa768dd49d1ba07a99ac38bf2",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/DramaturgyBuilder.ts",
+      "measuredSha256": "4149cf109dc6b5045801c04c8409d7a64433085a4c4eadf81c69c6ceb7cf4210",
+      "finalSha256": "c7f16953d5d528d5a09b30ffcd71948eb7b87a0d9abf3b1fe9b05cc7ae09d8ad",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/FeatureClassifier.ts",
+      "measuredSha256": "6da5bc5cf7725ddd2709958be94572f32a98b13803594b12d8b1fa80ede60f0f",
+      "finalSha256": "caf8d0341f9dc0ed27da7111dc5fabfb76e066f25f663c44232d4abf7c2e2840",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/FeatureExtractor.ts",
+      "measuredSha256": "3e07d4b88ab7167f5cf46e0491df45e98518ff37fe2a4fe0495892559d24fb2b",
+      "finalSha256": "027075a30121d8c66c94fa0b00d59fffb068a0da165b30f202fe20383e54a5f9",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/FeatureNormalizer.ts",
+      "measuredSha256": "418c3fc87e5d1ab81e21cf5d8bc683d7ca1945d828d8ee22fd3dbf21b36a05db",
+      "finalSha256": "e0d3458ad4dc73bc6cdf9144c9a1e829f0d12bb5228f85fca85903b054e0120a",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/GridAligner.ts",
+      "measuredSha256": "45a358a4ac42a23e826ea8be123cbe8f0a1ede8676ddbafc98ecc65c65369817",
+      "finalSha256": "c1adab91bb18d75a8c38bda3fb9e10061bb2e0b2f3b1003050a8feeb4ec1d2f6",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/HarmonicEvidence.ts",
+      "measuredSha256": "41641a958d063b6ace5e64bbd2d1085f7c7f243081adf6d4d6960e583f43fd2f",
+      "finalSha256": "291aad90420ef30956ca4d0cc2444e03fd7c7092901f9f52c1409f6f39f2c503",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/HarmonicTimbre.ts",
+      "measuredSha256": "fa35a7782178ff0a2347d1961d1766a448733266fbdd7e1c88fb0d5eac20c584",
+      "finalSha256": "6b3ea15eb08584ea8c7b0576d5befdde34c67f265dbe8c4bf2a8aa9d5bccaf2b",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/LowFrequencyExtractor.ts",
+      "measuredSha256": "20cd8119c8ace3a03112c21d28f87b9776708e76c39d0c0c354824ff749df91a",
+      "finalSha256": "c7a75bcf8d48ffa7702543237dc00bc122b3e165b0132935326e2d36c49afea5",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/MusicalEntityTracker.ts",
+      "measuredSha256": "4c2fbf9167b838bd5160cac630b3ef1790b9ab7cf017bb27a04f48f98926349e",
+      "finalSha256": "a76db496f2e5bd3cf2dd964cad44c20cbef707599a91afdb9f470c3b4768acf1",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/NoveltyAnalyzer.ts",
+      "measuredSha256": "79609f97d92c6de4e64d6b2b5fc01f3f3e3defe8f6a4b9141a5d0578b1dff687",
+      "finalSha256": "88d01150e1ecc878526de08ab4231d44656fbeb9a401202b94a1523f5c3a2322",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/PeakOnsets.ts",
+      "measuredSha256": "d43fc82af372e94e876aab2029d03e71bf52a8abecb0a125fdcc724e4c57b6d8",
+      "finalSha256": "82e5c1ca54152a5a5f660aeff36fcce562099a2963393087ec7a258db5492375",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/PitchCandidates.ts",
+      "measuredSha256": "5e4bed726838c0189312d87addf79a4f837e5c2250adbaf0b58b8403f1981e0b",
+      "finalSha256": "3e30c4f0c49037f61dfc955bd14745ad5f1f039d7a167ec20e85d2460694e387",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/PredictiveOnsets.ts",
+      "measuredSha256": "945a95bed33ae49de1ffe79ae30a5962cf2c1b355517a6503ff83e6cca88a643",
+      "finalSha256": "45534e7e0f232bff0fde918e49f53bc511dbba9b51af81afde7af3f1e320fc92",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/ResidualOnsets.ts",
+      "measuredSha256": "247ffab22e8f7b1ddcb24343ccba102eddf692955b699a665211571488096084",
+      "finalSha256": "8945920f13ee4fdc164a8eea1186bab4ca6afd6a5f751ad852fc803eb76208dd",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/SectionAnalyzer.ts",
+      "measuredSha256": "a7613786c217f066dda4f8bf316ae8539011a6180fae000537c68944ff7dc6a8",
+      "finalSha256": "31109c1cb6fb20e06550b36d9591739b848dfb5020adcad1a799f0eb895b5cd6",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/SpectralCalibration.ts",
+      "measuredSha256": "cc19ad606d7c24ba33e2d3258d7c55b066550127d6d73bb1482e57c466dffd38",
+      "finalSha256": "67441662e1307e5047fdf7f5515a698f9252e0eec268340cf42492dcc1eb5353",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/SpectralPivot.ts",
+      "measuredSha256": "2d0eeb7d49f9b9b8053fc223104450d35960f89e444f687be71db376ea9ef1a5",
+      "finalSha256": "2b3046b1786b68abb5c9fe8d539f4fc546dc7a4a02ad9ab566ed1ada7a145dba",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/TempoEstimator.ts",
+      "measuredSha256": "037bd0011b0af776926a5b8c914a1cbc21f8789b655abdca616f7bdbbd32ee31",
+      "finalSha256": "869827dd4933865afb0b710a6a51a7f1b00b556062c60c08b6080b607e2eafde",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/TemporalSmoother.ts",
+      "measuredSha256": "112ca656b12a3ed28f83922d5e02f08c842850eaf73c8c70440154a61c11befb",
+      "finalSha256": "9735b6bfda6fb8cbc7c2399bc336e646f4ddd8e18248e49ee733cc11dc5d7015",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/analyzeAudio.ts",
+      "measuredSha256": "ab59c383d3ae78bd19ad2148e780dd63b2cde6fcedc1ed6f87899d9c73acc042",
+      "finalSha256": "595add450a4ceda6d397718e5b7895fa7415cfc683ef201f6a953c6640a55553",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/constants.ts",
+      "measuredSha256": "24349a8b39fe61ffc81919816cdf43e1a3d08e67b8de845c31801c21b905c956",
+      "finalSha256": "f593a1105c5418d8891b91d314eb806ad62a6c2e6c9477ce9cd9822269cdaa93",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/index.ts",
+      "measuredSha256": "0a84640600dfd1bdba9a2605563465fd9ccb6ee2594fa4206145602b2388b3b5",
+      "finalSha256": "b0baaaa5120ecc4fd70279289f9678da40f4ac0a453db3bb4f103de39c1e2005",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/math/FFT.ts",
+      "measuredSha256": "9f605e5a6561da6eb45bccd647803fe356b537684cdbfb10cf1a0530eda8bc34",
+      "finalSha256": "912b500ff42bf7648bc8f6d9a4750218cd279dc950f6417069a55c549697b4ee",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/math/SpectralFlatness.ts",
+      "measuredSha256": "dfbd74edf11a6c91c9d12011bcb995b19606ebfbad36127f144faab62be9bd2f",
+      "finalSha256": "becc5b05061ec36cd677097091862ca765f1ec5c1a7781ce03d0b262aa7dcaaa",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/normalizeAnalysisResult.ts",
+      "measuredSha256": "a1fe940ac9f6e907fba909d0e501ef77252ea56d281b5f709f0ac01a4ab0a94e",
+      "finalSha256": "dbbb59f772fa04e0b6fc9963e6334e11504f3c51e19b8924a26d88ca4d6a6f1e",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/signalContract.ts",
+      "measuredSha256": "d86d892e973238ed1bd03dc835857edeec4b5fa21299a8df8c7e25169993b6a0",
+      "finalSha256": "fb64a5fcb50b6ad61e3b86717f80ace34c993e8d948c2865b9c05369861f294a",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/types.ts",
+      "measuredSha256": "cc9508fd388b6fd47cf11d7de59995e04468f0d3928e76bfa107a057d897a7eb",
+      "finalSha256": "de359b44e3aef69f7b2fe197250746c9645958a147261f89d057ff8fa8289509",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/analyzer/utils.ts",
+      "measuredSha256": "f08341cd5ed555a91c43e871d285b3ab4aaa37954b64ae844148ddf63a5e9024",
+      "finalSha256": "530b0e26fd9b6c039504511dd9da638dcd1b2b3bee0f3f3f7bffb219360027df",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/CanvasVisualSource.ts",
+      "measuredSha256": "4ee966c35f677242e1d1245050e095f623e0119205e723a84e8234010305c2ff",
+      "finalSha256": "b0ec4aade561c7619c256397592f58a2bfe8c88bc11523dfe6a499160e405469",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/GrainLineFrame.ts",
+      "measuredSha256": "4bc49c5466f9c0b395598ccd798afb7145ab167a5ea32405d624c3fe147a8cf6",
+      "finalSha256": "b03291c721c898d58d7d8467ef1e5fb776dc1395d9ee03ebd4c6c9e38ca84195",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/GrainMaterialFrame.ts",
+      "measuredSha256": "17d2cdb132e76396f48993973ceafd803fffe83d14c765b095d838df3d3276a1",
+      "finalSha256": "3f155f2f59130f058db016adc25d8b97e37b52f1fbf7d44527e344276b3a9d31",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/WormholeSpatialFrame.ts",
+      "measuredSha256": "38d5c53f0d8af16c416779fd3112c2c42e7c73aa16dcf612d6bdb664f9574b0a",
+      "finalSha256": "22b2cfe2256d0461a895b6c5f5509ecd62c05fb72677fd979fc58669824a2fad",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/WormholeWorkerProtocol.ts",
+      "measuredSha256": "47d573b2b80595b341a88e7a628ebbb7f0e74fb43d76c8e4c47d90593f56a305",
+      "finalSha256": "6d3e27f485b0d77e24d735c4cb801a61d2f91af7273241053ba8bc5f216497e9",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/acousticEvidence.ts",
+      "measuredSha256": "b401e9939f076512f436c8a171799a43809a4ca4592ea61f36df890c1e1dd16b",
+      "finalSha256": "4dd0ddb30fd8ba21518357554dbfc0f994b464cebc8c41c327333e7cd0737be0",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/acousticOnsets.ts",
+      "measuredSha256": "96e84cca4f90cf23b8bf576b6f2b8f9287f3705e78c22397ff3a7d498fbb9a60",
+      "finalSha256": "5cd75f2c4b86b6e2ca9470e8f5f9bf4e4cb4a0566ed2576318ecc4ecf04da769",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/adaptiveOnsets.ts",
+      "measuredSha256": "c16a108b75b9ef63c2dc18eccfd754f1740f0b50078e83ddbf26eb1f8170d695",
+      "finalSha256": "55998ddc78b97de016b7722f5f1dd209d97fa885c86c0b5937f0b996b13cbece",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/bandOnsets.ts",
+      "measuredSha256": "a9cd2cb9ec73fcaea09d4819223bfb19d9691bbafca817c951013de2cddaf104",
+      "finalSha256": "75609fea4c50e63ea9f06aa1de1434d84aa1ca264daa908e9a00e018ef22d25d",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/continuationOnsets.ts",
+      "measuredSha256": "9ef1a1008b91656e289ca4e8629d535a0a0b4c4b5cda4da055afaa7d77c22211",
+      "finalSha256": "98ee96cad16c3a2884bb6510a351bf707f588449752e2582353634984dc89c50",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/differenceOnsets.ts",
+      "measuredSha256": "63e11144292bbebe39300b9ec66fccabdd39958ce67624c49537caf114c46b4e",
+      "finalSha256": "9a5efb8c6e59fa2fe6fe045293387ae7b283b88bb368afccfc845ce60eb1a292",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/eventTiming.ts",
+      "measuredSha256": "c079d092284e546548c9862c33a4be50445aa97d17a2f88adaef1032204dca79",
+      "finalSha256": "c079d092284e546548c9862c33a4be50445aa97d17a2f88adaef1032204dca79",
+      "equality": "exact"
+    },
+    {
+      "path": "src/types/featureClock.ts",
+      "measuredSha256": "d8d63a5728c2c7f17fa0902059cba46a05c259c1a9600c0a208c8b7f0a6672d6",
+      "finalSha256": "da02b4b709610c0ccdb3532e7acfa9e1b4e8e2c3eaf8e8ff2f73ed36c805fe93",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/harmonicEvidence.ts",
+      "measuredSha256": "ed5e9764a09f14e24dc9d630c87ded5e8a65b96e22b4f6c350dddfd6f21eff8e",
+      "finalSha256": "fdb62b9ef214719080a6d8acf625029bbd67290711a3c756ea21acc269ec5832",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/index.ts",
+      "measuredSha256": "cb8fc311a35415951019a814f1090806b1db53e78ee4fc9f3b8037944b4dbc32",
+      "finalSha256": "e4ac5d9df0322287ed7bac95ccf42c9bd2f48a5702ce09938bb6aec00db4b53d",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/musicalEntities.ts",
+      "measuredSha256": "55682eb9fabf6b481c05aa558a9e71c497f6ba006d383d901677d0add65b8a80",
+      "finalSha256": "3b21a8cb3134e34a3a5b89591758c5548581b63ada7c270604a3c65e81777763",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/peakOnsets.ts",
+      "measuredSha256": "dd8c825f85f927b4bc935a8a0fb4cc2dc0bbd165ac14cdcfd952fc0175867510",
+      "finalSha256": "8c7d0aef44d61baead5cf31494714b81cc08597dd6aeba457c13aac774dd6001",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/pitchCandidates.ts",
+      "measuredSha256": "e3d59be0872ff91dd16603597bcd7cb8508136a3118caa9959f571e713f5ed7a",
+      "finalSha256": "0725afe665384283b1b9404404d644b63f409762f50ef48c9927b6c395eea2a9",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/predictiveOnsets.ts",
+      "measuredSha256": "dbc048c709c07f9cff551912577d9406971f4e24fc70ed5a7e83d3dea1af123f",
+      "finalSha256": "8d727f4b32b4abba5cd1b886fb44f85dc3c27cb5a852bc22390cf11aba7766bf",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/residualOnsets.ts",
+      "measuredSha256": "a51def66f8d67d445b4c5e160c3c609f54f13b0aa0d64f1d78508b7873be2202",
+      "finalSha256": "b14d55abacd9a7cf35e330197647561f96bb6c0e056c6437bb001e3dbe013bc3",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "src/types/semantics.ts",
+      "measuredSha256": "15856c8c4eb0594fa60eccb6194c390be6a8121ffc285baec895589ba964bf39",
+      "finalSha256": "e37d212aba815cfa1223542698aec31dc6e015dd5442496f7cfd1e1f2786db8c",
+      "equality": "CRLF-LF-only"
+    },
+    {
+      "path": "tests/helpers/xr-loader.mjs",
+      "measuredSha256": "65f5c9bd8264f10e569d5d5b158e7ebda64f59ee8188e2040f1a2d9754e5ed3e",
+      "finalSha256": "65f5c9bd8264f10e569d5d5b158e7ebda64f59ee8188e2040f1a2d9754e5ed3e",
+      "equality": "exact"
+    }
+  ],
+  "manifestRepairs": [
+    {
+      "path": "research/analyzer-lab/tools/harness/inventories/v0001.json",
+      "beforeSha256": "3a6a92db96dab70cdfa2d7a417f8f9093187568d1b59b2f4a9a7264df29fe997",
+      "afterSha256": "195492eba376c081eb6cd618b508390a7e5ddfdf8b09a8d03e29c251e4b1a99f"
+    },
+    {
+      "path": "research/analyzer-lab/tools/harness/inventories/v0002.json",
+      "beforeSha256": "37f2466be949d1c11d2b9f05451dd3d3ddf094fa07ae964e940186fe057c98e5",
+      "afterSha256": "cd7f9bdb81746129e45dc16e72df17954267aa479096e53531347addccf78b2d"
+    },
+    {
+      "path": "research/analyzer-lab/tools/harness/inventories/v0003.json",
+      "beforeSha256": "013e5bd70229d38f1a1560a7462433f2cfb0ec36dc978eea22ca8a0bf68ed7a3",
+      "afterSha256": "3e3ef4e700821279b1e07a196b614e52200536223348f8469218bf3f357e13b7"
+    },
+    {
+      "path": "research/analyzer-lab/tools/harness/inventories/v0004.json",
+      "beforeSha256": "16c995a6613589a03532be842365e0de9df4f4172578314885e2b30148968331",
+      "afterSha256": "d1ef4a910464c2f4125e64093b8f3d901ec0e6ad35b3c73da3956104d4a435f2"
+    },
+    {
+      "path": "research/analyzer-lab/tools/harness/inventories/v0005.json",
+      "beforeSha256": "7780f03553882fc24b19a4db03cbce1c185c08e041f2ff75f3578925c44e98ac",
+      "afterSha256": "37d2b8d6bd27a681197e4e16f93581791a78637ec73bfebbdbd7a7c19f2e626a"
+    },
+    {
+      "path": "research/analyzer-lab/tools/harness/inventories/v0006.json",
+      "beforeSha256": "d431dcf5512b9bf9aa510504b66b3fac372a2065c0c0aa1d11be496bcea27e85",
+      "afterSha256": "ddf05b3e70527ecd3be39fe9aeba286dbdb168890c71a02ccb6b3adfacb06a01"
+    },
+    {
+      "path": "research/analyzer-lab/tools/harness/inventories/v0007.json",
+      "beforeSha256": "723fc4e07f0a9df9d0e0935af631f372752617369c89489addedc7e4b0e64524",
+      "afterSha256": "74fc18a516965c6891398ab772eb8329c491727fb6f6a3602e26aa755346840d"
+    },
+    {
+      "path": "research/analyzer-lab/tools/harness/inventories/v0008.json",
+      "beforeSha256": "870284e866b4dfd57349fdb48d7fa3c20627d69a6389547dce03f44b44bb1845",
+      "afterSha256": "253224f18e6b268f4446751947ce415d687c79ef028ec0cc0f37219ab22b0bba"
+    },
+    {
+      "path": "research/analyzer-lab/tools/harness/inventories/v0009.json",
+      "beforeSha256": "b786600f2ee193ad159590274429bf7e2e49f0b22cad3aa371dba5cd49b8b873",
+      "afterSha256": "430d3242e1aa6c0f86cbf4cc61d50d27370a3a68db740cb6db00e32bb16227fb"
+    },
+    {
+      "path": "research/analyzer-lab/tools/harness/inventories/v0010.json",
+      "beforeSha256": "a3363919b6bef7aaf91eb420d58a36cfada47768d2f3a8c5a745154b504eed11",
+      "afterSha256": "d227d1d34aa71f863f2199eaf23bc8cbf87482b3efc820a3477ad6d9fbb8e711"
+    },
+    {
+      "path": "research/analyzer-lab/tools/harness/inventories/v0011.json",
+      "beforeSha256": "77821e2cfd1f6b6b98966c598f4c1e4549a7841d88bd39cba7ad1c123dca8667",
+      "afterSha256": "09fa2ee32e1ccc43f1d360728a953f09fe6a12531aaf2926c1e859e4b93cf055"
+    },
+    {
+      "path": "research/analyzer-lab/tools/harness/inventories/v0012.json",
+      "beforeSha256": "38c47a6e9f902aec5e3e27811a7b0e1f80b4a678f5ecbf80e38c8dd20292088f",
+      "afterSha256": "a5cdeff473f6ab847e69d40ff6065bfbbb3087f24a3fdbb0350cc99dc1ccaa30"
+    },
+    {
+      "path": "research/analyzer-lab/tools/harness/inventories/v0013.json",
+      "beforeSha256": "f2a00a06bee53dfd3e1cd6fcbe8e2de39a821bee074051ecb85ad39fb594558c",
+      "afterSha256": "59ad2e83c4f6ab93c63746ce860fc43925e1defd7d9e3a2323799dc6c9c40395"
+    }
+  ],
+  "limits": "Numerical observations came from retained measured bytes; final bytes differ only in newline encoding, not code."
+}

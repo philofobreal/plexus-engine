@@ -26,7 +26,7 @@ function harness() {
         const exports = {}; modules.set(file, exports);
         vm.runInNewContext(ts.transpileModule(readFileSync(file, 'utf8'), {
             compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
-        }).outputText, { exports, localStorage, sessionStorage, crypto: webcrypto,
+        }).outputText, { exports, localStorage, sessionStorage, crypto: webcrypto, TextEncoder,
             require: request => load(path.resolve(path.dirname(file), request + '.ts')) }, { filename: file });
         return exports;
     }
@@ -139,6 +139,26 @@ test('one explicit save publishes panels and history without audio; restoration 
     assert.equal(h.session.size, 0);
     assert.equal(await new h.SessionStore().consume(), null);
     assert.equal(h.tuningStorage.loadMetaTuning('track-A', 60).macros.intensity, 0.8, 'ordinary panel save survives consumption');
+});
+
+test('all timing-mode fingerprints survive real checkpoint save/consume without crossing ordinary journey records', async () => {
+    const h = harness(), analysis = { bpm: 120, duration: 60, sections: [], bars: [] }, keys = [];
+    const modes = [null, 'accepted-frame-band-timing-v1', 'accepted-frame-band-timing-v2', 'accepted-frame-band-timing-v2-dc1'];
+    for (const [i, algorithm] of modes.entries()) {
+        const key = await h.tuningStorage.computeTrackFingerprint({ ...analysis, ...(algorithm ? { eventTiming: { algorithm } } : {}) });
+        keys.push(key);
+        const checkpoint = structuredClone(h.checkpoint);
+        checkpoint.fingerprint = key; checkpoint.token = `mode-${i}`; checkpoint.workspace.position = 12 + i;
+        assert.equal(await new h.SessionStore().save(checkpoint, h.changes, () => true), true);
+        const restored = await new h.SessionStore().consume();
+        assert.equal(restored.fingerprint, key); assert.equal(restored.token, `mode-${i}`);
+        assert.equal(restored.workspace.position, 12 + i);
+        assert.equal(restored.history.future.length, 1);
+        assert.equal(await new h.SessionStore().consume(), null, 'each mode consumes the real capability once');
+        assert.equal(h.tuningStorage.readTrackCheckpoint(key), null);
+        for (const prior of keys) assert.ok(h.tuningStorage.loadMetaTuning(prior, 60)?.journey, 'panel saves survive other-mode consumption');
+    }
+    assert.equal(new Set(keys).size, 4);
 });
 
 test('first edit invalidates once without rewriting the large track record; old history cannot resurrect', async () => {

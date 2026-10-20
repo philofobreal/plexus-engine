@@ -26,7 +26,7 @@ function harness({ presenting = false, settingsStore, gpu = false, diagnostics =
     let prepareImpl = async () => source.performancePlan;
     const sceneLog = { analyses: [], timelines: [], enabled: [] };
     class FakeScene {
-        constructor() { this.path = { revision: 0, unprojectStrike() {} }; }
+        constructor() { this.path = { revision: 0, unprojectStrike() {}, projectPlayfieldPoint() {}, unprojectPlayfieldPoint() {} }; }
         getWorldToPlayfield(m) { return m; }
         prerender() {}
         async setWormholeEnabled(v) { sceneLog.enabled.push(v); }
@@ -224,12 +224,12 @@ test('restored settings drive the first chart and background; every change is sa
     assert.deepEqual(saved.map(s => [s.background.quality, s.generation.difficulty]), [['performance', 'hard'], ['performance', 'expert']]);
 });
 
-test('a first visit starts from the authored defaults: Wormhole on, Ultra choreography in the Tall space, Hyper / Long, Shard', async () => {
+test('a first visit starts from the authored defaults: Wormhole Max, Ultra choreography in Tall, Hyper / Auto, Shard', async () => {
     const h = harness({ settingsStore: 'defaults' });
     const { DEFAULT_XR_SETTINGS } = createLoader()('xr/XrSettings.ts');
     assert.equal(JSON.stringify(h.controller.settings), JSON.stringify(DEFAULT_XR_SETTINGS));
     const first = h.sceneLog.backgrounds[0];
-    assert.deepEqual([first.wormhole, first.quality, first.rateHz, first.lineStroke, first.sharpness], [true, 'ultra', 36, 0.2, 1]);
+    assert.deepEqual([first.wormhole, first.quality, first.rateHz, first.lineStroke, first.sharpness], [true, 'max', 36, 0.3, 1]);
     assert.equal(h.sceneLog.enabled.at(-1), true, 'the Wormhole is switched on without a menu visit');
     assert.equal(h.sceneLog.designs.at(-1), 'shard');
     assert.deepEqual(h.sceneLog.blades, [1.1]);
@@ -496,4 +496,49 @@ test('on the desktop the game menu lives in the canvas: Escape, the gear button,
     const strikes = controller.session.getSnapshot().hitCount;
     controller.desktopInput.onStrike('right', 0, 0);
     assert.equal(controller.session.getSnapshot().hitCount, strikes, 'clicks never cut while the menu is open');
+});
+
+function sendCanvasPointer(h, type, x = 400, y = 300) {
+    h.runtime.renderer.domElement.dispatchEvent(Object.assign(new Event(type, { cancelable: true }),
+        { clientX: x, clientY: y, button: 0, pointerId: 1, isPrimary: true, pointerType: 'touch' }));
+}
+
+test('native pointer events score on press using the song clock, with no delayed release strike or camera turn', async () => {
+    const h = harness(); await h.loadTrack();
+    const note = h.controller.session.chart.find(n => n.hand === 'left');
+    assert.ok(note);
+    h.controller.session.loadChart([note]);
+    h.engine.play(0);
+    h.engine.time = note.time;
+    const { notePosition } = createLoader()('gameplay/index.ts');
+    const point = new THREE.Vector3();
+    notePosition(note, note.time, point, h.controller.gameConfig);
+    h.runtime.camera.updateMatrixWorld(true);
+    point.project(h.runtime.camera);
+    const x = (point.x + 1) * 400, y = (1 - point.y) * 300;
+    const turns = []; h.runtime.rotateDesktopView = (...args) => turns.push(args);
+    sendCanvasPointer(h, 'pointerdown', x, y);
+    assert.equal(h.controller.session.getSnapshot().hitCount, 1, 'real ray selection and shared judge run at contact');
+    h.engine.time += 1;
+    sendCanvasPointer(h, 'pointermove', x + 100, y + 50);
+    sendCanvasPointer(h, 'pointerup', x + 100, y + 50);
+    assert.equal(h.controller.session.getSnapshot().hitCount, 1);
+    assert.equal(turns.length, 0);
+    h.controller.dispose();
+});
+
+test('a pointer held over the menu cannot activate after Space starts play or keyboard navigation changes screen', async () => {
+    const h = harness(); await h.loadTrack();
+    const releases = [];
+    const strike = h.controller.desktopInput.onStrike;
+    h.controller.desktopInput.onStrike = (...args) => { releases.push(args); strike(...args); };
+    sendCanvasPointer(h, 'pointerdown');
+    h.window.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { code: 'Space', key: ' ' }));
+    assert.equal(h.controller.session.getState(), 'playing');
+    sendCanvasPointer(h, 'pointerup'); assert.equal(releases.length, 0);
+    h.window.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: 'Escape' }));
+    sendCanvasPointer(h, 'pointerdown');
+    h.window.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: 'ArrowDown' }));
+    sendCanvasPointer(h, 'pointerup'); assert.equal(releases.length, 0);
+    h.controller.dispose();
 });

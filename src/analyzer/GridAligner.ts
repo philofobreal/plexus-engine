@@ -14,6 +14,7 @@ interface OnsetPeak {
 // FeatureExtractor satisfies this; analyzer tests pass duck-typed mocks with the same
 // shape (without onsetEnvT), which is why the onset envelope is derived defensively.
 type FeatureSource = Pick<FeatureExtractor, 'totalFrames' | 'fluxT' | 'typFlux'> & {
+    sampleCount?: number;
     onsetEnvT?: ArrayLike<number>;
     typOnset?: number;
     rawBassT?: ArrayLike<number>;
@@ -40,6 +41,7 @@ export class GridAligner {
     private sampleRate: number;
     private hopSize: number;
     private framesPerSecond: number;
+    private evidenceFrames: number;
 
     // --- legacy contract (unchanged) ---
     public estimatedBPM: number = 120;
@@ -70,10 +72,14 @@ export class GridAligner {
         this.sampleRate = sampleRate;
         this.hopSize = hopSize;
         this.framesPerSecond = sampleRate / hopSize;
+        // A padded cutoff is measured support, but not reliable onset evidence.
+        // Keep it out of tempo normalization/DP as well as visual event acceptance.
+        this.evidenceFrames = features.sampleCount === undefined ? features.totalFrames
+            : Math.min(features.totalFrames, Math.floor(features.sampleCount / hopSize));
     }
 
     public calculate(): void {
-        const totalFrames = this.features.totalFrames;
+        const totalFrames = this.evidenceFrames;
         if (!totalFrames || totalFrames < 2) {
             this.applyDefaults();
             return;
@@ -153,9 +159,9 @@ export class GridAligner {
     // --- onset envelope -------------------------------------------------------------
 
     private buildOnsetEnvelope(): Float32Array {
-        const n = this.features.totalFrames;
+        const n = this.evidenceFrames;
         const { fluxLowT: low, fluxMidT: mid, fluxHighT: high } = this.features;
-        if (low?.length === n && mid?.length === n && high?.length === n) {
+        if (low && mid && high && low.length >= n && mid.length >= n && high.length >= n) {
             // Normalize raw positive flux locally, before combining bands. Reusing the
             // track-wide onset normalization here lets a loud section silence quiet hats.
             const env = new Float32Array(n);
@@ -179,7 +185,7 @@ export class GridAligner {
             return env;
         }
         const provided = this.features.onsetEnvT;
-        if (provided && provided.length === n) {
+        if (provided && provided.length >= n) {
             const env = new Float32Array(n);
             for (let i = 0; i < n; i++) env[i] = Number.isFinite(provided[i]) ? Math.max(0, provided[i]) : 0;
             return env;
@@ -379,7 +385,8 @@ export class GridAligner {
             }
         }
         const offset = this.mod(anchorTime, secondsPerBar);
-        const totalDuration = this.features.totalFrames / this.framesPerSecond;
+        const totalDuration = this.features.sampleCount === undefined ? this.evidenceFrames / this.framesPerSecond
+            : this.features.sampleCount / this.sampleRate;
         const barStarts: number[] = [];
         for (let t = offset; t < totalDuration; t += secondsPerBar) barStarts.push(t);
         this.downbeatPhaseScore = 0.2;
@@ -406,7 +413,7 @@ export class GridAligner {
     private windowSum(arr: ArrayLike<number>, frame: number): number {
         let sum = 0;
         for (let i = frame - 2; i <= frame + 2; i++) {
-            if (i >= 0 && i < this.features.totalFrames) sum += arr[i] || 0;
+            if (i >= 0 && i < this.evidenceFrames) sum += arr[i] || 0;
         }
         return sum;
     }

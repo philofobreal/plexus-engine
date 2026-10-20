@@ -1,0 +1,158 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createLoader} from './helpers/xr-loader.mjs';
+import {challengeSpecs, challengeFixture, pcmBytes, sha256} from './fixtures/acoustic-onset-challenges.mjs';
+import {robustnessSpecs, robustnessFixture} from './fixtures/predictive-onset-robustness.mjs';
+import {adaptiveSpecs, adaptiveFixture} from './fixtures/adaptive-onset-robustness.mjs';
+import {residualSpecs, residualFixture} from './fixtures/residual-onset-robustness.mjs';
+import {differenceSpecs, differenceFixture} from './fixtures/difference-onset-robustness.mjs';
+import {matchOnsets} from './helpers/onset-matching.mjs';
+
+const load = createLoader({}, {Float32Array, Float64Array});
+const {extractDifferenceOnsets} = load('analyzer/DifferenceOnsets.ts');
+const {extractResidualOnsets} = load('analyzer/ResidualOnsets.ts');
+const {normalizeDifferenceOnsets} = load('types/differenceOnsets.ts');
+const {analyzeAudio} = load('analyzer/analyzeAudio.ts');
+const {normalizeTrackAnalysis} = load('analyzer/normalizeAnalysisResult.ts');
+
+function check(f) {
+    const before = pcmBytes(f.samples), r = extractDifferenceOnsets(f.samples, f.spec.sampleRate);
+    assert.deepEqual(pcmBytes(f.samples), before);
+    assert.equal(JSON.stringify(normalizeDifferenceOnsets(r, f.duration)), JSON.stringify(r));
+    for (const p of r.candidates) {
+        assert.ok(p.supportStartSample <= p.sampleIndex && p.supportEndSample > p.sampleIndex);
+        assert.ok(p.supportEndSample <= f.samples.length);
+        assert.equal('probability' in p, false);
+    }
+    return r;
+}
+
+test('v5 preserves 648 earlier authored attacks, recovers all 216 previous transfer attacks and rejects five beating hits', () => {
+    let matches = 0, extras = 0;
+    for (const [matrix, specs, fixture] of [['c2', challengeSpecs(), challengeFixture],
+        ['an03', robustnessSpecs(), robustnessFixture], ['an03b', adaptiveSpecs(), adaptiveFixture],
+        ['an03c', residualSpecs(), residualFixture]]) {
+        for (const spec of specs) {
+            const f = fixture(spec), r = check(f), times = Array.from(r.candidates, c => c.time);
+            if (spec.family === 'negative') assert.equal(times.filter(t => t >= .1).length, 0, spec.id);
+            else {
+                const m = matchOnsets(f.truthSamples.map(i => i / spec.sampleRate), times, .002);
+                assert.equal(m.misses, 0, spec.id); matches += m.matchedCount; extras += m.falsePositives;
+                const extra = matrix === 'c2' ? spec.family === 'mixture' : matrix === 'an03'
+                    || matrix === 'an03b' ? matrix === 'an03' || spec.bed === 'tone' : spec.bed !== 'silence';
+                assert.equal(m.falsePositives, extra ? 1 : 0, spec.id);
+                if (extra) assert.equal(r.candidates[0].endpointAmbiguous, true);
+            }
+        }
+    }
+    assert.equal(matches, 864); assert.equal(extras, 108);
+});
+
+test('fixed FIR coefficients have the analytic fourth-difference sinusoid response and retain soft v4 evidence', () => {
+    const f = challengeFixture({family: 'mixture', sampleRate: 48000, kind: 'pluck', ratio: .1, phase: 0});
+    const r = check(f), coeff = Array.from(r.filterCoefficients);
+    assert.deepEqual(coeff, [1, -4, 6, -4, 1].map(c => c / 16));
+    assert.equal(coeff.reduce((s, c) => s + Math.abs(c), 0), 1);
+    for (const hz of [110, 440, 1000, 23900]) {
+        const w = 2 * Math.PI * hz / 48000;
+        const real = coeff.reduce((s, c, i) => s + c * Math.cos(w * i), 0);
+        const imaginary = coeff.reduce((s, c, i) => s - c * Math.sin(w * i), 0);
+        assert.ok(Math.abs(Math.hypot(real, imaginary) - Math.sin(w / 2) ** 4) < 1e-14);
+    }
+    const interior = Array.from(r.candidates).filter(c => c.time >= .1);
+    assert.equal(interior.length, 3);
+    assert.ok(interior.every(c => c.evidenceSource === 'residual-v4-confirmed'));
+});
+
+test('frozen transfer retains per-stratum limitations and six source-removal counterexamples without DSP retuning', () => {
+    const saved = JSON.parse(readFileSync('research/analyzer-lab/fixtures/an03d-robustness-frozen.json'));
+    assert.equal(sha256(readFileSync('src/analyzer/DifferenceOnsets.ts')), saved.sourceHashes['src/analyzer/DifferenceOnsets.ts']);
+    const specs = differenceSpecs(); assert.equal(specs.length, 96);
+    let matched = 0, extra = 0, negative = 0;
+    const strata = {};
+    for (let i = 0; i < specs.length; i++) {
+        const f = differenceFixture(specs[i]), r = check(f), old = saved.cases[i];
+        assert.equal(f.pcmSha256, old.pcmSha256); assert.equal(f.truthSha256, old.truthSha256);
+        assert.equal(JSON.stringify(r.candidates), JSON.stringify(old.candidates));
+        const times = Array.from(r.candidates, c => c.time);
+        if (specs[i].family === 'negative') {
+            const hits = times.filter(t => t >= .1).length; negative += hits;
+            if (specs[i].kind !== 'removal') assert.equal(hits, 0, specs[i].id);
+        } else {
+            const m = matchOnsets(f.truthSamples.map(sample => sample / f.spec.sampleRate), times, .002);
+            matched += m.matchedCount; extra += m.falsePositives;
+            const key = specs[i].bed + '-' + specs[i].kind;
+            strata[key] = (strata[key] ?? 0) + m.matchedCount;
+        }
+    }
+    // Post-inspection preservation is not a general musical acceptance criterion.
+    assert.deepEqual([matched, extra, negative], [217, 32, 6]);
+    assert.deepEqual(strata, {'silence-noise': 48, 'silence-pluck': 38, 'two-noise': 48,
+        'two-pluck': 16, 'four-noise': 48, 'four-pluck': 19});
+});
+
+test('selected v5 headless output preserves default/v3/v4 projection, JSON round trip and invalid-selector rejection', () => {
+    const f = residualFixture({family: 'positive', sampleRate: 22050, bed: 'poly', gap: .007, amplitude: .02, phase: .37});
+    const input = {samples: f.samples, sampleRate: 22050}, base = analyzeAudio(input);
+    const v4 = analyzeAudio({...input, options: {adaptiveOnsets: true, adaptiveOnsetVersion: 4}});
+    assert.equal(JSON.stringify(v4.trackAnalysis.adaptiveOnsets), JSON.stringify(extractResidualOnsets(f.samples, 22050)));
+    for (const version of [undefined, 4, 5]) {
+        const r = analyzeAudio({...input, options: {adaptiveOnsets: true, adaptiveOnsetVersion: version, acousticOnsets: {}, predictiveOnsets: true}});
+        assert.equal(JSON.stringify(normalizeTrackAnalysis(r.trackAnalysis).adaptiveOnsets), JSON.stringify(r.trackAnalysis.adaptiveOnsets));
+        const copy = JSON.parse(JSON.stringify(r));
+        delete copy.trackAnalysis.adaptiveOnsets; delete copy.trackAnalysis.acousticOnsets; delete copy.trackAnalysis.predictiveOnsets;
+        assert.deepEqual(copy, JSON.parse(JSON.stringify(base)));
+        if (version === 5) assert.equal(r.trackAnalysis.adaptiveOnsets.algorithm, 'confirmed-difference-v5');
+    }
+    for (const options of [{adaptiveOnsets: true, adaptiveOnsetVersion: 6}, {adaptiveOnsets: true, adaptiveOnsetVersion: '5'},
+        {adaptiveOnsetVersion: 5}, {adaptiveOnsets: false, adaptiveOnsetVersion: 5}]) {
+        let progressed = false;
+        assert.throws(() => analyzeAudio({...input, options}, () => {progressed = true;}), /Adaptive onset version/);
+        assert.equal(progressed, false);
+    }
+});
+
+test('v5 normalizer rejects malformed evidence, clocks, filter coefficients and both source-specific support ranges', () => {
+    const f = residualFixture({family: 'positive', sampleRate: 22050, bed: 'poly', gap: .007, amplitude: .02, phase: .37});
+    const original = check(f), copy = () => JSON.parse(JSON.stringify(original));
+    for (const mutate of [r => {r.algorithm = 'residual-innovation-v4';}, r => {r.filterCoefficients[0] = 1;},
+        r => {r.refinementSamples++;}, r => {r.lookaheadSamples--;}, r => {r.filterMemorySamples = 2;},
+        r => {r.candidates[1].evidenceSource = 'unknown';}, r => {r.candidates[1].supportStartSample++;},
+        r => {r.candidates[1].supportEndSample++;}, r => {r.candidates[1].time += .0001;},
+        r => {r.candidates[1].proposalSample++;}, r => {r.candidates[1].strength = Infinity;},
+        r => {r.candidates[1].innovationRatio = 0;}, r => {r.candidates[1].endpointAmbiguous = !r.candidates[1].endpointAmbiguous;}]) {
+        const r = copy(); mutate(r); assert.equal(normalizeDifferenceOnsets(r, f.duration), undefined);
+    }
+    assert.equal(normalizeDifferenceOnsets(original, f.duration, {sampleRate: 22050, sampleCount: f.samples.length - 1}), undefined);
+    assert.equal(normalizeDifferenceOnsets(original, f.duration + .1), undefined);
+    assert.equal(normalizeDifferenceOnsets(null, f.duration), undefined);
+    const dirty = copy(); dirty.candidates[1].probability = .99;
+    assert.equal('probability' in normalizeDifferenceOnsets(dirty, f.duration).candidates[1], false);
+    assert.equal(JSON.stringify(original), JSON.stringify(copy()));
+    for (const source of ['fourth-difference', 'residual-v4-confirmed']) {
+        const index = original.candidates.findIndex(c => c.evidenceSource === source);
+        assert.ok(index >= 0, source);
+        const bad = copy(); bad.candidates[index].supportEndSample++;
+        assert.equal(normalizeDifferenceOnsets(bad, f.duration), undefined);
+    }
+});
+
+test('rebased histories, tiny real tails, exact silence and input guards remain deterministic without PCM mutation', () => {
+    for (const fs of [8000, 44100, 96000]) {
+        const samples = Float32Array.from({length: fs * 6}, (_, i) => .2 * Math.sin(2 * Math.PI * 110 * i / fs));
+        samples[Math.round(5.3 * fs)] += .1;
+        const r = check({samples, duration: 6, spec: {sampleRate: fs}});
+        const later = Array.from(r.candidates).filter(c => c.time >= .1);
+        assert.equal(later.length, 1); assert.ok(Math.abs(later[0].time - 5.3) <= .002);
+        assert.equal(JSON.stringify(r), JSON.stringify(extractDifferenceOnsets(samples, fs)));
+        for (const length of [1, 2, 4, 5, 511]) {
+            const tail = Float32Array.from({length}, (_, i) => i === length - 1 ? .1 : 0);
+            check({samples: tail, duration: length / fs, spec: {sampleRate: fs}});
+        }
+    }
+    assert.equal(extractDifferenceOnsets(new Float32Array(2001), 44100).candidates.length, 0);
+    for (const x of [new Float32Array(), new Float32Array([NaN]), new Float32Array([Infinity]), new Float32Array([9])])
+        assert.throws(() => extractDifferenceOnsets(x, 44100));
+    for (const fs of [0, 999, 384001, 44100.5, NaN]) assert.throws(() => extractDifferenceOnsets(new Float32Array([0]), fs));
+});

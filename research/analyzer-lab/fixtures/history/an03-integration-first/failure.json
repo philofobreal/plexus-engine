@@ -1,0 +1,8 @@
+{
+  "command": "node --test tests/analyzer-predictive-onsets.test.mjs",
+  "counts": {"tests": 8, "pass": 6, "fail": 2},
+  "cause": "Normalization preserved field values but JSON property order differed from core output; strict serialized roundtrip assertions failed.",
+  "fix": "Align core publication order with shared normalizer; keep both strict roundtrip assertions.",
+  "additionalAuditFix": "Sparse repeated waveforms exposed nonzero rolling-statistic residue in exact silence. Track observed active terms and periodically rebase sums so silent backgrounds cannot invent a predictor coefficient. Add a protected sparse-silence coefficient assertion.",
+  "evidence": "Compact transcription of tool result. Original test and pre-fix core source are retained. Numeric fields matched in the two serialization failures."
+}

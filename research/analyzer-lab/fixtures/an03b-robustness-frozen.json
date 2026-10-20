@@ -1,0 +1,3343 @@
+{
+  "protocol": "AN-03B frozen new synthetic material; not recordings",
+  "nodeVersion": "v25.2.1",
+  "baselineHashes": {},
+  "sourceHashes": {
+    "src/analyzer/PredictiveOnsets.ts": "45534e7e0f232bff0fde918e49f53bc511dbba9b51af81afde7af3f1e320fc92",
+    "src/analyzer/AdaptiveOnsets.ts": "d6d6632dd2db6eced6062783bd4e9e7d9eaa5087e156f222aa5a4ad9419d93c3",
+    "src/analyzer/signalContract.ts": "fb64a5fcb50b6ad61e3b86717f80ace34c993e8d948c2865b9c05369861f294a",
+    "tests/helpers/xr-loader.mjs": "65f5c9bd8264f10e569d5d5b158e7ebda64f59ee8188e2040f1a2d9754e5ed3e",
+    "tests/fixtures/acoustic-onset-challenges.mjs": "9d5014b10ee347a783b7505d416f0c25206bd5865a9017dedbb3fd3fb21587c1",
+    "tests/fixtures/predictive-onset-robustness.mjs": "94de30c647efd574d18e926a64f8e90cc00f1883f95f45d5049e02e0ca9da247",
+    "tests/fixtures/adaptive-onset-robustness.mjs": "68dacad05123035cbd6fc4b0d557ca97d83540cf15164e920ff9f01dfb7e0455",
+    "src/types/adaptiveOnsets.ts": "55998ddc78b97de016b7722f5f1dd209d97fa885c86c0b5937f0b996b13cbece",
+    "src/types/predictiveOnsets.ts": "8d727f4b32b4abba5cd1b886fb44f85dc3c27cb5a852bc22390cf11aba7766bf",
+    "src/analyzer/analyzeAudio.ts": "98e6686a182241de5cbfd9a1966dacc61a3ca2d8e6834b13ba5b8b48a335c153",
+    "src/analyzer/normalizeAnalysisResult.ts": "d1c33f57d7bc1b5ddfd2c316f56708297f46d40c593a9cc2fe237093fe934179",
+    "src/analyzer/types.ts": "c5bfd43beb4fe213c77aad7ed36d8f841646f2cdfbae0355ae4a41d9206d9029",
+    "src/types/index.ts": "4e74baf5f30769ee01b39916495fb67b10c03fff3ab49cf7de99d4f65f0ce7ef",
+    "tests/fixtures/analyzer/analysis-result.schema.json": "b2740a8f8186c9033be0d9dd231d9170e5f96ff06befb42bb42a524e5a746293",
+    "research/analyzer-lab/diagnostics/measure-an03b.mjs": "0d7c45640e04da89c1fae4b2d0c89e42325e16d94cad786086419f1648e87dd4",
+    "research/analyzer-lab/diagnostics/score-an03b.py": "253db30fb77687df8e49582f7b07926305c363855f06b3ef1924fc90c3274e49"
+  },
+  "cases": [
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 12000,
+        "bed": "silence",
+        "gap": 0.006,
+        "phase": 0.41,
+        "id": "an03b-000"
+      },
+      "pcmSha256": "0b5465733e695fa6f52996a5206cb611121a1d85a33f3388ab215695a4986119",
+      "truthSha256": "5358d560210703d806bcf89a7d880aac79979b97281ea40b895a65a195b01ad1",
+      "truthSamples": [
+        2160,
+        2232,
+        2304,
+        2376,
+        2448,
+        2520
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0.18033333333333335,
+          "sampleIndex": 2164,
+          "proposalSample": 2160,
+          "strength": 0.0011621149673295146,
+          "innovationRatio": 116211496732951460,
+          "predictorCoefficient": 2,
+          "supportStartSample": 1798,
+          "supportEndSample": 2208,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.18666666666666668,
+          "sampleIndex": 2240,
+          "proposalSample": 2232,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593836,
+          "supportStartSample": 1870,
+          "supportEndSample": 2280,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.19266666666666668,
+          "sampleIndex": 2312,
+          "proposalSample": 2304,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593838,
+          "supportStartSample": 1942,
+          "supportEndSample": 2352,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.19866666666666666,
+          "sampleIndex": 2384,
+          "proposalSample": 2376,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593836,
+          "supportStartSample": 2014,
+          "supportEndSample": 2424,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.20466666666666666,
+          "sampleIndex": 2456,
+          "proposalSample": 2448,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593829,
+          "supportStartSample": 2086,
+          "supportEndSample": 2496,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.21066666666666667,
+          "sampleIndex": 2528,
+          "proposalSample": 2520,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593824,
+          "supportStartSample": 2158,
+          "supportEndSample": 2568,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0.18033333333333335
+        ],
+        "adaptiveV3": [
+          0.18033333333333335,
+          0.18666666666666668,
+          0.19266666666666668,
+          0.19866666666666666,
+          0.20466666666666666,
+          0.21066666666666667
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 12000,
+        "bed": "silence",
+        "gap": 0.01,
+        "phase": 0.41,
+        "id": "an03b-001"
+      },
+      "pcmSha256": "17ab8308c2ce0218293ed8f56270f8729f87e7f32925e30a75761759420fd983",
+      "truthSha256": "628d58374ee98c09d2594a4a2e261ed17c191710fbc9795ab4c641f10f934c91",
+      "truthSamples": [
+        2160,
+        2280,
+        2400,
+        2520,
+        2640,
+        2760
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0.18033333333333335,
+          "sampleIndex": 2164,
+          "proposalSample": 2160,
+          "strength": 0.0011621149673295146,
+          "innovationRatio": 116211496732951460,
+          "predictorCoefficient": 2,
+          "supportStartSample": 1798,
+          "supportEndSample": 2208,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.19066666666666668,
+          "sampleIndex": 2288,
+          "proposalSample": 2280,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593836,
+          "supportStartSample": 1918,
+          "supportEndSample": 2328,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.20066666666666666,
+          "sampleIndex": 2408,
+          "proposalSample": 2400,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593838,
+          "supportStartSample": 2038,
+          "supportEndSample": 2448,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.21066666666666667,
+          "sampleIndex": 2528,
+          "proposalSample": 2520,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593836,
+          "supportStartSample": 2158,
+          "supportEndSample": 2568,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.22066666666666668,
+          "sampleIndex": 2648,
+          "proposalSample": 2640,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593838,
+          "supportStartSample": 2278,
+          "supportEndSample": 2688,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.23066666666666666,
+          "sampleIndex": 2768,
+          "proposalSample": 2760,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593838,
+          "supportStartSample": 2398,
+          "supportEndSample": 2808,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0.18033333333333335
+        ],
+        "adaptiveV3": [
+          0.18033333333333335,
+          0.19066666666666668,
+          0.20066666666666666,
+          0.21066666666666667,
+          0.22066666666666668,
+          0.23066666666666666
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 12000,
+        "bed": "silence",
+        "gap": 0.018,
+        "phase": 0.41,
+        "id": "an03b-002"
+      },
+      "pcmSha256": "423618f42f10d67b7d7185476d161b4f40a82cebd18c31bb8e3b4b36fdb8d5bb",
+      "truthSha256": "27ea775d9e0d8b5e81838468e3ae8a4933b3dfc45ca9f0031b4e414edda5eb14",
+      "truthSamples": [
+        2160,
+        2376,
+        2592,
+        2808,
+        3024,
+        3240
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0.18033333333333335,
+          "sampleIndex": 2164,
+          "proposalSample": 2160,
+          "strength": 0.0011621149673295146,
+          "innovationRatio": 116211496732951460,
+          "predictorCoefficient": 2,
+          "supportStartSample": 1798,
+          "supportEndSample": 2208,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.19866666666666666,
+          "sampleIndex": 2384,
+          "proposalSample": 2376,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593836,
+          "supportStartSample": 2014,
+          "supportEndSample": 2424,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.21666666666666667,
+          "sampleIndex": 2600,
+          "proposalSample": 2592,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593833,
+          "supportStartSample": 2230,
+          "supportEndSample": 2640,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.23466666666666666,
+          "sampleIndex": 2816,
+          "proposalSample": 2808,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593829,
+          "supportStartSample": 2446,
+          "supportEndSample": 2856,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.25266666666666665,
+          "sampleIndex": 3032,
+          "proposalSample": 3024,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593825,
+          "supportStartSample": 2662,
+          "supportEndSample": 3072,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.27066666666666667,
+          "sampleIndex": 3248,
+          "proposalSample": 3240,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593821,
+          "supportStartSample": 2878,
+          "supportEndSample": 3288,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0.18033333333333335
+        ],
+        "adaptiveV3": [
+          0.18033333333333335,
+          0.19866666666666666,
+          0.21666666666666667,
+          0.23466666666666666,
+          0.25266666666666665,
+          0.27066666666666667
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 12000,
+        "bed": "silence",
+        "gap": 0.03,
+        "phase": 0.41,
+        "id": "an03b-003"
+      },
+      "pcmSha256": "e4e4761d992dc1c782eadea4efde7e66bdefe73c72f77ce2d048a92d52c43355",
+      "truthSha256": "169c242fc256ed40d11b0a5b921a1c4719f0ce81ff7ea0e5479c99e4c159823b",
+      "truthSamples": [
+        2160,
+        2520,
+        2880,
+        3240,
+        3600,
+        3960
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0.18033333333333335,
+          "sampleIndex": 2164,
+          "proposalSample": 2160,
+          "strength": 0.0011621149673295146,
+          "innovationRatio": 116211496732951460,
+          "predictorCoefficient": 2,
+          "supportStartSample": 1798,
+          "supportEndSample": 2208,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.21066666666666667,
+          "sampleIndex": 2528,
+          "proposalSample": 2520,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593836,
+          "supportStartSample": 2158,
+          "supportEndSample": 2568,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.24066666666666667,
+          "sampleIndex": 2888,
+          "proposalSample": 2880,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593838,
+          "supportStartSample": 2518,
+          "supportEndSample": 2928,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.27066666666666667,
+          "sampleIndex": 3248,
+          "proposalSample": 3240,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593838,
+          "supportStartSample": 2878,
+          "supportEndSample": 3288,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.3006666666666667,
+          "sampleIndex": 3608,
+          "proposalSample": 3600,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593838,
+          "supportStartSample": 3238,
+          "supportEndSample": 3648,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.33066666666666666,
+          "sampleIndex": 3968,
+          "proposalSample": 3960,
+          "strength": 0.00037807227521302215,
+          "innovationRatio": 37807227521302216,
+          "predictorCoefficient": -0.10446776832593838,
+          "supportStartSample": 3598,
+          "supportEndSample": 4008,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0.18033333333333335
+        ],
+        "adaptiveV3": [
+          0.18033333333333335,
+          0.21066666666666667,
+          0.24066666666666667,
+          0.27066666666666667,
+          0.3006666666666667,
+          0.33066666666666666
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "gap": 0.006,
+        "phase": 0.41,
+        "id": "an03b-004"
+      },
+      "pcmSha256": "95e8d40ec8b760abc21d3f4fbd84b5ef4ce95bf71c776419cc510e15ab9b8b12",
+      "truthSha256": "5358d560210703d806bcf89a7d880aac79979b97281ea40b895a65a195b01ad1",
+      "truthSamples": [
+        2160,
+        2232,
+        2304,
+        2376,
+        2448,
+        2520
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00012244546306914615,
+          "innovationRatio": 12244546306914616,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.18033333333333335,
+          "sampleIndex": 2164,
+          "proposalSample": 2160,
+          "strength": 0.0011560173005705841,
+          "innovationRatio": 2662281349823.4414,
+          "predictorCoefficient": 1.9918004033890662,
+          "supportStartSample": 1798,
+          "supportEndSample": 2208,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.18033333333333335
+        ],
+        "adaptiveV3": [
+          0,
+          0.18033333333333335
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "gap": 0.01,
+        "phase": 0.41,
+        "id": "an03b-005"
+      },
+      "pcmSha256": "6a1d11f354d86c883f08a3b6616950a657a0f5eacee37829caac6f5e1811ee46",
+      "truthSha256": "628d58374ee98c09d2594a4a2e261ed17c191710fbc9795ab4c641f10f934c91",
+      "truthSamples": [
+        2160,
+        2280,
+        2400,
+        2520,
+        2640,
+        2760
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00012244546306914615,
+          "innovationRatio": 12244546306914616,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.18033333333333335,
+          "sampleIndex": 2164,
+          "proposalSample": 2160,
+          "strength": 0.0011560173005705841,
+          "innovationRatio": 2662281349823.4414,
+          "predictorCoefficient": 1.9918004033890662,
+          "supportStartSample": 1798,
+          "supportEndSample": 2208,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.18033333333333335
+        ],
+        "adaptiveV3": [
+          0,
+          0.18033333333333335
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "gap": 0.018,
+        "phase": 0.41,
+        "id": "an03b-006"
+      },
+      "pcmSha256": "5f4f042f110c57dff298bb4beb9745f52853c36ed97196c612f3081f9a13c5f4",
+      "truthSha256": "27ea775d9e0d8b5e81838468e3ae8a4933b3dfc45ca9f0031b4e414edda5eb14",
+      "truthSamples": [
+        2160,
+        2376,
+        2592,
+        2808,
+        3024,
+        3240
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00012244546306914615,
+          "innovationRatio": 12244546306914616,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.18033333333333335,
+          "sampleIndex": 2164,
+          "proposalSample": 2160,
+          "strength": 0.0011560173005705841,
+          "innovationRatio": 2662281349823.4414,
+          "predictorCoefficient": 1.9918004033890662,
+          "supportStartSample": 1798,
+          "supportEndSample": 2208,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.18033333333333335
+        ],
+        "adaptiveV3": [
+          0,
+          0.18033333333333335
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "gap": 0.03,
+        "phase": 0.41,
+        "id": "an03b-007"
+      },
+      "pcmSha256": "06a22e4fad9da35265a3b0dca29b8ba98b0f164b6f584fd279c3126a39af864c",
+      "truthSha256": "169c242fc256ed40d11b0a5b921a1c4719f0ce81ff7ea0e5479c99e4c159823b",
+      "truthSamples": [
+        2160,
+        2520,
+        2880,
+        3240,
+        3600,
+        3960
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00012244546306914615,
+          "innovationRatio": 12244546306914616,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.18033333333333335,
+          "sampleIndex": 2164,
+          "proposalSample": 2160,
+          "strength": 0.0011560173005705841,
+          "innovationRatio": 2662281349823.4414,
+          "predictorCoefficient": 1.9918004033890662,
+          "supportStartSample": 1798,
+          "supportEndSample": 2208,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.18033333333333335
+        ],
+        "adaptiveV3": [
+          0,
+          0.18033333333333335
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "kind": "sustain",
+        "phase": 0.41,
+        "id": "an03b-008"
+      },
+      "pcmSha256": "55af60e7e1a1c837f43187bff37422c6a01ce950962e16e042c87ea07cf7461e",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00012244546306914615,
+          "innovationRatio": 12244546306914616,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "kind": "sustain",
+        "phase": 1.2,
+        "id": "an03b-009"
+      },
+      "pcmSha256": "ecc542be7145e4203c48a5f2b68d0869cc78616d00373cb881dd521da7003fe3",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0007903574481568171,
+          "innovationRatio": 79035744815681710,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "kind": "rise-fast",
+        "phase": 0.41,
+        "id": "an03b-010"
+      },
+      "pcmSha256": "19b772cb026ee27af90792e63fc94f437d78d107a734474ca7cbbad49b11e717",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0000012244545279212794,
+          "innovationRatio": 122445452792127.95,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.20008333333333334,
+          "sampleIndex": 2401,
+          "proposalSample": 2400,
+          "strength": 3.7322264316408967e-10,
+          "innovationRatio": 1131454545.056165,
+          "predictorCoefficient": 1.991800403706412,
+          "supportStartSample": 2038,
+          "supportEndSample": 2448,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.20008333333333334
+        ],
+        "adaptiveV3": [
+          0,
+          0.20008333333333334
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "kind": "rise-fast",
+        "phase": 1.2,
+        "id": "an03b-011"
+      },
+      "pcmSha256": "43f1630b9ba4216760199d9415ab6797eb0b02f4fa28838d8085a54bdc513988",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000007903573003107972,
+          "innovationRatio": 790357300310797.2,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.20008333333333334,
+          "sampleIndex": 2401,
+          "proposalSample": 2400,
+          "strength": 4.3393440026815714e-10,
+          "innovationRatio": 2372901929.4928885,
+          "predictorCoefficient": 1.9918004036591317,
+          "supportStartSample": 2038,
+          "supportEndSample": 2448,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.20008333333333334
+        ],
+        "adaptiveV3": [
+          0,
+          0.20008333333333334
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "kind": "rise-slow",
+        "phase": 0.41,
+        "id": "an03b-012"
+      },
+      "pcmSha256": "ca4233f55ae663445f1ce60c24f3d21f8a8088f5706935c01ca9e8ffc069d396",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0000012244545279212794,
+          "innovationRatio": 122445452792127.95,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "kind": "rise-slow",
+        "phase": 1.2,
+        "id": "an03b-013"
+      },
+      "pcmSha256": "5c32eee646867696941e86f6a146d1986ccab79d2dff77cf5a3e5d2e06a890dc",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000007903573003107972,
+          "innovationRatio": 790357300310797.2,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "kind": "cosine-rise",
+        "phase": 0.41,
+        "id": "an03b-014"
+      },
+      "pcmSha256": "8d6f3e97d8bcda447797eb7ead8151e42d7dffd8224f67a7aea9d1ebb4b154af",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0000012244545279212794,
+          "innovationRatio": 122445452792127.95,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "kind": "cosine-rise",
+        "phase": 1.2,
+        "id": "an03b-015"
+      },
+      "pcmSha256": "6ac96b1c029e2154fb8484d46fb68097f93ad56f2c3079308ed8f9f3391ef8ba",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000007903573003107972,
+          "innovationRatio": 790357300310797.2,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "kind": "am",
+        "phase": 0.41,
+        "id": "an03b-016"
+      },
+      "pcmSha256": "20f3c5b8e9c01af4ce508f8d6605cbee406879d837be88dd0328283bb5936ddd",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00003693792004675831,
+          "innovationRatio": 3693792004675831.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "kind": "am",
+        "phase": 1.2,
+        "id": "an03b-017"
+      },
+      "pcmSha256": "9b642558b94c22aad038a4f4c227bc845801cdea9c452b09a2a8767cadf689a4",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00023838871472110657,
+          "innovationRatio": 23838871472110656,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "kind": "cutoff",
+        "phase": 0.41,
+        "id": "an03b-018"
+      },
+      "pcmSha256": "433eae39f3bf6550f61c21032d9e08c8cc1c3f4edb359608479365aa0b1e7255",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00012244546306914615,
+          "innovationRatio": 12244546306914616,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 12000,
+        "bed": "tone",
+        "kind": "cutoff",
+        "phase": 1.2,
+        "id": "an03b-019"
+      },
+      "pcmSha256": "31c6c0f115ca8f3b38b80048bb9a66abb520d09b48a666c6396d9f745425f806",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0007903574481568171,
+          "innovationRatio": 79035744815681710,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 48,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 32000,
+        "bed": "silence",
+        "gap": 0.006,
+        "phase": 0.41,
+        "id": "an03b-020"
+      },
+      "pcmSha256": "6736b0a0d14e9bafed639a053af80a5a3b6a87c84fe76c151b0a380ff91b26af",
+      "truthSha256": "3c58285f766c54bab97d9ead87021663e1317a3edcddc4ba525f6e410f48f2ec",
+      "truthSamples": [
+        5760,
+        5952,
+        6144,
+        6336,
+        6528,
+        6720
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0.180125,
+          "sampleIndex": 5764,
+          "proposalSample": 5760,
+          "strength": 0.0017377787488152235,
+          "innovationRatio": 173777874881522370,
+          "predictorCoefficient": 2,
+          "supportStartSample": 4798,
+          "supportEndSample": 5888,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.18625,
+          "sampleIndex": 5960,
+          "proposalSample": 5952,
+          "strength": 0.0005436486107161328,
+          "innovationRatio": 54364861071613290,
+          "predictorCoefficient": -0.19158740121495615,
+          "supportStartSample": 4990,
+          "supportEndSample": 6080,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.19225,
+          "sampleIndex": 6152,
+          "proposalSample": 6144,
+          "strength": 0.0005436486107161327,
+          "innovationRatio": 54364861071613270,
+          "predictorCoefficient": -0.19158740121495624,
+          "supportStartSample": 5182,
+          "supportEndSample": 6272,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.19825,
+          "sampleIndex": 6344,
+          "proposalSample": 6336,
+          "strength": 0.0005436486107161327,
+          "innovationRatio": 54364861071613270,
+          "predictorCoefficient": -0.19158740121495632,
+          "supportStartSample": 5374,
+          "supportEndSample": 6464,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.20425,
+          "sampleIndex": 6536,
+          "proposalSample": 6528,
+          "strength": 0.0005436486107161327,
+          "innovationRatio": 54364861071613270,
+          "predictorCoefficient": -0.19158740121495646,
+          "supportStartSample": 5566,
+          "supportEndSample": 6656,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.21025,
+          "sampleIndex": 6728,
+          "proposalSample": 6720,
+          "strength": 0.0005436486107161328,
+          "innovationRatio": 54364861071613290,
+          "predictorCoefficient": -0.1915874012149566,
+          "supportStartSample": 5758,
+          "supportEndSample": 6848,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0.180125
+        ],
+        "adaptiveV3": [
+          0.180125,
+          0.18625,
+          0.19225,
+          0.19825,
+          0.20425,
+          0.21025
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 32000,
+        "bed": "silence",
+        "gap": 0.01,
+        "phase": 0.41,
+        "id": "an03b-021"
+      },
+      "pcmSha256": "73f9cd5fdd2162dc8974b6d4d3ff18caeaa99d58af7e51926c735525cf4562fa",
+      "truthSha256": "2cbc34064fb8eb3d6fe96dda492aadc742837f059fc4f69018ae0d24e2e2adc4",
+      "truthSamples": [
+        5760,
+        6080,
+        6400,
+        6720,
+        7040,
+        7360
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0.180125,
+          "sampleIndex": 5764,
+          "proposalSample": 5760,
+          "strength": 0.0017377787488152235,
+          "innovationRatio": 173777874881522370,
+          "predictorCoefficient": 2,
+          "supportStartSample": 4798,
+          "supportEndSample": 5888,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.19025,
+          "sampleIndex": 6088,
+          "proposalSample": 6080,
+          "strength": 0.0005436486107161328,
+          "innovationRatio": 54364861071613290,
+          "predictorCoefficient": -0.19158740121495615,
+          "supportStartSample": 5118,
+          "supportEndSample": 6208,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.20025,
+          "sampleIndex": 6408,
+          "proposalSample": 6400,
+          "strength": 0.0005436486107161327,
+          "innovationRatio": 54364861071613270,
+          "predictorCoefficient": -0.19158740121495624,
+          "supportStartSample": 5438,
+          "supportEndSample": 6528,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.21025,
+          "sampleIndex": 6728,
+          "proposalSample": 6720,
+          "strength": 0.0005436486107161327,
+          "innovationRatio": 54364861071613270,
+          "predictorCoefficient": -0.19158740121495632,
+          "supportStartSample": 5758,
+          "supportEndSample": 6848,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.22025,
+          "sampleIndex": 7048,
+          "proposalSample": 7040,
+          "strength": 0.0005436486107161327,
+          "innovationRatio": 54364861071613270,
+          "predictorCoefficient": -0.19158740121495635,
+          "supportStartSample": 6078,
+          "supportEndSample": 7168,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.23025,
+          "sampleIndex": 7368,
+          "proposalSample": 7360,
+          "strength": 0.0005436486107161327,
+          "innovationRatio": 54364861071613270,
+          "predictorCoefficient": -0.19158740121495635,
+          "supportStartSample": 6398,
+          "supportEndSample": 7488,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0.180125
+        ],
+        "adaptiveV3": [
+          0.180125,
+          0.19025,
+          0.20025,
+          0.21025,
+          0.22025,
+          0.23025
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 32000,
+        "bed": "silence",
+        "gap": 0.018,
+        "phase": 0.41,
+        "id": "an03b-022"
+      },
+      "pcmSha256": "df8bcf58c3037519831ce96ec5d4128b7cafac9ca025957e5a171f8df0ae1cd9",
+      "truthSha256": "e67a01f00239ec7ac13edcea5d946402815756f5ed83debe8351182eddae237b",
+      "truthSamples": [
+        5760,
+        6336,
+        6912,
+        7488,
+        8064,
+        8640
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0.180125,
+          "sampleIndex": 5764,
+          "proposalSample": 5760,
+          "strength": 0.0017377787488152235,
+          "innovationRatio": 173777874881522370,
+          "predictorCoefficient": 2,
+          "supportStartSample": 4798,
+          "supportEndSample": 5888,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.19825,
+          "sampleIndex": 6344,
+          "proposalSample": 6336,
+          "strength": 0.0005436486107161328,
+          "innovationRatio": 54364861071613290,
+          "predictorCoefficient": -0.19158740121495615,
+          "supportStartSample": 5374,
+          "supportEndSample": 6464,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.21625,
+          "sampleIndex": 6920,
+          "proposalSample": 6912,
+          "strength": 0.0005436486107161328,
+          "innovationRatio": 54364861071613290,
+          "predictorCoefficient": -0.19158740121495615,
+          "supportStartSample": 5950,
+          "supportEndSample": 7040,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.23425,
+          "sampleIndex": 7496,
+          "proposalSample": 7488,
+          "strength": 0.0005436486107161328,
+          "innovationRatio": 54364861071613290,
+          "predictorCoefficient": -0.19158740121495615,
+          "supportStartSample": 6526,
+          "supportEndSample": 7616,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.25225,
+          "sampleIndex": 8072,
+          "proposalSample": 8064,
+          "strength": 0.0005436486107161328,
+          "innovationRatio": 54364861071613290,
+          "predictorCoefficient": -0.19158740121495615,
+          "supportStartSample": 7102,
+          "supportEndSample": 8192,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.27025,
+          "sampleIndex": 8648,
+          "proposalSample": 8640,
+          "strength": 0.0005436486107161328,
+          "innovationRatio": 54364861071613290,
+          "predictorCoefficient": -0.19158740121495615,
+          "supportStartSample": 7678,
+          "supportEndSample": 8768,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0.180125
+        ],
+        "adaptiveV3": [
+          0.180125,
+          0.19825,
+          0.21625,
+          0.23425,
+          0.25225,
+          0.27025
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 32000,
+        "bed": "silence",
+        "gap": 0.03,
+        "phase": 0.41,
+        "id": "an03b-023"
+      },
+      "pcmSha256": "323b8b05ebf22ebc3aa62635b987d8e74652df8903be371ccc7721f9c138b64e",
+      "truthSha256": "55b55b86a3908b1d0c8cf1d5c61aa60f4898bf40a04af8a0f0edf1d1430fa203",
+      "truthSamples": [
+        5760,
+        6720,
+        7680,
+        8640,
+        9600,
+        10560
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0.180125,
+          "sampleIndex": 5764,
+          "proposalSample": 5760,
+          "strength": 0.0017377787488152235,
+          "innovationRatio": 173777874881522370,
+          "predictorCoefficient": 2,
+          "supportStartSample": 4798,
+          "supportEndSample": 5888,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.21025,
+          "sampleIndex": 6728,
+          "proposalSample": 6720,
+          "strength": 0.0005436486107161328,
+          "innovationRatio": 54364861071613290,
+          "predictorCoefficient": -0.19158740121495615,
+          "supportStartSample": 5758,
+          "supportEndSample": 6848,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.24025,
+          "sampleIndex": 7688,
+          "proposalSample": 7680,
+          "strength": 0.0005436486107161328,
+          "innovationRatio": 54364861071613290,
+          "predictorCoefficient": -0.19158740121495615,
+          "supportStartSample": 6718,
+          "supportEndSample": 7808,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.27025,
+          "sampleIndex": 8648,
+          "proposalSample": 8640,
+          "strength": 0.0005436486107161328,
+          "innovationRatio": 54364861071613290,
+          "predictorCoefficient": -0.19158740121495615,
+          "supportStartSample": 7678,
+          "supportEndSample": 8768,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.30025,
+          "sampleIndex": 9608,
+          "proposalSample": 9600,
+          "strength": 0.0005436486107161328,
+          "innovationRatio": 54364861071613290,
+          "predictorCoefficient": -0.19158740121495615,
+          "supportStartSample": 8638,
+          "supportEndSample": 9728,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.33025,
+          "sampleIndex": 10568,
+          "proposalSample": 10560,
+          "strength": 0.0005436486107161328,
+          "innovationRatio": 54364861071613290,
+          "predictorCoefficient": -0.19158740121495615,
+          "supportStartSample": 9598,
+          "supportEndSample": 10688,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0.180125
+        ],
+        "adaptiveV3": [
+          0.180125,
+          0.21025,
+          0.24025,
+          0.27025,
+          0.30025,
+          0.33025
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "gap": 0.006,
+        "phase": 0.41,
+        "id": "an03b-024"
+      },
+      "pcmSha256": "ed228956dfb0d86f751b8ed1a0f097cc9aa071882a4f1aa1a616a3a823de25b6",
+      "truthSha256": "3c58285f766c54bab97d9ead87021663e1317a3edcddc4ba525f6e410f48f2ec",
+      "truthSamples": [
+        5760,
+        5952,
+        6144,
+        6336,
+        6528,
+        6720
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00005171098339373641,
+          "innovationRatio": 5171098339373641,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.180125,
+          "sampleIndex": 5764,
+          "proposalSample": 5760,
+          "strength": 0.0017365217164137072,
+          "innovationRatio": 60358149211808.52,
+          "predictorCoefficient": 1.9988462538953629,
+          "supportStartSample": 4798,
+          "supportEndSample": 5888,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.210125,
+          "sampleIndex": 6724,
+          "proposalSample": 6656,
+          "strength": 0.001386663067885219,
+          "innovationRatio": 43.395461876314556,
+          "predictorCoefficient": 1.9661844893740834,
+          "supportStartSample": 5694,
+          "supportEndSample": 6784,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.180125
+        ],
+        "adaptiveV3": [
+          0,
+          0.180125,
+          0.210125
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "gap": 0.01,
+        "phase": 0.41,
+        "id": "an03b-025"
+      },
+      "pcmSha256": "3121c6dcc86feede23548b4bb77c7be52732be5caf5b90eb46332bb60c4cfac9",
+      "truthSha256": "2cbc34064fb8eb3d6fe96dda492aadc742837f059fc4f69018ae0d24e2e2adc4",
+      "truthSamples": [
+        5760,
+        6080,
+        6400,
+        6720,
+        7040,
+        7360
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00005171098339373641,
+          "innovationRatio": 5171098339373641,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.180125,
+          "sampleIndex": 5764,
+          "proposalSample": 5760,
+          "strength": 0.0017365217164137072,
+          "innovationRatio": 60358149211808.52,
+          "predictorCoefficient": 1.9988462538953629,
+          "supportStartSample": 4798,
+          "supportEndSample": 5888,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.180125
+        ],
+        "adaptiveV3": [
+          0,
+          0.180125
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "gap": 0.018,
+        "phase": 0.41,
+        "id": "an03b-026"
+      },
+      "pcmSha256": "6b9f8a141ee4ce5cde6428d4e0f31eb5f6711be2c83493a167f16c013af208bb",
+      "truthSha256": "e67a01f00239ec7ac13edcea5d946402815756f5ed83debe8351182eddae237b",
+      "truthSamples": [
+        5760,
+        6336,
+        6912,
+        7488,
+        8064,
+        8640
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00005171098339373641,
+          "innovationRatio": 5171098339373641,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.180125,
+          "sampleIndex": 5764,
+          "proposalSample": 5760,
+          "strength": 0.0017365217164137072,
+          "innovationRatio": 60358149211808.52,
+          "predictorCoefficient": 1.9988462538953629,
+          "supportStartSample": 4798,
+          "supportEndSample": 5888,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.180125
+        ],
+        "adaptiveV3": [
+          0,
+          0.180125
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "gap": 0.03,
+        "phase": 0.41,
+        "id": "an03b-027"
+      },
+      "pcmSha256": "7c9a4c7c20464e13de9112a58231d3ea1438fb6e9e6340204ca97e4e32f52a14",
+      "truthSha256": "55b55b86a3908b1d0c8cf1d5c61aa60f4898bf40a04af8a0f0edf1d1430fa203",
+      "truthSamples": [
+        5760,
+        6720,
+        7680,
+        8640,
+        9600,
+        10560
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00005171098339373641,
+          "innovationRatio": 5171098339373641,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.180125,
+          "sampleIndex": 5764,
+          "proposalSample": 5760,
+          "strength": 0.0017365217164137072,
+          "innovationRatio": 60358149211808.52,
+          "predictorCoefficient": 1.9988462538953629,
+          "supportStartSample": 4798,
+          "supportEndSample": 5888,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.180125
+        ],
+        "adaptiveV3": [
+          0,
+          0.180125
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "kind": "sustain",
+        "phase": 0.41,
+        "id": "an03b-028"
+      },
+      "pcmSha256": "c342047650b8bb3726873e5bf9c4094fa394d14f1d3df2afdc195a1ff1a45100",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00005171098339373641,
+          "innovationRatio": 5171098339373641,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "kind": "sustain",
+        "phase": 1.2,
+        "id": "an03b-029"
+      },
+      "pcmSha256": "b0df39fc1f08edafa46454bd88eb73f7738366bd4a5e8df499089e7f340a4b69",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00030158696163241504,
+          "innovationRatio": 30158696163241504,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "kind": "rise-fast",
+        "phase": 0.41,
+        "id": "an03b-030"
+      },
+      "pcmSha256": "887601755d9854d11140cb57e14507a1bcda807722ec3405496f3044c1c4cef1",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 5.171097280019209e-7,
+          "innovationRatio": 51710972800192.09,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.20003125
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "kind": "rise-fast",
+        "phase": 1.2,
+        "id": "an03b-031"
+      },
+      "pcmSha256": "cee990d046d08c574bfd67e572621914a9165013e91db5fbcb60c38261f9e16a",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0000030158691323572455,
+          "innovationRatio": 301586913235724.56,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.20003125
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "kind": "rise-slow",
+        "phase": 0.41,
+        "id": "an03b-032"
+      },
+      "pcmSha256": "aa07053dc8ccceab2dd68d92d400359c553423c442ae4d2603a32580fb8ded75",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 5.171097280019209e-7,
+          "innovationRatio": 51710972800192.09,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "kind": "rise-slow",
+        "phase": 1.2,
+        "id": "an03b-033"
+      },
+      "pcmSha256": "042284d4ae930357b3159a4493aa4656bcfd627d3acdd2c9b083d6d93f9e9a0b",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0000030158691323572455,
+          "innovationRatio": 301586913235724.56,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "kind": "cosine-rise",
+        "phase": 0.41,
+        "id": "an03b-034"
+      },
+      "pcmSha256": "111f4a348410483ed2b8656e62fb8b4b09302ee3a36ba9dd3a29fa34e48a0796",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 5.171097280019209e-7,
+          "innovationRatio": 51710972800192.09,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "kind": "cosine-rise",
+        "phase": 1.2,
+        "id": "an03b-035"
+      },
+      "pcmSha256": "50ad5bb5aeb7fa48f84d9546c8c0836de4cbcfe038b8a0027d6607b36bad4c74",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0000030158691323572455,
+          "innovationRatio": 301586913235724.56,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "kind": "am",
+        "phase": 0.41,
+        "id": "an03b-036"
+      },
+      "pcmSha256": "8ff0a370d9552d92466b87a36f6894370b88ea2dbc2e4f6490e1b7c65faef7c4",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000015624283708686408,
+          "innovationRatio": 1562428370868640.8,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "kind": "am",
+        "phase": 1.2,
+        "id": "an03b-037"
+      },
+      "pcmSha256": "285eb2e5cc99f96cc0e587cbd4168187a0980796ca0653bef5fba251584fe6c9",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00009112710976593173,
+          "innovationRatio": 9112710976593174,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "kind": "cutoff",
+        "phase": 0.41,
+        "id": "an03b-038"
+      },
+      "pcmSha256": "c041f76b39c7a7771e1ea7551d8dd38ef19f53839e5f8f91e96a14761e30aab1",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00005171098339373641,
+          "innovationRatio": 5171098339373641,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 32000,
+        "bed": "tone",
+        "kind": "cutoff",
+        "phase": 1.2,
+        "id": "an03b-039"
+      },
+      "pcmSha256": "31ae96424505c1ad38af983f3c84cb2da0926e82d3400d21c41bd05a456fcaad",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00030158696163241504,
+          "innovationRatio": 30158696163241504,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 128,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 88200,
+        "bed": "silence",
+        "gap": 0.006,
+        "phase": 0.41,
+        "id": "an03b-040"
+      },
+      "pcmSha256": "96e86bc5b8b871454e9535d957ad727b67d5e99a885a41068df29ff2713bff6a",
+      "truthSha256": "44a35a113b6c909cafc88fd12e779fdd5e83a8b6143f9097e7a6a3b5e7593c38",
+      "truthSamples": [
+        15876,
+        16405,
+        16934,
+        17464,
+        17993,
+        18522
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0.18014739229024943,
+          "sampleIndex": 15889,
+          "proposalSample": 15840,
+          "strength": 0.0017748318523742896,
+          "innovationRatio": 177483185237428960,
+          "predictorCoefficient": 2,
+          "supportStartSample": 13192,
+          "supportEndSample": 16193,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.18630385487528345,
+          "sampleIndex": 16432,
+          "proposalSample": 16368,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.08277408953269196,
+          "supportStartSample": 13720,
+          "supportEndSample": 16721,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.1923015873015873,
+          "sampleIndex": 16961,
+          "proposalSample": 16896,
+          "strength": 0.0005795873153330671,
+          "innovationRatio": 57958731533306710,
+          "predictorCoefficient": -0.0827740895326922,
+          "supportStartSample": 14248,
+          "supportEndSample": 17249,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.19831065759637187,
+          "sampleIndex": 17491,
+          "proposalSample": 17424,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.08277408953269232,
+          "supportStartSample": 14776,
+          "supportEndSample": 17777,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.20430839002267573,
+          "sampleIndex": 18020,
+          "proposalSample": 17952,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.08277408953269226,
+          "supportStartSample": 15304,
+          "supportEndSample": 18305,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.2103061224489796,
+          "sampleIndex": 18549,
+          "proposalSample": 18480,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.08277408953269223,
+          "supportStartSample": 15832,
+          "supportEndSample": 18833,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0.18014739229024943
+        ],
+        "adaptiveV3": [
+          0.18014739229024943,
+          0.18630385487528345,
+          0.1923015873015873,
+          0.19831065759637187,
+          0.20430839002267573,
+          0.2103061224489796
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 88200,
+        "bed": "silence",
+        "gap": 0.01,
+        "phase": 0.41,
+        "id": "an03b-041"
+      },
+      "pcmSha256": "4d89337a7865c29614090ee700b78f00836d609d940e1510ab0dd831c87351ce",
+      "truthSha256": "c9f32b036bd1e1986dd29a7f9422b25c32559f0fba6b59420aeb8e72883097cc",
+      "truthSamples": [
+        15876,
+        16758,
+        17640,
+        18522,
+        19404,
+        20286
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0.18014739229024943,
+          "sampleIndex": 15889,
+          "proposalSample": 15840,
+          "strength": 0.0017748318523742896,
+          "innovationRatio": 177483185237428960,
+          "predictorCoefficient": 2,
+          "supportStartSample": 13192,
+          "supportEndSample": 16193,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.1903061224489796,
+          "sampleIndex": 16785,
+          "proposalSample": 16720,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.08277408953269196,
+          "supportStartSample": 14072,
+          "supportEndSample": 17073,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.20030612244897958,
+          "sampleIndex": 17667,
+          "proposalSample": 17600,
+          "strength": 0.0005795873153330671,
+          "innovationRatio": 57958731533306710,
+          "predictorCoefficient": -0.0827740895326922,
+          "supportStartSample": 14952,
+          "supportEndSample": 17953,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.2103061224489796,
+          "sampleIndex": 18549,
+          "proposalSample": 18480,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.08277408953269232,
+          "supportStartSample": 15832,
+          "supportEndSample": 18833,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.2203061224489796,
+          "sampleIndex": 19431,
+          "proposalSample": 19360,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.0827740895326923,
+          "supportStartSample": 16712,
+          "supportEndSample": 19713,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.2303061224489796,
+          "sampleIndex": 20313,
+          "proposalSample": 20240,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.0827740895326923,
+          "supportStartSample": 17592,
+          "supportEndSample": 20593,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0.18014739229024943
+        ],
+        "adaptiveV3": [
+          0.18014739229024943,
+          0.1903061224489796,
+          0.20030612244897958,
+          0.2103061224489796,
+          0.2203061224489796,
+          0.2303061224489796
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 88200,
+        "bed": "silence",
+        "gap": 0.018,
+        "phase": 0.41,
+        "id": "an03b-042"
+      },
+      "pcmSha256": "7398a6987fd93d105840a8734fdb75261ee2470ddd103a3bfecf47d67420f6bd",
+      "truthSha256": "c34659351ccf1d81cbbff3a1b27c6cfd64fbb2915c431e582724c08d86679dbf",
+      "truthSamples": [
+        15876,
+        17464,
+        19051,
+        20639,
+        22226,
+        23814
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0.18014739229024943,
+          "sampleIndex": 15889,
+          "proposalSample": 15840,
+          "strength": 0.0017748318523742896,
+          "innovationRatio": 177483185237428960,
+          "predictorCoefficient": 2,
+          "supportStartSample": 13192,
+          "supportEndSample": 16193,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.19831065759637187,
+          "sampleIndex": 17491,
+          "proposalSample": 17424,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.08277408953269196,
+          "supportStartSample": 14776,
+          "supportEndSample": 17777,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.21630385487528345,
+          "sampleIndex": 19078,
+          "proposalSample": 19008,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.08277408953269229,
+          "supportStartSample": 16360,
+          "supportEndSample": 19361,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.23430839002267573,
+          "sampleIndex": 20666,
+          "proposalSample": 20592,
+          "strength": 0.0005795873153330671,
+          "innovationRatio": 57958731533306710,
+          "predictorCoefficient": -0.08277408953269265,
+          "supportStartSample": 17944,
+          "supportEndSample": 20945,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.2523015873015873,
+          "sampleIndex": 22253,
+          "proposalSample": 22176,
+          "strength": 0.0005795873153330671,
+          "innovationRatio": 57958731533306710,
+          "predictorCoefficient": -0.08277408953269301,
+          "supportStartSample": 19528,
+          "supportEndSample": 22529,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.2703061224489796,
+          "sampleIndex": 23841,
+          "proposalSample": 23760,
+          "strength": 0.000579587315333067,
+          "innovationRatio": 57958731533306696,
+          "predictorCoefficient": -0.08277408953269337,
+          "supportStartSample": 21112,
+          "supportEndSample": 24113,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0.18014739229024943
+        ],
+        "adaptiveV3": [
+          0.18014739229024943,
+          0.19831065759637187,
+          0.21630385487528345,
+          0.23430839002267573,
+          0.2523015873015873,
+          0.2703061224489796
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 88200,
+        "bed": "silence",
+        "gap": 0.03,
+        "phase": 0.41,
+        "id": "an03b-043"
+      },
+      "pcmSha256": "6f5796bfb1e0ac3404a3a2ba5f17afdcfd1e4cb8e5b6be4f74afee0e78f8863f",
+      "truthSha256": "2ba1d14ae256a31a4e936e5c0a3526a8c6b82628b8fe2bd08628e6f05159a6ef",
+      "truthSamples": [
+        15876,
+        18522,
+        21168,
+        23814,
+        26460,
+        29106
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0.18014739229024943,
+          "sampleIndex": 15889,
+          "proposalSample": 15840,
+          "strength": 0.0017748318523742896,
+          "innovationRatio": 177483185237428960,
+          "predictorCoefficient": 2,
+          "supportStartSample": 13192,
+          "supportEndSample": 16193,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.2103061224489796,
+          "sampleIndex": 18549,
+          "proposalSample": 18480,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.08277408953269196,
+          "supportStartSample": 15832,
+          "supportEndSample": 18833,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.2403061224489796,
+          "sampleIndex": 21195,
+          "proposalSample": 21120,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.08277408953269196,
+          "supportStartSample": 18472,
+          "supportEndSample": 21473,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.2703061224489796,
+          "sampleIndex": 23841,
+          "proposalSample": 23760,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.08277408953269196,
+          "supportStartSample": 21112,
+          "supportEndSample": 24113,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.3003061224489796,
+          "sampleIndex": 26487,
+          "proposalSample": 26400,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.08277408953269196,
+          "supportStartSample": 23752,
+          "supportEndSample": 26753,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.3303061224489796,
+          "sampleIndex": 29133,
+          "proposalSample": 29040,
+          "strength": 0.0005795873153330672,
+          "innovationRatio": 57958731533306720,
+          "predictorCoefficient": -0.08277408953269196,
+          "supportStartSample": 26392,
+          "supportEndSample": 29393,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0.18014739229024943
+        ],
+        "adaptiveV3": [
+          0.18014739229024943,
+          0.2103061224489796,
+          0.2403061224489796,
+          0.2703061224489796,
+          0.3003061224489796,
+          0.3303061224489796
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "gap": 0.006,
+        "phase": 0.41,
+        "id": "an03b-044"
+      },
+      "pcmSha256": "781faacbda6564f8a9429f4a638f29ef43b5639beacc9434f7e6ce2eafc8d2e4",
+      "truthSha256": "44a35a113b6c909cafc88fd12e779fdd5e83a8b6143f9097e7a6a3b5e7593c38",
+      "truthSamples": [
+        15876,
+        16405,
+        16934,
+        17464,
+        17993,
+        18522
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000019690617006684595,
+          "innovationRatio": 1969061700668459.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.18014739229024943,
+          "sampleIndex": 15889,
+          "proposalSample": 15840,
+          "strength": 0.0017746574693880911,
+          "innovationRatio": 5600569230787.07,
+          "predictorCoefficient": 1.9998481169655171,
+          "supportStartSample": 13192,
+          "supportEndSample": 16193,
+          "endpointAmbiguous": false
+        },
+        {
+          "time": 0.21014739229024942,
+          "sampleIndex": 18535,
+          "proposalSample": 18304,
+          "strength": 0.0003736403171914406,
+          "innovationRatio": 10.297839991294055,
+          "predictorCoefficient": 1.9665783164378434,
+          "supportStartSample": 15656,
+          "supportEndSample": 18657,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.18014739229024943
+        ],
+        "adaptiveV3": [
+          0,
+          0.18014739229024943,
+          0.21014739229024942
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "gap": 0.01,
+        "phase": 0.41,
+        "id": "an03b-045"
+      },
+      "pcmSha256": "51d93c8312d03790d6e4da7d29d6b6d8398b126e38373f9563d17292c776a2da",
+      "truthSha256": "c9f32b036bd1e1986dd29a7f9422b25c32559f0fba6b59420aeb8e72883097cc",
+      "truthSamples": [
+        15876,
+        16758,
+        17640,
+        18522,
+        19404,
+        20286
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000019690617006684595,
+          "innovationRatio": 1969061700668459.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.18014739229024943,
+          "sampleIndex": 15889,
+          "proposalSample": 15840,
+          "strength": 0.0017746574693880911,
+          "innovationRatio": 5600569230787.07,
+          "predictorCoefficient": 1.9998481169655171,
+          "supportStartSample": 13192,
+          "supportEndSample": 16193,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.18014739229024943
+        ],
+        "adaptiveV3": [
+          0,
+          0.18014739229024943
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "gap": 0.018,
+        "phase": 0.41,
+        "id": "an03b-046"
+      },
+      "pcmSha256": "1d2259999ec0cd6008fd56b4e0f83d0859034f2ef119fc2d58164d7adf42af01",
+      "truthSha256": "c34659351ccf1d81cbbff3a1b27c6cfd64fbb2915c431e582724c08d86679dbf",
+      "truthSamples": [
+        15876,
+        17464,
+        19051,
+        20639,
+        22226,
+        23814
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000019690617006684595,
+          "innovationRatio": 1969061700668459.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.18014739229024943,
+          "sampleIndex": 15889,
+          "proposalSample": 15840,
+          "strength": 0.0017746574693880911,
+          "innovationRatio": 5600569230787.07,
+          "predictorCoefficient": 1.9998481169655171,
+          "supportStartSample": 13192,
+          "supportEndSample": 16193,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.18014739229024943
+        ],
+        "adaptiveV3": [
+          0,
+          0.18014739229024943
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "positive",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "gap": 0.03,
+        "phase": 0.41,
+        "id": "an03b-047"
+      },
+      "pcmSha256": "848d828e1066b6933ee25b5d3457672e578f6b95fc2575f2e24e47fe4ef25401",
+      "truthSha256": "2ba1d14ae256a31a4e936e5c0a3526a8c6b82628b8fe2bd08628e6f05159a6ef",
+      "truthSamples": [
+        15876,
+        18522,
+        21168,
+        23814,
+        26460,
+        29106
+      ],
+      "duration": 0.8,
+      "negativeStart": null,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000019690617006684595,
+          "innovationRatio": 1969061700668459.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        },
+        {
+          "time": 0.18014739229024943,
+          "sampleIndex": 15889,
+          "proposalSample": 15840,
+          "strength": 0.0017746574693880911,
+          "innovationRatio": 5600569230787.07,
+          "predictorCoefficient": 1.9998481169655171,
+          "supportStartSample": 13192,
+          "supportEndSample": 16193,
+          "endpointAmbiguous": false
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.18014739229024943
+        ],
+        "adaptiveV3": [
+          0,
+          0.18014739229024943
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "kind": "sustain",
+        "phase": 0.41,
+        "id": "an03b-048"
+      },
+      "pcmSha256": "77971b5e3fc13457dabb1d660dac49c61ae4ae08133b0049e3078c6e179eccfd",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000019690617006684595,
+          "innovationRatio": 1969061700668459.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "kind": "sustain",
+        "phase": 1.2,
+        "id": "an03b-049"
+      },
+      "pcmSha256": "86787210d40133bc3a52a57731d630583af8996eafd72e168467c6d5b85de866",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00011021976511912151,
+          "innovationRatio": 11021976511912152,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "kind": "rise-fast",
+        "phase": 0.41,
+        "id": "an03b-050"
+      },
+      "pcmSha256": "1fa955b2988a166ba71e660060872b39ae861f9ff0d4389cd949dbefe0406d49",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 1.969061422014912e-7,
+          "innovationRatio": 19690614220149.12,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.20001133786848072
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "kind": "rise-fast",
+        "phase": 1.2,
+        "id": "an03b-051"
+      },
+      "pcmSha256": "d4727334b1a738931a4f20a3c034caf30193ec1ab78ec02d1e7b6258447fcc92",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0000011021975334354923,
+          "innovationRatio": 110219753343549.23,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0,
+          0.20001133786848072
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "kind": "rise-slow",
+        "phase": 0.41,
+        "id": "an03b-052"
+      },
+      "pcmSha256": "54714efd96088254f23752b691a823892f83b56b51010e434d8d30bc4f4adcf4",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 1.969061422014912e-7,
+          "innovationRatio": 19690614220149.12,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "kind": "rise-slow",
+        "phase": 1.2,
+        "id": "an03b-053"
+      },
+      "pcmSha256": "e7faea966967c4537ba2abc95d50a511d270c7d3fd8b14cf1a853cb4a9a630e0",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0000011021975334354923,
+          "innovationRatio": 110219753343549.23,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "kind": "cosine-rise",
+        "phase": 0.41,
+        "id": "an03b-054"
+      },
+      "pcmSha256": "d8a4ffa82416600b9731b96303b90438128ccbdb9a7c62c836daaed7c009d354",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 1.969061422014912e-7,
+          "innovationRatio": 19690614220149.12,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "kind": "cosine-rise",
+        "phase": 1.2,
+        "id": "an03b-055"
+      },
+      "pcmSha256": "b205b25972faee6b5fc7c9ae44e397eaec6ea3cc5bbdc8f73109992d9fb7a016",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.0000011021975334354923,
+          "innovationRatio": 110219753343549.23,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "kind": "am",
+        "phase": 0.41,
+        "id": "an03b-056"
+      },
+      "pcmSha256": "16ea26b6f7a87920dca19cc6c980bc2a16aec13d94ee2a34cc08cb1434f64284",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000005953923691778354,
+          "innovationRatio": 595392369177835.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "kind": "am",
+        "phase": 1.2,
+        "id": "an03b-057"
+      },
+      "pcmSha256": "05ad91be62ad00fa25a3918c4b0593bb8fc1f5ad02810118cfff927ac81cb630",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00003332782675272777,
+          "innovationRatio": 3332782675272777,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "kind": "cutoff",
+        "phase": 0.41,
+        "id": "an03b-058"
+      },
+      "pcmSha256": "d10d649279818e2b184270499cda1dd94897c51b8cc5b146432b1ddff545133f",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.000019690617006684595,
+          "innovationRatio": 1969061700668459.5,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    },
+    {
+      "matrix": "frozen",
+      "spec": {
+        "family": "negative",
+        "sampleRate": 88200,
+        "bed": "tone",
+        "kind": "cutoff",
+        "phase": 1.2,
+        "id": "an03b-059"
+      },
+      "pcmSha256": "1bc07d001a5cc83833a00aebd452777196cf5c3ff40b74a1f18aa4e48e81eb54",
+      "truthSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "truthSamples": [],
+      "duration": 0.8,
+      "negativeStart": 0.1,
+      "candidates": [
+        {
+          "time": 0,
+          "sampleIndex": 0,
+          "proposalSample": 0,
+          "strength": 0.00011021976511912151,
+          "innovationRatio": 11021976511912152,
+          "predictorCoefficient": 2,
+          "supportStartSample": 0,
+          "supportEndSample": 353,
+          "endpointAmbiguous": true
+        }
+      ],
+      "eventTimes": {
+        "predictiveV2": [
+          0
+        ],
+        "adaptiveV3": [
+          0
+        ]
+      }
+    }
+  ]
+}

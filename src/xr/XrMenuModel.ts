@@ -196,7 +196,7 @@ function settingRows(settings: XrSettings, tab: XrSettingSectionId, top: number)
     const controlH = rowH - 14;
     let y = top;
     for (const descriptor of descriptors) {
-        texts.push(text(descriptor.label, MARGIN, y + rowH / 2 - 4, 24, 'label'));
+        texts.push({ ...text(descriptor.label, MARGIN, y + rowH / 2 - 4, 24, 'label'), width: LABEL_W - 16 });
         if (descriptor.kind === 'choice') {
             const current = descriptor.read(settings), n = descriptor.choices.length;
             const w = (width - (n - 1) * OPTION_GAP) / n;

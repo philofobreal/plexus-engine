@@ -1,0 +1,40 @@
+// Host-specific offline cost observation, not a realtime or device-performance guarantee.
+import {readFileSync,writeFileSync,existsSync,mkdirSync} from 'node:fs';
+import {resolve,dirname} from 'node:path';
+import {performance} from 'node:perf_hooks';
+import {createLoader} from '../../../tests/helpers/xr-loader.mjs';
+import {sha256} from '../../../tests/fixtures/acoustic-onset-challenges.mjs';
+
+if(process.argv.length!==6||process.argv[2]!=='--request'||process.argv[4]!=='--output')throw new Error('Use --request PCM_REQUEST_JSON --output NEW_JSON');
+const output=resolve(process.argv[5]);if(existsSync(output)||existsSync(output+'.sources'))throw new Error('Exclusive new output required');
+const request=JSON.parse(readFileSync(resolve(process.argv[3]))),bytes=readFileSync(request.pcmPath);
+if(request.format!=='f32le'||bytes.length!==4*request.sampleCount)throw new Error('Exact f32le size required');
+const samples=Float32Array.from({length:request.sampleCount},(_,i)=>bytes.readFloatLE(i*4));
+const sources=['research/analyzer-lab/diagnostics/profile-an03g.mjs','src/analyzer/BandOnsets.ts',
+    'src/analyzer/ContinuationOnsets.ts','src/analyzer/DifferenceOnsets.ts','src/analyzer/ResidualOnsets.ts',
+    'src/analyzer/signalContract.ts','tests/helpers/xr-loader.mjs','tests/fixtures/acoustic-onset-challenges.mjs'];
+const snapshots=Object.fromEntries(sources.map(p=>[p,readFileSync(p)]));
+const load=createLoader({}, {Float32Array,Float64Array});
+const functions={v6:load('analyzer/ContinuationOnsets.ts').extractContinuationOnsets,v8:load('analyzer/BandOnsets.ts').extractBandOnsets};
+const measurements={};
+for(const [name,fn] of Object.entries(functions)){
+    fn(samples,request.sampleRate);const runs=[];let expected;
+    for(let i=0;i<3;i++){
+        const start=performance.now(),r=fn(samples,request.sampleRate),elapsedMs=performance.now()-start;
+        const resultHash=sha256(Buffer.from(JSON.stringify(r)));
+        if(expected&&resultHash!==expected)throw new Error('Nondeterministic profile result');expected=resultHash;
+        runs.push({elapsedMs,candidateCount:r.candidates.length,resultSha256:resultHash});
+    }
+    measurements[name]={runs,medianMs:runs.map(r=>r.elapsedMs).sort((a,b)=>a-b)[1]};
+}
+const sourceHashes={};
+for(const [p,b] of Object.entries(snapshots)){
+    if(sha256(readFileSync(p))!==sha256(b))throw new Error('Source changed during profile');
+    const target=output+'.sources/'+p+'.txt';sourceHashes[p]=sha256(b);
+    mkdirSync(dirname(target),{recursive:true});writeFileSync(target,b,{flag:'wx'});
+}
+writeFileSync(output,JSON.stringify({protocol:'AN-03G one host/excerpt, one warmup then three runs; no memory peak or XR readiness claim',
+    nodeVersion:process.version,sampleRate:request.sampleRate,sampleCount:request.sampleCount,
+    duration:request.sampleCount/request.sampleRate,pcmSha256:sha256(bytes),perBandBufferBytes:8*request.sampleCount,
+    sourceHashes,measurements},null,2)+'\n',{flag:'wx'});
+console.log(JSON.stringify(measurements));

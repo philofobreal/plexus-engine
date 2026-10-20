@@ -1,0 +1,51 @@
+import json
+from pathlib import Path
+import struct
+import subprocess
+import sys
+
+root = Path(__file__).resolve().parents[3]
+corpus = root / 'research/analyzer-lab/tmp/drums-p0'
+def vlq(value):
+    result = [value & 127]
+    value >>= 7
+    while value:
+        result.insert(0, (value & 127) | 128)
+        value >>= 7
+    return bytes(result)
+annotation = json.loads((corpus / 'train-kick-isolated.annotation.json').read_text(encoding='utf-8'))
+track = b'\x00\xff\x51\x03\x0f\x42\x40'
+previous = 0
+for event in annotation['events']:
+    tick = round(event['time'] * 1000)
+    track += vlq(tick - previous) + b'\x99\x24\x64'
+    previous = tick
+track += b'\x00\xff\x2f\x00'
+midi = corpus / 'original-generator-onsets.mid'
+midi.write_bytes(b'MThd'+struct.pack('>IHHH',6,0,1,1000)+b'MTrk'+struct.pack('>I',len(track))+track)
+review = corpus / 'original-generator-onsets.review.json'
+review.write_text(json.dumps({'reviewed':True,'source':'Independent procedural kick generator fixture','version':'1.0.0',
+ 'license':'Project-generated research fixture','reviewNote':'Only kick generator onsets; complete absence of snare/hihat',
+ 'alignmentReview':'Known scheduled sample times quantized to 1ms MIDI clock; reviewed synthetic annotation only',
+ 'drumChannels':[9],'completeEventClasses':['kick','snare','hihat'],'onsetOffsetSeconds':0,'groundTruthReviewed':False}),encoding='utf-8')
+commands = [
+ ['drum-import-midi','--audio',str(corpus/'train-kick-isolated.wav'),'--midi',str(midi),'--review',str(review),'--track-id','train-kick-isolated','--output',str(corpus/'imported-midi.annotation.json')],
+ ['drum-train','--manifest',str(corpus/'dataset.json'),'--output','research/analyzer-lab/models/drums-p0-v1.json'],
+ ['drum-benchmark','--manifest',str(corpus/'dataset.json'),'--model','research/analyzer-lab/models/drums-p0-v1.json','--output-dir','research/analyzer-lab/runs/drums-p0-v1']
+]
+for command in commands:
+    result = subprocess.run([sys.executable,'-m','plexus_analyzer_lab',*command],cwd=root,capture_output=True,text=True)
+    print(result.stdout.strip())
+    if result.returncode:
+        raise RuntimeError(result.stderr)
+imported = json.loads((corpus/'imported-midi.annotation.json').read_text(encoding='utf-8'))
+assert imported['provenance']['evidenceType']=='human_annotation'
+assert len(imported['events'])==len(annotation['events'])
+assert all(abs(a['time']-b['time'])<=.001 for a,b in zip(imported['events'],annotation['events']))
+old = json.loads((root/'research/analyzer-lab/models/drums-p0.json').read_text(encoding='utf-8'))
+new = json.loads((root/'research/analyzer-lab/models/drums-p0-v1.json').read_text(encoding='utf-8'))
+for field in ('mean','scale','weights','thresholds'):
+    assert old[field]==new[field], field
+report = json.loads((root/'research/analyzer-lab/runs/drums-p0-v1/report.json').read_text(encoding='utf-8'))
+print(json.dumps({'micro':report['micro'],'byClass':report['byClass'],'thresholds':new['thresholds'],
+ 'tracks':[{'id':t['trackId'],'count':t['diagnostics']['candidateCount'],'confusion':t['confusion']} for t in report['tracks']]},indent=2))

@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://plexus.local/research/benchmark-report/1.0.0",
+  "title": "benchmark-report",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "track": {
+      "type": "object",
+      "properties": {
+        "trackId": {
+          "type": "string"
+        },
+        "contentHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sampleRate": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sampleCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "monoProjection": {
+          "type": "string"
+        },
+        "decodedPcmHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "trackId",
+        "contentHash",
+        "duration",
+        "sampleRate"
+      ],
+      "additionalProperties": false
+    },
+    "providers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "success",
+              "failed",
+              "unavailable",
+              "disabled"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "canonical": {
+            "type": "string"
+          },
+          "raw": {
+            "type": "string"
+          },
+          "toolVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "modelIdentifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "modelVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "modelChecksum": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "exitCode": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "providerDiagnostics": {},
+          "elapsedSeconds": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "comparisons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "referenceProvider": {
+            "type": "string"
+          },
+          "evidenceOnly": {
+            "const": true
+          },
+          "metrics": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "enum": [
+                    "available",
+                    "not_available",
+                    "unsupported"
+                  ]
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "status"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "provider",
+          "referenceProvider",
+          "evidenceOnly",
+          "metrics"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "interpretation": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "runId",
+    "track",
+    "providers",
+    "comparisons",
+    "interpretation"
+  ],
+  "additionalProperties": false
+}

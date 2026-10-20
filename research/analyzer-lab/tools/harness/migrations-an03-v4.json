@@ -1,0 +1,9 @@
+[
+  {
+    "path": "tests/fixtures/analyzer/analysis-result.schema.json",
+    "predecessorSha256": "dcc3a24d19a6272589082288bf4d15e2d3deea2e62e2800983c92a03fa7ba7df",
+    "replacementSha256": "b616aaa220de5e5fb11d2c98c661d2cadbf9cc3552f8abcb614d04b0dbd7901d",
+    "reviewedBy": "root integration owner",
+    "reviewedReason": "Adds only strict optional predictive-innovation-v2 definition/property. Every original required/optional field and v1 definition is structurally identical to v3 after removing these two additions. Original schema retained in immutable v3 ZIP; seven independent real-transport/schema tests pass, prior tests remain active. Node tests cover normalization/clock/support and legacy projection parity; full cumulative execution follows."
+  }
+]

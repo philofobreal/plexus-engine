@@ -1,0 +1,274 @@
+{
+  "schemaVersion": "regression-harness-1.0",
+  "kind": "full",
+  "startedAt": "2026-10-10T21:11:25.724427+00:00",
+  "commands": [
+    {
+      "command": [
+        "C:\\Users\\budap\\AppData\\Local\\nvm\\v25.2.1\\node.EXE",
+        "C:\\Users\\budap\\AppData\\Local\\nvm\\v25.2.1\\node_modules\\npm\\bin\\npm-cli.js",
+        "run",
+        "build"
+      ],
+      "cwd": "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine",
+      "exitCode": 0,
+      "error": null,
+      "durationSeconds": 9.047000000020489,
+      "log": "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.cache\\regression-harness\\20261010T211125-3e0984f08408\\build.log",
+      "logHash": "8cf0cedecf4d8e4bd4a4fb563614538ac1a8667d8c40915a5434768abaae01af",
+      "stage": "build"
+    },
+    {
+      "command": [
+        "C:\\Users\\budap\\AppData\\Local\\nvm\\v25.2.1\\node.EXE",
+        "C:\\Users\\budap\\AppData\\Local\\nvm\\v25.2.1\\node_modules\\npm\\bin\\npm-cli.js",
+        "test",
+        "--",
+        "--test-reporter=file:///C:/Users/budap/.codex/worktrees/7966/novy/Plexus%20Engine%20%28VJ%20System%29/plexus-engine/research/analyzer-lab/tools/harness/node-reporter.mjs"
+      ],
+      "cwd": "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine",
+      "exitCode": 1,
+      "error": null,
+      "durationSeconds": 498.2029999999795,
+      "log": "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.cache\\regression-harness\\20261010T211125-3e0984f08408\\node.log",
+      "logHash": "37274a09238b4b84914e6eeb951db9c1d42fa3ba7acf73b423596d1441ecd76f",
+      "stage": "node"
+    },
+    {
+      "command": [
+        "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "tests",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "-o",
+        "junit_family=xunit1",
+        "--basetemp=C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.cache\\regression-harness\\20261010T211125-3e0984f08408\\pytest-temp",
+        "--junitxml=C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.cache\\regression-harness\\20261010T211125-3e0984f08408\\pytest.xml"
+      ],
+      "cwd": "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab",
+      "exitCode": 1,
+      "error": null,
+      "durationSeconds": 59.09400000004098,
+      "log": "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.cache\\regression-harness\\20261010T211125-3e0984f08408\\lab.log",
+      "logHash": "3b7a4db53238e89597b0c4bebf05da36b4b231196a2c1822087b423a85bea2ca",
+      "stage": "lab",
+      "labResults": {
+        "tests": 235,
+        "executedFiles": [
+          "tests/test_acoustic_transport.py",
+          "tests/test_canonical.py",
+          "tests/test_config.py",
+          "tests/test_consensus.py",
+          "tests/test_contracts.py",
+          "tests/test_drum_measurement_contracts.py",
+          "tests/test_drum_midi.py",
+          "tests/test_drum_synthetic.py",
+          "tests/test_drum_synthetic_v2.py",
+          "tests/test_drum_v2.py",
+          "tests/test_drum_v2_contract.py",
+          "tests/test_drums.py",
+          "tests/test_metrics.py",
+          "tests/test_pcm_identity.py",
+          "tests/test_registry.py",
+          "tests/test_regression_harness.py",
+          "tests/test_report.py",
+          "tests/test_splits.py",
+          "tests/test_timing_diagnostics.py"
+        ],
+        "failures": [
+          {
+            "name": "test_reference_unsupported_events_are_partial_not_empty_success",
+            "file": "tests\\test_drum_measurement_contracts.py",
+            "message": "FileNotFoundError: [WinError 206] A fájlnév vagy a kiterjesztés túl hosszú: 'C:\\\\Users\\\\budap\\\\.codex\\\\worktrees\\\\7966\\\\novy\\\\Plexus Engine (VJ System)\\\\plexus-engine\\\\research\\\\analyzer-lab\\\\.cache\\\\regression-harness\\\\20261010T211125-3e0984f08408\\\\pytest-temp\\\\test_reference_unsupported_eve0\\\\report\\\\measurements\\\\v2-test-bass-weak-overlap'",
+            "kind": "failure"
+          },
+          {
+            "name": "test_failure_isolation_and_report_immutability",
+            "file": "tests\\test_report.py",
+            "message": "FileNotFoundError: [WinError 3] A rendszer nem találja a megadott elérési utat: 'C:\\\\Users\\\\budap\\\\.codex\\\\worktrees\\\\7966\\\\novy\\\\Plexus Engine (VJ System)\\\\plexus-engine\\\\research\\\\analyzer-lab\\\\.cache\\\\regression-harness\\\\20261010T211125-3e0984f08408\\\\pytest-temp\\\\test_failure_isolation_and_rep0\\\\runs\\\\d729d9b9d304b353cd48254c8cc7e88aaaa1e5d21c79a854bb1aaf928cf0a17e'",
+            "kind": "failure"
+          },
+          {
+            "name": "test_external_protocol_success_and_identity_failure_keep_diagnostics",
+            "file": "tests\\test_report.py",
+            "message": "FileNotFoundError: [WinError 3] A rendszer nem találja a megadott elérési utat: 'C:\\\\Users\\\\budap\\\\.codex\\\\worktrees\\\\7966\\\\novy\\\\Plexus Engine (VJ System)\\\\plexus-engine\\\\research\\\\analyzer-lab\\\\.cache\\\\regression-harness\\\\20261010T211125-3e0984f08408\\\\pytest-temp\\\\test_external_protocol_success0\\\\runs\\\\8fe3d6574cf87a1dce54073925d2baed864007fcca1ac8a2dfd3b166b69eb37a'",
+            "kind": "failure"
+          }
+        ]
+      }
+    }
+  ],
+  "status": "failed",
+  "knownFailures": [
+    {
+      "stage": "node",
+      "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+      "file": "tests/wormhole-clip-profile.test.mjs",
+      "failure": {
+        "message": "vos-wh-drift.json must not reset user-global wormholeStarfield",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "b658ddb8ee818274fb04536684e720dc210fdc25b6675414161067b8ffb2d3c6"
+    },
+    {
+      "stage": "node",
+      "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+      "file": "tests/wormhole-clip-profile.test.mjs",
+      "failure": {
+        "message": "establish remains visibly above the opacity floor",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "cbd69f0a631f5c3d7660d1d6cb479d9cbc976b0bc5cdaf35be779a3498c21c13"
+    },
+    {
+      "stage": "node",
+      "name": "weak roles pin a deep-perspective depth and continuity profile",
+      "file": "tests/wormhole-clip-profile.test.mjs",
+      "failure": {
+        "message": "establish depth\n\n2.03136 !== 4\n",
+        "code": "ERR_ASSERTION",
+        "actual": 2.03136,
+        "expected": 4,
+        "operator": "strictEqual"
+      },
+      "signature": "04f7be3bda53bed3a235bf38f3b4e298d7defe3d9038704748b458344b968fcb"
+    },
+    {
+      "stage": "node",
+      "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+      "file": "tests/wormhole-clip-profile.test.mjs",
+      "failure": {
+        "message": "deep drift deeper than establish",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "551fef9b661af70672a77922b1e3307321fa77ff5650c9fce8596b2b257ef92c"
+    },
+    {
+      "stage": "node",
+      "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+      "file": "tests/wormhole-geometry-lfo-integration.test.mjs",
+      "failure": {
+        "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "01f438951b078978dfa308ea25817c11baa7a2345276b9a3235d3852e8c52875"
+    },
+    {
+      "stage": "node",
+      "name": "wormhole factory presets keep a minimum normalized weighted separation",
+      "file": "tests/wormhole-preset-differentiation.test.mjs",
+      "failure": {
+        "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "3985a70cce49ac51d1e836f3ca4a329ed2cd3263a98db37869a3dcf15826f39c"
+    },
+    {
+      "stage": "node",
+      "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+      "file": "tests/wormhole-preset-differentiation.test.mjs",
+      "failure": {
+        "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))\n",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "16c6fb2b2e8efc6f272647a9324b0b2161ff0d74aaf9052c51d0001a70845fc3"
+    },
+    {
+      "stage": "node",
+      "name": "projected forward motion preserves overdrive > punch > drive > drift",
+      "file": "tests/wormhole-projected-motion.test.mjs",
+      "failure": {
+        "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "ad3e3ca725305e16f8636c8ba2f9acb9e7c615d0c12b60681c41c412583ca9e4"
+    },
+    {
+      "stage": "node",
+      "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+      "file": "tests/wormhole-projected-motion.test.mjs",
+      "failure": {
+        "message": "389.64890777178124 vs 471.543038051684",
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "=="
+      },
+      "signature": "f1217d4e8f656a5deb49de9a294f8adf273e794cc595f30db7aa24c38939e3cd"
+    }
+  ],
+  "unknownFailures": [
+    {
+      "stage": "lab",
+      "reason": "Incomplete or failing lab coverage",
+      "missingFiles": [],
+      "failures": [
+        {
+          "name": "test_reference_unsupported_events_are_partial_not_empty_success",
+          "file": "tests\\test_drum_measurement_contracts.py",
+          "message": "FileNotFoundError: [WinError 206] A fájlnév vagy a kiterjesztés túl hosszú: 'C:\\\\Users\\\\budap\\\\.codex\\\\worktrees\\\\7966\\\\novy\\\\Plexus Engine (VJ System)\\\\plexus-engine\\\\research\\\\analyzer-lab\\\\.cache\\\\regression-harness\\\\20261010T211125-3e0984f08408\\\\pytest-temp\\\\test_reference_unsupported_eve0\\\\report\\\\measurements\\\\v2-test-bass-weak-overlap'",
+          "kind": "failure"
+        },
+        {
+          "name": "test_failure_isolation_and_report_immutability",
+          "file": "tests\\test_report.py",
+          "message": "FileNotFoundError: [WinError 3] A rendszer nem találja a megadott elérési utat: 'C:\\\\Users\\\\budap\\\\.codex\\\\worktrees\\\\7966\\\\novy\\\\Plexus Engine (VJ System)\\\\plexus-engine\\\\research\\\\analyzer-lab\\\\.cache\\\\regression-harness\\\\20261010T211125-3e0984f08408\\\\pytest-temp\\\\test_failure_isolation_and_rep0\\\\runs\\\\d729d9b9d304b353cd48254c8cc7e88aaaa1e5d21c79a854bb1aaf928cf0a17e'",
+          "kind": "failure"
+        },
+        {
+          "name": "test_external_protocol_success_and_identity_failure_keep_diagnostics",
+          "file": "tests\\test_report.py",
+          "message": "FileNotFoundError: [WinError 3] A rendszer nem találja a megadott elérési utat: 'C:\\\\Users\\\\budap\\\\.codex\\\\worktrees\\\\7966\\\\novy\\\\Plexus Engine (VJ System)\\\\plexus-engine\\\\research\\\\analyzer-lab\\\\.cache\\\\regression-harness\\\\20261010T211125-3e0984f08408\\\\pytest-temp\\\\test_external_protocol_success0\\\\runs\\\\8fe3d6574cf87a1dce54073925d2baed864007fcca1ac8a2dfd3b166b69eb37a'",
+          "kind": "failure"
+        }
+      ]
+    },
+    {
+      "stage": "lab",
+      "reason": "Nonzero lab suite exit",
+      "exitCode": 1
+    }
+  ],
+  "runtime": {
+    "node": "C:\\Users\\budap\\AppData\\Local\\nvm\\v25.2.1\\node.EXE",
+    "npm": "C:\\Users\\budap\\AppData\\Local\\nvm\\v25.2.1\\node_modules\\npm\\bin\\npm-cli.js",
+    "python": "C:\\Users\\budap\\.codex\\worktrees\\7966\\novy\\Plexus Engine (VJ System)\\plexus-engine\\research\\analyzer-lab\\.venv\\Scripts\\python.exe"
+  },
+  "sourceIdentity": {
+    "hash": "2f2d348d714e7ebf4616d7731190974c23868fa96a5a13a319bf1aa35e4377bc",
+    "fileCount": 281
+  },
+  "afterInventory": {
+    "status": "passed",
+    "issues": []
+  },
+  "sourceChangedDuringRun": false,
+  "knownFailuresNeverMaskExit": true,
+  "inventoryVersion": 1,
+  "inventoryFilesHash": "d945beb23a25905765e558199b1bc843be601fac0ad4f0230723393593d427da",
+  "historicalUnexecutedCount": 48
+}

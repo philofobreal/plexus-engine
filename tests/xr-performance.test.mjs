@@ -77,6 +77,26 @@ test('paused immersive mode keeps every headset frame; exit returns to on-demand
     runtime.dispose();
 });
 
+test('desktop look rotates fixed eyes, clamps pitch, wakes paused rendering and yields to headset tracking', async () => {
+    const { runtime, renderer, session } = harness();
+    renderer.tick(0);
+    const eyes = runtime.camera.position.clone();
+    runtime.rotateDesktopView(0.5, 0.25);
+    assert.ok(runtime.camera.position.equals(eyes));
+    assert.ok(runtime.camera.quaternion.angleTo(new THREE.Quaternion()) > 0.1);
+    renderer.tick(1000); assert.equal(renderer.renders, 2); assert.equal(renderer.callback, null);
+    runtime.rotateDesktopView(0, 100);
+    const angles = new THREE.Euler().setFromQuaternion(runtime.camera.quaternion, 'YXZ');
+    assert.ok(Math.abs(angles.x - (Math.PI / 2 - 0.01)) < 1e-9); assert.ok(Math.abs(angles.z) < 1e-9);
+    const before = runtime.camera.quaternion.clone();
+    runtime.rotateDesktopView(NaN, 1); assert.ok(before.equals(runtime.camera.quaternion));
+    await runtime.requestImmersiveSession();
+    assert.ok(runtime.camera.quaternion.equals(new THREE.Quaternion()), 'desktop look resets before headset use');
+    runtime.rotateDesktopView(1, 1); assert.ok(runtime.camera.quaternion.equals(new THREE.Quaternion()));
+    await session.end(); runtime.rotateDesktopView(0.1, 0); assert.ok(!runtime.camera.quaternion.equals(new THREE.Quaternion()));
+    runtime.dispose();
+});
+
 test('transport binding wakes renderer after play, seek, pause and natural end, and removes listeners', () => {
     const { runtime, renderer } = harness();
     const load = createLoader();

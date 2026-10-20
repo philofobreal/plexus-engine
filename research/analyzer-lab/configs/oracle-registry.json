@@ -1,0 +1,260 @@
+{
+  "schemaVersion": "1.0.0",
+  "providers": [
+    {
+      "id": "plexus",
+      "displayName": "Plexus headless analyzer",
+      "providerVersion": "algorithm-6",
+      "toolVersion": "algorithm-6",
+      "executionMode": "external-process",
+      "pythonRequirement": ">=3.11 (lab); Node.js with repository TypeScript for bridge",
+      "capabilities": [
+        "tempo",
+        "beats",
+        "downbeats",
+        "onsets",
+        "sectionBoundaries",
+        "sectionLabels"
+      ],
+      "codeLicense": "repository policy; no third-party grant asserted",
+      "modelLicense": "not-applicable",
+      "modelLicenseSource": "",
+      "datasetDependencies": [],
+      "usagePolicy": "permissive",
+      "enabledByDefault": true,
+      "status": "implemented",
+      "command": null,
+      "licenseEvidence": {
+        "checkedAt": "2026-10-10",
+        "sources": [
+          "src/analyzer/constants.ts",
+          "documents/adr/ADR-002-headless-analyzer-core.md"
+        ],
+        "notes": "Consumes the existing analyzer. Algorithm version is verified by the bridge at run time. Section labels and visual-event timing are Plexus predictions, not instrument or ground-truth annotations."
+      }
+    },
+    {
+      "id": "librosa",
+      "displayName": "librosa baseline",
+      "providerVersion": "0.11.0",
+      "latestCheckedVersion": "1.0.0",
+      "executionMode": "in-process",
+      "pythonRequirement": ">=3.8 upstream; Python 3.11 selected lab core",
+      "capabilities": [
+        "tempo",
+        "beats",
+        "onsets"
+      ],
+      "codeLicense": "ISC",
+      "modelLicense": "not-applicable",
+      "modelLicenseSource": "",
+      "datasetDependencies": [],
+      "usagePolicy": "permissive",
+      "enabledByDefault": true,
+      "status": "implemented",
+      "command": null,
+      "licenseEvidence": {
+        "checkedAt": "2026-10-10",
+        "sources": [
+          "https://pypi.org/project/librosa/0.11.0/",
+          "https://pypi.org/project/librosa/1.0.0/",
+          "https://github.com/librosa/librosa/blob/0.11.0/LICENSE.md",
+          "https://librosa.org/doc/0.11.0/beat.html",
+          "https://librosa.org/doc/0.11.0/onset.html"
+        ],
+        "notes": "0.11.0 is an explicit compatibility selection for Python 3.11. Latest checked 1.0.0 requires Python >=3.12; do not silently upgrade. Uses model-free tempo/beat/onset functions; bundled/example audio is not a lab dataset grant."
+      }
+    },
+    {
+      "id": "basic-pitch",
+      "displayName": "Spotify Basic Pitch",
+      "providerVersion": "0.4.0",
+      "executionMode": "external-process",
+      "pythonRequirement": "3.8-3.11 advertised classifiers; README also mentions 3.7; no Requires-Python field verified",
+      "capabilities": [
+        "predominantPitch",
+        "noteTranscription"
+      ],
+      "codeLicense": "Apache-2.0",
+      "modelLicense": "unknown",
+      "modelLicenseSource": "https://github.com/spotify/basic-pitch/tree/v0.4.0/basic_pitch/saved_models/icassp_2022",
+      "datasetDependencies": [
+        {
+          "id": "training-corpora",
+          "requiredForInference": false,
+          "license": "requires-review",
+          "notes": "Inference uses shipped ICASSP 2022 model. Training/data extras and every source corpus need separate provenance and rights review."
+        }
+      ],
+      "usagePolicy": "requires-review",
+      "enabledByDefault": false,
+      "status": "planned",
+      "command": null,
+      "licenseEvidence": {
+        "checkedAt": "2026-10-10",
+        "sources": [
+          "https://pypi.org/project/basic-pitch/0.4.0/",
+          "https://github.com/spotify/basic-pitch/blob/v0.4.0/LICENSE",
+          "https://github.com/spotify/basic-pitch/blob/v0.4.0/README.md",
+          "https://github.com/spotify/basic-pitch/blob/v0.4.0/pyproject.toml",
+          "https://github.com/spotify/basic-pitch/tree/v0.4.0/basic_pitch/saved_models/icassp_2022"
+        ],
+        "notes": "Code grant is explicit Apache-2.0. A distinct grant specifically naming model weights was not verified; unknown is an evidence gap, not a claim that use is forbidden. Polyphonic pitch output does not identify instruments or guarantee predominant melody. Best on one instrument at a time."
+      }
+    },
+    {
+      "id": "spleeter",
+      "displayName": "Deezer Spleeter",
+      "providerVersion": "2.4.2",
+      "executionMode": "external-process",
+      "pythonRequirement": ">=3.8,<3.12",
+      "capabilities": [
+        "sourceSeparation"
+      ],
+      "codeLicense": "MIT",
+      "modelLicense": "MIT",
+      "modelLicenseSource": "https://github.com/deezer/spleeter/blob/master/paper.md",
+      "datasetDependencies": [
+        {
+          "id": "training-corpus",
+          "requiredForInference": false,
+          "license": "unknown",
+          "notes": "Provided weights support inference without training data. Upstream paper says models were not trained, validated or optimized on MUSDB18; benchmark dataset rights remain separate."
+        }
+      ],
+      "usagePolicy": "permissive",
+      "enabledByDefault": false,
+      "status": "planned",
+      "command": null,
+      "licenseEvidence": {
+        "checkedAt": "2026-10-10",
+        "sources": [
+          "https://pypi.org/project/spleeter/2.4.2/",
+          "https://github.com/deezer/spleeter/blob/master/LICENSE",
+          "https://github.com/deezer/spleeter/blob/master/paper.md",
+          "https://github.com/deezer/spleeter/blob/master/pyproject.toml"
+        ],
+        "notes": "Upstream JOSS paper explicitly licenses source code and pretrained models MIT. Pin the exact 2/4/5-stem weight artifact checksum and retain notices before use. Code version and model release identity differ. Stem separation alone is not validated frame activity or instrument presence."
+      }
+    },
+    {
+      "id": "omnizart",
+      "displayName": "Omnizart",
+      "providerVersion": "0.6.3",
+      "executionMode": "external-process",
+      "pythonRequirement": ">=3.8 (PyPI metadata); dependency/platform compatibility requires isolated validation",
+      "capabilities": [
+        "beats",
+        "drumEvents",
+        "vocalPitch",
+        "noteTranscription",
+        "instrumentTranscription",
+        "chords"
+      ],
+      "codeLicense": "MIT",
+      "modelLicense": "unknown",
+      "modelLicenseSource": "https://github.com/Music-and-Culture-Technology-Lab/omnizart",
+      "datasetDependencies": [
+        {
+          "id": "task-specific-training-corpora",
+          "requiredForInference": false,
+          "license": "requires-review",
+          "notes": "Choose a specific task/checkpoint and record its training corpus references. Repository constants include dataset loaders; their existence does not grant dataset rights."
+        }
+      ],
+      "usagePolicy": "requires-review",
+      "enabledByDefault": false,
+      "status": "planned",
+      "command": null,
+      "licenseEvidence": {
+        "checkedAt": "2026-10-10",
+        "sources": [
+          "https://pypi.org/project/omnizart/0.6.3/",
+          "https://github.com/Music-and-Culture-Technology-Lab/omnizart/blob/master/LICENSE",
+          "https://github.com/Music-and-Culture-Technology-Lab/omnizart/blob/master/README.md",
+          "https://github.com/Music-and-Culture-Technology-Lab/omnizart/blob/master/omnizart/constants/datasets.py"
+        ],
+        "notes": "Latest checked PyPI is 0.6.3, released 2026-05-31; master packaging files still show 0.6.0, so do not infer release metadata from master. Code MIT does not establish a separately verified checkpoint grant. Checkpoints require explicit download. Upstream documents a drum training convergence bug; transcription is advertised with supplied checkpoints."
+      }
+    },
+    {
+      "id": "essentia",
+      "displayName": "Essentia reference provider",
+      "providerVersion": "2.1b6.dev1438",
+      "executionMode": "external-process",
+      "pythonRequirement": "Latest checked wheel release: CPython 3.14, Linux/macOS; no Windows wheel or general Requires-Python verified",
+      "capabilities": [
+        "tempo",
+        "beats",
+        "onsets",
+        "predominantPitch",
+        "chords",
+        "key",
+        "instrumentPresence"
+      ],
+      "codeLicense": "AGPL-3.0-only",
+      "modelLicense": "unknown",
+      "modelLicenseSource": "https://essentia.upf.edu/models.html",
+      "datasetDependencies": [
+        {
+          "id": "selected-model-training-corpus",
+          "requiredForInference": false,
+          "license": "requires-review",
+          "notes": "Model-free algorithms need no training dataset. Any selected pretrained model must record per-artifact metadata, dataset provenance and license; external third-party models may differ from MTG models."
+        }
+      ],
+      "usagePolicy": "reference-only",
+      "enabledByDefault": false,
+      "status": "planned",
+      "command": null,
+      "licenseEvidence": {
+        "checkedAt": "2026-10-10",
+        "sources": [
+          "https://pypi.org/project/essentia/2.1b6.dev1438/",
+          "https://github.com/MTG/essentia/blob/master/COPYING.txt",
+          "https://essentia.upf.edu/licensing_information.html",
+          "https://essentia.upf.edu/models.html",
+          "https://essentia.upf.edu/download.html"
+        ],
+        "notes": "Latest checked package is explicitly a development prerelease, not a stable recommendation or lab Python 3.11 pin. models.html says MTG models CC-BY-NC-SA-4.0, whereas licensing_information.html says CC-BY-NC-ND-4.0. Resolve the exact model license from its own metadata/LICENSE before use. AGPL code and third-party dependency obligations need review; process isolation is architectural, not a legal exemption."
+      }
+    },
+    {
+      "id": "msaf",
+      "displayName": "Music Structure Analysis Framework",
+      "providerVersion": "0.1.80",
+      "executionMode": "external-process",
+      "pythonRequirement": "No explicit Requires-Python verified; old classifiers are not a modern compatibility guarantee",
+      "capabilities": [
+        "sectionBoundaries",
+        "sectionLabels"
+      ],
+      "codeLicense": "MIT",
+      "modelLicense": "unknown",
+      "modelLicenseSource": "https://github.com/urinieto/msaf/tree/main/msaf/algorithms/olda/models",
+      "datasetDependencies": [
+        {
+          "id": "msaf-data",
+          "requiredForInference": false,
+          "license": "requires-review",
+          "notes": "Optional evaluation datasets live in a separate repository. Audio, annotations and every dataset license require separate review; do not download automatically."
+        }
+      ],
+      "usagePolicy": "requires-review",
+      "enabledByDefault": false,
+      "status": "planned",
+      "command": null,
+      "licenseEvidence": {
+        "checkedAt": "2026-10-10",
+        "sources": [
+          "https://pypi.org/project/msaf/0.1.80/",
+          "https://github.com/urinieto/msaf/blob/main/LICENSE.md",
+          "https://github.com/urinieto/msaf/blob/main/setup.py",
+          "https://github.com/urinieto/msaf/tree/main/msaf/algorithms/olda/models",
+          "https://msaf.readthedocs.io/en/latest/install.html"
+        ],
+        "notes": "Latest checked release 0.1.80 (2023-06-25). Packaging ships OLDA .npy trained model assets; repository MIT alone is not a distinct verified weight grant. Prefer a reviewed model-free segmentation algorithm until artifact evidence is recorded. Section labels express acoustic similarity, not automatically verse/chorus or Plexus dramaturgy semantics."
+      }
+    }
+  ]
+}

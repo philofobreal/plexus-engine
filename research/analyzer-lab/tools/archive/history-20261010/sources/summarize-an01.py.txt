@@ -1,0 +1,88 @@
+import hashlib
+import json
+import re
+from pathlib import Path
+
+from plexus_analyzer_lab.runner import source_fingerprint
+
+root = Path(__file__).resolve().parents[3]
+lab = root / 'research/analyzer-lab'
+cache = lab / '.cache'
+read = lambda p: p.read_text(encoding='utf-8')
+sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+paired = json.loads(read(cache / 'an01-paired/regression-review.json'))
+initial = json.loads(read(cache / 'an01-paired-initial.json'))
+baseline = json.loads(read(cache / 'baseline-check/comparison.json'))
+text = read(cache / 'an01-node-accepted.log')
+stats = {k: float(v) if k == 'duration_ms' else int(v)
+         for k, v in re.findall(r'^ℹ (tests|pass|fail|duration_ms) ([\d.]+)', text, re.M)}
+assert {'tests', 'pass', 'fail', 'duration_ms'} <= stats.keys(), 'Full final suite not finished'
+names = sorted(set(re.findall(r'^✖ (.+) \([\d.]+ms\)$', text, re.M)))
+base_text = read(cache / 'baseline-check/baseline-test.log')
+assertions = lambda s: sorted(re.findall(r'^\s*AssertionError \[ERR_ASSERTION\]: (.+)$', s, re.M))
+assert stats['fail'] == 10 and names == baseline['baselineFailureNames'], names
+assert assertions(text) == assertions(base_text), 'Assertion messages differ from frozen baseline'
+assert 'EPERM: operation not permitted, rename' in text
+assert all(not o['baselineCommittedDrift'] for o in initial['observations'])
+assert len(paired['observations']) == 9
+for o in paired['observations']:
+    assert not o['committedDrift'], o['id']
+    allowed = {'counts.frames', 'counts.bars'} if o['id'] == 'techno-140' else {'counts.frames'}
+    assert {c['path'] for c in o['changes']} == allowed, o['changes']
+python_log = read(cache / 'an01-python-final.log')
+assert '205 passed' in python_log
+target_log = read(cache / 'an01-integration-final.log')
+assert 'ℹ pass 64' in target_log and 'ℹ fail 0' in target_log
+assert 'built in' in read(cache / 'an01-build-accepted.log')
+changed_owners = [root / name for name in [
+    'src/semantics/cueEvidence.ts', 'src/automation/transitionDynamics.ts',
+    'src/automation/performancePlanGenerator.ts']]
+scripts = sorted((lab / 'diagnostics').glob('*.mjs'))
+record = {
+    'schemaVersion': 'analyzer-contract-experiment-1.0', 'snapshotDate': '2026-10-10',
+    'status': 'implemented_and_checked_contract_correctness_not_generalization',
+    'experiment': 'AN-01', 'baselineAlgorithmVersion': 6, 'algorithmVersion': 7,
+    'baseCommit': '29371e4fd65b5fc9defa6ebb4bca0b1488ed5e14',
+    'sourceHash': source_fingerprint(),
+    'sourceIdentity': 'Lab source_fingerprint covers dirty analyzer/types/lab implementation, schemas, bridge, configs and dependency declarations. Consumer owners are hashed separately.',
+    'pairedSourceIdentity': {k: paired[k] for k in ['baselineSourceHash', 'candidateSourceHash', 'hashConvention']},
+    'consumerSourceHashes': {str(p.relative_to(root)).replace('\\', '/'): sha(p) for p in changed_owners},
+    'protectedTestHashes': {name: sha(root / name) for name in [
+        'tests/analyzer-signal-contract.test.mjs', 'tests/analyzer-low-frequency.test.mjs',
+        'tests/contracts.test.mjs', 'research/analyzer-lab/tests/test_pcm_identity.py',
+        'research/analyzer-lab/tests/test_canonical.py']},
+    'diagnosticScriptHashes': {str(p.relative_to(root)).replace('\\', '/'): sha(p) for p in scripts},
+    'environment': {'node': '25.2.1', 'npm': '11.6.2', 'python': '3.12.14', 'dependenciesChanged': False},
+    'scope': {'input': 'Nonempty finite Float32 PCM [-8,8], integer fs 1000..384000, radix-2 H=N 4..65536; public boundary rejects before progress/DSP.',
+              'clock': 'ceil(L/H), window-start H/fs, true L/fs duration, legacy duration/count fallback.',
+              'level': 'Real-support sample-weighted physical RMS; normalized avgRms separate from arrangement energy.',
+              'tail': 'Acoustic features retained; partial terminal window abstains from visual attacks and grid inference.',
+              'projection': 'Host/lab default channel 0; explicit mean and decoded f32le hash preserved; differing PCM identity cannot be compared.'},
+    'diagnosticObservations': json.loads(read(cache / 'an01-musical-contracts.json')),
+    'pairedKnownRegression': {'fixtureCount': 9, 'originalBaselineSnapshotDrift': [],
+                             'acceptedSummaryChanges': [{'id': o['id'], 'changes': o['changes']} for o in paired['observations']],
+                             'tempoCandidatesConfidencePhaseEventsAndBeatsUnchanged': True,
+                             'snapshotUpdates': 'Ten count fields explicitly patched; headless firstSection.avgRms 0 -> 0.519683 and fixture identity 7; no golden generator run.'},
+    'validation': {'build': {'command': 'npm run build', 'passed': True},
+                   'fullNode': {'command': 'npm test', **stats, 'knownBaselineFailuresOnly': True,
+                                'failureNames': names, 'assertionMessagesMatchBaseline': True,
+                                'baselineProof': 'DRUM-IMPROVEMENT-VALIDATION.md; exact clean-HEAD archive, 566 blobs, zero mismatches'},
+                   'targetedIntegration': {'tests': 64, 'pass': 64, 'fail': 0, 'durationMs': 1843.8646},
+                   'fullLab': {'tests': 205, 'pass': 205, 'fail': 0, 'durationSeconds': 156.88,
+                               'tempFallback': 'Fresh --basetemp directory under workspace after default Windows temp numbering failed'},
+                   'newContractTests': 12, 'newPcmIdentityTests': 6},
+    'rejectedIntermediateChanges': ['Sustain cutoff falsely accepted as visual attack',
+                                   'Partial cutoff shifted final DNB beat ~46ms and breakdown beat ~70ms',
+                                   'Direct Node imports required explicit .ts on shared helper dependencies; stale ZCR source assertion updated to real support'],
+    'limitations': ['Known synthetic/golden regression inputs, no new independent test or model selection',
+                    'Partial terminal onset recall deferred to AN-02; excluded window support is less than H/fs, not a general timing-error or recall bound',
+                    'Actual browser/SoundFile decoding/resampling parity unmeasured',
+                    'Production stage time/memory, recorded-music/role generalization and confidence calibration unmeasured',
+                    'Physical Quest audio/input/display precision unmeasured; proposed millisecond targets not achieved',
+                    'Remaining algorithm-6 principles-audit issues outside AN-01 still apply'],
+    'next': 'AN-02 overlapping windows, complete hop-phase coverage, endpoint attacks, flatness and clock-based smoothing',
+    'publication': {'commit': False, 'pullRequest': False, 'deployment': False}
+}
+path = lab / 'fixtures/an01-signal-contract.summary.json'
+path.write_text(json.dumps(record, ensure_ascii=False, indent=2, allow_nan=False) + '\n', encoding='utf-8')
+print(json.dumps({'path': str(path), 'fullNode': stats, 'fullLab': 205, 'sourceHash': record['sourceHash']}))

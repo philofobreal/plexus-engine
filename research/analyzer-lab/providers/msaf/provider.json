@@ -1,0 +1,37 @@
+{
+  "id": "msaf",
+  "displayName": "Music Structure Analysis Framework",
+  "providerVersion": "0.1.80",
+  "executionMode": "external-process",
+  "pythonRequirement": "No explicit Requires-Python verified; old classifiers are not a modern compatibility guarantee",
+  "capabilities": [
+    "sectionBoundaries",
+    "sectionLabels"
+  ],
+  "codeLicense": "MIT",
+  "modelLicense": "unknown",
+  "modelLicenseSource": "https://github.com/urinieto/msaf/tree/main/msaf/algorithms/olda/models",
+  "datasetDependencies": [
+    {
+      "id": "msaf-data",
+      "requiredForInference": false,
+      "license": "requires-review",
+      "notes": "Optional evaluation datasets live in a separate repository. Audio, annotations and every dataset license require separate review; do not download automatically."
+    }
+  ],
+  "usagePolicy": "requires-review",
+  "enabledByDefault": false,
+  "status": "planned",
+  "command": null,
+  "licenseEvidence": {
+    "checkedAt": "2026-10-10",
+    "sources": [
+      "https://pypi.org/project/msaf/0.1.80/",
+      "https://github.com/urinieto/msaf/blob/main/LICENSE.md",
+      "https://github.com/urinieto/msaf/blob/main/setup.py",
+      "https://github.com/urinieto/msaf/tree/main/msaf/algorithms/olda/models",
+      "https://msaf.readthedocs.io/en/latest/install.html"
+    ],
+    "notes": "Latest checked release 0.1.80 (2023-06-25). Packaging ships OLDA .npy trained model assets; repository MIT alone is not a distinct verified weight grant. Prefer a reviewed model-free segmentation algorithm until artifact evidence is recorded. Section labels express acoustic similarity, not automatically verse/chorus or Plexus dramaturgy semantics."
+  }
+}

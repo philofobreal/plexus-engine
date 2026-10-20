@@ -26,6 +26,9 @@ export class XrRuntime {
     private dirty = true;
     private loopArmed = false;
     private enteringXr = false;
+    private desktopYaw = 0;
+    private desktopPitch = 0;
+    private readonly desktopRotation = new THREE.Euler(0, 0, 0, 'YXZ');
     private renderedFrames = 0;
     private readonly diagnostics: boolean;
     /** Measure each frame's main-thread cost (on while the player's Diagnostics are on). */
@@ -41,12 +44,15 @@ export class XrRuntime {
     private readonly visibilityChanged = () => { this.lastFrameTimeMs = null; this.invalidate(); };
     private readonly handleResizeBound = () => this.handleResize();
     private disposed = false;
-    private readonly sessionStarted = () => { this.lastFrameTimeMs = null; this.onSessionStart?.(); };
+    private readonly sessionStarted = () => {
+        this.lastFrameTimeMs = null;
+        this.resetDesktopView();
+        this.onSessionStart?.();
+    };
     private readonly sessionEnded = () => {
         this.lastFrameTimeMs = null;
         this.camera.position.set(0, 1.65, 2.6);
-        this.camera.quaternion.identity();
-        this.camera.updateMatrixWorld(true);
+        this.resetDesktopView();
         this.onSessionEnd?.();
         this.handleResize();
     };
@@ -152,6 +158,23 @@ export class XrRuntime {
     setUpdateCallback(callback: XrFrameUpdateCallback | null): void {
         this.updateCallback = callback;
         this.invalidate();
+    }
+
+    /** Grab-and-drag look around a fixed eye position. Headset tracking always owns immersive orientation. */
+    rotateDesktopView(dx: number, dy: number): void {
+        if (this.disposed || this.enteringXr || this.isPresenting() || !Number.isFinite(dx) || !Number.isFinite(dy)) return;
+        const radians = this.camera.fov * Math.PI / 180;
+        this.desktopYaw = (this.desktopYaw + dx * radians) % (2 * Math.PI);
+        this.desktopPitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, this.desktopPitch + dy * radians));
+        this.camera.quaternion.setFromEuler(this.desktopRotation.set(this.desktopPitch, this.desktopYaw, 0, 'YXZ'));
+        this.camera.updateMatrixWorld(true);
+        this.invalidate();
+    }
+
+    private resetDesktopView(): void {
+        this.desktopYaw = 0; this.desktopPitch = 0;
+        this.camera.quaternion.identity();
+        this.camera.updateMatrixWorld(true);
     }
 
     private handleResize(): void {

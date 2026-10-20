@@ -1,0 +1,423 @@
+{
+  "freezeDecision": {
+    "baselineTrials": [
+      {
+        "model": "drums-v1-on-v2",
+        "modelChecksum": "9428ecf1288c862ad4f78e9a8c1fe3a27a3e21f320bd68f680e3f17d04f5467f",
+        "ridge": 1.0,
+        "selectionKey": [
+          0.7809005376344086,
+          0.65625,
+          0.8167680865449628,
+          1.0
+        ]
+      },
+      {
+        "model": "drums-v1-on-v2-ridge10",
+        "modelChecksum": "5179f4d33a53de3db523156efb6428dfde17f81b315aa76e8244d10644904972",
+        "ridge": 10.0,
+        "selectionKey": [
+          0.797488532972404,
+          0.676923076923077,
+          0.820954205436964,
+          10.0
+        ]
+      },
+      {
+        "model": "drums-v1-on-v2-ridge100",
+        "modelChecksum": "91421ab02f14d58acbf1cad25db247377560b30c9c567d9854d125412d59b43c",
+        "ridge": 100.0,
+        "selectionKey": [
+          0.8075177064496685,
+          0.7142857142857143,
+          0.7983163554046406,
+          100.0
+        ]
+      }
+    ],
+    "candidateModel": "drums-v2-development",
+    "candidateModelChecksum": "e178de63c842db5e6a1eeb568d5da5b4af90ff336a5733c7567c7915ed0c47b3",
+    "candidateValidationSelection": {
+      "ridgeGrid": [
+        1.0,
+        10.0,
+        100.0
+      ],
+      "rule": "macro class event F, worst class F, macro precision, higher ridge",
+      "split": "validation",
+      "trials": [
+        {
+          "macroF": 0.9012127939140538,
+          "macroPrecision": 0.8733459994071199,
+          "ridge": 1.0,
+          "thresholds": [
+            0.4,
+            0.4,
+            0.4
+          ],
+          "worstClassF": 0.8524590163934426
+        },
+        {
+          "macroF": 0.9072363489592342,
+          "macroPrecision": 0.8896476964769647,
+          "ridge": 10.0,
+          "thresholds": [
+            0.45000000000000007,
+            0.5,
+            0.4
+          ],
+          "worstClassF": 0.8666666666666667
+        },
+        {
+          "macroF": 0.9173995343149572,
+          "macroPrecision": 0.8925381263616557,
+          "ridge": 100.0,
+          "thresholds": [
+            0.6000000000000001,
+            0.45000000000000007,
+            0.45000000000000007
+          ],
+          "worstClassF": 0.8787878787878788
+        }
+      ]
+    },
+    "chosenBaseline": {
+      "model": "drums-v1-on-v2-ridge100",
+      "modelChecksum": "91421ab02f14d58acbf1cad25db247377560b30c9c567d9854d125412d59b43c",
+      "ridge": 100.0,
+      "selectionKey": [
+        0.8075177064496685,
+        0.7142857142857143,
+        0.7983163554046406,
+        100.0
+      ]
+    },
+    "rule": "Select baseline from same ridge grid on validation macro F,worst F,precision,higher ridge",
+    "testScoresInspectedBeforeFreeze": false
+  },
+  "historicalV2": {
+    "byClass": {
+      "hihat": {
+        "estimatedCount": 41,
+        "fMeasure": 1.0,
+        "matchedCount": 41,
+        "precision": 1.0,
+        "recall": 1.0,
+        "referenceCount": 41,
+        "status": "available"
+      },
+      "kick": {
+        "estimatedCount": 32,
+        "fMeasure": 0.8363636363636363,
+        "matchedCount": 23,
+        "precision": 0.71875,
+        "recall": 1.0,
+        "referenceCount": 23,
+        "status": "available"
+      },
+      "snare": {
+        "estimatedCount": 25,
+        "fMeasure": 0.6486486486486487,
+        "matchedCount": 12,
+        "precision": 0.48,
+        "recall": 1.0,
+        "referenceCount": 12,
+        "status": "available"
+      }
+    },
+    "datasetId": "synthetic-drums-v1",
+    "interpretation": "Known historical regression set; different training data from original P0.",
+    "modelChecksum": "e178de63c842db5e6a1eeb568d5da5b4af90ff336a5733c7567c7915ed0c47b3"
+  },
+  "limitations": [
+    "Procedural drum identities; real-recording generalization unvalidated",
+    "No actual drum-specific oracle",
+    "Historical kick/snare regression; v2 remains opt-in"
+  ],
+  "measurementDate": "2026-10-10",
+  "musicReference": {
+    "byProvider": {
+      "librosa": {
+        "estimatedCount": 122,
+        "fMeasure": 0.6268656716417911,
+        "matchedCount": 63,
+        "precision": 0.5163934426229508,
+        "recall": 0.7974683544303798,
+        "referenceCount": 79,
+        "status": "available"
+      },
+      "plexus": {
+        "estimatedCount": 49,
+        "fMeasure": 0.578125,
+        "matchedCount": 37,
+        "precision": 0.7551020408163265,
+        "recall": 0.46835443037974683,
+        "referenceCount": 79,
+        "status": "available"
+      }
+    },
+    "coverage": {
+      "librosa": {
+        "availableTracks": 6,
+        "requestedTracks": 6
+      },
+      "plexus": {
+        "availableTracks": 6,
+        "requestedTracks": 6
+      }
+    },
+    "datasetId": "synthetic-drums-v2",
+    "evaluationDomain": "[1.0, duration-0.25): excludes initial/final file envelopes",
+    "interpretation": "Raw library estimates are validated against generator truth per task. Librosa onsets do not identify drums. Plexus events are accepted visual impacts; their recall is not a complete raw-onset contract. No tempo truth on irregular fixtures.",
+    "manifestHash": "89924ded2bfa90fc0d6fc1c04067a8e8e91b619d8b8744318944181e2fc2e2e7",
+    "measurementProtocol": {
+      "configHash": "702c50ac8c926d6459a8d64014890675cca8c0f66359a846a098ad18e8e6b15b",
+      "environment": {
+        "commandHashes": {},
+        "dependencies": {
+          "Pygments": "2.21.0",
+          "attrs": "26.1.0",
+          "audioread": "3.1.0",
+          "certifi": "2026.7.22",
+          "cffi": "2.1.1",
+          "charset-normalizer": "3.5.2",
+          "cloudpickle": "3.1.2",
+          "colorama": "0.4.6",
+          "decorator": "5.3.1",
+          "idna": "3.20",
+          "iniconfig": "2.3.1",
+          "joblib": "1.6.0",
+          "jsonschema": "4.25.1",
+          "jsonschema-specifications": "2025.9.1",
+          "lazy-loader": "0.6",
+          "librosa": "0.11.0",
+          "llvmlite": "0.50.0",
+          "mir_eval": "0.8.2",
+          "msgpack": "1.2.3",
+          "narwhals": "2.27.1",
+          "numba": "0.68.0",
+          "numpy": "2.2.6",
+          "packaging": "26.3",
+          "pip": "25.0.1",
+          "platformdirs": "4.12.4",
+          "plexus-analyzer-lab": "0.1.0",
+          "pluggy": "1.6.0",
+          "pooch": "1.9.0",
+          "pycparser": "3.11",
+          "pytest": "8.4.2",
+          "referencing": "0.37.0",
+          "requests": "2.34.2",
+          "rpds-py": "2026.9.1",
+          "scikit-learn": "1.9.1",
+          "scipy": "1.15.3",
+          "soundfile": "0.13.1",
+          "soxr": "1.1.0",
+          "threadpoolctl": "3.7.0",
+          "typing_extensions": "4.16.0",
+          "urllib3": "2.8.0"
+        },
+        "platform": "Windows-11-10.0.26200-SP0",
+        "python": "3.12.14",
+        "sourceHash": "dc127c413e8e9ebe2982fdfc8fc3a9ec8cb682e02240effc8b3a3d43efe1c406"
+      }
+    },
+    "partial": false,
+    "schemaVersion": "1.0.0",
+    "split": "test",
+    "tolerance": 0.05,
+    "truthDefinition": "Unique scheduled drum hits and explicit confound-burst sample onsets. Continuous tones/slow ramps/noise swells have no authored attacks in this domain."
+  },
+  "musicReferenceArtifacts": "runs/music-reference-v2-final",
+  "paired": {
+    "baselineModelChecksum": "91421ab02f14d58acbf1cad25db247377560b30c9c567d9854d125412d59b43c",
+    "baselineReproducibilityHash": "89e1a9875ad0ee7b87bd6c3ca410e1e60f4b0a56f02883d7916eaff6aab52b71",
+    "byClass": {
+      "hihat": {
+        "baseline": {
+          "estimatedCount": 65,
+          "fMeasure": 0.8571428571428571,
+          "matchedCount": 57,
+          "precision": 0.8769230769230769,
+          "recall": 0.8382352941176471,
+          "referenceCount": 68,
+          "status": "available"
+        },
+        "baselineFalsePositiveCount": 8,
+        "baselineMissedCount": 11,
+        "candidate": {
+          "estimatedCount": 72,
+          "fMeasure": 0.9571428571428572,
+          "matchedCount": 67,
+          "precision": 0.9305555555555556,
+          "recall": 0.9852941176470589,
+          "referenceCount": 68,
+          "status": "available"
+        },
+        "candidateFalsePositiveCount": 5,
+        "candidateMissedCount": 1,
+        "fMeasureDelta": 0.10000000000000009
+      },
+      "kick": {
+        "baseline": {
+          "estimatedCount": 38,
+          "fMeasure": 0.825,
+          "matchedCount": 33,
+          "precision": 0.868421052631579,
+          "recall": 0.7857142857142857,
+          "referenceCount": 42,
+          "status": "available"
+        },
+        "baselineFalsePositiveCount": 5,
+        "baselineMissedCount": 9,
+        "candidate": {
+          "estimatedCount": 42,
+          "fMeasure": 0.9761904761904762,
+          "matchedCount": 41,
+          "precision": 0.9761904761904762,
+          "recall": 0.9761904761904762,
+          "referenceCount": 42,
+          "status": "available"
+        },
+        "candidateFalsePositiveCount": 1,
+        "candidateMissedCount": 1,
+        "fMeasureDelta": 0.1511904761904762
+      },
+      "micro": {
+        "baseline": {
+          "estimatedCount": 144,
+          "fMeasure": 0.8127208480565371,
+          "matchedCount": 115,
+          "precision": 0.7986111111111112,
+          "recall": 0.8273381294964028,
+          "referenceCount": 139,
+          "status": "available"
+        },
+        "baselineFalsePositiveCount": 29,
+        "baselineMissedCount": 24,
+        "candidate": {
+          "estimatedCount": 150,
+          "fMeasure": 0.9480968858131488,
+          "matchedCount": 137,
+          "precision": 0.9133333333333333,
+          "recall": 0.9856115107913669,
+          "referenceCount": 139,
+          "status": "available"
+        },
+        "candidateFalsePositiveCount": 13,
+        "candidateMissedCount": 2,
+        "fMeasureDelta": 0.13537603775661167
+      },
+      "snare": {
+        "baseline": {
+          "estimatedCount": 41,
+          "fMeasure": 0.7142857142857143,
+          "matchedCount": 25,
+          "precision": 0.6097560975609756,
+          "recall": 0.8620689655172413,
+          "referenceCount": 29,
+          "status": "available"
+        },
+        "baselineFalsePositiveCount": 16,
+        "baselineMissedCount": 4,
+        "candidate": {
+          "estimatedCount": 36,
+          "fMeasure": 0.8923076923076924,
+          "matchedCount": 29,
+          "precision": 0.8055555555555556,
+          "recall": 1.0,
+          "referenceCount": 29,
+          "status": "available"
+        },
+        "candidateFalsePositiveCount": 7,
+        "candidateMissedCount": 0,
+        "fMeasureDelta": 0.17802197802197806
+      }
+    },
+    "candidateModelChecksum": "e178de63c842db5e6a1eeb568d5da5b4af90ff336a5733c7567c7915ed0c47b3",
+    "candidateReproducibilityHash": "1d0967789243fccc080a632706f9d656e14b30a9618553fbb28aa316d6088803",
+    "datasetId": "synthetic-drums-v2",
+    "interpretation": "Paired test measurements of models frozen before evaluation. Synthetic identities do not establish real-drum generalization; reports preserve regressions.",
+    "manifestHash": "89924ded2bfa90fc0d6fc1c04067a8e8e91b619d8b8744318944181e2fc2e2e7",
+    "measurementProtocol": {
+      "environment": {
+        "dependencies": {
+          "Pygments": "2.21.0",
+          "attrs": "26.1.0",
+          "audioread": "3.1.0",
+          "certifi": "2026.7.22",
+          "cffi": "2.1.1",
+          "charset-normalizer": "3.5.2",
+          "cloudpickle": "3.1.2",
+          "colorama": "0.4.6",
+          "decorator": "5.3.1",
+          "idna": "3.20",
+          "iniconfig": "2.3.1",
+          "joblib": "1.6.0",
+          "jsonschema": "4.25.1",
+          "jsonschema-specifications": "2025.9.1",
+          "lazy-loader": "0.6",
+          "librosa": "0.11.0",
+          "llvmlite": "0.50.0",
+          "mir_eval": "0.8.2",
+          "msgpack": "1.2.3",
+          "narwhals": "2.27.1",
+          "numba": "0.68.0",
+          "numpy": "2.2.6",
+          "packaging": "26.3",
+          "pip": "25.0.1",
+          "platformdirs": "4.12.4",
+          "plexus-analyzer-lab": "0.1.0",
+          "pluggy": "1.6.0",
+          "pooch": "1.9.0",
+          "pycparser": "3.11",
+          "pytest": "8.4.2",
+          "referencing": "0.37.0",
+          "requests": "2.34.2",
+          "rpds-py": "2026.9.1",
+          "scikit-learn": "1.9.1",
+          "scipy": "1.15.3",
+          "soundfile": "0.13.1",
+          "soxr": "1.1.0",
+          "threadpoolctl": "3.7.0",
+          "typing_extensions": "4.16.0",
+          "urllib3": "2.8.0"
+        },
+        "platform": "Windows-11-10.0.26200-SP0",
+        "python": "3.12.14"
+      },
+      "sourceHash": "dc127c413e8e9ebe2982fdfc8fc3a9ec8cb682e02240effc8b3a3d43efe1c406",
+      "split": "test",
+      "tolerance": 0.05
+    },
+    "schemaVersion": "1.0.0"
+  },
+  "productionTonalSustain": {
+    "afterAlgorithm": 6,
+    "afterFeatureExtractorHash": "dc5e4677910a89a3e29e4e91b26f00670fe2791ad85f3255b4ab1d1bcb541418",
+    "beforeAlgorithm": 5,
+    "beforeFeatureExtractorHash": "6947f74de58b069ccc87f22536f03f5850f909efaeded1179d99fcd153023cb6",
+    "measurementScope": "Actual headless analyzer; baseline loader substitutes the saved algorithm-5 FeatureExtractor only. Other DSP is identical.",
+    "records": [
+      {
+        "afterFalseHits": 0,
+        "beforeFalseHits": 40,
+        "duration": 8,
+        "frequencyHz": 440,
+        "sampleRate": 44100,
+        "timingUnchanged": true,
+        "truthPlateauOnsets": 0
+      },
+      {
+        "afterFalseHits": 0,
+        "beforeFalseHits": 36,
+        "duration": 8,
+        "frequencyHz": 1000,
+        "sampleRate": 44100,
+        "timingUnchanged": true,
+        "truthPlateauOnsets": 0
+      }
+    ]
+  },
+  "schemaVersion": "1.0.0",
+  "sourceHash": "dc127c413e8e9ebe2982fdfc8fc3a9ec8cb682e02240effc8b3a3d43efe1c406"
+}

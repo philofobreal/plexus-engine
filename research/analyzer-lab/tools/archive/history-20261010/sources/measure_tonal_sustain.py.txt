@@ -1,0 +1,39 @@
+import json
+from pathlib import Path
+import subprocess
+import numpy as np
+from plexus_analyzer_lab.adapters.librosa import LibrosaAdapter
+from plexus_analyzer_lab.audio import load_audio
+from plexus_analyzer_lab.config import load_config
+from plexus_analyzer_lab.drums.synthetic import _write_float_wave
+from plexus_analyzer_lab.provenance import environment,timestamp
+from plexus_analyzer_lab.reports.json_report import write_json
+root=Path(__file__).resolve().parents[3]
+output=root/'research/analyzer-lab/runs/tonal-sustain-reference'
+output.mkdir(parents=True,exist_ok=False)
+records=[]
+for rate in (44100,48000):
+  for hz in (55,110,220,440,1000):
+    t=np.arange(rate*6)/rate
+    y=(.3*np.sin(2*np.pi*hz*t)*np.minimum(1,t/.1)).astype(np.float32)
+    wave=output/f'tone-{hz}-{rate}.wav';pcm=wave.with_suffix('.f32le')
+    _write_float_wave(wave,y,rate);y.astype('<f4').tofile(pcm)
+    responses=[]
+    for baseline in (True,False):
+      p=subprocess.run(['node','research/analyzer-lab/.cache/measure_tonal_sustain.mjs'],cwd=root,
+           input=json.dumps({'pcmPath':str(pcm),'sampleRate':rate,'baseline':baseline}),text=True,capture_output=True,check=True)
+      responses.append(json.loads(p.stdout))
+    audio=load_audio(wave)
+    oracle=LibrosaAdapter().analyze(audio,output,load_config(),timestamp())
+    write_json(wave.with_suffix('.librosa.canonical.json'),oracle)
+    write_json(wave.with_suffix('.plexus-before.json'),responses[0]);write_json(wave.with_suffix('.plexus-after.json'),responses[1])
+    record={'sampleRate':rate,'frequencyHz':hz,'truthPlateauOnsets':0,
+      'plexusBeforeFalseHits':len([e for e in responses[0]['events'] if e['time']>=1]),
+      'plexusAfterFalseHits':len([e for e in responses[1]['events'] if e['time']>=1]),
+      'librosaPlateauOnsets':len([e for e in oracle['events'] if e['time']>=1]),
+      'timingUnchanged':all(responses[0][k]==responses[1][k] for k in ('beats','bpm','barStarts','timingConfidence'))}
+    assert record['timingUnchanged']
+    records.append(record);print(json.dumps(record),flush=True)
+    pcm.unlink()
+write_json(output/'report.json',{'beforeAlgorithm':5,'afterAlgorithm':6,'library':'librosa0.11.0',
+ 'environment':environment(),'records':records,'interpretation':'Generator truth zero plateau attacks; library outputs remain predictions.'})
