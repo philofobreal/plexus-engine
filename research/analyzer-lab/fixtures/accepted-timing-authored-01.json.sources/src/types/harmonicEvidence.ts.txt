@@ -1,0 +1,30 @@
+import type { AcousticEvidenceIdentity } from './acousticEvidence';
+
+export interface HarmonicResidual {
+    harmonics: number;
+    trainingSamples: number;
+    fitResidualFraction: number | null;
+    heldOutResidualFraction: number | null;
+    independentColumnFitResidual: number | null;
+    independentColumnHeldOutResidual: number | null;
+    status: 'available' | 'below-floor' | 'rank-deficient';
+}
+
+export interface HarmonicEvidence {
+    algorithm: 'experimental-harmonic-evidence-v1';
+    identity: AcousticEvidenceIdentity;
+    confidence: null;
+    groundTruthStatus: false;
+    sourceIsolation: 'unverified-mixture';
+    consumerUse: 'diagnostic-only';
+    xrScoring: 'ineligible';
+    frames: {
+        frameIndex: number;
+        fitSupportStartSample: number;
+        supportStartSample: number;
+        supportEndSample: number;
+        consecutiveStableFrames: number;
+        residual: HarmonicResidual | null;
+        status: 'no-pitch' | 'unavailable' | 'large-residual' | 'unstable' | 'steady-harmonic-compatible';
+    }[];
+}

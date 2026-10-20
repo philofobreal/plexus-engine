@@ -319,6 +319,8 @@ export class XrAppController {
         this.progressEl.textContent = chart.length ? (fallback ? 'Analysis complete. Basic patterns (visual plan unavailable).'
             : fromLoad ? 'Analysis complete. Musical choreography ready.' : 'Choreography updated. Press Play to start.')
             : 'No playable percussive events found. Choose another track.';
+        const timing = analysis.trackAnalysis.eventTiming;
+        if (timing) this.progressEl.textContent += ` Experimental attack timing: ${timing.observations.filter(o => o.status === 'refined').length}/${timing.observations.length} events localized.`;
         this.trackInfoEl.textContent =
             `BPM ${Math.round(State.bpm)} - Duration ${formatTime(State.duration)} - ${chart.length} notes - ` +
             `${chart.filter(n => n.cutDirection && n.cutDirection !== 'any').length} arrows - ${chart.filter(n => n.pairId).length / 2} pairs`;
@@ -327,6 +329,7 @@ export class XrAppController {
                 sections: analysis.trackAnalysis.sections.map(section => [section.start, section.label]),
                 cues: analysis.trackAnalysis.cues, points: analysis.performancePlan?.points,
                 alignment: analysis.performancePlan?.cueAlignmentReport,
+                ...(timing ? { eventTiming: timing } : {}),
                 phrases: [...new Set(chart.map(n => n.phrase))].map(phrase => {
                     const notes = chart.filter(n => n.phrase === phrase);
                     return { phrase, start: notes[0]?.time, end: notes.at(-1)?.time, texture: notes[0]?.texture,

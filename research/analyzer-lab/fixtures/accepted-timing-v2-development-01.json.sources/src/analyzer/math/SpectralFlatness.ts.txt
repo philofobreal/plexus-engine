@@ -1,0 +1,19 @@
+/** Magnitude flatness; scale normalization preserves gain invariance above underflow. */
+export function magnitudeFlatness(values: ArrayLike<number>, first = 0, end = values.length): number {
+    if (!Number.isSafeInteger(first) || !Number.isSafeInteger(end) || first < 0 || end < first || end > values.length) {
+        throw new Error('Invalid flatness interval');
+    }
+    let maximum = 0;
+    for (let i = first; i < end; i++) {
+        if (!Number.isFinite(values[i]) || values[i] < 0) throw new Error('Flatness requires finite nonnegative magnitudes');
+        maximum = Math.max(maximum, values[i]);
+    }
+    if (maximum === 0 || first === end) return 0;
+    let arithmetic = 0, logarithmic = 0;
+    for (let i = first; i < end; i++) {
+        const stabilized = Math.max(values[i] / maximum, 1e-12);
+        arithmetic += stabilized;
+        logarithmic += Math.log(stabilized);
+    }
+    return Math.min(1, Math.max(0, Math.exp(logarithmic / (end - first)) / (arithmetic / (end - first))));
+}

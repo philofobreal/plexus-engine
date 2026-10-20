@@ -2,6 +2,7 @@ import type { AudioFrame, TrackAnalysis } from '../types';
 import { DEFAULT_ANALYSIS_HOP_SIZE } from './constants';
 import { normalizeFeatureClock } from '../types/featureClock';
 import { normalizeAcousticOnsets } from '../types/acousticOnsets';
+import { normalizeEventTiming } from '../types/eventTiming';
 import { normalizePredictiveOnsets } from '../types/predictiveOnsets';
 import { normalizeAdaptiveOnsets } from '../types/adaptiveOnsets';
 import { normalizeResidualOnsets } from '../types/residualOnsets';
@@ -50,12 +51,13 @@ export function createEmptyTrackAnalysis(): TrackAnalysis {
     return JSON.parse(JSON.stringify(EMPTY_TRACK_ANALYSIS));
 }
 
-export function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis, fallbackBpm = 0): TrackAnalysis {
+export function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis, fallbackBpm = 0, publishedEvents?: readonly { time: number }[]): TrackAnalysis {
     const featureClock = normalizeFeatureClock(trackAnalysis);
     return {
         ...EMPTY_TRACK_ANALYSIS,
         ...trackAnalysis,
         featureClock,
+        ...(trackAnalysis.eventTiming !== undefined ? { eventTiming: normalizeEventTiming(trackAnalysis.eventTiming, trackAnalysis.duration, featureClock, publishedEvents) } : {}),
         ...(trackAnalysis.acousticOnsets !== undefined ? { acousticOnsets: normalizeAcousticOnsets(trackAnalysis.acousticOnsets, trackAnalysis.duration, featureClock) } : {}),
         ...(trackAnalysis.predictiveOnsets !== undefined ? { predictiveOnsets: normalizePredictiveOnsets(trackAnalysis.predictiveOnsets, trackAnalysis.duration, featureClock) } : {}),
         ...(trackAnalysis.adaptiveOnsets !== undefined ? { adaptiveOnsets: trackAnalysis.adaptiveOnsets?.algorithm === 'confirmed-difference-v5'

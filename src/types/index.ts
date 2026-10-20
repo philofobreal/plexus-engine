@@ -285,6 +285,8 @@ export interface PerformanceAutomationPoint {
         after: number;
         plannedBefore: number;
         plannedAfter: number;
+        /** Optional selection explanation for the experimental role-aware gate. */
+        role?: string;
     };
     // Automation-only behaviour flag: mirror the resolved preset's horizontal wormhole turn.
     // Absent for legacy plans and targets whose authored direction is part of their identity.
@@ -1017,6 +1019,8 @@ export interface TensionTrends {
 }
 
 export interface TrackAnalysis {
+    /** Explicit experimental timing identity/provenance; no new accepted events. */
+    eventTiming?: import('./eventTiming').EventTimingAnalysis;
     duration: number;
     /** Optional for legacy publications; current analyzer publishes exact PCM clock/support. */
     featureClock?: import('./featureClock').FeatureClock;
@@ -1134,6 +1138,7 @@ export interface AnalysisResult {
 }
 
 export interface AnalysisRequest {
+    eventTiming?: 'local-band-v1' | 'local-band-v2';
     requestId: number;
     algorithmVersion: number;
     samples: ArrayBuffer;

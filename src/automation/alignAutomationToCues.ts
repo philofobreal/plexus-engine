@@ -1,5 +1,6 @@
 import type { PerformanceAutomationPlan, PerformanceAutomationPoint, TrackAnalysis } from '../types';
 import { cueContext, musicalCueAnchors } from '../semantics/cueEvidence.ts';
+import { preferredAutomationAnchors } from '../semantics/automationCueRoles.ts';
 
 /** Final automatic placement gate. Choreography may propose evenly divided/bar-snapped times;
  * publication must resolve each proposal to actual musical evidence or omit it. Initial state
@@ -7,7 +8,8 @@ import { cueContext, musicalCueAnchors } from '../semantics/cueEvidence.ts';
  */
 export function alignAutomationToCues(plan: PerformanceAutomationPlan, analysis: TrackAnalysis): PerformanceAutomationPlan {
     if (plan.source !== 'auto' || !plan.points.length) return plan;
-    const anchors = musicalCueAnchors(analysis);
+    const roleAware = analysis.eventTiming?.policy === 'experimental-opt-in';
+    const anchors = musicalCueAnchors(analysis, roleAware);
     const proposals = plan.points.slice().sort((a, b) => a.time - b.time);
     const result: PerformanceAutomationPoint[] = [];
     for (let i = 0; i < proposals.length; i++) {
@@ -23,7 +25,9 @@ export function alignAutomationToCues(plan: PerformanceAutomationPlan, analysis:
         // search on BOTH sides replaces unconditional rounding to an unrelated bar line.
         const lower = Math.max((proposals[i - 1].time + point.time) / 2, point.time - 4);
         const upper = Math.min(proposals[i + 1] ? (point.time + proposals[i + 1].time) / 2 : analysis.duration, point.time + 4);
-        const candidates = anchors.filter(a => a.time >= lower && a.time <= upper && a.time < analysis.duration - 0.12);
+        const bounded = anchors.filter(a => a.time >= lower && a.time <= upper && a.time < analysis.duration - 0.12);
+        const selection = roleAware ? preferredAutomationAnchors(point, bounded) : { candidates: bounded, role: undefined };
+        const candidates = selection.candidates;
         candidates.sort((a, b) => (Math.abs(a.time - point.time) - a.confidence * 0.15) - (Math.abs(b.time - point.time) - b.confidence * 0.15));
         const anchor = candidates[0];
         if (!anchor) continue;
@@ -31,6 +35,7 @@ export function alignAutomationToCues(plan: PerformanceAutomationPlan, analysis:
         result.push({ ...point, time: anchor.time, cueAnchor: { plannedTime: point.time, sourceTime: anchor.time,
             kind: anchor.kind, confidence: anchor.confidence, before: context.before, after: context.after,
             plannedBefore: prior.before, plannedAfter: prior.after } });
+        if (selection.role) result[result.length - 1].cueAnchor!.role = selection.role;
     }
     result.sort((a, b) => a.time - b.time);
     const protectedPoints = result.filter(p => p.locked || p.reason === 'manual');

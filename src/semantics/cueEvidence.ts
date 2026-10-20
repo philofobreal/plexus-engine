@@ -1,4 +1,4 @@
-import type { TrackAnalysis } from '../types';
+import type { TrackAnalysis, TrackSectionLabel } from '../types';
 import { featureFrameStepSeconds } from '../types/featureClock.ts';
 
 // Musical evidence for automatic automation placement (ADR-005 publication gate).
@@ -6,7 +6,11 @@ import { featureFrameStepSeconds } from '../types/featureClock.ts';
 // candidates and feature frames. It runs no DSP and never invents a cue; the automation layer
 // consumes these anchors and only decides where a proposal is published.
 
-export interface CueEvidenceAnchor { time: number; kind: 'cue' | 'novelty' | 'boundary'; confidence: number }
+export type CueAnchorRole = 'attack' | 'release' | 'structure' | 'melody' | 'vocal' | 'fx' | `section:${TrackSectionLabel}`;
+export interface CueEvidenceAnchor {
+    time: number; kind: 'cue' | 'novelty' | 'boundary'; confidence: number; roles?: CueAnchorRole[];
+    roleEvidence?: Partial<Record<CueAnchorRole, { kind: 'cue' | 'novelty' | 'boundary'; confidence: number }>>;
+}
 export interface CueContext { before: number; after: number; contrast: number; peak: number }
 
 const finite = (n: number) => Number.isFinite(n);
@@ -32,7 +36,7 @@ export function cueContext(analysis: TrackAnalysis, time: number): CueContext {
         peak: Math.max(...center.map((v, i) => v - Math.max(before[i], after[i]))) };
 }
 
-export function musicalCueAnchors(analysis: TrackAnalysis): CueEvidenceAnchor[] {
+export function musicalCueAnchors(analysis: TrackAnalysis, preserveRoles = false): CueEvidenceAnchor[] {
     const anchors: CueEvidenceAnchor[] = [];
     const hasFeatures = (analysis.features?.length ?? 0) > 0;
     // significantMoments is normally a subset of cues; skip entries whose gate inputs are identical.
@@ -40,26 +44,46 @@ export function musicalCueAnchors(analysis: TrackAnalysis): CueEvidenceAnchor[] 
     for (const cue of [...(analysis.cues ?? []), ...(analysis.significantMoments ?? [])]) {
         // A percussive-onset cue has its transient evidence in the analyzer, even on a steady groove.
         const onset = cue.kind === 'impact' && !!cue.reasons?.includes('percussive-onset');
-        const key = `${cue.time}|${cue.confidence}|${cue.intensity}|${onset}`;
+        const key = `${cue.time}|${cue.confidence}|${cue.intensity}|${onset}${preserveRoles ? `|${cue.kind}` : ''}`;
         if (seen.has(key)) continue;
         seen.add(key);
         if (!finite(cue.time) || cue.time < 0 || cue.time >= analysis.duration || !finite(cue.confidence) ||
             !finite(cue.intensity) || cue.confidence < 0.35 || cue.intensity < 0.12) continue;
         const context = cueContext(analysis, cue.time);
         if (hasFeatures && !onset && context.contrast < 0.035 && context.peak < 0.02) continue;
-        anchors.push({ time: cue.time, kind: 'cue', confidence: cue.confidence });
+        anchors.push({ time: cue.time, kind: 'cue', confidence: cue.confidence,
+            ...(preserveRoles ? { roles: [cue.kind === 'impact' ? 'attack' : cue.kind === 'break' ? 'release'
+                : cue.kind === 'pattern' ? 'structure' : cue.kind] as CueAnchorRole[] } : {}) });
     }
     for (const peak of analysis.noveltyPeaks ?? []) {
         const context = cueContext(analysis, peak.time);
         if (hasFeatures && context.contrast < 0.035 && context.peak < 0.02) continue;
         if (finite(peak.time) && peak.time > 0 && peak.time < analysis.duration && peak.value >= 0.3)
-            anchors.push({ time: peak.time, kind: 'novelty', confidence: Math.min(1, peak.value) });
+            anchors.push({ time: peak.time, kind: 'novelty', confidence: Math.min(1, peak.value),
+                ...(preserveRoles ? { roles: ['structure'] as CueAnchorRole[] } : {}) });
     }
     for (const boundary of analysis.boundaryCandidates ?? []) {
         if (!finite(boundary.time) || boundary.time <= 0 || boundary.time >= analysis.duration || boundary.confidence < 0.4) continue;
         if (hasFeatures && cueContext(analysis, boundary.time).contrast < 0.05) continue;
-        anchors.push({ time: boundary.time, kind: 'boundary', confidence: boundary.confidence });
+        const section = analysis.sections?.find(s => Math.abs(s.start - boundary.time) <= featureFrameStepSeconds(analysis));
+        anchors.push({ time: boundary.time, kind: 'boundary', confidence: boundary.confidence,
+            ...(preserveRoles ? { roles: ['structure', ...(section ? [`section:${section.label}` as CueAnchorRole] : [])] as CueAnchorRole[] } : {}) });
     }
     const sorted = anchors.sort((a, b) => a.time - b.time || b.confidence - a.confidence);
-    return sorted.filter((a, i) => i === 0 || a.time !== sorted[i - 1].time);
+    if (!preserveRoles) return sorted.filter((a, i) => i === 0 || a.time !== sorted[i - 1].time);
+    const grouped: CueEvidenceAnchor[] = [];
+    for (const anchor of sorted) {
+        const prior = grouped.at(-1);
+        if (prior?.time === anchor.time) {
+            prior.roles = [...new Set([...(prior.roles ?? []), ...(anchor.roles ?? [])])].sort();
+            for (const role of anchor.roles ?? []) {
+                const old = prior.roleEvidence![role];
+                if (!old || anchor.confidence > old.confidence
+                    || (anchor.confidence === old.confidence && anchor.kind < old.kind))
+                    prior.roleEvidence![role] = { kind: anchor.kind, confidence: anchor.confidence };
+            }
+        } else grouped.push({ ...anchor, roles: [...(anchor.roles ?? [])],
+            roleEvidence: Object.fromEntries((anchor.roles ?? []).map(role => [role, { kind: anchor.kind, confidence: anchor.confidence }])) });
+    }
+    return grouped;
 }

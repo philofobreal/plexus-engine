@@ -12,6 +12,8 @@ export interface AnalyzerOptions {
     adaptiveOnsets?: boolean;
     /** Explicit v4 selection; absent preserves the established v3 stream. */
     adaptiveOnsetVersion?: 4 | 5;
+    /** Experimental accepted-frame localization; absent preserves algorithm-7 event times. */
+    eventTiming?: 'local-band-v1' | 'local-band-v2';
 }
 
 export interface AnalyzeAudioInput {

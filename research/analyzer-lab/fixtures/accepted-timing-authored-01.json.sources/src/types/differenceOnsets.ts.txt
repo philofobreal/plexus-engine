@@ -1,0 +1,70 @@
+/** Fixed FIR evidence, never a confidence, instrument label or accepted target. */
+export interface DifferenceCandidate {
+    time: number;
+    sampleIndex: number;
+    proposalSample: number;
+    strength: number;
+    innovationRatio: number;
+    supportStartSample: number;
+    supportEndSample: number;
+    endpointAmbiguous: boolean;
+    evidenceSource: 'fourth-difference' | 'residual-v4-confirmed';
+}
+
+export interface DifferenceOnsetAnalysis {
+    algorithm: 'confirmed-difference-v5';
+    sampleRate: number;
+    sampleCount: number;
+    historySamples: number;
+    lookaheadSamples: number;
+    refinementSamples: number;
+    hopSize: number;
+    contrastSamples: number;
+    minimumSeparationSamples: number;
+    filterCoefficients: number[];
+    filterMemorySamples: 4;
+    timestamp: 'refined-sample';
+    localization: 'maximum-positive-innovation-power-step';
+    selection: 'candidate-only';
+    candidates: DifferenceCandidate[];
+}
+
+export function normalizeDifferenceOnsets(value: DifferenceOnsetAnalysis | undefined, duration: number,
+    clock?: {sampleRate: number; sampleCount: number}): DifferenceOnsetAnalysis | undefined {
+    if (!value || value.algorithm !== 'confirmed-difference-v5' || !Number.isSafeInteger(value.sampleRate)
+        || value.sampleRate < 1000 || value.sampleRate > 384000 || !Number.isSafeInteger(value.sampleCount)
+        || value.sampleCount < 1 || !Number.isFinite(duration) || Math.abs(value.sampleCount / value.sampleRate - duration) > 1e-9
+        || clock && (clock.sampleRate !== value.sampleRate || clock.sampleCount !== value.sampleCount)) return undefined;
+    const h = Math.max(1, Math.round(.002 * value.sampleRate)), refine = Math.max(1, Math.round(.004 * value.sampleRate));
+    if (value.historySamples !== Math.max(1, Math.round(.030 * value.sampleRate)) || value.hopSize !== h
+        || value.contrastSamples !== h || value.refinementSamples !== refine || value.lookaheadSamples !== refine + 5 + h
+        || value.minimumSeparationSamples !== Math.max(1, Math.round(.003 * value.sampleRate))
+        || value.filterMemorySamples !== 4 || !Array.isArray(value.filterCoefficients)
+        || value.filterCoefficients.length !== 5 || value.filterCoefficients.some((c, i) => c !== [1, -4, 6, -4, 1][i] / 16)
+        || value.timestamp !== 'refined-sample' || value.localization !== 'maximum-positive-innovation-power-step'
+        || value.selection !== 'candidate-only' || !Array.isArray(value.candidates)) return undefined;
+    const candidates: DifferenceCandidate[] = [];
+    for (const c of value.candidates) {
+        if (!c || !Number.isSafeInteger(c.sampleIndex) || c.sampleIndex < 0 || c.sampleIndex >= value.sampleCount
+            || !Number.isSafeInteger(c.proposalSample) || c.proposalSample < 0 || c.proposalSample % h !== 0
+            || c.sampleIndex < c.proposalSample || c.sampleIndex >= Math.min(value.sampleCount, c.proposalSample + refine)
+            || !Number.isFinite(c.time) || Math.abs(c.time - c.sampleIndex / value.sampleRate) > 1e-12
+            || !Number.isFinite(c.strength) || c.strength <= 0 || !Number.isFinite(c.innovationRatio) || c.innovationRatio <= 0
+            || !['fourth-difference', 'residual-v4-confirmed'].includes(c.evidenceSource)
+            || c.supportStartSample !== Math.max(0, c.proposalSample - value.historySamples - 4)) return undefined;
+        const end = Math.min(value.sampleCount, c.proposalSample + refine);
+        const supportEnd = c.evidenceSource === 'fourth-difference'
+            ? Math.max(end, Math.min(value.sampleCount, c.sampleIndex + 5 + h)) : end;
+        if (c.supportEndSample !== supportEnd || c.endpointAmbiguous !== (c.proposalSample < value.historySamples + 4
+            || value.sampleCount - c.proposalSample < value.lookaheadSamples)
+            || candidates.length && c.sampleIndex - candidates[candidates.length - 1].sampleIndex < value.minimumSeparationSamples) return undefined;
+        candidates.push({time: c.time, sampleIndex: c.sampleIndex, proposalSample: c.proposalSample,
+            strength: c.strength, innovationRatio: c.innovationRatio, supportStartSample: c.supportStartSample,
+            supportEndSample: c.supportEndSample, endpointAmbiguous: c.endpointAmbiguous, evidenceSource: c.evidenceSource});
+    }
+    return {algorithm: value.algorithm, sampleRate: value.sampleRate, sampleCount: value.sampleCount,
+        historySamples: value.historySamples, lookaheadSamples: value.lookaheadSamples, refinementSamples: value.refinementSamples,
+        hopSize: value.hopSize, contrastSamples: value.contrastSamples, minimumSeparationSamples: value.minimumSeparationSamples,
+        filterCoefficients: [...value.filterCoefficients], filterMemorySamples: 4, timestamp: value.timestamp,
+        localization: value.localization, selection: value.selection, candidates};
+}

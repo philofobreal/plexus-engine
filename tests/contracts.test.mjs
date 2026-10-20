@@ -188,7 +188,7 @@ test('visual track analysis is precomputed and exposed through shared state', ()
   assert.match(featureExtractor, /flatnessT\[i\]/);
   assert.match(featureExtractor, /centroidT\[i\]/);
   assert.match(audio, /ANALYSIS_ALGORITHM_VERSION/);
-  assert.match(audio, /State\.trackAnalysis = normalizeTrackAnalysis\(e\.data\.trackAnalysis, State\.bpm\)/);
+  assert.match(audio, /State\.trackAnalysis = normalizeTrackAnalysis\(e\.data\.trackAnalysis, State\.bpm, e\.data\.events\)/);
   assert.match(store, /currentFeatures/);
   assert.match(renderer, /State\.trackAnalysis\.cues/);
   assert.match(renderer, /State\.trackAnalysis\.features/);
@@ -328,7 +328,7 @@ test('ADR-004 analysis plan is bound to the injected resolver consumer', () => {
   const main = read('src/main.ts');
   assert.match(types, /externalVisualScorePlan\?: VisualScorePlan/);
   assert.match(audio, /this\.onVisualScorePlan\(State\.trackAnalysis\.externalVisualScorePlan \?\? null\)/);
-  assert.match(main, /new AudioEngine\(plan => \{\s*semanticResolver\.setPlan\(plan\);\s*\}\)/);
+  assert.match(main, /new AudioEngine\(plan => \{\s*semanticResolver\.setPlan\(plan\);\s*\},\s*\{ eventTiming \}\)/);
   assert.doesNotMatch(main, /new AudioEngine\(plan => \{[\s\S]*setBaseTuning/);
   assert.match(main, /new SemanticRendererBridge\(\)/);
 });

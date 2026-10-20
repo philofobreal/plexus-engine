@@ -3,11 +3,11 @@ import type { AnalysisRequest } from '../types';
 
 self.onmessage = function(e: MessageEvent<AnalysisRequest>) {
     try {
-        const { requestId, algorithmVersion, sampleRate, samples, phraseSize } = e.data;
+        const { requestId, algorithmVersion, sampleRate, samples, phraseSize, eventTiming } = e.data;
         const result = analyzeAudio({
             samples: new Float32Array(samples),
             sampleRate,
-            options: { requestId, algorithmVersion, phraseSize },
+            options: { requestId, algorithmVersion, phraseSize, eventTiming },
             onProgress: (progress, stage) => {
                 self.postMessage({ type: 'analysis_progress', requestId, progress, stage });
             }

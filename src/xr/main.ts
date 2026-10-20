@@ -17,7 +17,9 @@ if (!container) throw new Error('#xr-app container missing from xr/index.html');
 
 // Opt-in debug counters, parsed once here and passed down (never re-read by runtime modules).
 const diagnostics = window.location.search.includes('xrDiagnostics=1');
-const engine = new AudioEngine(undefined, { loopPlayback: false, heroMetronome: false });
+const timingMode = new URLSearchParams(window.location.search).get('eventTiming');
+const eventTiming = timingMode === 'local-band-v1' || timingMode === 'local-band-v2' ? timingMode : undefined;
+const engine = new AudioEngine(undefined, { loopPlayback: false, heroMetronome: false, eventTiming });
 const runtime = new XrRuntime(container, { diagnostics });
 // Player settings persist per viewer; storage can be unavailable (private mode, policy).
 let storage: Storage | null = null;

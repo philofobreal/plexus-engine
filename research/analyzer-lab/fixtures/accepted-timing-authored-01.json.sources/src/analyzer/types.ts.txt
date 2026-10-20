@@ -1,0 +1,26 @@
+import type { AnalysisResult, AudioFrame, TempoCandidate, TrackAnalysis } from '../types';
+
+export interface AnalyzerOptions {
+    algorithmVersion?: number;
+    phraseSize?: number;
+    requestId?: number;
+    hopSize?: number;
+    /** Opt-in acoustic candidates, independent from accepted events/grid. */
+    acousticOnsets?: import('../types/acousticOnsets').AcousticOnsetOptions;
+    predictiveOnsets?: boolean;
+    /** Optional v3 candidate evidence; defaults to the unchanged legacy output. */
+    adaptiveOnsets?: boolean;
+    /** Explicit v4 selection; absent preserves the established v3 stream. */
+    adaptiveOnsetVersion?: 4 | 5;
+    /** Experimental accepted-frame localization; absent preserves algorithm-7 event times. */
+    eventTiming?: 'local-band-v1';
+}
+
+export interface AnalyzeAudioInput {
+    samples: Float32Array;
+    sampleRate: number;
+    options?: AnalyzerOptions;
+    onProgress?: (progress: number, stage: string) => void;
+}
+
+export type { AnalysisResult, AudioFrame, TempoCandidate, TrackAnalysis };

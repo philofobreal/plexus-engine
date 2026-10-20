@@ -10,6 +10,11 @@
 /src/semantics/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /src/automation/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /package.json -text
+# The full harness also records the complete production source/build identity.
+/src/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/tsconfig.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/vite.config.ts -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/documents/research/onset-placement*.md -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 # Existing explicit AN-04D rules are retained below.
 /src/analyzer/HarmonicForecast.ts -text
 /src/types/harmonicForecast.ts -text
