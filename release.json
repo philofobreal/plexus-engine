@@ -1,12 +1,14 @@
 {
   "schemaVersion": 1,
-  "releaseId": "t03-500m-20261023T210201329Z",
-  "task": "T03",
-  "builtAt": "2026-10-23T21:02:01.330Z",
+  "releaseId": "t02a-role-resolution-20261023T211826731Z",
+  "task": "T02a",
+  "builtAt": "2026-10-23T21:18:26.732Z",
   "baseCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
   "workingTreeChanges": true,
-  "deployedSourcePatchSha256": "30172eb6661ee0499bcef710700458fae63ceb7baa9360e8d650d2ce65d0a805",
-  "previousPagesCommit": "83dcb7a418fb48c1947513cbec53d9246960e6a7",
+  "deployedSourcePatchSha256": "d64fdb2bca648ca75df779124eb23e6f4d26daf5ed3b2a8974ececc9d828389b",
+  "sourceInputsSha256": "60137104e8c3264a4bf7245ecb6304963bf4a0a411c6610cfa9b9e8f24a918a4",
+  "sourceInputCount": 316,
+  "previousPagesCommit": "665a608ba0f75958c9d69647fff53bc7e3edbfaa",
   "entries": [
     {
       "path": "index.html",
@@ -33,9 +35,9 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "c3ac5b7418fc9d36c903908ed53845eddb38bc4b7ca80d1a6c01c69ec8f511cd",
+      "sha256": "7b2e525cd40e22fba37651fa98d0fb25d9ec940dd78dbb447c330e4ae636992d",
       "assets": [
-        "/plexus-engine/assets/xr-BZ0g3g4G.js",
+        "/plexus-engine/assets/xr-CrSn11Sz.js",
         "/plexus-engine/assets/CosmicWormholeIdentity-BCFBcTaT.js",
         "/plexus-engine/assets/resolveMetaTuning-Z4fxCcSJ.js",
         "/plexus-engine/assets/xr-BfNetZ-7.css"
@@ -99,14 +101,14 @@
       "bytes": 156575
     },
     {
-      "path": "assets/xr-BZ0g3g4G.js",
-      "sha256": "ab663a98bb63942d8a3f92cd95bb0c62ca4bce70824314cac93427c3b9651ad7",
-      "bytes": 835548
-    },
-    {
       "path": "assets/xr-BfNetZ-7.css",
       "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423",
       "bytes": 11106
+    },
+    {
+      "path": "assets/xr-CrSn11Sz.js",
+      "sha256": "1e1c270e0860c2d2a1a1a81ad7015951c39ebc44ff7b967303250be962cc0737",
+      "bytes": 837587
     }
   ]
 }
