@@ -1,69 +1,59 @@
 {
   "schemaVersion": 1,
-  "releaseId": "t02b-halo-lifecycle-20261023T214715168Z",
-  "task": "T02b",
-  "builtAt": "2026-10-23T21:47:15.169Z",
+  "releaseId": "t04a-preset-spiral-20261023T223102292Z",
+  "task": "T04a + T02c",
+  "builtAt": "2026-10-23T22:31:02.292Z",
   "baseCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
   "workingTreeChanges": true,
-  "deployedSourcePatchSha256": "909c2cec50e7023d06541addef0bb8884b980d99582dc461b0e8f5b315dba935",
-  "sourceInputsSha256": "dd028ec2f0ab1d9f6c20629a5d57c76b3f04b1e2298da17816c9f9a5706dad2b",
+  "deployedSourcePatchSha256": "bf126c959f96d1307758669d2d2804379e6d7ee4fafe9cd12f22fb0ba16efaa6",
+  "sourceInputsSha256": "61da8f3557157f3f265a0ea84d8fba3fed7709e2c1e4e3d47777dd02d13ebb8d",
   "sourceInputCount": 318,
-  "previousPagesCommit": "ade5aedf53ba3b4f17413c0860e89e224983169d",
+  "previousPagesCommit": "75bccd8b87f937d9bfa8630d6d8f98848901cd51",
   "entries": [
     {
       "path": "index.html",
-      "sha256": "014846e1bb06d9512ba33566e35bfdeffab705ff0218f26cb0cf53928839d97f",
+      "sha256": "2c7c0b7e7953f7937d93784c284396bfe041444b011e30a4e1b6af9576612303",
       "assets": [
-        "/plexus-engine/assets/main-DiOi_zs5.js",
-        "/plexus-engine/assets/CosmicWormholeIdentity-BCFBcTaT.js",
-        "/plexus-engine/assets/PreviewQualityControl-LtcLGfV6.js",
-        "/plexus-engine/assets/PreviewQualityControl-QAaWZINt.css",
-        "/plexus-engine/assets/main-C7BsYBKL.css"
+        "assets/main-BnAsoeuA.js",
+        "assets/CosmicWormholeIdentity-BSGK4_65.js",
+        "assets/PreviewQualityControl-Blwb1HJ9.js",
+        "assets/PreviewQualityControl-QAaWZINt.css",
+        "assets/main-C7BsYBKL.css"
       ]
     },
     {
       "path": "mvp/index.html",
-      "sha256": "8eee6222097bc41325fcb5940eeac918b1442f49cffa86f4c4088a5a89cd9ac3",
+      "sha256": "47ce88ceb2f72bda93339f2e183af146705d6fbc5cd3e18747aea58be766c88f",
       "assets": [
-        "/plexus-engine/assets/mvp-Brerbsdw.js",
-        "/plexus-engine/assets/CosmicWormholeIdentity-BCFBcTaT.js",
-        "/plexus-engine/assets/PreviewQualityControl-LtcLGfV6.js",
-        "/plexus-engine/assets/resolveMetaTuning-Z4fxCcSJ.js",
-        "/plexus-engine/assets/PreviewQualityControl-QAaWZINt.css",
-        "/plexus-engine/assets/mvp-D0xy9ln6.css"
+        "assets/mvp-DP0XD8Nw.js",
+        "assets/CosmicWormholeIdentity-BSGK4_65.js",
+        "assets/PreviewQualityControl-Blwb1HJ9.js",
+        "assets/resolveMetaTuning-DffS48AY.js",
+        "assets/PreviewQualityControl-QAaWZINt.css",
+        "assets/mvp-D0xy9ln6.css"
       ]
     },
     {
       "path": "xr/index.html",
-      "sha256": "41c0d461ce1647a6977f6a295bfe7b7bd30c9b8b3a7c83202bf3b51b10afc4c1",
+      "sha256": "d5d100257bb33abde01418e4fb649a12898c988d9f8bffe24bc890ba8cbda750",
       "assets": [
-        "/plexus-engine/assets/xr-B6oBiWla.js",
-        "/plexus-engine/assets/CosmicWormholeIdentity-BCFBcTaT.js",
-        "/plexus-engine/assets/resolveMetaTuning-Z4fxCcSJ.js",
-        "/plexus-engine/assets/xr-BfNetZ-7.css"
+        "assets/xr-BC-l7LKV.js",
+        "assets/CosmicWormholeIdentity-BSGK4_65.js",
+        "assets/resolveMetaTuning-DffS48AY.js",
+        "assets/xr-BfNetZ-7.css"
       ]
     }
   ],
   "assets": [
     {
-      "path": "assets/CosmicWormholeIdentity-BCFBcTaT.js",
-      "sha256": "67af03b2415d8b85db8c2cbefee85c39d4258d668432d64c3650a495bf9d51ce",
-      "bytes": 195615
-    },
-    {
-      "path": "assets/PreviewQualityControl-LtcLGfV6.js",
-      "sha256": "34b9488db4c866e2bfce370c6a201de804f971506c35bbab4deb701e264775e3",
-      "bytes": 1261531
-    },
-    {
-      "path": "assets/PreviewQualityControl-QAaWZINt.css",
-      "sha256": "a1c70e42cf6dac5e6ceffa20f327845c2f22632aa650bb1968a11bdcff0ce2f2",
-      "bytes": 461
-    },
-    {
       "path": "assets/analyzer.worker-BxhitPzQ.js",
       "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52",
       "bytes": 78911
+    },
+    {
+      "path": "assets/CosmicWormholeIdentity-BSGK4_65.js",
+      "sha256": "35a5d89e8c6d0f3277b0b909248ec29bf376ba9cb6abe9f022d68e40b20a7793",
+      "bytes": 197221
     },
     {
       "path": "assets/export.worker-Av-E_fEl.js",
@@ -71,19 +61,14 @@
       "bytes": 7745
     },
     {
+      "path": "assets/main-BnAsoeuA.js",
+      "sha256": "8bacbe6042ea3a60526487f8038b577753da16692f298f329a9b132d33f9b532",
+      "bytes": 100696
+    },
+    {
       "path": "assets/main-C7BsYBKL.css",
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c",
       "bytes": 18708
-    },
-    {
-      "path": "assets/main-DiOi_zs5.js",
-      "sha256": "97d8d78f969dce8f58171dfa4d4a84e3eaab26f264d2cb474b99bd983bacc4f9",
-      "bytes": 100483
-    },
-    {
-      "path": "assets/mvp-Brerbsdw.js",
-      "sha256": "97dae180296171fdd563472745502353e5a282882ebbfceae821e9ff2ba20d66",
-      "bytes": 109911
     },
     {
       "path": "assets/mvp-D0xy9ln6.css",
@@ -91,19 +76,34 @@
       "bytes": 25490
     },
     {
-      "path": "assets/resolveMetaTuning-Z4fxCcSJ.js",
-      "sha256": "65afd6b268f7bddc19d33ac2d1a72053e970e88237ae9c350e83eaa9e0701550",
-      "bytes": 2645
+      "path": "assets/mvp-DP0XD8Nw.js",
+      "sha256": "deabee1962dff69e045994f29db4f8e41dde9f31129d0d4f31ee808ac071e80a",
+      "bytes": 109911
     },
     {
-      "path": "assets/wormholeRender.worker-BxIw1t-9.js",
-      "sha256": "b73a709c333e7c9b35df619ab42543a806c5d915fc0c5707ca2efce77de95c14",
-      "bytes": 156575
+      "path": "assets/PreviewQualityControl-Blwb1HJ9.js",
+      "sha256": "8463630ea58392583e55006c981f6f3fc3fa2508f445747ac4ff9168d7081253",
+      "bytes": 1261672
     },
     {
-      "path": "assets/xr-B6oBiWla.js",
-      "sha256": "509d749f6f140adf2332031751a8964b0fd048cbc646db5f5821cea0b8c62de6",
-      "bytes": 845155
+      "path": "assets/PreviewQualityControl-QAaWZINt.css",
+      "sha256": "a1c70e42cf6dac5e6ceffa20f327845c2f22632aa650bb1968a11bdcff0ce2f2",
+      "bytes": 461
+    },
+    {
+      "path": "assets/resolveMetaTuning-DffS48AY.js",
+      "sha256": "b2ae446c94f67794ee48d2b0140d24079b6f6ecc800ce0bf321d72e7f5cc56bf",
+      "bytes": 2727
+    },
+    {
+      "path": "assets/wormholeRender.worker-C480tjbR.js",
+      "sha256": "b9f1e37b6ef21263388cb49c5b795f088cc6c7d33ea18096a77575cb6bb7aebe",
+      "bytes": 158427
+    },
+    {
+      "path": "assets/xr-BC-l7LKV.js",
+      "sha256": "8cf17dbcc3bcc7ba62996d1cfd56ffc77063d76cc9c7d9cebbdedc0e44aa0d48",
+      "bytes": 847325
     },
     {
       "path": "assets/xr-BfNetZ-7.css",
