@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "releaseId": "t02a-role-resolution-20261023T211826731Z",
-  "task": "T02a",
-  "builtAt": "2026-10-23T21:18:26.732Z",
+  "releaseId": "t02b-halo-lifecycle-20261023T214715168Z",
+  "task": "T02b",
+  "builtAt": "2026-10-23T21:47:15.169Z",
   "baseCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
   "workingTreeChanges": true,
-  "deployedSourcePatchSha256": "d64fdb2bca648ca75df779124eb23e6f4d26daf5ed3b2a8974ececc9d828389b",
-  "sourceInputsSha256": "60137104e8c3264a4bf7245ecb6304963bf4a0a411c6610cfa9b9e8f24a918a4",
-  "sourceInputCount": 316,
-  "previousPagesCommit": "665a608ba0f75958c9d69647fff53bc7e3edbfaa",
+  "deployedSourcePatchSha256": "909c2cec50e7023d06541addef0bb8884b980d99582dc461b0e8f5b315dba935",
+  "sourceInputsSha256": "dd028ec2f0ab1d9f6c20629a5d57c76b3f04b1e2298da17816c9f9a5706dad2b",
+  "sourceInputCount": 318,
+  "previousPagesCommit": "ade5aedf53ba3b4f17413c0860e89e224983169d",
   "entries": [
     {
       "path": "index.html",
@@ -35,9 +35,9 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "7b2e525cd40e22fba37651fa98d0fb25d9ec940dd78dbb447c330e4ae636992d",
+      "sha256": "41c0d461ce1647a6977f6a295bfe7b7bd30c9b8b3a7c83202bf3b51b10afc4c1",
       "assets": [
-        "/plexus-engine/assets/xr-CrSn11Sz.js",
+        "/plexus-engine/assets/xr-B6oBiWla.js",
         "/plexus-engine/assets/CosmicWormholeIdentity-BCFBcTaT.js",
         "/plexus-engine/assets/resolveMetaTuning-Z4fxCcSJ.js",
         "/plexus-engine/assets/xr-BfNetZ-7.css"
@@ -101,14 +101,14 @@
       "bytes": 156575
     },
     {
+      "path": "assets/xr-B6oBiWla.js",
+      "sha256": "509d749f6f140adf2332031751a8964b0fd048cbc646db5f5821cea0b8c62de6",
+      "bytes": 845155
+    },
+    {
       "path": "assets/xr-BfNetZ-7.css",
       "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423",
       "bytes": 11106
-    },
-    {
-      "path": "assets/xr-CrSn11Sz.js",
-      "sha256": "1e1c270e0860c2d2a1a1a81ad7015951c39ebc44ff7b967303250be962cc0737",
-      "bytes": 837587
     }
   ]
 }
