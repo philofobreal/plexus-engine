@@ -1,4 +1,4 @@
-import type { AudioFrame, TrackAnalysis } from '../types';
+import type { AudioFrame, BeatEvent, TrackAnalysis } from '../types';
 import { DEFAULT_ANALYSIS_HOP_SIZE } from './constants';
 import { normalizeFeatureClock } from '../types/featureClock';
 import { normalizeAcousticOnsets } from '../types/acousticOnsets';
@@ -7,6 +7,7 @@ import { normalizePredictiveOnsets } from '../types/predictiveOnsets';
 import { normalizeAdaptiveOnsets } from '../types/adaptiveOnsets';
 import { normalizeResidualOnsets } from '../types/residualOnsets';
 import { normalizeDifferenceOnsets } from '../types/differenceOnsets';
+import { normalizeMusicEvents } from '../types/musicEvents';
 
 /** Additive v4 frame fields: legacy absence and malformed numbers are silent, never inferred
  * from independently normalized display-spectrum bars. Preserve the worker-owned source. */
@@ -51,12 +52,13 @@ export function createEmptyTrackAnalysis(): TrackAnalysis {
     return JSON.parse(JSON.stringify(EMPTY_TRACK_ANALYSIS));
 }
 
-export function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis, fallbackBpm = 0, publishedEvents?: readonly { time: number }[]): TrackAnalysis {
+export function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis, fallbackBpm = 0, publishedEvents?: readonly BeatEvent[]): TrackAnalysis {
     const featureClock = normalizeFeatureClock(trackAnalysis);
     return {
         ...EMPTY_TRACK_ANALYSIS,
         ...trackAnalysis,
         featureClock,
+        ...(trackAnalysis.musicEvents !== undefined ? { musicEvents: normalizeMusicEvents(trackAnalysis.musicEvents, featureClock, publishedEvents) } : {}),
         ...(trackAnalysis.eventTiming !== undefined ? { eventTiming: normalizeEventTiming(trackAnalysis.eventTiming, trackAnalysis.duration, featureClock, publishedEvents) } : {}),
         ...(trackAnalysis.acousticOnsets !== undefined ? { acousticOnsets: normalizeAcousticOnsets(trackAnalysis.acousticOnsets, trackAnalysis.duration, featureClock) } : {}),
         ...(trackAnalysis.predictiveOnsets !== undefined ? { predictiveOnsets: normalizePredictiveOnsets(trackAnalysis.predictiveOnsets, trackAnalysis.duration, featureClock) } : {}),

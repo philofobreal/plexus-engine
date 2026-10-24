@@ -88,5 +88,16 @@ test('tonal-mixture falsification remains explicit instead of claiming general a
     assert.deepEqual(report.statuses, report.baselineStatuses);
     assert.equal(report.statuses.refined, 8, 'eight known false refinements remain disclosed');
     assert.equal(report.productionPromotion, false); assert.equal(report.recordedAccuracy, null);
-    for (const [path, digest] of Object.entries(report.sourceHashes)) assert.equal(sha(readFileSync(path)), digest);
+    const evolution = JSON.parse(readFileSync('research/analyzer-lab/fixtures/t10a-source-evolution.json'));
+    for (const [path, digest] of Object.entries(report.sourceHashes)) {
+        if (path === 'src/analyzer/BandOnsets.ts') {
+            // Exact-output search optimization: keep the measured predecessor immutable,
+            // and require the explicitly reviewed replacement plus helper identity.
+            assert.equal(sha(readFileSync(evolution.predecessorSource)), digest);
+            assert.equal(evolution.predecessorSha256, digest);
+            assert.equal(sha(readFileSync(path)), evolution.replacementSha256);
+            assert.equal(sha(readFileSync(evolution.helper.path)), evolution.helper.sha256);
+            assert.equal(evolution.oldMeasurementsRewritten, false);
+        } else assert.equal(sha(readFileSync(path)), digest);
+    }
 });

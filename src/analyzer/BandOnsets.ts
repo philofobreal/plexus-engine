@@ -1,4 +1,5 @@
 import {extractContinuationOnsets} from './ContinuationOnsets';
+import {appendSeparatedBandProposals} from './BandProposalIndex';
 import type {BandCandidate, BandOnsetAnalysis} from '../types/bandOnsets';
 
 /** Offline physical-frequency research evidence; preserves v6 with priority. */
@@ -107,7 +108,7 @@ export function extractBandOnsets(samples: Float32Array, sampleRate: number,
     }
     // Earliest sharp rise owns a new cluster; prior v6 always retains priority.
     proposals.sort((a,b)=>a.sampleIndex-b.sampleIndex || b.strength-a.strength || a.bandHz!-b.bandHz!);
-    for (const p of proposals) if (!candidates.some(c=>Math.abs(c.sampleIndex-p.sampleIndex)<separation)) candidates.push(p);
+    appendSeparatedBandProposals(candidates, proposals, separation);
     candidates.sort((a,b)=>a.sampleIndex-b.sampleIndex);
     return {algorithm:'experimental-physical-bands-v8',sampleRate,sampleCount:samples.length,
         bandCentresHz:centres,bandQ:1,cascadedSections:2,predictorLagSamples:lag,

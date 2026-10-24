@@ -19,6 +19,7 @@ import { extractAdaptiveOnsets } from './AdaptiveOnsets';
 import { extractResidualOnsets } from './ResidualOnsets';
 import { extractDifferenceOnsets } from './DifferenceOnsets';
 import { refineAcceptedEventTiming, retimePercussiveCues } from './AcceptedEventTiming';
+import { projectAcceptedMusicEvents } from '../types/musicEvents';
 
 export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     const { samples, sampleRate, options, onProgress } = input;
@@ -180,6 +181,7 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
         alternativeTempos: grid.alternativeTempos,
         timingConfidence: grid.timingConfidence
     };
+    trackAnalysis.musicEvents = projectAcceptedMusicEvents(publishedEvents, trackAnalysis.featureClock!);
 
     return {
         requestId,
