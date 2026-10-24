@@ -11,6 +11,10 @@ interface MutableDrawContext extends VisualIdentityDrawContext {
     advanceSharedSimulation: boolean;
 }
 
+export type IdentityDraw = (identity: VisualIdentity, backend: VisualRendererBackend, particles: Particle[],
+    shockwaves: Shockwave[], context: VisualIdentityDrawContext) => void;
+const drawDirect: IdentityDraw = (identity, backend, particles, shockwaves, context) => identity.draw(backend, particles, shockwaves, context);
+
 export function computeCrossfadeAlpha(currentTimeSec: number, startTimeSec: number, durationSec: number): number {
     if (currentTimeSec < startTimeSec) return 1;
     if (!Number.isFinite(durationSec) || durationSec <= 0) return 1;
@@ -28,7 +32,8 @@ export class IdentityTransitionController {
         compositor: RenderTargetCompositor,
         registry: StyleRegistry,
         particles: Particle[],
-        shockwaves: Shockwave[]
+        shockwaves: Shockwave[],
+        drawIdentity: IdentityDraw = drawDirect
     ): void {
         const transition = State.visualModeTransition;
         const incoming = registry.get(State.visualMode);
@@ -37,7 +42,7 @@ export class IdentityTransitionController {
 
         if (!transition || transition.to !== State.visualMode) {
             this.primaryContext.advanceSharedSimulation = true;
-            incoming.draw(backend, particles, shockwaves, this.primaryContext);
+            drawIdentity(incoming, backend, particles, shockwaves, this.primaryContext);
             return;
         }
 
@@ -45,13 +50,13 @@ export class IdentityTransitionController {
         if (timeSec < transition.startTimeSec || alpha >= 1) {
             clearVisualModeTransition();
             this.primaryContext.advanceSharedSimulation = true;
-            incoming.draw(backend, particles, shockwaves, this.primaryContext);
+            drawIdentity(incoming, backend, particles, shockwaves, this.primaryContext);
             return;
         }
 
         const outgoing = registry.get(transition.from);
         compositor.beginFrame(transition.generation, backend.width, backend.height);
-        this.drawParticipants(incoming, outgoing, compositor, particles, shockwaves);
+        this.drawParticipants(incoming, outgoing, compositor, particles, shockwaves, drawIdentity);
         compositor.composite(alpha);
     }
 
@@ -60,18 +65,19 @@ export class IdentityTransitionController {
         outgoing: VisualIdentity,
         compositor: RenderTargetCompositor,
         particles: Particle[],
-        shockwaves: Shockwave[]
+        shockwaves: Shockwave[],
+        drawIdentity: IdentityDraw
     ): void {
         const incomingOwnsSimulation = incoming.usesSharedSimulation === true || outgoing.usesSharedSimulation !== true;
         this.primaryContext.advanceSharedSimulation = true;
         this.secondaryContext.advanceSharedSimulation = false;
 
         if (incomingOwnsSimulation) {
-            incoming.draw(compositor.incomingBackend, particles, shockwaves, this.primaryContext);
-            outgoing.draw(compositor.outgoingBackend, particles, shockwaves, this.secondaryContext);
+            drawIdentity(incoming, compositor.incomingBackend, particles, shockwaves, this.primaryContext);
+            drawIdentity(outgoing, compositor.outgoingBackend, particles, shockwaves, this.secondaryContext);
         } else {
-            outgoing.draw(compositor.outgoingBackend, particles, shockwaves, this.primaryContext);
-            incoming.draw(compositor.incomingBackend, particles, shockwaves, this.secondaryContext);
+            drawIdentity(outgoing, compositor.outgoingBackend, particles, shockwaves, this.primaryContext);
+            drawIdentity(incoming, compositor.incomingBackend, particles, shockwaves, this.secondaryContext);
         }
     }
 }

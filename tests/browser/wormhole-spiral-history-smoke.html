@@ -1,0 +1,68 @@
+<!doctype html><html lang="en"><meta charset="utf-8">
+<title>Spiral history / raster / worker smoke</title>
+<style>body{background:#080b18;color:#eaf4ff;font:15px system-ui;margin:20px}main{display:flex;gap:12px;flex-wrap:wrap}figure{margin:0}canvas{width:390px;height:260px}button{padding:8px;margin:0 8px 12px 0}pre{white-space:pre-wrap}figcaption{padding:8px}</style>
+<h2>Same coherent spiral, different render histories</h2>
+<p>Real Canvas2D, WebGL2 and render worker. The existing material-active preset and plan are shared.</p>
+<button id="right">Right: 1.5 s</button><button id="zero">At zero crossing</button><button id="left">Left: 2.5 s</button>
+<main id="views"></main><pre id="result">Preparing renderers…</pre>
+<p>Signed channel and displayed worker frame data only. Full pixel parity, encoded video and physical Quest are separate checks.</p>
+<script type="module">
+import { WormholeCanvasSource } from '../../src/visuals/WormholeCanvasSource.ts';
+import { WormholeWorkerSource } from '../../src/visuals/WormholeWorkerSource.ts';
+import { WormholeSpiralAutomation } from '../../src/automation/WormholeSpiralAutomation.ts';
+import { resolveMetaTuning } from '../../src/config/resolveMetaTuning.ts';
+import { XR_WORMHOLE_BOOSTS } from '../../src/config/xrWormholeTuning.ts';
+import { cloneDefaultVisualTuning, effectiveWormholeSpiral } from '../../src/config/visualTuning.ts';
+import { createEmptyTrackAnalysis } from '../../src/analyzer/normalizeAnalysisResult.ts';
+
+const sources = [];
+const result = document.querySelector('#result');
+const presentation = { macros: { intensity: .5, motion: .5, depth: .5, detail: 1 },
+ grainMaterial: { wormholeNebulaAmount: .8, wormholeSpiral: 1, wormholeSpiralArms: .5, wormholeGrainDensity: .25 }, maxFrameRateHz:120 };
+const points = [0,2].map((time,i) => ({ id:'p'+i,time,sectionId:'s',preset:'vos-wh-overdrive.json',confidence:1,intensity:1,
+ reason:'build',morphDurationSec:4,morphCurve:'linear',spiralDirection:i?-1:1 }));
+const analysis = { frames:[],events:[],sampleRate:44100,hopSize:1024,bpm:128,duration:10,
+ trackAnalysis:createEmptyTrackAnalysis(),performancePlan:{version:1,source:'edited',points} };
+const preset = await (await fetch('../../public/visual-tuning-presets/vos-wh-overdrive.json')).json();
+const channel = new WormholeSpiralAutomation();
+const boosts = {...XR_WORMHOLE_BOOSTS,...presentation.grainMaterial};
+channel.configure(analysis.performancePlan,()=>preset,0,(raw,out)=>resolveMetaTuning(raw,presentation.macros,boosts,out));
+const scratch = cloneDefaultVisualTuning();
+function signedAt(time){channel.apply(time,scratch);return effectiveWormholeSpiral(scratch);}
+let lo=2,hi=3;for(let i=0;i<48;i++){const mid=(lo+hi)/2;if(signedAt(mid)>0)lo=mid;else hi=mid;}const zero=(lo+hi)/2;
+async function workerFrame(source,time,playing=false){
+ const before=source.shownSerial;
+ source.render(time,playing);
+ for(let i=0;i<240;i++){
+  await new Promise(requestAnimationFrame);source.render(time,playing);
+  if(source.shownSerial!==before&&source.spatialFrame&&(playing||Math.abs(source.spatialFrame.time-time)<1e-9))return;
+ }
+ throw Error('Worker did not show the requested frame');
+}
+async function show(time){
+ document.querySelectorAll('button').forEach(b=>b.disabled=true);
+ try{
+  for(const entry of sources){if(entry.worker)await workerFrame(entry.source,time);else entry.source.render(time,false);}
+  const expected=signedAt(time),rows=sources.map(({label,source})=>({renderer:label,raster:source.rasterKind,
+    requestedTime:time,shownTime:source.spatialFrame.time,signedTurns:source.spatialFrame.spiralTurns,shownSerial:source.shownSerial??null}));
+  const pass=rows.every(row=>Math.abs(row.signedTurns-expected)<1e-10&&Math.abs(row.shownTime-time)<1e-9);
+  result.textContent=JSON.stringify({pass,expected,zeroCrossing:zero,rows},null,2);
+  sources.forEach(({label,source,caption})=>caption.textContent=`${label}: ${source.spatialFrame.spiralTurns.toFixed(6)} turns at ${time.toFixed(5)} s`);
+ }catch(error){result.textContent='FAIL: '+error.stack;throw error;}
+ finally{document.querySelectorAll('button').forEach(b=>b.disabled=false);}
+}
+try{
+ for(const [label,options,worker] of [['Canvas2D · 24 Hz history',{},false],['WebGL2 · backward seek',{webglRaster:true},false],['Worker · paused request',{webglRaster:true},true]]){
+  const source=worker?new WormholeWorkerSource({width:390,height:260,...options}):new WormholeCanvasSource({width:390,height:260,...options});
+  source.setPresentation(presentation);await source.prepare(analysis);
+  const figure=document.createElement('figure'),caption=document.createElement('figcaption');figure.append(caption,source.canvas);document.querySelector('#views').append(figure);
+  sources.push({label,source,worker,caption});
+  if(worker){for(let i=0;i<=4;i++)await workerFrame(source,i/4,true);}
+  else if(label.startsWith('Canvas')){for(let i=0;i<=60;i++)source.render(i/24,true,true);}
+  else{for(let i=0;i<=4;i++)source.render(i/4,true,true);source.render(8,false);}
+ }
+ document.querySelector('#right').onclick=()=>show(1.5);document.querySelector('#zero').onclick=()=>show(zero);document.querySelector('#left').onclick=()=>show(2.5);
+ await show(2.5);
+}catch(error){result.textContent='FAIL: '+error.stack;}
+window.addEventListener('pagehide',()=>sources.forEach(({source})=>source.dispose()),{once:true});
+</script></html>

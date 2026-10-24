@@ -97,6 +97,24 @@ function harness({ saveSucceeds = () => true } = {}) {
         normalizeCheckpoint: load(path.resolve(root, 'src/ui/mvp/sessionCheckpoint.ts')).normalizeCheckpoint };
 }
 
+test('MVP host uses the same signed sampler after gains and retains direction through a plan edit', () => {
+    const h = harness(), load = createLoader();
+    const { cloneDefaultVisualTuning } = load('config/visualTuning.ts');
+    const { WormholeSpiralAutomation } = load('automation/WormholeSpiralAutomation.ts');
+    const p = { version: 1, source: 'edited', points: [0, 2].map((time, i) => ({ id: 'p' + i, time, sectionId: 's', preset: 'fixed.json',
+        intensity: 1, confidence: 1, reason: 'build', morphDurationSec: 2, morphCurve: 'linear', spiralDirection: i ? -1 : 1 })) };
+    h.state.visualMode = 'cosmic-wormhole'; h.state.automationMorphScale = 1; h.state.editedPerformancePlan = p;
+    h.state.preloadedPresets['fixed.json'] = { visualMode: 'cosmic-wormhole', visualTuning: { wormholeSpiral: 2, transitionSpeed: .005 } };
+    const expected = new WormholeSpiralAutomation(), out = cloneDefaultVisualTuning(), actual = cloneDefaultVisualTuning();
+    expected.configure(h.controller.getAutomationPlanView(), name => h.state.preloadedPresets[name], 0,
+        (raw, output) => Object.assign(output, h.controller.getBoostedTuning(raw)));
+    expected.apply(2.5, out); h.controller.applyAutomatedSpiral(2.5, actual);
+    assert.ok(Math.abs(actual.wormholeSpiralDirection - out.wormholeSpiralDirection) < 1e-12);
+    assert.equal(actual.wormholeSpiral, out.wormholeSpiral);
+    p.points[1].spiralDirection = 1; h.controller.applyAutomatedSpiral(2.5, actual);
+    assert.equal(actual.wormholeSpiralDirection, 1, 'direction-only edits do not leave a stale cached view');
+});
+
 test('superseded initial plan cannot publish or mark a newer track ready', async () => {
     const h = harness();
     await h.start('A');

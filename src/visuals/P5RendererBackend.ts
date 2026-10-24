@@ -64,6 +64,21 @@ export class P5RendererBackend implements VisualRendererBackend {
         return this.p.frameCount;
     }
 
+    get rasterPixelRatio(): number { return this.target.pixelDensity(); }
+
+    /** Renderer presentation only: copy one finished frame into the active live/crossfade/export target. */
+    presentRaster(canvas: CanvasImageSource): void {
+        const ctx = this.target.drawingContext as CanvasRenderingContext2D;
+        const destination = ctx.canvas;
+        ctx.save();
+        try {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+            ctx.clearRect(0, 0, destination.width, destination.height);
+            ctx.drawImage(canvas, 0, 0, destination.width, destination.height);
+        } finally { ctx.restore(); }
+    }
+
     background(r: number, g: number, b: number, a = 255) {
         if (State.videoBackplateActive) {
             this.target.clear();

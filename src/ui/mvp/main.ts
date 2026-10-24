@@ -12,6 +12,7 @@ import { requestVisualModeChange } from '../../state/visualModeTransition';
 import { MvpUI } from './MvpUI';
 import { MVP_CANVAS_CONTAINER_ID } from './PreviewStage';
 import { createPreviewQualityControl } from '../PreviewQualityControl';
+import { WormholeHostWorkerSource } from '../../visuals/WormholeHostWorkerSource';
 
 // The MVP is locked to the Cosmic Wormhole identity (design doc: "the user never sees a Visual
 // Mode selector"). Asserted explicitly and routed through the one sanctioned State.visualMode
@@ -27,7 +28,7 @@ const eventTiming = timingMode === 'local-band-v1' || timingMode === 'local-band
 const engine = new AudioEngine((plan) => semanticResolver.setPlan(plan), { eventTiming });
 
 const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
-const previewQuality = createPreviewQualityControl(!isDesktop);
+const previewQuality = createPreviewQualityControl(!isDesktop, true);
 const ui = new MvpUI(engine, () => semanticResolver.hasPlan(), previewQuality);
 document.querySelector<HTMLDivElement>('#mvp-app')!.appendChild(ui.root);
 
@@ -39,7 +40,8 @@ semanticBridge.setSemanticAdapter(semanticAdapter);
 
 startPlexusRenderer(MVP_CANVAS_CONTAINER_ID, ui, engine, styleRegistry, semanticBridge, {
     getPreviewSize: () => ui.getPreviewSize(),
-    previewQuality: previewQuality.preference
+    previewQuality: previewQuality.preference,
+    createWormholeWorker: invalidate => new WormholeHostWorkerSource(invalidate)
 });
 
 const minDelayPromise = new Promise<void>((resolve) => {

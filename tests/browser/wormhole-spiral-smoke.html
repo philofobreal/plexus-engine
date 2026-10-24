@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Wormhole coherent twist smoke</title>
+<style>
+body { background: #070916; color: #eef7ff; font: 16px system-ui; margin: 20px; }
+main { display: flex; gap: 16px; } figure { margin: 0; } canvas { width: 520px; height: 360px; }
+button { padding: 8px 16px; margin-bottom: 16px; } figcaption { padding: 8px; }
+</style>
+<h2>Coherent spiral: same preset and song time, opposite directions</h2>
+<p>Isolated real renderer smoke. Path bend and lens are unchanged; no audio clock or camera roll.</p>
+<button id="four">At 4 s</button><button id="six">At 6 s</button>
+<main><figure id="left"><figcaption>Left: loading</figcaption></figure><figure id="right"><figcaption>Right: loading</figcaption></figure></main>
+<script type="module">
+import { WormholeCanvasSource } from '../../src/visuals/WormholeCanvasSource.ts';
+import { createEmptyTrackAnalysis } from '../../src/analyzer/normalizeAnalysisResult.ts';
+const sources = [];
+for (const [label, direction] of [['left', -1], ['right', 1]]) {
+ const source = new WormholeCanvasSource({ width: 520, height: 360 });
+ const point = { id: 'p', time: 0, sectionId: 's', preset: 'vos-wh-overdrive.json', confidence: 1, intensity: 1,
+  reason: 'build', morphDurationSec: 2, morphCurve: 'easeInOut', spiralDirection: direction };
+ source.setPresentation({ macros: { intensity: .5, motion: .5, depth: .5, detail: 1 },
+  grainMaterial: { wormholeNebulaAmount: .8, wormholeSpiral: 1, wormholeSpiralArms: .5, wormholeGrainDensity: .25 } });
+ await source.prepare({ frames: [], events: [], sampleRate: 44100, hopSize: 1024, bpm: 128, duration: 20,
+  trackAnalysis: createEmptyTrackAnalysis(), performancePlan: { version: 1, source: 'edited', points: [point] } });
+ document.querySelector(`#${label}`).append(source.canvas); sources.push({ label, source });
+ // Warm the existing playback fade with explicit song times, never a wall clock.
+ for (let time = 0; time <= 4; time += .25) source.render(time, true, true);
+}
+function draw(time) {
+ for (const { label, source } of sources) {
+  source.render(time, false);
+  document.querySelector(`#${label} figcaption`).textContent = `${label}: ${source.spatialFrame.spiralTurns.toFixed(3)} turns, ${time} song seconds`;
+ }
+}
+document.querySelector('#four').onclick = () => draw(4);
+document.querySelector('#six').onclick = () => draw(6);
+window.addEventListener('pagehide', () => sources.forEach(({ source }) => source.dispose()), { once: true });
+draw(4);
+</script>
+</html>
