@@ -41,6 +41,7 @@ in float aWidth;
 in vec4 aColor;
 in float aKind;
 uniform vec2 uSize;
+uniform float uPixelRatio;
 out vec2 vLocal;
 out float vHalfLength;
 out float vHalfWidth;
@@ -50,9 +51,9 @@ out vec4 vColor;
 flat out int vKind;
 void main() {
     // Sub-pixel strokes cover one pixel at proportionally lower opacity (like a hairline).
-    float halfWidth = max(aWidth, 1.0) * 0.5;
+    float halfWidth = max(aWidth, 1.0 / uPixelRatio) * 0.5;
     vHalfWidth = halfWidth;
-    vCoverage = min(aWidth, 1.0);
+    vCoverage = min(aWidth * uPixelRatio, 1.0);
     vColor = aColor;
     vKind = int(aKind + 0.5);
     vec2 p;
@@ -82,6 +83,7 @@ void main() {
 
 const PRIMITIVE_FRAGMENT = /* glsl */ `#version 300 es
 precision highp float;
+uniform float uPixelRatio;
 in vec2 vLocal;
 in float vHalfLength;
 in float vHalfWidth;
@@ -100,7 +102,7 @@ void main() {
     } else {
         distanceOut = length(vec2(max(abs(vLocal.x) - vHalfLength, 0.0), vLocal.y)) - vHalfWidth;
     }
-    float alpha = vColor.a * clamp(0.5 - distanceOut, 0.0, 1.0) * vCoverage;
+    float alpha = vColor.a * clamp(0.5 - distanceOut * uPixelRatio, 0.0, 1.0) * vCoverage;
     if (alpha <= 0.0) discard;
     outColor = vec4(vColor.rgb * alpha, alpha);
 }`;
@@ -248,8 +250,13 @@ type WebGLSurface = HTMLCanvasElement & { getContext(type: 'webgl2', attributes?
 
 export class WebGLRendererBackend implements VisualRendererBackend {
     readonly canvas: HTMLCanvasElement;
-    readonly compactMaterialPreview = true;
+    compactMaterialPreview = true;
+    /** Host video/backplate policy, applied only to the background clear. */
+    transparentBackground = false;
     frameCount = 0;
+    private logicalWidth: number | null = null;
+    private logicalHeight: number | null = null;
+    private pixelRatio = 1;
     private readonly gl: WebGL2RenderingContext;
     private readonly primitiveProgram: Program;
     private readonly gradientProgram: Program;
@@ -260,6 +267,7 @@ export class WebGLRendererBackend implements VisualRendererBackend {
     private readonly quadVao: WebGLVertexArrayObject;
     private readonly solidVao: WebGLVertexArrayObject;
     private readonly instanceBuffer: WebGLBuffer;
+    private readonly cornerBuffer: WebGLBuffer;
     private readonly solidBuffer: WebGLBuffer;
     private primitives = new Float32Array(INITIAL_PRIMITIVES * WEBGL_PRIMITIVE_STRIDE);
     private primitiveCount = 0;
@@ -286,14 +294,14 @@ export class WebGLRendererBackend implements VisualRendererBackend {
             depth: false, stencil: false, preserveDrawingBuffer: false });
         if (!gl) throw new Error('WebGL2 is unavailable for the Wormhole background.');
         this.gl = gl;
-        this.primitiveProgram = this.link(PRIMITIVE_VERTEX, PRIMITIVE_FRAGMENT, ['uSize']);
+        this.primitiveProgram = this.link(PRIMITIVE_VERTEX, PRIMITIVE_FRAGMENT, ['uSize', 'uPixelRatio']);
         const gradientUniforms = ['uSize', 'uRect', 'uCenter', 'uInner', 'uOuter', 'uStopCount', 'uStopT', 'uStopColor'];
         this.gradientProgram = this.link(QUAD_VERTEX, GRADIENT_FRAGMENT, gradientUniforms);
         this.ringProgram = this.link(QUAD_VERTEX, RING_TINT_FRAGMENT, [...gradientUniforms, 'uBackdrop', 'uMode', 'uSector', 'uSectorOn']);
         this.rasterProgram = this.link(QUAD_VERTEX, RASTER_FRAGMENT, ['uSize', 'uRect', 'uRaster']);
         this.solidProgram = this.link(SOLID_VERTEX, SOLID_FRAGMENT, ['uSize', 'uColor']);
         // Corners of one quad (u along 0..1, v across -1..1), shared by the primitives and the rectangles.
-        const corners = gl.createBuffer()!;
+        const corners = this.cornerBuffer = gl.createBuffer()!;
         gl.bindBuffer(gl.ARRAY_BUFFER, corners);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, -1, 1, -1, 0, 1, 1, 1]), gl.STATIC_DRAW);
         this.instanceBuffer = gl.createBuffer()!;
@@ -325,16 +333,25 @@ export class WebGLRendererBackend implements VisualRendererBackend {
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
     }
 
-    get width(): number { return this.canvas.width; }
-    get height(): number { return this.canvas.height; }
+    get width(): number { return this.logicalWidth ?? this.canvas.width; }
+    get height(): number { return this.logicalHeight ?? this.canvas.height; }
+    get contextLost(): boolean { return this.gl.isContextLost() === true; }
+    /** Logical geometry stays in host units; only the backing store follows pixel density. */
+    setSize(width: number, height: number, pixelRatio = 1): void {
+        this.logicalWidth = Math.max(1, width); this.logicalHeight = Math.max(1, height);
+        this.pixelRatio = Number.isFinite(pixelRatio) && pixelRatio > 0 ? pixelRatio : 1;
+        const w = Math.max(1, Math.round(this.width * this.pixelRatio)), h = Math.max(1, Math.round(this.height * this.pixelRatio));
+        if (this.canvas.width !== w) this.canvas.width = w;
+        if (this.canvas.height !== h) this.canvas.height = h;
+    }
     /** Primitives waiting in the current batch (tests). */
     get pendingPrimitives(): number { return this.primitiveCount; }
 
     background(r: number, g: number, b: number, a = 255): void {
         // clearRect + fillRect of rgba(r, g, b, a / 255): the frame starts as that colour at that alpha.
         this.flush();
-        const gl = this.gl, alpha = unitAlpha(a / 255);
-        gl.viewport(0, 0, this.width, this.height);
+        const gl = this.gl, alpha = this.transparentBackground ? 0 : unitAlpha(a / 255);
+        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
         gl.clearColor(channel(r) * alpha, channel(g) * alpha, channel(b) * alpha, alpha);
         gl.clear(gl.COLOR_BUFFER_BIT);
     }
@@ -471,9 +488,10 @@ export class WebGLRendererBackend implements VisualRendererBackend {
         if (count === 0) return;
         this.primitiveCount = 0;
         const gl = this.gl, program = this.primitiveProgram;
-        gl.viewport(0, 0, this.width, this.height);
+        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
         gl.useProgram(program.program);
         gl.uniform2f(program.uniforms.uSize, this.width, this.height);
+        gl.uniform1f(program.uniforms.uPixelRatio, this.pixelRatio);
         gl.bindVertexArray(this.primitiveVao);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, this.primitives.subarray(0, count * WEBGL_PRIMITIVE_STRIDE), gl.STREAM_DRAW);
@@ -487,6 +505,8 @@ export class WebGLRendererBackend implements VisualRendererBackend {
         if (this.backdrop) gl.deleteTexture(this.backdrop);
         for (const program of [this.primitiveProgram, this.gradientProgram, this.ringProgram, this.rasterProgram, this.solidProgram]) gl.deleteProgram(program.program);
         gl.deleteBuffer(this.instanceBuffer); gl.deleteBuffer(this.solidBuffer);
+        gl.deleteBuffer(this.cornerBuffer);
+        gl.deleteVertexArray(this.primitiveVao); gl.deleteVertexArray(this.quadVao); gl.deleteVertexArray(this.solidVao);
         gl.getExtension('WEBGL_lose_context')?.loseContext();
     }
 
@@ -505,7 +525,7 @@ export class WebGLRendererBackend implements VisualRendererBackend {
     /** Before any non-batched pass: the batch is drawn first (painter's order) and the pass covers the canvas. */
     private beginPass(): void {
         this.flush();
-        this.gl.viewport(0, 0, this.width, this.height);
+        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     }
 
     /** A gradient over a rectangle, blended source-over (stops: t, r, g, b, a ... unpremultiplied). */
@@ -540,7 +560,7 @@ export class WebGLRendererBackend implements VisualRendererBackend {
 
     /** A copy of the frame drawn so far (the destination of a non-separable blend). */
     private copyFrame(): WebGLTexture {
-        const gl = this.gl, w = this.width, h = this.height;
+        const gl = this.gl, w = this.canvas.width, h = this.canvas.height;
         if (!this.backdrop || this.backdropWidth !== w || this.backdropHeight !== h) {
             if (this.backdrop) gl.deleteTexture(this.backdrop);
             this.backdrop = this.createTexture(gl.NEAREST);

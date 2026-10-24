@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { DEFAULT_RHYTHM_GAME_CONFIG, type NoteRuntimeState, type RhythmGameConfig, type RhythmSessionSnapshot } from '../../gameplay';
+import { DEFAULT_RHYTHM_GAME_CONFIG, type NoteRuntimeState, type RhythmGameConfig, type RhythmSessionSnapshot,
+    type RhythmNoteRolePlan, type RhythmResolutionObserver } from '../../gameplay';
 import { RhythmNoteField } from './RhythmNoteField';
 import { DEFAULT_STAGE_LAYOUT, SCENE_CONFIG, START_FRAME_HALF_WIDTH_METERS, type XrStageLayout } from './SceneConfig';
 import { XrHud } from './XrHud';
@@ -7,15 +8,19 @@ import { XrRunway } from './XrRunway';
 import { XrTrackPath } from './XrTrackPath';
 import { XrSectionCallout, type SectionCue } from './XrSectionCallout';
 import { WormholeBackdrop } from './WormholeBackdrop';
+import { XrNativeWormhole } from './XrNativeWormhole';
+import type { WormholeNativeSourceFactory } from '../../types/WormholeNativeFrame';
 import { XrWormholeSpatialField } from './XrWormholeSpatialField';
 import { XrFrameSignal } from './XrFrameSignal';
 import { XrSongMap } from './XrSongMap';
 import { XrProgressRing } from './XrProgressRing';
 import { XrSectionGates } from './XrSectionGates';
 import { XrSliceEffect } from './XrSliceEffect';
-import type { XrNoteDesign } from '../XrAppearanceSettings';
+import { XrNoteHalos } from './XrNoteHalos';
+import type { XrNoteDesign, XrCockpitMode, XrCockpitTitleMode } from '../XrAppearanceSettings';
+import { XrCockpit } from './XrCockpit';
 import type { ScoreOverview } from './XrScoreOverview';
-import type { CanvasVisualSourceFactory, VisualAnalysisSnapshot } from '../../types/CanvasVisualSource';
+import type { CanvasVisualPresentation, CanvasVisualSourceFactory, VisualAnalysisSnapshot } from '../../types/CanvasVisualSource';
 import { backgroundFrameDivider, DEFAULT_XR_BACKGROUND_SETTINGS, grainMaterialBoosts, MAX_BACKGROUND_SHARPEN, XR_BACKGROUND_MIPMAPPED,
     XR_BACKGROUND_RESOLUTION, type XrBackgroundSettings } from '../XrBackgroundSettings';
 
@@ -46,11 +51,23 @@ export class RhythmGameScene {
     readonly sectionGates: XrSectionGates;
     /** Halves and sparks of struck targets (Addendum Q). */
     readonly sliceEffect: XrSliceEffect;
+    readonly noteHalos = new XrNoteHalos();
+    readonly cockpit = new XrCockpit();
+    /** Only accepted session results can start bursts; this object has no session reference. */
+    readonly resolutionObserver: RhythmResolutionObserver = Object.freeze<RhythmResolutionObserver>({
+        onRunReset: () => this.noteHalos.reset(),
+        onNoteResolved: (note, grade, songTime, skipped) => this.noteHalos.onNoteResolved(note, grade, songTime, skipped)
+    });
     /** The Wormhole continued into the room around the route (decorative; shown only with the background). */
     readonly spatialField = new XrWormholeSpatialField();
     private config: RhythmGameConfig;
     private readonly lights = new THREE.Group();
-    private wormhole: WormholeBackdrop | null = null;
+    private wormhole: WormholeBackdrop | XrNativeWormhole | null = null;
+    private readonly nativeWormholeFactory?: WormholeNativeSourceFactory;
+    private nativeFallback = false;
+    private disposed = false;
+    get nativeWormholeActive(): boolean { return this.wormhole instanceof XrNativeWormhole; }
+    get nativeExecutionLabel(): string { return this.wormhole instanceof XrNativeWormhole?this.wormhole.executionLabel:''; }
     /**
      * The displayed frame's focal point, continued to the song time drawn: the background redraws at
      * 24-36 Hz, and a raw focus would bend the runway (and everything on it) in visible steps.
@@ -61,6 +78,7 @@ export class RhythmGameScene {
     private wormholeDirty = true;
     private readonly wormholeFactory?: CanvasVisualSourceFactory;
     private background: XrBackgroundSettings = DEFAULT_XR_BACKGROUND_SETTINGS;
+    private spiralDirection: CanvasVisualPresentation['spiralDirection'] = 'auto';
     /** The background produced a frame asynchronously (idle hosts render one more frame). */
     onBackgroundFrame: (() => void) | null = null;
     /** The background failed after preparation; the host reports it and turns the background off. */
@@ -90,7 +108,9 @@ export class RhythmGameScene {
     private runwaySpacing: number;
     /** Last viewer placement, re-applied when the hit-plane distance changes. */
     private viewer = { x: 0, z: 0, yaw: 0 };
-    constructor(scene: THREE.Scene, config: RhythmGameConfig = DEFAULT_RHYTHM_GAME_CONFIG, wormholeFactory?: CanvasVisualSourceFactory) {
+    constructor(scene: THREE.Scene, config: RhythmGameConfig = DEFAULT_RHYTHM_GAME_CONFIG, wormholeFactory?: CanvasVisualSourceFactory,
+        nativeWormholeFactory?: WormholeNativeSourceFactory) {
+        this.nativeWormholeFactory = nativeWormholeFactory;
         this.wormholeFactory = wormholeFactory;
         this.config = config;
         this.noteField = new RhythmNoteField(config);
@@ -111,9 +131,11 @@ export class RhythmGameScene {
         this.playfield.add(this.noteField.mesh, this.noteField.markers, this.noteField.arrows, this.hud.mesh);
         this.sliceEffect = new XrSliceEffect(config.noteSizeMeters);
         this.playfield.add(this.sliceEffect.halves, this.sliceEffect.sparks);
+        this.playfield.add(this.noteHalos.mesh);
         this.root.add(this.playfield);
         // Stage-root space like the floor: never under the playfield, never part of hit testing.
         this.root.add(this.spatialField.root);
+        this.root.add(this.cockpit.root);
         this.lights.add(new THREE.HemisphereLight(0xc4dfff, 0x182439, 2.2));
         const key = new THREE.DirectionalLight(0xffffff, 2); key.position.set(1, 3, 1); this.lights.add(key);
         scene.add(this.root, this.lights);
@@ -139,6 +161,7 @@ export class RhythmGameScene {
             this.hud.setPose(0, eyeHeight - middleHeight + 1.15, -2.8);
         }
         this.eyeHeight = eyeHeight;
+        this.cockpit.fit(this.config, this.layout, eyeHeight);
         this.wormhole?.setEyeHeight(eyeHeight);
         this.root.updateMatrixWorld(true);
     }
@@ -147,6 +170,7 @@ export class RhythmGameScene {
         return target.copy(this.playfield.matrixWorld).invert();
     }
     update(activeNotes: readonly NoteRuntimeState[], songTime: number, snapshot: RhythmSessionSnapshot, instruction: string): void {
+        this.cockpit.update(songTime);
         // The Wormhole renders first so the track follows the focal point of the displayed image.
         if (this.wormhole?.root.visible) this.wormhole.update(songTime, snapshot.state === 'playing');
         const focus = this.wormhole?.focalPoint;
@@ -174,7 +198,13 @@ export class RhythmGameScene {
             this.lastNoteScore = snapshot.score; this.lastNoteMisses = snapshot.missCount; this.lastNoteTotal = snapshot.totalNotes;
         }
         this.hud.update(snapshot, instruction);
+        this.noteHalos.update(activeNotes, songTime, this.config, this.path);
     }
+    /** One sidecar per accepted chart publication; null immediately removes stale presentation. */
+    setNoteRolePlan(plan: RhythmNoteRolePlan | null): void { this.noteHalos.setPlan(plan); }
+    setCockpitSettings(mode: XrCockpitMode, title: XrCockpitTitleMode): void { this.cockpit.setSettings(mode, title); }
+    setTrackTitle(filename: string): void { this.cockpit.setTitle(filename); }
+    setCockpitViewOrigin(z: number): void { this.cockpit.setViewOrigin(z); }
     /**
      * Off-screen GPU work of a new background frame (upload, line composite, material layers), after
      * `update` and before the scene render, so none of it switches render targets inside the eye pass.
@@ -201,7 +231,18 @@ export class RhythmGameScene {
         this.sectionCallout.setTimeline(timeline);
     }
     async setWormholeEnabled(enabled: boolean): Promise<void> {
+        if (this.disposed) return;
         if (enabled && !this.wormhole) {
+            if (this.background.presentationMode === 'native-grains' && !this.nativeFallback) {
+                if (this.nativeWormholeFactory) {
+                    try {
+                        const source = this.nativeWormholeFactory();
+                        try { this.wormhole = new XrNativeWormhole(source); }
+                        catch (error) { source.dispose(); throw error; }
+                    } catch { this.nativeFallback = true; }
+                } else this.nativeFallback = true;
+            }
+            if (!this.wormhole) {
             if (!this.wormholeFactory) throw new Error('Wormhole renderer is unavailable.');
             const gpuMaterial = this.gpuMaterial;
             this.wormhole = new WormholeBackdrop(this.wormholeFactory({ ...XR_BACKGROUND_RESOLUTION[this.background.quality],
@@ -209,6 +250,8 @@ export class RhythmGameScene {
                 ...(this.profile ? { profile: true } : {}), ...(this.softwareRaster ? { softwareRaster: true } : {}),
                 ...(this.webglRaster ? { webglRaster: true } : {}) }),
                 { gpuMaterial, gpuLines: gpuMaterial && this.gpuLines, mipmaps: XR_BACKGROUND_MIPMAPPED.has(this.background.quality) });
+            }
+            this.spatialField.setMode(this.nativeWormholeActive ? 'off' : this.background.spatialField);
             this.wormhole.setAdaptivePacing(this.adaptivePacing);
             this.root.add(this.wormhole.root);
             this.wormhole.onFrameReady = () => this.onBackgroundFrame?.();
@@ -220,8 +263,17 @@ export class RhythmGameScene {
         if (this.wormhole) this.wormhole.root.visible = enabled;
         if (enabled && this.wormholeDirty && this.wormhole) {
             this.wormholeDirty = false;
-            try { await this.wormhole.prepare(this.wormholeAnalysis); }
-            catch (error) { this.wormholeDirty = true; throw error; }
+            const current = this.wormhole;
+            try { await current.prepare(this.wormholeAnalysis); }
+            catch (error) {
+                if (this.disposed || current !== this.wormhole) return;
+                this.wormholeDirty = true;
+                if (current instanceof XrNativeWormhole) {
+                    const stillEnabled = current.root.visible;
+                    this.nativeFallback = true; current.dispose(); this.wormhole = null;
+                    await this.setWormholeEnabled(stillEnabled);
+                } else throw error;
+            }
         }
     }
     /**
@@ -235,6 +287,7 @@ export class RhythmGameScene {
         const previous = this.layout;
         this.layout = layout;
         this.noteField.setSpawnFade(layout.spawnFadeMeters);
+        this.noteHalos.setSpawnFade(layout.spawnFadeMeters);
         this.sectionGates.setSpawnFade(layout.spawnFadeMeters);
         this.path.setLayout(layout);
         this.sectionCallout.setFrame(layout.frameCenterYMeters, layout.frameHalfHeightMeters);
@@ -265,6 +318,7 @@ export class RhythmGameScene {
      */
     setGameConfig(config: RhythmGameConfig): void {
         this.config = config;
+        this.cockpit.fit(config, this.layout, this.eyeHeight);
         // The gate's row ticks follow the play space's row spacing.
         if (config.rowSpacingMeters !== this.runwaySpacing) this.rebuildRunway();
         this.runway.setScrollSpeed(config.noteSpeedMps);
@@ -307,6 +361,8 @@ export class RhythmGameScene {
      * (Canvas2D); a requested WebGL raster that fell back says so.
      */
     get backgroundRasterLabel(): string {
+        if (this.nativeWormholeActive) return 'Native grains (no canvas)';
+        if (this.nativeFallback) return 'Hybrid (native unavailable)';
         const kind = this.wormhole?.rasterKind ?? null;
         if (kind === 'webgl') return 'WebGL';
         const canvas = this.softwareRaster ? 'CPU' : 'GPU';
@@ -334,10 +390,12 @@ export class RhythmGameScene {
      * distance also re-aims the track's far tangent at the moved plane (one path authority).
      */
     async setBackgroundSettings(settings: XrBackgroundSettings): Promise<void> {
-        const rebuild = settings.quality !== this.background.quality && this.wormhole !== null;
+        const modeChanged = (settings.presentationMode ?? 'hybrid') !== (this.background.presentationMode ?? 'hybrid');
+        const rebuild = (settings.quality !== this.background.quality || modeChanged) && this.wormhole !== null;
+        if (modeChanged) this.nativeFallback = false;
         this.background = settings;
         this.wormhole?.setDistance(settings.distanceMeters);
-        this.spatialField.setMode(settings.spatialField);
+        this.spatialField.setMode(settings.presentationMode === 'native-grains' && !this.nativeFallback ? 'off' : settings.spatialField);
         if (this.path.setBackdropDistance(settings.distanceMeters)) { this.runway.applyPath(this.path); this.lastNoteTime = Number.NaN; }
         this.root.updateMatrixWorld(true);
         if (rebuild) await this.rebuildWormhole();
@@ -360,13 +418,27 @@ export class RhythmGameScene {
         this.configureWormhole();
     }
 
-    private configureWormhole(): void {
+    setSpiralDirection(direction: CanvasVisualPresentation['spiralDirection']): void {
+        const normalized = direction === 'left' || direction === 'right' ? direction : 'auto';
+        if (normalized === this.spiralDirection) return;
+        this.spiralDirection = normalized;
+        this.configureWormhole(true);
+    }
+
+    private configureWormhole(forceSpiralDirection = false): void {
+        if (this.wormhole instanceof XrNativeWormhole) {
+            const budgets = { performance: 360, balanced: 720, high: 1080, ultra: 1440, crystal: 1440, max: 1440, '4k': 1440 };
+            this.wormhole.setQualityBudget(budgets[this.background.quality]);
+        }
         this.wormhole?.setSharpness(this.background.sharpness * MAX_BACKGROUND_SHARPEN);
         const divider = backgroundFrameDivider(this.displayHz, this.background.rateHz);
         // The source learns the effective rate (display cadence / divider), never above the request.
         this.wormhole?.configure({ lineStroke: this.background.lineStroke, maxFrameRateHz: this.displayHz / divider,
+            ...(forceSpiralDirection || this.spiralDirection !== 'auto' ? { spiralDirection: this.spiralDirection } : {}),
             ...(this.background.character ? { macros: this.background.character } : {}),
-            ...(this.background.grain ? { grainMaterial: grainMaterialBoosts(this.background.grain) } : {}) }, divider, this.displayHz);
+            ...(this.background.grain ? { grainMaterial: grainMaterialBoosts(this.background.grain) } : {}),
+            ...(this.background.cosmos ? { cosmos: this.background.cosmos } : {}),
+            ...(this.background.wall ? { wall: this.background.wall } : {}) }, divider, this.displayHz);
     }
 
     async setWormholeAnalysis(analysis: VisualAnalysisSnapshot | null): Promise<void> {
@@ -374,6 +446,10 @@ export class RhythmGameScene {
         if (this.wormhole?.root.visible) await this.setWormholeEnabled(true);
     }
     dispose(): void {
+        if (this.disposed) return;
+        this.disposed = true;
+        this.cockpit.dispose();
+        this.noteHalos.dispose();
         this.wormhole?.dispose();
         this.noteField.dispose(); this.hud.dispose(); this.runway.dispose(); this.sectionCallout.dispose();
         this.songMap.dispose(); this.progressRing.dispose(); this.sectionGates.dispose(); this.sliceEffect.dispose(); this.spatialField.dispose();

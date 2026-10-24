@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>T07b caption depth diagnostic</title>
+<style>body{background:#080e1a;color:#eef8ff;font:15px system-ui;margin:20px}#gallery{display:flex;flex-wrap:wrap;gap:10px}figure{margin:0}img{width:480px}pre{white-space:pre-wrap}</style>
+<h1>Cockpit caption oblique depth / sampling diagnostic</h1><button id="run" disabled>Run real GPU angle comparison</button><p id="status">Loading</p><div id="gallery"></div><pre id="result"></pre>
+<script type="module">
+import * as THREE from 'three';import{XrCockpit}from'../../src/xr/scene/XrCockpit.ts';import{resolvePlayProfile}from'../../src/xr/XrPlayProfile.ts';
+const button=document.querySelector('#run'),output=document.querySelector('#result'),gallery=document.querySelector('#gallery');button.disabled=false;document.querySelector('#status').textContent='Ready';
+button.onclick=()=>{try{
+ const renderer=new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});renderer.setSize(640,180);const target=new THREE.WebGLRenderTarget(640,180),scene=new THREE.Scene();scene.background=new THREE.Color(0);const c=new XrCockpit(),p=resolvePlayProfile({},'tall');c.fit(p.config,p.stage,1.65);c.setTitle('PLEXUS — AUDIO INSTRUMENT / 0123456789 / FUTURE SOUND.wav');c.setSettings('full','static');scene.add(c.root);c.root.updateMatrixWorld(true);
+ const camera=new THREE.PerspectiveCamera(35,640/180,.05,100);const center=c.title.mesh.getWorldPosition(new THREE.Vector3());
+ const pixels=()=>{renderer.setRenderTarget(target);renderer.render(scene,camera);const b=new Uint8Array(640*180*4);renderer.readRenderTargetPixels(target,0,0,640,180,b);renderer.setRenderTarget(null);return b;};
+ const ink=b=>{let n=0;for(let i=0;i<b.length;i+=4)if(b[i]>155&&b[i+1]>155&&b[i+2]>155)n++;return n;};
+ const views=[];for(const angle of[0,25,-25,50,-50,65,-65]){const a=angle*Math.PI/180;camera.position.copy(center).add(new THREE.Vector3(Math.sin(a)*2,.12,Math.cos(a)*2));camera.lookAt(center);camera.updateMatrixWorld(true);c.trim.visible=false;c.body.visible=false;const solo=ink(pixels());c.body.visible=true;const mounted=ink(pixels());views.push({angle,solo,mounted,ratio:mounted/Math.max(1,solo)});
+ c.trim.visible=true;renderer.render(scene,camera);const figure=document.createElement('figure'),label=document.createElement('figcaption'),img=document.createElement('img');label.textContent=angle+' degrees, mounted ink '+mounted+'/'+solo;img.src=renderer.domElement.toDataURL();figure.append(label,img);gallery.append(figure);}
+ const worst=Math.min(...views.map(v=>v.ratio));output.textContent=JSON.stringify({pass:true,views,worst,artifactPresent:worst<.995,titleZ:c.title.mesh.position.z,triangles:renderer.info.render.triangles,calls:renderer.info.render.calls,physicalQuest:'unmeasured'},null,2);document.querySelector('#status').textContent='Done';c.dispose();target.dispose();renderer.dispose();
+}catch(e){output.textContent=JSON.stringify({pass:false,error:String(e)},null,2);document.querySelector('#status').textContent='FAIL';console.error(e);}};
+</script>

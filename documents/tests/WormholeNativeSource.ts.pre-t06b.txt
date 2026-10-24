@@ -1,0 +1,97 @@
+import { isContinuousPlaybackStep, type CanvasVisualPresentation, type VisualAnalysisSnapshot } from '../types/CanvasVisualSource';
+import { WORMHOLE_NATIVE_CAPACITY, WORMHOLE_NATIVE_STRIDE, WORMHOLE_NATIVE_METRES_PER_UNIT,
+    type WormholeNativeFrame, type WormholeNativePoint, type WormholeNativeSink, type WormholeNativeSource as NativeSource } from '../types/WormholeNativeFrame';
+import type { WormholeContextSeed } from '../types/WormholeContext';
+import { cloneDefaultVisualTuning, tuningMorphDeltaSec } from '../config/visualTuning';
+import { XR_WORMHOLE_MACROS, XR_WORMHOLE_BOOSTS } from '../config/xrWormholeTuning';
+import { featureFlags } from '../config/featureFlags';
+import { WormholeFrameContext } from './WormholeFrameContext';
+import type { VisualRendererBackend } from './RendererBackend';
+import { createWormholeSpatialFrame, resolveWormholeSpatialFrame } from './wormholeSpatialFrame';
+
+/** Logical projection dimensions only. No surface, canvas, raster field or WebGL context. */
+class GeometryBackend implements VisualRendererBackend {
+    readonly width = 960; readonly height = 540; frameCount = 0;
+    background() {} noStroke() {} noFill() {} fill() {} stroke() {} strokeWeight() {}
+    line() {} circle() {} triangle() {} beginShape() {} vertex() {} endShape() {}
+    radialGlow() {} radialDim() {} compositeRingTint() {} drawFieldRaster() {}
+    beginFieldRaster(): null { return null; }
+}
+type MutableFrame = { -readonly [K in keyof WormholeNativeFrame]: WormholeNativeFrame[K] };
+export class WormholeNativeSource implements NativeSource, WormholeNativeSink {
+    private readonly context: WormholeFrameContext;
+    private readonly backend = new GeometryBackend();
+    private readonly packet: MutableFrame = { version: 1, generation: 0, serial: 0, songTime: 0, count: 0,
+        data: new Float32Array(WORMHOLE_NATIVE_CAPACITY * WORMHOLE_NATIVE_STRIDE) };
+    private readonly spatial = createWormholeSpatialFrame();
+    private ready = false; private shown = false; private disposed = false; private revision = 0;
+    private previous: number | null = null; private lastPlaying = false; private lastWall = Number.NaN;
+    private dirty = true; private snap = false; private interval = 1 / 36 - .004;
+    private cost = 0;
+    constructor(seed?: WormholeContextSeed) {
+        this.context = new WormholeFrameContext(seed ?? { version: 1, rawTuning: cloneDefaultVisualTuning(),
+            macros: XR_WORMHOLE_MACROS, boosts: XR_WORMHOLE_BOOSTS,
+            policy: { gains: 'meta', semanticResolver: featureFlags.semanticResolver, semanticChoreography: featureFlags.semanticChoreography } });
+        this.context.identity.setNativeSink(this);
+    }
+    get frame(): WormholeNativeFrame | null { return this.shown ? this.packet : null; }
+    get focalPoint() { return this.context.identity.routeFocus; }
+    get spatialFrame() { return this.shown ? this.spatial : null; }
+    get lastRenderMs(): number { return this.cost; }
+    async prepare(analysis: VisualAnalysisSnapshot | null): Promise<void> {
+        if (this.disposed) return;
+        const revision = ++this.revision;
+        this.ready = false; this.shown = false; this.previous = null; this.packet.count = 0;
+        this.context.prepare(analysis); this.context.identity.setNativeSink(this);
+        if (analysis) {
+            const presets = new Map<string, unknown>();
+            await Promise.all([...new Set(analysis.performancePlan.points.map(p => p.preset))].map(async name => {
+                const response = await fetch(`${import.meta.env.BASE_URL}visual-tuning-presets/${encodeURIComponent(name)}`);
+                if (!response.ok) throw new Error(`Could not load Wormhole preset: ${name}`);
+                presets.set(name, await response.json());
+            }));
+            if (this.disposed || revision !== this.revision) return;
+            this.context.preparePlan(analysis.performancePlan, presets);
+        }
+        if (this.disposed || revision !== this.revision) return;
+        this.packet.generation = revision; this.ready = true; this.dirty = true;
+    }
+    render(time: number, playing: boolean): boolean {
+        if (!this.ready || this.disposed || !Number.isFinite(time) || time < 0) return false;
+        const now = performance.now(), previous = this.previous, step = previous === null ? 0 : time - previous;
+        const continuous = playing && this.lastPlaying && previous !== null && isContinuousPlaybackStep(step, (now - this.lastWall) / 1000);
+        const jump = previous !== null && !continuous && (step < 0 || step > .25);
+        if (previous !== null && !this.dirty && !jump && playing === this.lastPlaying && step < this.interval) return false;
+        const dt = continuous ? Math.min(1, step) : tuningMorphDeltaSec(time, previous);
+        this.context.step(time, playing, dt, previous, jump, previous === null || jump || this.snap);
+        this.context.identity.setNativeSink(this);
+        this.packet.count = 0; this.packet.songTime = time; this.packet.serial++;
+        this.backend.frameCount++;
+        this.context.identity.draw(this.backend, [], []);
+        resolveWormholeSpatialFrame(this.spatial, time, this.context.state.visualTuning, this.context.identity.frameDrive, this.context.state);
+        this.previous = time; this.lastPlaying = playing; this.lastWall = now;
+        this.dirty = false; this.snap = false; this.shown = true; this.cost = performance.now() - now;
+        return true;
+    }
+    setPresentation(presentation: CanvasVisualPresentation): void {
+        const changed = this.context.setPresentation(presentation);
+        this.dirty ||= changed.tuningChanged || changed.directionChanged; this.snap ||= changed.tuningChanged || changed.directionChanged;
+        if (presentation.maxFrameRateHz && Number.isFinite(presentation.maxFrameRateHz)) this.interval = Math.max(0, 1 / presentation.maxFrameRateHz - .004);
+    }
+    grain(id: number, head: WormholeNativePoint, tail: WormholeNativePoint, radius: number,
+        red: number, green: number, blue: number, alpha: number, generation: number, seed: number, depth: number): void {
+        if (this.packet.count >= WORMHOLE_NATIVE_CAPACITY) return;
+        const data = this.packet.data, o = this.packet.count++ * WORMHOLE_NATIVE_STRIDE, s = WORMHOLE_NATIVE_METRES_PER_UNIT;
+        data[o] = id;
+        data[o + 1] = head.x * s; data[o + 2] = -head.y * s; data[o + 3] = -head.z * s;
+        data[o + 4] = tail.x * s; data[o + 5] = -tail.y * s; data[o + 6] = -tail.z * s;
+        data[o + 7] = Math.min(.08, Math.max(.004, radius * s));
+        data[o + 8] = red / 255; data[o + 9] = green / 255; data[o + 10] = blue / 255;
+        data[o + 11] = Math.min(1, Math.max(0, alpha / 255)); data[o + 12] = generation;
+        data[o + 13] = seed; data[o + 14] = depth; data[o + 15] = 0;
+    }
+    dispose(): void {
+        this.disposed = true; this.revision++; this.shown = false; this.ready = false;
+        this.context.identity.setNativeSink(null); this.context.dispose(); this.packet.count = 0;
+    }
+}

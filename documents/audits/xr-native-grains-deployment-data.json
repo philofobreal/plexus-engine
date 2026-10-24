@@ -1,0 +1,191 @@
+{
+  "task": "T06a",
+  "scope": "Partial native grains/trails spike",
+  "releaseId": "t06a-native-grains-20261024T023828814Z",
+  "commit": "b74b79af29f5dd9e6c08e7736b832afeac82e03f",
+  "parent": "b5a1a4098b88c7766b0cbdc41d9ebda173be31f9",
+  "url": "https://philofobreal.github.io/plexus-engine/xr/",
+  "sourceBranchPushed": false,
+  "forcePushed": false,
+  "defaultChanged": false,
+  "pagesBuild": {
+    "status": "built",
+    "commit": "b74b79af29f5dd9e6c08e7736b832afeac82e03f",
+    "updatedAt": "2026-10-24T02:39:48Z"
+  },
+  "sourceInputCount": 328,
+  "sourceInputsSha256": "eb7b451f1ec4a92df85e88f18abc1a3af7dead7e3bdee1c6bd0f64d8cb327818",
+  "deployedSourcePatchSha256": "9f54b53e194269fa374a4438e4390c84bf37b65206a9e685fb7aa6d383afd6d8",
+  "verification": {
+    "checkedAt": "2026-10-24T02:41:09.288Z",
+    "releaseId": "t06a-native-grains-20261024T023828814Z",
+    "markerStatus": 200,
+    "files": [
+      {
+        "path": "index.html",
+        "status": 200,
+        "sha256": "b0a54de75429ab9c21f824ef54f70d2424019e7c9f4a68de64c67c6c13fee0a5"
+      },
+      {
+        "path": "mvp/index.html",
+        "status": 200,
+        "sha256": "08a69a033148b86bdfdc9c0f3ebb4d94219e374a2c97cb5cdf9f58cdb97807cf"
+      },
+      {
+        "path": "xr/index.html",
+        "status": 200,
+        "sha256": "e2cebca5e5f9d75fe57627b53d7de1fc6a60d017a35033966eb291fa46d4564e"
+      },
+      {
+        "path": "assets/CosmicWormholeIdentity-DTdxzdWU.js",
+        "status": 200,
+        "sha256": "e66d83769e421894c182f7fc235767c293c291bfd653efabdf3c185633b28a04"
+      },
+      {
+        "path": "assets/PreviewQualityControl-C2VkESJH.js",
+        "status": 200,
+        "sha256": "0f443506b956cdd9d6f28abfde3ffba93c98a41be879dbdbcb39b680157fc73e"
+      },
+      {
+        "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
+        "status": 200,
+        "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+      },
+      {
+        "path": "assets/analyzer.worker-BxhitPzQ.js",
+        "status": 200,
+        "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52"
+      },
+      {
+        "path": "assets/export.worker-Av-E_fEl.js",
+        "status": 200,
+        "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+      },
+      {
+        "path": "assets/main-C7BsYBKL.css",
+        "status": 200,
+        "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+      },
+      {
+        "path": "assets/main-CyrkB64t.js",
+        "status": 200,
+        "sha256": "3f111bb124dfc983661e825caded555dcab51aaec85615649530f501e9d3c532"
+      },
+      {
+        "path": "assets/mvp-BZ1jOo-e.js",
+        "status": 200,
+        "sha256": "eaf65c73cab0e9c1f552dfd073903df062787f0f0063a62407f2b9281054d94c"
+      },
+      {
+        "path": "assets/mvp-D0xy9ln6.css",
+        "status": 200,
+        "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
+      },
+      {
+        "path": "assets/resolveMetaTuning-BFjiwJPP.js",
+        "status": 200,
+        "sha256": "548509c2246da48c6a97418f47d5e00cf74da9122708e8011101c0dba31b2238"
+      },
+      {
+        "path": "assets/wormholeRender.worker-BIGVwdQl.js",
+        "status": 200,
+        "sha256": "ce884ae33cda30495789f7fc0db229964ef3d1846f5b62ecaabd199bac0acc8c"
+      },
+      {
+        "path": "assets/xr-BfNetZ-7.css",
+        "status": 200,
+        "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      },
+      {
+        "path": "assets/xr-DctUAOQZ.js",
+        "status": 200,
+        "sha256": "34c5e29627ec834545c9729da3bd1db622bfbad4cd377db5eb9871aae23f2999"
+      }
+    ],
+    "routes": [
+      {
+        "path": "",
+        "status": 200,
+        "sha256": "b0a54de75429ab9c21f824ef54f70d2424019e7c9f4a68de64c67c6c13fee0a5"
+      },
+      {
+        "path": "mvp/",
+        "status": 200,
+        "sha256": "08a69a033148b86bdfdc9c0f3ebb4d94219e374a2c97cb5cdf9f58cdb97807cf"
+      },
+      {
+        "path": "xr/",
+        "status": 200,
+        "sha256": "e2cebca5e5f9d75fe57627b53d7de1fc6a60d017a35033966eb291fa46d4564e"
+      },
+      {
+        "path": "xr/?xrHaloPreview=phrase",
+        "status": 200,
+        "sha256": "e2cebca5e5f9d75fe57627b53d7de1fc6a60d017a35033966eb291fa46d4564e"
+      }
+    ],
+    "sourceGraphUnchanged": true
+  },
+  "publicBrowserSmoke": {
+    "pass": true,
+    "releaseId": "t06a-native-grains-20261024T023828814Z",
+    "defaultObserved": "hybrid",
+    "modeSelectedFromSystemMenu": "native-grains",
+    "persistedAcrossReload": true,
+    "track": {
+      "fixture": "logs/t06/native-smoke.wav",
+      "seconds": 28,
+      "bpm": 128,
+      "notes": 42,
+      "arrows": 41,
+      "pairs": 3
+    },
+    "nativePlayAndPause": true,
+    "diagnosticLabelObserved": "Native grains (experimental), main geometry; no canvas/worker",
+    "hybridRestoredVisually": true,
+    "originalPreferenceRestored": "hybrid",
+    "consoleErrors": [],
+    "physicalHeadset": false,
+    "limits": "Partial native grains/trails only. OS clipboard paste and physical Quest measurements remain manual."
+  },
+  "publisher": "node node_modules/gh-pages/bin/gh-pages.js -d dist --nojekyll -m \"T06a: opt-in canvas-free native Wormhole grains and trails\"",
+  "rollback": "Choose Hybrid immediately, or publish the retained T05c gh-pages tree in a new commit. No force push.",
+  "evidence": [
+    {
+      "path": "logs/t06/deploy/release.json",
+      "sha256": "d2e96e14502f4e09801b81d528500cb26e3316cd7f27fb346b5064d2b7128962"
+    },
+    {
+      "path": "logs/t06/deploy/published-ref.json",
+      "sha256": "25a044b178ec1ae5cd45c673ee78b0bea981bf44988277e116ca4312aa09c5b5"
+    },
+    {
+      "path": "logs/t06/deploy/published-commit.json",
+      "sha256": "5d7c76b1789cafc397dc4790d020095872c790ab9a8b87c37a70d638e3196d3e"
+    },
+    {
+      "path": "logs/t06/deploy/pages-build.json",
+      "sha256": "1eafc2d08c47ca2b37247683f1e4246b5223bfe6064e5131b172fbfc1a8c04f4"
+    },
+    {
+      "path": "logs/t06/deploy/source-inputs.json",
+      "sha256": "eb7b451f1ec4a92df85e88f18abc1a3af7dead7e3bdee1c6bd0f64d8cb327818"
+    },
+    {
+      "path": "logs/t06/deploy/public-verification.json",
+      "sha256": "0844a01d34a5be2ae77ddf39a617382bf77da86c1c2245b8fb3beab48463ef42"
+    },
+    {
+      "path": "logs/t06/deploy/public-smoke.json",
+      "sha256": "337da8440f39729436e8d3d9af7c16028ca5c6ffe7804d52ec6007cde9cd2922"
+    },
+    {
+      "path": "logs/t06/deploy/public-native-menu.jpg",
+      "sha256": "6d87367f5e0224079c840dd452fba2a8569c48c21aaf3fa0383af35ea0662c5f"
+    },
+    {
+      "path": "logs/t06/deploy/public-hybrid-restored.jpg",
+      "sha256": "8bdb39d556f990091b6f60cfcea1b8699e258c13f4d29c19df5cf1bc2c7cee60"
+    }
+  ]
+}

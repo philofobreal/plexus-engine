@@ -1,6 +1,6 @@
 # Playback performance and wormhole grain appearance
 
-Current implementation: 2026-09-22. Applies to both `/plexus-engine/` and
+Current implementation: 2026-10-24 (Offscreen addendum; earlier material contracts retained). Applies to both `/plexus-engine/` and
 `/plexus-engine/mvp/`, which share `PlexusRenderer` and the Cosmic Wormhole identity.
 This document describes the current preview, export and material rendering contracts.
 
@@ -33,6 +33,25 @@ Visual character and Advanced tuning can change rendering cost substantially. Mo
 visible carriers, thicker/longer strokes, material coverage and bloom increase drawing
 or raster work. The optimizations below reduce particular costs; they do not make all
 settings equally cheap or guarantee a frame rate on every device.
+
+## MVP Offscreen worker
+
+In MVP **Advanced tuning → Wormhole renderer → Offscreen worker**, full Wormhole drawing and
+material computation run in a worker. The main thread receives finished frames, composites them
+and applies the existing PostFX once. This is the fresh-device MVP default; previously saved
+Compatible/WebGL selections stay respected. Choice is saved on the device and included in
+**Copy preview settings**. It is separate from artistic presets and per-track Save/Reset.
+
+The background preview updates at up to 30 Hz, at a backing long edge of 960 pixels (Reduced: 640).
+It is softer than a full-resolution preview. Export keeps its chosen full resolution and uses the
+synchronous Compatible path, independently of this asynchronous preview. Failed/unsupported
+workers fall back to Compatible; changing renderer permits a retry. Paused unchanged scenes
+request no repeated worker frames. Load, seek and resize invalidate old frames.
+
+Material-heavy desktop testing reduced median main-thread draw/submission time from 13.7 ms
+Compatible / 7.2 ms main WebGL to 0.3 ms Offscreen at the documented preview budgets. Worker
+work remains; this is not a Quest FPS or total-energy claim. See [method, limits and current
+validation](../audits/xr-review-checkpoint.md). Studio retains its existing renderer options.
 
 ## Rendering contracts
 

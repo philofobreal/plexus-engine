@@ -138,7 +138,7 @@ export function wormholeGrainFlowAngle(
     // field does not rotate on its own, it twists as the camera moves through it. At zero turns the
     // returned value is identical to the pre-spiral behaviour.
     const twist = Number.isFinite(spiralTurns)
-        ? forwardProgress * Math.max(0, spiralTurns) * TWO_PI
+        ? forwardProgress * spiralTurns * TWO_PI
         : 0;
     const curve = clamp01(authoredCurve);
     if (curve <= 0) return twist;
@@ -513,7 +513,8 @@ export function projectWormholeTubePoint(
     cx: number,
     cy: number,
     fov: number,
-    verticalDrift: number = 0
+    verticalDrift: number = 0,
+    nativePoint?: { x: number; y: number; z: number }
 ): WormholeTubeProjection {
     const radialX = radius * Math.cos(theta);
     const radialY = radius * Math.sin(theta);
@@ -528,6 +529,7 @@ export function projectWormholeTubePoint(
     const deltaX = radialWorldX + routeDriftX;
     const deltaY = radialWorldY + routeDriftY;
     const localZ = Math.max(z * 0.68, deltaX * baseRouteNow.tangentX + deltaY * baseRouteNow.tangentY);
+    if (nativePoint) { nativePoint.x = localX; nativePoint.y = localY; nativePoint.z = localZ; }
     return {
         screenX: cx + localX / localZ * fov,
         screenY: cy + localY / localZ * fov

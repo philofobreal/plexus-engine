@@ -118,6 +118,10 @@ export interface CanvasVisualSource {
  * source keeps resolving its own tuning and only layers these on top.
  */
 export interface CanvasVisualPresentation {
+    /** Optional XR wall-only overrides. Missing preserves the host's existing optics policy. */
+    readonly wall?: Readonly<Partial<import('./WormholeWallPresentation').WormholeWallPresentation>>;
+    /** Coherent twist override only; auto retains the authored/automation direction. */
+    readonly spiralDirection?: 'auto' | 'left' | 'right';
     /** MVP Advanced "Line stroke" slider position in [0, 1] (0.5 = neutral gain). */
     readonly lineStroke?: number;
     /** Upper bound on canvas redraws per second while playing. */
@@ -132,6 +136,8 @@ export interface CanvasVisualPresentation {
      * value), with the same Advanced boost semantics as `lineStroke`.
      */
     readonly grainMaterial?: Readonly<Partial<Record<GrainMaterialBoostKey, number>>>;
+    /** Explicit user-global background masters, applied after authored preset/gain resolution. */
+    readonly cosmos?: Readonly<Partial<{ stars: number; galaxies: number; sky: number }>>;
 }
 /** The MVP Advanced tuning panel's "Grain material" group, by tuning key (ADR-009 Addendum V). */
 export type GrainMaterialBoostKey = 'wormholeNebulaAmount' | 'wormholeNebulaDetail' | 'wormholeNebulaBloom' | 'wormholeNebulaWeave'

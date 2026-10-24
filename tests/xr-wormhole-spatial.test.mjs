@@ -30,7 +30,7 @@ function assertBounded(frame, label) {
     assert.ok(frame.travel >= 0, `${label}: travel (${frame.travel})`);
     assert.ok(frame.travelRate >= 0 && frame.travelRate <= WORMHOLE_SPATIAL_MAX_TRAVEL_RATE, `${label}: travelRate`);
     assert.ok(frame.hue >= 0 && frame.hue < 360, `${label}: hue (${frame.hue})`);
-    assert.ok(frame.spiralTurns >= 0 && frame.spiralTurns <= WORMHOLE_SPATIAL_MAX_SPIRAL_TURNS, `${label}: spiralTurns (${frame.spiralTurns})`);
+    assert.ok(frame.spiralTurns >= -WORMHOLE_SPATIAL_MAX_SPIRAL_TURNS && frame.spiralTurns <= WORMHOLE_SPATIAL_MAX_SPIRAL_TURNS, `${label}: signed spiralTurns (${frame.spiralTurns})`);
     assert.ok(frame.tubeSpread >= WORMHOLE_SPATIAL_TUBE_SPREAD_RANGE[0] && frame.tubeSpread <= WORMHOLE_SPATIAL_TUBE_SPREAD_RANGE[1], `${label}: tubeSpread (${frame.tubeSpread})`);
 }
 
@@ -80,7 +80,9 @@ test('resolution is deterministic and follows the morphed tuning and transients 
     // The spiral the image drew crosses as is (turns), bounded; a drive without one draws none.
     const spiralOf = spiralTurns => resolveWormholeSpatialFrame(createWormholeSpatialFrame(), 1, tuning, drive({ spiralTurns }), calm).spiralTurns;
     assert.equal(spiralOf(2.4), 2.4); assert.equal(spiralOf(undefined), 0); assert.equal(spiralOf(Number.NaN), 0);
-    assert.equal(spiralOf(-1), 0); assert.equal(spiralOf(1e9), WORMHOLE_SPATIAL_MAX_SPIRAL_TURNS);
+    // T04a deliberately extends the old positive-only contract; predecessor retained in documents/tests.
+    assert.equal(spiralOf(-1), -1); assert.equal(spiralOf(1e9), WORMHOLE_SPATIAL_MAX_SPIRAL_TURNS);
+    assert.equal(spiralOf(-1e9), -WORMHOLE_SPATIAL_MAX_SPIRAL_TURNS);
     // A fractional emission mode (a morph between Continuous and Sparse burst) is a continuous crossfade.
     const at = mode => { tuning.wormholeEmissionMode = mode; return resolveWormholeSpatialFrame(createWormholeSpatialFrame(), 0, tuning, drive(), calm).density; };
     const steps = [0, 0.25, 0.5, 1, 1.5, 2].map(at);
@@ -168,6 +170,20 @@ async function sourceHarness() {
     };
     return source;
 }
+
+test('source direction override is separate from gains and morphs with song time, including while paused', async () => {
+    const make = await sourceHarness(), { source, analysis } = make();
+    source.setPresentation({ spiralDirection: 'left' }); await source.prepare(analysis);
+    source.render(0, false); assert.equal(source.state.visualTuning.wormholeSpiralDirection, -1);
+    source.setPresentation({ spiralDirection: 'right' }); source.render(0, false);
+    assert.equal(source.state.visualTuning.wormholeSpiralDirection, -1, 'a paused song has no morph delta');
+    source.render(.1, true);
+    assert.ok(source.state.visualTuning.wormholeSpiralDirection > -1 && source.state.visualTuning.wormholeSpiralDirection < 1);
+    source.render(10, false); assert.equal(source.state.visualTuning.wormholeSpiralDirection, 1, 'discrete seek resolves the current override');
+    source.setPresentation({ spiralDirection: 'auto' }); source.render(12, false);
+    assert.equal(source.state.visualTuning.wormholeSpiralDirection, 1, 'legacy authored preset stays right in Auto');
+    source.dispose();
+});
 
 test('in-thread source: the spatial frame describes the drawn frame, resets on prepare, and a seek reproduces it', async () => {
     const make = await sourceHarness();

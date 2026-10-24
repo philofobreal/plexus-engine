@@ -35,7 +35,8 @@ DashboardUI leaves its composition and export imports ambiguous.
   code remains headless. Current UI orchestration helper extraction is partial: Dashboard
   still owns its established trigger/semantic bodies and preset cache.
 - Each page has its own runtime. Browser preference persistence is not cross-tab playback
-  synchronization. No new State schema, worker protocol or audio clock is introduced.
+  synchronization. The original integration introduced no new State schema, worker protocol or audio clock.
+  The additive preview-worker contract below preserves State/audio ownership.
 
 ## Consequences
 
@@ -48,3 +49,19 @@ ownership map together.
 The feature, acceptance criteria and validation evidence remain separate:
 [MVP feature](../features/mvp-workspace.md), [criteria](../acceptance-criteria/mvp-workspace-acs.md),
 [performance](../features/playback-performance.md), [architecture contract](../governance/architecture-contract.md).
+
+## Addendum — MVP Offscreen preview (2026-10-24)
+
+The MVP composition root may supply a resolved-frame worker factory to the shared renderer.
+The host still resolves preset automation, semantics, macros, morph and director exactly once.
+The worker owns only the existing Wormhole identity geometry/material/raster, using private state,
+OffscreenCanvas and transferred ImageBitmaps. Shared transport types do not depend on visual
+implementations. A bounded 30 Hz / 960 px preview (Reduced 640) keeps main-thread cost low;
+this is explicitly a softer preview. Export uses its synchronous full-resolution renderer and
+never encodes a pending/late preview bitmap. No isolated export runtime is claimed.
+
+The player selects Offscreen/Compatible/WebGL in Advanced tuning; device persistence and Copy
+reuse the existing preview controls. Fresh MVP uses Offscreen; previous choices are preserved.
+Failure falls back safely, and teardown/seek/load/generation/bitmap ownership is tested.
+See [worker contract](../governance/worker-communication.md#mvp-resolved-frame-preview-worker) and
+[review/performance evidence](../audits/xr-review-checkpoint.md).

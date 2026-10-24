@@ -1,0 +1,22 @@
+# T09 movement validation — 2026-10-24
+
+Guarded movement is now an optional chart-generation mode in Choreo → Movement; Legacy remains default and retains the old chart golden. [Model, target rules, rollout and limits](xr-movement-contract.md). Gameplay owns offline motor validation and rigid reflection; XR owns the setting and adjacent-row keyboard focus fix. No audio/analyzer/worker/render-clock authority changes.
+
+## Checks
+
+- `npm run build` passes TypeScript and Vite; existing chunk-size warning is informational. Initial recursive inspector return-type compiler errors were corrected with an explicit return type before final validation.
+- `node --test --test-reporter=tap tests/rhythm-movement.test.mjs tests/xr-generation-settings.test.mjs tests/xr-choreography.test.mjs tests/xr-whole-track-variation.test.mjs tests/xr-play-profile.test.mjs tests/xr-play-space.test.mjs tests/xr-ultra.test.mjs tests/rhythm-chart.test.mjs tests/rhythm-judge.test.mjs tests/rhythm-session.test.mjs tests/rhythm-scoring.test.mjs tests/xr-controller-regeneration.test.mjs tests/xr-menu.test.mjs tests/xr-settings.test.mjs tests/xr-track-path.test.mjs tests/xr-note-gpu.test.mjs tests/gameplay-purity.test.mjs`: **177/177** pass. Includes all five difficulties, preserved pairs/overhead, byte determinism, source immutability, legacy golden, mirror score/section-demand equality, real swept strikes and desktop assist sharing the same judge, stable near-hit zone and existing GPU/path contracts.
+- `npm test -- --test-reporter=tap`: **1743 tests / 1734 pass / nine exact T08 baseline failures**, zero skips/cancellations. Prior 187 active files retained; one reviewed additive new-default expectation, no hidden skips/deletions/golden rewrites. Retention archives include the original settings test, five production sources and protected loader/evolution identities.
+- `node scripts/evaluate-movement.mjs`: 480 deterministic generated chart profiles; 76250 Legacy / 67632 Guarded notes, 8185 retained pairs and 654 overhead targets. New-model violations 10726 → zero. Average retention 88.7%, worst profile 28.1%; optional status retained. Desktop offline corpus duration is recorded, not claimed as Quest or real music truth.
+- Actual local/public UI evidence covers seven-row menu, Guarded/Legacy, Copy, reload, generated WAV play/pause and chart regeneration. Renderer geometry/shaders were not changed; actual browser play is the render smoke. Physical VR/controller tests remain manual.
+- `git diff --check` passes. Scoped immutable predecessor archives and full deployment input manifest replace a broad diff_export.ps1 in the cumulative worktree.
+
+Initial new-test timestamp parity mismatch (desktop resolved at 5 instead of the swept sample's 5.02) was corrected to compare the same committed song time. Existing menu regression revealed skipped compact rows; the implementation was fixed with the test unchanged. Revoicing preserves pair rows and never manufactures an overhead target. These diagnostic iterations are retained in logs/t09.
+
+Node v25.2.1 / npm 11.6.2. Cumulative suite uses prior filesystem escalation for temporary fixture/Git operations. The declared Bun-based deploy is unavailable; publication uses the guarded Node gh-pages entrypoint (`node scripts/release-movement.mjs publish`). Dependencies/package scripts unchanged. [Machine evidence](xr-movement-validation-data.json).
+
+## Deployment and manual gate
+
+Pages **5a35086b51c36bb667447168da960e2e68796b1e**, parent **2bd7cc0c8ed9ee6926e69b568ca4dae1e99ed4ec**, release **t09-movement-20261024T142006361Z**. [Live XR](https://philofobreal.github.io/plexus-engine/xr/?release=t09-movement-20261024T142006361Z). Exact public build, 17 HTML/assets, 4 routes and 343 unchanged source inputs verified. Public Guarded/Copy/reload/play/pause/Legacy regeneration checked; console warnings/errors absent. Legacy preference restored and generated audio cleared. [Release evidence](xr-movement-deployment-data.json).
+
+Stop before T10. Enable Settings → Choreo → Movement → Guarded, load a familiar track and compare with Legacy at the same difficulty/Hands/Zones/space. Expect simpler unreachable transitions and fewer conflicting strikes, sometimes fewer targets; maximum score is recomputed for that chart. Test Standard/Tall, overhead rest, two-hand pairs, Left/Right mirrored lead, controller direction versus desktop assist, Copy/reload and frame pacing. Physical reach, comfort/fatigue and Quest tracking remain unmeasured. Wall Off/Galaxies 0 remain, further Wall/T06f deferred.

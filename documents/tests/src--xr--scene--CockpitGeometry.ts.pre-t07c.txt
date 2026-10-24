@@ -1,0 +1,89 @@
+import * as THREE from 'three';
+
+export type CockpitPoint = readonly [number, number, number];
+export interface CockpitBatch { positions: number[]; colors: number[] }
+type Vertex = { p: number[]; n: number[] };
+const LIGHT = new THREE.Vector3(.16, .5, .85).normalize();
+
+/** Round only the joins; the long straight/chamfered segments retain the authored silhouette. */
+export function roundedCockpitPath(points: readonly CockpitPoint[], cut = .22, steps = 3): CockpitPoint[] {
+    if (points.length < 3) return [...points];
+    const out: CockpitPoint[] = [points[0]];
+    for (let i = 1; i < points.length - 1; i++) {
+        const a = new THREE.Vector3(...points[i - 1]), p = new THREE.Vector3(...points[i]), b = new THREE.Vector3(...points[i + 1]);
+        const incoming = p.clone().sub(a), outgoing = b.clone().sub(p);
+        const d = Math.min(cut, incoming.length() * .32, outgoing.length() * .32);
+        if (d <= 1e-6 || incoming.clone().normalize().dot(outgoing.clone().normalize()) > .9999) { out.push(points[i]); continue; }
+        const start = p.clone().addScaledVector(incoming.normalize(), -d), end = p.clone().addScaledVector(outgoing.normalize(), d);
+        out.push([start.x, start.y, start.z]);
+        for (let j = 1; j <= steps; j++) {
+            const t = j / steps, u = 1 - t;
+            out.push([u*u*start.x+2*u*t*p.x+t*t*end.x, u*u*start.y+2*u*t*p.y+t*t*end.y, u*u*start.z+2*u*t*p.z+t*t*end.z]);
+        }
+    }
+    out.push(points.at(-1)!); return out;
+}
+
+function triangle(batch: CockpitBatch, a: Vertex, b: Vertex, c: Vertex, color: THREE.Color, lit: boolean): void {
+    const ab = b.p.map((v,i)=>v-a.p[i]), ac = c.p.map((v,i)=>v-a.p[i]);
+    const cross = [ab[1]*ac[2]-ab[2]*ac[1],ab[2]*ac[0]-ab[0]*ac[2],ab[0]*ac[1]-ab[1]*ac[0]];
+    if (cross.reduce((s,v,i)=>s+v*(a.n[i]+b.n[i]+c.n[i]),0) < 0) [b,c] = [c,b];
+    for (const v of [a,b,c]) {
+        batch.positions.push(...v.p);
+        const shade = lit ? .43 + .57 * Math.max(0,v.n[0]*LIGHT.x+v.n[1]*LIGHT.y+v.n[2]*LIGHT.z) : 1;
+        batch.colors.push(color.r*shade,color.g*shade,color.b*shade);
+    }
+}
+
+/** A joined rail with a rounded rectangular section. Geometry is built only at layout changes. */
+export function appendCockpitRail(batch: CockpitBatch, points: readonly CockpitPoint[], width: number, depth: number,
+    color: THREE.Color, lit = true, cut = .22, cornerSteps = 3): void {
+    const path = roundedCockpitPath(points, cut, cornerSteps);
+    const radius = Math.min(.026, width*.24, depth*.24), hw = width/2, hd = depth/2;
+    const section: {u:number;v:number;nu:number;nv:number}[] = [];
+    const corners = [[hw-radius,hd-radius],[-hw+radius,hd-radius],[-hw+radius,-hd+radius],[hw-radius,-hd+radius]];
+    // Subpixel light strips need only a bevel; the wider shaded body keeps rounded edges.
+    const sectionSteps = lit ? 2 : 1;
+    for (let k = 0; k < 4; k++) for (let j = 0; j <= sectionSteps; j++) {
+        const angle = k*Math.PI/2+j*Math.PI/(2*sectionSteps), nu = Math.cos(angle), nv = Math.sin(angle);
+        section.push({u:corners[k][0]+radius*nu,v:corners[k][1]+radius*nv,nu,nv});
+    }
+    const rings: Vertex[][] = [], tangents: THREE.Vector3[] = [];
+    for (let i = 0; i < path.length; i++) {
+        const prev = new THREE.Vector3(...path[Math.max(0,i-1)]), next = new THREE.Vector3(...path[Math.min(path.length-1,i+1)]);
+        const tangent = next.sub(prev).normalize();
+        // All rails use a plane normal chosen away from the tangent, including longitudinal returns.
+        const forward = Math.abs(tangent.z)<.95 ? new THREE.Vector3(0,0,1) : new THREE.Vector3(0,1,0);
+        const side = new THREE.Vector3().crossVectors(tangent,forward).normalize();
+        const normal = new THREE.Vector3().crossVectors(side,tangent).normalize();
+        tangents.push(tangent);
+        rings.push(section.map(s=>({p:[path[i][0]+side.x*s.u+normal.x*s.v,path[i][1]+side.y*s.u+normal.y*s.v,path[i][2]+side.z*s.u+normal.z*s.v],
+            n:[side.x*s.nu+normal.x*s.nv,side.y*s.nu+normal.y*s.nv,side.z*s.nu+normal.z*s.nv]})));
+    }
+    for (let i = 1; i < rings.length; i++) for (let j = 0; j < section.length; j++) {
+        const k = (j+1)%section.length;
+        triangle(batch,rings[i-1][j],rings[i][j],rings[i][k],color,lit);
+        triangle(batch,rings[i-1][j],rings[i][k],rings[i-1][k],color,lit);
+    }
+    for (const i of [0,rings.length-1]) {
+        const sign = i===0?-1:1, n = tangents[i].toArray().map(v=>v*sign), center = {p:[...path[i]],n};
+        for (let j = 0; j < section.length; j++) triangle(batch,center,{p:rings[i][j].p,n},{p:rings[i][(j+1)%section.length].p,n},color,lit);
+    }
+}
+
+/** Rounded polygon plus a short bevel: title pod and inset window, merged into the body batch. */
+export function appendCockpitPanel(batch: CockpitBatch, points: readonly (readonly [number,number])[], z: number, depth: number,
+    color: THREE.Color, radius = .06, bevel = .018): void {
+    const shape = new THREE.Shape();
+    points.forEach((p,i)=>{
+        const prev = new THREE.Vector2(...points[(i+points.length-1)%points.length]), next = new THREE.Vector2(...points[(i+1)%points.length]), at = new THREE.Vector2(...p);
+        const incoming = at.clone().sub(prev), outgoing = next.sub(at), cut = Math.min(radius,incoming.length()*.3,outgoing.length()*.3);
+        const start = at.clone().addScaledVector(incoming.normalize(),-cut), end = at.clone().addScaledVector(outgoing.normalize(),cut);
+        if(i===0)shape.moveTo(start.x,start.y);else shape.lineTo(start.x,start.y);
+        shape.quadraticCurveTo(at.x,at.y,end.x,end.y);
+    });shape.closePath();
+    const geometry = new THREE.ExtrudeGeometry(shape,{depth,steps:1,bevelEnabled:true,bevelSize:bevel,bevelThickness:bevel,bevelSegments:2,curveSegments:3});
+    const p = geometry.getAttribute('position'), n = geometry.getAttribute('normal');
+    for(let i=0;i<p.count;i+=3){const v=(j:number):Vertex=>({p:[p.getX(j),p.getY(j),p.getZ(j)+z],n:[n.getX(j),n.getY(j),n.getZ(j)]});triangle(batch,v(i),v(i+1),v(i+2),color,true);}
+    geometry.dispose();
+}

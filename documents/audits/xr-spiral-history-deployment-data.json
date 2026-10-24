@@ -1,0 +1,185 @@
+{
+  "task": "T04b",
+  "url": "https://philofobreal.github.io/plexus-engine/xr/",
+  "releaseId": "t04b-spiral-history-20261023T233450568Z",
+  "pages": {
+    "commit": "78b30a41cafa55bdcc3141965537bc2a526f0a3c",
+    "status": "built",
+    "created_at": "2026-10-23T23:35:03Z",
+    "updated_at": "2026-10-23T23:35:24Z",
+    "error": {
+      "message": null
+    }
+  },
+  "commit": {
+    "message": "Deploy T04b: deterministic signed spiral history and consumers",
+    "parents": [
+      "13967e8739b0ae070fded9d2257fd6496973b836"
+    ],
+    "sha": "78b30a41cafa55bdcc3141965537bc2a526f0a3c"
+  },
+  "previousPagesCommit": "13967e8739b0ae070fded9d2257fd6496973b836",
+  "source": {
+    "baseCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
+    "workingTreeChanges": true,
+    "patchSha256": "f053d27b44eaa83b8836a8864681f18e5b8f850491baef203d15bbdaa2318a7e",
+    "inputManifestSha256": "c8a8a49abfaff8126307a585867e2d521ccdee668d7793a116694e645826b714",
+    "inputCount": 319,
+    "includesUntrackedModules": true,
+    "graphUnchangedAfterPublication": true
+  },
+  "public": {
+    "checkedAt": "2026-10-23T23:36:03.681Z",
+    "releaseId": "t04b-spiral-history-20261023T233450568Z",
+    "markerStatus": 200,
+    "files": [
+      {
+        "path": "index.html",
+        "status": 200,
+        "sha256": "427a2592c783f14f5030614f5376e0244150b7a481f911e42a6ca9bc6a1eca0b"
+      },
+      {
+        "path": "mvp/index.html",
+        "status": 200,
+        "sha256": "5210b2c59374e4907b34fd358606728e72780dc33b235ec25d384054d8127aa4"
+      },
+      {
+        "path": "xr/index.html",
+        "status": 200,
+        "sha256": "52562b778515072beb5945b8a3e07f50aef71b4bbcbf110dfc5f291efc1c18bd"
+      },
+      {
+        "path": "assets/analyzer.worker-BxhitPzQ.js",
+        "status": 200,
+        "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52"
+      },
+      {
+        "path": "assets/CosmicWormholeIdentity-CuZYn4mf.js",
+        "status": 200,
+        "sha256": "2ebb21b2e488b0733307f51c983c7fa91e3069b803d105cfbe6769ef1033f3bc"
+      },
+      {
+        "path": "assets/export.worker-Av-E_fEl.js",
+        "status": 200,
+        "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+      },
+      {
+        "path": "assets/main-C7BsYBKL.css",
+        "status": 200,
+        "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+      },
+      {
+        "path": "assets/main-Cr5lxZvH.js",
+        "status": 200,
+        "sha256": "042ab631acde330d6d1ef5a70f517bffe414a344da9a8971d876c9eb04edf4a7"
+      },
+      {
+        "path": "assets/mvp-AWtlLSuR.js",
+        "status": 200,
+        "sha256": "629cab9c505816d8d82f0eb3e19ba6c0fd8a4e37ea3a2850cca75f5d48408f42"
+      },
+      {
+        "path": "assets/mvp-D0xy9ln6.css",
+        "status": 200,
+        "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
+      },
+      {
+        "path": "assets/PreviewQualityControl--1eSJbuz.js",
+        "status": 200,
+        "sha256": "ac2582a07940941964652152189eb8fb2d848bd5f3e96266308501fc87f67608"
+      },
+      {
+        "path": "assets/PreviewQualityControl-QAaWZINt.css",
+        "status": 200,
+        "sha256": "a1c70e42cf6dac5e6ceffa20f327845c2f22632aa650bb1968a11bdcff0ce2f2"
+      },
+      {
+        "path": "assets/resolveMetaTuning-CDNSIfHR.js",
+        "status": 200,
+        "sha256": "da319e431766a5b1f3fbfdbccd5c75bb58d91d361ca7ceed85ec86f2fffc6212"
+      },
+      {
+        "path": "assets/wormholeRender.worker-B-hrYafl.js",
+        "status": 200,
+        "sha256": "c6066ccc7740a3ded944d197017f2a18f706ddf1d5372239347fefa71eb864e6"
+      },
+      {
+        "path": "assets/xr-BfNetZ-7.css",
+        "status": 200,
+        "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      },
+      {
+        "path": "assets/xr-ClXFNnVn.js",
+        "status": 200,
+        "sha256": "15750e437ebb0cdd5bdb6df26780bf789aaace0f75cd8badd6e6899fb4f670dd"
+      }
+    ],
+    "routes": [
+      {
+        "path": "",
+        "status": 200,
+        "sha256": "427a2592c783f14f5030614f5376e0244150b7a481f911e42a6ca9bc6a1eca0b"
+      },
+      {
+        "path": "mvp/",
+        "status": 200,
+        "sha256": "5210b2c59374e4907b34fd358606728e72780dc33b235ec25d384054d8127aa4"
+      },
+      {
+        "path": "xr/",
+        "status": 200,
+        "sha256": "52562b778515072beb5945b8a3e07f50aef71b4bbcbf110dfc5f291efc1c18bd"
+      },
+      {
+        "path": "xr/?xrHaloPreview=1",
+        "status": 200,
+        "sha256": "52562b778515072beb5945b8a3e07f50aef71b4bbcbf110dfc5f291efc1c18bd"
+      }
+    ]
+  },
+  "browser": {
+    "mode": "fresh public browser automation",
+    "xr": {
+      "webglStartup": true,
+      "syntheticAudio": {
+        "fixture": "logs/t02b/halo-smoke.wav",
+        "durationSec": 7,
+        "bpm": 128,
+        "notes": 9,
+        "playedToResults": true,
+        "humanHits": 0,
+        "misses": 9
+      },
+      "consoleErrors": []
+    },
+    "mvp": {
+      "startup": true,
+      "syntheticAudioReady": true,
+      "bpm": 128,
+      "durationSec": 7,
+      "playPause": true,
+      "seekControlRange": [
+        0,
+        1000
+      ],
+      "seekControlValues": [
+        357,
+        100,
+        357
+      ],
+      "finalPaused": true,
+      "consoleErrors": []
+    },
+    "screenshots": [
+      {
+        "path": "logs/t04b/deploy/live-xr-results.jpg",
+        "sha256": "6d1543c28d6a49c958775195f06ba3fb9ff7c6d5cda9400f4b1422d023ed2d33"
+      },
+      {
+        "path": "logs/t04b/deploy/live-mvp-seek.jpg",
+        "sha256": "ce6463c67113fac64211920649a214d12127973a63aca33ba0688bf4d5325d3c"
+      }
+    ]
+  },
+  "physicalQuest": "unmeasured"
+}

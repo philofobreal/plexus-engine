@@ -195,6 +195,12 @@ test('worker adapter: version check, OffscreenCanvas surfaces, generation-filter
         'only the newest generation answers');
 });
 
+test('worker presentation forwards an absolute spiral direction without interpreting or mirroring it', () => {
+    const h = workerHarness(); h.send({ type: 'init', protocol: 1, width: 640, height: 360, depthCue: 0 });
+    h.send({ type: 'presentation', presentation: { spiralDirection: 'left' } });
+    assert.equal(h.sources[0].presentations.at(-1).spiralDirection, 'left');
+});
+
 test('a regenerated plan over the same analysis crosses to the worker alone; any other change sends the analysis', async () => {
     const { source, worker } = proxyHarness();
     const prepares = () => worker.posted.filter(m => m.type === 'prepare' || m.type === 'prepare-plan');

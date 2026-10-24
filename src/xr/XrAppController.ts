@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import type { AudioEngine } from '../audio/AudioEngine';
-import { buildRhythmChart, DEFAULT_RHYTHM_GAME_CONFIG, RhythmGameSession, scoreRank, type RhythmGameConfig } from '../gameplay';
+import { buildRhythmChart, buildRhythmMusicalRolePlan, DEFAULT_RHYTHM_GAME_CONFIG, RhythmGameSession, scoreRank, type RhythmGameConfig, type RhythmNote, type RhythmRoleSection } from '../gameplay';
 import { State } from '../state/store';
 import { detectImmersiveVrSupport, type ImmersiveVrSupport } from './runtime/XrCapabilityDetector';
 import { XrInputAdapter, type ControllerHand } from './runtime/XrInputAdapter';
@@ -32,8 +32,10 @@ import { normalizeXrSettings, resolvePlayFromSettings, type XrSettings, type XrS
 import type { XrPlayProfile } from './XrPlayProfile';
 import { MEMORY_ONLY_SETTINGS_STORE, type XrSettingsStore } from './XrSettingsStore';
 import type { CanvasVisualSourceFactory, VisualAnalysisSnapshot } from '../types/CanvasVisualSource';
+import type { WormholeNativeSourceFactory } from '../types/WormholeNativeFrame';
 import type { PerformanceAutomationPlan } from '../types';
 import { prepareWormholePerformance } from '../automation/prepareWormholePerformance';
+import { buildHaloPreviewPlan } from './XrHaloPreview';
 
 const HANDS: readonly ControllerHand[] = ['left', 'right'];
 /** Thumbstick deflection that flips a Settings tab, and the rest position that re-arms it. */
@@ -41,6 +43,7 @@ const THUMB_FLICK = 0.7;
 const THUMB_REST = 0.3;
 
 export interface XrAppControllerOptions extends XrDiagnosticsOptions {
+    readonly nativeWormholeFactory?: WormholeNativeSourceFactory;
     /** Per-viewer settings persistence, injected by the composition root (memory-only when absent). */
     readonly settingsStore?: XrSettingsStore;
     /**
@@ -72,6 +75,12 @@ export class XrAppController {
     private readonly scene: RhythmGameScene;
     private readonly inputAdapter: XrInputAdapter;
     private readonly session: RhythmGameSession;
+    /** Accepted chart reference for presentation-only role rebuilds; never edits or judges notes. */
+    private haloChart: readonly RhythmNote[] = [];
+    private haloSections: readonly RhythmRoleSection[] = [];
+    private haloMode = 'off';
+    private halosEnabled = false;
+    private haloObserverFailed = false;
     private readonly worldToPlayfield = new THREE.Matrix4();
     private readonly viewerForward = new THREE.Vector3();
     private readonly viewerRotation = new THREE.Quaternion();
@@ -175,7 +184,8 @@ export class XrAppController {
         this.playProfile = resolvePlayFromSettings(this.settings);
         this.gameConfig = this.playProfile.config;
         this.session = new RhythmGameSession(this.gameConfig);
-        this.scene = new RhythmGameScene(runtime.scene, this.gameConfig, wormholeFactory);
+        this.scene = new RhythmGameScene(runtime.scene, this.gameConfig, wormholeFactory, options.nativeWormholeFactory);
+        this.applyNoteHalos(true);
         this.gpuMaterialSupported = options.gpuMaterial !== false && supportsGpuGrainMaterial(runtime.renderer as unknown as THREE.WebGLRenderer);
         // Before any background exists this only records the pipeline (no rebuild).
         void this.scene.setBackgroundPipeline(this.backgroundPipeline());
@@ -184,6 +194,9 @@ export class XrAppController {
         // Restored presentation applies before any background is created.
         void this.scene.setBackgroundSettings(this.settings.background);
         this.scene.setNoteDesign(this.settings.appearance.noteDesign);
+        this.scene.setCockpitSettings?.(this.settings.appearance.cockpit, this.settings.appearance.cockpitTitle);
+        this.scene.setCockpitViewOrigin?.(runtime.isPresenting() ? 0 : runtime.camera.position.z);
+        this.scene.setSpiralDirection(this.settings.appearance.spiralDirection);
         this.inputAdapter = new XrInputAdapter(runtime.renderer, runtime.scene);
         this.inputAdapter.setBladeLength(this.playProfile.bladeLengthMeters);
         this.menuPanel = new XrMenuPanel();
@@ -305,6 +318,10 @@ export class XrAppController {
             DEFAULT_RHYTHM_GAME_CONFIG, settings
         );
         this.preparedPlan = prepared;
+        // Roles and chart publish under the same generation guard. Never reuse a stale sidecar.
+        this.haloChart = chart;
+        this.haloSections = published.trackAnalysis.sections;
+        this.applyNoteHalos(true);
         // Published sections weight the score by dramaturgy (plain data; Addendum J).
         this.session.loadChart(chart, published.trackAnalysis.sections);
         this.scene.setScoreOverview(buildScoreOverview(this.session.getScoringPlan(), published.duration));
@@ -387,6 +404,8 @@ export class XrAppController {
         this.engine.stop(true);
         const generation = ++this.loadGeneration;
         this.loading = true;
+        this.haloChart = [];
+        this.applyNoteHalos(true);
         this.inputAdapter.resetMotion();
         this.errorEl.textContent = '';
         this.refreshLaunchState();
@@ -401,17 +420,37 @@ export class XrAppController {
     /** Presentation only: never touches the chart, plan, score or playback. */
     private applyPresentation(): void {
         this.scene.setNoteDesign(this.settings.appearance.noteDesign);
+        this.scene.setCockpitSettings?.(this.settings.appearance.cockpit, this.settings.appearance.cockpitTitle);
+        this.scene.setSpiralDirection(this.settings.appearance.spiralDirection);
+        this.applyNoteHalos();
         this.applyDiagnosticsSetting();
         // A changed material renderer or profiling rebuilds the background plane (Addendum X).
         const pipeline = this.scene.setBackgroundPipeline(this.backgroundPipeline());
         this.scene.setAdaptivePacing(this.settings.system.backgroundPacing === 'adaptive');
+        const background = this.scene.setBackgroundSettings(this.settings.background);
         this.applyWormholeSetting();
-        void Promise.all([pipeline, this.scene.setBackgroundSettings(this.settings.background)]).then(() => this.runtime.invalidate())
+        void Promise.all([pipeline, background]).then(() => this.runtime.invalidate())
             .catch(error => this.handleWormholeError(error));
         this.runtime.invalidate();
     }
 
     /** Diagnostics are on when the player switched them on, or `?xrDiagnostics=1` forced them. */
+    /** Live appearance switch: no regeneration/rewind, and no replay of earlier hits. */
+    private applyNoteHalos(chartChanged = false): void {
+        if (this.settings.appearance.noteHalos === 'off') this.haloObserverFailed = false;
+        const mode = this.settings.appearance.noteHalos;
+        const modeChanged = mode !== this.haloMode;
+        this.haloMode = mode;
+        const enabled = mode !== 'off' && !this.haloObserverFailed;
+        const changed = enabled !== this.halosEnabled;
+        if (changed) {
+            this.halosEnabled = enabled;
+            this.session.setResolutionObserver(enabled ? this.scene.resolutionObserver : null);
+        }
+        if (changed || modeChanged || chartChanged) this.scene.setNoteRolePlan(enabled && this.haloChart.length
+            ? mode === 'music' ? buildRhythmMusicalRolePlan(this.haloChart, this.haloSections) : buildHaloPreviewPlan(this.haloChart) : null);
+    }
+
     private get diagnostics(): boolean { return this.forcedDiagnostics || this.settings.system.diagnostics; }
 
     /** The background's build options implied by the renderer, the host and the System settings. */
@@ -494,6 +533,8 @@ export class XrAppController {
             this.loading = true;
             this.published = null;
             this.preparedPlan = null;
+            this.haloChart = [];
+            this.applyNoteHalos(true);
             this.session.clear();
             this.scene.setSectionTimeline([]);
             this.scene.setScoreOverview(null);
@@ -504,6 +545,7 @@ export class XrAppController {
             this.progressEl.textContent = 'Decoding audio...';
             this.trackInfoEl.textContent = '';
             this.trackTitleEl.textContent = file.name.replace(/\.[^.]+$/, '');
+            this.scene.setTrackTitle?.(file.name);
             void this.engine.loadFile(file).catch(error => {
                 if (this.disposed || generation !== this.loadGeneration) return;
                 this.loading = false;
@@ -574,6 +616,7 @@ export class XrAppController {
     }
 
     private handleSessionStart(): void {
+        this.scene.setCockpitViewOrigin?.(0);
         this.pauseGame();
         this.headsetHeightSampled = false;
         this.inputAdapter.resetMotion();
@@ -588,6 +631,7 @@ export class XrAppController {
     }
 
     private handleSessionEnd(): void {
+        this.scene.setCockpitViewOrigin?.(this.runtime.camera.position.z);
         this.pauseGame();
         this.scene.placeForViewer(0, 1.65, 0, 0);
         this.scene.setDisplayFrameRate(null);
@@ -916,6 +960,11 @@ export class XrAppController {
             if (result) this.inputAdapter.pulseHaptics(hand, result.grade === 'perfect' ? 1 : 0.55, 35);
         }
         this.session.update(songTime);
+        if (!this.haloObserverFailed && this.session.getResolutionObserverFailure()) {
+            this.haloObserverFailed = true;
+            this.applyNoteHalos();
+            this.showError('Note halos unavailable. Gameplay continues.');
+        }
 
         const activeNotes = this.session.getActiveNotes(songTime);
         this.scene.update(activeNotes, songTime, this.session.getSnapshot(), this.currentInstruction());
@@ -938,7 +987,8 @@ export class XrAppController {
             const paced = Math.round(this.scene.backgroundPacedHz), latency = this.scene.backgroundLatencyMs;
             const pacing = `${rateHz} Hz${paced > 0 ? ` paced ${paced} Hz` : ''}${latency > 0 ? `, ${latency.toFixed(0)} ms latency` : ''}`;
             const label = this.settings.background.wormhole
-                ? `${quality}, ${pacing}${this.backgroundThread ? `, ${this.backgroundThread}` : ''}, ${this.scene.gpuMaterialEnabled ? 'GPU' : 'CPU'} material${this.scene.gpuLinesEnabled ? ', GPU lines' : ''}, ${this.scene.backgroundRasterLabel} raster${this.scene.backgroundUploadedAhead ? ', upload ahead' : ''}` : 'Wormhole off';
+                ? this.scene.nativeWormholeActive ? `Native grains (experimental), ${pacing}, ${this.scene.nativeExecutionLabel}`
+                    : `${quality}, ${pacing}${this.backgroundThread ? `, ${this.backgroundThread}` : ''}, ${this.scene.gpuMaterialEnabled ? 'GPU' : 'CPU'} material${this.scene.gpuLinesEnabled ? ', GPU lines' : ''}, ${this.scene.backgroundRasterLabel} raster${this.scene.backgroundUploadedAhead ? ', upload ahead' : ''}` : 'Wormhole off';
             const cost = this.frameCost;
             cost.updateMs = this.runtime.lastUpdateMs; cost.renderMs = this.runtime.lastRenderMs; cost.displayHz = this.scene.displayFrameRate;
             cost.gpuSamples = this.runtime.gpuSamples; cost.gpuTimer = this.runtime.gpuTimerAvailable;
@@ -958,8 +1008,12 @@ export class XrAppController {
     }
 
     dispose(): void {
+        if (this.disposed) return;
         this.disposed = true;
         this.loadGeneration++;
+        this.session.setResolutionObserver(null);
+        this.haloChart = [];
+        this.scene.setNoteRolePlan(null);
         this.handleSessionEnd();
         this.playback.dispose();
         this.desktopInput.dispose();

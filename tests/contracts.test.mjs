@@ -408,8 +408,8 @@ test('visual mode selector preserves classic mode and exposes temporal mode', ()
   assert.match(main, /id="visual-mode"/);
   assert.match(main, /createDefaultStyleRegistry\(\)/);
   assert.match(ui, /function isVisualMode\(value: string\): value is VisualMode/);
-  assert.match(renderer, /identityTransitionController\.draw\(ct, backend, compositor, styleRegistry, particles, shockwaves\)/);
-  assert.match(renderer, /styleRegistry\.get\(State\.visualMode\)\.draw\(backend, particles, shockwaves\)/);
+  assert.match(renderer, /identityTransitionController\.draw\(ct, backend, compositor, styleRegistry, particles, shockwaves, drawIdentity\)/);
+  assert.match(renderer, /drawIdentity\(styleRegistry\.get\(State\.visualMode\), backend, particles, shockwaves, \{ timeSec: ct, advanceSharedSimulation: true \}\)/);
   assert.match(identity, /export interface VisualIdentityDrawContext[\s\S]*advanceSharedSimulation: boolean/);
   assert.match(identity, /export interface VisualIdentity[\s\S]*draw\(backend: VisualRendererBackend, particles: Particle\[\], shockwaves: Shockwave\[\], context\?: VisualIdentityDrawContext\): void;/);
   assert.match(registry, /private readonly identities = new Map<string, VisualIdentity>\(\)/);
@@ -956,7 +956,7 @@ test('automation-triggered preset loads retain scaled morph authority while manu
   assert.match(ui, /this\.applyPerformancePreset\(presetData, options\)/);
   assert.match(ui, /if \(options\.overrideMorph\) applyAutomationMorphAuthority\(State\.targetTuning, options\.overrideMorph\)/);
   assert.match(ui, /if \(options\.automationPointId && options\.overrideMorph\?\.bendMirror === true\) \{\s*State\.targetTuning\.wormholePathBend = -State\.targetTuning\.wormholePathBend;/);
-  assert.match(ui, /overrideMorph\?: Pick<PerformanceAutomationPoint, 'intensity' \| 'morphDurationSec' \| 'morphCurve' \| 'bendMirror'>/);
+  assert.match(ui, /overrideMorph\?: Pick<PerformanceAutomationPoint, 'intensity' \| 'morphDurationSec' \| 'morphCurve' \| 'bendMirror' \| 'spiralDirection'>/);
   assert.match(ui, /onPresetLoad: \(fileName\) => \{ void this\.loadVisualPreset\(fileName\); \}/);
 });
 

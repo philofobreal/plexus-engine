@@ -2,3 +2,5 @@
 .preview-quality-control label { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
 .preview-quality-control select { min-width: 0; max-width: 60%; padding: 7px; border: 1px solid rgba(255,255,255,.25); border-radius: 6px; background: #16191f; color: #eee; font: inherit; }
 .preview-quality-control p { margin: 8px 0 0; color: #aeb6c4; font-size: 12px; line-height: 1.5; }
+.preview-quality-control label + p + label { margin-top: 12px; }
+.preview-quality-control button { margin-top: 10px; padding: 7px 10px; border: 1px solid #697585; border-radius: 6px; color: #eee; background: #16191f; cursor: pointer; font: inherit; }

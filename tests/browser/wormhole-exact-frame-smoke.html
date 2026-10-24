@@ -1,0 +1,41 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Exact Wormhole worker v2</title>
+<style>body{background:#080b18;color:#eaf4ff;font:15px system-ui;margin:22px}main{display:flex;gap:18px}canvas{width:480px;height:270px}pre{white-space:pre-wrap}a{color:#8ff}</style>
+<h1>Exact Wormhole frame: local / worker v2</h1>
+<p>Fixed song-time replay. Previous requests, pauses and preview pacing cannot replace the requested image.</p>
+<button id="run">Run exact-frame checks</button><main><figure><figcaption>Local exact fallback</figcaption><canvas id="local" width="320" height="180"></canvas></figure><figure><figcaption>Worker exact protocol v2</figcaption><canvas id="worker" width="320" height="180"></canvas></figure></main>
+<pre id="result">Ready</pre><div id="downloads"></div>
+<script type="module">
+import { WormholeExactFrameSource } from '../../src/visuals/WormholeExactFrameSource.ts';
+import { WormholeExactWorkerSource } from '../../src/visuals/WormholeExactWorkerSource.ts';
+import { cloneDefaultVisualTuning } from '../../src/config/visualTuning.ts';
+import { createEmptyTrackAnalysis } from '../../src/analyzer/normalizeAnalysisResult.ts';
+const output=document.querySelector('#result'),button=document.querySelector('#run');
+const raw=cloneDefaultVisualTuning();Object.assign(raw,{wormholeGrainDensity:.15,wormholeNebulaAmount:.15,wormholeSpiral:.7,wormholePathBend:.5,wormholePathBendVertical:-.3});
+const seed={version:1,rawTuning:raw,macros:{intensity:.5,motion:.5,depth:.5,detail:.5},boosts:{},policy:{gains:'raw',semanticResolver:false,semanticChoreography:false}};
+const analysis={frames:[],events:[],sampleRate:44100,hopSize:1024,bpm:128,duration:2,trackAnalysis:createEmptyTrackAnalysis(),performancePlan:{version:1,source:'edited',points:[]}};
+analysis.frames=Array.from({length:100},()=>({e:.7,eRatio:1.2,densityProj:.6,melodyProj:.4,fxProj:.1,subEnergy:.6,bassEnergy:.5,subFlux:.2,bassFlux:.15,state:'DRIVE',perceptualSpectrum:Array(24).fill(.5)}));
+analysis.trackAnalysis.features=analysis.frames.map(()=>({melody:.4,vocal:.1,fx:.1,density:.6,brightness:.5,tension:.3}));
+analysis.events=[{time:.25,type:1,intensity:.8},{time:.5,type:2,intensity:.8},{time:1,type:1,intensity:.8}];
+const gates={normalizedRgbaMae:.001,pixelFractionAbove2:.005,repeatPixelDifference:0,companionDifference:0};
+const sources=[];let last=null;
+function paint(canvas,lease){const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(lease.bitmap,0,0);return ctx.getImageData(0,0,canvas.width,canvas.height).data.slice();}
+function diff(a,b){let sum=0,bad=0,max=0;for(let i=0;i<a.length;i+=4){let pixel=0;for(let c=0;c<4;c++){const d=Math.abs(a[i+c]-b[i+c]);sum+=d;pixel=Math.max(pixel,d);max=Math.max(max,d);}if(pixel>2)bad++;}return{mae:sum/a.length/255,badFraction:bad/(a.length/4),max};}
+function companion(lease){return JSON.stringify({focal:lease.focalPoint,spatial:lease.spatial,material:lease.material?{...lease.material,data:[...lease.material.data]}:null,lines:lease.lines?{...lease.lines,data:[...lease.lines.data]}:null});}
+async function run(){button.disabled=true;output.textContent='Running real raster / bitmap transfer checks…';const rows=[],started=performance.now();
+ try{for(const [webglRaster,external] of [[false,true],[true,true],[true,false],[false,false]]){const options={width:320,height:180,contextSeed:seed,externalMaterial:external,externalLines:external,webglRaster};
+ const local=new WormholeExactFrameSource('local-'+external,options),worker=new WormholeExactWorkerSource({contextId:'worker-'+external,...options});sources.push(local,worker);
+ await Promise.all([local.prepare(analysis),worker.prepare(analysis)]);local.setPresentation({maxFrameRateHz:1});worker.setPresentation({maxFrameRateHz:1});
+ const repeats=new Map();for(const time of external?[.625]:[0,.625,1.125,.625]){output.textContent=`Sampling ${time}s, external carriers ${external}…`;
+ const before=performance.now();const a=await local.requestFrame(time*24,24),b=await worker.requestFrame(time*24,24);
+ try{const aa=paint(document.querySelector('#local'),a),bb=paint(document.querySelector('#worker'),b),comparison=diff(aa,bb);
+ const repeated=repeats.get(time),repeat=repeated?{local:diff(aa,repeated.aa),worker:diff(bb,repeated.bb)}:null;repeats.set(time,{aa,bb});
+ const companionsEqual=companion(a)===companion(b),identitiesExact=[a,b].every(l=>l.identity.songTime===time&&l.identity.frameIndex===time*24&&l.identity.fps===24&&l.spatial.time===time);
+ const row={time,webglRaster,actualRaster:{local:local.rasterKind,worker:worker.rasterKind},external,comparison,repeat,companionsEqual,identitiesExact,materialCount:a.material?.count??0,lineCount:a.lines?.count??0,elapsedMs:performance.now()-before};
+ row.pass=comparison.mae<=gates.normalizedRgbaMae&&comparison.badFraction<=gates.pixelFractionAbove2&&companionsEqual&&identitiesExact&&(!repeat||(repeat.local.max===0&&repeat.worker.max===0));rows.push(row);
+ }finally{a.release();b.release();}}
+ local.dispose();worker.dispose();}
+ last={pass:rows.every(r=>r.pass),sampler:'fixed-song-60-v1',gates,rows,totalMs:performance.now()-started};output.textContent=JSON.stringify(last,null,2);
+ const downloads=document.querySelector('#downloads');downloads.replaceChildren();for(const name of ['local','worker']){const link=document.createElement('a');link.textContent=`Download ${name} PNG`;link.download=name+'.png';link.href=document.querySelector('#'+name).toDataURL();downloads.append(link,document.createTextNode(' '));}
+ }catch(error){output.textContent='FAIL: '+error.stack;}finally{sources.forEach(s=>s.dispose());button.disabled=false;}}
+button.onclick=run;window.addEventListener('pagehide',()=>sources.forEach(s=>s.dispose()),{once:true});
+</script></html>

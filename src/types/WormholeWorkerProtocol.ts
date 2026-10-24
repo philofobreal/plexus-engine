@@ -7,13 +7,21 @@ import type { GrainMaterialFrame } from './GrainMaterialFrame';
 import type { GrainLineFrame } from './GrainLineFrame';
 import type { WormholeSpatialFrame } from './WormholeSpatialFrame';
 import type { PerformanceAutomationPlan } from './index';
+import type { WormholeContextSeed } from './WormholeContext';
+import type { WormholeFrameIdentity } from './WormholeExactFrame';
+export { WORMHOLE_EXACT_SAMPLER, exactWormholeTime, sameWormholeFrame } from './WormholeExactFrame';
+export type { WormholeFrameIdentity } from './WormholeExactFrame';
 
 /** Bumped on any incompatible message change. */
 export const WORMHOLE_WORKER_PROTOCOL_VERSION = 1;
+/** Separate exact capability. The existing v1 preview contract remains supported. */
+export const WORMHOLE_EXACT_PROTOCOL_VERSION = 2;
 
 export interface WormholeWorkerInit {
     readonly type: 'init';
     readonly protocol: number;
+    readonly contextId?: string;
+    readonly contextSeed?: WormholeContextSeed;
     readonly width: number;
     readonly height: number;
     readonly depthCue: number;
@@ -86,7 +94,9 @@ export interface WormholeWorkerReleaseMaterial {
 }
 
 export type WormholeWorkerRequest = WormholeWorkerInit | WormholeWorkerPrepare | WormholeWorkerPreparePlan | WormholeWorkerRender
-    | WormholeWorkerPresentation | WormholeWorkerDispose | WormholeWorkerReleaseMaterial;
+    | WormholeWorkerPresentation | WormholeWorkerDispose | WormholeWorkerReleaseMaterial
+    | { readonly type: 'render-exact'; readonly identity: WormholeFrameIdentity }
+    | { readonly type: 'release-exact'; readonly identity: WormholeFrameIdentity; readonly buffer?: ArrayBuffer };
 
 export interface WormholeWorkerPrepared {
     readonly type: 'prepared';
@@ -147,4 +157,7 @@ export interface WormholeWorkerFailure {
 }
 
 export type WormholeWorkerResponse = WormholeWorkerPrepared | WormholeWorkerPrepareError | WormholeWorkerFrame
-    | WormholeWorkerUnchanged | WormholeWorkerFailure;
+    | WormholeWorkerUnchanged | WormholeWorkerFailure
+    | { readonly type: 'capabilities'; readonly protocol: 2; readonly contextId: string; readonly sampler: 'fixed-song-60-v1' }
+    | { readonly type: 'exact-frame'; readonly identity: WormholeFrameIdentity; readonly frame: WormholeWorkerFrame }
+    | { readonly type: 'exact-error'; readonly identity: WormholeFrameIdentity; readonly message: string };

@@ -1,0 +1,12 @@
+{
+  "task": "T10a",
+  "predecessorSource": "research/analyzer-lab/fixtures/accepted-timing-v2-dc1-integration-01.json.sources/src/analyzer/BandOnsets.ts.txt",
+  "predecessorSha256": "ae9031a2b11d609c36592a2ec029bf625e54e6a0970150e828bbb5ee8aaa7a0d",
+  "replacementSha256": "38523259edae7e9ae7bf2d0c719d3ea29a72600961e6040ba8710bef6dd0cb4e",
+  "helper": {
+    "path": "src/analyzer/BandProposalIndex.ts",
+    "sha256": "7c3142182e99ea7a56ac62379cf8199240e8ae4463ab4c879320a3b02fd88736"
+  },
+  "reason": "Equivalent sample-bucket search, verified by functional parity tests. Reuse the existing measured source instead of another complete source archive; historical measurements are not accuracy claims.",
+  "oldMeasurementsRewritten": false
+}

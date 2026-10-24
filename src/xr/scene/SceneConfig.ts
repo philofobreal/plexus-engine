@@ -16,10 +16,10 @@ export const SCENE_CONFIG = {
     backdropCenterYMeters: 1.65,
     backdropDistanceMeters: 40,
     /**
-     * Camera far plane: beyond the farthest backdrop corner seen off axis (200 m plane: ~1.7 x 200 m
-     * view depth). With the 0.05 m near plane the depth buffer still resolves millimetres at 20 m.
+     * Camera far plane: the 500 m backdrop's corners are ~911 m from the reference eye position.
+     * 1000 m leaves room for head translation; near stays 0.05 m (24-bit depth: ~0.48 mm at 20 m).
      */
-    cameraFarMeters: 600,
+    cameraFarMeters: 1000,
     /** Far -> near stereo plane distances; all lie beyond the gameplay volume (runway <= 10 m). */
     backdropLayerDistancesMeters: [40, 22, 12],
     /** Distance ahead of the player where the track starts bending; nearer is exactly straight. */

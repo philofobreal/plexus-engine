@@ -663,4 +663,8 @@ export class MvpUI {
     getTuningForMorph(rawTuning: VisualTuningConfig): VisualTuningConfig {
         return this.controller.getBoostedTuning(rawTuning);
     }
+
+    applyAutomatedSpiral(songTime: number, tuning: VisualTuningConfig) {
+        return this.controller.applyAutomatedSpiral(songTime, tuning);
+    }
 }

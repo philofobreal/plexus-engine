@@ -1,4 +1,4 @@
-import { getBackgroundClearStyle, hueToRgbInto, shouldUseExpensiveGlow } from '../config/visualTuning';
+import { effectiveWormholeSpiral, getBackgroundClearStyle, hueToRgbInto, shouldUseExpensiveGlow } from '../config/visualTuning';
 import { featureFlags } from '../config/featureFlags';
 import { State } from '../state/store';
 import type { VisualTuningConfig } from '../types';
@@ -6,6 +6,7 @@ import type { Particle } from './Particle';
 import type { Shockwave } from './Shockwave';
 import type { VisualRendererBackend } from './RendererBackend';
 import type { VisualIdentity } from './VisualIdentity';
+import type { WormholeNativeSink, WormholeNativePoint } from '../types/WormholeNativeFrame';
 import { depthFromPhase, depthWithCoherence, wrapDepthPhase } from './WormholeDepth';
 import { wormholeEmissionGain } from './WormholeEmission';
 import { wormholeDepthDiagnostics } from './WormholeDiagnostics';
@@ -417,7 +418,8 @@ export interface WormholeLineSink {
 }
 
 /** Explicit per-host inputs; the existing MVP defaults to its own State instance. */
-export type WormholeRenderState = Pick<typeof State, 'frames' | 'sampleRate' | 'hopSize' | 'events' | 'trackAnalysis' | 'bpm' | 'visualTuning' | 'currentFrame' | 'currentTime' | 'isExporting' | 'exportTime' | 'currentFeatures' | 'modulation' | 'beatDecay' | 'denseImpactFlash' | 'directorOutput' | 'targetTuning' | 'activeVisualTransitionId' | 'playbackFade'>;
+export type { WormholeRenderState } from '../types/WormholeHostFrame';
+import type { WormholeRenderState } from '../types/WormholeHostFrame';
 
 export class CosmicWormholeIdentity implements VisualIdentity {
     private readonly state: WormholeRenderState;
@@ -517,6 +519,24 @@ export class CosmicWormholeIdentity implements VisualIdentity {
     private materialSink: WormholeMaterialSink | null = null;
     /** Opt-in (XR GPU lines, ADR-009 Addendum AA): a material frame's grain trail strokes go here. */
     private lineSink: WormholeLineSink | null = null;
+    private nativeSink: WormholeNativeSink | null = null;
+    private readonly nativeHead = { x: 0, y: 0, z: 0 };
+    private readonly nativeTail = { x: 0, y: 0, z: 0 };
+    private readonly nativeWallHead = {x:0,y:0,z:0};
+    private readonly nativeWallTail = {x:0,y:0,z:0};
+    private readonly nativeWallFirst = {x:0,y:0,z:0};
+    private readonly nativeWallCenter = {x:0,y:0,z:0};
+    private readonly nativeFringeHead = {x:0,y:0,z:0};
+    private readonly nativeFringeTail = {x:0,y:0,z:0};
+    private readonly nativeCausticPrevious = new Float64Array(WALL_CAUSTIC_COUNT*3);
+    /** T06: emit actual preprojection grains instead of raster layers. Null preserves legacy output. */
+    setNativeSink(sink: WormholeNativeSink | null): void { this.nativeSink = sink; }
+    private skyboxOverride: boolean | null = null;
+    /** Explicit embedded-host master; null preserves the legacy technical flag. */
+    setSkyboxEnabled(enabled: boolean | null): void { this.skyboxOverride=enabled; }
+    private wallOverride:boolean|null=null;
+    /** Wall-only XR presentation; never enables lens optics or mutates the preset gate. */
+    setWallEnabled(enabled:boolean|null):void{this.wallOverride=enabled;}
     private readonly lensWarpPointA: WormholeLensWarpPoint = { x: 0, y: 0 };
     private readonly lensWarpPointB: WormholeLensWarpPoint = { x: 0, y: 0 };
     /**
@@ -556,6 +576,8 @@ export class CosmicWormholeIdentity implements VisualIdentity {
      */
     private readonly grainWeaveHeads = new Float32Array(POOL_SIZE * WEAVE_STRIDE);
     private readonly grainWeaveVisible = new Uint8Array(POOL_SIZE);
+    // Original preprojection heads, tails and radius; never reconstructed from raster pixels.
+    private readonly nativeWeaveHeads = new Float32Array(POOL_SIZE * 7);
     /** Highest grain-density copy count materialised so far; the pool never shrinks by itself. */
     private grainCopiesAllocated = 0;
     /** Caller-owned output for viewport raster sizing; avoids a per-frame dimensions object. */
@@ -737,6 +759,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
     setDepthCue(amount: number): void {
         this.depthCue = Math.min(1, Math.max(0, Number.isFinite(amount) ? amount : 0));
     }
+    get depthCueStrength(): number { return this.depthCue; }
 
     /**
      * Bounded 2.5D output: grains are routed by their already-computed depth to the far (main)
@@ -893,7 +916,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         // Keeping the gate here makes Off a true render bypass: none of the authored sub-values can
         // leak into wall lines, refraction-field perturbation, lens geometry, vignette, or overlays.
         const opticsEnabled = tuning.wormholeOpticsEnabled >= 0.5;
-        const wallStrength = opticsEnabled ? tuning.wormholeWall : 0;
+        const wallStrength = (this.wallOverride ?? opticsEnabled) ? tuning.wormholeWall : 0;
         const lensStrength = opticsEnabled ? tuning.wormholeLens : 0;
         const lensActive = lensStrength > 0;
         const lensSwirl = tuning.wormholeLensSwirl;
@@ -926,7 +949,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         // alone: a wormholeWall>0, wormholeLens=0 configuration (the pre-F4 legacy look) must still
         // see its own wave fronts exactly as before.
         let waveFrontCount = 0;
-        if (opticsEnabled && tuning.wormholeWallWaves > 0 && (lensActive || wallStrength > 0)) {
+        if (tuning.wormholeWallWaves > 0 && (lensActive || wallStrength > 0)) {
             waveFrontCount = wormholeWallGatherWaveFronts(
                 this.state.events, this.state.frames, timeSec, this.state.sampleRate, this.state.hopSize, this.waveFronts
             );
@@ -942,7 +965,8 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         // galaxies keep warping since they carry most of the lensed silhouette read.
         const applySkyboxLens = lensActive && !performanceMode;
 
-        if (featureFlags.wormholeSkybox) {
+        if (!this.nativeSink || this.nativeSink.cosmos) {
+        if (this.skyboxOverride ?? (featureFlags.wormholeSkybox || !!this.nativeSink?.cosmos)) {
             const skyboxTravelRate = Math.min(
                 SKYBOX_TRAVEL_RATE_CAP,
                 wormholeTrailSeparation(canonicalRate, SKYBOX_ROUTE_WORLD_FRACTION) * smearRateGain
@@ -959,7 +983,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             this.drawSkybox(
                 backend, this.baseRouteNow, this.routePrev, this.baseRouteNowV, this.routePrevV,
                 routeTurnVisualGain, tuning.wormholeSkybox * lineAlpha, impact, cx, cy, frameTick,
-                skyboxTravelRate, canonicalRate, applySkyboxLens, lensCenterX, lensCenterY, lensRadiusPx,
+                skyboxTravelRate, canonicalRate, applySkyboxLens && !this.nativeSink, lensCenterX, lensCenterY, lensRadiusPx,
                 lensStrength, lensSwirl, camZ, lensWallWaveOffset
             );
         }
@@ -1018,7 +1042,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 let lineGx = gx;
                 let lineGy = gy;
                 let gMagnification = 1;
-                if (lensActive) {
+                if (lensActive && !this.nativeSink) {
                     const dxLens = gx - lensCenterX;
                     const dyLens = gy - lensCenterY;
                     // Wall-as-refraction-field (true-lens plan F4): see `perturbedLensRadius`.
@@ -1034,7 +1058,11 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                     lineGx = this.lensWarpPointA.x;
                     lineGy = this.lensWarpPointA.y;
                 }
-                backend.radialGlow(lineGx, lineGy, gRadius, this.galaxyColor, gAlpha * gMagnification);
+                if(this.nativeSink)this.emitNativeCosmos(1,i*2,gLocalX,
+                    galaxy.y+gRouteDriftV*GALAXY_ROUTE_WORLD_SCALE*galaxyParallax*routeTurnVisualGain,gLocalZ,
+                    gLocalX,galaxy.y+gRouteDriftV*GALAXY_ROUTE_WORLD_SCALE*galaxyParallax*routeTurnVisualGain,gLocalZ,
+                    GALAXY_CORE,galaxy.r,galaxy.g,galaxy.b,gAlpha*255);
+                else backend.radialGlow(lineGx, lineGy, gRadius, this.galaxyColor, gAlpha * gMagnification);
 
                 // Bounded drift cue: a fainter, smaller echo at this galaxy's own previous-frame
                 // position (same prev/current pattern already used for grains and stars), whose
@@ -1058,7 +1086,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 let lineGxPrev = gxPrev;
                 let lineGyPrev = gyPrev;
                 let gMagnificationPrev = 1;
-                if (lensActive) {
+                if (lensActive && !this.nativeSink) {
                     const dxLensPrev = gxPrev - lensCenterX;
                     const dyLensPrev = gyPrev - lensCenterY;
                     // Wall-as-refraction-field (true-lens plan F4): see `perturbedLensRadius`.
@@ -1074,7 +1102,11 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                     lineGxPrev = this.lensWarpPointA.x;
                     lineGyPrev = this.lensWarpPointA.y;
                 }
-                backend.radialGlow(
+                if(this.nativeSink)this.emitNativeCosmos(1,i*2+1,gLocalXPrev,
+                    galaxy.y+gRouteDriftVPrev*GALAXY_ROUTE_WORLD_SCALE*galaxyParallaxPrev*routeTurnVisualGain,gLocalZPrev,
+                    gLocalXPrev,galaxy.y+gRouteDriftVPrev*GALAXY_ROUTE_WORLD_SCALE*galaxyParallaxPrev*routeTurnVisualGain,gLocalZPrev,
+                    GALAXY_CORE*.7,galaxy.r,galaxy.g,galaxy.b,gAlpha*.4*255);
+                else backend.radialGlow(
                     lineGxPrev, lineGyPrev, gRadius * 0.7, this.galaxyColor, gAlpha * 0.4 * gMagnificationPrev
                 );
             }
@@ -1167,7 +1199,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 // motion-safety fade below remains the final guard.
                 let trailPsx = psx;
                 let trailPsy = psy;
-                if (lensActive) {
+                if (lensActive && !this.nativeSink) {
                     const smearDx = sx - lensCenterX;
                     const smearDy = sy - lensCenterY;
                     const lensSmearGain = wormholeLensSmearGain(
@@ -1193,7 +1225,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 let linePsx = trailPsx;
                 let linePsy = trailPsy;
                 let starMagnification = 1;
-                if (lensActive) {
+                if (lensActive && !this.nativeSink) {
                     const dxLens = sx - lensCenterX;
                     const dyLens = sy - lensCenterY;
                     const d2Lens = dxLens * dxLens + dyLens * dyLens;
@@ -1233,9 +1265,13 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                     clamp01((backend.height + marginY - lineSy) / marginY)
                 );
                 const sAlpha = (10 + sNear * sNear * 120 + impact * 60)
-                    * lineAlpha * starAmount * starNearVisibility * starMotionVisibility * viewportVisibility
+                    * lineAlpha * starAmount * starNearVisibility * starMotionVisibility * (this.nativeSink ? 1 : viewportVisibility)
                     * starMagnification;
                 const sWeight = (0.4 + sNear * sNear * 2.2) * lineWeight;
+                if(this.nativeSink){
+                    this.emitNativeCosmos(0,i,localX,localY,localZ,prevLocalX,prevLocalY,prevLocalZ,
+                        sWeight*.5*localZ/fov,star.r,star.g,star.b,sAlpha);continue;
+                }
                 backend.stroke(star.r, star.g, star.b, sAlpha);
                 backend.strokeWeight(sWeight);
                 backend.line(linePsx, linePsy, lineSx, lineSy);
@@ -1252,7 +1288,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             // eligible star unconditionally costs a few effectively-invisible calls rather than
             // risking that bug -- and reads the now/trail cache the main loop just populated, so
             // this never re-samples the route.
-            if (lensActive && !performanceMode) {
+            if (lensActive && !performanceMode && !this.nativeSink) {
                 for (let i = 0; i < this.starPool.length; i += 2) {
                     const star = this.starPool[i];
                     const secSx = this.starSxCache[i];
@@ -1289,7 +1325,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         // background light for the forward mapping to form a rich Einstein arc. This is deliberately
         // separate from (and does not increase) the global skybox/star pools. The helper owns the
         // lens-active and cheap source-d2 gates; performance mode samples a fixed half-pool stride.
-        if (lensActive) {
+        if (lensActive && !this.nativeSink) {
             this.drawLensDeepField(
                 backend, lensCenterX, lensCenterY, lensRadiusPx, lensStrength, lensSwirl,
                 travelDistance, timeSec, performanceMode, lineAlpha, lensWallWaveOffset
@@ -1297,6 +1333,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         }
 
         // --- Color: GC-free, shifted by vocal (+) and melody (-) ---
+        }
         const hue = tuning.circleHue + vocal * 40 - melody * 30;
         this.frameDrive.hue = hue;
         hueToRgbInto(this.lineColor, hue, 0.82, Math.min(0.85, 0.55 + impact * 0.18));
@@ -1313,6 +1350,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         // must remain untouched so the inverse radial gradient cannot contaminate the key color.
         // Export and video-backplate rendering deliberately use the same path: P5RendererBackend
         // resolves their active target before issuing this single gradient fill.
+        if (!this.nativeSink) {
         if (lensActive && wallStrength > 0 && tuning.chromaKeyMode === 0) {
             const dimAlpha = clamp01(lensStrength * wallStrength) * 0.58;
             backend.radialDim(
@@ -1352,10 +1390,11 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             );
         }
 
+        }
         // Membrane wall (refractive membrane wall plan, Phase 4): drawn after the background
         // layers and before the grain field, so dust floats in front of the wall it frames. Reuses
         // this frame's already-sampled `baseRouteNow`/`baseRouteNowV` camera frames untouched.
-        if (wallStrength > 0) {
+        if (wallStrength > 0 && (!this.nativeSink || this.nativeSink.wall)) {
             hueToRgbInto(this.wallWarmColor, hue - WALL_CHROMATIC_HUE_SHIFT, 0.85, 0.6);
             hueToRgbInto(this.wallCoolColor, hue + WALL_CHROMATIC_HUE_SHIFT, 0.85, 0.6);
             // Low saturation, near-max brightness: reads as a hot highlight distinct from the
@@ -1384,13 +1423,14 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         const grainMaterialAmount = performanceMode ? 0 : clamp01(tuning.wormholeNebulaAmount);
         const grainMaterialDetail = clamp01(tuning.wormholeNebulaDetail);
         const grainWeaveAmount = grainMaterialAmount > 0 ? clamp01(tuning.wormholeNebulaWeave) : 0;
+        this.nativeSink?.beginMaterial?.(grainMaterialAmount, grainMaterialDetail, clamp01(tuning.wormholeNebulaBloom));
         // Spiral geometry, arm density wave, and grain density (plan S1/S2/S5) are conditioning for
         // the Nebula material, exactly like the weave: they stay at the historical zero/one-copy
         // field whenever the material is inactive (amount 0 or performance mode), so legacy frames
         // -- the overwhelming default across the app -- are byte-identical to before this plan. Once
         // the material is active they default to the tuned "optimal" look instead of a bare zero, so
         // turning the master Amount on gives the intended read without five additional knob turns.
-        const spiralTurns = grainMaterialAmount > 0 ? Math.max(0, finiteOr(tuning.wormholeSpiral, 0)) : 0;
+        const spiralTurns = grainMaterialAmount > 0 ? effectiveWormholeSpiral(tuning) : 0;
         this.frameDrive.spiralTurns = spiralTurns;
         // Left unrounded on purpose: this feeds the density-wave crest formula below as a cosine
         // frequency, which is continuous in a fractional arm count. Automation morphs this value
@@ -1444,7 +1484,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             materialSink.begin(grainMaterialL0Cols, grainMaterialL0Rows, backend.width, backend.height,
                 grainMaterialDetail, grainMaterialAmount, tuning.wormholeNebulaBloom);
             grainMaterialActive = true;
-        } else if (grainMaterialAmount > 0) {
+        } else if (grainMaterialAmount > 0 && !this.nativeSink) {
             grainMaterialL0 = backend.beginFieldRaster(0, grainMaterialL0Cols, grainMaterialL0Rows);
             grainMaterialL1 = backend.beginFieldRaster(1, grainMaterialL1Cols, grainMaterialL1Rows);
             grainMaterialL2 = backend.beginFieldRaster(2, grainMaterialL2Cols, grainMaterialL2Rows);
@@ -1454,7 +1494,8 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             }
         }
 
-        if (grainMaterialActive && grainWeaveAmount > 0) this.grainWeaveVisible.fill(0);
+        const nativeWeaveActive = !!this.nativeSink?.weave && grainWeaveAmount > 0;
+        if ((grainMaterialActive || nativeWeaveActive) && grainWeaveAmount > 0) this.grainWeaveVisible.fill(0);
 
         for (let i = 0; i < activeGrainCount; i++) {
             const grain = this.pool[i];
@@ -1591,11 +1632,11 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             const verticalDriftPrev = this.routePrevV.positionX - this.baseRoutePrevV.positionX;
             const nowProjection = projectWormholeTubePoint(
                 this.routeNow, this.baseRouteNow, z, projectedThetaNow, projectedRadiusNow, routeTurnVisualGain, cx, cy, fov,
-                verticalDriftNow
+                verticalDriftNow, this.nativeSink ? this.nativeHead : undefined
             );
             const prevProjection = projectWormholeTubePoint(
                 this.routePrev, this.baseRoutePrev, prevZ, projectedThetaPrev, projectedRadiusPrev, routeTurnVisualGain, cx, cy, fov,
-                verticalDriftPrev
+                verticalDriftPrev, this.nativeSink ? this.nativeTail : undefined
             );
             sx = nowProjection.screenX;
             sy = nowProjection.screenY;
@@ -1653,6 +1694,26 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 (0.4 + energy * 3.2) * lineWeight * grain.weightScale * materialGain * (1 + kickGain * 0.3)
                 * transitionEnergyNow.strokeScale * (spiralArms > 0 ? 0.55 + 0.45 * armFactor : 1) * cueWeight
             );
+            if (this.nativeSink) {
+                this.nativeSink.grain(i, this.nativeHead, this.nativeTail, weight * 0.5 * this.nativeHead.z / fov,
+                    r, g, b, alpha, grain.releaseGeneration, grain.seed, depthT,
+                    grain.flowPhase + generationNow * 0.61803398875 + distanceSinceRelease / Math.max(1, grainMaxZ), energy);
+                if (nativeWeaveActive) {
+                    const p = i * 7, h = i * WEAVE_STRIDE, spatial = this.nativeWeaveHeads, heads = this.grainWeaveHeads;
+                    spatial[p] = this.nativeHead.x; spatial[p + 1] = this.nativeHead.y; spatial[p + 2] = this.nativeHead.z;
+                    spatial[p + 3] = this.nativeTail.x; spatial[p + 4] = this.nativeTail.y; spatial[p + 5] = this.nativeTail.z;
+                    spatial[p + 6] = weight * 0.5 * this.nativeHead.z / fov;
+                    // Reuse the original connection eligibility/emission law, including its
+                    // central projection length gate. Only the resulting arc geometry is spatial.
+                    heads[h] = sx; heads[h + 1] = sy; heads[h + 2] = alpha; heads[h + 3] = weight;
+                    heads[h + 4] = r; heads[h + 5] = g; heads[h + 6] = b; heads[h + 7] = depthT;
+                    heads[h + 8] = grain.seed; heads[h + 9] = generationNow;
+                    heads[h + 10] = grain.flowPhase + generationNow * 0.61803398875 + distanceSinceRelease / Math.max(1, grainMaxZ);
+                    heads[h + 11] = energy;
+                    this.grainWeaveVisible[i] = 1;
+                }
+                continue;
+            }
             const trailScale = wormholeProjectedTrailScale(px - sx, py - sy, backend.height);
             if (trailScale < 1) {
                 px = sx + (px - sx) * trailScale;
@@ -1771,7 +1832,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
 
         if (stageClock) stageStart = this.markStage('grains', stageStart);
 
-        if (grainMaterialActive && grainWeaveAmount > 0 && (materialSink || (grainMaterialL0 && grainMaterialL1 && grainMaterialL2))) {
+        if (nativeWeaveActive || (grainMaterialActive && grainWeaveAmount > 0 && (materialSink || (grainMaterialL0 && grainMaterialL1 && grainMaterialL2)))) {
             this.drawGrainWeave(
                 grainMaterialL0 ?? NO_FIELD_RASTER, grainMaterialL0Cols, grainMaterialL0Rows,
                 backend.width, backend.height, grainMaterialDetail,
@@ -1894,6 +1955,11 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         carrier.materialPhase = (heads[a + 10] + heads[b + 10]) * 0.5;
         carrier.energy = (heads[a + 11] + heads[b + 11]) * 0.5;
 
+        if (this.nativeSink?.weave) {
+            this.nativeWeaveNeighbour(indexA, indexB, alongArm, carrier);
+            return;
+        }
+
         const tangentAX = heads[a + 12];
         const tangentAY = heads[a + 13];
         const tangentBX = heads[b + 12];
@@ -1937,6 +2003,34 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             this.depositWeave(l0, cols, rows, viewportWidth, viewportHeight, carrier, detail);
             previousX = x;
             previousY = y;
+        }
+    }
+
+    /** Spatial version of the same neighbour connection. Arm arcs follow the already-resolved
+     * 3D travel tangents; ring links stay chords. Two fixed arc segments, no simulation or allocation. */
+    private nativeWeaveNeighbour(indexA: number, indexB: number, alongArm: boolean, carrier: ResolvedWormholeGrainCarrier): void {
+        const points = this.nativeWeaveHeads, a = indexA * 7, b = indexB * 7;
+        const length = Math.hypot(points[b] - points[a], points[b + 1] - points[a + 1], points[b + 2] - points[a + 2]);
+        if (!(length > 1e-4)) return;
+        const tangentA = Math.hypot(points[a] - points[a + 3], points[a + 1] - points[a + 4], points[a + 2] - points[a + 5]);
+        const tangentB = Math.hypot(points[b] - points[b + 3], points[b + 1] - points[b + 4], points[b + 2] - points[b + 5]);
+        const bend = alongArm && tangentA > 1e-4 && tangentB > 1e-4;
+        const segments = bend ? WEAVE_SEGMENTS : 1;
+        const head = this.nativeHead, tail = this.nativeTail;
+        tail.x = points[a]; tail.y = points[a + 1]; tail.z = points[a + 2];
+        const radius = Math.min(points[a + 6], points[b + 6]) * 0.72;
+        for (let step = 1; step <= segments; step++) {
+            const t = step / segments, t2 = t * t, t3 = t2 * t;
+            const start = 2 * t3 - 3 * t2 + 1, end = -2 * t3 + 3 * t2;
+            const startTangent = bend ? (t3 - 2 * t2 + t) * length * WEAVE_BEND / tangentA : 0;
+            const endTangent = bend ? (t3 - t2) * length * WEAVE_BEND / tangentB : 0;
+            head.x = start * points[a] + end * points[b] - startTangent * (points[a] - points[a + 3]) - endTangent * (points[b] - points[b + 3]);
+            head.y = start * points[a + 1] + end * points[b + 1] - startTangent * (points[a + 1] - points[a + 4]) - endTangent * (points[b + 1] - points[b + 4]);
+            head.z = start * points[a + 2] + end * points[b + 2] - startTangent * (points[a + 2] - points[a + 5]) - endTangent * (points[b + 2] - points[b + 5]);
+            this.nativeSink!.weave!(indexA * 3 + (alongArm ? step - 1 : 2), head, tail, radius,
+                carrier.colorR, carrier.colorG, carrier.colorB, carrier.alpha * clamp01(this.state.visualTuning.wormholeNebulaAmount),
+                carrier.generation, carrier.seed, carrier.depth, carrier.materialPhase, carrier.energy, carrier.alpha);
+            tail.x = head.x; tail.y = head.y; tail.z = head.z;
         }
     }
 
@@ -2316,7 +2410,8 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 : 0;
 
             const center = projectWormholeTubePoint(
-                routeNow, this.baseRouteNow, ringZ, 0, 0, routeTurnVisualGain, cx, cy, fov, verticalDrift
+                routeNow, this.baseRouteNow, ringZ, 0, 0, routeTurnVisualGain, cx, cy, fov, verticalDrift,
+                this.nativeSink?.wall ? this.nativeWallCenter : undefined
             );
             // Clump gate (geometry-overhaul plan T2): a ring sits at one fixed depth, so the clump
             // field's depth-phase argument is the same advected phase the ripple already reads for
@@ -2342,7 +2437,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
 
                 const projection = projectWormholeTubePoint(
                     routeNow, this.baseRouteNow, ringZ, theta, radius, routeTurnVisualGain, cx, cy, fov,
-                    verticalDrift
+                    verticalDrift, this.nativeSink?.wall ? this.nativeWallHead : undefined
                 );
                 const sx = projection.screenX;
                 const sy = projection.screenY;
@@ -2353,34 +2448,42 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 const weight = wormholeProjectedStrokeWeight((0.4 + sector.alphaGain * 0.5) * tuning.lineWeight);
 
                 if (segmentIndex === 0) {
+                    if(this.nativeSink?.wall)Object.assign(this.nativeWallFirst,this.nativeWallHead);
                     firstX = sx;
                     firstY = sy;
                     firstAlpha = alpha;
                     firstWeight = weight;
                     firstClump = clump;
                 } else if (clump > 0.001) {
-                    backend.stroke(r, g, b, alpha);
-                    backend.strokeWeight(weight);
-                    backend.line(prevX, prevY, sx, sy);
+                    if(this.nativeSink?.wall){
+                        this.emitNativeWall(0,ringIndex*segmentCount+segmentIndex,this.nativeWallHead,this.nativeWallTail,
+                            weight,fov,r,g,b,alpha,refraction>0?wormholeWallChromaticGain(sector.alphaGain,refraction):0,
+                            WALL_CHROMATIC_MAX_OFFSET_PX,.6);
+                    }else{
+                        backend.stroke(r, g, b, alpha);
+                        backend.strokeWeight(weight);
+                        backend.line(prevX, prevY, sx, sy);
 
-                    if (refraction > 0) {
-                        const chromaticGain = wormholeWallChromaticGain(sector.alphaGain, refraction);
-                        if (chromaticGain > 0) {
-                            const offsetPixels = chromaticGain * WALL_CHROMATIC_MAX_OFFSET_PX;
-                            const chroma = wormholeWallChromaticOffset(sx, sy, center.screenX, center.screenY, offsetPixels);
-                            const dxWarm = chroma.warmX - sx;
-                            const dyWarm = chroma.warmY - sy;
-                            const chromaAlpha = alpha * chromaticGain * 0.6;
-                            const chromaWeight = weight * 0.7;
-                            backend.stroke(this.wallWarmColor[0], this.wallWarmColor[1], this.wallWarmColor[2], chromaAlpha);
-                            backend.strokeWeight(chromaWeight);
-                            backend.line(prevX + dxWarm, prevY + dyWarm, sx + dxWarm, sy + dyWarm);
-                            backend.stroke(this.wallCoolColor[0], this.wallCoolColor[1], this.wallCoolColor[2], chromaAlpha);
-                            backend.strokeWeight(chromaWeight);
-                            backend.line(prevX - dxWarm, prevY - dyWarm, sx - dxWarm, sy - dyWarm);
+                        if (refraction > 0) {
+                            const chromaticGain = wormholeWallChromaticGain(sector.alphaGain, refraction);
+                            if (chromaticGain > 0) {
+                                const offsetPixels = chromaticGain * WALL_CHROMATIC_MAX_OFFSET_PX;
+                                const chroma = wormholeWallChromaticOffset(sx, sy, center.screenX, center.screenY, offsetPixels);
+                                const dxWarm = chroma.warmX - sx;
+                                const dyWarm = chroma.warmY - sy;
+                                const chromaAlpha = alpha * chromaticGain * 0.6;
+                                const chromaWeight = weight * 0.7;
+                                backend.stroke(this.wallWarmColor[0], this.wallWarmColor[1], this.wallWarmColor[2], chromaAlpha);
+                                backend.strokeWeight(chromaWeight);
+                                backend.line(prevX + dxWarm, prevY + dyWarm, sx + dxWarm, sy + dyWarm);
+                                backend.stroke(this.wallCoolColor[0], this.wallCoolColor[1], this.wallCoolColor[2], chromaAlpha);
+                                backend.strokeWeight(chromaWeight);
+                                backend.line(prevX - dxWarm, prevY - dyWarm, sx - dxWarm, sy - dyWarm);
+                            }
                         }
                     }
                 }
+                if(this.nativeSink?.wall)Object.assign(this.nativeWallTail,this.nativeWallHead);
                 prevX = sx;
                 prevY = sy;
             }
@@ -2388,9 +2491,13 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             // Close the ring loop the same way the loop would have connected the last segment to a
             // wrapped-around segment 0: gated by segment 0's own clump value, never unconditionally.
             if (firstClump > 0.001) {
+                if(this.nativeSink?.wall)this.emitNativeWall(0,ringIndex*segmentCount,this.nativeWallFirst,this.nativeWallTail,
+                    firstWeight,fov,r,g,b,firstAlpha);
+                else{
                 backend.stroke(r, g, b, firstAlpha);
                 backend.strokeWeight(firstWeight);
                 backend.line(prevX, prevY, firstX, firstY);
+                }
             }
         }
 
@@ -2478,7 +2585,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 const causticSector = wormholeWallSectorResponse(causticBandEnergy);
                 const causticProjection = projectWormholeTubePoint(
                     this.causticFrame, this.baseRouteNow, fineZ, causticTheta, wallRadius, routeTurnVisualGain,
-                    cx, cy, fov, verticalDrift
+                    cx, cy, fov, verticalDrift, this.nativeSink?.wall ? this.nativeWallHead : undefined
                 );
                 const csx = causticProjection.screenX;
                 const csy = causticProjection.screenY;
@@ -2489,10 +2596,17 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 );
 
                 if (this.causticPrevValid[causticIndex]) {
+                    if(this.nativeSink?.wall){
+                        const o=causticIndex*3;this.nativeWallTail.x=this.nativeCausticPrevious[o];this.nativeWallTail.y=this.nativeCausticPrevious[o+1];this.nativeWallTail.z=this.nativeCausticPrevious[o+2];
+                        this.emitNativeWall(1,causticIndex*sampleCount+sampleIndex,this.nativeWallHead,this.nativeWallTail,
+                            causticWeight,fov,this.causticColor[0],this.causticColor[1],this.causticColor[2],causticAlpha);
+                    }else{
                     backend.stroke(this.causticColor[0], this.causticColor[1], this.causticColor[2], causticAlpha);
                     backend.strokeWeight(causticWeight);
                     backend.line(this.causticPrevX[causticIndex], this.causticPrevY[causticIndex], csx, csy);
+                    }
                 }
+                if(this.nativeSink?.wall){const o=causticIndex*3;this.nativeCausticPrevious[o]=this.nativeWallHead.x;this.nativeCausticPrevious[o+1]=this.nativeWallHead.y;this.nativeCausticPrevious[o+2]=this.nativeWallHead.z;}
                 this.causticPrevX[causticIndex] = csx;
                 this.causticPrevY[causticIndex] = csy;
                 this.causticPrevValid[causticIndex] = 1;
@@ -2557,18 +2671,22 @@ export class CosmicWormholeIdentity implements VisualIdentity {
 
                 const pointA = projectWormholeTubePoint(
                     this.routeNow, this.baseRouteNow, ringZ, cellTheta - tickHalfWidth, wallRadius,
-                    routeTurnVisualGain, cx, cy, fov, verticalDrift
+                    routeTurnVisualGain, cx, cy, fov, verticalDrift, this.nativeSink?.wall ? this.nativeWallTail : undefined
                 );
                 const pointB = projectWormholeTubePoint(
                     this.routeNow, this.baseRouteNow, ringZ, cellTheta + tickHalfWidth, wallRadius,
-                    routeTurnVisualGain, cx, cy, fov, verticalDrift
+                    routeTurnVisualGain, cx, cy, fov, verticalDrift, this.nativeSink?.wall ? this.nativeWallHead : undefined
                 );
 
                 const alpha = wallAmount * lineAlpha * fresnel * sector.alphaGain * WALL_ALPHA_SCALE;
                 const weight = wormholeProjectedStrokeWeight((0.4 + sector.alphaGain * 0.5) * tuning.lineWeight);
-                backend.stroke(r, g, b, alpha);
-                backend.strokeWeight(weight);
-                backend.line(pointA.screenX, pointA.screenY, pointB.screenX, pointB.screenY);
+                if(this.nativeSink?.wall)this.emitNativeWall(2,ringIndex*segmentCount+segmentIndex,this.nativeWallHead,this.nativeWallTail,
+                    weight,fov,r,g,b,alpha);
+                else{
+                    backend.stroke(r, g, b, alpha);
+                    backend.strokeWeight(weight);
+                    backend.line(pointA.screenX, pointA.screenY, pointB.screenX, pointB.screenY);
+                }
             }
         }
     }
@@ -2621,7 +2739,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                 const verticalDrift = this.routeNowV.positionX - this.baseRouteNowV.positionX;
                 const projection = projectWormholeTubePoint(
                     this.routeNow, this.baseRouteNow, z, point.theta, wallRadius, routeTurnVisualGain, cx, cy, fov,
-                    verticalDrift
+                    verticalDrift, this.nativeSink?.wall ? this.nativeWallHead : undefined
                 );
                 const sx = projection.screenX;
                 const sy = projection.screenY;
@@ -2631,28 +2749,36 @@ export class CosmicWormholeIdentity implements VisualIdentity {
                     const weight = wormholeProjectedStrokeWeight(
                         (0.5 + emission * 0.8) * tuning.lineWeight * WALL_CRACK_WEIGHT_SCALE
                     );
-                    backend.stroke(this.causticColor[0], this.causticColor[1], this.causticColor[2], alpha);
-                    backend.strokeWeight(weight);
-                    backend.line(prevSx, prevSy, sx, sy);
+                    if(this.nativeSink?.wall){
+                        projectWormholeTubePoint(this.routeNow,this.baseRouteNow,z,0,0,routeTurnVisualGain,cx,cy,fov,verticalDrift,this.nativeWallCenter);
+                        this.emitNativeWall(3,crackIndex*8+pointIndex,this.nativeWallHead,this.nativeWallTail,weight,fov,
+                            this.causticColor[0],this.causticColor[1],this.causticColor[2],alpha,
+                            refraction>0?emission:0,WALL_CRACK_CHROMATIC_MAX_OFFSET_PX,.7);
+                    }else{
+                        backend.stroke(this.causticColor[0], this.causticColor[1], this.causticColor[2], alpha);
+                        backend.strokeWeight(weight);
+                        backend.line(prevSx, prevSy, sx, sy);
 
-                    if (refraction > 0) {
-                        const center = projectWormholeTubePoint(
-                            this.routeNow, this.baseRouteNow, z, 0, 0, routeTurnVisualGain, cx, cy, fov, verticalDrift
-                        );
-                        const offsetPixels = emission * WALL_CRACK_CHROMATIC_MAX_OFFSET_PX;
-                        const chroma = wormholeWallChromaticOffset(sx, sy, center.screenX, center.screenY, offsetPixels);
-                        const dxWarm = chroma.warmX - sx;
-                        const dyWarm = chroma.warmY - sy;
-                        const chromaAlpha = alpha * 0.7;
-                        const chromaWeight = weight * 0.7;
-                        backend.stroke(this.wallWarmColor[0], this.wallWarmColor[1], this.wallWarmColor[2], chromaAlpha);
-                        backend.strokeWeight(chromaWeight);
-                        backend.line(prevSx + dxWarm, prevSy + dyWarm, sx + dxWarm, sy + dyWarm);
-                        backend.stroke(this.wallCoolColor[0], this.wallCoolColor[1], this.wallCoolColor[2], chromaAlpha);
-                        backend.strokeWeight(chromaWeight);
-                        backend.line(prevSx - dxWarm, prevSy - dyWarm, sx - dxWarm, sy - dyWarm);
+                        if (refraction > 0) {
+                            const center = projectWormholeTubePoint(
+                                this.routeNow, this.baseRouteNow, z, 0, 0, routeTurnVisualGain, cx, cy, fov, verticalDrift
+                            );
+                            const offsetPixels = emission * WALL_CRACK_CHROMATIC_MAX_OFFSET_PX;
+                            const chroma = wormholeWallChromaticOffset(sx, sy, center.screenX, center.screenY, offsetPixels);
+                            const dxWarm = chroma.warmX - sx;
+                            const dyWarm = chroma.warmY - sy;
+                            const chromaAlpha = alpha * 0.7;
+                            const chromaWeight = weight * 0.7;
+                            backend.stroke(this.wallWarmColor[0], this.wallWarmColor[1], this.wallWarmColor[2], chromaAlpha);
+                            backend.strokeWeight(chromaWeight);
+                            backend.line(prevSx + dxWarm, prevSy + dyWarm, sx + dxWarm, sy + dyWarm);
+                            backend.stroke(this.wallCoolColor[0], this.wallCoolColor[1], this.wallCoolColor[2], chromaAlpha);
+                            backend.strokeWeight(chromaWeight);
+                            backend.line(prevSx - dxWarm, prevSy - dyWarm, sx - dxWarm, sy - dyWarm);
+                        }
                     }
                 }
+                if(this.nativeSink?.wall)Object.assign(this.nativeWallTail,this.nativeWallHead);
                 prevSx = sx;
                 prevSy = sy;
                 havePrev = true;
@@ -2723,11 +2849,16 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             this.transitionPulseId = activeTransitionId;
             this.transitionPulseStartedAt = timeSec;
         }
+        const authored = this.state.spiralTransitionAnchor;
+        // Only this exact automation transition earns the authored origin. A separate semantic
+        // transition keeps its existing owner; this channel cannot reset or retime it.
+        const startedAt = authored?.id === activeTransitionId && Number.isFinite(authored.time)
+            ? authored.time : this.transitionPulseStartedAt;
         return wormholeTransitionMorphEnvelope(
             current,
             target,
             activeTransitionId,
-            timeSec - this.transitionPulseStartedAt
+            timeSec - startedAt
         );
     }
 
@@ -2741,6 +2872,29 @@ export class CosmicWormholeIdentity implements VisualIdentity {
      * trail whose length scales with the shared cosmos travel rate -- the same reactivity every other
      * layer gets, just capped small since this is the most distant layer.
      */
+    private emitNativeWall(kind:0|1|2|3,id:number,head:WormholeNativePoint,tail:WormholeNativePoint,weight:number,fov:number,
+        r:number,g:number,b:number,alpha:number,fringe=0,fringePixels=0,fringeAlpha=.6):void{
+        const sink=this.nativeSink;if(!sink?.wall)return;
+        const radius=weight*.5*head.z/fov;sink.wall(kind,id,head,tail,radius,r,g,b,alpha,0);
+        if(fringe<=0)return;
+        const dx=head.x-this.nativeWallCenter.x,dy=head.y-this.nativeWallCenter.y,length=Math.hypot(dx,dy);
+        if(length<1e-9)return;
+        const shift=fringe*fringePixels*head.z/fov,ox=dx/length*shift,oy=dy/length*shift;
+        for(let sign=1;sign>=-1;sign-=2){
+            this.nativeFringeHead.x=head.x+ox*sign;this.nativeFringeHead.y=head.y+oy*sign;this.nativeFringeHead.z=head.z;
+            this.nativeFringeTail.x=tail.x+ox*sign;this.nativeFringeTail.y=tail.y+oy*sign;this.nativeFringeTail.z=tail.z;
+            const color=sign===1?this.wallWarmColor:this.wallCoolColor;
+            sink.wall(kind,id,this.nativeFringeHead,this.nativeFringeTail,radius*.7,color[0],color[1],color[2],alpha*(kind===3?1:fringe)*fringeAlpha,sign);
+        }
+    }
+
+    private emitNativeCosmos(kind: 0|1|2|3,id:number,x:number,y:number,z:number,tx:number,ty:number,tz:number,
+        radius:number,r:number,g:number,b:number,alpha:number):void {
+        this.nativeHead.x=x;this.nativeHead.y=y;this.nativeHead.z=z;
+        this.nativeTail.x=tx;this.nativeTail.y=ty;this.nativeTail.z=tz;
+        this.nativeSink?.cosmos?.(kind,id,this.nativeHead,this.nativeTail,radius,r,g,b,alpha);
+    }
+
     private drawSkybox(
         backend: VisualRendererBackend,
         baseRoute: WormholeRouteFrame,
@@ -2790,7 +2944,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
         // layer already uses, rescaled into a fraction of the plate radius so a fast preset's tunnel
         // speed reads as a visibly longer streak here too, not a flat, near-invisible one.
         const baseForwardShrink = skyboxSeparation / radius;
-        for (let i = 0; i < this.skyPool.length; i++) {
+        for (let i = 0; i < this.skyPool.length; i += this.nativeSink ? 6 : 1) {
             const star = this.skyPool[i];
             const rx = star.x * cosNow - star.y * sinNow;
             const ry = star.x * sinNow + star.y * cosNow;
@@ -2798,7 +2952,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             const sy = cy + ry * radius + routePanV;
             const lensDx = sx - lensCenterX;
             const lensDy = sy - lensCenterY;
-            const lensSmearGain = lensStrength > 0
+            const lensSmearGain = lensStrength > 0 && !this.nativeSink
                 ? wormholeLensSmearGain(lensDx * lensDx + lensDy * lensDy, lensRadiusPx, canonicalRate)
                 : 1;
             // The pre-existing forward-cue ceiling remains authoritative even after the local lens
@@ -2856,13 +3010,24 @@ export class CosmicWormholeIdentity implements VisualIdentity {
 
             const tw = 0.88 + 0.12 * Math.sin(frameTick * 0.035 + star.twPhase);
             const dustAlpha = star.haze * 34 * tw * amount * magnification * skyboxMotionVisibility;
-            if (dustAlpha > 0.2) {
+            if (dustAlpha > 0.2 && !this.nativeSink) {
                 backend.stroke(star.r, star.g, star.b, dustAlpha);
                 backend.strokeWeight(star.size * 2.2);
                 backend.line(linePrevSx, linePrevSy, lineSx, lineSy);
             }
             const alpha = ((5 + star.mag * 150) * tw + impact * star.mag * 58)
                 * amount * magnification * skyboxMotionVisibility;
+            if(this.nativeSink){
+                // Original normalized sky directions on an explicit 1200 m horizon, before eye projection.
+                const depth=24000, scale=depth/(backend.height*1.2);
+                const x=rx*radius, y=ry*radius+routePanV;
+                const px=rxPrev*radius-forwardShrink*x, py=ryPrev*radius+prevRoutePanV-forwardShrink*y;
+                this.emitNativeCosmos(2,i,x*scale,y*scale,depth,px*scale,py*scale,depth,
+                    star.size*.5*scale,star.r,star.g,star.b,alpha);
+                if(dustAlpha>.2)this.emitNativeCosmos(3,i,x*scale,y*scale,depth,px*scale,py*scale,depth,
+                    star.size*1.1*scale,star.r,star.g,star.b,dustAlpha);
+                continue;
+            }
             backend.stroke(star.r, star.g, star.b, alpha);
             backend.strokeWeight(star.size);
             backend.line(linePrevSx, linePrevSy, lineSx, lineSy);

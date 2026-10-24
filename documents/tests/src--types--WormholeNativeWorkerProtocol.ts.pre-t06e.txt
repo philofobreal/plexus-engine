@@ -1,0 +1,52 @@
+import type { CanvasVisualPresentation, VisualAnalysisSnapshot, VisualFocalPoint } from './CanvasVisualSource';
+import type { WormholeContextSeed } from './WormholeContext';
+import type { WormholeSpatialFrame } from './WormholeSpatialFrame';
+import { WORMHOLE_NATIVE_CAPACITY as G, WORMHOLE_NATIVE_WEAVE_CAPACITY as W, WORMHOLE_NATIVE_STRIDE as S,
+    WORMHOLE_NATIVE_MATERIAL_STRIDE as M, WORMHOLE_NATIVE_COSMOS_CAPACITY as C, type WormholeNativeFrame } from './WormholeNativeFrame';
+
+export const NATIVE_WORKER_VERSION = 1;
+export const NATIVE_WORKER_BYTES = (G*S+W*S+G*M+W*M)*4;
+export const NATIVE_COSMOS_BYTES = C*S*4;
+export interface NativeRenderRequest {
+    type: 'render'; version: 1; generation: number; requestId: number; epoch: number; revision: number;
+    songTime: number; playing: boolean; continuous: boolean; presentation: CanvasVisualPresentation;
+}
+export type NativeWorkerRequest = NativeRenderRequest
+    | { type:'prepare'; version:1; generation:number; analysis:VisualAnalysisSnapshot|null; seed?:WormholeContextSeed; presentation:CanvasVisualPresentation }
+    | { type:'release'; version:1; generation:number; requestId:number; buffer:ArrayBuffer; cosmosBuffer?:ArrayBuffer };
+export interface NativeFrameResponse {
+    type:'frame';version:1;generation:number;requestId:number;epoch:number;revision:number;songTime:number;
+    serial:number;count:number;weaveCount:number;amount:number;detail:number;bloom:number;
+    focal:VisualFocalPoint;spatial:WormholeSpatialFrame|null;renderMs:number;buffer:ArrayBuffer;
+    /** Additive bounded extension; absence remains a valid grain-only predecessor. */
+    cosmosCount?:number;cosmosBuffer?:ArrayBuffer;
+}
+export type NativeWorkerResponse = NativeFrameResponse
+    | { type:'ready';version:1;generation:number;canvasFree:true }
+    | { type:'unchanged';version:1;generation:number;requestId:number;epoch:number;revision:number;songTime:number }
+    | { type:'error';version:1;generation:number;message:string };
+
+/** Four views on one transferable bank. No geometry layout is reinterpreted. */
+export function nativeWorkerViews(buffer: ArrayBuffer) {
+    if(buffer.byteLength!==NATIVE_WORKER_BYTES)throw new Error('Invalid native transfer buffer size.');
+    return {grains:new Float32Array(buffer,0,G*S),weave:new Float32Array(buffer,G*S*4,W*S),
+        grainMaterial:new Float32Array(buffer,(G*S+W*S)*4,G*M),weaveMaterial:new Float32Array(buffer,(G*S+W*S+G*M)*4,W*M)};
+}
+export function copyNativeFrame(frame: WormholeNativeFrame, views: ReturnType<typeof nativeWorkerViews>): void {
+    const n=frame.count,w=frame.weave?.count??0;
+    if(!Number.isSafeInteger(n)||n<0||n>G||!Number.isSafeInteger(w)||w<0||w>W)throw new Error('Invalid native carrier count.');
+    views.grains.set(frame.data.subarray(0,n*S));
+    if(frame.weave)views.weave.set(frame.weave.data.subarray(0,w*S));
+    if(frame.material){views.grainMaterial.set(frame.material.grains.subarray(0,n*M));views.weaveMaterial.set(frame.material.weave.subarray(0,w*M));}
+    else {views.grainMaterial.fill(0,0,n*M);views.weaveMaterial.fill(0,0,w*M);}
+}
+export function validNativeResponse(frame: NativeFrameResponse): boolean {
+    return frame.buffer instanceof ArrayBuffer&&frame.buffer.byteLength===NATIVE_WORKER_BYTES
+        &&Number.isSafeInteger(frame.serial)&&frame.serial>0&&Number.isSafeInteger(frame.count)&&frame.count>=0&&frame.count<=G
+        &&Number.isSafeInteger(frame.weaveCount)&&frame.weaveCount>=0&&frame.weaveCount<=W
+        &&[frame.amount,frame.detail,frame.bloom].every(v=>Number.isFinite(v)&&v>=0&&v<=1)
+        &&Number.isFinite(frame.renderMs)&&frame.renderMs>=0&&Number.isFinite(frame.focal?.x)&&Number.isFinite(frame.focal?.y)
+        &&((frame.cosmosCount===undefined&&frame.cosmosBuffer===undefined)||(typeof frame.cosmosCount==='number'&&Number.isSafeInteger(frame.cosmosCount)
+            &&frame.cosmosCount>=0&&frame.cosmosCount<=C&&frame.cosmosBuffer instanceof ArrayBuffer&&frame.cosmosBuffer.byteLength===NATIVE_COSMOS_BYTES))
+        &&(frame.spatial===null||(frame.spatial.time===frame.songTime&&Object.values(frame.spatial).every(Number.isFinite)));
+}

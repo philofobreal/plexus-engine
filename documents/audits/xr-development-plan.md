@@ -1,0 +1,200 @@
+# Plexus XR execution and measurement plan (T01)
+
+Date: 2026-10-23 (Europe/Budapest). Integration/contract owner: the agent in this chat.
+Status: T01 staged plan accepted by the user; individual proposals remain gated by their owning tasks.
+Baseline: `effd6db7d268fd318dbcd4dbb1bec18e268a5441`; branch `codex/xr-development-baseline`.
+The user accepted the T00 handoff by asking to continue. This accepts continuation, not an
+invented headset/performance report. T00's nine product failures and missing measurements remain.
+
+Read together with the [tracker](xr-development-tracker.md),
+[baseline](xr-development-baseline.md), [architecture contract](../governance/architecture-contract.md)
+and [testing policy](../governance/testing-validation.md). AGENTS remains authoritative.
+Every task or smaller delivered implementation slice is deployed to the verified current target
+before its manual-test pause, following the user's later explicit instruction. Until T24 the
+current target is the existing GitHub Pages deployment, not an unidentified DotRoll environment.
+No parallel agents are required by this plan; one integration owner controls cross-module contracts.
+
+## Independently reviewable architecture proposals
+
+| Proposal | Boundary | Acceptance before implementation |
+| --- | --- | --- |
+| [ADR-011](../adr/ADR-011-shared-wormhole-frame-context.md) | Shared Wormhole context, signed twist, exact-frame and separate native data seam | Confirm host policy handoff, preview/exact ownership and versions; T06 record layout reviewed after element inventory |
+| [ADR-012](../adr/ADR-012-isolated-export-job-runtime.md) | Frozen snapshot, private render context, job control | Confirm snapshot/resource ownership and Stop/Cancel semantics; implement and validate in T19 slices |
+| [ADR-013](../adr/ADR-013-studio-server-session-boundary.md) | Launcher, server authorization and business authority | T23/T24 require actual platform/product decisions; no hosting stack selected now |
+
+ADR-010 is occupied by PR 8. ADR-011/012/013 were absent from current master and the inspected
+PR's ADR list when drafted. Recheck numbering before merge. These files are Proposed and grant
+no new import exception. Where an accepted implementation needs a new composition/state boundary,
+update AGENTS, affected governance, tests and ADR status together under the integration owner.
+
+Source caveat: featureFlags.semanticResolver and semanticChoreography are currently true, although
+older comments/governance describe off defaults. T01 records this drift and preserves actual
+behavior; changing those flags is not an incidental documentation fix. Visual OS default generation
+and its existing legacy fallback remain unchanged.
+
+## Decisions and compatibility registry
+
+| ID | Open decision | Working assumption / trigger |
+| --- | --- | --- |
+| D01 | Meaning of tsrs | Rust DSP + wasm-bindgen is only a planning hypothesis; ts-rs only for Rust DTO declarations. Ask at T17; no toolchain/dependency choice now |
+| D02 | DotRoll domain/package/runtime | Unknown; no server deployment assumptions. Ask before T23 environment selection, then verify actual platform at T24 |
+| D03 | Which business/IP computations move server-side | Auth/authorization/secrets server-side; client hot paths remain local. Ask before server service implementation; scaffold is not completed IP protection |
+| D04 | New export container/codecs | MP4/H.264/AAC proposed beside existing WebM; confirm at T20 before backend/license work |
+| D05 | Meaning of highlighted note | Initial accent/phrase/section role, same judge/base score; ask at T08 if reference implies a different mechanic. Any bonus requires separate scoring policy |
+| D06 | Complete native 3D representation | T06 inventory covers every family; grains/trails spike alone stays partial. Do not promote until element representation and stereo/perf evidence are accepted |
+| D07 | Freedom while exporting | MVP editing/playback can continue against an immutable job snapshot. Host navigation/tab close need guard; persistence requires a separate server job |
+| D08 | Caption timing/subset/overlap | Manual `[start,end)` blocks, no HTML/automatic lyric alignment. Confirm subset/overlap at T21; propose reject overlaps in first version |
+| D09 | Which visible motion must turn left/right | T04 reproduces coherent spiral; ask if spiral/lens/local flow/path bend is still ambiguous after reproduction. No camera roll workaround |
+| D10 | Cockpit reference | Original image(6).png has not been inspected. Locate/request it at T07; text description enables planning but cannot prove reference match |
+| D11 | Reference tracks and physical device runs | Select and identify tracks when measuring relevant tasks; current Node fixtures are not headset evidence. User continuation does not supply missing device metrics |
+
+Only the dependent decision gates its task. D01-D04 do not block T03 or other independent XR work.
+All choices above are reversible proposals until implemented and evidenced. Do not ask for secrets,
+domain credentials or an entire requirements questionnaire during the first XR slice.
+
+| Contract / cache | Current | Proposed change / compatibility and rollback |
+| --- | --- | --- |
+| XR settings storage | v1, 40/100/200 m | T03 adds 500 as an allowed value; same v1 shape, current 200 default unchanged. Old app may normalize 500 to its default; retain old values |
+| Plan payload | version 1, optional bendMirror | T04 optional spiralDirection beside bendMirror, absent +1; transfer/normalizer/history round trips updated together; older readers may drop it |
+| Tuning | nonnegative wormholeSpiral | T04 separate normalized direction [-1,1], legacy +1, no macro gain; signed effective twist follows shared interpolation. Keep magnitude/boost behavior |
+| Preview render worker | protocol 1, preparation generation | T05 preview adapter remains compatible; exact-frame worker protocol 2 separately negotiated; fail/fallback rather than misread v1 |
+| Exact frame identity | no per-request serial | Proposed contextId/generation/requestSerial/songTime; atomic companion data, explicit result lease |
+| Native spatial carriers | no complete native contract | T06 separate schema v1 after element/stride/units inventory; never reinterpret raster-coordinate buffers as 3D |
+| Analyzer/cache | algorithm 7, hop 1024, optional eventTiming | T10 numeric changes require algorithm/cache increment with worker/normalizer/all hosts; no bump for T01 or backend-only numerically equivalent port |
+| Musical evidence/chart | optional research evidence; legacy BeatEvents | T11 versioned optional event stream and provenance; T12 opt-in chart-generation profile/version. Old payload -> current chart fallback |
+| Export | unversioned worker, global state | T19 snapshot v1 + job protocol v1 + render sampling identity; additive legacy ExportBackend adapter; active job disposed before fallback/new start |
+| Captions | absent | T21 caption-plan schema v1, empty fallback, snapshot captures it; no audio or asset handles in saved workspace |
+| Server | absent | T23 API /api/v1 and session schema v1 proposed; gated actual runtime/store. No frontend auth bypass or fabricated server config |
+
+Proposed composition flags start off: sharedWormholeContext (T05), nativeWormhole3d (T06),
+isolatedExportRuntime (T19), validated musical evidence/chart profile (T11/T12) and wasmAnalyzer
+(T18). Names are proposals, not keys present in featureFlags.ts. Signed spiral legacy +1 needs
+no broad generator switch; cockpit/halo/HUD/center display have explicit Off/current-look settings.
+WASM has TS fallback, native3d has hybrid fallback, WebGL has Canvas2D fallback. Auth has no bypass
+fallback: Studio stays closed if its server gate is unavailable. Promotions change defaults only
+after their task-specific evidence; they do not silently rewrite previously saved settings.
+
+## Review and implementation order
+
+T01 is documentation only. The next proposed product task is T03, followed by a user test pause.
+The first release slice then proceeds through T02/T04/T05/T07/T08, T09/T14/T16 as their dependencies
+allow. These are separate changes, not one feature branch merge of PR 8. T06, T10-T13/T15,
+T17-T18, T19-T21 and T22-T24 remain separately gated work streams executed sequentially here.
+
+| Review slice | Scope | Exit / manual handoff |
+| --- | --- | --- |
+| T03 | Settings/type/list/UI/store plus 500 m clipping/depth calculation | Existing distances/default unchanged; menu persistence; head-turn corners; raster unchanged |
+| T02a | Minimal role-sidecar and notification contract | Domain purity, reset/seek/finish/idempotence; observer exceptions isolated after committed judgment |
+| T02b | Controller/scene role lifecycle seam | Generation invalidation/dispose; no WorldDirector dependency; integration tests |
+| T04a | Config/tuning/plan/transfer direction ownership | Legacy +1, old payload/history, one mirror application; signed mathematical fixtures |
+| T04b | Grain/arm/weave/wall/lens and spatial consumer audit/integration | Matched 2D/XR left/right, through-zero morph; seek/export/history comparisons |
+| T05a | Shared context/policy extraction | XR/MVP defaults distinct; no duplicate event/director gain; old host paths pass |
+| T05b | Studio/MVP backend and compositing integration | WebGL/fallback, crossfade/PostFX/transparency/chroma/resize/context-loss smoke |
+| T05c | Exact sampler / worker-v2 capability boundary | Atomic request identity, bounded buffers, exact requested frames and deterministic discontinuities; consumed by T19 |
+| T07/T08 | Static cockpit, then base halo fit/meaning | Off/reduced modes, note/saber/menu clearance; same judge/score; original image and Quest check |
+| T19a | Render-state extraction and snapshot capture | Existing legacy behavior retained; stable resource ownership, no shared State swapping |
+| T19b | Isolated job/encoder control | Stop prefix/Cancel/cleanup across phases, immutable output during editing/new load |
+| T19c | Minimizable progress UI and interaction | Persistent controls, navigation guard, real multi-minute export and UI-latency measurements |
+| T22/T23/T24 | Entrypoints; real auth; verified deployment | Review separately; public Studio release requires all applicable gates |
+
+No arbitrary calendar deadline is inferred. Status/order are in the tracker; missing evidence is
+`unmeasured`, missing required environment/decision is a task-local `blocked`, research that fails
+promotion is `experimental` or `deferred`. Every delivered subtask also pauses for user feedback.
+
+## Per-task impact and acceptance register
+
+Owners, dependencies and initial status inherit the tracker. Each row below adds starting fact,
+state/time impact, risk/performance focus and concrete evidence. Runtime changes preserve
+AudioEngine as the live clock, immutable publication, explicit reset and request/generation tokens.
+All cross-boundary handoffs have this chat's single integration owner.
+
+| Task | Starting fact -> target / state and time change | Risk / cost / evidence / rollback |
+| --- | --- | --- |
+| T00 | Fresh master -> recorded baseline; no runtime change | Nine product failures retained; build/full regression and targeted rechecks; retain immutable report |
+| T01 | Baseline -> three Proposed ADRs and task/metering register; no schema/code change | Check links/numbering/policy; rollback proposed docs only |
+| T02 | No observer/sidecar on master -> minimal gameplay roles and XR lifecycle | Duplicate reward/stale callback; bounded role IDs, no score/clock change; session/purity/regeneration tests; remove observer/consumer |
+| T03 | Distance enum ends at 200 -> 500 and safe off-axis frustum | Clipping/depth near notes; calculate max corner view depth and depth resolution, settings/store/spatial tests and Quest head turns; revert choice/far change |
+| T04 | Positive clamps/bend-only mirror -> signed effective twist | Double sign/phase discontinuity; tuning+transfer+grain/spatial/history/seek tests; default +1/legacy point fallback |
+| T05 | Shared backend exists, host policy differs -> one shared context per host | Duplicate director/events, gain/compositing/copy overhead; cross-host render A/B, exact sampler gates; disable shared flag |
+| T06 | Raster carriers/aggregate field -> opt-in native elements | Stereo/occlusion/overdraw; full family inventory, bounded instances and Quest cost; fall back hybrid |
+| T07 | Open stage/textual reference -> modular static cockpit | Occlusion/draw calls; Standard/Tall clearance, reference angles/dispose/recenter/reentry, Quest; Off/Reduced |
+| T08 | Classic/Shard and current cuts -> explicit type/role table + halo | Confused glyphs/score; same hitbox/judge/base score, bounded instancing/overflow policy, note GPU/scoring/session tests; hide sidecar |
+| T09 | Existing hand/zone/overhead policy -> movement-aware playable chart | Impossible same-hand/crossing routes; pure judge/render position parity and automated validator, seeded charts and Quest; legacy profile |
+| T10 | Algorithm 7/hop 1024, timing opt-in -> measured local timing/structure fix | Quiet/sustain false positives, tempo aliases/cache drift; golden+verification+annotated held-out strata and negative regions; old algorithm/cache retained by identity |
+| T11 | Heuristic vocal/melody scores -> typed timed evidence/dominance | Fabricated vocal identity/extra offline CPU; uncertainty/provenance/calibration and negative/overlap corpus; absent evidence fallback |
+| T12 | BeatEvent chart -> opt-in validated-source chart | Duplicate reward or silent notes; per-note selection reasons, motor constraints, deterministic source switching/legacy fixtures; old chart profile |
+| T13 | Existing cue publication -> correct target arrival/anticipation | Bypassing gate/races/too many transitions; cue-error landmarks, manual/locked edits, seek/transfer/export parity; previous plan generator behavior |
+| T14 | Existing HUD/menu -> Angular and Orbital generics | Text/subpixel vibration/geometry count; seeded pure geometry, same information/hit areas, Standard/Tall and Quest readability; current-look/Off |
+| T15 | Generic layout -> offline track/section HUD plan | Hidden second semantic engine; seed/section fixtures, bounded family changes, stable gameplay anchors; generic style fallback |
+| T16 | Existing 24-band precomputed spectrum -> optional center display | Note occlusion/history drift; song-time spectrum/history projection, real PCM scope only, bounded buffers, seek/export and GPU smoke; Off |
+| T17 | No WASM backend -> one/two bottleneck kernels measured | Interop/copy/cold cost exceeds gain; TS numerical reference and full-pipeline cold/warm/Quest benchmark; reject prototype if gate fails |
+| T18 | Only promoted T17 kernels -> optional production backend | Detach/OOM/worker race; adapter failures/cancellation/cache parity, TS+WASM same corpus, lazy asset/MIME smoke; TS fallback |
+| T19 | Global export redraw -> snapshot/private runtime/job/UI | PCM duplication, UI stalls/stale IDs/leaks; phase control matrix, full/prefix/cancel files, editing/new-load parity; legacy path at next start |
+| T20 | WebM codecs -> confirmed new container/backend | Double lossy transcode/RAM/license; capability/remux evaluation, 720p/1080p/4K sync/memory/prefix tests; WebM |
+| T21 | No timed captions -> validated immutable subset/layout | Unsafe HTML/font/parity; parser/time-boundary/unicode/overlap/length tests, aspects, seek+real export, snapshot/undo; empty captions |
+| T22 | Root dashboard MPA -> launcher and /studio/ entry | Heavy startup/404/base/storage drift; dev+production direct URLs/reload/assets, host startup and MVP history; prior entry/base mapping |
+| T23 | No auth/server -> verified session/gate/business authority | Client bypass/cache/session fixation/CSRF; direct route/asset/API/logout/expiry integration, public host regression; fail-closed verified gate |
+| T24 | gh-pages scripts -> verified DotRoll staging/release | Unsupported process, DNS/TLS/MIME/headers; real target health/routes/auth/export/Quest and practiced rollback; previous verified release |
+| T25 | Independent slices -> release evidence map | Cross-host/session/plan/version interaction; complete cumulative suites, capability matrix, physical headset and matched before/after; revoke new defaults or roll back release |
+
+Performance/rollback choices that change public behavior must be recorded before that task's
+implementation. Existing nine Wormhole assertions are never removed or silently rebaselined.
+T03 may proceed independently, but modifying the implicated presets requires its own diagnosis
+and product decision before claiming a green preset-related release gate.
+
+## Measurement protocol and proposed promotion gates
+
+These are engineering targets chosen before new measurements, not observed results. At a task's
+start freeze the fixture/track IDs, algorithm/build hash, device/browser/OS, settings, sampling
+method, capture window and exact metric definitions. Change a target only with an explicit reason
+before evaluating that task's candidate; retain earlier raw results.
+
+Desktop and physical Quest 3 are separate strata. Use the same three named song windows
+(quiet/sparse, dense drop, transition) on the same reference recording; retain content digest,
+sample clock and song times. Include 7-9 s current synthetic fixtures and 5+ minute real tracks.
+Use at least 30 s warmup and three paired 180 s windows for runtime comparisons; long export
+adds one full 5+ minute job. Alternate before/after order, record thermal/power state and close
+unrelated workload. Do not compare T00's VM timings directly with production browser timings.
+
+| Area | Capture | Proposed gate |
+| --- | --- | --- |
+| XR frame pacing | Main update/render/ahead p50/p95/p99, total frame interval, display Hz; compositor stale/dropped independently | At requested 72 Hz: main frame work p95 <=8 ms, p99 <13.89 ms; <=1% intervals >1.5 nominal; no increase in compositor stale share across paired runs. No claim if device counter unavailable |
+| XR GPU/background | Scene GPU and ahead passes separately where timer exists; worker raster, request-to-shown latency, upload count/bytes, draw calls | No >10% p95 increase in unaffected strata; optimize target stage by >=15% median without worsening total-frame gate; never add percentile sums as a fake total GPU time |
+| T03 | Angular geometry, far corner under head rotation/translation; near depth at gameplay distances; equal raster bytes/draw count | No corner clipping in accepted pose envelope, no note depth artifact or angular jump; unchanged raster pixel work. Compute far from actual maximum corner depth plus margin, not only 500 m center |
+| Visual parity | Fixed seeds/times/history, normalized geometry and decoded images; capture captions/transparency too | Exact pure scalar/ID equality where expected; set image tolerance before T05 A/B from Canvas/WebGL edge differences, retain failing images. No arbitrary golden replacement |
+| Analyzer accuracy | Held-out annotations by percussion/tonal/vocal/negative strata; onset P/R/F1, signed bias/p50/p95 error, FP/min, strict tempo, section errors | T10 candidate improves F1 by >=0.03 or onset p95 error by >=20%; protected P/R drop <=0.01, FP/min increase <=0.1; strict tempo regressions zero. Confirm annotation tolerance before evaluation; no vocal promotion without its own evidence |
+| Musical arrival | Annotated drop/phrase/section anchors; cue time, morph start and target-arrival error separately | Reduce p95 arrival error >=20% versus frozen baseline, no new non-evidenced cue; preserve manual/locked timing and spacing policies |
+| WASM | Download/build bytes, cold init, warm kernel, copies, full analyzeAudio and peak memory; desktop+Quest | Full pipeline median >=15% faster in measured target strata, <=5% slowdown in protected strata, numerical/event parity within predeclared bounds; include cold overhead. Fast kernel alone fails |
+| Export | UI task/event response, command-to-ack vs save/finalize time, render/encode fps, output bytes, PCM/target/queue/OPFS high-water | At 1080p: control acknowledgement p95 <=100 ms, p99 <=250 ms; no unbounded growth over 5+ min, explicit admission estimate/limit, queue caps enforced. Finalize time measured separately, not promised <=100 ms |
+| Export correctness | Decode full and saved prefix, audio sample/timestamp boundaries, edit/new-load hashes, all control phases | Prefix A/V end difference <=1 output-frame duration, no duplicated/missing contiguous video index, one result/download; new edits never change frozen render input; every Cancel frees resources |
+| HUD/cockpit | Draw/instance counts, texture update cadence and readable angular size/contrast in Standard/Tall | No overlap with note/saber/menu clearance; no per-frame text rasterization when content unchanged; bounded pools and combined XR frame gates |
+
+Render worker timing cannot see every browser GPU replay/upload/compositor cost. Use
+BackgroundDiagnostics/GpuFrameTimer with their documented scope and external headset counters
+where available; mark unsupported counters unmeasured. Node/mock tests prove laws and ownership,
+not pixels, sensor latency or GPU speed. No flaky wall-clock CI performance assertions.
+
+Analyzer output regression and musical correctness remain separate. New evidence must include
+silence/sustain/DC/legato, sparse/dense and overlap negatives; keep oracle/development/held-out
+splits and licenses from analyzer-lab methodology. No speed port and DSP algorithm change in
+the same slice. Any failed promotion leaves the feature experimental/off or deferred.
+
+## T01 verification and handoff
+
+This task changes proposal/tracking documents only; application, presets, tests, dependency and
+runtime schemas are untouched. Validate document links, ADR uniqueness/status, the tracker has
+all T00-T25 rows and every proposal is linked; run `git diff --check` and confirm no application
+diff. A full npm build/test/browser/headset run is not repeated for these prose-only changes;
+T00's results remain the baseline and are not presented as a new run. No runner fallback used.
+Diff snapshot script is unnecessary for these new proposals; direct diff/source reads suffice.
+
+User review: inspect the three decisions, first slice and task-local assumptions. No new visual
+behavior exists to test in T01. After feedback, start T03; report code changes, exact validation,
+remaining physical tests, migration/rollback, then wait for manual testing again.
+
+Verification completed: a Node `--input-type=module` document audit checked 23 local links,
+unique Proposed ADR-011/012/013, all 26 task rows in both the tracker and impact register,
+whitespace and CLAUDE inheritance. Result retained at `logs/t01/document-checks.json`.
+`git diff --check` passed. `git diff --exit-code -- src tests public package.json
+package-lock.json bun.lock vite.config.ts AGENTS.md documents/governance` passed with no diff.
+No build, regression, browser or physical-device result is claimed for this documentation task.

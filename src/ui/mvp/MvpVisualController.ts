@@ -5,6 +5,7 @@ import { shouldUseVisualOs, stylePackForVisualMode } from '../../automation/gene
 import { applyMvpWormholePreset } from '../../automation/applyMvpWormholePreset';
 import { clampMorphScale, computeMaxMorphScale } from '../../automation/morphScale';
 import { AutomationPlanViewCache } from '../../automation/automationPlanView';
+import { WormholeSpiralAutomation } from '../../automation/WormholeSpiralAutomation';
 import {
     constrainAutomationPointTime,
     constrainMorphDuration,
@@ -62,6 +63,16 @@ export interface MvpVisualControllerCallbacks {
  * State.editedPerformancePlan / State.targetTuning, so a track opened in both UIs stays consistent.
  */
 export class MvpVisualController {
+    private readonly spiralAutomation = new WormholeSpiralAutomation();
+    private readonly spiralPreset = (name: string) => State.preloadedPresets[name];
+    private readonly resolveSpiralTuning = (raw: VisualTuningConfig, out: VisualTuningConfig) => resolveMetaTuning(raw, this.macros, this.advancedBoosts, out);
+
+    applyAutomatedSpiral(songTime: number, tuning: VisualTuningConfig) {
+        if (State.visualMode !== 'cosmic-wormhole') return null;
+        this.spiralAutomation.configure(this.getAutomationPlanView(), this.spiralPreset, this.tuningSignature(), this.resolveSpiralTuning);
+        this.spiralAutomation.apply(songTime, tuning);
+        return this.spiralAutomation.transitionAnchor;
+    }
     private readonly engine: AudioEngine;
     private readonly hasTimeBasedSemanticPlan: () => boolean;
     private readonly callbacks: MvpVisualControllerCallbacks;

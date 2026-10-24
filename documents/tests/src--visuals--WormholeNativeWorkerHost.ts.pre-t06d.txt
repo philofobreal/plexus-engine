@@ -1,0 +1,44 @@
+import { nativeWorkerViews, copyNativeFrame, NATIVE_WORKER_BYTES, NATIVE_WORKER_VERSION,
+    type NativeWorkerRequest, type NativeWorkerResponse } from '../types/WormholeNativeWorkerProtocol';
+import type { WormholeNativeSource as NativeSource } from '../types/WormholeNativeFrame';
+import type { WormholeContextSeed } from '../types/WormholeContext';
+import { WormholeNativeSource } from './WormholeNativeSource';
+
+/** Worker-owned transport only. One reusable output buffer, never written while leased. */
+export function createNativeWorkerHost(post: (message:NativeWorkerResponse, transfer?:ArrayBuffer[])=>void,
+    factory: (seed?:WormholeContextSeed)=>NativeSource = seed=>new WormholeNativeSource(seed)) {
+    let source:NativeSource|null=null,generation=0,ready=false,disposed=false,lease:number|null=null;
+    let buffer:ArrayBuffer|null=new ArrayBuffer(NATIVE_WORKER_BYTES);
+    let views:ReturnType<typeof nativeWorkerViews>|null=nativeWorkerViews(buffer);
+    return {
+        async receive(message:NativeWorkerRequest):Promise<void>{
+            if(disposed)return;
+            try {
+                if(message.version!==NATIVE_WORKER_VERSION)throw new Error('Unsupported native worker protocol.');
+                if(message.type==='prepare'){
+                    if(source)throw new Error('Native worker must restart for a new preparation.');
+                    generation=message.generation;source=factory(message.seed);source.setPresentation(message.presentation);
+                    await source.prepare(message.analysis);if(disposed)return;ready=true;
+                    post({type:'ready',version:1,generation,canvasFree:true});return;
+                }
+                if(message.generation!==generation)return;
+                if(message.type==='release'){
+                    if(lease!==message.requestId||buffer!==null)throw new Error('Invalid native output lease return.');
+                    views=nativeWorkerViews(message.buffer);buffer=message.buffer;lease=null;return;
+                }
+                if(message.type!=='render'||!ready||!source)throw new Error('Native worker is not ready.');
+                if(lease!==null||buffer===null||views===null)throw new Error('Native output is still leased.');
+                if(!Number.isSafeInteger(message.requestId)||message.requestId<1||!Number.isFinite(message.songTime)||message.songTime<0)throw new Error('Invalid native render request.');
+                source.setPresentation(message.presentation);
+                const changed=source.render(message.songTime,message.playing,message.continuous),frame=source.frame;
+                if(!changed||!frame){post({type:'unchanged',version:1,generation,requestId:message.requestId,epoch:message.epoch,revision:message.revision,songTime:message.songTime});return;}
+                copyNativeFrame(frame,views);const transfer=buffer;lease=message.requestId;buffer=null;views=null;
+                post({type:'frame',version:1,generation,requestId:message.requestId,epoch:message.epoch,revision:message.revision,
+                    songTime:message.songTime,serial:frame.serial,count:frame.count,weaveCount:frame.weave?.count??0,
+                    amount:frame.material?.amount??0,detail:frame.material?.detail??0,bloom:frame.material?.bloom??0,
+                    focal:source.focalPoint,spatial:source.spatialFrame,renderMs:source.lastRenderMs,buffer:transfer},[transfer]);
+            }catch(error){post({type:'error',version:1,generation,message:error instanceof Error?error.message:String(error)});}
+        },
+        dispose(){if(disposed)return;disposed=true;ready=false;source?.dispose();source=null;buffer=null;views=null;}
+    };
+}

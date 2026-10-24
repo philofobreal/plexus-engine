@@ -99,7 +99,7 @@ export function resolveWormholeSpatialFrame(out: MutableWormholeSpatialFrame, ti
     const scale = Math.max(MIN_RADIUS, finite(tuning.wormholeRadius, MIN_RADIUS)) / Math.max(MIN_DEPTH, finite(tuning.wormholeDepth, MIN_DEPTH));
     out.depth = 1 - clamp01((Math.log2(scale) - SCALE_LOG2_DEEP) / (SCALE_LOG2_NEAR - SCALE_LOG2_DEEP));
     out.tubeSpread = Math.min(WORMHOLE_SPATIAL_TUBE_SPREAD_RANGE[1], Math.max(WORMHOLE_SPATIAL_TUBE_SPREAD_RANGE[0], TUBE_WALL_SPREAD * scale));
-    out.spiralTurns = Math.min(WORMHOLE_SPATIAL_MAX_SPIRAL_TURNS, Math.max(0, finite(drive.spiralTurns ?? 0)));
+    out.spiralTurns = Math.min(WORMHOLE_SPATIAL_MAX_SPIRAL_TURNS, Math.max(-WORMHOLE_SPATIAL_MAX_SPIRAL_TURNS, finite(drive.spiralTurns ?? 0)));
     out.turbulence = clamp01(0.7 * clamp01(tuning.wormholeJitter) + 0.3 * clamp01(tuning.wormholeCurve));
     out.streak = clamp01(finite(tuning.wormholeContinuity) / 2);
     out.wisp = clamp01(Math.sqrt(clamp01(tuning.wormholeNebulaAmount)) * (0.4 + 0.6 * clamp01(tuning.wormholeNebulaWeave)));

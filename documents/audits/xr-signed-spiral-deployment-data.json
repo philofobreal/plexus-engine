@@ -1,0 +1,184 @@
+{
+  "task": "T04a + T02c",
+  "url": "https://philofobreal.github.io/plexus-engine/xr/",
+  "releaseId": "t04a-preset-spiral-20261023T223102292Z",
+  "pages": {
+    "commit": "13967e8739b0ae070fded9d2257fd6496973b836",
+    "status": "built",
+    "created_at": "2026-10-23T22:31:17Z",
+    "updated_at": "2026-10-23T22:31:55Z",
+    "error": {
+      "message": null
+    }
+  },
+  "commit": {
+    "message": "Deploy T04a: preset spiral direction and persisted player controls",
+    "parents": [
+      "75bccd8b87f937d9bfa8630d6d8f98848901cd51"
+    ],
+    "sha": "13967e8739b0ae070fded9d2257fd6496973b836"
+  },
+  "previousPagesCommit": "75bccd8b87f937d9bfa8630d6d8f98848901cd51",
+  "source": {
+    "baseCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
+    "workingTreeChanges": true,
+    "patchSha256": "bf126c959f96d1307758669d2d2804379e6d7ee4fafe9cd12f22fb0ba16efaa6",
+    "inputManifestSha256": "61da8f3557157f3f265a0ea84d8fba3fed7709e2c1e4e3d47777dd02d13ebb8d",
+    "inputCount": 318,
+    "includesUntrackedModules": true,
+    "graphUnchangedAfterPublication": true
+  },
+  "public": {
+    "checkedAt": "2026-10-23T22:32:30.664Z",
+    "releaseId": "t04a-preset-spiral-20261023T223102292Z",
+    "markerStatus": 200,
+    "files": [
+      {
+        "path": "index.html",
+        "status": 200,
+        "sha256": "2c7c0b7e7953f7937d93784c284396bfe041444b011e30a4e1b6af9576612303"
+      },
+      {
+        "path": "mvp/index.html",
+        "status": 200,
+        "sha256": "47ce88ceb2f72bda93339f2e183af146705d6fbc5cd3e18747aea58be766c88f"
+      },
+      {
+        "path": "xr/index.html",
+        "status": 200,
+        "sha256": "d5d100257bb33abde01418e4fb649a12898c988d9f8bffe24bc890ba8cbda750"
+      },
+      {
+        "path": "assets/analyzer.worker-BxhitPzQ.js",
+        "status": 200,
+        "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52"
+      },
+      {
+        "path": "assets/CosmicWormholeIdentity-BSGK4_65.js",
+        "status": 200,
+        "sha256": "35a5d89e8c6d0f3277b0b909248ec29bf376ba9cb6abe9f022d68e40b20a7793"
+      },
+      {
+        "path": "assets/export.worker-Av-E_fEl.js",
+        "status": 200,
+        "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+      },
+      {
+        "path": "assets/main-BnAsoeuA.js",
+        "status": 200,
+        "sha256": "8bacbe6042ea3a60526487f8038b577753da16692f298f329a9b132d33f9b532"
+      },
+      {
+        "path": "assets/main-C7BsYBKL.css",
+        "status": 200,
+        "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+      },
+      {
+        "path": "assets/mvp-D0xy9ln6.css",
+        "status": 200,
+        "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
+      },
+      {
+        "path": "assets/mvp-DP0XD8Nw.js",
+        "status": 200,
+        "sha256": "deabee1962dff69e045994f29db4f8e41dde9f31129d0d4f31ee808ac071e80a"
+      },
+      {
+        "path": "assets/PreviewQualityControl-Blwb1HJ9.js",
+        "status": 200,
+        "sha256": "8463630ea58392583e55006c981f6f3fc3fa2508f445747ac4ff9168d7081253"
+      },
+      {
+        "path": "assets/PreviewQualityControl-QAaWZINt.css",
+        "status": 200,
+        "sha256": "a1c70e42cf6dac5e6ceffa20f327845c2f22632aa650bb1968a11bdcff0ce2f2"
+      },
+      {
+        "path": "assets/resolveMetaTuning-DffS48AY.js",
+        "status": 200,
+        "sha256": "b2ae446c94f67794ee48d2b0140d24079b6f6ecc800ce0bf321d72e7f5cc56bf"
+      },
+      {
+        "path": "assets/wormholeRender.worker-C480tjbR.js",
+        "status": 200,
+        "sha256": "b9f1e37b6ef21263388cb49c5b795f088cc6c7d33ea18096a77575cb6bb7aebe"
+      },
+      {
+        "path": "assets/xr-BC-l7LKV.js",
+        "status": 200,
+        "sha256": "8cf17dbcc3bcc7ba62996d1cfd56ffc77063d76cc9c7d9cebbdedc0e44aa0d48"
+      },
+      {
+        "path": "assets/xr-BfNetZ-7.css",
+        "status": 200,
+        "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      }
+    ],
+    "routes": [
+      {
+        "path": "",
+        "status": 200,
+        "sha256": "2c7c0b7e7953f7937d93784c284396bfe041444b011e30a4e1b6af9576612303"
+      },
+      {
+        "path": "mvp/",
+        "status": 200,
+        "sha256": "47ce88ceb2f72bda93339f2e183af146705d6fbc5cd3e18747aea58be766c88f"
+      },
+      {
+        "path": "xr/",
+        "status": 200,
+        "sha256": "d5d100257bb33abde01418e4fb649a12898c988d9f8bffe24bc890ba8cbda750"
+      },
+      {
+        "path": "xr/?xrHaloPreview=1",
+        "status": 200,
+        "sha256": "d5d100257bb33abde01418e4fb649a12898c988d9f8bffe24bc890ba8cbda750"
+      }
+    ],
+    "presetConfig": {
+      "file": "vos-wh-overdrive.json",
+      "direction": 1
+    }
+  },
+  "browser": {
+    "mode": "fresh public browser automation",
+    "startupWebgl": true,
+    "initialDirection": "Auto",
+    "selectedLeft": true,
+    "leftSurvivedReload": true,
+    "haloPhraseSelectable": true,
+    "copyHumanAndJsonDirectionAndHalo": true,
+    "syntheticAudio": {
+      "fixture": "logs/t02b/halo-smoke.wav",
+      "sha256": "d6b0d3d70e0907b6a5568e81156db9bd1cbdbe803db67a62243f6acf04a7350c",
+      "durationSec": 7,
+      "bpm": 128,
+      "notes": 9,
+      "playedToResults": true,
+      "humanHits": false,
+      "misses": 9
+    },
+    "finalDirection": "Auto restored after test",
+    "consoleErrors": [],
+    "screenshots": [
+      {
+        "path": "logs/t04/deploy/live-halo-menu.jpg",
+        "sha256": "e9ca6a064f57e55b4425c760249c7ae47c582c586d0acfa433dd741193e61884"
+      },
+      {
+        "path": "logs/t04/deploy/live-spiral-menu.jpg",
+        "sha256": "77cfd234bd53c917e308c574c39805b0b07d9c9461f951ad065a81bf63f60c96"
+      },
+      {
+        "path": "logs/t04/deploy/live-results.jpg",
+        "sha256": "20865397bd851cf84478982af3c1ab55d300081b860d83c02d382b079c9c8913"
+      },
+      {
+        "path": "logs/t04/deploy/live-final-auto.jpg",
+        "sha256": "64bf0b4ac73437d518816c5c8abfbbabce3017571e43a89ed88756c308a5540b"
+      }
+    ]
+  },
+  "physicalQuest": "not measured"
+}

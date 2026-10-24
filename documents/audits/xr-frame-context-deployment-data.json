@@ -1,0 +1,158 @@
+{
+  "task": "T05a",
+  "url": "https://philofobreal.github.io/plexus-engine/xr/",
+  "releaseId": "t05a-frame-context-20261024T002109899Z",
+  "pages": {
+    "commit": "ae3b0983a475da740d877fc217930699605ad436",
+    "status": "built",
+    "created_at": "2026-10-24T00:21:25Z",
+    "updated_at": "2026-10-24T00:21:44Z",
+    "error": {
+      "message": null
+    }
+  },
+  "commit": {
+    "message": "Deploy T05a: shared Wormhole frame context and explicit host policy",
+    "parents": [
+      "78b30a41cafa55bdcc3141965537bc2a526f0a3c"
+    ],
+    "sha": "ae3b0983a475da740d877fc217930699605ad436"
+  },
+  "previousPagesCommit": "78b30a41cafa55bdcc3141965537bc2a526f0a3c",
+  "source": {
+    "baseCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
+    "workingTreeChanges": true,
+    "patchSha256": "a42223a180a8cd781122dc64d0e4285509673efbccb4efb5c277ed11cc829006",
+    "inputManifestSha256": "325d42632c2d9dd97079584392c4a716f85fe54b12d4673025dea2c87e482e14",
+    "inputCount": 321,
+    "includesUntrackedModules": true,
+    "graphUnchangedAfterPublication": true
+  },
+  "public": {
+    "checkedAt": "2026-10-24T00:22:19.728Z",
+    "releaseId": "t05a-frame-context-20261024T002109899Z",
+    "markerStatus": 200,
+    "files": [
+      {
+        "path": "index.html",
+        "status": 200,
+        "sha256": "116d08a68c750207c3ce5731fcdecb54900aabb7e79596096b067c97d72b85d4"
+      },
+      {
+        "path": "mvp/index.html",
+        "status": 200,
+        "sha256": "22893f6a7a225023056bd75c9ae502d7fd8bfe509fe20e57933ca6da43f64e47"
+      },
+      {
+        "path": "xr/index.html",
+        "status": 200,
+        "sha256": "23e1d55b22b074cf33bb223a805cd19a5dffa771eaab6a5c22a62dc97e7c1c63"
+      },
+      {
+        "path": "assets/CosmicWormholeIdentity-ChasO964.js",
+        "status": 200,
+        "sha256": "585c7f76d4be8bd6ea9f781263011ae0f5442aeb52e8b50f1ccfd01026934cdc"
+      },
+      {
+        "path": "assets/PreviewQualityControl-CkXIC-vI.js",
+        "status": 200,
+        "sha256": "028adbff68ad3c341cd470529643ff7faf39d04ce42d016642cf90c24a1d7058"
+      },
+      {
+        "path": "assets/PreviewQualityControl-QAaWZINt.css",
+        "status": 200,
+        "sha256": "a1c70e42cf6dac5e6ceffa20f327845c2f22632aa650bb1968a11bdcff0ce2f2"
+      },
+      {
+        "path": "assets/analyzer.worker-BxhitPzQ.js",
+        "status": 200,
+        "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52"
+      },
+      {
+        "path": "assets/export.worker-Av-E_fEl.js",
+        "status": 200,
+        "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+      },
+      {
+        "path": "assets/main-B3EWPgWC.js",
+        "status": 200,
+        "sha256": "ca52181b0900a620852438c362683e9bb1ea9ce904d7b6adac52759bce3f6d67"
+      },
+      {
+        "path": "assets/main-C7BsYBKL.css",
+        "status": 200,
+        "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+      },
+      {
+        "path": "assets/mvp-BL4VwTzJ.js",
+        "status": 200,
+        "sha256": "b285c3a44a3846231663cc1aad781c5bd91bdfb675b994980e876b368d52f0ea"
+      },
+      {
+        "path": "assets/mvp-D0xy9ln6.css",
+        "status": 200,
+        "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
+      },
+      {
+        "path": "assets/resolveMetaTuning-K-qKs_rW.js",
+        "status": 200,
+        "sha256": "e2f8eafcd6aad014245adeac4b3f86439e24e783d7f7ccfadc1ee6404ba53fc1"
+      },
+      {
+        "path": "assets/wormholeRender.worker-d9Wdf7xP.js",
+        "status": 200,
+        "sha256": "35b15bac751252b1c0a06e0a3049abfa924eecc98a3c2c441ab555df328d6edd"
+      },
+      {
+        "path": "assets/xr-BfNetZ-7.css",
+        "status": 200,
+        "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      },
+      {
+        "path": "assets/xr-CwS8W7rJ.js",
+        "status": 200,
+        "sha256": "0e91650e92bbbf5344cc22405dbae80c0047e0d2bc40683ca8f6dc09bdcd17ef"
+      }
+    ],
+    "routes": [
+      {
+        "path": "",
+        "status": 200,
+        "sha256": "116d08a68c750207c3ce5731fcdecb54900aabb7e79596096b067c97d72b85d4"
+      },
+      {
+        "path": "mvp/",
+        "status": 200,
+        "sha256": "22893f6a7a225023056bd75c9ae502d7fd8bfe509fe20e57933ca6da43f64e47"
+      },
+      {
+        "path": "xr/",
+        "status": 200,
+        "sha256": "23e1d55b22b074cf33bb223a805cd19a5dffa771eaab6a5c22a62dc97e7c1c63"
+      },
+      {
+        "path": "xr/?xrHaloPreview=phrase",
+        "status": 200,
+        "sha256": "23e1d55b22b074cf33bb223a805cd19a5dffa771eaab6a5c22a62dc97e7c1c63"
+      }
+    ],
+    "sourceGraphUnchanged": true
+  },
+  "browser": {
+    "mode": "Desktop in-app browser, public Pages XR",
+    "fixture": "logs/t02b/halo-smoke.wav",
+    "durationSec": 7,
+    "bpm": 128,
+    "notes": 9,
+    "result": {
+      "hits": 0,
+      "misses": 9
+    },
+    "consoleErrors": [],
+    "screenshot": {
+      "path": "logs/t05a/deploy/live-xr-results.jpg",
+      "sha256": "408fd9b19c637c71ec71277d5c824776d7a15a3ff6010ebee0669bff38dfa8ab"
+    },
+    "physicalQuest": false
+  }
+}

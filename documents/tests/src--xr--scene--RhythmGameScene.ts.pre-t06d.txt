@@ -1,0 +1,446 @@
+import * as THREE from 'three';
+import { DEFAULT_RHYTHM_GAME_CONFIG, type NoteRuntimeState, type RhythmGameConfig, type RhythmSessionSnapshot,
+    type RhythmNoteRolePlan, type RhythmResolutionObserver } from '../../gameplay';
+import { RhythmNoteField } from './RhythmNoteField';
+import { DEFAULT_STAGE_LAYOUT, SCENE_CONFIG, START_FRAME_HALF_WIDTH_METERS, type XrStageLayout } from './SceneConfig';
+import { XrHud } from './XrHud';
+import { XrRunway } from './XrRunway';
+import { XrTrackPath } from './XrTrackPath';
+import { XrSectionCallout, type SectionCue } from './XrSectionCallout';
+import { WormholeBackdrop } from './WormholeBackdrop';
+import { XrNativeWormhole } from './XrNativeWormhole';
+import type { WormholeNativeSourceFactory } from '../../types/WormholeNativeFrame';
+import { XrWormholeSpatialField } from './XrWormholeSpatialField';
+import { XrFrameSignal } from './XrFrameSignal';
+import { XrSongMap } from './XrSongMap';
+import { XrProgressRing } from './XrProgressRing';
+import { XrSectionGates } from './XrSectionGates';
+import { XrSliceEffect } from './XrSliceEffect';
+import { XrNoteHalos } from './XrNoteHalos';
+import type { XrNoteDesign } from '../XrAppearanceSettings';
+import type { ScoreOverview } from './XrScoreOverview';
+import type { CanvasVisualPresentation, CanvasVisualSourceFactory, VisualAnalysisSnapshot } from '../../types/CanvasVisualSource';
+import { backgroundFrameDivider, DEFAULT_XR_BACKGROUND_SETTINGS, grainMaterialBoosts, MAX_BACKGROUND_SHARPEN, XR_BACKGROUND_MIPMAPPED,
+    XR_BACKGROUND_RESOLUTION, type XrBackgroundSettings } from '../XrBackgroundSettings';
+
+/** Desktop preview cadence (XrRuntime caps the desktop loop near 60 Hz). */
+const DESKTOP_DISPLAY_HZ = 60;
+/**
+ * Score HUD beside the runway (Tall play space, Addendum M), in playfield meters: left of the start
+ * frame, a meter past the hit plane, turned toward the player and scaled to keep its angular size.
+ */
+export const SIDE_HUD_POSE = { x: -(START_FRAME_HALF_WIDTH_METERS + 0.75), yAboveFrameCenter: 0.05, z: -1, yaw: 0.55, scale: 0.72 } as const;
+
+export class RhythmGameScene {
+    readonly root = new THREE.Group();
+    readonly playfield = new THREE.Group();
+    readonly noteField: RhythmNoteField;
+    readonly hud: XrHud;
+    /** Rebuilt when the stage layout changes (session-scope setting), never per frame. */
+    runway: XrRunway;
+    /** The single XR path projection shared by note rendering, the runway and XR hit testing. */
+    readonly path = new XrTrackPath();
+    /** Hit-gate section announcer (analyzer sections, song-time driven). */
+    readonly sectionCallout: XrSectionCallout;
+    /** Song structure + score strip under the start frame (Addendum K). */
+    readonly songMap: XrSongMap;
+    /** Floor progress ring at the player's origin (Addendum K). */
+    readonly progressRing: XrProgressRing;
+    /** Upcoming-section gates travelling down the runway (Addendum L). */
+    readonly sectionGates: XrSectionGates;
+    /** Halves and sparks of struck targets (Addendum Q). */
+    readonly sliceEffect: XrSliceEffect;
+    readonly noteHalos = new XrNoteHalos();
+    /** Only accepted session results can start bursts; this object has no session reference. */
+    readonly resolutionObserver: RhythmResolutionObserver = Object.freeze<RhythmResolutionObserver>({
+        onRunReset: () => this.noteHalos.reset(),
+        onNoteResolved: (note, grade, songTime, skipped) => this.noteHalos.onNoteResolved(note, grade, songTime, skipped)
+    });
+    /** The Wormhole continued into the room around the route (decorative; shown only with the background). */
+    readonly spatialField = new XrWormholeSpatialField();
+    private config: RhythmGameConfig;
+    private readonly lights = new THREE.Group();
+    private wormhole: WormholeBackdrop | XrNativeWormhole | null = null;
+    private readonly nativeWormholeFactory?: WormholeNativeSourceFactory;
+    private nativeFallback = false;
+    get nativeWormholeActive(): boolean { return this.wormhole instanceof XrNativeWormhole; }
+    get nativeExecutionLabel(): string { return this.wormhole instanceof XrNativeWormhole?this.wormhole.executionLabel:''; }
+    /**
+     * The displayed frame's focal point, continued to the song time drawn: the background redraws at
+     * 24-36 Hz, and a raw focus would bend the runway (and everything on it) in visible steps.
+     */
+    private readonly focusX = new XrFrameSignal();
+    private readonly focusY = new XrFrameSignal();
+    private wormholeAnalysis: VisualAnalysisSnapshot | null = null;
+    private wormholeDirty = true;
+    private readonly wormholeFactory?: CanvasVisualSourceFactory;
+    private background: XrBackgroundSettings = DEFAULT_XR_BACKGROUND_SETTINGS;
+    private spiralDirection: CanvasVisualPresentation['spiralDirection'] = 'auto';
+    /** The background produced a frame asynchronously (idle hosts render one more frame). */
+    onBackgroundFrame: (() => void) | null = null;
+    /** The background failed after preparation; the host reports it and turns the background off. */
+    onBackgroundError: ((message: string) => void) | null = null;
+    private displayHz = DESKTOP_DISPLAY_HZ;
+    /** Grain material on the GPU (ADR-009 Addendum W) and stage profiling for the background (Addendum X). */
+    private gpuMaterial = false;
+    /** GPU grain trail lines (Addendum AA); only with the GPU material. */
+    private gpuLines = false;
+    /** Software (CPU) background raster, off the browser's GPU thread (Addendum AE). */
+    private softwareRaster = false;
+    /** WebGL2 background raster in batched draw calls (Addendum AF). */
+    private webglRaster = false;
+    /** Background cadence fitted to the worker's latency (Addendum Z); off = the requested divider. */
+    private adaptivePacing = false;
+    private profile = false;
+    // Last note-field inputs, compared field by field (no per-frame key string). NaN forces a refresh.
+    private lastNoteTime = Number.NaN;
+    private lastNoteRevision = -1;
+    private lastNoteState = '';
+    private lastNoteScore = -1;
+    private lastNoteMisses = -1;
+    private lastNoteTotal = -1;
+    private eyeHeight: number = SCENE_CONFIG.defaultEyeHeightMeters;
+    private layout: XrStageLayout = DEFAULT_STAGE_LAYOUT;
+    /** Row spacing the current runway gate was built with (its row ticks). */
+    private runwaySpacing: number;
+    /** Last viewer placement, re-applied when the hit-plane distance changes. */
+    private viewer = { x: 0, z: 0, yaw: 0 };
+    constructor(scene: THREE.Scene, config: RhythmGameConfig = DEFAULT_RHYTHM_GAME_CONFIG, wormholeFactory?: CanvasVisualSourceFactory,
+        nativeWormholeFactory?: WormholeNativeSourceFactory) {
+        this.nativeWormholeFactory = nativeWormholeFactory;
+        this.wormholeFactory = wormholeFactory;
+        this.config = config;
+        this.noteField = new RhythmNoteField(config);
+        this.hud = new XrHud();
+        // Decorative corridor, reticle and hit gate; never gameplay geometry (see XrRunway).
+        this.runway = new XrRunway(config);
+        this.runwaySpacing = config.rowSpacingMeters;
+        this.root.add(this.runway.floor, this.runway.linework);
+        this.playfield.add(this.runway.gate);
+        this.sectionCallout = new XrSectionCallout();
+        this.playfield.add(this.sectionCallout.root);
+        this.songMap = new XrSongMap();
+        this.playfield.add(this.songMap.root);
+        this.progressRing = new XrProgressRing();
+        this.root.add(this.progressRing.mesh);
+        this.sectionGates = new XrSectionGates();
+        this.playfield.add(this.sectionGates.root);
+        this.playfield.add(this.noteField.mesh, this.noteField.markers, this.noteField.arrows, this.hud.mesh);
+        this.sliceEffect = new XrSliceEffect(config.noteSizeMeters);
+        this.playfield.add(this.sliceEffect.halves, this.sliceEffect.sparks);
+        this.playfield.add(this.noteHalos.mesh);
+        this.root.add(this.playfield);
+        // Stage-root space like the floor: never under the playfield, never part of hit testing.
+        this.root.add(this.spatialField.root);
+        this.lights.add(new THREE.HemisphereLight(0xc4dfff, 0x182439, 2.2));
+        const key = new THREE.DirectionalLight(0xffffff, 2); key.position.set(1, 3, 1); this.lights.add(key);
+        scene.add(this.root, this.lights);
+        this.path.setBackdropDistance(this.background.distanceMeters);
+        this.spatialField.setMode(this.background.spatialField);
+        this.placeForViewer(0, SCENE_CONFIG.defaultEyeHeightMeters, 0, 0);
+    }
+    /** Called once for each immersive entry/reference-space reset, never continuously recentered. */
+    placeForViewer(x: number, eyeHeight: number, z: number, yaw: number): void {
+        if (![x, eyeHeight, z, yaw].every(Number.isFinite)) return;
+        this.viewer = { x, z, yaw };
+        this.root.position.set(x, 0, z);
+        this.root.rotation.y = yaw;
+        const middleHeight = Math.max(0.7, eyeHeight - SCENE_CONFIG.hitHeightBelowEyesMeters);
+        this.playfield.position.set(0, middleHeight, -this.layout.playfieldForwardMeters);
+        this.spatialField.setCenterHeight(middleHeight);
+        if (this.layout.hudPlacement === 'side') {
+            // The overhead row and the taller frame own the space above the runway.
+            const pose = SIDE_HUD_POSE;
+            this.hud.setPose(pose.x, this.layout.frameCenterYMeters + pose.yAboveFrameCenter, pose.z, pose.yaw, pose.scale);
+        } else {
+            // Raised above the hit gate's section caption so the two never overlap in view.
+            this.hud.setPose(0, eyeHeight - middleHeight + 1.15, -2.8);
+        }
+        this.eyeHeight = eyeHeight;
+        this.wormhole?.setEyeHeight(eyeHeight);
+        this.root.updateMatrixWorld(true);
+    }
+    getWorldToPlayfield(target: THREE.Matrix4): THREE.Matrix4 {
+        this.playfield.updateWorldMatrix(true, false);
+        return target.copy(this.playfield.matrixWorld).invert();
+    }
+    update(activeNotes: readonly NoteRuntimeState[], songTime: number, snapshot: RhythmSessionSnapshot, instruction: string): void {
+        // The Wormhole renders first so the track follows the focal point of the displayed image.
+        if (this.wormhole?.root.visible) this.wormhole.update(songTime, snapshot.state === 'playing');
+        const focus = this.wormhole?.focalPoint;
+        // The spatial state of the same displayed frame as the focus (null hides the field); its
+        // time stamps the focus, so the path follows it smoothly between background frames.
+        const spatial = this.wormhole?.spatialFrame ?? null;
+        if (focus && spatial) {
+            this.path.setFocus(this.focusX.sample(songTime, spatial.time, focus.x), this.focusY.sample(songTime, spatial.time, focus.y));
+        } else {
+            this.focusX.reset(); this.focusY.reset();
+            this.path.setFocus(focus ? focus.x : 0, focus ? focus.y : 0);
+        }
+        this.spatialField.update(songTime, spatial, this.path);
+        this.runway.update(songTime);
+        this.runway.applyPath(this.path);
+        this.sectionCallout.update(songTime);
+        this.songMap.update(songTime, snapshot);
+        this.sectionGates.update(songTime, this.config, this.path);
+        this.progressRing.update(songTime, snapshot);
+        if (songTime !== this.lastNoteTime || this.path.revision !== this.lastNoteRevision || snapshot.state !== this.lastNoteState
+            || snapshot.score !== this.lastNoteScore || snapshot.missCount !== this.lastNoteMisses || snapshot.totalNotes !== this.lastNoteTotal) {
+            this.noteField.update(activeNotes, songTime, this.config, this.path);
+            this.sliceEffect.update(activeNotes, songTime, this.config, this.path);
+            this.lastNoteTime = songTime; this.lastNoteRevision = this.path.revision; this.lastNoteState = snapshot.state;
+            this.lastNoteScore = snapshot.score; this.lastNoteMisses = snapshot.missCount; this.lastNoteTotal = snapshot.totalNotes;
+        }
+        this.hud.update(snapshot, instruction);
+        this.noteHalos.update(activeNotes, songTime, this.config, this.path);
+    }
+    /** One sidecar per accepted chart publication; null immediately removes stale presentation. */
+    setNoteRolePlan(plan: RhythmNoteRolePlan | null): void { this.noteHalos.setPlan(plan); }
+    /**
+     * Off-screen GPU work of a new background frame (upload, line composite, material layers), after
+     * `update` and before the scene render, so none of it switches render targets inside the eye pass.
+     */
+    prerender(renderer: THREE.WebGLRenderer): void {
+        if (this.wormhole?.root.visible) this.wormhole.prerender(renderer);
+    }
+    /** Structure + score overview for the song map and the floor ring (null clears both). */
+    setScoreOverview(overview: ScoreOverview | null): void {
+        this.songMap.setOverview(overview);
+        this.progressRing.setOverview(overview);
+        this.sectionGates.setOverview(overview);
+    }
+
+    /** Target style (presentation only): the note field and the slice halves switch together. */
+    setNoteDesign(design: XrNoteDesign): void {
+        this.noteField.setDesign(design);
+        this.sliceEffect.setDesign(design);
+        this.lastNoteTime = Number.NaN;
+    }
+
+    /** Plain-data section timeline from the host (empty clears the callout). */
+    setSectionTimeline(timeline: readonly SectionCue[]): void {
+        this.sectionCallout.setTimeline(timeline);
+    }
+    async setWormholeEnabled(enabled: boolean): Promise<void> {
+        if (enabled && !this.wormhole) {
+            if (this.background.presentationMode === 'native-grains' && !this.nativeFallback) {
+                if (this.nativeWormholeFactory) {
+                    try {
+                        const source = this.nativeWormholeFactory();
+                        try { this.wormhole = new XrNativeWormhole(source); }
+                        catch (error) { source.dispose(); throw error; }
+                    } catch { this.nativeFallback = true; }
+                } else this.nativeFallback = true;
+            }
+            if (!this.wormhole) {
+            if (!this.wormholeFactory) throw new Error('Wormhole renderer is unavailable.');
+            const gpuMaterial = this.gpuMaterial;
+            this.wormhole = new WormholeBackdrop(this.wormholeFactory({ ...XR_BACKGROUND_RESOLUTION[this.background.quality],
+                ...(gpuMaterial ? { externalMaterial: true } : {}), ...(gpuMaterial && this.gpuLines ? { externalLines: true } : {}),
+                ...(this.profile ? { profile: true } : {}), ...(this.softwareRaster ? { softwareRaster: true } : {}),
+                ...(this.webglRaster ? { webglRaster: true } : {}) }),
+                { gpuMaterial, gpuLines: gpuMaterial && this.gpuLines, mipmaps: XR_BACKGROUND_MIPMAPPED.has(this.background.quality) });
+            }
+            this.spatialField.setMode(this.nativeWormholeActive ? 'off' : this.background.spatialField);
+            this.wormhole.setAdaptivePacing(this.adaptivePacing);
+            this.root.add(this.wormhole.root);
+            this.wormhole.onFrameReady = () => this.onBackgroundFrame?.();
+            this.wormhole.onError = message => this.onBackgroundError?.(message);
+            this.configureWormhole();
+            this.wormhole.setDistance(this.background.distanceMeters);
+            this.wormhole.setEyeHeight(this.eyeHeight); this.root.updateMatrixWorld(true);
+        }
+        if (this.wormhole) this.wormhole.root.visible = enabled;
+        if (enabled && this.wormholeDirty && this.wormhole) {
+            this.wormholeDirty = false;
+            const current = this.wormhole;
+            try { await current.prepare(this.wormholeAnalysis); }
+            catch (error) {
+                if (current !== this.wormhole) return;
+                this.wormholeDirty = true;
+                if (current instanceof XrNativeWormhole) {
+                    this.nativeFallback = true; current.dispose(); this.wormhole = null;
+                    await this.setWormholeEnabled(true);
+                } else throw error;
+            }
+        }
+    }
+    /**
+     * New stage (hit-plane distance, runway length, spawn fade) derived from the player's note speed
+     * and saber length, and the play space's rows, start frame and HUD placement. The runway is
+     * rebuilt once; the path re-aims; the playfield moves so the start frame sits at the new
+     * distance; the callout, gates and song map follow the frame. Gameplay coordinates stay
+     * relative to the hit plane.
+     */
+    setStageLayout(layout: XrStageLayout): void {
+        const previous = this.layout;
+        this.layout = layout;
+        this.noteField.setSpawnFade(layout.spawnFadeMeters);
+        this.noteHalos.setSpawnFade(layout.spawnFadeMeters);
+        this.sectionGates.setSpawnFade(layout.spawnFadeMeters);
+        this.path.setLayout(layout);
+        this.sectionCallout.setFrame(layout.frameCenterYMeters, layout.frameHalfHeightMeters);
+        this.sectionGates.setFrame(layout.frameCenterYMeters, layout.frameHalfHeightMeters);
+        this.songMap.setFrameBottom(layout.frameCenterYMeters - layout.frameHalfHeightMeters);
+        if (layout.playfieldForwardMeters !== previous.playfieldForwardMeters || layout.runwayFrontZMeters !== previous.runwayFrontZMeters
+            || layout.rowCount !== previous.rowCount || layout.frameCenterYMeters !== previous.frameCenterYMeters
+            || layout.frameHalfHeightMeters !== previous.frameHalfHeightMeters) this.rebuildRunway();
+        this.placeForViewer(this.viewer.x, this.eyeHeight, this.viewer.z, this.viewer.yaw);
+        this.lastNoteTime = Number.NaN;
+    }
+
+    /** Rebuilds the runway and hit gate for the current layout and row spacing (setting changes only). */
+    private rebuildRunway(): void {
+        this.runway.dispose();
+        this.runway = new XrRunway(this.config, this.layout);
+        this.runwaySpacing = this.config.rowSpacingMeters;
+        this.root.add(this.runway.floor, this.runway.linework);
+        this.playfield.add(this.runway.gate);
+        this.runway.applyPath(this.path);
+    }
+
+    get stageLayout(): XrStageLayout { return this.layout; }
+
+    /**
+     * New session-scope gameplay configuration: notes, judging space and floor travel follow it.
+     * The note pool keeps its construction capacity (`maxActiveNotes` is not a player setting).
+     */
+    setGameConfig(config: RhythmGameConfig): void {
+        this.config = config;
+        // The gate's row ticks follow the play space's row spacing.
+        if (config.rowSpacingMeters !== this.runwaySpacing) this.rebuildRunway();
+        this.runway.setScrollSpeed(config.noteSpeedMps);
+        this.lastNoteTime = Number.NaN;
+    }
+
+    /** Wall-clock cost of the background's last canvas redraw (diagnostics). */
+    get backgroundRenderMs(): number { return this.wormhole?.lastRenderMs ?? 0; }
+    /** The display cadence the background paces against (headset frame rate, or the desktop cap). */
+    get displayFrameRate(): number { return this.displayHz; }
+    /** Background redraw rate as currently paced (Hz; widened from the requested rate when frames arrive late). */
+    get backgroundPacedHz(): number { return this.wormhole ? this.displayHz / this.wormhole.redrawDivider : 0; }
+    /** Measured request -> frame latency of an off-thread background, in ms (0 when unknown or in-thread). */
+    get backgroundLatencyMs(): number { return this.wormhole?.frameLatencyMs ?? 0; }
+
+    /**
+     * How the background is built: grain material on the GPU (Addendum W), stage profiling (Addendum
+     * X), GPU lines (Addendum AA) and software raster (Addendum AE). All are fixed when a source is created, so a change rebuilds an existing
+     * background plane, like a quality change; before the first background it only records them.
+     */
+    async setBackgroundPipeline(pipeline: { readonly gpuMaterial: boolean; readonly profile: boolean; readonly gpuLines?: boolean;
+        readonly softwareRaster?: boolean; readonly webglRaster?: boolean }): Promise<void> {
+        const gpuLines = pipeline.gpuLines === true, softwareRaster = pipeline.softwareRaster === true, webglRaster = pipeline.webglRaster === true;
+        if (pipeline.gpuMaterial === this.gpuMaterial && pipeline.profile === this.profile && gpuLines === this.gpuLines
+            && softwareRaster === this.softwareRaster && webglRaster === this.webglRaster) return;
+        this.gpuMaterial = pipeline.gpuMaterial;
+        this.profile = pipeline.profile;
+        this.gpuLines = gpuLines;
+        this.softwareRaster = softwareRaster;
+        this.webglRaster = webglRaster;
+        await this.rebuildWormhole();
+    }
+    get gpuMaterialEnabled(): boolean { return this.gpuMaterial; }
+    /** GPU trail lines are drawn (they need the GPU material). */
+    get gpuLinesEnabled(): boolean { return this.gpuMaterial && this.gpuLines; }
+    /** The background is rasterized in software (CPU). */
+    get softwareRasterEnabled(): boolean { return this.softwareRaster; }
+    /**
+     * What rasterizes the background, for the diagnostics line: WebGL (Addendum AF), CPU or GPU
+     * (Canvas2D); a requested WebGL raster that fell back says so.
+     */
+    get backgroundRasterLabel(): string {
+        if (this.nativeWormholeActive) return 'Native grains (no canvas)';
+        if (this.nativeFallback) return 'Hybrid (native unavailable)';
+        const kind = this.wormhole?.rasterKind ?? null;
+        if (kind === 'webgl') return 'WebGL';
+        const canvas = this.softwareRaster ? 'CPU' : 'GPU';
+        return this.webglRaster && kind === 'canvas2d' ? `${canvas} (no WebGL)` : this.webglRaster ? 'WebGL (starting)' : canvas;
+    }
+
+    /** Background pacing (Settings > System): adaptive widens the cadence to late worker frames; live. */
+    setAdaptivePacing(enabled: boolean): void {
+        this.adaptivePacing = enabled === true;
+        this.wormhole?.setAdaptivePacing(this.adaptivePacing);
+    }
+    /** Background frames put on screen so far, and their source stage times (diagnostics). */
+    get backgroundFramesShown(): number { return this.wormhole?.framesShown ?? 0; }
+    /** Main-thread ms of the background's ahead work since the host last emptied this list (diagnostics). */
+    get backgroundAheadSamples(): number[] | null { return this.wormhole?.aheadSamples ?? null; }
+    /** The background frame on screen was uploaded ahead, outside the headset frame (Addendum AE). */
+    get backgroundUploadedAhead(): boolean { return this.wormhole?.uploadedAhead ?? false; }
+    get backgroundStageTimes(): Readonly<Record<string, number>> | null {
+        return this.wormhole?.root.visible ? this.wormhole.stageTimes : null;
+    }
+
+    /**
+     * Player background presentation. Line stroke, rate and distance apply in place; a quality change
+     * rebuilds the single background plane at the new raster size (re-preparing it if shown). The
+     * distance also re-aims the track's far tangent at the moved plane (one path authority).
+     */
+    async setBackgroundSettings(settings: XrBackgroundSettings): Promise<void> {
+        const modeChanged = (settings.presentationMode ?? 'hybrid') !== (this.background.presentationMode ?? 'hybrid');
+        const rebuild = (settings.quality !== this.background.quality || modeChanged) && this.wormhole !== null;
+        if (modeChanged) this.nativeFallback = false;
+        this.background = settings;
+        this.wormhole?.setDistance(settings.distanceMeters);
+        this.spatialField.setMode(settings.presentationMode === 'native-grains' && !this.nativeFallback ? 'off' : settings.spatialField);
+        if (this.path.setBackdropDistance(settings.distanceMeters)) { this.runway.applyPath(this.path); this.lastNoteTime = Number.NaN; }
+        this.root.updateMatrixWorld(true);
+        if (rebuild) await this.rebuildWormhole();
+        else this.configureWormhole();
+    }
+
+    /** Replaces the background plane with a new source (re-prepared if it was shown). */
+    private async rebuildWormhole(): Promise<void> {
+        if (!this.wormhole) return;
+        const visible = this.wormhole.root.visible;
+        this.wormhole.dispose();
+        this.wormhole = null;
+        this.wormholeDirty = true;
+        if (visible) await this.setWormholeEnabled(true);
+    }
+
+    /** Display cadence the background paces against (headset frame rate, or the desktop cap). */
+    setDisplayFrameRate(hz: number | null | undefined): void {
+        this.displayHz = hz && Number.isFinite(hz) && hz > 0 ? hz : DESKTOP_DISPLAY_HZ;
+        this.configureWormhole();
+    }
+
+    setSpiralDirection(direction: CanvasVisualPresentation['spiralDirection']): void {
+        const normalized = direction === 'left' || direction === 'right' ? direction : 'auto';
+        if (normalized === this.spiralDirection) return;
+        this.spiralDirection = normalized;
+        this.configureWormhole(true);
+    }
+
+    private configureWormhole(forceSpiralDirection = false): void {
+        if (this.wormhole instanceof XrNativeWormhole) {
+            const budgets = { performance: 360, balanced: 720, high: 1080, ultra: 1440, crystal: 1440, max: 1440, '4k': 1440 };
+            this.wormhole.setQualityBudget(budgets[this.background.quality]);
+        }
+        this.wormhole?.setSharpness(this.background.sharpness * MAX_BACKGROUND_SHARPEN);
+        const divider = backgroundFrameDivider(this.displayHz, this.background.rateHz);
+        // The source learns the effective rate (display cadence / divider), never above the request.
+        this.wormhole?.configure({ lineStroke: this.background.lineStroke, maxFrameRateHz: this.displayHz / divider,
+            ...(forceSpiralDirection || this.spiralDirection !== 'auto' ? { spiralDirection: this.spiralDirection } : {}),
+            ...(this.background.character ? { macros: this.background.character } : {}),
+            ...(this.background.grain ? { grainMaterial: grainMaterialBoosts(this.background.grain) } : {}) }, divider, this.displayHz);
+    }
+
+    async setWormholeAnalysis(analysis: VisualAnalysisSnapshot | null): Promise<void> {
+        this.wormholeAnalysis = analysis; this.wormholeDirty = true; this.lastNoteTime = Number.NaN;
+        if (this.wormhole?.root.visible) await this.setWormholeEnabled(true);
+    }
+    dispose(): void {
+        this.noteHalos.dispose();
+        this.wormhole?.dispose();
+        this.noteField.dispose(); this.hud.dispose(); this.runway.dispose(); this.sectionCallout.dispose();
+        this.songMap.dispose(); this.progressRing.dispose(); this.sectionGates.dispose(); this.sliceEffect.dispose(); this.spatialField.dispose();
+        this.playfield.remove(this.noteField.mesh, this.noteField.markers, this.noteField.arrows, this.hud.mesh);
+        this.root.traverse(object => {
+            if (object instanceof THREE.InstancedMesh) object.dispose();
+            if (object instanceof THREE.Mesh) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); }
+        });
+        this.root.removeFromParent(); this.lights.removeFromParent();
+    }
+}

@@ -1,0 +1,285 @@
+{
+  "task": "T04b",
+  "tests": 1627,
+  "pass": 1618,
+  "fail": 9,
+  "duration_ms": 307403.8354,
+  "failures": [
+    {
+      "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+      "message": "vos-wh-drift.json must not reset user-global wormholeStarfield",
+      "matchesBaseline": true
+    },
+    {
+      "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+      "message": "establish remains visibly above the opacity floor",
+      "matchesBaseline": true
+    },
+    {
+      "name": "weak roles pin a deep-perspective depth and continuity profile",
+      "message": "establish depth\n\n2.03136 !== 4",
+      "matchesBaseline": true
+    },
+    {
+      "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+      "message": "deep drift deeper than establish",
+      "matchesBaseline": true
+    },
+    {
+      "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+      "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492",
+      "matchesBaseline": true
+    },
+    {
+      "name": "wormhole factory presets keep a minimum normalized weighted separation",
+      "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09",
+      "matchesBaseline": true
+    },
+    {
+      "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+      "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))",
+      "matchesBaseline": true
+    },
+    {
+      "name": "projected forward motion preserves overdrive > punch > drive > drift",
+      "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}",
+      "matchesBaseline": true
+    },
+    {
+      "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+      "message": "389.64890777178124 vs 471.543038051684",
+      "matchesBaseline": true
+    }
+  ],
+  "unexpectedFailures": 0,
+  "targeted": {
+    "tests": 238,
+    "pass": 238,
+    "fail": 0
+  },
+  "commands": [
+    "npm run build",
+    "npm test -- --test-reporter=tap",
+    "node --test --test-reporter=tap tests/wormhole-spiral-history.test.mjs tests/wormhole-spiral-consumers.test.mjs tests/paused-renderer.test.mjs tests/mvp-async-lifecycle.test.mjs tests/morph-scale.test.mjs tests/wormhole-signed-spiral.test.mjs tests/xr-wormhole-spatial.test.mjs tests/xr-wormhole-spatial-field.test.mjs tests/wormhole-determinism.test.mjs tests/wormhole-lifecycle.test.mjs tests/wormhole-depth-integrity.test.mjs tests/styles-deterministic.test.mjs tests/visual-mode-transition.test.mjs tests/contracts.test.mjs",
+    "node scripts/audit-spiral-history.mjs documents/tests/WormholeCanvasSource.pre-t04b.ts.txt logs/t04b/history-comparison.json",
+    "git diff --check"
+  ],
+  "testInventory": {
+    "activeTestFiles": 173,
+    "sourceIdentities": 214,
+    "missingPreviousTests": []
+  },
+  "control": {
+    "task": "T04b",
+    "songTime": 2.5,
+    "retainedSource": "documents/tests/WormholeCanvasSource.pre-t04b.ts.txt",
+    "retainedSha256": "a3b3ce74207df7e22b4791be738df4532ae531c04ee71952c4c6323c85c5f9ed",
+    "currentSourceSha256": "173b0d2731d245798d76de6b157154d3c72c130f3e9b1c3aad4dbbe97554d436",
+    "method": "Actual source with recording identity; same immutable fixture, explicit song time, neutral gains. Retained source + current dependencies isolate the history bug; not full historical bundle/pixels.",
+    "before": {
+      "fps": 30,
+      "live": 0.46614931208109356,
+      "directSeek": -2,
+      "backwardSeek": -2
+    },
+    "after": [
+      {
+        "fps": 24,
+        "live": 0.5418323709253965,
+        "directSeek": 0.5418323709253965,
+        "backwardSeek": 0.5418323709253965
+      },
+      {
+        "fps": 36,
+        "live": 0.5418323709253965,
+        "directSeek": 0.5418323709253965,
+        "backwardSeek": 0.5418323709253965
+      },
+      {
+        "fps": 60,
+        "live": 0.5418323709253965,
+        "directSeek": 0.5418323709253965,
+        "backwardSeek": 0.5418323709253965
+      }
+    ],
+    "maxError": 0,
+    "pass": true
+  },
+  "browser": {
+    "mode": "actual browser automation",
+    "isolatedRasterAndWorker": [
+      {
+        "pass": true,
+        "expected": 0.8,
+        "zeroCrossing": 2.186705093060352,
+        "rows": [
+          {
+            "renderer": "Canvas2D · 24 Hz history",
+            "raster": "canvas2d",
+            "requestedTime": 1.5,
+            "shownTime": 1.5,
+            "signedTurns": 0.8,
+            "shownSerial": null
+          },
+          {
+            "renderer": "WebGL2 · backward seek",
+            "raster": "webgl",
+            "requestedTime": 1.5,
+            "shownTime": 1.5,
+            "signedTurns": 0.8,
+            "shownSerial": null
+          },
+          {
+            "renderer": "Worker · paused request",
+            "raster": "webgl",
+            "requestedTime": 1.5,
+            "shownTime": 1.5,
+            "signedTurns": 0.8,
+            "shownSerial": 8
+          }
+        ]
+      },
+      {
+        "pass": true,
+        "expected": 1.2212453270876722e-15,
+        "zeroCrossing": 2.186705093060352,
+        "rows": [
+          {
+            "renderer": "Canvas2D · 24 Hz history",
+            "raster": "canvas2d",
+            "requestedTime": 2.186705093060352,
+            "shownTime": 2.186705093060352,
+            "signedTurns": 1.2212453270876722e-15,
+            "shownSerial": null
+          },
+          {
+            "renderer": "WebGL2 · backward seek",
+            "raster": "webgl",
+            "requestedTime": 2.186705093060352,
+            "shownTime": 2.186705093060352,
+            "signedTurns": 1.2212453270876722e-15,
+            "shownSerial": null
+          },
+          {
+            "renderer": "Worker · paused request",
+            "raster": "webgl",
+            "requestedTime": 2.186705093060352,
+            "shownTime": 2.186705093060352,
+            "signedTurns": 1.2212453270876722e-15,
+            "shownSerial": 7
+          }
+        ]
+      },
+      {
+        "pass": true,
+        "expected": -0.5499910301333368,
+        "zeroCrossing": 2.186705093060352,
+        "rows": [
+          {
+            "renderer": "Canvas2D · 24 Hz history",
+            "raster": "canvas2d",
+            "requestedTime": 2.5,
+            "shownTime": 2.5,
+            "signedTurns": -0.5499910301333368,
+            "shownSerial": null
+          },
+          {
+            "renderer": "WebGL2 · backward seek",
+            "raster": "webgl",
+            "requestedTime": 2.5,
+            "shownTime": 2.5,
+            "signedTurns": -0.5499910301333368,
+            "shownSerial": null
+          },
+          {
+            "renderer": "Worker · paused request",
+            "raster": "webgl",
+            "requestedTime": 2.5,
+            "shownTime": 2.5,
+            "signedTurns": -0.5499910301333368,
+            "shownSerial": 6
+          }
+        ]
+      }
+    ],
+    "studioAudioLoad": true,
+    "studioImportedDirections": [
+      1,
+      -1
+    ],
+    "studioSeekPercentages": [
+      35.7,
+      10,
+      35.7
+    ],
+    "consoleErrors": []
+  },
+  "artifacts": [
+    {
+      "path": "logs/t04b/tests.tap",
+      "sha256": "ffdae3b5f1d28252a1ae41e6216a2e63036c57dbbe5aece8335609d278e618da"
+    },
+    {
+      "path": "logs/t04b/targeted.tap",
+      "sha256": "1c5ed5480d8c631542969861f9df281398965ce4f298fde572512a5be0bb557a"
+    },
+    {
+      "path": "logs/t04b/build-final.log",
+      "sha256": "6528a81d686ad7ce6de20aafef1514edc43e2670b69e6288f4de677ee35083c7"
+    },
+    {
+      "path": "logs/t04b/history-comparison.json",
+      "sha256": "5271856f2fc901ce938e3aa5d3b3119d7794c25f61935f3060a8889052989129"
+    },
+    {
+      "path": "logs/t04b/browser-left.json",
+      "sha256": "8048bb7f790e9093c8036e28bcc9632ff2c73462db9f10cc40119d6c339b9597"
+    },
+    {
+      "path": "logs/t04b/browser-zero.json",
+      "sha256": "a63e4803eb80d977f620bcd36c0b3d70973fcd8127ab8230a66f5c46ec257585"
+    },
+    {
+      "path": "logs/t04b/browser-right.json",
+      "sha256": "3e413605471383f7f24c751cf504cba4298011811f95707f7d40d5a4d8c90799"
+    },
+    {
+      "path": "logs/t04b/browser-left.jpg",
+      "sha256": "ec325e22861b5b527a19f1646f63cf243220fc3d86c3b74e66e5a359e73db191"
+    },
+    {
+      "path": "logs/t04b/browser-zero.jpg",
+      "sha256": "98d740ba12274267634e3575834b034d44523e9b6b51935ea83ba9f7da22adaa"
+    },
+    {
+      "path": "logs/t04b/browser-right.jpg",
+      "sha256": "92c808d726bc7e48691cbb7de70cb14c2bd430d4f297ae4937d9803d2a7b42df"
+    },
+    {
+      "path": "logs/t04b/studio-copied-plan.json",
+      "sha256": "9211ce070af70d3e3a4ddcba197440845236c3f289212491ab75792422cdf3e6"
+    },
+    {
+      "path": "logs/t04b/studio-seek.jpg",
+      "sha256": "8d1ad145181897803f599ba35cadc146fc0206b8b4aa285c490df06ac3de1644"
+    },
+    {
+      "path": "logs/t04b/test-inventory.json",
+      "sha256": "e92588d1c948979923600326242a1c90b724c9c757e774d26c212afbf211fd7d"
+    },
+    {
+      "path": "documents/tests/WormholeCanvasSource.pre-t04b.ts.txt",
+      "sha256": "a3b3ce74207df7e22b4791be738df4532ae531c04ee71952c4c6323c85c5f9ed"
+    }
+  ],
+  "runtime": "v25.2.1",
+  "runnerFallback": "Node/npm; publisher uses installed node node_modules/gh-pages/bin/gh-pages.js instead of existing Bun script. No dependency changes.",
+  "notClaimed": [
+    "general host/route/director history reconstruction",
+    "exact cross-backend pixels",
+    "encoded-video parity",
+    "physical Quest stereo/performance",
+    "human gameplay precision"
+  ],
+  "diffExport": "Skipped; bounded source review and retained source/input manifests."
+}

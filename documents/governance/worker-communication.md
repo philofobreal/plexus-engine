@@ -37,6 +37,13 @@ Current analysis success message fields:
   beats, bars and the playback clock retain their original ownership. The strict result schema
   describes its shape; runtime normalization additionally binds it to the published events/clock.
 
+Optional nested `trackAnalysis.musicEvents` projects accepted visual events with local IDs,
+original song times/sample positions, accepted-event associations and real feature-window support.
+Current analyzer output includes it; legacy payloads may omit it. Confidence is explicitly null,
+tonal/vocal recognition is unsupported and dominance unknown. Normalization checks the actual
+clock and accepted-event association; it never invents acoustic note onsets or an independent grid.
+See [T11a scope](../features/music-events.md) and the strict result schema.
+
 The authoritative musical timing model (`tempo`, `tempoConfidence`, `beats`, `beatConfidence`,
 `barStarts`, `alternativeTempos`, `timingConfidence`) is carried on the nested `TrackAnalysis`
 as well, and `beats` / `barStarts` / `timingConfidence` are mirrored at the root for direct
@@ -57,7 +64,7 @@ Current failure message fields:
 
 `src/visuals/wormholeRender.worker.ts` is a long-lived *render* worker, not a one-shot compute job
 (ADR-009 Addendum G). Its typed contract lives in `src/types/WormholeWorkerProtocol.ts` (protocol
-version 1):
+version 1 preview; separately negotiated exact version 2 is described below):
 
 - Requests: `init` (protocol, raster size, depth cue, optional `profile` for diagnostics,
   optional `externalMaterial` for the host-rendered grain material, ADR-009 Addendum W, and with it
@@ -120,6 +127,31 @@ version 1):
   terminates the previous worker.
 - The worker must remain free of DOM, `State`, UI, audio and XR modules; it renders only the plan
   it is given and fetches only that plan's preset assets.
+
+## Exact Wormhole capability (T05c)
+
+`WormholeExactWorkerSource` is an offline adapter separate from the live preview proxy.
+Its protocol v2 `init` supplies a `contextId` and optional copied host `contextSeed`; the worker
+answers `capabilities` with protocol 2, that context and sampler `fixed-song-60-v1`. Preparation
+must not succeed without that handshake. The existing v1 preview contract remains supported;
+v1 frames or `unchanged` must never be relabelled as exact results.
+
+`render-exact` carries `WormholeFrameIdentity`: contextId, generation, requestSerial, frameIndex,
+fps and songTime = frameIndex/fps. `exact-frame` echoes it around the bitmap/focal/material/line/
+spatial payload; `exact-error` echoes it with the failure. No preview lead or cadence applies.
+All companions describe the same requested endpoint. Stale results are closed and returned,
+and cannot clear or settle a newer request. At most one request or one result lease may exist
+per exact context. Idempotent `release-exact` returns its shared material/line buffer only with
+the matching identity. The worker does not write a leased buffer or render another exact frame
+until released; the existing carrier pool still retains at most three returned buffers.
+
+The adapter rejects on unsupported capability, preparation failure, supersession, cancellation,
+render error or deadline. Cancellation/disposal/fatal error terminate its worker. A local exact
+adapter is an explicit composition fallback and copies only valid carrier records into its one
+lease. Neither adapter uses the live preview canvas. The canonical sampler replays private state
+from song zero at fixed 60 Hz plus an exact fractional endpoint; it performs no analysis/planning
+or per-request fetch. Replay cost is linear in song time; full export performance is a T19 gate.
+See [ADR-011](../adr/ADR-011-shared-wormhole-frame-context.md) for the delivery limits.
 
 ## Analyzer Worker Structure
 
@@ -212,3 +244,49 @@ Workers must terminate on:
 Worker errors must restore UI control state through the audio/UI boundary and must not leave playback controls permanently disabled.
 
 If worker errors, stale worker messages, or cancellation paths are changed, add or update a targeted regression test covering the boundary contract.
+
+## Canvas-free native preview worker (T06c2)
+
+Native geometry has its own protocol v1 in `WormholeNativeWorkerProtocol`, independent of raster
+preview v1 and exact v2. `WormholeNativeWorkerSource` prefers a module worker without requiring
+OffscreenCanvas. The worker calls the unchanged private native producer; Three/GPU stays in XR.
+Analysis/seed/presentation are copied; only one fixed output ArrayBuffer is transferred. The host
+copies active ranges into alternating pending/presented banks, returns the lease once, then sends
+the latest next request. Never write a leased buffer or detach a displayed bank.
+
+One render in flight plus one overwritten desired request. Match generation, serial, presentation
+revision, continuity epoch and song time; seek/pause/settings invalidate old pending work. Adopt
+focal/spatial companions with the displayed frame. Host wall time only classifies continuity;
+caller song time owns geometry. This channel adds no lead or exact-replay claim.
+
+Terminate/restart on prepare, failure and dispose. Startup/render deadlines trigger the retained
+main-thread native fallback, exposed in diagnostics. Background off pauses requests and keeps the
+idle worker; quality/mode rebuild and teardown dispose it. Existing technical main-thread debug
+URL applies; no new player setting. See [contract](../audits/xr-native-worker-contract.md).
+
+T06d additive native v1 cosmos: optional cosmosCount and cosmosBuffer appear together; fixed 308352 bytes (4818 segments). Original bank size/layout remains unchanged. Validate the pair before adoption, copy both active ranges into one pending bank, then return both buffers under the same request lease even when matching work is stale. Missing extension means zero cosmic instances. Partial presentation.cosmos merges and invalidates pending work through the existing revision. See [cosmic contract](../audits/xr-native-cosmos-contract.md).
+
+T06e additive native v1 wall: optional wallCount/wallBuffer must appear together; fixed 204800 bytes (3200 records, 16 floats). It shares the original request lease with primary and cosmos. Validate pair/count/size, copy active ranges into the same pending main bank, then return every leased buffer once, including stale work. Off omits the wall pair and clears instances. Wall presentation revisions use existing latest-request/stale guards; original primary/cosmos byte sizes and exact/raster protocol stay unchanged. See [wall contract](../audits/xr-native-wall-contract.md).
+
+## MVP resolved-frame preview worker
+
+The opt-in `offscreen` renderer (fresh MVP default) uses `WormholeHostFrame` and
+`wormholeHostRender.worker.ts`. It reuses the XR identity, WebGL/Canvas2D backends and
+OffscreenCanvas → transferable ImageBitmap approach. It does not run the XR plan adapter:
+the MVP remains the single preset/semantic/director/gain owner and sends already resolved
+controls plus the authoritative song time. Identity geometry, material accumulation/weave,
+resolve, pixel conversion, raster and bitmap creation all execute inside the worker.
+
+An immutable analysis publication is structured-cloned once per load; ordinary frames carry
+only small resolved input records. No playback buffer is transferred. One render may be in
+flight, with no queued render backlog. Playing requests are capped at 30 Hz, backing long edge
+960 (Reduced 640). Every seek/reset, load or incompatible resize invalidates generations and
+closes the shown bitmap; stale replies are closed. A settled paused frame is not requested again.
+Prepare/render have 15 s failure deadlines. Errors/messageerror/timeouts terminate the worker
+and use Compatible until the user changes the renderer or recreates the host. Worker WebGL
+unavailability uses Offscreen Canvas2D; other failures use the main compatible path.
+
+The p5 host composites one bitmap and runs the existing PostFX seam once. Export bypasses this
+asynchronous preview entirely, uses the full-resolution synchronous Compatible renderer and
+releases the preview worker. Switching away/removing the renderer also terminates it. This is
+live-preview infrastructure, not T19 isolated export or a guarantee of headset frame rate.

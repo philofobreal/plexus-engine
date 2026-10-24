@@ -16,12 +16,14 @@ import { ShockwaveLifecycle } from './ShockwaveLifecycle';
 import type { ChoreographyFrame as SemanticScoreFrame } from '../types/semantics';
 import { motifTransitionId, semanticScoreTransitionId } from './VisualTransitionIdentity';
 import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
-import { IdentityTransitionController } from './IdentityTransitionController';
+import { IdentityTransitionController, type IdentityDraw } from './IdentityTransitionController';
+import { WormholeRasterPass } from './WormholeRasterPass';
 import { P5RenderTargetCompositor } from './P5RenderTargetCompositor';
 import { PostFxPipeline } from './PostFxPipeline';
 import { BEAT_DECAY_PER_FRAME, CUE_DECAY_PER_FRAME, DENSE_IMPACT_DECAY_PER_FRAME } from './transientDecay';
 import { TemporalFragmentationEffect } from './TemporalFragmentationEffect';
 import type { PostFxSurfaceHost } from './CanvasPostFxSurface';
+import type { WormholeHostRasterSource } from '../types/WormholeHostFrame';
 
 export class SemanticRendererBridge {
     private semanticAdapter?: SemanticRuntimeAdapter;
@@ -65,6 +67,8 @@ export interface PlexusRendererHost {
      * reused/mutated object rather than allocating one per call.
      */
     getTuningForMorph?(rawTuning: VisualTuningConfig): VisualTuningConfig;
+    /** Host-owned absolute spiral channel, after the normal morph; receives the same live/export clock. */
+    applyAutomatedSpiral?(songTime: number, tuning: VisualTuningConfig): import('../types').VisualTransitionAnchor | null;
 }
 
 export interface PlexusRendererOptions {
@@ -73,9 +77,13 @@ export interface PlexusRendererOptions {
         readonly compactMaterialPreview: boolean;
         readonly pixelRatioCap: number;
         readonly maxBackingLongEdge: number;
+        /** Device preference, independent of artistic tuning and presets. */
+        readonly wormholeRenderer?: 'compatible' | 'webgl' | 'offscreen';
     };
     /** Smaller material rasters for compact/mobile previews; exports retain their own budget. */
     compactMaterialPreview?: boolean;
+    /** MVP live preview only. Export remains synchronous and never consumes an asynchronous bitmap. */
+    createWormholeWorker?: (invalidate: () => void) => WormholeHostRasterSource;
     /** When provided, the canvas tracks this container-relative size instead of the full browser window. */
     getPreviewSize?: () => { width: number; height: number };
     /** Caps the p5 backing-store pixel density independently of devicePixelRatio (perf policy). */
@@ -108,6 +116,31 @@ export function startPlexusRenderer(
         const pausedPreview = new PausedPreviewGate();
         const renderFeatureKeys = Object.keys(featureFlags) as Array<keyof typeof featureFlags>;
         let canvasRevision = 0;
+        const wormholeRaster = new WormholeRasterPass(() => { canvasRevision++; pausedPreview.invalidate(); });
+        let workerRaster: WormholeHostRasterSource | null = null;
+        let workerUsed = false, activeRaster = 'compatible', workerNeedsMainSync = false;
+        const drawIdentity: IdentityDraw = (identity, target, particles, shockwaves, context) => {
+            const mode = options?.previewQuality?.wormholeRenderer ?? 'compatible';
+            if (mode === 'offscreen' && !State.isExporting && identity.id === 'cosmic-wormhole'
+                && target instanceof P5RendererBackend && options?.createWormholeWorker) {
+                wormholeRaster.suspend();
+                workerRaster ??= options.createWormholeWorker(() => { canvasRevision++; pausedPreview.invalidate(); });
+                workerUsed = true;
+                if (workerRaster.draw(State, target, (identity as { depthCueStrength?: number }).depthCueStrength ?? 0,
+                    State.videoBackplateActive, State.isPlaying)) {
+                    activeRaster = workerRaster.rasterKind; workerNeedsMainSync = true; return;
+                }
+            }
+            if (workerNeedsMainSync && identity.id === 'cosmic-wormhole') {
+                identity.syncPosition?.(context?.timeSec ?? State.currentTime); workerNeedsMainSync = false;
+            }
+            wormholeRaster.draw(identity, target, particles, shockwaves, context,
+                mode === 'webgl' ? 'webgl' : 'compatible', State.videoBackplateActive);
+            activeRaster = mode === 'offscreen' && !State.isExporting ? 'fallback' : wormholeRaster.rasterKind;
+        };
+        // p5 owns the render lifecycle; a GPU context must not survive removal of this renderer.
+        const remove = p.remove?.bind(p);
+        if (remove) p.remove = () => { workerRaster?.dispose(); wormholeRaster.dispose(); remove(); };
 
         // Effective pixel density for a given CSS size: pixelRatioCap bounds the ratio, then
         // maxBackingLongEdge (if set) reduces it further so the backing store's long edge never
@@ -195,6 +228,7 @@ export function startPlexusRenderer(
 
         const syncEventIndex = (time: number) => {
             pausedPreview.invalidate();
+            workerRaster?.reset();
             currentEventIdx = State.events.findIndex(e => e.time >= time);
             if (currentEventIdx === -1) currentEventIdx = State.events.length;
             currentCueIdx = State.trackAnalysis.cues.findIndex(e => e.time >= time);
@@ -207,6 +241,7 @@ export function startPlexusRenderer(
 
         engine.addPlaybackEndedListener(() => {
             pausedPreview.invalidate();
+            workerRaster?.reset();
             currentEventIdx = 0;
             currentCueIdx = 0;
             resetTransientVisualState();
@@ -267,6 +302,7 @@ export function startPlexusRenderer(
                 pausedPreview.watch(State.videoDominantColor.g);
                 pausedPreview.watch(State.videoDominantColor.b);
                 pausedPreview.watch(compactMaterialPreview());
+                pausedPreview.watch(options?.previewQuality?.wormholeRenderer);
                 pausedPreview.watch(semanticBridge.hasPlan());
                 for (const key of renderFeatureKeys) pausedPreview.watch(featureFlags[key]);
                 for (const key of visualTuningKeys) {
@@ -307,6 +343,7 @@ export function startPlexusRenderer(
                 morphTarget.transitionSpeed,
                 tuningDeltaSec
             );
+            State.spiralTransitionAnchor = ui.applyAutomatedSpiral?.(ct, State.visualTuning) ?? null;
 
             const hasTimeBasedSemanticPlan = semanticBridge.hasPlan();
             const isTimeBasedSemanticActive = featureFlags.semanticChoreography && hasTimeBasedSemanticPlan;
@@ -420,15 +457,19 @@ export function startPlexusRenderer(
 
             if (idlePreview || p.frameCount % 4 === 0) ui.updateDashboard();
 
+            workerUsed = false;
             if (compositor) {
-                identityTransitionController.draw(ct, backend, compositor, styleRegistry, particles, shockwaves);
+                identityTransitionController.draw(ct, backend, compositor, styleRegistry, particles, shockwaves, drawIdentity);
             } else {
-                styleRegistry.get(State.visualMode).draw(backend, particles, shockwaves);
+                drawIdentity(styleRegistry.get(State.visualMode), backend, particles, shockwaves, { timeSec: ct, advanceSharedSimulation: true });
             }
             // Single Post FX seam (ADR-007): the identity frame is finished here in both the
             // steady-state and the crossfade path, so the chain runs exactly once per frame on the
             // final composite, for the live canvas and the offscreen export target alike.
             postFxPipeline.render(p as unknown as PostFxSurfaceHost, ct);
+            if (!workerUsed && workerRaster) { workerRaster.dispose(); workerRaster = null; }
+            const canvas = (p as unknown as { canvas?: HTMLCanvasElement }).canvas;
+            if (canvas?.dataset) canvas.dataset.wormholeRaster = activeRaster;
             engine.syncMetronomeState(featureFlags.heroEffect && State.visualMode === 'hero', State.visualTuning.heroBeepMode, State.visualTuning.heroBeepVolume);
 
         };

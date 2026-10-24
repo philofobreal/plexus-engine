@@ -2,7 +2,7 @@ import type { PerformanceAutomationPoint, VisualTuningConfig } from '../types';
 import { wormholeMorphDurationFloor } from './morphFloor';
 import { applyAutomationMorphAuthority } from './performanceAutomationRuntime';
 import { filterForeignIdentityTuningForAutomation } from '../config/identityTuningRegistry';
-import { normalizeVisualTuningConfig, mvpSurfaceTuningOverrides } from '../config/visualTuning';
+import { normalizeVisualTuningConfig, mvpSurfaceTuningOverrides, presetSpiralDirection } from '../config/visualTuning';
 
 /** Shared MVP preset merge and morph authority, without global state writes. */
 export function applyMvpWormholePreset(target: VisualTuningConfig, payload: unknown, point: PerformanceAutomationPoint): void {
@@ -15,6 +15,7 @@ export function applyMvpWormholePreset(target: VisualTuningConfig, payload: unkn
         'cosmic-wormhole'
     );
     Object.assign(target, normalizeVisualTuningConfig(filtered, target));
+    target.wormholeSpiralDirection = presetSpiralDirection(filtered, point.spiralDirection, target.wormholeSpiralDirection);
     if (point.bendMirror) target.wormholePathBend = -target.wormholePathBend;
 
     // MVP surface policy (config-owned, see mvpSurfaceTuningOverrides): forced back to its

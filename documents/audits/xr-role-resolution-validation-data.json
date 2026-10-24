@@ -1,0 +1,95 @@
+{
+  "task": "T02a",
+  "tests": 1586,
+  "pass": 1577,
+  "fail": 9,
+  "duration_ms": 270964.7585,
+  "failures": [
+    {
+      "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+      "location": "tests\\wormhole-clip-profile.test.mjs:146:1",
+      "message": "vos-wh-drift.json must not reset user-global wormholeStarfield",
+      "matchesBaseline": true
+    },
+    {
+      "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+      "location": "tests\\wormhole-clip-profile.test.mjs:237:1",
+      "message": "establish remains visibly above the opacity floor",
+      "matchesBaseline": true
+    },
+    {
+      "name": "weak roles pin a deep-perspective depth and continuity profile",
+      "location": "tests\\wormhole-clip-profile.test.mjs:250:1",
+      "message": "establish depth\n\n2.03136 !== 4",
+      "matchesBaseline": true
+    },
+    {
+      "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+      "location": "tests\\wormhole-clip-profile.test.mjs:267:1",
+      "message": "deep drift deeper than establish",
+      "matchesBaseline": true
+    },
+    {
+      "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+      "location": "tests\\wormhole-geometry-lfo-integration.test.mjs:175:1",
+      "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492",
+      "matchesBaseline": true
+    },
+    {
+      "name": "wormhole factory presets keep a minimum normalized weighted separation",
+      "location": "tests\\wormhole-preset-differentiation.test.mjs:84:1",
+      "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09",
+      "matchesBaseline": true
+    },
+    {
+      "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+      "location": "tests\\wormhole-preset-differentiation.test.mjs:109:1",
+      "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))",
+      "matchesBaseline": true
+    },
+    {
+      "name": "projected forward motion preserves overdrive > punch > drive > drift",
+      "location": "tests\\wormhole-projected-motion.test.mjs:109:1",
+      "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}",
+      "matchesBaseline": true
+    },
+    {
+      "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+      "location": "tests\\wormhole-projected-motion.test.mjs:116:1",
+      "message": "389.64890777178124 vs 471.543038051684",
+      "matchesBaseline": true
+    }
+  ],
+  "unexpectedFailures": [],
+  "baselineComparison": "Exact test name/location; assertion message after removing reporter prefix and trimming per-line indentation only.",
+  "targeted": {
+    "tests": 55,
+    "pass": 55,
+    "newTests": 27
+  },
+  "build": "PASS: npm run build (tsc && vite build)",
+  "artifacts": [
+    {
+      "path": "logs/t02a/tests.tap",
+      "sha256": "4493f69274d2b109f2e1af6e3a085f97aa3b2a43c6f3ee8884e67863f97d75b5"
+    },
+    {
+      "path": "logs/t02a/deploy/build.log",
+      "sha256": "e2370c80a52e1f8308baeb247853846a152323ba4dd4ad9ae0139681673ecd1e"
+    }
+  ],
+  "unmeasured": [
+    "physical Quest 3",
+    "real-track audio manual lifecycle",
+    "peak memory/GPU timings"
+  ],
+  "pending": [
+    "T02b controller/scene generation lifecycle and halo consumer"
+  ],
+  "testInventory": {
+    "path": "logs/t02a/test-inventory.json",
+    "sha256": "5080cc900fd1316d121a755013a337ac69c7d934d75df4754cad71b15a103be9",
+    "discoveredFiles": 169,
+    "retainedTestHelperFixtureFiles": 207
+  }
+}

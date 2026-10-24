@@ -1,0 +1,126 @@
+{
+  "releaseId": "t03-500m-20261023T210201329Z",
+  "verifiedAt": "2026-10-23T21:03:37.513Z",
+  "pagesCommit": "665a608ba0f75958c9d69647fff53bc7e3edbfaa",
+  "previousPagesCommit": "83dcb7a418fb48c1947513cbec53d9246960e6a7",
+  "pagesStatus": "built",
+  "routes": [
+    {
+      "url": "https://philofobreal.github.io/plexus-engine/",
+      "status": 200
+    },
+    {
+      "url": "https://philofobreal.github.io/plexus-engine/mvp/",
+      "status": 200
+    },
+    {
+      "url": "https://philofobreal.github.io/plexus-engine/xr/",
+      "status": 200
+    }
+  ],
+  "files": [
+    {
+      "path": "index.html",
+      "status": 200,
+      "sha256": "014846e1bb06d9512ba33566e35bfdeffab705ff0218f26cb0cf53928839d97f"
+    },
+    {
+      "path": "mvp/index.html",
+      "status": 200,
+      "sha256": "8eee6222097bc41325fcb5940eeac918b1442f49cffa86f4c4088a5a89cd9ac3"
+    },
+    {
+      "path": "xr/index.html",
+      "status": 200,
+      "sha256": "c3ac5b7418fc9d36c903908ed53845eddb38bc4b7ca80d1a6c01c69ec8f511cd"
+    },
+    {
+      "path": "assets/CosmicWormholeIdentity-BCFBcTaT.js",
+      "status": 200,
+      "sha256": "67af03b2415d8b85db8c2cbefee85c39d4258d668432d64c3650a495bf9d51ce"
+    },
+    {
+      "path": "assets/PreviewQualityControl-LtcLGfV6.js",
+      "status": 200,
+      "sha256": "34b9488db4c866e2bfce370c6a201de804f971506c35bbab4deb701e264775e3"
+    },
+    {
+      "path": "assets/PreviewQualityControl-QAaWZINt.css",
+      "status": 200,
+      "sha256": "a1c70e42cf6dac5e6ceffa20f327845c2f22632aa650bb1968a11bdcff0ce2f2"
+    },
+    {
+      "path": "assets/analyzer.worker-BxhitPzQ.js",
+      "status": 200,
+      "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52"
+    },
+    {
+      "path": "assets/export.worker-Av-E_fEl.js",
+      "status": 200,
+      "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+    },
+    {
+      "path": "assets/main-C7BsYBKL.css",
+      "status": 200,
+      "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+    },
+    {
+      "path": "assets/main-DiOi_zs5.js",
+      "status": 200,
+      "sha256": "97d8d78f969dce8f58171dfa4d4a84e3eaab26f264d2cb474b99bd983bacc4f9"
+    },
+    {
+      "path": "assets/mvp-Brerbsdw.js",
+      "status": 200,
+      "sha256": "97dae180296171fdd563472745502353e5a282882ebbfceae821e9ff2ba20d66"
+    },
+    {
+      "path": "assets/mvp-D0xy9ln6.css",
+      "status": 200,
+      "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
+    },
+    {
+      "path": "assets/resolveMetaTuning-Z4fxCcSJ.js",
+      "status": 200,
+      "sha256": "65afd6b268f7bddc19d33ac2d1a72053e970e88237ae9c350e83eaa9e0701550"
+    },
+    {
+      "path": "assets/wormholeRender.worker-BxIw1t-9.js",
+      "status": 200,
+      "sha256": "b73a709c333e7c9b35df619ab42543a806c5d915fc0c5707ca2efce77de95c14"
+    },
+    {
+      "path": "assets/xr-BZ0g3g4G.js",
+      "status": 200,
+      "sha256": "ab663a98bb63942d8a3f92cd95bb0c62ca4bce70824314cac93427c3b9651ad7"
+    },
+    {
+      "path": "assets/xr-BfNetZ-7.css",
+      "status": 200,
+      "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+    }
+  ],
+  "failures": [],
+  "baseSourceCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
+  "sourcePatchSha256": "30172eb6661ee0499bcef710700458fae63ceb7baa9360e8d650d2ce65d0a805",
+  "sourceState": "base commit plus uncommitted T03 application patch; no source branch push/merge",
+  "browserSmoke": {
+    "url": "https://philofobreal.github.io/plexus-engine/xr/",
+    "realWebGLStage": true,
+    "option500mVisible": true,
+    "option500mSelectable": true,
+    "capturedConsoleErrors": 0,
+    "trackLoaded": false,
+    "physicalQuest": "not performed",
+    "screenshot": "logs/t03/deploy/live-500m.jpg"
+  },
+  "commands": [
+    "npm run build",
+    "node node_modules/gh-pages/bin/gh-pages.js -d dist --nojekyll -m \"Deploy T03: optional 500 m XR background\""
+  ],
+  "rollback": {
+    "previousPagesCommit": "83dcb7a418fb48c1947513cbec53d9246960e6a7",
+    "historyPreserved": true,
+    "policy": "restore the previous tree in a new gh-pages commit; do not force-push or reset the source checkout"
+  }
+}

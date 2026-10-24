@@ -34,7 +34,7 @@ export type XrSettingScope = 'chart' | 'session' | 'presentation';
 /** Strongest first: a change set is handled by its strongest scope. */
 const SCOPE_ORDER: readonly XrSettingScope[] = ['chart', 'session', 'presentation'];
 
-export type XrSettingSectionId = 'gameplay' | 'choreography' | 'background' | 'character' | 'material' | 'system';
+export type XrSettingSectionId = 'gameplay' | 'choreography' | 'background' | 'character' | 'material' | 'cosmos' | 'wall' | 'cockpit' | 'system';
 
 export interface XrSettingSection {
     readonly id: XrSettingSectionId;
@@ -52,6 +52,9 @@ export const XR_SETTING_SECTIONS: readonly XrSettingSection[] = [
     { id: 'character', title: 'Character', prefix: 'xr-character' },
     // The MVP Advanced tuning panel's "Grain material" group (Addendum V).
     { id: 'material', title: 'Material', prefix: 'xr-material' },
+    { id: 'cosmos', title: 'Cosmos', prefix: 'xr-cosmos' },
+    { id: 'wall', title: 'Wall', prefix: 'xr-wall' },
+    { id: 'cockpit', title: 'Cockpit', prefix: 'xr-cockpit' },
     // Where the grain material is rendered, and the in-headset diagnostics line (Addendum X).
     { id: 'system', title: 'System', prefix: 'xr-system' }
 ];
@@ -96,7 +99,7 @@ type GenerationKey = keyof RhythmGenerationSettings;
 
 function generationChoice(id: GenerationKey, label: string, choices: readonly XrSettingChoice[]): XrChoiceSetting {
     return { id, section: 'choreography', label, scope: 'chart', kind: 'choice', choices,
-        read: settings => String(settings.generation[id]),
+        read: settings => String(settings.generation[id] ?? (id === 'motionSafety' ? 'legacy' : '')),
         write: (settings, value) => ({ ...settings, generation: normalizeGenerationSettings({ ...settings.generation, [id]: value }, DEFAULT_XR_GENERATION_SETTINGS) }) };
 }
 
@@ -114,12 +117,24 @@ function backgroundChoice(id: 'quality' | 'rateHz' | 'distanceMeters', label: st
 }
 
 /** One MVP Advanced "Grain material" slider; ids are prefixed so they stay unique across tabs. */
+function cosmosRange(field: keyof XrBackgroundSettings['cosmos'], label: string, max: number): XrRangeSetting {
+    return {id:`cosmos${field[0].toUpperCase()}${field.slice(1)}`,section:'cosmos',label,scope:'presentation',kind:'range',min:0,max,step:5,
+        hint:'User-global background amount (%). Zero hides this layer; preset motion and geometry stay authored. Applies to Hybrid and Native.',
+        read:settings=>Math.round((settings.background.cosmos?.[field]??(field==='sky'?0:1))*100),
+        write:(settings,value)=>({...settings,background:normalizeBackgroundSettings({...settings.background,
+            cosmos:{...settings.background.cosmos,[field]:value/100}})})};
+}
 function grainRange(field: keyof XrGrainMaterial, label: string, hint: string): XrRangeSetting {
     return { id: `grain${field[0].toUpperCase()}${field.slice(1)}`, section: 'material', label, scope: 'presentation', kind: 'range',
         min: 0, max: 100, step: 1, hint: `${hint} 50 is neutral (the presets as authored).`,
         read: settings => Math.round(settings.background.grain[field] * 100),
         write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background,
             grain: { ...settings.background.grain, [field]: value / 100 } }) }) };
+}
+function wallRange(field:'amount'|'fringe'|'caustics'|'waves'|'cracks',label:string,hint:string):XrRangeSetting{
+    return{id:`wall${field[0].toUpperCase()}${field.slice(1)}`,section:'wall',label,scope:'presentation',kind:'range',min:0,max:100,step:1,
+        hint:hint+' 50 is neutral on the authored value; 0 removes it.',read:s=>Math.round((s.background.wall?.[field]??.5)*100),
+        write:(s,value)=>({...s,background:normalizeBackgroundSettings({...s.background,wall:{...s.background.wall,[field]:value/100}})})};
 }
 
 function characterRange(id: keyof XrVisualCharacter, label: string, hint: string): XrRangeSetting {
@@ -131,6 +146,36 @@ function characterRange(id: keyof XrVisualCharacter, label: string, hint: string
 }
 
 export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
+    { id: 'cockpit', section: 'cockpit', label: 'Cockpit', scope: 'presentation', kind: 'choice',
+        choices: [
+            { value: 'off', label: 'Off', hint: 'Open stage without the cabin frame or title.' },
+            { value: 'reduced', label: 'Reduced', hint: 'Panoramic frame and title; fewer ribs and floor returns.' },
+            { value: 'full', label: 'Full', hint: 'Panoramic cabin, side and overhead ribs, cyan/magenta light strips. Unlit materials.' }],
+        read: s => s.appearance.cockpit,
+        write: (s, value) => ({ ...s, appearance: normalizeAppearanceSettings({ ...s.appearance, cockpit: value as XrAppearanceSettings['cockpit'] }) }) },
+    { id: 'cockpitTitle', section: 'cockpit', label: 'Track title', scope: 'presentation', kind: 'choice',
+        choices: [
+            { value: 'off', label: 'Off', hint: 'Hide the filename caption.' },
+            { value: 'static', label: 'Static', hint: 'Filename stays in its fixed-width window; long text is clipped.' },
+            { value: 'scroll', label: 'Scroll', hint: 'Filename scrolls inside a fixed-width top panel, following song time. Pausing holds its position.' }],
+        read: s => s.appearance.cockpitTitle,
+        write: (s, value) => ({ ...s, appearance: normalizeAppearanceSettings({ ...s.appearance, cockpitTitle: value as XrAppearanceSettings['cockpitTitle'] }) }) },
+    {id:'wallMode',section:'wall',label:'Wall',scope:'presentation',kind:'choice',choices:[
+        {value:'off',label:'Off',hint:'Skip the wall completely. The legacy default.'},
+        {value:'preset',label:'Preset',hint:'Follow the preset optics gate, wall amount and material. Presets with no wall stay empty.'},
+        {value:'on',label:'On',hint:'Preview the wall even when the preset disables it. Uses authored amount, or unit base if zero. Lens is independent.'}],
+        read:s=>s.background.wall?.mode??'off',write:(s,value)=>({...s,background:normalizeBackgroundSettings({...s.background,wall:{...s.background.wall,mode:value as XrBackgroundSettings['wall']['mode']}})})},
+    {id:'wallMaterial',section:'wall',label:'Wall material',scope:'presentation',kind:'choice',choices:[
+        {value:'preset',label:'Preset',hint:'The preset selects the original membrane or mosaic material.'},
+        {value:'membrane',label:'Membrane',hint:'Rippled clumps of wall light and authored caustic helices.'},
+        {value:'mosaic',label:'Mosaic',hint:'Discrete spectral ticks and pressure-wave shifts. No caustic helices in this material.'}],
+        read:s=>s.background.wall?.material??'preset',write:(s,value)=>({...s,background:normalizeBackgroundSettings({...s.background,wall:{...s.background.wall,material:value as XrBackgroundSettings['wall']['material']}})})},
+    wallRange('amount','Wall amount','Gain on wall light. On mode supplies a unit base when the preset authors zero.'),
+    wallRange('fringe','Fringe','Coloured edge-light split, not background refraction.'),
+    wallRange('caustics','Caustics','Brighter analytic helices in Membrane material.'),
+    wallRange('waves','Pressure waves','Existing kick/LOW_DROP fronts deform the wall; no new beat detector.'),
+    wallRange('cracks','Cracks','Short flashes on the original fracture paths under qualifying fronts.'),
+    cosmosRange('stars','Stars',200),cosmosRange('galaxies','Galaxies',200),cosmosRange('sky','Sky',100),
     // Play space shapes the chart (overhead row) as well as the stage, so it regenerates.
     { id: 'playSpace', section: 'gameplay', label: 'Play space', scope: 'chart', kind: 'choice',
         choices: [
@@ -170,6 +215,9 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
         { value: 'left', label: 'Left', hint: 'The left hand carries more primary beats.' },
         { value: 'even', label: 'Even', hint: 'Both hands share the work evenly.' },
         { value: 'right', label: 'Right', hint: 'The right hand carries more primary beats.' }]),
+    generationChoice('motionSafety', 'Movement', [
+        { value: 'legacy', label: 'Legacy', hint: 'The previous authored movement policy and note sequence.' },
+        { value: 'guarded', label: 'Guarded', hint: 'Reserve stroke recovery, hand clearance and overhead rest. Simplify unsafe placement, then omit infeasible groups. Regenerates the chart.' }]),
     generationChoice('zones', 'Zones', [
         { value: 'split', label: 'Own side', hint: 'Each saber stays in its own half.' },
         { value: 'shared', label: 'Shared center', hint: 'Both sabers may also use the center lane.' },
@@ -185,7 +233,14 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
             { value: 'classic', label: 'Classic', hint: 'Chamfered blocks with an arrow to follow; dots allow any direction.' },
             { value: 'shard', label: 'Shard', hint: 'Crystals whose tip points the way to cut, with a glowing cut line; round gems allow any direction.' }],
         read: settings => settings.appearance.noteDesign,
-        write: (settings, value) => ({ ...settings, appearance: normalizeAppearanceSettings({ noteDesign: value as XrAppearanceSettings['noteDesign'] }) }) },
+        write: (settings, value) => ({ ...settings, appearance: normalizeAppearanceSettings({ ...settings.appearance, noteDesign: value as XrAppearanceSettings['noteDesign'] }) }) },
+    { id: 'noteHalos', section: 'background', label: 'Note halos', scope: 'presentation', kind: 'choice',
+        choices: [
+            { value: 'off', label: 'Off', hint: 'Keep targets without an extra ring.' },
+            { value: 'phrase', label: 'Phrase', hint: 'White rings mark phrase-start targets. Accepted hits briefly expand the ring; scoring stays the same.' },
+            { value: 'music', label: 'Music', hint: 'Gold arcs: accent. White brackets: phrase. Violet ring: section. Keep following the target hand and cut; no extra points.' }],
+        read: settings => settings.appearance.noteHalos,
+        write: (settings, value) => ({ ...settings, appearance: normalizeAppearanceSettings({ ...settings.appearance, noteHalos: value as XrAppearanceSettings['noteHalos'] }) }) },
     backgroundChoice('quality', 'Background quality', [
         { value: 'performance', label: 'Performance', hint: '640 x 360 raster: lightest, softest image.' },
         { value: 'balanced', label: 'Balanced', hint: '768 x 432 raster: the recommended headset setting.' },
@@ -201,7 +256,8 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
     backgroundChoice('distanceMeters', 'Background distance', [
         { value: '40', label: '40 m', hint: 'The original distance: the image keeps a slight stereo depth and parallax.' },
         { value: '100', label: '100 m', hint: 'Deep space: the image reads as far away, behind everything else.' },
-        { value: '200', label: '200 m', hint: 'Practically at infinity: no stereo depth or parallax left in the image.' }]),
+        { value: '200', label: '200 m', hint: 'Practically at infinity: no stereo depth or parallax left in the image.' },
+        { value: '500', label: '500 m', hint: 'The deepest background: the same image size and resolution, with even less head-motion parallax.' }]),
     { id: 'lineStroke', section: 'background', label: 'Line stroke', scope: 'presentation', kind: 'range', min: 0, max: 100, step: 1,
         read: settings => Math.round(settings.background.lineStroke * 100),
         write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background, lineStroke: value / 100 }) }) },
@@ -215,8 +271,23 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
     grainRange('bloom', 'Material bloom', 'Strength of the bloom derived from the grain material.'),
     grainRange('weave', 'Material weave', 'Connective filaments between neighbouring grains along a spiral arm and around a depth ring.'),
     grainRange('spiral', 'Spiral twist', 'Coherent twist that organises the grains onto shared spiral arms.'),
+    { id: 'spiralDirection', section: 'material', label: 'Spiral direction', scope: 'presentation', kind: 'choice',
+        choices: [
+            { value: 'auto', label: 'Auto', hint: 'Follow the authored preset or automation pair direction.' },
+            { value: 'left', label: 'Left', hint: 'Left-handed grain and arm twist. Keeps the path and lens direction.' },
+            { value: 'right', label: 'Right', hint: 'Right-handed grain and arm twist. Keeps the path and lens direction.' }],
+        read: settings => settings.appearance.spiralDirection,
+        write: (settings, value) => ({ ...settings, appearance: normalizeAppearanceSettings({ ...settings.appearance,
+            spiralDirection: value as XrAppearanceSettings['spiralDirection'] }) }) },
     grainRange('arms', 'Spiral arms', 'Number of density-wave arms brightening the grains on their crest.'),
     grainRange('density', 'Grain density', 'Additional grain copies for a denser tunnel.'),
+    { id: 'presentationMode', section: 'system', label: 'Wormhole mode', scope: 'presentation', kind: 'choice',
+        choices: [
+            { value: 'hybrid', label: 'Hybrid', hint: 'Complete background image with the selected spatial field. Quality controls raster resolution; distance places the image.' },
+            { value: 'native-grains', label: 'Native grains (experimental)', hint: '3D grains/weave/material, Cosmos and optional Wall light paths. Canvas-free geometry worker with native main fallback. Quality limits geometry/fill; distance bounds depth. Optical lens/refraction is a later feature.' }],
+        read: settings => settings.background.presentationMode,
+        write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background,
+            presentationMode: value as XrBackgroundSettings['presentationMode'] }) }) },
     { id: 'sharpness', section: 'background', label: 'Sharpness', scope: 'presentation', kind: 'range', min: 0, max: 100, step: 1,
         read: settings => Math.round(settings.background.sharpness * 100),
         write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background, sharpness: value / 100 }) }) },

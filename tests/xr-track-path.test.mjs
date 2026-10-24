@@ -310,7 +310,7 @@ test('the extended route equals the gameplay route on the runway and continues a
 });
 
 test('beyond a saturated bend, the far-aim remainder still lands the extension on the focal point (C1 at the runway end)', () => {
-    for (const distance of [40, 100, 200]) for (const [fx, fy] of [[0, -1], [1, 0], [-0.7, 0.9]]) {
+    for (const distance of [40, 100, 200, 500]) for (const [fx, fy] of [[0, -1], [1, 0], [-0.7, 0.9]]) {
         const path = new XrTrackPath(); path.setBackdropDistance(distance); path.setFocus(fx, fy);
         const scale = distance / SCENE_CONFIG.backdropDistanceMeters, out = { x: 0, y: 0 };
         path.offsetAtRootZExtended(-distance, out);
@@ -341,7 +341,7 @@ test('beyond a saturated bend, the far-aim remainder still lands the extension o
 });
 
 test('the far tangent aims at the focal point of the backdrop at whatever distance the player puts it', () => {
-    for (const distance of [40, 100, 200]) {
+    for (const distance of [40, 100, 200, 500]) {
         const path = new XrTrackPath(); path.setBackdropDistance(distance); path.setFocus(0.001, -0.001);
         const scale = distance / SCENE_CONFIG.backdropDistanceMeters, out = { x: 0, y: 0 };
         path.offsetAtRootZExtended(-distance, out);

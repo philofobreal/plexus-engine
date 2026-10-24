@@ -5,6 +5,21 @@
 and automatic cue-placement pipeline; their rendering and playback instances remain independent.
 It is an implementation candidate, pending physical Quest acceptance.
 
+T09 adds Settings → Choreo → Movement → Guarded beside the unchanged Legacy default. It reserves
+cut recovery, validates time-overlapping hand paths, simplifies unsafe positions and omits
+remaining infeasible onset groups without splitting pairs. It preserves source times/cuts/hands;
+Left/Right lead are score-equivalent reflections within Guarded. Different movement modes can
+change note count and recompute maximum score. Saved/copied viewer preference, chart scope.
+[Movement model and limitations](../audits/xr-movement-contract.md),
+[validation/manual gate](../audits/xr-movement-validation.md).
+
+T08 adds optional musical target cues in Settings → Visuals → Note halos → Music: gold outer
+arcs identify a locally salient accepted onset, white corner arcs a phrase entry, and a violet
+ring a published section entry. Hand colour, cut direction, target hitbox and score remain the
+same. Off is default; Phrase retains the older phrase preview. The viewer preference is saved
+and copied. [Target/role table and lifecycle](../audits/xr-musical-roles-contract.md),
+[validation/manual gate](../audits/xr-musical-roles-validation.md).
+
 ## Controls
 
 Choose an audio track, then Play or Space. On desktop, aim at the approaching block and
@@ -112,7 +127,7 @@ offset, so seek reproduces the image, pause freezes it and nothing accumulates. 
 unlit instanced batch whose chamfered geometry bakes per-face shading and a luminous front bevel,
 multiplied by the hand colour. The HUD is a transparent instrument frame redrawn only on change.
 
-The optional Wormhole is one world-anchored plane, 200 m ahead by default (Visuals > Background distance 40 / 100 / 200 m; the plane scales with it, ADR-009 Addenda F, AC; the three-plane 2.5D
+The optional Wormhole is one world-anchored plane, 200 m ahead by default (Visuals > Background distance 40 / 100 / 200 / 500 m; the plane scales with it, ADR-009 Addenda F, AC, AH; the three-plane 2.5D
 mode of Addendum E is no longer used by `/xr/` because of its frame-time cost). Monocular depth cues
 (strength 0.7 in XR, 0.6 in the MVP) thicken near grains and thin, dim and haze far ones. The game
 menu's **Visuals** tab sets the raster (Performance 640x360 / Balanced 768x432 / High 960x540 /
@@ -265,3 +280,11 @@ See [criteria](../acceptance-criteria/xr-rhythm-game-mvp-acs.md),
 [delivery review and validation evidence](../audits/xr-rhythm-game-delivery-review.md), and
 [Quest checklist](../audits/xr-rhythm-game-quest3-manual-test.md). No physical Quest, frame-time,
 memory, or latency acceptance is implied by desktop or mocked-device tests.
+
+## T07 cockpit presentation (2026-10-24)
+
+Reference-based open panoramic cockpit, dark structural ribs and cyan/magenta/white trim. Cockpit menu Full/Reduced/Off and Track title Scroll/Static/Off, saved/copied as viewer appearance. The upper central fixed-width strip shows the selected audio filename (extension included); Scroll follows song time, pause holds. The plane is always 2 m wide, long text is clipped, no per-frame texture upload. Empty track hides caption. Actual reference is retained, pictured labels ignored. No realtime cabin reflection/shadow/bloom or gameplay/score change. Wall remains default Off; galaxy glows default zero after T06e2. Physical Quest acceptance pending. [T07 contract](../audits/xr-cockpit-contract.md).
+
+T07b: the upper console now steps downward with rounded turns/edges and a designed inset filename screen matching the HUD/menu typeface. Oblique caption/frame depth conflict corrected; existing viewer controls/storage/Copy and song-time behavior retained. [Validation and manual gate](../audits/xr-cockpit-refinement-validation.md). No T08 or Wall expansion.
+
+T07c refines the cabin into broad smooth continuous shell bands: upper shoulder, long inclined sides and a large lower sweep under the existing runway. Full adds sculpted floor-side returns; Reduced retains the whole under-road arch. Reference-inspired minimal geometry, smooth section frames and softly emerging channels, existing title and controls retained. [Validation/manual gate](../audits/xr-cockpit-shell-validation.md).

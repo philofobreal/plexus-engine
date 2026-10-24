@@ -192,6 +192,8 @@ export interface VisualTuningConfig {
     /** Coherent spiral twist, in turns between the far plane and the near plane, layered on top of
      *  the per-grain angular advection. `0` reproduces the independent-grain flow exactly. */
     wormholeSpiral: number;
+    /** Coherent twist direction [-1,1], legacy +1; magnitude remains nonnegative. */
+    wormholeSpiralDirection: number;
     /** Spiral arm count for the density wave that brightens grains on an arm crest. `0` disables it. */
     wormholeSpiralArms: number;
     /** Opt-in grain population multiplier. `0` keeps the historical single-copy field; higher values
@@ -261,6 +263,9 @@ export interface PerformanceAutomationMeta {
     globalArcRole?: SceneNarrativeRole;
 }
 
+/** Canonical song-time origin of one published visual transition, never a playback clock. */
+export interface VisualTransitionAnchor { readonly id: string; readonly time: number }
+
 export interface PerformanceAutomationPoint {
     id: string;
     time: number;
@@ -291,6 +296,8 @@ export interface PerformanceAutomationPoint {
     // Automation-only behaviour flag: mirror the resolved preset's horizontal wormhole turn.
     // Absent for legacy plans and targets whose authored direction is part of their identity.
     bendMirror?: boolean;
+    /** Absolute coherent spiral direction; absent preserves authored/legacy direction. */
+    spiralDirection?: -1 | 1;
     // Optional Visual OS provenance (ADR-005). Renderer-independent; safe to omit.
     meta?: PerformanceAutomationMeta;
 }
@@ -783,6 +790,8 @@ export interface StyleTargetReference {
     morphCurve?: 'linear' | 'easeInOut' | 'exponential';
     // The target's horizontal turn direction may be mirrored; set only on direction-carrying presets.
     mirrorable?: boolean;
+    /** Separate explicit permission to vary coherent spiral handedness, not horizontal path bend. */
+    spiralMirrorable?: boolean;
 }
 
 export interface StyleSubstyleDefinition {
@@ -1021,6 +1030,7 @@ export interface TensionTrends {
 export interface TrackAnalysis {
     /** Explicit experimental timing identity/provenance; no new accepted events. */
     eventTiming?: import('./eventTiming').EventTimingAnalysis;
+    musicEvents?: import('./musicEvents').MusicEventLayer;
     duration: number;
     /** Optional for legacy publications; current analyzer publishes exact PCM clock/support. */
     featureClock?: import('./featureClock').FeatureClock;

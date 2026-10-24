@@ -2,6 +2,7 @@
   "version": 1,
   "visualMode": "cosmic-wormhole",
   "visualTuning": {
+    "wormholeSpiralDirection": 1,
     "audioSensitivity": 0.65,
     "backgroundRed": 1,
     "backgroundGreen": 1,

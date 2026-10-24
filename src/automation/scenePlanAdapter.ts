@@ -37,7 +37,7 @@ import { adaptAutomationEnvelopeToDynamics, adaptMorphCurveToDynamics, computeTr
 // VOCABULARY (opaque handles) from the pack, asks the Micro-Choreography planner for a set of
 // timed, enveloped segments, then turns each segment's AutomationEnvelope into one (or two)
 // PerformanceAutomationPoints. It is pure and MUST NOT import or write `src/state/`. Direction
-// mirroring is emitted only as the renderer-agnostic `bendMirror` behaviour flag; the adapter
+// mirroring is emitted as separate renderer-agnostic `bendMirror` / `spiralDirection` flags; the adapter
 // never emits tuning keys or tuning values.
 
 export interface SceneAdapterOptions {
@@ -118,6 +118,7 @@ interface RawPoint {
     curve: PerformanceAutomationPoint['morphCurve'];
     meta: PerformanceAutomationMeta;
     bendMirror?: boolean;
+    spiralDirection?: -1 | 1;
 }
 
 // Behaviour vocabulary resolved for one scene: an ordered list of OPAQUE handles plus a
@@ -153,6 +154,7 @@ export function adaptScenePlanToPerformancePlan(
     // Adapter-local direction history: it is recreated for every pure adaptation, so it cannot
     // leak variation across exports, seeks, or tracks.
     const recentMirrorSigns: number[] = [];
+    const recentSpiralSigns: number[] = [];
 
     plan.scenes.forEach((scene, index) => {
         const ref = resolveTargetReference(scene, pack);
@@ -211,6 +213,8 @@ export function adaptScenePlanToPerformancePlan(
             const mirrorSign = segRef.mirrorable
                 ? resolveMirrorSign(trackSeed, index, seg.index, recentMirrorSigns)
                 : undefined;
+            const spiralDirection = segRef.spiralMirrorable
+                ? (mirrorSign ?? resolveMirrorSign(trackSeed, index, seg.index, recentSpiralSigns)) as -1 | 1 : undefined;
             const dynamics = computeTransitionDynamicsProfile({ analysis: options.analysis, timeSec: scene.timeSec + seg.offsetSec });
             const env = adaptAutomationEnvelopeToDynamics(seg.envelope, dynamics);
 
@@ -235,7 +239,8 @@ export function adaptScenePlanToPerformancePlan(
                     ? (sceneCurve.isExplicit ? sceneCurve.curve : adaptMorphCurveToDynamics(sceneCurve.curve, dynamics))
                     : (segRef.morphCurve ?? adaptMorphCurveToDynamics('easeInOut', dynamics)),
                 meta: choreoMeta(sceneMeta, attackPhase, vocab.id, seg.role, seg.movementGesture, seg.longScenePhase, effectivePackId, seg.target),
-                ...(mirrorSign === undefined ? {} : { bendMirror: mirrorSign < 0 })
+                ...(mirrorSign === undefined ? {} : { bendMirror: mirrorSign < 0 }),
+                ...(spiralDirection === undefined ? {} : { spiralDirection })
             });
             emittedScenePoints++;
 
@@ -260,7 +265,8 @@ export function adaptScenePlanToPerformancePlan(
                     morph: clamp(env.releaseSec, 0.1, 20),
                     curve: 'easeInOut',
                     meta: choreoMeta(sceneMeta, relPhase, vocab.id, 'release', seg.movementGesture, seg.longScenePhase, effectivePackId, seg.target),
-                    ...(mirrorSign === undefined ? {} : { bendMirror: mirrorSign < 0 })
+                    ...(mirrorSign === undefined ? {} : { bendMirror: mirrorSign < 0 }),
+                    ...(spiralDirection === undefined ? {} : { spiralDirection })
                 });
                 emittedScenePoints++;
             }
@@ -476,7 +482,8 @@ function finalize(raw: RawPoint[], stylePack: string, duration: number): Perform
             morphDurationSec: morph,
             morphCurve: morph < 0.2 ? 'linear' : point.curve,
             meta: point.meta,
-            ...(point.bendMirror === undefined ? {} : { bendMirror: point.bendMirror })
+            ...(point.bendMirror === undefined ? {} : { bendMirror: point.bendMirror }),
+            ...(point.spiralDirection === undefined ? {} : { spiralDirection: point.spiralDirection })
         };
     });
     return { version: 1, source: 'auto', points };

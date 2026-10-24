@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>XR halo renderer smoke</title>
+<style>
+body { margin: 0; background: #080c18; color: #eef8ff; font: 16px system-ui; }
+header { padding: 16px; } button { margin: 0 6px 12px 0; padding: 10px; }
+canvas { display: block; } #result { color: #a8efff; }
+</style>
+<header>
+<strong>XR halo renderer smoke - isolated test, no audio clock</strong>
+<p>Real note/halo GPU modules and gameplay session. Explicit fixed song times; no autoplay or random inputs.</p>
+<button id="pending">Pending</button><button id="hit">Accepted hit</button><button id="miss">Miss</button>
+<button id="seek">Seek past</button><button id="reset">Restart</button>
+<span id="result"></span>
+</header>
+<script type="module">
+import * as THREE from 'three';
+import { RhythmGameSession, buildRhythmNoteRolePlan } from '../../src/gameplay/index.ts';
+import { RhythmNoteField } from '../../src/xr/scene/RhythmNoteField.ts';
+import { XrNoteHalos } from '../../src/xr/scene/XrNoteHalos.ts';
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(1000, 520); document.body.append(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x080c18);
+const camera = new THREE.PerspectiveCamera(55, 1000 / 520, .05, 100);
+camera.position.set(0, 0, 1.6); camera.lookAt(0, 0, -2);
+const field = new RhythmNoteField(), halos = new XrNoteHalos(), session = new RhythmGameSession();
+scene.add(field.mesh, field.markers, field.arrows, halos.mesh);
+const notes = [
+ { id: 'left', time: 5, lane: 0, row: 1, hand: 'left', intensity: .8, sourceType: 1 },
+ { id: 'right', time: 5, lane: 2, row: 1, hand: 'right', intensity: .8, sourceType: 1 }
+];
+halos.setPlan(buildRhythmNoteRolePlan(notes, [{ noteId: 'left', role: 'signal' }]));
+session.setResolutionObserver({ onRunReset: () => halos.reset(), onNoteResolved: (...args) => halos.onNoteResolved(...args) });
+session.loadChart(notes);
+function draw(mode) {
+ session.restart(); let time = 4.85;
+ if (mode === 'hit') { session.attemptStrike({ songTime: 5, hand: 'left', position: { x: -.45, y: 0, z: 0 }, speed: 1 }); time = 5.15; }
+ if (mode === 'miss') { time = 5.18; session.update(time); }
+ if (mode === 'seek') { time = 8; session.seek(time); }
+ const active = session.getActiveNotes(time);
+ field.update(active, time); halos.update(active, time); renderer.render(scene, camera);
+ const snapshot = session.getSnapshot();
+ document.querySelector('#result').textContent = `${mode} | halos ${halos.mesh.count} | hits ${snapshot.hitCount} | misses ${snapshot.missCount} | score ${snapshot.score}`;
+}
+for (const mode of ['pending', 'hit', 'miss', 'seek', 'reset']) document.querySelector(`#${mode}`).onclick = () => draw(mode);
+window.addEventListener('pagehide', () => { session.setResolutionObserver(null); field.dispose(); halos.dispose(); renderer.dispose(); }, { once: true });
+draw('pending');
+</script>
+</html>

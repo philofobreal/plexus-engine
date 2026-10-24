@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
 
-function createHarness() {
+function createHarness(applyAutomatedSpiral, createWormholeWorker) {
   let p;
   let time = 0;
   let draws = 0;
@@ -24,7 +24,8 @@ function createHarness() {
       sketch(this);
       this.setup();
     }
-    createCanvas(w, h) { this.width = w; this.height = h; return { parent() {}, elt: {} }; }
+    createCanvas(w, h) { this.width = w; this.height = h; this.canvas={dataset:{}}; return { parent() {}, elt: this.canvas }; }
+    remove() {}
     createGraphics(width, height) { return { width, height, pixelDensity: () => this.density }; }
     pixelDensity(value) { if (value !== undefined) this.density = value; return this.density; }
     resizeCanvas(w, h) { this.width = w; this.height = h; }
@@ -49,15 +50,16 @@ function createHarness() {
   }
   const { State } = load(resolve('src/state/store.ts'));
   const { startPlexusRenderer } = load(resolve('src/visuals/PlexusRenderer.ts'));
-  const identity = { draw() { draws++; }, syncPosition() {} };
+  const identity = { id: createWormholeWorker ? 'cosmic-wormhole' : 'test', draw() { draws++; }, syncPosition() {} };
   startPlexusRenderer('preview', {
     setExportTarget() {}, updateDashboard() { updates++; },
+    applyAutomatedSpiral,
     getTuningForMorph(target) { Object.assign(boost, target, overrides); return boost; }
   }, {
     getCurrentTime: () => time,
     addPositionChangedListener(listener) { position = listener; },
     addPlaybackEndedListener() {}, syncMetronomeState() {}
-  }, { get: () => identity, forEach: fn => fn(identity) }, undefined, { previewQuality: preference });
+  }, { get: () => identity, forEach: fn => fn(identity) }, undefined, { previewQuality: preference, createWormholeWorker });
   const overrides = {};
   return {
     State, p, preference, overrides,
@@ -79,6 +81,20 @@ test('unchanged welcome and paused previews do not redraw identities or dashboar
   h.tick(600);
   assert.equal(h.draws, draws);
   assert.equal(h.updates, updates);
+});
+
+test('the host spiral channel runs once after tuning with the canonical live/export time, including seeks', () => {
+  const calls = [];
+  const anchor = { id: 'automation:p', time: 2 };
+  const h = createHarness((time, tuning) => { calls.push(time); tuning.wormholeSpiralDirection = -.5; return anchor; });
+  h.State.isPlaying = true;
+  h.seek(2.5); h.tick();
+  assert.equal(calls.at(-1), 2.5); assert.equal(h.State.visualTuning.wormholeSpiralDirection, -.5);
+  assert.equal(h.State.spiralTransitionAnchor, anchor);
+  h.State.isExporting = true; h.State.exportTime = 7.25; h.tick();
+  assert.equal(calls.at(-1), 7.25, 'the export clock is used even though live transport is elsewhere');
+  h.State.isExporting = false; h.seek(.1); h.tick();
+  assert.equal(calls.at(-1), .1); assert.equal(calls.length, h.draws, 'one application per identity frame');
 });
 
 test('low-frequency frame publication agrees across playback, seek and export without mutating analysis', () => {
@@ -147,4 +163,26 @@ test('in-place tuning, reused MVP boost results, seek, mode, quality and resize 
     h.tick(120);
     assert.equal(h.draws, after, 'changed input must settle back to zero repeated draws');
   }
+});
+
+
+test('real renderer factory uses worker preview, invalidates paused frames, resets on seek and bypasses async frames for export', () => {
+  const sources=[];let invalidation;
+  const h=createHarness(undefined, invalidate=>{
+    invalidation=invalidate;const source={draws:0,resets:0,disposed:0,rasterKind:'offscreen-webgl',
+      draw(state,target,depth,transparent,playing){this.draws++;this.time=state.currentTime;return true;},
+      reset(){this.resets++;},dispose(){this.disposed++;}};sources.push(source);return source;
+  });
+  h.preference.wormholeRenderer='offscreen';h.tick();
+  assert.equal(sources.length,1);assert.equal(sources[0].draws,1);assert.equal(h.draws,0);
+  h.tick(30);assert.equal(sources[0].draws,1);
+  invalidation();h.tick();assert.equal(sources[0].draws,2);
+  h.seek(4);h.tick();assert.equal(sources[0].resets,1);assert.equal(sources[0].time,4);
+  h.State.isExporting=true;h.State.exportTime=7.25;h.tick();
+  assert.equal(h.draws,1);assert.equal(sources[0].draws,3);assert.equal(sources[0].disposed,1);
+  assert.equal(h.p.canvas.dataset.wormholeRaster,'compatible');
+  h.State.isExporting=false;h.tick();assert.equal(sources.length,2);
+  h.preference.wormholeRenderer='compatible';h.tick();assert.equal(sources[1].disposed,1);
+  h.preference.wormholeRenderer='offscreen';h.tick();assert.equal(sources.length,3);
+  h.p.remove();assert.equal(sources[2].disposed,1);
 });

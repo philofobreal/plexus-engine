@@ -1,0 +1,63 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Native Wormhole stereo probe</title>
+<style>body{background:#080b18;color:#eef;font:15px system-ui;margin:22px}canvas{width:720px;height:405px;border:1px solid #456}pre{white-space:pre-wrap}a{color:#8ff}</style>
+<h1>Native filament material: Amount / Detail / Bloom</h1><p>Seeded carrier-local fibre, halo and haze. Two bounded instanced batches. Desktop stereo/occlusion probes are not physical headset acceptance.</p>
+<button id="run">Run native stereo checks</button><div id="view"></div><pre id="result">Ready</pre><div id="downloads"></div>
+<script type="module">
+import * as THREE from 'three';
+import { WormholeNativeSource } from '../../src/visuals/WormholeNativeSource.ts';
+import { XrNativeWormhole } from '../../src/xr/scene/XrNativeWormhole.ts';
+import { createEmptyTrackAnalysis } from '../../src/analyzer/normalizeAnalysisResult.ts';
+const output=document.querySelector('#result'),button=document.querySelector('#run');let cleanup=()=>{};
+function packet(z){const data=new Float32Array(16);data.set([0,3,0,z,3,0,z-.15,.08,1,1,1,1]);return{version:1,generation:1,serial:1,songTime:0,count:1,data,material:{amount:1,detail:1,bloom:.7,grains:new Float32Array([.31,.8,1]),weave:new Float32Array([.31,.8,1])}};}
+async function run(){button.disabled=true;output.textContent='Running native geometry and actual GPU probes…';cleanup();try{
+ const renderer=new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});renderer.setSize(480,270);renderer.setClearColor(0x000000);document.querySelector('#view').replaceChildren(renderer.domElement);
+ const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,480/270,.05,1000),source=new WormholeNativeSource(),native=new XrNativeWormhole(source);scene.add(native.root);native.setEyeHeight(0);
+ cleanup=()=>{native.dispose();renderer.dispose();};
+ const read=()=>{const data=new Uint8Array(480*270*4);renderer.getContext().readPixels(0,0,480,270,renderer.getContext().RGBA,renderer.getContext().UNSIGNED_BYTE,data);return data;};
+ const centroid=data=>{let sum=0,weighted=0;for(let i=0;i<data.length;i+=4){const w=data[i];sum+=w;weighted+=(i/4%480)*w;}return{x:sum?weighted/sum:null,sum};};
+ const eye=(x,z)=>{native.setFrame(packet(z));camera.position.set(x,0,0);renderer.render(scene,camera);return centroid(read());};
+ const nearLeft=eye(-.032,-6),nearRight=eye(.032,-6),farLeft=eye(-.032,-24),farRight=eye(.032,-24);
+ const disparity={near:Math.abs(nearLeft.x-nearRight.x),far:Math.abs(farLeft.x-farRight.x)};
+ camera.position.set(0,0,0);native.setFrame(packet(-6));renderer.render(scene,camera);const visible=centroid(read()).sum;
+ const blocker=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.MeshBasicMaterial({color:0x0000ff}));blocker.position.set(2.5,0,-5);scene.add(blocker);renderer.render(scene,camera);const blocked=centroid(read()).sum;scene.remove(blocker);blocker.geometry.dispose();blocker.material.dispose();
+ native.setFrame(packet(-.1));const nearCulled=native.mesh.geometry.instanceCount===0;
+ // A nearer background segment must still be behind an opaque note or translucent runway.
+ const stagePriority=[];
+ for(const weave of [false,true])for(const transparent of [false,true]){
+  const frame=packet(-6);if(weave){frame.weave={count:frame.count,data:frame.data};frame.count=0;}
+  native.setFrame(frame);renderer.render(scene,camera);const before=centroid(read()).sum;
+  const plane=new THREE.Mesh(new THREE.PlaneGeometry(3,3),new THREE.MeshBasicMaterial({color:0x0000ff,transparent,opacity:1,depthWrite:!transparent,toneMapped:false}));
+  plane.position.set(4,0,-8);plane.renderOrder=transparent?-10:0;scene.add(plane);renderer.render(scene,camera);
+  const after=centroid(read()).sum;stagePriority.push({weave,transparent,before,after,pass:before>0&&after<before*.05});
+  scene.remove(plane);plane.geometry.dispose();plane.material.dispose();
+ }
+ // Stereo probe specifically for the optional connection packet.
+ const weaveEye=(x,z)=>{const p=packet(z);p.weave={count:p.count,data:p.data};p.count=0;native.setFrame(p);camera.position.set(x,0,0);renderer.render(scene,camera);return centroid(read()).x;};
+ const weaveDisparity={near:Math.abs(weaveEye(-.032,-6)-weaveEye(.032,-6)),far:Math.abs(weaveEye(-.032,-24)-weaveEye(.032,-24))};camera.position.set(0,0,0);
+ // Independent pixel gates for each authored material control, before the real-source scene.
+ const variants={};const variantImages={};
+ const variant=(name,amount,detail,bloom,omit=false)=>{const p=packet(-6);p.data[1]=4;p.data[4]=4;p.data[6]=-6.8;p.data[8]=.25;p.data[9]=.65;p.data[10]=1;p.data[14]=.2;
+  p.material.amount=amount;p.material.detail=detail;p.material.bloom=bloom;if(omit)delete p.material;
+  native.setFrame(p);renderer.setClearColor(0);renderer.render(scene,camera);variants[name]=read();variantImages[name]=renderer.domElement.toDataURL();};
+ variant('legacy',0,0,0,true);variant('zero',0,1,1);variant('half',.5,1,1);variant('full',1,1,1);variant('noDetail',1,0,1);variant('noBloom',1,1,0);
+ const difference=(a,b)=>{let sum=0,count=0;for(let i=0;i<a.length;i+=4){let d=Math.abs(a[i]-b[i])+Math.abs(a[i+1]-b[i+1])+Math.abs(a[i+2]-b[i+2]);sum+=d;if(d>0)count++;}return{sum,pixels:count};};
+ const lit=data=>{let n=0;for(let i=0;i<data.length;i+=4)if(data[i]+data[i+1]+data[i+2]>3)n++;return n;};
+ native.setFrame({...packet(-6),count:0});renderer.render(scene,camera);const emptyEmission=centroid(read()).sum;
+ const materialChecks={zero:difference(variants.legacy,variants.zero),amount:difference(variants.zero,variants.full),partial:difference(variants.half,variants.full),detail:difference(variants.noDetail,variants.full),bloom:difference(variants.noBloom,variants.full),noBloomPixels:lit(variants.noBloom),fullPixels:lit(variants.full),emptyEmission};
+ materialChecks.pass=materialChecks.zero.sum===0&&materialChecks.amount.pixels>10&&materialChecks.partial.pixels>10&&materialChecks.detail.pixels>10&&materialChecks.bloom.pixels>10&&materialChecks.fullPixels>materialChecks.noBloomPixels&&emptyEmission===0;
+ const previews=document.createElement('div');previews.style='display:flex;gap:10px;flex-wrap:wrap';for(const name of ['zero','noDetail','noBloom','full']){const label=document.createElement('figure');label.style='margin:0';const caption=document.createElement('figcaption');caption.textContent=name;const img=document.createElement('img');img.src=variantImages[name];img.style='width:240px';label.append(caption,img);previews.append(label);}document.querySelector('#view').after(previews);
+ const analysis={frames:[],events:[],sampleRate:44100,hopSize:1024,bpm:128,duration:10,trackAnalysis:createEmptyTrackAnalysis(),performancePlan:{version:1,source:'edited',points:[{id:'a',time:0,preset:'vos-wh-overdrive.json',confidence:1,intensity:1,reason:'build',morphDurationSec:2,morphCurve:'linear'}]}};
+ analysis.frames=Array.from({length:440},()=>({e:.7,eRatio:1.2,densityProj:.6,melodyProj:.4,fxProj:.1,subEnergy:.6,bassEnergy:.5,subFlux:.2,bassFlux:.15,state:'DRIVE',perceptualSpectrum:Array(24).fill(.5)}));
+ analysis.trackAnalysis.features=analysis.frames.map(()=>({melody:.4,vocal:.1,fx:.1,density:.6,brightness:.5,tension:.3}));
+ await source.prepare(analysis);source.setPresentation({spiralDirection:'right'});source.render(2.125,false);const right=source.spatialFrame.spiralTurns;
+ source.setPresentation({spiralDirection:'left'});source.render(2.125,false);const left=source.spatialFrame.spiralTurns;
+ source.setPresentation({spiralDirection:'auto'});source.render(2.125,false);native.setFrame(source.frame);camera.position.set(0,0,0);renderer.setClearColor(0x080b18);renderer.render(scene,camera);
+ const pixels=read();let coloured=0;for(let i=0;i<pixels.length;i+=4)if(Math.max(pixels[i],pixels[i+1],pixels[i+2])>40)coloured++;
+ const report={pass:materialChecks.pass&&stagePriority.every(p=>p.pass)&&weaveDisparity.near>.5&&weaveDisparity.near>weaveDisparity.far*1.5&&source.frame.weave.count>0&&native.weaveMesh.geometry.instanceCount>0&&disparity.near>.5&&disparity.near>disparity.far*1.5&&visible>0&&blocked<visible*.05&&nearCulled&&right>0&&left<0&&coloured>10,
+   disparity,occlusion:{visibleRedSum:visible,blockedRedSum:blocked},nearCulled,signedTwist:{right,left},frame:{generation:source.frame.generation,serial:source.frame.serial,time:source.frame.songTime,carriers:source.frame.count},
+   gpu:{calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,textures:renderer.info.memory.textures,instances:native.mesh.geometry.instanceCount+native.weaveMesh.geometry.instanceCount},cpuSampleMs:source.lastRenderMs,colouredPixels:coloured,materialChecks,material:{amount:source.frame.material.amount,detail:source.frame.material.detail,bloom:source.frame.material.bloom},stagePriority,weaveDisparity,weave:{carriers:source.frame.weave.count,instances:native.weaveMesh.geometry.instanceCount},
+   limits:'One desktop renderer; simulated 64 mm eye separation. No physical headset/GPU timer or full native family claim. Analytic spatial material is not raster pixel parity.'};
+ output.textContent=JSON.stringify(report,null,2);const link=document.createElement('a');link.textContent='Download native PNG';link.download='native.png';link.href=renderer.domElement.toDataURL();document.querySelector('#downloads').replaceChildren(link);
+ }catch(error){output.textContent='FAIL: '+error.stack;}finally{button.disabled=false;}}
+button.onclick=run;window.addEventListener('pagehide',()=>cleanup(),{once:true});
+</script></html>

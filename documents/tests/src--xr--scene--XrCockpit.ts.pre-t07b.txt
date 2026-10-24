@@ -1,0 +1,126 @@
+import * as THREE from 'three';
+import type { RhythmGameConfig } from '../../gameplay';
+import type { XrCockpitMode, XrCockpitTitleMode } from '../XrAppearanceSettings';
+import { SCENE_CONFIG, type XrStageLayout } from './SceneConfig';
+import { XrTrackMarquee } from './XrTrackMarquee';
+
+type Point = readonly [number, number, number];
+type Batch = { positions: number[]; colors: number[] };
+function unitBox():THREE.BufferGeometry { const indexed=new THREE.BoxGeometry(1,1,1);const unit=indexed.toNonIndexed();indexed.dispose();return unit; }
+
+/** Stage-space envelope, derived only on layout/recenter, never from music or head rotation. */
+export function cockpitEnvelope(config: RhythmGameConfig, layout: XrStageLayout, eyeHeight: number) {
+    const eye = Number.isFinite(eyeHeight) ? Math.max(.8, Math.min(2.5, eyeHeight)) : SCENE_CONFIG.defaultEyeHeightMeters;
+    const middle = Math.max(.7, eye - SCENE_CONFIG.hitHeightBelowEyesMeters);
+    const top = Math.max(eye + 1.3, middle + layout.frameCenterYMeters + layout.frameHalfHeightMeters + .7);
+    return { halfWidth: Math.max(2.7, SCENE_CONFIG.runwayWidthMeters / 2 + config.noteSizeMeters + .7),
+        top, bottom: .04, z: -Math.max(2.4, layout.playfieldForwardMeters + 1.1),
+        floorGap: SCENE_CONFIG.runwayWidthMeters / 2 + config.noteSizeMeters + .12 };
+}
+
+/** Two merged unlit structure draws and one clipped filename plane; no gameplay/runtime owner. */
+export class XrCockpit {
+    readonly root = new THREE.Group();
+    readonly title: XrTrackMarquee;
+    readonly body: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+    readonly trim: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+    private readonly unit = unitBox();
+    private reduced: readonly THREE.BufferGeometry[] = [];
+    private full: readonly THREE.BufferGeometry[] = [];
+    private mode: XrCockpitMode = 'full';
+    private layoutKey = '';
+    private disposed = false;
+
+    constructor(doc: Pick<Document, 'createElement'> = document) {
+        this.root.name = 'xr-cockpit-v1';
+        this.body = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }));
+        this.trim = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }));
+        this.title = new XrTrackMarquee(doc);
+        this.root.add(this.body, this.trim, this.title.mesh);
+    }
+
+    setSettings(mode: XrCockpitMode, titleMode: XrCockpitTitleMode): void {
+        if (this.disposed) return;
+        this.mode = mode;
+        this.root.visible = mode !== 'off';
+        this.title.setMode(mode === 'off' ? 'off' : titleMode);
+        this.selectGeometry();
+    }
+
+    setTitle(filename: string): void { if (!this.disposed) this.title.setTitle(filename); }
+    /** Desktop preview has a rearward camera; adapt once on entry/exit, never track the head. */
+    setViewOrigin(z: number): void { if (!this.disposed && Number.isFinite(z)) this.root.position.z = Math.max(0, Math.min(3, z)); }
+    update(songTime: number): void { if (this.root.visible && !this.disposed) this.title.update(songTime); }
+
+    fit(config: RhythmGameConfig, layout: XrStageLayout, eyeHeight: number): void {
+        if (this.disposed) return;
+        const e = cockpitEnvelope(config, layout, eyeHeight), key = JSON.stringify(e);
+        if (key === this.layoutKey) return;
+        this.layoutKey = key;
+        for (const g of new Set([this.body.geometry, this.trim.geometry, ...this.reduced, ...this.full])) g.dispose();
+        this.reduced = this.build(e, false); this.full = this.build(e, true);
+        this.selectGeometry();
+        this.title.mesh.position.set(0, e.top + .075, e.z + .17);
+    }
+
+    private selectGeometry(): void {
+        const pair = this.mode === 'reduced' ? this.reduced : this.full;
+        if (pair.length) { this.body.geometry = pair[0]; this.trim.geometry = pair[1]; }
+    }
+
+    private build(e: ReturnType<typeof cockpitEnvelope>, full: boolean): readonly THREE.BufferGeometry[] {
+        const body: Batch = { positions: [], colors: [] }, trim: Batch = { positions: [], colors: [] };
+        const cyan = new THREE.Color(0x71dfff), magenta = new THREE.Color(0xff72cd), white = new THREE.Color(0xddeeff);
+        const dark = new THREE.Color(0x172234), lighter = new THREE.Color(0x26354b);
+        const beam = (batch: Batch, a: Point, b: Point, width: number, depth: number, color: THREE.Color) => {
+            const start = new THREE.Vector3(...a), end = new THREE.Vector3(...b), vector = end.sub(start);
+            const rotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), vector.clone().normalize());
+            const matrix = new THREE.Matrix4().compose(start.addScaledVector(vector, .5), rotation, new THREE.Vector3(width, vector.length(), depth));
+            const p = this.unit.getAttribute('position'), normal = this.unit.getAttribute('normal'), vertex = new THREE.Vector3();
+            for (let i = 0; i < p.count; i++) {
+                vertex.fromBufferAttribute(p, i).applyMatrix4(matrix); batch.positions.push(vertex.x, vertex.y, vertex.z);
+                const shade = batch === trim ? 1 : .58 + .42 * Math.max(0, normal.getY(i) * .35 + normal.getZ(i) * .8);
+                batch.colors.push(color.r * shade, color.g * shade, color.b * shade);
+            }
+        };
+        const portal = (w: number, top: number, z: number, secondary: boolean) => {
+            const points: Point[] = [[-e.floorGap,e.bottom,z],[-w+.36,e.bottom,z],[-w,e.bottom+.5,z],[-w,top-.5,z],[-w+.65,top,z],
+                [0,top,z],[w-.65,top,z],[w,top-.5,z],[w,e.bottom+.5,z],[w-.36,e.bottom,z],[e.floorGap,e.bottom,z]];
+            for (let i = 1; i < points.length; i++) {
+                const a = points[i-1], b = points[i];
+                beam(body,a,b,secondary?.28:.24,secondary?.24:.34,secondary?dark:lighter);
+                if (!secondary) {
+                    const c = (a[0]+b[0])/2;
+                    beam(trim,[a[0],a[1],z+.18],[b[0],b[1],z+.18],.025,.018,Math.abs(c)<.5?white:c<0?cyan:magenta);
+                }
+            }
+        };
+        portal(e.halfWidth,e.top,e.z,false);
+        beam(body,[-1.17,e.top+.09,e.z],[1.17,e.top+.09,e.z],.36,.3,dark);
+        if (full) {
+            portal(e.halfWidth+.4,e.top+.2,.15,true);
+            portal(e.halfWidth+.8,e.top+.36,2.2,true);
+            for (const side of [-1,1]) {
+                const x = side * e.halfWidth, color = side<0?cyan:magenta;
+                beam(body,[x,e.top-.4,e.z],[side*(e.halfWidth+.8),e.top+.1,2.2],.28,.25,dark);
+                beam(body,[side*(e.floorGap+.35),-.07,e.z],[side*(e.floorGap+.35),-.07,2.2],.65,.18,dark);
+                beam(trim,[side*(e.floorGap+.1),.035,e.z],[side*(e.floorGap+.1),.035,2.2],.022,.018,color);
+                beam(trim,[x,e.top-.4,e.z+.1],[side*(e.halfWidth+.8),e.top+.1,2.2],.018,.015,color);
+            }
+        }
+        return [body,trim].map(batch => {
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position',new THREE.Float32BufferAttribute(batch.positions,3));
+            geometry.setAttribute('color',new THREE.Float32BufferAttribute(batch.colors,3));
+            geometry.computeBoundingBox(); geometry.computeBoundingSphere(); return geometry;
+        });
+    }
+
+    dispose(): void {
+        if (this.disposed) return;
+        this.disposed = true; this.root.visible = false;
+        for (const g of new Set([this.body.geometry,this.trim.geometry,...this.reduced,...this.full])) g.dispose();
+        this.unit.dispose(); this.body.material.dispose(); this.trim.material.dispose(); this.title.dispose();
+        this.root.removeFromParent();
+    }
+}

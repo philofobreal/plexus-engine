@@ -1,0 +1,172 @@
+{
+  "task": "T05b",
+  "url": "https://philofobreal.github.io/plexus-engine/mvp/",
+  "releaseId": "t05b-shared-backend-20261024T011714918Z",
+  "pages": {
+    "commit": "9b1ae0d8bd3e7691d0b74f66f860418611d658bf",
+    "status": "built",
+    "created_at": "2026-10-24T01:17:34Z",
+    "updated_at": "2026-10-24T01:17:57Z",
+    "error": {
+      "message": null
+    }
+  },
+  "commit": {
+    "message": "Deploy T05b: shared Wormhole backend for Studio and MVP",
+    "parents": [
+      "ae3b0983a475da740d877fc217930699605ad436"
+    ],
+    "sha": "9b1ae0d8bd3e7691d0b74f66f860418611d658bf"
+  },
+  "previousPagesCommit": "ae3b0983a475da740d877fc217930699605ad436",
+  "source": {
+    "baseCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
+    "workingTreeChanges": true,
+    "patchSha256": "39ffb0232e524702f023f8bd9fc86fa5ac121bed0a1a80b832f803c46c6f4e37",
+    "inputManifestSha256": "0351ec01e781666c0915a7ef5c2d623678a74331c6254e2bc4176f205f3d7f2d",
+    "inputCount": 322,
+    "includesUntrackedModules": true,
+    "graphUnchangedAfterPublication": true
+  },
+  "public": {
+    "checkedAt": "2026-10-24T01:19:14.548Z",
+    "releaseId": "t05b-shared-backend-20261024T011714918Z",
+    "markerStatus": 200,
+    "files": [
+      {
+        "path": "index.html",
+        "status": 200,
+        "sha256": "2ee17736f51e2c9fce994a02c397c7768314a4cbc07b146db73c1dec5b8fba00"
+      },
+      {
+        "path": "mvp/index.html",
+        "status": 200,
+        "sha256": "1bd2e209929fae843005403d1ec8e3fb2128062721d893040cebbc8503f2f6d7"
+      },
+      {
+        "path": "xr/index.html",
+        "status": 200,
+        "sha256": "b8bb9dcf6f489f46a11b3bba8011d720aa5a2dde936f730df3298d1101279e80"
+      },
+      {
+        "path": "assets/CosmicWormholeIdentity-BIvD8iD9.js",
+        "status": 200,
+        "sha256": "ecb3386a653338d953ca13617aa8f063ae648451a4feb8d49b5f8d8650442b58"
+      },
+      {
+        "path": "assets/PreviewQualityControl-DL8dmOk5.js",
+        "status": 200,
+        "sha256": "afb0e2037d2bddc7d6b44cdc6a1125ee33e5cf76cc6e3f94d96e35ea9fdf7441"
+      },
+      {
+        "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
+        "status": 200,
+        "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+      },
+      {
+        "path": "assets/analyzer.worker-BxhitPzQ.js",
+        "status": 200,
+        "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52"
+      },
+      {
+        "path": "assets/export.worker-Av-E_fEl.js",
+        "status": 200,
+        "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+      },
+      {
+        "path": "assets/main-C7BsYBKL.css",
+        "status": 200,
+        "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+      },
+      {
+        "path": "assets/main-CUrsq2e2.js",
+        "status": 200,
+        "sha256": "30dd262beeaf6d45ad880e5932aef7638d3a04def1327e4034196ded76ea5d24"
+      },
+      {
+        "path": "assets/mvp-D0xy9ln6.css",
+        "status": 200,
+        "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
+      },
+      {
+        "path": "assets/mvp-QT2oOslM.js",
+        "status": 200,
+        "sha256": "c81670d296efff6308934efd30a0084fdcd1f9155335e0cef2194c6ead8d27e4"
+      },
+      {
+        "path": "assets/resolveMetaTuning-BuvBEe6g.js",
+        "status": 200,
+        "sha256": "51d820a6dc4e3502637d901feb5c0618014583756e0de2a59264ef662daf8bdd"
+      },
+      {
+        "path": "assets/wormholeRender.worker-Cmlq8Sqx.js",
+        "status": 200,
+        "sha256": "3c16361a29fdec9686c15f4ad774df6958dd1981bc85660c74f5b397920fffd4"
+      },
+      {
+        "path": "assets/xr-BfNetZ-7.css",
+        "status": 200,
+        "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      },
+      {
+        "path": "assets/xr-CMaD2bwU.js",
+        "status": 200,
+        "sha256": "093d6f96fbd57d1f2bf7d1d6cf899fca2ec9d4631ed8d047d80cc659dd070032"
+      }
+    ],
+    "routes": [
+      {
+        "path": "",
+        "status": 200,
+        "sha256": "2ee17736f51e2c9fce994a02c397c7768314a4cbc07b146db73c1dec5b8fba00"
+      },
+      {
+        "path": "mvp/",
+        "status": 200,
+        "sha256": "1bd2e209929fae843005403d1ec8e3fb2128062721d893040cebbc8503f2f6d7"
+      },
+      {
+        "path": "xr/",
+        "status": 200,
+        "sha256": "b8bb9dcf6f489f46a11b3bba8011d720aa5a2dde936f730df3298d1101279e80"
+      },
+      {
+        "path": "xr/?xrHaloPreview=phrase",
+        "status": 200,
+        "sha256": "b8bb9dcf6f489f46a11b3bba8011d720aa5a2dde936f730df3298d1101279e80"
+      }
+    ],
+    "sourceGraphUnchanged": true
+  },
+  "browser": {
+    "mode": "Desktop in-app browser, public Pages MVP",
+    "fixture": "logs/t02b/halo-smoke.wav",
+    "durationSec": 7,
+    "bpm": 128,
+    "rendererDefaultObserved": "compatible",
+    "rendererEnabled": "webgl",
+    "actualRasterObserved": "webgl",
+    "playPause": true,
+    "seekValues": [
+      357,
+      100,
+      357
+    ],
+    "pausedAtEnd": true,
+    "copyStatus": "Copied preview settings",
+    "clipboardRoundtrip": "Manual gate; see validation audit",
+    "originalDevicePreferenceRestored": true,
+    "consoleErrors": [],
+    "screenshots": [
+      {
+        "path": "logs/t05b/deploy/live-mvp-webgl.jpg",
+        "sha256": "2168ae84eb0077c9edb521c12ddfb0e94de290927c8870b15d9c21d6ef0fb81a"
+      },
+      {
+        "path": "logs/t05b/deploy/live-mvp-webgl-menu.jpg",
+        "sha256": "8ea3db51e66fa18b0236141de9fab1433d9fd9bbecb60f92ea45eead67913974"
+      }
+    ],
+    "physicalQuest": false
+  }
+}

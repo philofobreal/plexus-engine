@@ -40,6 +40,33 @@ function backend({ webgl = true } = {}) {
 
 const draws = log => log.filter(([name]) => name === 'drawArraysInstanced' || name === 'drawArrays');
 
+test('logical geometry, density-aware strokes and physical backdrop copies stay separate at high density', () => {
+    const { create, log } = backend(), b = create();
+    b.setSize(320, 180, 2); assert.equal(b.width, 320); assert.equal(b.canvas.width, 640);
+    b.background(5, 10, 20); b.stroke(255, 255, 255); b.line(1, 2, 3, 4); b.finish();
+    assert.ok(log.some(([name, , , w, h]) => name === 'viewport' && w === 640 && h === 360));
+    assert.ok(log.some(([name, location, value]) => name === 'uniform1f' && location.uniform === 'uPixelRatio' && value === 2));
+    b.compositeRingTint(160, 90, 5, 10, [255, 0, 0], .5, 'screen');
+    assert.deepEqual(log.find(([name]) => name === 'copyTexSubImage2D').slice(-2), [640, 360]);
+    b.transparentBackground = true; b.background(1, 2, 3, 255);
+    assert.deepEqual(log.filter(([name]) => name === 'clearColor').at(-1), ['clearColor', 0, 0, 0, 0]);
+    b.dispose(); assert.equal(log.filter(([name]) => name === 'deleteVertexArray').length, 3);
+    assert.equal(log.filter(([name]) => name === 'deleteBuffer').length, 3);
+});
+
+test('XR local context loss reports once through the existing host error seam; the worker gets an explicit failure', async () => {
+    const fake = fakeGl(); let lost = false;
+    const gl = new Proxy(fake.gl, { get(target, key) { return key === 'isContextLost' ? () => lost : Reflect.get(target, key); } });
+    const { WormholeCanvasSource } = createLoader()('visuals/WormholeCanvasSource.ts');
+    const createSurface = (width, height) => ({ width, height, getContext: type => type === 'webgl2' ? gl : null });
+    const source = new WormholeCanvasSource({ createSurface, webglRaster: true }); await source.prepare(null);
+    const errors = []; source.onError = message => errors.push(message); lost = true;
+    assert.equal(source.render(1, false), false); assert.equal(source.render(1, false), false);
+    assert.equal(errors.length, 1); assert.match(errors[0], /context lost/); source.dispose();
+    lost = false; const workerSource = new WormholeCanvasSource({ createSurface, webglRaster: true });
+    lost = true; assert.throws(() => workerSource.render(1, false), /context lost/); workerSource.dispose();
+});
+
 test('lines and filled circles are batched in painter\'s order into one instanced draw; any other primitive flushes the batch first', () => {
     const { create, log, lastBuffer, stride, kinds } = backend();
     const b = create();

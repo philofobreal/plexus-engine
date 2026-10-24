@@ -6,6 +6,7 @@ import { tryResolveStylePack } from '../automation/styleTranslator';
 import { parseDramaturgyPlan, serializeDramaturgyPlan } from '../automation/dramaturgyTransfer';
 import { clampMorphScale, computeMaxMorphScale } from '../automation/morphScale';
 import { AutomationPlanViewCache } from '../automation/automationPlanView';
+import { WormholeSpiralAutomation } from '../automation/WormholeSpiralAutomation';
 import { wormholeMorphDurationFloor } from '../automation/morphFloor';
 import {
     baseMorphDurationFromScaled,
@@ -20,7 +21,7 @@ import {
 import { buildNarrative, generateIntents, processChoreography, type SemanticResolver } from '../semantics';
 import { featureFlags } from '../config/featureFlags';
 import { filterForeignIdentityTuningForAutomation } from '../config/identityTuningRegistry';
-import { normalizeVisualTuningConfig } from '../config/visualTuning';
+import { normalizeVisualTuningConfig, presetSpiralDirection } from '../config/visualTuning';
 import { ExportCapabilityDetector } from '../export/ExportCapabilityDetector';
 import { WebMExporter, type ExportConfig } from '../export/WebMExporter';
 import type { ExportCapabilities } from '../export/ExportTypes';
@@ -44,12 +45,21 @@ interface VisualPresetManifest {
 
 interface VisualPresetLoadOptions {
     automationPointId?: string;
-    overrideMorph?: Pick<PerformanceAutomationPoint, 'intensity' | 'morphDurationSec' | 'morphCurve' | 'bendMirror'>;
+    overrideMorph?: Pick<PerformanceAutomationPoint, 'intensity' | 'morphDurationSec' | 'morphCurve' | 'bendMirror' | 'spiralDirection'>;
 }
 
 const VIDEO_FILE_EXTENSION_RE = /\.(mp4|m4v|webm|ogv|ogg|mov|mkv)$/i;
 
 export class DashboardUI {
+    private readonly spiralAutomation = new WormholeSpiralAutomation();
+    private readonly spiralPreset = (name: string) => State.preloadedPresets[name];
+
+    applyAutomatedSpiral(songTime: number, tuning: VisualTuningConfig) {
+        if (State.visualMode !== 'cosmic-wormhole') return null;
+        this.spiralAutomation.configure(this.getAutomationPlanView(), this.spiralPreset);
+        this.spiralAutomation.apply(songTime, tuning);
+        return this.spiralAutomation.transitionAnchor;
+    }
     private presetCache = new Map<string, unknown>();
     private changedTuningKeys = new Set<keyof VisualTuningConfig>();
     private timelineTooltip: HTMLDivElement;
@@ -1993,6 +2003,9 @@ export class DashboardUI {
             ? filterForeignIdentityTuningForAutomation(payload as { visualMode?: unknown; visualTuning?: unknown }, State.visualMode)
             : payload;
         Object.assign(State.targetTuning, normalizeVisualTuningConfig(sourcePayload, State.targetTuning));
+        State.targetTuning.wormholeSpiralDirection = presetSpiralDirection(sourcePayload,
+            options.automationPointId ? options.overrideMorph?.spiralDirection : undefined,
+            options.automationPointId && State.visualMode === 'cosmic-wormhole' ? State.targetTuning.wormholeSpiralDirection : undefined);
         // Only an automation point may request a direction mirror. The vertical bend remains
         // untouched so diagonal routes preserve their authored vertical component.
         if (options.automationPointId && options.overrideMorph?.bendMirror === true) {

@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Preview clipboard roundtrip</title>
+<h2>Preview clipboard roundtrip</h2><button id="read">Read copied preview settings</button>
+<textarea aria-label="Paste copied preview settings" rows="12" cols="70"></textarea><pre id="result">Ready</pre>
+<div id="control"></div><pre id="command">Copy-command probe ready</pre>
+<script type="module">
+import { createPreviewQualityControl } from '../../src/ui/PreviewQualityControl.ts';
+const nativeCopy=document.execCommand.bind(document);
+document.execCommand=(command,...args)=>{
+ const selected=document.querySelector('textarea[readonly]')?.value ?? '';
+ const accepted=nativeCopy(command,...args);
+ document.querySelector('#command').textContent=JSON.stringify({command,accepted,selected},null,2);
+ return accepted;
+};
+document.querySelector('#control').append(createPreviewQualityControl(false,true).root);
+document.querySelector('#read').onclick=async()=>{
+ try { const text=await navigator.clipboard.readText();document.querySelector('#result').textContent=text;
+  document.querySelector('textarea').value=text; }
+ catch(error){document.querySelector('#result').textContent='Clipboard read failed: '+error.message;}
+};
+</script></html>

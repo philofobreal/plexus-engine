@@ -31,6 +31,17 @@ const spatial = (over = {}) => ({ time: 10, travel: 3.2, travelRate: 0.5, tubeSp
 const uniformsOf = f => JSON.stringify(Object.fromEntries(Object.entries(f.uniforms).map(([k, v]) => [k, v.value])));
 const attr = (f, name) => f.points.geometry.getAttribute(name).array;
 const releaseOf = f => Array.from(attr(f, 'aRelease'));
+
+test('signed twist reaches the XR particle and wisp shader unchanged, with the existing y-up conversion', () => {
+    const f = new XrWormholeSpatialField(), path = new XrTrackPath();
+    const source = { time: 0, travel: 0, travelRate: .3, amount: 1, density: 1, radius: .5, depth: .5,
+        tubeSpread: .4, spiralTurns: -1.25, turbulence: .2, streak: .3, wisp: .4,
+        hue: 200, red: .3, green: .5, blue: 1, hazeRed: .2, hazeGreen: .3, hazeBlue: .6, pulse: 0, impact: 0 };
+    f.setMode('full'); f.update(0, source, path);
+    assert.ok(Math.abs(f.uniforms.uTwist.value + 2.5 * Math.PI) < 1e-10);
+    assert.match(SPATIAL_MOTION_GLSL, /angle = -\(/, 'coordinate-system conversion is retained, not a second mirror');
+    f.dispose();
+});
 const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const fround = Math.fround;
 
@@ -200,7 +211,7 @@ test('the emergence circle follows the Wormhole\'s radius changes: new flights t
 
 test('releases: within the emerge range, outside the clearance, under the comfort cap where possible, hidden only when impossible', () => {
     const out = { distance: 0, radius: 0, shown: false };
-    for (const [backdrop, range] of [[40, [12, 32]], [100, [25, 80]], [200, [50, 160]]]) {
+    for (const [backdrop, range] of [[40, [12, 32]], [100, [25, 80]], [200, [50, 160]], [500, [125, 400]]]) {
         assert.deepEqual([...spatialFieldEmergeRange(backdrop)], range);
         assert.ok(range[1] < backdrop, 'in front of the backdrop plane');
     }
@@ -235,7 +246,7 @@ test('the field follows the shared route; its release distances follow the Backg
         assert.ok(Math.abs(p.center.x - cpu.x) < 1e-4 && Math.abs(p.center.y - 1.1 - cpu.y) < 1e-4, `centered on the path at ${p.z}`);
         if (p.z >= 0) assert.ok(Math.abs(p.center.x) < 1e-9 && Math.abs(p.center.y - 1.1) < 1e-9, 'straight beside and behind the player');
     }
-    for (const distance of [40, 100, 200]) {
+    for (const distance of [40, 100, 200, 500]) {
         path.setBackdropDistance(distance); f.update(10, spatial(), path);
         const range = spatialFieldEmergeRange(distance);
         assert.equal(f.uniforms.uFarRef.value, range[1]);
@@ -245,7 +256,7 @@ test('the field follows the shared route; its release distances follow the Backg
 });
 
 test('the field centers on the Wormhole\'s vanishing point even where the runway\'s bend saturates (left, right, up, down)', () => {
-    for (const distance of [40, 100, 200]) for (const [fx, fy] of [[0, -1], [0, 1], [-1, 0], [1, 0], [0.8, -0.9]]) {
+    for (const distance of [40, 100, 200, 500]) for (const [fx, fy] of [[0, -1], [0, 1], [-1, 0], [1, 0], [0.8, -0.9]]) {
         const f = new XrWormholeSpatialField(), path = new XrTrackPath();
         path.setBackdropDistance(distance); path.setFocus(fx, fy); f.setCenterHeight(1.2);
         f.update(10, spatial({ tubeSpread: 0.15 }), path);

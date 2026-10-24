@@ -41,6 +41,7 @@ export const identityOwnedTuningKeys: Readonly<Record<string, readonly IdentityO
         'wormholeNebulaBloom',
         'wormholeNebulaWeave',
         'wormholeSpiral',
+        'wormholeSpiralDirection',
         'wormholeSpiralArms',
         'wormholeGrainDensity'
     ]

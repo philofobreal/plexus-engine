@@ -371,7 +371,7 @@ export class XrWormholeSpatialField {
         for (let i = 0; i < SPATIAL_FIELD_PARTICLES; i++) depths[i] = flightDepths[i];
         this.depth.needsUpdate = true;
         this.fresh = false;
-        u.uTwist.value = 2 * Math.PI * Math.max(0, twist);
+        u.uTwist.value = 2 * Math.PI * twist;
         u.uAmount.value = Math.min(1, amount);
         const depth = unit(frame.depth);
         u.uDepth.value = depth;

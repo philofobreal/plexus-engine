@@ -1,0 +1,148 @@
+{
+  "task": "T06e2",
+  "scope": "Wall numeric hard Off, old saved opt-in migration and clean Galaxies 0 baseline; no further Wall work",
+  "full": {
+    "tests": 1709,
+    "pass": 1700,
+    "fail": 9,
+    "skipped": 0,
+    "cancelled": 0,
+    "duration_ms": 409971.2441
+  },
+  "targeted": {
+    "tests": 83,
+    "pass": 83,
+    "fail": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "duration_ms": 9051.1765
+  },
+  "failures": [
+    {
+      "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+      "message": "vos-wh-drift.json must not reset user-global wormholeStarfield",
+      "matchesBaseline": true
+    },
+    {
+      "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+      "message": "establish remains visibly above the opacity floor",
+      "matchesBaseline": true
+    },
+    {
+      "name": "weak roles pin a deep-perspective depth and continuity profile",
+      "message": "establish depth\n\n2.03136 !== 4",
+      "matchesBaseline": true
+    },
+    {
+      "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+      "message": "deep drift deeper than establish",
+      "matchesBaseline": true
+    },
+    {
+      "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+      "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492",
+      "matchesBaseline": true
+    },
+    {
+      "name": "wormhole factory presets keep a minimum normalized weighted separation",
+      "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09",
+      "matchesBaseline": true
+    },
+    {
+      "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+      "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))",
+      "matchesBaseline": true
+    },
+    {
+      "name": "projected forward motion preserves overdrive > punch > drive > drift",
+      "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}",
+      "matchesBaseline": true
+    },
+    {
+      "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+      "message": "389.64890777178124 vs 471.543038051684",
+      "matchesBaseline": true
+    }
+  ],
+  "allFailuresMatchBaseline": true,
+  "browser": {
+    "pass": true,
+    "hybridWallOffObserved": true,
+    "galaxyGlowRootCause": "Wall Off still shows galaxy radial glows; setting Galaxies from 100 to 0 removes them",
+    "visualComparison": [
+      "hybrid-wall-off-before.jpg",
+      "hybrid-galaxies-zero.jpg"
+    ],
+    "oldPublicWallOnSeeded": true,
+    "initialTab34": "CDP input/screenshot timed out; fresh tab35 works",
+    "physicalQuest": "unmeasured"
+  },
+  "retention": {
+    "previousFiles": 182,
+    "activeFiles": 183,
+    "sourceArchives": 6,
+    "reviewedDefaultExtensions": 3,
+    "protectedLoaderSha256": "65f5c9bd8264f10e569d5d5b158e7ebda64f59ee8188e2040f1a2d9754e5ed3e",
+    "evolutionManifestUnchanged": true
+  },
+  "commands": [
+    "npm run build",
+    "node --test --test-reporter=tap tests/xr-wall-default-off.test.mjs tests/xr-native-wall.test.mjs tests/xr-native-cosmos.test.mjs tests/xr-settings.test.mjs tests/xr-background-settings.test.mjs tests/wormhole-frame-context.test.mjs tests/xr-wormhole-worker.test.mjs",
+    "npm test -- --test-reporter=tap",
+    "git diff --check",
+    "node scripts/audit-wall-default-off.mjs"
+  ],
+  "operationalFallbacks": [
+    "Known filesystem sandbox restrictions require full-test escalation.",
+    "Node gh-pages entrypoint instead of Bun-based package script; no dependency change.",
+    "Tab34 CDP screenshot/input timeout; fresh tab35 worked."
+  ],
+  "limits": [
+    "Physical Quest and OS clipboard paste unmeasured.",
+    "Independent existing nebula/grain haze remains; identified galaxy radial glows default zero.",
+    "Explicit nondefault old galaxy amounts survive; new manual On or Galaxies 100 survives the migrated record.",
+    "Further Wall/T06f work deferred; next T07 follows user reference."
+  ],
+  "evidence": [
+    {
+      "path": "logs/t06e2/tests-wall-only.tap",
+      "sha256": "6d7a3d0ac9a3ff82231449ff945befb08df3c10df04c16bcd5991c44cebd85b6"
+    },
+    {
+      "path": "logs/t06e2/tests-final.tap",
+      "sha256": "a75e98ee260f493231440c48252a8d7ba0c0513d0e546ce0c396532276edd373"
+    },
+    {
+      "path": "logs/t06e2/targeted-normalizer-initial.tap",
+      "sha256": "5f31a2138970eebb718cde9dd87248d0689b3449e0f929ed9af9c2be5c8a7e95"
+    },
+    {
+      "path": "logs/t06e2/targeted-final.tap",
+      "sha256": "0c519fd39839e92f2af7b9b75fc3ea01edc0df8a129667afdf6f2a8c2513ba23"
+    },
+    {
+      "path": "logs/t06e2/build-final.log",
+      "sha256": "182657d0a2a51e8da0083c08163be1d32f1195cc05177b4f54745ac262cfb8a9"
+    },
+    {
+      "path": "logs/t06e2/browser.json",
+      "sha256": "1593a623c395d458686124d6425606e74e2061cc465d4ca0bb7671ce7d6eff73"
+    },
+    {
+      "path": "logs/t06e2/hybrid-wall-off-before.jpg",
+      "sha256": "fdb5666dae9fc05e5dd9c329a36e1d5cef3f66fda48c23043b69f8b177f6b0ef"
+    },
+    {
+      "path": "logs/t06e2/hybrid-galaxies-zero.jpg",
+      "sha256": "2dfd7d8708c62b9b82d1b92e2f66db656bad9a7eb947b7fa7d417a15335f192f"
+    },
+    {
+      "path": "logs/t06e2/old-public-on.jpg",
+      "sha256": "9647b45045db71d883c6972c57f0e00e1f326fccbe1cc84dff3388525be0fd27"
+    },
+    {
+      "path": "logs/t06e2/diff-check.log",
+      "sha256": "d96fe095bd2586e6b2d66fb77bfc348e29e97f400e2073c47ac0cfdb9966a2dc"
+    }
+  ]
+}

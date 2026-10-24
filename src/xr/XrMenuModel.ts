@@ -226,7 +226,8 @@ export function menuLayout(state: XrMenuState, context: XrMenuContext): XrMenuLa
         const tabHint = context.input === 'desktop' ? 'Left / right arrow keys also switch tabs.' : 'Thumbstick left / right also switches tabs.';
         tabs.forEach((section, i) => items.push(item(`tab:${section.id}`, 'tab', section.title, MARGIN + i * (tabW + OPTION_GAP), 92, tabW, 56,
             { selected: section.id === state.tab, hint: tabHint })));
-        const rows = settingRows(context.settings, state.tab, 168);
+        // Eight-row player-facing tabs retain 38 px controls and clear the two-line hint.
+        const rows = settingRows(context.settings, state.tab, 156);
         items.push(...rows.items); texts.push(...rows.texts);
         const barY = MENU_CANVAS.height - 24 - 56;
         items.push(item('action:back', 'button', 'Back', MARGIN, barY, BACK_W, 56));
@@ -307,7 +308,7 @@ export function moveMenuFocus(state: XrMenuState, layout: XrMenuLayout, directio
     }
     const cx = current.x + current.w / 2, cy = current.y + current.h / 2;
     const horizontal = direction === 'left' || direction === 'right', sign = direction === 'right' || direction === 'down' ? 1 : -1;
-    let best: XrMenuItem | null = null, bestScore = Infinity;
+    let best: XrMenuItem | null = null, bestScore = Infinity, bestAlong = Infinity, bestAcross = Infinity;
     for (const candidate of items) {
         if (candidate === current) continue;
         const dx = candidate.x + candidate.w / 2 - cx, dy = candidate.y + candidate.h / 2 - cy;
@@ -315,7 +316,9 @@ export function moveMenuFocus(state: XrMenuState, layout: XrMenuLayout, directio
         // Horizontal moves stay on the row; vertical moves take the nearest row, then the nearest column.
         if (along <= 1 || (horizontal && across > current.h / 2)) continue;
         const score = along + across * 3;
-        if (score < bestScore) { bestScore = score; best = candidate; }
+        const better = horizontal ? score < bestScore
+            : along < bestAlong - 1 || Math.abs(along - bestAlong) <= 1 && across < bestAcross;
+        if (better) { bestScore = score; bestAlong = along; bestAcross = across; best = candidate; }
     }
     if (best) return { ...state, hover: best.id };
     if (horizontal && state.screen === 'settings') {

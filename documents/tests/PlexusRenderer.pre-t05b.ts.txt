@@ -1,0 +1,547 @@
+import p5 from 'p5';
+import { State } from '../state/store';
+import { Particle } from './Particle';
+import { Shockwave } from './Shockwave';
+import { featureFlags } from '../config/featureFlags';
+import { applyTuningMorph, tuneAudioValue, tuningMorphDeltaSec, visualTuningKeys, writeModulationBus } from '../config/visualTuning';
+import { PausedPreviewGate } from './PausedPreviewGate';
+import { P5RendererBackend } from './P5RendererBackend';
+import type { AudioEngine } from '../audio/AudioEngine';
+import type { AudioFrame, MotifChoreographyFrame as ChoreographyFrame, VisualChoreographyPlan, VisualCueKind, VisualFeatureFrame, VisualMode, VisualTuningConfig } from '../types';
+import { VisualDirectorFSM } from './VisualDirectorFSM';
+import { resolveSemanticState } from '../semantics';
+import type { StyleRegistry } from './StyleRegistry';
+import type { SemanticRuntimeAdapter } from '../semantics';
+import { ShockwaveLifecycle } from './ShockwaveLifecycle';
+import type { ChoreographyFrame as SemanticScoreFrame } from '../types/semantics';
+import { motifTransitionId, semanticScoreTransitionId } from './VisualTransitionIdentity';
+import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
+import { IdentityTransitionController } from './IdentityTransitionController';
+import { P5RenderTargetCompositor } from './P5RenderTargetCompositor';
+import { PostFxPipeline } from './PostFxPipeline';
+import { BEAT_DECAY_PER_FRAME, CUE_DECAY_PER_FRAME, DENSE_IMPACT_DECAY_PER_FRAME } from './transientDecay';
+import { TemporalFragmentationEffect } from './TemporalFragmentationEffect';
+import type { PostFxSurfaceHost } from './CanvasPostFxSurface';
+
+export class SemanticRendererBridge {
+    private semanticAdapter?: SemanticRuntimeAdapter;
+    private lastFrame: SemanticScoreFrame | null = null;
+    private activeTransitionId: string | null = null;
+
+    setSemanticAdapter(adapter: SemanticRuntimeAdapter | undefined): void {
+        this.semanticAdapter = adapter;
+        this.lastFrame = null;
+        this.activeTransitionId = null;
+    }
+
+    hasPlan(): boolean {
+        return this.semanticAdapter?.hasPlan() ?? false;
+    }
+
+    updateSemantic(timeSec: number, targetTuning: VisualTuningConfig): string | null {
+        if (!this.semanticAdapter) return null;
+        const frame = this.semanticAdapter.update(timeSec, targetTuning);
+        if (frame !== this.lastFrame) {
+            this.lastFrame = frame;
+            this.activeTransitionId = semanticScoreTransitionId(frame);
+        }
+        return this.activeTransitionId;
+    }
+}
+
+/** Structural subset of DashboardUI (and any lighter host, e.g. the MVP UI) that the renderer loop needs. */
+export interface PlexusRendererHost {
+    updateDashboard(): void;
+    setExportTarget(p5Instance: any, canvas: HTMLCanvasElement): void;
+    /**
+     * Optional final transform applied to State.targetTuning immediately before it's used as the
+     * morph target, once per render frame, after every other targetTuning writer that frame
+     * (preset/automation triggers, the ADR-003/004 semantic layer) has already run. A host that
+     * doesn't implement this (e.g. the advanced dashboard) is unaffected -- the renderer falls
+     * back to targetTuning itself, today's exact behaviour. The MVP surface uses this to layer its
+     * Visual character / Advanced tuning boosts on top of whatever is currently authored, without
+     * ever writing into targetTuning or semanticBaseTuning itself (see
+     * MvpVisualController.getBoostedTuning for why that matters). Implementations should return a
+     * reused/mutated object rather than allocating one per call.
+     */
+    getTuningForMorph?(rawTuning: VisualTuningConfig): VisualTuningConfig;
+    /** Host-owned absolute spiral channel, after the normal morph; receives the same live/export clock. */
+    applyAutomatedSpiral?(songTime: number, tuning: VisualTuningConfig): import('../types').VisualTransitionAnchor | null;
+}
+
+export interface PlexusRendererOptions {
+    /** Live host quality preference. When present, overrides the static preview caps below. */
+    previewQuality?: {
+        readonly compactMaterialPreview: boolean;
+        readonly pixelRatioCap: number;
+        readonly maxBackingLongEdge: number;
+    };
+    /** Smaller material rasters for compact/mobile previews; exports retain their own budget. */
+    compactMaterialPreview?: boolean;
+    /** When provided, the canvas tracks this container-relative size instead of the full browser window. */
+    getPreviewSize?: () => { width: number; height: number };
+    /** Caps the p5 backing-store pixel density independently of devicePixelRatio (perf policy). */
+    pixelRatioCap?: number;
+    /**
+     * Absolute backing-store resolution ceiling (long edge, device pixels; e.g. 1920 for a
+     * 1080p-tier preview). pixelRatioCap alone only bounds the *ratio* applied to whatever CSS
+     * size the container currently is -- on a HiDPI display that container can itself grow past
+     * the design's preview-quality tiers (e.g. a fullscreen previewCol on a 4K/5K screen), which
+     * would still multiply out to a far larger backing store than the tier intends. When set, the
+     * effective pixel density is reduced below pixelRatioCap as needed so the backing store's
+     * long edge never exceeds this value, independent of the container's current CSS size.
+     */
+    maxBackingLongEdge?: number;
+}
+
+export function startPlexusRenderer(
+    containerId: string,
+    ui: PlexusRendererHost,
+    engine: AudioEngine,
+    styleRegistry: StyleRegistry,
+    semanticBridge: SemanticRendererBridge = new SemanticRendererBridge(),
+    options?: PlexusRendererOptions
+) {
+    new p5((p: p5) => {
+        const getCanvasSize = () => options?.getPreviewSize?.() ?? { width: p.windowWidth, height: p.windowHeight };
+        const getPreviewPolicy = () => options?.previewQuality ?? options;
+        let lastRatioCap = getPreviewPolicy()?.pixelRatioCap;
+        let lastLongEdgeCap = getPreviewPolicy()?.maxBackingLongEdge;
+        const pausedPreview = new PausedPreviewGate();
+        const renderFeatureKeys = Object.keys(featureFlags) as Array<keyof typeof featureFlags>;
+        let canvasRevision = 0;
+
+        // Effective pixel density for a given CSS size: pixelRatioCap bounds the ratio, then
+        // maxBackingLongEdge (if set) reduces it further so the backing store's long edge never
+        // exceeds that absolute device-pixel ceiling, however large the CSS container itself is.
+        const computeEffectiveDensity = (cssWidth: number, cssHeight: number): number => {
+            const policy = getPreviewPolicy();
+            const requested = Math.max(0.1, Math.min(window.devicePixelRatio || 1, policy?.pixelRatioCap ?? Infinity));
+            if (!policy?.maxBackingLongEdge) return requested;
+            const longEdge = Math.max(cssWidth, cssHeight);
+            if (longEdge <= 0) return requested;
+            return Math.max(0.1, Math.min(requested, policy.maxBackingLongEdge / longEdge));
+        };
+
+        // Applies a target CSS size, first adjusting pixel density if the size change moved it
+        // past the backing-store cap, then resizing the canvas. Used by setup, the container
+        // ResizeObserver, and the draw-loop self-heal fallback below, so all three honour the same
+        // backing-resolution ceiling instead of only the initial setup call doing so.
+        const applyCanvasSize = (cssWidth: number, cssHeight: number): void => {
+            if (getPreviewPolicy()?.pixelRatioCap !== undefined || getPreviewPolicy()?.maxBackingLongEdge !== undefined) {
+                const effectiveDensity = computeEffectiveDensity(cssWidth, cssHeight);
+                if (Math.abs(effectiveDensity - p.pixelDensity()) > 1e-6) {
+                    p.pixelDensity(effectiveDensity);
+                    canvasRevision++;
+                }
+            }
+            if (cssWidth !== p.width || cssHeight !== p.height) {
+                p.resizeCanvas(cssWidth, cssHeight);
+                canvasRevision++;
+            }
+        };
+
+        let particles: Particle[] = [];
+        const shockwaveLifecycle = new ShockwaveLifecycle<Shockwave>(State.visualMode);
+        const shockwaves = shockwaveLifecycle.items;
+        let currentEventIdx = 0;
+        let currentCueIdx = 0;
+        let currentTargetFrameRate = 60;
+        let lastTuningTime: number | null = null;
+        let lastTuningClockWasExport = State.isExporting;
+        const compactMaterialPreview = () => getPreviewPolicy()?.compactMaterialPreview ?? false;
+        const backend = new P5RendererBackend(p, compactMaterialPreview);
+        const visualDirector = new VisualDirectorFSM();
+        const identityTransitionController = new IdentityTransitionController();
+        let compositor: P5RenderTargetCompositor | null = null;
+        // Renderer-owned post chain (ADR-007). Buffers are allocated lazily on the first active
+        // frame, so an untouched Post FX section costs nothing.
+        const postFxPipeline = new PostFxPipeline([new TemporalFragmentationEffect()]);
+
+        // Semantic resolver (ADR-003): a monotonic cursor over the choreography frames plus a
+        // memo so the resolver only recomputes when the active frame, style, or base changes —
+        // not 60x/sec over an unchanged section.
+        let choreoCursor = 0;
+        let lastChoreoTime = -1;
+        let lastResolvedChoreography: ChoreographyFrame | null = null;
+        let lastResolvedStyle: VisualMode | null = null;
+        let lastResolvedBase: VisualTuningConfig | null = null;
+        let lastChoreoPlanRef: VisualChoreographyPlan | null = null;
+
+        p.setup = () => {
+            const initialSize = getCanvasSize();
+            const renderer = p.createCanvas(initialSize.width, initialSize.height);
+            // p5 2 creates a new renderer with device density in createCanvas(), discarding any
+            // earlier pixelDensity() setting. Cap the actual canvas before its first draw and
+            // before graphics targets inherit its density.
+            applyCanvasSize(initialSize.width, initialSize.height);
+            renderer.parent(containerId);
+            p.frameRate(60);
+            for (let i = 0; i < 75; i++) particles.push(new Particle(p));
+            compositor = new P5RenderTargetCompositor(p, compactMaterialPreview);
+            ui.setExportTarget(p, (renderer as unknown as { elt: HTMLCanvasElement }).elt);
+
+            if (options?.getPreviewSize && typeof ResizeObserver !== 'undefined') {
+                const containerEl = document.getElementById(containerId);
+                if (containerEl) {
+                    // Reacts as soon as the container's box changes (including a display:none ->
+                    // visible transition), independent of the draw loop's own throttled check below
+                    // (which is the fallback for cases a ResizeObserver notification is missed).
+                    new ResizeObserver(() => {
+                        const size = getCanvasSize();
+                        applyCanvasSize(size.width, size.height);
+                    }).observe(containerEl);
+                }
+            }
+        };
+
+        const syncEventIndex = (time: number) => {
+            pausedPreview.invalidate();
+            currentEventIdx = State.events.findIndex(e => e.time >= time);
+            if (currentEventIdx === -1) currentEventIdx = State.events.length;
+            currentCueIdx = State.trackAnalysis.cues.findIndex(e => e.time >= time);
+            if (currentCueIdx === -1) currentCueIdx = State.trackAnalysis.cues.length;
+            resetTransientVisualState();
+            styleRegistry.forEach(identity => identity.syncPosition?.(time));
+        };
+
+        engine.addPositionChangedListener(syncEventIndex);
+
+        engine.addPlaybackEndedListener(() => {
+            pausedPreview.invalidate();
+            currentEventIdx = 0;
+            currentCueIdx = 0;
+            resetTransientVisualState();
+            State.currentFrame.state = 'IDLE';
+            ui.updateDashboard();
+        });
+
+        p.draw = () => {
+            // Preferences are cheap host values. Only a real policy change needs a size read.
+            const policy = getPreviewPolicy();
+            if (lastRatioCap !== policy?.pixelRatioCap || lastLongEdgeCap !== policy?.maxBackingLongEdge) {
+                lastRatioCap = policy?.pixelRatioCap;
+                lastLongEdgeCap = policy?.maxBackingLongEdge;
+                const size = getCanvasSize();
+                applyCanvasSize(size.width, size.height);
+            }
+            // Fallback for the rare case the ResizeObserver above missed a transition (e.g. a
+            // resize that happened before the observer was attached): self-heals regardless of
+            // when the container's box actually changes. Throttled rather than checked every
+            // frame -- getPreviewSize() reads getBoundingClientRect(), which forces a layout, and
+            // the ResizeObserver above already handles the common case immediately.
+            if (options?.getPreviewSize && p.frameCount % 15 === 0) {
+                const size = getCanvasSize();
+                applyCanvasSize(size.width, size.height);
+            }
+
+            const targetFrameRate = State.isPlaying ? 60 : State.duration > 0 ? 30 : 15;
+            if (currentTargetFrameRate !== targetFrameRate) {
+                currentTargetFrameRate = targetFrameRate;
+                p.frameRate(targetFrameRate);
+            }
+
+            const ct = State.isExporting ? State.exportTime : engine.getCurrentTime();
+            const morphTarget = ui.getTuningForMorph ? ui.getTuningForMorph(State.targetTuning) : State.targetTuning;
+            const idlePreview = !State.isPlaying && !State.isExporting && State.playbackFade <= 0;
+            if (idlePreview) {
+                // The p5 callback stays available for UI/host changes; unchanged paused frames
+                // perform no identity, material, post-FX or dashboard canvas drawing. Snapshot
+                // numeric values too: tuning objects and MVP boost results are mutated in place.
+                pausedPreview.begin();
+                pausedPreview.watch(canvasRevision);
+                pausedPreview.watch(ct);
+                pausedPreview.watch(State.duration);
+                pausedPreview.watch(State.bpm);
+                pausedPreview.watch(State.visualMode);
+                pausedPreview.watch(State.frames);
+                pausedPreview.watch(State.events);
+                pausedPreview.watch(State.trackAnalysis);
+                pausedPreview.watch(State.visualChoreography);
+                pausedPreview.watch(State.semanticBaseTuning);
+                pausedPreview.watch(State.performancePlan);
+                pausedPreview.watch(State.editedPerformancePlan);
+                pausedPreview.watch(State.automationMorphScale);
+                pausedPreview.watch(State.activeVisualTransitionId);
+                pausedPreview.watch(State.visualModeTransition);
+                pausedPreview.watch(State.videoBackplateActive);
+                pausedPreview.watch(State.videoDominantColor.r);
+                pausedPreview.watch(State.videoDominantColor.g);
+                pausedPreview.watch(State.videoDominantColor.b);
+                pausedPreview.watch(compactMaterialPreview());
+                pausedPreview.watch(semanticBridge.hasPlan());
+                for (const key of renderFeatureKeys) pausedPreview.watch(featureFlags[key]);
+                for (const key of visualTuningKeys) {
+                    pausedPreview.watch(State.visualTuning[key]);
+                    pausedPreview.watch(State.targetTuning[key]);
+                    pausedPreview.watch(morphTarget[key]);
+                }
+                if (!pausedPreview.shouldDraw()) return;
+            } else {
+                // Playback, export and the existing pause fade always render normally. Finish
+                // with one settled paused frame, even if its tuning and song time are unchanged.
+                pausedPreview.invalidate();
+            }
+
+            shockwaveLifecycle.syncMode(State.visualMode);
+
+            const fadeStep = 1 / targetFrameRate;
+            if (State.isPlaying || State.isExporting) {
+                State.playbackFade = Math.min(1.0, State.playbackFade + fadeStep);
+            } else {
+                State.playbackFade = Math.max(0.0, State.playbackFade - fadeStep);
+            }
+            State.rotationPhase += State.playbackFade;
+
+            State.currentTime = ct;
+            const tuningClockChanged = lastTuningClockWasExport !== State.isExporting;
+            const tuningDeltaSec = tuningMorphDeltaSec(ct, lastTuningTime, tuningClockChanged);
+            lastTuningTime = ct;
+            lastTuningClockWasExport = State.isExporting;
+            // Optional host-owned final layer (see PlexusRendererHost.getTuningForMorph): applied
+            // fresh every frame directly on top of whatever State.targetTuning currently is, so a
+            // host that boosts/cuts specific keys (the MVP surface) never has to write into
+            // targetTuning itself to make that stick. A host without the hook (the advanced
+            // dashboard) morphs toward targetTuning directly, exactly as before.
+            applyTuningMorph(
+                State.visualTuning,
+                morphTarget,
+                morphTarget.transitionSpeed,
+                tuningDeltaSec
+            );
+            State.spiralTransitionAnchor = ui.applyAutomatedSpiral?.(ct, State.visualTuning) ?? null;
+
+            const hasTimeBasedSemanticPlan = semanticBridge.hasPlan();
+            const isTimeBasedSemanticActive = featureFlags.semanticChoreography && hasTimeBasedSemanticPlan;
+            if (featureFlags.semanticChoreography) {
+                const semanticTransitionId = semanticBridge.updateSemantic(ct, State.targetTuning);
+                setActiveVisualTransitionComponent(
+                    'semantic-score',
+                    isTimeBasedSemanticActive ? semanticTransitionId : null
+                );
+            } else {
+                setActiveVisualTransitionComponent('semantic-score', null);
+            }
+
+            // Semantic dramaturgy layer (ADR-003): when enabled, the resolved choreography
+            // owns targetTuning (the slow param channel). The VisualDirectorFSM and the
+            // modulation bus below are untouched — they remain the fast audio-reactive channel.
+            if (!isTimeBasedSemanticActive && featureFlags.semanticResolver && State.visualChoreography) {
+                // A recompute / dramaturgy load swaps the plan object: the old cursor and memo now
+                // index a stale frames array (wrong slice, or out of bounds). Reset everything.
+                if (State.visualChoreography !== lastChoreoPlanRef) {
+                    lastChoreoPlanRef = State.visualChoreography;
+                    choreoCursor = 0;
+                    lastChoreoTime = -1;
+                    lastResolvedChoreography = null;
+                    lastResolvedStyle = null;
+                    lastResolvedBase = null;
+                }
+
+                const frames = State.visualChoreography.frames;
+                if (ct < lastChoreoTime) choreoCursor = 0; // seek / loop rewind
+                lastChoreoTime = ct;
+                while (choreoCursor + 1 < frames.length && frames[choreoCursor + 1].time <= ct) choreoCursor++;
+                const activeFrame = frames.length > 0 && frames[choreoCursor].time <= ct ? frames[choreoCursor] : null;
+                State.currentChoreography = activeFrame;
+
+                const base = State.semanticBaseTuning;
+                // Only re-resolve (and re-allocate a tuning config) when something actually changed.
+                if (activeFrame !== lastResolvedChoreography || State.visualMode !== lastResolvedStyle || base !== lastResolvedBase) {
+                    if (activeFrame !== lastResolvedChoreography) {
+                        setActiveVisualTransitionComponent('motif', motifTransitionId(activeFrame));
+                    }
+                    lastResolvedChoreography = activeFrame;
+                    lastResolvedStyle = State.visualMode;
+                    lastResolvedBase = base;
+                    const presets = base ? { [State.visualMode]: base } : {};
+                    Object.assign(State.targetTuning, resolveSemanticState(activeFrame, State.visualMode, presets));
+                }
+            } else {
+                setActiveVisualTransitionComponent('motif', null);
+            }
+
+            if ((State.isPlaying || State.isExporting) && State.frames.length > 0) {
+                let frameIdx = Math.floor(ct * State.sampleRate / State.hopSize);
+                publishCurrentAnalysisFrame(frameIdx);
+
+                while (currentEventIdx < State.events.length && ct >= State.events[currentEventIdx].time) {
+                    let ev = State.events[currentEventIdx];
+                    State.beatDecay = 1.0;
+                    if (ev.type === 2) State.denseImpactFlash = 1.0;
+                    shockwaveLifecycle.emit(State.visualMode, () =>
+                        new Shockwave(p, tuneAudioValue(ev.intensity, State.visualTuning), State.currentFrame.state, ev.type)
+                    );
+                    currentEventIdx++;
+                }
+
+                while (currentCueIdx < State.trackAnalysis.cues.length && ct >= State.trackAnalysis.cues[currentCueIdx].time) {
+                    let cue = State.trackAnalysis.cues[currentCueIdx];
+                    let cueIntensity = tuneAudioValue(cue.intensity, State.visualTuning);
+                    State.cueDecay = Math.max(State.cueDecay, cueIntensity);
+                    State.activeCueKind = cue.kind;
+                    State.activePatternId = cue.kind === 'pattern' ? cue.patternId || null : State.activePatternId;
+                    shockwaveLifecycle.emit(State.visualMode, () =>
+                        new Shockwave(p, cueIntensity, State.currentFrame.state, cueTypeToShockwave(cue.kind))
+                    );
+                    currentCueIdx++;
+                }
+            } else {
+                decayCurrentAnalysisFrame();
+            }
+
+            State.beatDecay *= BEAT_DECAY_PER_FRAME;
+            State.denseImpactFlash *= DENSE_IMPACT_DECAY_PER_FRAME;
+            State.cueDecay *= CUE_DECAY_PER_FRAME;
+            if (State.cueDecay < 0.02) {
+                State.activeCueKind = null;
+                State.activePatternId = null;
+            }
+
+            writeModulationBus(
+                State.modulation,
+                State.currentFrame,
+                State.currentFeatures,
+                State.beatDecay,
+                State.cueDecay,
+                State.visualTuning
+            );
+            const directorOutput = visualDirector.update(
+                ct,
+                State.currentFrame,
+                State.currentFeatures,
+                getBuildupValueAtCurrentFrame(),
+                getPivotValueAtCurrentFrame(),
+                State.visualTuning,
+                State.modulation,
+                getDropAnticipationFrame(ct)
+            );
+            State.directorOutput.state = directorOutput.state;
+            State.directorOutput.centripetalOrbit = directorOutput.centripetalOrbit;
+            State.directorOutput.glitchIntensity = directorOutput.glitchIntensity;
+            State.directorOutput.invertBackground = directorOutput.invertBackground;
+
+            if (idlePreview || p.frameCount % 4 === 0) ui.updateDashboard();
+
+            if (compositor) {
+                identityTransitionController.draw(ct, backend, compositor, styleRegistry, particles, shockwaves);
+            } else {
+                styleRegistry.get(State.visualMode).draw(backend, particles, shockwaves);
+            }
+            // Single Post FX seam (ADR-007): the identity frame is finished here in both the
+            // steady-state and the crossfade path, so the chain runs exactly once per frame on the
+            // final composite, for the live canvas and the offscreen export target alike.
+            postFxPipeline.render(p as unknown as PostFxSurfaceHost, ct);
+            engine.syncMetronomeState(featureFlags.heroEffect && State.visualMode === 'hero', State.visualTuning.heroBeepMode, State.visualTuning.heroBeepVolume);
+
+        };
+
+        p.windowResized = () => {
+            if (options?.getPreviewSize) return; // handled by the container ResizeObserver above
+            // Routed through applyCanvasSize (not a bare resizeCanvas) so a window moved to a
+            // display with a different devicePixelRatio -- or simply resized larger -- keeps
+            // honouring pixelRatioCap/maxBackingLongEdge instead of only capping the density once
+            // at setup and then drifting uncapped on every resize after.
+            applyCanvasSize(p.windowWidth, p.windowHeight);
+        };
+    });
+}
+
+function publishCurrentAnalysisFrame(frameIdx: number) {
+    if (frameIdx >= 0 && frameIdx < State.frames.length) {
+        copyAudioFrame(State.frames[frameIdx], State.currentFrame);
+    }
+    if (frameIdx >= 0 && frameIdx < State.trackAnalysis.features.length) {
+        copyVisualFeatures(State.trackAnalysis.features[frameIdx], State.currentFeatures);
+    }
+}
+
+function copyAudioFrame(source: AudioFrame, target: AudioFrame) {
+    target.e = source.e;
+    target.densityProj = source.densityProj;
+    target.melodyProj = source.melodyProj;
+    target.fxProj = source.fxProj;
+    target.perceptualSpectrum = source.perceptualSpectrum;
+    target.subEnergy = source.subEnergy ?? 0;
+    target.bassEnergy = source.bassEnergy ?? 0;
+    target.subFlux = source.subFlux ?? 0;
+    target.bassFlux = source.bassFlux ?? 0;
+    target.state = source.state;
+    target.eRatio = source.eRatio;
+}
+
+function copyVisualFeatures(source: VisualFeatureFrame, target: VisualFeatureFrame) {
+    target.melody = source.melody;
+    target.vocal = source.vocal;
+    target.fx = source.fx;
+    target.density = source.density;
+    target.brightness = source.brightness;
+    target.tension = source.tension;
+}
+
+function getDropAnticipationFrame(currentTime: number): AudioFrame | undefined {
+    const anticipation = State.visualTuning.dropAnticipation;
+    if (anticipation <= 0 || (!State.isPlaying && !State.isExporting) || State.frames.length === 0) return undefined;
+
+    const futureTime = currentTime + anticipation;
+    const futureIdx = Math.floor(futureTime * State.sampleRate / State.hopSize);
+    if (futureIdx < 0 || futureIdx >= State.frames.length) return undefined;
+    return State.frames[futureIdx];
+}
+
+function decayCurrentAnalysisFrame() {
+    State.currentFrame.subEnergy = (State.currentFrame.subEnergy ?? 0) * 0.9;
+    State.currentFrame.bassEnergy = (State.currentFrame.bassEnergy ?? 0) * 0.9;
+    State.currentFrame.subFlux = (State.currentFrame.subFlux ?? 0) * 0.9;
+    State.currentFrame.bassFlux = (State.currentFrame.bassFlux ?? 0) * 0.9;
+    State.currentFrame.e *= 0.9;
+    State.currentFrame.densityProj *= 0.9;
+    State.currentFrame.melodyProj *= 0.9;
+    State.currentFrame.fxProj *= 0.9;
+    State.currentFrame.perceptualSpectrum = State.currentFrame.perceptualSpectrum.map(value => value * 0.9);
+    State.currentFrame.eRatio *= 0.9;
+    State.currentFeatures.melody *= 0.9;
+    State.currentFeatures.vocal *= 0.9;
+    State.currentFeatures.fx *= 0.9;
+    State.currentFeatures.density *= 0.9;
+    State.currentFeatures.brightness *= 0.9;
+    State.currentFeatures.tension *= 0.9;
+}
+
+function resetTransientVisualState() {
+    State.modulation.subEnergy = State.modulation.bassEnergy = State.modulation.subFlux = State.modulation.bassFlux = 0;
+    State.beatDecay = 0;
+    State.denseImpactFlash = 0;
+    State.cueDecay = 0;
+    State.modulation.kineticTension = 0;
+    State.modulation.densityDrive = 0;
+    State.modulation.spectralChaos = 0;
+    State.modulation.rhythmicImpulse = 0;
+    State.modulation.macroMomentum = 0;
+    State.directorOutput.state = 'IDLE';
+    State.directorOutput.centripetalOrbit = 0;
+    State.directorOutput.glitchIntensity = 0;
+    State.directorOutput.invertBackground = false;
+    State.currentChoreography = null;
+    State.activeCueKind = null;
+    State.activePatternId = null;
+}
+
+function getBuildupValueAtCurrentFrame() {
+    const frameIdx = Math.floor(State.currentTime * State.sampleRate / State.hopSize);
+    return State.trackAnalysis.buildupConfidence[frameIdx] || 0;
+}
+
+function getPivotValueAtCurrentFrame() {
+    const frameIdx = Math.floor(State.currentTime * State.sampleRate / State.hopSize);
+    return State.trackAnalysis.spectralPivot[frameIdx] || 0;
+}
+
+function cueTypeToShockwave(kind: VisualCueKind): number {
+    if (kind === 'melody') return 4;
+    if (kind === 'vocal') return 5;
+    if (kind === 'fx') return 6;
+    if (kind === 'break') return 7;
+    if (kind === 'pattern') return 8;
+    return 2;
+}

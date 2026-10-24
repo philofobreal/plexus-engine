@@ -1,0 +1,241 @@
+{
+  "task": "T09",
+  "releaseId": "t09-movement-20261024T142006361Z",
+  "commit": "5a35086b51c36bb667447168da960e2e68796b1e",
+  "parent": "2bd7cc0c8ed9ee6926e69b568ca4dae1e99ed4ec",
+  "url": "https://philofobreal.github.io/plexus-engine/xr/?release=t09-movement-20261024T142006361Z",
+  "sourceInputCount": 343,
+  "sourceInputsSha256": "3dc06ba42103b53ec324f30a5fbe2524e82f97e8563dfbf7ce1bc26d63d8522c",
+  "deployedSourcePatchSha256": "c3ab214d4949b86f93b2efc9bfd33b855ed43242c1a8bc710935688080f76791",
+  "sourceBranchPushed": false,
+  "forcePushed": false,
+  "pagesBuild": {
+    "url": "https://api.github.com/repos/philofobreal/plexus-engine/pages/builds/1310920064",
+    "status": "built",
+    "error": {
+      "message": null
+    },
+    "pusher": {
+      "login": "philofobreal",
+      "id": 3270566,
+      "node_id": "MDQ6VXNlcjMyNzA1NjY=",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3270566?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/philofobreal",
+      "html_url": "https://github.com/philofobreal",
+      "followers_url": "https://api.github.com/users/philofobreal/followers",
+      "following_url": "https://api.github.com/users/philofobreal/following{/other_user}",
+      "gists_url": "https://api.github.com/users/philofobreal/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/philofobreal/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/philofobreal/subscriptions",
+      "organizations_url": "https://api.github.com/users/philofobreal/orgs",
+      "repos_url": "https://api.github.com/users/philofobreal/repos",
+      "events_url": "https://api.github.com/users/philofobreal/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/philofobreal/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "commit": "5a35086b51c36bb667447168da960e2e68796b1e",
+    "duration": 21170,
+    "created_at": "2026-10-24T14:20:29Z",
+    "updated_at": "2026-10-24T14:20:50Z"
+  },
+  "verification": {
+    "checkedAt": "2026-10-24T14:21:29.560Z",
+    "releaseId": "t09-movement-20261024T142006361Z",
+    "markerStatus": 200,
+    "files": [
+      {
+        "path": "index.html",
+        "status": 200,
+        "sha256": "dbc800a4c77a3cb851da64ad2546905860bfd2e75434fae71c732379bb244c7d"
+      },
+      {
+        "path": "mvp/index.html",
+        "status": 200,
+        "sha256": "60ec6d618f5528bfb12c43a3f1f36ebba01e6a0e1d67268a5a5091b84c7d0f8e"
+      },
+      {
+        "path": "xr/index.html",
+        "status": 200,
+        "sha256": "551fe0cc44c1ffac828b8da38d49aceb1731a23453d281fac62c8d9f623d55b0"
+      },
+      {
+        "path": "assets/CosmicWormholeIdentity-ClYb2Xof.js",
+        "status": 200,
+        "sha256": "8dc8ac557a487909e236fa846fc093a261f0cd3a68f600f414421525483787ed"
+      },
+      {
+        "path": "assets/PreviewQualityControl-BrBaJ_-N.js",
+        "status": 200,
+        "sha256": "c7843de8a5f818daa09174b6dc8f07432640d18f9309cbacfc065384263f6657"
+      },
+      {
+        "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
+        "status": 200,
+        "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+      },
+      {
+        "path": "assets/analyzer.worker-BxhitPzQ.js",
+        "status": 200,
+        "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52"
+      },
+      {
+        "path": "assets/export.worker-Av-E_fEl.js",
+        "status": 200,
+        "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+      },
+      {
+        "path": "assets/main-C7BsYBKL.css",
+        "status": 200,
+        "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+      },
+      {
+        "path": "assets/main-DxGfnvLj.js",
+        "status": 200,
+        "sha256": "4ff6297497c45d3f3c21f552bebf37a5edd0614b90825f68efcb5de29a0e775a"
+      },
+      {
+        "path": "assets/mvp-Bjoot6gz.js",
+        "status": 200,
+        "sha256": "3e3f54215f2205f1d428c03c11e7a49acbcd2ea90349c7735a415261b07d83bb"
+      },
+      {
+        "path": "assets/mvp-D0xy9ln6.css",
+        "status": 200,
+        "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
+      },
+      {
+        "path": "assets/resolveMetaTuning-CsnYWn7w.js",
+        "status": 200,
+        "sha256": "4222a07f9e5801f11691a706d70543da0671287e910aef460ba702187188d810"
+      },
+      {
+        "path": "assets/wormholeNative.worker-NKa5B4-L.js",
+        "status": 200,
+        "sha256": "8952cd821cbecb9cfed9cd4df2c232880c311cbd96ed9168a9ca599e22427c74"
+      },
+      {
+        "path": "assets/wormholeRender.worker-DVbw9WGv.js",
+        "status": 200,
+        "sha256": "4caafbdcae89cab8f35be32904c0cafcffc7ff629de8e1fbb44e63bc920e52a9"
+      },
+      {
+        "path": "assets/xr-BfNetZ-7.css",
+        "status": 200,
+        "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      },
+      {
+        "path": "assets/xr-C1CcTqhG.js",
+        "status": 200,
+        "sha256": "208d6b878bcee9182bba058378237a5eb71dbd70240378694146f5b8d4899d73"
+      }
+    ],
+    "routes": [
+      {
+        "path": "",
+        "status": 200,
+        "sha256": "dbc800a4c77a3cb851da64ad2546905860bfd2e75434fae71c732379bb244c7d"
+      },
+      {
+        "path": "mvp/",
+        "status": 200,
+        "sha256": "60ec6d618f5528bfb12c43a3f1f36ebba01e6a0e1d67268a5a5091b84c7d0f8e"
+      },
+      {
+        "path": "xr/",
+        "status": 200,
+        "sha256": "551fe0cc44c1ffac828b8da38d49aceb1731a23453d281fac62c8d9f623d55b0"
+      },
+      {
+        "path": "xr/?xrBackgroundThread=main",
+        "status": 200,
+        "sha256": "551fe0cc44c1ffac828b8da38d49aceb1731a23453d281fac62c8d9f623d55b0"
+      }
+    ],
+    "sourceGraphUnchanged": true
+  },
+  "publicBrowserSmoke": {
+    "pass": true,
+    "releaseId": "t09-movement-20261024T142006361Z",
+    "guardedSelection": true,
+    "survivesReload": true,
+    "copyToast": true,
+    "adjacentKeyboardRow": true,
+    "playPause": true,
+    "legacyRegeneration": true,
+    "restoredPreference": "legacy",
+    "audioClearedAfterTest": true,
+    "fixture": {
+      "seconds": 28,
+      "bpm": 128,
+      "guardedNotes": 37,
+      "legacyNotes": 42,
+      "pairs": 3
+    },
+    "physicalQuest": "unmeasured",
+    "osClipboardPaste": "manual",
+    "consoleMessages": []
+  },
+  "publisher": "node node_modules/gh-pages/bin/gh-pages.js -d dist --nojekyll -m \"T09: guarded movement and deterministic motor validation\"",
+  "rollback": "Movement Legacy restores the prior authored chart; previous T08 Pages tree can be republished in a new commit.",
+  "evidence": [
+    {
+      "path": "logs/t09/deploy/release.json",
+      "sha256": "754fa1cc680930c2f251a99143bc69a9e8e37c722a2acdcbac189702a51cdde8"
+    },
+    {
+      "path": "logs/t09/deploy/published-commit.json",
+      "sha256": "d386e69bc8e426d4521936afdee9d7df47c772bd00c938c63f2fb3384ce7221d"
+    },
+    {
+      "path": "logs/t09/deploy/pages-build.json",
+      "sha256": "e037ade6327331183c680e4b1a53c9360ab13697d26a8d90509044eb6d7f9b2d"
+    },
+    {
+      "path": "logs/t09/deploy/source-inputs.json",
+      "sha256": "3dc06ba42103b53ec324f30a5fbe2524e82f97e8563dfbf7ce1bc26d63d8522c"
+    },
+    {
+      "path": "logs/t09/deploy/public-verification.json",
+      "sha256": "d8ba34fdb4423a31174414a15f2319e94575456dee508fe8bc8d31e4032fd846"
+    },
+    {
+      "path": "logs/t09/deploy/public-smoke.json",
+      "sha256": "01e9d239eb366a4d0b3b9c07031bc2d72d709e97dc56b68d1340532a31466484"
+    },
+    {
+      "path": "logs/t09/deploy/public-guarded.jpg",
+      "sha256": "b525e2279364c0f232ca9ebac039ca36c736153dea664a2622fc584375f0d1d0"
+    },
+    {
+      "path": "logs/t09/deploy/public-copy.jpg",
+      "sha256": "19ed5df7cc4dd793a1d78ec8f788833d42c1691b7a9212b51c4cc00355f080a2"
+    },
+    {
+      "path": "logs/t09/deploy/public-reloaded.jpg",
+      "sha256": "5b2b841a1d9045e4a4de04a9b1c93d70401cc50c4121e535698600bfb433925e"
+    },
+    {
+      "path": "logs/t09/deploy/public-keyboard.jpg",
+      "sha256": "e878294eb4b0c059c1ca428d91a2874f7204631d280bd0866d05ce4343d40861"
+    },
+    {
+      "path": "logs/t09/deploy/public-playing.jpg",
+      "sha256": "c6bbfd385bc5645fc04cb0c133c8333da2cf737e13358f6da7276ab590f39fb7"
+    },
+    {
+      "path": "logs/t09/deploy/public-paused.jpg",
+      "sha256": "47b813b711893ee98a28dae42c821a4fd47b64087fca608206b67797b5f9d23d"
+    },
+    {
+      "path": "logs/t09/deploy/public-legacy.jpg",
+      "sha256": "a2c09869d281d460913a27922ad6eb9bdb70d652bf55b10413f04f0e1375ef6e"
+    },
+    {
+      "path": "logs/t09/deploy/public-final.jpg",
+      "sha256": "649318434263273f242ae7086f3d387e036859fe5f98fe8a5c5013c8c2e6858f"
+    }
+  ]
+}

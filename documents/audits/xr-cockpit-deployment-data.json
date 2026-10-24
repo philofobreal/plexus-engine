@@ -1,0 +1,247 @@
+{
+  "task": "T07",
+  "releaseId": "t07-cockpit-20261024T115025210Z",
+  "commit": "08d0c8875fdba2394c5763f2626eba7a60df14ae",
+  "parent": "be4bc071b8bb671631f506ac3c38f1b65af49f26",
+  "url": "https://philofobreal.github.io/plexus-engine/xr/?release=t07-cockpit-20261024T115025210Z",
+  "sourceBranchPushed": false,
+  "forcePushed": false,
+  "sourceInputCount": 339,
+  "sourceInputsSha256": "e281bf422e866d86b32d1cc16c71737542bd41a84e52128b4b13bdc9b61c6b5c",
+  "deployedSourcePatchSha256": "6631ddb4ab3cba422db8369802c358c9254a692ab8a64005be499604335c898c",
+  "verification": {
+    "checkedAt": "2026-10-24T11:51:29.818Z",
+    "releaseId": "t07-cockpit-20261024T115025210Z",
+    "markerStatus": 200,
+    "files": [
+      {
+        "path": "index.html",
+        "status": 200,
+        "sha256": "dbc800a4c77a3cb851da64ad2546905860bfd2e75434fae71c732379bb244c7d"
+      },
+      {
+        "path": "mvp/index.html",
+        "status": 200,
+        "sha256": "60ec6d618f5528bfb12c43a3f1f36ebba01e6a0e1d67268a5a5091b84c7d0f8e"
+      },
+      {
+        "path": "xr/index.html",
+        "status": 200,
+        "sha256": "6bd4353e5ab280e01e48ffb7b87099b2b67149df4f99935cce999e8ed0b6222f"
+      },
+      {
+        "path": "assets/CosmicWormholeIdentity-ClYb2Xof.js",
+        "status": 200,
+        "sha256": "8dc8ac557a487909e236fa846fc093a261f0cd3a68f600f414421525483787ed"
+      },
+      {
+        "path": "assets/PreviewQualityControl-BrBaJ_-N.js",
+        "status": 200,
+        "sha256": "c7843de8a5f818daa09174b6dc8f07432640d18f9309cbacfc065384263f6657"
+      },
+      {
+        "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
+        "status": 200,
+        "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+      },
+      {
+        "path": "assets/analyzer.worker-BxhitPzQ.js",
+        "status": 200,
+        "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52"
+      },
+      {
+        "path": "assets/export.worker-Av-E_fEl.js",
+        "status": 200,
+        "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+      },
+      {
+        "path": "assets/main-C7BsYBKL.css",
+        "status": 200,
+        "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+      },
+      {
+        "path": "assets/main-DxGfnvLj.js",
+        "status": 200,
+        "sha256": "4ff6297497c45d3f3c21f552bebf37a5edd0614b90825f68efcb5de29a0e775a"
+      },
+      {
+        "path": "assets/mvp-Bjoot6gz.js",
+        "status": 200,
+        "sha256": "3e3f54215f2205f1d428c03c11e7a49acbcd2ea90349c7735a415261b07d83bb"
+      },
+      {
+        "path": "assets/mvp-D0xy9ln6.css",
+        "status": 200,
+        "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
+      },
+      {
+        "path": "assets/resolveMetaTuning-CsnYWn7w.js",
+        "status": 200,
+        "sha256": "4222a07f9e5801f11691a706d70543da0671287e910aef460ba702187188d810"
+      },
+      {
+        "path": "assets/wormholeNative.worker-NKa5B4-L.js",
+        "status": 200,
+        "sha256": "8952cd821cbecb9cfed9cd4df2c232880c311cbd96ed9168a9ca599e22427c74"
+      },
+      {
+        "path": "assets/wormholeRender.worker-DVbw9WGv.js",
+        "status": 200,
+        "sha256": "4caafbdcae89cab8f35be32904c0cafcffc7ff629de8e1fbb44e63bc920e52a9"
+      },
+      {
+        "path": "assets/xr-BfNetZ-7.css",
+        "status": 200,
+        "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      },
+      {
+        "path": "assets/xr-Bq5FWXYP.js",
+        "status": 200,
+        "sha256": "b2af5f5eb4793e6e5d699b479ca65f424fb8f6ed005dc1befe65be788ce76fd7"
+      }
+    ],
+    "routes": [
+      {
+        "path": "",
+        "status": 200,
+        "sha256": "dbc800a4c77a3cb851da64ad2546905860bfd2e75434fae71c732379bb244c7d"
+      },
+      {
+        "path": "mvp/",
+        "status": 200,
+        "sha256": "60ec6d618f5528bfb12c43a3f1f36ebba01e6a0e1d67268a5a5091b84c7d0f8e"
+      },
+      {
+        "path": "xr/",
+        "status": 200,
+        "sha256": "6bd4353e5ab280e01e48ffb7b87099b2b67149df4f99935cce999e8ed0b6222f"
+      },
+      {
+        "path": "xr/?xrBackgroundThread=main",
+        "status": 200,
+        "sha256": "6bd4353e5ab280e01e48ffb7b87099b2b67149df4f99935cce999e8ed0b6222f"
+      }
+    ],
+    "sourceGraphUnchanged": true
+  },
+  "pagesBuild": {
+    "url": "https://api.github.com/repos/philofobreal/plexus-engine/pages/builds/1310643414",
+    "status": "built",
+    "error": {
+      "message": null
+    },
+    "pusher": {
+      "login": "philofobreal",
+      "id": 3270566,
+      "node_id": "MDQ6VXNlcjMyNzA1NjY=",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3270566?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/philofobreal",
+      "html_url": "https://github.com/philofobreal",
+      "followers_url": "https://api.github.com/users/philofobreal/followers",
+      "following_url": "https://api.github.com/users/philofobreal/following{/other_user}",
+      "gists_url": "https://api.github.com/users/philofobreal/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/philofobreal/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/philofobreal/subscriptions",
+      "organizations_url": "https://api.github.com/users/philofobreal/orgs",
+      "repos_url": "https://api.github.com/users/philofobreal/repos",
+      "events_url": "https://api.github.com/users/philofobreal/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/philofobreal/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "commit": "08d0c8875fdba2394c5763f2626eba7a60df14ae",
+    "duration": 18795,
+    "created_at": "2026-10-24T11:50:48Z",
+    "updated_at": "2026-10-24T11:51:06Z"
+  },
+  "publicBrowserSmoke": {
+    "pass": true,
+    "release": "t07-cockpit-20261024T115025210Z",
+    "edited": {
+      "cockpit": "reduced",
+      "title": "static"
+    },
+    "bothSurviveReload": true,
+    "copySuccessToast": true,
+    "cockpitOffHidesWholeFrame": true,
+    "titleOffHidesCaption": true,
+    "titleStaticShowsPrefix": true,
+    "titleScrollMovesInFixedWindow": true,
+    "selectedFilename": "Plexus - panoráma cockpit futószöveg - hosszú számcím ellenőrzése.wav",
+    "track": {
+      "duration": 28,
+      "bpm": 128,
+      "notes": 42,
+      "arrows": 41,
+      "pairs": 3
+    },
+    "publicPlayAndPause": true,
+    "notesPathHudVisible": true,
+    "nativeModeSelectionKeepsCabin": true,
+    "restored": {
+      "cockpit": "full",
+      "title": "scroll",
+      "background": "hybrid",
+      "wall": "off",
+      "galaxies": 0
+    },
+    "consoleMessages": [],
+    "physicalQuest": "unmeasured",
+    "gpuExecution": "unmeasured",
+    "osClipboardPaste": "manual"
+  },
+  "publisher": "node node_modules/gh-pages/bin/gh-pages.js -d dist --nojekyll -m \"T07: panoramic cockpit and fixed-width filename marquee\"",
+  "rollback": "Cockpit Off/title Off, or republish retained T06e2 tree in a new Pages commit.",
+  "evidence": [
+    {
+      "path": "logs/t07/deploy/release.json",
+      "sha256": "09bdefe0646e223d73ae5d198de7536c028563a1c227b4ba83e5168ef38f0ce3"
+    },
+    {
+      "path": "logs/t07/deploy/published-ref.json",
+      "sha256": "c8edc30f840f65ae12d1e2616099c26e294941f7a9b5f0fc76bfaa23e3f04787"
+    },
+    {
+      "path": "logs/t07/deploy/published-commit.json",
+      "sha256": "7df25f5228ce8eb8119f6eb79f4b976ab314809c777fd13dc28f29452b438248"
+    },
+    {
+      "path": "logs/t07/deploy/pages-build.json",
+      "sha256": "746f8fd86833dba118c55fed40d9a0dfe2535ab0d1c2ebde385f6f5d1351981f"
+    },
+    {
+      "path": "logs/t07/deploy/source-inputs.json",
+      "sha256": "e281bf422e866d86b32d1cc16c71737542bd41a84e52128b4b13bdc9b61c6b5c"
+    },
+    {
+      "path": "logs/t07/deploy/public-verification.json",
+      "sha256": "acde96117f3dc25bbc2feefa5c6a9f93620a3582f8f3d2acc6d3f3ca3bf91eb4"
+    },
+    {
+      "path": "logs/t07/deploy/public-smoke.json",
+      "sha256": "41ffc236b642704f1f201649ba126bc1fd8b12ca88ad1c97deddac5523cbabf5"
+    },
+    {
+      "path": "logs/t07/deploy/public-playing.jpg",
+      "sha256": "b1218cc07db3871b67e90fc10671046edab491cad386e610a8675d74533e8a2c"
+    },
+    {
+      "path": "logs/t07/deploy/public-paused.jpg",
+      "sha256": "1f0c03240874083ea8f59643f00053597cf065702d0d3574992bd801eee56142"
+    },
+    {
+      "path": "logs/t07/deploy/public-settings-reload.jpg",
+      "sha256": "77d7ff87953ae48f4b17da9fb276a1ec9ebef6e432826ef8a7410e38ff26ceaf"
+    },
+    {
+      "path": "logs/t07/deploy/public-off.jpg",
+      "sha256": "fcf2e8a17f10fdf3faa9f7add9ac16d374ec935bd649f00eb2f2b022eabdbf9a"
+    },
+    {
+      "path": "logs/t07/deploy/public-defaults-restored.jpg",
+      "sha256": "d8623f9e8f9d3df9daa4555f9645f7b032fe454a1b480fb10937c3b91713a79b"
+    }
+  ]
+}

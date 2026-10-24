@@ -42,11 +42,15 @@ test('every setting is described once, round-trips through its control value; th
 test('the /xr/ player defaults are the authored menu values (ADR-009 Addenda T, AC)', () => {
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS, DEFAULT_XR_GENERATION_SETTINGS, normalizeXrSettings } = settingsModule();
     const expected = {
+        presentationMode: 'hybrid',
+        cockpit: 'full', cockpitTitle: 'scroll',
         playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'auto',
-        difficulty: 'ultra', activity: 'active', variation: 'expressive', handPattern: 'alternate', handLead: 'even', zones: 'cross',
-        wormhole: 'on', noteDesign: 'shard', quality: 'max', rateHz: '36', distanceMeters: '200', lineStroke: 30, sharpness: 100,
+        difficulty: 'ultra', activity: 'active', variation: 'expressive', handPattern: 'alternate', handLead: 'even', motionSafety: 'legacy', zones: 'cross',
+        wormhole: 'on', noteDesign: 'shard', noteHalos: 'off', spiralDirection: 'auto', quality: 'max', rateHz: '36', distanceMeters: '200', lineStroke: 30, sharpness: 100,
         intensity: 100, motion: 100, depth: 30, detail: 100,
         grainAmount: 30, grainDetail: 100, grainBloom: 100, grainWeave: 100, grainSpiral: 30, grainArms: 100, grainDensity: 100,
+        cosmosStars: 100, cosmosGalaxies: 0, cosmosSky: 0,
+        wallMode: 'off', wallMaterial: 'preset', wallAmount: 50, wallFringe: 50, wallCaustics: 50, wallWaves: 50, wallCracks: 50,
         materialRenderer: 'gpu', diagnostics: 'on', grainLines: 'gpu', backgroundPacing: 'adaptive', backgroundRaster: 'webgl', spatialField: 'particles'
     };
     assert.equal(Object.keys(expected).length, XR_SETTINGS.length, 'every setting has an authored default');
@@ -88,8 +92,8 @@ test('the canvas game menu offers every described setting exactly once, on its s
 test('every setting, including the newest ones, survives a reload through the per-browser store', () => {
     const { createXrSettingsStore } = load('xr/XrSettingsStore.ts');
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS } = settingsModule();
-    const values = { playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'auto', difficulty: 'ultra', wormhole: 'on', noteDesign: 'shard',
-        quality: '4k', rateHz: '36', lineStroke: 55, sharpness: 80, intensity: 20, motion: 40, depth: 60, detail: 10,
+    const values = { playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'auto', difficulty: 'ultra', wormhole: 'on', noteDesign: 'shard', noteHalos: 'phrase', spiralDirection: 'left',
+        quality: '4k', rateHz: '36', distanceMeters: '500', lineStroke: 55, sharpness: 80, intensity: 20, motion: 40, depth: 60, detail: 10,
         grainAmount: 70, grainDetail: 30, grainBloom: 60, grainWeave: 0, grainSpiral: 25, grainArms: 80, grainDensity: 10,
         materialRenderer: 'cpu', diagnostics: 'on' };
     let settings = DEFAULT_XR_SETTINGS;
@@ -105,7 +109,7 @@ test('the System tab: Material renderer (GPU), Diagnostics (On), Grain lines (GP
     const { XR_SETTINGS, XR_SETTING_SECTIONS, DEFAULT_XR_SETTINGS, changeScope, normalizeXrSettings } = settingsModule();
     assert.deepEqual({ ...XR_SETTING_SECTIONS.at(-1) }, { id: 'system', title: 'System', prefix: 'xr-system' });
     const system = XR_SETTINGS.filter(d => d.section === 'system');
-    assert.equal(system.map(d => `${d.id}:${d.choices.map(c => c.value).join('/')}`).join(), 'materialRenderer:gpu/cpu,diagnostics:off/on,grainLines:canvas/gpu,backgroundPacing:fixed/adaptive,backgroundRaster:gpu/cpu/webgl,spatialField:off/particles/full');
+    assert.equal(system.map(d => `${d.id}:${d.choices.map(c => c.value).join('/')}`).join(), 'presentationMode:hybrid/native-grains,materialRenderer:gpu/cpu,diagnostics:off/on,grainLines:canvas/gpu,backgroundPacing:fixed/adaptive,backgroundRaster:gpu/cpu/webgl,spatialField:off/particles/full');
     const defaults = { materialRenderer: 'gpu', diagnostics: true, grainLines: 'gpu', backgroundPacing: 'adaptive', backgroundRaster: 'webgl' };
     assert.deepEqual({ ...DEFAULT_XR_SETTINGS.system }, defaults);
     for (const descriptor of system) {
@@ -115,7 +119,8 @@ test('the System tab: Material renderer (GPU), Diagnostics (On), Grain lines (GP
         assert.equal(descriptor.read(next), other);
         assert.equal(changeScope(DEFAULT_XR_SETTINGS, next), 'presentation', descriptor.id);
         // Spatial field sits on this tab but is stored with the background it decorates.
-        const background = descriptor.id === 'spatialField' ? { ...next.background, spatialField: DEFAULT_XR_SETTINGS.background.spatialField } : next.background;
+        const background = descriptor.id === 'spatialField' ? { ...next.background, spatialField: DEFAULT_XR_SETTINGS.background.spatialField }
+            : descriptor.id === 'presentationMode' ? { ...next.background, presentationMode: DEFAULT_XR_SETTINGS.background.presentationMode } : next.background;
         assert.equal(json({ ...next, background, system: DEFAULT_XR_SETTINGS.system }), json(DEFAULT_XR_SETTINGS), 'only the System group changes');
     }
     assert.deepEqual({ ...normalizeXrSettings({ system: { materialRenderer: 'webgpu', diagnostics: 'yes', grainLines: 'svg', backgroundPacing: 'turbo', backgroundRaster: 'npu' } }).system },
@@ -131,6 +136,31 @@ function memoryStorage(initial = {}) {
     const data = { ...initial };
     return { data, writes: 0, getItem(key) { return key in data ? data[key] : null; }, setItem(key, value) { this.writes++; data[key] = value; } };
 }
+
+test('all background distances survive version-1 records and 500 m is actionable in the shared canvas menu', () => {
+    const { createXrSettingsStore, XR_SETTINGS_STORAGE_KEY } = load('xr/XrSettingsStore.ts');
+    const { DEFAULT_XR_SETTINGS } = settingsModule();
+    const { menuLayout, activateMenuItem, DEFAULT_MENU_STATE } = load('xr/XrMenuModel.ts');
+    const state = { ...DEFAULT_MENU_STATE, screen: 'settings', tab: 'background' };
+    const context = { settings: DEFAULT_XR_SETTINGS, sessionState: 'paused', trackTitle: '', busy: false,
+        canStart: true, status: '', results: null, input: 'desktop' };
+    const layout = menuLayout(state, context);
+    const options = layout.items.filter(item => item.id.startsWith('opt:distanceMeters:'));
+    assert.equal(options.map(item => item.label).join(), '40 m,100 m,200 m,500 m');
+    assert.ok(options.every(item => item.w > 0 && !item.disabled));
+    const command = activateMenuItem(state, context, layout, 'opt:distanceMeters:500').command;
+    assert.equal(command.type, 'settings-changed'); assert.equal(command.scope, 'presentation');
+    assert.equal(command.settings.background.distanceMeters, 500);
+    assert.equal(json(command.settings.generation), json(DEFAULT_XR_SETTINGS.generation), 'no chart change');
+    assert.equal(json(command.settings.play), json(DEFAULT_XR_SETTINGS.play), 'no play configuration change');
+    for (const distanceMeters of [40, 100, 200, 500]) {
+        const storage = memoryStorage({ [XR_SETTINGS_STORAGE_KEY]: json({ version: 1, background: { distanceMeters } }) });
+        const restored = createXrSettingsStore(storage).load();
+        assert.equal(restored.background.distanceMeters, distanceMeters, `legacy/current record at ${distanceMeters} m`);
+        createXrSettingsStore(storage).save(restored);
+        assert.equal(JSON.parse(storage.data[XR_SETTINGS_STORAGE_KEY]).version, 1, 'no record migration');
+    }
+});
 
 test('settings persist in one versioned record; corrupt, foreign or unavailable storage falls back to defaults without throwing', () => {
     const { createXrSettingsStore, XR_SETTINGS_STORAGE_KEY, MEMORY_ONLY_SETTINGS_STORE } = load('xr/XrSettingsStore.ts');
@@ -174,4 +204,18 @@ test('the session swaps its configuration only between runs and keeps the loaded
     assert.equal(session.getState(), 'ready');
     const snapshot = session.getSnapshot();
     assert.equal(snapshot.missCount, 0); assert.equal(snapshot.totalNotes, 1, 'the chart is kept');
+});
+
+test('Note halos is copied with settings, survives old-record migration and normalizes invalid values', () => {
+    const { DEFAULT_XR_SETTINGS, XR_SETTINGS, normalizeXrSettings } = settingsModule();
+    const { settingsReport } = load('xr/XrMenuModel.ts');
+    const halo = XR_SETTINGS.find(d => d.id === 'noteHalos');
+    const on = halo.write(DEFAULT_XR_SETTINGS, 'phrase');
+    const report = settingsReport(on);
+    assert.match(report, /Note halos: Phrase/);
+    const copy = JSON.parse(report.split('JSON: ')[1]);
+    assert.equal(copy.appearance.noteHalos, 'phrase');
+    assert.equal(normalizeXrSettings({ appearance: { noteDesign: 'classic' } }).appearance.noteHalos, 'off');
+    assert.equal(normalizeXrSettings({ appearance: { noteHalos: 'invalid' } }).appearance.noteHalos, 'off');
+    assert.equal(XR_SETTINGS.find(d => d.id === 'noteDesign').write(on, 'classic').appearance.noteHalos, 'phrase');
 });

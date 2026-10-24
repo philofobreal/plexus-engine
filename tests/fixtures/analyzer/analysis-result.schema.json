@@ -1092,6 +1092,9 @@
         },
         "eventTiming": {
           "$ref": "#/$defs/eventTiming"
+        },
+        "musicEvents": {
+          "$ref": "#/$defs/musicEvents"
         }
       }
     },
@@ -1718,6 +1721,162 @@
           }
         }
       ]
+    },
+    "timedMusicEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "acceptedEventIndex",
+        "sampleIndex",
+        "time",
+        "supportSamples",
+        "uncertaintySamples",
+        "phase",
+        "family",
+        "strength",
+        "legacyType"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "acceptedEventIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sampleIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "time": {
+          "type": "number",
+          "minimum": 0
+        },
+        "supportSamples": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "uncertaintySamples": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "accepted-attack"
+          ]
+        },
+        "family": {
+          "type": "string",
+          "enum": [
+            "transient"
+          ]
+        },
+        "strength": {
+          "type": "number",
+          "minimum": 0
+        },
+        "legacyType": {
+          "type": "integer",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        }
+      }
+    },
+    "musicEvents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "source",
+        "idScope",
+        "clock",
+        "confidence",
+        "capabilities",
+        "events"
+      ],
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": [
+            "accepted-visual-events-v1"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "accepted-visual"
+          ]
+        },
+        "idScope": {
+          "type": "string",
+          "enum": [
+            "this-analysis"
+          ]
+        },
+        "clock": {
+          "$ref": "#/$defs/featureClock"
+        },
+        "confidence": {
+          "type": "null"
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "acousticOnset",
+            "tonal",
+            "vocal",
+            "dominance"
+          ],
+          "properties": {
+            "acousticOnset": {
+              "type": "string",
+              "enum": [
+                "unverified"
+              ]
+            },
+            "tonal": {
+              "type": "string",
+              "enum": [
+                "unsupported"
+              ]
+            },
+            "vocal": {
+              "type": "string",
+              "enum": [
+                "unsupported"
+              ]
+            },
+            "dominance": {
+              "type": "string",
+              "enum": [
+                "unknown"
+              ]
+            }
+          }
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/timedMusicEvent"
+          }
+        }
+      }
     }
   }
 }

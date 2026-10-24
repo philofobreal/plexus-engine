@@ -4,6 +4,7 @@
 // plane analytically; the panel never takes part in gameplay.
 
 import * as THREE from 'three';
+import { XR_INSTRUMENT_FONT, XR_INSTRUMENT_INK } from './XrInstrumentStyle';
 import { MENU_CANVAS, menuItemAt, menuLayout, type XrMenuContext, type XrMenuItem, type XrMenuLayout, type XrMenuState,
     type XrMenuTextRole } from '../XrMenuModel';
 
@@ -13,15 +14,16 @@ export const MENU_PANEL_HEIGHT_METERS = MENU_PANEL_WIDTH_METERS * MENU_CANVAS.he
 export const MENU_DISTANCE_METERS = 1.3;
 export const MENU_BELOW_EYES_METERS = 0.12;
 
-const FONT = '"Segoe UI", "Roboto", system-ui, sans-serif';
+const FONT = XR_INSTRUMENT_FONT;
 const CYAN = '#4fd8ff';
 const MAGENTA = '#ff5fb4';
 const TEXT_COLORS: Record<XrMenuTextRole, string> = {
-    title: '#eef8ff', heading: '#eef8ff', label: '#cfe4f7', body: '#dbeaf8', muted: '#8ba6c4', value: '#eef8ff', accent: '#ffd35c'
+    title: XR_INSTRUMENT_INK, heading: XR_INSTRUMENT_INK, label: '#cfe4f7', body: '#dbeaf8', muted: '#8ba6c4', value: XR_INSTRUMENT_INK, accent: '#ffd35c'
 };
 const TEXT_WEIGHTS: Record<XrMenuTextRole, number> = { title: 800, heading: 700, label: 600, body: 500, muted: 500, value: 700, accent: 800 };
 
 const COMPACT_LABELS: Readonly<Record<string, string>> = {
+    Gameplay: 'Play', Character: 'Char.', Material: 'Mat.', Cockpit: 'Cabin',
     Performance: 'Perf.', Balanced: 'Bal.', Crystal: 'Cryst.', Choreography: 'Choreo',
     Expressive: 'Expr.', Alternate: 'Alt.', Crossover: 'Cross',
     'Background quality': 'BG quality', 'Background update': 'BG update', 'Background distance': 'BG distance',

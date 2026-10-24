@@ -28,6 +28,19 @@ export type NoteStatus = 'pending' | 'hit' | 'missed';
 
 export type JudgementGrade = 'perfect' | 'good';
 
+/** Synchronous notifications only: no judgment, reward, clock or session mutation authority. */
+export interface RhythmResolutionObserver {
+    onRunReset(): void;
+    /** Detached frozen note; null grade means miss, skipped identifies a seek past the note. */
+    onNoteResolved(note: RhythmNote, grade: JudgementGrade | null, songTime: number, skipped: boolean): void;
+}
+
+/** A faulty observer is detached; the committed gameplay operation still succeeds. */
+export interface RhythmResolutionObserverFailure {
+    readonly phase: 'reset' | 'resolved';
+    readonly reason: 'callback-threw' | 'async-callback';
+}
+
 export interface NoteRuntimeState {
     readonly note: RhythmNote;
     status: NoteStatus;

@@ -12,6 +12,8 @@ import type {
     JudgementGrade,
     NoteRuntimeState,
     RhythmNote,
+    RhythmResolutionObserver,
+    RhythmResolutionObserverFailure,
     RhythmSessionSnapshot,
     RhythmSessionState,
     SectionResult,
@@ -41,12 +43,31 @@ export class RhythmGameSession {
     private readonly activeNotes: NoteRuntimeState[] = [];
     /** Last snapshot handed out (reused while every field is unchanged). */
     private snapshot: RhythmSessionSnapshot | null = null;
+    private resolutionObserver: RhythmResolutionObserver | null = null;
+    private observerFailure: RhythmResolutionObserverFailure | null = null;
+    private notifying = false;
+    private resetNotificationPending = false;
+    /** At most one notification per chart note in an operation; empty without an observer. */
+    private pendingResolutions: { note: RhythmNote; grade: JudgementGrade | null; songTime: number; skipped: boolean }[] = [];
+
+    /** Attach before load/start. No replay; replacing/detaching clears pending work and faults. */
+    setResolutionObserver(observer: RhythmResolutionObserver | null): void {
+        this.assertNotNotifying();
+        this.resolutionObserver = observer;
+        this.observerFailure = null;
+        this.resetNotificationPending = false;
+        this.pendingResolutions.length = 0;
+    }
+
+    getResolutionObserverFailure(): RhythmResolutionObserverFailure | null { return this.observerFailure; }
 
     clear(): void {
+        this.assertNotNotifying();
         this.chart = [];
         this.scoring = buildScoringPlan([]);
         this.resetRuntimeState();
         this.state = 'idle';
+        this.flushNotifications();
     }
 
     constructor(config: RhythmGameConfig = DEFAULT_RHYTHM_GAME_CONFIG) {
@@ -58,10 +79,12 @@ export class RhythmGameSession {
      * its notes, but every runtime state (score, cursors) is reset and the session is 'ready'.
      */
     setConfig(config: RhythmGameConfig): boolean {
+        this.assertNotNotifying();
         if (this.state === 'playing') return false;
         this.config = config;
         this.resetRuntimeState();
         if (this.state !== 'idle') this.state = 'ready';
+        this.flushNotifications();
         return true;
     }
 
@@ -70,10 +93,12 @@ export class RhythmGameSession {
      * `sections` (the analyzer's published sections, plain data) weight the score by dramaturgy.
      */
     loadChart(chart: readonly RhythmNote[], sections: readonly ScoringSectionSource[] = []): void {
+        this.assertNotNotifying();
         this.chart = chart;
         this.scoring = buildScoringPlan(chart, sections);
         this.resetRuntimeState();
         this.state = 'ready';
+        this.flushNotifications();
     }
 
     private resetRuntimeState(): void {
@@ -89,37 +114,47 @@ export class RhythmGameSession {
         this.missCount = 0;
         this.missScanCursor = 0;
         this.activeWindowStart = 0;
+        this.pendingResolutions.length = 0;
+        this.resetNotificationPending = this.resolutionObserver !== null;
     }
 
     start(): void {
+        this.assertNotNotifying();
         if (this.state !== 'ready' && this.state !== 'finished') return;
         this.resetRuntimeState();
         this.state = 'playing';
+        this.flushNotifications();
     }
 
     pause(): void {
+        this.assertNotNotifying();
         if (this.state !== 'playing') return;
         this.state = 'paused';
     }
 
     resume(): void {
+        this.assertNotNotifying();
         if (this.state !== 'paused') return;
         this.state = 'playing';
     }
 
     /** Fully resynchronizes note state and cursors; the host pairs this with an AudioEngine seek(0)/play(0). */
     restart(): void {
+        this.assertNotNotifying();
         this.resetRuntimeState();
         this.state = 'playing';
+        this.flushNotifications();
     }
 
     finish(): void {
+        this.assertNotNotifying();
         if (this.state !== 'playing' && this.state !== 'paused') return;
         for (const entry of this.noteStates) {
             if (entry.status === 'pending') { entry.status = 'missed'; this.missCount++; this.recordMiss(entry, entry.note.time); }
         }
         this.combo = 0;
         this.state = 'finished';
+        this.flushNotifications();
     }
 
     getState(): RhythmSessionState {
@@ -132,6 +167,7 @@ export class RhythmGameSession {
      * O(chart length); a discrete user action, not a per-frame call.
      */
     seek(songTime: number): void {
+        this.assertNotNotifying();
         if (!Number.isFinite(songTime)) return;
         // A seek starts a fresh practice score, so rewind cannot farm already-scored notes.
         this.resetRuntimeState();
@@ -146,6 +182,7 @@ export class RhythmGameSession {
         this.activeWindowStart = cursor;
         this.combo = 0;
         this.missCount = cursor;
+        this.flushNotifications();
     }
 
     /**
@@ -154,6 +191,7 @@ export class RhythmGameSession {
      * discontinuity. Returns the ids of notes newly marked missed this call.
      */
     update(songTime: number): string[] {
+        this.assertNotNotifying();
         if (this.state !== 'playing') return [];
         const missedIds: string[] = [];
         while (this.missScanCursor < this.noteStates.length) {
@@ -170,11 +208,13 @@ export class RhythmGameSession {
             }
             this.missScanCursor++;
         }
+        this.flushNotifications();
         return missedIds;
     }
 
     /** Resolves at most one note per call; a whiff (no valid candidate) never mutates state. */
     attemptStrike(attempt: StrikeAttempt): StrikeResult | null {
+        this.assertNotNotifying();
         if (this.state !== 'playing') return null;
         const result = judgeStrike(attempt, this.getActiveNotes(attempt.songTime), this.config);
         if (result) {
@@ -183,6 +223,7 @@ export class RhythmGameSession {
             if (this.combo > this.maxCombo) this.maxCombo = this.combo;
             this.recordHit(result.noteId, result.grade, attempt.songTime);
         }
+        this.flushNotifications();
         return result;
     }
 
@@ -191,6 +232,8 @@ export class RhythmGameSession {
      * through the approach horizon. Advances a monotonic cursor rather than scanning the full chart.
      */
     getActiveNotes(songTime: number): readonly NoteRuntimeState[] {
+        // This accessor advances a cursor/scratch array; it is not a read-only observer API.
+        this.assertNotNotifying();
         const lowerBound = songTime - this.config.missWindowSec - this.config.resolvedNoteLifetimeSec;
         const upperBound = songTime + this.config.approachTimeSec;
         while (
@@ -252,6 +295,7 @@ export class RhythmGameSession {
         if (grade === 'perfect') result.perfects++;
         result.points += points;
         this.resolve(result, songTime);
+        this.queueResolution(this.chart[index], grade, songTime, false);
     }
 
     private recordMiss(entry: NoteRuntimeState, songTime: number, breaksMultiplier = true): void {
@@ -261,6 +305,45 @@ export class RhythmGameSession {
         const result = this.sectionResults[this.scoring.noteSection[index]];
         result.misses++;
         this.resolve(result, songTime);
+        this.queueResolution(entry.note, null, songTime, !breaksMultiplier);
+    }
+
+    private assertNotNotifying(): void {
+        if (this.notifying) throw new Error('Resolution observers cannot mutate or advance the session');
+    }
+
+    private queueResolution(note: RhythmNote, grade: JudgementGrade | null, songTime: number, skipped: boolean): void {
+        if (this.resolutionObserver) this.pendingResolutions.push({ note: Object.freeze({ ...note }), grade, songTime, skipped });
+    }
+
+    /** Dispatch only after the entire public operation commits, including seek/finish counters. */
+    private flushNotifications(): void {
+        const observer = this.resolutionObserver;
+        if (!observer || (!this.resetNotificationPending && !this.pendingResolutions.length)) return;
+        let phase: RhythmResolutionObserverFailure['phase'] = 'reset';
+        let reason: RhythmResolutionObserverFailure['reason'] = 'callback-threw';
+        // TypeScript's void callbacks can still return a Promise. Reject async consumers and
+        // consume its rejection so it cannot escape as an unhandled rejection.
+        const synchronous = (result: unknown) => {
+            if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
+                reason = 'async-callback';
+                void Promise.resolve(result).catch(() => undefined);
+                throw new Error('Resolution observers must be synchronous');
+            }
+        };
+        this.notifying = true;
+        try {
+            if (this.resetNotificationPending) synchronous(observer.onRunReset());
+            phase = 'resolved';
+            for (const event of this.pendingResolutions) synchronous(observer.onNoteResolved(event.note, event.grade, event.songTime, event.skipped));
+        } catch {
+            this.resolutionObserver = null;
+            this.observerFailure = Object.freeze({ phase, reason });
+        } finally {
+            this.notifying = false;
+            this.resetNotificationPending = false;
+            this.pendingResolutions.length = 0;
+        }
     }
 
     /** Completes a section once its last note resolves; a clean section earns its bonuses. */

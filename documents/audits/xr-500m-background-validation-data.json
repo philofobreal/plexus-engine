@@ -1,0 +1,79 @@
+{
+  "task": "T03",
+  "tests": 1559,
+  "pass": 1550,
+  "fail": 9,
+  "durationMs": 280684.2008,
+  "failures": [
+    {
+      "location": "tests\\wormhole-clip-profile.test.mjs:146:1",
+      "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+      "assertion": "AssertionError [ERR_ASSERTION]: vos-wh-drift.json must not reset user-global wormholeStarfield"
+    },
+    {
+      "location": "tests\\wormhole-clip-profile.test.mjs:237:1",
+      "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+      "assertion": "AssertionError [ERR_ASSERTION]: establish remains visibly above the opacity floor"
+    },
+    {
+      "location": "tests\\wormhole-clip-profile.test.mjs:250:1",
+      "name": "weak roles pin a deep-perspective depth and continuity profile",
+      "assertion": "AssertionError [ERR_ASSERTION]: establish depth\n  \n  2.03136 !== 4"
+    },
+    {
+      "location": "tests\\wormhole-clip-profile.test.mjs:267:1",
+      "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+      "assertion": "AssertionError [ERR_ASSERTION]: deep drift deeper than establish"
+    },
+    {
+      "location": "tests\\wormhole-geometry-lfo-integration.test.mjs:175:1",
+      "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+      "assertion": "AssertionError [ERR_ASSERTION]: vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+    },
+    {
+      "location": "tests\\wormhole-preset-differentiation.test.mjs:84:1",
+      "name": "wormhole factory presets keep a minimum normalized weighted separation",
+      "assertion": "AssertionError [ERR_ASSERTION]: vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+    },
+    {
+      "location": "tests\\wormhole-preset-differentiation.test.mjs:109:1",
+      "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+      "assertion": "AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:\n  \n    assert.ok(role('dissolve') > role('drift'))"
+    },
+    {
+      "location": "tests\\wormhole-projected-motion.test.mjs:109:1",
+      "name": "projected forward motion preserves overdrive > punch > drive > drift",
+      "assertion": "AssertionError [ERR_ASSERTION]: {\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+    },
+    {
+      "location": "tests\\wormhole-projected-motion.test.mjs:116:1",
+      "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+      "assertion": "AssertionError [ERR_ASSERTION]: 389.64890777178124 vs 471.543038051684"
+    }
+  ],
+  "baselineProductFailures": 9,
+  "unexpectedFailures": [],
+  "comparison": "exact location, name and assertion text against T00; environment failures excluded by file identity",
+  "artifacts": [
+    {
+      "path": "logs/t03/targeted.log",
+      "sha256": "bb868ed4cb60567bfdf81e44c242c6cd7a814c81af352107c61af484d6ec0880"
+    },
+    {
+      "path": "logs/t03/build.log",
+      "sha256": "d62fdce477f9bfb07a200e226f13f5760a2f53e9fd4ef17d0cafa4874a966bd4"
+    },
+    {
+      "path": "logs/t03/tests.log",
+      "sha256": "d2969cb9ba9970bfeab09f8c68df2979995e0a98362d70d2c73bd8b0bb60eec9"
+    },
+    {
+      "path": "logs/t03/http-smoke.json",
+      "sha256": "6b01faffd11daa309606a9289a0fcd784880c6cf55d249be06ebf8e12b472db4"
+    },
+    {
+      "path": "logs/t03/500m-reloaded.jpg",
+      "sha256": "e0a8abe35e6c0109b1708e284c41d90def6a05c0f8b63743e8904770f527418d"
+    }
+  ]
+}

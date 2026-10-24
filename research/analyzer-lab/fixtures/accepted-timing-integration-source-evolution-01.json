@@ -18,6 +18,74 @@
       "replacementSha256": "70149b8ef2549517433dd451a038704705fa4481f0eebda0149497ed95cb9d66",
       "reviewedBy": "Codex integration owner with independent onset code reviewer",
       "reviewedReason": "Accept the distinct corrected v2-dc1 publication without dropping historical v1/v2; retain all clock/count/support/order gates and restrict gradual-attack to v2 families. Unknown identity and historical-publication regression checks remain."
+    },
+    {
+      "path": "src/types/CanvasVisualSource.ts",
+      "predecessorSha256": "4ee966c35f677242e1d1245050e095f623e0119205e723a84e8234010305c2ff",
+      "replacementSha256": "da037164e767dacf653d1c206ba9549df318f93bab489bd2d9a9571d0e8b835e",
+      "reviewedBy": "Codex single integration owner, T06e wall contract/source review",
+      "reviewedReason": "Optional wall-only preset/manual presentation; no audio/analyzer clock, event publication, raster frame or exact lease layout change. Wall controls use existing event/preset/gain owners and renderer handoff. Preserve historical measurements/source, entire prior manifest and superseded reviews. Native spatial, worker lease/race, old defaults, preset/Off and full regression gates accompany this addition. Predecessor manifest: documents/tests/accepted-timing-source-evolution.pre-t06e.json",
+      "supersededReplacements": [
+        {
+          "sha256": "c8af1d8a1ed1c42c343f2a3067dbfff76abb12078f2cead750425105105589cb",
+          "reviewedBy": "Codex single integration owner, T04a source review",
+          "reviewedReason": "Add preset-owned signed coherent spiral tuning and optional absolute plan/presentation direction. Preserve analyzer source, measured fixtures and historical replay; target signed morph, preset transfer, independent path bend, worker presentation and default compatibility regressions. Full history/export parity is deferred to T04b."
+        },
+        {
+          "sha256": "4aaef86500c8dc02f87d53c5d9eb93484cac4adfb315f3b79523736e9e112bb4",
+          "reviewedBy": "Codex single integration owner, T06d contract/source review",
+          "reviewedReason": "Add optional private embedded-host global Cosmos masters to presentation, with no clock, audio, analyzer, plan or existing raster payload layout change. Explicit settings flow through the existing revision/persistence/Copy paths. Native geometry, worker lease/pixel parity, old-record defaults and cumulative renderer tests cover this additive field. Prior manifest retained at documents/tests/accepted-timing-source-evolution.pre-t06d.json. No historical measurement or retained source rewritten."
+        }
+      ]
+    },
+    {
+      "path": "src/types/WormholeSpatialFrame.ts",
+      "predecessorSha256": "38d5c53f0d8af16c416779fd3112c2c42e7c73aa16dcf612d6bdb664f9574b0a",
+      "replacementSha256": "8973b4abdfe7aefe1144ad83aa10e984639443928cf0a66305501d8d01de4127",
+      "reviewedBy": "Codex single integration owner, T04a source review",
+      "reviewedReason": "Add preset-owned signed coherent spiral tuning and optional absolute plan/presentation direction. Preserve analyzer source, measured fixtures and historical replay; target signed morph, preset transfer, independent path bend, worker presentation and default compatibility regressions. Full history/export parity is deferred to T04b."
+    },
+    {
+      "path": "src/types/index.ts",
+      "predecessorSha256": "cb8fc311a35415951019a814f1090806b1db53e78ee4fc9f3b8037944b4dbc32",
+      "replacementSha256": "546dd306194a40c60c274a87d8b599437d5ef2916b9200a0c7ec6a9627af0345",
+      "reviewedBy": "Single integration owner",
+      "reviewedReason": "Additive T11a accepted-event provenance layer only; no event time/intensity/type, DSP, chart, cache or default change. Functional legacy parity and cumulative regressions cover the addition. No copied source tree; existing measured predecessor retained.",
+      "supersededReplacements": [
+        {
+          "sha256": "02c041e8cef7a9ce2008023c74f6edc9265f1f7d69690a2af031785f1971893b",
+          "reviewedBy": "Codex single integration owner, T04a source review",
+          "reviewedReason": "Add preset-owned signed coherent spiral tuning and optional absolute plan/presentation direction. Preserve analyzer source, measured fixtures and historical replay; target signed morph, preset transfer, independent path bend, worker presentation and default compatibility regressions. Full history/export parity is deferred to T04b."
+        }
+      ]
+    },
+    {
+      "path": "src/types/WormholeWorkerProtocol.ts",
+      "predecessorSha256": "47d573b2b80595b341a88e7a628ebbb7f0e74fb43d76c8e4c47d90593f56a305",
+      "replacementSha256": "e98629c597ab501cad6d7b1ef3ab6b878fdd23abb3db6e4ccb89c7699b88d0df",
+      "reviewedBy": "Codex single integration owner, T05c source and contract review",
+      "reviewedReason": "Keep protocol v1 preview unchanged and add separately negotiated v2 exact frame identity, atomic result and idempotent lease release. This is a render contract migration, not analyzer timing work: analyzer implementation, original fixture bytes, measured source archives and numerical measurements are retained. New v2 rejection/race/cancellation/ownership tests and canonical sampler fixtures accompany the change. Previous evolution manifest retained in documents/tests/accepted-timing-source-evolution.pre-t05c.json."
+    },
+    {
+      "path": "src/analyzer/BandOnsets.ts",
+      "predecessorSha256": "8570f622b05882fd90263ec9ca9e70e9b77289234db4a7e5aac8f022c249dba9",
+      "replacementSha256": "38523259edae7e9ae7bf2d0c719d3ea29a72600961e6040ba8710bef6dd0cb4e",
+      "reviewedBy": "Single integration owner",
+      "reviewedReason": "Equivalent bucket search retained after functional and nine exact-PCM full-output comparisons. Experimental Timing UI and Q3 removed by user request."
+    },
+    {
+      "path": "src/analyzer/analyzeAudio.ts",
+      "predecessorSha256": "ab59c383d3ae78bd19ad2148e780dd63b2cde6fcedc1ed6f87899d9c73acc042",
+      "replacementSha256": "085d4ce446695f33590696f490f61b0dad706c345174b772a9e6216b6e65daee",
+      "reviewedBy": "Single integration owner",
+      "reviewedReason": "Additive T11a accepted-event provenance layer only; no event time/intensity/type, DSP, chart, cache or default change. Functional legacy parity and cumulative regressions cover the addition. No copied source tree; existing measured predecessor retained."
+    },
+    {
+      "path": "src/analyzer/normalizeAnalysisResult.ts",
+      "predecessorSha256": "a1fe940ac9f6e907fba909d0e501ef77252ea56d281b5f709f0ac01a4ab0a94e",
+      "replacementSha256": "9c034c50af0285f4b24df3436d514e11a090d2cfb92a2f18340db671c7b3d7de",
+      "reviewedBy": "Single integration owner",
+      "reviewedReason": "Additive T11a accepted-event provenance layer only; no event time/intensity/type, DSP, chart, cache or default change. Functional legacy parity and cumulative regressions cover the addition. No copied source tree; existing measured predecessor retained."
     }
   ]
 }

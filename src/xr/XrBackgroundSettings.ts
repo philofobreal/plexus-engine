@@ -4,6 +4,7 @@
 
 import { XR_WORMHOLE_BOOSTS, XR_WORMHOLE_MACROS } from '../config/xrWormholeTuning';
 import type { GrainMaterialBoostKey } from '../types/CanvasVisualSource';
+import { DEFAULT_WORMHOLE_WALL, WORMHOLE_WALL_GAIN_FIELDS, type WormholeWallPresentation } from '../types/WormholeWallPresentation';
 
 /** Raster resolution of the single background plane. */
 export type XrBackgroundQuality = 'performance' | 'balanced' | 'high' | 'ultra' | 'crystal' | 'max' | '4k';
@@ -14,7 +15,7 @@ export type XrBackgroundRate = 24 | 36;
  * image keeps its angular size, raster density and screen coverage (no quality or fill-rate change);
  * only stereo disparity and head-motion parallax shrink, so a farther plane reads as deeper space.
  */
-export type XrBackgroundDistance = 40 | 100 | 200;
+export type XrBackgroundDistance = 40 | 100 | 200 | 500;
 /**
  * The Wormhole's spatial field around the runway (shown only with the Wormhole): off, the particles
  * alone, or the particles and the soft wisps. A cost switch for the headset: every step is one draw.
@@ -59,6 +60,11 @@ export function grainMaterialBoosts(grain: XrGrainMaterial): Record<GrainMateria
 }
 
 export interface XrBackgroundSettings {
+    readonly wall: Readonly<WormholeWallPresentation>;
+    /** Existing user-global masters, not authored preset geometry. */
+    readonly cosmos: Readonly<{ stars: number; galaxies: number; sky: number }>;
+    /** Device presentation choice; artistic grain parameters remain preset-owned. */
+    readonly presentationMode: 'hybrid' | 'native-grains';
     /** The Wormhole background is shown (on by default; it is the heaviest part of the frame). */
     readonly wormhole: boolean;
     readonly quality: XrBackgroundQuality;
@@ -84,7 +90,7 @@ export const MAX_BACKGROUND_SHARPEN = 1.5;
 
 export const XR_BACKGROUND_QUALITIES: readonly XrBackgroundQuality[] = ['performance', 'balanced', 'high', 'ultra', 'crystal', 'max', '4k'];
 export const XR_BACKGROUND_RATES: readonly XrBackgroundRate[] = [24, 36];
-export const XR_BACKGROUND_DISTANCES: readonly XrBackgroundDistance[] = [40, 100, 200];
+export const XR_BACKGROUND_DISTANCES: readonly XrBackgroundDistance[] = [40, 100, 200, 500];
 export const XR_SPATIAL_FIELD_SETTINGS: readonly XrSpatialFieldSetting[] = ['off', 'particles', 'full'];
 
 export const XR_BACKGROUND_RESOLUTION: Readonly<Record<XrBackgroundQuality, { readonly width: number; readonly height: number }>> = {
@@ -111,11 +117,14 @@ export const XR_BACKGROUND_MIPMAPPED: ReadonlySet<XrBackgroundQuality> = new Set
  * starting state and the menu's defaults are one set of values.
  */
 export const DEFAULT_XR_BACKGROUND_SETTINGS: XrBackgroundSettings = Object.freeze({
+    presentationMode: 'hybrid',
     wormhole: true, quality: 'max', rateHz: 36, distanceMeters: 200, spatialField: 'particles', lineStroke: XR_WORMHOLE_BOOSTS.lineWeight, sharpness: 1,
     character: Object.freeze({ intensity: XR_WORMHOLE_MACROS.intensity, motion: XR_WORMHOLE_MACROS.motion,
         depth: XR_WORMHOLE_MACROS.depth, detail: XR_WORMHOLE_MACROS.detail }),
     grain: Object.freeze(Object.fromEntries((Object.entries(XR_GRAIN_MATERIAL_KEYS) as [keyof XrGrainMaterial, GrainMaterialBoostKey][])
-        .map(([id, key]) => [id, XR_WORMHOLE_BOOSTS[key]])) as unknown as XrGrainMaterial)
+        .map(([id, key]) => [id, XR_WORMHOLE_BOOSTS[key]])) as unknown as XrGrainMaterial),
+    cosmos: Object.freeze({ stars: 1, galaxies: 0, sky: 0 }),
+    wall: DEFAULT_WORMHOLE_WALL
 });
 
 /** Unknown or missing fields fall back to the defaults; Line stroke and sharpness are clamped to [0, 1]. */
@@ -128,7 +137,11 @@ export function normalizeBackgroundSettings(settings?: Partial<XrBackgroundSetti
     };
     const character = settings?.character && typeof settings.character === 'object' ? settings.character : undefined;
     const grain = settings?.grain && typeof settings.grain === 'object' ? settings.grain : undefined;
+    const cosmos=settings?.cosmos&&typeof settings.cosmos==='object'?settings.cosmos:undefined;
+    const wall=settings?.wall&&typeof settings.wall==='object'?settings.wall:undefined;
+    const master=(value:unknown,max:number,fallback=1)=>value===undefined||value===null||!Number.isFinite(Number(value))?fallback:Math.max(0,Math.min(max,Number(value)));
     return {
+        presentationMode: settings?.presentationMode === 'native-grains' ? 'native-grains' : 'hybrid',
         wormhole: typeof settings?.wormhole === 'boolean' ? settings.wormhole : d.wormhole,
         quality: settings?.quality && XR_BACKGROUND_QUALITIES.includes(settings.quality) ? settings.quality : d.quality,
         rateHz: settings?.rateHz && XR_BACKGROUND_RATES.includes(settings.rateHz) ? settings.rateHz : d.rateHz,
@@ -141,7 +154,11 @@ export function normalizeBackgroundSettings(settings?: Partial<XrBackgroundSetti
             depth: unit(character?.depth, d.character.depth), detail: unit(character?.detail, d.character.detail)
         },
         grain: Object.fromEntries((Object.keys(XR_GRAIN_MATERIAL_KEYS) as (keyof XrGrainMaterial)[])
-            .map(id => [id, unit(grain?.[id], d.grain[id])])) as unknown as XrGrainMaterial
+            .map(id => [id, unit(grain?.[id], d.grain[id])])) as unknown as XrGrainMaterial,
+        cosmos: { stars: master(cosmos?.stars,2,d.cosmos.stars), galaxies: master(cosmos?.galaxies,2,d.cosmos.galaxies), sky: master(cosmos?.sky,1,d.cosmos.sky) },
+        wall: {mode:wall?.mode==='preset'||wall?.mode==='on'?wall.mode:'off',
+            material:wall?.material==='membrane'||wall?.material==='mosaic'?wall.material:'preset',
+            ...Object.fromEntries(WORMHOLE_WALL_GAIN_FIELDS.map(field=>[field,unit(wall?.[field],.5)]))} as WormholeWallPresentation
     };
 }
 

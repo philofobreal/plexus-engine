@@ -413,7 +413,7 @@ test('the renderer runs the post chain exactly once, after the finished identity
   // final composite rather than once per participating identity.
   assert.match(
     renderer,
-    /identityTransitionController\.draw\(ct, backend, compositor, styleRegistry, particles, shockwaves\);\r?\n\s*\} else \{\r?\n\s*styleRegistry\.get\(State\.visualMode\)\.draw\(backend, particles, shockwaves\);\r?\n\s*\}[\s\S]{0,400}?postFxPipeline\.render\(/
+    /identityTransitionController\.draw\(ct, backend, compositor, styleRegistry, particles, shockwaves, drawIdentity\);\r?\n\s*\} else \{\r?\n\s*drawIdentity\(styleRegistry\.get\(State\.visualMode\), backend, particles, shockwaves, \{ timeSec: ct, advanceSharedSimulation: true \}\);\r?\n\s*\}[\s\S]{0,400}?postFxPipeline\.render\(/
   );
   assert.doesNotMatch(renderer, /compositor[\s\S]{0,200}postFxPipeline\.render\([\s\S]{0,200}composite\(/);
 });

@@ -23,7 +23,10 @@ function documentCanvas(width: number, height: number): HTMLCanvasElement {
  */
 export class Canvas2DRendererBackend implements VisualRendererBackend {
     readonly canvas: HTMLCanvasElement;
-    readonly compactMaterialPreview = true;
+    compactMaterialPreview = true;
+    private logicalWidth: number | null = null;
+    private logicalHeight: number | null = null;
+    private transparentBackground = false;
     frameCount = 0;
     private readonly ctx: CanvasRenderingContext2D;
     private readonly raster: CanvasFieldRasterSurface;
@@ -42,11 +45,25 @@ export class Canvas2DRendererBackend implements VisualRendererBackend {
         if (!ctx) throw new Error('Wormhole canvas is unavailable.');
         this.ctx = ctx; ctx.lineCap = 'round';
     }
-    get width(): number { return this.canvas.width; }
-    get height(): number { return this.canvas.height; }
+    get width(): number { return this.logicalWidth ?? this.canvas.width; }
+    get height(): number { return this.logicalHeight ?? this.canvas.height; }
+    /** Worker preview keeps host coordinates while reducing only the backing-store resolution. */
+    setPreviewSize(width: number, height: number, density: number, compact: boolean, transparent: boolean): void {
+        this.logicalWidth = width; this.logicalHeight = height;
+        this.compactMaterialPreview = compact; this.transparentBackground = transparent;
+        const w = Math.max(1, Math.round(width * density)), h = Math.max(1, Math.round(height * density));
+        if (this.canvas.width !== w || this.canvas.height !== h) {
+            this.canvas.width = w; this.canvas.height = h;
+            this.appliedR = this.appliedG = this.appliedB = Number.NaN;
+            this.alpha = 1; this.cap = 'round'; this.ctx.lineCap = 'round';
+        }
+        this.ctx.setTransform(w / width, 0, 0, h / height, 0, 0);
+    }
     background(r: number, g: number, b: number, a = 255): void {
         this.opaque(); this.ctx.save(); this.ctx.fillStyle = `rgba(${r},${g},${b},${a / 255})`;
-        this.ctx.clearRect(0, 0, this.width, this.height); this.ctx.fillRect(0, 0, this.width, this.height); this.ctx.restore();
+        this.ctx.clearRect(0, 0, this.width, this.height);
+        if (!this.transparentBackground) this.ctx.fillRect(0, 0, this.width, this.height);
+        this.ctx.restore();
     }
     noStroke(): void { this.strokeActive = false; }
     noFill(): void { this.fillActive = false; }

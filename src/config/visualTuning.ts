@@ -121,6 +121,7 @@ export const defaultVisualTuning: VisualTuningConfig = {
     // spiral-arm read. Density 0.34 (2 grain copies) was the measured perf/appearance balance:
     // further copies cost materially more per frame for a subtle density gain.
     wormholeSpiral: 1.2,
+    wormholeSpiralDirection: 1,
     wormholeSpiralArms: 2,
     wormholeGrainDensity: 0.34,
     // Renderer-level post FX (ADR-007). Identity-independent, so these are deliberately NOT in
@@ -378,6 +379,12 @@ const allVisualTuningControls: VisualTuningControl[] = [
         group: 'Wormhole', min: 0, max: 4, step: 0.05, unit: 'turn'
     },
     {
+        key: 'wormholeSpiralDirection', label: 'Spiral direction', group: 'Wormhole',
+        description: 'Preset-owned grain/arm twist direction. Visible with nonzero Spiral twist and Grain material; independent of path bend and lens swirl.',
+        min: -1, max: 1, step: 1, unit: '',
+        options: [{ value: -1, label: 'Left' }, { value: 0, label: 'Straight' }, { value: 1, label: 'Right' }]
+    },
+    {
         key: 'wormholeSpiralArms',
         label: 'Spiral arms',
         description: 'Number of density-wave arms brightening the grains on their crest. Zero disables the density wave.',
@@ -447,6 +454,40 @@ export function cloneDefaultVisualTuning(): VisualTuningConfig {
     return { ...defaultVisualTuning };
 }
 
+/** Coherent twist only; path bend, lens swirl and local grain currents keep their own laws. */
+export function normalizeSpiralDirection(value: unknown): number {
+    return typeof value === 'number' && Number.isFinite(value) ? Math.min(1, Math.max(-1, value)) : 1;
+}
+
+export function effectiveWormholeSpiral(tuning: Pick<VisualTuningConfig, 'wormholeSpiral'> & Partial<Pick<VisualTuningConfig, 'wormholeSpiralDirection'>>): number {
+    const magnitude = Number.isFinite(tuning.wormholeSpiral) ? Math.max(0, tuning.wormholeSpiral) : 0;
+    return magnitude === 0 ? 0 : magnitude * normalizeSpiralDirection(tuning.wormholeSpiralDirection);
+}
+
+/** Interpolate signed twist once, then encode it with the interpolated nonnegative magnitude. */
+export function morphWormholeSpiral(current: VisualTuningConfig, target: VisualTuningConfig, amount: number): void {
+    const t = Math.min(1, Math.max(0, Number.isFinite(amount) ? amount : 0));
+    const a = Math.max(0, Number.isFinite(current.wormholeSpiral) ? current.wormholeSpiral : 0);
+    const b = Math.max(0, Number.isFinite(target.wormholeSpiral) ? target.wormholeSpiral : 0);
+    const signed = effectiveWormholeSpiral(current) + (effectiveWormholeSpiral(target) - effectiveWormholeSpiral(current)) * t;
+    current.wormholeSpiral = a + (b - a) * t;
+    current.wormholeSpiralDirection = current.wormholeSpiral > 0 ? normalizeSpiralDirection(signed / current.wormholeSpiral)
+        : normalizeSpiralDirection(target.wormholeSpiralDirection);
+}
+
+/** Preset Straight disables pair variation; otherwise absolute point override or authored/legacy +1. */
+export function presetSpiralDirection(payload: unknown, pointDirection?: -1 | 1, foreignFallback?: number): number {
+    const candidate = payload && typeof payload === 'object' ? payload as { visualMode?: unknown; visualTuning?: unknown; wormholeSpiralDirection?: unknown } : {};
+    // An automation preset for another identity cannot reset this Wormhole-owned field.
+    if (foreignFallback !== undefined && typeof candidate.visualMode === 'string' && candidate.visualMode !== 'cosmic-wormhole') {
+        return normalizeSpiralDirection(foreignFallback);
+    }
+    const source = candidate.visualTuning && typeof candidate.visualTuning === 'object'
+        ? candidate.visualTuning as { wormholeSpiralDirection?: unknown } : candidate;
+    const authored = normalizeSpiralDirection(source.wormholeSpiralDirection);
+    return authored === 0 ? 0 : normalizeSpiralDirection(pointDirection ?? authored);
+}
+
 /**
  * Tuning keys the MVP surface (src/ui/mvp/) locks to a fixed value regardless of what a
  * preset/automation point requests. The ownership registry for a surface-level override lives
@@ -489,6 +530,8 @@ export function normalizeVisualTuningConfig(payload: unknown, current?: VisualTu
 
     normalizeWormholeLfoWaveformKey(source, next, 'wormholeRadiusLfoWaveform');
     normalizeWormholeLfoWaveformKey(source, next, 'wormholeDepthLfoWaveform');
+    next.wormholeSpiralDirection = normalizeSpiralDirection(source && Object.prototype.hasOwnProperty.call(source, 'wormholeSpiralDirection')
+        ? source.wormholeSpiralDirection : next.wormholeSpiralDirection);
 
     return next;
 }
@@ -641,14 +684,12 @@ export function applyTuningMorph(
     transitionSpeed = target.transitionSpeed,
     deltaSec = 1 / 60
 ): VisualTuningConfig {
-    const baseStep = getCurvedMorphStep(target, transitionSpeed);
-    const safeDelta = Math.max(0, Number.isFinite(deltaSec) ? deltaSec : 1 / 60);
-    // Exponential composition makes equal song-time intervals equivalent at 30/60/120 FPS.
-    const speed = safeDelta === 0 ? 0 : baseStep >= 1 ? 1 : 1 - Math.pow(1 - baseStep, safeDelta * 60);
+    const speed = tuningMorphAmount(target, transitionSpeed, deltaSec);
 
     for (const key of visualTuningKeys) {
         const currentValue = current[key];
         const targetValue = target[key];
+        if (key === 'wormholeSpiral' || key === 'wormholeSpiralDirection') continue;
         if (typeof currentValue !== 'number' || typeof targetValue !== 'number') continue;
 
         // JAVÍTVA: A diszkrét (egész) beállításokat ne interpoláljuk, hanem azonnal pattintsuk be,
@@ -674,6 +715,7 @@ export function applyTuningMorph(
             : clampBetween(next, currentValue, targetValue);
     }
 
+    morphWormholeSpiral(current, target, speed);
     return current;
 }
 
@@ -684,7 +726,14 @@ export function tuningMorphDeltaSec(currentTime: number, previousTime: number | 
     return delta >= 0 && delta <= 0.25 ? delta : 0;
 }
 
-function getCurvedMorphStep(target: VisualTuningConfig, transitionSpeed: number): number {
+/** The same exponential morph law, evaluable from an absolute song-time anchor. */
+export function tuningMorphAmount(target: Pick<VisualTuningConfig, 'morphDurationSec' | 'morphCurveValue'>, transitionSpeed: number, deltaSec: number): number {
+    const baseStep = getCurvedMorphStep(target, transitionSpeed);
+    const safeDelta = Math.max(0, Number.isFinite(deltaSec) ? deltaSec : 1 / 60);
+    return safeDelta === 0 ? 0 : baseStep >= 1 ? 1 : 1 - Math.pow(1 - baseStep, safeDelta * 60);
+}
+
+function getCurvedMorphStep(target: Pick<VisualTuningConfig, 'morphDurationSec' | 'morphCurveValue'>, transitionSpeed: number): number {
     const rawSpeed = Number.isFinite(transitionSpeed) ? transitionSpeed : defaultVisualTuning.transitionSpeed;
     const duration = Number.isFinite(target.morphDurationSec) ? Math.max(0.2, target.morphDurationSec) : defaultVisualTuning.morphDurationSec;
     const durationScale = defaultVisualTuning.morphDurationSec / duration;

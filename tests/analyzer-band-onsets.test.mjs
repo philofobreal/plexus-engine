@@ -33,7 +33,12 @@ function check(spec,f,r,saved){
 
 test('physical bands preserve all 589 known cases and add 63 strict matches without extra or negative growth',()=>{
     const saved=read('an03g-development-final.json');
-    assert.equal(sha256(readFileSync('src/analyzer/BandOnsets.ts')),saved.sourceHashes['src/analyzer/BandOnsets.ts']);
+    const evolution=read('t10a-source-evolution.json');
+    assert.equal(sha256(readFileSync(evolution.predecessorSource)),saved.sourceHashes['src/analyzer/BandOnsets.ts']);
+    assert.equal(evolution.predecessorSha256,saved.sourceHashes['src/analyzer/BandOnsets.ts']);
+    assert.equal(sha256(readFileSync('src/analyzer/BandOnsets.ts')),evolution.replacementSha256);
+    assert.equal(sha256(readFileSync(evolution.helper.path)),evolution.helper.sha256);
+    assert.equal(evolution.oldMeasurementsRewritten,false);
     let cursor=0,matches=0,extras=0,negatives=0;
     const totals={};
     for(const [matrix,specs,fixture] of [['c2',challengeSpecs(),challengeFixture],['an03',robustnessSpecs(),robustnessFixture],
