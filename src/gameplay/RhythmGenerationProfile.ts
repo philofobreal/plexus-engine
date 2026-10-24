@@ -29,6 +29,8 @@ export interface RhythmGenerationSettings {
     readonly handLead: HandLead;
     readonly zones: HandZones;
     readonly playSpace: PlaySpace;
+    /** Absent/legacy preserves authored historical charts; guarded adds the versioned motor envelope. */
+    readonly motionSafety?: 'legacy' | 'guarded';
 }
 
 /** Reproduces the historical chart byte-for-byte. */
@@ -71,7 +73,8 @@ export function normalizeGenerationSettings(settings?: Partial<RhythmGenerationS
         handPattern: pick(settings?.handPattern, HAND_PATTERNS, d.handPattern),
         handLead: pick(settings?.handLead, HAND_LEADS, d.handLead),
         zones: pick(settings?.zones, HAND_ZONES, d.zones),
-        playSpace: pick(settings?.playSpace, PLAY_SPACES, d.playSpace)
+        playSpace: pick(settings?.playSpace, PLAY_SPACES, d.playSpace),
+        ...(settings?.motionSafety === 'guarded' ? { motionSafety: 'guarded' as const } : {})
     };
 }
 

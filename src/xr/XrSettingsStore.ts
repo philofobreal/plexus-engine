@@ -7,6 +7,8 @@ import { DEFAULT_XR_SETTINGS, normalizeXrSettings, type XrSettings } from './XrS
 
 export const XR_SETTINGS_STORAGE_KEY = 'plexus.xr.settings';
 const RECORD_VERSION = 1;
+/** Reset pre-fix Wall opt-ins and the old galaxy-glow default; later manual choices persist. */
+const WALL_DEFAULT_REVISION = 1;
 
 /** The subset of `Storage` the store uses. */
 export interface XrSettingsStorage {
@@ -33,13 +35,26 @@ export function createXrSettingsStore(storage: XrSettingsStorage | null | undefi
                 const record: unknown = JSON.parse(raw);
                 if (!record || typeof record !== 'object' || (record as { version?: unknown }).version !== RECORD_VERSION) return DEFAULT_XR_SETTINGS;
                 lastWritten = raw;
-                return normalizeXrSettings(record as Parameters<typeof normalizeXrSettings>[0]);
+                // Retired timing experiments must not survive in the viewer's saved settings.
+                const system = (record as { system?: Record<string, unknown> }).system;
+                if (system && typeof system === 'object' && Object.hasOwn(system, 'eventTiming')) {
+                    const { eventTiming: _retired, ...remaining } = system;
+                    const cleaned = JSON.stringify({ ...record, system: remaining });
+                    try { storage.setItem(XR_SETTINGS_STORAGE_KEY, cleaned); lastWritten = cleaned; } catch { /* Read still normalizes safely. */ }
+                }
+                const settings = normalizeXrSettings(record as Parameters<typeof normalizeXrSettings>[0]);
+                if ((record as { wallDefaultRevision?: unknown }).wallDefaultRevision !== WALL_DEFAULT_REVISION) {
+                    return { ...settings, background: { ...settings.background,
+                        cosmos: { ...settings.background.cosmos, galaxies: settings.background.cosmos.galaxies === 1 ? 0 : settings.background.cosmos.galaxies },
+                        wall: { ...settings.background.wall, mode: 'off' } } };
+                }
+                return settings;
             } catch {
                 return DEFAULT_XR_SETTINGS;
             }
         },
         save(settings: XrSettings): void {
-            const value = JSON.stringify({ version: RECORD_VERSION, play: settings.play, generation: settings.generation, background: settings.background,
+            const value = JSON.stringify({ version: RECORD_VERSION, wallDefaultRevision: WALL_DEFAULT_REVISION, play: settings.play, generation: settings.generation, background: settings.background,
                 appearance: settings.appearance, system: settings.system });
             if (value === lastWritten) return;
             try {

@@ -14,98 +14,7 @@ function deferred() { let resolve, reject; const promise = new Promise((a, b) =>
 const settle = () => new Promise(setImmediate);
 
 /** `settingsStore: 'defaults'` starts from the shipped defaults; otherwise the fixed historical baseline. */
-function harness({ presenting = false, settingsStore, gpu = false, diagnostics = false } = {}) {
-    const doc = fakeDocument();
-    const window = new EventTarget();
-    const source = chartSources()['journey-128-confident'];
-    const State = { events: source.events, frames: [], sampleRate: 44100, hopSize: 1024, bpm: 128, duration: source.durationSec,
-        trackAnalysis: { beats: source.beats, barStarts: source.barStarts, timingConfidence: { overall: 0.9 },
-            sections: [{ start: 0, end: 48, label: 'build', energy: 0.5, density: 0.5, dominantFeature: 'rhythm', avgRms: 0.1, peakRms: 0.2 },
-                { start: 48, end: 96, label: 'drop', energy: 0.9, density: 0.8, dominantFeature: 'rhythm', avgRms: 0.2, peakRms: 0.3 }] } };
-    const prepareCalls = [];
-    let prepareImpl = async () => source.performancePlan;
-    const sceneLog = { analyses: [], timelines: [], enabled: [] };
-    class FakeScene {
-        constructor() { this.path = { revision: 0, unprojectStrike() {}, projectPlayfieldPoint() {}, unprojectPlayfieldPoint() {} }; }
-        getWorldToPlayfield(m) { return m; }
-        prerender() {}
-        async setWormholeEnabled(v) { sceneLog.enabled.push(v); }
-        async setWormholeAnalysis(a) { sceneLog.analyses.push(a); }
-        setSectionTimeline(t) { sceneLog.timelines.push(t); }
-        async setBackgroundSettings(b) { (sceneLog.backgrounds ??= []).push(b); }
-        setDisplayFrameRate() {} get backgroundRenderMs() { return 0; } setGameConfig(c) { (sceneLog.configs ??= []).push(c); } setStageLayout(l) { (sceneLog.layouts ??= []).push(l); } setScoreOverview(o) { (sceneLog.overviews ??= []).push(o); }
-        setNoteDesign(d) { (sceneLog.designs ??= []).push(d); }
-        async setBackgroundPipeline(p) { (sceneLog.pipelines ??= []).push(p); sceneLog.gpuMaterial = p.gpuMaterial; } get gpuMaterialEnabled() { return sceneLog.gpuMaterial === true; }
-        setAdaptivePacing(on) { (sceneLog.pacing ??= []).push(on); }
-        // Every display frame shows a new background frame (diagnostics counting).
-        get backgroundFramesShown() { return (this.shown = (this.shown ?? 0) + 1); } get backgroundStageTimes() { return null; }
-        placeForViewer() {} update() {} dispose() { sceneLog.disposed = true; }
-    }
-    const inputLog = { pointerMode: [], haptics: [], lengths: {}, rays: { left: null, right: null }, thumb: { left: 0, right: 0 }, instance: null };
-    class FakeInput { constructor() { inputLog.instance = this; } update() {} getStrikeAttempt() { return null; } resetMotion() {} dispose() {}
-        pulseHaptics(hand) { inputLog.haptics.push(hand); }
-        setBladeLength(m) { (sceneLog.blades ??= []).push(m); }
-        setPointerMode(on) { inputLog.pointerMode.push(on); }
-        getPointerRay(hand, target) { const ray = inputLog.rays[hand]; if (!ray) return false; target.copy(ray); return true; }
-        setPointerLength(hand, m) { inputLog.lengths[hand] = m; }
-        getThumbstickX(hand) { return inputLog.thumb[hand]; } }
-    const load = createLoader({
-        three: THREE,
-        '../state/store': { State },
-        '../automation/prepareWormholePerformance': { prepareWormholePerformance: (...args) => { prepareCalls.push(args); return prepareImpl(...args); } },
-        './runtime/XrCapabilityDetector': { detectImmersiveVrSupport: async () => 'unsupported' },
-        './runtime/XrInputAdapter': { XrInputAdapter: FakeInput },
-        './runtime/XrPerformanceProfile': { applyConservativeFoveation() {}, applyTargetFrameRate: async () => {} },
-        './scene/RhythmGameScene': { RhythmGameScene: FakeScene }
-    }, { document: doc, window });
-    const listeners = [], ended = [];
-    const engine = { loads: 0, stops: [], plays: [], time: 0,
-        loadFile() { this.loads++; return Promise.resolve(); },
-        play(offset) { this.plays.push(offset); for (const fn of listeners) fn('play', offset ?? this.time); },
-        stop(reset) { this.stops.push(reset); for (const fn of listeners) fn(reset ? 'stop' : 'pause', reset ? 0 : this.time); },
-        getCurrentTime() { return this.time; },
-        addPlaybackStateListener(fn) { listeners.push(fn); return () => listeners.splice(listeners.indexOf(fn), 1); },
-        addPlaybackEndedListener(fn) { ended.push(fn); return () => ended.splice(ended.indexOf(fn), 1); } };
-    const canvas = Object.assign(new EventTarget(), { dataset: {}, getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }) });
-    const referenceSpace = new EventTarget();
-    const runtime = { scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(),
-        renderer: { domElement: canvas, xr: { getReferenceSpace: () => (presenting ? referenceSpace : null), getSession: () => null },
-            // A renderer that can draw the GPU grain material (half-float targets), when asked.
-            ...(gpu ? { capabilities: { isWebGL2: true }, extensions: { has: () => true } } : {}) },
-        setPlaying() {}, invalidate() {}, setUpdateCallback(cb) { this.callback = cb; }, isPresenting: () => presenting,
-        requestImmersiveSession: async () => ({}), onSessionStart: null, onSessionEnd: null, ended: 0, endActiveSession() { this.ended++; } };
-    const container = doc.createElement('div');
-    const { XrAppController } = load('xr/XrAppController.ts');
-    const { buildRhythmChart, DEFAULT_RHYTHM_GAME_CONFIG } = load('gameplay/index.ts');
-    const baseline = historicalXrSettings(load);
-    const store = settingsStore === 'defaults' ? undefined : settingsStore ?? { load: () => baseline, save() {} };
-    const controller = new XrAppController(engine, runtime, container, () => ({}),
-        { ...(store ? { settingsStore: store } : {}), ...(diagnostics ? { diagnostics: true } : {}) });
-    const drawer = controller.drawer;
-    const { XR_SETTINGS, changeScope } = load('xr/XrSettings.ts');
-    return {
-        controller, drawer, engine, State, sceneLog, prepareCalls, container, source, runtime, inputLog, window,
-        setPrepare(fn) { prepareImpl = fn; },
-        chart: () => JSON.stringify(controller.session.chart),
-        expected(settings, plan = source.performancePlan) {
-            return JSON.stringify(buildRhythmChart({ events: source.events, durationSec: source.durationSec, beats: source.beats,
-                barStarts: source.barStarts, timingConfidence: 0.9, performancePlan: plan, sectionStarts: [0, 48] }, DEFAULT_RHYTHM_GAME_CONFIG, settings));
-        },
-        async loadTrack() {
-            drawer.fileInput.files = [{ name: 'song.wav' }];
-            drawer.fileInput.dispatchEvent(new Event('change'));
-            await engine.onAnalysisComplete();
-            await settle();
-        },
-        /** Chooses a setting the way the game menu does (Addendum S): a scoped settings command. */
-        pick(value, section = 'choreography') {
-            const descriptor = XR_SETTINGS.find(d => d.section === section && d.kind === 'choice' && d.choices.some(c => c.value === value));
-            assert.ok(descriptor, `${section}: ${value}`);
-            const next = descriptor.write(controller.settings, value), scope = changeScope(controller.settings, next);
-            if (scope) controller.runMenuCommand({ type: 'settings-changed', settings: next, scope });
-        }
-    };
-}
+import { harness } from './helpers/xr-controller-harness.mjs';
 
 test('load prepares one plan with the current settings, builds the chart and hands the section timeline to the scene', async () => {
     const h = harness();
@@ -541,4 +450,105 @@ test('a pointer held over the menu cannot activate after Space starts play or ke
     h.window.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: 'ArrowDown' }));
     sendCanvasPointer(h, 'pointerup'); assert.equal(releases.length, 0);
     h.controller.dispose();
+});
+
+test('halo preview is opt-in, uses the accepted chart and regenerates its sidecar under the existing generation guard', async () => {
+    const ordinary = harness(); await ordinary.loadTrack();
+    assert.equal(ordinary.sceneLog.rolePlans.at(-1), null);
+    ordinary.controller.dispose();
+    const h = harness({ haloPreview: true }); await h.loadTrack();
+    const firstPlan = h.sceneLog.rolePlans.at(-1);
+    assert.ok(firstPlan.roles.length > 0);
+    const ids = new Set(h.controller.session.chart.map(n => n.id));
+    assert.ok(firstPlan.roles.every(role => ids.has(role.noteId)));
+    const first = deferred(), second = deferred(); let calls = 0;
+    h.setPrepare(() => (calls++ === 0 ? first : second).promise);
+    h.pick('active'); assert.equal(h.sceneLog.rolePlans.at(-1), null, 'old plan cleared before async preparation');
+    h.pick('expressive');
+    second.resolve(h.source.performancePlan); await settle();
+    const newest = h.sceneLog.rolePlans.at(-1); assert.ok(newest.roles.length > 0);
+    const publishedCount = h.sceneLog.rolePlans.length;
+    first.resolve(h.source.performancePlan); await settle();
+    assert.equal(h.sceneLog.rolePlans.length, publishedCount, 'stale preparation cannot restore an old sidecar');
+    h.controller.dispose();
+});
+
+test('halo observer receives session resets/resolutions; failed consumer hides halos and gameplay keeps running', async () => {
+    const h = harness({ haloPreview: true }); await h.loadTrack();
+    h.engine.play(0);
+    assert.ok(h.sceneLog.roleResets.length >= 2);
+    h.controller.session.seek(10);
+    assert.ok(h.sceneLog.resolutions.some(args => args[3] === true));
+    h.controller.scene.resolutionObserver.onNoteResolved = () => { throw new Error('bad renderer'); };
+    h.engine.time = 20;
+    h.runtime.callback(null, 1 / 60);
+    assert.equal(h.controller.session.getState(), 'playing');
+    assert.ok(h.controller.session.getSnapshot().missCount > 0);
+    assert.equal(h.sceneLog.rolePlans.at(-1), null);
+    assert.match(h.drawer.errorEl.textContent, /Note halos unavailable/);
+    h.controller.dispose();
+});
+
+test('new load and disposal clear role plans and detach the consumer before resources are released', async () => {
+    const h = harness({ haloPreview: true }); await h.loadTrack();
+    h.drawer.fileInput.files = [{ name: 'other.wav' }];
+    h.drawer.fileInput.dispatchEvent(new Event('change'));
+    assert.equal(h.sceneLog.rolePlans.at(-1), null, 'clear on load, before analysis');
+    await h.engine.onAnalysisComplete(); await settle();
+    const pending = deferred(); h.setPrepare(() => pending.promise);
+    h.pick('active');
+    h.controller.dispose(); h.controller.dispose();
+    const events = h.sceneLog.roleResets.length, plans = h.sceneLog.rolePlans.length;
+    h.controller.session.restart();
+    assert.equal(h.sceneLog.roleResets.length, events, 'no notification into disposed scene');
+    pending.resolve(h.source.performancePlan); await settle();
+    assert.equal(h.sceneLog.rolePlans.length, plans, 'no late plan into disposed scene');
+    assert.equal(h.sceneLog.rolePlans.at(-1), null); assert.ok(h.sceneLog.disposed);
+});
+
+test('Note halos is a live persisted Visuals choice with no chart/transport change and no replay of old results', async () => {
+    const saved = [], store = { load: () => ({}), save: settings => saved.push(settings) };
+    const h = harness({ settingsStore: store }); await h.loadTrack(); h.engine.play(0);
+    const chart = h.chart(), stops = h.engine.stops.length, preparations = h.prepareCalls.length;
+    const snapshot = JSON.stringify(h.controller.session.getSnapshot());
+    h.pick('phrase', 'background');
+    assert.ok(h.sceneLog.rolePlans.at(-1).roles.length > 0);
+    assert.equal(saved.at(-1).appearance.noteHalos, 'phrase');
+    assert.equal(h.chart(), chart); assert.equal(h.engine.stops.length, stops);
+    assert.equal(h.prepareCalls.length, preparations);
+    assert.equal(JSON.stringify(h.controller.session.getSnapshot()), snapshot);
+    h.pick('classic', 'background');
+    assert.equal(h.controller.settings.appearance.noteHalos, 'phrase', 'design change keeps halo choice');
+    h.pick('off', 'background', 'noteHalos');
+    assert.equal(h.sceneLog.rolePlans.at(-1), null);
+    const resolutionCount = h.sceneLog.resolutions?.length ?? 0;
+    h.controller.session.update(10);
+    assert.equal(h.sceneLog.resolutions?.length ?? 0, resolutionCount, 'disabled consumer detached');
+    h.pick('phrase', 'background');
+    assert.equal(h.sceneLog.resolutions?.length ?? 0, resolutionCount, 'enabling does not replay old misses/hits');
+    h.controller.dispose();
+});
+
+test('Material spiral direction is live and saved, independent of chart/score and halo/design choices', async () => {
+    const saved = [], h = harness({ settingsStore: { load: () => ({}), save: s => saved.push(s) } });
+    await h.loadTrack(); h.engine.play(0);
+    const chart = h.chart(), stops = h.engine.stops.length, score = JSON.stringify(h.controller.session.getSnapshot());
+    h.pick('left', 'material', 'spiralDirection');
+    assert.equal(h.sceneLog.spiralDirections.at(-1), 'left');
+    assert.equal(saved.at(-1).appearance.spiralDirection, 'left');
+    h.pick('phrase', 'background'); h.pick('classic', 'background');
+    assert.equal(h.controller.settings.appearance.spiralDirection, 'left');
+    assert.equal(h.chart(), chart); assert.equal(h.engine.stops.length, stops);
+    assert.equal(JSON.stringify(h.controller.session.getSnapshot()), score);
+    h.pick('auto', 'material', 'spiralDirection'); assert.equal(h.sceneLog.spiralDirections.at(-1), 'auto');
+    h.controller.dispose();
+});
+
+test('cockpit and filename caption are live presentation, using the selected filename without regeneration',async()=>{
+ const saved=[],h=harness({settingsStore:{load:()=>({}),save:s=>saved.push(s)}});await h.loadTrack();
+ assert.equal(h.sceneLog.trackTitles.at(-1),'song.wav');assert.deepEqual(h.sceneLog.cockpit.at(-1),{mode:'full',title:'scroll'});
+ h.engine.play(0);const chart=h.chart(),stops=h.engine.stops.length,planCalls=h.prepareCalls.length;
+ h.pick('reduced','cockpit','cockpit');h.pick('static','cockpit','cockpitTitle');
+ assert.equal(h.sceneLog.cockpit.at(-1).mode,'reduced');assert.equal(h.sceneLog.cockpit.at(-1).title,'static');assert.equal(saved.at(-1).appearance.cockpitTitle,'static');
+ assert.equal(h.chart(),chart);assert.equal(h.engine.stops.length,stops);assert.equal(h.prepareCalls.length,planCalls);h.controller.dispose();
 });

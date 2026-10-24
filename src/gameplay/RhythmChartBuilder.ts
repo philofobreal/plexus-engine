@@ -4,6 +4,7 @@ import { choreographRhythmChart } from './RhythmScorePlanner';
 import { DEFAULT_RHYTHM_GAME_CONFIG, type RhythmGameConfig } from './RhythmGameConfig';
 import type { RhythmNote } from './RhythmTypes';
 import { normalizeGenerationSettings, playSpaceConfig, type RhythmGenerationSettings } from './RhythmGenerationProfile';
+import { guardRhythmMovement, mirrorRhythmChart } from './RhythmMovement';
 
 export interface RhythmChartSource {
     readonly events: readonly BeatEvent[];
@@ -28,6 +29,11 @@ export function buildRhythmChart(source: RhythmChartSource,
     config: RhythmGameConfig = DEFAULT_RHYTHM_GAME_CONFIG, settings?: Partial<RhythmGenerationSettings>): RhythmNote[] {
     if (!Number.isFinite(source.durationSec) || source.durationSec <= 0) return [];
     const normalized = normalizeGenerationSettings(settings);
-    return choreographRhythmChart(source, playSpaceConfig(config, normalized.playSpace), normalized);
+    const mirrored = normalized.motionSafety === 'guarded' && normalized.handLead === 'right';
+    const canonical = mirrored ? { ...normalized, handLead: 'left' as const } : normalized;
+    const chart = choreographRhythmChart(source, playSpaceConfig(config, normalized.playSpace), canonical);
+    if (normalized.motionSafety !== 'guarded') return chart;
+    const guarded = guardRhythmMovement(chart, config, canonical).chart;
+    return mirrored ? mirrorRhythmChart(guarded) : guarded;
 }
 

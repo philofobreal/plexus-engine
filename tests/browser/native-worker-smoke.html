@@ -1,0 +1,58 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Native geometry worker parity and CPU profile</title>
+<style>body{background:#080b18;color:#eef;font:15px system-ui;margin:22px}canvas{width:720px;height:405px}pre{white-space:pre-wrap}a{color:#8ff}</style>
+<h1>Canvas-free native worker: real packet / pixel parity</h1><p>Direct control versus module Worker, then 32 measured fixed-song samples after eight warmup samples. Desktop evidence, not a Quest pacing benchmark.</p>
+<button id="run">Run worker parity and profile</button><div id="view"></div><pre id="result">Ready</pre><div id="downloads"></div>
+<script type="module">
+import * as THREE from 'three';
+import {WormholeNativeSource} from '../../src/visuals/WormholeNativeSource.ts';
+import {WormholeNativeWorkerSource} from '../../src/visuals/WormholeNativeWorkerSource.ts';
+import {XrNativeWormhole} from '../../src/xr/scene/XrNativeWormhole.ts';
+import {createEmptyTrackAnalysis} from '../../src/analyzer/normalizeAnalysisResult.ts';
+const output=document.querySelector('#result'),button=document.querySelector('#run');let cleanup=()=>{};
+button.onclick=async()=>{button.disabled=true;cleanup();output.textContent='Starting real native worker…';try{
+ const renderer=new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});renderer.setSize(480,270);renderer.setClearColor(0x080b18);document.querySelector('#view').replaceChildren(renderer.domElement);
+ const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,480/270,.05,1000),native=new XrNativeWormhole({dispose(){}});scene.add(native.root);
+ const direct=new WormholeNativeSource(),worker=new WormholeNativeWorkerSource({mainFactory:()=>{throw Error('Unexpected main-thread fallback during worker probe');}});
+ cleanup=()=>{worker.dispose();direct.dispose();native.dispose();renderer.dispose();};
+ const frames=Array.from({length:440},()=>({e:.7,eRatio:1.2,densityProj:.6,melodyProj:.4,fxProj:.1,subEnergy:.6,bassEnergy:.5,subFlux:.2,bassFlux:.15,state:'DRIVE',perceptualSpectrum:Array(24).fill(.5)}));
+ const analysis={frames,events:[],sampleRate:44100,hopSize:1024,bpm:128,duration:10,trackAnalysis:createEmptyTrackAnalysis(),performancePlan:{version:1,source:'edited',points:[{id:'a',time:0,preset:'vos-wh-overdrive.json',confidence:1,intensity:1,reason:'build',morphDurationSec:2,morphCurve:'linear'}]}};
+ analysis.trackAnalysis.features=frames.map(()=>({melody:.4,vocal:.1,fx:.1,density:.6,brightness:.5,tension:.3}));const original=JSON.stringify(analysis);
+ await Promise.all([direct.prepare(analysis),worker.prepare(analysis)]);
+ let mainCallMs=0;
+ async function sample(time){await new Promise((resolve,reject)=>{
+  const timer=setTimeout(()=>reject(Error('Worker probe result deadline')),5000);
+  worker.onError=message=>{clearTimeout(timer);reject(Error(message));};
+  worker.onFrameReady=()=>{const start=performance.now(),changed=worker.render(time,false);mainCallMs+=performance.now()-start;
+    if(changed&&worker.frame?.songTime===time){clearTimeout(timer);resolve();}};
+  const start=performance.now();worker.render(time,false);mainCallMs=performance.now()-start;
+ });}
+ const read=()=>{const data=new Uint8Array(480*270*4),gl=renderer.getContext();gl.readPixels(0,0,480,270,gl.RGBA,gl.UNSIGNED_BYTE,data);return data;};
+ const pixelFrame=frame=>{native.setFrame(frame);renderer.render(scene,camera);return read();};
+ const parity=[];let firstFixture=null;
+ for(const time of[2.125,3,.4,2.125]){
+  direct.render(time,false,false);await sample(time);const a=direct.frame,b=worker.frame;
+  let maxDataDifference=0;for(const [x,y,n]of[[a.data,b.data,a.count*16],[a.weave.data,b.weave.data,a.weave.count*16],[a.material.grains,b.material.grains,a.count*3],[a.material.weave,b.material.weave,a.weave.count*3]])for(let i=0;i<n;i++)maxDataDifference=Math.max(maxDataDifference,Math.abs(x[i]-y[i]));
+  const left=pixelFrame(a),right=pixelFrame(b);let changedPixels=0;for(let i=0;i<left.length;i+=4)if(left[i]!==right[i]||left[i+1]!==right[i+1]||left[i+2]!==right[i+2]||left[i+3]!==right[i+3])changedPixels++;
+  if(firstFixture===null)firstFixture=structuredClone(b);
+  parity.push({time,maxDataDifference,changedPixels,grains:a.count,workerGrains:b.count,weave:a.weave.count,workerWeave:b.weave.count,companionsEqual:JSON.stringify(direct.spatialFrame)===JSON.stringify(worker.spatialFrame)&&JSON.stringify(direct.focalPoint)===JSON.stringify(worker.focalPoint)});
+ }
+ const samples=[],stats=values=>{const v=[...values].sort((a,b)=>a-b);return{p50:v[Math.floor(v.length*.5)],p95:v[Math.floor(v.length*.95)],max:v.at(-1),mean:v.reduce((a,b)=>a+b,0)/v.length};};
+ for(let i=0;i<40;i++){
+  const time=2+i*.05;direct.render(time,false,false);const directCpuMs=direct.lastRenderMs;await sample(time);
+  let start=performance.now();native.setFrame(worker.frame);const uploadCopyMs=performance.now()-start;start=performance.now();renderer.render(scene,camera);const submitCpuMs=performance.now()-start;
+  if(i>=8)samples.push({time,directCpuMs,workerProducerMs:worker.lastRenderMs,mainCallMs,transferCopyMs:worker.lastTransferMs,roundtripMs:worker.frameLatencyMs,uploadCopyMs,submitCpuMs});
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+ }
+ const profile={samples:samples.length,directCpuMs:stats(samples.map(s=>s.directCpuMs)),workerProducerMs:stats(samples.map(s=>s.workerProducerMs)),mainCallMs:stats(samples.map(s=>s.mainCallMs)),transferCopyMs:stats(samples.map(s=>s.transferCopyMs)),roundtripMs:stats(samples.map(s=>s.roundtripMs)),uploadCopyMs:stats(samples.map(s=>s.uploadCopyMs)),submitCpuMs:stats(samples.map(s=>s.submitCpuMs)),rawSamples:samples};
+ // The visibility gate is the defined fresh 2.125 s fixture, not the last history-dependent
+ // transient of the CPU profile. Preserve that one packet explicitly before the source reuses it.
+ native.setFrame(firstFixture);renderer.render(scene,camera);
+ let coloured=0;const finalPixels=read();for(let i=0;i<finalPixels.length;i+=4)if(Math.max(finalPixels[i],finalPixels[i+1],finalPixels[i+2])>40)coloured++;
+ const report={pass:parity.every(p=>p.maxDataDifference===0&&p.changedPixels===0&&p.companionsEqual&&p.grains===p.workerGrains&&p.weave===p.workerWeave)&&original===JSON.stringify(analysis)&&/worker geometry/.test(worker.executionLabel)&&coloured>10,
+  execution:worker.executionLabel,parity,analysisUnchanged:original===JSON.stringify(analysis),profile,colouredPixels:coloured,
+  gpu:{calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,textures:renderer.info.memory.textures},
+  limits:'No physical Quest measurement. Direct control and worker have the same history. Main call excludes asynchronous worker compute; transfer and GPU attribute copy reported separately. Submission time is CPU only, not GPU execution. No render lead/exact replay or producer thinning.'};
+ output.textContent=JSON.stringify(report,null,2);const link=document.createElement('a');link.href=renderer.domElement.toDataURL();link.textContent='Download worker frame PNG';link.download='native-worker.png';document.querySelector('#downloads').replaceChildren(link);
+ }catch(error){output.textContent='FAIL: '+error.stack;}finally{button.disabled=false;}};
+window.addEventListener('pagehide',()=>cleanup(),{once:true});
+</script></html>

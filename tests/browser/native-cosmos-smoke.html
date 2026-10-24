@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Native XR cosmic layers</title>
+<style>body{background:#080b18;color:#eef;font:15px system-ui;margin:22px}canvas{width:720px;height:405px}pre{white-space:pre-wrap}.previews{display:flex;flex-wrap:wrap;gap:12px}.previews img{width:240px}figure{margin:0}</style>
+<h1>Native stars, galaxies and sky</h1><p>Actual module worker and Three/WebGL. Bounded original pools, atomic transport, per-eye projection and stage priority. Desktop evidence; physical Quest remains manual.</p>
+<button id="run">Run cosmic checks</button><div id="view"></div><div class="previews" id="previews"></div><pre id="result">Ready</pre>
+<script type="module">
+import * as THREE from 'three';
+import {WormholeNativeSource} from '../../src/visuals/WormholeNativeSource.ts';
+import {WormholeNativeWorkerSource} from '../../src/visuals/WormholeNativeWorkerSource.ts';
+import {XrNativeWormhole} from '../../src/xr/scene/XrNativeWormhole.ts';
+import {createEmptyTrackAnalysis} from '../../src/analyzer/normalizeAnalysisResult.ts';
+const output=document.querySelector('#result'),button=document.querySelector('#run');let cleanup=()=>{};
+button.onclick=async()=>{button.disabled=true;cleanup();output.textContent='Running actual cosmic worker and GPU checks…';try{
+ const renderer=new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});renderer.setSize(480,270);renderer.setClearColor(0);document.querySelector('#view').replaceChildren(renderer.domElement);
+ const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,480/270,.05,1500),native=new XrNativeWormhole({dispose(){}});scene.add(native.root);native.setEyeHeight(0);
+ const direct=new WormholeNativeSource(),worker=new WormholeNativeWorkerSource({mainFactory:()=>{throw Error('Unexpected main fallback');}});
+ cleanup=()=>{direct.dispose();worker.dispose();native.dispose();renderer.dispose();};
+ const frames=Array.from({length:440},()=>({e:.7,eRatio:1.2,densityProj:.6,melodyProj:.4,fxProj:.1,subEnergy:.6,bassEnergy:.5,subFlux:.2,bassFlux:.15,state:'DRIVE',perceptualSpectrum:Array(24).fill(.5)}));
+ const analysis={frames,events:[],sampleRate:44100,hopSize:1024,bpm:128,duration:10,trackAnalysis:createEmptyTrackAnalysis(),performancePlan:{version:1,source:'edited',points:[{id:'a',time:0,preset:'vos-wh-overdrive.json',confidence:1,intensity:1,reason:'build',morphDurationSec:2,morphCurve:'linear'}]}};
+ analysis.trackAnalysis.features=frames.map(()=>({melody:.4,vocal:.1,fx:.1,density:.6,brightness:.5,tension:.3}));const before=JSON.stringify(analysis);
+ direct.setPresentation({cosmos:{stars:1,galaxies:1,sky:1}});worker.setPresentation({cosmos:{stars:1,galaxies:1,sky:1}});
+ await Promise.all([direct.prepare(analysis),worker.prepare(analysis)]);
+ let mainCallMs=0;
+ async function sample(time){await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Worker deadline')),5000);
+  worker.onError=m=>{clearTimeout(timer);reject(Error(m));};
+  worker.onFrameReady=()=>{const start=performance.now(),changed=worker.render(time,false);mainCallMs+=performance.now()-start;if(changed&&worker.frame?.songTime===time){clearTimeout(timer);resolve();}};
+  const start=performance.now();worker.render(time,false);mainCallMs=performance.now()-start;
+ });}
+ const read=()=>{const data=new Uint8Array(480*270*4),gl=renderer.getContext();gl.readPixels(0,0,480,270,gl.RGBA,gl.UNSIGNED_BYTE,data);return data;};
+ const display=f=>{native.setFrame(f);renderer.render(scene,camera);return read();};
+ const difference=(a,b)=>{let pixels=0,max=0;for(let i=0;i<a.length;i+=4){const d=Math.abs(a[i]-b[i])+Math.abs(a[i+1]-b[i+1])+Math.abs(a[i+2]-b[i+2]);if(d>0)pixels++;max=Math.max(max,d);}return{pixels,max};};
+ const centroid=data=>{let sum=0,x=0,lit=0;for(let i=0;i<data.length;i+=4){const w=data[i]+data[i+1]+data[i+2];sum+=w;x+=(i/4%480)*w;if(w>3)lit++;}return{sum,x:sum?x/sum:null,lit};};
+ const empty={version:1,generation:1,serial:1,songTime:0,count:0,data:new Float32Array(0)};
+ const probe=(z,kind=0)=>{const d=new Float32Array(16);d.set([0,24,0,z,24,0,z,.5,1,1,1,.6,0,0,0,kind]);return{...empty,cosmos:{count:1,data:d}};};
+ const eye=(x,z)=>{camera.position.x=x;return centroid(display(probe(z)));};
+ const near=Math.abs(eye(-.032,-36).x-eye(.032,-36).x),far=Math.abs(eye(-.032,-144).x-eye(.032,-144).x);camera.position.x=0;
+ const priority=[];
+ for(const transparent of[false,true]){const p=probe(-36),baseline=centroid(display(p)).sum;
+  const cover=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.MeshBasicMaterial({color:0,transparent,opacity:1,depthWrite:!transparent}));cover.position.set(4,0,-5);cover.renderOrder=transparent?-10:0;scene.add(cover);
+  const covered=centroid(display(p)).sum;priority.push({transparent,baseline,covered,pass:baseline>0&&covered<baseline*.05});scene.remove(cover);cover.geometry.dispose();cover.material.dispose();
+ }
+ const parity=[];let fixture;
+ for(const time of[2.125,3,.4,2.125]){direct.render(time,false,false);await sample(time);const a=direct.frame,b=worker.frame;
+  let maxFloatDiff=0;for(const[x,y,n]of[[a.data,b.data,a.count*16],[a.weave.data,b.weave.data,a.weave.count*16],[a.cosmos.data,b.cosmos.data,a.cosmos.count*16]])for(let i=0;i<n;i++)maxFloatDiff=Math.max(maxFloatDiff,Math.abs(x[i]-y[i]));
+  parity.push({time,maxFloatDiff,pixelDiff:difference(display(a),display(b)),cosmos:a.cosmos.count,workerCosmos:b.cosmos.count,companions:JSON.stringify(direct.spatialFrame)===JSON.stringify(worker.spatialFrame)&&JSON.stringify(direct.focalPoint)===JSON.stringify(worker.focalPoint)});
+  if(!fixture)fixture=structuredClone(b);
+ }
+ const previews=document.querySelector('#previews');previews.replaceChildren();const families=[];
+ for(const [label,kinds]of[['Stars',[0]],['Galaxies',[1]],['Sky',[2,3]]]){const rows=[];for(let i=0;i<fixture.cosmos.count;i++){const r=fixture.cosmos.data.slice(i*16,(i+1)*16);if(kinds.includes(r[15]))rows.push(...r);}
+  const data=new Float32Array(rows),f={...empty,cosmos:{count:rows.length/16,data}},stats=centroid(display(f));
+  const img=document.createElement('img');img.src=renderer.domElement.toDataURL();const figure=document.createElement('figure'),caption=document.createElement('figcaption');caption.textContent=label;figure.append(caption,img);previews.append(figure);families.push({label,carriers:f.cosmos.count,instances:native.cosmos.mesh.geometry.instanceCount,...stats});
+ }
+ const samples=[],stats=values=>{const v=[...values].sort((a,b)=>a-b);return{p50:v[Math.floor(v.length*.5)],p95:v[Math.floor(v.length*.95)],max:v.at(-1)};};
+ for(let i=0;i<40;i++){await sample(2+i*.05);const start=performance.now();native.setFrame(worker.frame);const uploadMs=performance.now()-start;renderer.render(scene,camera);
+  if(i>=8)samples.push({producerMs:worker.lastRenderMs,mainCallMs,transferMs:worker.lastTransferMs,roundtripMs:worker.frameLatencyMs,uploadMs});await new Promise(r=>requestAnimationFrame(r));}
+ const profile=Object.fromEntries(['producerMs','mainCallMs','transferMs','roundtripMs','uploadMs'].map(k=>[k,stats(samples.map(s=>s[k]))]));
+ const zeroChecks=[];for(const [control,kinds]of[['stars',[0]],['galaxies',[1]],['sky',[2,3]]]){worker.setPresentation({cosmos:{stars:1,galaxies:1,sky:1,[control]:0}});await sample(2.125);
+  let remaining=0;for(let i=0;i<worker.frame.cosmos.count;i++)if(kinds.includes(worker.frame.cosmos.data[i*16+15]))remaining++;zeroChecks.push({control,remaining});}
+ const full=centroid(display(fixture));const gpu={calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,textures:renderer.info.memory.textures,cosmosInstances:native.cosmos.mesh.geometry.instanceCount};
+ native.setQualityBudget(360);const low=centroid(display(fixture)),lowInstances=native.cosmos.mesh.geometry.instanceCount;native.setQualityBudget(1440);
+ // Oblique view still projects world geometry per eye, without a camera-facing raster plate.
+ camera.rotation.y=.35;const oblique=centroid(display(fixture));camera.rotation.y=0;display(fixture);
+ const report={pass:parity.every(p=>p.maxFloatDiff===0&&p.pixelDiff.pixels===0&&p.cosmos===p.workerCosmos&&p.companions)&&near>.5&&near>far*1.5&&priority.every(p=>p.pass)&&families.every(f=>f.lit>10)&&zeroChecks.every(z=>z.remaining===0)&&gpu.calls===3&&gpu.textures===0&&lowInstances<gpu.cosmosInstances&&oblique.lit>10&&JSON.stringify(analysis)===before,
+  parity,stereo:{near,far},priority,families,zeroChecks,gpu,quality:{lowInstances,fullInstances:gpu.cosmosInstances,lowLit:low.lit,fullLit:full.lit},oblique,profile,profileSamples:samples,execution:worker.executionLabel,analysisUnchanged:JSON.stringify(analysis)===before,
+  limits:['Desktop GPU; no physical Quest timing or comfort result.','Sky is the existing forward directional field at a finite horizon, sampled 1500/9000.','Analytic spatial discs/streaks; raster lens/deep-field imaging and wall remain later tasks.','GPU submission, fill and copies still cost time; timer-rounded zero values do not imply zero work.']};
+ output.textContent=JSON.stringify(report,null,2);
+}catch(error){output.textContent=JSON.stringify({pass:false,error:error.stack},null,2);}finally{button.disabled=false;}};
+</script></html>

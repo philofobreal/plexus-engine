@@ -1,0 +1,107 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import {createLoader} from './helpers/xr-loader.mjs';
+const drain=()=>new Promise(r=>setImmediate(r));
+function setup(){
+ const forbidden=()=>{throw Error('Unexpected canvas resource');};
+ const load=createLoader({three:THREE,'./createWormholeNativeWorker':{createWormholeNativeWorker:()=>{throw Error('Inject test worker');}}},{performance:{now:()=>0},setTimeout,clearTimeout,ArrayBuffer,Float32Array,
+  document:{createElement:forbidden},OffscreenCanvas:class{constructor(){forbidden();}},fetch:async()=>({ok:true,json:async()=>({})})});
+ const raw=load('config/visualTuning.ts').cloneDefaultVisualTuning();Object.assign(raw,{wormholePathBend:0,wormholePathBendVertical:0,wormholeNebulaAmount:.5});
+ const seed={version:1,rawTuning:raw,macros:{intensity:.5,motion:.5,depth:.5,detail:.5},boosts:{},policy:{gains:'raw',semanticResolver:false,semanticChoreography:false}};
+ return {load,seed,source:new(load('visuals/WormholeNativeSource.ts').WormholeNativeSource)(seed)};
+}
+const active=f=>Array.from(f.data.slice(0,f.count*16));
+const family=(f,k)=>{const out=[];for(let i=0;i<f.count;i++)if(f.data[i*16+15]===k)out.push(Array.from(f.data.slice(i*16,(i+1)*16)));return out;};
+test('native cosmos retains bounded original pools, finite metre coordinates and stable sampled sky IDs without canvas',async()=>{
+ const h=setup();await h.source.prepare(null);h.source.render(2.125,false);const f=h.source.frame.cosmos,buffer=f.data.buffer;
+ assert.equal(f.data.length,4818*16);assert.ok(f.count>3300&&f.count<=4818);
+ assert.equal(family(f,0).length,1800);assert.equal(family(f,1).length,18);assert.equal(family(f,2).length,1500);
+ for(const r of family(f,2)){assert.equal(r[0]%6,0);assert.equal(r[3],-1200);assert.equal(r[6],-1200);}
+ for(const k of[0,1,2,3]){const rows=family(f,k);assert.ok(rows.length>0);assert.equal(new Set(rows.map(r=>r[0])).size,rows.length);}
+ for(const v of active(f))assert.ok(Number.isFinite(v));
+ for(let t=3;t<7;t+=.5){h.source.render(t,false);assert.equal(h.source.frame.cosmos.data.buffer,buffer);assert.ok(h.source.frame.cosmos.count<=4818);}
+ h.source.dispose();assert.equal(f.count,0);
+});
+test('cosmos masters independently hide their families at the same song time while grains remain intact',async()=>{
+ const h=setup();await h.source.prepare(null);h.source.render(2.125,false);const grains=active(h.source.frame);
+ for(const [control,kinds]of[['stars',[0]],['galaxies',[1]],['sky',[2,3]]]){
+  h.source.setPresentation({cosmos:{stars:1,galaxies:1,sky:1,[control]:0}});assert.equal(h.source.render(2.125,false),true);
+  for(const k of kinds)assert.equal(family(h.source.frame.cosmos,k).length,0);
+  assert.deepEqual(active(h.source.frame),grains,'global layer controls cannot change grain geometry/material');
+ }
+ h.source.setPresentation({cosmos:{stars:0,galaxies:0,sky:0}});h.source.render(2.125,false);assert.equal(h.source.frame.cosmos.count,0);h.source.dispose();
+});
+test('the private context preserves artist presets and applies only explicit global masters after gains, rewind and preset changes',()=>{
+ const h=setup(),Context=h.load('visuals/WormholeFrameContext.ts').WormholeFrameContext,c=new Context(h.seed);
+ const plan={version:1,source:'edited',points:[{id:'a',time:0,preset:'a',morphDurationSec:1,morphCurve:'linear'}]};
+ const payload={visualTuning:{wormholeSpeed:4,wormholeGalaxy:2,wormholeSkybox:0}},before=JSON.stringify(payload);
+ c.preparePlan(plan,new Map([['a',payload]]));c.setPresentation({cosmos:{stars:0,galaxies:.25,sky:.5}});
+ c.step(2,false,1,null,true,true);assert.equal(c.state.visualTuning.wormholeStarfield,0);assert.equal(c.state.visualTuning.wormholeGalaxy,.25);assert.equal(c.state.visualTuning.wormholeSkybox,.5);
+ c.rewind();c.step(1,false,1,null,true,true);assert.equal(c.state.visualTuning.wormholeStarfield,0);assert.equal(c.state.visualTuning.wormholeGalaxy,.25);assert.equal(JSON.stringify(payload),before);
+ c.setPresentation({cosmos:{sky:1}});c.step(1,false,1,1,false,true);assert.equal(c.state.visualTuning.wormholeGalaxy,.25);assert.equal(c.state.visualTuning.wormholeSkybox,1);c.dispose();h.source.dispose();
+});
+test('native cosmic coordinates reproduce authored star projection before any raster lens',async()=>{
+ const h=setup();await h.source.prepare(null);h.source.render(0,false);const stars=family(h.source.frame.cosmos,0);
+ const noise=(a,b)=>{const s=Math.sin(a*127.1+b*311.7)*43758.5453;return s-Math.floor(s);};
+ for(const i of[0,17,100,1799]){const r=stars[i],seed=(i+1)*7.3148;
+  assert.ok(Math.abs(r[1]-(noise(seed,11.1)*2-1)*6000*.05)<.001);
+  assert.ok(Math.abs(r[2]+(noise(seed,22.2)*2-1)*6000*.05)<.001);
+  const depth=Math.max(120,Math.max(.001,noise(seed,33.3)*8000)*.72)*.05;
+  assert.ok(Math.abs(-r[3]-depth)<.001);
+ }
+ h.source.dispose();
+});
+test('settings masters normalize old records, persist, Copy report and menu range endpoints with presentation scope',()=>{
+ const h=setup(),{DEFAULT_XR_SETTINGS,XR_SETTINGS,normalizeXrSettings,changeScope}=h.load('xr/XrSettings.ts');
+ assert.equal(JSON.stringify(normalizeXrSettings({background:{}}).background.cosmos),JSON.stringify({stars:1,galaxies:0,sky:0}));
+ const invalid=normalizeXrSettings({background:{cosmos:{stars:Infinity,galaxies:-5,sky:5}}});assert.equal(invalid.background.cosmos.stars,1);assert.equal(invalid.background.cosmos.galaxies,0);assert.equal(invalid.background.cosmos.sky,1);
+ let chosen=DEFAULT_XR_SETTINGS;for(const [id,v]of[['cosmosStars',0],['cosmosGalaxies',150],['cosmosSky',25]]){
+  const d=XR_SETTINGS.find(d=>d.id===id);assert.equal(d.section,'cosmos');chosen=d.write(chosen,v);assert.equal(d.read(chosen),v);
+ }
+ assert.equal(changeScope(DEFAULT_XR_SETTINGS,chosen),'presentation');
+ const values=new Map(),store=h.load('xr/XrSettingsStore.ts').createXrSettingsStore({getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)});store.save(chosen);
+ assert.equal(JSON.stringify(store.load().background.cosmos),JSON.stringify(chosen.background.cosmos));
+ const report=h.load('xr/XrMenuModel.ts').settingsReport(store.load(),'cosmos');assert.match(report,/Stars: 0/);assert.match(report,/Galaxies: 150/);assert.match(report,/Sky: 25/);h.source.dispose();
+});
+test('cosmos GPU consumer accepts legacy absence, rejects malformed carriers, caps quality and disposes once',async()=>{
+ const h=setup();await h.source.prepare(null);h.source.render(2.125,false);
+ const Cosmos=h.load('xr/scene/NativeWormholeCosmos.ts').NativeWormholeCosmos,c=new Cosmos();c.setFrame(h.source.frame.cosmos);const full=c.mesh.geometry.instanceCount;assert.ok(full>1000&&full<=4818);
+ c.setBudget(360);c.setFrame(h.source.frame.cosmos);assert.ok(c.mesh.geometry.instanceCount<full*.5);
+ const g=c.mesh.geometry,m=c.mesh.material;assert.equal(g.getAttribute('aHead').count,4818);assert.equal(m.depthWrite,false);assert.equal(m.transparent,false);assert.equal(c.mesh.renderOrder,-1002);assert.equal(m.map,undefined);
+ c.setDistance(500);assert.equal(c.root.scale.x,500/1200);c.setFrame();assert.equal(g.instanceCount,0);
+ assert.throws(()=>c.setFrame({count:4819,data:new Float32Array(0)}),/Invalid native cosmos/);
+ const bad=new Float32Array(16);bad.set([0,0,0,-1,0,0,-1,1,1,1,1,.5,0,0,0,0]);c.setFrame({count:1,data:bad});assert.equal(g.instanceCount,0,'cockpit corridor rejected');
+ bad[1]=30;bad[3]=-100;bad[6]=-100;bad[7]=NaN;c.setFrame({count:1,data:bad});assert.equal(g.instanceCount,0);
+ let gd=0,md=0;g.addEventListener('dispose',()=>gd++);m.addEventListener('dispose',()=>md++);c.dispose();c.dispose();assert.equal(gd,1);assert.equal(md,1);h.source.dispose();
+});
+test('worker transports cosmic data atomically with the original unchanged bank, returns both leases and discards stale masters',async()=>{
+ const h=setup(),responses=[],posts=[],sources=[];const {createNativeWorkerHost}=h.load('visuals/WormholeNativeWorkerHost.ts');
+ const host=createNativeWorkerHost((m,t=[])=>{const out=structuredClone(m,{transfer:t});for(const b of t)assert.equal(b.byteLength,0);responses.push(out);},seed=>{const s=new(h.load('visuals/WormholeNativeSource.ts').WormholeNativeSource)(seed);sources.push(s);return s;});
+ const worker={onmessage:null,onerror:null,onmessageerror:null,postMessage(m,t=[]){const out=structuredClone(m,{transfer:t});posts.push(out);void host.receive(out);},terminate(){host.dispose();}};
+ const proxy=new(h.load('visuals/WormholeNativeWorkerSource.ts').WormholeNativeWorkerSource)({seed:h.seed,workerFactory:()=>worker});
+ const prep=proxy.prepare(null);await drain();worker.onmessage({data:responses.shift()});await prep;
+ proxy.render(2.125,false);await drain();const first=responses.shift();assert.equal(first.buffer.byteLength,437760);assert.equal(first.cosmosBuffer.byteLength,308352);assert.ok(first.cosmosCount>3300);
+ assert.equal(h.load('types/WormholeNativeWorkerProtocol.ts').validNativeResponse(first),true);
+ worker.onmessage({data:first});proxy.render(2.125,false);const shown=active(proxy.frame.cosmos),bytes=proxy.frame.cosmos.data.buffer;assert.equal(first.cosmosBuffer.byteLength,0);
+ assert.equal(posts.at(-1).type,'release');assert.equal(posts.at(-1).cosmosBuffer.byteLength,308352);
+ await h.source.prepare(null);h.source.render(2.125,false);assert.deepEqual(shown,active(h.source.frame.cosmos));
+ proxy.render(3,false);await drain();proxy.setPresentation({cosmos:{stars:0}});proxy.setPresentation({cosmos:{sky:0,galaxies:0}});proxy.render(3,false);
+ worker.onmessage({data:responses.shift()});await drain();assert.deepEqual(active(proxy.frame.cosmos),shown,'borrowed shown bank survives stale result');
+ const next=responses.shift();worker.onmessage({data:next});proxy.render(3,false);assert.equal(proxy.frame.cosmos.count,0);assert.notEqual(proxy.frame.cosmos.data.buffer,bytes);
+ proxy.dispose();h.source.dispose();
+});
+test('native v1 validation accepts legacy absence but fails closed on incomplete or oversized cosmic transfers',async()=>{
+ const h=setup(),responses=[],host=h.load('visuals/WormholeNativeWorkerHost.ts').createNativeWorkerHost(m=>responses.push(m),()=>h.source);
+ await host.receive({type:'prepare',version:1,generation:1,analysis:null,presentation:{}});
+ await host.receive({type:'render',version:1,generation:1,requestId:1,epoch:1,revision:1,songTime:2.125,playing:false,continuous:false,presentation:{}});
+ const frame=responses.at(-1),valid=h.load('types/WormholeNativeWorkerProtocol.ts').validNativeResponse;
+ assert.equal(valid(frame),true);const legacy={...frame};delete legacy.cosmosBuffer;delete legacy.cosmosCount;assert.equal(valid(legacy),true);
+ for(const bad of[{...frame,cosmosCount:4819},{...frame,cosmosCount:-1},{...frame,cosmosCount:1.5},{...frame,cosmosBuffer:new ArrayBuffer(16)},{...frame,cosmosBuffer:undefined},{...frame,cosmosCount:undefined}])assert.equal(valid(bad),false);
+ await host.receive({type:'release',version:1,generation:1,requestId:1,buffer:frame.buffer});assert.equal(responses.at(-1).type,'error');assert.match(responses.at(-1).message,/Missing cosmos lease/);host.dispose();
+});
+test('native main fallback carries the same cosmic field and explicit masters as the worker producer',async()=>{
+ const h=setup(),Proxy=h.load('visuals/WormholeNativeWorkerSource.ts').WormholeNativeWorkerSource,proxy=new Proxy({forceMain:true,seed:h.seed});
+ proxy.setPresentation({cosmos:{stars:0,galaxies:1,sky:1}});await proxy.prepare(null);proxy.render(2.125,false);
+ assert.match(proxy.executionLabel,/main geometry.*fallback/);assert.equal(family(proxy.frame.cosmos,0).length,0);assert.equal(family(proxy.frame.cosmos,2).length,1500);proxy.dispose();h.source.dispose();
+});

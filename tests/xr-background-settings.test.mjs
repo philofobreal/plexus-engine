@@ -11,8 +11,9 @@ const settingsModule = () => createLoader()('xr/XrBackgroundSettings.ts');
 // Authored by the user on 2026-10-16.
 const AUTHORED_GRAIN = { amount: 0.3, detail: 1, bloom: 1, weave: 1, spiral: 0.3, arms: 1, density: 1 };
 const AUTHORED_GRAIN_BOOSTS = { wormholeNebulaAmount: 0.3, wormholeNebulaDetail: 1, wormholeNebulaBloom: 1, wormholeNebulaWeave: 1, wormholeSpiral: 0.3, wormholeSpiralArms: 1, wormholeGrainDensity: 1 };
-const AUTHORED_DEFAULTS = { wormhole: true, quality: 'max', rateHz: 36, distanceMeters: 200, spatialField: 'particles', lineStroke: 0.3, sharpness: 1, character: { intensity: 1, motion: 1, depth: 0.3, detail: 1 },
-    grain: AUTHORED_GRAIN };
+const AUTHORED_DEFAULTS = { presentationMode: 'hybrid', wormhole: true, quality: 'max', rateHz: 36, distanceMeters: 200, spatialField: 'particles', lineStroke: 0.3, sharpness: 1, character: { intensity: 1, motion: 1, depth: 0.3, detail: 1 },
+    grain: AUTHORED_GRAIN, cosmos: { stars: 1, galaxies: 0, sky: 0 },
+    wall: {mode:'off',material:'preset',amount:.5,fringe:.5,caustics:.5,waves:.5,cracks:.5} };
 /** The pre-Addendum-T presentation, for tests about pacing rather than defaults. */
 const BALANCED_24 = { wormhole: true, quality: 'balanced', rateHz: 24, lineStroke: 0.98, sharpness: 0.5, character: { intensity: 1, motion: 1, depth: 0.3, detail: 1 } };
 
@@ -64,7 +65,7 @@ test('the scene starts with the authored background: Max raster, 36 Hz on a whol
     assert.equal(JSON.stringify(source.options), JSON.stringify({ width: 2560, height: 1440 }));
     scene.setDisplayFrameRate(72);
     assert.equal(JSON.stringify(source.presentations.at(-1)), JSON.stringify({ lineStroke: 0.3, maxFrameRateHz: 36, macros: AUTHORED_DEFAULTS.character,
-        grainMaterial: AUTHORED_GRAIN_BOOSTS }));
+        grainMaterial: AUTHORED_GRAIN_BOOSTS, cosmos: AUTHORED_DEFAULTS.cosmos, wall: AUTHORED_DEFAULTS.wall }));
     for (let i = 0; i < 72; i++) scene.update([], i / 72, snapshot('playing'), '');
     assert.equal(source.renders.length, 36, '72 Hz / divider 2');
     scene.dispose();
@@ -243,9 +244,9 @@ test('Line stroke follows the MVP Advanced slider semantics and redraws even whi
 test('Visuals and Character settings are live presentation settings that never touch the game', () => {
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS, changeScope } = createLoader()('xr/XrSettings.ts');
     const visuals = XR_SETTINGS.filter(d => d.section === 'background'), character = XR_SETTINGS.filter(d => d.section === 'character');
-    assert.equal(visuals.map(d => d.id).join(), 'wormhole,noteDesign,quality,rateHz,distanceMeters,lineStroke,sharpness');
+    assert.equal(visuals.map(d => d.id).join(), 'wormhole,noteDesign,noteHalos,quality,rateHz,distanceMeters,lineStroke,sharpness');
     assert.equal(character.map(d => d.id).join(), 'intensity,motion,depth,detail');
-    assert.equal(visuals.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), 'on,shard,max,36,200,30,100');
+    assert.equal(visuals.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), 'on,shard,off,max,36,200,30,100');
     assert.equal(character.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '100,100,30,100', 'the XR host authored Visual character');
     for (const descriptor of [...visuals, ...character]) {
         assert.equal(descriptor.scope, 'presentation', descriptor.id);
@@ -266,12 +267,12 @@ test('the Material tab holds the MVP Advanced Grain material sliders as live pre
     const { XR_GRAIN_MATERIAL_KEYS, grainMaterialBoosts } = settingsModule();
     assert.equal(XR_SETTING_SECTIONS.find(s => s.id === 'material').title, 'Material');
     const material = XR_SETTINGS.filter(d => d.section === 'material');
-    assert.equal(material.map(d => d.label).join(), 'Grain material,Material detail,Material bloom,Material weave,Spiral twist,Spiral arms,Grain density',
+    assert.equal(material.map(d => d.label).join(), 'Grain material,Material detail,Material bloom,Material weave,Spiral twist,Spiral direction,Spiral arms,Grain density',
         'the MVP panel labels, in its order');
     const mvpGroup = ADVANCED_BOOST_GROUPS.find(g => g.title === 'Grain material');
     assert.equal(Object.values(XR_GRAIN_MATERIAL_KEYS).join(), mvpGroup.keys.join(), 'exactly the MVP Grain material group');
-    assert.equal(material.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '30,100,100,100,30,100,100', 'the authored XR values');
-    for (const descriptor of material) {
+    assert.equal(material.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '30,100,100,100,30,auto,100,100', 'the authored XR values');
+    for (const descriptor of material.filter(d => d.id !== 'spiralDirection')) {
         assert.equal(descriptor.scope, 'presentation'); assert.equal(descriptor.kind, 'range');
         assert.equal(descriptor.min, 0); assert.equal(descriptor.max, 100);
         assert.match(descriptor.hint, /50 is neutral/);
@@ -333,15 +334,15 @@ test('Ultra rasterizes at 1280 x 720 and the plane sharpens its magnified textur
 });
 
 // ---------------------------------------------------------------- Background distance
-test('Background distance: 200 m by default, 40 / 100 / 200 m offered, anything else falls back', () => {
+test('Background distance: 200 m by default, 40 / 100 / 200 / 500 m offered, anything else falls back', () => {
     const { normalizeBackgroundSettings, XR_BACKGROUND_DISTANCES } = settingsModule();
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS, changeScope } = createLoader()('xr/XrSettings.ts');
-    assert.deepEqual([...XR_BACKGROUND_DISTANCES], [40, 100, 200]);
+    assert.deepEqual([...XR_BACKGROUND_DISTANCES], [40, 100, 200, 500]);
     for (const value of [undefined, 0, 70, -100, Number.NaN, '100', null]) assert.equal(normalizeBackgroundSettings({ distanceMeters: value }).distanceMeters, 200, String(value));
-    for (const value of [40, 100]) assert.equal(normalizeBackgroundSettings({ distanceMeters: value }).distanceMeters, value);
+    for (const value of [40, 100, 200, 500]) assert.equal(normalizeBackgroundSettings({ distanceMeters: value }).distanceMeters, value);
     const descriptor = XR_SETTINGS.find(d => d.id === 'distanceMeters');
     assert.equal(descriptor.section, 'background'); assert.equal(descriptor.scope, 'presentation');
-    assert.equal(descriptor.choices.map(c => c.value).join(), '40,100,200');
+    assert.equal(descriptor.choices.map(c => c.value).join(), '40,100,200,500');
     const far = descriptor.write(DEFAULT_XR_SETTINGS, '40');
     assert.equal(far.background.distanceMeters, 40, 'the menu string becomes the numeric distance');
     assert.equal(changeScope(DEFAULT_XR_SETTINGS, far), 'presentation', 'live: the chart and the session stay');
@@ -378,7 +379,7 @@ test('a backdrop at any distance keeps its angular size; nearer stereo planes ke
         });
     };
     const layersAt40 = layerWorld();
-    for (const distance of [100, 200, 40]) {
+    for (const distance of [100, 200, 500, 40]) {
         backdrop.setDistance(distance);
         assert.equal(backdrop.distanceMeters, distance);
         assert.ok(Math.abs(angle(backdrop) - reference) < 1e-12, `${distance} m: same angles, same raster density`);
@@ -387,8 +388,8 @@ test('a backdrop at any distance keeps its angular size; nearer stereo planes ke
     backdrop.setDistance(Number.NaN); assert.equal(backdrop.distanceMeters, SCENE_CONFIG.backdropDistanceMeters);
     backdrop.dispose();
     // The camera sees the farthest plane's corners off axis.
-    const maxScale = 200 / SCENE_CONFIG.backdropDistanceMeters;
-    const corner = Math.hypot(200, maxScale * SCENE_CONFIG.backdropWidthMeters / 2, maxScale * SCENE_CONFIG.backdropHeightMeters / 2);
+    const maxScale = 500 / SCENE_CONFIG.backdropDistanceMeters;
+    const corner = Math.hypot(500, maxScale * SCENE_CONFIG.backdropWidthMeters / 2, maxScale * SCENE_CONFIG.backdropHeightMeters / 2);
     assert.ok(SCENE_CONFIG.cameraFarMeters > corner, `far plane ${SCENE_CONFIG.cameraFarMeters} m beyond the ${corner.toFixed(0)} m corner`);
     assert.match(readFileSync(join(process.cwd(), 'src', 'xr', 'runtime', 'XrRuntime.ts'), 'utf8'), /SCENE_CONFIG\.cameraFarMeters/, 'the runtime camera uses it');
 });
@@ -405,8 +406,56 @@ test('the scene applies the Background distance live to the plane and to the tra
     assert.equal(backdrop.distanceMeters, 40); assert.equal(scene.path.backdropDistanceMeters, 40);
     assert.ok(scene.path.revision > revision, 'the track re-aims (notes and runway re-project)');
     assert.equal(sources.length, 1, 'no rebuild: the same plane and raster');
+    const rasterOptions = JSON.stringify(sources[0].options);
+    await scene.setBackgroundSettings(normalizeBackgroundSettings({ distanceMeters: 500 }));
+    assert.equal(backdrop.distanceMeters, 500); assert.equal(scene.path.backdropDistanceMeters, 500);
+    assert.equal(sources.length, 1, '500 m moves the same plane without reallocating the raster');
+    assert.equal(JSON.stringify(sources[0].options), rasterOptions, 'the pixel budget is unchanged');
     scene.update([], 1, snapshot('paused'), '');
     await scene.setBackgroundSettings(normalizeBackgroundSettings({ distanceMeters: 200, quality: 'high' }));
-    assert.equal(sources.length, 2); assert.equal(scene.wormhole.distanceMeters, 200, 'a rebuilt plane keeps the distance');
+    assert.equal(sources.length, 2); assert.equal(scene.wormhole.distanceMeters, 200, 'a rebuilt plane keeps the legacy distance');
+    await scene.setBackgroundSettings(normalizeBackgroundSettings({ distanceMeters: 500, quality: 'balanced' }));
+    assert.equal(sources.length, 3); assert.equal(scene.wormhole.distanceMeters, 500, 'a rebuilt plane keeps 500 m too');
     scene.dispose();
+});
+
+test('500 m corners remain in the frustum when looking around from translated eye positions', () => {
+    const { SCENE_CONFIG, backdropScale } = createLoader()('xr/scene/SceneConfig.ts');
+    const camera = new THREE.PerspectiveCamera(90, 1, 0.05, SCENE_CONFIG.cameraFarMeters);
+    const oldCamera = new THREE.PerspectiveCamera(90, 1, 0.05, 600);
+    const scale = backdropScale(500);
+    const halfWidth = SCENE_CONFIG.backdropWidthMeters * scale / 2;
+    const halfHeight = SCENE_CONFIG.backdropHeightMeters * scale / 2;
+    let oldClipped = 0;
+    // The envelope includes the desktop camera and a 6 x 6 m room with a range of eye heights.
+    for (const [x, y, z] of [[0, 1.65, 2.6], [-3, 0.8, -3], [3, 2.3, 3]]) {
+        for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+            const corner = new THREE.Vector3(sx * halfWidth, 1.65 + sy * halfHeight, -500);
+            for (const yaw of [-0.2, 0, 0.2]) for (const pitch of [-0.2, 0, 0.2]) {
+                camera.position.set(x, y, z); camera.lookAt(corner);
+                camera.rotateY(yaw); camera.rotateX(pitch); camera.updateMatrixWorld(true);
+                const projected = corner.clone().project(camera);
+                assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1, 'corner is inside the view');
+                assert.ok(projected.z > -1 && projected.z < 1, `corner not depth-clipped at ${x},${y},${z}`);
+                oldCamera.position.copy(camera.position); oldCamera.quaternion.copy(camera.quaternion); oldCamera.updateMatrixWorld(true);
+                if (corner.clone().project(oldCamera).z > 1) oldClipped++;
+            }
+        }
+    }
+    assert.ok(oldClipped > 0, 'the previous 600 m far plane reproduces off-axis clipping');
+});
+
+test('extending far to cover 500 m retains sub-millimetre 24-bit depth steps throughout gameplay', () => {
+    const { SCENE_CONFIG } = createLoader()('xr/scene/SceneConfig.ts');
+    const near = 0.05, levels = 2 ** 24 - 1;
+    const depthStep = (z, far) => {
+        const depth = far / (far - near) - far * near / ((far - near) * z);
+        const nextZ = far * near / (far - (depth + 1 / levels) * (far - near));
+        return nextZ - z;
+    };
+    for (const z of [0.85, 1.2, 5, 10, 20]) {
+        const current = depthStep(z, SCENE_CONFIG.cameraFarMeters), previous = depthStep(z, 600);
+        assert.ok(current > 0 && current < 0.0005, `${z} m: <0.5 mm per depth step`);
+        assert.ok(current / previous < 1.001, `${z} m: far extension changes precision by less than 0.1%`);
+    }
 });

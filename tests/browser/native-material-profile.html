@@ -1,0 +1,37 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Native CPU and submission profile</title>
+<style>body{background:#080b18;color:#eef;font:15px system-ui;margin:22px}pre{white-space:pre-wrap}canvas{width:720px;height:405px}</style>
+<h1>Native source CPU / WebGL submission</h1>
+<p>32 fixed-song samples after warmup. Desktop evidence only; submission time is not GPU execution time or Quest frame pacing.</p>
+<button id="run">Run native profile</button><div id="view"></div><pre id="result">Ready</pre>
+<script type="module">
+import * as THREE from 'three';
+import {WormholeNativeSource} from '../../src/visuals/WormholeNativeSource.ts';
+import {XrNativeWormhole} from '../../src/xr/scene/XrNativeWormhole.ts';
+import {createEmptyTrackAnalysis} from '../../src/analyzer/normalizeAnalysisResult.ts';
+const button=document.querySelector('#run'),output=document.querySelector('#result');let cleanup=()=>{};
+button.onclick=async()=>{button.disabled=true;cleanup();output.textContent='Profiling…';try{
+ const renderer=new THREE.WebGLRenderer({antialias:false});renderer.setSize(480,270);document.querySelector('#view').replaceChildren(renderer.domElement);
+ const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,480/270,.05,1000),source=new WormholeNativeSource(),native=new XrNativeWormhole(source);scene.add(native.root);
+ cleanup=()=>{native.dispose();renderer.dispose();};
+ const frames=Array.from({length:440},()=>({e:.7,eRatio:1.2,densityProj:.6,melodyProj:.4,fxProj:.1,subEnergy:.6,bassEnergy:.5,subFlux:.2,bassFlux:.15,state:'DRIVE',perceptualSpectrum:Array(24).fill(.5)}));
+ const analysis={frames,events:[],sampleRate:44100,hopSize:1024,bpm:128,duration:10,trackAnalysis:createEmptyTrackAnalysis(),performancePlan:{version:1,source:'edited',points:[{id:'a',time:0,preset:'vos-wh-overdrive.json',confidence:1,intensity:1,reason:'build',morphDurationSec:2,morphCurve:'linear'}]}};
+ analysis.trackAnalysis.features=frames.map(()=>({melody:.4,vocal:.1,fx:.1,density:.6,brightness:.5,tension:.3}));await source.prepare(analysis);
+ const samples=[],summarize=values=>{const v=[...values].sort((a,b)=>a-b);return{p50:v[Math.floor(v.length*.5)],p95:v[Math.floor(v.length*.95)],max:v.at(-1),mean:v.reduce((a,b)=>a+b,0)/v.length};};
+ for(let i=0;i<40;i++){
+  source.render(2+i*.05,false);const sourceMs=source.lastRenderMs,frame=source.frame;
+  let start=performance.now();native.setFrame(frame);const copyMs=performance.now()-start;
+  start=performance.now();renderer.render(scene,camera);const materialSubmitMs=performance.now()-start;
+  const calls=renderer.info.render.calls,triangles=renderer.info.render.triangles;
+  // Keep the same geometry and material metadata; disable shading only for the paired submission.
+  const lines={...frame,material:{...frame.material,amount:0}};native.setFrame(lines);
+  start=performance.now();renderer.render(scene,camera);const lineSubmitMs=performance.now()-start;
+  if(i>=8)samples.push({songTime:frame.songTime,sourceMs,copyMs,materialSubmitMs,lineSubmitMs,grains:frame.count,weave:frame.weave.count,calls,triangles});
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+ }
+ native.setFrame(source.frame);renderer.render(scene,camera);
+ const report={samples:samples.length,dimensions:[480,270],sourceCpuMs:summarize(samples.map(s=>s.sourceMs)),packetCopyCpuMs:summarize(samples.map(s=>s.copyMs)),materialSubmitCpuMs:summarize(samples.map(s=>s.materialSubmitMs)),lineSubmitCpuMs:summarize(samples.map(s=>s.lineSubmitMs)),textureCount:renderer.info.memory.textures,rawSamples:samples,
+  limits:'Desktop deterministic fixture, alternating shader submission with identical producer geometry. CPU submission timings do not measure asynchronous GPU execution. Source CPU is still on the main thread; no physical Quest measurement.'};
+ output.textContent=JSON.stringify(report,null,2);
+ }catch(error){output.textContent='FAIL: '+error.stack;}finally{button.disabled=false;}};
+window.addEventListener('pagehide',()=>cleanup(),{once:true});
+</script></html>

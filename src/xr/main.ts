@@ -10,6 +10,7 @@ import { XrAppController } from './XrAppController';
 import { XrRuntime } from './runtime/XrRuntime';
 import { WormholeCanvasSource } from '../visuals/WormholeCanvasSource';
 import { WormholeWorkerSource, wormholeWorkerUnsupportedReason } from '../visuals/WormholeWorkerSource';
+import { WormholeNativeWorkerSource } from '../visuals/WormholeNativeWorkerSource';
 import { createXrSettingsStore } from './XrSettingsStore';
 
 const container = document.querySelector<HTMLDivElement>('#xr-app');
@@ -17,9 +18,7 @@ if (!container) throw new Error('#xr-app container missing from xr/index.html');
 
 // Opt-in debug counters, parsed once here and passed down (never re-read by runtime modules).
 const diagnostics = window.location.search.includes('xrDiagnostics=1');
-const timingMode = new URLSearchParams(window.location.search).get('eventTiming');
-const eventTiming = timingMode === 'local-band-v1' || timingMode === 'local-band-v2' ? timingMode : undefined;
-const engine = new AudioEngine(undefined, { loopPlayback: false, heroMetronome: false, eventTiming });
+const engine = new AudioEngine(undefined, { loopPlayback: false, heroMetronome: false });
 const runtime = new XrRuntime(container, { diagnostics });
 // Player settings persist per viewer; storage can be unavailable (private mode, policy).
 let storage: Storage | null = null;
@@ -40,4 +39,5 @@ new XrAppController(engine, runtime, container, options => {
         externalMaterial: options?.externalMaterial === true, externalLines: options?.externalLines === true,
         softwareRaster: options?.softwareRaster === true, webglRaster: options?.webglRaster === true };
     return offThread ? new WormholeWorkerSource(size) : new WormholeCanvasSource(size);
-}, { diagnostics, settingsStore: createXrSettingsStore(storage), backgroundThread });
+}, { diagnostics, settingsStore: createXrSettingsStore(storage), backgroundThread,
+    nativeWormholeFactory: () => new WormholeNativeWorkerSource({forceMain:forcedMainThread}) });

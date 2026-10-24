@@ -3,14 +3,15 @@
 // and separators are part of that same redraw; they are never animated.
 
 import * as THREE from 'three';
+import { XR_INSTRUMENT_FONT, XR_INSTRUMENT_INK } from './XrInstrumentStyle';
 import type { RhythmSessionSnapshot } from '../../gameplay';
 
 const WIDTH = 768;
 const HEIGHT = 384;
-const FONT = '"Segoe UI", "Roboto", system-ui, sans-serif';
+const FONT = XR_INSTRUMENT_FONT;
 const CYAN = '#4fd8ff';
 const MAGENTA = '#ff5fb4';
-const INK = '#eef8ff';
+const INK = XR_INSTRUMENT_INK;
 const MUTED = '#8ba6c4';
 const STATE_COLORS: Record<string, string> = {
     playing: CYAN, paused: '#ffd37a', finished: MAGENTA, ready: '#bfefff', idle: MUTED
