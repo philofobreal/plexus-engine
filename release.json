@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "task": "T08",
-  "releaseId": "t08-musical-roles-20261024T134224935Z",
-  "builtAt": "2026-10-24T13:42:24.935Z",
+  "task": "T09",
+  "releaseId": "t09-movement-20261024T142006361Z",
+  "builtAt": "2026-10-24T14:20:06.361Z",
   "baseCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
   "workingTreeChanges": true,
-  "deployedSourcePatchSha256": "a982d828736da51415c1b15f2ec1f4b94a843263147e50f7b2d31470d1a03b4d",
-  "sourceInputsSha256": "7517e8539a5fe9cba5243dd84b63615cdf1a73f3b7acc9a192d98a4128b400b5",
-  "sourceInputCount": 342,
-  "previousPagesCommit": "f751dbdbf96a42be99cd157be0f38ec6170529c9",
+  "deployedSourcePatchSha256": "c3ab214d4949b86f93b2efc9bfd33b855ed43242c1a8bc710935688080f76791",
+  "sourceInputsSha256": "3dc06ba42103b53ec324f30a5fbe2524e82f97e8563dfbf7ce1bc26d63d8522c",
+  "sourceInputCount": 343,
+  "previousPagesCommit": "2bd7cc0c8ed9ee6926e69b568ca4dae1e99ed4ec",
   "entries": [
     {
       "path": "index.html",
@@ -35,9 +35,9 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "59f64e49596098089bad02bf2556caa4959d7370aac93c85f9737cd5895711c1",
+      "sha256": "551fe0cc44c1ffac828b8da38d49aceb1731a23453d281fac62c8d9f623d55b0",
       "assets": [
-        "assets/xr-BvSuZmIf.js",
+        "assets/xr-C1CcTqhG.js",
         "assets/CosmicWormholeIdentity-ClYb2Xof.js",
         "assets/resolveMetaTuning-CsnYWn7w.js",
         "assets/xr-BfNetZ-7.css"
@@ -111,9 +111,9 @@
       "bytes": 11106
     },
     {
-      "path": "assets/xr-BvSuZmIf.js",
-      "sha256": "34d12e8ad1374f92bc1640282168c67b5a84d988528c935744919797de0215d0",
-      "bytes": 895155
+      "path": "assets/xr-C1CcTqhG.js",
+      "sha256": "208d6b878bcee9182bba058378237a5eb71dbd70240378694146f5b8d4899d73",
+      "bytes": 900972
     }
   ]
 }
