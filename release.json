@@ -1,8 +1,12 @@
 {
-  "id": "t11a-events-20261024T180844738Z",
-  "previousCommit": "74c57b8b78ed10fac7da90b7b2ccc207aec432bc",
-  "sourceCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
+  "id": "review-mvp-worker-20261024T202633193Z",
+  "previousCommit": "6a7ed740e24f9f5eba5a4b6ffb955a8baf1be74a",
+  "sourceCommit": "d6524b311dda44a28e802f66fd9abf3b209c7615",
   "inputs": [
+    {
+      "path": "bun.lock",
+      "sha256": "21e93aec036a5c24e7f3359249aa7472367cedebb5c077bf2db03284bb848bfd"
+    },
     {
       "path": "index.html",
       "sha256": "103aad76d424205a4f0a302e66af632d09d4b2a6124301e859931849c40ed12f"
@@ -158,6 +162,162 @@
     {
       "path": "public/visual-tuning-presets/vos-wh-spiral.json",
       "sha256": "9e17fd44258c67ee7ca403f35f0aa5f641161f1c1ce9d4a412970f5ec4b8bcb1"
+    },
+    {
+      "path": "scripts/audit-cockpit-refinement.mjs",
+      "sha256": "e3ce949fe7dedb9e5694bc238e653a99b73cc10e2ac46f0419d9ad0737bcd38d"
+    },
+    {
+      "path": "scripts/audit-cockpit-shell.mjs",
+      "sha256": "9c7b41529f8d605d826fca522e80fdf1157fc1985961782e3742540c67b0f0b1"
+    },
+    {
+      "path": "scripts/audit-cockpit.mjs",
+      "sha256": "c8b13e0086f7af9de1873f88bc423bb2f99af84e53b1662e935096c9c061b7d1"
+    },
+    {
+      "path": "scripts/audit-movement.mjs",
+      "sha256": "44d182250ee442c327138841c875be5334a374777210760f8aac1eae29533912"
+    },
+    {
+      "path": "scripts/audit-musical-roles.mjs",
+      "sha256": "c27a78809a9ac90fc01c30e399bdbac469b59de3925b0e794ea193b2ab7877b7"
+    },
+    {
+      "path": "scripts/audit-native-cosmos.mjs",
+      "sha256": "d6a20c1ebfcaaad54be3a2116bb81686d1e452e7865a8fcfa6f66f3bb1894170"
+    },
+    {
+      "path": "scripts/audit-native-material.mjs",
+      "sha256": "fc5b7699d2a1757b108b6cb65e22b29581f7d953557f598c851f871ea92188d1"
+    },
+    {
+      "path": "scripts/audit-native-wall.mjs",
+      "sha256": "bc5ebcd8bea0e5d917a5c1cccc418354940dd0c711ec7acd650cb38e29964818"
+    },
+    {
+      "path": "scripts/audit-native-weave.mjs",
+      "sha256": "98d2943983dac3c47164df094c6baa8d2d539e2754d146a5fae9ba041e92e31f"
+    },
+    {
+      "path": "scripts/audit-native-worker.mjs",
+      "sha256": "88b44d6808ef553076fa2c741e4c06284af525f9d989531d6989b1184fa1ddea"
+    },
+    {
+      "path": "scripts/audit-native-wormhole.mjs",
+      "sha256": "4cd6660d64b5380f684ac10cf2ca5fc233732fdc5689d1747ed98e6add1f10e8"
+    },
+    {
+      "path": "scripts/audit-spiral-history.mjs",
+      "sha256": "5ce2a4d8fdff7e0cd0d72d761d30268d2887647fee4cbbe1f8e0aab70c7ec210"
+    },
+    {
+      "path": "scripts/audit-wall-default-off.mjs",
+      "sha256": "16562d68f667cd5254f7720c0814195018118e13c419ba21614c869a7b28ab6a"
+    },
+    {
+      "path": "scripts/audit-wormhole-exact.mjs",
+      "sha256": "a10727e2da38cf9d34d3f60034308e0761c48401bb1e8a51bbce47dc5352af84"
+    },
+    {
+      "path": "scripts/audit-xr-baseline.mjs",
+      "sha256": "bdcae1112f5adb78d2463d9558f00cea3cb3d3958b6c760f4ba136925258bc8f"
+    },
+    {
+      "path": "scripts/capture-movement-baseline.mjs",
+      "sha256": "bfed34c22e7b87ae5696e307296dbae1a8fa20097cd7fafecaa7fe3e913d0fcc"
+    },
+    {
+      "path": "scripts/capture-note-role-baseline.mjs",
+      "sha256": "396d5a9e693da602488dc2c6036d52ba48e1fc4de2ed7f64f97be82a19baae83"
+    },
+    {
+      "path": "scripts/devPresetSavePlugin.mjs",
+      "sha256": "b77c51e7422b96964cfd4d56999a06df2f97beb07248b3d3beb4fe5c610f8a21"
+    },
+    {
+      "path": "scripts/evaluate-movement.mjs",
+      "sha256": "21e29f854593bee397cc4df7d31e22c82484365d414e8677de04eaaf63e27c37"
+    },
+    {
+      "path": "scripts/finalize-cockpit-refinement.mjs",
+      "sha256": "13217a8033872bb890897c730cd382b6dd4872091427feb3935575db5208876f"
+    },
+    {
+      "path": "scripts/finalize-cockpit-shell.mjs",
+      "sha256": "8cb473813cb22023d7bf2cc947477456f10e334f23fef2ee273a6fc9449064ff"
+    },
+    {
+      "path": "scripts/finalize-cockpit.mjs",
+      "sha256": "563dd6f0123f697fd2bd5d58455bf0fa9a2ab6d413e891d5d9c0846a2cd940be"
+    },
+    {
+      "path": "scripts/finalize-movement.mjs",
+      "sha256": "bd0f3feccbf296791aa77266678d9c640d113b8965660fd030e3e40716621053"
+    },
+    {
+      "path": "scripts/finalize-musical-roles.mjs",
+      "sha256": "f4392517eea6d18ac081011d5e04009648a8b3d8a83a9b710d338c57b7b47f99"
+    },
+    {
+      "path": "scripts/finalize-native-cosmos.mjs",
+      "sha256": "256fd02f1178c0f6c45e23d0f9698de9797ca3ce7d8cd71af44726234abaa197"
+    },
+    {
+      "path": "scripts/finalize-native-wall.mjs",
+      "sha256": "e15f69745819b81a33a645ee49812a00df6f7255635226bf15a9e487ca7725b0"
+    },
+    {
+      "path": "scripts/generate-golden-masters.ts",
+      "sha256": "53aab4f3a26264a49b3b56aeec5925add07fc57331f7be1f807a23e7bd7f02c8"
+    },
+    {
+      "path": "scripts/release-cockpit-refinement.mjs",
+      "sha256": "a0f9244b9ce75276fc4774b0bfff46126803ef9eaa235082b34ab2dd3120e1e7"
+    },
+    {
+      "path": "scripts/release-cockpit-shell.mjs",
+      "sha256": "3a05766a1ec451091301865dc8fbbf76ba61a98e57f78f1a8bc3d664d9e37e9d"
+    },
+    {
+      "path": "scripts/release-cockpit.mjs",
+      "sha256": "1995860eb0355e15eeb75fbe6fe7d24be33dfbe820a2f9585c680f45b72a7acd"
+    },
+    {
+      "path": "scripts/release-movement.mjs",
+      "sha256": "56736ec746170071e5a5bd275f178d2630f9b5d244489ea01980ab21d108e10b"
+    },
+    {
+      "path": "scripts/release-musical-roles.mjs",
+      "sha256": "cac9892e3d6584f68c06ec25f50225feae945269f92964a94f9e95a325b5be38"
+    },
+    {
+      "path": "scripts/release-native-cosmos.mjs",
+      "sha256": "1e1bdb7e256c1ced20730da2cb7ac6fb73460c611c554b752dc8e75cb16695be"
+    },
+    {
+      "path": "scripts/release-native-wall.mjs",
+      "sha256": "d3713fc1a8dc898c1903afedc759466066ed368a9990c84680cbd9836356f62c"
+    },
+    {
+      "path": "scripts/release-pages.mjs",
+      "sha256": "cd3b40fbebb6e255b5ff7ec039527075b1ed722f9e9e8783a53a0990c6f60f58"
+    },
+    {
+      "path": "scripts/release-wall-default-off.mjs",
+      "sha256": "93d6d31f55f33816eacd7fbf42378d14bc56fb9c1d2430ee30455d3f61700db9"
+    },
+    {
+      "path": "scripts/run-tests.mjs",
+      "sha256": "5e9463a40f7177ba76a970d595e4583133c5266b9fc65832d8a8dd18ae4f1772"
+    },
+    {
+      "path": "scripts/write-audio-smoke-fixture.mjs",
+      "sha256": "9b5e35654e8c00689232d419483be4ceb69d4c7b517a012e06620ea389fba8cf"
+    },
+    {
+      "path": "scripts/write-native-smoke-fixture.mjs",
+      "sha256": "5496f200d398d41f69f80d0783742209d1e41a56709ecc2488231e27c5cef963"
     },
     {
       "path": "src/analyzer/AcceptedEventTiming.ts",
@@ -441,7 +601,7 @@
     },
     {
       "path": "src/config/previewQuality.ts",
-      "sha256": "00a9c9986f1e9603b49877faf98acd3a34ff6b7a07e781a74fd70f11a1f8b4d4"
+      "sha256": "2a57311dc9419b377e2d6fb844b138010d62f206e6e233a88c5369bcabeee2ca"
     },
     {
       "path": "src/config/resolveMetaTuning.ts",
@@ -672,6 +832,10 @@
       "sha256": "2f4f8a1909f4b201609089db80c3cdefc02db7012c32d68dc37b2b59a0eb7135"
     },
     {
+      "path": "src/types/WormholeHostFrame.ts",
+      "sha256": "6e9cc664dc9c58622e5bbfd6edbc34defcdc5b4ea42231972b70a9b5363cdf02"
+    },
+    {
       "path": "src/types/WormholeNativeFrame.ts",
       "sha256": "883353f2a771df444c89985850304a99f01bdc4c57dd31e4c656f4433d9a7946"
     },
@@ -773,7 +937,7 @@
     },
     {
       "path": "src/ui/PreviewQualityControl.ts",
-      "sha256": "ed71c5f305b4e27649c3aed5d1178a0d090659eaf11321696bcfc16c442b528b"
+      "sha256": "f3b00b27a3b7afe59d7766f81c96e9a15a7b8306378506fd7d975edee1308b11"
     },
     {
       "path": "src/ui/TimelineCanvas.ts",
@@ -885,7 +1049,7 @@
     },
     {
       "path": "src/ui/mvp/main.ts",
-      "sha256": "e56c3bab544adca33fdc2d2631c19acd9a45884677bd30bec9da7b3c289add4a"
+      "sha256": "6998ec6e803361630979c90ff78972893924b1d083c7d69929d8da06fed5dddb"
     },
     {
       "path": "src/ui/mvp/metaTuningStorage.ts",
@@ -925,7 +1089,7 @@
     },
     {
       "path": "src/visuals/Canvas2DRendererBackend.ts",
-      "sha256": "eca701c9b2b1f42aac4179f15407a02f686c29c78fb7daa99cc9896ca1a778b8"
+      "sha256": "011c4943e981663577d659ec6a504117269cb674b426f12e16a3f7591123ef99"
     },
     {
       "path": "src/visuals/CanvasFieldRasterSurface.ts",
@@ -941,7 +1105,7 @@
     },
     {
       "path": "src/visuals/CosmicWormholeIdentity.ts",
-      "sha256": "c71c5ab62ca5405aa92950e2b52a496dbc551f711733023d10c817da72ac3612"
+      "sha256": "049ee8c8943d17eef7f0d9690575779e52390365ddbf314ef283400fec4280a3"
     },
     {
       "path": "src/visuals/CyberpunkIdentity.ts",
@@ -977,7 +1141,7 @@
     },
     {
       "path": "src/visuals/P5RendererBackend.ts",
-      "sha256": "04cf5a4fd70affe4cf4d1fe900d1ba5e45d7b15c25149b548e920610541c86e7"
+      "sha256": "37b938011cc4a780c2e936b8472ebbd39c9296b97924cba11c75e971955e7108"
     },
     {
       "path": "src/visuals/Particle.ts",
@@ -989,7 +1153,7 @@
     },
     {
       "path": "src/visuals/PlexusRenderer.ts",
-      "sha256": "fdd1b20f630b4260ada4e340ba06df8b4a3d3643d6b901859cc375276615d832"
+      "sha256": "46930fa432116a478cb0ff5080f072f4c7319b60234a40ae90d79d6ea631735d"
     },
     {
       "path": "src/visuals/PostFxPipeline.ts",
@@ -1065,7 +1229,7 @@
     },
     {
       "path": "src/visuals/WormholeExactWorkerSource.ts",
-      "sha256": "8e0207291e0799d7664bf6e4d07deaa909ac5eaa59d25caf995f8f2aef6fe066"
+      "sha256": "266b3c0cfc388ce40bec0924e4c95584ea6cc9f55f479ebeeff30041e159bcf9"
     },
     {
       "path": "src/visuals/WormholeFrameContext.ts",
@@ -1078,6 +1242,10 @@
     {
       "path": "src/visuals/WormholeGrainField.ts",
       "sha256": "f2d934fa108b91a5c84f29ded1fc4d4bfc8c37b75505109e28ca8f464d037e2c"
+    },
+    {
+      "path": "src/visuals/WormholeHostWorkerSource.ts",
+      "sha256": "830725513a1869a34498241cf9e41f7ec1345e47f2c48e2437fb8b1f99cdec37"
     },
     {
       "path": "src/visuals/WormholeLensWarp.ts",
@@ -1101,7 +1269,7 @@
     },
     {
       "path": "src/visuals/WormholeRasterPass.ts",
-      "sha256": "42dd764ec4d523dbb5b04432ba788a0013c69d7a0a33b6f6c7f7180e60ee5737"
+      "sha256": "4be79572436dc7fe127a982bfd5b18868011b4fdc33cd55a7f8b01facbc9e117"
     },
     {
       "path": "src/visuals/WormholeTimeline.ts",
@@ -1146,6 +1314,10 @@
     {
       "path": "src/visuals/wormholeGrainMaterialRaster.ts",
       "sha256": "a27a2bcf8cad4fb07240fb93b812169312ba6bf02598d3aea77e12eca6fbfa79"
+    },
+    {
+      "path": "src/visuals/wormholeHostRender.worker.ts",
+      "sha256": "bf0604f66762228d68f42ca5d51cc66a68d1a3aa2bdc75a27fe53bd5c11efce8"
     },
     {
       "path": "src/visuals/wormholeNative.worker.ts",
@@ -1273,7 +1445,7 @@
     },
     {
       "path": "src/xr/scene/RhythmGameScene.ts",
-      "sha256": "fa2af167b488412057749c235df8b5edac4cf517c537c6a3efdddefb4bebab71"
+      "sha256": "c2c12d389d8f1da9422dbbe15a5d7fba9df25638aeb3d09ade0903813f64cfc3"
     },
     {
       "path": "src/xr/scene/RhythmNoteField.ts",
@@ -1394,56 +1566,60 @@
       "sha256": "06ad49cc1b22e6879d28cf89c5f71047f74daddc2ee372dd2c062e26924423db"
     },
     {
-      "path": "assets/CosmicWormholeIdentity-UTvED-uM.js",
-      "sha256": "c12ed3cb695502432041886c0bb4d25a2c7590239668a2a4b85a861cc2f17106"
+      "path": "assets/CosmicWormholeIdentity-YX8Qsl7u.js",
+      "sha256": "0f3ee5521442695b817aa1d447e653151a0a13dfdcff66cecccaadf6f8dbea33"
     },
     {
       "path": "assets/export.worker-Av-E_fEl.js",
       "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
     },
     {
-      "path": "assets/main-C7BsYBKL.css",
-      "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+      "path": "assets/main-BSox1-Jz.js",
+      "sha256": "0ea2a870e66a37f42baf1b93eff044534cd6a88c3d55b898db6c5bf7f45693c3"
     },
     {
-      "path": "assets/main-D_FA4t2_.js",
-      "sha256": "af4302e5a91fdfaea78763dc235eeccbdd27d88813def19b357767f21646c612"
+      "path": "assets/main-C7BsYBKL.css",
+      "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
       "path": "assets/mvp-D0xy9ln6.css",
       "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
     },
     {
-      "path": "assets/mvp-D6xTot_5.js",
-      "sha256": "4a5f1e9787b47ba3ebc69f6b33123d4b9f1de9680111e4568d6ed31cd6cd4ba8"
+      "path": "assets/mvp-DWSdg9IF.js",
+      "sha256": "0f63cd92e3363d700835b3174f2538b1024d8025199d5f28a1a44ad076444d66"
     },
     {
-      "path": "assets/PreviewQualityControl-B7stQm_7.js",
-      "sha256": "e72480a7f5be63c42c82c4f73e5da0c114648b9e2e9b02fb2adf54234ee0e7da"
+      "path": "assets/PreviewQualityControl-BVTzdsWV.js",
+      "sha256": "3af2958ebe8a3fb36489d4d04e88040fccf52a30dfe2da7c54c3ec22d02e8c17"
     },
     {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
       "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
     },
     {
-      "path": "assets/resolveMetaTuning-BTQ-HDkV.js",
-      "sha256": "dcf80a78e133f114fae5e9bcc416fbd0af18835154a881d296e94708c3d4c69e"
+      "path": "assets/resolveMetaTuning-BKnsPRSm.js",
+      "sha256": "781eb96f816d48a4c445ed59a500f5304efa1940dce0f70ae3269889208f3e0a"
     },
     {
-      "path": "assets/wormholeNative.worker-NKa5B4-L.js",
-      "sha256": "8952cd821cbecb9cfed9cd4df2c232880c311cbd96ed9168a9ca599e22427c74"
+      "path": "assets/wormholeHostRender.worker-C0AYhcyr.js",
+      "sha256": "5f3d07f2dbf08bf585991f8c0d2dba54ae5da2c94e26827ba244254ab6e4fcef"
     },
     {
-      "path": "assets/wormholeRender.worker-DVbw9WGv.js",
-      "sha256": "4caafbdcae89cab8f35be32904c0cafcffc7ff629de8e1fbb44e63bc920e52a9"
+      "path": "assets/wormholeNative.worker-DXd341d5.js",
+      "sha256": "bed9b367bea69689beead02c95e11beed6173e1ccf060d59cb24d46e7e8ae3e8"
+    },
+    {
+      "path": "assets/wormholeRender.worker-mZXgPgQo.js",
+      "sha256": "fa3d9802994a0ed7376a97419650b69f971f3cc29650371d21c164775bab5506"
     },
     {
       "path": "assets/xr-BfNetZ-7.css",
       "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
     },
     {
-      "path": "assets/xr-CPG9OfkH.js",
-      "sha256": "c58aa46ef27bfa0ae547bd7c22edb6444e4659ced2bbbc7d4db85ef5b99b64be"
+      "path": "assets/xr-pkYYUdBN.js",
+      "sha256": "879ee7f207fb7e8f5e8c358f3a13b9f606c1781d8b124436a311fb4854cb3a90"
     },
     {
       "path": "eso0932a.jpg",
@@ -1459,11 +1635,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "c96ef63b1b8bc8f78404862b46e7e35054ad0370256dd9713501e7d711ad43d7"
+      "sha256": "5640a4ae7cba79aeac8fb6c7aff9898b7c404f1eea3f8664cbe9a15f2249bd21"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "6f72677bede9d63f45ac63a3b64a464e87b6dc4a215af3d0ff5d91373e58ee70"
+      "sha256": "2e1c3fbb7f36dbce2bca152e1e1c08d8439045b82cb5528c9cd97b17848dee5e"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
@@ -1595,7 +1771,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "949e3d44bac6fd0fe5e81329da0c920071dbd9b67178dbfec36a7e8d1f923f9b"
+      "sha256": "666dfab7729551614fb6857c1c92b70214104f234248f83102164734d2b5067f"
     }
   ]
 }
