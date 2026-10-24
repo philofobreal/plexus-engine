@@ -1,0 +1,181 @@
+{
+  "task": "T10b-menu",
+  "defaultChoice": "base",
+  "modes": [
+    {
+      "value": "base",
+      "label": "Base",
+      "status": "Default",
+      "hint": "Default frame timing. Use for normal play. Other modes are experiments; none fixes BPM, grid, sections or headset latency.",
+      "when": "Normal play, or return here after comparing an experiment."
+    },
+    {
+      "value": "local-band-v1",
+      "label": "v1 legacy",
+      "status": "Historical experiment",
+      "hint": "Legacy local attack search. May refine gradual attacks incorrectly (22 known authored negatives). Historical A/B only; reloads and restarts.",
+      "when": "Reproduce older timing behavior; not recommended as a general accuracy upgrade."
+    },
+    {
+      "value": "local-band-v2",
+      "label": "v2 DC1",
+      "status": "Optional experiment",
+      "hint": "Local search with DC/gradual-attack gate. Still has 8 known tonal false refinements. Compare on familiar tracks; reloads and restarts.",
+      "when": "Compare sub-frame attacks against Base. It keeps event count, but timing can change the generated chart."
+    },
+    {
+      "value": "local-band-q3",
+      "label": "Q3 lab",
+      "status": "Known regression",
+      "hint": "Research test only: 12 extra tonal false refinements, no common-model gain. Explicit opt-in; reloads and restarts this track.",
+      "when": "Reproduce the rejected 3 ms experiment and inspect its counterexamples. Use Base for normal play."
+    }
+  ],
+  "history": [
+    {
+      "name": "Base",
+      "identity": "algorithm 7, H=1024",
+      "status": "Alapértelmezett",
+      "available": "Menü",
+      "when": "Normál játékhoz. Kiindulópont és visszaállási lehetőség minden összehasonlítás után.",
+      "evidence": "A mostani optimalizálás az ellenőrzött kimeneteket változatlanul hagyta."
+    },
+    {
+      "name": "v1 legacy",
+      "identity": "accepted-frame-band-timing-v1",
+      "status": "Korábbi kísérlet",
+      "available": "Menü",
+      "when": "Régebbi viselkedés vagy egy konkrét időzítési eset reprodukálásához.",
+      "evidence": "A 340 ismert alapkontrollban 22 negatív esetet finomított tévesen. Fokozatos attacknál ne tekintsd javításnak."
+    },
+    {
+      "name": "v2 eredeti",
+      "identity": "accepted-frame-band-timing-v2",
+      "status": "Leváltott történeti állapot",
+      "available": "Archivált teszt",
+      "when": "A DC-hiba reprodukálásához az eredeti forrásfával. Általános játékhoz nem szükséges külön menümód.",
+      "evidence": "A nyers PCM-teljesítményt a DC-eltolás félrevezethette. A mentett régi eredmény és külön cache-azonossága olvasható marad."
+    },
+    {
+      "name": "v2 DC1",
+      "identity": "accepted-frame-band-timing-v2-dc1",
+      "status": "Opcionális kísérlet",
+      "available": "Menü",
+      "when": "Ha az elfogadott támadások képkockaablakon belüli helyét akarod összehasonlítani a Base móddal, ismert zenén.",
+      "evidence": "840 DC/ramp kontroll megtartva; a 336 tonális negatívban 8 ismert téves finomítás. Közös modell-egyezés: 550/649 esemény, Base: 549/649."
+    },
+    {
+      "name": "Q3 lab",
+      "identity": "accepted-frame-band-timing-q3-lab-v1",
+      "status": "Ismert regresszió",
+      "available": "Menü, kifejezett tesztmód",
+      "when": "Kizárólag a most elutasított 3 ms-os hipotézis és ellenpéldái kipróbálásához. Normál játékhoz Base.",
+      "evidence": "550 → 550 közös egyezés, a tonális téves finomítások 8 → 20. Automatikus/alapértelmezett promóció elutasítva; a felhasználó külön kérésére választható."
+    }
+  ],
+  "pending": [
+    {
+      "topic": "Első és utolsó hallható támadás",
+      "when": "Ha csak a szám eleje/vége pontatlan, vagy insufficient-support marad.",
+      "next": "Külön szélső ablakokra futtatott, azonos PCM-clockú modellreferencia és negatív kontroll. Az aktuális módok nem tippelik meg a hiányzó támaszt."
+    },
+    {
+      "topic": "Beat/grid-fázis, fél/dupla tempó",
+      "when": "Ha a teljes beat-rács vagy BPM rossz, nem csak egyes támadások lokális ideje.",
+      "next": "Külön, kompatibilis beat/tempo modellpárral végzett mérés. Az Attack timing kapcsoló ezt nem módosítja."
+    },
+    {
+      "topic": "Szakaszhatár, drop/peak, cue és vizuális megérkezés",
+      "when": "Ha dramaturgiai váltás vagy a célállapot elérése késik.",
+      "next": "Határ-, funkcionális szerep- és arrival-mérés külön. A jelenlegi közös onset-jelölések ezekre nem adnak címkét."
+    },
+    {
+      "topic": "Headset input/audio/display késés, főszál-szaggatás",
+      "when": "Ha jó offline időpontok mellett az eszközön késik vagy szaggat a játék.",
+      "next": "Külön eszköz-/frame-pacing mérés. Egyetlen timing mód sem FPS- vagy headsetlatencia-javítás."
+    }
+  ],
+  "currentDelivery": {
+    "q3SelectableByExplicitUserRequest": true,
+    "automaticOrDefaultPromotion": false,
+    "choiceScope": "viewer analysis, not artist preset",
+    "reanalysis": "Current in-memory File reloads and chart restarts; no file means next load.",
+    "persistence": "Optional system.eventTiming in version-1 settings; Copy includes choice/status/guidance. Explicit saved choice wins over legacy query fallback.",
+    "audioPersisted": false
+  },
+  "study": {
+    "path": "research/analyzer-lab/fixtures/t10b-q3-summary-03.json",
+    "sha256": "bf0d5cc9789a96534a0087ca0aa8bef72c00eee8765d22a3d28e7b1a359863c6",
+    "assessment": {
+      "checks": {
+        "strictPrimaryGain": false,
+        "perTrackNonregression": true,
+        "diagnosticNonregression": true,
+        "noPositiveRegressions": true,
+        "noNewNegativeRefinements": false
+      },
+      "researchQualified": false,
+      "productionPromotion": false,
+      "rejectedReasons": [
+        "strictPrimaryGain",
+        "noNewNegativeRefinements"
+      ]
+    },
+    "totals": [
+      {
+        "tolerance": 0.002,
+        "admissibleReferencePairs": 21,
+        "before": 6,
+        "after": 6
+      },
+      {
+        "tolerance": 0.01,
+        "admissibleReferencePairs": 471,
+        "before": 26,
+        "after": 26
+      },
+      {
+        "tolerance": 0.025,
+        "admissibleReferencePairs": 1184,
+        "before": 550,
+        "after": 550
+      },
+      {
+        "tolerance": 0.05,
+        "admissibleReferencePairs": 1184,
+        "before": 574,
+        "after": 574
+      }
+    ],
+    "tonal": {
+      "count": 336,
+      "beforeFalseRefinements": 8,
+      "afterFalseRefinements": 20,
+      "newTonalNegatives": [
+        27,
+        30,
+        111,
+        126,
+        207,
+        222,
+        276,
+        279,
+        282,
+        300,
+        315,
+        318
+      ]
+    },
+    "context": "Immutable experiment outcome predates the subsequent user-requested menu opt-in. Rejected for automatic/default promotion; not rewritten as a success."
+  },
+  "sourceHashes": {
+    "src/xr/XrEventTimingSettings.ts": "f4c462742b95e1225cea2e2bd8eb0cc8d717f3c68de4161148b199cc01e30f66",
+    "src/analyzer/ExperimentalEventTimingQ3.ts": "ebfa3d6195c261245dfa5b251baaf04ccb041b44c050608ee52a309f7a6a2bad",
+    "documents/audits/xr-timing-menu-contract.md": "434857534042116224b49e4ae716a5bdddb4cc240cac1f8203e63767e7f75305"
+  },
+  "limits": [
+    "Known inspected development excerpts; common model outputs are pseudo-labels, not calibrated confidence or independent truth.",
+    "No beat/tempo/section/function reference inferred from onset consensus.",
+    "Physical Quest measurements unavailable."
+  ]
+}
