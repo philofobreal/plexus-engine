@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "releaseId": "t06c-native-material-20261024T032453627Z",
-  "task": "T06c",
-  "builtAt": "2026-10-24T03:24:53.627Z",
+  "releaseId": "t06c2-native-worker-20261024T092849505Z",
+  "task": "T06c2",
+  "builtAt": "2026-10-24T09:28:49.505Z",
   "baseCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
   "workingTreeChanges": true,
-  "deployedSourcePatchSha256": "3299588c99136b69f344ce20b7dcf5b445f532ecba32836f0097d923a645500d",
-  "sourceInputsSha256": "81e2a72469e73d37a2ddfa644967d45bde04b1715e75c5ad4cba4ee5f6eb7603",
-  "sourceInputCount": 329,
-  "previousPagesCommit": "2ad4da8ca7d507fad449df90c8efccc1f0e10ffd",
+  "deployedSourcePatchSha256": "b464a0a1ec3e58dc45c03f25507f68df68d61ac0cea23a4ed3d6125ab99bda10",
+  "sourceInputsSha256": "52ff216e43d9955a79c9e264f213b723c1ea917b94a7bc97056938526bb563b1",
+  "sourceInputCount": 334,
+  "previousPagesCommit": "4cb71ea836f34ce2c34fa2e0a195fc7a83c0f1e5",
   "entries": [
     {
       "path": "index.html",
@@ -35,9 +35,9 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "29e654652dbb308250bb7f256d91f3eecd87cbc902efec6862f424fde33662ce",
+      "sha256": "9ef60145110f3da17b7e3c1e354e4f232f0c013c21159c01a61847a7f37542f7",
       "assets": [
-        "assets/xr-dHgfv35a.js",
+        "assets/xr-CL6AO41d.js",
         "assets/CosmicWormholeIdentity-tT9Rq0Tw.js",
         "assets/resolveMetaTuning-CWxitgfY.js",
         "assets/xr-BfNetZ-7.css"
@@ -96,6 +96,11 @@
       "bytes": 1837
     },
     {
+      "path": "assets/wormholeNative.worker-CnkvGcHG.js",
+      "sha256": "b05bb072b56e2a056b358670198db573752ca625e1bbbfa665fd46f98e77c657",
+      "bytes": 138585
+    },
+    {
       "path": "assets/wormholeRender.worker-D3pxeWiw.js",
       "sha256": "575749a019f932a3e6781e9997073ef4e1972ca3e280e91ec4490eae76e20d77",
       "bytes": 168619
@@ -106,9 +111,9 @@
       "bytes": 11106
     },
     {
-      "path": "assets/xr-dHgfv35a.js",
-      "sha256": "ea0c12b9647b32a23a58cdb06203203848680bf1a8c75f5761d7fcdc58ed2b86",
-      "bytes": 853454
+      "path": "assets/xr-CL6AO41d.js",
+      "sha256": "04cae08f6474d54cf278769ecedec55874afbab2409d318f69f644db2dae4f8d",
+      "bytes": 861844
     }
   ]
 }
