@@ -1,58 +1,58 @@
 {
   "schemaVersion": 1,
-  "releaseId": "t06b-native-weave-20261024T030246088Z",
-  "task": "T06b",
-  "builtAt": "2026-10-24T03:02:46.088Z",
+  "releaseId": "t06c-native-material-20261024T032453627Z",
+  "task": "T06c",
+  "builtAt": "2026-10-24T03:24:53.627Z",
   "baseCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
   "workingTreeChanges": true,
-  "deployedSourcePatchSha256": "fca232587164347ab3f0b119188b2ce5c2494241e007234dfa619a9d2046e91f",
-  "sourceInputsSha256": "12138983b666bbf2de085678f1b2bbaeb3eeac8cba63fd66078add10ed5dbd74",
-  "sourceInputCount": 328,
-  "previousPagesCommit": "b74b79af29f5dd9e6c08e7736b832afeac82e03f",
+  "deployedSourcePatchSha256": "3299588c99136b69f344ce20b7dcf5b445f532ecba32836f0097d923a645500d",
+  "sourceInputsSha256": "81e2a72469e73d37a2ddfa644967d45bde04b1715e75c5ad4cba4ee5f6eb7603",
+  "sourceInputCount": 329,
+  "previousPagesCommit": "2ad4da8ca7d507fad449df90c8efccc1f0e10ffd",
   "entries": [
     {
       "path": "index.html",
-      "sha256": "c235fc8cb02762005de92fde6fb5f17a5f8b473818c1ddb18e0367e58faf4d73",
+      "sha256": "9a6c7f6b74efe08b44e90a1b7a1f28bab03e8afbb79d0cc58a40bb4f5b5c4ba6",
       "assets": [
-        "assets/main-BK6GFKiK.js",
-        "assets/CosmicWormholeIdentity-BMYyHJz0.js",
-        "assets/PreviewQualityControl-CNSl7nd5.js",
+        "assets/main-cLKuFpA7.js",
+        "assets/CosmicWormholeIdentity-tT9Rq0Tw.js",
+        "assets/PreviewQualityControl-Bx42HVvP.js",
         "assets/PreviewQualityControl-Dihs3YQ2.css",
         "assets/main-C7BsYBKL.css"
       ]
     },
     {
       "path": "mvp/index.html",
-      "sha256": "c59c6e330e98977b1095a0d71ce592870f835f2ba668f7888f2c5dbf73a5ecec",
+      "sha256": "66b81755a24b6f84c3aaecfe79e138f3081fc0533103ba4e640f758dd896b430",
       "assets": [
-        "assets/mvp-DDJaR8YH.js",
-        "assets/CosmicWormholeIdentity-BMYyHJz0.js",
-        "assets/PreviewQualityControl-CNSl7nd5.js",
-        "assets/resolveMetaTuning-DV55f_jg.js",
+        "assets/mvp-DbEM0uSU.js",
+        "assets/CosmicWormholeIdentity-tT9Rq0Tw.js",
+        "assets/PreviewQualityControl-Bx42HVvP.js",
+        "assets/resolveMetaTuning-CWxitgfY.js",
         "assets/PreviewQualityControl-Dihs3YQ2.css",
         "assets/mvp-D0xy9ln6.css"
       ]
     },
     {
       "path": "xr/index.html",
-      "sha256": "45819015450daa9b20860b525528288f5ca9add54240b7af73a637cb46de6963",
+      "sha256": "29e654652dbb308250bb7f256d91f3eecd87cbc902efec6862f424fde33662ce",
       "assets": [
-        "assets/xr-SulS2Mgw.js",
-        "assets/CosmicWormholeIdentity-BMYyHJz0.js",
-        "assets/resolveMetaTuning-DV55f_jg.js",
+        "assets/xr-dHgfv35a.js",
+        "assets/CosmicWormholeIdentity-tT9Rq0Tw.js",
+        "assets/resolveMetaTuning-CWxitgfY.js",
         "assets/xr-BfNetZ-7.css"
       ]
     }
   ],
   "assets": [
     {
-      "path": "assets/CosmicWormholeIdentity-BMYyHJz0.js",
-      "sha256": "5930b5dbce26693a0c420857bcf5bcef35a4a3908093c3b927a00c8b68366f50",
-      "bytes": 219809
+      "path": "assets/CosmicWormholeIdentity-tT9Rq0Tw.js",
+      "sha256": "3118b871412580404db2c60858a9b7f044035b67338d927e6085a345bf610108",
+      "bytes": 219957
     },
     {
-      "path": "assets/PreviewQualityControl-CNSl7nd5.js",
-      "sha256": "7fa258214caa53ea75c7bcddfa27e64b2f4fcdcdf031d868e07627ad2ea7ba5a",
+      "path": "assets/PreviewQualityControl-Bx42HVvP.js",
+      "sha256": "974c29b5604344bc72fd2cf5d56e0daaee4d909385c090167c0d757f36eed4de",
       "bytes": 1265443
     },
     {
@@ -71,14 +71,14 @@
       "bytes": 7745
     },
     {
-      "path": "assets/main-BK6GFKiK.js",
-      "sha256": "b4bc767d45097e756eb6f28e67e09dd3b7437c82b7769a45568d4bbb3623ed15",
-      "bytes": 100991
-    },
-    {
       "path": "assets/main-C7BsYBKL.css",
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c",
       "bytes": 18708
+    },
+    {
+      "path": "assets/main-cLKuFpA7.js",
+      "sha256": "aec0c018ab32a788e6fc57c83e05a6ec314e0b5871db27f2e609ca575bba8dd1",
+      "bytes": 100991
     },
     {
       "path": "assets/mvp-D0xy9ln6.css",
@@ -86,19 +86,19 @@
       "bytes": 25490
     },
     {
-      "path": "assets/mvp-DDJaR8YH.js",
-      "sha256": "64bcccf52be82c4a882b5d11144d3f5d3cbe7c80fe36b9ca8390321c4c64e04f",
+      "path": "assets/mvp-DbEM0uSU.js",
+      "sha256": "0a78f70ab488e650d38470aeb6b092b03c92eff408ecdac819934ff44ffac086",
       "bytes": 110396
     },
     {
-      "path": "assets/resolveMetaTuning-DV55f_jg.js",
-      "sha256": "8bf8a87d9985c3d04d0f6062998eae835189527606a52eb37a3303b8cc54f26b",
+      "path": "assets/resolveMetaTuning-CWxitgfY.js",
+      "sha256": "bdaf5476d66988dfef2d061d9d77141e9af46ce0f6e2d0027207f70e83a61994",
       "bytes": 1837
     },
     {
-      "path": "assets/wormholeRender.worker-CnovOfuN.js",
-      "sha256": "f391dbed201f352a881ad6d6f8d99c2ef25d48e0d7a1d563ca94f47979439e62",
-      "bytes": 168471
+      "path": "assets/wormholeRender.worker-D3pxeWiw.js",
+      "sha256": "575749a019f932a3e6781e9997073ef4e1972ca3e280e91ec4490eae76e20d77",
+      "bytes": 168619
     },
     {
       "path": "assets/xr-BfNetZ-7.css",
@@ -106,9 +106,9 @@
       "bytes": 11106
     },
     {
-      "path": "assets/xr-SulS2Mgw.js",
-      "sha256": "620678ad054f4442f86daa1c75bde8fb78e41bcbaa1de72eb685c56bf303891f",
-      "bytes": 845813
+      "path": "assets/xr-dHgfv35a.js",
+      "sha256": "ea0c12b9647b32a23a58cdb06203203848680bf1a8c75f5761d7fcdc58ed2b86",
+      "bytes": 853454
     }
   ]
 }
