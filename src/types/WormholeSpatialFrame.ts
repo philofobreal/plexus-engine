@@ -42,7 +42,8 @@ export interface WormholeSpatialFrame {
     /**
      * The coherent spiral the image draws, in turns over a grain's flight (0 at release, growing
      * with forward progress 1 - u; screen angles, canvas y down). 0 when the grain material, which
-     * the spiral conditions, is off. In [0, WORMHOLE_SPATIAL_MAX_SPIRAL_TURNS].
+     * the spiral conditions, is off. Signed, in [-MAX, MAX] using WORMHOLE_SPATIAL_MAX_SPIRAL_TURNS;
+     * positive retains the legacy right-handed twist, negative reverses coherent twist only.
      */
     readonly spiralTurns: number;
     /** Jitter / flow-curvature disorder in [0, 1]. */

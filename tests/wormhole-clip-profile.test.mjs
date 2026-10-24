@@ -105,6 +105,7 @@ const WORMHOLE_TUNING_KEYS = [
   'wormholeNebulaBloom',
   'wormholeNebulaWeave',
   'wormholeSpiral',
+  'wormholeSpiralDirection',
   'wormholeSpiralArms',
   'wormholeGrainDensity'
 ];

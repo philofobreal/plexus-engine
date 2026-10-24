@@ -1145,6 +1145,22 @@ test('mirrorable targets receive deterministic horizontal directions with no thr
   }
 });
 
+test('spiral mirroring is explicit, deterministic and separate from the existing path-mirror permission', () => {
+  const { adaptScenePlanToPerformancePlan } = load('automation/scenePlanAdapter.ts');
+  const pack = makePack({ targetMap: { default: { preset: 'default.json' },
+    spiral: { preset: 'spiral.json', spiralMirrorable: true }, plain: { preset: 'plain.json', mirrorable: true } },
+    behaviourVocabulary: { 'buildup-ramp': ['spiral'], 'groove-sustain': ['plain'] }, variantPairs: {}, movementVocabulary: {} });
+  const scenes = Array.from({ length: 6 }, (_, i) => makeScene(i * 12, 12, 'build', 'test-pack'));
+  scenes.push(makeScene(72, 24, 'groove', 'test-pack'));
+  const input = { version: 1, stylePack: 'test-pack', scenes }, options = { duration: 100, maxWaypointsPerScene: 1, trackSeed: 7 };
+  const first = adaptScenePlanToPerformancePlan(input, pack, options);
+  assert.equal(JSON.stringify(first), JSON.stringify(adaptScenePlanToPerformancePlan(input, pack, options)));
+  const spiral = first.points.filter(p => p.preset === 'spiral.json');
+  assert.ok(spiral.some(p => p.spiralDirection === -1) && spiral.some(p => p.spiralDirection === 1));
+  assert.ok(spiral.every(p => !Object.hasOwn(p, 'bendMirror')), 'spiral permission does not grant path mirroring');
+  assert.ok(first.points.filter(p => p.preset === 'plain.json').every(p => !Object.hasOwn(p, 'spiralDirection')), 'path permission does not grant spiral mirroring');
+});
+
 test('every style-pack targetMap preset is registered in the preset manifest', () => {
   const manifest = JSON.parse(readFileSync(join(process.cwd(), 'public/visual-tuning-presets/index.json'), 'utf8'));
   const present = new Set(manifest.presets);

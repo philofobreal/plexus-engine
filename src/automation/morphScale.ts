@@ -15,7 +15,9 @@ export function getAutomationPlanViewSignature(plan: PerformanceAutomationPlan):
         point.intensity,
         point.morphDurationSec,
         point.morphCurve,
-        point.locked
+        point.locked,
+        point.bendMirror,
+        point.spiralDirection
     ]));
 }
 

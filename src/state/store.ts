@@ -91,6 +91,8 @@ export const State = {
     activeSemanticScoreTransitionId: null as string | null,
     activeMotifTransitionId: null as string | null,
     activeVisualTransitionId: null as string | null,
+    /** Renderer-owned plan origin for the coherent spiral; null on legacy/manual paths. */
+    spiralTransitionAnchor: null as import('../types').VisualTransitionAnchor | null,
     // Semantic / dramaturgy layer (ADR-003): offline plans computed once per track.
     semanticNarrative: null as MusicalNarrativePlan | null,
     dramaturgicalIntent: null as DramaturgicalIntentPlan | null,
