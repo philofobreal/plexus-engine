@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "reviewed-source-evolution-1",
+  "predecessor": "research/analyzer-lab/fixtures/accepted-timing-v2-development-01.json",
+  "predecessorSha256": "04f569013caf5c8d9ecf64cde3b8cde76bf5ce9e69e9313a6d3a65499df89b59",
+  "oldMeasurementsRewritten": false,
+  "numericalComparison": "Historical source tree replays all original outputs; current DC-corrected v2 preserves the 340 controls timing/status/tradeoffs while widening support and using a new algorithm identity.",
+  "changes": [
+    {
+      "path": "src/analyzer/AcceptedEventTiming.ts",
+      "predecessorSha256": "37c126fa384589e67a7b98cc8c7ea7008ccbe6f7b73eac25ff6f16811a7de0be",
+      "replacementSha256": "bd8aa9b6ae994deed37dd307dbc3642218e8cdb30e002d51db0ff254180f11ca",
+      "reviewedBy": "Codex integration owner with independent onset code reviewer",
+      "reviewedReason": "Subtract only the observed 60 ms pre-frame baseline from v2 sharpness power; retain thresholds and v1 behavior, expand honest sample support and publish distinct v2-dc1 identity. Real-PCM DC counterexamples, 840 ramp, 114 sharp attack, 720 isolated gate controls, full v1 replay and current-v2 timing/status parity cover the change."
+    },
+    {
+      "path": "src/types/eventTiming.ts",
+      "predecessorSha256": "c079d092284e546548c9862c33a4be50445aa97d17a2f88adaef1032204dca79",
+      "replacementSha256": "70149b8ef2549517433dd451a038704705fa4481f0eebda0149497ed95cb9d66",
+      "reviewedBy": "Codex integration owner with independent onset code reviewer",
+      "reviewedReason": "Accept the distinct corrected v2-dc1 publication without dropping historical v1/v2; retain all clock/count/support/order gates and restrict gradual-attack to v2 families. Unknown identity and historical-publication regression checks remain."
+    },
+    {
+      "path": "src/types/CanvasVisualSource.ts",
+      "predecessorSha256": "4ee966c35f677242e1d1245050e095f623e0119205e723a84e8234010305c2ff",
+      "replacementSha256": "4aaef86500c8dc02f87d53c5d9eb93484cac4adfb315f3b79523736e9e112bb4",
+      "reviewedBy": "Codex single integration owner, T06d contract/source review",
+      "reviewedReason": "Add optional private embedded-host global Cosmos masters to presentation, with no clock, audio, analyzer, plan or existing raster payload layout change. Explicit settings flow through the existing revision/persistence/Copy paths. Native geometry, worker lease/pixel parity, old-record defaults and cumulative renderer tests cover this additive field. Prior manifest retained at documents/tests/accepted-timing-source-evolution.pre-t06d.json. No historical measurement or retained source rewritten.",
+      "supersededReplacements": [
+        {
+          "sha256": "c8af1d8a1ed1c42c343f2a3067dbfff76abb12078f2cead750425105105589cb",
+          "reviewedBy": "Codex single integration owner, T04a source review",
+          "reviewedReason": "Add preset-owned signed coherent spiral tuning and optional absolute plan/presentation direction. Preserve analyzer source, measured fixtures and historical replay; target signed morph, preset transfer, independent path bend, worker presentation and default compatibility regressions. Full history/export parity is deferred to T04b."
+        }
+      ]
+    },
+    {
+      "path": "src/types/WormholeSpatialFrame.ts",
+      "predecessorSha256": "38d5c53f0d8af16c416779fd3112c2c42e7c73aa16dcf612d6bdb664f9574b0a",
+      "replacementSha256": "8973b4abdfe7aefe1144ad83aa10e984639443928cf0a66305501d8d01de4127",
+      "reviewedBy": "Codex single integration owner, T04a source review",
+      "reviewedReason": "Add preset-owned signed coherent spiral tuning and optional absolute plan/presentation direction. Preserve analyzer source, measured fixtures and historical replay; target signed morph, preset transfer, independent path bend, worker presentation and default compatibility regressions. Full history/export parity is deferred to T04b."
+    },
+    {
+      "path": "src/types/index.ts",
+      "predecessorSha256": "cb8fc311a35415951019a814f1090806b1db53e78ee4fc9f3b8037944b4dbc32",
+      "replacementSha256": "f3f21df574343e84593f6b4795e99e9f3738be88d6bb6a84621d64bec80eef9a",
+      "reviewedBy": "Codex single integration owner, T04b",
+      "reviewedReason": "Add an optional immutable authored visual-transition origin for the deterministic signed spiral channel. Renderer owns the live record; embedded source owns its private record. Exact id match protects semantic transitions. Preserve historical analyzer bytes/results and all prior regression tests; signed history/real geometry/host-clock tests cover this addition.",
+      "supersededReplacements": [
+        {
+          "sha256": "02c041e8cef7a9ce2008023c74f6edc9265f1f7d69690a2af031785f1971893b",
+          "reviewedBy": "Codex single integration owner, T04a source review",
+          "reviewedReason": "Add preset-owned signed coherent spiral tuning and optional absolute plan/presentation direction. Preserve analyzer source, measured fixtures and historical replay; target signed morph, preset transfer, independent path bend, worker presentation and default compatibility regressions. Full history/export parity is deferred to T04b."
+        }
+      ]
+    },
+    {
+      "path": "src/types/WormholeWorkerProtocol.ts",
+      "predecessorSha256": "47d573b2b80595b341a88e7a628ebbb7f0e74fb43d76c8e4c47d90593f56a305",
+      "replacementSha256": "e98629c597ab501cad6d7b1ef3ab6b878fdd23abb3db6e4ccb89c7699b88d0df",
+      "reviewedBy": "Codex single integration owner, T05c source and contract review",
+      "reviewedReason": "Keep protocol v1 preview unchanged and add separately negotiated v2 exact frame identity, atomic result and idempotent lease release. This is a render contract migration, not analyzer timing work: analyzer implementation, original fixture bytes, measured source archives and numerical measurements are retained. New v2 rejection/race/cancellation/ownership tests and canonical sampler fixtures accompany the change. Previous evolution manifest retained in documents/tests/accepted-timing-source-evolution.pre-t05c.json."
+    }
+  ]
+}

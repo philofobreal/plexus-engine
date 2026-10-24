@@ -1,0 +1,42 @@
+{
+  "task": "T04a",
+  "historicalMeasurementsRewritten": false,
+  "changes": [
+    {
+      "path": "tests/contracts.test.mjs",
+      "archive": "documents/tests/contracts.pre-t04a.mjs",
+      "predecessorSha256": "9dcbd74e7d0fb53f24271493eddf0a73cc02c31e73f96fe3880be6e25fd47f66",
+      "replacementSha256": "64081db2aa3c873bc88287cac24945ddd4f9c1b6bb87d3a45036dc8c04b10a15",
+      "reason": "Extend the existing dashboard override type assertion with optional spiralDirection; keep morph authority, path-mirror and manual-load assertions.",
+      "reviewedBy": "Codex single integration owner",
+      "archiveExecuted": false
+    },
+    {
+      "path": "tests/wormhole-clip-profile.test.mjs",
+      "archive": "documents/tests/wormhole-clip-profile.pre-t04a.mjs",
+      "predecessorSha256": "b7dcbf2a1f69ae2d1424b636acebd113a28a960ab146fd8f696a0af30a5553dc",
+      "replacementSha256": "7c0852184b56f31742578a8ac668ab1a3375dc90ec9ce2457ca59def9f0a121a",
+      "reason": "Add Wormhole ownership and explicit factory direction key; retain every historical role assertion and all four known product failures. Existing preset values untouched; only default +1 direction added.",
+      "reviewedBy": "Codex single integration owner",
+      "archiveExecuted": false
+    },
+    {
+      "path": "tests/xr-background-settings.test.mjs",
+      "archive": "documents/tests/xr-background-settings.pre-t04a.mjs",
+      "predecessorSha256": "b4c636ecac859d2322ea0eb59c8cd33a09f39d6416cbb37917082dda5c804637",
+      "replacementSha256": "44f5df2123da5248e7962e0631cf4b78ded34886de6ae144634e8560492fabac",
+      "reason": "Extend Visuals descriptor/default enumeration with halo and Material enumeration with Auto direction. Original range-only requirements remain for every original slider; new choice has separate settings/controller coverage.",
+      "reviewedBy": "Codex single integration owner",
+      "archiveExecuted": false
+    },
+    {
+      "path": "tests/xr-wormhole-spatial.test.mjs",
+      "archive": "documents/tests/xr-wormhole-spatial.pre-signed-t04a.mjs",
+      "predecessorSha256": "b6b2a4a0b8ca2570e31f78d34eea85697274c0e6e31fd2bf29d6b65cc54b58e3",
+      "replacementSha256": "987aa1ae67b639a63fe5f0968ac30cab65340433c8791bb7fb03fb5258dd54ac",
+      "reason": "Replace only nonnegative coherent twist bound/negative-to-zero assertions with signed [-8,8] bounds and negative preservation; retain positive, purity, routing and ownership assertions; add live override and pause/seek coverage.",
+      "reviewedBy": "Codex single integration owner",
+      "archiveExecuted": false
+    }
+  ]
+}

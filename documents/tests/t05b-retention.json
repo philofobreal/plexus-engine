@@ -1,0 +1,42 @@
+{
+  "task": "T05b",
+  "previousRelease": "t05a-frame-context-20261024T002109899Z",
+  "entries": [
+    {
+      "original": "src/visuals/PlexusRenderer.ts",
+      "retained": "documents/tests/PlexusRenderer.pre-t05b.ts.txt",
+      "sha256": "7288e53c3aab803e504c4e57249614ea1c84f7486da92074c8da09a6dea48e1e"
+    },
+    {
+      "original": "src/visuals/WebGLRendererBackend.ts",
+      "retained": "documents/tests/WebGLRendererBackend.pre-t05b.ts.txt",
+      "sha256": "3c0f5c8f5bf76b885444a2d56190ecad98fa706703a7677aae47aa4ac70fdd80"
+    },
+    {
+      "original": "src/visuals/P5RendererBackend.ts",
+      "retained": "documents/tests/P5RendererBackend.pre-t05b.ts.txt",
+      "sha256": "4b9fb2c4c2527c37df0b1f97f9e4416cc73b358fbba8d64ef72bf1435748b3df"
+    },
+    {
+      "original": "src/visuals/IdentityTransitionController.ts",
+      "retained": "documents/tests/IdentityTransitionController.pre-t05b.ts.txt",
+      "sha256": "3c57af84db4a4213705efd86a518ef05002c21688579c88d813f4f30225cd615"
+    },
+    {
+      "original": "src/visuals/WormholeCanvasSource.ts",
+      "retained": "documents/tests/WormholeCanvasSource.pre-t05b.ts.txt",
+      "sha256": "973f55ba79ec143aa7a05a0deb7e2632ee4aa4b4d075f4cc6dc84bedaada2b5c"
+    },
+    {
+      "original": "tests/contracts.test.mjs",
+      "retained": "documents/tests/contracts.pre-t05b.mjs",
+      "sha256": "64081db2aa3c873bc88287cac24945ddd4f9c1b6bb87d3a45036dc8c04b10a15"
+    },
+    {
+      "original": "tests/postfx-fragmentation.test.mjs",
+      "retained": "documents/tests/postfx-fragmentation.pre-t05b.mjs",
+      "sha256": "eb86da330c610169e9107304391da3e6c8fa79f3e99ff959d772ba26ba33d2d1"
+    }
+  ],
+  "reason": "Renderer presentation callback and logical/backing-density extraction; prior static seam guards are updated to require the same single post seam through the new callback. All earlier assertions remain except the exact call spelling. Retained files are inert predecessor sources, not active test discovery or historical measurements."
+}

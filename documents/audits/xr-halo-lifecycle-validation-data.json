@@ -1,0 +1,104 @@
+{
+  "task": "T02b",
+  "tests": 1598,
+  "pass": 1589,
+  "fail": 9,
+  "duration_ms": 374012.4495,
+  "failures": [
+    {
+      "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+      "location": "tests\\wormhole-clip-profile.test.mjs:146:1",
+      "message": "vos-wh-drift.json must not reset user-global wormholeStarfield",
+      "matchesBaseline": true
+    },
+    {
+      "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+      "location": "tests\\wormhole-clip-profile.test.mjs:237:1",
+      "message": "establish remains visibly above the opacity floor",
+      "matchesBaseline": true
+    },
+    {
+      "name": "weak roles pin a deep-perspective depth and continuity profile",
+      "location": "tests\\wormhole-clip-profile.test.mjs:250:1",
+      "message": "establish depth\n\n2.03136 !== 4",
+      "matchesBaseline": true
+    },
+    {
+      "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+      "location": "tests\\wormhole-clip-profile.test.mjs:267:1",
+      "message": "deep drift deeper than establish",
+      "matchesBaseline": true
+    },
+    {
+      "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+      "location": "tests\\wormhole-geometry-lfo-integration.test.mjs:175:1",
+      "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492",
+      "matchesBaseline": true
+    },
+    {
+      "name": "wormhole factory presets keep a minimum normalized weighted separation",
+      "location": "tests\\wormhole-preset-differentiation.test.mjs:84:1",
+      "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09",
+      "matchesBaseline": true
+    },
+    {
+      "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+      "location": "tests\\wormhole-preset-differentiation.test.mjs:109:1",
+      "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))",
+      "matchesBaseline": true
+    },
+    {
+      "name": "projected forward motion preserves overdrive > punch > drive > drift",
+      "location": "tests\\wormhole-projected-motion.test.mjs:109:1",
+      "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}",
+      "matchesBaseline": true
+    },
+    {
+      "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+      "location": "tests\\wormhole-projected-motion.test.mjs:116:1",
+      "message": "389.64890777178124 vs 471.543038051684",
+      "matchesBaseline": true
+    }
+  ],
+  "unexpectedFailures": [],
+  "comparison": "Exact test name/location and assertion message; reporter prefix and per-line indentation normalized only.",
+  "targeted": {
+    "tests": 112,
+    "pass": 112,
+    "newCases": 12
+  },
+  "finalSeam": {
+    "tests": 29,
+    "pass": 29,
+    "reason": "Rerun after final one-line default-off observer attachment optimization."
+  },
+  "artifacts": [
+    {
+      "path": "logs/t02b/tests.tap",
+      "sha256": "461598424dcc37e140789d9b1cd06b214dc8c75178925c1b2ae307b0b01ccb92"
+    },
+    {
+      "path": "logs/t02b/targeted.tap",
+      "sha256": "6fee54f09226c783ceadcc41afea83cb4fa34239cfa1d1e9610127bbce9347bd"
+    },
+    {
+      "path": "logs/t02b/final-seam.tap",
+      "sha256": "1ee52bca7522a45390a33590dc6d50ac4ed21a932eb691cee7225c64f01b85a8"
+    },
+    {
+      "path": "logs/t02b/deploy/build.log",
+      "sha256": "3ee2dfb66521413b7d8dcaa198af538cb19d2802035cfc5f19f8ba31d4f24ec8"
+    }
+  ],
+  "unmeasured": [
+    "physical Quest 3 stereo/clipping/readability",
+    "human track gameplay",
+    "sustained CPU/GPU/overdraw/peak memory"
+  ],
+  "testInventory": {
+    "path": "logs/t02b/test-inventory.json",
+    "sha256": "2345e72c6c249e861fa14474b889063ed5fba180467fd3bb44d67369e1403578",
+    "activeTestFiles": 170,
+    "retainedTestHelperFixtureFiles": 209
+  }
+}

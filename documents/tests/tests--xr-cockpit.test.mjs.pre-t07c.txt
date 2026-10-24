@@ -1,0 +1,73 @@
+// T07 renderer/settings contract, using real Three geometry and song-time title projection.
+import test from 'node:test';import assert from 'node:assert/strict';import * as THREE from 'three';
+import{createLoader}from'./helpers/xr-loader.mjs';
+function documentStub(){const contexts=[];return{contexts,createElement(){const ctx={calls:[],font:'',measureText:t=>({width:Array.from(t).length*20}),fillText(...a){this.calls.push(a);},save(){},restore(){},beginPath(){},rect(){},clip(){}};contexts.push(ctx);return{width:0,height:0,getContext:()=>ctx};}};}
+const doc=documentStub(),load=createLoader({three:THREE},{document:doc});
+const{XrCockpit,cockpitEnvelope}=load('xr/scene/XrCockpit.ts');
+const{XrTrackMarquee,TRACK_MARQUEE_WIDTH_METERS,cockpitFilename}=load('xr/scene/XrTrackMarquee.ts');
+const{resolvePlayProfile}=load('xr/XrPlayProfile.ts');
+
+test('cockpit/title controls normalize old/hostile records, remain presentation-only and persist/copy',()=>{
+ const{DEFAULT_XR_SETTINGS,normalizeXrSettings,XR_SETTINGS,changeScope}=load('xr/XrSettings.ts');
+ assert.equal(DEFAULT_XR_SETTINGS.appearance.cockpit,'full');assert.equal(DEFAULT_XR_SETTINGS.appearance.cockpitTitle,'scroll');
+ const old=normalizeXrSettings({appearance:{noteDesign:'classic'}});assert.equal(old.appearance.cockpit,'full');assert.equal(old.appearance.noteDesign,'classic');
+ assert.equal(normalizeXrSettings({appearance:{cockpit:'bad',cockpitTitle:42}}).appearance.cockpitTitle,'scroll');
+ let s=DEFAULT_XR_SETTINGS;for(const[id,v]of[['cockpit','reduced'],['cockpitTitle','static']]){const d=XR_SETTINGS.find(d=>d.id===id);s=d.write(s,v);assert.equal(d.scope,'presentation');assert.equal(d.section,'cockpit');assert.equal(d.read(s),v);}
+ assert.equal(changeScope(DEFAULT_XR_SETTINGS,s),'presentation');let raw;const store=load('xr/XrSettingsStore.ts').createXrSettingsStore({getItem:()=>raw??null,setItem:(k,v)=>{raw=v;}});store.save(s);assert.equal(JSON.stringify(store.load()),JSON.stringify(s));
+ const report=load('xr/XrMenuModel.ts').settingsReport(s,'track.wav');assert.match(report,/Cockpit: Reduced/);assert.match(report,/Track title: Static/);
+ assert.equal(s.background.wall.mode,'off');assert.equal(s.background.cosmos.galaxies,0);
+});
+
+test('cockpit has two bounded unlit structure batches; Reduced saves triangles and Off has zero visible draws',()=>{
+ const c=new XrCockpit(doc),p=resolvePlayProfile({},'tall');c.fit(p.config,p.stage,1.65);c.setTitle('A long futuristic track title.wav');
+ assert.equal(c.root.children.length,3);assert.equal(c.body.material.type,'MeshBasicMaterial');assert.equal(c.trim.material.type,'MeshBasicMaterial');
+ const full=(c.body.geometry.getAttribute('position').count+c.trim.geometry.getAttribute('position').count)/3;
+ assert.ok(full<6000);assert.equal(c.body.material.map,null);c.setSettings('reduced','scroll');const reduced=(c.body.geometry.getAttribute('position').count+c.trim.geometry.getAttribute('position').count)/3;assert.ok(reduced<full);
+ c.setSettings('off','scroll');assert.equal(c.root.visible,false);assert.equal(c.title.mesh.visible,false);c.setSettings('full','scroll');assert.equal(c.title.mesh.visible,true);c.dispose();
+});
+
+test('original layout profiles and extreme curved paths keep all note rays clear of cockpit structure',()=>{
+ const c=new XrCockpit(doc),Path=load('xr/scene/XrTrackPath.ts').XrTrackPath,ray=new THREE.Raycaster(),camera=new THREE.Vector3(),target=new THREE.Vector3(),direction=new THREE.Vector3();let rays=0;
+ for(const space of['standard','tall'])for(const speed of['normal','fast','hyper'])for(const length of['short','normal','long','auto'])for(const eye of[1.2,1.95]){
+  const p=resolvePlayProfile({noteSpeed:speed,saberLength:length},space),path=new Path();path.setLayout(p.stage);path.setBackdropDistance(500);path.setFocus(1e5,1e5);c.fit(p.config,p.stage,eye);c.root.updateMatrixWorld(true);
+  const e=cockpitEnvelope(p.config,p.stage,eye);assert.ok(e.floorGap>1.7);assert.ok(e.top>eye+1.2);
+  for(const depth of[0,2,8,14])for(const lane of[-.45,.45])for(const row of[0,p.stage.rowCount-1])for(const cx of[-.25,.25]){
+   const point=path.projectPlayfieldPoint({x:lane,y:(row-1)*p.config.rowSpacingMeters,z:-depth});target.set(point.x,point.y+Math.max(.7,eye-.55),point.z-p.stage.playfieldForwardMeters);camera.set(cx,eye,0);
+   direction.subVectors(target,camera);ray.set(camera,direction.clone().normalize());ray.far=direction.length()-.03;
+   assert.equal(ray.intersectObjects([c.body,c.trim],false).length,0,`${space}/${speed}/${length}/${eye}/${depth}/${row}`);rays++;
+  }
+ }
+ assert.ok(rays>1000);c.dispose();
+});
+
+test('cockpit recenter and layout refit are stable, geometry remains reused when inputs do not change',()=>{
+ const c=new XrCockpit(doc),p=resolvePlayProfile({},'standard');c.fit(p.config,p.stage,1.65);const geom=c.body.geometry;c.fit(p.config,p.stage,1.65);assert.equal(c.body.geometry,geom);
+ c.root.position.set(2,0,-3);c.root.rotation.y=.6;c.root.updateMatrixWorld(true);const before=c.root.matrixWorld.clone();for(const t of[0,1,2,1])c.update(t);assert.deepEqual(c.root.matrixWorld.elements,before.elements);
+ c.fit(p.config,p.stage,1.95);assert.notEqual(c.body.geometry,geom);assert.equal(c.root.position.x,2);c.dispose();
+});
+
+test('filename width is fixed for Unicode and hostile long names; atlas allocation remains bounded',()=>{
+ const d=documentStub(),m=new XrTrackMarquee(d);m.setTitle('árvíztűrő tükörfúrógép — sample.wav');const width=m.mesh.geometry.parameters.width;
+ assert.equal(width,TRACK_MARQUEE_WIDTH_METERS);assert.equal(m.text,'árvíztűrő tükörfúrógép — sample.wav');m.setTitle('長😀'.repeat(400)+'.flac');assert.ok(Array.from(m.text).length<=256);assert.equal(m.mesh.geometry.parameters.width,width);assert.ok(m.atlasBytes<=2048*512*4);
+ assert.equal(cockpitFilename('a\n\r\t b.wav'),'a    b.wav');assert.ok(d.contexts.length===2);m.dispose();
+});
+
+test('scroll is song-time deterministic, paused repeats/seek replay do not upload; static and Off are exact bypasses',()=>{
+ const m=new XrTrackMarquee(doc);m.setTitle('song title that goes far beyond the width of its caption window.flac');const version=m.mesh.material.uniforms.uAtlas.value.version,uploads=m.uploadCount;
+ m.update(1);const first=m.mesh.material.uniforms.uOffset.value;m.update(1);assert.equal(m.mesh.material.uniforms.uOffset.value,first);m.update(20);m.update(1);assert.equal(m.mesh.material.uniforms.uOffset.value,first);
+ assert.equal(m.uploadCount,uploads);assert.equal(m.mesh.material.uniforms.uAtlas.value.version,version);m.setMode('static');m.update(10);assert.equal(m.mesh.material.uniforms.uOffset.value,0);m.setMode('off');assert.equal(m.mesh.visible,false);m.setTitle('replacement.wav');assert.equal(m.uploadCount,uploads);m.setMode('scroll');assert.equal(m.uploadCount,uploads+1);m.setTitle('');assert.equal(m.mesh.visible,false);m.dispose();
+});
+
+test('every owned cockpit/title GPU resource is disposed once, including refits and replacement atlases',()=>{
+ const c=new XrCockpit(doc),p=resolvePlayProfile({},'tall'),counts=new Map();c.fit(p.config,p.stage,1.65);c.setTitle('one.wav');
+ const watch=o=>{counts.set(o,0);o.addEventListener('dispose',()=>counts.set(o,counts.get(o)+1));};
+ for(const o of[c.body.geometry,c.trim.geometry,c.body.material,c.trim.material,c.title.mesh.geometry,c.title.mesh.material,c.title.mesh.material.uniforms.uAtlas.value])watch(o);
+ c.fit(p.config,p.stage,1.9);c.setTitle('two.wav');c.dispose();c.dispose();for(const n of counts.values())assert.equal(n,1);
+});
+
+test('the complete title window fits the forward view for both desktop and immersive origins',()=>{
+ const c=new XrCockpit(doc),p=resolvePlayProfile({},'tall');c.fit(p.config,p.stage,1.65);
+ for(const origin of[0,2.6]){c.setViewOrigin(origin);c.root.updateMatrixWorld(true);const camera=new THREE.PerspectiveCamera(70,16/9,.05,1000);camera.position.set(0,1.65,origin);camera.updateMatrixWorld(true);
+ for(const x of[-1,1])for(const y of[-.11,.11]){const point=c.title.mesh.localToWorld(new THREE.Vector3(x,y,0)).project(camera);assert.ok(Math.abs(point.x)<1&&Math.abs(point.y)<1,'caption is wholly inside the viewport');}}
+ c.dispose();
+});

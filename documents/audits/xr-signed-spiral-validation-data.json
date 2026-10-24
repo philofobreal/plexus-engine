@@ -1,0 +1,114 @@
+{
+  "task": "T04a",
+  "includes": "T02c by explicit no-separate-deploy exception",
+  "tests": 1613,
+  "pass": 1604,
+  "fail": 9,
+  "duration_ms": 316239.7484,
+  "failures": [
+    {
+      "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+      "message": "vos-wh-drift.json must not reset user-global wormholeStarfield",
+      "matchesBaseline": true
+    },
+    {
+      "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+      "message": "establish remains visibly above the opacity floor",
+      "matchesBaseline": true
+    },
+    {
+      "name": "weak roles pin a deep-perspective depth and continuity profile",
+      "message": "establish depth\n\n2.03136 !== 4",
+      "matchesBaseline": true
+    },
+    {
+      "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+      "message": "deep drift deeper than establish",
+      "matchesBaseline": true
+    },
+    {
+      "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+      "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492",
+      "matchesBaseline": true
+    },
+    {
+      "name": "wormhole factory presets keep a minimum normalized weighted separation",
+      "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09",
+      "matchesBaseline": true
+    },
+    {
+      "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+      "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))",
+      "matchesBaseline": true
+    },
+    {
+      "name": "projected forward motion preserves overdrive > punch > drive > drift",
+      "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}",
+      "matchesBaseline": true
+    },
+    {
+      "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+      "message": "389.64890777178124 vs 471.543038051684",
+      "matchesBaseline": true
+    }
+  ],
+  "unexpectedFailures": 0,
+  "targeted": {
+    "tests": 251,
+    "pass": 251,
+    "fail": 0
+  },
+  "commands": [
+    "npm run build",
+    "npm test -- --test-reporter=tap",
+    "node --test --test-reporter=tap tests/wormhole-signed-spiral.test.mjs tests/xr-settings.test.mjs tests/xr-controller-regeneration.test.mjs tests/xr-menu.test.mjs tests/xr-wormhole-spatial.test.mjs tests/visual-os.test.mjs tests/dramaturgy-transfer.test.mjs tests/xr-wormhole-spatial-field.test.mjs tests/xr-wormhole-worker.test.mjs tests/mvp-macro-tuning-mapper.test.mjs tests/contracts.test.mjs",
+    "git diff --check"
+  ],
+  "testInventory": {
+    "path": "logs/t04/test-inventory.json",
+    "sha256": "34b31990e5232761f66bbec15102bd739bc20570bccc8c162e3407993f0a6136",
+    "activeTestFiles": 171,
+    "sourceIdentities": 211,
+    "missingPreviousTests": []
+  },
+  "artifacts": [
+    {
+      "path": "logs/t04/tests.tap",
+      "sha256": "f5f5b03923df1b826d5fc7935b9baf64a187e7f629b9e8e026a3a72334d3fb92"
+    },
+    {
+      "path": "logs/t04/tests-final.tap",
+      "sha256": "03645e62ee4be89dde3d1d34557850920342318eebbc7a2c88859358fd67d23a"
+    },
+    {
+      "path": "logs/t04/targeted-release.tap",
+      "sha256": "55ec1c6c8189b1bf879c97dcbaf266461c5eed620d92cc44132a37d78e83e1ab"
+    },
+    {
+      "path": "logs/t04/build-release.log",
+      "sha256": "3d71cd4c9ac8a98067206903bf5d119a97e355f14ecda6ad4f797b45a32684a2"
+    },
+    {
+      "path": "logs/t04/spiral-left-right.jpg",
+      "sha256": "a87da40ede4ca1db7e2f72564a5ed993e136186438e1ff62ff484a31c822f1a2"
+    },
+    {
+      "path": "logs/t04/spiral-menu-persisted.jpg",
+      "sha256": "f2705db132d5ff38f9abff1f015ffa6c2b7f8ab05c3111cdb90c419f3af94748"
+    }
+  ],
+  "runtime": "v25.2.1",
+  "browser": {
+    "mode": "actual browser automation",
+    "isolatedSignedRenderer": true,
+    "localMenuPersistenceAndCopy": true
+  },
+  "notClaimed": [
+    "T04b full consumer/history/seek/export parity",
+    "physical Quest stereo/readability/performance",
+    "human gameplay",
+    "new default promotion"
+  ],
+  "runnerFallback": "Installed Node/npm; Pages publisher uses node node_modules/gh-pages/bin/gh-pages.js instead of the existing Bun invocation. No dependency changes.",
+  "diffExport": "Skipped; bounded source review and source/input manifests retained."
+}

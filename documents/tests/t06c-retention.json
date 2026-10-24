@@ -1,0 +1,748 @@
+{
+  "task": "T06c",
+  "previousTask": "T06b",
+  "previousPagesCommit": "2ad4da8ca7d507fad449df90c8efccc1f0e10ffd",
+  "previousTests": [
+    {
+      "path": "tests/accepted-event-timing-dc-regression.test.mjs",
+      "sha256": "c8d22fba4d4c3193c7b7b1011dc72ba95e6c94d232ed4f3d080481f6685b2b6c"
+    },
+    {
+      "path": "tests/accepted-event-timing-v2.test.mjs",
+      "sha256": "ab3a1e7840dacf2945ee1abdd49f2546d7e0f145d0cf66c3f97778ef42e0eb88"
+    },
+    {
+      "path": "tests/accepted-event-timing.test.mjs",
+      "sha256": "4b9df2fddec6bca5537068416747a6a6bb1acd22632012428997024c271ad401"
+    },
+    {
+      "path": "tests/accepted-timing-measurement.test.mjs",
+      "sha256": "e79517cb50b7ea8114ab31a03db6d470c114fe4d724aad63a826b6716e95d549"
+    },
+    {
+      "path": "tests/acoustic-evidence.test.mjs",
+      "sha256": "0c5dc99cfb77e6dd4f70430886ad3a998ed9e8f79b23382c557ab200f2f6abf8"
+    },
+    {
+      "path": "tests/analyzer-acoustic-challenges.test.mjs",
+      "sha256": "f3cbcc6b8bcf1d326fb6fc5db797c09cde69c900235bba155fb5de9954f70b76"
+    },
+    {
+      "path": "tests/analyzer-acoustic-onsets.test.mjs",
+      "sha256": "b70f01ac712a02aa4f7d73387c5bd47582f61401cc005da718be761bbd802719"
+    },
+    {
+      "path": "tests/analyzer-adaptive-onsets.test.mjs",
+      "sha256": "2dc7e0f90cee0e5ae5684a9603c7390218e6eb359166798597515e6b8600a8e4"
+    },
+    {
+      "path": "tests/analyzer-band-onsets.test.mjs",
+      "sha256": "66f8f589cf254b155c5fc690f9fa241d7ee7d2eb4193ab4bcbf6f40e81408e72"
+    },
+    {
+      "path": "tests/analyzer-baseline.test.mjs",
+      "sha256": "ae7cc7683f4fbc09f280726e9a099f7aa1c45dbacbaa40b9ab90090acd394c46"
+    },
+    {
+      "path": "tests/analyzer-continuation-onsets.test.mjs",
+      "sha256": "e64526c431e9e95741ce15a47fd6ac6763cab304e0262bc92d21dc073b458779"
+    },
+    {
+      "path": "tests/analyzer-contract.test.mjs",
+      "sha256": "45e7d23285776df125c37b2fc3c883ffa73afb24c04573a06d93c2c8275a1410"
+    },
+    {
+      "path": "tests/analyzer-cue-evidence.test.mjs",
+      "sha256": "dfd27065763f3d52122a0772a4098c13297eecc25bb014b1e3d8ce7a6af2549f"
+    },
+    {
+      "path": "tests/analyzer-difference-onsets.test.mjs",
+      "sha256": "80a33b82a71d6e098583bb5f217c4be55ad21ac38a33dc3ba6bcd996a37a3752"
+    },
+    {
+      "path": "tests/analyzer-dsp.test.mjs",
+      "sha256": "7d21da2c842e1d06c150b62dc319ffeec770ae6d7b7e966d648550061a580b2a"
+    },
+    {
+      "path": "tests/analyzer-golden.test.mjs",
+      "sha256": "4cd979cfdcd098b976b8afbad374dfaaaabfeb8ca8b020b3918bcccf381b146e"
+    },
+    {
+      "path": "tests/analyzer-local-tempo.test.mjs",
+      "sha256": "09ab038120c7a9e129e241bb59bacf795c38ad740f54f8fb9edc7a71ce4e7faa"
+    },
+    {
+      "path": "tests/analyzer-low-frequency.test.mjs",
+      "sha256": "1f066234486312d3fe870d88c6b63d2e6f8ed6f52e2bb7370050abb6401b84ff"
+    },
+    {
+      "path": "tests/analyzer-metric-ambiguity.test.mjs",
+      "sha256": "4ad173812b8f8e328944082f396b6152593049ad116c52c78eeaa9a8122c9766"
+    },
+    {
+      "path": "tests/analyzer-novelty.test.mjs",
+      "sha256": "d18efc6b8f642fbb1a3c0e68a9eec0f03e23ecd4ae0e8b6277578fe81fda698b"
+    },
+    {
+      "path": "tests/analyzer-parity.test.mjs",
+      "sha256": "6e7374829efb5dc64ebcc46b3ea2df2d5ead6953011849940e5efbb9687f4bbd"
+    },
+    {
+      "path": "tests/analyzer-peak-onsets.test.mjs",
+      "sha256": "adcb0644b5d8afdc7051deafe52f5a0401156706b96da5d5ab29b9cd7aed0a81"
+    },
+    {
+      "path": "tests/analyzer-percussive-events.test.mjs",
+      "sha256": "7b247c36cfe8ba4b95ae08f9a6444d5316f1e90b370cca8ed1933a16e669bb90"
+    },
+    {
+      "path": "tests/analyzer-predictive-onsets.test.mjs",
+      "sha256": "d7545967110df10f87b88575f5a6a3b808072de122a69fa200b76dc65301c19d"
+    },
+    {
+      "path": "tests/analyzer-predictive-robustness.test.mjs",
+      "sha256": "bc87a7c92d499ebacbd968ada115029cf94e656be067a88d1c3da28fab4a55ce"
+    },
+    {
+      "path": "tests/analyzer-residual-onsets.test.mjs",
+      "sha256": "c18b54db6560ba7389f3026b58cea1c8c55bda5268b5a61899bf0059ab35a38d"
+    },
+    {
+      "path": "tests/analyzer-signal-contract.test.mjs",
+      "sha256": "6d8a98a43f1c571476528d1d539763e15d088324983bf38262d76841a5760ef8"
+    },
+    {
+      "path": "tests/analyzer-spectral.test.mjs",
+      "sha256": "f36f53173942a6fcefd162ba59866621fac6dd1a754c20fb9e30fcec0a1a7ff7"
+    },
+    {
+      "path": "tests/analyzer-timing-confidence.test.mjs",
+      "sha256": "94f58dc94de5009ee3787b9294157ed0bbf1ff5de8a876f661d2e3b52467d25b"
+    },
+    {
+      "path": "tests/analyzer-timing-edgecases.test.mjs",
+      "sha256": "3ee2dcd690bf722e19a4aa04ff26a2a3738469c3f5c86a8b47122ffb3f97b4b5"
+    },
+    {
+      "path": "tests/analyzer-tonal-sustain.test.mjs",
+      "sha256": "a8b30b498fc026e282d5225388604fca17457209194fceb26be1c0a5cd5f3569"
+    },
+    {
+      "path": "tests/analyzer-verification.test.mjs",
+      "sha256": "dc3af7f62b4fe3acbb24f49463a1124c18fbace3f7bf61aba748d0da7f5a5b6f"
+    },
+    {
+      "path": "tests/automation-cue-alignment.test.mjs",
+      "sha256": "9afa980a3cffe0c99a8d7967adbe7a7d23b1debcdd816f1c2ca2442039283069"
+    },
+    {
+      "path": "tests/automation-cue-roles.test.mjs",
+      "sha256": "c8278411f9bfeec8049a2a71dad98df6342f550ea7bedc87004ccc302ddb88f5"
+    },
+    {
+      "path": "tests/automation-plan-editing.test.mjs",
+      "sha256": "e9fee16041a183b1df8112ca595a0ce0b6e05b4e8bf6adaef30bf16e86692118"
+    },
+    {
+      "path": "tests/automation.test.mjs",
+      "sha256": "cf7af825062fe19bacaf82cde568c356c266fdaeebb090be877f2eb7de211b81"
+    },
+    {
+      "path": "tests/bloom-smoothing.test.mjs",
+      "sha256": "24480d6ea7f41916894ee26c19fe8058cbce46bb40ec79b827c613587a6a4b5b"
+    },
+    {
+      "path": "tests/contracts.test.mjs",
+      "sha256": "c1218f86d440416e5c7f15cbf4fdd34acd190142f790f153f865b4a6bf326f41"
+    },
+    {
+      "path": "tests/dev-preset-save.test.mjs",
+      "sha256": "774a65bf3c7389642083b9748e2455e4b10a1f46cd5a0140a191d3d819ded248"
+    },
+    {
+      "path": "tests/dramaturgy-transfer.test.mjs",
+      "sha256": "5e8e5644dd5a43aa5512ef781f9e254127c01b00d56b034928eb601c2002ed6f"
+    },
+    {
+      "path": "tests/dramaturgy.test.mjs",
+      "sha256": "75218ff5af0d8027976c16d94738809f87be5956bf9bdea06a157ec9b3713fb7"
+    },
+    {
+      "path": "tests/event-timing-consumers.test.mjs",
+      "sha256": "305c22819f9556b3491677bfb66f757ce78dc03274f818de00ccbf9b66c74a56"
+    },
+    {
+      "path": "tests/event-timing-evaluator.test.mjs",
+      "sha256": "4ddfeab0aeaec7f19ee90e79236dbf10107e47c74bd8a65f92136907a0330ab4"
+    },
+    {
+      "path": "tests/event-timing-review-preparation.test.mjs",
+      "sha256": "293ff1fd5b58dc2d2a2a78e0bdd23e79d7682b381c1cf60f3fc3207cdb91d3e2"
+    },
+    {
+      "path": "tests/event-timing-storage-modes.test.mjs",
+      "sha256": "36ac56f238c6691897f47c92529e4873f527a691f9a2e2fe2e0bd73fce431c04"
+    },
+    {
+      "path": "tests/event-timing-worker-contract.test.mjs",
+      "sha256": "f1334e937a2837edca5e92353627adda19e97048da31acb55f6a392ccef8db3c"
+    },
+    {
+      "path": "tests/export-capability.test.mjs",
+      "sha256": "923030a3998200470b4a50968bee6fb10065a1f6b0a9ae87862cda6ea1e0da61"
+    },
+    {
+      "path": "tests/export-deterministic.test.mjs",
+      "sha256": "fb599a0f657f8879cfb7d4837a813b79c19a5adfd2dd8c7575ddd517160a66cf"
+    },
+    {
+      "path": "tests/gameplay-purity.test.mjs",
+      "sha256": "82229eb639f99420ef38889611bc8a0400924f3f1776e2a4b338360056b31663"
+    },
+    {
+      "path": "tests/grain-line-caps.test.mjs",
+      "sha256": "c52fb23a4601d1f2c586687fc3316441985b2395730332de0dda0ba919a87c0d"
+    },
+    {
+      "path": "tests/harmonic-evidence-evaluation.test.mjs",
+      "sha256": "dd920378db702bf94c6108620689ad4aabccd0611831c24753c348a59f50d841"
+    },
+    {
+      "path": "tests/harmonic-evidence.test.mjs",
+      "sha256": "f55c776a4578ef2cbddf9931e02ebabb568dc3b1c093b0832a2a31f9486d5c94"
+    },
+    {
+      "path": "tests/harmonic-forecast-evaluation.test.mjs",
+      "sha256": "ca38f8a837ccaa3b6beab262be95fcdeed0dde1d4c2de209d1d04e04814c0281"
+    },
+    {
+      "path": "tests/harmonic-forecast-limits.test.mjs",
+      "sha256": "a2afad8bcd85afb3f10f1b9d0d8b3200f24945d9e2497150255988a1afe29a5f"
+    },
+    {
+      "path": "tests/harmonic-forecast.test.mjs",
+      "sha256": "a6b70ba64985749f5c61ec69e4335c2c5c029dce05ebcf08b522dd2079571a05"
+    },
+    {
+      "path": "tests/material-culling.test.mjs",
+      "sha256": "73f8550bd02e9fd62d91e51ae95a9b525414aa8bfc9ff9c3a42e7cfd65f6fcb1"
+    },
+    {
+      "path": "tests/material-preview-budget.test.mjs",
+      "sha256": "443e0c77a8adaf1ea0c9b4a701d1479d165826c6331765d2453f207f2be17dff"
+    },
+    {
+      "path": "tests/modulation.test.mjs",
+      "sha256": "99b2473943aa01277d1a4d7bbff1118932d14f6fcf6fc3fa7dff833a0f848448"
+    },
+    {
+      "path": "tests/morph-scale.test.mjs",
+      "sha256": "1b2d01bcbcabd588b124d43329eac0fb600dc76903952ddddf2d2720034ca1cd"
+    },
+    {
+      "path": "tests/morphing.test.mjs",
+      "sha256": "50b387b5344a9d727a572c0d5fc95f4ddb58cb813a3e491856acfb642b8a2d05"
+    },
+    {
+      "path": "tests/musical-entity-evaluation.test.mjs",
+      "sha256": "bf0cb7c73a10556ae5b534c5919f508aef30885f86f771f1b35ab320c312c081"
+    },
+    {
+      "path": "tests/musical-entity-tracker.test.mjs",
+      "sha256": "1f6a71797abb35a8b29131d9e02a338276c3b7e672e8de7c6a855ce33c96c398"
+    },
+    {
+      "path": "tests/musical-relations.test.mjs",
+      "sha256": "c0b5157e37abfa03048ab19a6734832aa89318bd754133309c7ec93b73baa9db"
+    },
+    {
+      "path": "tests/mvp-async-lifecycle.test.mjs",
+      "sha256": "340b1f39940b706fe93e7f714d6b3315a1c91f33a09cfdd55b7f8d08ad6fcb1e"
+    },
+    {
+      "path": "tests/mvp-checkpoint-encoding.test.mjs",
+      "sha256": "7b414c36369eee2b1eba2ca284c6bea22644780af35ca97bd71ba5a650600205"
+    },
+    {
+      "path": "tests/mvp-history.test.mjs",
+      "sha256": "679b8b8bea319b1609537e7606d1acb1b518b88f4d37fb01f75c4e9a82a00353"
+    },
+    {
+      "path": "tests/mvp-macro-tuning-mapper.test.mjs",
+      "sha256": "b53ae50bd1e9cec137b7528fa62118a95ba65489f337d512557da32d74fe424f"
+    },
+    {
+      "path": "tests/mvp-morph-scale-control.test.mjs",
+      "sha256": "8b717fee68918363b69f7bee4b82df10fa2381ad7f245fb1919c207776ab80f0"
+    },
+    {
+      "path": "tests/mvp-session-persistence.test.mjs",
+      "sha256": "e6d1a6458876bbd333b3f5831551b36a7423ca22d7f7c918008b7f33ff0aae49"
+    },
+    {
+      "path": "tests/mvp-track-storage.test.mjs",
+      "sha256": "55718c25f0c103feb027984949399d4ce480ea3ee9756ff2c126f0291efb391d"
+    },
+    {
+      "path": "tests/mvp-unsaved-changes.test.mjs",
+      "sha256": "7bec5bf9f6f39f3a52f5846db7023611c7ab35c89ff2799553e83044db8280f4"
+    },
+    {
+      "path": "tests/paused-renderer.test.mjs",
+      "sha256": "571ed65e5859980d094973c6845eaa4250f916dcc3e565e305e436c2ed677881"
+    },
+    {
+      "path": "tests/performance-optimizations.test.mjs",
+      "sha256": "dc346725a0ebfdfccf70d53f6f98bd63ebb09217eb71a7dec65e75b3077fc80d"
+    },
+    {
+      "path": "tests/pitch-candidates.test.mjs",
+      "sha256": "ff147286253dd24b8e5bf822d9891fe735acbeeda1b0ce31dd8ac35fe54f1927"
+    },
+    {
+      "path": "tests/pitch-evidence.test.mjs",
+      "sha256": "f94cb5a7097ee429dc6fbab6890b8141d11f1d3674837b3e33f41828cb1f58cb"
+    },
+    {
+      "path": "tests/pitch-reference-evaluation.test.mjs",
+      "sha256": "3dbcb12eb41b924eda9ba1ec48fab2e278da0d0b4064828aca09b9ce3aefc824"
+    },
+    {
+      "path": "tests/postfx-fragmentation.test.mjs",
+      "sha256": "987b435e68719f6777291ea6f610e6d99833f3111aacf434e94b3237fa191416"
+    },
+    {
+      "path": "tests/preview-quality.test.mjs",
+      "sha256": "ee777bd5f264594ca61beb3205c07a5cc80ebab736681ba0f039fd846ad7ce10"
+    },
+    {
+      "path": "tests/raster-conversion.test.mjs",
+      "sha256": "01b99ad286c4a4b6e839e8c0e3b58eeb6139af820d2c7a8810c8486e2256ae9e"
+    },
+    {
+      "path": "tests/renderer-boundary.test.mjs",
+      "sha256": "306a16441844c9e57e24c30eedd5f059cbadb062a456a5d7b5f59f135c45b5f5"
+    },
+    {
+      "path": "tests/renderer-preview-density.test.mjs",
+      "sha256": "ff35175bf062a57b380fb2993a6cbc1b8de99f5f3b76a8e13b77e3f66840a706"
+    },
+    {
+      "path": "tests/rhythm-chart.test.mjs",
+      "sha256": "6efe78cfa34a7c58bb6a543ed0502b7185706cba4020a8a6a10265e26868e14a"
+    },
+    {
+      "path": "tests/rhythm-judge.test.mjs",
+      "sha256": "e4b231d083b1c484570184e475cc9c36b89bf64aa6ae3e765a08e90d4ef8dc1d"
+    },
+    {
+      "path": "tests/rhythm-resolution.test.mjs",
+      "sha256": "70bfbaf9f8eaa77d5b331471bfd1d2dd8d5723b15cc052e270dd3c7ca29e8dbf"
+    },
+    {
+      "path": "tests/rhythm-scoring.test.mjs",
+      "sha256": "997d68ebea1cd73c7f48f1111a38353d6dcc2b20f22a8dea7de497bddd507dc1"
+    },
+    {
+      "path": "tests/rhythm-session.test.mjs",
+      "sha256": "a71a828be7d91839545a114cb3f1a158f703eae7768308d2108840b5ceb51dcc"
+    },
+    {
+      "path": "tests/semantics-integration.test.mjs",
+      "sha256": "672d771f695af297d4b42778317d03f8c346e79ede7a4e4945db17e845677ed5"
+    },
+    {
+      "path": "tests/semantics.test.mjs",
+      "sha256": "52bf0b056d19f0d8fdbda3c66f7d3980deb90e6fe97836f732eb241b463ae9ce"
+    },
+    {
+      "path": "tests/source-export-powershell.test.mjs",
+      "sha256": "228d643ad006f7de52347fb3b83b44463361b18245040a15b2a61a2407c19940"
+    },
+    {
+      "path": "tests/stream-profiles.test.mjs",
+      "sha256": "db63a613e2eab525969f8e2526211dcdf1bb356619a88be6566ed06977089e42"
+    },
+    {
+      "path": "tests/styles-deterministic.test.mjs",
+      "sha256": "6910cc463da18463c7f5d0d81bff90ea1836b07fdac586af709a333db31f46e4"
+    },
+    {
+      "path": "tests/temporal-rings.test.mjs",
+      "sha256": "115d215af33505c8d5e6becf02bcc68badfad4c9e5a96143f9d4acf4d0115b7f"
+    },
+    {
+      "path": "tests/test-discovery.test.mjs",
+      "sha256": "0ccb4ff76c745606c6b17a52d8d94bf88177f98a3cf3d5ab559268dcb12f2bd5"
+    },
+    {
+      "path": "tests/timeline-ui.test.mjs",
+      "sha256": "61c8c504dfac660ddacc25287ed3bc43ce7d678eb1a88cd8a4435802daebc5a7"
+    },
+    {
+      "path": "tests/transition-dynamics.test.mjs",
+      "sha256": "1b2777bdcd6028ea18f42077f1fa300b74912832422c78fea639f0017ade310e"
+    },
+    {
+      "path": "tests/ui-interaction.test.mjs",
+      "sha256": "cca1c89c2cd39e0bf7acf124d080d52de812f258f1af24551e4f1171a9153fff"
+    },
+    {
+      "path": "tests/ui/GestureEngine.test.mjs",
+      "sha256": "7d45b0e67bab25ea34ae20031dc0003729e5a16609f1d53f351aa515914fe41c"
+    },
+    {
+      "path": "tests/ui/TimelineCanvas.test.mjs",
+      "sha256": "efbd7585711498ebc53f864d8daa00f2937c11cd2915c3b070d575b0981e90a7"
+    },
+    {
+      "path": "tests/visual-director.test.mjs",
+      "sha256": "d780d403733741374937b6322239816d78b66a9d6da6d69af5d845e8cc2d0f2e"
+    },
+    {
+      "path": "tests/visual-mode-plan-regeneration.test.mjs",
+      "sha256": "d00ec62a2062b0abe8823f8f9e4c9d60bb77750b2d98c8bf0e1c49ae74f5daee"
+    },
+    {
+      "path": "tests/visual-mode-transition.test.mjs",
+      "sha256": "a81e78d4e92c2d6c4e281df998577f230b46d55d2e6c3f03099099300a3b9d4d"
+    },
+    {
+      "path": "tests/visual-os.test.mjs",
+      "sha256": "5966ca2197714373b8ec9a3cc40cb27f9b31c1a67264a117a2b800af205b2c63"
+    },
+    {
+      "path": "tests/visual-score-dsl.test.mjs",
+      "sha256": "31d306889a8f08c825d5a38c0d54ca7d4e2e99061b3e3190a287757387bb2b78"
+    },
+    {
+      "path": "tests/wormhole-angular-agreement.test.mjs",
+      "sha256": "5cf17a3a129d709c67c5bcd427f44a3fbe5955f7444e5961346e806120d4f52f"
+    },
+    {
+      "path": "tests/wormhole-background-turn-cue.test.mjs",
+      "sha256": "3ff4c02854b00975d8330b139ef876bee0c1ae391170d80aadbdb3feccd34739"
+    },
+    {
+      "path": "tests/wormhole-clip-profile.test.mjs",
+      "sha256": "7c0852184b56f31742578a8ac668ab1a3375dc90ec9ce2457ca59def9f0a121a"
+    },
+    {
+      "path": "tests/wormhole-cosmic-sync.test.mjs",
+      "sha256": "648091f9ea40087a07670796a0a058d9189aef35b1213de8b542fb1bb1038f32"
+    },
+    {
+      "path": "tests/wormhole-deep-field.test.mjs",
+      "sha256": "d5ca69bfa665003c59d6698a50ae0c2cf32b9382d11985373a29928d61a10f19"
+    },
+    {
+      "path": "tests/wormhole-depth-integrity.test.mjs",
+      "sha256": "cd0776016941eef9b32bd7b4f13edede774dfb50d945b3ac22dc1b53e9c32548"
+    },
+    {
+      "path": "tests/wormhole-depth-layers.test.mjs",
+      "sha256": "5da28cecb1efa10ae1ce63f6bf55f07e70040f2030919e0f3b7bc66b84494d01"
+    },
+    {
+      "path": "tests/wormhole-determinism.test.mjs",
+      "sha256": "bc2b3082c80d7556e311e8b854d47aa137dbdbec5cbfa18f75176bef7925a49a"
+    },
+    {
+      "path": "tests/wormhole-einstein-ring.test.mjs",
+      "sha256": "73c8a6727e36edce888156cba5190d47fa5c3dc53025a79fdcd2725a334c4ba8"
+    },
+    {
+      "path": "tests/wormhole-exact-frame.test.mjs",
+      "sha256": "807908b7d57e4054542c89ea1f42bde300cb5967f183e612f8fbab7db97adf86"
+    },
+    {
+      "path": "tests/wormhole-frame-context.test.mjs",
+      "sha256": "650221bd443785eda8432734d58fc794ad65f8c339b7190fa8b7683633ceebe9"
+    },
+    {
+      "path": "tests/wormhole-geometry-lfo-integration.test.mjs",
+      "sha256": "ceaeb6a2fa98f150ea61df764fc55d01690168598325bf92350075db570f0f32"
+    },
+    {
+      "path": "tests/wormhole-geometry-lfo.test.mjs",
+      "sha256": "37af48bc0a71e2c2d488a45e89eaa0a5fff8a59e1f34084d25a8793a246a7f83"
+    },
+    {
+      "path": "tests/wormhole-grain-material-integration.test.mjs",
+      "sha256": "5b0929da2b8236229f0dd43b4d340fa04e97896520887155677475176d8e8f6c"
+    },
+    {
+      "path": "tests/wormhole-grain-material-raster.test.mjs",
+      "sha256": "ec7baea1c2255c6eaee22a50beb39171dab1f729b5aa60c1e30ec6f1284036a4"
+    },
+    {
+      "path": "tests/wormhole-lens-integration.test.mjs",
+      "sha256": "8904c487dc6533d198d507d9c1f81f918e8ed1b1bb000d544c9bdacdff85846e"
+    },
+    {
+      "path": "tests/wormhole-lens-warp.test.mjs",
+      "sha256": "240200c6b8eef1035cb991d33233608785243ecbab4f31b524a1925664a9aa42"
+    },
+    {
+      "path": "tests/wormhole-lifecycle.test.mjs",
+      "sha256": "c181ae52e102354c0842684a303e05e30a1668b61eda084c552ed20c1d7b0145"
+    },
+    {
+      "path": "tests/wormhole-long-run.test.mjs",
+      "sha256": "8f20a450ce0dbdb4cb5b99cd16abeaeb5beea5828f8ba77b4ae856be483abe64"
+    },
+    {
+      "path": "tests/wormhole-motion-profile.test.mjs",
+      "sha256": "2c55fe2df8c4587069e9d32792fe7ee1728d4ac4c2ef86da8aff9ed440051534"
+    },
+    {
+      "path": "tests/wormhole-nebula-raster-surface.test.mjs",
+      "sha256": "ab0ede19cca6c2ac12547de6d5ccbe7af920f16e1789c3ac85d9f3ba5f4ac7b0"
+    },
+    {
+      "path": "tests/wormhole-preset-differentiation.test.mjs",
+      "sha256": "4bc3246cc7a881ffc597ed0ba8844ef3d0babc908691fa378a9d1d4e4bc1c838"
+    },
+    {
+      "path": "tests/wormhole-preset-switch-continuity.test.mjs",
+      "sha256": "fab8dbeff09454fd4aa7a5205cc0e1b903f8a89ae2779015d3c422e07c6790dc"
+    },
+    {
+      "path": "tests/wormhole-preset-validation.test.mjs",
+      "sha256": "8520c9280c8accdca08fdb6f61cbd0228a8c252e8f78f332be4a248e6f9c271a"
+    },
+    {
+      "path": "tests/wormhole-projected-motion.test.mjs",
+      "sha256": "447fde0b44af8c2c5e9080513aed9925b722efaa17a0a6e98e03d83def78beb7"
+    },
+    {
+      "path": "tests/wormhole-radial-dim.test.mjs",
+      "sha256": "a38425b8c4f553d62a83404dfa5aa66992fa300bea124b9c4f806451b03b9ab0"
+    },
+    {
+      "path": "tests/wormhole-raster-pass.test.mjs",
+      "sha256": "4b576ea9dd3013f39780f266699333c192aa7bddcae0700ca9bd64e3d03d28f6"
+    },
+    {
+      "path": "tests/wormhole-ring-tint.test.mjs",
+      "sha256": "e08b4fae500790a9a3b61e60d1d05b7220dc8d5630b02084fbfad418c374b583"
+    },
+    {
+      "path": "tests/wormhole-route-geometry.test.mjs",
+      "sha256": "17e34c605b495a66f51104f8901f5a4f6a4a0397c2a6d9246cd71bdd188efb60"
+    },
+    {
+      "path": "tests/wormhole-signed-spiral.test.mjs",
+      "sha256": "9358114e6f8da5482ef8a8456b3e606c563f586b8b27b019787314643a40afb6"
+    },
+    {
+      "path": "tests/wormhole-spiral-consumers.test.mjs",
+      "sha256": "97364c2093d5d78ab6c66b3a4b8bfddadc80cf73ca1368d90670eb5046e610e0"
+    },
+    {
+      "path": "tests/wormhole-spiral-history.test.mjs",
+      "sha256": "f33a903931e7a866b053c53812a3427f97fb2da99a42cbca3f210d4a18a8ea0c"
+    },
+    {
+      "path": "tests/wormhole-vertical-bend.test.mjs",
+      "sha256": "e4a3788150b833412c7089bb0baa7f2698c7ffeccc5db9bd96ed7850e6df3aa0"
+    },
+    {
+      "path": "tests/wormhole-wall-cracks.test.mjs",
+      "sha256": "f603222449da9914d47ee457d96e85893f4ca3ba937e8d0275f5753ee13e4817"
+    },
+    {
+      "path": "tests/wormhole-wall-geometry.test.mjs",
+      "sha256": "50fff48bf185095e72600e9008c02690782a0adcfe8ee189459404ea807cb832"
+    },
+    {
+      "path": "tests/wormhole-wall-material.test.mjs",
+      "sha256": "6114555122ac7f6af73b1818d1dc8781dc0cb99913104b4ad52356a4a6bd5f55"
+    },
+    {
+      "path": "tests/wormhole-wall-mosaic.test.mjs",
+      "sha256": "db466efea80362d02ea11382475aa267761383d936c66d98d90a5fc1b07cecb7"
+    },
+    {
+      "path": "tests/wormhole-wall-refraction-field.test.mjs",
+      "sha256": "cb77b4cd85d5e1a80662efe14678781daa10c16557e8666e4a011d81259b93ae"
+    },
+    {
+      "path": "tests/wormhole-wall-waves.test.mjs",
+      "sha256": "91bf28e155fc6da923e922d17ad246df2d33bfc0b12dfb204006f7032b9d1ae2"
+    },
+    {
+      "path": "tests/xr-audio-integration.test.mjs",
+      "sha256": "b466e25a198eece1068e1dae1f7340cb5d0ab68258397f0bc83baaea0dfe0750"
+    },
+    {
+      "path": "tests/xr-background-diagnostics.test.mjs",
+      "sha256": "7466489102a6c23d079d73b6cee5aee514b4a937dabce9065b2cf483769b55bc"
+    },
+    {
+      "path": "tests/xr-background-settings.test.mjs",
+      "sha256": "8f6811c0a8b4b5797526a06da24f70dc7348348fc9b748f79548a733cad91e57"
+    },
+    {
+      "path": "tests/xr-choreography.test.mjs",
+      "sha256": "645f02f12c475b244130695b4b424a63d70d5b07f41734f6c2c8b15a958aa0c2"
+    },
+    {
+      "path": "tests/xr-command-drawer.test.mjs",
+      "sha256": "abb0d4e499d6b1986c00032574a9f8148651db322316df5693da2ea34b22c292"
+    },
+    {
+      "path": "tests/xr-controller-regeneration.test.mjs",
+      "sha256": "c61bd6a3de43c30dbc8f136598f30de50f88d4aa4b55f440717e53bb7c6e20b1"
+    },
+    {
+      "path": "tests/xr-desktop-look.test.mjs",
+      "sha256": "5ec6cca9dda6901045931469846b7e7d7a9bbcf4cda97c6af96bb99d0eca1b05"
+    },
+    {
+      "path": "tests/xr-edge-cases.test.mjs",
+      "sha256": "8b4ca78d8348bd2e15cf5a9d0c6323a71e583f15ab6be56b78b7326b07c6b522"
+    },
+    {
+      "path": "tests/xr-generation-settings.test.mjs",
+      "sha256": "ae8515c062297f8845e92dda5306e83b486976e5711a16581641cb5ed37180f3"
+    },
+    {
+      "path": "tests/xr-gpu-lines.test.mjs",
+      "sha256": "ffc09802f6ec6cbcd931cb5265110ecfde34958f5476d03331b34c998f3d6c36"
+    },
+    {
+      "path": "tests/xr-gpu-material.test.mjs",
+      "sha256": "0a65b7a765dc8486cd723ef2833a80fcb00058e40edfdc1acfd56eadb99a449d"
+    },
+    {
+      "path": "tests/xr-menu.test.mjs",
+      "sha256": "f2879fe93708a58de2dda62c3c0d106db534542af42ad33af4666b6848a7806a"
+    },
+    {
+      "path": "tests/xr-native-weave.test.mjs",
+      "sha256": "a4ca5f06522140fa556eb6d7c060a375bc9c4cfb35e39eb934db983feb9890f3"
+    },
+    {
+      "path": "tests/xr-native-wormhole.test.mjs",
+      "sha256": "a2d04fc6b255a6b10003c035c9003b6c6dc470c0c84548b554d8af4617bb72d9"
+    },
+    {
+      "path": "tests/xr-note-design.test.mjs",
+      "sha256": "cb26a1578ed147b56936a644e7e77af9b963346128fae12df3c7de20135d0890"
+    },
+    {
+      "path": "tests/xr-note-gpu.test.mjs",
+      "sha256": "4ee55ac8ca78f19de014e944c5d370615c086ce618518763a9f7cf46a95986a4"
+    },
+    {
+      "path": "tests/xr-note-halos.test.mjs",
+      "sha256": "7be33cfa9c5e74845f8143177830fca61a19a8209428d8c04ae09b8b7da0adae"
+    },
+    {
+      "path": "tests/xr-performance.test.mjs",
+      "sha256": "e3144dcc4eaa00e542bc647ca3879692d9b86996f53d0b125bf620d739348d13"
+    },
+    {
+      "path": "tests/xr-play-profile.test.mjs",
+      "sha256": "8d8899a68ca3cbce8f2ea6911b4ac8345b534e16e6028662fdb7e0e9e212a38b"
+    },
+    {
+      "path": "tests/xr-play-space.test.mjs",
+      "sha256": "7a5bbd814e3d1c623cfea5722dae9cdd5184ce477ae4d2a386b44144a9882bb9"
+    },
+    {
+      "path": "tests/xr-runway.test.mjs",
+      "sha256": "f2ecce639f72cc5341ea212921c059ab26a45efb7221f45dec3972bb23dfe623"
+    },
+    {
+      "path": "tests/xr-score-overview.test.mjs",
+      "sha256": "97d0b9d40af48b2e78c5b70c3bde459c1813a4ab06008d40f1ddf3bff9239dcd"
+    },
+    {
+      "path": "tests/xr-section-callout.test.mjs",
+      "sha256": "91854ce6f7c4417b608edb4ba8e324f74466f90d9ad57e6c78b3600fac7f3fb2"
+    },
+    {
+      "path": "tests/xr-section-gates.test.mjs",
+      "sha256": "71de1d7875e10990301ef9a2fcb9b5e5e1e8186768a08dd75b04c927cc8ee8e6"
+    },
+    {
+      "path": "tests/xr-settings.test.mjs",
+      "sha256": "3c75513f4f2e521a04b732fcfc26601bb2473de05f51432347d0fad744d0ed7a"
+    },
+    {
+      "path": "tests/xr-slice-gpu.test.mjs",
+      "sha256": "8576b80069eb28050d67a42b31a60ed69d7be982818d465fe72158cd2992a203"
+    },
+    {
+      "path": "tests/xr-spatial.test.mjs",
+      "sha256": "6d0a593548d7d9fbf40832acb603c66887dc36dde828d5d5903084db9fc41ef7"
+    },
+    {
+      "path": "tests/xr-track-path.test.mjs",
+      "sha256": "4f2d27f8e9d75df726da4effbd93ec2939703d549977f2bd90e21d65fcf1ee9e"
+    },
+    {
+      "path": "tests/xr-ultra.test.mjs",
+      "sha256": "67e90030f53fd67fe4ecdcd74095954a21836f841e54583176046b4b19c34368"
+    },
+    {
+      "path": "tests/xr-webgl-backend.test.mjs",
+      "sha256": "13f2a28d094419c84224bf3547b9b9ed3743a6eb6b53c7cc1282052747bd5e21"
+    },
+    {
+      "path": "tests/xr-whole-track-variation.test.mjs",
+      "sha256": "21c9d7072cb01342b6b54ac27b64cd9498f7161e635b77ed3505edb356107e6b"
+    },
+    {
+      "path": "tests/xr-wormhole-continuity.test.mjs",
+      "sha256": "b341ddc3e61511a320971a0a6a9948f557c8171158c87fb8384bd2999036c218"
+    },
+    {
+      "path": "tests/xr-wormhole-spatial-field.test.mjs",
+      "sha256": "69b4469d6b49a4f55252e51caba3cde65cfd0df72916e9603fa78bbb3b7b89d0"
+    },
+    {
+      "path": "tests/xr-wormhole-spatial.test.mjs",
+      "sha256": "987aa1ae67b639a63fe5f0968ac30cab65340433c8791bb7fb03fb5258dd54ac"
+    },
+    {
+      "path": "tests/xr-wormhole-worker.test.mjs",
+      "sha256": "4010f8a4d08baa81957adad5ee37ceb18c152235c4214e49ec606e03a4fa8a6f"
+    },
+    {
+      "path": "tests/xr-wormhole.test.mjs",
+      "sha256": "96269c9090d39492342619cffa05157f797effb36cc740892da05059dc9e293e"
+    }
+  ],
+  "predecessorSources": [
+    {
+      "path": "src/types/WormholeNativeFrame.ts",
+      "archive": "documents/tests/WormholeNativeFrame.ts.pre-t06c.txt",
+      "sha256": "9b8279bb6db79281af5bff3a267735c1cb489bfdb3febec2de0055fde191828e"
+    },
+    {
+      "path": "src/visuals/CosmicWormholeIdentity.ts",
+      "archive": "documents/tests/CosmicWormholeIdentity.ts.pre-t06c.txt",
+      "sha256": "3a42ebe0d08af4400d7abf1254ae26249bd16ceac83c728ff61c6bf142ef8abe"
+    },
+    {
+      "path": "src/visuals/WormholeNativeSource.ts",
+      "archive": "documents/tests/WormholeNativeSource.ts.pre-t06c.txt",
+      "sha256": "10e3fd9d8857691008e549d5dcae4b8d0fda88ff9c925103353c6c34fb1f6ad2"
+    },
+    {
+      "path": "src/xr/scene/XrNativeWormhole.ts",
+      "archive": "documents/tests/XrNativeWormhole.ts.pre-t06c.txt",
+      "sha256": "d899c1760c937b4f657cfe4cd7ce8882152c8c24d97b4e52cc63f2c6d909028a"
+    },
+    {
+      "path": "src/xr/XrSettings.ts",
+      "archive": "documents/tests/XrSettings.ts.pre-t06c.txt",
+      "sha256": "480688772757e7d07a95ead875a68e42eb77a8f76240dd46c5d16b79ea492b04"
+    }
+  ],
+  "protectedLoaderSha256": "65f5c9bd8264f10e569d5d5b158e7ebda64f59ee8188e2040f1a2d9754e5ed3e",
+  "protectedEvolutionManifestSha256": "5e17547d701d0190dae9a25461da1efe48b274fc60133e373adaf81d4376df4d"
+}

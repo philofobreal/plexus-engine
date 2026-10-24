@@ -1,0 +1,235 @@
+{
+  "task": "T08",
+  "releaseId": "t08-musical-roles-20261024T134224935Z",
+  "commit": "2bd7cc0c8ed9ee6926e69b568ca4dae1e99ed4ec",
+  "parent": "f751dbdbf96a42be99cd157be0f38ec6170529c9",
+  "url": "https://philofobreal.github.io/plexus-engine/xr/?release=t08-musical-roles-20261024T134224935Z",
+  "sourceBranchPushed": false,
+  "forcePushed": false,
+  "sourceInputCount": 342,
+  "sourceInputsSha256": "7517e8539a5fe9cba5243dd84b63615cdf1a73f3b7acc9a192d98a4128b400b5",
+  "deployedSourcePatchSha256": "a982d828736da51415c1b15f2ec1f4b94a843263147e50f7b2d31470d1a03b4d",
+  "verification": {
+    "checkedAt": "2026-10-24T13:43:47.258Z",
+    "releaseId": "t08-musical-roles-20261024T134224935Z",
+    "markerStatus": 200,
+    "files": [
+      {
+        "path": "index.html",
+        "status": 200,
+        "sha256": "dbc800a4c77a3cb851da64ad2546905860bfd2e75434fae71c732379bb244c7d"
+      },
+      {
+        "path": "mvp/index.html",
+        "status": 200,
+        "sha256": "60ec6d618f5528bfb12c43a3f1f36ebba01e6a0e1d67268a5a5091b84c7d0f8e"
+      },
+      {
+        "path": "xr/index.html",
+        "status": 200,
+        "sha256": "59f64e49596098089bad02bf2556caa4959d7370aac93c85f9737cd5895711c1"
+      },
+      {
+        "path": "assets/CosmicWormholeIdentity-ClYb2Xof.js",
+        "status": 200,
+        "sha256": "8dc8ac557a487909e236fa846fc093a261f0cd3a68f600f414421525483787ed"
+      },
+      {
+        "path": "assets/PreviewQualityControl-BrBaJ_-N.js",
+        "status": 200,
+        "sha256": "c7843de8a5f818daa09174b6dc8f07432640d18f9309cbacfc065384263f6657"
+      },
+      {
+        "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
+        "status": 200,
+        "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+      },
+      {
+        "path": "assets/analyzer.worker-BxhitPzQ.js",
+        "status": 200,
+        "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52"
+      },
+      {
+        "path": "assets/export.worker-Av-E_fEl.js",
+        "status": 200,
+        "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+      },
+      {
+        "path": "assets/main-C7BsYBKL.css",
+        "status": 200,
+        "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+      },
+      {
+        "path": "assets/main-DxGfnvLj.js",
+        "status": 200,
+        "sha256": "4ff6297497c45d3f3c21f552bebf37a5edd0614b90825f68efcb5de29a0e775a"
+      },
+      {
+        "path": "assets/mvp-Bjoot6gz.js",
+        "status": 200,
+        "sha256": "3e3f54215f2205f1d428c03c11e7a49acbcd2ea90349c7735a415261b07d83bb"
+      },
+      {
+        "path": "assets/mvp-D0xy9ln6.css",
+        "status": 200,
+        "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
+      },
+      {
+        "path": "assets/resolveMetaTuning-CsnYWn7w.js",
+        "status": 200,
+        "sha256": "4222a07f9e5801f11691a706d70543da0671287e910aef460ba702187188d810"
+      },
+      {
+        "path": "assets/wormholeNative.worker-NKa5B4-L.js",
+        "status": 200,
+        "sha256": "8952cd821cbecb9cfed9cd4df2c232880c311cbd96ed9168a9ca599e22427c74"
+      },
+      {
+        "path": "assets/wormholeRender.worker-DVbw9WGv.js",
+        "status": 200,
+        "sha256": "4caafbdcae89cab8f35be32904c0cafcffc7ff629de8e1fbb44e63bc920e52a9"
+      },
+      {
+        "path": "assets/xr-BfNetZ-7.css",
+        "status": 200,
+        "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      },
+      {
+        "path": "assets/xr-BvSuZmIf.js",
+        "status": 200,
+        "sha256": "34d12e8ad1374f92bc1640282168c67b5a84d988528c935744919797de0215d0"
+      }
+    ],
+    "routes": [
+      {
+        "path": "",
+        "status": 200,
+        "sha256": "dbc800a4c77a3cb851da64ad2546905860bfd2e75434fae71c732379bb244c7d"
+      },
+      {
+        "path": "mvp/",
+        "status": 200,
+        "sha256": "60ec6d618f5528bfb12c43a3f1f36ebba01e6a0e1d67268a5a5091b84c7d0f8e"
+      },
+      {
+        "path": "xr/",
+        "status": 200,
+        "sha256": "59f64e49596098089bad02bf2556caa4959d7370aac93c85f9737cd5895711c1"
+      },
+      {
+        "path": "xr/?xrBackgroundThread=main",
+        "status": 200,
+        "sha256": "59f64e49596098089bad02bf2556caa4959d7370aac93c85f9737cd5895711c1"
+      }
+    ],
+    "sourceGraphUnchanged": true
+  },
+  "pagesBuild": {
+    "url": "https://api.github.com/repos/philofobreal/plexus-engine/pages/builds/1310846177",
+    "status": "built",
+    "error": {
+      "message": null
+    },
+    "pusher": {
+      "login": "philofobreal",
+      "id": 3270566,
+      "node_id": "MDQ6VXNlcjMyNzA1NjY=",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3270566?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/philofobreal",
+      "html_url": "https://github.com/philofobreal",
+      "followers_url": "https://api.github.com/users/philofobreal/followers",
+      "following_url": "https://api.github.com/users/philofobreal/following{/other_user}",
+      "gists_url": "https://api.github.com/users/philofobreal/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/philofobreal/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/philofobreal/subscriptions",
+      "organizations_url": "https://api.github.com/users/philofobreal/orgs",
+      "repos_url": "https://api.github.com/users/philofobreal/repos",
+      "events_url": "https://api.github.com/users/philofobreal/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/philofobreal/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "commit": "2bd7cc0c8ed9ee6926e69b568ca4dae1e99ed4ec",
+    "duration": 18573,
+    "created_at": "2026-10-24T13:42:41Z",
+    "updated_at": "2026-10-24T13:42:59Z"
+  },
+  "publicBrowserSmoke": {
+    "pass": true,
+    "releaseId": "t08-musical-roles-20261024T134224935Z",
+    "musicSelection": true,
+    "musicSurvivesReload": true,
+    "copyToast": true,
+    "playPause": true,
+    "offSwitch": true,
+    "previousPreference": "phrase",
+    "restoredPreference": "phrase",
+    "generatedFixture": "28 seconds / 128 BPM / 42 notes / 41 arrows / 3 pairs",
+    "audioClearedAfterTest": true,
+    "physicalQuest": "unmeasured",
+    "osClipboardPaste": "manual",
+    "consoleMessages": []
+  },
+  "publisher": "node node_modules/gh-pages/bin/gh-pages.js -d dist --nojekyll -m \"T08: musical target roles and bounded halo cues\"",
+  "rollback": "Note halos Off removes role presentation; previous T07c release tree can be republished in a new Pages commit.",
+  "evidence": [
+    {
+      "path": "logs/t08/deploy/release.json",
+      "sha256": "f708a0824176f704c45517b2ec28a1840823ff9af3238801c3443fe2b2245a5d"
+    },
+    {
+      "path": "logs/t08/deploy/published-commit.json",
+      "sha256": "7befe321b99820a822a6bc6124ce2946e81e46b1705af8a18af29b52ebd8a8dd"
+    },
+    {
+      "path": "logs/t08/deploy/pages-build.json",
+      "sha256": "47a4edc13f28cde18a69ea59f0ace5273afcc4019ca4498a9f1eb218329a440f"
+    },
+    {
+      "path": "logs/t08/deploy/source-inputs.json",
+      "sha256": "7517e8539a5fe9cba5243dd84b63615cdf1a73f3b7acc9a192d98a4128b400b5"
+    },
+    {
+      "path": "logs/t08/deploy/public-verification.json",
+      "sha256": "c724de4fa6dd72df0a362eedf5c4a22185cf95866eb1229109856c603df96870"
+    },
+    {
+      "path": "logs/t08/deploy/public-smoke.json",
+      "sha256": "766446552d9a6600f08ba753886f1d6a3594182d664e6f540c915ff9d786fdae"
+    },
+    {
+      "path": "logs/t08/deploy/public-music-settings.jpg",
+      "sha256": "e655f529bfa29431ff821a1e09be40ae7f4977ca38216beac0bda4ef383efdfb"
+    },
+    {
+      "path": "logs/t08/deploy/public-music-reloaded.jpg",
+      "sha256": "73bfad078ebba3101acba736b366f9f7d326dfbd9f1dd0aaa72bda0e774862fd"
+    },
+    {
+      "path": "logs/t08/deploy/public-copy.jpg",
+      "sha256": "80b7e3568119a40278e08a6067c587bf4eac935c5a32b2fc93e4751c43891e74"
+    },
+    {
+      "path": "logs/t08/deploy/public-playing.jpg",
+      "sha256": "7e343e80572015f73434a5c2b90ebe4d107158d70b83b5c5d4bb378ebc2fb7e7"
+    },
+    {
+      "path": "logs/t08/deploy/public-paused.jpg",
+      "sha256": "9b86b0423b59d533d567c40df37f3f1173cb8ae66a0d6994f1e2522f59fa369f"
+    },
+    {
+      "path": "logs/t08/deploy/public-off.jpg",
+      "sha256": "2d378af96c6e287812b90aec2e372b3bf16fff6840341099697f2b21a19b4a5d"
+    },
+    {
+      "path": "logs/t08/deploy/public-preference-restored.jpg",
+      "sha256": "c6332bf0b3532013eea381e4752856098dceed38460749783a755d4c57755903"
+    },
+    {
+      "path": "logs/t08/deploy/public-final.jpg",
+      "sha256": "84fd522a39b4ee5a27d40620bb0bd2d05462fe949f8a588c6f39b606463a89bc"
+    }
+  ]
+}

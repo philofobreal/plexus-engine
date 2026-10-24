@@ -1,0 +1,239 @@
+{
+  "task": "T06e",
+  "releaseId": "t06e-native-wall-20261024T105422000Z",
+  "commit": "99af80e1880dcf1352a226c1576de4a93ce428e1",
+  "parent": "a4d8484a49d44699f4020ab278cba7bc9c957aa8",
+  "url": "https://philofobreal.github.io/plexus-engine/xr/?release=t06e-native-wall-20261024T105422000Z",
+  "sourceBranchPushed": false,
+  "forcePushed": false,
+  "defaultChanged": false,
+  "pagesBuild": {
+    "url": "https://api.github.com/repos/philofobreal/plexus-engine/pages/builds/1310542758",
+    "status": "built",
+    "error": {
+      "message": null
+    },
+    "pusher": {
+      "login": "philofobreal",
+      "id": 3270566,
+      "node_id": "MDQ6VXNlcjMyNzA1NjY=",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3270566?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/philofobreal",
+      "html_url": "https://github.com/philofobreal",
+      "followers_url": "https://api.github.com/users/philofobreal/followers",
+      "following_url": "https://api.github.com/users/philofobreal/following{/other_user}",
+      "gists_url": "https://api.github.com/users/philofobreal/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/philofobreal/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/philofobreal/subscriptions",
+      "organizations_url": "https://api.github.com/users/philofobreal/orgs",
+      "repos_url": "https://api.github.com/users/philofobreal/repos",
+      "events_url": "https://api.github.com/users/philofobreal/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/philofobreal/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "commit": "99af80e1880dcf1352a226c1576de4a93ce428e1",
+    "duration": 37563,
+    "created_at": "2026-10-24T10:54:38Z",
+    "updated_at": "2026-10-24T10:55:15Z"
+  },
+  "sourceInputCount": 337,
+  "sourceInputsSha256": "e0f6e5574a412d1ac74c7f0ba4f6c5a4a655c93c523264f65c3392511e503b12",
+  "deployedSourcePatchSha256": "47fafa4e6d2c11e90f5c9a4f46b78ccdef4373b5a2eda545f40b93d7bfbe5e7b",
+  "verification": {
+    "checkedAt": "2026-10-24T10:55:46.620Z",
+    "releaseId": "t06e-native-wall-20261024T105422000Z",
+    "markerStatus": 200,
+    "files": [
+      {
+        "path": "index.html",
+        "status": 200,
+        "sha256": "dbc800a4c77a3cb851da64ad2546905860bfd2e75434fae71c732379bb244c7d"
+      },
+      {
+        "path": "mvp/index.html",
+        "status": 200,
+        "sha256": "60ec6d618f5528bfb12c43a3f1f36ebba01e6a0e1d67268a5a5091b84c7d0f8e"
+      },
+      {
+        "path": "xr/index.html",
+        "status": 200,
+        "sha256": "b4532b292f3081243750a72192c87ab11845a56048d0a3f11b4631cfdcd67b61"
+      },
+      {
+        "path": "assets/CosmicWormholeIdentity-ClYb2Xof.js",
+        "status": 200,
+        "sha256": "8dc8ac557a487909e236fa846fc093a261f0cd3a68f600f414421525483787ed"
+      },
+      {
+        "path": "assets/PreviewQualityControl-BrBaJ_-N.js",
+        "status": 200,
+        "sha256": "c7843de8a5f818daa09174b6dc8f07432640d18f9309cbacfc065384263f6657"
+      },
+      {
+        "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
+        "status": 200,
+        "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+      },
+      {
+        "path": "assets/analyzer.worker-BxhitPzQ.js",
+        "status": 200,
+        "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52"
+      },
+      {
+        "path": "assets/export.worker-Av-E_fEl.js",
+        "status": 200,
+        "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+      },
+      {
+        "path": "assets/main-C7BsYBKL.css",
+        "status": 200,
+        "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+      },
+      {
+        "path": "assets/main-DxGfnvLj.js",
+        "status": 200,
+        "sha256": "4ff6297497c45d3f3c21f552bebf37a5edd0614b90825f68efcb5de29a0e775a"
+      },
+      {
+        "path": "assets/mvp-Bjoot6gz.js",
+        "status": 200,
+        "sha256": "3e3f54215f2205f1d428c03c11e7a49acbcd2ea90349c7735a415261b07d83bb"
+      },
+      {
+        "path": "assets/mvp-D0xy9ln6.css",
+        "status": 200,
+        "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
+      },
+      {
+        "path": "assets/resolveMetaTuning-CsnYWn7w.js",
+        "status": 200,
+        "sha256": "4222a07f9e5801f11691a706d70543da0671287e910aef460ba702187188d810"
+      },
+      {
+        "path": "assets/wormholeNative.worker-B8yF_F6s.js",
+        "status": 200,
+        "sha256": "edd5c0c47f7cff0853ba645e710545bc2cdec516a4b20a5615e5894de9814d42"
+      },
+      {
+        "path": "assets/wormholeRender.worker-KozdF7pV.js",
+        "status": 200,
+        "sha256": "a6ff66f91ed4d32684edd2c68eb5109efccca192d203fd09ca25b31cf625028d"
+      },
+      {
+        "path": "assets/xr-BfNetZ-7.css",
+        "status": 200,
+        "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      },
+      {
+        "path": "assets/xr-DIt6KIwv.js",
+        "status": 200,
+        "sha256": "4e65ea1c4f038ae9b050b6b40550adb191460ce4a785e7d294b572920e7a2962"
+      }
+    ],
+    "routes": [
+      {
+        "path": "",
+        "status": 200,
+        "sha256": "dbc800a4c77a3cb851da64ad2546905860bfd2e75434fae71c732379bb244c7d"
+      },
+      {
+        "path": "mvp/",
+        "status": 200,
+        "sha256": "60ec6d618f5528bfb12c43a3f1f36ebba01e6a0e1d67268a5a5091b84c7d0f8e"
+      },
+      {
+        "path": "xr/",
+        "status": 200,
+        "sha256": "b4532b292f3081243750a72192c87ab11845a56048d0a3f11b4631cfdcd67b61"
+      },
+      {
+        "path": "xr/?xrBackgroundThread=main",
+        "status": 200,
+        "sha256": "b4532b292f3081243750a72192c87ab11845a56048d0a3f11b4631cfdcd67b61"
+      }
+    ],
+    "sourceGraphUnchanged": true
+  },
+  "publicBrowserSmoke": {
+    "pass": true,
+    "url": "https://philofobreal.github.io/plexus-engine/xr/?release=t06e-native-wall-20261024T105422000Z",
+    "editedWallControlsRetainedAfterReload": true,
+    "copySuccessToast": true,
+    "osPaste": "manual",
+    "track": {
+      "duration": 28,
+      "bpm": 128,
+      "notes": 42,
+      "arrows": 41,
+      "pairs": 3
+    },
+    "nativePlay": true,
+    "nativePause": true,
+    "workerGeometryDiagnostic": true,
+    "noBackgroundCanvasDiagnostic": true,
+    "membraneVisible": true,
+    "mosaicVisible": true,
+    "offRemovesWall": true,
+    "notesAndPathVisible": true,
+    "restored": {
+      "mode": "hybrid",
+      "wall": "off",
+      "material": "preset",
+      "gains": 50
+    },
+    "consoleMessages": [],
+    "physicalQuest": "unmeasured",
+    "gpuExecution": "unmeasured"
+  },
+  "publisher": "node node_modules/gh-pages/bin/gh-pages.js -d dist --nojekyll -m \"T06e: native wall paths and preset-aware Wall controls\"",
+  "rollback": "Wall Off, Hybrid or republish retained T06d tree in a new Pages commit.",
+  "evidence": [
+    {
+      "path": "logs/t06e/deploy/release.json",
+      "sha256": "df2645d781e2b8636473bb9defda3100c62b47fc7abd697a6a5e0fbeed0ff6b5"
+    },
+    {
+      "path": "logs/t06e/deploy/published-ref.json",
+      "sha256": "4eb7bc59ec6892155ec48b19704f40c593d91e9dc83b785888990d02ad4de7fa"
+    },
+    {
+      "path": "logs/t06e/deploy/published-commit.json",
+      "sha256": "f19764e0fcb47f55beeabdfa95af5a5d64104257ed5eeda53da5cf4041a85374"
+    },
+    {
+      "path": "logs/t06e/deploy/pages-build.json",
+      "sha256": "01402f7889caed1710cf5fe4f648149e5ff6cc5822399b5e7f56cab0c178f4d3"
+    },
+    {
+      "path": "logs/t06e/deploy/source-inputs.json",
+      "sha256": "e0f6e5574a412d1ac74c7f0ba4f6c5a4a655c93c523264f65c3392511e503b12"
+    },
+    {
+      "path": "logs/t06e/deploy/public-verification.json",
+      "sha256": "5f36a734a2e8e66ec61bd45a67e3ffacc195078bb527868230761f15b12e9ed8"
+    },
+    {
+      "path": "logs/t06e/deploy/public-smoke.json",
+      "sha256": "4d7b53b35dae6913c9a3d87da562eab41a9ce6cd504865f5e431b89f932a9784"
+    },
+    {
+      "path": "logs/t06e/deploy/public-native-playing.jpg",
+      "sha256": "ff7e23fa46a4dff6d9e7c9ced0bc8631904736277a0e080e3fff318dc767001e"
+    },
+    {
+      "path": "logs/t06e/deploy/public-native-paused.jpg",
+      "sha256": "af7ae63541de2f90c6897a16d6909fa5f2012bb18e994a0f8e3ef5973e879b8b"
+    },
+    {
+      "path": "logs/t06e/deploy/public-wall-reload.jpg",
+      "sha256": "cff0909c0403a1733cb3b30db6b62b028bea4babb3ca87163df14d4c6421fcf4"
+    },
+    {
+      "path": "logs/t06e/deploy/public-hybrid-restored.jpg",
+      "sha256": "d19ea1cde6a1fa8225e4e5a535281902468dc83cb4483c88b1f77b0d17512282"
+    }
+  ]
+}

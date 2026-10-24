@@ -1,0 +1,196 @@
+{
+  "task": "T05c",
+  "releaseId": "t05c-exact-frame-20261024T014906431Z",
+  "commit": "b5a1a4098b88c7766b0cbdc41d9ebda173be31f9",
+  "parent": "9b1ae0d8bd3e7691d0b74f66f860418611d658bf",
+  "url": "https://philofobreal.github.io/plexus-engine/",
+  "xrUrl": "https://philofobreal.github.io/plexus-engine/xr/",
+  "sourceBranchPushed": false,
+  "forcePushed": false,
+  "pagesBuild": {
+    "status": "built",
+    "commit": "b5a1a4098b88c7766b0cbdc41d9ebda173be31f9",
+    "updatedAt": "2026-10-24T01:53:41Z"
+  },
+  "sourceInputCount": 325,
+  "sourceInputsSha256": "b5a51068a7c8f0d5642ebe3baf67ad0cfb3f780de5ab588a9377635e61359d88",
+  "deployedSourcePatchSha256": "b9b32b9feaa7d612fcd9d9c19629f5e94ce00635db38b52610dd5761e6452035",
+  "verification": {
+    "checkedAt": "2026-10-24T01:53:56.018Z",
+    "releaseId": "t05c-exact-frame-20261024T014906431Z",
+    "markerStatus": 200,
+    "files": [
+      {
+        "path": "index.html",
+        "status": 200,
+        "sha256": "2ee17736f51e2c9fce994a02c397c7768314a4cbc07b146db73c1dec5b8fba00"
+      },
+      {
+        "path": "mvp/index.html",
+        "status": 200,
+        "sha256": "1bd2e209929fae843005403d1ec8e3fb2128062721d893040cebbc8503f2f6d7"
+      },
+      {
+        "path": "xr/index.html",
+        "status": 200,
+        "sha256": "6df386ff5398c5ffba0a83b50dc87af18652016c65ea00c8df9a35c8e6d1ee5f"
+      },
+      {
+        "path": "assets/CosmicWormholeIdentity-BIvD8iD9.js",
+        "status": 200,
+        "sha256": "ecb3386a653338d953ca13617aa8f063ae648451a4feb8d49b5f8d8650442b58"
+      },
+      {
+        "path": "assets/PreviewQualityControl-DL8dmOk5.js",
+        "status": 200,
+        "sha256": "afb0e2037d2bddc7d6b44cdc6a1125ee33e5cf76cc6e3f94d96e35ea9fdf7441"
+      },
+      {
+        "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
+        "status": 200,
+        "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+      },
+      {
+        "path": "assets/analyzer.worker-BxhitPzQ.js",
+        "status": 200,
+        "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52"
+      },
+      {
+        "path": "assets/export.worker-Av-E_fEl.js",
+        "status": 200,
+        "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+      },
+      {
+        "path": "assets/main-C7BsYBKL.css",
+        "status": 200,
+        "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+      },
+      {
+        "path": "assets/main-CUrsq2e2.js",
+        "status": 200,
+        "sha256": "30dd262beeaf6d45ad880e5932aef7638d3a04def1327e4034196ded76ea5d24"
+      },
+      {
+        "path": "assets/mvp-D0xy9ln6.css",
+        "status": 200,
+        "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
+      },
+      {
+        "path": "assets/mvp-QT2oOslM.js",
+        "status": 200,
+        "sha256": "c81670d296efff6308934efd30a0084fdcd1f9155335e0cef2194c6ead8d27e4"
+      },
+      {
+        "path": "assets/resolveMetaTuning-BuvBEe6g.js",
+        "status": 200,
+        "sha256": "51d820a6dc4e3502637d901feb5c0618014583756e0de2a59264ef662daf8bdd"
+      },
+      {
+        "path": "assets/wormholeRender.worker-DC6-tPDg.js",
+        "status": 200,
+        "sha256": "eeed8f1995320ec0e2612bd2c08e5e549863cabdaeef3221a46113ee374fc798"
+      },
+      {
+        "path": "assets/xr-BfNetZ-7.css",
+        "status": 200,
+        "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      },
+      {
+        "path": "assets/xr-woMLID5v.js",
+        "status": 200,
+        "sha256": "ee08c90ff696fe8b7be99f0b181db71f0d66d200e95d80d5ff62a8adce1c5af6"
+      }
+    ],
+    "routes": [
+      {
+        "path": "",
+        "status": 200,
+        "sha256": "2ee17736f51e2c9fce994a02c397c7768314a4cbc07b146db73c1dec5b8fba00"
+      },
+      {
+        "path": "mvp/",
+        "status": 200,
+        "sha256": "1bd2e209929fae843005403d1ec8e3fb2128062721d893040cebbc8503f2f6d7"
+      },
+      {
+        "path": "xr/",
+        "status": 200,
+        "sha256": "6df386ff5398c5ffba0a83b50dc87af18652016c65ea00c8df9a35c8e6d1ee5f"
+      },
+      {
+        "path": "xr/?xrHaloPreview=phrase",
+        "status": 200,
+        "sha256": "6df386ff5398c5ffba0a83b50dc87af18652016c65ea00c8df9a35c8e6d1ee5f"
+      }
+    ],
+    "sourceGraphUnchanged": true
+  },
+  "publicBrowserSmoke": {
+    "pass": true,
+    "releaseId": "t05c-exact-frame-20261024T014906431Z",
+    "host": "XR public Pages",
+    "fixture": "logs/t02b/halo-smoke.wav",
+    "analysis": {
+      "bpm": 128,
+      "durationSeconds": 7,
+      "notes": 9,
+      "arrows": 9,
+      "pairs": 1
+    },
+    "actions": [
+      "choose synthetic audio",
+      "analysis ready",
+      "PLAY",
+      "natural end"
+    ],
+    "observedResult": {
+      "screen": "Results",
+      "hits": 0,
+      "misses": 9,
+      "expected": "No player input was simulated"
+    },
+    "consoleErrors": [],
+    "physicalHeadset": false,
+    "scope": "Desktop public XR smoke; exact v2 local/worker pixel comparison is the separate local browser harness."
+  },
+  "rollback": "Publish the retained T05b gh-pages tree in a new commit; do not force-push the deployment branch.",
+  "publisher": "node node_modules/gh-pages/bin/gh-pages.js -d dist --nojekyll -m \"T05c: exact Wormhole frame capability and canonical offline sampling\"",
+  "evidence": [
+    {
+      "path": "logs/t05c/deploy/release.json",
+      "sha256": "b54de42aa0cb8a0aed79b17647b5d659d6ad0c473e03b5da3d60517f23cf9e8d"
+    },
+    {
+      "path": "logs/t05c/deploy/published-ref.json",
+      "sha256": "fccc4b120d6276d0345ef2e7c5b8992eae86ac002fdae47aec073b3e610acf55"
+    },
+    {
+      "path": "logs/t05c/deploy/published-commit.json",
+      "sha256": "74c3cc1d47ed8e1540c4f15cc470b825d42112361636e0e2ef9e0ad5bb1e4892"
+    },
+    {
+      "path": "logs/t05c/deploy/pages-build.json",
+      "sha256": "f90321892d3d527f1f019f3b1f72e8babc6e64e69d4eba4870cf93f5451fa2c5"
+    },
+    {
+      "path": "logs/t05c/deploy/source-inputs.json",
+      "sha256": "b5a51068a7c8f0d5642ebe3baf67ad0cfb3f780de5ab588a9377635e61359d88"
+    },
+    {
+      "path": "logs/t05c/deploy/public-verification.json",
+      "sha256": "239bad58911b6b132f4ef18b0f5c9146923dfc760bda2fa8342cdf568dfe75cb"
+    },
+    {
+      "path": "logs/t05c/deploy/public-smoke.json",
+      "sha256": "31940b42b22c2e529bea0bb85efbc9a4fd87a9611c6da9ba90644a5424b43fbe"
+    },
+    {
+      "path": "logs/t05c/deploy/public-xr-playing.jpg",
+      "sha256": "1e94b9ca0f897bc9994cea3d48632406e7baa911ae3f3c630d6dcb66e6eda2ea"
+    },
+    {
+      "path": "logs/t05c/deploy/public-xr-results.jpg",
+      "sha256": "6ff756e14490712d70a2d1bc58837916976c16bb3f2650b24cef5944d74e81b0"
+    }
+  ]
+}

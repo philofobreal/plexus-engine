@@ -1,0 +1,396 @@
+{
+  "task": "T05b",
+  "tests": 1646,
+  "pass": 1637,
+  "fail": 9,
+  "duration_ms": 337637.24,
+  "cancelled": 0,
+  "skipped": 0,
+  "failures": [
+    {
+      "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+      "message": "vos-wh-drift.json must not reset user-global wormholeStarfield",
+      "matchesBaseline": true
+    },
+    {
+      "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+      "message": "establish remains visibly above the opacity floor",
+      "matchesBaseline": true
+    },
+    {
+      "name": "weak roles pin a deep-perspective depth and continuity profile",
+      "message": "establish depth\n\n2.03136 !== 4",
+      "matchesBaseline": true
+    },
+    {
+      "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+      "message": "deep drift deeper than establish",
+      "matchesBaseline": true
+    },
+    {
+      "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+      "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492",
+      "matchesBaseline": true
+    },
+    {
+      "name": "wormhole factory presets keep a minimum normalized weighted separation",
+      "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09",
+      "matchesBaseline": true
+    },
+    {
+      "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+      "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))",
+      "matchesBaseline": true
+    },
+    {
+      "name": "projected forward motion preserves overdrive > punch > drive > drift",
+      "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}",
+      "matchesBaseline": true
+    },
+    {
+      "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+      "message": "389.64890777178124 vs 471.543038051684",
+      "matchesBaseline": true
+    }
+  ],
+  "allFailuresMatchBaseline": true,
+  "targeted": {
+    "tests": 197,
+    "pass": 197,
+    "fail": 0,
+    "path": "logs/t05b/targeted-final.tap"
+  },
+  "inventory": {
+    "activeFiles": 175,
+    "sourceIdentities": 218,
+    "missingPreviousTests": []
+  },
+  "commands": [
+    "npm run build",
+    "node --test --test-reporter=tap tests/wormhole-raster-pass.test.mjs tests/preview-quality.test.mjs tests/contracts.test.mjs tests/postfx-fragmentation.test.mjs tests/visual-mode-transition.test.mjs tests/paused-renderer.test.mjs tests/xr-webgl-backend.test.mjs tests/wormhole-frame-context.test.mjs tests/xr-wormhole-worker.test.mjs tests/wormhole-spiral-history.test.mjs tests/wormhole-spiral-consumers.test.mjs tests/mvp-async-lifecycle.test.mjs tests/xr-wormhole-spatial.test.mjs tests/xr-background-settings.test.mjs",
+    "npm test -- --test-reporter=tap",
+    "git diff --check"
+  ],
+  "runtime": "v25.2.1",
+  "runnerFallback": "Node/npm; publisher runs installed gh-pages through Node because the existing deploy script invokes Bun. No dependency change.",
+  "diffExport": "Skipped; bounded source review, retained predecessor and source-input manifests.",
+  "notClaimed": [
+    "general deterministic route/director sampling and worker-v2 exact export (T05c)",
+    "cross-backend exact pixels",
+    "encoded-video parity",
+    "physical Quest performance/stereo"
+  ],
+  "initialFullRun": {
+    "path": "logs/t05b/tests.tap",
+    "tests": 1645,
+    "pass": 1636,
+    "fail": 9,
+    "reason": "Nine exact baseline failures. Final run also includes the synchronous copy compatibility regression added afterward."
+  },
+  "browser": {
+    "pass": true,
+    "gates": {
+      "maxMeanAbsoluteError": 0.025,
+      "maxChangedFraction": 0.08
+    },
+    "rows": [
+      {
+        "case": "opaque",
+        "raster": "webgl",
+        "density": 1,
+        "meanAbsoluteError": 0.00029816857298474946,
+        "changedFraction": 0.00001736111111111111,
+        "pass": true
+      },
+      {
+        "case": "high density",
+        "raster": "webgl",
+        "density": 2,
+        "meanAbsoluteError": 0.0001786534926470588,
+        "changedFraction": 0,
+        "pass": true
+      },
+      {
+        "case": "transparent",
+        "raster": "webgl",
+        "density": 1,
+        "meanAbsoluteError": 0.014638769744008715,
+        "changedFraction": 0.05664930555555556,
+        "pass": true
+      },
+      {
+        "case": "chroma",
+        "raster": "webgl",
+        "density": 1,
+        "meanAbsoluteError": 0.00022857094226579522,
+        "changedFraction": 0.00001736111111111111,
+        "pass": true
+      },
+      {
+        "case": "video backplate",
+        "raster": "webgl",
+        "density": 1,
+        "meanAbsoluteError": 0.015228707107843137,
+        "changedFraction": 0.07840277777777778,
+        "pass": true
+      },
+      {
+        "case": "resize",
+        "logical": [
+          400,
+          225
+        ],
+        "backing": [
+          500,
+          281
+        ],
+        "surfaces": 1,
+        "pass": true
+      },
+      {
+        "case": "host direct + PostFX",
+        "postDirectorGainCalls": [
+          1,
+          1,
+          1
+        ],
+        "raster": "webgl",
+        "pass": true
+      },
+      {
+        "case": "host crossfade + PostFX",
+        "postDirectorGainCalls": [
+          1,
+          1,
+          1
+        ],
+        "raster": "webgl",
+        "pass": true
+      },
+      {
+        "case": "host offscreen export crossfade + PostFX",
+        "postDirectorGainCalls": [
+          1,
+          1,
+          1
+        ],
+        "raster": "webgl",
+        "pass": true
+      },
+      {
+        "case": "export target isolation",
+        "exportSize": [
+          640,
+          360
+        ],
+        "liveUnchanged": true,
+        "pass": true
+      },
+      {
+        "case": "context loss fallback",
+        "raster": "fallback",
+        "invalidations": 1,
+        "pass": true
+      }
+    ]
+  },
+  "copyCommand": {
+    "command": "copy",
+    "accepted": true,
+    "selected": "{\n  \"version\": 1,\n  \"previewQuality\": \"auto\",\n  \"wormholeRenderer\": \"webgl\"\n}"
+  },
+  "clipboardLimitation": "The browser accepted the synchronous Copy command and the selected JSON was verified. The automation clipboard reader returned an older T04b harness payload, retained as mvp-clipboard-read-stale.json; full OS clipboard read/paste roundtrip is left to manual testing.",
+  "evidence": [
+    {
+      "path": "logs/t05b/build-final.log",
+      "sha256": "28f20f94540327cedf5ac27310b726a3e7027b5b195a7e16cebcfcfda54b7d43"
+    },
+    {
+      "path": "logs/t05b/targeted-final.tap",
+      "sha256": "60d8a3bfb6f39ec043ecf9a37d2451e84fe88ff535bbaf707932132f8ac68e52"
+    },
+    {
+      "path": "logs/t05b/copy-check.tap",
+      "sha256": "0696bc624a1ae78763d38fdcad93acf4c2f57240bd8bb1d7a36ae5ac7d93bf46"
+    },
+    {
+      "path": "logs/t05b/tests-final.tap",
+      "sha256": "99debf39e877e61e772e956bcb8cb955497b06e2ef1e43721272432fcef39171"
+    },
+    {
+      "path": "logs/t05b/test-inventory.json",
+      "sha256": "f56ef7ede4916c9d5eb9e64acece0e49b2c0a26892568cb1b5e9e328677e58a6"
+    },
+    {
+      "path": "logs/t05b/browser-ab.json",
+      "sha256": "645ed74c548bad6c694d0c836addf668169d12507f4300e837ea7bee4ce1994c"
+    },
+    {
+      "path": "logs/t05b/browser-loss.json",
+      "sha256": "c4e2f374d2f45d7f3934dd3c2d6bcb69e5b34bd09b00e1580479514dfd92ccb9"
+    },
+    {
+      "path": "logs/t05b/browser-copy-command.json",
+      "sha256": "1f57cbc3b35ab2ce0dd2625b44b6996a72a5d8a34d19e09ab1262ec91228a467"
+    },
+    {
+      "path": "logs/t05b/mvp-webgl-menu.jpg",
+      "sha256": "c0720c822b83b945178db60afe37d140b5e128e143e132e1d60d380c758245d0"
+    },
+    {
+      "path": "logs/t05b/studio-webgl-seek.jpg",
+      "sha256": "f9300a57f8f236df46cc66db1cbfbc7d0302d7545d829012676391d81e63a4d5"
+    },
+    {
+      "path": "documents/tests/t05b-retention.json",
+      "sha256": "9e0e2d466719b1dc2fa6367c8850880c529cde408bf19afbc3450f40f51b86f0"
+    },
+    {
+      "path": "logs/t05b/xr-left.json",
+      "sha256": "8048bb7f790e9093c8036e28bcc9632ff2c73462db9f10cc40119d6c339b9597"
+    },
+    {
+      "path": "logs/t05b/xr-zero.json",
+      "sha256": "a63e4803eb80d977f620bcd36c0b3d70973fcd8127ab8230a66f5c46ec257585"
+    },
+    {
+      "path": "logs/t05b/xr-right.json",
+      "sha256": "3e413605471383f7f24c751cf504cba4298011811f95707f7d40d5a4d8c90799"
+    },
+    {
+      "path": "logs/t05b/images/chroma-WebGL.png",
+      "sha256": "cf446792ccbcf16d9a69b373d6caf9127a6ccd3f13244fff829ac247819e1620"
+    },
+    {
+      "path": "logs/t05b/images/chroma-reference.png",
+      "sha256": "313eb14ed30c983697122e0cba99b244cd37491e9eb24c902d4730030787803f"
+    },
+    {
+      "path": "logs/t05b/images/high-density-WebGL.png",
+      "sha256": "77bfc696d8451e58632dec650e8a5c913fba96063d150e13287c8f9e6217bdb8"
+    },
+    {
+      "path": "logs/t05b/images/high-density-reference.png",
+      "sha256": "fa6bbbdf70e763647b0edf703bd40c570a83e358fad0860b420198174976cd49"
+    },
+    {
+      "path": "logs/t05b/images/opaque-WebGL.png",
+      "sha256": "fd120a0f63313ef03a46f950096462628b7554eb407b9682773840e421ae9069"
+    },
+    {
+      "path": "logs/t05b/images/opaque-reference.png",
+      "sha256": "32de51c8b40c2a79ceb2a6983ef68c6c5d5a4bb4c2b7f22912c60aaafd21501a"
+    },
+    {
+      "path": "logs/t05b/images/transparent-WebGL.png",
+      "sha256": "ed79ebbffb0b1722b530515d26690897452e0db3fa4affa96637897fee2e946e"
+    },
+    {
+      "path": "logs/t05b/images/transparent-reference.png",
+      "sha256": "4327731aea888bc1f123a56deb69aa3b919c722147dc133adc4339a7096325ae"
+    },
+    {
+      "path": "logs/t05b/images/video-backplate-WebGL.png",
+      "sha256": "094fb48eb86ac1d0550ef36f94b87da56dd296df04ee05bc7fa85b7e60ae5cf0"
+    },
+    {
+      "path": "logs/t05b/images/video-backplate-reference.png",
+      "sha256": "ec5c78497203250c3109530944a421f9a75ee7b1acceb69f9edc270f6f551159"
+    }
+  ],
+  "xrSignedBrowser": [
+    {
+      "pass": true,
+      "expected": -0.5499910301333368,
+      "zeroCrossing": 2.186705093060352,
+      "rows": [
+        {
+          "renderer": "Canvas2D · 24 Hz history",
+          "raster": "canvas2d",
+          "requestedTime": 2.5,
+          "shownTime": 2.5,
+          "signedTurns": -0.5499910301333368,
+          "shownSerial": null
+        },
+        {
+          "renderer": "WebGL2 · backward seek",
+          "raster": "webgl",
+          "requestedTime": 2.5,
+          "shownTime": 2.5,
+          "signedTurns": -0.5499910301333368,
+          "shownSerial": null
+        },
+        {
+          "renderer": "Worker · paused request",
+          "raster": "webgl",
+          "requestedTime": 2.5,
+          "shownTime": 2.5,
+          "signedTurns": -0.5499910301333368,
+          "shownSerial": 6
+        }
+      ]
+    },
+    {
+      "pass": true,
+      "expected": 1.2212453270876722e-15,
+      "zeroCrossing": 2.186705093060352,
+      "rows": [
+        {
+          "renderer": "Canvas2D · 24 Hz history",
+          "raster": "canvas2d",
+          "requestedTime": 2.186705093060352,
+          "shownTime": 2.186705093060352,
+          "signedTurns": 1.2212453270876722e-15,
+          "shownSerial": null
+        },
+        {
+          "renderer": "WebGL2 · backward seek",
+          "raster": "webgl",
+          "requestedTime": 2.186705093060352,
+          "shownTime": 2.186705093060352,
+          "signedTurns": 1.2212453270876722e-15,
+          "shownSerial": null
+        },
+        {
+          "renderer": "Worker · paused request",
+          "raster": "webgl",
+          "requestedTime": 2.186705093060352,
+          "shownTime": 2.186705093060352,
+          "signedTurns": 1.2212453270876722e-15,
+          "shownSerial": 7
+        }
+      ]
+    },
+    {
+      "pass": true,
+      "expected": 0.8,
+      "zeroCrossing": 2.186705093060352,
+      "rows": [
+        {
+          "renderer": "Canvas2D · 24 Hz history",
+          "raster": "canvas2d",
+          "requestedTime": 1.5,
+          "shownTime": 1.5,
+          "signedTurns": 0.8,
+          "shownSerial": null
+        },
+        {
+          "renderer": "WebGL2 · backward seek",
+          "raster": "webgl",
+          "requestedTime": 1.5,
+          "shownTime": 1.5,
+          "signedTurns": 0.8,
+          "shownSerial": null
+        },
+        {
+          "renderer": "Worker · paused request",
+          "raster": "webgl",
+          "requestedTime": 1.5,
+          "shownTime": 1.5,
+          "signedTurns": 0.8,
+          "shownSerial": 8
+        }
+      ]
+    }
+  ]
+}

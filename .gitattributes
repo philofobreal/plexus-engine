@@ -2,7 +2,8 @@
 # survive checkout independently of core.autocrlf; preserve the verified source
 # working bytes when importing pre-existing evidence, without rewriting its hashes.
 /research/analyzer-lab/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
-/documents/tests/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Immutable historical archives retain their original EOF too. Active tests keep EOF checks.
+/documents/tests/** -text whitespace=-blank-at-eof,blank-at-eol,space-before-tab,cr-at-eol
 /tests/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /scripts/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /src/analyzer/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

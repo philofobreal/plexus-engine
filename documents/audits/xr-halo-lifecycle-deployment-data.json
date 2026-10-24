@@ -1,0 +1,239 @@
+{
+  "task": "T02b",
+  "url": "https://philofobreal.github.io/plexus-engine/xr/?xrHaloPreview=1",
+  "releaseId": "t02b-halo-lifecycle-20261023T214715168Z",
+  "pages": {
+    "commit": "75bccd8b87f937d9bfa8630d6d8f98848901cd51",
+    "created_at": "2026-10-23T21:47:23Z",
+    "error": {
+      "message": null
+    },
+    "status": "built",
+    "updated_at": "2026-10-23T21:48:03Z"
+  },
+  "commit": {
+    "message": "Deploy T02b: bounded halo lifecycle preview",
+    "parents": [
+      "ade5aedf53ba3b4f17413c0860e89e224983169d"
+    ],
+    "sha": "75bccd8b87f937d9bfa8630d6d8f98848901cd51"
+  },
+  "previousPagesCommit": "ade5aedf53ba3b4f17413c0860e89e224983169d",
+  "source": {
+    "baseCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
+    "workingTreeChanges": true,
+    "patchSha256": "909c2cec50e7023d06541addef0bb8884b980d99582dc461b0e8f5b315dba935",
+    "inputManifestSha256": "dd028ec2f0ab1d9f6c20629a5d57c76b3f04b1e2298da17816c9f9a5706dad2b",
+    "inputCount": 318,
+    "includesUntrackedModules": true
+  },
+  "public": {
+    "checkedAt": "2026-10-23T21:48:23.448Z",
+    "releaseId": "t02b-halo-lifecycle-20261023T214715168Z",
+    "markerStatus": 200,
+    "files": [
+      {
+        "path": "index.html",
+        "status": 200,
+        "sha256": "014846e1bb06d9512ba33566e35bfdeffab705ff0218f26cb0cf53928839d97f"
+      },
+      {
+        "path": "mvp/index.html",
+        "status": 200,
+        "sha256": "8eee6222097bc41325fcb5940eeac918b1442f49cffa86f4c4088a5a89cd9ac3"
+      },
+      {
+        "path": "xr/index.html",
+        "status": 200,
+        "sha256": "41c0d461ce1647a6977f6a295bfe7b7bd30c9b8b3a7c83202bf3b51b10afc4c1"
+      },
+      {
+        "path": "assets/CosmicWormholeIdentity-BCFBcTaT.js",
+        "status": 200,
+        "sha256": "67af03b2415d8b85db8c2cbefee85c39d4258d668432d64c3650a495bf9d51ce"
+      },
+      {
+        "path": "assets/PreviewQualityControl-LtcLGfV6.js",
+        "status": 200,
+        "sha256": "34b9488db4c866e2bfce370c6a201de804f971506c35bbab4deb701e264775e3"
+      },
+      {
+        "path": "assets/PreviewQualityControl-QAaWZINt.css",
+        "status": 200,
+        "sha256": "a1c70e42cf6dac5e6ceffa20f327845c2f22632aa650bb1968a11bdcff0ce2f2"
+      },
+      {
+        "path": "assets/analyzer.worker-BxhitPzQ.js",
+        "status": 200,
+        "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52"
+      },
+      {
+        "path": "assets/export.worker-Av-E_fEl.js",
+        "status": 200,
+        "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+      },
+      {
+        "path": "assets/main-C7BsYBKL.css",
+        "status": 200,
+        "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+      },
+      {
+        "path": "assets/main-DiOi_zs5.js",
+        "status": 200,
+        "sha256": "97d8d78f969dce8f58171dfa4d4a84e3eaab26f264d2cb474b99bd983bacc4f9"
+      },
+      {
+        "path": "assets/mvp-Brerbsdw.js",
+        "status": 200,
+        "sha256": "97dae180296171fdd563472745502353e5a282882ebbfceae821e9ff2ba20d66"
+      },
+      {
+        "path": "assets/mvp-D0xy9ln6.css",
+        "status": 200,
+        "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
+      },
+      {
+        "path": "assets/resolveMetaTuning-Z4fxCcSJ.js",
+        "status": 200,
+        "sha256": "65afd6b268f7bddc19d33ac2d1a72053e970e88237ae9c350e83eaa9e0701550"
+      },
+      {
+        "path": "assets/wormholeRender.worker-BxIw1t-9.js",
+        "status": 200,
+        "sha256": "b73a709c333e7c9b35df619ab42543a806c5d915fc0c5707ca2efce77de95c14"
+      },
+      {
+        "path": "assets/xr-B6oBiWla.js",
+        "status": 200,
+        "sha256": "509d749f6f140adf2332031751a8964b0fd048cbc646db5f5821cea0b8c62de6"
+      },
+      {
+        "path": "assets/xr-BfNetZ-7.css",
+        "status": 200,
+        "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      }
+    ],
+    "routes": [
+      {
+        "path": "",
+        "status": 200,
+        "sha256": "014846e1bb06d9512ba33566e35bfdeffab705ff0218f26cb0cf53928839d97f"
+      },
+      {
+        "path": "mvp/",
+        "status": 200,
+        "sha256": "8eee6222097bc41325fcb5940eeac918b1442f49cffa86f4c4088a5a89cd9ac3"
+      },
+      {
+        "path": "xr/",
+        "status": 200,
+        "sha256": "41c0d461ce1647a6977f6a295bfe7b7bd30c9b8b3a7c83202bf3b51b10afc4c1"
+      },
+      {
+        "path": "xr/?xrHaloPreview=1",
+        "status": 200,
+        "sha256": "41c0d461ce1647a6977f6a295bfe7b7bd30c9b8b3a7c83202bf3b51b10afc4c1"
+      }
+    ],
+    "errors": []
+  },
+  "browser": {
+    "surface": "Desktop in-app Chromium",
+    "liveSyntheticAudio": {
+      "fixture": "house-128 PCM16 WAV",
+      "bpm": 128,
+      "durationSec": 7,
+      "chartNotes": 9,
+      "directionalNotes": 9,
+      "pairs": 1,
+      "playedToResults": true,
+      "hits": 0,
+      "misses": 9,
+      "score": 0,
+      "capturedErrors": [],
+      "screenshot": "logs/t02b/deploy/live-smoke.jpg"
+    },
+    "isolatedActualWebGL": {
+      "page": "tests/browser/xr-note-halo-smoke.html",
+      "pendingHalo": 1,
+      "acceptedHit": {
+        "halos": 1,
+        "hits": 1,
+        "score": 100
+      },
+      "miss": {
+        "halos": 1,
+        "hits": 0,
+        "misses": 2,
+        "score": 0
+      },
+      "seek": {
+        "halos": 0,
+        "misses": 2
+      },
+      "restart": {
+        "halos": 1,
+        "hits": 0,
+        "misses": 0
+      },
+      "capturedErrors": []
+    },
+    "physicalQuest": "unmeasured",
+    "humanTrackGameplay": "unmeasured",
+    "sustainedPerformance": "unmeasured"
+  },
+  "artifacts": [
+    {
+      "path": "logs/t02b/deploy/build.log",
+      "sha256": "3ee2dfb66521413b7d8dcaa198af538cb19d2802035cfc5f19f8ba31d4f24ec8"
+    },
+    {
+      "path": "logs/t02b/deploy/publish.log",
+      "sha256": "fd3eb44548dbdcf85a0b1b0077223343ce032ac42a77d05c1d22e57a15399c01"
+    },
+    {
+      "path": "logs/t02b/deploy/release.json",
+      "sha256": "b853135f586dfda0bf586ddc36c44feb139f51ac19561b6a04f8c02ba14532f0"
+    },
+    {
+      "path": "logs/t02b/deploy/source.patch",
+      "sha256": "909c2cec50e7023d06541addef0bb8884b980d99582dc461b0e8f5b315dba935"
+    },
+    {
+      "path": "logs/t02b/deploy/source-inputs.json",
+      "sha256": "dd028ec2f0ab1d9f6c20629a5d57c76b3f04b1e2298da17816c9f9a5706dad2b"
+    },
+    {
+      "path": "logs/t02b/deploy/pages-build.json",
+      "sha256": "ad1a8acd370b3dc68879cb494fb4c427feeb9a6bb038db3b418fd5727954bb8f"
+    },
+    {
+      "path": "logs/t02b/deploy/pages-commit.json",
+      "sha256": "211723d141363344c9f29def21e11151014ff4f14b3bc7f7ad6bae26d6b2ed78"
+    },
+    {
+      "path": "logs/t02b/deploy/public-verification.json",
+      "sha256": "39350cd6f6ea717583fd261bc5a95f521ae9f16f926cdcb5338d565f2b818d25"
+    },
+    {
+      "path": "logs/t02b/deploy/live-smoke.jpg",
+      "sha256": "d0bfd06688eaae5908b7cb137119cb4deb71df222ce927c237fc108d7bec2ff3"
+    },
+    {
+      "path": "logs/t02b/halo-pending.jpg",
+      "sha256": "2515a01ecb32cdbbffb8422979180aa739ab93d96d2fb1d7fca146a59fe63ab6"
+    },
+    {
+      "path": "logs/t02b/halo-hit.jpg",
+      "sha256": "c83b6628d59a477fd329d97c9deee2f1abbb937b1f64060c69fa94e8aeb48a39"
+    },
+    {
+      "path": "logs/t02b/halo-miss.jpg",
+      "sha256": "f6bca42b66322e1d0d2f65cb4539d83888a2a80ddf494df50e3803f5baec78b6"
+    },
+    {
+      "path": "logs/t02b/halo-smoke.wav",
+      "sha256": "d6b0d3d70e0907b6a5568e81156db9bd1cbdbe803db67a62243f6acf04a7350c"
+    }
+  ]
+}

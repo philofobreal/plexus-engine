@@ -1,0 +1,217 @@
+{
+  "commit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
+  "runtime": "v25.2.1",
+  "platform": "win32 10.0.26200 x64",
+  "cpu": "Intel(R) Core(TM) Ultra 7 258V",
+  "logicalCpus": 8,
+  "method": "Node process; TS loader and fixture synthesis excluded from measured calls; first call then 30 chart / 10 analyzer warm calls; no CI performance assertions",
+  "sourceExportSha256": "1226e68017cbd51ec8dc87447441f268a1f1ab8dc245264b5b379039af9407d1",
+  "comparison": [
+    {
+      "file": "AGENTS.md",
+      "status": "equal",
+      "exportedSha256": "d89ef2b6bd8547bbd1cd50ca1decccaea70c53aaa77941035c0b94359ff69802",
+      "checkoutSha256": "d89ef2b6bd8547bbd1cd50ca1decccaea70c53aaa77941035c0b94359ff69802"
+    },
+    {
+      "file": "package.json",
+      "status": "equal",
+      "exportedSha256": "bb5916f7fa08104d394cf1cd4b9fc5f0083145ececdd66f40012650930c6cc2d",
+      "checkoutSha256": "bb5916f7fa08104d394cf1cd4b9fc5f0083145ececdd66f40012650930c6cc2d"
+    },
+    {
+      "file": "vite.config.ts",
+      "status": "equal",
+      "exportedSha256": "d9a0e8d86995ecd402aef141b30e7395137542f12cb56170d7edc0eef06b2a75",
+      "checkoutSha256": "d9a0e8d86995ecd402aef141b30e7395137542f12cb56170d7edc0eef06b2a75"
+    },
+    {
+      "file": "src/audio/AudioEngine.ts",
+      "status": "equal",
+      "exportedSha256": "b4e49cd5b4cd5c5a530867eaeda795cb29d84a8da6019fcb7178e41bb55d4f93",
+      "checkoutSha256": "b4e49cd5b4cd5c5a530867eaeda795cb29d84a8da6019fcb7178e41bb55d4f93"
+    },
+    {
+      "file": "src/audio/analyzer.worker.ts",
+      "status": "equal",
+      "exportedSha256": "9e9444328572f10d7063beb56fe0aa16ea870b1346fb7ee334295e1aea7d4262",
+      "checkoutSha256": "9e9444328572f10d7063beb56fe0aa16ea870b1346fb7ee334295e1aea7d4262"
+    },
+    {
+      "file": "src/analyzer/analyzeAudio.ts",
+      "status": "equal",
+      "exportedSha256": "ec0109cfa8b6097a4c8489e944a217bba9ad4eb1eaa9aea871a1a636e55dd2c5",
+      "checkoutSha256": "ec0109cfa8b6097a4c8489e944a217bba9ad4eb1eaa9aea871a1a636e55dd2c5"
+    },
+    {
+      "file": "src/gameplay/RhythmChartBuilder.ts",
+      "status": "equal",
+      "exportedSha256": "1d36e2be05e6b6136f84cab333edd969b5fde368eaf0726ea8f34fc8f2620bb0",
+      "checkoutSha256": "1d36e2be05e6b6136f84cab333edd969b5fde368eaf0726ea8f34fc8f2620bb0"
+    },
+    {
+      "file": "src/gameplay/RhythmScorePlanner.ts",
+      "status": "equal",
+      "exportedSha256": "0dc52a649d820d611331241aa01e9e6493a6f293b169a30a55bb115d705d1e0b",
+      "checkoutSha256": "0dc52a649d820d611331241aa01e9e6493a6f293b169a30a55bb115d705d1e0b"
+    },
+    {
+      "file": "src/gameplay/RhythmGameSession.ts",
+      "status": "equal",
+      "exportedSha256": "64f52f42fc1606fa0865bbc0ddec6f58b9ddb2ef3b5d2ab0a9f094b5ef8a41dc",
+      "checkoutSha256": "64f52f42fc1606fa0865bbc0ddec6f58b9ddb2ef3b5d2ab0a9f094b5ef8a41dc"
+    },
+    {
+      "file": "src/xr/XrAppController.ts",
+      "status": "equal",
+      "exportedSha256": "39a4bb46f2e1c41164dc176545b7b6e612d86ccef6a20bbde89331f7c6690153",
+      "checkoutSha256": "39a4bb46f2e1c41164dc176545b7b6e612d86ccef6a20bbde89331f7c6690153"
+    },
+    {
+      "file": "src/xr/scene/RhythmGameScene.ts",
+      "status": "equal",
+      "exportedSha256": "1a5eb08a7e57e95628452adafe9c68215312f65bfb712ed5c6d2d3f9589c1066",
+      "checkoutSha256": "1a5eb08a7e57e95628452adafe9c68215312f65bfb712ed5c6d2d3f9589c1066"
+    },
+    {
+      "file": "src/xr/XrBackgroundSettings.ts",
+      "status": "equal",
+      "exportedSha256": "38c087fe6bb472b072ee00f54b0e153446032a753ae8562890a9e2f439a31e12",
+      "checkoutSha256": "38c087fe6bb472b072ee00f54b0e153446032a753ae8562890a9e2f439a31e12"
+    },
+    {
+      "file": "src/visuals/PlexusRenderer.ts",
+      "status": "different",
+      "exportedSha256": "d11c515bf9cbadf221cd74768797e0120641d804e12d76f1d8fb7dd8e8055074",
+      "checkoutSha256": "974daa196942b99b0d1590d811be9b2f30533aa6425e3c1c95a3cec425a250ca"
+    },
+    {
+      "file": "src/visuals/WormholeCanvasSource.ts",
+      "status": "equal",
+      "exportedSha256": "12f4af91c3d796b41de7acc39f55f8fdebae552388af441a167ff66f5123b10a",
+      "checkoutSha256": "12f4af91c3d796b41de7acc39f55f8fdebae552388af441a167ff66f5123b10a"
+    },
+    {
+      "file": "src/visuals/WebGLRendererBackend.ts",
+      "status": "equal",
+      "exportedSha256": "fd436d23d44dcabea0027e0e9b794d72c2db6b18c3b29bb6a73d95d3f69b6f9b",
+      "checkoutSha256": "fd436d23d44dcabea0027e0e9b794d72c2db6b18c3b29bb6a73d95d3f69b6f9b"
+    },
+    {
+      "file": "src/export/WebCodecsBackend.ts",
+      "status": "equal",
+      "exportedSha256": "b07bebb276030a5b119299e909d492b70f0ad8e24473ac4eb82412525c6c2331",
+      "checkoutSha256": "b07bebb276030a5b119299e909d492b70f0ad8e24473ac4eb82412525c6c2331"
+    },
+    {
+      "file": "src/ui/mvp/MvpVisualController.ts",
+      "status": "different",
+      "exportedSha256": "61ee5718b41f8f07d0cd200bc9d83f346213ea6d6addfc591e861a8d8cf84eaf",
+      "checkoutSha256": "b3019703738116e053f936e28987cdb3a31807952f32c32fe6310df87bf73362"
+    }
+  ],
+  "charts": [
+    {
+      "name": "sparse-normal-standard",
+      "durationSec": 300,
+      "inputEvents": 400,
+      "noteCount": 334,
+      "coldMs": 5.613200000000006,
+      "warm": {
+        "samples": 30,
+        "p50Ms": 1.3696999999999662,
+        "p95Ms": 1.6733000000000402,
+        "p99Ms": 4.510400000000004
+      },
+      "scoringLoad": {
+        "samples": 30,
+        "p50Ms": 0.22430000000008476,
+        "p95Ms": 0.7731999999999744,
+        "p99Ms": 0.7993000000000166
+      },
+      "deterministic": true,
+      "chartSha256": "fa98a05249580f26dec338c9191045a3604a3663c9a7b469910a24af134f05c4"
+    },
+    {
+      "name": "dense-ultra-tall",
+      "durationSec": 300,
+      "inputEvents": 2400,
+      "noteCount": 1617,
+      "coldMs": 12.823999999999955,
+      "warm": {
+        "samples": 30,
+        "p50Ms": 7.63779999999997,
+        "p95Ms": 11.736499999999978,
+        "p99Ms": 12.126899999999978
+      },
+      "scoringLoad": {
+        "samples": 30,
+        "p50Ms": 1.0716999999999643,
+        "p95Ms": 1.3774000000000797,
+        "p99Ms": 1.6860000000001492
+      },
+      "deterministic": true,
+      "chartSha256": "9e4c53e635c348f6fc537a16802862b6de1fdac22b2322c045ae870d045983b9"
+    }
+  ],
+  "analyzer": [
+    {
+      "id": "house-128",
+      "sampleRate": 44100,
+      "sampleCount": 308700,
+      "durationSec": 7,
+      "algorithmVersion": 7,
+      "coldMs": 2063.8001999999997,
+      "warm": {
+        "samples": 10,
+        "p50Ms": 2562.2425999999978,
+        "p95Ms": 3030.3961000000018,
+        "p99Ms": 3030.3961000000018
+      },
+      "events": 13,
+      "deterministic": true,
+      "outputSha256": "e741117ab1a521bfb7efc94df80530877dc3f8d3279c14af5fd6da4c8a9deacd"
+    },
+    {
+      "id": "dnb-176",
+      "sampleRate": 44100,
+      "sampleCount": 308700,
+      "durationSec": 7,
+      "algorithmVersion": 7,
+      "coldMs": 2829.7371999999996,
+      "warm": {
+        "samples": 10,
+        "p50Ms": 1945.7237000000023,
+        "p95Ms": 3122.379200000003,
+        "p99Ms": 3122.379200000003
+      },
+      "events": 21,
+      "deterministic": true,
+      "outputSha256": "d53f9ebc1e674e5a49d587936e20ef112e75c9718d66ec24ec60aade380e7591"
+    },
+    {
+      "id": "breakdown-124",
+      "sampleRate": 44100,
+      "sampleCount": 396900,
+      "durationSec": 9,
+      "algorithmVersion": 7,
+      "coldMs": 2461.0139999999956,
+      "warm": {
+        "samples": 10,
+        "p50Ms": 2484.6849999999977,
+        "p95Ms": 2726.1800000000076,
+        "p99Ms": 2726.1800000000076
+      },
+      "events": 12,
+      "deterministic": true,
+      "outputSha256": "8111a0c290c81f76b0eee58baa1675cd4062bdf3cc7632e5669f3dfbd3ff19b9"
+    }
+  ],
+  "unmeasured": [
+    "browser render/GPU/worker/compositor",
+    "real-track analysis",
+    "live export",
+    "Quest 3",
+    "peak memory"
+  ]
+}

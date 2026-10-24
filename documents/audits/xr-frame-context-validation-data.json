@@ -1,0 +1,144 @@
+{
+  "task": "T05a",
+  "tests": 1635,
+  "pass": 1626,
+  "fail": 9,
+  "duration_ms": 537150.9469,
+  "cancelled": 0,
+  "skipped": 0,
+  "failures": [
+    {
+      "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+      "message": "vos-wh-drift.json must not reset user-global wormholeStarfield",
+      "matchesBaseline": true
+    },
+    {
+      "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+      "message": "establish remains visibly above the opacity floor",
+      "matchesBaseline": true
+    },
+    {
+      "name": "weak roles pin a deep-perspective depth and continuity profile",
+      "message": "establish depth\n\n2.03136 !== 4",
+      "matchesBaseline": true
+    },
+    {
+      "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+      "message": "deep drift deeper than establish",
+      "matchesBaseline": true
+    },
+    {
+      "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+      "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492",
+      "matchesBaseline": true
+    },
+    {
+      "name": "wormhole factory presets keep a minimum normalized weighted separation",
+      "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09",
+      "matchesBaseline": true
+    },
+    {
+      "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+      "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))",
+      "matchesBaseline": true
+    },
+    {
+      "name": "projected forward motion preserves overdrive > punch > drive > drift",
+      "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}",
+      "matchesBaseline": true
+    },
+    {
+      "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+      "message": "389.64890777178124 vs 471.543038051684",
+      "matchesBaseline": true
+    }
+  ],
+  "allFailuresMatchBaseline": true,
+  "targeted": {
+    "tests": 182,
+    "pass": 182,
+    "fail": 0,
+    "path": "logs/t05a/targeted.tap"
+  },
+  "retentionContextCheck": {
+    "tests": 13,
+    "pass": 13,
+    "fail": 0,
+    "path": "logs/t05a/retention-check.tap"
+  },
+  "inventory": {
+    "activeFiles": 174,
+    "sourceIdentities": 215,
+    "missingPreviousTests": []
+  },
+  "commands": [
+    "npm run build",
+    "node --test --test-reporter=tap tests/wormhole-frame-context.test.mjs tests/gameplay-purity.test.mjs tests/xr-wormhole.test.mjs tests/xr-wormhole-continuity.test.mjs tests/xr-wormhole-spatial.test.mjs tests/xr-wormhole-worker.test.mjs tests/wormhole-spiral-history.test.mjs tests/wormhole-spiral-consumers.test.mjs tests/xr-background-settings.test.mjs tests/xr-background-diagnostics.test.mjs tests/xr-gpu-lines.test.mjs tests/xr-gpu-material.test.mjs tests/xr-webgl-backend.test.mjs tests/paused-renderer.test.mjs tests/mvp-async-lifecycle.test.mjs",
+    "node --test --test-reporter=tap tests/wormhole-frame-context.test.mjs tests/accepted-timing-measurement.test.mjs",
+    "npm test -- --test-reporter=tap",
+    "git diff --check"
+  ],
+  "runtime": "v25.2.1",
+  "runnerFallback": "Node/npm; publisher runs installed gh-pages through Node because the existing deploy script invokes Bun. No dependency change.",
+  "diffExport": "Skipped; bounded source review, retained predecessor and source-input manifests.",
+  "notClaimed": [
+    "Studio/MVP shared backend handoff (T05b)",
+    "general deterministic route/director sampling and worker-v2 exact export (T05c)",
+    "cross-backend exact pixels",
+    "encoded-video parity",
+    "physical Quest performance/stereo"
+  ],
+  "initialFullRun": {
+    "path": "logs/t05a/tests.tap",
+    "tests": 1635,
+    "pass": 1623,
+    "fail": 12,
+    "reason": "Nine retained baseline failures plus three protected helper identity failures. Restored the exact original xr-loader bytes and kept comparison loading local to the new test; final cumulative run below supersedes this run."
+  },
+  "evidence": [
+    {
+      "path": "logs/t05a/build.log",
+      "sha256": "5354b4bd664cf182edb2d0be389406b98d2817d7ba27ba013f18635e2ca6818f"
+    },
+    {
+      "path": "logs/t05a/targeted.tap",
+      "sha256": "330c9ddddf06f566eb21e3c278b6662da56993c5269265add78c9165c8b753f1"
+    },
+    {
+      "path": "logs/t05a/retention-check.tap",
+      "sha256": "9d399ebe94f69327d143e5910bf90a44859711b2de2429eb2cbe949cab74a402"
+    },
+    {
+      "path": "logs/t05a/tests-final.tap",
+      "sha256": "8363fe3d3c311e374fe870ae26fc73bd2cca8445afd5aab5d0b8b1c5a58c9b7f"
+    },
+    {
+      "path": "logs/t05a/test-inventory.json",
+      "sha256": "281a2783a9f9df9c0006679b311ae936cf0509b8ef5a764a63da51168e87a0eb"
+    },
+    {
+      "path": "logs/t05a/browser-left.json",
+      "sha256": "8048bb7f790e9093c8036e28bcc9632ff2c73462db9f10cc40119d6c339b9597"
+    },
+    {
+      "path": "logs/t05a/browser-zero.json",
+      "sha256": "a63e4803eb80d977f620bcd36c0b3d70973fcd8127ab8230a66f5c46ec257585"
+    },
+    {
+      "path": "logs/t05a/browser-right.json",
+      "sha256": "3e413605471383f7f24c751cf504cba4298011811f95707f7d40d5a4d8c90799"
+    },
+    {
+      "path": "logs/t05a/mvp-seek.jpg",
+      "sha256": "1a4b5b74c9d8b2f64473d2e4bcda38561066dc6666a5f693168b705a694093f5"
+    },
+    {
+      "path": "logs/t05a/studio-seek.jpg",
+      "sha256": "e70b6f4815c5d30e1c3ca2148796b5c57f09a13199af7629135a2349edb91145"
+    },
+    {
+      "path": "documents/tests/WormholeCanvasSource.pre-t05a.ts.txt",
+      "sha256": "173b0d2731d245798d76de6b157154d3c72c130f3e9b1c3aad4dbbe97554d436"
+    }
+  ]
+}

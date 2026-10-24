@@ -1,0 +1,284 @@
+import { CONTINUOUS_PLAYBACK_MAX_STEP_SEC, isContinuousPlaybackStep, type CanvasVisualPresentation, type CanvasVisualSource,
+    type VisualAnalysisSnapshot, type VisualFocalPoint } from '../types/CanvasVisualSource';
+import type { GrainMaterialFrame } from '../types/GrainMaterialFrame';
+import type { GrainLineFrame } from '../types/GrainLineFrame';
+import type { WormholeSpatialFrame } from '../types/WormholeSpatialFrame';
+import { GrainCarrierCollector } from './GrainCarrierCollector';
+import { GrainLineCollector } from './GrainLineCollector';
+import { cloneDefaultVisualTuning, tuningMorphDeltaSec } from '../config/visualTuning';
+import { XR_WORMHOLE_MACROS, XR_WORMHOLE_BOOSTS } from '../config/xrWormholeTuning';
+import { featureFlags } from '../config/featureFlags';
+import type { WormholeContextSeed } from '../types/WormholeContext';
+import { WormholeFrameContext } from './WormholeFrameContext';
+import { Canvas2DRendererBackend, type Canvas2DSurfaceFactory } from './Canvas2DRendererBackend';
+import { WebGLRendererBackend } from './WebGLRendererBackend';
+import { createWormholeSpatialFrame, resolveWormholeSpatialFrame } from './wormholeSpatialFrame';
+
+
+export interface WormholeCanvasSourceOptions {
+    /** Explicit host policy; omission preserves the existing XR adapter defaults. */
+    readonly contextSeed?: WormholeContextSeed;
+    /** Opt-in debug surface (`?xrDiagnostics=1`), decided by the composition root. */
+    readonly diagnostics?: boolean;
+    /** Monocular depth-cue strength for the identity (0 = legacy look). */
+    readonly depthCue?: number;
+    /** Emit a fixed far/mid/near multi-plane output for stereoscopic hosts. */
+    readonly depthLayers?: boolean;
+    /** Main raster size (default 960x540). */
+    readonly width?: number;
+    readonly height?: number;
+    /** Drawing-surface factory (a worker host supplies OffscreenCanvas); defaults to DOM canvases. */
+    readonly createSurface?: Canvas2DSurfaceFactory;
+    /** Opt-in stage timing for diagnostics (`stageTimes`); off by default. */
+    readonly profile?: boolean;
+    /** Hand the grain material to the host as carriers (`materialFrame`; ADR-009 Addendum W). */
+    readonly externalMaterial?: boolean;
+    /**
+     * With `externalMaterial`: a material frame's grain trail strokes are handed to the host as a line
+     * list (`lineFrame`; ADR-009 Addendum AA) instead of being stroked on the raster.
+     */
+    readonly externalLines?: boolean;
+    /**
+     * Rasterize every drawing surface in software (CPU) instead of the browser's GPU canvas (ADR-009
+     * Addendum AE). A GPU canvas replays its strokes on the browser's GPU thread, the one that also
+     * runs the headset's frame.
+     */
+    readonly softwareRaster?: boolean;
+    /**
+     * Rasterize the main plane with WebGL2 (`WebGLRendererBackend`; ADR-009 Addendum AF) instead of
+     * Canvas2D: a frame becomes a handful of batched draw calls. Falls back to Canvas2D where WebGL2
+     * is unavailable (`rasterKind` says which runs).
+     */
+    readonly webglRaster?: boolean;
+}
+
+/**
+ * Surfaces whose 2D context is created for software raster: the first `getContext` call fixes a
+ * canvas's attributes, and every later '2d' request (backend, field raster) returns this context.
+ */
+function softwareSurfaces(create?: Canvas2DSurfaceFactory): Canvas2DSurfaceFactory {
+    return (width, height) => {
+        const canvas = create ? create(width, height) : Object.assign(document.createElement('canvas'), { width, height });
+        canvas.getContext('2d', { willReadFrequently: true });
+        return canvas;
+    };
+}
+
+/** The WebGL plane, or null (Canvas2D takes over) where WebGL2 or its shaders are unavailable. */
+function createWebGLBackend(width: number, height: number, createSurface?: Canvas2DSurfaceFactory): WebGLRendererBackend | null {
+    const surface: Canvas2DSurfaceFactory = createSurface
+        ?? ((w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h }));
+    try { return new WebGLRendererBackend(width, height, surface); } catch { return null; }
+}
+
+/** Wall clock for opt-in stage timing (main thread or worker). */
+const stageClock: { now(): number } | null = typeof performance !== 'undefined' ? performance : null;
+
+const DEFAULT_WIDTH = 960;
+const DEFAULT_HEIGHT = 540;
+/** Historical redraw cap; a host may lower or raise it through `setPresentation`. */
+const DEFAULT_FRAME_RATE_HZ = 30;
+
+
+function rasterSize(value: number | undefined, fallback: number): number {
+    return Number.isFinite(value) && (value as number) >= 16 ? Math.round(value as number) : fallback;
+}
+
+/** Mid/near planes hold only nearer grains on black, so a reduced raster is enough. */
+const LAYER_WIDTH = 768;
+const LAYER_HEIGHT = 432;
+
+/** The actual MVP identity, with private state and the same preset/macro/semantic functions.
+ * The caller owns cadence. There is no p5 loop, AudioEngine, global State write, or realtime DSP.
+ * Embedded-host adapter with a documented import exception (ADR-009 addendum, architecture
+ * contract): it consumes the supplied plan and fetches only that plan's preset assets.
+ */
+export class WormholeCanvasSource implements CanvasVisualSource {
+    private readonly backend: Canvas2DRendererBackend | WebGLRendererBackend;
+    readonly canvas: HTMLCanvasElement;
+    /** What rasterizes the main plane (a requested WebGL raster falls back to Canvas2D when unavailable). */
+    readonly rasterKind: 'webgl' | 'canvas2d';
+    private readonly context: WormholeFrameContext;
+    private get state() { return this.context.state; }
+    private get identity() { return this.context.identity; }
+    /** The ready host plan, retained as an immutable publication (never regenerated here). */
+    get plan() { return this.context.performancePlan; }
+    private minFrameIntervalSec = 1 / DEFAULT_FRAME_RATE_HZ - 0.001;
+    /** A presentation change must reach the canvas even while steadily paused. */
+    private presentationDirty = false;
+    private directionDirty = false;
+    private lastTime: number | null = null;
+    private lastPlaying = false;
+    /** Wall clock (seconds) of the last drawn frame; classifies the next step when the caller does not. */
+    private lastWallSec = Number.NaN;
+    private revision = 0;
+    private disposed = false;
+    private readonly diagnostics: boolean;
+    private readonly profile: boolean;
+    /** External material (Addendum W): the identity hands its carriers here instead of rasterizing. */
+    private readonly collector: GrainCarrierCollector | null;
+    private material: GrainMaterialFrame | null = null;
+    /** External lines (Addendum AA): the identity's grain trail strokes, recorded instead of drawn. */
+    private readonly lineCollector: GrainLineCollector | null;
+    private lines: GrainLineFrame | null = null;
+    /** Spatial state of the last drawn frame (one reused record); null until a frame is drawn after `prepare`. */
+    private readonly spatial = createWormholeSpatialFrame();
+    private spatialDrawn = false;
+    /** Opt-in stage times of the last redraw: tuning / director work, then the identity's stages. */
+    private readonly stages: Record<string, number> | null;
+    private readonly depthCue: number;
+    private readonly midBackend: Canvas2DRendererBackend | null;
+    private readonly nearBackend: Canvas2DRendererBackend | null;
+    readonly layers?: readonly HTMLCanvasElement[];
+
+    constructor(options: WormholeCanvasSourceOptions = {}) {
+        this.context = new WormholeFrameContext(options.contextSeed ?? {
+            version: 1, rawTuning: cloneDefaultVisualTuning(), macros: XR_WORMHOLE_MACROS, boosts: XR_WORMHOLE_BOOSTS,
+            policy: { gains: 'meta', semanticResolver: featureFlags.semanticResolver, semanticChoreography: featureFlags.semanticChoreography }
+        });
+        this.diagnostics = options.diagnostics === true;
+        this.profile = options.profile === true && stageClock !== null;
+        this.collector = options.externalMaterial === true ? new GrainCarrierCollector() : null;
+        this.lineCollector = this.collector && options.externalLines === true ? new GrainLineCollector() : null;
+        this.stages = this.profile ? { tune: 0, background: 0, grains: 0, weave: 0, resolve: 0, composite: 0, draw: 0 } : null;
+        const createSurface = options.softwareRaster === true ? softwareSurfaces(options.createSurface) : options.createSurface;
+        const width = rasterSize(options.width, DEFAULT_WIDTH), height = rasterSize(options.height, DEFAULT_HEIGHT);
+        this.backend = (options.webglRaster === true ? createWebGLBackend(width, height, options.createSurface) : null)
+            ?? new Canvas2DRendererBackend(width, height, createSurface);
+        this.rasterKind = this.backend instanceof WebGLRendererBackend ? 'webgl' : 'canvas2d';
+        this.canvas = this.backend.canvas;
+        this.depthCue = options.depthCue ?? 0;
+        this.midBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT, createSurface) : null;
+        this.nearBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT, createSurface) : null;
+        if (this.midBackend && this.nearBackend) this.layers = [this.canvas, this.midBackend.canvas, this.nearBackend.canvas];
+        this.configureIdentity();
+        if (this.diagnostics) {
+            this.canvas.hidden = true;
+            this.canvas.dataset.xrWormhole = 'true';
+            document.body.appendChild(this.canvas);
+        }
+    }
+
+    /** The identity's own horizon projection for the last drawn frame (never pixel-derived). */
+    get focalPoint(): VisualFocalPoint { return this.identity.routeFocus; }
+
+    /**
+     * The grain material of the last drawn frame as carriers (external material only). `data` is
+     * reused by the next draw: copy or transfer it before rendering again.
+     */
+    get materialFrame(): GrainMaterialFrame | null { return this.material; }
+
+    /**
+     * External lines only (Addendum AA): the grain trail strokes of the last redraw, or null when it
+     * drew none externally. Like `materialFrame`, `data` is reused by the next draw: copy or transfer it.
+     */
+    get lineFrame(): GrainLineFrame | null { return this.lines; }
+
+    /**
+     * Spatial state of the last drawn frame (XR spatial field), resolved from the same morphed tuning
+     * and identity drive that frame used; null until a frame is drawn. Reused by the next draw.
+     */
+    get spatialFrame(): WormholeSpatialFrame | null { return this.spatialDrawn ? this.spatial : null; }
+
+    /** Stage times of the last redraw in ms (`profile` only; the object is reused). */
+    get stageTimes(): Readonly<Record<string, number>> | null { return this.stages; }
+
+    async prepare(analysis: VisualAnalysisSnapshot | null): Promise<void> {
+        const revision = ++this.revision;
+        this.context.prepare(analysis);
+        this.configureIdentity();
+        this.spatialDrawn = false;
+        this.lastTime = null;
+        if (!analysis) return;
+        const baseUrl = import.meta.env.BASE_URL;
+        // The facade prepares the shared plan offline; this source never regenerates it.
+        const plan = analysis.performancePlan;
+        const presets = new Map<string, unknown>();
+        await Promise.all([...new Set(plan.points.map(point => point.preset))].map(async name => {
+            const response = await fetch(`${baseUrl}visual-tuning-presets/${encodeURIComponent(name)}`);
+            if (!response.ok) throw new Error(`Could not load Wormhole preset: ${name}`);
+            presets.set(name, await response.json());
+        }));
+        if (this.disposed || revision !== this.revision) return;
+        this.context.preparePlan(plan, presets); this.lastTime = null;
+    }
+
+    render(time: number, playing: boolean, continuous?: boolean): boolean {
+        if (this.disposed) return false;
+        const started = this.stages ? stageClock!.now() : 0;
+        const previous = this.lastTime;
+        // A slow frame during playback is a longer step, not a seek: it morphs and keeps integrating the
+        // route instead of snapping both to their targets. The caller classifies the step (the worker
+        // proxy does); without that, the wall clock since the last drawn frame does.
+        const wallNow = stageClock ? stageClock.now() / 1000 : Number.NaN;
+        const step = previous === null ? Number.NaN : time - previous;
+        const continuousStep = playing && this.lastPlaying && step >= 0 && (continuous === undefined
+            ? isContinuousPlaybackStep(step, wallNow - this.lastWallSec) : continuous);
+        const jump = previous !== null && !continuousStep && (time < previous || step > 0.25);
+        // Texture work is capped (30 Hz unless the host sets a rate), independently of headset pose / gameplay cadence.
+        const presentationChanged = this.presentationDirty;
+        if (previous !== null && playing === this.lastPlaying && !jump && !presentationChanged && !this.directionDirty && step < this.minFrameIntervalSec) return false;
+        this.presentationDirty = false;
+        this.directionDirty = false;
+        const dt = continuousStep ? Math.min(step, CONTINUOUS_PLAYBACK_MAX_STEP_SEC) : tuningMorphDeltaSec(time, previous);
+        this.lastTime = time; this.lastPlaying = playing; this.lastWallSec = wallNow;
+        this.context.step(time, playing, dt, previous, jump, previous === null || jump || presentationChanged);
+        const state = this.state;
+        this.backend.frameCount++;
+        // Nearer planes start black every frame; the far plane is cleared by the identity itself.
+        this.midBackend?.background(0, 0, 0);
+        this.nearBackend?.background(0, 0, 0);
+        const drawStarted = this.stages ? stageClock!.now() : 0;
+        this.collector?.reset();
+        this.lineCollector?.reset(this.backend.width, this.backend.height);
+        this.identity.draw(this.backend, [], []);
+        // A WebGL plane draws its batched strokes now; the frame is then complete for transfer or upload.
+        if (this.backend instanceof WebGLRendererBackend) this.backend.finish();
+        this.material = this.collector?.frame ?? null;
+        // Lines ride along a material frame only (they replace its crossfade strokes).
+        this.lines = this.material && this.lineCollector ? this.lineCollector.frame : null;
+        resolveWormholeSpatialFrame(this.spatial, time, state.visualTuning, this.identity.frameDrive, state);
+        this.spatialDrawn = true;
+        if (this.stages) {
+            this.stages.tune = drawStarted - started;
+            Object.assign(this.stages, this.identity.stageTimes);
+            this.stages.draw = stageClock!.now() - drawStarted;
+        }
+        if (this.diagnostics) {
+            this.canvas.dataset.frames = String(this.backend.frameCount);
+            this.canvas.dataset.tuning = JSON.stringify(state.visualTuning);
+            this.canvas.dataset.point = this.context.activePreset;
+        }
+        return true;
+    }
+    /**
+     * Host presentation: Line stroke uses the MVP Advanced slider semantics, the macros the MVP
+     * Visual character sliders; the rate caps redraws.
+     */
+    setPresentation(presentation: CanvasVisualPresentation): void {
+        const changed = this.context.setPresentation(presentation);
+        this.presentationDirty ||= changed.tuningChanged;
+        this.directionDirty ||= changed.directionChanged;
+        const rate = presentation.maxFrameRateHz;
+        // Tolerates audio-clock jitter so a host pacing on whole display frames is never skipped.
+        if (rate !== undefined && Number.isFinite(rate) && rate > 0) this.minFrameIntervalSec = Math.max(0, 1 / rate - 0.004);
+    }
+
+    dispose(): void {
+        this.disposed = true; ++this.revision;
+        this.context.dispose();
+        if (this.backend instanceof WebGLRendererBackend) this.backend.dispose();
+        this.canvas.width = this.canvas.height = 1;
+        for (const layer of [this.midBackend, this.nearBackend]) if (layer) layer.canvas.width = layer.canvas.height = 1;
+        if (this.diagnostics) this.canvas.remove();
+    }
+
+    private configureIdentity(): void {
+        // A fresh identity starts without timing; only a profiling source hands it the clock.
+        if (this.profile) this.identity.setStageClock(stageClock);
+        if (this.collector) this.identity.setMaterialSink(this.collector);
+        if (this.lineCollector) this.identity.setLineSink(this.lineCollector);
+        this.identity.setDepthCue(this.depthCue);
+        this.identity.setDepthLayers(this.midBackend && this.nearBackend ? { mid: this.midBackend, near: this.nearBackend } : null);
+    }
+}

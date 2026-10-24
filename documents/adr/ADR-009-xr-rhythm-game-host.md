@@ -1228,3 +1228,252 @@ Existing stored preferences remain valid and keep precedence. First visits, miss
 defaults use these values; gameplay-library defaults and the pinned historical chart remain unchanged.
 Verification commands, browser evidence and physical-device limitations are in the
 [browser look / 4K validation record](../audits/xr-browser-look-4k-validation.md).
+
+## Addendum AH: optional 500 m background (2026-10-23)
+
+Visuals > Background distance adds 500 m to the existing 40 / 100 / 200 m choices. The default
+remains 200 m. Normalization, descriptor-driven desktop/VR menus and the version-1 settings store
+share the new allowed value; no storage shape, worker protocol, chart, scoring or clock changes.
+The existing backdrop scale and track/spatial-field distance handoffs apply unchanged, so changing
+distance keeps the current raster, resource instance and angular size.
+
+The camera far plane increases from 600 to 1000 m, with near unchanged at 0.05 m. At 500 m the
+106 x 60 m reference plane scales to 1325 x 750 m: its corner radius from the reference eyes is
+sqrt(500^2 + 662.5^2 + 375^2) = 910.786 m. A 5 m head translation still lies below the 1000 m far
+plane at every view orientation. With conventional 24-bit perspective depth the step at 20 m
+is about 0.477 mm, less than 0.1% different from the former far plane; actual headset depth and
+visual behavior still require physical acceptance.
+
+Existing angular-size/layer, scene-rebuild, track-aim and spatial-field tests cover 500 m as well
+as the previous distances. New tests reproduce the old far-plane clipping, exercise translated
+views and verify menu activation/persistence and theoretical near-field precision. Desktop browser
+smoke verifies selection and reload; physical Quest clipping/readability/performance is pending.
+Evidence and manual steps: [T03 validation](../audits/xr-500m-background-validation.md).
+
+## Addendum AI: minimal role and resolution contracts (2026-10-23, T02a)
+
+PR 8 head `6ef28d1a56fcacf5f8dfdc046f0816e816bcbcdf` is reference code, not a merged branch.
+Its notification pattern and note-id sidecar are adapted independently of WorldPlan,
+WorldDirector, world eras, structures, encounters or outcome classes. Current controller/scene
+code is retained. The scene lifecycle and bounded halo consumer are the next T02b delivery;
+musical role selection/meaning and cockpit fit remain T08. This addendum grants no import exception.
+
+`RhythmNoteRolePlan` version 1 contains only a version and an immutable array of `{noteId, role}`.
+The vocabulary is `energy | signal | sync | stabilize`, without a scoring meaning.
+`buildRhythmNoteRolePlan(chart, assignments)` accepts explicit assignments, ignores unknown ids
+or kinds, keeps the first valid assignment per id, orders by accepted chart order and retains
+at most 1024 roles. Empty assignments produce no roles. It never infers musical evidence or edits
+the chart. Call once per chart publication; regenerate against the new chart, never reuse a
+sidecar merely because a regenerated chart happens to have some of the same ids. This is an
+in-memory contract, not a saved-session or worker-schema migration.
+
+`RhythmGameSession.setResolutionObserver(observer | null)` attaches one optional, synchronous
+notification consumer. Attach before load/start; attaching or replacing has no replay and clears
+the previous fault. The implemented callback is authoritative (no index argument):
+
+```ts
+onRunReset(): void;
+onNoteResolved(note: RhythmNote, grade: JudgementGrade | null, songTime: number, skipped: boolean): void;
+```
+
+The note is a detached frozen copy of the existing plain scalar note contract. `null` grade is
+a miss; `skipped` is true only for notes passed by an explicit seek. Hit/update notifications use
+their supplied song time; finish uses each unresolved note's scheduled time, preserving the
+existing score ledger's behavior. There is no second clock, judgment, reward or score policy.
+
+Dispatch occurs after the entire public operation commits, so callbacks see final counters,
+bonuses, cursors and state even for a batch seek/finish. Clear, load, successful config change,
+start, restart and finite seek emit reset; seek emits reset before skipped resolutions. Pause,
+resume, refused operations, duplicate hits/misses and repeated finish emit no extra events.
+Each note resolves at most once per run, and a reset begins a fresh practice ledger as before.
+
+Session mutations, observer replacement and cursor-advancing `getActiveNotes` are refused during
+synchronous dispatch. Consumers may read the existing read-only snapshot/state/scoring contracts;
+their live read-only section data must not be mutated. This hook is an ownership boundary for
+trusted code, not a sandbox against code already holding mutable JavaScript session references.
+Thrown callbacks are caught, the observer is detached and pending notifications are discarded;
+`getResolutionObserverFailure()` exposes a frozen `{phase, reason}` fault. Gameplay returns its
+committed result. Promise-returning callbacks are unsupported: detach immediately with
+`async-callback` and consume a possible rejection. Consumers must never schedule deferred session
+mutations. A fresh explicit attachment can recover; faults are not retried implicitly.
+
+Without an observer there are no notification copies or queued events. With an observer there is
+one copied event per newly resolved note, bounded by chart length per operation and drained before
+return; reset/seek/finish may do O(chart length) discrete work as before. No wall-clock performance
+gain or headset measurement is claimed. No consumer is installed in the application in T02a.
+Evidence and manual steps: [T02a validation](../audits/xr-role-resolution-validation.md).
+
+## Addendum AJ: role lifecycle and bounded halo preview (2026-10-23, T02b)
+
+The current controller/scene retain their later background, path, settings and GPU-note work.
+Only PR 8 head `6ef28d1a56fcacf5f8dfdc046f0816e816bcbcdf`'s separate instanced reticle pattern
+is adapted; no WorldPlan, WorldDirector, era, structure, encounter or outcome class is imported.
+`RhythmGameScene` owns `XrNoteHalos` and a notification-only observer with no session reference.
+`XrAppController` owns sidecar publication, invalidation, observer attachment and detachment.
+
+The normal URL has no role plan or observer. `?xrHaloPreview=1` is an explicit integration
+preview, parsed once by main and injected as a boolean; it is not persisted in settings.
+`buildHaloPreviewPlan` marks the first accepted note of existing chart phrases, at least 1.5 song
+seconds apart, as `signal` (white). It infers no new beat/phrase or musical identity. Missing
+phrase metadata produces no markers. The other role colours are a provisional PR-derived palette;
+the preview does not claim final T08 meanings, bonus policy, cockpit fit or physical acceptance.
+
+The controller publishes a fresh plan under the same load-generation guard as the chart, before
+`loadChart`. Starting a file load or regeneration immediately clears the old plan; superseded
+async work cannot publish a sidecar. Run resets clear bursts and resolved ids while retaining the
+accepted chart's roles. Seek-skipped notes never burst; natural miss dims, accepted hit bursts.
+The controller detaches before disposal; late preparation results are invalidated. A failed
+observer is detached by the session and the controller hides the halo plan with an explicit
+unavailability notice; it does not stop gameplay. Controller/halo disposal are idempotent.
+
+There is one additive instanced draw, at most 16 instances, using a shared 264-vertex thin ring
+and four ticks, independent of target hand colour, design, hitbox, cut, timing and score. Roles
+and per-run resolved ids are capped at 1024; burst retention is a fixed 16-slot pool. New hits
+reuse a free/expired slot or replace the oldest. Live bursts take priority, then eligible notes
+in chart order; excess pending instances are omitted deterministically and counted as `overflow`.
+This is a presentation-only omission. No note or accepted result is removed from gameplay.
+
+Only accepted resolution callbacks start a hit burst, once per role id per run. Its target
+position freezes at the supplied resolution song time, and it lasts 0.45 song seconds independently
+of the shorter active-note window. Pause freezes it. Reset/new plan immediately hides it. The
+shader uses canonical `notePosition`, the existing speed, spawn fade and shared XrTrackPath bend;
+time/path changes update uniforms, not instance attributes. Spin/pulse phase uses absolute song
+time so rewriting an upload epoch does not restart motion. Size is a uniform, not a mesh rebuild.
+
+Two four-float instance attributes upload only a changed drawn prefix (at most 512 bytes); buffers
+are preallocated. No chart scan, analysis, clock or new score/judge runs in the halo frame update.
+Dispose removes its mesh before scene traversal and releases mesh/geometry/material once.
+Actual WebGL geometry/shader smoke is separate from physical Quest clipping, stereo, readability,
+overdraw and frame-time promotion, which remain unmeasured. The default stays off until T08's
+policy/fit and device gates. No new gameplay import permission or saved schema is introduced.
+Evidence/manual steps: [T02b validation](../audits/xr-halo-lifecycle-validation.md).
+
+## Addendum AK: persisted halo menu choice (2026-10-24, T02c)
+
+The user's later direction supersedes AJ's query-only preview entry: player-facing feature
+switches must be menu settings with persistence and Copy settings support. Existing technical
+debug URL overrides may remain. `xrHaloPreview` and the composition option are removed.
+Visuals > Note halos is `off | phrase`, appearance-owned, default off, normalized and stored in
+the existing version-1 record. Legacy records without the field normalize to off. The descriptor
+automatically participates in the shared desktop/VR canvas menu and human/JSON settings reports.
+Changing note design preserves the halo field. No storage shape/version break or URL migration.
+
+The controller retains the accepted chart reference for presentation-only role rebuilds. Toggling
+the setting applies live without chart regeneration, playback rewind or score reset; old results
+are not replayed. Off removes the plan and observer. Enabling uses the same phrase-start signal
+policy as T02b; final T08 musical meaning remains pending. Load/regeneration/disposal invalidation
+and consumer fault isolation are retained. Explicit Off then Phrase can recover a failed consumer.
+
+T02c validation: 44/44 targeted settings/design/controller/halo cases, production build, actual
+local canvas selection/reload persistence and Copy settings human plus JSON halo field verified;
+captured console errors empty. Evidence: `logs/t02c/targeted.tap`, `build.log`,
+`halo-menu-persisted.jpg`. The user explicitly requested no deploy and no manual pause for this
+follow-up; continue to T04. The next normal task deployment will carry this change too.
+
+## Addendum AL: preset-owned signed spiral and player override (2026-10-24, T04a)
+
+Preset `visualTuning.wormholeSpiralDirection` owns coherent grain/arm handedness, separately from
+the existing nonnegative magnitude. Default +1 preserves old presets; -1 is left, 0 straight.
+The ten factory Wormhole configs explicitly author +1 without changing existing tuning values.
+Direction is relevant only where the existing coherent material law is active. It cannot enable
+zero material/twist, mirror the path or replace lens/camera behavior. Automation may emit an
+absolute optional point direction only for separately opted-in `spiralMirrorable` targets.
+Applying a point twice never flips twice; absent overrides follow preset configuration.
+
+Material > Spiral direction is appearance-owned `auto | left | right`, default Auto. It uses the
+existing presentation scope, normalized version-1 settings, menu and Copy settings report. Auto
+follows preset/plan; Left/Right override only this coherent direction. Applying it retains chart,
+score, playback and halo/design settings. A live direction change morphs using existing song-time
+delta; paused time holds. Full arbitrary seek/export/history parity remains T04b work.
+The signed numeric carrier and XR shader are updated together with the bundled worker consumer.
+Eight-row tabs keep their original minimum control size and clear the hint after a 12 px row shift.
+No gameplay import exception, new audio clock or semantic schema is introduced.
+Evidence, compatibility, rollback and manual steps: [T04a validation](../audits/xr-signed-spiral-validation.md).
+
+Preset Straight (`wormholeSpiralDirection: 0`) also disables automatic pair variation. An explicit
+XR player Left/Right selection remains a manual override; Auto returns to preset/plan authority.
+
+## Addendum AM: deterministic signed spiral consumer (2026-10-24, T04b)
+
+`WormholeSpiralAutomation` is an allowed pure automation runtime helper for the embedded source.
+It evaluates only coherent spiral magnitude/direction from published plan/preset/gain anchors;
+it neither generates a plan nor owns audio, analysis or beat consumption. Legacy all-right plans
+retain the prior path. Studio/MVP use the same helper through an optional post-morph renderer
+host hook. The identity draws once; no second event/director/gain pipeline is introduced.
+
+The host renderer owns the transient `State.spiralTransitionAnchor`, written/reset once per
+drawn frame. The source's private render state owns its equivalent. This immutable `{id,time}`
+record is an authored transition origin, not a clock. The identity honors it only for that exact
+active automation id, preserving independent semantic timing. It is not persisted or sent as a
+new worker field: the rendered frame already carries the resulting signed spatial state.
+
+The old XR display interpolation remains bounded and sign-symmetric; no mirror instruction is
+added downstream. Grain/arm/weave consume the shared signed twist, whereas wall/lens/path keep
+their independent authored laws. Browser/geometry evidence, compatibility and T05's remaining
+exact-frame boundary are recorded in [T04b audit](../audits/xr-spiral-history-validation.md).
+
+## Addendum AN: native cosmic carrier and global layer controls (2026-10-24, T06d)
+
+The native adapter carries optional stars, galaxies and sky as bounded preprojection segments/discs. The original identity owns pools, routes, phases and brightness. XR owns only fixed GPU attributes, uniform horizon fit, per-eye projection and safety/quality budgets. The normalized forward sky directions occupy an explicit finite far plane; this is not a surrounding full-sphere environment or eye-correct lens optics.
+
+The additive native v1 field holds at most 4818 records at stride 16 (family in slot 15). The worker adds one fixed 308352-byte buffer to the original 437760-byte output under the same atomic request/lease. Both buffers return before the next render; displayed banks are never transferred. Old frames without cosmos clear cosmic instances. Raster preview/exact layouts, clocks and analyzer/plan ownership stay intact.
+
+Stars/Galaxies/Sky are existing user-global masters, not preset geometry. XR Cosmos explicitly overrides them in the private context after preset/gain resolution, for both Hybrid and Native. The normal descriptor/menu/localStorage/Copy path owns these values. Defaults: stars/galaxies 1, Sky 0 preserves the disabled legacy skybox. Nonzero Sky enables the existing pool for this host without changing the global feature flag or Studio/MVP defaults. Preset motion stays authored.
+
+One extra instanced draw, no native canvas/texture/offscreen pass. Sky uses every sixth original entry; quality applies a further stable stride. Main copies, GPU fill and worker CPU remain measurable costs. Physical Quest is a manual gate. See [T06d contract](../audits/xr-native-cosmos-contract.md). Wall and lens/deep-field imaging remain later deliveries; Hybrid stays default.
+
+## Addendum AO: optional native wall and preset-aware presentation (2026-10-24, T06e)
+
+The original identity emits membrane, caustic, mosaic and event-crack segments before projection. It retains route sampling, clump/Fresnel/color laws and the original wave/front pools; no second simulation or lens gate is introduced. The native source owns a fixed 3200-record wall carrier. An optional 204800-byte wall buffer travels under the existing single request lease with unchanged primary/cosmos layouts. Absent/Off means no transfer and zero instances; malformed/stale work cannot replace the active frame. Two fixed main banks copy before returning all leased buffers.
+
+Visuals owns geometry and authored preset gate/material/amount; XR owns one bounded instanced GPU batch with per-eye projection, width/distance/near-runway limits and background ordering. Shared types remain dependency-light. One integration owner covers this additive worker boundary; audio/analyzer/state clock and existing raster/exact protocols are unchanged. Max four native draws per eye; no native canvas or texture.
+
+Wall menu Off/Preset/On plus material Preset/Membrane/Mosaic and five gains persists/copies through existing settings. Off is the migration/default; Preset follows authored values even though MVP suppresses legacy optics; On explicitly enables wall and supplies amount 1 only when authored amount is zero. Five gains use existing Advanced law (50 neutral, 0 removes); art remains preset-driven otherwise. Both Hybrid and Native consume the same presentation. Lens/refraction remains T06f; fringe is colored edge light, not background refraction. See [contract](../audits/xr-native-wall-contract.md) and [validation](../audits/xr-native-wall-validation.md). Hybrid remains default and physical Quest is a manual gate.
+
+## Addendum AP: stage-root cockpit and fixed-width filename caption (2026-10-24, T07)
+
+The user provided the cockpit reference (documents/references/xr-cockpit-user-reference.png), requested ignoring pictured text, and asked for a fixed-width filename marquee at the upper central XSR position. T06e2 first restores Wall Off / Galaxies 0, including old saved defaults; user stops further Wall/T06f work. T07 is presentation only.
+
+XrCockpit owns two merged unlit structure batches (dark chamfered panoramic frame, cyan/magenta/white trim, optional secondary ribs/floor returns). RhythmGameScene owns it under the existing stage root and fits it on layout/recenter. The center is open; no judge, score, camera, route or music clock change. Desktop camera has a rearward origin: controller applies its z once; immersive entry uses zero, exit restores desktop origin. This is a one-time presentation placement, never per-frame head following. Existing root yaw/translation still anchor it during head tracking/reference resets.
+
+Full/Reduced/Off and Title Scroll/Static/Off normalize and persist/Copy via existing appearance descriptors, presentation scope. Default Full/Scroll is the requested new look. Off is the previous open stage. Artist-authored background presets are unrelated to this viewer cabin preference. Nine tabs use existing compact-label fallback.
+
+XrTrackMarquee owns a fixed 2 m x 0.22 m plane and a bounded canvas glyph atlas rasterized only at filename changes. The controller passes the exact selected filename, including extension, as plain text. Eight 2048 x 64 rows maximum (4 MiB RGBA), Unicode codepoint bound 256; controls removed, empty title hidden. GPU UV movement and atlas-row lookup clip scrolling to the plane. It reads existing song time: pause holds and backward seek reproduces the same position; no independent live audio clock or per-frame canvas upload. File changes dispose old textures, Off hides every draw, scene disposal detaches before generic traversal.
+
+Measured isolated fixture: Full three draws / 590 triangles / one caption texture (0.5 MiB for fixture); Reduced three / 254; Off zero. Real GPU pixel tests cover text motion/clipping/row seam/pause/seek and bounded replacement textures; geometry tests cover all speed/saber/Standard/Tall combinations and extreme curved note rays. This establishes desktop/logical views, not physical Quest comfort/frame pacing or GPU execution timing. See [contract](../audits/xr-cockpit-contract.md) and [validation](../audits/xr-cockpit-validation.md).
+
+## Addendum AQ: stepped, rounded cockpit display and oblique caption correction (2026-10-24, T07b)
+
+User-requested refinement before T08. XrCockpit still owns two static merged unlit structure batches; CockpitGeometry now provides bounded rounded joins, rounded rectangular body sections and beveled title panels. The center console descends; title moves down 0.245 m. The shallow pod is forward and crown clearance protects the existing above/side HUD and note rays. No frame rebuild on ordinary playback, no new light/postprocessing, no gameplay, worker, audio or timing owner change.
+
+XrInstrumentStyle owns the instrument font family and ink shared by HUD, menu and title. XrTrackMarquee uses an alpha-mask atlas, continuous explicit texture gradients, mipmaps and bounded anisotropy. A real depth gap separates the title from its bezel/body; depth testing remains active. Seven-angle GPU reproduction changed worst mounted/solo ink coverage from 45.9% to 100%. All song-time/pause/seek/fixed-width/Off/resource contracts remain. Maximum 4 MiB base atlas plus mip chain below 5.34 MiB. Isolated Full 5554 triangles, Reduced 3938, three total calls incl. title; cap 6000 reviewed with predecessor retained. These are static geometry costs, not physical Quest performance evidence. See [validation](../audits/xr-cockpit-refinement-validation.md). Stop for manual feedback before T08.
+
+## Addendum AR: continuous smooth cabin shell and under-runway returns (2026-10-24, T07c)
+
+User requested a minimal interpretation of the latest cockpit reference, then refined it to fewer strong shape nodes, large curves and smooth straight/curve/curve joins. XrCockpit owns a mirrored closed shell with a broad shoulder, long side, lower sweep and under-runway arch. Quintic bends have zero endpoint curvature with shared endpoint tangents; analytic tangents, adaptive chord-error/tangent sampling and parallel-transport section frames remove local kinks/twists. Closed seam frame is identical and omits caps. Full adds sculpted buried-root side returns with tapered section and softly emerging inset lights; Reduced keeps the complete under-road shell. Existing title depth/font/clock contracts remain.
+
+XR presentation ownership unchanged, no runtime light/texture/draw addition or per-frame rebuild. Static tessellation cap reviewed from 6000 to 12000 for curve fidelity, predecessor retained. Final fixture Full 10810 / Reduced 7610 triangles, three calls including title, Off zero. Audio/gameplay/worker/path/HUD/settings/preset/default contracts unchanged; physical Quest remains manual. The earlier prototype was stopped on user steering, retained separately, and final cumulative tests rerun. See [contract](../audits/xr-cockpit-shell-contract.md) and [validation](../audits/xr-cockpit-shell-validation.md).
+
+## Addendum AS — T08 musical role presentation (2026-10-24)
+
+The user accepted T07c and authorized T08. Gameplay owns buildRhythmMusicalRolePlan: immutable accent/phrase/section metadata derived from accepted chart intensities/phrases and actual published section intervals. No chart mutation, new source/timing authority, judge type or reward. Orthogonal skin/gesture/source/role meanings and full target table are defined in [the T08 contract](../audits/xr-musical-roles-contract.md). Section > phrase > accent, one role per note, 1.5-second global cue gap, 1024 offline roles; no fabricated missing evidence.
+
+XR keeps one 16-instance halo draw, preserving hand/cut centre, shared track bend and song time. Pending musical glyphs remain orientation-stable; overflow keeps accepted bursts then role priority/chart order. Existing accepted-resolution idempotence, miss/seek/reset/plan replacement/disposal and observer fail-open behavior stay authoritative. Off/Phrase/Music are viewer appearance choices in menu/localStorage/Copy; default Off. Artist presets cannot rewrite the player's cue preference or score. Pure musical proxy validation remains distinct from T10–T12 source evidence.
+
+## Addendum AT — T09 guarded chart movement (2026-10-24)
+
+The user accepted T08 and authorized T09. Gameplay owns a versioned pure motor envelope and validator, deterministic bounded placement retries/atomic onset filtering and rigid lead reflection. The existing scorer/judge and notePosition remain authorities; no audio/worker/render time change or new curve. Guarded conservatively checks stroke entry/exit, recovery speed, row/density/reach, crossing clearance, temporal hand-path closest approach and overhead rest. See [the contract](../audits/xr-movement-contract.md).
+
+Movement Legacy/Guarded is an optional chart-scoped viewer setting in menu/localStorage/Copy, not an artist preset; absent field retains historical defaults/goldens. Guarded can reduce targets substantially, so remains opt-in pending physical Quest feedback. Left/Right lead reflect the same canonical chart and retain score/demand. Either remains either-hand judging. Pair rows and groups stay intact; fallback never invents overhead targets. Changing modes rebuilds chart/max score under the existing generation guard.
+
+The seventh choreography row requires nearest-row-first vertical keyboard focus; previous menu tests remain unchanged. No source-branch/force push, chart golden migration or dependency changes. Wall/T06f stays deferred.
+
+## Addendum AU — timing cleanup (2026-10-24)
+
+The user explicitly requested deletion of the unsuccessful T10 experiments and redundant artifacts, superseding their retention for this delivery. Q3 recheck confirms 20 tonal false refinements versus v2's 8 across 336 controls; neither is a demonstrated general accuracy improvement. Remove the Timing tab, Q3 runtime/schema, live policy setter/reload machinery and XR timing URL overrides. Remove retired localStorage fields while preserving other preferences. XR uses the established algorithm-7 path. Existing analyzer-lab v1/v2 code and its pre-existing correctness regressions stay separate from the player.
+
+Retain the equivalent Band proposal bucket search and functional regressions. Reuse the already existing historical Band source for identity checks rather than duplicate complete source trees. Nine exact-PCM full analyzer and Band comparisons preserve complete outputs. Remove T10 source snapshots, release source copies, generated reports, experiment programs and Q3-only tests by explicit user instruction. One short [delivery record](../audits/xr-timing-cleanup.md) replaces the report set. Future releases use one reusable publisher without copying the source tree. No new accuracy or Quest FPS claim.
+
+## Addendum AV — T11a accepted-event provenance (2026-10-24)
+
+A dependency-light musicEvents contract projects the existing accepted hits into sample/song time with explicit real-window support and engineering uncertainty. It does not detect or retime sound. The analyzer owns publication, the worker transports unchanged, the canonical normalizer validates clock/association and clones. IDs are local to this analysis; no fabricated PCM or instrument identity. Existing BeatEvent meanings, DSP, chart and cache identity stay unchanged. Tonal/vocal unsupported and dominance unknown are enforced, not inferred from heuristic scores. [Scope and remaining T11 work](../features/music-events.md). No new setting, source tree archive or report generator.

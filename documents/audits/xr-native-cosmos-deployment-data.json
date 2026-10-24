@@ -1,0 +1,221 @@
+{
+  "task": "T06d",
+  "releaseId": "t06d-native-cosmos-20261024T101231797Z",
+  "commit": "a4d8484a49d44699f4020ab278cba7bc9c957aa8",
+  "parent": "7c55d56dfbb96c21505e0c07ba96966bd43f2729",
+  "url": "https://philofobreal.github.io/plexus-engine/xr/?release=t06d-native-cosmos-20261024T101231797Z",
+  "sourceBranchPushed": false,
+  "forcePushed": false,
+  "defaultChanged": false,
+  "pagesBuild": {
+    "status": "built",
+    "commit": "a4d8484a49d44699f4020ab278cba7bc9c957aa8",
+    "updatedAt": "2026-10-24T10:13:00Z"
+  },
+  "sourceInputCount": 335,
+  "sourceInputsSha256": "4f5cc4bc72c4564c219d4745c8292df701051802534409c7f636e6737d49e708",
+  "deployedSourcePatchSha256": "a2275f19b2ddc232fc7d5826bef7349dabdae33e7392f5ed57944a3e41e0dd9b",
+  "verification": {
+    "checkedAt": "2026-10-24T10:14:31.015Z",
+    "releaseId": "t06d-native-cosmos-20261024T101231797Z",
+    "markerStatus": 200,
+    "files": [
+      {
+        "path": "index.html",
+        "status": 200,
+        "sha256": "65751a520f159a428a6d649d5b861241e8f62c156e28f90607450c68b0c619ca"
+      },
+      {
+        "path": "mvp/index.html",
+        "status": 200,
+        "sha256": "fdebc39ea92000e75bc383e5f503594ed3990ed11dedb2b761885ea33188e593"
+      },
+      {
+        "path": "xr/index.html",
+        "status": 200,
+        "sha256": "64d4cb9322542b9e7c1d7ed0160e5f17a10abf369b3945aaa517fc996374de6b"
+      },
+      {
+        "path": "assets/CosmicWormholeIdentity-Cr4XirQh.js",
+        "status": 200,
+        "sha256": "85b2f4f8215917d53714fb6e7caa2fd3b54c79d49ff1c695f3e28d77f6675a7f"
+      },
+      {
+        "path": "assets/PreviewQualityControl-CBcEiTQo.js",
+        "status": 200,
+        "sha256": "aa975df886f08909d1b830b56ebd974693158fe321945ffcb4db149eb5a2391b"
+      },
+      {
+        "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
+        "status": 200,
+        "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+      },
+      {
+        "path": "assets/analyzer.worker-BxhitPzQ.js",
+        "status": 200,
+        "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52"
+      },
+      {
+        "path": "assets/export.worker-Av-E_fEl.js",
+        "status": 200,
+        "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+      },
+      {
+        "path": "assets/main-BkVSioAS.js",
+        "status": 200,
+        "sha256": "3ce34a0d4e475c19eb972de26a37cf2e7b707bae51d26c8c372bcbc43b684823"
+      },
+      {
+        "path": "assets/main-C7BsYBKL.css",
+        "status": 200,
+        "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+      },
+      {
+        "path": "assets/mvp-BNoT2k4V.js",
+        "status": 200,
+        "sha256": "b117e66fcb2929b030c1922572738cf538ccea4e23b9fb5855780cd988bccf43"
+      },
+      {
+        "path": "assets/mvp-D0xy9ln6.css",
+        "status": 200,
+        "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
+      },
+      {
+        "path": "assets/resolveMetaTuning-CzIj3b12.js",
+        "status": 200,
+        "sha256": "5cb8392191e6b39279e52398c4f829f7e20147b76c240cb4994928602c2cf0d2"
+      },
+      {
+        "path": "assets/wormholeNative.worker-BMFSspfe.js",
+        "status": 200,
+        "sha256": "d6b91d97b9d2d1b2228863ef68c7b458f770526d7b0a303e7cb77f562fdf062d"
+      },
+      {
+        "path": "assets/wormholeRender.worker-BLG-zuQv.js",
+        "status": 200,
+        "sha256": "a23823284af3f27956091a45d3c76a001d57bf7b8e15b5a0ec5fd2c8d9f4231b"
+      },
+      {
+        "path": "assets/xr-BfNetZ-7.css",
+        "status": 200,
+        "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      },
+      {
+        "path": "assets/xr-Czzbw2OH.js",
+        "status": 200,
+        "sha256": "e4fdebb5af893827e5a7ba7de5551a59556a51523492ddd2ec137835a7f4f658"
+      }
+    ],
+    "routes": [
+      {
+        "path": "",
+        "status": 200,
+        "sha256": "65751a520f159a428a6d649d5b861241e8f62c156e28f90607450c68b0c619ca"
+      },
+      {
+        "path": "mvp/",
+        "status": 200,
+        "sha256": "fdebc39ea92000e75bc383e5f503594ed3990ed11dedb2b761885ea33188e593"
+      },
+      {
+        "path": "xr/",
+        "status": 200,
+        "sha256": "64d4cb9322542b9e7c1d7ed0160e5f17a10abf369b3945aaa517fc996374de6b"
+      },
+      {
+        "path": "xr/?xrBackgroundThread=main",
+        "status": 200,
+        "sha256": "64d4cb9322542b9e7c1d7ed0160e5f17a10abf369b3945aaa517fc996374de6b"
+      }
+    ],
+    "sourceGraphUnchanged": true
+  },
+  "publicBrowserSmoke": {
+    "task": "T06d",
+    "releaseId": "t06d-native-cosmos-20261024T101231797Z",
+    "pass": true,
+    "initialHybrid": true,
+    "selectedNative": true,
+    "reloadRetainedNative": true,
+    "editedCosmos": {
+      "stars": 80,
+      "galaxies": 120,
+      "sky": 100
+    },
+    "reloadRetainedAllCosmos": true,
+    "copySettingsSuccessToast": true,
+    "fixture": "native-smoke.wav",
+    "durationSeconds": 28,
+    "bpm": 128,
+    "notes": 42,
+    "arrows": 41,
+    "pairs": 3,
+    "played": true,
+    "paused": true,
+    "workerGeometryFooter": true,
+    "noBackgroundCanvas": true,
+    "observedLatencyMs": 6,
+    "cosmicSkyAndGalaxyVisible": true,
+    "stageAndNotesReadable": true,
+    "restoredHybrid": true,
+    "hybridBackgroundReturned": true,
+    "restoredMasters": {
+      "stars": 100,
+      "galaxies": 100,
+      "sky": 0
+    },
+    "consoleMessages": [],
+    "limits": [
+      "Physical Meta Quest timing/GPU execution and comfort remain manual.",
+      "Automated clipboard readback is stale; actual OS paste remains manual."
+    ]
+  },
+  "publisher": "node node_modules/gh-pages/bin/gh-pages.js -d dist --nojekyll -m \"T06d: native cosmic layers and persisted Cosmos controls\"",
+  "rollback": "Zero Cosmos masters, select Hybrid, or republish retained T06c2 Pages tree in a new commit without force push.",
+  "evidence": [
+    {
+      "path": "logs/t06d/deploy/release.json",
+      "sha256": "3c726765053da823713f70e6cdae36f247e8e7ee43890082f64da4375971df57"
+    },
+    {
+      "path": "logs/t06d/deploy/published-ref.json",
+      "sha256": "80cc8663eec8eff1e2a47b10110af980d47cc01a0bb0019bed01a7c6fcd23e6b"
+    },
+    {
+      "path": "logs/t06d/deploy/published-commit.json",
+      "sha256": "abc1cbff62fd4b6ee7b7e053c36334282e342f08ffce790d601b988148c3762a"
+    },
+    {
+      "path": "logs/t06d/deploy/pages-build.json",
+      "sha256": "d5930ec0b732d36a3f64462f76553125be9d0d2e86cfb6faef6216e51b880d41"
+    },
+    {
+      "path": "logs/t06d/deploy/source-inputs.json",
+      "sha256": "4f5cc4bc72c4564c219d4745c8292df701051802534409c7f636e6737d49e708"
+    },
+    {
+      "path": "logs/t06d/deploy/public-verification.json",
+      "sha256": "701a0fe5b2a2379a5e9a5c7952c32754b41e9f88b4310b6c3af28b0de7792d0c"
+    },
+    {
+      "path": "logs/t06d/deploy/public-smoke.json",
+      "sha256": "5ce31a278c80e1c5d73709e47c21f4400ae9a0709e1e8d2681c66f5668e12203"
+    },
+    {
+      "path": "logs/t06d/deploy/public-native-playing.jpg",
+      "sha256": "6ca51aa12f35d0ec8a343fe06aa691533986637cc4288fa1fbcdfee87c0938f3"
+    },
+    {
+      "path": "logs/t06d/deploy/public-native-paused.jpg",
+      "sha256": "e19f058089859d86e1174c54429bb2736538f232bec810fd8a136308ac84a542"
+    },
+    {
+      "path": "logs/t06d/deploy/public-cosmos-reload.jpg",
+      "sha256": "2be88083a06d7f3cd3a02f3a2ff56793d49ae6fb7a778aade2659f3eb763e3fc"
+    },
+    {
+      "path": "logs/t06d/deploy/public-hybrid-restored.jpg",
+      "sha256": "28efbb0648127f01d67b06ae480a63849e6218a2d1db8007315ba5c1c94c778c"
+    }
+  ]
+}

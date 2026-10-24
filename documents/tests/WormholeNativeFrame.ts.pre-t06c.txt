@@ -1,0 +1,42 @@
+import type { CanvasVisualPresentation, VisualAnalysisSnapshot, VisualFocalPoint } from './CanvasVisualSource';
+import type { WormholeSpatialFrame } from './WormholeSpatialFrame';
+
+/** Separate spatial schema; never reinterpret raster carriers as 3D coordinates. */
+export const WORMHOLE_NATIVE_STRIDE = 16;
+export const WORMHOLE_NATIVE_CAPACITY = 1440;
+/** Two arm segments and one ring segment per original grain, with no growing list. */
+export const WORMHOLE_NATIVE_WEAVE_CAPACITY = WORMHOLE_NATIVE_CAPACITY * 3;
+export const WORMHOLE_NATIVE_METRES_PER_UNIT = 0.05;
+export interface WormholeNativePoint { x: number; y: number; z: number }
+export interface WormholeNativeSink {
+    grain(id: number, head: WormholeNativePoint, tail: WormholeNativePoint, radius: number,
+        red: number, green: number, blue: number, alpha: number, generation: number, seed: number, depth: number): void;
+    weave?(id: number, head: WormholeNativePoint, tail: WormholeNativePoint, radius: number,
+        red: number, green: number, blue: number, alpha: number, generation: number, seed: number, depth: number): void;
+}
+/** Optional v1 extension: same metre segment layout, separate bounded buffer and count.
+ * IDs identify original neighbour pair/arc part, never a new simulated grain. */
+export interface WormholeNativeWeave { readonly count: number; readonly data: Float32Array }
+/** Eye-line origin under the stage root, metres: +x right, +y up, forward -z.
+ * Borrowed until next accepted render/prepare/dispose. See the T06 inventory for all offsets.
+ */
+export interface WormholeNativeFrame {
+    readonly version: 1;
+    readonly generation: number;
+    readonly serial: number;
+    readonly songTime: number;
+    readonly count: number;
+    readonly data: Float32Array;
+    readonly weave?: WormholeNativeWeave;
+}
+export interface WormholeNativeSource {
+    readonly frame: WormholeNativeFrame | null;
+    readonly focalPoint: VisualFocalPoint;
+    readonly spatialFrame: WormholeSpatialFrame | null;
+    readonly lastRenderMs: number;
+    prepare(analysis: VisualAnalysisSnapshot | null): Promise<void>;
+    render(songTime: number, playing: boolean): boolean;
+    setPresentation(presentation: CanvasVisualPresentation): void;
+    dispose(): void;
+}
+export type WormholeNativeSourceFactory = () => WormholeNativeSource;

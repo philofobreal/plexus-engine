@@ -1,0 +1,210 @@
+{
+  "task": "T06c",
+  "scope": "Native filament material, bounded halo and haze; main-thread worker investigation next",
+  "releaseId": "t06c-native-material-20261024T032453627Z",
+  "commit": "4cb71ea836f34ce2c34fa2e0a195fc7a83c0f1e5",
+  "parent": "2ad4da8ca7d507fad449df90c8efccc1f0e10ffd",
+  "url": "https://philofobreal.github.io/plexus-engine/xr/",
+  "sourceBranchPushed": false,
+  "forcePushed": false,
+  "defaultChanged": false,
+  "pagesBuild": {
+    "status": "built",
+    "commit": "4cb71ea836f34ce2c34fa2e0a195fc7a83c0f1e5",
+    "updatedAt": "2026-10-24T03:25:59Z"
+  },
+  "sourceInputCount": 329,
+  "sourceInputsSha256": "81e2a72469e73d37a2ddfa644967d45bde04b1715e75c5ad4cba4ee5f6eb7603",
+  "deployedSourcePatchSha256": "3299588c99136b69f344ce20b7dcf5b445f532ecba32836f0097d923a645500d",
+  "verification": {
+    "checkedAt": "2026-10-24T03:26:34.831Z",
+    "releaseId": "t06c-native-material-20261024T032453627Z",
+    "markerStatus": 200,
+    "files": [
+      {
+        "path": "index.html",
+        "status": 200,
+        "sha256": "9a6c7f6b74efe08b44e90a1b7a1f28bab03e8afbb79d0cc58a40bb4f5b5c4ba6"
+      },
+      {
+        "path": "mvp/index.html",
+        "status": 200,
+        "sha256": "66b81755a24b6f84c3aaecfe79e138f3081fc0533103ba4e640f758dd896b430"
+      },
+      {
+        "path": "xr/index.html",
+        "status": 200,
+        "sha256": "29e654652dbb308250bb7f256d91f3eecd87cbc902efec6862f424fde33662ce"
+      },
+      {
+        "path": "assets/CosmicWormholeIdentity-tT9Rq0Tw.js",
+        "status": 200,
+        "sha256": "3118b871412580404db2c60858a9b7f044035b67338d927e6085a345bf610108"
+      },
+      {
+        "path": "assets/PreviewQualityControl-Bx42HVvP.js",
+        "status": 200,
+        "sha256": "974c29b5604344bc72fd2cf5d56e0daaee4d909385c090167c0d757f36eed4de"
+      },
+      {
+        "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
+        "status": 200,
+        "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+      },
+      {
+        "path": "assets/analyzer.worker-BxhitPzQ.js",
+        "status": 200,
+        "sha256": "dfc75b4aaceae9d2248b1cac21af1d20acb3dcb3b9253ffd21deaa8e4ce8ed52"
+      },
+      {
+        "path": "assets/export.worker-Av-E_fEl.js",
+        "status": 200,
+        "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+      },
+      {
+        "path": "assets/main-C7BsYBKL.css",
+        "status": 200,
+        "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+      },
+      {
+        "path": "assets/main-cLKuFpA7.js",
+        "status": 200,
+        "sha256": "aec0c018ab32a788e6fc57c83e05a6ec314e0b5871db27f2e609ca575bba8dd1"
+      },
+      {
+        "path": "assets/mvp-D0xy9ln6.css",
+        "status": 200,
+        "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
+      },
+      {
+        "path": "assets/mvp-DbEM0uSU.js",
+        "status": 200,
+        "sha256": "0a78f70ab488e650d38470aeb6b092b03c92eff408ecdac819934ff44ffac086"
+      },
+      {
+        "path": "assets/resolveMetaTuning-CWxitgfY.js",
+        "status": 200,
+        "sha256": "bdaf5476d66988dfef2d061d9d77141e9af46ce0f6e2d0027207f70e83a61994"
+      },
+      {
+        "path": "assets/wormholeRender.worker-D3pxeWiw.js",
+        "status": 200,
+        "sha256": "575749a019f932a3e6781e9997073ef4e1972ca3e280e91ec4490eae76e20d77"
+      },
+      {
+        "path": "assets/xr-BfNetZ-7.css",
+        "status": 200,
+        "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      },
+      {
+        "path": "assets/xr-dHgfv35a.js",
+        "status": 200,
+        "sha256": "ea0c12b9647b32a23a58cdb06203203848680bf1a8c75f5761d7fcdc58ed2b86"
+      }
+    ],
+    "routes": [
+      {
+        "path": "",
+        "status": 200,
+        "sha256": "9a6c7f6b74efe08b44e90a1b7a1f28bab03e8afbb79d0cc58a40bb4f5b5c4ba6"
+      },
+      {
+        "path": "mvp/",
+        "status": 200,
+        "sha256": "66b81755a24b6f84c3aaecfe79e138f3081fc0533103ba4e640f758dd896b430"
+      },
+      {
+        "path": "xr/",
+        "status": 200,
+        "sha256": "29e654652dbb308250bb7f256d91f3eecd87cbc902efec6862f424fde33662ce"
+      },
+      {
+        "path": "xr/?xrHaloPreview=phrase",
+        "status": 200,
+        "sha256": "29e654652dbb308250bb7f256d91f3eecd87cbc902efec6862f424fde33662ce"
+      }
+    ],
+    "sourceGraphUnchanged": true
+  },
+  "publicBrowserSmoke": {
+    "pass": true,
+    "releaseId": "t06c-native-material-20261024T032453627Z",
+    "url": "https://philofobreal.github.io/plexus-engine/xr/?release=t06c-native-material-20261024T032453627Z",
+    "initialHybrid": true,
+    "selectedNative": true,
+    "reloadRetainedNative": true,
+    "fixture": "logs/t06/native-smoke.wav",
+    "bpm": 128,
+    "duration": 28,
+    "notes": 42,
+    "arrows": 41,
+    "pairs": 3,
+    "played": true,
+    "paused": true,
+    "nativeMaterialHaloVisible": true,
+    "nativeNoCanvasWorkerFooter": true,
+    "stageAndNotesVisible": true,
+    "materialMenu": {
+      "amount": 30,
+      "detail": 100,
+      "bloom": 100,
+      "weave": 100
+    },
+    "restoredHybrid": true,
+    "hybridStarsReturned": true,
+    "consoleMessages": [],
+    "limits": [
+      "Desktop only; physical Quest pacing and clipboard paste remain manual.",
+      "CPU geometry worker investigation is next T06c2; no stutter fix claimed here.",
+      "Stars, wall and optics remain T06d-f."
+    ]
+  },
+  "publisher": "node node_modules/gh-pages/bin/gh-pages.js -d dist --nojekyll -m \"T06c: native Wormhole filament material and bounded halo haze\"",
+  "rollback": "Choose Hybrid, or publish the retained T06b Pages tree in a new commit without force push.",
+  "evidence": [
+    {
+      "path": "logs/t06c/deploy/release.json",
+      "sha256": "b83c323897c4be00a8e3d1a44e401bf9612884f840e0c6f5400604fa01f92cad"
+    },
+    {
+      "path": "logs/t06c/deploy/published-ref.json",
+      "sha256": "878e545696c33189d1919df33c876feed1edd6767874b166efc32bb1d604f1d7"
+    },
+    {
+      "path": "logs/t06c/deploy/published-commit.json",
+      "sha256": "a4c9a6521008e80376296a1228273ee76e9a31261714db05f6a2f1f181ba12b8"
+    },
+    {
+      "path": "logs/t06c/deploy/pages-build.json",
+      "sha256": "6e4aac068afe6e13931d1eb229b387dc97c81ad0b1b183b5fe18deca3efdaef4"
+    },
+    {
+      "path": "logs/t06c/deploy/source-inputs.json",
+      "sha256": "81e2a72469e73d37a2ddfa644967d45bde04b1715e75c5ad4cba4ee5f6eb7603"
+    },
+    {
+      "path": "logs/t06c/deploy/public-verification.json",
+      "sha256": "b8298c107f1994989bc38e3cdfcafb1b487eeb54ec288522d2620ea2743d5bf4"
+    },
+    {
+      "path": "logs/t06c/deploy/public-smoke.json",
+      "sha256": "54ec30b1d9359562bf92e1850dae274e78402ebac8832ec551e10162f0f83c0e"
+    },
+    {
+      "path": "logs/t06c/deploy/public-native-playing.jpg",
+      "sha256": "422fea1d503dede65a47980f9a6ec7ff145876d7e9b7caeb2f0c664209810bde"
+    },
+    {
+      "path": "logs/t06c/deploy/public-native-menu.jpg",
+      "sha256": "18c376d6595fe6937d804ec7cb816bc5eec2fef7eeb36a55c998d7ce4cdf3a33"
+    },
+    {
+      "path": "logs/t06c/deploy/public-material-menu.jpg",
+      "sha256": "89b696b8c33210bc8137169cd918b00dbe6c9091074c534890babe06c7d08a2d"
+    },
+    {
+      "path": "logs/t06c/deploy/public-hybrid-restored.jpg",
+      "sha256": "b7f3a5787aac2e2d8892a1132207475c1a573bc07fdda4e517b5c9157b846252"
+    }
+  ]
+}
