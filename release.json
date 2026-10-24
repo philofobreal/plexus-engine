@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "task": "T07",
-  "releaseId": "t07-cockpit-20261024T115025210Z",
-  "builtAt": "2026-10-24T11:50:25.210Z",
+  "task": "T07b",
+  "releaseId": "t07b-cockpit-refinement-20261024T122253442Z",
+  "builtAt": "2026-10-24T12:22:53.442Z",
   "baseCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
   "workingTreeChanges": true,
-  "deployedSourcePatchSha256": "6631ddb4ab3cba422db8369802c358c9254a692ab8a64005be499604335c898c",
-  "sourceInputsSha256": "e281bf422e866d86b32d1cc16c71737542bd41a84e52128b4b13bdc9b61c6b5c",
-  "sourceInputCount": 339,
-  "previousPagesCommit": "be4bc071b8bb671631f506ac3c38f1b65af49f26",
+  "deployedSourcePatchSha256": "4a7c52be6e4ec501e8adf7c3a0c957ed9465181a8392cc1efeb9d6d20c4d95f9",
+  "sourceInputsSha256": "c75a65c8f70458e3e99d5dba291427897779c9313fc293342d58321a26395581",
+  "sourceInputCount": 341,
+  "previousPagesCommit": "08d0c8875fdba2394c5763f2626eba7a60df14ae",
   "entries": [
     {
       "path": "index.html",
@@ -35,9 +35,9 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "6bd4353e5ab280e01e48ffb7b87099b2b67149df4f99935cce999e8ed0b6222f",
+      "sha256": "87807bffda503e53b95c6ae9cbb1a94de03374c8a90479e6b28951cd6c51e4c5",
       "assets": [
-        "assets/xr-Bq5FWXYP.js",
+        "assets/xr-D8gWEY7x.js",
         "assets/CosmicWormholeIdentity-ClYb2Xof.js",
         "assets/resolveMetaTuning-CsnYWn7w.js",
         "assets/xr-BfNetZ-7.css"
@@ -111,9 +111,9 @@
       "bytes": 11106
     },
     {
-      "path": "assets/xr-Bq5FWXYP.js",
-      "sha256": "b2af5f5eb4793e6e5d699b479ca65f424fb8f6ed005dc1befe65be788ce76fd7",
-      "bytes": 886319
+      "path": "assets/xr-D8gWEY7x.js",
+      "sha256": "a489e66254bc937fe8eacbcc3577e65b54a4438b2b9c4280e4d9c6c1032cd356",
+      "bytes": 889851
     }
   ]
 }
