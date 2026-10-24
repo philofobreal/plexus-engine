@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "task": "T06e",
-  "releaseId": "t06e-native-wall-20261024T105422000Z",
-  "builtAt": "2026-10-24T10:54:22.000Z",
+  "task": "T06e2",
+  "releaseId": "t06e2-wall-default-off-20261024T112345511Z",
+  "builtAt": "2026-10-24T11:23:45.511Z",
   "baseCommit": "effd6db7d268fd318dbcd4dbb1bec18e268a5441",
   "workingTreeChanges": true,
-  "deployedSourcePatchSha256": "47fafa4e6d2c11e90f5c9a4f46b78ccdef4373b5a2eda545f40b93d7bfbe5e7b",
-  "sourceInputsSha256": "e0f6e5574a412d1ac74c7f0ba4f6c5a4a655c93c523264f65c3392511e503b12",
+  "deployedSourcePatchSha256": "c76c53d9f08be00d708bbc40983072c202dd3380c4e808f783b88a0b0253eb7d",
+  "sourceInputsSha256": "78b18853705cf0b30e36b827669506ca3345069052d1f58fd5d9d1d594dbd2c6",
   "sourceInputCount": 337,
-  "previousPagesCommit": "a4d8484a49d44699f4020ab278cba7bc9c957aa8",
+  "previousPagesCommit": "99af80e1880dcf1352a226c1576de4a93ce428e1",
   "entries": [
     {
       "path": "index.html",
@@ -35,9 +35,9 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "b4532b292f3081243750a72192c87ab11845a56048d0a3f11b4631cfdcd67b61",
+      "sha256": "1b55678869cd8d92368f62252fee985d69bd57e2e9405c704e7e7e2364df0a8d",
       "assets": [
-        "assets/xr-DIt6KIwv.js",
+        "assets/xr-D3gcZ8dO.js",
         "assets/CosmicWormholeIdentity-ClYb2Xof.js",
         "assets/resolveMetaTuning-CsnYWn7w.js",
         "assets/xr-BfNetZ-7.css"
@@ -96,14 +96,14 @@
       "bytes": 1844
     },
     {
-      "path": "assets/wormholeNative.worker-B8yF_F6s.js",
-      "sha256": "edd5c0c47f7cff0853ba645e710545bc2cdec516a4b20a5615e5894de9814d42",
-      "bytes": 146085
+      "path": "assets/wormholeNative.worker-NKa5B4-L.js",
+      "sha256": "8952cd821cbecb9cfed9cd4df2c232880c311cbd96ed9168a9ca599e22427c74",
+      "bytes": 146207
     },
     {
-      "path": "assets/wormholeRender.worker-KozdF7pV.js",
-      "sha256": "a6ff66f91ed4d32684edd2c68eb5109efccca192d203fd09ca25b31cf625028d",
-      "bytes": 174255
+      "path": "assets/wormholeRender.worker-DVbw9WGv.js",
+      "sha256": "4caafbdcae89cab8f35be32904c0cafcffc7ff629de8e1fbb44e63bc920e52a9",
+      "bytes": 174377
     },
     {
       "path": "assets/xr-BfNetZ-7.css",
@@ -111,9 +111,9 @@
       "bytes": 11106
     },
     {
-      "path": "assets/xr-DIt6KIwv.js",
-      "sha256": "4e65ea1c4f038ae9b050b6b40550adb191460ce4a785e7d294b572920e7a2962",
-      "bytes": 877272
+      "path": "assets/xr-D3gcZ8dO.js",
+      "sha256": "866b71983e6b99982db0efe40aff80309dc775f42f9aa8a8790f6569ab752bf9",
+      "bytes": 877690
     }
   ]
 }
