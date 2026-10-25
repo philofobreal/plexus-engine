@@ -232,7 +232,7 @@ test('T11b output digest remains exact and prior corpus receives no duplicate sp
     for (const kind of ACTIVITY_KINDS) {
         const r = extract(activityFixture(kind));
         assert.equal(r.spectralEntries.candidates.length, 0, kind);
-        delete r.spectralEntries; delete r.bandActivity; delete r.entryContexts; delete r.attackChanges; digest.update(JSON.stringify(r));
+        delete r.spectralEntries; delete r.bandActivity; delete r.entryContexts; delete r.attackChanges; for (const a of r.attacks) delete a.quietOnset; digest.update(JSON.stringify(r));
     }
     assert.equal(digest.digest('hex'), ACTIVITY_V1_SHA256);
 });
@@ -269,7 +269,7 @@ test('T11c frozen aggregate stays exact when the optional band extension is omit
     const digest = createHash('sha256');
     for (const tuple of [...ACTIVITY_TUPLES.development, ...ACTIVITY_TUPLES.transfer]) for (const kind of ENTRY_KINDS) {
         const r = extract(entryFixture(kind, tuple), tuple.sampleRate === 16000 ? 512 : 1024);
-        delete r.bandActivity; delete r.entryContexts; delete r.attackChanges; digest.update(JSON.stringify(r));
+        delete r.bandActivity; delete r.entryContexts; delete r.attackChanges; for (const a of r.attacks) delete a.quietOnset; digest.update(JSON.stringify(r));
     }
     assert.equal(digest.digest('hex'), ENTRY_V1_SHA256);
 });
@@ -377,7 +377,7 @@ test('prefix neighborhoods qualify modulation changes while all T11d evidence st
                 if (c.context === 'occupied-neighborhood') occupiedExtras++; else uncertainExtras++;
             }
         }
-        delete r.entryContexts; delete r.attackChanges; digest.update(JSON.stringify(r));
+        delete r.entryContexts; delete r.attackChanges; for (const a of r.attacks) delete a.quietOnset; digest.update(JSON.stringify(r));
     }
     assert.equal(digest.digest('hex'), BAND_V1_SHA256); assert.equal(occupiedExtras, 17); assert.equal(uncertainExtras, 3);
 });
@@ -585,4 +585,61 @@ test('non-silent prefixes subtract matching/stronger windows and retain known we
     c.peakBin = null; c.peakNeighborhoodFraction = null; assert.ok(normalizeAcousticActivity(r, r.clock));
     c.positivePowerFraction = 1; assert.equal(normalizeAcousticActivity(r, r.clock), undefined);
     c.positivePowerFraction = 0; c.positivePower = 1e-11; assert.equal(normalizeAcousticActivity(r, r.clock), undefined);
+});
+
+
+test('quiet-prefix crossing recovers all eleven retargeted controls without changing legacy anchors', () => {
+    let recovered = 0, stable = 0;
+    for (const tuple of [...ACTIVITY_TUPLES.development, ...ACTIVITY_TUPLES.transfer]) for (const phase of ATTACK_CHANGE_PHASES) {
+        const hop = tuple.sampleRate === 16000 ? 512 : 1024;
+        for (const kind of ATTACK_CHANGE_KINDS.filter(k => k.includes('-late-'))) {
+            const f = attackChangeFixture(kind, tuple, hop, phase), r = extract(f, hop), a = r.attacks[0], q = a.quietOnset;
+            assert.ok(q); assert.ok(normalizeAcousticActivity(r, r.clock));
+            assert.ok(q.sampleIndex >= f.startSample && q.sampleIndex - f.startSample <= Math.ceil(.002 * f.sampleRate));
+            assert.ok(q.sampleIndex < f.laterSample); assert.equal(q.decisionSample, f.samples.length);
+            if (a.sampleIndex >= f.laterSample - .005 * f.sampleRate) recovered++; else stable++;
+        }
+    }
+    assert.equal(recovered, 11); assert.equal(stable, 34);
+});
+
+test('quiet crossings abstain on nonquiet prefix, clipped body and insufficient hop; DC/gain and noise limits remain explicit', () => {
+    const f = attackChangeFixture('tone-late-noise'), a = extract(f).attacks[0].quietOnset;
+    for (const dc of [-.4, .7]) for (const gain of [.5, 2]) {
+        const r = extract({ ...f, samples: Float32Array.from(f.samples, x => x * gain + dc) });
+        assert.ok(normalizeAcousticActivity(r, r.clock)); assert.ok(Math.abs(r.attacks[0].quietOnset.sampleIndex - a.sampleIndex) <= 1);
+    }
+    const make = (samples, fs = 16000, hop = 512) => {
+        const r = extract({ samples, sampleRate: fs }, hop); assert.ok(normalizeAcousticActivity(r, r.clock)); return r;
+    };
+    for (const kind of ['silence', 'dc', 'below-floor', 'start-clipped']) assert.ok(make(activityFixture(kind).samples).attacks.every(a => !a.quietOnset));
+    assert.ok(extract(entryFixture('soft-tone')).attacks.every(a => !a.quietOnset));
+    const partial = new Float32Array(2051); partial[2048] = 1; partial[2049] = -1;
+    assert.ok(make(partial).attacks.length); assert.ok(make(partial).attacks.every(a => !a.quietOnset));
+    assert.ok(make(f.samples, f.sampleRate, 4).attacks.every(a => !a.quietOnset));
+    const bed = Float32Array.from({ length: 8192 }, (_, i) => (i < 4096 ? .1 : .7) * Math.sin(i * .4));
+    const b = make(bed); assert.ok(b.attacks.length); assert.ok(b.attacks.every(a => !a.quietOnset), 'nonquiet background cannot qualify');
+    const noise = Float32Array.from({ length: 8192 }, (_, i) => 1.4e-5 * Math.sin(2 * Math.PI * i / 13));
+    for (let i = 4096; i < noise.length; i++) noise[i] += .1 * Math.sin(i * .4);
+    const n = make(noise); assert.ok(n.attacks[0].quietOnset.sampleIndex >= 4096, 'near-floor stationary noise must not become an early crossing');
+    const spiked = new Float32Array(8192); spiked[4095] = 1e-4;
+    for (let i = 4400; i < spiked.length; i++) spiked[i] = .1 * Math.sin((i - 4400) * .4 + .5);
+    const spike = make(spiked); assert.ok(spike.attacks.length); assert.equal(spike.attacks[0].quietOnset, undefined, 'initial trailing spike is not a new crossing');
+    // A DC step can cross this signal threshold; it is explicitly not musical/source evidence.
+    const step = Float32Array.from({ length: 4096 }, (_, i) => i >= 1400 ? .3 : 0), d = make(step);
+    assert.ok(d.attacks[0].quietOnset); assert.equal(d.xrScoring, 'ineligible');
+    // Slow quiet rise: support describes the measurement, not a bound on the physical start.
+    const ramp = Float32Array.from({ length: 8192 }, (_, i) => i >= 2048 ? 1e-4 * Math.min(1, (i - 2048) / 1600) * Math.sin(i * .5) : 0);
+    const t = make(ramp); assert.ok(t.attacks[0]?.quietOnset); assert.ok(t.attacks[0].quietOnset.sampleIndex > 2048 + 32);
+});
+
+test('quiet-crossing normalizer binds window policy, clones arrays and accepts predecessor omission', () => {
+    const r = json(extract(attackChangeFixture('tone-late-noise'))), n = normalizeAcousticActivity(r, r.clock);
+    assert.ok(n.attacks[0].quietOnset); n.attacks[0].quietOnset.prefixSamples[0]++; assert.notDeepEqual(json(n), r);
+    const old = json(r); for (const a of old.attacks) delete a.quietOnset;
+    assert.deepEqual(json(normalizeAcousticActivity(old, old.clock)), old);
+    for (const mutate of [q => q.algorithm = 'note-onset', q => q.sampleIndex++, q => q.prefixSamples[0]++, q => q.supportSamples[1]++,
+        q => q.prefixPower = 1, q => q.thresholdPower *= 2, q => q.crossingPower = q.thresholdPower, q => q.crossingPower = Infinity, q => q.decisionSample--, q => q.confidence = .99, q => q.sourceOwnership = 'known']) {
+        const b = json(r); mutate(b.attacks[0].quietOnset); assert.equal(normalizeAcousticActivity(b, b.clock), undefined);
+    }
 });

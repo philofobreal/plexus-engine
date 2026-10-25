@@ -2129,6 +2129,69 @@
               "observationFrame": {
                 "type": "integer",
                 "minimum": 1
+              },
+              "quietOnset": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "algorithm",
+                  "sampleIndex",
+                  "prefixSamples",
+                  "supportSamples",
+                  "prefixPower",
+                  "thresholdPower",
+                  "crossingPower",
+                  "decisionSample"
+                ],
+                "properties": {
+                  "algorithm": {
+                    "type": "string",
+                    "enum": [
+                      "quiet-prefix-energy-v1"
+                    ]
+                  },
+                  "sampleIndex": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "prefixSamples": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "supportSamples": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "prefixPower": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1e-10
+                  },
+                  "thresholdPower": {
+                    "type": "number",
+                    "minimum": 1e-10,
+                    "maximum": 4e-10
+                  },
+                  "crossingPower": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 256
+                  },
+                  "decisionSample": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
               }
             }
           }

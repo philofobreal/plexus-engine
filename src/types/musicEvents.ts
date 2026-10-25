@@ -2,6 +2,13 @@ import type { BeatEvent } from './index';
 import type { FeatureClock } from './featureClock';
 
 export type AcousticTexture = 'tonal' | 'broadband' | 'mixed' | 'unknown';
+/** Observed crossing of prefix-referenced short energy; not an isolated-source onset. */
+export interface QuietOnset {
+    algorithm: 'quiet-prefix-energy-v1'; sampleIndex: number;
+    prefixSamples: [number, number]; supportSamples: [number, number];
+    prefixPower: number; thresholdPower: number; crossingPower: number;
+    decisionSample: number; // Full-track publication, not a streaming deadline.
+}
 export interface AcousticAttack {
     id: string;
     sampleIndex: number;
@@ -12,6 +19,7 @@ export interface AcousticAttack {
     family: AcousticTexture; // Legacy ~60ms context texture, not the isolated attack spectrum.
     strengthRms: number; // AC RMS amplitude of the observed window, not normalized confidence.
     powerRatio: number;
+    quietOnset?: QuietOnset;
 }
 export interface AcousticActivityLayer {
     algorithm: 'acoustic-activity-v1';
@@ -234,6 +242,19 @@ export function normalizeAcousticActivity(value: AcousticActivityLayer | undefin
                 || !Number.isFinite(a.powerRatio) || a.powerRatio < 0
                 || spanIndex >= value.activity.length || a.sampleIndex < value.activity[spanIndex].startSample) return undefined;
         }
+        for (const a of value.attacks) if (a.quietOnset !== undefined) {
+            const q = a.quietOnset, h = clock.hopSize, start = a.observationFrame * h;
+            const radius = Math.max(1, Math.round(.002 * clock.sampleRate));
+            if (!q || Object.keys(q).some(k => !['algorithm', 'sampleIndex', 'prefixSamples', 'supportSamples', 'prefixPower', 'thresholdPower', 'crossingPower', 'decisionSample'].includes(k))
+                || q.algorithm !== 'quiet-prefix-energy-v1' || h < radius || start + h > length
+                || !Number.isSafeInteger(q.sampleIndex) || q.sampleIndex < start || q.sampleIndex >= start + h
+                || !pair(q.prefixSamples, [start - h, start])
+                || !pair(q.supportSamples, [q.sampleIndex - radius + 1, q.sampleIndex + 1])
+                || !Number.isFinite(q.prefixPower) || q.prefixPower < 0 || q.prefixPower > 1e-10
+                || q.thresholdPower !== Math.max(1e-10, 4 * q.prefixPower)
+                || !Number.isFinite(q.crossingPower) || q.crossingPower <= q.thresholdPower || q.crossingPower > 256
+                || q.decisionSample !== length) return undefined;
+        }
         for (let i = 0; i < value.dominance.length; i++) {
             const a = value.dominance[i];
             if (!a || !interval([a.startSample, a.endSample]) || ![...textures, 'silence'].includes(a.texture)
@@ -384,7 +405,10 @@ export function normalizeAcousticActivity(value: AcousticActivityLayer | undefin
                 onsetSupportSamples: a.onsetSupportSamples && [...a.onsetSupportSamples], offsetSupportSamples: a.offsetSupportSamples && [...a.offsetSupportSamples],
                 sustainSamples: a.sustainSamples && [...a.sustainSamples], leftCensored: a.leftCensored, rightCensored: a.rightCensored })),
             attacks: value.attacks.map(a => ({ id: a.id, observationFrame: a.observationFrame, sampleIndex: a.sampleIndex, time: a.time, supportSamples: [...a.supportSamples],
-                familySupportSamples: [...a.familySupportSamples], family: a.family, strengthRms: a.strengthRms, powerRatio: a.powerRatio })),
+                familySupportSamples: [...a.familySupportSamples], family: a.family, strengthRms: a.strengthRms, powerRatio: a.powerRatio,
+                ...(a.quietOnset ? { quietOnset: { algorithm: a.quietOnset.algorithm, sampleIndex: a.quietOnset.sampleIndex,
+                    prefixSamples: [...a.quietOnset.prefixSamples], supportSamples: [...a.quietOnset.supportSamples], prefixPower: a.quietOnset.prefixPower,
+                    thresholdPower: a.quietOnset.thresholdPower, crossingPower: a.quietOnset.crossingPower, decisionSample: a.quietOnset.decisionSample } } : {}) })),
             dominance: value.dominance.map(a => ({ startSample: a.startSample, endSample: a.endSample, texture: a.texture, decisionSample: a.decisionSample })) };
     } catch { return undefined; }
 }

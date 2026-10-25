@@ -82,6 +82,8 @@ export async function measureMusicActivity(audioDir) {
         for (const kind of ATTACK_CHANGE_KINDS) {
             const f = attackChangeFixture(kind, tuple, hop, phase), r = activity(f.samples, f.sampleRate, hop), record = r.attackChanges.records[0];
             assert.ok(record); assert.equal(record.status, 'measured');
+            const quiet = r.attacks[0].quietOnset;
+            assert.ok(quiet); assert.ok(quiet.sampleIndex >= f.startSample && quiet.sampleIndex - f.startSample <= Math.ceil(.002 * f.sampleRate));
             let comparison = null;
             if (!kind.includes('-late-')) first.set(kind, record);
             else {
@@ -92,7 +94,7 @@ export async function measureMusicActivity(audioDir) {
             attackChangeControls.push({ split, tuple, phase, kind, hopSize: hop, pcmSha256: hash(bytes(f.samples)),
                 physicalStartSample: f.startSample, laterStartSample: f.laterSample, comparison,
                 anchorErrorSamples: r.attacks[0].sampleIndex - f.startSample, legacyFamily: r.attacks[0].family,
-                measurement: record, recognitionAccuracy: null });
+                measurement: record, quietOnset: r.attacks[0].quietOnset ?? null, recognitionAccuracy: null });
         }
     }
     const periodicity = [];
@@ -111,8 +113,8 @@ export async function measureMusicActivity(audioDir) {
         const bundle = await rolldown({ input: 'src/analyzer/analyzeAudio.ts', plugins: mode === 'legacy' ? [{
             name: 'legacy-no-activity', resolveId(id) { if (id === './MusicActivity') return '\0legacy'; },
             load(id) { if (id === '\0legacy') return 'export class MusicActivity { observe() {} finish() { return undefined; } }'; }
-        }] : ['t11b', 't11c', 't11d', 't11e'].includes(mode) ? [{ name: 'retained-activity', load(id) {
-            if (id.replaceAll('\\', '/').endsWith('/analyzer/MusicActivity.ts')) return { code: execFileSync('git', ['show', ({ t11b: 'a1a0eaa63f143f9fa374d9c03f89a18f2c4dddb5', t11c: '485ddd0dea789b7d79938ece6d36ea2e80c23e08', t11d: '4fb6ba2e5f0d52c4ef0008aa75e3e4aab9b1a369', t11e: 'ca974e94123eead17dea79f21789ac2f6d2d1f43' })[mode] + ':src/analyzer/MusicActivity.ts'], { encoding: 'utf8', windowsHide: true }), moduleType: 'ts' };
+        }] : ['t11b', 't11c', 't11d', 't11e', 't11f'].includes(mode) ? [{ name: 'retained-activity', load(id) {
+            if (id.replaceAll('\\', '/').endsWith('/analyzer/MusicActivity.ts')) return { code: execFileSync('git', ['show', ({ t11b: 'a1a0eaa63f143f9fa374d9c03f89a18f2c4dddb5', t11c: '485ddd0dea789b7d79938ece6d36ea2e80c23e08', t11d: '4fb6ba2e5f0d52c4ef0008aa75e3e4aab9b1a369', t11e: 'ca974e94123eead17dea79f21789ac2f6d2d1f43', t11f: 'd3ec168a39674b480b498ff9f6d5d378eb8e1d3b' })[mode] + ':src/analyzer/MusicActivity.ts'], { encoding: 'utf8', windowsHide: true }), moduleType: 'ts' };
         } }] : [] });
         try {
             const result = await bundle.generate({ format: 'esm' });
@@ -120,7 +122,7 @@ export async function measureMusicActivity(audioDir) {
             return module.analyzeAudio;
         } finally { await bundle.close(); }
     }
-    const current = await bundledAnalyzer('current'), legacy = await bundledAnalyzer('legacy'), t11b = await bundledAnalyzer('t11b'), t11c = await bundledAnalyzer('t11c'), t11d = await bundledAnalyzer('t11d'), t11e = await bundledAnalyzer('t11e');
+    const current = await bundledAnalyzer('current'), legacy = await bundledAnalyzer('legacy'), t11b = await bundledAnalyzer('t11b'), t11c = await bundledAnalyzer('t11c'), t11d = await bundledAnalyzer('t11d'), t11e = await bundledAnalyzer('t11e'), t11f = await bundledAnalyzer('t11f');
     const { assessAcousticOnsets } = load('semantics/acousticEvidence.ts');
     const recorded = [];
     for (const file of readdirSync(audioDir).filter(f => /\.mp3$/i.test(f)).sort()) {
@@ -133,7 +135,9 @@ export async function measureMusicActivity(audioDir) {
         console.log(JSON.stringify({ file, phase: 'full-analysis-parity', seconds: samples.length / fs }));
         const old = legacy(input), fresh = current(input), layer = fresh.trackAnalysis.musicActivity;
         assert.ok(normalizeAcousticActivity(layer, layer.clock));
-        const previousLayer = t11b(input).trackAnalysis.musicActivity, coreLayer = { ...layer }; delete coreLayer.attackChanges;
+        const previousLayer = t11b(input).trackAnalysis.musicActivity, coreLayer = { ...layer, attacks: layer.attacks.map(({ quietOnset, ...a }) => a) };
+        assert.deepEqual(coreLayer, t11f(input).trackAnalysis.musicActivity, 'Entire T11f evidence remains exact');
+        delete coreLayer.attackChanges;
         assert.deepEqual(coreLayer, t11e(input).trackAnalysis.musicActivity, 'Entire T11e evidence remains exact');
         delete coreLayer.entryContexts;
         assert.deepEqual(coreLayer, t11d(input).trackAnalysis.musicActivity, 'Entire T11d evidence remains exact');
@@ -157,13 +161,13 @@ export async function measureMusicActivity(audioDir) {
         });
         // Alternating warm paired runs, 20 s excerpt; elapsed wall time includes all analyzer DSP.
         const excerpt = samples.slice(Math.round(samples.length * .45), Math.round(samples.length * .45) + 20 * fs);
-        const request = { samples: excerpt, sampleRate: fs }, milliseconds = { t11e: [], t11f: [] };
-        t11e(request); current(request);
-        for (let i = 0; i < 5; i++) for (const key of i % 2 ? ['t11f', 't11e'] : ['t11e', 't11f']) {
-            const start = performance.now(); (key === 't11e' ? t11e : current)(request); milliseconds[key].push(performance.now() - start);
+        const request = { samples: excerpt, sampleRate: fs }, milliseconds = { t11f: [], t11g: [] };
+        t11f(request); current(request);
+        for (let i = 0; i < 5; i++) for (const key of i % 2 ? ['t11g', 't11f'] : ['t11f', 't11g']) {
+            const start = performance.now(); (key === 't11f' ? t11f : current)(request); milliseconds[key].push(performance.now() - start);
         }
         recorded.push({ file, fileSha256: hash(readFileSync(path)), decodedPcmSha256: decoded, sampleRate: fs, sampleCount: samples.length,
-            legacyExact: true, t11bExact: true, t11cExact: true, t11dExact: true, t11eExact: true,
+            legacyExact: true, t11bExact: true, t11cExact: true, t11dExact: true, t11eExact: true, t11fExact: true, quietOnsets: layer.attacks.filter(a => a.quietOnset).length,
             attackChanges: Object.fromEntries(['measured', 'below-floor', 'file-boundary', 'insufficient-resolution'].map(status => [status, layer.attackChanges.records.filter(r => r.status === status).length])),
             attackChangePayloadBytes: Buffer.byteLength(JSON.stringify(layer.attackChanges)),
             contexts: Object.fromEntries(['occupied-neighborhood', 'unoccupied-neighborhood', 'uncertain'].map(context => [context, layer.entryContexts.records.filter(r => r.context === context).length])),
@@ -171,12 +175,12 @@ export async function measureMusicActivity(audioDir) {
             bandActivity: Object.fromEntries(['quiet-windows', 'file-boundary', 'budget-exceeded'].map(reason => [reason, layer.bandActivity.records.filter(r => r.endReason === reason).length])),
             bandPayloadBytes: Buffer.byteLength(JSON.stringify(layer.bandActivity)), spectralEntries: layer.spectralEntries.candidates.length, activity: layer.activity.length, attacks: layer.attacks.length, dominance: layer.dominance.length,
             payloadBytes: Buffer.byteLength(JSON.stringify(layer)), comparisons, milliseconds,
-            medianOverheadPercent: (median(milliseconds.t11f) / median(milliseconds.t11e) - 1) * 100,
+            medianOverheadPercent: (median(milliseconds.t11g) / median(milliseconds.t11f) - 1) * 100,
             groundTruth: null, accuracy: null });
         console.log(JSON.stringify(recorded.at(-1)));
     }
     for (const [p, digest] of Object.entries(sourceHashes)) assert.equal(hash(readFileSync(p)), digest, 'Source changed during measurement');
-    return { protocol: 't11f-attack-local-excess-1', node: process.version, decoder: execFileSync('ffmpeg', ['-version'], { encoding: 'utf8' }).split('\n')[0],
+    return { protocol: 't11g-quiet-prefix-crossing-1', node: process.version, decoder: execFileSync('ffmpeg', ['-version'], { encoding: 'utf8' }).split('\n')[0],
         sourceHashScope: 'delivery files only; full unchanged dependencies belong to the source commit', sourceHashes, analyzerExecution: 'Vite dependency rolldown ESM bundles; no VM wrapper in elapsed-time comparison', authored, entryControls, bandControls, contextControls, attackChangeControls, periodicity, recorded, modelRerun: false, recordedGroundTruth: null,
         noteSourceVocalRecognition: 'unsupported', performanceScope: 'offline Node elapsed analyzer wall time, not process CPU time, browser frame rate or physical Quest' };
 }

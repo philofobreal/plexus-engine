@@ -289,6 +289,10 @@ export class MusicActivity {
                 context: classifyEntryNeighborhood(e.prefixPower, e.prefixRatio) });
             lastEntry = a.sampleIndex;
         }
+        for (const attack of result.attacks) {
+            const quiet = this.quietOnset(attack.observationFrame);
+            if (quiet) attack.quietOnset = quiet;
+        }
         this.attackChanges(result);
         return result;
     }
@@ -377,6 +381,33 @@ export class MusicActivity {
             right += residualPower(n + radius) - residualPower(n);
         }
         return { sampleIndex, fitFraction };
+    }
+
+    /** Earliest prefix-referenced 2ms energy crossing, only after a complete quiet frame.
+     * No future/global maximum sets the threshold; old attack localization stays immutable.
+     */
+    private quietOnset(frame: number): AcousticAttack['quietOnset'] {
+        const { hopSize: h, sampleRate: fs, sampleCount: length } = this.clock;
+        const start = frame * h, radius = Math.max(1, Math.round(.002 * fs));
+        if (frame < 1 || h < radius || start + h > length || this.power[frame - 1] > MusicActivity.FLOOR_POWER) return undefined;
+        const prefixPower = this.power[frame - 1], thresholdPower = Math.max(MusicActivity.FLOOR_POWER, 4 * prefixPower);
+        let mean = 0;
+        for (let i = start - h; i < start; i++) mean += this.samples[i];
+        mean /= h;
+        const power = (i: number) => (this.samples[i] - mean) ** 2;
+        let sum = 0;
+        for (let i = start - radius; i < start; i++) sum += power(i);
+        // A quiet full hop can hide a short prefix spike: require a below-threshold
+        // initial trailing window, otherwise there is no observed new crossing.
+        if (sum / radius > thresholdPower) return undefined;
+        for (let i = start; i < start + h; i++) {
+            sum -= power(i - radius); sum += power(i);
+            const crossingPower = Math.max(0, sum / radius);
+            if (crossingPower > thresholdPower) return { algorithm: 'quiet-prefix-energy-v1', sampleIndex: i,
+                prefixSamples: [start - h, start], supportSamples: [i - radius + 1, i + 1],
+                prefixPower, thresholdPower, crossingPower, decisionSample: length };
+        }
+        return undefined;
     }
 
     private attack(frame: number, lowerBound: number): AcousticAttack {
