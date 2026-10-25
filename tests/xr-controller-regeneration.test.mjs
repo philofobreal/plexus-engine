@@ -552,7 +552,7 @@ test('Material spiral direction is live and saved, independent of chart/score an
 
 test('cockpit and filename caption are live presentation, using the selected filename without regeneration',async()=>{
  const saved=[],h=harness({settingsStore:{load:()=>({}),save:s=>saved.push(s)}});await h.loadTrack();
- assert.equal(h.sceneLog.trackTitles.at(-1),'song.wav');assert.deepEqual(h.sceneLog.cockpit.at(-1),{mode:'full',title:'scroll'});
+ assert.equal(h.sceneLog.trackTitles.at(-1),'song.wav');assert.deepEqual(h.sceneLog.cockpit.at(-1),{mode:'off',title:'scroll'});
  h.engine.play(0);const chart=h.chart(),stops=h.engine.stops.length,planCalls=h.prepareCalls.length;
  h.pick('reduced','cockpit','cockpit');h.pick('static','cockpit','cockpitTitle');
  assert.equal(h.sceneLog.cockpit.at(-1).mode,'reduced');assert.equal(h.sceneLog.cockpit.at(-1).title,'static');assert.equal(saved.at(-1).appearance.cockpitTitle,'static');

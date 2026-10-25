@@ -9,8 +9,10 @@ const{resolvePlayProfile}=load('xr/XrPlayProfile.ts');
 
 test('cockpit/title controls normalize old/hostile records, remain presentation-only and persist/copy',()=>{
  const{DEFAULT_XR_SETTINGS,normalizeXrSettings,XR_SETTINGS,changeScope}=load('xr/XrSettings.ts');
- assert.equal(DEFAULT_XR_SETTINGS.appearance.cockpit,'full');assert.equal(DEFAULT_XR_SETTINGS.appearance.cockpitTitle,'scroll');
- const old=normalizeXrSettings({appearance:{noteDesign:'classic'}});assert.equal(old.appearance.cockpit,'full');assert.equal(old.appearance.noteDesign,'classic');
+ assert.equal(DEFAULT_XR_SETTINGS.appearance.cockpit,'off');assert.equal(DEFAULT_XR_SETTINGS.appearance.cockpitTitle,'scroll');
+ const old=normalizeXrSettings({appearance:{noteDesign:'classic'}});assert.equal(old.appearance.cockpit,'off');assert.equal(old.appearance.noteDesign,'classic');
+ assert.equal(normalizeXrSettings({appearance:{cockpit:'bad'}}).appearance.cockpit,'off');
+ assert.equal(normalizeXrSettings({appearance:{cockpit:'full'}}).appearance.cockpit,'full','explicit saved Full remains a player choice');
  assert.equal(normalizeXrSettings({appearance:{cockpit:'bad',cockpitTitle:42}}).appearance.cockpitTitle,'scroll');
  let s=DEFAULT_XR_SETTINGS;for(const[id,v]of[['cockpit','reduced'],['cockpitTitle','static']]){const d=XR_SETTINGS.find(d=>d.id===id);s=d.write(s,v);assert.equal(d.scope,'presentation');assert.equal(d.section,'cockpit');assert.equal(d.read(s),v);}
  assert.equal(changeScope(DEFAULT_XR_SETTINGS,s),'presentation');let raw;const store=load('xr/XrSettingsStore.ts').createXrSettingsStore({getItem:()=>raw??null,setItem:(k,v)=>{raw=v;}});store.save(s);assert.equal(JSON.stringify(store.load()),JSON.stringify(s));

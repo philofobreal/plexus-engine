@@ -23,7 +23,7 @@ export const XR_SPIRAL_DIRECTIONS: readonly XrSpiralDirection[] = ['auto', 'left
 
 /** Shard crystals by default (ADR-009 Addendum T). */
 export const DEFAULT_XR_APPEARANCE_SETTINGS: XrAppearanceSettings = Object.freeze({ noteDesign: 'shard', noteHalos: 'off', spiralDirection: 'auto',
-    cockpit: 'full', cockpitTitle: 'scroll' });
+    cockpit: 'off', cockpitTitle: 'scroll' });
 
 export function normalizeAppearanceSettings(settings?: Partial<XrAppearanceSettings> | null): XrAppearanceSettings {
     const design = settings?.noteDesign;
@@ -32,6 +32,7 @@ export function normalizeAppearanceSettings(settings?: Partial<XrAppearanceSetti
         noteHalos: halos && XR_NOTE_HALOS.includes(halos) ? halos : DEFAULT_XR_APPEARANCE_SETTINGS.noteHalos,
         spiralDirection: settings?.spiralDirection && XR_SPIRAL_DIRECTIONS.includes(settings.spiralDirection)
             ? settings.spiralDirection : DEFAULT_XR_APPEARANCE_SETTINGS.spiralDirection,
-        cockpit: settings?.cockpit === 'off' || settings?.cockpit === 'reduced' ? settings.cockpit : 'full',
+        cockpit: settings?.cockpit === 'off' || settings?.cockpit === 'reduced' || settings?.cockpit === 'full'
+            ? settings.cockpit : DEFAULT_XR_APPEARANCE_SETTINGS.cockpit,
         cockpitTitle: settings?.cockpitTitle === 'off' || settings?.cockpitTitle === 'static' ? settings.cockpitTitle : 'scroll' };
 }
