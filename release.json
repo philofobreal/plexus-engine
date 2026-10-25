@@ -1,7 +1,7 @@
 {
-  "id": "t11b-activity-20261025T120323403Z",
-  "previousCommit": "fc8f8a687bffe08f24787c623850dd638989aeac",
-  "sourceCommit": "a1a0eaa63f143f9fa374d9c03f89a18f2c4dddb5",
+  "id": "t11c-spectral-entry-20261025T130723431Z",
+  "previousCommit": "fe66d5f76c4f2a99173d83ea7a42d6b0999e886b",
+  "sourceCommit": "485ddd0dea789b7d79938ece6d36ea2e80c23e08",
   "inputs": [
     {
       "path": "bun.lock",
@@ -393,7 +393,7 @@
     },
     {
       "path": "src/analyzer/MusicActivity.ts",
-      "sha256": "f91106e7071810563e1557a525621cc5a8f1b2254ae27e9d84fdf60901898664"
+      "sha256": "57ebeee08dcde790cc34c75bb0de869a39a015cce0df2b9b924ee5e6c9b9c999"
     },
     {
       "path": "src/analyzer/MusicalEntityTracker.ts",
@@ -905,7 +905,7 @@
     },
     {
       "path": "src/types/musicEvents.ts",
-      "sha256": "117a923d18cbf7b655b4417feff1a41e6021b1e2bc2a55480ccfbe59614e7f6d"
+      "sha256": "a9ad533bf034e2d58462b9a7a838d351d2e1ff21aaa0fce2d458f35eaf14b738"
     },
     {
       "path": "src/types/musicalEntities.ts",
@@ -1566,12 +1566,12 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "path": "assets/analyzer.worker-Cgmaf3Sq.js",
-      "sha256": "6f839441313d1ad4f0aae25f406811dcd86f91e01d5e62c7f18ad21921d36ec6"
+      "path": "assets/analyzer.worker-wK2bopSQ.js",
+      "sha256": "5ddd48edac05f63deea6146796428b0bd99bfc96a82893243782de0bf84999e4"
     },
     {
-      "path": "assets/CosmicWormholeIdentity-DPDm6VKJ.js",
-      "sha256": "27031ad7f24ce99d477282ef578b9c12f1d0ac95b533eef714962a880118cfdf"
+      "path": "assets/CosmicWormholeIdentity-BP6yl2Yz.js",
+      "sha256": "6c552c04b9bc90b3eb0bbf7d90f500c8ccdc6f09532616475e72cd3fbcf19b0c"
     },
     {
       "path": "assets/export.worker-Av-E_fEl.js",
@@ -1582,28 +1582,28 @@
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
-      "path": "assets/main-CE7H1VI6.js",
-      "sha256": "694af9f9d161ac73971b986a3a40bb425954577d979b93452375bfaa3db601d7"
+      "path": "assets/main-TRpAWcND.js",
+      "sha256": "29cd8656638c8229d82215a21f3ef85e271a6bf2653ce1f71a30aa4bae449aa0"
     },
     {
       "path": "assets/mvp-D0xy9ln6.css",
       "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
     },
     {
-      "path": "assets/mvp-jgs_xEKI.js",
-      "sha256": "3d31eae7496eb4f32899678a0aad4a618af5e0b7af43751c9d075c5896706e68"
+      "path": "assets/mvp-DTlxloXE.js",
+      "sha256": "772f3b35f71bef060ed5596a32c4884d24b435c7ff0ee8319cacc3b802dc4f7f"
     },
     {
-      "path": "assets/PreviewQualityControl-B3a7Ynec.js",
-      "sha256": "0e48b83b6979471908df9c55d0ba54cc3fd60c11ee0559085337b30439e25ec7"
+      "path": "assets/PreviewQualityControl-BPaMkuYj.js",
+      "sha256": "557d08895d13fee1c47fe83adec61cb1a5c750b21af19ec04ecb2dd15fac5dd8"
     },
     {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
       "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
     },
     {
-      "path": "assets/resolveMetaTuning-CvcNDSaA.js",
-      "sha256": "1a71014e14aa5d4b65c0f32252aab2fede647ceee994f8b1f817ec11ee569689"
+      "path": "assets/resolveMetaTuning-drIJ3BoU.js",
+      "sha256": "3a860caaa90aa62b2069aef1b1ca4cfc7d7da2a06a0fc2ebf492f7b0834f524f"
     },
     {
       "path": "assets/wormholeHostRender.worker-C0AYhcyr.js",
@@ -1618,12 +1618,12 @@
       "sha256": "fa3d9802994a0ed7376a97419650b69f971f3cc29650371d21c164775bab5506"
     },
     {
-      "path": "assets/xr-B3ShKB_i.js",
-      "sha256": "e8b16b4ba0adce5b42e04d654126f04031985bbb7a4020d46e6a1a2320a85b5a"
-    },
-    {
       "path": "assets/xr-BfNetZ-7.css",
       "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+    },
+    {
+      "path": "assets/xr-BtwrKItg.js",
+      "sha256": "83946b3ce54331476b73d3a998d38eaeff9b4c0751aae014d50c155bdb608c22"
     },
     {
       "path": "eso0932a.jpg",
@@ -1639,11 +1639,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "71ecc11df27fedeb03ba089707e1438d9f35e0c623f9a09687d35938911f14ed"
+      "sha256": "21f9cf6d85b39aeed629dac541285a92dd2a00c281b50043bfba60d6f1ff5a6d"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "0dcb2191d5173097dee0b655e56b2e00b237f0177915b154e169630c0f286681"
+      "sha256": "066b8208816ee40495298ad374fa8326e19111ab662b795c1043a9657349944f"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
@@ -1775,7 +1775,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "0bea6daf35b5643169b416da9b51aec8f979e43bf06b9bc6860bd49fab358287"
+      "sha256": "a6550b87e037b0c892a60c6ba9fcdab1100d0362113992805d7bcb17ecfc5690"
     }
   ]
 }
