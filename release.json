@@ -1,7 +1,7 @@
 {
-  "id": "t12a-musical-character-20261025T184000634Z",
-  "previousCommit": "b718b7f13b4b9d12c6d13acf8e613fa04b648017",
-  "sourceCommit": "9702aa57a95b3129619eb4421796da182802a58f",
+  "id": "t12a1-hand-recovery-20261025T192725582Z",
+  "previousCommit": "ace88c3f8e307297f843da83b99fa6e26feaefeb",
+  "sourceCommit": "c2e8b096a3f5486d2198bae59e2c6c3aafbda940",
   "inputs": [
     {
       "path": "bun.lock",
@@ -237,7 +237,7 @@
     },
     {
       "path": "scripts/evaluate-movement.mjs",
-      "sha256": "21e29f854593bee397cc4df7d31e22c82484365d414e8677de04eaaf63e27c37"
+      "sha256": "679de1c933b57c133aa7781923fecf8961366754fb774cebed8be25a233e785a"
     },
     {
       "path": "scripts/finalize-cockpit-refinement.mjs",
@@ -689,7 +689,7 @@
     },
     {
       "path": "src/gameplay/RhythmMovement.ts",
-      "sha256": "6393b56fb63383916fae48e2296a5e0e1b10a483727973db947fd9ed56aea1f1"
+      "sha256": "d7cb0164f0502116b190e8477340f092b29879d3b298e65b47b8a11f3e3aa6e5"
     },
     {
       "path": "src/gameplay/RhythmMusicalRoles.ts",
@@ -1349,7 +1349,7 @@
     },
     {
       "path": "src/xr/XrAppearanceSettings.ts",
-      "sha256": "a18e26c47b9d1cd9137e00aef3edecb88472183bb1cdabf498ae8bd223da45fc"
+      "sha256": "5a81527582ee300d0495a1659ff6ba2d1a3cced6818ea342f629c7fc4d76bda1"
     },
     {
       "path": "src/xr/XrBackgroundSettings.ts",
@@ -1622,8 +1622,8 @@
       "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
     },
     {
-      "path": "assets/xr-Dpt7M5v-.js",
-      "sha256": "dc549989ecb4fe6cef13bbf52e388db808da62d3f277066e3d258f5acdc541e4"
+      "path": "assets/xr-GFYVf6X_.js",
+      "sha256": "ce14ff32de2bf964fca411d4ee40ee394b16d64b73fd458f15e5657fbea14221"
     },
     {
       "path": "eso0932a.jpg",
@@ -1775,7 +1775,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "a4d6ec44eec6efee5d9b3b7b679dc06183c262b51d9dd37d4361fb5748d7f34c"
+      "sha256": "e3830fd20f84a34ba758bc58c21d544c9b2dfa77c33cb961d889c7c401ff061e"
     }
   ]
 }
