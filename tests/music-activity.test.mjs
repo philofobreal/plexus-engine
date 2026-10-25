@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createLoader } from './helpers/xr-loader.mjs';
-import { activityFixture, ACTIVITY_KINDS, ACTIVITY_TUPLES, entryFixture, ENTRY_KINDS, ACTIVITY_V1_SHA256, ENTRY_V1_SHA256, bandFixture, BAND_KINDS, BAND_V1_SHA256, contextFixture, CONTEXT_SPECS } from './fixtures/music-activity-corpus.mjs';
+import { activityFixture, ACTIVITY_KINDS, ACTIVITY_TUPLES, entryFixture, ENTRY_KINDS, ACTIVITY_V1_SHA256, ENTRY_V1_SHA256, bandFixture, BAND_KINDS, BAND_V1_SHA256, contextFixture, CONTEXT_SPECS, attackChangeFixture, ATTACK_CHANGE_KINDS, ATTACK_CHANGE_PHASES } from './fixtures/music-activity-corpus.mjs';
 const load = createLoader({}, { Float32Array, Float64Array, Uint32Array, Int32Array });
 const { MusicActivity } = load('analyzer/MusicActivity.ts');
 const { FeatureExtractor } = load('analyzer/FeatureExtractor.ts');
@@ -213,7 +213,7 @@ test('entry support, prefix-only model, DC/gain invariance, complete-tail and le
     const changed = f.samples.slice();
     for (let i = Math.round(1.3 * f.sampleRate); i < changed.length; i++) changed[i] = .8 * Math.sin(i * .7);
     assert.deepEqual(json(extract({ ...f, samples: changed }).spectralEntries.candidates[0]), original, 'future PCM cannot train/alter earlier prefix evidence');
-    const legacy = json(baseline); delete legacy.spectralEntries; delete legacy.bandActivity; delete legacy.entryContexts;
+    const legacy = json(baseline); delete legacy.spectralEntries; delete legacy.bandActivity; delete legacy.entryContexts; delete legacy.attackChanges;
     assert.deepEqual(json(normalizeAcousticActivity(legacy, legacy.clock)), legacy);
     const normal = normalizeAcousticActivity(baseline, baseline.clock); normal.spectralEntries.candidates[0].bodySamples[0]++;
     assert.notDeepEqual(json(normal), json(baseline));
@@ -232,7 +232,7 @@ test('T11b output digest remains exact and prior corpus receives no duplicate sp
     for (const kind of ACTIVITY_KINDS) {
         const r = extract(activityFixture(kind));
         assert.equal(r.spectralEntries.candidates.length, 0, kind);
-        delete r.spectralEntries; delete r.bandActivity; delete r.entryContexts; digest.update(JSON.stringify(r));
+        delete r.spectralEntries; delete r.bandActivity; delete r.entryContexts; delete r.attackChanges; digest.update(JSON.stringify(r));
     }
     assert.equal(digest.digest('hex'), ACTIVITY_V1_SHA256);
 });
@@ -269,7 +269,7 @@ test('T11c frozen aggregate stays exact when the optional band extension is omit
     const digest = createHash('sha256');
     for (const tuple of [...ACTIVITY_TUPLES.development, ...ACTIVITY_TUPLES.transfer]) for (const kind of ENTRY_KINDS) {
         const r = extract(entryFixture(kind, tuple), tuple.sampleRate === 16000 ? 512 : 1024);
-        delete r.bandActivity; delete r.entryContexts; digest.update(JSON.stringify(r));
+        delete r.bandActivity; delete r.entryContexts; delete r.attackChanges; digest.update(JSON.stringify(r));
     }
     assert.equal(digest.digest('hex'), ENTRY_V1_SHA256);
 });
@@ -377,7 +377,7 @@ test('prefix neighborhoods qualify modulation changes while all T11d evidence st
                 if (c.context === 'occupied-neighborhood') occupiedExtras++; else uncertainExtras++;
             }
         }
-        delete r.entryContexts; digest.update(JSON.stringify(r));
+        delete r.entryContexts; delete r.attackChanges; digest.update(JSON.stringify(r));
     }
     assert.equal(digest.digest('hex'), BAND_V1_SHA256); assert.equal(occupiedExtras, 17); assert.equal(uncertainExtras, 3);
 });
@@ -460,4 +460,129 @@ test('full-track publication stays honest when suffix dedup revises entries but 
         assert.ok(!after.result.entryContexts.records.some(p => p.entryId === e.id), 'no orphan context publication');
         assert.ok(normalizeAcousticActivity(after.result, after.result.clock));
     }
+});
+
+
+// T11f: numeric locality/support acceptance, not a new texture/source classifier.
+test('short attack changes retain local measurements across later additions and disclose inherited retargeting', () => {
+    let unchanged = 0, retargeted = 0, isolated = 0;
+    for (const tuple of [...ACTIVITY_TUPLES.development, ...ACTIVITY_TUPLES.transfer]) for (const phase of ATTACK_CHANGE_PHASES) {
+        const hop = tuple.sampleRate === 16000 ? 512 : 1024, first = new Map();
+        for (const kind of ATTACK_CHANGE_KINDS) {
+            const f = attackChangeFixture(kind, tuple, hop, phase), r = extract(f, hop), c = r.attackChanges.records[0];
+            assert.ok(normalizeAcousticActivity(r, r.clock)); assert.ok(c); assert.equal(c.status, 'measured');
+            assert.equal(c.attackId, r.attacks[0].id); assert.equal(c.decisionSample, f.samples.length);
+            assert.equal(r.attackChanges.publication, 'full-track-analysis');
+            assert.equal(r.attackChanges.sourceOwnership, 'unresolved'); assert.equal(r.attackChanges.confidence, null);
+            assert.ok(c.positivePower > 1e-10); assert.ok(c.positivePowerFraction > 0 && c.positivePowerFraction <= 1);
+            if (!kind.includes('-late-')) {
+                first.set(kind, { c, attack: r.attacks[0] }); isolated++;
+                // Only declared pure-signal controls: these bounds do not classify arbitrary mixtures.
+                assert.ok(kind === 'tone' ? c.peakNeighborhoodFraction > .8 : c.peakNeighborhoodFraction < .3, `${tuple.sampleRate}/${phase}/${kind}`);
+                assert.ok(c.bodySamples[0] <= f.startSample && c.bodySamples[1] > f.startSample);
+            } else {
+                const base = first.get(kind.split('-')[0]);
+                if (base.c.attackId === c.attackId) {
+                    assert.deepEqual(json(c), json(base.c), 'later PCM outside the short windows cannot recolor this measurement'); unchanged++;
+                    assert.ok(c.bodySamples[1] < f.laterSample);
+                } else {
+                    // Legacy localization is retained, including this demonstrated ambiguity.
+                    assert.ok(Math.abs(r.attacks[0].sampleIndex - f.laterSample) <= hop); retargeted++;
+                }
+            }
+        }
+    }
+    assert.equal(isolated, 45); assert.equal(unchanged, 34); assert.equal(retargeted, 11);
+});
+
+function measureFixedAttack(samples, sampleRate, hop, sampleIndex) {
+    // Unit scope: prescribed anchor, independent of the legacy detector's localization.
+    const a = new MusicActivity(samples, sampleRate, hop), result = { attacks: [{ id: `acoustic:${sampleIndex}`, sampleIndex }] };
+    a.attackChanges(result); return result.attackChanges;
+}
+test('Hann-weighted centering avoids artificial narrow peaks at impulse edges and rejects constant DC', () => {
+    for (const [fs, hop, size] of [[8000, 512, 128], [16000, 512, 256], [48000, 1024, 512]]) {
+        const anchor = Math.round(.2 * fs), body = anchor - Math.ceil(.002 * fs);
+        for (const offset of [0, 1, Math.floor(size / 2), size - 2, size - 1]) {
+            const samples = new Float32Array(Math.round(.4 * fs)); samples[body + offset] = 1;
+            const base = measureFixedAttack(samples, fs, hop, anchor), c = base.records[0]; assert.equal(base.windowSize, size);
+            if (offset === 0 || offset === size - 1) {
+                assert.equal(c.status, 'below-floor'); assert.equal(c.peakNeighborhoodFraction, null);
+            } else { assert.ok(['measured', 'below-floor'].includes(c.status)); if (c.status === 'measured') assert.ok(c.peakNeighborhoodFraction < .15); }
+            for (const dc of [-.7, .4]) {
+                const shifted = Float32Array.from(samples, x => x + dc), d = measureFixedAttack(shifted, fs, hop, anchor).records[0];
+                assert.equal(d.status, c.status);
+                assert.ok(Math.abs(d.positivePower - c.positivePower) < 1e-8);
+                if (c.status === 'measured') assert.ok(Math.abs(d.peakNeighborhoodFraction - c.peakNeighborhoodFraction) < 1e-6);
+            }
+        }
+        const dc = measureFixedAttack(new Float32Array(Math.round(.4 * fs)).fill(.3), fs, hop, anchor).records[0];
+        assert.equal(dc.status, 'below-floor'); assert.equal(dc.positivePower, 0); assert.equal(dc.positivePowerFraction, 0);
+    }
+});
+
+test('short-window excess has gain-covariant power, invariant ratios and explicit boundary/resolution abstentions', () => {
+    const f = attackChangeFixture('tone'), r = extract(f), c = r.attackChanges.records[0];
+    for (const gain of [.5, 2]) {
+        const b = extract({ ...f, samples: Float32Array.from(f.samples, x => x * gain) }).attackChanges.records[0];
+        assert.equal(b.attackId, c.attackId); assert.equal(b.peakBin, c.peakBin);
+        assert.ok(Math.abs(b.positivePower / c.positivePower - gain ** 2) < 1e-6);
+        assert.ok(Math.abs(b.peakNeighborhoodFraction - c.peakNeighborhoodFraction) < 1e-6);
+    }
+    const anchor = 1600, quiet = new Float32Array(3200);
+    quiet[anchor] = 1e-7;
+    assert.equal(measureFixedAttack(quiet, 16000, 512, anchor).records[0].status, 'below-floor');
+    for (const sample of [0, 10, quiet.length - 1]) {
+        const a = measureFixedAttack(quiet, 16000, 512, sample).records[0]; assert.equal(a.status, 'file-boundary');
+        assert.equal(a.prefixSamples, null); assert.equal(a.bodySamples, null); assert.equal(a.positivePower, null);
+    }
+    for (const [fs, hop] of [[1000, 512], [16000, 64], [384000, 1024]]) {
+        const a = measureFixedAttack(quiet, fs, hop, anchor); assert.equal(a.windowSize, null);
+        assert.equal(a.records[0].status, 'insufficient-resolution'); assert.equal(a.records[0].positivePower, null);
+    }
+    const entry = extract(entryFixture('soft-tone')); assert.equal(entry.spectralEntries.candidates.length, 1);
+    assert.equal(entry.attackChanges.records.length, 0, 'this layer does not silently claim coverage of quiet spectral entries');
+});
+
+test('attack-change contract clones, retains older payloads and rejects forged measurements and associations', () => {
+    const r = json(extract(attackChangeFixture('tone'))), n = normalizeAcousticActivity(r, r.clock);
+    assert.deepEqual(json(n), r); n.attackChanges.records[0].bodySamples[0]++; assert.notDeepEqual(json(n), r);
+    const old = json(r); delete old.attackChanges; assert.deepEqual(json(normalizeAcousticActivity(old, old.clock)), old);
+    for (const mutate of [x => x.algorithm = 'oracle', x => x.scope = 'isolated-source', x => x.sourceOwnership = 'known',
+        x => x.publication = 'streaming', x => x.confidence = .9, x => x.xrScoring = 'eligible', x => x.windowSize *= 2,
+        x => x.records.pop(), x => x.records.push(x.records[0]), x => { delete x.records[0]; },
+        x => x.records[0].attackId = 'acoustic:0', x => x.records[0].decisionSample--,
+        x => x.records[0].prefixSamples[0]++, x => x.records[0].bodySamples = null,
+        x => x.records[0].status = 'file-boundary', x => x.records[0].positivePower = null,
+        x => x.records[0].positivePower = Infinity, x => x.records[0].positivePower = -1,
+        x => x.records[0].positivePowerFraction = 2, x => x.records[0].positivePowerFraction = null,
+        x => x.records[0].peakBin = 0, x => x.records[0].peakBin = x.windowSize / 2,
+        x => x.records[0].peakNeighborhoodFraction = 0, x => x.records[0].peakNeighborhoodFraction = NaN]) {
+        const bad = json(r); mutate(bad.attackChanges); assert.equal(normalizeAcousticActivity(bad, bad.clock), undefined);
+    }
+    const boundary = json(extract({ samples: Float32Array.from({ length: 2051 }, (_, i) => i === 2048 ? 1 : i === 2049 ? -1 : 0), sampleRate: 16000 }));
+    assert.equal(boundary.attackChanges.records[0].status, 'file-boundary'); assert.ok(normalizeAcousticActivity(boundary, boundary.clock));
+    boundary.attackChanges.records[0].positivePower = 0; assert.equal(normalizeAcousticActivity(boundary, boundary.clock), undefined);
+});
+
+
+test('non-silent prefixes subtract matching/stronger windows and retain known weaker-prefix excess', () => {
+    const fs = 16000, size = 256, anchor = 3200, body = anchor - Math.ceil(.002 * fs), prefix = body - Math.ceil(.004 * fs) - size;
+    for (const [before, after, expectedFraction] of [[.2, .2, 0], [.3, .2, 0], [.2, .3, 5 / 9]]) {
+        const samples = new Float32Array(6400);
+        for (let n = 0; n < size; n++) {
+            const wave = Math.sin(2 * Math.PI * 16 * n / size + .31);
+            samples[prefix + n] = before * wave; samples[body + n] = after * wave;
+        }
+        const c = measureFixedAttack(samples, fs, 512, anchor).records[0];
+        assert.ok(Math.abs(c.positivePowerFraction - expectedFraction) < 1e-6);
+        if (!expectedFraction) { assert.equal(c.status, 'below-floor'); assert.equal(c.positivePower, 0); }
+        else { assert.equal(c.status, 'measured'); assert.ok(Math.abs(c.positivePower - .025) < 1e-6); }
+    }
+    // A valid zero measurement from a complete, constant body must bind both zero-valued ratios.
+    const r = json(extract(attackChangeFixture('tone'))), c = r.attackChanges.records[0];
+    c.status = 'below-floor'; c.positivePower = 0; c.positivePowerFraction = 0;
+    c.peakBin = null; c.peakNeighborhoodFraction = null; assert.ok(normalizeAcousticActivity(r, r.clock));
+    c.positivePowerFraction = 1; assert.equal(normalizeAcousticActivity(r, r.clock), undefined);
+    c.positivePowerFraction = 0; c.positivePower = 1e-11; assert.equal(normalizeAcousticActivity(r, r.clock), undefined);
 });

@@ -160,3 +160,24 @@ export function contextFixture(spec, tuple = ACTIVITY_TUPLES.development[0], hop
     }
     return { samples, sampleRate: fs, spec, attacks: starts, truth: 'authored-signal; neighborhood is not source identity' };
 }
+
+// T11f short-window controls. These are authored signals, never instrument/source truth.
+export const ATTACK_CHANGE_KINDS = ['impulse', 'tone', 'noise', 'impulse-late-tone', 'tone-late-noise', 'noise-late-tone'];
+export const ATTACK_CHANGE_PHASES = [0, .125, .375, .625, .875];
+export function attackChangeFixture(kind, tuple = ACTIVITY_TUPLES.development[0], hop = 512, phase = 0) {
+    const fs = tuple.sampleRate, start = Math.round(.3 * fs / hop) * hop + Math.round(phase * hop);
+    const samples = new Float32Array(Math.round(.9 * fs)), later = start + Math.round(.03 * fs);
+    let seed = tuple.seed;
+    const noise = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 31 - 1; };
+    for (let i = start; i < samples.length; i++) {
+        const n = i - start;
+        if (kind.startsWith('impulse')) samples[i] = n === 0 ? 1 : 0;
+        else if (kind.startsWith('tone')) samples[i] = .2 * Math.sin(2 * Math.PI * (tuple.frequency + 1100) * n / fs + tuple.phase);
+        else if (kind.startsWith('noise')) samples[i] = .2 * noise();
+        else throw new Error('Unknown attack change fixture');
+        if (i >= later && kind.includes('-late-')) samples[i] += kind.endsWith('tone')
+            ? .3 * Math.sin(2 * Math.PI * 440 * (i - later) / fs + .43) : .3 * noise();
+    }
+    return { samples, sampleRate: fs, kind, startSample: start, laterSample: later,
+        truth: 'authored first signal and separate addition 30ms later; no texture category target' };
+}

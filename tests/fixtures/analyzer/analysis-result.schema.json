@@ -2558,6 +2558,188 @@
               ]
             }
           }
+        },
+        "attackChanges": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "algorithm",
+            "confidence",
+            "consumerUse",
+            "xrScoring",
+            "scope",
+            "sourceOwnership",
+            "publication",
+            "windowSize",
+            "records"
+          ],
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "enum": [
+                "attack-local-excess-v1"
+              ]
+            },
+            "confidence": {
+              "type": "null"
+            },
+            "consumerUse": {
+              "type": "string",
+              "enum": [
+                "signal-evidence-only"
+              ]
+            },
+            "xrScoring": {
+              "type": "string",
+              "enum": [
+                "ineligible"
+              ]
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "local-window-positive-spectrum"
+              ]
+            },
+            "sourceOwnership": {
+              "type": "string",
+              "enum": [
+                "unresolved"
+              ]
+            },
+            "publication": {
+              "type": "string",
+              "enum": [
+                "full-track-analysis"
+              ]
+            },
+            "windowSize": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 128,
+                  "maximum": 512
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "records": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "attackId",
+                  "prefixSamples",
+                  "bodySamples",
+                  "decisionSample",
+                  "status",
+                  "positivePower",
+                  "positivePowerFraction",
+                  "peakBin",
+                  "peakNeighborhoodFraction"
+                ],
+                "properties": {
+                  "attackId": {
+                    "type": "string"
+                  },
+                  "prefixSamples": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "bodySamples": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "decisionSample": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "measured",
+                      "below-floor",
+                      "file-boundary",
+                      "insufficient-resolution"
+                    ]
+                  },
+                  "positivePower": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "positivePowerFraction": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "peakBin": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "peakNeighborhoodFraction": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

@@ -30,7 +30,7 @@ test('transport rejects forged support, associations, confidence and musical sou
 });
 test('analyzer publishes the additive layer without changing any legacy analysis field or PCM',()=>{
  const current=load('analyzer/analyzeAudio.ts').analyzeAudio;
- const legacy=createLoader({'../types/musicEvents':{projectAcceptedMusicEvents:()=>undefined}},{Float32Array,Float64Array})('analyzer/analyzeAudio.ts').analyzeAudio;
+ const legacy=createLoader({'../types/musicEvents':{...m,projectAcceptedMusicEvents:()=>undefined}},{Float32Array,Float64Array})('analyzer/analyzeAudio.ts').analyzeAudio;
  const samples=new Float32Array(8000*3);for(let i=1000;i<samples.length;i+=2000)samples[i]=.8;const original=samples.slice();
  for(const eventTiming of [undefined,'local-band-v1','local-band-v2']){const input={samples,sampleRate:8000,options:{eventTiming}},r=current(input),b=legacy(input);
   const raw=plain(r);assert.ok(raw.trackAnalysis.musicEvents);delete raw.trackAnalysis.musicEvents;assert.deepEqual(raw,plain(b));

@@ -2,7 +2,7 @@ import type { FeatureClock } from '../types/featureClock';
 import type { AcousticActivityLayer, AcousticAttack, AcousticTexture } from '../types/musicEvents';
 import { validateAnalysisClock, validateAnalysisSamples } from './signalContract';
 import { FFT } from './math/FFT';
-import { classifyEntryNeighborhood } from '../types/musicEvents';
+import { classifyEntryNeighborhood, attackChangeWindowSize } from '../types/musicEvents';
 
 // A bounded monitor of frozen frequency bins, never ownership of an isolated sound source.
 interface EntryBand {
@@ -12,7 +12,8 @@ interface EntryBand {
 
 
 /** Fixed signal measurements, not instrument/voice probabilities or a second beat detector.
- * Borrows the feature extractor's existing FFT read-only; no extra PCM transform or render-time DSP.
+ * Borrows feature FFTs read-only. The optional attack-change sidecar uses two bounded
+ * short transforms per accepted energy attack at finish(), never render-time DSP.
  */
 export class MusicActivity {
     private readonly samples: Float32Array;
@@ -288,7 +289,64 @@ export class MusicActivity {
                 context: classifyEntryNeighborhood(e.prefixPower, e.prefixRatio) });
             lastEntry = a.sampleIndex;
         }
+        this.attackChanges(result);
         return result;
+    }
+
+    /** A window comparison attached to existing attacks, not an isolated-source spectrum.
+     * Reuses one FFT and two spectra; at most two <=512-point transforms per 60ms attack.
+     */
+    private attackChanges(result: AcousticActivityLayer): void {
+        const { sampleRate: fs, sampleCount: length, hopSize: hop } = this.clock;
+        const size = attackChangeWindowSize(fs, hop);
+        const layer = result.attackChanges = { algorithm: 'attack-local-excess-v1', confidence: null,
+            consumerUse: 'signal-evidence-only', xrScoring: 'ineligible', scope: 'local-window-positive-spectrum',
+            sourceOwnership: 'unresolved', publication: 'full-track-analysis', windowSize: size,
+            records: [] } as NonNullable<AcousticActivityLayer['attackChanges']>;
+        let fft: FFT | undefined, prefix: Float64Array | undefined, delta: Float64Array | undefined;
+        let windowSum = 0, windowPower = 0;
+        const transform = (start: number) => {
+            let weightedMean = 0;
+            for (let n = 0; n < size!; n++) weightedMean += this.samples[start + n] * fft!.window[n];
+            weightedMean /= windowSum;
+            for (let n = 0; n < size!; n++) {
+                fft!.re[n] = (this.samples[start + n] - weightedMean) * fft!.window[n]; fft!.im[n] = 0;
+            }
+            fft!.transform();
+        };
+        for (const a of result.attacks) {
+            const r: NonNullable<AcousticActivityLayer['attackChanges']>['records'][number] = {
+                attackId: a.id, prefixSamples: null, bodySamples: null, decisionSample: length,
+                status: size === null ? 'insufficient-resolution' : 'file-boundary',
+                positivePower: null, positivePowerFraction: null, peakBin: null, peakNeighborhoodFraction: null };
+            layer.records.push(r);
+            const bodyStart = a.sampleIndex - Math.ceil(.002 * fs), prefixEnd = bodyStart - Math.ceil(.004 * fs);
+            if (size === null || prefixEnd - size < 0 || bodyStart + size > length) continue;
+            if (!fft) {
+                fft = new FFT(size); prefix = new Float64Array(size / 2); delta = new Float64Array(size / 2);
+                for (const w of fft.window) { windowSum += w; windowPower += w * w; }
+            }
+            r.prefixSamples = [prefixEnd - size, prefixEnd]; r.bodySamples = [bodyStart, bodyStart + size];
+            // Hann-weighted centering rejects constant DC without creating a large edge-impulse residual.
+            transform(prefixEnd - size);
+            for (let k = 1; k < size / 2; k++) prefix![k] = fft.re[k] ** 2 + fft.im[k] ** 2;
+            transform(bodyStart);
+            let total = 0, excess = 0, peak = 1;
+            delta!.fill(0);
+            for (let k = 1; k < size / 2; k++) {
+                const p = fft.re[k] ** 2 + fft.im[k] ** 2;
+                delta![k] = Math.max(0, p - prefix![k]); total += p; excess += delta![k];
+                if (delta![k] > delta![peak]) peak = k;
+            }
+            r.positivePower = 2 * excess / (size * windowPower);
+            r.positivePowerFraction = total > 0 ? Math.min(1, excess / total) : 0;
+            r.status = r.positivePower > MusicActivity.FLOOR_POWER ? 'measured' : 'below-floor';
+            if (r.status === 'measured') {
+                let neighborhood = 0;
+                for (let k = Math.max(1, peak - 1); k <= Math.min(size / 2 - 1, peak + 1); k++) neighborhood += delta![k];
+                r.peakBin = peak; r.peakNeighborhoodFraction = Math.min(1, neighborhood / excess);
+            }
+        }
     }
 
     private entryTime(frame: number, lower: number): { sampleIndex: number; fitFraction: number } | null {

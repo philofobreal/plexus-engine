@@ -9,7 +9,7 @@ export interface AcousticAttack {
     time: number;
     supportSamples: [number, number];
     familySupportSamples: [number, number];
-    family: AcousticTexture;
+    family: AcousticTexture; // Legacy ~60ms context texture, not the isolated attack spectrum.
     strengthRms: number; // AC RMS amplitude of the observed window, not normalized confidence.
     powerRatio: number;
 }
@@ -31,9 +31,30 @@ export interface AcousticActivityLayer {
     }[];
     attacks: AcousticAttack[];
     dominance: { startSample: number; endSample: number; texture: AcousticTexture | 'silence'; decisionSample: number }[];
+    attackChanges?: AttackChangeLayer;
     entryContexts?: EntryContextLayer;
     bandActivity?: EntryBandActivityLayer;
     spectralEntries?: SpectralEntryLayer; // Absent in T11b/legacy payloads.
+}
+
+/** Short-window positive spectral change, never a sound-family or source classifier. */
+export interface AttackChangeLayer {
+    algorithm: 'attack-local-excess-v1'; confidence: null;
+    consumerUse: 'signal-evidence-only'; xrScoring: 'ineligible';
+    scope: 'local-window-positive-spectrum'; sourceOwnership: 'unresolved'; publication: 'full-track-analysis';
+    windowSize: number | null;
+    records: {
+        attackId: string; prefixSamples: [number, number] | null; bodySamples: [number, number] | null;
+        decisionSample: number;
+        status: 'measured' | 'below-floor' | 'file-boundary' | 'insufficient-resolution';
+        positivePower: number | null; positivePowerFraction: number | null;
+        peakBin: number | null; peakNeighborhoodFraction: number | null;
+    }[];
+}
+/** Same bounded engineering window policy at producer and untrusted-payload boundary. */
+export function attackChangeWindowSize(sampleRate: number, hopSize: number): number | null {
+    const size = Math.min(512, hopSize, 2 ** Math.floor(Math.log2(.016 * sampleRate)));
+    return size >= 128 && size / sampleRate >= .008 ? size : null;
 }
 
 export type EntryNeighborhood = 'occupied-neighborhood' | 'unoccupied-neighborhood' | 'uncertain';
@@ -226,6 +247,44 @@ export function normalizeAcousticActivity(value: AcousticActivityLayer | undefin
                 || (i > 1 && a.startSample - value.dominance[i - 1].startSample < .2 * clock.sampleRate)
                 || (i === value.dominance.length - 1 && a.endSample !== length)) return undefined;
         }
+        let attackChanges: AttackChangeLayer | undefined;
+        if (value.attackChanges !== undefined) {
+            const layer = value.attackChanges, size = attackChangeWindowSize(clock.sampleRate, clock.hopSize);
+            if (!layer || layer.algorithm !== 'attack-local-excess-v1' || layer.confidence !== null
+                || layer.consumerUse !== 'signal-evidence-only' || layer.xrScoring !== 'ineligible'
+                || layer.scope !== 'local-window-positive-spectrum' || layer.sourceOwnership !== 'unresolved'
+                || layer.publication !== 'full-track-analysis' || layer.windowSize !== size
+                || !Array.isArray(layer.records) || layer.records.length !== value.attacks.length) return undefined;
+            for (let i = 0; i < layer.records.length; i++) {
+                const a = layer.records[i], attack = value.attacks[i];
+                const bodyStart = attack.sampleIndex - Math.ceil(.002 * clock.sampleRate);
+                const prefixEnd = bodyStart - Math.ceil(.004 * clock.sampleRate);
+                const boundary = size !== null && (prefixEnd - size < 0 || bodyStart + size > length);
+                if (!a || a.attackId !== attack.id || a.decisionSample !== length) return undefined;
+                if (size === null || boundary) {
+                    if (a.status !== (size === null ? 'insufficient-resolution' : 'file-boundary')
+                        || a.prefixSamples !== null || a.bodySamples !== null || a.positivePower !== null
+                        || a.positivePowerFraction !== null || a.peakBin !== null || a.peakNeighborhoodFraction !== null) return undefined;
+                } else {
+                    if (!pair(a.prefixSamples, [prefixEnd - size, prefixEnd]) || !pair(a.bodySamples, [bodyStart, bodyStart + size])
+                        || !Number.isFinite(a.positivePower) || a.positivePower! < 0
+                        || !Number.isFinite(a.positivePowerFraction) || a.positivePowerFraction! < 0 || a.positivePowerFraction! > 1
+                        || (a.positivePower === 0) !== (a.positivePowerFraction === 0)) return undefined;
+                    if (a.positivePower! <= 1e-10) {
+                        if (a.status !== 'below-floor' || a.peakBin !== null || a.peakNeighborhoodFraction !== null) return undefined;
+                    } else if (a.status !== 'measured' || a.positivePowerFraction! <= 0
+                        || !Number.isSafeInteger(a.peakBin) || a.peakBin! < 1 || a.peakBin! >= size / 2
+                        || !Number.isFinite(a.peakNeighborhoodFraction) || a.peakNeighborhoodFraction! < 1 / (size / 2 - 1)
+                        || a.peakNeighborhoodFraction! > 1) return undefined;
+                }
+            }
+            attackChanges = { algorithm: layer.algorithm, confidence: null, consumerUse: 'signal-evidence-only', xrScoring: 'ineligible',
+                scope: layer.scope, sourceOwnership: 'unresolved', publication: 'full-track-analysis', windowSize: size,
+                records: layer.records.map(a => ({ attackId: a.attackId,
+                    prefixSamples: a.prefixSamples && [...a.prefixSamples], bodySamples: a.bodySamples && [...a.bodySamples],
+                    decisionSample: a.decisionSample, status: a.status, positivePower: a.positivePower,
+                    positivePowerFraction: a.positivePowerFraction, peakBin: a.peakBin, peakNeighborhoodFraction: a.peakNeighborhoodFraction })) };
+        }
         let spectralEntries: SpectralEntryLayer | undefined;
         if (value.spectralEntries !== undefined) {
             const layer = value.spectralEntries;
@@ -320,6 +379,7 @@ export function normalizeAcousticActivity(value: AcousticActivityLayer | undefin
             ...(spectralEntries ? { spectralEntries } : {}),
             ...(bandActivity ? { bandActivity } : {}),
             ...(entryContexts ? { entryContexts } : {}),
+            ...(attackChanges ? { attackChanges } : {}),
             activity: value.activity.map(a => ({ id: a.id, startSample: a.startSample, endSample: a.endSample,
                 onsetSupportSamples: a.onsetSupportSamples && [...a.onsetSupportSamples], offsetSupportSamples: a.offsetSupportSamples && [...a.offsetSupportSamples],
                 sustainSamples: a.sustainSamples && [...a.sustainSamples], leftCensored: a.leftCensored, rightCensored: a.rightCensored })),
