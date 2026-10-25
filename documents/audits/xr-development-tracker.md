@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-25 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T11i research qualification validated; no runtime promotion; deployment/manual handoff below; T11 partial; T12 not started.** Existing MVP/XR Offscreen rendering stays intact. [Current T11 scope and validation](../features/music-events.md#t11i---frozen-quiet-carrier-qualification-study-2026-10-25). [Previous merged review](xr-review-checkpoint.md).
+**T11 research closed for this phase by user decision, with recognition limitations retained; T12a Musical chart profile and larger menu implemented, validation/deployment handoff below.** Existing MVP/XR Offscreen rendering stays intact. [T11 capability limits](../features/music-events.md). [Previous merged review](xr-review-checkpoint.md).
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -57,8 +57,8 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T08 | Gameplay + XR: note meanings and bounded halos | T02, T07 fit | Accepted by user continuation on 2026-10-24, deployed 2bd7cc0. Three optional musical roles. [Evidence](xr-musical-roles-validation.md) |
 | T09 | Gameplay + input/render: playable hand policy and motion | T08 | Accepted by user; Guarded optional, Legacy default. [Evidence](xr-movement-validation.md) |
 | T10 | Analyzer timing cleanup | T00-T01 | Rejected experiments removed at user request; established XR path and equivalent Band search retained. Accuracy beyond available evidence remains unproven. [Record](xr-timing-cleanup.md) |
-| T11 | Timed evidence and qualification | Stable T10 clock/evidence boundary | T11i frozen research-only carrier gate: clean36/36 +72/72, protectedFP0 vsresearch context18/18; targetrecall47.1%, all-authored tonal coverage28.6%. No qualified events on3 full recordings; every production value exactT11h; all389 build inputs unchanged. Full1820/1811 pass/nine exact known failures. No chart/runtime promotion; T11 partial, no T12. Next background-present qualification; manual pause after deploy. [Scope](../features/music-events.md) |
-| T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09-T11 | Planned; legacy path retained |
+| T11 | Timed evidence and qualification | Stable T10 clock/evidence boundary | Closed for this phase by explicit user decision after T11i; limited signal/provenance capabilities only. Research retained, no classifier promoted. General tonal/vocal recognition and dominance deferred; further research is not a T12a prerequisite. [Scope](../features/music-events.md) |
+| T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09; supported T11 capabilities only | T12a opt-in Musical: section-led motifs/density/layout from accepted BeatEvents, mandatory Guarded movement, Classic fallback; larger shared menu, localStorage/Copy. Full source fusion/rejection diagnostics and physical acceptance remain undelivered. Current checkpoint below |
 | T13 | Analyzer + automation + semantics: cue and visual arrival timing | T10; T11 additive | Planned |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
 | T15 | Presentation planner + XR: track-specific HUD | T13-T14 | Planned |
@@ -537,7 +537,7 @@ production classification or T12 promotion. Keep safe legacy fallback; this corr
 does not establish instrument/vocal identity.
 
 
-## Current continuation checkpoint - T11i quiet-carrier study, 2026-10-25
+## Historical checkpoint - T11i quiet-carrier study, 2026-10-25
 
 T11h accepted. Research-only classifier and corpus are frozen at8cd5c99 before transfer.
 192 development/384 same-family parameter-transfer controls: clean36/36 and72/72; protected
@@ -554,3 +554,59 @@ qualification is not sufficient for musical event/role promotion. Next qualify b
 independently checked attribution/negative/transfer support; do not keep extending a quiet-only
 selector that has zero coverage on these recordings or promote it into gameplay; do not replace missing evidence with another data envelope. Wall stays Off and
 MVP/XR Offscreen code is unchanged.
+
+## Current continuation checkpoint - T12a Musical character, 2026-10-25
+
+T11i accepted. The user explicitly prioritized visible gameplay and accepted closing further T11
+research as a prerequisite. T11 is closed for this phase with limited capabilities; unsupported
+tonal/vocal recognition, dominance and background-present qualification remain deferred. No study,
+historical result or regression was removed, and no research signal was promoted into gameplay.
+
+T12a adds Choreography > Chart profile > Classic / Musical, saved through existing localStorage
+and Copy descriptors. Musical uses existing complete section intervals to keep calm phrases
+compact, develop builds and emphasize peaks, with compatible automation gestures inside each
+family. Accepted BeatEvent indices/times/types are retained, including pairs; grid/sections/plan
+never create silent targets. Activity/Variation/hands/lead/zones/difficulty still constrain the
+score. Guarded runs after all placement/overhead work; it may simplify or drop proposals. Musical
+selects Guarded, Movement Legacy explicitly returns Classic, and Classic alone retains the
+displayed Movement choice. Missing/invalid section context reports Classic fallback / Guarded.
+Default/legacy charts remain byte-identical. [Contract](../adr/ADR-009-xr-rhythm-game-host.md#addendum-aw--t12a-section-led-musical-chart-and-larger-menu-2026-10-25).
+
+The user permits a larger whole menu to keep related settings together. Canvas1280×900 and
+panel1.60×1.125m preserve physical text size, fit nine full rows and keep header/hint/footer clear.
+No new tab. Desktop FOV/aspect/zoom fit and open-menu resize are covered; redraw-on-change remains.
+One integration owner handles gameplay/schema/controller/settings/docs; a UI agent owns the menu
+and an independent read-only gameplay review found no blocking defect.
+
+Validation: `npm run build`; `npm test -- --test-reporter=tap` — **1828 total,1819 pass,nine exact
+known failures,0 skips/cancellations**. Failure names AND assertion messages match
+`logs/timing-cleanup/baseline-failures.json`. `node --test --test-reporter=tap
+tests/xr-musical-character.test.mjs tests/xr-menu.test.mjs tests/xr-settings.test.mjs
+tests/xr-controller-regeneration.test.mjs` was run during development; two old hardcoded menu
+coordinate conversions and one new test's missing initial paint were corrected without weakening
+assertions. `node --test tests/xr-menu.test.mjs tests/xr-controller-regeneration.test.mjs`39/39;
+`node --test tests/xr-musical-character.test.mjs`6/6; all55 affected tests pass in the final full run.
+The new motor matrix covers360 difficulty/hand/zone/space/lead combinations with Activity/Variation
+and trusted/untrusted meter, determinism, immutable inputs, pair atomicity and original provenance.
+Missing/gapped/overlapping context, empty/sparse evidence, settings/store/Copy and stale regeneration
+are covered. Historical default goldens remain unchanged. `git diff --check` clean.
+
+Browser automation on the local host: Scienide Musical367 notes/367 arrows/3 pairs, actual Musical
+/ Guarded context (no fallback); Classic/Guarded354/354/0; Classic/Legacy returns824/781/56.
+Menu regeneration reuses the loaded analysis; play/pause, Copy success notice and reload persistence
+pass, no console warnings/errors. Clipboard-tool readback returned a stale pre-T12 report despite
+the success notice; browser clipboard payload is not claimed verified, while pure Copy/report and
+controller routing regressions pass. No audio is uploaded; analysis runs locally in the worker.
+
+Node25.2.1/npm11.6.2, no install/runtime fallback. No Python inference/pytest (no Python changes)
+or physical Quest comfort/FPS test (no connected headset). Menu geometry/ray and desktop browser
+validation do not substitute headset acceptance. Direct diff/independent review used;
+`diff_export.ps1` considered and skipped. Graphify refreshed with AST-only extraction/clustering,
+no LLM backend, semantic corpus or hooks. Actual graph/source/Pages/public-browser receipts belong
+in ignored `logs/t12a/handoff.json`; final deployment rebuilds the committed source.
+
+**Stop for manual acceptance after deployment.** Expect a larger menu and an opt-in playable change,
+not new tonal/vocal recognition. T12 remains partial: source arbitration/fusion and complete
+per-event rejection diagnostics are not delivered. After acceptance, continue the visible T12
+work from this checkpoint; do not restart T11 research or claim unqualified musical identities.
+Wall stays Off; MVP/XR Offscreen pipeline, DSP, source clock and worker contracts stay unchanged.

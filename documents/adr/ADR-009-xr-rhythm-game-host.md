@@ -1477,3 +1477,41 @@ Retain the equivalent Band proposal bucket search and functional regressions. Re
 ## Addendum AV — T11a accepted-event provenance (2026-10-24)
 
 A dependency-light musicEvents contract projects the existing accepted hits into sample/song time with explicit real-window support and engineering uncertainty. It does not detect or retime sound. The analyzer owns publication, the worker transports unchanged, the canonical normalizer validates clock/association and clones. IDs are local to this analysis; no fabricated PCM or instrument identity. Existing BeatEvent meanings, DSP, chart and cache identity stay unchanged. Tonal/vocal unsupported and dominance unknown are enforced, not inferred from heuristic scores. [Scope and remaining T11 work](../features/music-events.md). No new setting, source tree archive or report generator.
+
+## Addendum AW — T12a section-led Musical chart and larger menu (2026-10-25)
+
+The user ended T11 research as a prerequisite to visible gameplay work, retaining its evidence
+and unsupported recognition capabilities. Gameplay owns the opt-in `chartProfile: musical-v1`.
+`RhythmChartSource.sections` carries existing published intervals as plain data; the controller
+uses the captured analysis, never re-analyzes a track for a profile switch. Default/absent/Classic
+retains historical chart goldens. Musical always normalizes to Guarded before lead reflection;
+the final movement guard remains after overhead placement. Selecting Movement Legacy explicitly
+returns to Classic. Selecting Classic alone retains the displayed Movement choice.
+
+Complete finite, contiguous, known-label sections are required. Missing, incomplete, overlapping
+or invalid context falls back to the Classic planner with Guarded movement; the track panel
+reports that fallback. Section boundaries clip phrases, never create or shift a note timestamp.
+Accepted indexed BeatEvents remain the only rhythmic source, including both notes of a pair.
+Grid and automation only organize actual hits. No `musicActivity` or research candidate becomes
+scoring-eligible. Original event IDs/types/times, sidecar attachment and generation publication
+rules remain authoritative.
+
+Intro/break/outro keep a calm vocabulary, mid-row own-side proposals and wider spacing; builds
+develop pulse into rising motifs and tighter spacing; verse and drop/peak use driving/impact
+families. Compatible authored gestures choose an entry within that vocabulary. Activity,
+Variation, hand policy, lead, zone and difficulty still constrain it. Safety may simplify/drop
+proposals, so compact calm positions are an artistic intent, not a replacement motor rule.
+The profile is a player chart policy, not a visual preset parameter. Choreography owns its
+descriptor, persistence, Copy and chart-restart scope alongside the existing controls.
+
+At user request the whole canvas menu grows to 1280×900 and its world-space panel to 1.60×1.125m,
+retaining physical text size and one texture/draw. Nine rows fit with full controls and separate
+header/hint/footer regions; categories stay together without new tabs. Desktop placement fits
+effective camera FOV/aspect/zoom, and a projection change refits an open panel without repainting
+its texture or rebuilding a chart. Headset placement retains the existing 1.3m distance.
+Textures still redraw only on displayed-state changes, and no gameplay/DSP work enters rendering.
+
+T12a is the visible section-character portion of T12. General tonal/vocal/dominance source
+selection and fusion require qualified producers and remain deferred, not inferred from section
+names. Full per-event rejection diagnostics are a later T12 delivery. Physical Quest comfort
+and musical/gameplay acceptance remain manual. [Current evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12a-musical-character-2026-10-25).

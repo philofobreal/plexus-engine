@@ -1,9 +1,14 @@
-# Timed music events (T11 partial)
+# Timed music events (T11 capability record)
 
-Current checkpoint: T11i is a frozen research-only quiet-carrier qualification study. Browser
-production remains exactly T11h: no qualified carrier list or classifier is published to hosts.
-A selective synthetic gate passes while broader authored onset coverage is low; T12 remains
-unstarted. Historical sections below record their original delivery scope.
+Current checkpoint: the user accepted T11i and explicitly ended further T11 research as a
+prerequisite to visible gameplay work. T11 is closed for this delivery phase with limited
+capabilities, not completed as general music recognition. Its frozen studies remain available.
+The analyzer remains exactly T11h; no research classifier is promoted. T12a adds an opt-in
+section-led chart profile using the existing accepted BeatEvents and published sections/plan.
+Tonal/vocal onset recognition, source dominance, background-present qualification and human
+accuracy validation remain deferred. They do not block T12a and must not be claimed as delivered.
+See [current continuation and validation](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12a-musical-character-2026-10-25).
+Historical sections below record their original delivery scope.
 
 ## T11a — traceable accepted events
 
