@@ -1,5 +1,10 @@
 # Timed music events (T11 partial)
 
+Current checkpoint: T11i is a frozen research-only quiet-carrier qualification study. Browser
+production remains exactly T11h: no qualified carrier list or classifier is published to hosts.
+A selective synthetic gate passes while broader authored onset coverage is low; T12 remains
+unstarted. Historical sections below record their original delivery scope.
+
 ## T11a — traceable accepted events
 
 One small additive layer, not a new detector or player switch. Analyzer publishes trackAnalysis.musicEvents; the existing worker transports it and the canonical normalizer validates/clones it against the real feature clock and accepted BeatEvents. Legacy/empty payloads remain valid and keep their old chart. No algorithm-7 math, cache key, accepted-event time/intensity/type, cue, scoring or rendering behavior changes.
@@ -1022,3 +1027,124 @@ These are development findings, not held-out accuracy. Input validation/support/
 provenance were reviewed before final freeze; policy thresholds and verdict logic were unchanged.
 The freeze commit and source hashes precede the first transfer run. No test/model is installed,
 no historical source/result is overwritten and all earlier regressions remain active.
+
+
+### T11i frozen transfer result and interpretation
+
+Freeze commit `8cd5c994d16943c6afd08df8f507cb224e3bf986` and both study-source hashes were
+recorded before the first transfer evaluation. `logs/t11i/qualification-final.json` records
+all576 cases, unchanged source hashes, PCM identities, supports, verdicts and metrics. No
+threshold/eligibility tuning followed transfer. The transfer changes parameters within the
+same generator families; it is not an independent musical validation set.
+
+| Split | Cases | Clean target events | Context-only protected FP | Fit protected FP | All target TP/FP/FN |
+|---|---|---|---|---|---|
+| Development16kHz |192 |36/36 |18 |0 |48/0/54 |
+| Parameter-transfer22.05/48kHz |384 |72/72 |18 |0 |96/0/108 |
+
+The fitted rule has target precision1.0 and recall48/102=96/204=47.1% across the declared
+qualification references, not universal recall. Across **all** authored tonal starts, coverage
+is48/168=96/336=28.6%; short/slow/clipped/already-active and close mixture starts still lack
+coverage. Clean p95 absolute threshold-crossing errors are0.0625 ms development and0.0454 ms
+transfer; these generated-signal numbers are not real-music timing accuracy. Raw-attack
+abstention is72.4%/73.5%. Protected FP/min is zero on the declared controls only.
+
+The18 context-only FPs in each split are close impulse/noise-then-tone association failures.
+Context-v0 is a research comparator created for this study, not earlier production behavior.
+The fitted rule rejects those candidates rather than reassigning them to an unproven later
+onset; the missed true tone entries remain false negatives. Same/near-band ambiguity permits
+an observed carrier but never adds a latent source boundary to the audible reference list.
+The same-band waveform is byte-identical to a single carrier, explicitly tested to prevent
+an observationally impossible identity claim. General source ownership/vocal/note inference
+remains unsupported.
+
+Independent read-only review found and fixed PCM validation, actual consumed support and latent
+handoff provenance before freeze. New regression cases cover NaN/Infinity/headroom/Float64,
+clock mismatch, unsupported algorithms/layers, empty/duplicate splits, mutation/determinism,
+interruption/censoring, support extent and indistinguishable handoffs. Prior source/outputs and
+the development draft remain retained; no golden/result file or earlier regression is removed.
+
+`logs/t11i/production-parity.json` proves all389 production build-input paths and bytes match
+the accepted T11h release. No application DSP, frame work, packet, runtime dependency, menu,
+storage, Copy or cache behavior changes. This research module is never imported by the browser.
+No new player control or preset parameter is applicable. The guarded deployment still publishes
+the exact reviewed HEAD, including its new release provenance. Wall Off and both Offscreen
+paths remain intact. This delivery is a measured prerequisite, not promotion of its selector.
+
+Full validation, three-recording characterization and release receipt follow after completion.
+The runner retains every old corpus/control and every Git-identified producer, additionally
+asserting the entire production result equals T11h on the3 recordings. New qualification there
+has null accuracy/precision/recall because recorded class labels are missing. The old warm
+T11g/h timing comparison remains historical diagnostic output; it cannot measure a T11i
+production overhead when no production input changed.
+
+
+### T11i cumulative checks and navigation
+
+`npm run build` passes (`logs/t11i/build-final.log`), with the unchanged large-chunk warning.
+`node --test --test-name-pattern="quiet-carrier research|latent same-band" tests/music-activity.test.mjs`
+passes3/3 boundary/provenance tests. After adding the frozen full-study regression,
+`npm test -- --test-reporter=tap` runs1820 tests:1811 pass, nine failures, zero skips/cancellations,
+345.115 s. All1816 predecessor tests remain active. Every failure name AND assertion message
+exactly matches `logs/timing-cleanup/baseline-failures.json`; verification is retained in
+`logs/t11i/failure-comparison.json`. No golden/source-evolution manifest or historical result
+is rewritten. The same576-case study is executed in the cumulative regression.
+
+A development provenance check confirms all192 PCM identities, qualification references,
+policy thresholds and verdict/reason pairs agree before versus after review; only support/latent
+annotation bookkeeping was corrected before freeze (`logs/t11i/development-provenance-comparison.json`).
+The initial draft remains retained and is not used as the final provenance record.
+
+Node25.2.1/npm11.6.2, no runtime fallback or dependency installation. No changed Python inference
+code/model runtime, so Python inference/pytest are not run; no physical Quest is attached.
+Independent read-only analyzer review approved the corrected study. Direct Git diff/review is
+used instead of optional `diff_export.ps1`. `git diff --check` passes. Public HTTP route/file verification follows deployment. XR/MVP UI smoke is not repeated
+if all54 built artifacts are byte-identical to accepted T11h: all389 production build inputs
+already match, the full recording analyses are exact and shared cumulative coverage stays active. No new runtime performance result is inferred.
+
+Graphify full local code-only extraction covers891 files,8353 nodes and20092 raw edges;
+clustering yields17611 canonical edges and zero dangling endpoints. Both research selector
+and study symbols resolve to their actual source. Raw AST is retained before clustering. No
+semantic/LLM extraction, backend/hooks/global graph or visualization is created; generated
+navigation artifacts remain ignored.
+
+The three-recording command remains the existing exclusive-output runner:
+`node research/analyzer-lab/diagnostics/measure-music-activity.mjs --audio-dir "C:/novy/Plexus Engine (VJ System)/plexus-engine/tests/audio/Prodigy" --output logs/t11i/measurement-final.json`.
+It reruns every previous control alongside the frozen study and Git-identified production
+comparisons. First transfer source/commit provenance lives in `logs/t11i/freeze.json` and
+`qualification-final.json`; the final full runner must reproduce the same study exactly.
+
+
+### T11i final recording characterization and handoff
+
+The full runner completes with11 unchanged delivery-source hashes and exactly reproduces all576
+frozen study rows/metrics. All earlier39 activity/45 entry/30 band/16 context/90 attack-change
+and40 periodicity controls remain active, plus the Git-retained producer comparisons. Every
+production analysis value on all3 complete recordings is exactly T11h, not merely chart counts.
+The current rule/corpus hashes still equal the pre-transfer freeze.
+
+| Recording | Energy attacks | Existing spectral entries | Quiet candidates | Research-qualified |
+|---|---|---|---|---|
+| Goa |2341 |9 |0 |0 |
+| No Good |2385 |26 |1 |0 |
+| Scienide |1536 |3 |1 |0 |
+
+No Good and Scienide each have one quiet candidate; their recorded reasons are retained in
+`logs/t11i/measurement-summary.json`. **None is research-qualified across these recordings.**
+No recorded precision/recall/accuracy is invented; labels are unavailable and all9 prior decoder
+identity mismatches remain abstentions. No external model inference is performed. The narrow
+quiet-prefix gate is insufficient for these continuous mixtures and is not promoted.
+
+The next bounded T11 step must address background-present candidates and attribution/coverage,
+using the existing spectral-entry evidence as a candidate source with independently checked
+negative/transfer examples. Do not add more quiet-prefix metadata, widen this rule by fitting
+these three recordings, or promote a zero-coverage selector into the chart. Source/offset/role
+and vocal identity remain unresolved. T11 stays partial and T12 is not started.
+
+Commit sequence: freeze study/source before transfer (`8cd5c99`), retain/test qualification
+behavior (`d1ed2c8`), then final documentation. Push the branch and run the guarded exact-source
+publisher (`release-pages.mjs prepare t11i-carrier-study`, `publish`, `verify`). Before public
+handoff compare all54 built-file hashes with the accepted T11h artifact; unchanged application
+artifacts permit HTTP-only verification without repeating the accepted UI smoke. Store actual
+source/Pages/input/artifact receipts and manual pause in `logs/t11i/handoff.json` and the
+workspace status file. No master merge or new PR is included in this task.

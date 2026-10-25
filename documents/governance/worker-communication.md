@@ -369,3 +369,10 @@ measurement, then binds v2 support to that selected sample. Legacy `attack-local
 always uses the legacy sample and remains accepted by normalization and the strict result schema.
 No new field, message, chart eligibility, player switch or render-time processing is added.
 See [T11h contract](../features/music-events.md#t11h---crossing-anchored-short-spectral-change-2026-10-25).
+
+
+T11i quiet-carrier qualification lives only in the analyzer-lab diagnostic runner. Its research
+records are not part of TrackAnalysis, requests, responses or render prepare messages. A
+synthetic qualification gate does not authorize chart promotion or transport-schema expansion.
+Current browser publication and render projection remain T11h unchanged; see the
+[T11i research scope](../features/music-events.md#t11i---frozen-quiet-carrier-qualification-study-2026-10-25).

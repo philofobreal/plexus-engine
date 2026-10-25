@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-25 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T11h crossing-anchored short spectra validated; deployment/manual handoff below; T11 partial; T12 not started.** Existing MVP/XR Offscreen rendering stays intact. [Current T11 scope and validation](../features/music-events.md#t11h---crossing-anchored-short-spectral-change-2026-10-25). [Previous merged review](xr-review-checkpoint.md).
+**T11i research qualification validated; no runtime promotion; deployment/manual handoff below; T11 partial; T12 not started.** Existing MVP/XR Offscreen rendering stays intact. [Current T11 scope and validation](../features/music-events.md#t11i---frozen-quiet-carrier-qualification-study-2026-10-25). [Previous merged review](xr-review-checkpoint.md).
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -57,7 +57,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T08 | Gameplay + XR: note meanings and bounded halos | T02, T07 fit | Accepted by user continuation on 2026-10-24, deployed 2bd7cc0. Three optional musical roles. [Evidence](xr-musical-roles-validation.md) |
 | T09 | Gameplay + input/render: playable hand policy and motion | T08 | Accepted by user; Guarded optional, Legacy default. [Evidence](xr-movement-validation.md) |
 | T10 | Analyzer timing cleanup | T00-T01 | Rejected experiments removed at user request; established XR path and equivalent Band search retained. Accuracy beyond available evidence remains unproven. [Record](xr-timing-cleanup.md) |
-| T11 | Analyzer contracts: timed evidence and dominance | Stable T10 clock/evidence boundary | T11a-g retained except explicitly versioned short spectra. T11h v2 uses qualified quiet crossings; all45 late-addition pairs retain numeric measurements, including11 retargeted legacy IDs. Full1816/1807 pass/nine exact baseline failures; two source-stable3-recording comparisons retain all other values. Repeat offline elapsed+2.46%..+4.00%; no new render work. Graphify updated. T11 partial, no T12; manual pause after deploy. [Scope](../features/music-events.md) |
+| T11 | Timed evidence and qualification | Stable T10 clock/evidence boundary | T11i frozen research-only carrier gate: clean36/36 +72/72, protectedFP0 vsresearch context18/18; targetrecall47.1%, all-authored tonal coverage28.6%. No qualified events on3 full recordings; every production value exactT11h; all389 build inputs unchanged. Full1820/1811 pass/nine exact known failures. No chart/runtime promotion; T11 partial, no T12. Next background-present qualification; manual pause after deploy. [Scope](../features/music-events.md) |
 | T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09-T11 | Planned; legacy path retained |
 | T13 | Analyzer + automation + semantics: cue and visual arrival timing | T10; T11 additive | Planned |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
@@ -518,7 +518,7 @@ precede the manual pause; actual receipts belong in logs/t11g/handoff.json. T11 
 No new player switch or render-frame DSP; Wall Off and MVP/XR Offscreen remain intact.
 
 
-## Current continuation checkpoint - T11h short-spectrum anchoring, 2026-10-25
+## Historical checkpoint - T11h short-spectrum anchoring, 2026-10-25
 
 T11g accepted. T11h upgrades the existing short-spectrum sidecar to v2, using qualified quiet
 crossings and retaining legacy fallback. All45 later-addition pairs preserve support and numeric
@@ -535,3 +535,22 @@ with quiet-prefix sustained-tonal controls and DC/AM/glide/legato/slow-rise/near
 Record event precision/recall, per-class confusion, abstention and transfer coverage before any
 production classification or T12 promotion. Keep safe legacy fallback; this correction alone
 does not establish instrument/vocal identity.
+
+
+## Current continuation checkpoint - T11i quiet-carrier study, 2026-10-25
+
+T11h accepted. Research-only classifier and corpus are frozen at8cd5c99 before transfer.
+192 development/384 same-family parameter-transfer controls: clean36/36 and72/72; protected
+FP0 instead of research context-only18/18. All-target recall47.1%, all authored tonal-start
+coverage28.6%, not general music recognition. No production input/public schema/host consumer
+changes; all389 build inputs exactly match T11h. Parent owns study/evaluation/docs; independent
+review fixes precede freeze. [Study](../features/music-events.md#t11i---frozen-quiet-carrier-qualification-study-2026-10-25).
+
+Build passes; full1820/1811 pass/nine exact known failures, zero skips/cancellations. Final
+11-hash-stable runner reproduces all576 study cases and every T11h value on3 full recordings,
+with zero research-qualified events. Final documentation commit, push and guarded deploy follow. Store actual source/Pages/browser receipts in logs/t11i/handoff.json.
+Then stop for manual acceptance. T11 remains partial and T12 unstarted: selective synthetic
+qualification is not sufficient for musical event/role promotion. Next qualify background-present candidates from existing spectral-entry evidence with
+independently checked attribution/negative/transfer support; do not keep extending a quiet-only
+selector that has zero coverage on these recordings or promote it into gameplay; do not replace missing evidence with another data envelope. Wall stays Off and
+MVP/XR Offscreen code is unchanged.
