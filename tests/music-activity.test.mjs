@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { createLoader } from './helpers/xr-loader.mjs';
-import { activityFixture, ACTIVITY_KINDS, ACTIVITY_TUPLES } from './fixtures/music-activity-corpus.mjs';
+import { activityFixture, ACTIVITY_KINDS, ACTIVITY_TUPLES, entryFixture, ENTRY_KINDS, ACTIVITY_V1_SHA256 } from './fixtures/music-activity-corpus.mjs';
 const load = createLoader({}, { Float32Array, Float64Array, Uint32Array, Int32Array });
 const { MusicActivity } = load('analyzer/MusicActivity.ts');
 const { FeatureExtractor } = load('analyzer/FeatureExtractor.ts');
@@ -169,6 +170,96 @@ test('sparse/dense impulses, truncated windows and low-resolution clocks always 
                 const bad = json(r); bad.attacks[0].family = 'tonal';
                 assert.equal(normalizeAcousticActivity(bad, bad.clock), undefined);
             }
+        }
+    }
+});
+
+
+test('spectral entries recover quiet additions over a tonal carrier without changing energy attacks', () => {
+    for (const kind of ENTRY_KINDS) {
+        const f = entryFixture(kind), r = extract(f);
+        assert.ok(normalizeAcousticActivity(r, r.clock), kind);
+        const entries = r.spectralEntries.candidates;
+        assert.equal(entries.length, f.expectedEntries.length, kind);
+        if (f.expectedEntries.length) {
+            assert.equal(r.attacks.length, 0, 'the quiet addition is absent from the legacy energy-rise list');
+            for (let i = 0; i < entries.length; i++) {
+                assert.ok(entries[i].prefixSamples[1] <= entries[i].sampleIndex);
+                assert.ok(Math.abs(entries[i].time - f.attacks[i]) <= 512 / f.sampleRate + .004, kind + ' ' + entries[i].time);
+            }
+            assert.equal(entries[0].texture, kind !== 'soft-noise-hit' ? 'tonal' : 'broadband');
+        }
+    }
+});
+
+
+test('spectral-entry frozen transfer controls preserve quiet entries and reject carrier modulation/replacement', () => {
+    for (const tuple of ACTIVITY_TUPLES.transfer) for (const kind of ENTRY_KINDS) {
+        const f = entryFixture(kind, tuple), r = extract(f, 1024), entries = r.spectralEntries.candidates;
+        assert.ok(normalizeAcousticActivity(r, r.clock), kind);
+        assert.equal(entries.length, f.expectedEntries.length, `${tuple.sampleRate}/${kind}`);
+        for (let i = 0; i < entries.length; i++) assert.ok(Math.abs(entries[i].time - f.attacks[i]) <= 1024 / f.sampleRate + .004, `${kind}:${entries[i].time}`);
+    }
+});
+
+test('entry support, prefix-only model, DC/gain invariance, complete-tail and legacy publication contracts', () => {
+    const f = entryFixture('soft-tone'), baseline = extract(f), original = json(baseline.spectralEntries.candidates[0]);
+    for (const gain of [.5, 2]) for (const dc of [0, .4, -1]) {
+        const samples = Float32Array.from(f.samples, x => x * gain + dc), r = extract({ ...f, samples });
+        assert.ok(normalizeAcousticActivity(r, r.clock)); assert.equal(r.spectralEntries.candidates.length, 1);
+        assert.equal(r.spectralEntries.candidates[0].texture, original.texture);
+        assert.ok(Math.abs(r.spectralEntries.candidates[0].time - .7) <= .036);
+    }
+    const changed = f.samples.slice();
+    for (let i = Math.round(1.3 * f.sampleRate); i < changed.length; i++) changed[i] = .8 * Math.sin(i * .7);
+    assert.deepEqual(json(extract({ ...f, samples: changed }).spectralEntries.candidates[0]), original, 'future PCM cannot train/alter earlier prefix evidence');
+    const legacy = json(baseline); delete legacy.spectralEntries;
+    assert.deepEqual(json(normalizeAcousticActivity(legacy, legacy.clock)), legacy);
+    const normal = normalizeAcousticActivity(baseline, baseline.clock); normal.spectralEntries.candidates[0].bodySamples[0]++;
+    assert.notDeepEqual(json(normal), json(baseline));
+    for (const mutate of [x => x.algorithm = 'oracle', x => x.confidence = .99, x => x.xrScoring = 'eligible',
+        x => x.candidates[0].prefixSamples[0]++, x => x.candidates[0].bodySamples[1]++, x => x.candidates[0].supportSamples[0]++,
+        x => x.candidates[0].sampleIndex++, x => x.candidates[0].decisionSample--,
+        x => x.candidates[0].positivePowerFraction = 1.1, x => x.candidates[0].carrierPowerRatio = .5,
+        x => x.candidates[0].backgroundResidualFraction = NaN, x => x.candidates[0].texture = 'vocals']) {
+        const bad = json(baseline); mutate(bad.spectralEntries); assert.equal(normalizeAcousticActivity(bad, bad.clock), undefined);
+    }
+});
+
+
+test('T11b output digest remains exact and prior corpus receives no duplicate spectral candidates', () => {
+    const digest = createHash('sha256');
+    for (const kind of ACTIVITY_KINDS) {
+        const r = extract(activityFixture(kind));
+        assert.equal(r.spectralEntries.candidates.length, 0, kind);
+        delete r.spectralEntries; digest.update(JSON.stringify(r));
+    }
+    assert.equal(digest.digest('hex'), ACTIVITY_V1_SHA256);
+});
+
+
+test('real worker carries positive masked-entry evidence with the original request identity', () => {
+    const messages = [], self = { postMessage: m => messages.push(m) };
+    createLoader({}, { self, Float32Array, Float64Array })('audio/analyzer.worker.ts');
+    const f = entryFixture('soft-tone');
+    self.onmessage({ data: { samples: f.samples.buffer, sampleRate: f.sampleRate, requestId: 40 } });
+    const message = messages.find(m => m.type === 'analysis_done' && m.requestId === 40);
+    assert.ok(message); assert.equal(message.trackAnalysis.musicActivity.spectralEntries.candidates.length, 1);
+    const normalized = load('analyzer/normalizeAnalysisResult.ts').normalizeTrackAnalysis(message.trackAnalysis, message.bpm, message.events);
+    assert.deepEqual(json(normalized.musicActivity.spectralEntries), json(message.trackAnalysis.musicActivity.spectralEntries));
+});
+
+
+test('quiet-entry timing survives five subwindow phases at each supported regression clock', () => {
+    for (const tuple of [...ACTIVITY_TUPLES.development, ...ACTIVITY_TUPLES.transfer]) {
+        const f = entryFixture('soft-tone', tuple), hop = tuple.sampleRate === 16000 ? 512 : 1024;
+        for (const fraction of [0, .125, .375, .625, .875]) {
+            const shift = Math.round(hop * fraction), samples = new Float32Array(f.samples.length);
+            samples.set(f.samples.subarray(0, f.samples.length - shift), shift);
+            const r = extract({ ...f, samples }, hop), entries = r.spectralEntries.candidates;
+            assert.equal(entries.length, 1, `${tuple.sampleRate}/${fraction}`);
+            assert.ok(Math.abs(entries[0].time - (.7 + shift / tuple.sampleRate)) <= hop / tuple.sampleRate + .004);
+            assert.ok(normalizeAcousticActivity(r, r.clock));
         }
     }
 });

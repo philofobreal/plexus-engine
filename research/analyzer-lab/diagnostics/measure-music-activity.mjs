@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rolldown } from 'rolldown';
 import { createLoader } from '../../../tests/helpers/xr-loader.mjs';
-import { activityFixture, ACTIVITY_KINDS, ACTIVITY_TUPLES } from '../../../tests/fixtures/music-activity-corpus.mjs';
+import { activityFixture, ACTIVITY_KINDS, ACTIVITY_TUPLES, entryFixture, ENTRY_KINDS } from '../../../tests/fixtures/music-activity-corpus.mjs';
 import { renderPitchFixture } from '../../../tests/fixtures/pitch-candidate-corpus.mjs';
 
 const hash = b => createHash('sha256').update(b).digest('hex');
@@ -44,6 +44,14 @@ export async function measureMusicActivity(audioDir) {
     }
     // Exact synthetic PCM, original dual-provider periodicity agreement. This is a cross-tab,
     // not onset/offset truth: periodicity votes cannot establish note/source identity.
+    const entryControls = [];
+    for (const [split, tuples] of Object.entries(ACTIVITY_TUPLES)) for (const tuple of tuples) for (const kind of ENTRY_KINDS) {
+        const f = entryFixture(kind, tuple), hop = split === 'development' ? 512 : 1024, r = activity(f.samples, f.sampleRate, hop);
+        const candidates = r.spectralEntries.candidates;
+        entryControls.push({ split, kind, tuple, hopSize: hop, pcmSha256: hash(bytes(f.samples)), durationSeconds: f.samples.length / f.sampleRate, coverage: f.coverage,
+            toleranceSeconds: hop / f.sampleRate + .004, ...timing(candidates.map(c => c.time), f.attacks, hop / f.sampleRate + .004),
+            legacyEnergyAttacks: r.attacks.length, candidates });
+    }
     const periodicity = [];
     for (const split of ['development', 'transfer']) {
         const path = `research/analyzer-lab/fixtures/an04b-${split === 'transfer' ? 'transfer-frozen' : 'development-01'}.json`, prior = JSON.parse(readFileSync(path));
@@ -56,18 +64,20 @@ export async function measureMusicActivity(audioDir) {
         }
     }
     const prior = JSON.parse(readFileSync('research/analyzer-lab/fixtures/an03f-dual-prodigy-01.json'));
-    async function bundledAnalyzer(legacy) {
-        const bundle = await rolldown({ input: 'src/analyzer/analyzeAudio.ts', plugins: legacy ? [{
+    async function bundledAnalyzer(mode) {
+        const bundle = await rolldown({ input: 'src/analyzer/analyzeAudio.ts', plugins: mode === 'legacy' ? [{
             name: 'legacy-no-activity', resolveId(id) { if (id === './MusicActivity') return '\0legacy'; },
             load(id) { if (id === '\0legacy') return 'export class MusicActivity { observe() {} finish() { return undefined; } }'; }
-        }] : [] });
+        }] : mode === 't11b' ? [{ name: 'retained-t11b-activity', load(id) {
+            if (id.replaceAll('\\', '/').endsWith('/analyzer/MusicActivity.ts')) return { code: execFileSync('git', ['show', 'a1a0eaa63f143f9fa374d9c03f89a18f2c4dddb5:src/analyzer/MusicActivity.ts'], { encoding: 'utf8', windowsHide: true }), moduleType: 'ts' };
+        } }] : [] });
         try {
             const result = await bundle.generate({ format: 'esm' });
             const module = await import('data:text/javascript;base64,' + Buffer.from(result.output[0].code).toString('base64'));
             return module.analyzeAudio;
         } finally { await bundle.close(); }
     }
-    const current = await bundledAnalyzer(false), legacy = await bundledAnalyzer(true);
+    const current = await bundledAnalyzer('current'), legacy = await bundledAnalyzer('legacy'), t11b = await bundledAnalyzer('t11b');
     const { assessAcousticOnsets } = load('semantics/acousticEvidence.ts');
     const recorded = [];
     for (const file of readdirSync(audioDir).filter(f => /\.mp3$/i.test(f)).sort()) {
@@ -80,6 +90,8 @@ export async function measureMusicActivity(audioDir) {
         console.log(JSON.stringify({ file, phase: 'full-analysis-parity', seconds: samples.length / fs }));
         const old = legacy(input), fresh = current(input), layer = fresh.trackAnalysis.musicActivity;
         assert.ok(normalizeAcousticActivity(layer, layer.clock));
+        const previousLayer = t11b(input).trackAnalysis.musicActivity, coreLayer = { ...layer }; delete coreLayer.spectralEntries;
+        assert.deepEqual(coreLayer, previousLayer, 'Entire T11b evidence remains exact');
         delete fresh.trackAnalysis.musicActivity; delete old.trackAnalysis.musicActivity;
         assert.deepEqual(fresh, old, 'Every legacy numeric/event/chart input stays exact');
         const comparisons = references.map(r => {
@@ -95,21 +107,21 @@ export async function measureMusicActivity(audioDir) {
         });
         // Alternating warm paired runs, 20 s excerpt; elapsed wall time includes all analyzer DSP.
         const excerpt = samples.slice(Math.round(samples.length * .45), Math.round(samples.length * .45) + 20 * fs);
-        const request = { samples: excerpt, sampleRate: fs }, milliseconds = { legacy: [], activity: [] };
-        legacy(request); current(request);
-        for (let i = 0; i < 5; i++) for (const key of i % 2 ? ['activity', 'legacy'] : ['legacy', 'activity']) {
-            const start = performance.now(); (key === 'legacy' ? legacy : current)(request); milliseconds[key].push(performance.now() - start);
+        const request = { samples: excerpt, sampleRate: fs }, milliseconds = { t11b: [], t11c: [] };
+        t11b(request); current(request);
+        for (let i = 0; i < 5; i++) for (const key of i % 2 ? ['t11c', 't11b'] : ['t11b', 't11c']) {
+            const start = performance.now(); (key === 't11b' ? t11b : current)(request); milliseconds[key].push(performance.now() - start);
         }
         recorded.push({ file, fileSha256: hash(readFileSync(path)), decodedPcmSha256: decoded, sampleRate: fs, sampleCount: samples.length,
-            legacyExact: true, activity: layer.activity.length, attacks: layer.attacks.length, dominance: layer.dominance.length,
+            legacyExact: true, t11bExact: true, spectralEntries: layer.spectralEntries.candidates.length, activity: layer.activity.length, attacks: layer.attacks.length, dominance: layer.dominance.length,
             payloadBytes: Buffer.byteLength(JSON.stringify(layer)), comparisons, milliseconds,
-            medianOverheadPercent: (median(milliseconds.activity) / median(milliseconds.legacy) - 1) * 100,
+            medianOverheadPercent: (median(milliseconds.t11c) / median(milliseconds.t11b) - 1) * 100,
             groundTruth: null, accuracy: null });
         console.log(JSON.stringify(recorded.at(-1)));
     }
     for (const [p, digest] of Object.entries(sourceHashes)) assert.equal(hash(readFileSync(p)), digest, 'Source changed during measurement');
-    return { protocol: 't11b-acoustic-activity-1', node: process.version, decoder: execFileSync('ffmpeg', ['-version'], { encoding: 'utf8' }).split('\n')[0],
-        sourceHashScope: 'delivery files only; full unchanged dependencies belong to the source commit', sourceHashes, analyzerExecution: 'Vite dependency rolldown ESM bundles; no VM wrapper in CPU comparison', authored, periodicity, recorded, modelRerun: false, recordedGroundTruth: null,
+    return { protocol: 't11c-tonal-carrier-entry-1', node: process.version, decoder: execFileSync('ffmpeg', ['-version'], { encoding: 'utf8' }).split('\n')[0],
+        sourceHashScope: 'delivery files only; full unchanged dependencies belong to the source commit', sourceHashes, analyzerExecution: 'Vite dependency rolldown ESM bundles; no VM wrapper in CPU comparison', authored, entryControls, periodicity, recorded, modelRerun: false, recordedGroundTruth: null,
         noteSourceVocalRecognition: 'unsupported', performanceScope: 'offline Node elapsed analyzer wall time, not process CPU time, browser frame rate or physical Quest' };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

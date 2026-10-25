@@ -17,6 +17,13 @@ export class MusicActivity {
     private readonly peakPower = new Float64Array(6);
     private readonly textureAvailable: boolean;
     private readonly windowSpectrum: FFT;
+    private readonly history: Float64Array[];
+    private readonly historyPeaks = Array.from({ length: 3 }, () => new Int32Array(6));
+    private readonly currentPeaks = new Int32Array(6);
+    private readonly entrySpectrum: Float64Array;
+    private readonly hannPower: number;
+    private readonly entryFrames: { frame: number; texture: AcousticTexture; fraction: number; retained: number; bins: number[]; carrier: number }[] = [];
+    private stamp = 0;
     private count = 0;
     // AC RMS floor = 1e-5 amplitude (-100 dBFS); no per-track quantile amplification.
     private static readonly FLOOR_POWER = 1e-10;
@@ -31,6 +38,9 @@ export class MusicActivity {
         this.spectrum = new Float64Array(hopSize / 2); this.marks = new Uint32Array(hopSize / 2);
         this.textureAvailable = hopSize >= 512 && hopSize / sampleRate >= .015;
         this.windowSpectrum = this.hannSpectrum(hopSize);
+        this.history = Array.from({ length: 3 }, () => new Float64Array(hopSize / 2));
+        this.entrySpectrum = new Float64Array(hopSize / 2);
+        this.hannPower = this.windowSpectrum.window.reduce((s, w) => s + w * w, 0);
     }
 
     private hannSpectrum(valid: number): FFT {
@@ -41,9 +51,10 @@ export class MusicActivity {
 
     /** Synchronous read-only observer; FFT arrays remain owned by FeatureExtractor. */
     observe(start: number, re: Float32Array, im: Float32Array): void {
-        const { hopSize, sampleCount } = this.clock, index = this.count++;
+        const { hopSize, sampleCount } = this.clock, index = this.count;
         if (index >= this.power.length || start !== index * hopSize || re.length !== hopSize || im.length !== hopSize)
             throw new Error('Music activity spectrum clock mismatch');
+        this.count++;
         const end = Math.min(sampleCount, start + hopSize);
         let mean = 0, m2 = 0;
         for (let i = start; i < end; i++) {
@@ -59,10 +70,25 @@ export class MusicActivity {
             const p = (re[k] - mean * window.re[k]) ** 2 + (im[k] - mean * window.im[k]) ** 2;
             this.spectrum[k] = p; total += p;
         }
+        this.concentration[index] = this.concentrated(this.spectrum, total);
+        this.currentPeaks.set(this.peakBins);
+        for (let j = this.entryFrames.length - 1; j >= 0 && index - this.entryFrames[j].frame <= 2; j--) {
+            const e = this.entryFrames[j];
+            let body = 0;
+            for (const bin of e.bins) body += this.spectrum[bin];
+            e.retained = Math.min(e.retained, body / e.carrier);
+        }
+        this.observeEntry(index, end - start === hopSize, total);
+        this.history[index % 3].set(this.spectrum);
+        this.historyPeaks[index % 3].set(this.currentPeaks);
+    }
+
+    private concentrated(spectrum: Float64Array, total: number): number {
+        this.stamp++;
         this.peakBins.fill(-1); this.peakPower.fill(-1);
-        for (let k = 1; k < this.spectrum.length; k++) {
-            const p = this.spectrum[k];
-            if (p <= (this.spectrum[k - 1] ?? 0) || p < (this.spectrum[k + 1] ?? 0) || p <= this.peakPower[5]) continue;
+        for (let k = 1; k < spectrum.length; k++) {
+            const p = spectrum[k];
+            if (p <= (spectrum[k - 1] ?? 0) || p < (spectrum[k + 1] ?? 0) || p <= this.peakPower[5]) continue;
             let at = 5;
             while (at > 0 && p > this.peakPower[at - 1]) {
                 this.peakPower[at] = this.peakPower[at - 1]; this.peakBins[at] = this.peakBins[at - 1]; at--;
@@ -71,12 +97,50 @@ export class MusicActivity {
         }
         let concentrated = 0;
         for (const bin of this.peakBins) if (bin >= 0) {
-            for (let k = Math.max(1, bin - 1); k <= Math.min(this.spectrum.length - 1, bin + 1); k++) {
-                if (this.marks[k] === this.count) continue;
-                this.marks[k] = this.count; concentrated += this.spectrum[k];
+            for (let k = Math.max(1, bin - 1); k <= Math.min(spectrum.length - 1, bin + 1); k++) {
+                if (this.marks[k] === this.stamp) continue;
+                this.marks[k] = this.stamp; concentrated += spectrum[k];
             }
         }
-        this.concentration[index] = total > 0 ? Math.min(1, concentrated / total) : 0;
+        return total > 0 ? Math.min(1, concentrated / total) : 0;
+    }
+
+    /** Conservative extra proposals over a stable tonal carrier, not arbitrary mixture separation.
+     * Background uses observed prefix only. Three spectra are a fixed ring, never a spectrogram.
+     */
+    private observeEntry(frame: number, full: boolean, total: number): void {
+        if (!full || !this.textureAvailable || frame < 3 || total <= 0) return;
+        let low = Infinity, high = 0;
+        for (let i = frame - 3; i < frame; i++) {
+            if (this.concentration[i] < .8 || this.power[i] <= MusicActivity.FLOOR_POWER) return;
+            low = Math.min(low, this.power[i]); high = Math.max(high, this.power[i]);
+        }
+        if (high > low * 1.2) return;
+        const baseline = this.history[frame % 3], delta = this.entrySpectrum;
+        delta.fill(0);
+        let peak = 0;
+        for (const p of baseline) peak = Math.max(peak, p);
+        let originalCarrier = 0, currentCarrier = 0, novelty = 0;
+        for (let k = 1; k < delta.length; k++) {
+            let occupied = false;
+            for (let n = Math.max(1, k - 2); n <= Math.min(delta.length - 1, k + 2); n++)
+                if (baseline[n] >= peak * .02) { occupied = true; break; }
+            if (occupied) { originalCarrier += baseline[k]; currentCarrier += this.spectrum[k]; }
+            else { delta[k] = Math.max(0, this.spectrum[k] - 4 * baseline[k]); novelty += delta[k]; }
+        }
+        const retained = originalCarrier > 0 ? currentCarrier / originalCarrier : 0;
+        // Reject replacement/legato/cutoff: the previously observed carrier must survive.
+        if (retained < .8 || novelty < total * .005) return;
+        const hop = this.clock.hopSize;
+        // Parseval scale is used only as an absolute floor, never calibrated source loudness.
+        if (2 * novelty / (hop * this.hannPower) <= MusicActivity.FLOOR_POWER) return;
+        const bins: number[] = [];
+        for (const peakBin of this.historyPeaks[frame % 3]) if (peakBin >= 0 && baseline[peakBin] >= peak * .02)
+            for (let k = Math.max(1, peakBin - 2); k <= Math.min(delta.length - 1, peakBin + 2); k++) if (!bins.includes(k)) bins.push(k);
+        const carrier = bins.reduce((sum, bin) => sum + baseline[bin], 0);
+        if (carrier <= 0) return;
+        const family = texture(this.concentrated(delta, novelty));
+        this.entryFrames.push({ frame, texture: family, fraction: novelty / total, retained, bins, carrier });
     }
 
     finish(): AcousticActivityLayer {
@@ -118,7 +182,65 @@ export class MusicActivity {
         }
         if (start >= 0) this.addActivity(result, start * hop, length, true);
         this.dominance(result);
+        result.spectralEntries = { algorithm: 'tonal-carrier-entry-v1', confidence: null,
+            consumerUse: 'signal-evidence-only', xrScoring: 'ineligible', candidates: [] };
+        let lastEntry = -Infinity, span = 0;
+        for (const e of this.entryFrames) {
+            const anchor = e.frame * hop;
+            if ((e.frame + 3) * hop > length || e.retained < .8 || anchor - lastEntry < .15 * fs) continue;
+            while (span < result.activity.length && result.activity[span].endSample <= anchor) span++;
+            if (span >= result.activity.length) continue;
+            const a = this.entryTime(e.frame, Math.max(result.activity[span].startSample, lastEntry + Math.ceil(.15 * fs)));
+            if (!a) continue;
+            const low = Math.min((e.frame - 3) * hop, a.sampleIndex - .06 * fs), high = Math.max((e.frame + 1) * hop, a.sampleIndex + .06 * fs);
+            // Raw frame proposals can localize out of order before acceptance/refractory.
+            // Search independently; an advanced cursor could miss a prior energy duplicate.
+            let energy = 0, right = result.attacks.length;
+            while (energy < right) {
+                const middle = (energy + right) >>> 1;
+                if (result.attacks[middle].sampleIndex < low) energy = middle + 1; else right = middle;
+            }
+            if (energy < result.attacks.length && result.attacks[energy].sampleIndex <= high) continue;
+            result.spectralEntries.candidates.push({ id: `entry:${a.sampleIndex}`, sampleIndex: a.sampleIndex,
+                time: a.sampleIndex / fs, observationFrame: e.frame,
+                prefixSamples: [(e.frame - 3) * hop, anchor - hop],
+                bodySamples: [anchor, (e.frame + 3) * hop], decisionSample: (e.frame + 3) * hop,
+                supportSamples: [(e.frame - 3) * hop, (e.frame + 3) * hop],
+                texture: e.texture, positivePowerFraction: e.fraction, carrierPowerRatio: e.retained,
+                backgroundResidualFraction: a.fitFraction });
+            lastEntry = a.sampleIndex;
+        }
         return result;
+    }
+
+    private entryTime(frame: number, lower: number): { sampleIndex: number; fitFraction: number } | null {
+        const { hopSize: hop, sampleRate: fs, sampleCount: length } = this.clock;
+        const anchor = frame * hop, prefix = anchor - 3 * hop, fitEnd = anchor - hop, radius = Math.max(1, Math.round(.002 * fs));
+        let mean = 0;
+        for (let n = prefix; n < fitEnd; n++) mean += this.samples[n];
+        mean /= fitEnd - prefix;
+        const x = (n: number) => this.samples[n] - mean;
+        let cross = 0, lagPower = 0, power = 0;
+        for (let n = prefix + 2; n < fitEnd; n++) {
+            cross += x(n - 1) * (x(n) + x(n - 2)); lagPower += x(n - 1) ** 2; power += x(n) ** 2;
+        }
+        const coefficient = lagPower > 0 ? Math.max(-2, Math.min(2, cross / lagPower)) : 2;
+        const residualPower = (n: number) => n < prefix + 2 || n >= length ? 0 : (x(n) - coefficient * x(n - 1) + x(n - 2)) ** 2;
+        let error = 0;
+        for (let n = prefix + 2; n < fitEnd; n++) error += residualPower(n);
+        const fitFraction = power > 0 ? error / power : Infinity;
+        if (fitFraction > .05) return null;
+        const start = Math.max(anchor - hop, lower), end = Math.min(length, anchor + hop);
+        let left = 0, right = 0, best = -Infinity, sampleIndex = start;
+        for (let n = start - radius; n < start; n++) left += residualPower(n);
+        for (let n = start; n < start + radius; n++) right += residualPower(n);
+        for (let n = start; n < end; n++) {
+            const step = right - left;
+            if (step > best) { best = step; sampleIndex = n; }
+            left += residualPower(n) - residualPower(n - radius);
+            right += residualPower(n + radius) - residualPower(n);
+        }
+        return { sampleIndex, fitFraction };
     }
 
     private attack(frame: number, lowerBound: number): AcousticAttack {

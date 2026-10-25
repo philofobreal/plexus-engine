@@ -31,6 +31,22 @@ export interface AcousticActivityLayer {
     }[];
     attacks: AcousticAttack[];
     dominance: { startSample: number; endSample: number; texture: AcousticTexture | 'silence'; decisionSample: number }[];
+    spectralEntries?: SpectralEntryLayer; // Absent in T11b/legacy payloads.
+}
+
+export interface SpectralEntryLayer {
+    algorithm: 'tonal-carrier-entry-v1';
+    confidence: null;
+    consumerUse: 'signal-evidence-only';
+    xrScoring: 'ineligible';
+    candidates: {
+        id: string; sampleIndex: number; time: number; observationFrame: number;
+        prefixSamples: [number, number]; supportSamples: [number, number];
+        bodySamples: [number, number]; decisionSample: number;
+        texture: AcousticTexture; // Positive spectral excess, not an instrument/source label.
+        positivePowerFraction: number; carrierPowerRatio: number; // Engineering ratios, not probabilities.
+        backgroundResidualFraction: number;
+    }[];
 }
 
 /** A traceable projection of accepted visual hits, never a new acoustic detector. */
@@ -177,7 +193,40 @@ export function normalizeAcousticActivity(value: AcousticActivityLayer | undefin
                 || (i > 1 && a.startSample - value.dominance[i - 1].startSample < .2 * clock.sampleRate)
                 || (i === value.dominance.length - 1 && a.endSample !== length)) return undefined;
         }
+        let spectralEntries: SpectralEntryLayer | undefined;
+        if (value.spectralEntries !== undefined) {
+            const layer = value.spectralEntries;
+            if (!layer || layer.algorithm !== 'tonal-carrier-entry-v1' || layer.confidence !== null
+                || layer.consumerUse !== 'signal-evidence-only' || layer.xrScoring !== 'ineligible'
+                || !Array.isArray(layer.candidates) || layer.candidates.length > bound) return undefined;
+            let activity = 0, energy = 0;
+            for (let i = 0; i < layer.candidates.length; i++) {
+                const a = layer.candidates[i], hop = clock.hopSize, fs = clock.sampleRate, frame = a?.observationFrame, anchor = frame * hop;
+                if (!a || !textureAvailable || !Number.isSafeInteger(frame) || frame < 3 || (frame + 3) * hop > length
+                    || !Number.isSafeInteger(a.sampleIndex) || a.sampleIndex < anchor - hop || a.sampleIndex >= anchor + hop
+                    || a.id !== `entry:${a.sampleIndex}` || a.time !== a.sampleIndex / fs
+                    || (i > 0 && (frame <= layer.candidates[i - 1].observationFrame || a.sampleIndex - layer.candidates[i - 1].sampleIndex < Math.ceil(.15 * fs)))
+                    || !pair(a.prefixSamples, [(frame - 3) * hop, anchor - hop])
+                    || !pair(a.bodySamples, [anchor, (frame + 3) * hop]) || a.decisionSample !== (frame + 3) * hop
+                    || !pair(a.supportSamples, [(frame - 3) * hop, (frame + 3) * hop])
+                    || !['tonal', 'broadband', 'mixed'].includes(a.texture)
+                    || !Number.isFinite(a.positivePowerFraction) || a.positivePowerFraction < .005 || a.positivePowerFraction > 1
+                    || !Number.isFinite(a.carrierPowerRatio) || a.carrierPowerRatio < .8
+                    || !Number.isFinite(a.backgroundResidualFraction) || a.backgroundResidualFraction < 0 || a.backgroundResidualFraction > .05) return undefined;
+                while (activity < value.activity.length && value.activity[activity].endSample <= a.sampleIndex) activity++;
+                if (activity >= value.activity.length || a.sampleIndex < value.activity[activity].startSample) return undefined;
+                const low = Math.min((frame - 3) * hop, a.sampleIndex - .06 * fs), high = Math.max((frame + 1) * hop, a.sampleIndex + .06 * fs);
+                while (energy < value.attacks.length && value.attacks[energy].sampleIndex < low) energy++;
+                if (energy < value.attacks.length && value.attacks[energy].sampleIndex <= high) return undefined;
+            }
+            spectralEntries = { algorithm: layer.algorithm, confidence: null, consumerUse: 'signal-evidence-only', xrScoring: 'ineligible',
+                candidates: layer.candidates.map(a => ({ id: a.id, sampleIndex: a.sampleIndex, time: a.time, observationFrame: a.observationFrame,
+                    prefixSamples: [...a.prefixSamples], supportSamples: [...a.supportSamples], texture: a.texture,
+                    bodySamples: [...a.bodySamples], decisionSample: a.decisionSample,
+                    positivePowerFraction: a.positivePowerFraction, carrierPowerRatio: a.carrierPowerRatio, backgroundResidualFraction: a.backgroundResidualFraction })) };
+        }
         return { algorithm: value.algorithm, source: 'analysis-pcm', clock: { ...clock }, confidence: null, consumerUse: 'signal-evidence-only', xrScoring: 'ineligible', capabilities,
+            ...(spectralEntries ? { spectralEntries } : {}),
             activity: value.activity.map(a => ({ id: a.id, startSample: a.startSample, endSample: a.endSample,
                 onsetSupportSamples: a.onsetSupportSamples && [...a.onsetSupportSamples], offsetSupportSamples: a.offsetSupportSamples && [...a.offsetSupportSamples],
                 sustainSamples: a.sustainSamples && [...a.sustainSamples], leftCensored: a.leftCensored, rightCensored: a.rightCensored })),

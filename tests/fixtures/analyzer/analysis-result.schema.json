@@ -2176,6 +2176,133 @@
           "enum": [
             "analysis-pcm"
           ]
+        },
+        "spectralEntries": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "algorithm",
+            "confidence",
+            "consumerUse",
+            "xrScoring",
+            "candidates"
+          ],
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "enum": [
+                "tonal-carrier-entry-v1"
+              ]
+            },
+            "confidence": {
+              "type": "null",
+              "enum": [
+                null
+              ]
+            },
+            "consumerUse": {
+              "type": "string",
+              "enum": [
+                "signal-evidence-only"
+              ]
+            },
+            "xrScoring": {
+              "type": "string",
+              "enum": [
+                "ineligible"
+              ]
+            },
+            "candidates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sampleIndex",
+                  "observationFrame",
+                  "decisionSample",
+                  "id",
+                  "time",
+                  "prefixSamples",
+                  "bodySamples",
+                  "supportSamples",
+                  "texture",
+                  "positivePowerFraction",
+                  "carrierPowerRatio",
+                  "backgroundResidualFraction"
+                ],
+                "properties": {
+                  "sampleIndex": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "observationFrame": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "decisionSample": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "time": {
+                    "type": "number"
+                  },
+                  "prefixSamples": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "bodySamples": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "supportSamples": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "texture": {
+                    "type": "string",
+                    "enum": [
+                      "tonal",
+                      "broadband",
+                      "mixed"
+                    ]
+                  },
+                  "positivePowerFraction": {
+                    "type": "number",
+                    "minimum": 0.005,
+                    "maximum": 1
+                  },
+                  "carrierPowerRatio": {
+                    "type": "number",
+                    "minimum": 0.8
+                  },
+                  "backgroundResidualFraction": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 0.05
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

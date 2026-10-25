@@ -139,3 +139,106 @@ Five alternating pairs after warmup, separate from the regression run, with visi
 noise; these are observations, not a hardware performance guarantee. Each sidecar is published
 once per analysis; render messages and per-frame host work are unchanged. No physical Quest test.
 New files: one DSP module, one authored corpus, one regression file and one reusable diagnostic.
+
+## T11c — quiet spectral entries over a tonal carrier (2026-10-25)
+
+Adds optional `musicActivity.spectralEntries`, version `tonal-carrier-entry-v1`, with null
+confidence and explicit signal-evidence-only / scoring-ineligible status. This is a raw candidate
+producer for a quiet new spectral component over a persistent tonal carrier. It is not source
+separation, vocal/percussion identity, musical-role dominance or chart promotion. The existing
+`attacks[].family` remains the original 60 ms context texture, including its known impulse-then-tone
+limitation; this delivery does not reinterpret that field or claim that limitation is solved.
+
+The existing DC-corrected shared FFT feeds a fixed three-spectrum ring and one scratch spectrum
+(16 KiB extra spectral storage at hop1024, plus small peak records). No additional PCM FFT or
+spectrogram is computed. All work runs once in the existing analyzer worker during load.
+Three prior complete windows must have concentration >=0.8 and power max/min <=1.2. Novelty is
+positive power above four times the oldest prefix spectrum, outside two-bin neighborhoods of
+its occupied peaks; it must exceed 0.5% of current power and the absolute AC floor. This measures
+new spectral energy, not probability. Previously occupied carrier power must retain at least
+80% over three complete body windows, so replacement/legato/cutoff is rejected conservatively.
+Windows below 512 samples/15 ms and incomplete body tails abstain.
+
+Timing uses a two-tap predictor fitted only on `[anchor-3hop, anchor-hop]`, strictly before the
+localization search `[anchor-hop, anchor+hop]`. Mean/coefficient/fit error never use attack/body
+samples. Prefix residual fraction must be <=0.05; a maximum positive 2 ms residual-energy step
+localizes the proposal. Published prefix/body/full support and decisionSample expose all evidence,
+including offline lookahead. Candidate times are original song/sample times; playback/judge/grid
+clocks are unchanged. A 150 ms localized refractory and conservative dedup against existing energy
+attacks prevent duplicate candidate floods. Complete support is required; missing output is not
+proof of silence or of absent notes. Nearby/coincident frequencies, nonstationary or broadband
+backgrounds and source identities remain outside the validated scope.
+
+One integration owner updates analyzer/types/schema/normalization; an independent read-only audit
+caught and verified correction of a prefix that initially extended past the search start. The
+normalizer now binds frame/clock/support, prefixEnd<=event, complete body, engineering bounds,
+order, refractory/dedup, scope and version, then clones the extension. Legacy T11b payloads without
+it remain valid. Unknown fields cannot introduce a source identity. A frozen aggregate digest from
+T11b commit `a1a0eaa63f143f9fa374d9c03f89a18f2c4dddb5` preserves all 13 original development outputs.
+Full-recording comparisons additionally require every previous T11b field and every legacy
+analyzer/chart input to be exactly equal. Earlier source/measurements remain in Git and unchanged
+retained fixtures; no source-copy tree, new file family, button, setting or dependency is added.
+
+The existing corpus/runner are extended with 15 authored conditions at three clocks: quiet tone,
+repeated quiet tone, 60 ms noise hit, stable carrier, legato, 20 ms crossfade, glide, vibrato, AM,
+gain ramp, cutoff, noise bed, DC, below-floor and clipped body. These are engineering regressions
+from known generator families, not an independent musical holdout/generalization claim. The
+clipped-body case has a real onset and insufficient body support: it is reported separately as
+abstention, never as a completely negative case. Matching tolerance is hop/sampleRate + 4 ms.
+Additional tests sweep five subwindow phases at each clock, DC/gain, future-prefix independence,
+malformed/legacy packets and positive real-worker transport. No truth pitch/F0/source is supplied
+to the production detector. The original two-model periodicity/onset evidence does not label
+this new component class; retained recorded decoder mismatch still forbids an accuracy claim.
+
+Reproduction: `node research/analyzer-lab/diagnostics/measure-music-activity.mjs --audio-dir "C:\novy\Plexus Engine (VJ System)\plexus-engine\tests\audio\Prodigy" --output logs/t11c/measurement-final.json`.
+Current protocol extends T11b's reusable runner, using its Git-identified producer as the paired
+baseline. It writes one exclusive ignored result; full source identity belongs to the source
+commit. Alternate five warm pairs on 20 s excerpts measure elapsed analysis time, not FPS/CPU time.
+
+T11 remains partial; T12 has not started. The player-facing chart stays unchanged. After deploy,
+manually check loading, play/pause and the familiar chart before continuing T11's remaining
+musical note-boundary/role work. Actual vocal/source/note identity remains unsupported.
+
+### T11c measured results
+
+`logs/t11c/measurement-final.json` preserves all input/source/decoder identities and raw pairs.
+Complete-body controls: development 4/4 matched additions, transfer 8/8, no extras (conditional
+P/R/F1=1, only 12 authored events). Matched-only signed bias +3.86/+2.21 ms, absolute p50
+2.44/2.24 ms, p95 8.13/2.43 ms. Eleven no-addition controls per clock give 66 s negative exposure,
+zero extra entries (0 FP/min on these controls). Three physically present clipped-tail onsets are
+correctly abstained, 0/3 detected; overall physical-onset recall including them is 12/15=80%,
+not 100%. Complete-body coverage, small sample size and generator dependence limit these scores.
+All 15 subwindow-phase checks, DC/gain, future-prefix independence and positive worker transport pass.
+
+| Full decoded recording | All legacy/T11b values exact | Extra raw entries | Warm 20 s median T11b / T11c |
+| --- | --- | --- | --- |
+| Goa | yes / yes | 9 | 264.1 / 274.9 ms (+4.1%) |
+| No Good | yes / yes | 26 | 318.7 / 273.3 ms (-14.3%) |
+| Scienide | yes / yes | 3 | 270.8 / 266.7 ms (-1.5%) |
+
+Five paired elapsed-time observations have substantial scheduling/JIT/GC variation; negative
+percentages are not a speedup claim. These are offline Node observations, not Quest/render FPS.
+New entries increase the once-per-load JSON by about 1.2–9.7 KiB; render packets stay unchanged.
+Recorded candidate counts are not accuracy. Original two-model votes remain unused on mismatched
+recorded PCM; no new provider inference/calibration or source-identity assertion is made.
+
+### T11c verification and delivery
+
+`npm run build` and `git diff --check` pass. Targeted regression 96/96; full
+`npm test -- --test-reporter=tap`: 1788 tests /1779 pass /nine exact known failures, zero skips or
+cancellations. All nine names and assertion messages match the retained cleanup baseline.
+After hardening raw-proposal dedup lookup against out-of-order localization, final boundary tests
+pass 21/21. Six new tests extend the existing active regression file; all 1782 predecessor tests
+remain active. No protected source/result fixture or numeric golden is rewritten.
+
+Exact targeted command: `node --test --test-reporter=tap tests/music-activity.test.mjs tests/music-events.test.mjs tests/analyzer-contract.test.mjs tests/analyzer-baseline.test.mjs tests/accepted-timing-measurement.test.mjs tests/analyzer-golden.test.mjs tests/analyzer-verification.test.mjs tests/analyzer-signal-contract.test.mjs tests/event-timing-worker-contract.test.mjs tests/xr-audio-integration.test.mjs tests/xr-controller-regeneration.test.mjs`.
+Final boundary command: `node --test --test-reporter=tap tests/music-activity.test.mjs tests/analyzer-contract.test.mjs tests/analyzer-baseline.test.mjs`.
+Node25.2.1/npm11.6.2 execute the declared scripts; no runtime fallback or dependency install.
+Full suite uses the established temp/Git-fixture escalation. Python models/pytest and physical
+Quest measurements are not run; no Python inference code changes. Direct Git diff review replaces
+the optional source-copy diff export, preserving the minimal-artifact request.
+
+Publish the clean committed source using `node scripts/release-pages.mjs prepare t11c-spectral-entry`,
+then `publish` and `verify`. The release marker binds source/build identities; the delivery handoff
+records verified live files/routes and the public load/play/pause smoke result. Pause for manual
+feedback after deployment. Resume partial T11 from this checkpoint, not T12.

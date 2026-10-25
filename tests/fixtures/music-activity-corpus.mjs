@@ -53,3 +53,40 @@ export function activityFixture(kind, tuple = ACTIVITY_TUPLES.development[0]) {
         offsets, truth: 'authored-signal', negativeAfterFirstAttack: ['held-tone', 'legato', 'vibrato', 'noise'].includes(kind),
         rightCensored: kind === 'tail' };
 }
+
+
+// T11c predeclared development/transfer stress set. These are authored signals, not independent music.
+export const ENTRY_KINDS = ['soft-tone', 'repeat-soft-tone', 'soft-noise-hit', 'stable', 'legato', 'crossfade', 'glide', 'vibrato', 'am', 'gain-ramp', 'cutoff', 'noise-bed', 'dc', 'below-floor', 'clipped-tail'];
+export function entryFixture(kind, tuple = ACTIVITY_TUPLES.development[0]) {
+    const fs = tuple.sampleRate, duration = kind === 'clipped-tail' ? .711 : 2;
+    const samples = new Float32Array(Math.round(fs * duration));
+    let phase = tuple.phase, seed = tuple.seed >>> 0;
+    const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 31 - 1; };
+    for (let i = 0; i < samples.length; i++) {
+        const t = i / fs;
+        const frequency = tuple.frequency * (kind === 'legato' && t >= .7 ? 1.7 : kind === 'glide' ? 1 + 2 * t / duration : kind === 'vibrato' ? 1 + .015 * Math.sin(2 * Math.PI * 5 * t) : 1);
+        phase += 2 * Math.PI * frequency / fs;
+        const gain = kind === 'am' ? .2 * (.7 + .3 * Math.sin(2 * Math.PI * 4 * t)) : kind === 'gain-ramp' ? .1 + .3 * t / duration : kind === 'cutoff' && t >= .7 ? .02 : .2;
+        samples[i] = kind === 'noise-bed' ? .2 * random() : kind === 'dc' ? .4 : gain * Math.sin(phase);
+        if (kind === 'below-floor') samples[i] *= 1e-6;
+        if (kind === 'crossfade' && t >= .7) {
+            const blend = Math.min(1, (t - .7) / .02);
+            samples[i] = (1 - blend) * samples[i] + blend * .2 * Math.sin(2 * Math.PI * (tuple.frequency + 1100) * t);
+        }
+        if (kind === 'repeat-soft-tone') {
+            for (const onset of [.7, 1.4]) if (t >= onset && t < onset + .25) samples[i] += .04 * Math.min(1, (t - onset) / .003, (onset + .25 - t) / .005) * Math.sin(2 * Math.PI * (tuple.frequency + 1100) * (t - onset) + .43);
+        }
+        if (['soft-tone', 'soft-noise-hit', 'clipped-tail'].includes(kind) && t >= .7 && t < (kind === 'soft-noise-hit' ? .76 : 1.2)) {
+            const end = kind === 'soft-noise-hit' ? .76 : 1.2;
+            const envelope = Math.min(1, (t - .7) / .003, (end - t) / .005);
+            samples[i] += Math.max(0, envelope) * (kind === 'soft-noise-hit' ? .08 * random() : .04 * Math.sin(2 * Math.PI * (tuple.frequency + 1100) * (t - .7) + .43));
+        }
+    }
+    const attacks = kind === 'repeat-soft-tone' ? [.7, 1.4] : ['soft-tone', 'soft-noise-hit', 'clipped-tail'].includes(kind) ? [.7] : [];
+    return { samples, sampleRate: fs, kind, attacks, expectedEntries: kind === 'clipped-tail' ? [] : attacks,
+        coverage: kind === 'clipped-tail' ? 'insufficient-body' : 'complete-control', truth: 'authored-signal' };
+}
+
+// Exact aggregate of all 13 development cases, hop512; T11b commit a1a0eaa63f143f9fa374d9c03f89a18f2c4dddb5.
+// Prior MusicActivity source SHA256: f91106e7071810563e1557a525621cc5a8f1b2254ae27e9d84fdf60901898664. No old measurements rewritten.
+export const ACTIVITY_V1_SHA256 = '238d9fe49edd57724a2ff78df058b63ab9d6732f15d0b6b20519ed3242de514e';

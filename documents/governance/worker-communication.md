@@ -52,6 +52,12 @@ support, frame resolution, intervals and capability identity; legacy omission re
 This once-per-load result does not add per-frame render packets or alter accepted hits/grid.
 See [T11b scope and limits](../features/music-events.md#t11b--acoustic-activity-evidence-2026-10-25).
 
+T11c optionally extends that layer with `spectralEntries` (`tonal-carrier-entry-v1`): quiet
+spectral additions over a stable retained carrier, explicit pre-fit/body/full sample support and
+availability time. It remains raw, scoring-ineligible evidence. Legacy omission is valid; the
+normalizer rejects incomplete support, forged scope/ratios, invalid association and duplicates.
+No top-level request/result fields, accepted hits, playback clock or render packets change.
+
 The authoritative musical timing model (`tempo`, `tempoConfidence`, `beats`, `beatConfidence`,
 `barStarts`, `alternativeTempos`, `timingConfidence`) is carried on the nested `TrackAnalysis`
 as well, and `beats` / `barStarts` / `timingConfidence` are mirrored at the root for direct
