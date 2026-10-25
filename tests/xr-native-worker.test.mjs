@@ -111,3 +111,15 @@ test('scene adapter forwards asynchronous wakeups/errors and reports worker loca
     const native=new Native(source);let wakes=0,error='';native.onFrameReady=()=>wakes++;native.onError=m=>error=m;
     source.onFrameReady();source.onError('unavailable');assert.equal(wakes,1);assert.equal(error,'unavailable');assert.equal(native.frameLatencyMs,12);assert.match(native.executionLabel,/worker geometry/);native.root.visible=false;source.onFrameReady();assert.equal(wakes,1);native.dispose();
 });
+
+
+test('native preparation excludes unused evidence from real structured clone and retains full main fallback input', async () => {
+    const h = harness(), evidence = { cannotClone: () => {} };
+    const analysis = { frames: [], events: [], trackAnalysis: { features: [], musicActivity: evidence } };
+    await h.prepare(analysis);
+    const received = h.workerSources[0].prepares[0];
+    assert.equal('musicActivity' in received.trackAnalysis, false); assert.equal(h.locals.length, 0);
+    assert.equal(analysis.trackAnalysis.musicActivity, evidence);
+    h.workers[0].onerror({ message: 'test failure', preventDefault() {} }); await drain();
+    assert.equal(h.locals[0].prepares[0], analysis, 'fallback keeps the original authoritative publication'); h.source.dispose();
+});

@@ -137,3 +137,19 @@ test('MVP menu defaults to Offscreen on a fresh device and saves/copies/reloads 
     assert.equal(createPreviewQualityControl(false,true).preference.wormholeRenderer,'offscreen');
     assert.equal(createPreviewQualityControl(false,false).preference.wormholeRenderer,'compatible','Studio never silently selects unavailable worker');
 });
+
+
+test('MVP preparation omits unused acoustic activity without changing the host cache or cloning it per frame', () => {
+    const h = harness(), evidence = { mustNeverClone: () => { throw Error('unused evidence'); } };
+    h.State.trackAnalysis = { ...h.State.trackAnalysis, musicActivity: evidence };
+    const publication = h.State.trackAnalysis;
+    assert.equal(h.draw(), true); const prepared = h.messages[0].analysis;
+    assert.equal('musicActivity' in prepared.trackAnalysis, false);
+    assert.equal(h.State.trackAnalysis, publication); assert.equal(publication.musicActivity, evidence);
+    assert.deepEqual(JSON.parse(JSON.stringify(prepared.trackAnalysis.features)), JSON.parse(JSON.stringify(publication.features)));
+    h.ready(); h.draw(); h.frame(); h.draw();
+    for (let i = 0; i < 10; i++) h.draw();
+    assert.equal(h.messages.filter(m => m.type === 'prepare').length, 1);
+    assert.ok(h.messages.filter(m => m.type === 'render').every(m => !('analysis' in m)));
+    h.source.dispose();
+});

@@ -20,7 +20,7 @@
 // synchronously after `render` (`GrainMaterialRenderer.setFrame`), so `materialFrame` is valid only
 // until the next frame is presented. After dispose or a failure buffers are simply dropped.
 
-import { isContinuousPlaybackStep, type CanvasVisualPresentation, type CanvasVisualSource, type VisualAnalysisSnapshot,
+import { projectRenderWorkerAnalysis, isContinuousPlaybackStep, type CanvasVisualPresentation, type CanvasVisualSource, type VisualAnalysisSnapshot,
     type VisualFocalPoint } from '../types/CanvasVisualSource';
 import type { GrainMaterialFrame } from '../types/GrainMaterialFrame';
 import type { GrainLineFrame } from '../types/GrainLineFrame';
@@ -210,7 +210,7 @@ export class WormholeWorkerSource implements CanvasVisualSource {
             this.preparing = { generation, resolve, reject };
             try {
                 if (planUpdate) this.worker.postMessage({ type: 'prepare-plan', generation, performancePlan: planUpdate });
-                else { this.sentAnalysis = null; this.worker.postMessage({ type: 'prepare', generation, analysis }); this.sentAnalysis = analysis; }
+                else { this.sentAnalysis = null; this.worker.postMessage({ type: 'prepare', generation, analysis: analysis && projectRenderWorkerAnalysis(analysis) }); this.sentAnalysis = analysis; }
             } catch (error) { this.preparing = null; reject(error instanceof Error ? error : new Error(String(error))); }
         });
     }

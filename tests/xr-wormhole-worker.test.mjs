@@ -478,3 +478,17 @@ test('off-thread adapter and proxy stay inside their bounded imports', () => {
         assert.doesNotMatch(source, /window\.location|\/state\/store/);
     }
 });
+
+
+test('XR raster preparation projects unused acoustic evidence and preserves the original plan-only cache key', async () => {
+    const { source, worker } = proxyHarness(), evidence = { records: [1, 2, 3] };
+    const trackAnalysis = { features: [], sections: [], musicActivity: evidence };
+    const analysis = { frames: [], events: [], trackAnalysis, duration: 90, performancePlan: { points: [] } };
+    source.prepare(analysis); const p = worker.posted.at(-1);
+    assert.equal(p.type, 'prepare'); assert.equal('musicActivity' in p.analysis.trackAnalysis, false);
+    assert.equal(p.analysis.trackAnalysis.features, trackAnalysis.features); assert.equal(analysis.trackAnalysis, trackAnalysis);
+    assert.equal(trackAnalysis.musicActivity, evidence);
+    const next = source.prepare({ ...analysis, performancePlan: { points: [{ id: 'next' }] } });
+    assert.equal(worker.posted.at(-1).type, 'prepare-plan');
+    worker.reply({ type: 'prepared', generation: 2 }); await next; source.dispose();
+});

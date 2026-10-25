@@ -187,3 +187,14 @@ test('exact preparation has a deadline after negotiation and clears timers on re
   await failed;assert.equal(timers.size,0,action);q.source.dispose();
  }
 });
+
+
+test('exact preparation projects acoustic evidence while keeping the host publication unchanged', async () => {
+    const h = proxy(), evidence = { records: [1, 2, 3] };
+    const analysis = { duration: 10, frames: [], events: [], trackAnalysis: { features: [], musicActivity: evidence } };
+    const p = h.source.prepare(analysis), received = h.worker.posted.at(-1).m.analysis;
+    assert.equal('musicActivity' in received.trackAnalysis, false);
+    assert.equal(received.trackAnalysis.features, analysis.trackAnalysis.features); assert.equal(analysis.trackAnalysis.musicActivity, evidence);
+    h.send({ type: 'capabilities', protocol: 2, contextId: 'job', sampler: 'fixed-song-60-v1' });
+    h.send({ type: 'prepared', generation: 1 }); await p; h.source.dispose();
+});

@@ -1,4 +1,4 @@
-import { isContinuousPlaybackStep, type CanvasVisualPresentation, type VisualAnalysisSnapshot } from '../types/CanvasVisualSource';
+import { projectRenderWorkerAnalysis, isContinuousPlaybackStep, type CanvasVisualPresentation, type VisualAnalysisSnapshot } from '../types/CanvasVisualSource';
 import type { WormholeContextSeed } from '../types/WormholeContext';
 import type { WormholeNativeSource as NativeSource, WormholeNativeFrame } from '../types/WormholeNativeFrame';
 import { NATIVE_WORKER_BYTES, NATIVE_COSMOS_BYTES, NATIVE_WALL_BYTES, nativeWorkerViews, validNativeResponse, type NativeRenderRequest,
@@ -58,7 +58,7 @@ export class WormholeNativeWorkerSource implements NativeSource {
                 worker.onmessageerror=()=>{if(worker===this.worker)this.fallback('worker message could not be decoded');};
                 this.arm(this.options.prepareTimeoutMs??15000,'worker startup timed out');
                 // Copy analysis/seed: the host retains the immutable publication; no PCM/analysis is detached.
-                worker.postMessage({type:'prepare',version:1,generation:this.generation,analysis,seed:this.options.seed,presentation:this.presentation});
+                worker.postMessage({type:'prepare',version:1,generation:this.generation,analysis:analysis && projectRenderWorkerAnalysis(analysis),seed:this.options.seed,presentation:this.presentation});
             }catch(error){this.fallback(error instanceof Error?error.message:String(error));}
         });
     }

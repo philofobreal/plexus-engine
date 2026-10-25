@@ -1,4 +1,5 @@
 import HostWorker from './wormholeHostRender.worker.ts?worker';
+import { projectRenderWorkerAnalysis } from '../types/CanvasVisualSource';
 import type { WormholeHostAnalysis, WormholeHostFrame, WormholeHostRequest, WormholeHostResponse, WormholeHostRasterSource, WormholeHostTarget } from '../types/WormholeHostFrame';
 import type { WormholeRenderState } from './CosmicWormholeIdentity';
 import { featureFlags } from '../config/featureFlags';
@@ -76,7 +77,7 @@ export class WormholeHostWorkerSource implements WormholeHostRasterSource {
         this.generation++; this.ready = false; this.flight = 0; this.needsReset = true;
         this.closeImage(); this.lastKey = ''; this.lastTime = -Infinity;
         this.analysis = analysis; this.armDeadline();
-        worker.postMessage({ type: 'prepare', generation: this.generation, analysis });
+        worker.postMessage({ type: 'prepare', generation: this.generation, analysis: projectRenderWorkerAnalysis(analysis) });
     }
     draw(state: WormholeRenderState, target: WormholeHostTarget, depthCue: number, transparent: boolean, playing = false): boolean {
         if (this.failed || this.disposed) return false;

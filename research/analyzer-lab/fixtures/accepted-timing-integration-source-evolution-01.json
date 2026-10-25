@@ -22,9 +22,9 @@
     {
       "path": "src/types/CanvasVisualSource.ts",
       "predecessorSha256": "4ee966c35f677242e1d1245050e095f623e0119205e723a84e8234010305c2ff",
-      "replacementSha256": "da037164e767dacf653d1c206ba9549df318f93bab489bd2d9a9571d0e8b835e",
-      "reviewedBy": "Codex single integration owner, T06e wall contract/source review",
-      "reviewedReason": "Optional wall-only preset/manual presentation; no audio/analyzer clock, event publication, raster frame or exact lease layout change. Wall controls use existing event/preset/gain owners and renderer handoff. Preserve historical measurements/source, entire prior manifest and superseded reviews. Native spatial, worker lease/race, old defaults, preset/Off and full regression gates accompany this addition. Predecessor manifest: documents/tests/accepted-timing-source-evolution.pre-t06e.json",
+      "replacementSha256": "166b137867629c225956602411fe0297e1caa53e927eb180165003b0860bfe5d",
+      "reviewedBy": "Single integration owner with independent read-only render-worker reviewer, T11f",
+      "reviewedReason": "Add pure preparation-only projection that omits unused musicActivity from four render-worker publications. Main analysis, cache reference keys, plan-only updates and main fallback retain original objects; frame messages and clocks unchanged. Four publication regressions cover real structured-clone omission, no extra preparations, exact branch and native fallback. Preserve original timing fixtures/source bytes, prior hashes and all superseded review reasons; no old timing result regenerated.",
       "supersededReplacements": [
         {
           "sha256": "c8af1d8a1ed1c42c343f2a3067dbfff76abb12078f2cead750425105105589cb",
@@ -35,6 +35,11 @@
           "sha256": "4aaef86500c8dc02f87d53c5d9eb93484cac4adfb315f3b79523736e9e112bb4",
           "reviewedBy": "Codex single integration owner, T06d contract/source review",
           "reviewedReason": "Add optional private embedded-host global Cosmos masters to presentation, with no clock, audio, analyzer, plan or existing raster payload layout change. Explicit settings flow through the existing revision/persistence/Copy paths. Native geometry, worker lease/pixel parity, old-record defaults and cumulative renderer tests cover this additive field. Prior manifest retained at documents/tests/accepted-timing-source-evolution.pre-t06d.json. No historical measurement or retained source rewritten."
+        },
+        {
+          "sha256": "da037164e767dacf653d1c206ba9549df318f93bab489bd2d9a9571d0e8b835e",
+          "reviewedBy": "Codex single integration owner, T06e wall contract/source review",
+          "reviewedReason": "Optional wall-only preset/manual presentation; no audio/analyzer clock, event publication, raster frame or exact lease layout change. Wall controls use existing event/preset/gain owners and renderer handoff. Preserve historical measurements/source, entire prior manifest and superseded reviews. Native spatial, worker lease/race, old defaults, preset/Off and full regression gates accompany this addition. Predecessor manifest: documents/tests/accepted-timing-source-evolution.pre-t06e.json"
         }
       ]
     },

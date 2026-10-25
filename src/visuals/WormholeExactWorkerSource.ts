@@ -1,3 +1,4 @@
+import { projectRenderWorkerAnalysis } from '../types/CanvasVisualSource';
 import type { CanvasVisualPresentation, VisualAnalysisSnapshot } from '../types/CanvasVisualSource';
 import type { ExactWormholeSource, WormholeFrameIdentity, WormholeFrameLease } from '../types/WormholeExactFrame';
 import { exactWormholeTime, sameWormholeFrame, WORMHOLE_EXACT_SAMPLER } from '../types/WormholeExactFrame';
@@ -73,7 +74,7 @@ export class WormholeExactWorkerSource implements ExactWormholeSource {
                     this.fail(new Error('Exact Wormhole preparation timed out.'));
             }, 15000);
             this.preparing = { resolve, reject, prepared: false, cleanup: () => clearTimeout(timer) };
-            try { this.worker.postMessage({ type: 'prepare', generation: this.generation, analysis }); }
+            try { this.worker.postMessage({ type: 'prepare', generation: this.generation, analysis: analysis && projectRenderWorkerAnalysis(analysis) }); }
             catch (error) { this.fail(asError(error)); }
         });
     }

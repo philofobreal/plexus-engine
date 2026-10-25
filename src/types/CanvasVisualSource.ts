@@ -15,6 +15,14 @@ export interface VisualAnalysisSnapshot {
     /** Prepared once, offline, by the host facade; consumers never regenerate it. */
     performancePlan: PerformanceAutomationPlan;
 }
+/** Render workers have no acoustic-activity consumer. Keep the host publication/cache key
+ * intact and omit this growing evidence tree only at worker preparation, never per frame.
+ */
+export function projectRenderWorkerAnalysis<T extends { trackAnalysis: TrackAnalysis }>(analysis: T): T {
+    if (!analysis.trackAnalysis?.musicActivity) return analysis;
+    const { musicActivity: _unused, ...trackAnalysis } = analysis.trackAnalysis;
+    return { ...analysis, trackAnalysis };
+}
 /**
  * Read-only apparent vanishing point of the rendered image, normalized to the canvas half-extent:
  * (0, 0) is the canvas center, +x is right, +y is up. The source owns and mutates it in place.
