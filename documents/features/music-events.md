@@ -963,3 +963,62 @@ browser receipt live in `logs/t11h/handoff.json` and the workspace status file. 
 manual handoff. T11 stays partial; T12 has not started. The next bounded step freezes and tests
 one selective musical-event qualification rule with transfer/negative examples, event-level
 precision/recall, confusion and abstention before any classification or chart promotion.
+
+
+## T11i - frozen quiet-carrier qualification study (2026-10-25)
+
+T11h was manually accepted. The parent owns this research rule, fixture generator, evaluation
+and documentation; independent review is read-only. No production `src/`, worker schema,
+player setting or chart changes are authorized by a successful synthetic gate alone. This
+bounded step implements and tests the qualification research prerequisite, not T12 promotion.
+
+### Predeclared scope and acceptance before transfer
+
+Target: an observed fast narrowband entry after the existing qualified quiet prefix, with its
+initial carrier retained over80 ms. This is signal qualification, not isolated-note/instrument,
+vocal or musical-role truth. Resonant percussion can meet the same observable signal conditions.
+Confidence stays null, source ownership unresolved and chart scoring ineligible.
+
+Both fixed rules live in the existing research runner; no new runtime sidecar or UI controls.
+`quiet-carrier-context-v0` requires the existing quietOnset and complete measured v2 local
+spectrum, positive power fraction>=.75, strongest-bin(+/-1) fraction>=.8 and peak bin>=2.
+Its fixed neighborhood must retain>=.8 spectral share and .25..4 times initial positive power
+in every contiguous equal-N Hann window until at least80 ms after the crossing. No later peak
+is selected. Weighted centering, N and real support use the existing short-spectrum convention.
+
+`quiet-carrier-fit-v1` adds an affine AR(2) sinusoid check in every contiguous2 ms PCM block
+from the crossing through80 ms: residual/AC-energy<=.05 and estimated frequency within the
+initial fixed bin+/-1. DC/insufficient AC power, interrupted energy, inconsistent carrier,
+missing support or excessive growth abstain. AR checks include the first block, before the
+predeclared later sound additions at3/5/10/20/30/60 ms. Sub-2 ms attribution, sub-window gaps,
+polyphony and isolated-source continuity remain unproven. Prefix/body/actual consumed carrier
+and spectral supports are reported; requiredEndSample is a requirement, not observed evidence.
+
+The exported research entry validates Float32 PCM domain/finits and the normalized current
+analysis clock. Same clock/length is not proof of PCM identity; the runner constructs the
+analysis from the supplied samples and records their SHA256. Failed/partial checks report
+actual consumed support only. This was corrected in read-only review before transfer, together
+with rejection of NaN PCM and explicit latent handoff labels. No threshold was tuned by transfer.
+
+Predeclared acceptance per split: clean event recall>=.95 and zero false positives in protected
+stress/association controls at2 ms one-to-one onset tolerance. Unmatched later true tone starts
+remain false negatives; abstention does not turn missed events into correct classifications.
+Per-kind TP/FP/FN, precision/recall/F, signed bias/p50/p95, false positives per minute and raw
+attack abstention are reported. Zero denominators are null, not perfect scores. Same/near-band
+handoff ambiguity is separate: only the first observable entry is a qualification reference;
+latent source intent is not a second audible onset or a physical source-accuracy annotation.
+
+Corpus declarations are frozen before transfer in the existing fixture source:32 kinds,
+6 variants per tuple (3 subhop phases x2 gains), one16kHz development tuple and new22.05/48kHz
+transfer tuples with distinct frequencies/phases/seeds. There are192 development and384 transfer
+cases. Clean controls include hard/3ms/repeated/vibrato/mild-AM carriers. Protected controls
+include silence/DC/DC-step/noise/impulse/short/slow/clipped, already-active AM/glide/legato,
+fast frequency drift, early legato,8ms gap, prefix spikes and close impulse/noise-then-tone.
+Physical authored tone starts are also retained to make broader coverage limits inspectable.
+
+The first development-only run (`logs/t11i/development-01.json`) has36/36 clean events for both
+rules. The context-only predecessor has18 protected false positives; the fit rule has zero.
+These are development findings, not held-out accuracy. Input validation/support/handoff
+provenance were reviewed before final freeze; policy thresholds and verdict logic were unchanged.
+The freeze commit and source hashes precede the first transfer run. No test/model is installed,
+no historical source/result is overwritten and all earlier regressions remain active.

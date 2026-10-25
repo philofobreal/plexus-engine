@@ -181,3 +181,80 @@ export function attackChangeFixture(kind, tuple = ACTIVITY_TUPLES.development[0]
     return { samples, sampleRate: fs, kind, startSample: start, laterSample: later,
         truth: 'authored first signal and separate addition 30ms later; no texture category target' };
 }
+
+
+// T11i: predeclared signal-only qualification study. No instrument/note/source labels.
+function freezeQuietStudy(value) {
+    if (value && typeof value === 'object') { for (const child of Object.values(value)) freezeQuietStudy(child); Object.freeze(value); }
+    return value;
+}
+export const QUIET_TONAL_STUDY = freezeQuietStudy({
+    protocol: 'quiet-carrier-qualification-1', toleranceSeconds: .002,
+    cleanRecallMinimum: .95, protectedFalsePositivesMaximum: 0,
+    tuples: {
+        development: [{ sampleRate: 16000, hop: 512, frequency: 997.3, phase: .37, seed: 73 }],
+        transfer: [{ sampleRate: 22050, hop: 1024, frequency: 1451.9, phase: 1.71, seed: 587 },
+            { sampleRate: 48000, hop: 1024, frequency: 2367.4, phase: .91, seed: 239 }]
+    },
+    phases: { development: [0, .375, .75], transfer: [.125, .625, .875] },
+    gains: [.08, .32],
+    kinds: ['hard-tone', 'fast-tone', 'repeat-tone', 'vibrato-tone', 'mild-am-tone',
+        'silence', 'dc', 'dc-step', 'noise', 'impulse', 'short-tone', 'slow-rise',
+        'held-from-start', 'am-from-start', 'glide-from-start', 'legato-from-start',
+        'fast-glide', 'early-legato', 'gapped-tone', 'prefix-spike', 'clipped-tail',
+        'impulse-tone-3', 'impulse-tone-5', 'impulse-tone-10', 'impulse-tone-20', 'impulse-tone-30', 'impulse-tone-60',
+        'noise-tone-3', 'noise-tone-10', 'noise-tone-30', 'same-band-handoff', 'near-band-handoff']
+});
+export function quietTonalFixture(kind, tuple, phaseFraction, gain) {
+    if (!QUIET_TONAL_STUDY.kinds.includes(kind)) throw new Error('Unknown quiet-tonal control');
+    const { sampleRate: fs, hop, frequency, phase } = tuple;
+    const start = Math.round(.25 * fs / hop) * hop + Math.round(phaseFraction * hop);
+    const length = kind === 'clipped-tail' ? start + Math.round(.04 * fs) : Math.round(.8 * fs);
+    const samples = new Float32Array(length), onset = start / fs;
+    const clean = ['hard-tone', 'fast-tone', 'repeat-tone', 'vibrato-tone', 'mild-am-tone'].includes(kind);
+    const association = /^(impulse|noise)-tone-/.test(kind), ambiguity = kind.endsWith('-handoff');
+    const delay = association ? Number(kind.split('-').at(-1)) / 1000 : .03;
+    const later = start + Math.round(delay * fs), repeat = start + Math.round(.32 * fs);
+    const continuous = kind.endsWith('-from-start'), first = continuous ? 0 : start;
+    let angle = phase, random = tuple.seed >>> 0;
+    const noise = () => { random ^= random << 13; random ^= random >>> 17; random ^= random << 5; return (random >>> 0) / 2 ** 31 - 1; };
+    for (let i = 0; i < length; i++) {
+        if (kind === 'silence') continue;
+        if (kind === 'dc') { samples[i] = .4; continue; }
+        if (kind === 'dc-step') { samples[i] = i >= start ? gain : 0; continue; }
+        if (i < first) continue;
+        const t = (i - first) / fs;
+        if (kind === 'impulse' || kind.startsWith('impulse-tone')) samples[i] = i === start ? gain : 0;
+        else if (kind === 'noise' || kind.startsWith('noise-tone')) samples[i] = gain * .2 * noise();
+        else {
+            const changing = kind === 'fast-glide' ? 6000 * t : kind === 'glide-from-start' ? 3000 * t : 0;
+            const legato = (kind === 'early-legato' && i >= later) || (kind === 'legato-from-start' && i >= start);
+            const neighbor = kind === 'near-band-handoff' && i >= later ? .2 * fs / (2 ** Math.floor(Math.log2(.016 * fs))) : 0;
+            const f = (legato ? 1.7 * frequency : frequency) + changing + neighbor
+                + (kind === 'vibrato-tone' ? frequency * .003 * Math.sin(2 * Math.PI * 5 * t) : 0);
+            angle += 2 * Math.PI * f / fs;
+            let envelope = kind === 'fast-tone' ? Math.min(1, t / .003)
+                : kind === 'slow-rise' ? Math.min(1, t / .16) : 1;
+            if (kind === 'short-tone' && t >= .03) envelope = 0;
+            if (kind === 'gapped-tone' && t >= .03 && t < .038) envelope = 0;
+            if (kind === 'repeat-tone') envelope = i < start + Math.round(.18 * fs) || (i >= repeat && i < repeat + Math.round(.18 * fs)) ? 1 : 0;
+            if (kind === 'mild-am-tone' || kind === 'am-from-start') envelope *= .9 + .1 * Math.cos(2 * Math.PI * 7 * t);
+            samples[i] = gain * envelope * Math.sin(angle);
+        }
+        if (association && i >= later) samples[i] += 3 * gain * Math.sin(2 * Math.PI * frequency * (i - later) / fs + phase);
+    }
+    if (kind === 'prefix-spike') {
+        // Full prefix can be quiet while its final short window is already above the crossing floor.
+        const frameStart = Math.floor(start / hop) * hop;
+        if (frameStart > 0) samples[frameStart - 1] = 1e-4;
+    }
+    const physicalTonalStarts = association ? [later] : ['silence', 'dc', 'dc-step', 'noise', 'impulse'].includes(kind) ? []
+        : kind === 'repeat-tone' ? [start, repeat] : [first];
+    return { samples, sampleRate: fs, hop, startSample: start, kind, tuple, phaseFraction, gain,
+        stratum: clean ? 'clean-positive' : ambiguity ? 'source-ambiguity' : association ? 'protected-association' : 'protected-stress',
+        tonalStarts: physicalTonalStarts,
+        qualificationStarts: clean || association ? physicalTonalStarts : ambiguity ? [start] : [],
+        latentHandoffSamples: ambiguity ? [later] : [],
+        // Handoff intent is latent: unchanged waveform / continuous-frequency step is not a second audible onset.
+        truth: 'authored tonal signal starts; not recorded music, instrument, vocal or isolated-source truth', onset };
+}
