@@ -1,7 +1,7 @@
 {
-  "id": "t12a1-hand-recovery-20261025T192725582Z",
-  "previousCommit": "ace88c3f8e307297f843da83b99fa6e26feaefeb",
-  "sourceCommit": "c2e8b096a3f5486d2198bae59e2c6c3aafbda940",
+  "id": "t12b-chart-decisions-20261025T202752460Z",
+  "previousCommit": "fc24a6c044e0a3979c92d4dc0cc3e8d7df275d13",
+  "sourceCommit": "75d75a9e298445725451bc7e050342645afbe4c4",
   "inputs": [
     {
       "path": "bun.lock",
@@ -657,7 +657,11 @@
     },
     {
       "path": "src/gameplay/RhythmChartBuilder.ts",
-      "sha256": "00cbe68e815788dbe16b08c9c3ce9d6ebbe1a48196d2902f04a4f82807abad9b"
+      "sha256": "0b45deb1e4c90caa61440bc4d67fdde0f9561a6d863b6be68538a8578ab8e44f"
+    },
+    {
+      "path": "src/gameplay/RhythmChartDiagnostics.ts",
+      "sha256": "3d160aa4698cbe8dad7d8c411e23674e9924be7bc21ecdb20582786b86a0b6e4"
     },
     {
       "path": "src/gameplay/RhythmChoreography.ts",
@@ -689,7 +693,7 @@
     },
     {
       "path": "src/gameplay/RhythmMovement.ts",
-      "sha256": "d7cb0164f0502116b190e8477340f092b29879d3b298e65b47b8a11f3e3aa6e5"
+      "sha256": "8565f7035cf1aa1065ce263c4fbb2173389405a15693f56aa85111ef2d75618c"
     },
     {
       "path": "src/gameplay/RhythmMusicalRoles.ts",
@@ -701,7 +705,7 @@
     },
     {
       "path": "src/gameplay/RhythmOverheadPolicy.ts",
-      "sha256": "d317d968e395a31b7840590b3d65aaa4a0650cfb813e08845590afb48ca0e34e"
+      "sha256": "c370c108bb7441e9d7fc5c1648fcaa2d00721ccb5681d3eaaa44979e439313b9"
     },
     {
       "path": "src/gameplay/RhythmPhrasePlanner.ts",
@@ -709,7 +713,7 @@
     },
     {
       "path": "src/gameplay/RhythmScorePlanner.ts",
-      "sha256": "6974a0d262dffe951f9d364ca86f481f38da6a44c9774478464600cc4f796088"
+      "sha256": "9f341777d3ca4061631a6303d89627b47816f131c837681b119a9a25e5ee1c1b"
     },
     {
       "path": "src/gameplay/RhythmScoring.ts",
@@ -725,7 +729,7 @@
     },
     {
       "path": "src/gameplay/index.ts",
-      "sha256": "fac110aa98123b07a423918222ea3f3cb0cdc8f44a6fe684f642f9e36662310b"
+      "sha256": "a318b36f6a15a000294e64afb60a7cb18f6194062e6f2bd0ca6f98abd13f109d"
     },
     {
       "path": "src/main.ts",
@@ -1345,7 +1349,7 @@
     },
     {
       "path": "src/xr/XrAppController.ts",
-      "sha256": "7d2793d476c7a280e90b90abcd3b4f054d83392bbffb45b5e3d8d0b426487892"
+      "sha256": "82faeca0b14548d83176e267c64a2fdaaedf74b253cab08effb3f348e1396222"
     },
     {
       "path": "src/xr/XrAppearanceSettings.ts",
@@ -1361,7 +1365,7 @@
     },
     {
       "path": "src/xr/XrCommandDrawer.ts",
-      "sha256": "df93c8f6a7c338b801af9a6c4d3385e23796f3e392f8ac171adc001383a3b721"
+      "sha256": "bc53c9146249b2585b52b8230ee1ecea35639e626520d54bc1b1012fb1e1f3d5"
     },
     {
       "path": "src/xr/XrHaloPreview.ts",
@@ -1369,7 +1373,7 @@
     },
     {
       "path": "src/xr/XrMenuModel.ts",
-      "sha256": "9177927f9096bacd3ab5780138f849f86c08397ddad27b943694034a2a42e4ea"
+      "sha256": "a6ed923249db1349d48328926df5076b82f40de955a9f605ce49c84982b72b32"
     },
     {
       "path": "src/xr/XrPlayProfile.ts",
@@ -1545,7 +1549,7 @@
     },
     {
       "path": "src/xr/xr.css",
-      "sha256": "82bdd64e0751cfb590c5a5b68e412b7ba876eaa16241aab523717568c1dc0edd"
+      "sha256": "fea413ba70cd259c17f69979f7a21a6d09f93a1d62ad8803008735eb0448efdb"
     },
     {
       "path": "tsconfig.json",
@@ -1618,12 +1622,12 @@
       "sha256": "fa3d9802994a0ed7376a97419650b69f971f3cc29650371d21c164775bab5506"
     },
     {
-      "path": "assets/xr-BfNetZ-7.css",
-      "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      "path": "assets/xr-B00zUbaN.css",
+      "sha256": "23a8828e3e93d5f4b04c1594b0146aecf33fb331d60004fd60e77c0cdc98b264"
     },
     {
-      "path": "assets/xr-GFYVf6X_.js",
-      "sha256": "ce14ff32de2bf964fca411d4ee40ee394b16d64b73fd458f15e5657fbea14221"
+      "path": "assets/xr-xPpLfatU.js",
+      "sha256": "f6cd445e9bf8e34605e89191ec2d3eed84323a050f9946f000c01f19f2049654"
     },
     {
       "path": "eso0932a.jpg",
@@ -1775,7 +1779,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "e3830fd20f84a34ba758bc58c21d544c9b2dfa77c33cb961d889c7c401ff061e"
+      "sha256": "0dd798fea073b6bd722f09f48b5ba27e268a1b4d717697f19ade024769d22c9d"
     }
   ]
 }
