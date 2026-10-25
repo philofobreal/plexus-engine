@@ -686,3 +686,144 @@ Only the source-stable final JSON is a validated result; the earlier source-chan
 remains explicitly rejected. Source commits separate the analyzer evidence (`f700885`) and worker
 preparation optimization (`f3a85cb`). Commit/push documentation, deploy the exact committed tree,
 verify public files/routes, then perform public browser smoke and pause for manual testing.
+
+
+## T11g - quiet-prefix energy crossing (2026-10-25)
+
+T11f was manually accepted by the user's next-task request. T11 remains partial; T12 is not
+started. Parent owns analyzer/contracts/schema/integration; independent read-only review checks
+the DSP, normalizer and counterexamples. Existing source/fixture/runner files are extended.
+No additional report family, dependency, UI switch or render-time DSP is introduced.
+
+### Scope and contract
+
+Optional `AcousticAttack.quietOnset` provides an alternative **engineering threshold-crossing
+sample**, not a replacement for the legacy sample/time/family or an isolated musical onset.
+The parent activity layer retains null confidence, signal-only use and scoring ineligibility.
+Algorithm `quiet-prefix-energy-v1`; `decisionSample` is full real PCM length. Association is the
+containing legacy attack ID; no new attack, note, source label or scoring input is created.
+The legacy T11b-f projections omit only this new optional field and must remain exact.
+
+Qualification requires a complete preceding feature frame with AC power <=1e-10, a complete
+triggering frame and a feature hop at least the rounded2ms radius R. Other cases omit the
+optional measurement; omission is unavailable evidence, never proof of no onset. The preceding
+frame supplies its own mean and AC power. Threshold is fixed `max(1e-10,4*prefixPower)`.
+No future strongest peak or per-track normalization sets that threshold.
+
+Starting from the complete observed trailing prefix window `[anchor-R,anchor)`, first require
+its prefix-mean-referenced energy to be at/below threshold. A quiet full hop can hide a brief
+prefix spike; if this short window is already above threshold, abstain. Then slide one sample
+at a time through the triggering frame and return the first above-threshold mean square:
+`sampleIndex=n`, measurement `supportSamples=[n-R+1,n+1]`, exact preceding-frame `prefixSamples`,
+`prefixPower`, `thresholdPower`, and `crossingPower`. The support includes prefix samples where
+appropriate and is never clipped to manufacture a smaller window.
+
+This support is **not** a guaranteed physical-onset uncertainty interval. A very quiet/slow rise
+can cross much later than its physical beginning. A DC step can cross the signal threshold;
+therefore this is not instrument, vocal, percussive/tonal or musical-event recognition. A quiet
+prefix also does not certify an isolated sound source. Continuous nonquiet mixtures are outside
+this refinement's coverage; their original evidence stays unchanged.
+
+Normalization enforces exact algorithm, supported clock/frame, support/prefix association,
+full-track decision sample, finite measured ranges, prefix floor, derived threshold and strictly
+above-threshold crossing power. Unknown keys are rejected and permitted fields/arrays are
+explicitly cloned. This verifies the payload contract, not acoustic truth without PCM. Earlier
+payloads may omit the field. The optional JSON schema preserves all old required properties.
+
+### Validation and cost
+
+The previous90 authored controls are retained. Across45 first/later signal combinations, all11
+known legacy retargetings now have an alternative crossing near the first authored start; the
+34 legacy-stable combinations also retain an early crossing. Old legacy anchors and the entire
+T11f short-spectrum measurements remain unchanged. This is a narrow authored timing advance,
+not independent recorded musical accuracy or separation of both nearby sounds.
+
+Three appended tests cover3 clocks/five subhop phases, gain/DC, near-floor stationary
+noise, nonquiet background, file start/end, insufficient hop, slow attack and DC-step limits,
+normalizer omission/clone/malformed values. Review found two defects before final validation:
+a short spike at the end of a globally quiet prefix could masquerade as a new crossing, and a
+spread clone could retain forged confidence/source claims. Initial short-window qualification,
+strict keys, explicit cloning and both counterexample regressions fix these defects.
+
+Work is one cheap eligibility check per accepted attack and, only when eligible, a bounded
+prefix/search scan with scalar rolling energy. No FFT, history array or per-frame message is
+added. The T11f renderer projection continues to omit the complete acoustic tree from all four
+render-worker preparation paths. Main-host analysis normalization still processes the optional
+records once per load. Measure offline elapsed cost separately from cumulative tests; do not
+interpret Node elapsed time as process CPU, main-frame cost or Quest frame rate.
+
+The existing runner adds a Git-identified T11f producer (`d3ec168`) and compares all previous
+root/T11b-f values exactly, including T11f attackChanges. Its90 controls also record quiet
+crossings; old model agreements and decoder-identity abstentions retain their original limits.
+The real3-recording measurement uses unchanged final source hashes and no model installation.
+
+After build, cumulative tests, source-stable measurement and final docs: commit/push, guarded
+Pages prepare/publish/verify, live XR load/play/pause smoke, then pause for manual acceptance.
+Wall remains Off; MVP/XR Offscreen and the old chart path remain intact. Continue afterward with
+validated musical event/role qualification; continuous-mixture attacks and note/source boundaries
+remain unresolved. Vocal/instrument identity stays unsupported and is not a prerequisite to a
+future T12 restricted to capabilities that actually pass validation.
+
+
+### T11g final test and navigation record
+
+`npm run build` passes (`logs/t11g/build-final.log`), existing chunk-size warning only.
+`node --test --test-reporter=tap tests/music-activity.test.mjs tests/music-events.test.mjs tests/analyzer-contract.test.mjs tests/accepted-timing-measurement.test.mjs`
+passes51/51 before the final review fixes. Final boundary command:
+`node --test --test-name-pattern="quiet-prefix crossing|quiet crossings|quiet-crossing normalizer" tests/music-activity.test.mjs`
+passes3/3 with the prefix-spike and forged-claim counterexamples covered.
+`npm test -- --test-reporter=tap` after all runtime/test changes runs1812 tests:1803 pass,
+nine failures, zero skips/cancellations. All1809 predecessors remain active. Each failure name
+AND assertion message exactly matches `logs/timing-cleanup/baseline-failures.json`;
+`logs/t11g/failure-comparison.json` verifies this. No numeric baseline or historical measurement
+is rewritten, and no additional source-evolution manifest change is needed.
+
+Node25.2.1/npm11.6.2, no runtime fallback or dependency installation. Python inference/pytest
+and physical Quest were not run: no changed Python inference code/model runtime or attached
+headset. Direct Git diff and read-only analyzer review replace optional `diff_export.ps1`.
+Full public browser UI smoke follows guarded deployment; it is not a headset performance test.
+
+Graphify full code-only refresh covers891 files,8342 nodes and20064 raw AST edges. The ignored
+raw extraction is retained before clustering; the navigation projection has17583 edges with no
+dangling endpoints. Exact `src_analyzer_musicactivity_musicactivity_quietonset` is verified in
+source and graph. No semantic/LLM extraction, backend, hooks, visualization or new global graph.
+The documented manifest-reset workflow avoids the known changed-file-only extraction trap.
+
+
+### T11g source-stable measurement and handoff
+
+`node research/analyzer-lab/diagnostics/measure-music-activity.mjs --audio-dir "C:/novy/Plexus Engine (VJ System)/plexus-engine/tests/audio/Prodigy" --output logs/t11g/measurement-final.json`
+completes with11 unchanged source hashes, protocol `t11g-quiet-prefix-crossing-1`. Every previous
+root/T11b-f value is exactly equal on all3 full decoded recordings; only optional quietOnset
+measurements are new. Old attackChanges spectra, raw anchors, event times and chart inputs stay
+exact. Old39 attack/45 entry/30 band/16 context/40 periodicity controls and90 T11f controls remain.
+No new model inference is run; all9 historical decoder-identity mismatches remain abstentions,
+so independent recording accuracy is null.
+
+On the11 previously retargeted authored controls, median/max absolute errors change from
+30.0625/31.9375 ms for the legacy anchor to 0.0000/0.0000 ms for the alternative crossing.
+All90 hard-start control crossings fall within 0.0000 ms of the authored start.
+
+These are declared synthetic-signal results, not a general musical onset-accuracy claim. Slow
+rises and DC steps retain their explicitly tested limits; prefix-spike cases abstain. The
+alternative times have no separate note-separation/refractory guarantee and are not promoted
+into the chart automatically.
+
+| Recording | Previous values exact | Quiet-prefix candidates | Warm20s median T11f /T11g |
+|---|---|---|---|
+| Goa | Yes | 0 | 277.229 /279.908 ms (+0.97%) |
+| No Good | Yes | 1 | 278.444 /287.207 ms (+3.15%) |
+| Scienide | Yes | 1 | 253.498 /260.969 ms (+2.95%) |
+
+Five alternating warm pairs per recording run after completed cumulative testing. Individual
+pairs vary; these are offline Node elapsed wall times, not CPU/FPS/Quest results. No speedup,
+zero-cost or stable percentage claim follows from the deltas. New per-recording payload is only
+the listed optional candidates, and the unchanged render-worker projection omits the complete
+acoustic tree. Main normalization still has once-per-load work. Full source provenance is in
+Git; no new source-copy/report-file family is added.
+
+Source commit `ce5751f` separates runtime/contract/tests from this documentation update. Push
+both, deploy the exact reviewed tree with `release-pages.mjs prepare/publish/verify`, then verify
+public XR load/play/pause and unchanged chart counts. Preserve the actual deployment receipt
+and manual continuation point in `logs/t11g/handoff.json` and the workspace status file. Stop
+for manual acceptance; T11 stays partial and T12 is not started.

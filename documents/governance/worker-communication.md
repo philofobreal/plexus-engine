@@ -344,3 +344,16 @@ proxies omit the unused `musicActivity` tree only in prepare messages through
 `projectRenderWorkerAnalysis`; authoritative host analysis, cache keys, plan-only updates and
 main fallback input stay intact. Render-frame messages do not carry this evidence.
 See the [T11f contract](../features/music-events.md#t11f---attack-local-positive-spectral-change-2026-10-25).
+
+
+## T11g optional quiet-prefix crossing
+
+`musicActivity.attacks[].quietOnset` is an optional, attack-associated engineering measurement,
+algorithm `quiet-prefix-energy-v1`. Complete quiet prefix and full triggering frame are required;
+the initial short prefix window must also be below threshold. Prefix-mean trailing energy yields
+the first above-threshold sample and its exact observed support. Publication remains full-track.
+The normalizer validates clock/support/threshold/ranges and rejects unknown keys, then explicitly
+clones permitted fields. Parent null confidence/signal-only/scoring-ineligible policy applies.
+No legacy time/chart change, new sound-family claim, FFT or render message is introduced. Missing
+measurement is unavailable evidence; support is not a physical-onset confidence interval.
+See the [T11g contract](../features/music-events.md#t11g---quiet-prefix-energy-crossing-2026-10-25).

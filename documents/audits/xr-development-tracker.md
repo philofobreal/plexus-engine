@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-25 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T11f attack-local change implemented; validated; deploy/manual handoff checkpoint below; T11 partial; T12 not started.** Existing MVP/XR Offscreen rendering stays intact. [Current T11 scope and validation](../features/music-events.md#t11f---attack-local-positive-spectral-change-2026-10-25). [Previous merged review](xr-review-checkpoint.md).
+**T11g quiet-prefix crossing implemented; validated; deployment/manual handoff below; T11 partial; T12 not started.** Existing MVP/XR Offscreen rendering stays intact. [Current T11 scope and validation](../features/music-events.md#t11g---quiet-prefix-energy-crossing-2026-10-25). [Previous merged review](xr-review-checkpoint.md).
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -57,7 +57,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T08 | Gameplay + XR: note meanings and bounded halos | T02, T07 fit | Accepted by user continuation on 2026-10-24, deployed 2bd7cc0. Three optional musical roles. [Evidence](xr-musical-roles-validation.md) |
 | T09 | Gameplay + input/render: playable hand policy and motion | T08 | Accepted by user; Guarded optional, Legacy default. [Evidence](xr-movement-validation.md) |
 | T10 | Analyzer timing cleanup | T00-T01 | Rejected experiments removed at user request; established XR path and equivalent Band search retained. Accuracy beyond available evidence remains unproven. [Record](xr-timing-cleanup.md) |
-| T11 | Analyzer contracts: timed evidence and dominance | Stable T10 clock/evidence boundary | T11a/b/c/d/e retained; T11f bounded attack-local spectral change, unavailable states and no new texture/source classifier. Unused acoustic evidence omitted from four render-worker preparations. Full1809, followed by reviewed-hash correction and62/62 affected rerun; nine exact baseline failures remain. Graphify refreshed. No chart promotion; T11 partial, no T12; manual pause after deploy. [Scope](../features/music-events.md) |
+| T11 | Analyzer contracts: timed evidence and dominance | Stable T10 clock/evidence boundary | T11a-f retained; T11g optional quiet-prefix energy crossings recover11 authored retargetings, with prefix-spike abstention and explicit signal-only limits. Full1812/1803 pass; nine exact baseline failures. All prior root/T11b-f values exact on3 recordings; Graphify updated. No chart promotion; T11 partial, no T12; manual pause after deploy. [Scope](../features/music-events.md) |
 | T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09-T11 | Planned; legacy path retained |
 | T13 | Analyzer + automation + semantics: cue and visual arrival timing | T10; T11 additive | Planned |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
@@ -485,7 +485,7 @@ No chart promotion or player toggle. Pause after deploy for manual load/play/pau
 Wall remains Off; MVP/XR Offscreen rendering and T10 cleanup remain intact.
 
 
-## Current continuation checkpoint - T11f local attack change, 2026-10-25
+## Historical checkpoint - T11f local attack change, 2026-10-25
 
 T11e accepted. Graphify refreshed first, including scripts/fixture generators and exact-symbol
 navigation guidance; raw AST and clustered projection are local ignored artifacts. T11f adds
@@ -499,3 +499,20 @@ known failures. Source-stable3-recording parity is exact; offline elapsed delta+
 Commit/push and guarded deploy/public browser smoke precede the manual load/play/pause pause.
 Following acceptance continue validated musical event/role qualification; nearby raw energy
 attacks can still merge or retarget. Wall Off, MVP/XR Offscreen and T10 cleanup remain intact.
+
+
+## Current continuation checkpoint - T11g quiet-prefix crossing, 2026-10-25
+
+T11f accepted; user explicitly requested the next task and documentation at appropriate workflow
+points. T11g adds an optional earliest short-energy threshold crossing after a qualified quiet
+prefix, keeping every legacy attack and T11b-f field unchanged. It addresses the11 demonstrated
+retargeting controls as an alternative time, not generalized musical/source onset recognition.
+Prefix spikes, slow rises, DC steps, continuous background and incomplete support have explicit
+limits. Parent owns shared schema; independent review defects are covered before final tests.
+[Contract and acceptance](../features/music-events.md#t11g---quiet-prefix-energy-crossing-2026-10-25).
+
+Build passes; full1812 tests/1803 pass/nine exact known failures, zero skips/cancellations.
+Three full recordings preserve every prior value;90 controlled crossings and11 retargeting
+comparisons pass within their declared scope. Commit/push, guarded deployment and browser smoke
+precede the manual pause; actual receipts belong in logs/t11g/handoff.json. T11 remains partial; no T12.
+No new player switch or render-frame DSP; Wall Off and MVP/XR Offscreen remain intact.
