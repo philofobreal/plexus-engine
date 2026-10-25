@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-24 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T11a delivered, T11 partial, T12 not started.** Current review includes MVP Offscreen/material, staged source commits, push and Pages verification. [Current review/resume record](xr-review-checkpoint.md).
+**T11b acoustic activity implemented; T11 partial; T12 not started.** Existing MVP/XR Offscreen rendering stays intact. [Current T11 scope and validation](../features/music-events.md#t11b--acoustic-activity-evidence-2026-10-25). [Previous merged review](xr-review-checkpoint.md).
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -57,7 +57,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T08 | Gameplay + XR: note meanings and bounded halos | T02, T07 fit | Accepted by user continuation on 2026-10-24, deployed 2bd7cc0. Three optional musical roles. [Evidence](xr-musical-roles-validation.md) |
 | T09 | Gameplay + input/render: playable hand policy and motion | T08 | Accepted by user; Guarded optional, Legacy default. [Evidence](xr-movement-validation.md) |
 | T10 | Analyzer timing cleanup | T00-T01 | Rejected experiments removed at user request; established XR path and equivalent Band search retained. Accuracy beyond available evidence remains unproven. [Record](xr-timing-cleanup.md) |
-| T11 | Analyzer contracts: timed evidence and dominance | Stable T10 clock/evidence boundary | T11a delivered 6a7ed74: accepted-event provenance, strict clock/association transport. 82/82 targeted +9/9 schema; 1756/1747 pass, nine exact retained failures. Tonal/vocal unsupported, dominance unknown; T11 remains partial. Manual pause; no T12. [Scope](../features/music-events.md) |
+| T11 | Analyzer contracts: timed evidence and dominance | Stable T10 clock/evidence boundary | T11a provenance retained; T11b acoustic activity/energy-rise/aggregated texture layer implemented. 94/94 targeted, final boundary/schema 21/21; full 1782/1773 pass, nine exact retained failures. Musical note/role/vocal identity unsupported; T11 partial. Manual pause after deploy; no T12. [Scope](../features/music-events.md) |
 | T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09-T11 | Planned; legacy path retained |
 | T13 | Analyzer + automation + semantics: cue and visual arrival timing | T10; T11 additive | Planned |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
@@ -415,7 +415,7 @@ Pages 5a35086b51c36bb667447168da960e2e68796b1e, release t09-movement-20261024T14
 
 User explicitly requested deletion of unsuccessful experiments and redundant artifacts, then continuation to T11. Timing UI/Q3/selected-file reanalysis removed; retired settings cleaned. Stable XR analysis, existing lab tests and equivalent Band search retained. T10 deployment/source copies and Q3-only code/tests deleted by request; no claim of improved musical truth. See [single delivery record](xr-timing-cleanup.md). Cleanup validation/publication completed (74c57b8); T11a started afterward as explicitly requested.
 
-## Current continuation checkpoint — review + MVP worker, 2026-10-24
+## Historical checkpoint — review + MVP worker, 2026-10-24
 
 Product position: **T11a delivered; T11 partial; T12 not started.** T10 rejected experiments stay
 removed. T11a does not establish musical accuracy, tonal/vocal recognition or dominance. After
@@ -428,3 +428,16 @@ T00–T11a code and documentation, fixes confirmed defects, commits in subsystem
 [Review and performance record](xr-review-checkpoint.md) carries current results and limitations.
 The live `release.json` binds deployment to the reviewed source commit; historical deployment
 records remain historical. Source-only commits do not imply a merge to master.
+
+## Current continuation checkpoint — T11b acoustic activity, 2026-10-25
+
+T11a accepted; user requested continuation of partial T11. T11b adds acoustic activity/boundary,
+energy-rise and aggregated texture evidence in the existing analyzer worker; no chart consumer
+or player switch. Legacy accepted data and MVP/XR offscreen rendering remain intact. Wall stays
+Off; no Wall development. T10 rejected timing controls/source-copy artifacts remain removed.
+[Contract, evidence, limits and validation](../features/music-events.md#t11b--acoustic-activity-evidence-2026-10-25).
+
+**T11 remains partial; T12 not started.** Continue with validated musical onset/note-boundary/role
+inference, preserving unknown/unsupported vocal/source identities until justified. Do not promote
+acoustic texture into musical source identity or enable it for scoring. Stop after this delivery's
+deploy for manual load/play/pause/chart feedback before the next task.

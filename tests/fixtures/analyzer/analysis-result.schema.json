@@ -1095,6 +1095,9 @@
         },
         "musicEvents": {
           "$ref": "#/$defs/musicEvents"
+        },
+        "musicActivity": {
+          "$ref": "#/$defs/acousticActivity"
         }
       }
     },
@@ -1875,6 +1878,304 @@
           "items": {
             "$ref": "#/$defs/timedMusicEvent"
           }
+        }
+      }
+    },
+    "acousticActivity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "clock",
+        "confidence",
+        "consumerUse",
+        "xrScoring",
+        "capabilities",
+        "activity",
+        "attacks",
+        "dominance",
+        "source"
+      ],
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": [
+            "acoustic-activity-v1"
+          ]
+        },
+        "clock": {
+          "$ref": "#/$defs/featureClock"
+        },
+        "confidence": {
+          "type": "null"
+        },
+        "consumerUse": {
+          "type": "string",
+          "enum": [
+            "signal-evidence-only"
+          ]
+        },
+        "xrScoring": {
+          "type": "string",
+          "enum": [
+            "ineligible"
+          ]
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "attacks",
+            "offsets",
+            "sustain",
+            "family",
+            "dominance",
+            "noteIdentity",
+            "vocal"
+          ],
+          "properties": {
+            "attacks": {
+              "type": "string",
+              "enum": [
+                "energy-rise-candidates"
+              ]
+            },
+            "offsets": {
+              "type": "string",
+              "enum": [
+                "activity-boundaries"
+              ]
+            },
+            "sustain": {
+              "type": "string",
+              "enum": [
+                "activity-span"
+              ]
+            },
+            "family": {
+              "type": "string",
+              "enum": [
+                "spectral-texture"
+              ]
+            },
+            "dominance": {
+              "type": "string",
+              "enum": [
+                "acoustic-texture"
+              ]
+            },
+            "noteIdentity": {
+              "type": "string",
+              "enum": [
+                "unsupported"
+              ]
+            },
+            "vocal": {
+              "type": "string",
+              "enum": [
+                "unsupported"
+              ]
+            }
+          }
+        },
+        "activity": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "startSample",
+              "endSample",
+              "onsetSupportSamples",
+              "offsetSupportSamples",
+              "sustainSamples",
+              "leftCensored",
+              "rightCensored"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "startSample": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "endSample": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "onsetSupportSamples": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "offsetSupportSamples": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "sustainSamples": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "leftCensored": {
+                "type": "boolean"
+              },
+              "rightCensored": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "attacks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "sampleIndex",
+              "time",
+              "supportSamples",
+              "familySupportSamples",
+              "family",
+              "strengthRms",
+              "powerRatio",
+              "observationFrame"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "sampleIndex": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "time": {
+                "type": "number",
+                "minimum": 0
+              },
+              "supportSamples": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "familySupportSamples": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "family": {
+                "type": "string",
+                "enum": [
+                  "tonal",
+                  "broadband",
+                  "mixed",
+                  "unknown"
+                ]
+              },
+              "strengthRms": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 8
+              },
+              "powerRatio": {
+                "type": "number",
+                "minimum": 0
+              },
+              "observationFrame": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "dominance": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "startSample",
+              "endSample",
+              "texture",
+              "decisionSample"
+            ],
+            "properties": {
+              "startSample": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "endSample": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "texture": {
+                "type": "string",
+                "enum": [
+                  "tonal",
+                  "broadband",
+                  "mixed",
+                  "unknown",
+                  "silence"
+                ]
+              },
+              "decisionSample": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "analysis-pcm"
+          ]
         }
       }
     }

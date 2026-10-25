@@ -1031,6 +1031,8 @@ export interface TrackAnalysis {
     /** Explicit experimental timing identity/provenance; no new accepted events. */
     eventTiming?: import('./eventTiming').EventTimingAnalysis;
     musicEvents?: import('./musicEvents').MusicEventLayer;
+    /** Measured acoustic activity/texture; not instrument identity, note truth or XR eligibility. */
+    musicActivity?: import('./musicEvents').AcousticActivityLayer;
     duration: number;
     /** Optional for legacy publications; current analyzer publishes exact PCM clock/support. */
     featureClock?: import('./featureClock').FeatureClock;

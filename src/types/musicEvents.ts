@@ -1,6 +1,38 @@
 import type { BeatEvent } from './index';
 import type { FeatureClock } from './featureClock';
 
+export type AcousticTexture = 'tonal' | 'broadband' | 'mixed' | 'unknown';
+export interface AcousticAttack {
+    id: string;
+    sampleIndex: number;
+    observationFrame: number; // Frame that triggered the energy-rise candidate (localization can reach its predecessor).
+    time: number;
+    supportSamples: [number, number];
+    familySupportSamples: [number, number];
+    family: AcousticTexture;
+    strengthRms: number; // AC RMS amplitude of the observed window, not normalized confidence.
+    powerRatio: number;
+}
+export interface AcousticActivityLayer {
+    algorithm: 'acoustic-activity-v1';
+    source: 'analysis-pcm';
+    clock: FeatureClock;
+    confidence: null;
+    consumerUse: 'signal-evidence-only';
+    xrScoring: 'ineligible';
+    capabilities: { attacks: 'energy-rise-candidates'; offsets: 'activity-boundaries'; sustain: 'activity-span';
+        family: 'spectral-texture'; dominance: 'acoustic-texture'; noteIdentity: 'unsupported'; vocal: 'unsupported' };
+    activity: {
+        id: string; startSample: number; endSample: number;
+        onsetSupportSamples: [number, number] | null;
+        offsetSupportSamples: [number, number] | null;
+        sustainSamples: [number, number] | null;
+        leftCensored: boolean; rightCensored: boolean;
+    }[];
+    attacks: AcousticAttack[];
+    dominance: { startSample: number; endSample: number; texture: AcousticTexture | 'silence'; decisionSample: number }[];
+}
+
 /** A traceable projection of accepted visual hits, never a new acoustic detector. */
 export interface TimedMusicEvent {
     id: string; // Stable within this analysis, not a cross-file source identity.
@@ -75,5 +107,82 @@ export function normalizeMusicEvents(value: MusicEventLayer | undefined, clock: 
                 || b.uncertaintySamples[0] !== a.uncertaintySamples[0] || b.uncertaintySamples[1] !== a.uncertaintySamples[1]) return undefined;
         }
         return result;
+    } catch { return undefined; }
+}
+
+/** Fail closed on forged musical identity, invalid clocks, gaps and unbounded/overlapping records. */
+export function normalizeAcousticActivity(value: AcousticActivityLayer | undefined, clock: FeatureClock | undefined): AcousticActivityLayer | undefined {
+    if (!value || !clock || value.algorithm !== 'acoustic-activity-v1' || value.source !== 'analysis-pcm' || value.confidence !== null
+        || value.consumerUse !== 'signal-evidence-only' || value.xrScoring !== 'ineligible'
+        || !value.clock || Object.keys(clock).some(k => value.clock[k as keyof FeatureClock] !== clock[k as keyof FeatureClock])
+        || !Array.isArray(value.activity) || !Array.isArray(value.attacks) || !Array.isArray(value.dominance)) return undefined;
+    const capabilities: AcousticActivityLayer['capabilities'] = { attacks: 'energy-rise-candidates', offsets: 'activity-boundaries',
+        sustain: 'activity-span', family: 'spectral-texture', dominance: 'acoustic-texture', noteIdentity: 'unsupported', vocal: 'unsupported' };
+    if (Object.keys(capabilities).some(k => value.capabilities?.[k as keyof typeof capabilities] !== capabilities[k as keyof typeof capabilities])) return undefined;
+    try {
+        projectAcceptedMusicEvents([], clock); // Same strict original-PCM clock domain as T11a.
+        const length = clock.sampleCount, bound = Math.ceil(length / clock.hopSize);
+        if (value.activity.length > bound || value.attacks.length > bound || value.dominance.length > bound + 1 || !value.dominance.length) return undefined;
+        const interval = (x: unknown): x is [number, number] => Array.isArray(x) && x.length === 2
+            && Number.isSafeInteger(x[0]) && Number.isSafeInteger(x[1]) && x[0] >= 0 && x[0] < x[1] && x[1] <= length;
+        const textures = ['tonal', 'broadband', 'mixed', 'unknown'];
+        const textureAvailable = clock.hopSize >= 512 && clock.hopSize / clock.sampleRate >= .015;
+        const pair = (a: [number, number] | null, b: [number, number] | null) =>
+            a === null || b === null ? a === b : a.length === 2 && a[0] === b[0] && a[1] === b[1];
+        for (let i = 0; i < value.activity.length; i++) {
+            const a = value.activity[i];
+            if (!a || !interval([a.startSample, a.endSample]) || a.id !== `activity:${a.startSample}`
+                || (i > 0 && a.startSample < value.activity[i - 1].endSample)
+                || a.leftCensored !== (a.startSample === 0) || typeof a.rightCensored !== 'boolean'
+                || a.startSample % clock.hopSize !== 0
+                || (!a.rightCensored && (a.endSample % clock.hopSize !== 0 || a.endSample + 2 * clock.hopSize > length))
+                || (a.rightCensored && (a.endSample !== length || i !== value.activity.length - 1))
+                || (a.leftCensored ? a.onsetSupportSamples !== null : !interval(a.onsetSupportSamples)
+                    || a.onsetSupportSamples[0] > a.startSample || a.onsetSupportSamples[1] <= a.startSample)
+                || (a.rightCensored ? a.offsetSupportSamples !== null : !interval(a.offsetSupportSamples)
+                    || a.offsetSupportSamples[0] > a.endSample || a.offsetSupportSamples[1] < a.endSample)
+                || !pair(a.onsetSupportSamples, a.leftCensored ? null : [Math.max(0, a.startSample - clock.hopSize), Math.min(length, a.startSample + clock.hopSize)])
+                || !pair(a.offsetSupportSamples, a.rightCensored ? null : [Math.max(a.startSample, a.endSample - clock.hopSize), Math.min(length, a.endSample + clock.hopSize)])
+                || !pair(a.sustainSamples, a.endSample - a.startSample >= Math.ceil(.12 * clock.sampleRate) ? [a.startSample, a.endSample] : null)) return undefined;
+        }
+        let spanIndex = 0;
+        for (let i = 0; i < value.attacks.length; i++) {
+            const a = value.attacks[i];
+            if (a) while (spanIndex < value.activity.length && value.activity[spanIndex].endSample <= a.sampleIndex) spanIndex++;
+            const frame = a?.observationFrame ?? 0, start = frame * clock.hopSize;
+            if (!a || !Number.isSafeInteger(a.sampleIndex) || a.sampleIndex < 0 || a.sampleIndex >= length
+                || !Number.isSafeInteger(frame) || frame <= 0 || frame >= bound
+                || (i > 0 && frame <= value.attacks[i - 1].observationFrame)
+                || a.sampleIndex < start - clock.hopSize || a.sampleIndex >= Math.min(length, start + clock.hopSize)
+                || a.id !== `acoustic:${a.sampleIndex}` || a.time !== a.sampleIndex / clock.sampleRate
+                || (i > 0 && a.sampleIndex - value.attacks[i - 1].sampleIndex < Math.ceil(.06 * clock.sampleRate)) || !interval(a.supportSamples)
+                || a.supportSamples[0] > a.sampleIndex || a.supportSamples[1] <= a.sampleIndex
+                || !interval(a.familySupportSamples) || !textures.includes(a.family) || (!textureAvailable && a.family !== 'unknown')
+                || !pair(a.supportSamples, [Math.max(0, start - clock.hopSize - Math.max(1, Math.round(.002 * clock.sampleRate))), Math.min(length, start + clock.hopSize + Math.max(1, Math.round(.002 * clock.sampleRate)))])
+                || !pair(a.familySupportSamples, [start, Math.min(length, (frame + Math.max(1, Math.ceil(.06 * clock.sampleRate / clock.hopSize)) + 1) * clock.hopSize)])
+                || !Number.isFinite(a.strengthRms) || a.strengthRms < 0 || a.strengthRms > 8
+                || !Number.isFinite(a.powerRatio) || a.powerRatio < 0
+                || spanIndex >= value.activity.length || a.sampleIndex < value.activity[spanIndex].startSample) return undefined;
+        }
+        for (let i = 0; i < value.dominance.length; i++) {
+            const a = value.dominance[i];
+            if (!a || !interval([a.startSample, a.endSample]) || ![...textures, 'silence'].includes(a.texture)
+                || a.startSample !== (i ? value.dominance[i - 1].endSample : 0)
+                || (i && a.texture === value.dominance[i - 1].texture)
+                || (!textureAvailable && !['unknown', 'silence'].includes(a.texture))
+                || a.startSample % clock.hopSize !== 0
+                || (i === 0 && (a.texture !== 'unknown' || a.decisionSample !== 0))
+                || (i > 0 && a.decisionSample !== Math.min(length, a.startSample + clock.hopSize))
+                || (i === 1 && a.startSample < (Math.max(2, Math.ceil(.08 * clock.sampleRate / clock.hopSize)) - 1) * clock.hopSize)
+                || (i > 1 && a.startSample - value.dominance[i - 1].startSample < .2 * clock.sampleRate)
+                || (i === value.dominance.length - 1 && a.endSample !== length)) return undefined;
+        }
+        return { algorithm: value.algorithm, source: 'analysis-pcm', clock: { ...clock }, confidence: null, consumerUse: 'signal-evidence-only', xrScoring: 'ineligible', capabilities,
+            activity: value.activity.map(a => ({ id: a.id, startSample: a.startSample, endSample: a.endSample,
+                onsetSupportSamples: a.onsetSupportSamples && [...a.onsetSupportSamples], offsetSupportSamples: a.offsetSupportSamples && [...a.offsetSupportSamples],
+                sustainSamples: a.sustainSamples && [...a.sustainSamples], leftCensored: a.leftCensored, rightCensored: a.rightCensored })),
+            attacks: value.attacks.map(a => ({ id: a.id, observationFrame: a.observationFrame, sampleIndex: a.sampleIndex, time: a.time, supportSamples: [...a.supportSamples],
+                familySupportSamples: [...a.familySupportSamples], family: a.family, strengthRms: a.strengthRms, powerRatio: a.powerRatio })),
+            dominance: value.dominance.map(a => ({ startSample: a.startSample, endSample: a.endSample, texture: a.texture, decisionSample: a.decisionSample })) };
     } catch { return undefined; }
 }

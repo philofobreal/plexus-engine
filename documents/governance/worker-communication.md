@@ -44,6 +44,14 @@ tonal/vocal recognition is unsupported and dominance unknown. Normalization chec
 clock and accepted-event association; it never invents acoustic note onsets or an independent grid.
 See [T11a scope](../features/music-events.md) and the strict result schema.
 
+Optional nested `trackAnalysis.musicActivity` is the independent `acoustic-activity-v1`
+signal-evidence layer. It carries AC activity spans/censored boundaries, energy-rise candidates
+and aggregated spectral-texture intervals on the original PCM clock. It has null confidence,
+unsupported note/vocal identity and explicit chart-scoring ineligibility. Normalization binds
+support, frame resolution, intervals and capability identity; legacy omission remains valid.
+This once-per-load result does not add per-frame render packets or alter accepted hits/grid.
+See [T11b scope and limits](../features/music-events.md#t11b--acoustic-activity-evidence-2026-10-25).
+
 The authoritative musical timing model (`tempo`, `tempoConfidence`, `beats`, `beatConfidence`,
 `barStarts`, `alternativeTempos`, `timingConfidence`) is carried on the nested `TrackAnalysis`
 as well, and `beats` / `barStarts` / `timingConfidence` are mirrored at the root for direct

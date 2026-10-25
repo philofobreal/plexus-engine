@@ -48,14 +48,19 @@
     {
       "path": "src/types/index.ts",
       "predecessorSha256": "cb8fc311a35415951019a814f1090806b1db53e78ee4fc9f3b8037944b4dbc32",
-      "replacementSha256": "546dd306194a40c60c274a87d8b599437d5ef2916b9200a0c7ec6a9627af0345",
-      "reviewedBy": "Single integration owner",
-      "reviewedReason": "Additive T11a accepted-event provenance layer only; no event time/intensity/type, DSP, chart, cache or default change. Functional legacy parity and cumulative regressions cover the addition. No copied source tree; existing measured predecessor retained.",
+      "replacementSha256": "6703405c3456d72329c1c8723f50af8b8d64842cd7bb4739176e0a2e6b458ef0",
+      "reviewedBy": "Single integration owner with independent read-only analyzer audit",
+      "reviewedReason": "T11b additive acoustic activity evidence only. Optional read-only shared FFT observer; original feature arithmetic, accepted event timing/grid and chart inputs unchanged. DC/low-resolution abstention, support/censoring, held/repeated/legato/overlap/silence, real worker normalization, synthetic transfer and exact full-recording legacy parity checked. No historical measurement or source archive rewritten. Prior source commit 201bf5d8a72d37d6fe9798420825add9e60fab57; no new source-copy tree.",
       "supersededReplacements": [
         {
           "sha256": "02c041e8cef7a9ce2008023c74f6edc9265f1f7d69690a2af031785f1971893b",
           "reviewedBy": "Codex single integration owner, T04a source review",
           "reviewedReason": "Add preset-owned signed coherent spiral tuning and optional absolute plan/presentation direction. Preserve analyzer source, measured fixtures and historical replay; target signed morph, preset transfer, independent path bend, worker presentation and default compatibility regressions. Full history/export parity is deferred to T04b."
+        },
+        {
+          "sha256": "546dd306194a40c60c274a87d8b599437d5ef2916b9200a0c7ec6a9627af0345",
+          "reviewedBy": "Single integration owner",
+          "reviewedReason": "Additive T11a accepted-event provenance layer only; no event time/intensity/type, DSP, chart, cache or default change. Functional legacy parity and cumulative regressions cover the addition. No copied source tree; existing measured predecessor retained."
         }
       ]
     },
@@ -76,16 +81,37 @@
     {
       "path": "src/analyzer/analyzeAudio.ts",
       "predecessorSha256": "ab59c383d3ae78bd19ad2148e780dd63b2cde6fcedc1ed6f87899d9c73acc042",
-      "replacementSha256": "085d4ce446695f33590696f490f61b0dad706c345174b772a9e6216b6e65daee",
-      "reviewedBy": "Single integration owner",
-      "reviewedReason": "Additive T11a accepted-event provenance layer only; no event time/intensity/type, DSP, chart, cache or default change. Functional legacy parity and cumulative regressions cover the addition. No copied source tree; existing measured predecessor retained."
+      "replacementSha256": "97dbd60cc9e1fdac58a711600868f9cd1c0cc70a5fa5c335424934076ea1b288",
+      "reviewedBy": "Single integration owner with independent read-only analyzer audit",
+      "reviewedReason": "T11b additive acoustic activity evidence only. Optional read-only shared FFT observer; original feature arithmetic, accepted event timing/grid and chart inputs unchanged. DC/low-resolution abstention, support/censoring, held/repeated/legato/overlap/silence, real worker normalization, synthetic transfer and exact full-recording legacy parity checked. No historical measurement or source archive rewritten. Prior source commit 201bf5d8a72d37d6fe9798420825add9e60fab57; no new source-copy tree.",
+      "supersededReplacements": [
+        {
+          "sha256": "085d4ce446695f33590696f490f61b0dad706c345174b772a9e6216b6e65daee",
+          "reviewedBy": "Single integration owner",
+          "reviewedReason": "Additive T11a accepted-event provenance layer only; no event time/intensity/type, DSP, chart, cache or default change. Functional legacy parity and cumulative regressions cover the addition. No copied source tree; existing measured predecessor retained."
+        }
+      ]
     },
     {
       "path": "src/analyzer/normalizeAnalysisResult.ts",
       "predecessorSha256": "a1fe940ac9f6e907fba909d0e501ef77252ea56d281b5f709f0ac01a4ab0a94e",
-      "replacementSha256": "9c034c50af0285f4b24df3436d514e11a090d2cfb92a2f18340db671c7b3d7de",
-      "reviewedBy": "Single integration owner",
-      "reviewedReason": "Additive T11a accepted-event provenance layer only; no event time/intensity/type, DSP, chart, cache or default change. Functional legacy parity and cumulative regressions cover the addition. No copied source tree; existing measured predecessor retained."
+      "replacementSha256": "73bfd6f945fe6ed3cb0238b1decf2941a46769163dde2bce7cba03d29ff893d1",
+      "reviewedBy": "Single integration owner with independent read-only analyzer audit",
+      "reviewedReason": "T11b additive acoustic activity evidence only. Optional read-only shared FFT observer; original feature arithmetic, accepted event timing/grid and chart inputs unchanged. DC/low-resolution abstention, support/censoring, held/repeated/legato/overlap/silence, real worker normalization, synthetic transfer and exact full-recording legacy parity checked. No historical measurement or source archive rewritten. Prior source commit 201bf5d8a72d37d6fe9798420825add9e60fab57; no new source-copy tree.",
+      "supersededReplacements": [
+        {
+          "sha256": "9c034c50af0285f4b24df3436d514e11a090d2cfb92a2f18340db671c7b3d7de",
+          "reviewedBy": "Single integration owner",
+          "reviewedReason": "Additive T11a accepted-event provenance layer only; no event time/intensity/type, DSP, chart, cache or default change. Functional legacy parity and cumulative regressions cover the addition. No copied source tree; existing measured predecessor retained."
+        }
+      ]
+    },
+    {
+      "path": "src/analyzer/FeatureExtractor.ts",
+      "predecessorSha256": "3e07d4b88ab7167f5cf46e0491df45e98518ff37fe2a4fe0495892559d24fb2b",
+      "replacementSha256": "24f819a45ccb7e96724aa5f3337647aa0278455040dee486015d300aa136316a",
+      "reviewedBy": "Single integration owner with independent read-only analyzer audit",
+      "reviewedReason": "T11b additive acoustic activity evidence only. Optional read-only shared FFT observer; original feature arithmetic, accepted event timing/grid and chart inputs unchanged. DC/low-resolution abstention, support/censoring, held/repeated/legato/overlap/silence, real worker normalization, synthetic transfer and exact full-recording legacy parity checked. No historical measurement or source archive rewritten. Prior source commit 201bf5d8a72d37d6fe9798420825add9e60fab57; no new source-copy tree."
     }
   ]
 }

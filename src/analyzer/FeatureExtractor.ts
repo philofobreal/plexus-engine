@@ -143,7 +143,8 @@ export class FeatureExtractor {
         this.bassSustainT = new Float32Array(this.totalFrames);
     }
 
-    public process(onProgress?: (p: number) => void): void {
+    public process(onProgress?: (p: number) => void,
+        observeSpectrum?: (start: number, re: Float32Array, im: Float32Array) => void): void {
         const N = this.hopSize;
         const fft = new FFT(N);
         const re = fft.re;
@@ -171,6 +172,7 @@ export class FeatureExtractor {
             this.zcrT[i] = zeroCrossings / Math.max(1, validSamples - 1);
 
             fft.transform();
+            observeSpectrum?.(start, re, im);
 
             let sumMag = 0, sumFreqMag = 0, sumLogMag = 0;
             let currentFlux = 0, eSub = 0, eBass = 0, eLowMid = 0, eMid = 0, ePresence = 0, eBrilliance = 0, eAir = 0;

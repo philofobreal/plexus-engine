@@ -20,6 +20,7 @@ import { extractResidualOnsets } from './ResidualOnsets';
 import { extractDifferenceOnsets } from './DifferenceOnsets';
 import { refineAcceptedEventTiming, retimePercussiveCues } from './AcceptedEventTiming';
 import { projectAcceptedMusicEvents } from '../types/musicEvents';
+import { MusicActivity } from './MusicActivity';
 
 export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     const { samples, sampleRate, options, onProgress } = input;
@@ -47,9 +48,10 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
 
     const calibration = estimateSpectralCalibration(channel, sampleRate, hopSize);
     const features = new FeatureExtractor(channel, sampleRate, hopSize, calibration);
+    const activity = new MusicActivity(channel, sampleRate, hopSize);
     features.process((p) => {
         onProgress?.(p, 'Analyzing music...');
-    });
+    }, (start, re, im) => activity.observe(start, re, im));
 
     const grid = new GridAligner(features, sampleRate, hopSize);
     grid.calculate();
@@ -182,6 +184,7 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
         timingConfidence: grid.timingConfidence
     };
     trackAnalysis.musicEvents = projectAcceptedMusicEvents(publishedEvents, trackAnalysis.featureClock!);
+    trackAnalysis.musicActivity = activity.finish();
 
     return {
         requestId,
