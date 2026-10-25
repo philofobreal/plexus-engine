@@ -827,3 +827,139 @@ both, deploy the exact reviewed tree with `release-pages.mjs prepare/publish/ver
 public XR load/play/pause and unchanged chart counts. Preserve the actual deployment receipt
 and manual continuation point in `logs/t11g/handoff.json` and the workspace status file. Stop
 for manual acceptance; T11 stays partial and T12 is not started.
+
+
+## T11h - crossing-anchored short spectral change (2026-10-25)
+
+T11g was manually accepted by the user's continuation. T11h applies that existing timing
+measurement to the existing short-spectrum layer, instead of introducing another sidecar.
+Analyzer, shared contract, integration, tests and docs have one parent owner; independent
+analyzer review is read-only. T11 remains partial and T12 is not started.
+
+The producer now emits `attack-local-excess-v2`. For each historical energy attack, it uses
+`quietOnset.sampleIndex` when that qualified measurement exists, otherwise `attack.sampleIndex`.
+The body starts2 ms before the selected sample; the equal-size prefix ends4 ms before the body.
+The N policy, Hann-weighted centering, power/ratio/bin calculations, full-track publication,
+null confidence, unresolved source ownership and scoring ineligibility are unchanged.
+
+The historical `attackId` still binds the record to its original attack. The alternative time
+is not substituted into the legacy attack's ID/time/family, accepted hits, grid or chart.
+If the chosen crossing lacks complete real-PCM spectral support, the record is `file-boundary`;
+it does not silently switch back to the later legacy anchor. No qualified crossing means the
+same numerical measurement as v1. Missing resolution remains explicitly unavailable.
+
+The normalizer and strict worker schema accept both versions. v1 always binds windows to the
+legacy sample, even when quietOnset is present; v2 binds the selected crossing or legacy fallback.
+When the selected anchors differ, simply renaming versions, deleting a used crossing, or
+transplanting legacy support into a corrected record fails closed. With absent/equal quiet
+anchors both versions intentionally bind the same support. Legacy omission and genuine v1 records remain valid. The parent
+validates quietOnset before using it for v2 binding, then clones the publication explicitly.
+The subalgorithm version carries the changed interpretation; root algorithm7 and its existing
+chart/cache identity are retained because their numeric inputs and behavior do not change.
+No persisted acoustic-analysis cache is introduced or migrated.
+
+### Validation scope and limitations
+
+The retained90 hard-start controls cover3 clocks,5 hop phases, impulse/tone/noise and three
+later-addition pair families. All45 pairs now have exactly equal prefix/body support and
+spectral measurements before versus after the later addition, excluding historical attack IDs.
+The34 stable-ID comparisons remain; all11 legacy-retargeted comparisons now also preserve the
+first measurement. This is a local measurement correction, not new source recognition.
+
+All prior active tests remain. The T11g omission test now constructs actual v1 legacy-bound
+records before deleting quietOnset: deleting the anchor from v2 would create an inconsistent
+payload, not a predecessor. Its former source is retained at `8f6f392`; no fixture hashes or
+historical result files are rewritten. The first targeted run exposed this migration mismatch
+and an incorrectly chosen test boundary; both are retained in `logs/t11h/targeted.tap`. The
+boundary control now has a valid legacy measurement but insufficient earlier crossing support,
+which must abstain. The subsequent focused4 tests pass (`logs/t11h/new-reviewed.tap`).
+
+Continuous nonquiet backgrounds retain the previous fallback. Slow threshold crossings can
+still be late; DC steps can still cross the engineering threshold; Hann-edge impulses can be
+below floor. The positive spectrum is neither an isolated-source spectrum nor a categorical
+percussive/tonal/instrument/vocal detector. No probability or note-quality claim is added.
+T12 needs separately qualified musical events/role evidence and conservative fallback before
+any chart promotion. Wall remains Off; renderer-worker projection still omits the complete
+acoustic tree, with no new FFT, packet or cloning work in render callbacks. No player control
+is needed for this internal versioned correction.
+
+The existing runner retains Git-identified T11b-g producers and every earlier control. It
+compares all T11g values except the intentionally versioned attackChanges exactly on the three
+full recordings; changed records require a qualified crossing. Other records must remain
+numerically exact. Recorded decoder mismatches remain abstentions, not independent accuracy.
+Warm alternating20s comparisons use T11g versus T11h after cumulative tests, with unchanged
+source hashes checked at the end. No external model inference, source-copy family or new report
+framework is added. Exact final checks and delivery receipts follow below.
+
+
+### T11h cumulative validation and review
+
+`npm run build` passes (`logs/t11h/build-final.log`), with the existing large-chunk warning.
+`node --test --test-name-pattern="quiet-crossing normalizer|v2 " tests/music-activity.test.mjs`
+passes4/4 after the migration/boundary test corrections. The final
+`npm test -- --test-reporter=tap` runs1816 tests:1807 pass, nine failures, zero skips or
+cancellations,322.292 s. Every1812 predecessor remains active. Failure names AND assertion
+messages exactly match `logs/timing-cleanup/baseline-failures.json`, verified in
+`logs/t11h/failure-comparison.json`. The first targeted54-test run (52 pass/2 fail) is retained;
+the final full suite includes those corrected tests and the new schema compatibility test.
+No golden, numeric baseline or source-evolution manifest is changed.
+
+Independent read-only analyzer review found no runtime blocker; renderer/cache review verified
+all four prepare-only projections, unchanged original fallback/cache references and absence of
+sidecar consumers in visuals/XR/gameplay/UI/audio/export. Its documentation clarification is
+applied: same-support v1/v2 payloads are intentionally both valid. Direct Git diff/review is used;
+optional `diff_export.ps1` is skipped. `git diff --check` passes. No dependencies or runtime
+fallbacks; Node25.2.1/npm11.6.2. Python inference/pytest and physical Quest are not run because
+no Python inference code or attached headset is involved. MVP browser smoke is not repeated:
+render/UI unchanged and cumulative host/worker tests retained. Public XR load/play/pause smoke
+follows the guarded release; that is browser verification, not a Quest performance benchmark.
+
+Full local code-only Graphify refresh covers891 files,8342 nodes,20064 raw AST edges and17583
+canonical edges with zero dangling endpoints. Exact attackChanges and quietOnset symbols are
+verified. Raw extraction is saved before clustering; no LLM/backend/hooks/visualization or
+semantic corpus rebuild. Generated graph and logs remain local/ignored.
+
+
+### T11h source-stable recording comparison
+
+`node research/analyzer-lab/diagnostics/measure-music-activity.mjs --audio-dir "C:/novy/Plexus Engine (VJ System)/plexus-engine/tests/audio/Prodigy" --output logs/t11h/measurement-final.json`
+completes with11 unchanged source hashes, protocol `t11h-crossing-anchored-spectrum-1`.
+Three full recordings retain every root/T11b-g value except the intentionally versioned
+attackChanges. Goa has2341 attacks/zero quiet anchors/zero changed records; No Good2385/1/1;
+Scienide1536/1/1. Every changed record has its existing qualified crossing; all unqualified
+records remain numerically exact. All prior controls, including90 attack-change controls and
+45 exact late-addition comparisons (11 retargeted legacy IDs), pass. The9 decoder/PCM mismatches
+remain explicit abstentions; no independent recording-label accuracy or model rerun is claimed.
+
+First-run warm20s medians T11g/T11h: Goa273.430/317.568 ms (+16.14%),
+No Good271.189/272.855 ms (+0.61%), Scienide270.285/266.050 ms (-1.57%).
+The Goa outlier triggers a complete unchanged-source repeat into `logs/t11h/measurement-repeat.json`;
+the first evidence is retained. Five alternating pairs are noisy elapsed wall time, not process
+CPU time, browser frame rate or Quest performance. Do not reinterpret an outlier as a stable
+slowdown or a favorable later run as proof of zero overhead. Runtime/contract/test/runner changes
+are committed separately as `34ac16c`; final repeat results and deployment handoff follow.
+
+
+The complete repeat passes the same11 source-hash guards. All non-timing values from both
+runs are exactly equal; no result is discarded or overwritten. Repeat medians are:
+
+| Recording | T11g /T11h warm20s median | Delta |
+|---|---|---|
+| Goa | 277.674 /284.515 ms | +2.46% |
+| No Good | 267.103 /274.754 ms | +2.86% |
+| Scienide | 246.500 /256.352 ms | +4.00% |
+
+The original Goa+16.14% does not recur (repeat+2.46%). The repeat still observes+2.46%..+4.00%
+offline elapsed differences; do not claim a speedup, zero overhead or a stable device percentage.
+Both runs and their individual pairs are retained. The producer still has the same bounded
+transform count/scratch, and unchanged renderer projection proves no new frame DSP/payload.
+This desktop Node measurement does not establish physical Quest acceptance.
+
+After documentation commit/push, release the exact clean HEAD through
+`node scripts/release-pages.mjs prepare t11h-crossing-spectrum`,
+`node scripts/release-pages.mjs publish` and `node scripts/release-pages.mjs verify`.
+Public XR load/play/pause must retain the chart. Actual source/Pages hashes, release URL and
+browser receipt live in `logs/t11h/handoff.json` and the workspace status file. Stop after the
+manual handoff. T11 stays partial; T12 has not started. The next bounded step freezes and tests
+one selective musical-event qualification rule with transfer/negative examples, event-level
+precision/recall, confusion and abstention before any classification or chart promotion.

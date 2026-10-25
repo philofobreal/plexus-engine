@@ -357,3 +357,15 @@ clones permitted fields. Parent null confidence/signal-only/scoring-ineligible p
 No legacy time/chart change, new sound-family claim, FFT or render message is introduced. Missing
 measurement is unavailable evidence; support is not a physical-onset confidence interval.
 See the [T11g contract](../features/music-events.md#t11g---quiet-prefix-energy-crossing-2026-10-25).
+
+
+## T11h short-spectrum versioned anchoring
+
+The producer emits `musicActivity.attackChanges.algorithm = attack-local-excess-v2`, preferring
+the existing qualified `quietOnset.sampleIndex` for short-spectrum support, otherwise using the
+legacy attack sample. IDs still associate to historical attacks. Unavailable support at the
+selected anchor abstains; it never silently reanchors. Normalization first validates the quiet
+measurement, then binds v2 support to that selected sample. Legacy `attack-local-excess-v1`
+always uses the legacy sample and remains accepted by normalization and the strict result schema.
+No new field, message, chart eligibility, player switch or render-time processing is added.
+See [T11h contract](../features/music-events.md#t11h---crossing-anchored-short-spectral-change-2026-10-25).
