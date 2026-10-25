@@ -75,3 +75,29 @@ Use this file for practical platform behavior that affects repeatability in Code
 - Product/spec history in `v0.1/` and `v0.2/` is reference material only. Current implementation clarifications belong under `plexus-engine/documents/`.
 - Prefer a focused addendum document when legacy markdown has encoding drift or broad historical content that would make line-level patching risky.
 - Governance documents should contain rules and repeatable process. Product AC clarifications should live in product documentation or a current implementation addendum.
+
+
+## Local Graphify refresh and exact-symbol navigation
+
+Refresh the ignored `graphify-out/` from the active project root:
+`graphify extract . --code-only --no-cluster --max-workers 2`.
+This indexes local AST only, without an LLM backend. The tracked `.graphifyignore` includes
+source, runner and authored-fixture code while excluding generated data, caches and environments.
+Copy the raw graph to `graphify-out/AST_EXTRACTION.json` before
+`graphify cluster-only . --no-label --no-viz`; the clustered report is a navigation projection.
+Raw extraction can contain unresolved reference endpoints and parallel relationship types;
+clustering removes/collapses some of these. Preserve the raw extraction for diagnosis and do
+not interpret either graph as a complete architectural proof. No hooks/global graph are needed.
+
+If a full rebuild is needed after clustering but extract reports no incremental changes,
+move the local `graphify-out/manifest.json` to an ignored log backup first, then rerun extract.
+Keep all file operations inside the checked project root. The CLI has no full-rebuild flag in
+the installed version. Existing corpus/source evidence is not deleted by this cache reset.
+
+Prefer exact graph IDs when short names collide with import bindings. Examples:
+`graphify explain src_analyzer_musicactivity_musicactivity` and
+`graphify affected src_types_musicevents_normalizeacousticactivity --depth 2`.
+The short query `MusicActivity` can select a research import rather than the producer class.
+Validate source paths/lines and caller relationships directly before editing. Generated graph,
+cache and report stay local/ignored; instructions and ignore rules are versioned. Refresh again
+after implementation so subsequent agents see the actual current source.

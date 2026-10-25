@@ -1,9 +1,19 @@
+# Local/generated data and dependencies are not repository navigation targets.
+logs/
+.npm-cache/
+research/analyzer-lab/.venv/
+research/analyzer-lab/.cache/
+research/analyzer-lab/runs/
+research/analyzer-lab/data/local/
+research/analyzer-lab/models/
+research/analyzer-lab/tmp/
+research/analyzer-lab/providers/**/.venv/
+research/analyzer-lab/providers/**/.cache/
+**/__pycache__/
 node_modules/
 dist/
 graphify-out/
-scripts/
 public/
-tests/fixtures/
 *.json
 *.ps1
 *.sh
