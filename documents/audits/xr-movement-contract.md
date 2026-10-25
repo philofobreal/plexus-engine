@@ -43,3 +43,30 @@ The seventh Choreo row exposed an existing weighted-distance focus bug: Down cou
 The synthetic corpus spans four 96/62-second source fixtures, all five difficulties (including Expert), four hand patterns, three zones and two play spaces with a deterministic spread of activity/variation/lead. Legacy 76250 target instances → Guarded 67632, retaining 88.6977%; 8185 pairs and 654 overhead targets retained. Legacy has 10726 violations under the **new** model; Guarded has zero. The worst individual profile retains only 28.11%, so do not promote this conservative filter to default. No assertion that all legacy violations are physically impossible for every person. Further density/ergonomic tuning needs manual Quest feedback, not weakened validator limits.
 
 Physical reach/fatigue/readability, actual controller tracking and frame pacing remain unmeasured. This task does not expand musical source evidence (T12) or touch deferred Wall work. Roll back immediately with Movement → Legacy; old stored settings need no migration.
+
+## Version 2 — recovery without permanent hand starvation (T12a1, 2026-10-25)
+
+The user reported a disappearing hand and thinning rhythm in No Good under Musical/Ultra/Active/
+Expressive/Alternate/Even/Guarded/Crossover/Tall. V1's single uniform recovery could collide with
+historical opposite-hand paths; after rejection the same old hand position remained, causing an
+indefinite rejection cascade. A currently valid crossing could also block the next recovery.
+The version1 description/results above remain historical evidence, not current quality claims.
+
+V2 first keeps the uniform route, then tries early or late recovery at the same travel-speed
+limit. Explicit stationary holds cover every unused second, followed by the unchanged cut.
+All candidates use the same exact continuous collision checks against the entire retained
+history; no time-based expiry, hand reset, teleport, cut/hand change or onset shift is allowed.
+Crossed/shared strokes reserve at least the original clearance and the horizontal own-corridor
+return time plus stroke time. This strengthens the old fixed clearance at demanding crossings.
+
+Before committing a shared placement, Guarded previews four upcoming real onset groups and
+compares the original against its two existing own-side revoicings. Only a strictly better
+retained-onset count wins; ties keep the original proposal. No grid-only note is invented and
+pairs remain atomic with their authored rows. The final guard still runs after Tall overhead.
+Validator replay reconstructs the same selected paths and enforces every prior numeric limit.
+
+Previews synchronously read an immutable authoritative prefix and own only a bounded suffix.
+IDs and collision queries see both. No whole-track history is copied, truncated or mutated by a
+discarded branch. This is offline chart preparation only, with no playback-frame work, audio,
+analyzer, worker or rendering change. It is a bounded greedy model, not exhaustive choreography
+optimization or a physical headset safety guarantee. Legacy charts/goldens remain unchanged.

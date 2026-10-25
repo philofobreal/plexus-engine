@@ -1514,4 +1514,20 @@ Textures still redraw only on displayed-state changes, and no gameplay/DSP work 
 T12a is the visible section-character portion of T12. General tonal/vocal/dominance source
 selection and fusion require qualified producers and remain deferred, not inferred from section
 names. Full per-event rejection diagnostics are a later T12 delivery. Physical Quest comfort
-and musical/gameplay acceptance remain manual. [Current evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12a-musical-character-2026-10-25).
+and musical/gameplay acceptance remain manual. [Current evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12a1-hand-recovery-2026-10-25).
+
+## Addendum AX — T12a1 hand recovery and cockpit default Off (2026-10-25)
+
+Manual T12a feedback exposed permanent one-hand starvation in Guarded. Gameplay owns V2 recovery
+alternatives with explicit holds, physical crossing recovery clearance and bounded preview of
+four real groups before committing shared placement. Existing numeric motion/collision limits,
+onset provenance, pair atomicity and final-after-overhead ordering remain authoritative.
+Preview branches share a read-only history prefix and own only small suffix state; no frame work,
+DSP, new analysis field or player switch. [Model](../audits/xr-movement-contract.md#version-2--recovery-without-permanent-hand-starvation-t12a1-2026-10-25).
+
+The user additionally requires Cockpit Off by default. XR appearance normalization returns Off
+for absent/invalid values, while explicit saved Off/Reduced/Full remain respected. Title keeps
+its existing Scroll preference but is hidden with Cockpit Off. Reset defaults now selects Off;
+no forced migration of a player's explicit choice, geometry deletion or menu/persistence change.
+Historical T07 default-Full descriptions remain delivery records. All unrelated user settings,
+including Wall Off and the MVP/XR Offscreen paths, stay unchanged.

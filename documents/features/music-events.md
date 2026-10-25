@@ -7,7 +7,7 @@ The analyzer remains exactly T11h; no research classifier is promoted. T12a adds
 section-led chart profile using the existing accepted BeatEvents and published sections/plan.
 Tonal/vocal onset recognition, source dominance, background-present qualification and human
 accuracy validation remain deferred. They do not block T12a and must not be claimed as delivered.
-See [current continuation and validation](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12a-musical-character-2026-10-25).
+See [current continuation and validation](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12a1-hand-recovery-2026-10-25).
 Historical sections below record their original delivery scope.
 
 ## T11a — traceable accepted events

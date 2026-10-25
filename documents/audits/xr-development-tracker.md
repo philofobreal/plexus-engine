@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-25 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T11 research closed for this phase by user decision, with recognition limitations retained; T12a Musical chart profile and larger menu implemented, validation/deployment handoff below.** Existing MVP/XR Offscreen rendering stays intact. [T11 capability limits](../features/music-events.md). [Previous merged review](xr-review-checkpoint.md).
+**T12a manual feedback: one-hand starvation corrected in T12a1, cockpit default Off requested; final validation/deployment handoff below. T11 research remains closed for this phase with recognition limitations retained.** Existing MVP/XR Offscreen rendering stays intact. [T11 capability limits](../features/music-events.md). [Previous merged review](xr-review-checkpoint.md).
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -555,7 +555,7 @@ independently checked attribution/negative/transfer support; do not keep extendi
 selector that has zero coverage on these recordings or promote it into gameplay; do not replace missing evidence with another data envelope. Wall stays Off and
 MVP/XR Offscreen code is unchanged.
 
-## Current continuation checkpoint - T12a Musical character, 2026-10-25
+## Historical checkpoint - T12a Musical character, 2026-10-25
 
 T11i accepted. The user explicitly prioritized visible gameplay and accepted closing further T11
 research as a prerequisite. T11 is closed for this phase with limited capabilities; unsupported
@@ -610,3 +610,58 @@ not new tonal/vocal recognition. T12 remains partial: source arbitration/fusion 
 per-event rejection diagnostics are not delivered. After acceptance, continue the visible T12
 work from this checkpoint; do not restart T11 research or claim unqualified musical identities.
 Wall stays Off; MVP/XR Offscreen pipeline, DSP, source clock and worker contracts stay unchanged.
+
+## Current continuation checkpoint - T12a1 hand recovery, 2026-10-25
+
+Manual T12a feedback reported one hand disappearing, thinning the other hand's rhythm under
+Musical/Ultra/Active/Expressive/Alternate/Even/Guarded/Crossover/Tall on No Good. This is a T12a
+correction, not acceptance or the next roadmap task. The user's additional release request sets
+Cockpit Off by default, including absent/invalid records and Reset; explicit saved choices remain.
+
+Gameplay owns movement model V2: same speed/cut/clearance limits, early/late recovery alternatives
+with explicit holds, physical post-crossing return reservation and four-real-group preview before
+committing shared placement. Only the original and two existing own-side revoicings are compared;
+ties retain the original. Preview reads the immutable history prefix and owns a bounded suffix,
+without copying/erasing whole history or leaking trial IDs/segments. No altered hand/cut/time,
+new note, source classifier, frame work, worker/schema or dependency. Final guard stays after
+overhead. [Contract](xr-movement-contract.md#version-2--recovery-without-permanent-hand-starvation-t12a1-2026-10-25)
+and [three-recording comparison](xr-movement-validation.md#t12a1-recording-regression--2026-10-25).
+
+Same-source No Good V1:504 notes,64 left/440 right, last left50.643s; V2:999,495/504, both hands
+reach405.513/406.140s,79 pairs. Goa451→909 and Scienide395→822 also retain both hands through
+their final accepted events. All active half-minutes retain both hands; no forced hand relabeling.
+This is ffmpeg44100Hz left-channel/motor evidence, not browser-identical PCM or musical accuracy.
+The actual local browser No Good yields964 notes/922 arrows/83 pairs in Musical/Guarded; regeneration,
+play/pause and default-Off cockpit work, no console warnings/errors. Audio released by reload.
+The fresh local origin's default was inspected; public-host preexisting saved choices are preserved.
+
+Final `npm run build` passes. `node --test --test-reporter=tap tests/rhythm-movement.test.mjs
+tests/xr-musical-character.test.mjs tests/xr-settings.test.mjs tests/xr-cockpit.test.mjs
+tests/xr-controller-regeneration.test.mjs`:60/60. New coverage includes mirrored recovery,
+physical crossing-exit reservation and90 different384-second Musical Alternate/Even charts,
+requiring both hands in each populated half-minute. All previous480/360 movement combinations,
+collision/speed/rest/pair/provenance tests, default chart goldens and earlier research remain active.
+`npm test -- --test-reporter=tap`:1831 total/1822 pass/nine exact known failures,0 skips/cancellations;
+names AND assertion messages match `logs/timing-cleanup/baseline-failures.json`.
+`git diff --check` clean. Default-Full expectations in three UI tests are explicitly updated for
+the user's Off request; their predecessors remain in `9702aa57a95b3129619eb4421796da182802a58f`.
+
+The superseded first full run was stopped after the default/source changed and is retained in
+`logs/t12a1/full-tests.txt`; only `full-tests-final.txt` supplies final cumulative counts. An initial
+diagnostic used an absent analyzer duration and produced an invalid empty chart; that attempt is
+excluded. The corrected reusable evaluator derives duration from PCM length and rejects invalid
+captures. Final reviewed recordings replay the exact cached source and retained V1 source hash.
+An early waypoint experiment was removed; final motion routes retain the existing straight-path
+collision rejection contract. An erasable-TypeScript syntax issue was fixed before the final build.
+
+One integration owner; independent read-only gameplay reviews cover alternatives, reservations,
+preview isolation and prefix optimization. Node25.2.1/npm11.6.2, no fallback or install. Python
+inference/pytest not run (no Python changes); no physical Quest comfort/FPS test. Direct diff and
+independent review replace `diff_export.ps1`, considered and skipped. AST-only Graphify refresh,
+no LLM backend/hooks/semantic extraction. Actual source/Pages/public-browser/graph receipts:
+ignored `logs/t12a1/handoff.json`; guarded deployment rebuilds the committed source.
+
+**Stop for manual No Good acceptance after deploy.** Expect both hands and retained rhythm,
+with cockpit default Off. Musical listening relevance and physical comfort are still manual;
+this does not improve onset recognition. T12 remains partial; continue from this correction only
+after feedback. T11 research remains closed for this phase. Wall Off and MVP/XR Offscreen remain.

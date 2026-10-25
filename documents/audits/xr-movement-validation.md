@@ -1,5 +1,34 @@
 # T09 movement validation — 2026-10-24
 
+Current model is V2 (T12a1); the T09 checks below retain their original historical meaning.
+See the [V2 contract](xr-movement-contract.md#version-2--recovery-without-permanent-hand-starvation-t12a1-2026-10-25)
+and [current task checkpoint](xr-development-tracker.md#current-continuation-checkpoint---t12a1-hand-recovery-2026-10-25).
+
+## T12a1 recording regression — 2026-10-25
+
+Same cached accepted-event/section/automation sources, compared against the retained V1 movement
+source from `9702aa57a95b3129619eb4421796da182802a58f`. Original source indices/times/types are
+unchanged. Decoder: ffmpeg left channel,44100Hz; this reproduces the failure class, not exact
+browser/Quest PCM or independently annotated musical accuracy. Every final chart validates.
+
+| Recording | V1 notes (left/right) | V2 notes (left/right) | V1 last missing-hand onset | V2 last left/right onset |
+| --- | --- | --- | --- | --- |
+| No Good | 504 (64/440) | 999 (495/504) | left50.643s | 405.513/406.140s |
+| Goa | 451 (54/397) | 909 (455/454) | left45.790s | 338.500/338.106s |
+| Scienide | 395 (23/372) | 822 (416/406) | left56.169s | 345.281/345.466s |
+
+Each active half-minute retains both hands. No hand share is forced by changing assigned hands;
+the retained chart follows the original real onset groups. A different decoder/sample rate can
+strand the other hand under V1, matching the user's report; the correction is symmetric.
+The audible relevance of the resulting rhythm still needs the user's listening/gameplay test.
+
+Reusable command: `node scripts/evaluate-movement.mjs --recording AUDIO NEW_OUTPUT.json --baseline
+9702aa57a95b3129619eb4421796da182802a58f`; replay with `--source NEW_OUTPUT.json.source.json
+ANOTHER_NEW_OUTPUT.json --baseline COMMIT_SHA`. It retains PCM/source hashes, raw/final counts,
+30-second hand coverage and validator output, refuses existing outputs and invalid duration.
+The original synthetic invocation and T09 results remain intact. Generated recordings/captures
+stay ignored. Receipts: `logs/t12a1/*-comparison.json` and final task handoff.
+
 Guarded movement is now an optional chart-generation mode in Choreo → Movement; Legacy remains default and retains the old chart golden. [Model, target rules, rollout and limits](xr-movement-contract.md). Gameplay owns offline motor validation and rigid reflection; XR owns the setting and adjacent-row keyboard focus fix. No audio/analyzer/worker/render-clock authority changes.
 
 ## Checks
