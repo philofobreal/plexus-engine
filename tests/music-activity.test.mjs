@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createLoader } from './helpers/xr-loader.mjs';
-import { activityFixture, ACTIVITY_KINDS, ACTIVITY_TUPLES, entryFixture, ENTRY_KINDS, ACTIVITY_V1_SHA256, ENTRY_V1_SHA256, bandFixture, BAND_KINDS, BAND_V1_SHA256, contextFixture, CONTEXT_SPECS, attackChangeFixture, ATTACK_CHANGE_KINDS, ATTACK_CHANGE_PHASES } from './fixtures/music-activity-corpus.mjs';
+import { activityFixture, ACTIVITY_KINDS, ACTIVITY_TUPLES, entryFixture, ENTRY_KINDS, ACTIVITY_V1_SHA256, ENTRY_V1_SHA256, bandFixture, BAND_KINDS, BAND_V1_SHA256, contextFixture, CONTEXT_SPECS, attackChangeFixture, ATTACK_CHANGE_KINDS, ATTACK_CHANGE_PHASES, QUIET_TONAL_STUDY, quietTonalFixture } from './fixtures/music-activity-corpus.mjs';
+import { qualifyQuietTonalActivity, measureQuietTonalQualification, QUIET_TONAL_POLICY } from '../research/analyzer-lab/diagnostics/measure-music-activity.mjs';
 const load = createLoader({}, { Float32Array, Float64Array, Uint32Array, Int32Array });
 const { MusicActivity } = load('analyzer/MusicActivity.ts');
 const { FeatureExtractor } = load('analyzer/FeatureExtractor.ts');
@@ -719,5 +720,86 @@ test('v2 retains legacy windows without a qualified crossing and keeps boundary/
         const a = new MusicActivity(samples, fs, hop), result = { attacks: [{ id: 'acoustic:3200', sampleIndex: 3200, quietOnset: { sampleIndex: 3100 } }] };
         a.attackChanges(result); assert.equal(result.attackChanges.records[0].status, 'insufficient-resolution');
         assert.equal(result.attackChanges.records[0].bodySamples, null);
+    }
+});
+
+
+// T11i is a research-only classifier; earlier production evidence/tests remain unchanged.
+test('quiet-carrier research rejects invalid PCM and unsupported analysis without forging measurements', () => {
+    const tuple = QUIET_TONAL_STUDY.tuples.development[0], f = quietTonalFixture('hard-tone', tuple, 0, .32);
+    const layer = extract(f, tuple.hop);
+    for (const algorithm of [QUIET_TONAL_POLICY.predecessor, QUIET_TONAL_POLICY.algorithm]) {
+        for (const value of [NaN, Infinity, 9]) {
+            const samples = f.samples.slice(); samples[0] = value;
+            assert.throws(() => qualifyQuietTonalActivity(samples, layer, algorithm), /finite and within/);
+        }
+        assert.throws(() => qualifyQuietTonalActivity(new Float64Array(f.samples), layer, algorithm), /Float32/);
+    }
+    assert.throws(() => qualifyQuietTonalActivity(f.samples.slice(1), layer), /Invalid qualification input/);
+    assert.throws(() => qualifyQuietTonalActivity(f.samples, layer, 'unfrozen-policy'), /Unknown qualification policy/);
+    assert.throws(() => measureQuietTonalQualification([]), /Invalid qualification splits/);
+    assert.throws(() => measureQuietTonalQualification(['development', 'development']), /Invalid qualification splits/);
+    assert.throws(() => measureQuietTonalQualification(['unknown']), /Unknown qualification split/);
+    const absent = json(layer); delete absent.attackChanges;
+    assert.ok(qualifyQuietTonalActivity(f.samples, absent).records.every(r => r.verdict === 'abstain'));
+    const old = json(layer); old.attackChanges = json(measureFixedAttack(f.samples, f.sampleRate, tuple.hop, layer.attacks[0].sampleIndex));
+    old.attackChanges.algorithm = 'attack-local-excess-v1'; assert.ok(normalizeAcousticActivity(old, old.clock));
+    assert.ok(qualifyQuietTonalActivity(f.samples, old).records.every(r => r.reason === 'unavailable-local-spectrum'));
+});
+
+test('quiet-carrier research keeps immutable inputs, actual consumed supports and early interruption abstention', () => {
+    const tuple = QUIET_TONAL_STUDY.tuples.development[0];
+    const hard = quietTonalFixture('hard-tone', tuple, 0, .32), layer = extract(hard), before = json(layer), pcm = hard.samples.slice();
+    const result = qualifyQuietTonalActivity(hard.samples, layer), r = result.records[0];
+    assert.equal(r.verdict, 'qualified'); assert.equal(r.attackId, layer.attacks[0].id);
+    assert.equal(result.status, 'research-only'); assert.equal(result.confidence, null); assert.equal(result.xrScoring, 'ineligible');
+    assert.deepEqual(json(layer), before); assert.deepEqual(hard.samples, pcm);
+    assert.deepEqual(json(qualifyQuietTonalActivity(hard.samples, layer)), json(result));
+    assert.ok(r.persistenceSamples[1] >= r.sampleIndex + Math.ceil(.08 * hard.sampleRate));
+    assert.ok(r.carrierFitSamples[1] >= r.sampleIndex + Math.ceil(.08 * hard.sampleRate));
+    assert.equal(r.earlyFitSamples[1] - r.earlyFitSamples[0], Math.round(.002 * hard.sampleRate));
+    const gap = quietTonalFixture('gapped-tone', tuple, 0, .32), gapLayer = extract(gap);
+    const interrupted = qualifyQuietTonalActivity(gap.samples, gapLayer).records[0];
+    assert.equal(interrupted.verdict, 'abstain'); assert.equal(interrupted.reason, 'carrier-interrupted');
+    assert.equal(interrupted.persistenceSamples, null, 'later FFT support was never consumed');
+    assert.ok(interrupted.carrierFitSamples[1] < interrupted.requiredEndSample);
+    const v0 = qualifyQuietTonalActivity(gap.samples, gapLayer, QUIET_TONAL_POLICY.predecessor).records[0];
+    assert.equal(v0.verdict, 'abstain'); assert.ok(v0.persistenceSamples[1] < v0.requiredEndSample, 'failed window does not claim future support');
+    const tail = quietTonalFixture('clipped-tail', tuple, 0, .32), clipped = qualifyQuietTonalActivity(tail.samples, extract(tail)).records[0];
+    assert.equal(clipped.reason, 'incomplete-persistence'); assert.equal(clipped.carrierFitSamples, null); assert.equal(clipped.persistenceSamples, null);
+});
+
+test('latent same-band handoff is observationally identical and cannot become a source-identity claim', () => {
+    assert.ok(Object.isFrozen(QUIET_TONAL_POLICY)); assert.ok(Object.isFrozen(QUIET_TONAL_STUDY.tuples.development[0]));
+    const tuple = QUIET_TONAL_STUDY.tuples.development[0];
+    const single = quietTonalFixture('hard-tone', tuple, 0, .32), handoff = quietTonalFixture('same-band-handoff', tuple, 0, .32);
+    assert.deepEqual(handoff.samples, single.samples); assert.equal(handoff.latentHandoffSamples.length, 1);
+    assert.deepEqual(handoff.tonalStarts, single.tonalStarts, 'latent intent is not an additional audible onset');
+    const first = qualifyQuietTonalActivity(single.samples, extract(single)), second = qualifyQuietTonalActivity(handoff.samples, extract(handoff));
+    assert.deepEqual(json(first), json(second)); assert.equal(second.sourceOwnership, 'unresolved');
+});
+
+
+test('frozen quiet-carrier rule transfers without tuning while context-only attribution failures and coverage limits stay visible', () => {
+    const study = measureQuietTonalQualification();
+    assert.equal(study.rows.length, 576); assert.equal(study.productionPromotion, false); assert.equal(study.modelRerun, false);
+    for (const [split, positives, cases] of [['development', 36, 192], ['transfer', 72, 384]]) {
+        const s = study.summaries[split], fitted = s[QUIET_TONAL_POLICY.algorithm], predecessor = s[QUIET_TONAL_POLICY.predecessor];
+        assert.equal(fitted.overall.cases, cases); assert.equal(fitted.clean.tp, positives); assert.equal(fitted.clean.fn, 0);
+        assert.equal(fitted.protected.fp, 0); assert.equal(fitted.gatePassed, true);
+        assert.equal(predecessor.clean.tp, positives); assert.equal(predecessor.protected.fp, 18); assert.equal(predecessor.gatePassed, false);
+        assert.ok(fitted.overall.fn > 0 && fitted.overall.recall < .5, 'a selective success is not general musical-onset recall');
+        assert.ok(fitted.overall.abstentionFraction > .5);
+        assert.ok(fitted.clean.p95AbsoluteSeconds <= QUIET_TONAL_STUDY.toleranceSeconds);
+        for (const kind of ['dc-step', 'slow-rise', 'fast-glide', 'early-legato', 'gapped-tone', 'prefix-spike', 'clipped-tail'])
+            assert.equal(fitted.byKind[kind].qualified, 0, `${split}/${kind}`);
+    }
+    for (const row of study.rows) {
+        assert.match(row.pcmSha256, /^[0-9a-f]{64}$/); assert.equal(row.results[QUIET_TONAL_POLICY.algorithm].fp, 0);
+        for (const result of Object.values(row.results)) for (const r of result.records) {
+            if (r.carrierFitSamples) assert.ok(r.carrierFitSamples[1] <= row.sampleCount);
+            if (r.persistenceSamples) assert.ok(r.persistenceSamples[1] <= row.sampleCount);
+            assert.equal(r.decisionSample, row.sampleCount);
+        }
     }
 });
