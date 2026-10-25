@@ -90,3 +90,38 @@ export function entryFixture(kind, tuple = ACTIVITY_TUPLES.development[0]) {
 // Exact aggregate of all 13 development cases, hop512; T11b commit a1a0eaa63f143f9fa374d9c03f89a18f2c4dddb5.
 // Prior MusicActivity source SHA256: f91106e7071810563e1557a525621cc5a8f1b2254ae27e9d84fdf60901898664. No old measurements rewritten.
 export const ACTIVITY_V1_SHA256 = '238d9fe49edd57724a2ff78df058b63ab9d6732f15d0b6b20519ed3242de514e';
+
+// Exact T11c producer, commit 485ddd0dea789b7d79938ece6d36ea2e80c23e08: all 45 entry controls.
+export const ENTRY_V1_SHA256 = '137501e05059b10f8cf3dcd90a13c13e6edae18a440b0ba1eb23a519da323b81';
+
+// T11d fixed-mask controls; authored source ends are NOT necessarily band-activity ends.
+export const BAND_KINDS = ['held', 'am-entry', 'vibrato-entry', 'same-band-overlap', 'near-band-overlap',
+    'fade', 'entry-glide', 'carrier-cutoff', 'partial-tail', 'one-quiet-tail'];
+export function bandFixture(kind, tuple = ACTIVITY_TUPLES.development[0], hop = 512) {
+    const fs = tuple.sampleRate, bed = entryFixture('stable', tuple);
+    const count = kind === 'partial-tail' ? Math.round(1.013 * fs)
+        : kind === 'one-quiet-tail' ? (Math.ceil(fs / hop) + 1) * hop + Math.floor(hop / 2) : bed.samples.length;
+    const samples = bed.samples.slice(0, count), onset = .7;
+    const end = kind === 'held' ? 2.5 : kind === 'one-quiet-tail' ? Math.ceil(fs / hop) * hop / fs
+        : ['am-entry', 'vibrato-entry', 'fade', 'entry-glide'].includes(kind) ? 1.6 : 1.2;
+    let angle = .43;
+    for (let i = 0; i < samples.length; i++) {
+        const t = i / fs;
+        if (kind === 'carrier-cutoff' && t >= .95) samples[i] = 0;
+        if (t >= onset && t < end) {
+            const freq = (tuple.frequency + 1100) * (kind === 'vibrato-entry' ? 1 + .005 * Math.sin(2 * Math.PI * 5 * (t - onset)) : 1)
+                + (kind === 'entry-glide' && t > .95 ? (t - .95) * 2000 : 0);
+            angle += 2 * Math.PI * freq / fs;
+            const envelope = Math.max(0, Math.min(1, (t - onset) / .003, (end - t) / (kind === 'fade' ? .3 : .005)));
+            const gain = kind === 'am-entry' ? .7 + .3 * Math.sin(2 * Math.PI * 4 * (t - onset)) : 1;
+            samples[i] += .04 * envelope * gain * Math.sin(angle);
+        }
+        if (['same-band-overlap', 'near-band-overlap'].includes(kind) && t >= .95 && t < 1.6)
+            samples[i] += .04 * Math.min(1, (t - .95) / .003, (1.6 - t) / .005)
+                * Math.sin(2 * Math.PI * (tuple.frequency + 1100 + (kind === 'near-band-overlap' ? .2 * fs / hop : 0)) * (t - onset) + .43);
+    }
+    return { kind, samples, sampleRate: fs, attacks: [onset], sourceEnd: end,
+        expectedBandEnd: ['same-band-overlap', 'near-band-overlap'].includes(kind) ? 1.6
+            : ['fade', 'entry-glide', 'held', 'partial-tail', 'one-quiet-tail'].includes(kind) ? null : end,
+        truth: 'authored-signal' };
+}

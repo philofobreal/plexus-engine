@@ -242,3 +242,120 @@ Publish the clean committed source using `node scripts/release-pages.mjs prepare
 then `publish` and `verify`. The release marker binds source/build identities; the delivery handoff
 records verified live files/routes and the public load/play/pause smoke result. Pause for manual
 feedback after deployment. Resume partial T11 from this checkpoint, not T12.
+
+
+## T11d - Entry-frozen band activity (2026-10-25)
+
+T11c accepted. Optional `musicActivity.bandActivity`, algorithm
+`entry-fixed-band-activity-v1`, measures when the entry's frozen frequency mask becomes quiet
+above its frozen prefix background. It does not infer the end of an isolated note/source.
+`scope: frozen-frequency-mask`, `sourceOwnership: unresolved`, null confidence and scoring
+ineligibility are contractual. The original T11b/c fields, accepted hits and clock are unchanged.
+
+### Measurement and resource boundary
+
+At each provisional T11c entry, freeze up to six positive-excess peaks and their immediate
+neighbor bins (at most 18 distinct positive-frequency bins). Ignore peaks below 2% of the
+largest excess peak to exclude numerical/DC roundoff. These are NEW excess bins, distinct from
+the old carrier-retention bins. Freeze four times the prefix power per bin as background, using
+the same baseline as the entry detector. The mask is fixed; it is not retuned from future PCM.
+
+Each complete borrowed FFT window supplies sum(max(binPower - frozenBackground, 0)). The maximum
+of the three entry body windows sets a reference; later louder sources cannot increase it.
+Two consecutive complete windows below 10% of that reference (or the absolute AC power floor)
+close the activity at the first quiet-window start. Partial/padded tails cannot close it.
+No extra PCM FFT, neural inference, spectrogram or frame-loop work is introduced. At most 32
+provisional masks run concurrently, with at most 18 bin reads each. Proposal records remain
+bounded by feature-frame count, as in T11c. This is offline worker work and one result per load.
+
+Only finally accepted T11c entries publish a band record, matched by observation frame/local
+entry ID. `startSample` is the associated entry localization, not a new band-onset measurement.
+`maskSupportSamples` covers prefix through seed-window end. A confirmed record carries its first
+quiet-window `endSample`, offset support from the preceding through both confirmation windows,
+and `decisionSample` no earlier than both entry acceptance and full quiet confirmation.
+
+At file end, the record ends at real PCM length with `rightCensored: true`, null offset support
+and reason `file-boundary`; it asserts no observed offset. Resource saturation instead publishes
+`budget-exceeded`, empty bins, null end/support, and the entry's decision time. It never invents
+a release or silently removes an accepted entry. Normalization checks version/scope, exact entry
+association, bounded sorted unique bins, clocks, censoring and full confirmation support, and
+clones all arrays. Old payloads without the extension remain valid.
+
+### Interpretation and promotion
+
+Use this only as signal evidence to inspect entry-associated frequency-band activity. No player
+control is added: no chart/render feature consumes it. It does not change note count, scoring,
+visual presets or the existing MVP/XR Offscreen path. Any future player use must follow the
+menu/localStorage/Copy and preset relevance rules and first pass its own evidence/promotion gate.
+
+A same/near-bin overlapping sound may keep the mask active after the original source ends.
+A pitch glide may leave the mask while the source still sounds. A fade crosses the relative
+power threshold before its last nonzero sample. Frozen background changes and broadband masks
+likewise are not source separation. Existing T11c proposals can multiply under added-tone AM,
+glide or near-band overlap; these remain raw candidates, not inferred repeated notes. Tests keep
+these limitations explicit rather than altering the retained detector or calling them accuracy.
+The old `attack.family` is still context texture. Vocal, instrument and musical role identity
+remain unsupported; **T11 is partial and T12 has not started**.
+
+### T11d validation and delivery
+
+Seven tests extend the active Node suite (six activity tests and positive/censored worker-schema
+coverage); all predecessor tests and historical results remain. Frozen T11b and T11c aggregate
+identities verify unchanged evidence on their original corpora. New authored controls cover
+quiet releases against a continuing carrier, repeats, broadband hits, held/AM/vibrato entries,
+same/near-band overlap, glide, fade, carrier cutoff, file boundaries, partial/one-quiet tails,
+gain/polarity/DC invariance, malformed normalization and explicitly injected resource saturation.
+Resource injection checks the capacity path; it is not an acoustic accuracy measurement.
+
+The existing measurement runner extends its protocol to `t11d-fixed-band-activity-1`, retains
+prior authored/periodicity comparisons and uses the Git-identified T11c producer as the paired
+cost baseline. Previous model onset/pitch agreements supply no offset truth. Recorded PCM
+identity mismatches remain abstentions; raw real-recording band counts are not musical accuracy.
+One ignored JSON per run is used; no generated source copies or new experiment/report family.
+
+Current measurement: `logs/t11d/measurement-final.json` (ignored), 39 original attack controls,
+45 prior entry controls, 30 new band controls and 40 exact-PCM prior periodicity cases. Four
+complete-body release references in development and eight in transfer all have confirmed
+endpoints within one hop, with every authored endpoint inside published support. Matched-only
+signed bias / absolute p50 / p95: development +12 /10 /16 ms; transfer +6.485 /7.438 /25.238 ms
+(nearest-rank absolute percentiles). These small authored controls do not establish general
+musical source-offset accuracy. Of the new band controls, all 15 applicable endpoint references
+are inside support; nine held/partial/one-quiet-tail cases correctly remain censored. Six
+fade/glide controls intentionally have no source-end accuracy score.
+
+| Full decoded recording | All legacy/T11b/T11c values exact | Closed fixed masks | Extra payload | Warm 20 s median T11c / T11d |
+|---|---|---|---|---|
+
+| Goa | Yes | 9 | 2747 bytes | 285.952 /275.582 ms (-3.63%) |
+| No Good | Yes | 26 | 7974 bytes | 295.793 /267.314 ms (-9.63%) |
+| Scienide | Yes | 3 | 1035 bytes | 250.703 /263.318 ms (+5.03%) |
+
+Five alternating warm pairs measure offline Node elapsed analyzer time, not CPU time, browser
+FPS or Quest main-thread cost. Negative deltas reflect JIT/GC/scheduling noise, not a claimed
+speedup. No recording exhausted the monitor budget. Nine decoder contexts still fail exact PCM
+identity against earlier SoundFile evidence; no new precision/recall is claimed from those votes.
+Fixed-mask support/ownership limits above apply to every raw recorded result.
+
+Owner: parent owns analyzer, additive type/schema/normalizer and integration. Read-only subagent
+review found no blocking producer/support issue and verified AM/vibrato/overlap/glide/tail cases.
+The 32 limit bounds concurrent active monitors, not total retained proposal memory; total retained
+band/bin/baseline data is O(raw proposals), bounded by feature-frame count. Normalization checks
+each record's format and association; only the producer enforces concurrent-monitor capacity.
+
+Final validation uses Node25.2.1/npm11.6.2 with no runtime fallback or dependency installation.
+`npm run build` passes (existing chunk-size warning only). Targeted command:
+`node --test --test-reporter=tap tests/music-activity.test.mjs tests/music-events.test.mjs tests/analyzer-contract.test.mjs tests/analyzer-baseline.test.mjs tests/accepted-timing-measurement.test.mjs tests/analyzer-golden.test.mjs tests/analyzer-verification.test.mjs tests/analyzer-signal-contract.test.mjs tests/event-timing-worker-contract.test.mjs tests/xr-audio-integration.test.mjs tests/xr-controller-regeneration.test.mjs`.
+Measurement command:
+`node research/analyzer-lab/diagnostics/measure-music-activity.mjs --audio-dir "C:/novy/Plexus Engine (VJ System)/plexus-engine/tests/audio/Prodigy" --output logs/t11d/measurement-final.json`.
+Full cumulative command: `npm test -- --test-reporter=tap` (established temp/Git-fixture escalation).
+Python models/pytest and physical Quest measurements are not run: no Python inference changes,
+no physical headset. Direct Git diff review replaces optional `diff_export.ps1`; no duplicate
+source archive is generated. Deployment follows the clean-source `release-pages.mjs`
+prepare/publish/verify path, then public browser file-load/play/pause smoke and a manual pause.
+
+Final results: targeted 103/103, cumulative 1795 tests /1786 pass /nine exact retained failures,
+zero skips/cancellations. All nine names AND assertion messages exactly match
+`logs/timing-cleanup/baseline-failures.json`, recorded in `logs/t11d/failure-comparison.json`.
+The final full suite includes the sparse-array hardening. `logs/t11d/build-final.log`,
+`targeted.tap` and `full.tap` retain local evidence; `git diff --check` passes. Seven new tests are
+added to the 1788 active predecessor tests, with no baseline/golden result rewritten.

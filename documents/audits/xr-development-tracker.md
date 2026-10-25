@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-25 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T11c quiet spectral entries implemented; T11 partial; T12 not started.** Existing MVP/XR Offscreen rendering stays intact. [Current T11 scope and validation](../features/music-events.md#t11c--quiet-spectral-entries-over-a-tonal-carrier-2026-10-25). [Previous merged review](xr-review-checkpoint.md).
+**T11d entry-frozen band activity implemented; T11 partial; T12 not started.** Existing MVP/XR Offscreen rendering stays intact. [Current T11 scope and validation](../features/music-events.md#t11d---entry-frozen-band-activity-2026-10-25). [Previous merged review](xr-review-checkpoint.md).
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -57,7 +57,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T08 | Gameplay + XR: note meanings and bounded halos | T02, T07 fit | Accepted by user continuation on 2026-10-24, deployed 2bd7cc0. Three optional musical roles. [Evidence](xr-musical-roles-validation.md) |
 | T09 | Gameplay + input/render: playable hand policy and motion | T08 | Accepted by user; Guarded optional, Legacy default. [Evidence](xr-movement-validation.md) |
 | T10 | Analyzer timing cleanup | T00-T01 | Rejected experiments removed at user request; established XR path and equivalent Band search retained. Accuracy beyond available evidence remains unproven. [Record](xr-timing-cleanup.md) |
-| T11 | Analyzer contracts: timed evidence and dominance | Stable T10 clock/evidence boundary | T11a/b retained; T11c quiet spectral-entry candidates over a persistent tonal carrier. Targeted96/96, final21/21; full1788/1779 pass, nine exact retained failures. All previous analyzer/T11b values exact on three full recordings. Musical note/role/vocal identity unsupported; T11 partial. Manual pause after deploy; no T12. [Scope](../features/music-events.md) |
+| T11 | Analyzer contracts: timed evidence and dominance | Stable T10 clock/evidence boundary | T11a/b/c retained; T11d entry-frozen band activity with complete quiet confirmation, censoring and bounded active monitors. Targeted103/103; full1795/1786 pass and nine exact retained failures; all previous analyzer/T11b/T11c values exact on three full recordings. Source/note/role/vocal identity unsupported; T11 partial. Manual pause after deploy; no T12. [Scope](../features/music-events.md) |
 | T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09-T11 | Planned; legacy path retained |
 | T13 | Analyzer + automation + semantics: cue and visual arrival timing | T10; T11 additive | Planned |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
@@ -443,7 +443,7 @@ acoustic texture into musical source identity or enable it for scoring. Stop aft
 deploy for manual load/play/pause/chart feedback before the next task.
 
 
-## Current continuation checkpoint — T11c quiet spectral entries, 2026-10-25
+## Historical checkpoint — T11c quiet spectral entries, 2026-10-25
 
 T11b accepted. New `spectralEntries` candidates recover quiet tone/noise additions over a stable
 retained tonal carrier; all old T11b and legacy chart inputs remain exact. No player switch or
@@ -454,3 +454,18 @@ strict normalization and conservative dedup. [Contract and evidence](../features
 role inference. Vocal/source identity remains unsupported; old attack.family is context texture,
 not isolated-attack identity. Stop after this deploy for manual load/play/pause/chart feedback.
 Wall remains Off; MVP/XR Offscreen rendering and rejected T10 experiment cleanup stay intact.
+
+
+## Current continuation checkpoint - T11d fixed-band activity, 2026-10-25
+
+T11c accepted. T11d adds entry-associated fixed frequency-mask activity/end evidence over the
+continuing carrier, using the borrowed FFT and at most 32 concurrent provisional masks.
+Complete quiet confirmation, file censoring and explicit budget-unavailable results are separate.
+Source ownership is unresolved: same-band overlap and pitch leaving the mask are not isolated
+note boundaries. All prior T11b/c/chart values stay exact. No UI switch or chart promotion.
+[Contract, evidence and final validation](../features/music-events.md#t11d---entry-frozen-band-activity-2026-10-25).
+
+**T11 remains partial; T12 not started.** Next work: validated musical boundaries/role inference,
+including rejection/qualification of modulation/glide proposals. Do not infer voices or instruments
+from pitch/texture, or treat this mask activity as a note-duration model. Pause after deploy for
+manual load/play/pause/chart feedback. Wall remains Off; MVP/XR Offscreen and T10 cleanup stay intact.

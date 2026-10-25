@@ -31,7 +31,21 @@ export interface AcousticActivityLayer {
     }[];
     attacks: AcousticAttack[];
     dominance: { startSample: number; endSample: number; texture: AcousticTexture | 'silence'; decisionSample: number }[];
+    bandActivity?: EntryBandActivityLayer;
     spectralEntries?: SpectralEntryLayer; // Absent in T11b/legacy payloads.
+}
+
+/** Activity in entry-frozen bins. Same-band overlap can outlive the original sound. */
+export interface EntryBandActivityLayer {
+    algorithm: 'entry-fixed-band-activity-v1'; confidence: null;
+    consumerUse: 'signal-evidence-only'; xrScoring: 'ineligible';
+    scope: 'frozen-frequency-mask'; sourceOwnership: 'unresolved';
+    records: {
+        entryId: string; startSample: number; bins: number[];
+        maskSupportSamples: [number, number]; endSample: number | null;
+        offsetSupportSamples: [number, number] | null; decisionSample: number;
+        rightCensored: boolean; endReason: 'quiet-windows' | 'file-boundary' | 'budget-exceeded';
+    }[];
 }
 
 export interface SpectralEntryLayer {
@@ -225,8 +239,43 @@ export function normalizeAcousticActivity(value: AcousticActivityLayer | undefin
                     bodySamples: [...a.bodySamples], decisionSample: a.decisionSample,
                     positivePowerFraction: a.positivePowerFraction, carrierPowerRatio: a.carrierPowerRatio, backgroundResidualFraction: a.backgroundResidualFraction })) };
         }
+        let bandActivity: EntryBandActivityLayer | undefined;
+        if (value.bandActivity !== undefined) {
+            const layer = value.bandActivity, entries = spectralEntries?.candidates, hop = clock.hopSize;
+            if (!layer || layer.algorithm !== 'entry-fixed-band-activity-v1' || layer.confidence !== null
+                || layer.consumerUse !== 'signal-evidence-only' || layer.xrScoring !== 'ineligible'
+                || layer.scope !== 'frozen-frequency-mask' || layer.sourceOwnership !== 'unresolved'
+                || !entries || !Array.isArray(layer.records) || layer.records.length !== entries.length) return undefined;
+            for (let i = 0; i < entries.length; i++) {
+                const a = layer.records[i], e = entries[i], anchor = e.observationFrame * hop;
+                if (!a || a.entryId !== e.id || a.startSample !== e.sampleIndex
+                    || !pair(a.maskSupportSamples, [(e.observationFrame - 3) * hop, anchor + hop])
+                    || !Array.isArray(a.bins) || a.bins.length > 18
+                    || Array.from(a.bins).some((b, j) => !Number.isSafeInteger(b) || b < 1 || b >= hop / 2 || (j > 0 && b <= a.bins[j - 1]))) return undefined;
+                if (a.endReason === 'budget-exceeded') {
+                    if (a.bins.length || a.endSample !== null || a.offsetSupportSamples !== null
+                        || a.rightCensored !== true || a.decisionSample !== e.decisionSample) return undefined;
+                } else {
+                    if (!a.bins.length || !Number.isSafeInteger(a.endSample) || a.endSample! <= a.startSample || a.endSample! > length) return undefined;
+                    if (a.endReason === 'file-boundary') {
+                        if (a.endSample !== length || a.offsetSupportSamples !== null || a.rightCensored !== true || a.decisionSample !== length) return undefined;
+                    } else if (a.endReason === 'quiet-windows') {
+                        const end = a.endSample!;
+                        if (a.rightCensored !== false || end < anchor + hop || end % hop !== 0 || end + 2 * hop > length
+                            || !pair(a.offsetSupportSamples, [Math.max(anchor, end - hop), end + 2 * hop])
+                            || a.decisionSample !== Math.max(e.decisionSample, end + 2 * hop)) return undefined;
+                    } else return undefined;
+                }
+            }
+            bandActivity = { algorithm: layer.algorithm, confidence: null, consumerUse: 'signal-evidence-only', xrScoring: 'ineligible',
+                scope: 'frozen-frequency-mask', sourceOwnership: 'unresolved', records: layer.records.map(a => ({
+                    entryId: a.entryId, startSample: a.startSample, bins: [...a.bins], maskSupportSamples: [...a.maskSupportSamples],
+                    endSample: a.endSample, offsetSupportSamples: a.offsetSupportSamples && [...a.offsetSupportSamples],
+                    decisionSample: a.decisionSample, rightCensored: a.rightCensored, endReason: a.endReason })) };
+        }
         return { algorithm: value.algorithm, source: 'analysis-pcm', clock: { ...clock }, confidence: null, consumerUse: 'signal-evidence-only', xrScoring: 'ineligible', capabilities,
             ...(spectralEntries ? { spectralEntries } : {}),
+            ...(bandActivity ? { bandActivity } : {}),
             activity: value.activity.map(a => ({ id: a.id, startSample: a.startSample, endSample: a.endSample,
                 onsetSupportSamples: a.onsetSupportSamples && [...a.onsetSupportSamples], offsetSupportSamples: a.offsetSupportSamples && [...a.offsetSupportSamples],
                 sustainSamples: a.sustainSamples && [...a.sustainSamples], leftCensored: a.leftCensored, rightCensored: a.rightCensored })),

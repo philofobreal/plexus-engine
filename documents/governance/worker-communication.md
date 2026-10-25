@@ -58,6 +58,15 @@ availability time. It remains raw, scoring-ineligible evidence. Legacy omission 
 normalizer rejects incomplete support, forged scope/ratios, invalid association and duplicates.
 No top-level request/result fields, accepted hits, playback clock or render packets change.
 
+T11d optionally adds `musicActivity.bandActivity` (`entry-fixed-band-activity-v1`), associated
+one-to-one with accepted spectral-entry IDs. It measures frozen frequency-mask activity, with
+unresolved source ownership, null confidence and scoring ineligibility. Closed records include
+two full quiet-window observations and their availability time; file tails are right-censored,
+and bounded-monitor saturation explicitly returns an unavailable end. The normalizer validates
+association, bins, support and censoring and clones publication. Old payloads may omit it.
+It adds no render-time packets, playback DSP, chart consumer or player control. See
+[T11d scope and limits](../features/music-events.md#t11d---entry-frozen-band-activity-2026-10-25).
+
 The authoritative musical timing model (`tempo`, `tempoConfidence`, `beats`, `beatConfidence`,
 `barStarts`, `alternativeTempos`, `timingConfidence`) is carried on the nested `TrackAnalysis`
 as well, and `beats` / `barStarts` / `timingConfidence` are mirrored at the root for direct

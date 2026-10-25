@@ -2303,6 +2303,139 @@
               }
             }
           }
+        },
+        "bandActivity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "algorithm",
+            "confidence",
+            "consumerUse",
+            "xrScoring",
+            "scope",
+            "sourceOwnership",
+            "records"
+          ],
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "enum": [
+                "entry-fixed-band-activity-v1"
+              ]
+            },
+            "confidence": {
+              "type": "null",
+              "enum": [
+                null
+              ]
+            },
+            "consumerUse": {
+              "type": "string",
+              "enum": [
+                "signal-evidence-only"
+              ]
+            },
+            "xrScoring": {
+              "type": "string",
+              "enum": [
+                "ineligible"
+              ]
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "frozen-frequency-mask"
+              ]
+            },
+            "sourceOwnership": {
+              "type": "string",
+              "enum": [
+                "unresolved"
+              ]
+            },
+            "records": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "entryId",
+                  "startSample",
+                  "bins",
+                  "maskSupportSamples",
+                  "endSample",
+                  "offsetSupportSamples",
+                  "decisionSample",
+                  "rightCensored",
+                  "endReason"
+                ],
+                "properties": {
+                  "entryId": {
+                    "type": "string"
+                  },
+                  "startSample": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "bins": {
+                    "type": "array",
+                    "maxItems": 18,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "maskSupportSamples": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "endSample": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "offsetSupportSamples": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "decisionSample": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "rightCensored": {
+                    "type": "boolean"
+                  },
+                  "endReason": {
+                    "type": "string",
+                    "enum": [
+                      "quiet-windows",
+                      "file-boundary",
+                      "budget-exceeded"
+                    ]
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

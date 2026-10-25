@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
+import { entryFixture, bandFixture } from './fixtures/music-activity-corpus.mjs';
 
 const ROOT = process.cwd();
 const SRC_ROOT = join(ROOT, 'src');
@@ -246,4 +247,15 @@ test('analyzeAudio fixture output matches the SaaS/VST baseline summary', () => 
   const result = analyzeFixture();
 
   assert.deepEqual(summarize(result), baseline.summary);
+});
+
+
+test('positive and censored fixed-band evidence fits the additive worker schema', () => {
+  const schema = readJson(join(FIXTURE_ROOT, 'analysis-result.schema.json'));
+  const load = createSrcLoader(), { analyzeAudio } = load('analyzer/analyzeAudio.ts');
+  for (const fixture of [entryFixture('soft-tone'), bandFixture('held')]) {
+    const result = analyzeAudio({ samples: fixture.samples, sampleRate: fixture.sampleRate });
+    assert.equal(result.trackAnalysis.musicActivity.bandActivity.records.length, 1);
+    validateSchema(JSON.parse(JSON.stringify(result)), schema, schema);
+  }
 });

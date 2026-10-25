@@ -3,6 +3,13 @@ import type { AcousticActivityLayer, AcousticAttack, AcousticTexture } from '../
 import { validateAnalysisClock, validateAnalysisSamples } from './signalContract';
 import { FFT } from './math/FFT';
 
+// A bounded monitor of frozen frequency bins, never ownership of an isolated sound source.
+interface EntryBand {
+    frame: number; bins: number[]; baseline: number[]; peak: number; quiet: number;
+    endFrame: number | null; // First of two complete low-energy windows.
+}
+
+
 /** Fixed signal measurements, not instrument/voice probabilities or a second beat detector.
  * Borrows the feature extractor's existing FFT read-only; no extra PCM transform or render-time DSP.
  */
@@ -22,7 +29,8 @@ export class MusicActivity {
     private readonly currentPeaks = new Int32Array(6);
     private readonly entrySpectrum: Float64Array;
     private readonly hannPower: number;
-    private readonly entryFrames: { frame: number; texture: AcousticTexture; fraction: number; retained: number; bins: number[]; carrier: number }[] = [];
+    private readonly entryFrames: { frame: number; texture: AcousticTexture; fraction: number; retained: number; bins: number[]; carrier: number; band: EntryBand | null }[] = [];
+    private readonly activeBands: EntryBand[] = [];
     private stamp = 0;
     private count = 0;
     // AC RMS floor = 1e-5 amplitude (-100 dBFS); no per-track quantile amplification.
@@ -78,6 +86,7 @@ export class MusicActivity {
             for (const bin of e.bins) body += this.spectrum[bin];
             e.retained = Math.min(e.retained, body / e.carrier);
         }
+        this.observeBands(index, end - start === hopSize);
         this.observeEntry(index, end - start === hopSize, total);
         this.history[index % 3].set(this.spectrum);
         this.historyPeaks[index % 3].set(this.currentPeaks);
@@ -140,7 +149,43 @@ export class MusicActivity {
         const carrier = bins.reduce((sum, bin) => sum + baseline[bin], 0);
         if (carrier <= 0) return;
         const family = texture(this.concentrated(delta, novelty));
-        this.entryFrames.push({ frame, texture: family, fraction: novelty / total, retained, bins, carrier });
+        // concentrated(delta) left the NEW excess peaks here; carrier bins above are different.
+        let band: EntryBand | null = null;
+        if (this.activeBands.length < 32) {
+            const mask: number[] = [];
+            for (const peakBin of this.peakBins) if (peakBin >= 0 && delta[peakBin] >= this.peakPower[0] * .02 && delta[peakBin] > 0)
+                for (let k = Math.max(1, peakBin - 1); k <= Math.min(delta.length - 1, peakBin + 1); k++)
+                    if (!mask.includes(k)) mask.push(k);
+            mask.sort((a, b) => a - b);
+            band = { frame, bins: mask, baseline: mask.map(k => 4 * baseline[k]), peak: 0, quiet: 0, endFrame: null };
+            band.peak = this.bandPower(band);
+            this.activeBands.push(band);
+        }
+        this.entryFrames.push({ frame, texture: family, fraction: novelty / total, retained, bins, carrier, band });
+    }
+
+    private bandPower(band: EntryBand): number {
+        let power = 0;
+        for (let i = 0; i < band.bins.length; i++) power += Math.max(0, this.spectrum[band.bins[i]] - band.baseline[i]);
+        return power;
+    }
+
+    private observeBands(frame: number, full: boolean): void {
+        // Partial/padded windows cannot establish a release or train the frozen body threshold.
+        if (!full) return;
+        const floor = MusicActivity.FLOOR_POWER * this.clock.hopSize * this.hannPower / 2;
+        for (let i = this.activeBands.length - 1; i >= 0; i--) {
+            const band = this.activeBands[i], power = this.bandPower(band);
+            // Only the three entry body windows set the reference. Later loud sources cannot
+            // raise the release threshold and retroactively erase a held weaker entry.
+            if (frame < band.frame + 3) band.peak = Math.max(band.peak, power);
+            if (power > Math.max(floor, band.peak * .1)) band.quiet = 0;
+            else band.quiet++;
+            if (band.quiet >= 2) {
+                band.endFrame = frame - 1;
+                this.activeBands.splice(i, 1);
+            }
+        }
     }
 
     finish(): AcousticActivityLayer {
@@ -184,6 +229,9 @@ export class MusicActivity {
         this.dominance(result);
         result.spectralEntries = { algorithm: 'tonal-carrier-entry-v1', confidence: null,
             consumerUse: 'signal-evidence-only', xrScoring: 'ineligible', candidates: [] };
+        result.bandActivity = { algorithm: 'entry-fixed-band-activity-v1', confidence: null,
+            consumerUse: 'signal-evidence-only', xrScoring: 'ineligible',
+            scope: 'frozen-frequency-mask', sourceOwnership: 'unresolved', records: [] };
         let lastEntry = -Infinity, span = 0;
         for (const e of this.entryFrames) {
             const anchor = e.frame * hop;
@@ -208,6 +256,15 @@ export class MusicActivity {
                 supportSamples: [(e.frame - 3) * hop, (e.frame + 3) * hop],
                 texture: e.texture, positivePowerFraction: e.fraction, carrierPowerRatio: e.retained,
                 backgroundResidualFraction: a.fitFraction });
+            const band = e.band, end = band?.endFrame;
+            const closed = end !== null && end !== undefined;
+            result.bandActivity.records.push({ entryId: `entry:${a.sampleIndex}`, startSample: a.sampleIndex,
+                bins: band ? [...band.bins] : [],
+                maskSupportSamples: [(e.frame - 3) * hop, (e.frame + 1) * hop],
+                endSample: band ? closed ? end * hop : length : null,
+                offsetSupportSamples: closed ? [Math.max(anchor, (end - 1) * hop), (end + 2) * hop] : null,
+                decisionSample: band ? closed ? Math.max((e.frame + 3) * hop, (end + 2) * hop) : length : (e.frame + 3) * hop,
+                rightCensored: !closed, endReason: !band ? 'budget-exceeded' : closed ? 'quiet-windows' : 'file-boundary' });
             lastEntry = a.sampleIndex;
         }
         return result;
