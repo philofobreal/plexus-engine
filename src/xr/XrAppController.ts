@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import type { AudioEngine } from '../audio/AudioEngine';
-import { buildRhythmChart, buildRhythmMusicalRolePlan, DEFAULT_RHYTHM_GAME_CONFIG, RhythmGameSession, scoreRank, type RhythmGameConfig, type RhythmNote, type RhythmRoleSection } from '../gameplay';
+import { buildRhythmChart, buildRhythmMusicalRolePlan, rhythmCharacterSections, DEFAULT_RHYTHM_GAME_CONFIG, RhythmGameSession, scoreRank, type RhythmGameConfig, type RhythmNote, type RhythmRoleSection } from '../gameplay';
 import { State } from '../state/store';
 import { detectImmersiveVrSupport, type ImmersiveVrSupport } from './runtime/XrCapabilityDetector';
 import { XrInputAdapter, type ControllerHand } from './runtime/XrInputAdapter';
@@ -123,6 +123,9 @@ export class XrAppController {
     private menuOpen = false;
     /** The panel is placed in front of the head on the next tracked frame. */
     private menuPlacementPending = false;
+    private menuCameraAspect = 0;
+    private menuCameraFov = 0;
+    private menuCameraZoom = 0;
     /** The hand that last pulled its trigger leads hovering. */
     private menuHand: ControllerHand = 'right';
     private readonly menuHits: Record<ControllerHand, string | null> = { left: null, right: null };
@@ -313,7 +316,8 @@ export class XrAppController {
         const chart = buildRhythmChart(
             { events: analysis.events, durationSec: analysis.duration, beats: analysis.trackAnalysis.beats,
                 barStarts: analysis.trackAnalysis.barStarts, timingConfidence: analysis.trackAnalysis.timingConfidence?.overall,
-                performancePlan: analysis.performancePlan, sectionStarts: analysis.trackAnalysis.sections.map(section => section.start) },
+                performancePlan: analysis.performancePlan, sectionStarts: analysis.trackAnalysis.sections.map(section => section.start),
+                sections: analysis.trackAnalysis.sections },
             // Chart-defining fields are never player settings: note speed and saber length leave the chart unchanged.
             DEFAULT_RHYTHM_GAME_CONFIG, settings
         );
@@ -341,6 +345,11 @@ export class XrAppController {
         this.trackInfoEl.textContent =
             `BPM ${Math.round(State.bpm)} - Duration ${formatTime(State.duration)} - ${chart.length} notes - ` +
             `${chart.filter(n => n.cutDirection && n.cutDirection !== 'any').length} arrows - ${chart.filter(n => n.pairId).length / 2} pairs`;
+        if (settings.chartProfile === 'musical-v1') {
+            const hasContext = rhythmCharacterSections(analysis.trackAnalysis.sections, analysis.duration).length > 0;
+            this.trackInfoEl.textContent += hasContext ? ' - Musical / Guarded' : ' - Classic fallback / Guarded';
+            if (!hasContext) this.progressEl.textContent += ' Musical profile needs complete sections; using Classic patterns with Guarded movement.';
+        }
         if (this.diagnostics) {
             this.overlay.dataset.xrScore = JSON.stringify({ confidence: analysis.trackAnalysis.timingConfidence,
                 sections: analysis.trackAnalysis.sections.map(section => [section.start, section.label]),
@@ -801,11 +810,14 @@ export class XrAppController {
         this.runtime.renderer.domElement.dataset.menuHover = 'false';
     }
 
-    /** On the desktop the panel floats in front of the page camera (the same distance as in VR). */
+    /** On the desktop the panel fits the camera's viewport, including portrait windows. */
     private placeMenuForDesktop(): void {
         const camera = this.runtime.camera;
         camera.updateMatrixWorld();
         this.menuPanel.placeForCamera(camera);
+        this.menuCameraAspect = camera.aspect;
+        this.menuCameraFov = camera.fov;
+        this.menuCameraZoom = camera.zoom;
         this.menuPlacementPending = false;
     }
 
@@ -828,6 +840,11 @@ export class XrAppController {
      */
     private updateMenu(frame: XRFrame | null): void {
         if (!this.runtime.isPresenting()) {
+            const camera = this.runtime.camera;
+            if (camera.aspect !== this.menuCameraAspect || camera.fov !== this.menuCameraFov || camera.zoom !== this.menuCameraZoom) {
+                this.placeMenuForDesktop();
+                this.desktopPointerMoved = true;
+            }
             if (this.desktopPointerMoved) {
                 this.desktopPointerMoved = false;
                 let hover: string | null = null;

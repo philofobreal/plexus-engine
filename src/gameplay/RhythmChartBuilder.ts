@@ -1,5 +1,5 @@
 // Deterministic mapping of published percussive events, without invented grid-only notes.
-import type { BeatEvent, PerformanceAutomationPlan } from '../types';
+import type { BeatEvent, PerformanceAutomationPlan, TrackSection } from '../types';
 import { choreographRhythmChart } from './RhythmScorePlanner';
 import { DEFAULT_RHYTHM_GAME_CONFIG, type RhythmGameConfig } from './RhythmGameConfig';
 import type { RhythmNote } from './RhythmTypes';
@@ -19,6 +19,8 @@ export interface RhythmChartSource {
      * leaves a short silence before every section change, together with the section gate.
      */
     readonly sectionStarts?: readonly number[];
+    /** Published intervals shape the opt-in musical profile; they never supply note times. */
+    readonly sections?: readonly Pick<TrackSection, 'start' | 'end' | 'label'>[];
 }
 
 /**

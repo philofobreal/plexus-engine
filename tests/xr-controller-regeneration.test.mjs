@@ -10,6 +10,18 @@ import { fakeDocument, findAll } from './helpers/fake-dom.mjs';
 import { chartSources } from './helpers/xr-chart-sources.mjs';
 import { historicalXrSettings } from './helpers/xr-historical-settings.mjs';
 
+const menuLoad = createLoader({ three: THREE });
+const { MENU_CANVAS } = menuLoad('xr/XrMenuModel.ts');
+const { MENU_PANEL_WIDTH_METERS, MENU_PANEL_HEIGHT_METERS } = menuLoad('xr/scene/XrMenuPanel.ts');
+/** Use the shipped canvas/plane contract and current world pose for controller and mouse aims. */
+function menuItemWorldCenter(panel, id) {
+    const target = panel.layout.items.find(i => i.id === id);
+    assert.ok(target, `${id} is on screen`);
+    return panel.mesh.localToWorld(new THREE.Vector3(
+        ((target.x + target.w / 2) / MENU_CANVAS.width - .5) * MENU_PANEL_WIDTH_METERS,
+        (.5 - (target.y + target.h / 2) / MENU_CANVAS.height) * MENU_PANEL_HEIGHT_METERS, 0));
+}
+
 function deferred() { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; }
 const settle = () => new Promise(setImmediate);
 
@@ -298,11 +310,7 @@ test('in VR the menu runs the game: start, grip pause, settings with tabs and a 
     /** Points the right controller at the centre of a menu item. */
     const aim = id => {
         tick(); // the panel shows the current screen before we point at it
-        const target = panel.layout.items.find(i => i.id === id);
-        assert.ok(target, `${id} is on screen`);
-        const { width, height } = panel.mesh.geometry.parameters;
-        const point = panel.mesh.localToWorld(new THREE.Vector3(((target.x + target.w / 2) / 1024 - 0.5) * width,
-            (0.5 - (target.y + target.h / 2) / 704) * height, 0));
+        const point = menuItemWorldCenter(panel, id);
         const origin = new THREE.Vector3(0.2, 1.3, -0.2);
         inputLog.rays.right = new THREE.Ray(origin, point.clone().sub(origin).normalize());
         tick();
@@ -391,9 +399,7 @@ test('on the desktop the game menu lives in the canvas: Escape, the gear button,
     assert.equal(h.drawer.gameMenuButton.getAttribute('aria-expanded'), 'true');
     // Mouse: project the Settings button's centre to the canvas and click it.
     h.runtime.callback(null, 1 / 60);
-    const target = panel.layout.items.find(i => i.id === 'action:settings');
-    const { width, height } = panel.mesh.geometry.parameters;
-    const world = panel.mesh.localToWorld(new THREE.Vector3(((target.x + target.w / 2) / 1024 - 0.5) * width, (0.5 - (target.y + target.h / 2) / 704) * height, 0));
+    const world = menuItemWorldCenter(panel, 'action:settings');
     const ndc = world.project(h.runtime.camera);
     controller.desktopInput.onPointerMove(ndc.x, ndc.y);
     h.runtime.callback(null, 1 / 60);

@@ -99,8 +99,11 @@ type GenerationKey = keyof RhythmGenerationSettings;
 
 function generationChoice(id: GenerationKey, label: string, choices: readonly XrSettingChoice[]): XrChoiceSetting {
     return { id, section: 'choreography', label, scope: 'chart', kind: 'choice', choices,
-        read: settings => String(settings.generation[id] ?? (id === 'motionSafety' ? 'legacy' : '')),
-        write: (settings, value) => ({ ...settings, generation: normalizeGenerationSettings({ ...settings.generation, [id]: value }, DEFAULT_XR_GENERATION_SETTINGS) }) };
+        read: settings => String(settings.generation[id] ?? (id === 'motionSafety' || id === 'chartProfile' ? 'legacy' : '')),
+        write: (settings, value) => ({ ...settings, generation: normalizeGenerationSettings({ ...settings.generation,
+            // Musical includes Guarded. Choosing Legacy movement explicitly returns to Classic.
+            ...(id === 'motionSafety' && value === 'legacy' ? { chartProfile: 'legacy' as const } : {}),
+            [id]: value }, DEFAULT_XR_GENERATION_SETTINGS) }) };
 }
 
 function playChoice(id: keyof XrPlaySettings, label: string, choices: readonly XrSettingChoice[]): XrChoiceSetting {
@@ -192,6 +195,9 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
         { value: 'normal', label: 'Normal', hint: '1.0 m blade. The start frame moves back so the whole reach is judged.' },
         { value: 'long', label: 'Long', hint: '1.1 m blade for long reaches; the stage adapts its distance.' },
         { value: 'auto', label: 'Auto', hint: 'Follows the play space: 1.0 m, or 1.1 m in the Tall space.' }]),
+    generationChoice('chartProfile', 'Chart profile', [
+        { value: 'legacy', label: 'Classic', hint: 'The previous chart vocabulary; Movement chooses its motor policy.' },
+        { value: 'musical-v1', label: 'Musical', hint: 'Sections shape the phrases: compact calm parts, developing builds, wider peaks. Uses accepted onsets and Guarded movement. Missing section context falls back to Classic with Guarded movement.' }]),
     generationChoice('difficulty', 'Difficulty', [
         { value: 'easy', label: 'Easy', hint: 'Slow and spacious: fewer targets, more free cuts, gentle moves.' },
         { value: 'normal', label: 'Normal', hint: 'The standard challenge.' },
@@ -216,7 +222,7 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
         { value: 'even', label: 'Even', hint: 'Both hands share the work evenly.' },
         { value: 'right', label: 'Right', hint: 'The right hand carries more primary beats.' }]),
     generationChoice('motionSafety', 'Movement', [
-        { value: 'legacy', label: 'Legacy', hint: 'The previous authored movement policy and note sequence.' },
+        { value: 'legacy', label: 'Legacy', hint: 'The previous authored movement policy and note sequence. Also returns Chart profile to Classic.' },
         { value: 'guarded', label: 'Guarded', hint: 'Reserve stroke recovery, hand clearance and overhead rest. Simplify unsafe placement, then omit infeasible groups. Regenerates the chart.' }]),
     generationChoice('zones', 'Zones', [
         { value: 'split', label: 'Own side', hint: 'Each saber stays in its own half.' },

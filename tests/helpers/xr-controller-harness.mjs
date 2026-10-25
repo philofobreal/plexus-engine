@@ -91,7 +91,8 @@ export function harness({ presenting = false, settingsStore, gpu = false, diagno
         chart: () => JSON.stringify(controller.session.chart),
         expected(settings, plan = source.performancePlan) {
             return JSON.stringify(buildRhythmChart({ events: source.events, durationSec: source.durationSec, beats: source.beats,
-                barStarts: source.barStarts, timingConfidence: 0.9, performancePlan: plan, sectionStarts: [0, 48] }, DEFAULT_RHYTHM_GAME_CONFIG, settings));
+                barStarts: source.barStarts, timingConfidence: 0.9, performancePlan: plan, sectionStarts: [0, 48],
+                sections: State.trackAnalysis.sections }, DEFAULT_RHYTHM_GAME_CONFIG, settings));
         },
         async loadTrack() {
             drawer.fileInput.files = [{ name: 'song.wav' }];

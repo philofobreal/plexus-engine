@@ -52,7 +52,7 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
     const silenceStarts = demand.sectionSilenceBeats > 0
         ? (source.sectionStarts ?? []).filter(t => Number.isFinite(t) && t > 0).slice().sort((a, b) => a - b) : [];
     let runStart = -Infinity;
-    const phrases = planRhythmPhrases(events.map(e => e.event), points, source.durationSec, beats, source.timingConfidence ?? 0, settings);
+    const phrases = planRhythmPhrases(events.map(e => e.event), points, source.durationSec, beats, source.timingConfidence ?? 0, settings, source.sections);
     const accents = phrases.flatMap(p => p.pairTimes);
     const phraseTimes = phrases.map(p => p.start);
     const result: RhythmNote[] = [];
@@ -103,7 +103,8 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
         const point = passage.point;
         const texture: RhythmTexture = passage.texture;
         // Automation intensity is a 0.3..3 gain, while behaviour energy is normalized.
-        const buildEnergy = point?.meta?.behaviour?.energy ?? Math.min(1, (point?.intensity ?? 0) / 3);
+        const buildEnergy = passage.character?.energy ?? point?.meta?.behaviour?.energy ?? Math.min(1, (point?.intensity ?? 0) / 3);
+        const calm = passage.character?.kind === 'calm';
         const beatIndex = Math.max(0, lastAt(beats, time));
         const beatSec = reliable ? Math.max(0.25, Math.min(1, (beats[beatIndex + 1] ?? beats[beatIndex] + 0.5) - beats[beatIndex] || 0.5)) : passage.beatSec;
         const barIndex = barAt(meter, time);
@@ -130,11 +131,12 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
         const density = texture === 'breath' ? 2 : texture === 'pulse' ? 1
             : texture === 'build' ? buildEnergy < 0.65 ? 1 : 0.5 : 0.5;
         // Calm scenes (the breath family) may keep a gentler ceiling than the driving ones (Ultra).
-        const ceilingScale = rhythmTexture(point?.meta) === 'breath' ? demand.calmCeilingScale : demand.ceilingScale;
+        const ceilingScale = (passage.character ? calm : rhythmTexture(point?.meta) === 'breath') ? demand.calmCeilingScale : demand.ceilingScale;
         // Activity owns total density: it scales every texture's ceiling, never below the global floor.
         // Calm also widens the global floor; Active can never go below it.
         // Difficulty scales the ceiling and the floors on top of that.
-        const spacing = Math.max(minGlobal * Math.max(1, profile.densityScale), beatSec * density * profile.densityScale * ceilingScale);
+        const spacing = Math.max(minGlobal * Math.max(1, profile.densityScale),
+            beatSec * density * profile.densityScale * ceilingScale * (passage.character?.densityScale ?? 1));
         const changedPoint = result.length > 0 && point?.id !== result.at(-1)?.automationId;
         const requiredGap = accent || changedPoint ? minSame : spacing;
         if ((!accent && !changedPoint && time < nextAllowed - 1e-7) || result.length && time - result[result.length - 1].time < requiredGap - 1e-7) continue;
@@ -173,7 +175,8 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
             if (texture === 'weave') row = [0, 1, 2, 1][Math.floor(phase) % 4];
             if (texture === 'build' && !up && buildEnergy > 0.65) row = 2;
             if (event.type === 3 && event.intensity >= 0.65 && index % 4 === 0) row = 2;
-            let x = sideSign * 0.45;
+            if (calm) row = 1;
+            let x = sideSign * (calm ? 0.35 : 0.45);
             if (pairLayout === 'horizontal') row = 1;
             if (pairLayout === 'vertical' || pairLayout === 'diagonal') {
                 row = side === (barIndex % 2 ? 'right' : 'left') ? 2 : 0;
@@ -189,7 +192,7 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
                 // Zones: musical context proposes; physical safety decides (first feasible zone).
                 const other: 'left' | 'right' = side === 'left' ? 'right' : 'left';
                 const reach = (cx: number, cr: number) => !previous || Math.hypot(cx - xOf(previous), (cr - previous.row) * config.rowSpacingMeters) <= dt * travel;
-                const preference = zonePreference({ zones: settings.zones, crossRate: demand.crossRate, eventIndex: index, texture,
+                const preference = zonePreference({ zones: calm ? 'split' : settings.zones, crossRate: demand.crossRate, eventIndex: index, texture,
                     energy: buildEnergy, strong, gesture: point?.meta?.movementGesture,
                     beatsIntoScene: point ? (time - point.time) / beatSec : Infinity, fill: passage.end - time <= beatSec * 4 });
                 for (const candidate of preference) {
@@ -237,7 +240,7 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
         const pairGap = settings.handPattern === 'together' || demand.extraPairs ? Math.max(1.5, beatSec * 2) : Math.max(2, beatSec * 4);
         const canPair = accent && time - lastPair >= pairGap &&
             (['left', 'right'] as const).every(h => !last[h] || time - last[h]!.time >= Math.max(demand.pairClearSec, minSame));
-        const layout = (['horizontal', 'diagonal', 'vertical'] as const)[phrase % 3];
+        const layout = calm ? 'horizontal' : (['horizontal', 'diagonal', 'vertical'] as const)[phrase % 3];
         const pair = canPair ? [make('left', layout), make('right', layout)] : null;
         const reachable = pair?.every(n => !last[n.hand as 'left' | 'right'] ||
             Math.hypot(xOf(n) - xOf(last[n.hand as 'left' | 'right']!), (n.row - last[n.hand as 'left' | 'right']!.row) * config.rowSpacingMeters)
@@ -265,8 +268,9 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
     // the member a phrase developed into.
     const phraseAt = (time: number) => phrases[Math.max(0, lastAt(phraseTimes, time))];
     const bigPhrase = phrases.map(passage => {
-        const family = rhythmTexture(passage.point?.meta);
-        const energy = passage.point?.meta?.behaviour?.energy ?? Math.min(1, (passage.point?.intensity ?? 0) / 3);
+        const family = passage.character ? passage.character.kind === 'peak' ? 'impact' : passage.character.kind
+            : rhythmTexture(passage.point?.meta);
+        const energy = passage.character?.energy ?? passage.point?.meta?.behaviour?.energy ?? Math.min(1, (passage.point?.intensity ?? 0) / 3);
         return family === 'impact' || (family === 'build' && energy > 0.65);
     });
     return liftOverheadTargets(result, { demand, minSameHandSpacingSec: minSame, maxHandTravelMps: travel,

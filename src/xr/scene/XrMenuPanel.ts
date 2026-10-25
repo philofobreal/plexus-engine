@@ -8,7 +8,8 @@ import { XR_INSTRUMENT_FONT, XR_INSTRUMENT_INK } from './XrInstrumentStyle';
 import { MENU_CANVAS, menuItemAt, menuLayout, type XrMenuContext, type XrMenuItem, type XrMenuLayout, type XrMenuState,
     type XrMenuTextRole } from '../XrMenuModel';
 
-export const MENU_PANEL_WIDTH_METERS = 1.28;
+// Preserve the former metres-per-canvas-pixel ratio: more space, the same physical font size.
+export const MENU_PANEL_WIDTH_METERS = 1.6;
 export const MENU_PANEL_HEIGHT_METERS = MENU_PANEL_WIDTH_METERS * MENU_CANVAS.height / MENU_CANVAS.width;
 /** Distance from the eyes, and drop below eye height, of the panel's center when it opens. */
 export const MENU_DISTANCE_METERS = 1.3;
@@ -117,7 +118,15 @@ export class XrMenuPanel {
 
     /** Desktop menus follow pitch as well as yaw, remaining reachable after looking up or down. */
     placeForCamera(camera: THREE.PerspectiveCamera): void {
-        this.root.position.set(0, -MENU_BELOW_EYES_METERS, -MENU_DISTANCE_METERS)
+        // The wider panel must also fit narrow/portrait viewports. Move the whole plane rather
+        // than compressing its controls; headset placement keeps its comfortable fixed distance.
+        const halfFov = camera.getEffectiveFOV() * Math.PI / 360;
+        const tangent = Math.tan(halfFov), aspect = camera.aspect;
+        const distance = Number.isFinite(tangent) && tangent > 0 && Number.isFinite(aspect) && aspect > 0
+            ? Math.max(MENU_DISTANCE_METERS, MENU_PANEL_WIDTH_METERS / (2 * tangent * aspect * .9),
+                (MENU_PANEL_HEIGHT_METERS / 2 + MENU_BELOW_EYES_METERS) / (tangent * .9))
+            : MENU_DISTANCE_METERS;
+        this.root.position.set(0, -MENU_BELOW_EYES_METERS, -distance)
             .applyQuaternion(camera.quaternion).add(camera.position);
         this.root.quaternion.copy(camera.quaternion);
         this.root.updateMatrixWorld(true);

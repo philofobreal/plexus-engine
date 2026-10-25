@@ -109,11 +109,11 @@ export interface XrMenuLayout {
 }
 
 /** VR panel canvas in pixels; the panel keeps this aspect ratio. */
-export const MENU_CANVAS = { width: 1024, height: 704 } as const;
+export const MENU_CANVAS = { width: 1280, height: 900 } as const;
 const MARGIN = 40;
-const BUTTON_W = 440;
-const BUTTON_H = 64;
-const BUTTON_GAP = 14;
+const BUTTON_W = 520;
+const BUTTON_H = 72;
+const BUTTON_GAP = 18;
 const ROW_H = 66;
 /** Settings rows shrink (never below this) so a long tab still ends above the hint line. */
 const MIN_ROW_H = 52;
@@ -220,14 +220,15 @@ export function menuLayout(state: XrMenuState, context: XrMenuContext): XrMenuLa
     const center = MENU_CANVAS.width / 2;
     const footerY = MENU_CANVAS.height - MARGIN - 8;
     if (state.screen === 'settings') {
-        texts.push(text('SETTINGS', MARGIN, 58, 34, 'title'));
-        texts.push(text(context.busy ? context.status || 'Updating...' : context.trackTitle, MENU_CANVAS.width - MARGIN, 58, 20, 'muted', 'right'));
+        texts.push({ ...text('SETTINGS', MARGIN, 58, 34, 'title'), width: 260 });
+        texts.push({ ...text(context.busy ? context.status || 'Updating...' : context.trackTitle,
+            MENU_CANVAS.width - MARGIN, 58, 20, 'muted', 'right'), width: MENU_CANVAS.width - 2 * MARGIN - 292 });
         const tabs = XR_SETTING_SECTIONS, tabW = (MENU_CANVAS.width - 2 * MARGIN - (tabs.length - 1) * OPTION_GAP) / tabs.length;
         const tabHint = context.input === 'desktop' ? 'Left / right arrow keys also switch tabs.' : 'Thumbstick left / right also switches tabs.';
         tabs.forEach((section, i) => items.push(item(`tab:${section.id}`, 'tab', section.title, MARGIN + i * (tabW + OPTION_GAP), 92, tabW, 56,
             { selected: section.id === state.tab, hint: tabHint })));
-        // Eight-row player-facing tabs retain 38 px controls and clear the two-line hint.
-        const rows = settingRows(context.settings, state.tab, 156);
+        // Nine-row categories keep their full 52 px controls without displacing the hint/footer.
+        const rows = settingRows(context.settings, state.tab, 164);
         items.push(...rows.items); texts.push(...rows.texts);
         const barY = MENU_CANVAS.height - 24 - 56;
         items.push(item('action:back', 'button', 'Back', MARGIN, barY, BACK_W, 56));
@@ -263,7 +264,7 @@ export function menuLayout(state: XrMenuState, context: XrMenuContext): XrMenuLa
         const points = String(Math.round(r.score)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
         texts.push(text(`${points} pts  -  max combo ${r.maxCombo}  -  ${r.hits} hits, ${r.misses} misses`, center, 312, 22, 'body', 'center'));
         if (r.sections) texts.push(text(`${r.flawlessSections} / ${r.sections} sections flawless`, center, 344, 22, 'body', 'center'));
-        items.push(...buttonStack(388, withExit(context, [['action:restart', 'Play again', { primary: true }], ['action:settings', 'Settings', {}]])));
+        items.push(...buttonStack(420, withExit(context, [['action:restart', 'Play again', { primary: true }], ['action:settings', 'Settings', {}]])));
         return { items, texts };
     }
     const paused = state.screen === 'pause';
@@ -271,11 +272,11 @@ export function menuLayout(state: XrMenuState, context: XrMenuContext): XrMenuLa
     texts.push(text(context.trackTitle || 'No track loaded', center, 122, 24, 'body', 'center'));
     texts.push(text(context.busy ? context.status || 'Updating choreography...' : settingSummary(context.settings), center, 160, 20, 'muted', 'center'));
     const ready = context.canStart && !context.busy;
-    items.push(...buttonStack(204, withExit(context, paused
+    items.push(...buttonStack(236, withExit(context, paused
         ? [['action:resume', 'Resume', { primary: true }], ['action:restart', 'Restart', {}], ['action:settings', 'Settings', {}]]
         : [['action:start', 'Start', { primary: true, disabled: !ready }], ['action:settings', 'Settings', {}]])));
     // Below the four-button stack, above the footer hint.
-    if (context.diagnostics) texts.push(text(context.diagnostics, center, 586, 17, 'muted', 'center', 2));
+    if (context.diagnostics) texts.push(text(context.diagnostics, center, MENU_CANVAS.height - 166, 17, 'muted', 'center', 2));
     texts.push(text(context.input === 'desktop'
         ? 'Mouse or arrow keys + Enter to choose. Esc: back / resume. Space: play / pause.'
         : 'Point with a controller, pull the trigger to choose. Grip: pause / back.', center, footerY, 20, 'muted', 'center'));

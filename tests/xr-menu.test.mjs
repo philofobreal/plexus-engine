@@ -333,3 +333,61 @@ test('pointer mode swaps sabers for lasers; rays and thumbsticks come from the t
     adapter.dispose();
     assert.equal(rays[1].children.length, 0, 'the laser is removed on dispose');
 });
+
+test('the enlarged menu keeps nine category rows at full control height and reserves separate header, hint and footer space', () => {
+    const settingsModule = load('xr/XrSettings.ts');
+    const descriptors = [...settingsModule.XR_SETTINGS];
+    // Exercise the category capacity even when the current descriptor set has fewer than nine rows.
+    let count = descriptors.filter(d => d.section === 'choreography').length;
+    while (count < 9) descriptors.push({ id: `capacity-${count++}`, section: 'choreography', label: 'Additional setting',
+        scope: 'chart', kind: 'choice', choices: [{ value: 'one', label: 'One', hint: 'One' }, { value: 'two', label: 'Two', hint: 'Two' }],
+        read: () => 'one', write: settings => settings });
+    const capacityLoad = createLoader({ './XrSettings': { ...settingsModule, XR_SETTINGS: descriptors } });
+    const { menuLayout: capacityLayout } = capacityLoad('xr/XrMenuModel.ts');
+    const layout = capacityLayout({ ...DEFAULT_MENU_STATE, screen: 'settings', tab: 'choreography', hover: 'action:copy-settings' },
+        context({ trackTitle: 'A very long filename '.repeat(40) }));
+    assert.ok(MENU_CANVAS.width >= 1280 && MENU_CANVAS.height >= 900);
+    const rows = layout.items.filter(i => i.kind === 'option' || i.kind === 'step');
+    assert.equal(new Set(rows.map(i => i.y)).size, 9);
+    assert.ok(rows.every(i => i.h >= 52), 'category capacity does not depend on shrinking laser targets');
+    const tabs = layout.items.filter(i => i.kind === 'tab'), hint = layout.texts.find(t => t.maxLines === 2);
+    const back = layout.items.find(i => i.id === 'action:back');
+    assert.equal(tabs.length, XR_SETTING_SECTIONS.length, 'no added categories');
+    assert.ok(Math.max(...tabs.map(i => i.y + i.h)) < Math.min(...rows.map(i => i.y)));
+    assert.ok(Math.max(...rows.map(i => i.y + i.h)) < hint.y - hint.size);
+    assert.ok(hint.y + hint.size * 1.7 < back.y, 'both hint lines have bottom-bar clearance');
+    const heading = layout.texts.find(t => t.text === 'SETTINGS'), filename = layout.texts.find(t => t.role === 'muted' && t.y === 58);
+    assert.ok(heading.x + heading.width < filename.x - filename.width, 'long filenames cannot overwrite the title');
+    layout.items.forEach((a, i) => { inside(a, 'nine-row settings');
+        for (const b of layout.items.slice(i + 1)) assert.ok(!overlaps(a, b), `${a.id} / ${b.id}`); });
+    assert.equal(MENU_PANEL_WIDTH_METERS / MENU_CANVAS.width, 1.28 / 1024, 'larger VR panel preserves physical text size');
+});
+
+test('desktop camera fitting keeps every enlarged-panel corner and control reachable in landscape, portrait and zoomed views', () => {
+    const panel = new XrMenuPanel(doc);
+    panel.setVisible(true);
+    panel.update({ ...DEFAULT_MENU_STATE, screen: 'settings', tab: 'choreography' }, context({ input: 'desktop' }));
+    const redraws = panel.redrawCount;
+    const point = new THREE.Vector3();
+    for (const [aspect, fov, zoom] of [[16 / 9, 70, 1], [9 / 16, 70, 1], [1 / 3, 45, 1], [9 / 16, 60, 1.5]]) {
+        const camera = new THREE.PerspectiveCamera(fov, aspect, .05, 1000);
+        camera.zoom = zoom; camera.updateProjectionMatrix();
+        camera.position.set(.7, 1.65, 2.6); camera.rotation.set(.8, 2.1, 0, 'YXZ'); camera.updateMatrixWorld(true);
+        panel.placeForCamera(camera);
+        for (const x of [-MENU_PANEL_WIDTH_METERS / 2, MENU_PANEL_WIDTH_METERS / 2])
+            for (const y of [-MENU_PANEL_HEIGHT_METERS / 2, MENU_PANEL_HEIGHT_METERS / 2]) {
+                point.set(x, y, 0); panel.mesh.localToWorld(point); point.project(camera);
+                assert.ok(Math.abs(point.x) <= .900001 && Math.abs(point.y) <= .900001, `${aspect}/${fov}/${zoom}: visible corner`);
+                assert.ok(point.z > -1 && point.z < 1);
+            }
+        for (const item of panel.layout.items) {
+            point.set(((item.x + item.w / 2) / MENU_CANVAS.width - .5) * MENU_PANEL_WIDTH_METERS,
+                (.5 - (item.y + item.h / 2) / MENU_CANVAS.height) * MENU_PANEL_HEIGHT_METERS, 0);
+            panel.mesh.localToWorld(point);
+            const hit = panel.hitTest(new THREE.Ray(camera.position.clone(), point.clone().sub(camera.position).normalize()));
+            assert.equal(hit?.item?.id, item.id);
+        }
+    }
+    assert.equal(panel.redrawCount, redraws, 'camera fitting never rerasterizes the menu');
+    panel.dispose();
+});

@@ -31,6 +31,8 @@ export interface RhythmGenerationSettings {
     readonly playSpace: PlaySpace;
     /** Absent/legacy preserves authored historical charts; guarded adds the versioned motor envelope. */
     readonly motionSafety?: 'legacy' | 'guarded';
+    /** Opt-in section-led vocabulary. Absent/legacy retains the historical chart. */
+    readonly chartProfile?: 'legacy' | 'musical-v1';
 }
 
 /** Reproduces the historical chart byte-for-byte. */
@@ -74,7 +76,8 @@ export function normalizeGenerationSettings(settings?: Partial<RhythmGenerationS
         handLead: pick(settings?.handLead, HAND_LEADS, d.handLead),
         zones: pick(settings?.zones, HAND_ZONES, d.zones),
         playSpace: pick(settings?.playSpace, PLAY_SPACES, d.playSpace),
-        ...(settings?.motionSafety === 'guarded' ? { motionSafety: 'guarded' as const } : {})
+        ...(settings?.motionSafety === 'guarded' || settings?.chartProfile === 'musical-v1' ? { motionSafety: 'guarded' as const } : {}),
+        ...(settings?.chartProfile === 'musical-v1' ? { chartProfile: 'musical-v1' as const } : {})
     };
 }
 
