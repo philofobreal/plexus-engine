@@ -89,10 +89,14 @@ Raw extraction can contain unresolved reference endpoints and parallel relations
 clustering removes/collapses some of these. Preserve the raw extraction for diagnosis and do
 not interpret either graph as a complete architectural proof. No hooks/global graph are needed.
 
-If a full rebuild is needed after clustering but extract reports no incremental changes,
-move the local `graphify-out/manifest.json` to an ignored log backup first, then rerun extract.
-Keep all file operations inside the checked project root. The CLI has no full-rebuild flag in
-the installed version. Existing corpus/source evidence is not deleted by this cache reset.
+Before a final full refresh, move the local `graphify-out/manifest.json` to a uniquely named
+ignored log backup, then run extract. Verify the resulting graph has the full corpus before
+copying/clustering it. In the installed version, `extract --no-cluster` with an existing manifest
+can write only changed-file nodes (observed21 nodes after a1-file change), rather than retain the
+whole graph. An unchanged incremental run can also leave a prior clustered projection untouched.
+Do not mistake either case for a full raw extraction. The CLI has no full-rebuild flag; resetting
+only the manifest forces full corpus extraction and retains the local AST cache. Keep all file
+operations inside the checked project root. Existing corpus/source evidence is not deleted.
 
 Prefer exact graph IDs when short names collide with import bindings. Examples:
 `graphify explain src_analyzer_musicactivity_musicactivity` and

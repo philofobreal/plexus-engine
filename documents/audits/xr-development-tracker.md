@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-25 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T11e prefix neighborhood context implemented; T11 partial; T12 not started.** Existing MVP/XR Offscreen rendering stays intact. [Current T11 scope and validation](../features/music-events.md#t11e---dominant-excess-neighborhood-context-2026-10-25). [Previous merged review](xr-review-checkpoint.md).
+**T11f attack-local change implemented; validated; deploy/manual handoff checkpoint below; T11 partial; T12 not started.** Existing MVP/XR Offscreen rendering stays intact. [Current T11 scope and validation](../features/music-events.md#t11f---attack-local-positive-spectral-change-2026-10-25). [Previous merged review](xr-review-checkpoint.md).
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -57,7 +57,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T08 | Gameplay + XR: note meanings and bounded halos | T02, T07 fit | Accepted by user continuation on 2026-10-24, deployed 2bd7cc0. Three optional musical roles. [Evidence](xr-musical-roles-validation.md) |
 | T09 | Gameplay + input/render: playable hand policy and motion | T08 | Accepted by user; Guarded optional, Legacy default. [Evidence](xr-movement-validation.md) |
 | T10 | Analyzer timing cleanup | T00-T01 | Rejected experiments removed at user request; established XR path and equivalent Band search retained. Accuracy beyond available evidence remains unproven. [Record](xr-timing-cleanup.md) |
-| T11 | Analyzer contracts: timed evidence and dominance | Stable T10 clock/evidence boundary | T11a/b/c/d retained; T11e dominant-excess prefix context, conservative labels and explicit full-track publication. Targeted108/108; full1800/1791 pass and nine exact retained failures; all previous analyzer/T11b/c/d values exact on three full recordings. No source/note/role/vocal promotion; T11 partial. Manual pause after deploy; no T12. [Scope](../features/music-events.md) |
+| T11 | Analyzer contracts: timed evidence and dominance | Stable T10 clock/evidence boundary | T11a/b/c/d/e retained; T11f bounded attack-local spectral change, unavailable states and no new texture/source classifier. Unused acoustic evidence omitted from four render-worker preparations. Full1809, followed by reviewed-hash correction and62/62 affected rerun; nine exact baseline failures remain. Graphify refreshed. No chart promotion; T11 partial, no T12; manual pause after deploy. [Scope](../features/music-events.md) |
 | T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09-T11 | Planned; legacy path retained |
 | T13 | Analyzer + automation + semantics: cue and visual arrival timing | T10; T11 additive | Planned |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
@@ -471,7 +471,7 @@ from pitch/texture, or treat this mask activity as a note-duration model. Pause 
 manual load/play/pause/chart feedback. Wall remains Off; MVP/XR Offscreen and T10 cleanup stay intact.
 
 
-## Current continuation checkpoint - T11e prefix context, 2026-10-25
+## Historical checkpoint - T11e prefix context, 2026-10-25
 
 T11d accepted. T11e adds a bounded measurement of the dominant excess frequency neighborhood
 in two clean prefix windows, with occupied/unoccupied/uncertain labels, exact support and explicit
@@ -483,3 +483,19 @@ limit is documented: old local decision gates do not guarantee stable online ent
 this neighborhood label cannot identify sources, classify all AM/glides or remove true attacks.
 No chart promotion or player toggle. Pause after deploy for manual load/play/pause feedback.
 Wall remains Off; MVP/XR Offscreen rendering and T10 cleanup remain intact.
+
+
+## Current continuation checkpoint - T11f local attack change, 2026-10-25
+
+T11e accepted. Graphify refreshed first, including scripts/fixture generators and exact-symbol
+navigation guidance; raw AST and clustered projection are local ignored artifacts. T11f adds
+short-window positive spectral change tied to existing energy attacks, with continuous measures,
+explicit unavailable states and full-track publication. It does not replace the legacy context
+family, correct onset localization, classify instruments or promote chart inputs.
+[Contract and acceptance limits](../features/music-events.md#t11f---attack-local-positive-spectral-change-2026-10-25).
+
+**T11 remains partial; T12 not started.** Cumulative1809 run plus reviewed-hash correction/62 passing affected checks leaves nine exact
+known failures. Source-stable3-recording parity is exact; offline elapsed delta+1.30%..+6.75%.
+Commit/push and guarded deploy/public browser smoke precede the manual load/play/pause pause.
+Following acceptance continue validated musical event/role qualification; nearby raw energy
+attacks can still merge or retarget. Wall Off, MVP/XR Offscreen and T10 cleanup remain intact.

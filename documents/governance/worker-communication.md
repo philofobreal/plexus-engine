@@ -325,3 +325,22 @@ The p5 host composites one bitmap and runs the existing PostFX seam once. Export
 asynchronous preview entirely, uses the full-resolution synchronous Compatible renderer and
 releases the preview worker. Switching away/removing the renderer also terminates it. This is
 live-preview infrastructure, not T19 isolated export or a guarantee of headset frame rate.
+
+
+## T11f additive attack-local change evidence
+
+`trackAnalysis.musicActivity.attackChanges` is optional and does not change the worker request
+or root event/chart contract. Algorithm `attack-local-excess-v1` measures two real PCM windows
+per accepted legacy energy attack with one reusable <=512 FFT. Full-track publication, exact
+attack-ID/order/count binding, deterministic clock-derived supports and explicit boundary/
+resolution/below-floor statuses are validated by `normalizeAcousticActivity` before adoption.
+
+Continuous positive spectral power, fraction and strongest-bin neighborhood share are engineering
+measurements, never source ownership, percussive/tonal recognition, confidence or scoring input.
+The inherited `attack.family` remains a longer context texture. No quiet-entry coverage or onset
+localization correction is implied. No renderer consumes or recomputes these transforms; the
+payload is cloned once with the analyzer result to the main host. The four MVP/XR render-worker
+proxies omit the unused `musicActivity` tree only in prepare messages through
+`projectRenderWorkerAnalysis`; authoritative host analysis, cache keys, plan-only updates and
+main fallback input stay intact. Render-frame messages do not carry this evidence.
+See the [T11f contract](../features/music-events.md#t11f---attack-local-positive-spectral-change-2026-10-25).

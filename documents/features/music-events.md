@@ -502,3 +502,187 @@ It confirms a small added offline workload, with no measured zero-cost claim. Re
 is the same command with `--output logs/t11e/measurement-repeat.json`; no source copy/helper
 family is created. Physical Quest acceptance and independent musical/source validation remain
 outside these Node measurements.
+
+
+## T11f - attack-local positive spectral change (2026-10-25)
+
+T11e was accepted. Graphify was refreshed first: scripts and fixture generators are navigable,
+with exact-symbol guidance in platform operations. The subsequent T11f owner is the parent for
+analyzer, shared contract/schema, normalization and integration; a read-only analyzer reviewer
+checks the DSP and boundary. Render-worker preparation omits unused acoustic evidence; UI,
+audio lifecycle, render-frame algorithms and chart consumption are unchanged.
+
+The inherited `AcousticAttack.family` is a **context texture** using60ms lookahead rounded
+to feature windows (plus the triggering window), not the spectrum of an isolated attack. A later tone can recolor that context. The additive `attackChanges` sidecar
+measures a shorter, attack-aligned positive spectral change. It does not replace that legacy
+field, correct onset localization or classify percussive/tonal sounds. This is evidence toward
+T11's later event/role qualification, not completed musical recognition or T12 chart promotion.
+
+### Contract and measurement
+
+Algorithm `attack-local-excess-v1`, scope `local-window-positive-spectrum`, source ownership
+`unresolved`, confidence null, scoring ineligible, publication `full-track-analysis`.
+Every accepted legacy energy attack has one record in the same order, identified by `attackId`.
+Quiet spectral-entry candidates are outside this layer's coverage. No attack is added/deleted.
+
+The common FFT size N is the largest power of two no longer than16ms, capped at512 and at the
+feature hop. N must be at least128 and span at least8ms; otherwise records explicitly report
+`insufficient-resolution`. Examples:16k/N256,22.05k/N256,44.1k or48k/N512. Above64k the bounded
+window is too short and remains unavailable. These different frequency resolutions must not be
+interpreted as a calibrated common sound-family score.
+
+For localized sample a, body begins at `a-ceil(.002*fs)` and spans N samples. The equal-size
+prefix ends4ms before that body begins. Prefix is a **pre-estimated-attack measurement window**,
+not guaranteed silence or a true pre-onset window. Full real PCM is required; missing either
+window reports `file-boundary`, null supports and null measurements. No zero-padding claims.
+All records publish at the real PCM length, consistent with retrospective accepted attacks.
+
+Both windows subtract their own Hann-weighted mean, multiply by Hann, then transform. This
+rejects constant DC and avoids the large narrow-band artifact caused by unweighted centering
+of an impulse at a Hann edge. Bins1..N/2-1 are used; DC and Nyquist are excluded. Define
+`delta[k]=max(Pbody[k]-Pprefix[k],0)`. Measurements:
+
+- `positivePower = 2*sum(delta)/(N*sum(Hann^2))`: window-normalized positive spectral change,
+  not isolated-source loudness or an exact total AC RMS measurement.
+- `positivePowerFraction = sum(delta)/sum(Pbody)`, or zero for a zero denominator.
+- `peakBin`: strongest positive bin, with lowest-bin tie break. Its clipped +/-1-bin sum divided
+  by **all** positive power is `peakNeighborhoodFraction`. It is concentration of this local
+  change, not pitch, probability, source count or a sound-family classifier.
+
+Above the existing1e-10 engineering power floor status is `measured`. At/below it status is
+`below-floor`, with numeric power/fraction retained but null peak/share. A Hann edge can suppress
+a real impulse below the floor; this is limited sensitivity, never proof of no attack. Prefix
+subtraction can also suppress a real repeated component, and unrelated overlapping sound can
+contribute to the same local change. No additional texture-category thresholds are introduced:
+the old six-peak thresholds change meaning on short FFT windows and were rejected in review.
+
+The normalizer enforces version/scope/null confidence, exact N, complete ID/order/count binding,
+exact derived supports, full-track decision sample, finite ranges, floor/status consistency,
+peak resolution and unavailable nulls, then clones arrays. Earlier payloads may omit the layer.
+It cannot authenticate acoustic truth without PCM. The JSON schema remains additive and strict.
+
+### Cost and acceptance boundary
+
+Scratch storage is lazy: one <=512 FFT and two <=256-bin arrays reused across accepted attacks,
+not an additional spectrogram. At most two short transforms run per accepted energy attack;
+the inherited60ms refractory bounds this work to roughly16.7 attacks/s. The old feature FFT,
+entry/band/context paths remain exact. Work and payload are added once per load in the analyzer
+worker, with no render-frame DSP or messages. Offline elapsed time and added payload must still
+be measured; absence of frame DSP is not a zero-cost claim. All four MVP/XR raster/native/exact render-worker proxies now call the shared
+`projectRenderWorkerAnalysis` only at preparation: omit the unused `musicActivity` tree while
+retaining every other analysis field. The host publication, cache reference keys, plan-only
+updates and main fallback input remain original. This removes both old and new unused acoustic
+evidence from renderer structured-clone/memory cost. It does not eliminate analysis-to-main
+publication, establish Quest frame rate or change frame messages. Four additional regressions
+cover real structured-clone omission, unchanged host/plan cache and native fallback/exact paths.
+No new player setting is required for an internal evidence protocol. Wall stays Off and MVP/XR Offscreen behavior is preserved.
+
+The existing corpus and single measurement runner are extended, with no source-copy or new
+report-file family. Ninety declared controls cross3 clocks,5 subhop phases and6 first/later signal
+combinations. Forty-five isolated controls measure narrow concentration for a pure sine and
+spread power for impulse/noise; numeric test bounds are not production category thresholds.
+Among45 later-addition comparisons,34 retain the same accepted anchor and their entire short
+measurement is exactly unchanged;11 inherit a different legacy anchor near the later addition.
+Those11 are explicitly disclosed, not counted as successful isolation or fixed onset timing.
+The later addition begins30ms after the authored first signal. Separate fixed-anchor kernel
+controls exercise actual first/last Hann samples, gain/DC, below-floor, file ends and resolution.
+
+All old13/45/75 aggregate identities remain frozen by omitting only the new optional layer in
+predecessor projections. The runner also compares the whole T11e producer at commit
+`ca974e94123eead17dea79f21789ac2f6d2d1f43` on the3 full recordings, then all older T11d/c/b/root
+values. Old model consensus/PCM-identity mismatches remain as previously disclosed; none of
+these numeric signal controls establish musical note/source/vocal accuracy. Full cumulative
+tests retain every predecessor test and known failure rather than rewriting historical results.
+
+T11 remains partial; T12 is not started. Continue after manual acceptance with validated
+musical event/role qualification, including the inherited nearby-attack localization ambiguity.
+
+
+### T11f validation procedure
+
+Use Node/npm25.2.1/11.6.2, no runtime fallback or dependency installation. Required commands:
+`npm run build`; `npm test -- --test-reporter=tap`; targeted analyzer/clock/worker validation
+as in T11e plus the four renderer publication suites:
+`node --test --test-reporter=tap tests/wormhole-host-worker.test.mjs tests/xr-wormhole-worker.test.mjs tests/xr-native-worker.test.mjs tests/wormhole-exact-frame.test.mjs`.
+The existing accepted-event legacy test now stubs only its intended projection export while
+retaining the real module's other helpers; no historical numeric assertion is changed.
+MVP publication tests compare cloned cross-realm arrays as plain values, not prototype identity.
+
+The first candidate measurement is retained in `logs/t11f/measurement-primary.log`; its source
+identity guard correctly rejects it because review changed contracts/runner during execution.
+The exclusive JSON stays empty. It is not a validated performance/accuracy result. Rerun the
+existing runner against unchanged final source after cumulative testing, using a fresh exclusive
+output. Neither candidate source changes nor parallel-test elapsed times can be silently accepted.
+
+Direct Git diff plus read-only analyzer/renderer reviews replace optional `diff_export.ps1`;
+no duplicate source snapshot. No Python inference/pytest or physical Quest measurement is run:
+there is no changed Python inference, installed research-model runtime or attached headset.
+Public browser load/play/pause smoke is required after guarded Pages prepare/publish/verify;
+it checks wiring, not musical truth or headset frame pacing. Pause for manual acceptance.
+
+
+### T11f final regression and navigation record
+
+Build passes (`logs/t11f/build-projection.log`), with the existing informational chunk-size
+warning. Nine new tests are added:5 analyzer/local-window controls and4 worker-publication tests.
+All1800 predecessor tests remain active. Full final code run (`logs/t11f/full-final.tap`):
+1809 tests,1799 pass,10 fail, zero skipped/cancelled. Nine failures have exactly the prior
+cleanup baseline names AND messages. The tenth was the protected current-source hash for
+`CanvasVisualSource.ts`, whose reviewed projection addition changes bytes but no clock logic.
+
+The existing source-evolution manifest now records the exact new hash and independent review
+reason; its prior hash/reviewer/reason is retained in `supersededReplacements`. Original measured
+source copies, all timing measurements and numerical baseline assertions remain unchanged.
+After this metadata-only correction, the affected timing/event/renderer suites pass62/62:
+`node --test --test-reporter=tap tests/accepted-timing-measurement.test.mjs tests/music-events.test.mjs tests/wormhole-host-worker.test.mjs tests/xr-wormhole-worker.test.mjs tests/xr-native-worker.test.mjs tests/wormhole-exact-frame.test.mjs`.
+Do not rewrite the10-failure full log as a9-failure run: `logs/t11f/failure-comparison.json`
+records that source guard's passing rerun and the nine remaining exact baseline failures.
+No third full-suite replay is needed for the reviewed-hash metadata edit; changed runtime was
+already in the complete run and its affected suites reran together afterward.
+
+The initial targeted analyzer/clock/XR command from T11e ran113 tests,112 pass/one old stub
+failure; spreading the real contract exports and overriding only the intended legacy projection
+resolves that compatibility fixture (6/6 separately, also in62/62 above). The four worker suites
+first exposed a cross-realm array-prototype comparison in the new MVP test; plain-value comparison
+fixes the assertion (four new publication checks4/4, all worker suites in62/62 afterward).
+Failed candidate logs remain local; no historical numeric expectation was weakened.
+
+Final Graphify refresh covers891 code files:8340 nodes/20060 raw AST edges, preserved at ignored
+`graphify-out/AST_EXTRACTION.json`; clustered navigation projection8340/17579, no dangling
+endpoints. Raw unresolved external endpoints remain documented. Exact attack-change, window-size,
+normalizer, fixture and render-projection nodes are verified; all four worker import/call paths
+are navigable. Clustering used no LLM labels or visualization. The incremental changed-file
+extraction trap is documented in platform operations; full source was re-extracted before final
+clustering. Generated graph/cache/report remain local, not duplicate committed source artifacts.
+
+
+### T11f final recorded result
+
+`logs/t11f/measurement-final.json`, protocol `t11f-attack-local-excess-1`, completes with all11
+source hashes unchanged. All prior root and T11b/c/d/e values are exactly equal on all3 full
+recordings. The39 attack/45 entry/30 band/16 context/40 periodicity controls remain, plus90 new
+local-change controls. Same-anchor34/34 comparisons are exact;11 other pairs retain the known
+legacy retargeting limit. No independent musical accuracy is inferred. All9 historical recording
+contexts still mismatch the current decoder's PCM identity, so comparison accuracy remains null.
+
+| Recording | Existing energy attacks | New sidecar | Whole acoustic tree omitted from renderer prepare | Warm20s median T11e /T11f |
+|---|---|---|---|---|
+| Goa | 2341 | 663747 bytes | 1292545 bytes | 342.541 /357.774 ms (+4.45%) |
+| No Good | 2385 | 676987 bytes | 1323286 bytes | 339.407 /343.810 ms (+1.30%) |
+| Scienide | 1536 | 435160 bytes | 850278 bytes | 318.029 /339.506 ms (+6.75%) |
+
+The source-stable run follows completed cumulative tests, using5 alternating warm pairs per
+recording. Added offline elapsed time is+1.30% to+6.75% in this run; individual pairs vary.
+This is Node analyzer elapsed wall time, not process CPU, main-thread load, browser FPS or Quest
+performance. Do not claim precise/stable CPU percentages or zero offline cost. Main-host result
+normalization still has a once-per-load record cost. Renderer preparation avoids the complete
+unused tree (about0.85-1.32MB JSON representation per full recording), including previous acoustic
+metadata; structured-clone memory size is not identical to JSON bytes. No per-frame payload/DSP
+is added, and scratch DSP storage is roughly12KiB at N512, excluding returned record objects.
+
+Exact command:
+`node research/analyzer-lab/diagnostics/measure-music-activity.mjs --audio-dir "C:/novy/Plexus Engine (VJ System)/plexus-engine/tests/audio/Prodigy" --output logs/t11f/measurement-final.json`.
+Only the source-stable final JSON is a validated result; the earlier source-changing candidate
+remains explicitly rejected. Source commits separate the analyzer evidence (`f700885`) and worker
+preparation optimization (`f3a85cb`). Commit/push documentation, deploy the exact committed tree,
+verify public files/routes, then perform public browser smoke and pause for manual testing.
