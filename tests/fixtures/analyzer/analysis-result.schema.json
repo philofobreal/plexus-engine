@@ -2436,6 +2436,128 @@
               }
             }
           }
+        },
+        "entryContexts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "algorithm",
+            "confidence",
+            "consumerUse",
+            "xrScoring",
+            "scope",
+            "sourceOwnership",
+            "records",
+            "publication"
+          ],
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "enum": [
+                "entry-prefix-neighborhood-v1"
+              ]
+            },
+            "confidence": {
+              "type": "null",
+              "enum": [
+                null
+              ]
+            },
+            "consumerUse": {
+              "type": "string",
+              "enum": [
+                "signal-evidence-only"
+              ]
+            },
+            "xrScoring": {
+              "type": "string",
+              "enum": [
+                "ineligible"
+              ]
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "dominant-excess-neighborhood"
+              ]
+            },
+            "sourceOwnership": {
+              "type": "string",
+              "enum": [
+                "unresolved"
+              ]
+            },
+            "records": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "entryId",
+                  "peakBin",
+                  "prefixSamples",
+                  "seedSamples",
+                  "decisionSample",
+                  "prefixPower",
+                  "prefixToSeedPowerRatio",
+                  "context"
+                ],
+                "properties": {
+                  "entryId": {
+                    "type": "string"
+                  },
+                  "peakBin": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "prefixSamples": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "seedSamples": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "decisionSample": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "prefixPower": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "prefixToSeedPowerRatio": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "context": {
+                    "type": "string",
+                    "enum": [
+                      "occupied-neighborhood",
+                      "unoccupied-neighborhood",
+                      "uncertain"
+                    ]
+                  }
+                }
+              }
+            },
+            "publication": {
+              "type": "string",
+              "enum": [
+                "full-track-analysis"
+              ]
+            }
+          }
         }
       }
     }

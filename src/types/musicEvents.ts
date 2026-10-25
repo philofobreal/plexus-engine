@@ -31,8 +31,27 @@ export interface AcousticActivityLayer {
     }[];
     attacks: AcousticAttack[];
     dominance: { startSample: number; endSample: number; texture: AcousticTexture | 'silence'; decisionSample: number }[];
+    entryContexts?: EntryContextLayer;
     bandActivity?: EntryBandActivityLayer;
     spectralEntries?: SpectralEntryLayer; // Absent in T11b/legacy payloads.
+}
+
+export type EntryNeighborhood = 'occupied-neighborhood' | 'unoccupied-neighborhood' | 'uncertain';
+/** Contract classification of two measured engineering values, never source/note identity. */
+export function classifyEntryNeighborhood(prefixPower: number, ratio: number): EntryNeighborhood {
+    if (prefixPower > 1e-10 && ratio >= .025) return 'occupied-neighborhood';
+    if (prefixPower <= 1e-10 && ratio <= .0025) return 'unoccupied-neighborhood';
+    return 'uncertain';
+}
+export interface EntryContextLayer {
+    algorithm: 'entry-prefix-neighborhood-v1'; confidence: null;
+    consumerUse: 'signal-evidence-only'; xrScoring: 'ineligible';
+    scope: 'dominant-excess-neighborhood'; sourceOwnership: 'unresolved'; publication: 'full-track-analysis';
+    records: {
+        entryId: string; peakBin: number; prefixSamples: [number, number]; seedSamples: [number, number];
+        decisionSample: number; // Full-track publication; seedSamples marks the actual measurement window.
+        prefixPower: number; prefixToSeedPowerRatio: number; context: EntryNeighborhood;
+    }[];
 }
 
 /** Activity in entry-frozen bins. Same-band overlap can outlive the original sound. */
@@ -56,7 +75,7 @@ export interface SpectralEntryLayer {
     candidates: {
         id: string; sampleIndex: number; time: number; observationFrame: number;
         prefixSamples: [number, number]; supportSamples: [number, number];
-        bodySamples: [number, number]; decisionSample: number;
+        bodySamples: [number, number]; decisionSample: number; // Local body gate; final dedup/publication is retrospective.
         texture: AcousticTexture; // Positive spectral excess, not an instrument/source label.
         positivePowerFraction: number; carrierPowerRatio: number; // Engineering ratios, not probabilities.
         backgroundResidualFraction: number;
@@ -239,6 +258,26 @@ export function normalizeAcousticActivity(value: AcousticActivityLayer | undefin
                     bodySamples: [...a.bodySamples], decisionSample: a.decisionSample,
                     positivePowerFraction: a.positivePowerFraction, carrierPowerRatio: a.carrierPowerRatio, backgroundResidualFraction: a.backgroundResidualFraction })) };
         }
+        let entryContexts: EntryContextLayer | undefined;
+        if (value.entryContexts !== undefined) {
+            const layer = value.entryContexts, entries = spectralEntries?.candidates, hop = clock.hopSize;
+            if (!layer || layer.algorithm !== 'entry-prefix-neighborhood-v1' || layer.confidence !== null
+                || layer.consumerUse !== 'signal-evidence-only' || layer.xrScoring !== 'ineligible'
+                || layer.scope !== 'dominant-excess-neighborhood' || layer.sourceOwnership !== 'unresolved' || layer.publication !== 'full-track-analysis'
+                || !entries || !Array.isArray(layer.records) || layer.records.length !== entries.length) return undefined;
+            for (let i = 0; i < entries.length; i++) {
+                const a = layer.records[i], e = entries[i];
+                if (!a || a.entryId !== e.id || !Number.isSafeInteger(a.peakBin) || a.peakBin < 1 || a.peakBin >= hop / 2
+                    || !pair(a.prefixSamples, e.prefixSamples) || !pair(a.seedSamples, [e.bodySamples[0], e.bodySamples[0] + hop])
+                    || a.decisionSample !== length || !Number.isFinite(a.prefixPower) || a.prefixPower < 0
+                    || !Number.isFinite(a.prefixToSeedPowerRatio) || a.prefixToSeedPowerRatio < 0
+                    || a.context !== classifyEntryNeighborhood(a.prefixPower, a.prefixToSeedPowerRatio)) return undefined;
+            }
+            entryContexts = { algorithm: layer.algorithm, confidence: null, consumerUse: 'signal-evidence-only', xrScoring: 'ineligible',
+                scope: 'dominant-excess-neighborhood', sourceOwnership: 'unresolved', publication: 'full-track-analysis', records: layer.records.map(a => ({
+                    entryId: a.entryId, peakBin: a.peakBin, prefixSamples: [...a.prefixSamples], seedSamples: [...a.seedSamples],
+                    decisionSample: a.decisionSample, prefixPower: a.prefixPower, prefixToSeedPowerRatio: a.prefixToSeedPowerRatio, context: a.context })) };
+        }
         let bandActivity: EntryBandActivityLayer | undefined;
         if (value.bandActivity !== undefined) {
             const layer = value.bandActivity, entries = spectralEntries?.candidates, hop = clock.hopSize;
@@ -273,9 +312,14 @@ export function normalizeAcousticActivity(value: AcousticActivityLayer | undefin
                     endSample: a.endSample, offsetSupportSamples: a.offsetSupportSamples && [...a.offsetSupportSamples],
                     decisionSample: a.decisionSample, rightCensored: a.rightCensored, endReason: a.endReason })) };
         }
+        if (entryContexts && bandActivity) for (let i = 0; i < entryContexts.records.length; i++) {
+            const band = bandActivity.records[i];
+            if (band.endReason !== 'budget-exceeded' && !band.bins.includes(entryContexts.records[i].peakBin)) return undefined;
+        }
         return { algorithm: value.algorithm, source: 'analysis-pcm', clock: { ...clock }, confidence: null, consumerUse: 'signal-evidence-only', xrScoring: 'ineligible', capabilities,
             ...(spectralEntries ? { spectralEntries } : {}),
             ...(bandActivity ? { bandActivity } : {}),
+            ...(entryContexts ? { entryContexts } : {}),
             activity: value.activity.map(a => ({ id: a.id, startSample: a.startSample, endSample: a.endSample,
                 onsetSupportSamples: a.onsetSupportSamples && [...a.onsetSupportSamples], offsetSupportSamples: a.offsetSupportSamples && [...a.offsetSupportSamples],
                 sustainSamples: a.sustainSamples && [...a.sustainSamples], leftCensored: a.leftCensored, rightCensored: a.rightCensored })),

@@ -54,18 +54,30 @@ See [T11b scope and limits](../features/music-events.md#t11b--acoustic-activity-
 
 T11c optionally extends that layer with `spectralEntries` (`tonal-carrier-entry-v1`): quiet
 spectral additions over a stable retained carrier, explicit pre-fit/body/full sample support and
-availability time. It remains raw, scoring-ineligible evidence. Legacy omission is valid; the
+local body-gate time. Final dedup/publication remains retrospective; that gate is not an online
+availability promise. It remains raw, scoring-ineligible evidence. Legacy omission is valid; the
 normalizer rejects incomplete support, forged scope/ratios, invalid association and duplicates.
 No top-level request/result fields, accepted hits, playback clock or render packets change.
 
 T11d optionally adds `musicActivity.bandActivity` (`entry-fixed-band-activity-v1`), associated
 one-to-one with accepted spectral-entry IDs. It measures frozen frequency-mask activity, with
 unresolved source ownership, null confidence and scoring ineligibility. Closed records include
-two full quiet-window observations and their availability time; file tails are right-censored,
+two full quiet-window observations and their local confirmation-gate time; final entry association
+remains retrospective. File tails are right-censored,
 and bounded-monitor saturation explicitly returns an unavailable end. The normalizer validates
 association, bins, support and censoring and clones publication. Old payloads may omit it.
 It adds no render-time packets, playback DSP, chart consumer or player control. See
 [T11d scope and limits](../features/music-events.md#t11d---entry-frozen-band-activity-2026-10-25).
+
+T11e optionally adds `musicActivity.entryContexts` (`entry-prefix-neighborhood-v1`), one record
+per final spectral-entry ID. Its dominant-excess neighborhood scope, unresolved ownership, null
+confidence and scoring ineligibility are explicit. Only the two clean pre-search windows inform
+prefix power; separate seed support and bin identify the actual measurement. Publication is
+`full-track-analysis`, with decision time at real PCM length: inherited T11c/d local body/quiet
+gates do not imply irrevocable online availability of an associated entry. Strict normalization
+binds classification, clocks and optional band-bin cross-association. Legacy omission stays valid.
+This offline signal evidence neither removes raw candidates nor changes playback/render packets.
+[T11e scope and publication limit](../features/music-events.md#t11e---dominant-excess-neighborhood-context-2026-10-25).
 
 The authoritative musical timing model (`tempo`, `tempoConfidence`, `beats`, `beatConfidence`,
 `barStarts`, `alternativeTempos`, `timingConfidence`) is carried on the nested `TrackAnalysis`

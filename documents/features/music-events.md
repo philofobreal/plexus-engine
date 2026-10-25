@@ -359,3 +359,146 @@ zero skips/cancellations. All nine names AND assertion messages exactly match
 The final full suite includes the sparse-array hardening. `logs/t11d/build-final.log`,
 `targeted.tap` and `full.tap` retain local evidence; `git diff --check` passes. Seven new tests are
 added to the 1788 active predecessor tests, with no baseline/golden result rewritten.
+
+
+## T11e - Dominant excess neighborhood context (2026-10-25)
+
+T11d accepted. Optional `musicActivity.entryContexts` adds algorithm
+`entry-prefix-neighborhood-v1`, scoped to `dominant-excess-neighborhood`. It is a conservative
+measurement of a small frequency neighborhood before a raw entry, not a duplicate filter or
+recognition of a new note/source. All T11b/c/d fields and accepted chart inputs remain exact.
+Confidence is null, source ownership unresolved and chart scoring ineligible.
+
+For the strongest positive-excess peak, freeze its FFT bin and read power within four bins on
+either side in the two guaranteed pre-search windows f-3 and f-2. Take the larger neighborhood
+power. Do NOT use f-1: a valid entry can localize inside it. Compare that prefix measurement with
+current seed-window power within one bin of the same peak, and retain the ratio plus Parseval-
+scaled prefix AC power (engineering units, not calibrated source loudness). The policy is fixed
+by the algorithm version: prefix power above 1e-10 AND ratio >=.025 gives
+`occupied-neighborhood`; prefix power <=1e-10 AND ratio <=.0025 gives
+`unoccupied-neighborhood`; everything between is `uncertain`. Producer and normalizer share the
+same dependency-light contract classifier. This is at most 21 bin reads per raw proposal,
+three retained scalars, no new FFT, spectral-history copy, active monitor or render work.
+
+Unoccupied means only below the declared floor in those two Hann-weighted neighborhoods. It
+does not prove physical silence or a new source: other novelty peaks, window edges, frequency
+leaps and masked sounds are outside this narrow claim. Occupied is not a false-attack label:
+a true new sound can enter the same neighborhood, and a true re-articulation can occur before
+old context decays. A fast glide may outrun the fixed neighborhood. Neither label deletes raw
+candidates or enables chart consumption. Player menu/localStorage/Copy and relevant preset rules
+continue to apply to any future player feature; no player switch is introduced for this evidence.
+
+### Measurement support versus retrospective publication
+
+An explicit regression revealed an inherited T11c limit: its energy-attack dedup is retrospective.
+At44.1k/H1024 with .2/.3/.4-hop shifted entries, changing only samples after the old local
+`decisionSample` creates a later energy attack localized backwards into the dedup neighborhood,
+removing the earlier raw entry. The frozen prefix/bin values are unchanged, but the final entry
+list is not generally causal at that timestamp. T11c `decisionSample` is its local complete-body
+gate; T11d's corresponding value is its local body/quiet-confirmation gate. Neither is a promise
+that an associated record is irrevocably published online at that time. Prior metadata values
+and historical measurements are retained, with this limitation made explicit here.
+
+The new layer therefore declares `publication: full-track-analysis`, and each record's
+`decisionSample` is the real PCM length. Its separate `prefixSamples` and `seedSamples` retain
+the actual local measurement support. Publish one record per final accepted entry ID only;
+rejected provisional contexts never leak. This does not delay playback: analysis already runs
+once in the worker before loading completes. No streaming consumer may infer an earlier stable
+publication deadline from a local body gate.
+
+Normalization checks version/scope/publication, exact entry-ID/order, peak-bin range, clean
+prefix, seed clock, full-track decision time, finite nonnegative engineering values and derived
+classification, then clones every array. When a non-budget T11d band record is also present,
+the dominant peak must belong to its frozen bins. Older payloads can omit the new extension;
+a context can remain independently valid without the optional band layer.
+
+### Validation and promotion boundary
+
+The frozen T11d producer commit `4fb6ba2e5f0d52c4ef0008aa75e3e4aab9b1a369` supplies a new aggregate
+identity over the unchanged 45 entry plus30 band controls. All existing T11b/c aggregate guards
+remain active. On the prior20 extra AM/glide/near-overlap proposals,17 contexts are occupied and
+three uncertain; none are unoccupied. The three uncertain22.05k glide contexts have above-floor
+prefix residue with low neighborhood ratio; thresholds were not lowered to force a label.
+This diagnostic separation is development evidence, not false-positive or musical accuracy.
+
+Five appended tests add aggregate/raw/core/band preservation, three clocks and five subwindow
+phases, polarity/gain/DC, policy/association/clone rejection, the retrospective suffix-dedup
+counterexample and exact frozen provisional measurements. Sixteen declared new parameter cases
+vary AM rate/depth, glide speed, true neighboring additions, repeat gaps and subwindow phase.
+New transfer controls are authored regressions, not independent recordings or human truth.
+True neighboring attacks can be occupied and remain raw candidates; no label is source accuracy.
+
+The reusable measurement runner extends to `t11e-prefix-neighborhood-1`, preserving the previous
+39 attack/45 entry/30 band/40 periodicity controls and adding16 context controls. Full recordings
+must preserve all legacy/T11b/c/d outputs exactly. Compare current and Git-identified T11d
+producers under the same pipeline in five alternating warm20s pairs. Decoder identity
+mismatches remain abstentions; old onset/pitch consensus is not context/source truth.
+
+Parent owns analyzer, additive contracts/schema/normalizer and integration. Read-only subagent
+review found the inherited publication limit and the peak-to-band cross-invariant; both are now
+covered explicitly. T11 remains partial: musical note boundaries/roles and vocal/instrument
+identity are unsupported. T12 has not started. Wall stays Off; MVP/XR Offscreen remains intact.
+No new source/report-file family or dependency is introduced.
+
+### T11e measured results and commands
+
+Primary result: `logs/t11e/measurement-final.json` (ignored, exclusive output). All earlier root
+and T11b/c/d values are exact on all three full decoded recordings. Each recorded raw candidate
+has occupied local context (9/26/3 respectively); this is not a count of false attacks or sources.
+All nine prior decoded contexts remain PCM-identity mismatches, so musical accuracy stays null.
+
+The16 new authored parameter cases contain24 physical additions and47 raw proposals:23 occupied,
+23 unoccupied and one uncertain context. Three genuine neighboring additions remain occupied
+raw candidates, as does one genuine short-gap repeat. In the22.05k fast-glide case, all four raw
+contexts are unoccupied despite only one source onset: a fast sweep leaves the fixed neighborhood.
+This explicitly prevents promotion of 'unoccupied' to a new-note/source classifier.
+
+| Full decoded recording | All previous values exact | New context payload | Warm20s median T11d /T11e |
+|---|---|---|---|
+| Goa | Yes | 2457 bytes | 316.870 /385.427 ms (+21.64%) |
+| No Good | Yes | 6740 bytes | 292.870 /338.735 ms (+15.66%) |
+| Scienide | Yes | 974 bytes | 312.457 /319.736 ms (+2.33%) |
+
+These are offline Node elapsed times over five alternating warm pairs, not CPU time, browser
+frame cost or Quest performance. No per-frame DSP or render messages were added. The primary
+elapsed overhead ranges from+2.33% to+21.64%; it does not support a zero-offline-cost claim.
+A separate repeat after cumulative tests checks timing variability; retain both results rather
+than choosing the better score. The additional payload is about1-7KB once per load.
+
+`npm run build` passes (existing chunk-size warning only). Exact targeted command,108/108 pass:
+`node --test --test-reporter=tap tests/music-activity.test.mjs tests/music-events.test.mjs tests/analyzer-contract.test.mjs tests/analyzer-baseline.test.mjs tests/accepted-timing-measurement.test.mjs tests/analyzer-golden.test.mjs tests/analyzer-verification.test.mjs tests/analyzer-signal-contract.test.mjs tests/event-timing-worker-contract.test.mjs tests/xr-audio-integration.test.mjs tests/xr-controller-regeneration.test.mjs`.
+Final boundary command,2/2 pass:
+`node --test --test-reporter=tap --test-name-pattern="context normalization|full-track publication" tests/music-activity.test.mjs`.
+Measurement command:
+`node research/analyzer-lab/diagnostics/measure-music-activity.mjs --audio-dir "C:/novy/Plexus Engine (VJ System)/plexus-engine/tests/audio/Prodigy" --output logs/t11e/measurement-final.json`.
+Full cumulative command: `npm test -- --test-reporter=tap`, with established temp/Git-fixture
+escalation. Node25.2.1/npm11.6.2; no runtime fallback or dependency installation. Python inference
+models/pytest and physical Quest measurements are not run: no changed Python inference code or
+physical headset. Direct Git diff review replaces optional `diff_export.ps1`, avoiding duplicate
+source archives. Final source is committed/pushed, then the guarded `release-pages.mjs`
+prepare/publish/verify and public browser load/play/pause smoke precede a manual pause.
+
+Final cumulative result:1800 tests /1791 pass /nine exact retained failures, zero skips or
+cancellations. All nine names AND assertion messages exactly match the cleanup baseline;
+`logs/t11e/failure-comparison.json` records the comparison. All1795 predecessor tests remain
+active alongside the five new tests. `logs/t11e/build-final.log`, `targeted.tap`, `full.tap` and
+`final-boundary.tap` retain local evidence; `git diff --check` passes. No numeric baseline or
+historical result was rewritten.
+
+
+Repeat after cumulative tests: `logs/t11e/measurement-repeat.json`, same source hashes and
+protocol. Every non-timing field, including all synthetic/recorded results and identities,
+is exactly equal to the primary result. Repeat20s elapsed medians:
+
+| Recording | T11d /T11e | Elapsed delta |
+|---|---|---|
+| Goa | 335.192 /352.578 ms | +5.19% |
+| No Good | 337.049 /341.500 ms | +1.32% |
+| Scienide | 309.735 /314.037 ms | +1.39% |
+
+The repeat ranges from+1.32% to+5.19%, versus primary+2.33% to+21.64%. Retain both runs and raw
+pairs; this variability cannot establish a precise CPU-cost percentage or a frame-rate effect.
+It confirms a small added offline workload, with no measured zero-cost claim. Repeat invocation
+is the same command with `--output logs/t11e/measurement-repeat.json`; no source copy/helper
+family is created. Physical Quest acceptance and independent musical/source validation remain
+outside these Node measurements.

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createLoader } from './helpers/xr-loader.mjs';
-import { activityFixture, ACTIVITY_KINDS, ACTIVITY_TUPLES, entryFixture, ENTRY_KINDS, ACTIVITY_V1_SHA256, ENTRY_V1_SHA256, bandFixture, BAND_KINDS } from './fixtures/music-activity-corpus.mjs';
+import { activityFixture, ACTIVITY_KINDS, ACTIVITY_TUPLES, entryFixture, ENTRY_KINDS, ACTIVITY_V1_SHA256, ENTRY_V1_SHA256, bandFixture, BAND_KINDS, BAND_V1_SHA256, contextFixture, CONTEXT_SPECS } from './fixtures/music-activity-corpus.mjs';
 const load = createLoader({}, { Float32Array, Float64Array, Uint32Array, Int32Array });
 const { MusicActivity } = load('analyzer/MusicActivity.ts');
 const { FeatureExtractor } = load('analyzer/FeatureExtractor.ts');
@@ -213,7 +213,7 @@ test('entry support, prefix-only model, DC/gain invariance, complete-tail and le
     const changed = f.samples.slice();
     for (let i = Math.round(1.3 * f.sampleRate); i < changed.length; i++) changed[i] = .8 * Math.sin(i * .7);
     assert.deepEqual(json(extract({ ...f, samples: changed }).spectralEntries.candidates[0]), original, 'future PCM cannot train/alter earlier prefix evidence');
-    const legacy = json(baseline); delete legacy.spectralEntries; delete legacy.bandActivity;
+    const legacy = json(baseline); delete legacy.spectralEntries; delete legacy.bandActivity; delete legacy.entryContexts;
     assert.deepEqual(json(normalizeAcousticActivity(legacy, legacy.clock)), legacy);
     const normal = normalizeAcousticActivity(baseline, baseline.clock); normal.spectralEntries.candidates[0].bodySamples[0]++;
     assert.notDeepEqual(json(normal), json(baseline));
@@ -232,7 +232,7 @@ test('T11b output digest remains exact and prior corpus receives no duplicate sp
     for (const kind of ACTIVITY_KINDS) {
         const r = extract(activityFixture(kind));
         assert.equal(r.spectralEntries.candidates.length, 0, kind);
-        delete r.spectralEntries; delete r.bandActivity; digest.update(JSON.stringify(r));
+        delete r.spectralEntries; delete r.bandActivity; delete r.entryContexts; digest.update(JSON.stringify(r));
     }
     assert.equal(digest.digest('hex'), ACTIVITY_V1_SHA256);
 });
@@ -269,7 +269,7 @@ test('T11c frozen aggregate stays exact when the optional band extension is omit
     const digest = createHash('sha256');
     for (const tuple of [...ACTIVITY_TUPLES.development, ...ACTIVITY_TUPLES.transfer]) for (const kind of ENTRY_KINDS) {
         const r = extract(entryFixture(kind, tuple), tuple.sampleRate === 16000 ? 512 : 1024);
-        delete r.bandActivity; digest.update(JSON.stringify(r));
+        delete r.bandActivity; delete r.entryContexts; digest.update(JSON.stringify(r));
     }
     assert.equal(digest.digest('hex'), ENTRY_V1_SHA256);
 });
@@ -359,4 +359,105 @@ test('streaming monitor saturation is explicit, bounded and does not change entr
     const b = r.bandActivity.records[0]; assert.equal(b.endReason, 'budget-exceeded');
     assert.equal(b.endSample, null); assert.equal(b.offsetSupportSamples, null); assert.equal(b.rightCensored, true);
     assert.ok(normalizeAcousticActivity(r, r.clock));
+});
+
+
+test('prefix neighborhoods qualify modulation changes while all T11d evidence stays byte-exact', () => {
+    const digest = createHash('sha256'); let occupiedExtras = 0, uncertainExtras = 0;
+    for (const tuple of [...ACTIVITY_TUPLES.development, ...ACTIVITY_TUPLES.transfer]) for (const kind of [...ENTRY_KINDS, ...BAND_KINDS]) {
+        const hop = tuple.sampleRate === 16000 ? 512 : 1024;
+        const f = ENTRY_KINDS.includes(kind) ? entryFixture(kind, tuple) : bandFixture(kind, tuple, hop), r = extract(f, hop);
+        assert.ok(normalizeAcousticActivity(r, r.clock)); assert.equal(r.entryContexts.records.length, r.spectralEntries.candidates.length);
+        for (let i = 0; i < r.entryContexts.records.length; i++) {
+            const c = r.entryContexts.records[i], e = r.spectralEntries.candidates[i];
+            assert.equal(c.entryId, e.id); assert.ok(c.prefixSamples[1] <= e.sampleIndex);
+            if (i === 0 || kind === 'repeat-soft-tone') assert.equal(c.context, 'unoccupied-neighborhood', `${tuple.sampleRate}/${kind}/${i}`);
+            else if (['am-entry', 'entry-glide', 'near-band-overlap'].includes(kind)) {
+                assert.notEqual(c.context, 'unoccupied-neighborhood');
+                if (c.context === 'occupied-neighborhood') occupiedExtras++; else uncertainExtras++;
+            }
+        }
+        delete r.entryContexts; digest.update(JSON.stringify(r));
+    }
+    assert.equal(digest.digest('hex'), BAND_V1_SHA256); assert.equal(occupiedExtras, 17); assert.equal(uncertainExtras, 3);
+});
+
+test('entry context stays tied to clean prefix under subwindow shifts and gain/DC', () => {
+    for (const tuple of [...ACTIVITY_TUPLES.development, ...ACTIVITY_TUPLES.transfer]) {
+        const f = entryFixture('soft-tone', tuple), hop = tuple.sampleRate === 16000 ? 512 : 1024;
+        for (const phase of [0, .125, .375, .625, .875]) {
+            const shift = Math.round(hop * phase), samples = new Float32Array(f.samples.length);
+            samples.set(f.samples.subarray(0, samples.length - shift), shift);
+            const a = extract({ ...f, samples }, hop); assert.equal(a.spectralEntries.candidates.length, 1);
+            const c = a.entryContexts.records[0];
+            assert.equal(c.context, 'unoccupied-neighborhood'); assert.ok(normalizeAcousticActivity(a, a.clock));
+            for (const gain of [-.5, 2]) {
+                const modified = Float32Array.from(samples, x => gain * x + .4), b = extract({ ...f, samples: modified }, hop);
+                assert.equal(b.entryContexts.records[0].context, c.context); assert.equal(b.entryContexts.records[0].peakBin, c.peakBin);
+            }
+            assert.equal(c.decisionSample, samples.length); assert.equal(a.entryContexts.publication, 'full-track-analysis');
+        }
+    }
+});
+
+test('new parameter controls retain real near-band/repeated attacks as raw evidence, with no source ownership claim', () => {
+    let cases = 0, occupied = 0;
+    for (const [split, tuples] of Object.entries(ACTIVITY_TUPLES)) for (const tuple of tuples) for (const spec of CONTEXT_SPECS[split]) {
+        const hop = split === 'development' ? 512 : 1024, f = contextFixture(spec, tuple, hop), r = extract(f, hop);
+        assert.ok(normalizeAcousticActivity(r, r.clock)); assert.ok(r.entryContexts.records.length > 0);
+        assert.equal(r.entryContexts.scope, 'dominant-excess-neighborhood'); assert.equal(r.entryContexts.sourceOwnership, 'unresolved');
+        assert.equal(r.entryContexts.xrScoring, 'ineligible'); assert.equal(r.entryContexts.confidence, null);
+        if (spec.kind === 'neighbor') {
+            const later = r.entryContexts.records.filter((c, i) => r.spectralEntries.candidates[i].time >= 1.05 - hop / f.sampleRate);
+            assert.ok(later.some(c => c.context === 'occupied-neighborhood'), 'a real independent nearby addition can also occupy this neighborhood');
+        }
+        if (spec.kind === 'repeat' && spec.gap >= .25) {
+            assert.equal(r.spectralEntries.candidates.length, 2); assert.ok(r.entryContexts.records.every(c => c.context === 'unoccupied-neighborhood'));
+        }
+        occupied += r.entryContexts.records.filter(c => c.context === 'occupied-neighborhood').length; cases++;
+    }
+    assert.equal(cases, 16); assert.ok(occupied > 0);
+});
+
+test('context normalization validates derivable policy, association and clone isolation; omission remains valid', () => {
+    const r = json(extract(entryFixture('soft-tone'))), n = normalizeAcousticActivity(r, r.clock);
+    n.entryContexts.records[0].prefixSamples[0]++; assert.notDeepEqual(json(n), r);
+    const old = json(r); delete old.entryContexts; assert.deepEqual(json(normalizeAcousticActivity(old, old.clock)), old);
+    for (const mutate of [x => x.algorithm = 'oracle', x => x.confidence = .9, x => x.scope = 'all-sources',
+        x => x.sourceOwnership = 'note', x => x.publication = 'online', x => x.xrScoring = 'eligible', x => x.records.pop(),
+        x => x.records[0].entryId = 'entry:0', x => x.records[0].peakBin = 0, x => x.records[0].peakBin = 256, x => x.records[0].peakBin = 255,
+        x => x.records[0].prefixSamples[1]++, x => x.records[0].seedSamples[0]++, x => x.records[0].decisionSample--,
+        x => x.records[0].prefixPower = NaN, x => x.records[0].prefixToSeedPowerRatio = -1,
+        x => x.records[0].context = 'occupied-neighborhood']) {
+        const bad = json(r); mutate(bad.entryContexts); assert.equal(normalizeAcousticActivity(bad, bad.clock), undefined);
+    }
+    const bad = json(r); delete bad.spectralEntries; assert.equal(normalizeAcousticActivity(bad, bad.clock), undefined);
+    const { classifyEntryNeighborhood: classify } = load('types/musicEvents.ts');
+    assert.equal(classify(1e-8, .001), 'uncertain', 'weak ratio cannot imply physical silence when measured prefix is above floor');
+    assert.equal(classify(1e-12, .1), 'uncertain', 'relative numerical residue does not prove occupied energy');
+});
+
+
+test('full-track publication stays honest when suffix dedup revises entries but frozen prefix measurements remain exact', () => {
+    const tuple = ACTIVITY_TUPLES.transfer[1], f = entryFixture('soft-tone', tuple), hop = 1024;
+    const probe = samples => {
+        const a = new MusicActivity(samples, f.sampleRate, hop);
+        new FeatureExtractor(samples, f.sampleRate, hop).process(undefined, (s, r, i) => a.observe(s, r, i));
+        return { a, result: a.finish() };
+    };
+    for (const phase of [.2, .3, .4]) {
+        const shift = Math.round(hop * phase), samples = new Float32Array(f.samples.length);
+        samples.set(f.samples.subarray(0, samples.length - shift), shift);
+        const before = probe(samples), e = before.result.spectralEntries.candidates[0], context = before.result.entryContexts.records[0];
+        assert.ok(context); assert.equal(context.decisionSample, samples.length);
+        assert.equal(before.result.entryContexts.publication, 'full-track-analysis');
+        const raw = before.a.entryFrames.find(p => p.frame === e.observationFrame);
+        samples[e.decisionSample + 1] = 8; samples[e.decisionSample + 2] = 8;
+        const after = probe(samples), revised = after.a.entryFrames.find(p => p.frame === e.observationFrame);
+        assert.ok(raw && revised); assert.equal(revised.contextPeak, raw.contextPeak);
+        assert.equal(revised.prefixPower, raw.prefixPower); assert.equal(revised.prefixRatio, raw.prefixRatio);
+        assert.ok(!after.result.spectralEntries.candidates.some(p => p.id === e.id), 'inherited retrospective raw-entry dedup can remove it');
+        assert.ok(!after.result.entryContexts.records.some(p => p.entryId === e.id), 'no orphan context publication');
+        assert.ok(normalizeAcousticActivity(after.result, after.result.clock));
+    }
 });

@@ -125,3 +125,38 @@ export function bandFixture(kind, tuple = ACTIVITY_TUPLES.development[0], hop = 
             : ['fade', 'entry-glide', 'held', 'partial-tail', 'one-quiet-tail'].includes(kind) ? null : end,
         truth: 'authored-signal' };
 }
+
+
+// Exact T11d commit 4fb6ba2e5f0d52c4ef0008aa75e3e4aab9b1a369: prior 45 entry +30 band controls.
+export const BAND_V1_SHA256 = '1c80267601c5fb5dbb179d85166fba01c34ec3846521e82224cda3e73dfa1b46';
+export const CONTEXT_SPECS = {
+    development: [{ kind: 'am', rate: 3, depth: .6, phaseFraction: 0 },
+        { kind: 'glide', speed: 800, phaseFraction: 0 }, { kind: 'neighbor', binGap: 2, phaseFraction: 0 },
+        { kind: 'repeat', gap: .25, phaseFraction: 0 }],
+    transfer: [{ kind: 'am', rate: 7, depth: .95, phaseFraction: .625 },
+        { kind: 'am', rate: 5, depth: .8, phaseFraction: .125 }, { kind: 'glide', speed: 5000, phaseFraction: .375 },
+        { kind: 'neighbor', binGap: 3, phaseFraction: .375 }, { kind: 'repeat', gap: .08, phaseFraction: .625 },
+        { kind: 'repeat', gap: .3, phaseFraction: .125 }]
+};
+export function contextFixture(spec, tuple = ACTIVITY_TUPLES.development[0], hop = 512) {
+    const fs = tuple.sampleRate, f = entryFixture('stable', tuple), samples = f.samples.slice();
+    const onset = .7 + Math.round(hop * spec.phaseFraction) / fs, end = spec.kind === 'repeat' ? onset + .18 : 1.6;
+    const starts = spec.kind === 'repeat' ? [onset, end + spec.gap] : spec.kind === 'neighbor' ? [onset, 1.05] : [onset];
+    let angle = .43;
+    for (let i = 0; i < samples.length; i++) {
+        const t = i / fs;
+        if (t >= onset && t < end) {
+            const freq = tuple.frequency + 1100 + (spec.kind === 'glide' && t > .95 ? (t - .95) * spec.speed : 0);
+            angle += 2 * Math.PI * freq / fs;
+            const gain = spec.kind === 'am' ? 1 - spec.depth / 2 + spec.depth / 2 * Math.cos(2 * Math.PI * spec.rate * (t - onset)) : 1;
+            samples[i] += .04 * gain * Math.max(0, Math.min(1, (t - onset) / .003, (end - t) / .005)) * Math.sin(angle);
+        }
+        if (spec.kind === 'repeat' && t >= starts[1] && t < starts[1] + .18)
+            samples[i] += .04 * Math.max(0, Math.min(1, (t - starts[1]) / .003, (starts[1] + .18 - t) / .005))
+                * Math.sin(2 * Math.PI * (tuple.frequency + 1100) * (t - starts[1]) + .43);
+        if (spec.kind === 'neighbor' && t >= starts[1] && t < 1.65)
+            samples[i] += .04 * Math.max(0, Math.min(1, (t - starts[1]) / .003, (1.65 - t) / .005))
+                * Math.sin(2 * Math.PI * (tuple.frequency + 1100 + spec.binGap * fs / hop) * (t - starts[1]) + .81);
+    }
+    return { samples, sampleRate: fs, spec, attacks: starts, truth: 'authored-signal; neighborhood is not source identity' };
+}

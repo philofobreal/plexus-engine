@@ -1,4 +1,4 @@
-// Offline cumulative T11b/c/d validation. One exclusive JSON result; no source copies or model installation.
+// Offline cumulative T11b/c/d/e validation. One exclusive JSON result; no source copies or model installation.
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { rolldown } from 'rolldown';
 import { createLoader } from '../../../tests/helpers/xr-loader.mjs';
-import { activityFixture, ACTIVITY_KINDS, ACTIVITY_TUPLES, entryFixture, ENTRY_KINDS, bandFixture, BAND_KINDS } from '../../../tests/fixtures/music-activity-corpus.mjs';
+import { activityFixture, ACTIVITY_KINDS, ACTIVITY_TUPLES, entryFixture, ENTRY_KINDS, bandFixture, BAND_KINDS, contextFixture, CONTEXT_SPECS } from '../../../tests/fixtures/music-activity-corpus.mjs';
 import { renderPitchFixture } from '../../../tests/fixtures/pitch-candidate-corpus.mjs';
 
 const hash = b => createHash('sha256').update(b).digest('hex');
@@ -50,7 +50,7 @@ export async function measureMusicActivity(audioDir) {
         const candidates = r.spectralEntries.candidates;
         entryControls.push({ split, kind, tuple, hopSize: hop, pcmSha256: hash(bytes(f.samples)), durationSeconds: f.samples.length / f.sampleRate, coverage: f.coverage,
             toleranceSeconds: hop / f.sampleRate + .004, ...timing(candidates.map(c => c.time), f.attacks, hop / f.sampleRate + .004),
-            legacyEnergyAttacks: r.attacks.length, candidates, bandActivity: r.bandActivity.records,
+            legacyEnergyAttacks: r.attacks.length, candidates, bandActivity: r.bandActivity.records, entryContexts: r.entryContexts.records,
             releaseTruthSeconds: kind === 'repeat-soft-tone' ? [.95, 1.65] : kind === 'soft-tone' ? [1.2] : kind === 'soft-noise-hit' ? [.76] : [] });
     }
     const bandControls = [];
@@ -61,10 +61,18 @@ export async function measureMusicActivity(audioDir) {
         bandControls.push({ split, kind, tuple, hopSize: hop, pcmSha256: hash(bytes(f.samples)), sampleCount: f.samples.length,
             sourceEndSeconds: f.sourceEnd, bandReferenceSeconds: f.expectedBandEnd,
             referenceScope: 'authored fixed-band support; no source offset truth for overlap/glide/fade/censored input',
-            entries: r.spectralEntries.candidates.length, records: r.bandActivity.records,
+            entries: r.spectralEntries.candidates.length, records: r.bandActivity.records, entryContexts: r.entryContexts.records,
             firstErrorSeconds: f.expectedBandEnd === null || first.endSample === null ? null : first.endSample / f.sampleRate - f.expectedBandEnd,
             supportContainsReference: f.expectedBandEnd === null || first.offsetSupportSamples === null ? null
                 : first.offsetSupportSamples[0] <= f.expectedBandEnd * f.sampleRate && first.offsetSupportSamples[1] >= f.expectedBandEnd * f.sampleRate });
+    }
+    const contextControls = [];
+    for (const [split, tuples] of Object.entries(ACTIVITY_TUPLES)) for (const tuple of tuples) for (const spec of CONTEXT_SPECS[split]) {
+        const hop = split === 'development' ? 512 : 1024, f = contextFixture(spec, tuple, hop), r = activity(f.samples, f.sampleRate, hop);
+        contextControls.push({ split, spec, tuple, hopSize: hop, pcmSha256: hash(bytes(f.samples)), sampleCount: f.samples.length,
+            physicalAttacksSeconds: f.attacks, rawEntries: r.spectralEntries.candidates, contexts: r.entryContexts.records,
+            contextTruthScope: 'measured dominant-bin neighborhood only; occupied does not imply false attack, unoccupied does not imply new source',
+            sourceAccuracy: null });
     }
     const periodicity = [];
     for (const split of ['development', 'transfer']) {
@@ -82,8 +90,8 @@ export async function measureMusicActivity(audioDir) {
         const bundle = await rolldown({ input: 'src/analyzer/analyzeAudio.ts', plugins: mode === 'legacy' ? [{
             name: 'legacy-no-activity', resolveId(id) { if (id === './MusicActivity') return '\0legacy'; },
             load(id) { if (id === '\0legacy') return 'export class MusicActivity { observe() {} finish() { return undefined; } }'; }
-        }] : ['t11b', 't11c'].includes(mode) ? [{ name: 'retained-activity', load(id) {
-            if (id.replaceAll('\\', '/').endsWith('/analyzer/MusicActivity.ts')) return { code: execFileSync('git', ['show', (mode === 't11b' ? 'a1a0eaa63f143f9fa374d9c03f89a18f2c4dddb5' : '485ddd0dea789b7d79938ece6d36ea2e80c23e08') + ':src/analyzer/MusicActivity.ts'], { encoding: 'utf8', windowsHide: true }), moduleType: 'ts' };
+        }] : ['t11b', 't11c', 't11d'].includes(mode) ? [{ name: 'retained-activity', load(id) {
+            if (id.replaceAll('\\', '/').endsWith('/analyzer/MusicActivity.ts')) return { code: execFileSync('git', ['show', ({ t11b: 'a1a0eaa63f143f9fa374d9c03f89a18f2c4dddb5', t11c: '485ddd0dea789b7d79938ece6d36ea2e80c23e08', t11d: '4fb6ba2e5f0d52c4ef0008aa75e3e4aab9b1a369' })[mode] + ':src/analyzer/MusicActivity.ts'], { encoding: 'utf8', windowsHide: true }), moduleType: 'ts' };
         } }] : [] });
         try {
             const result = await bundle.generate({ format: 'esm' });
@@ -91,7 +99,7 @@ export async function measureMusicActivity(audioDir) {
             return module.analyzeAudio;
         } finally { await bundle.close(); }
     }
-    const current = await bundledAnalyzer('current'), legacy = await bundledAnalyzer('legacy'), t11b = await bundledAnalyzer('t11b'), t11c = await bundledAnalyzer('t11c');
+    const current = await bundledAnalyzer('current'), legacy = await bundledAnalyzer('legacy'), t11b = await bundledAnalyzer('t11b'), t11c = await bundledAnalyzer('t11c'), t11d = await bundledAnalyzer('t11d');
     const { assessAcousticOnsets } = load('semantics/acousticEvidence.ts');
     const recorded = [];
     for (const file of readdirSync(audioDir).filter(f => /\.mp3$/i.test(f)).sort()) {
@@ -104,7 +112,9 @@ export async function measureMusicActivity(audioDir) {
         console.log(JSON.stringify({ file, phase: 'full-analysis-parity', seconds: samples.length / fs }));
         const old = legacy(input), fresh = current(input), layer = fresh.trackAnalysis.musicActivity;
         assert.ok(normalizeAcousticActivity(layer, layer.clock));
-        const previousLayer = t11b(input).trackAnalysis.musicActivity, coreLayer = { ...layer }; delete coreLayer.bandActivity;
+        const previousLayer = t11b(input).trackAnalysis.musicActivity, coreLayer = { ...layer }; delete coreLayer.entryContexts;
+        assert.deepEqual(coreLayer, t11d(input).trackAnalysis.musicActivity, 'Entire T11d evidence remains exact');
+        delete coreLayer.bandActivity;
         const previousEntryLayer = t11c(input).trackAnalysis.musicActivity;
         assert.deepEqual(coreLayer, previousEntryLayer, 'Entire T11c evidence remains exact');
         delete coreLayer.spectralEntries;
@@ -124,23 +134,25 @@ export async function measureMusicActivity(audioDir) {
         });
         // Alternating warm paired runs, 20 s excerpt; elapsed wall time includes all analyzer DSP.
         const excerpt = samples.slice(Math.round(samples.length * .45), Math.round(samples.length * .45) + 20 * fs);
-        const request = { samples: excerpt, sampleRate: fs }, milliseconds = { t11c: [], t11d: [] };
-        t11c(request); current(request);
-        for (let i = 0; i < 5; i++) for (const key of i % 2 ? ['t11d', 't11c'] : ['t11c', 't11d']) {
-            const start = performance.now(); (key === 't11c' ? t11c : current)(request); milliseconds[key].push(performance.now() - start);
+        const request = { samples: excerpt, sampleRate: fs }, milliseconds = { t11d: [], t11e: [] };
+        t11d(request); current(request);
+        for (let i = 0; i < 5; i++) for (const key of i % 2 ? ['t11e', 't11d'] : ['t11d', 't11e']) {
+            const start = performance.now(); (key === 't11d' ? t11d : current)(request); milliseconds[key].push(performance.now() - start);
         }
         recorded.push({ file, fileSha256: hash(readFileSync(path)), decodedPcmSha256: decoded, sampleRate: fs, sampleCount: samples.length,
-            legacyExact: true, t11bExact: true, t11cExact: true,
+            legacyExact: true, t11bExact: true, t11cExact: true, t11dExact: true,
+            contexts: Object.fromEntries(['occupied-neighborhood', 'unoccupied-neighborhood', 'uncertain'].map(context => [context, layer.entryContexts.records.filter(r => r.context === context).length])),
+            contextPayloadBytes: Buffer.byteLength(JSON.stringify(layer.entryContexts)),
             bandActivity: Object.fromEntries(['quiet-windows', 'file-boundary', 'budget-exceeded'].map(reason => [reason, layer.bandActivity.records.filter(r => r.endReason === reason).length])),
             bandPayloadBytes: Buffer.byteLength(JSON.stringify(layer.bandActivity)), spectralEntries: layer.spectralEntries.candidates.length, activity: layer.activity.length, attacks: layer.attacks.length, dominance: layer.dominance.length,
             payloadBytes: Buffer.byteLength(JSON.stringify(layer)), comparisons, milliseconds,
-            medianOverheadPercent: (median(milliseconds.t11d) / median(milliseconds.t11c) - 1) * 100,
+            medianOverheadPercent: (median(milliseconds.t11e) / median(milliseconds.t11d) - 1) * 100,
             groundTruth: null, accuracy: null });
         console.log(JSON.stringify(recorded.at(-1)));
     }
     for (const [p, digest] of Object.entries(sourceHashes)) assert.equal(hash(readFileSync(p)), digest, 'Source changed during measurement');
-    return { protocol: 't11d-fixed-band-activity-1', node: process.version, decoder: execFileSync('ffmpeg', ['-version'], { encoding: 'utf8' }).split('\n')[0],
-        sourceHashScope: 'delivery files only; full unchanged dependencies belong to the source commit', sourceHashes, analyzerExecution: 'Vite dependency rolldown ESM bundles; no VM wrapper in CPU comparison', authored, entryControls, bandControls, periodicity, recorded, modelRerun: false, recordedGroundTruth: null,
+    return { protocol: 't11e-prefix-neighborhood-1', node: process.version, decoder: execFileSync('ffmpeg', ['-version'], { encoding: 'utf8' }).split('\n')[0],
+        sourceHashScope: 'delivery files only; full unchanged dependencies belong to the source commit', sourceHashes, analyzerExecution: 'Vite dependency rolldown ESM bundles; no VM wrapper in CPU comparison', authored, entryControls, bandControls, contextControls, periodicity, recorded, modelRerun: false, recordedGroundTruth: null,
         noteSourceVocalRecognition: 'unsupported', performanceScope: 'offline Node elapsed analyzer wall time, not process CPU time, browser frame rate or physical Quest' };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

@@ -2,6 +2,7 @@ import type { FeatureClock } from '../types/featureClock';
 import type { AcousticActivityLayer, AcousticAttack, AcousticTexture } from '../types/musicEvents';
 import { validateAnalysisClock, validateAnalysisSamples } from './signalContract';
 import { FFT } from './math/FFT';
+import { classifyEntryNeighborhood } from '../types/musicEvents';
 
 // A bounded monitor of frozen frequency bins, never ownership of an isolated sound source.
 interface EntryBand {
@@ -29,7 +30,7 @@ export class MusicActivity {
     private readonly currentPeaks = new Int32Array(6);
     private readonly entrySpectrum: Float64Array;
     private readonly hannPower: number;
-    private readonly entryFrames: { frame: number; texture: AcousticTexture; fraction: number; retained: number; bins: number[]; carrier: number; band: EntryBand | null }[] = [];
+    private readonly entryFrames: { frame: number; texture: AcousticTexture; fraction: number; retained: number; bins: number[]; carrier: number; band: EntryBand | null; contextPeak: number; prefixPower: number; prefixRatio: number }[] = [];
     private readonly activeBands: EntryBand[] = [];
     private stamp = 0;
     private count = 0;
@@ -149,6 +150,11 @@ export class MusicActivity {
         const carrier = bins.reduce((sum, bin) => sum + baseline[bin], 0);
         if (carrier <= 0) return;
         const family = texture(this.concentrated(delta, novelty));
+        const contextPeak = this.peakBins[0];
+        // Only f-3 and f-2 are guaranteed pre-search. f-1 can already contain the entry.
+        const prefix = Math.max(this.neighborhoodPower(baseline, contextPeak, 4), this.neighborhoodPower(this.history[(frame + 1) % 3], contextPeak, 4));
+        const prefixPower = 2 * prefix / (hop * this.hannPower);
+        const prefixRatio = prefix / this.neighborhoodPower(this.spectrum, contextPeak, 1);
         // concentrated(delta) left the NEW excess peaks here; carrier bins above are different.
         let band: EntryBand | null = null;
         if (this.activeBands.length < 32) {
@@ -161,7 +167,13 @@ export class MusicActivity {
             band.peak = this.bandPower(band);
             this.activeBands.push(band);
         }
-        this.entryFrames.push({ frame, texture: family, fraction: novelty / total, retained, bins, carrier, band });
+        this.entryFrames.push({ frame, texture: family, fraction: novelty / total, retained, bins, carrier, band, contextPeak, prefixPower, prefixRatio });
+    }
+
+    private neighborhoodPower(spectrum: Float64Array, center: number, radius: number): number {
+        let power = 0;
+        for (let k = Math.max(1, center - radius); k <= Math.min(spectrum.length - 1, center + radius); k++) power += spectrum[k];
+        return power;
     }
 
     private bandPower(band: EntryBand): number {
@@ -232,6 +244,9 @@ export class MusicActivity {
         result.bandActivity = { algorithm: 'entry-fixed-band-activity-v1', confidence: null,
             consumerUse: 'signal-evidence-only', xrScoring: 'ineligible',
             scope: 'frozen-frequency-mask', sourceOwnership: 'unresolved', records: [] };
+        result.entryContexts = { algorithm: 'entry-prefix-neighborhood-v1', confidence: null,
+            consumerUse: 'signal-evidence-only', xrScoring: 'ineligible',
+            scope: 'dominant-excess-neighborhood', sourceOwnership: 'unresolved', publication: 'full-track-analysis', records: [] };
         let lastEntry = -Infinity, span = 0;
         for (const e of this.entryFrames) {
             const anchor = e.frame * hop;
@@ -265,6 +280,12 @@ export class MusicActivity {
                 offsetSupportSamples: closed ? [Math.max(anchor, (end - 1) * hop), (end + 2) * hop] : null,
                 decisionSample: band ? closed ? Math.max((e.frame + 3) * hop, (end + 2) * hop) : length : (e.frame + 3) * hop,
                 rightCensored: !closed, endReason: !band ? 'budget-exceeded' : closed ? 'quiet-windows' : 'file-boundary' });
+            result.entryContexts.records.push({ entryId: `entry:${a.sampleIndex}`, peakBin: e.contextPeak,
+                prefixSamples: [(e.frame - 3) * hop, anchor - hop], seedSamples: [anchor, anchor + hop],
+                // Raw-entry dedup is retrospective. The seed measurement is local, but final
+                // record publication depends on the complete accepted entry list.
+                decisionSample: length, prefixPower: e.prefixPower, prefixToSeedPowerRatio: e.prefixRatio,
+                context: classifyEntryNeighborhood(e.prefixPower, e.prefixRatio) });
             lastEntry = a.sampleIndex;
         }
         return result;
