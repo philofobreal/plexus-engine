@@ -1,7 +1,7 @@
 {
-  "id": "review-mvp-worker-20261024T202633193Z",
-  "previousCommit": "6a7ed740e24f9f5eba5a4b6ffb955a8baf1be74a",
-  "sourceCommit": "d6524b311dda44a28e802f66fd9abf3b209c7615",
+  "id": "t11b-activity-20261025T120323403Z",
+  "previousCommit": "fc8f8a687bffe08f24787c623850dd638989aeac",
+  "sourceCommit": "a1a0eaa63f143f9fa374d9c03f89a18f2c4dddb5",
   "inputs": [
     {
       "path": "bun.lock",
@@ -365,7 +365,7 @@
     },
     {
       "path": "src/analyzer/FeatureExtractor.ts",
-      "sha256": "3e07d4b88ab7167f5cf46e0491df45e98518ff37fe2a4fe0495892559d24fb2b"
+      "sha256": "24f819a45ccb7e96724aa5f3337647aa0278455040dee486015d300aa136316a"
     },
     {
       "path": "src/analyzer/FeatureNormalizer.ts",
@@ -390,6 +390,10 @@
     {
       "path": "src/analyzer/LowFrequencyExtractor.ts",
       "sha256": "20cd8119c8ace3a03112c21d28f87b9776708e76c39d0c0c354824ff749df91a"
+    },
+    {
+      "path": "src/analyzer/MusicActivity.ts",
+      "sha256": "f91106e7071810563e1557a525621cc5a8f1b2254ae27e9d84fdf60901898664"
     },
     {
       "path": "src/analyzer/MusicalEntityTracker.ts",
@@ -437,7 +441,7 @@
     },
     {
       "path": "src/analyzer/analyzeAudio.ts",
-      "sha256": "085d4ce446695f33590696f490f61b0dad706c345174b772a9e6216b6e65daee"
+      "sha256": "97dbd60cc9e1fdac58a711600868f9cd1c0cc70a5fa5c335424934076ea1b288"
     },
     {
       "path": "src/analyzer/constants.ts",
@@ -457,7 +461,7 @@
     },
     {
       "path": "src/analyzer/normalizeAnalysisResult.ts",
-      "sha256": "9c034c50af0285f4b24df3436d514e11a090d2cfb92a2f18340db671c7b3d7de"
+      "sha256": "73bfd6f945fe6ed3cb0238b1decf2941a46769163dde2bce7cba03d29ff893d1"
     },
     {
       "path": "src/analyzer/signalContract.ts",
@@ -897,11 +901,11 @@
     },
     {
       "path": "src/types/index.ts",
-      "sha256": "546dd306194a40c60c274a87d8b599437d5ef2916b9200a0c7ec6a9627af0345"
+      "sha256": "6703405c3456d72329c1c8723f50af8b8d64842cd7bb4739176e0a2e6b458ef0"
     },
     {
       "path": "src/types/musicEvents.ts",
-      "sha256": "95ce558a7dd7cca157089d17675e68034182692eb3a2f821b8d7d9e837b3bcf0"
+      "sha256": "117a923d18cbf7b655b4417feff1a41e6021b1e2bc2a55480ccfbe59614e7f6d"
     },
     {
       "path": "src/types/musicalEntities.ts",
@@ -1562,44 +1566,44 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "path": "assets/analyzer.worker-BdBFnT-g.js",
-      "sha256": "06ad49cc1b22e6879d28cf89c5f71047f74daddc2ee372dd2c062e26924423db"
+      "path": "assets/analyzer.worker-Cgmaf3Sq.js",
+      "sha256": "6f839441313d1ad4f0aae25f406811dcd86f91e01d5e62c7f18ad21921d36ec6"
     },
     {
-      "path": "assets/CosmicWormholeIdentity-YX8Qsl7u.js",
-      "sha256": "0f3ee5521442695b817aa1d447e653151a0a13dfdcff66cecccaadf6f8dbea33"
+      "path": "assets/CosmicWormholeIdentity-DPDm6VKJ.js",
+      "sha256": "27031ad7f24ce99d477282ef578b9c12f1d0ac95b533eef714962a880118cfdf"
     },
     {
       "path": "assets/export.worker-Av-E_fEl.js",
       "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
     },
     {
-      "path": "assets/main-BSox1-Jz.js",
-      "sha256": "0ea2a870e66a37f42baf1b93eff044534cd6a88c3d55b898db6c5bf7f45693c3"
-    },
-    {
       "path": "assets/main-C7BsYBKL.css",
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+    },
+    {
+      "path": "assets/main-CE7H1VI6.js",
+      "sha256": "694af9f9d161ac73971b986a3a40bb425954577d979b93452375bfaa3db601d7"
     },
     {
       "path": "assets/mvp-D0xy9ln6.css",
       "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
     },
     {
-      "path": "assets/mvp-DWSdg9IF.js",
-      "sha256": "0f63cd92e3363d700835b3174f2538b1024d8025199d5f28a1a44ad076444d66"
+      "path": "assets/mvp-jgs_xEKI.js",
+      "sha256": "3d31eae7496eb4f32899678a0aad4a618af5e0b7af43751c9d075c5896706e68"
     },
     {
-      "path": "assets/PreviewQualityControl-BVTzdsWV.js",
-      "sha256": "3af2958ebe8a3fb36489d4d04e88040fccf52a30dfe2da7c54c3ec22d02e8c17"
+      "path": "assets/PreviewQualityControl-B3a7Ynec.js",
+      "sha256": "0e48b83b6979471908df9c55d0ba54cc3fd60c11ee0559085337b30439e25ec7"
     },
     {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
       "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
     },
     {
-      "path": "assets/resolveMetaTuning-BKnsPRSm.js",
-      "sha256": "781eb96f816d48a4c445ed59a500f5304efa1940dce0f70ae3269889208f3e0a"
+      "path": "assets/resolveMetaTuning-CvcNDSaA.js",
+      "sha256": "1a71014e14aa5d4b65c0f32252aab2fede647ceee994f8b1f817ec11ee569689"
     },
     {
       "path": "assets/wormholeHostRender.worker-C0AYhcyr.js",
@@ -1614,12 +1618,12 @@
       "sha256": "fa3d9802994a0ed7376a97419650b69f971f3cc29650371d21c164775bab5506"
     },
     {
-      "path": "assets/xr-BfNetZ-7.css",
-      "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      "path": "assets/xr-B3ShKB_i.js",
+      "sha256": "e8b16b4ba0adce5b42e04d654126f04031985bbb7a4020d46e6a1a2320a85b5a"
     },
     {
-      "path": "assets/xr-pkYYUdBN.js",
-      "sha256": "879ee7f207fb7e8f5e8c358f3a13b9f606c1781d8b124436a311fb4854cb3a90"
+      "path": "assets/xr-BfNetZ-7.css",
+      "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
     },
     {
       "path": "eso0932a.jpg",
@@ -1635,11 +1639,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "5640a4ae7cba79aeac8fb6c7aff9898b7c404f1eea3f8664cbe9a15f2249bd21"
+      "sha256": "71ecc11df27fedeb03ba089707e1438d9f35e0c623f9a09687d35938911f14ed"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "2e1c3fbb7f36dbce2bca152e1e1c08d8439045b82cb5528c9cd97b17848dee5e"
+      "sha256": "0dcb2191d5173097dee0b655e56b2e00b237f0177915b154e169630c0f286681"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
@@ -1771,7 +1775,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "666dfab7729551614fb6857c1c92b70214104f234248f83102164734d2b5067f"
+      "sha256": "0bea6daf35b5643169b416da9b51aec8f979e43bf06b9bc6860bd49fab358287"
     }
   ]
 }
