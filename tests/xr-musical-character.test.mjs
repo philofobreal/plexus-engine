@@ -91,6 +91,24 @@ test('Classic remains byte-identical; missing, gapped, overlapping or malformed 
     assert.ok(buildRhythmChart(sparse, config, musical).every(n => [15, 90].includes(n.time)), 'sustain and empty gaps stay empty');
 });
 
+test('long Musical Alternate/Even charts keep both hands active in every populated half-minute', () => {
+    const long = { ...source, durationSec: 384,
+        events: [0, 128, 256].flatMap(offset => source.events.map(e => ({ ...e, time: e.time + offset }))),
+        sections: [0, 128, 256].flatMap(offset => sections.map(s => ({ ...s, start: s.start + offset, end: s.end + offset }))),
+        beats: Array.from({ length: 961 }, (_, i) => i * .4), barStarts: Array.from({ length: 241 }, (_, i) => i * 1.6) };
+    long.sectionStarts = long.sections.map(s => s.start);
+    for (const difficulty of DIFFICULTIES) for (const activity of ['macro', 'balanced', 'active'])
+        for (const zones of ['split', 'shared', 'cross']) for (const playSpace of ['standard', 'tall']) {
+            const settings = { ...musical, difficulty, activity, zones, playSpace, handPattern: 'alternate', handLead: 'even' };
+            const chart = buildRhythmChart(long, config, settings);
+            assert.ok(validateRhythmMovement(chart, config, settings).valid);
+            for (let start = 0; start < 360; start += 30) {
+                const window = chart.filter(n => n.time >= start && n.time < start + 30);
+                assert.ok(window.some(n => n.hand === 'left') && window.some(n => n.hand === 'right'), `${json(settings)}: ${start}s hand starvation`);
+            }
+        }
+});
+
 test('Musical is chart-scoped, grouped with Choreography, persisted and copied; Legacy movement returns to Classic explicitly', () => {
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS, normalizeXrSettings, changeScope } = load('xr/XrSettings.ts');
     const { createXrSettingsStore } = load('xr/XrSettingsStore.ts');

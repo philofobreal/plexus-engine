@@ -6,7 +6,7 @@ import { difficultyProfile, normalizeGenerationSettings, playSpaceConfig, type R
 import { notePosition } from './RhythmLayout';
 import type { CutDirection, RhythmHand, RhythmNote } from './RhythmTypes';
 
-export const MOVEMENT_MODEL_VERSION = 1;
+export const MOVEMENT_MODEL_VERSION = 2;
 export const MOVEMENT_CUT_SEC = .10;
 export const MOVEMENT_STROKE_HALF_METERS = .08;
 export const MOVEMENT_HAND_CLEARANCE_METERS = .16;
@@ -40,6 +40,11 @@ const opposite = (hand: Hand): Hand => hand === 'left' ? 'right' : 'left';
 const EPS = 1e-8;
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 const sameTime = (a: number, b: number) => Math.abs(a - b) <= EPS;
+function sharedStroke(hand: Hand, stroke: { entry: Point; exit: Point }): boolean {
+    const x = (stroke.entry.x + stroke.exit.x) / 2;
+    return (hand === 'left' ? x >= -.05 : x <= .05)
+        || Math.min(Math.abs(stroke.entry.x), Math.abs(stroke.exit.x)) < MOVEMENT_HAND_CLEARANCE_METERS / 2;
+}
 
 /** Blade entry/exit, not just target centres. Free cuts carry no invented stroke direction. */
 export function rhythmStroke(note: RhythmNote, config: RhythmGameConfig): { entry: Point; exit: Point } {
@@ -71,10 +76,25 @@ class MovementState {
     private readonly blockedUntil: Record<Hand, number> = { left: -Infinity, right: -Infinity };
     private lastTime = -Infinity;
     private readonly ids = new Set<string>();
+    private readonly prefix: MovementState | null;
 
-    constructor(config: RhythmGameConfig, settings: Partial<RhythmGenerationSettings>) {
+    constructor(config: RhythmGameConfig, settings: Partial<RhythmGenerationSettings>, prefix: MovementState | null = null) {
+        this.prefix = prefix;
         this.settings = normalizeGenerationSettings(settings);
         this.config = playSpaceConfig(config, this.settings.playSpace);
+    }
+    /** Offline, bounded preview only; selected proposals alone mutate the authoritative cursor. */
+    fork(): MovementState {
+        const copy = new MovementState(this.config, this.settings, this);
+        Object.assign(copy.last, this.last); Object.assign(copy.blockedUntil, this.blockedUntil);
+        copy.lastTime = this.lastTime;
+        // Synchronous previews read the immutable authoritative prefix and own only their
+        // four-group suffix. No whole-track array/ID copies or hidden history truncation.
+        return copy;
+    }
+    private hasId(id: string): boolean {
+        for (let cursor: MovementState | null = this; cursor; cursor = cursor.prefix) if (cursor.ids.has(id)) return true;
+        return false;
     }
     /** Prefer a simpler own-hand corridor/row before losing an audible onset; never change a cut or time. */
     revoice(group: readonly RhythmNote[], keepRows: boolean): RhythmNote[] {
@@ -94,7 +114,7 @@ class MovementState {
             const options = variants.map(variant => this.inspect(variant));
             return options.find(option => option.issues.length === 0) ?? options.sort((a, b) => a.issues.length - b.issues.length)[0];
         }
-        const issues: RhythmMovementIssue[] = [], staged: { note: RhythmNote; hand: Hand; segments: Segment[]; shared: boolean }[] = [];
+        const issues: RhythmMovementIssue[] = [], staged: { note: RhythmNote; hand: Hand; segments: Segment[]; clearUntil: number }[] = [];
         const fail = (code: MovementIssueCode, noteIds: string[], actual: number, limit: number) => issues.push({ code, noteIds, actual, limit });
         const cfg = this.config, demand = difficultyProfile(this.settings.difficulty), time = group[0].time;
         if (time < this.lastTime) fail('unordered', [group[0].id], time, this.lastTime);
@@ -109,7 +129,7 @@ class MovementState {
                 || (note.xOffsetMeters !== undefined && !Number.isFinite(note.xOffsetMeters))) {
                 fail('invalid-target', [note.id], 0, 1); continue;
             }
-            if (this.ids.has(note.id) || groupIds.has(note.id)) fail('duplicate-id', [note.id], 2, 1);
+            if (this.hasId(note.id) || groupIds.has(note.id)) fail('duplicate-id', [note.id], 2, 1);
             groupIds.add(note.id);
             const p = notePosition(note, time, { x: 0, y: 0, z: 0 }, cfg);
             if (note.lane < 0 || note.lane >= cfg.laneCount || note.row < 0 || note.row > (this.settings.playSpace === 'tall' ? 3 : 2)
@@ -121,12 +141,12 @@ class MovementState {
             if (used.has(hand)) fail('same-hand-density', [note.id], 0, cfg.minSameHandSpacingSec * demand.sameHandSpacingScale);
             used.add(hand);
             const previous = this.last[hand], other = opposite(hand), oldOther = this.last[other];
-            const stroke = rhythmStroke(note, cfg), shared = (hand === 'left' ? p.x >= -.05 : p.x <= .05)
-                || Math.min(Math.abs(stroke.entry.x), Math.abs(stroke.exit.x)) < MOVEMENT_HAND_CLEARANCE_METERS / 2;
+            const stroke = rhythmStroke(note, cfg), shared = sharedStroke(hand, stroke);
             if (time < this.blockedUntil[hand] - EPS) fail('cross-clearance', [note.id], time, this.blockedUntil[hand]);
             if (shared && oldOther && time - oldOther.time < demand.crossClearSec - EPS)
                 fail('cross-clearance', [oldOther.id, note.id], time - oldOther.time, demand.crossClearSec);
             const motion: Segment[] = [];
+            const alternatives: Segment[][] = [];
             if (previous) {
                 const dt = time - previous.time, previousStroke = rhythmStroke(previous, cfg);
                 const minSame = cfg.minSameHandSpacingSec * demand.sameHandSpacingScale;
@@ -140,29 +160,64 @@ class MovementState {
                 const needed = distance(previousStroke.exit, stroke.entry);
                 const available = Math.max(0, dt - MOVEMENT_CUT_SEC) * cfg.maxHandTravelMps * demand.travelScale;
                 if (needed > available + EPS) fail('return-speed', [previous.id, note.id], needed, available);
-                if (dt > MOVEMENT_CUT_SEC) motion.push({ start: previous.time + MOVEMENT_CUT_SEC / 2,
-                    end: time - MOVEMENT_CUT_SEC / 2, a: previousStroke.exit, b: stroke.entry, id: note.id });
+                if (dt > MOVEMENT_CUT_SEC) {
+                    const start = previous.time + MOVEMENT_CUT_SEC / 2, end = time - MOVEMENT_CUT_SEC / 2;
+                    motion.push({ start, end, a: previousStroke.exit, b: stroke.entry, id: note.id });
+                    const travelSec = needed / (cfg.maxHandTravelMps * demand.travelScale);
+                    if (Number.isFinite(travelSec) && travelSec < end - start - EPS) {
+                        // A long rest need not mean a slow sweep across the opposite hand's whole
+                        // history. Try early and late recovery at the SAME speed limit. Explicit
+                        // holds cover all slack, so waiting hands never disappear from collision checks.
+                        alternatives.push([
+                            { start, end: start + travelSec, a: previousStroke.exit, b: stroke.entry, id: note.id },
+                            { start: start + travelSec, end, a: stroke.entry, b: stroke.entry, id: note.id }
+                        ], [
+                            { start, end: end - travelSec, a: previousStroke.exit, b: previousStroke.exit, id: note.id },
+                            { start: end - travelSec, end, a: previousStroke.exit, b: stroke.entry, id: note.id }
+                        ]);
+                    }
+                }
             }
-            motion.push({ start: time - MOVEMENT_CUT_SEC / 2, end: time + MOVEMENT_CUT_SEC / 2, a: stroke.entry, b: stroke.exit, id: note.id });
-            for (const segment of motion) {
-                // Per-hand segment end times are ordered; binary-search the potentially overlapping suffix.
-                const existing = this.segments[other]; let lo = 0, hi = existing.length;
-                while (lo < hi) { const mid = (lo + hi) >>> 1; if (existing[mid].end < segment.start) lo = mid + 1; else hi = mid; }
-                const check = (candidate: Segment) => {
-                    const d = movingHandDistance(segment, candidate);
-                    if (d < MOVEMENT_HAND_CLEARANCE_METERS - EPS) fail('hand-collision', [candidate.id, note.id], d, MOVEMENT_HAND_CLEARANCE_METERS);
-                };
-                for (let i = lo; i < existing.length && existing[i].start <= segment.end; i++) check(existing[i]);
-                for (const entry of staged) if (entry.hand === other) for (const s of entry.segments) check(s);
+            const cut = { start: time - MOVEMENT_CUT_SEC / 2, end: time + MOVEMENT_CUT_SEC / 2, a: stroke.entry, b: stroke.exit, id: note.id };
+            motion.push(cut);
+            for (const alternative of alternatives) alternative.push(cut);
+            const collisions = (route: Segment[]): RhythmMovementIssue[] => {
+                const found: RhythmMovementIssue[] = [];
+                for (const segment of route) {
+                    // Per-hand segment end times are ordered; binary-search the potentially overlapping suffix.
+                    const check = (candidate: Segment) => {
+                        const d = movingHandDistance(segment, candidate);
+                        if (d < MOVEMENT_HAND_CLEARANCE_METERS - EPS) found.push({ code: 'hand-collision', noteIds: [candidate.id, note.id], actual: d, limit: MOVEMENT_HAND_CLEARANCE_METERS });
+                    };
+                    for (let cursor: MovementState | null = this; cursor; cursor = cursor.prefix) {
+                        const existing = cursor.segments[other]; let lo = 0, hi = existing.length;
+                        while (lo < hi) { const mid = (lo + hi) >>> 1; if (existing[mid].end < segment.start) lo = mid + 1; else hi = mid; }
+                        for (let i = lo; i < existing.length && existing[i].start <= segment.end; i++) check(existing[i]);
+                    }
+                    for (const entry of staged) if (entry.hand === other) for (const s of entry.segments) check(s);
+                }
+                return found;
+            };
+            let selected = motion, conflicts = collisions(motion);
+            if (conflicts.length) for (const candidate of alternatives) {
+                const next = collisions(candidate);
+                if (!next.length) { selected = candidate; conflicts = next; break; }
             }
-            staged.push({ note, hand, segments: motion, shared });
+            issues.push(...conflicts);
+            // Do not let a following opposite-hand target occupy the crossed corridor before
+            // this stroke can return to its own side. A fixed .3s Ultra window can be shorter
+            // than that physical return and otherwise strand the crossed hand indefinitely.
+            const ownX = hand === 'left' ? -.45 : .45;
+            const recoveryClear = MOVEMENT_CUT_SEC + Math.abs(stroke.exit.x - ownX) / (cfg.maxHandTravelMps * demand.travelScale);
+            staged.push({ note, hand, segments: selected,
+                clearUntil: shared ? time + Math.max(demand.crossClearSec, recoveryClear) : -Infinity });
         }
         return { issues, commit: () => {
             this.lastTime = time;
             for (const entry of staged) {
                 this.last[entry.hand] = entry.note; this.ids.add(entry.note.id);
                 this.segments[entry.hand].push(...entry.segments);
-                if (entry.shared) this.blockedUntil[opposite(entry.hand)] = time + demand.crossClearSec;
+                this.blockedUntil[opposite(entry.hand)] = Math.max(this.blockedUntil[opposite(entry.hand)], entry.clearUntil);
             }
         } };
     }
@@ -191,15 +246,45 @@ export function validateRhythmMovement(chart: readonly RhythmNote[], config: Rhy
 export function guardRhythmMovement(chart: readonly RhythmNote[], config: RhythmGameConfig = DEFAULT_RHYTHM_GAME_CONFIG,
     settings: Partial<RhythmGenerationSettings> = {}): GuardedRhythmChart {
     const state = new MovementState(config, settings), accepted: RhythmNote[] = []; let rejected = 0, revoiced = 0;
-    for (const group of groups(chart)) {
-        let selected = group, checked = state.inspect(group);
+    const attempt = (cursor: MovementState, group: RhythmNote[]) => {
+        let selected = group, checked = cursor.inspect(group);
         if (checked.issues.length && checked.issues.every(i => ['return-speed', 'row-step', 'cross-clearance', 'hand-collision'].includes(i.code))) {
             for (const keepRows of [true, false]) {
-                const candidate = state.revoice(group, keepRows), inspected = state.inspect(candidate);
-                if (!inspected.issues.length) { selected = candidate; checked = inspected; revoiced += group.length; break; }
+                const candidate = cursor.revoice(group, keepRows), inspected = cursor.inspect(candidate);
+                if (!inspected.issues.length) { selected = candidate; checked = inspected; break; }
             }
         }
+        return { selected, checked };
+    };
+    const input = groups(chart);
+    for (let i = 0; i < input.length; i++) {
+        const group = input[i];
+        let { selected, checked } = attempt(state, group);
         if (checked.issues.length) { rejected++; continue; }
+        // A currently valid crossing can close the other hand's next recovery. Compare only
+        // the two existing own-side placements against four upcoming REAL groups before commit.
+        // This preserves rhythmic slots instead of allowing an irreversible one-hand dead end.
+        const shared = selected.some(note => note.hand !== 'either' && sharedStroke(note.hand, rhythmStroke(note, config)));
+        if (shared) {
+            const future = input.slice(i + 1, i + 5);
+            const kept = (proposal: RhythmNote[]) => {
+                const preview = state.fork(), first = preview.inspect(proposal);
+                if (first.issues.length) return -1;
+                first.commit(); let count = 0;
+                for (const upcoming of future) {
+                    const next = attempt(preview, upcoming);
+                    if (!next.checked.issues.length) { next.checked.commit(); count++; }
+                }
+                return count;
+            };
+            let best = kept(selected);
+            for (const keepRows of [true, false]) {
+                if (best === future.length) break;
+                const candidate = state.revoice(group, keepRows), count = kept(candidate);
+                if (count > best) { selected = candidate; checked = state.inspect(candidate); best = count; }
+            }
+        }
+        if (selected !== group) revoiced += group.length;
         checked.commit(); accepted.push(...selected);
     }
     return { chart: accepted, removedNotes: chart.length - accepted.length, rejectedGroups: rejected, revoicedNotes: revoiced };

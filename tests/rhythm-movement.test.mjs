@@ -44,6 +44,43 @@ test('temporal hand-path collision uses closest approach, with no false collisio
     assert.ok(validate(guard(chart).chart).valid);
 });
 
+test('a hand recovers from a crossing before the next onset instead of starving against old opposite-hand history', () => {
+    const settings = { difficulty: 'ultra', zones: 'cross', playSpace: 'tall' };
+    // A uniform 1.05..2.95 return crosses the left target at 2s. Returning early and waiting
+    // on the own side is feasible; repeatedly rejecting R3 must not freeze last[R] at R1.
+    const chart = [n('r0', 1, { hand: 'right', lane: 0, xOffsetMeters: -.45 }),
+        n('l0', 2, { xOffsetMeters: 0, lane: 1 })];
+    for (let i = 0; i < 90; i++) {
+        chart.push(n(`r${i + 1}`, 3 + i, { hand: 'right', lane: 2, xOffsetMeters: .45 }));
+        chart.push(n(`l${i + 1}`, 3.5 + i, { lane: 1, xOffsetMeters: 0 }));
+    }
+    for (const input of [chart, mirror(chart)]) {
+        const before = JSON.stringify(input), result = guard(input, config, settings);
+        assert.equal(result.chart.length, input.length, 'all original slots have a collision-free early-return witness');
+        assert.equal(result.removedNotes, 0);
+        assert.ok(validate(result.chart, config, settings).valid);
+        assert.equal(JSON.stringify(result.chart), before, 'no retiming, relabeling, hand swap or movement rewrite');
+    }
+});
+
+test('a crossed stroke reserves its physical return before the opposite hand can close that corridor', () => {
+    const settings = { difficulty: 'ultra', zones: 'cross', playSpace: 'tall' };
+    // Reduced No Good geometry: the old .3s gate admitted L1 into R's only early exit.
+    const chart = [n('l0', 2, { xOffsetMeters: -.45, cutDirection: 'right' }),
+        n('r0', 2.302, { hand: 'right', lane: 0, row: 0, xOffsetMeters: -.45, cutDirection: 'up-left' }),
+        n('l1', 2.627, { row: 0, xOffsetMeters: -.45, cutDirection: 'down-left' }),
+        n('r1', 2.836, { hand: 'right', lane: 2, row: 0, xOffsetMeters: .45, cutDirection: 'down-right' }),
+        n('l2', 3.231, { row: 2, xOffsetMeters: -.45, cutDirection: 'up-right' }),
+        n('r2', 3.556, { hand: 'right', lane: 2, row: 1, xOffsetMeters: .45, cutDirection: 'up-left' })];
+    assert.ok(codes(chart, settings).includes('cross-clearance'), 'a fixed .3s timing gap is insufficient for this return');
+    for (const input of [chart, mirror(chart)]) {
+        const result = guard(input, config, settings);
+        assert.ok(result.chart.some(n => n.id === 'r1') && result.chart.some(n => n.id === 'l2'), 'both hands recover');
+        assert.ok(validate(result.chart, config, settings).valid);
+        assert.ok(result.chart.every(n => input.some(a => a.id === n.id && a.time === n.time && a.hand === n.hand && a.cutDirection === n.cutDirection)));
+    }
+});
+
 test('shared-space moves reserve clearance both before and after; same-time pairs remain atomic', () => {
     const crossed = n('cross', 3, { lane: 2 });
     assert.ok(codes([n('r', 2.7, { hand: 'right', lane: 2 }), crossed]).includes('cross-clearance'));
