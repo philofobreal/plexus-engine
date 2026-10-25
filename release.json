@@ -1,7 +1,7 @@
 {
-  "id": "t11c-spectral-entry-20261025T130723431Z",
-  "previousCommit": "fe66d5f76c4f2a99173d83ea7a42d6b0999e886b",
-  "sourceCommit": "485ddd0dea789b7d79938ece6d36ea2e80c23e08",
+  "id": "t11d-fixed-band-activity-20261025T140130438Z",
+  "previousCommit": "7acdc7720288cd2df94ac9802558579457af4cf2",
+  "sourceCommit": "4fb6ba2e5f0d52c4ef0008aa75e3e4aab9b1a369",
   "inputs": [
     {
       "path": "bun.lock",
@@ -393,7 +393,7 @@
     },
     {
       "path": "src/analyzer/MusicActivity.ts",
-      "sha256": "57ebeee08dcde790cc34c75bb0de869a39a015cce0df2b9b924ee5e6c9b9c999"
+      "sha256": "506a7e23de675b4477846cdb888db9f783d3fa22a768df534a0b31f27085e844"
     },
     {
       "path": "src/analyzer/MusicalEntityTracker.ts",
@@ -905,7 +905,7 @@
     },
     {
       "path": "src/types/musicEvents.ts",
-      "sha256": "a9ad533bf034e2d58462b9a7a838d351d2e1ff21aaa0fce2d458f35eaf14b738"
+      "sha256": "e8d8a6797bb415067674c2b012a62350a6ee8b7c4d8aed56dc75f72ac723108a"
     },
     {
       "path": "src/types/musicalEntities.ts",
@@ -1566,12 +1566,12 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "path": "assets/analyzer.worker-wK2bopSQ.js",
-      "sha256": "5ddd48edac05f63deea6146796428b0bd99bfc96a82893243782de0bf84999e4"
+      "path": "assets/analyzer.worker-BwM3Vd4h.js",
+      "sha256": "291a0ef196b11ed9799354b06ef6087ce5dc53d0c49cc5cf2cd01a4aaf2f478a"
     },
     {
-      "path": "assets/CosmicWormholeIdentity-BP6yl2Yz.js",
-      "sha256": "6c552c04b9bc90b3eb0bbf7d90f500c8ccdc6f09532616475e72cd3fbcf19b0c"
+      "path": "assets/CosmicWormholeIdentity-BoRGGx4I.js",
+      "sha256": "cb48620c693540b9f077888d4b717001c7356593e86f563e921018263a645479"
     },
     {
       "path": "assets/export.worker-Av-E_fEl.js",
@@ -1582,28 +1582,28 @@
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
-      "path": "assets/main-TRpAWcND.js",
-      "sha256": "29cd8656638c8229d82215a21f3ef85e271a6bf2653ce1f71a30aa4bae449aa0"
+      "path": "assets/main-Cmrp-nv8.js",
+      "sha256": "df83d6bc3dc2eb150d780e2bf29fecf97397d4899cd4a436e637dfba82aff0c5"
     },
     {
       "path": "assets/mvp-D0xy9ln6.css",
       "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
     },
     {
-      "path": "assets/mvp-DTlxloXE.js",
-      "sha256": "772f3b35f71bef060ed5596a32c4884d24b435c7ff0ee8319cacc3b802dc4f7f"
+      "path": "assets/mvp-MVch2cqo.js",
+      "sha256": "80184618bc88e97fe336143f308b898be2d60904a54837bbb65a4aa76e2c09c7"
     },
     {
-      "path": "assets/PreviewQualityControl-BPaMkuYj.js",
-      "sha256": "557d08895d13fee1c47fe83adec61cb1a5c750b21af19ec04ecb2dd15fac5dd8"
+      "path": "assets/PreviewQualityControl-BfTBGLU7.js",
+      "sha256": "5dd6a7c281cae5ce656ac74d450de05f6da5647540f27a6ad74a499f3d42c0c7"
     },
     {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
       "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
     },
     {
-      "path": "assets/resolveMetaTuning-drIJ3BoU.js",
-      "sha256": "3a860caaa90aa62b2069aef1b1ca4cfc7d7da2a06a0fc2ebf492f7b0834f524f"
+      "path": "assets/resolveMetaTuning-DcyTv0GV.js",
+      "sha256": "042b05b92b212826ee1038e2b3a8a77aea563ecf4b68d41742ffb67a796690e7"
     },
     {
       "path": "assets/wormholeHostRender.worker-C0AYhcyr.js",
@@ -1618,12 +1618,12 @@
       "sha256": "fa3d9802994a0ed7376a97419650b69f971f3cc29650371d21c164775bab5506"
     },
     {
-      "path": "assets/xr-BfNetZ-7.css",
-      "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
+      "path": "assets/xr-BaRcyOuF.js",
+      "sha256": "63f1f917468bf9338fe95eb9f88e965dd7ec070e25992562f548f9f887204cc9"
     },
     {
-      "path": "assets/xr-BtwrKItg.js",
-      "sha256": "83946b3ce54331476b73d3a998d38eaeff9b4c0751aae014d50c155bdb608c22"
+      "path": "assets/xr-BfNetZ-7.css",
+      "sha256": "383d666b37e0f8235fbd2254aa79b13c40627973fc81d0391d8cee39ceacf423"
     },
     {
       "path": "eso0932a.jpg",
@@ -1639,11 +1639,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "21f9cf6d85b39aeed629dac541285a92dd2a00c281b50043bfba60d6f1ff5a6d"
+      "sha256": "501c4dd04554decfb7aef69c792cb126862702466e2a32f8bbc8aae9f9d9c062"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "066b8208816ee40495298ad374fa8326e19111ab662b795c1043a9657349944f"
+      "sha256": "75093e394a157a148cd7507d3d8f1fc76d641b64103ef8d4c7480f6cecf3c78e"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
@@ -1775,7 +1775,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "a6550b87e037b0c892a60c6ba9fcdab1100d0362113992805d7bcb17ecfc5690"
+      "sha256": "23f0978f66b61b7b6545b047c5ff99c951a2f10992bf6b23768c3cad9d28016f"
     }
   ]
 }
