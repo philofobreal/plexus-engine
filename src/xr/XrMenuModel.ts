@@ -1,3 +1,4 @@
+import type { RhythmChartDiagnostics } from '../gameplay/RhythmChartDiagnostics';
 // The in-game menu as pure data (ADR-009 Addendum O): screens, their layout on the VR panel canvas,
 // and what activating an item does. No Three.js, no DOM. The VR panel (`scene/XrMenuPanel`) draws
 // and hit-tests this layout; the desktop command drawer renders the same settings description
@@ -56,6 +57,8 @@ export interface XrMenuContext {
     readonly input?: 'vr' | 'desktop';
     /** Opt-in performance line (`?xrDiagnostics=1`), shown on the main and pause screens. */
     readonly diagnostics?: string;
+    /** Cached offline chart accounting, available without playing the background. */
+    readonly chartDiagnostics?: string;
     /** Outcome of the last Copy button (e.g. "Settings copied."), shown on the Settings hint line. */
     readonly notice?: string;
 }
@@ -244,8 +247,8 @@ export function menuLayout(state: XrMenuState, context: XrMenuContext): XrMenuLa
         // Copy buttons (one click each): every setting as text, or the diagnostics line.
         const copyRight = MENU_CANVAS.width - MARGIN;
         items.push(item('action:copy-diagnostics', 'button', 'Copy diagnostics', copyRight - COPY_DIAGNOSTICS_W, barY, COPY_DIAGNOSTICS_W, 56,
-            { disabled: !context.diagnostics, hint: context.diagnostics
-                ? 'Copies the diagnostics line and every setting to the clipboard.'
+            { disabled: !context.diagnostics && !context.chartDiagnostics, hint: context.diagnostics || context.chartDiagnostics
+                ? 'Copies chart decisions, available performance diagnostics and every setting.'
                 : 'No diagnostics yet: switch on System > Diagnostics and play for two seconds.' }));
         items.push(item('action:copy-settings', 'button', 'Copy settings', copyRight - COPY_DIAGNOSTICS_W - OPTION_GAP - COPY_SETTINGS_W, barY,
             COPY_SETTINGS_W, 56, { hint: 'Copies every setting of the menu to the clipboard as text.' }));
@@ -276,6 +279,7 @@ export function menuLayout(state: XrMenuState, context: XrMenuContext): XrMenuLa
         ? [['action:resume', 'Resume', { primary: true }], ['action:restart', 'Restart', {}], ['action:settings', 'Settings', {}]]
         : [['action:start', 'Start', { primary: true, disabled: !ready }], ['action:settings', 'Settings', {}]])));
     // Below the four-button stack, above the footer hint.
+    if (context.chartDiagnostics) texts.push(text(context.chartDiagnostics, center, MENU_CANVAS.height - 224, 20, 'muted', 'center', 2));
     if (context.diagnostics) texts.push(text(context.diagnostics, center, MENU_CANVAS.height - 166, 17, 'muted', 'center', 2));
     texts.push(text(context.input === 'desktop'
         ? 'Mouse or arrow keys + Enter to choose. Esc: back / resume. Space: play / pause.'
@@ -412,8 +416,13 @@ function resetArmed(state: XrMenuState): boolean {
 }
 
 /** The diagnostics line followed by the full settings report: one paste says what was measured under which setup. */
-export function diagnosticsReport(summary: string, settings: XrSettings, trackTitle = ''): string {
-    return `Plexus XR diagnostics\n${summary}\n\n${settingsReport(settings, trackTitle)}`;
+export function diagnosticsReport(summary: string, settings: XrSettings, trackTitle = '', chart?: RhythmChartDiagnostics): string {
+    const selection = chart ? `\nChart selection (v${chart.version}, accepted BeatEvents (including FX transients))\n` +
+        `${chart.retainedEvents}/${chart.sourceEvents} events retained; ${chart.notes} notes; left ${chart.hands.left}, right ${chart.hands.right}.\n` +
+        `${chart.skippedEvents} events skipped; ${chart.revoicedNotes} notes revoiced.\n` +
+        `${Object.entries(chart.rejected).map(([reason, count]) => `${reason}: ${count}`).join('; ')}\n` +
+        `First actual rejection reason per source event; intensity is not confidence.\nChart JSON: ${JSON.stringify(chart)}\n` : '';
+    return `Plexus XR diagnostics\n${summary}${selection}\n\n${settingsReport(settings, trackTitle)}`;
 }
 
 /** Thumbstick tab switching on the Settings screen (wraps around). */

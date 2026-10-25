@@ -244,7 +244,8 @@ export function validateRhythmMovement(chart: readonly RhythmNote[], config: Rhy
 }
 /** Keeps source times/hands/cuts. Simplifies unsafe placement, then rejects an infeasible onset atomically. */
 export function guardRhythmMovement(chart: readonly RhythmNote[], config: RhythmGameConfig = DEFAULT_RHYTHM_GAME_CONFIG,
-    settings: Partial<RhythmGenerationSettings> = {}): GuardedRhythmChart {
+    settings: Partial<RhythmGenerationSettings> = {},
+    onDecision?: (notes: readonly RhythmNote[], issues: readonly RhythmMovementIssue[], revoiced: boolean) => void): GuardedRhythmChart {
     const state = new MovementState(config, settings), accepted: RhythmNote[] = []; let rejected = 0, revoiced = 0;
     const attempt = (cursor: MovementState, group: RhythmNote[]) => {
         let selected = group, checked = cursor.inspect(group);
@@ -260,7 +261,7 @@ export function guardRhythmMovement(chart: readonly RhythmNote[], config: Rhythm
     for (let i = 0; i < input.length; i++) {
         const group = input[i];
         let { selected, checked } = attempt(state, group);
-        if (checked.issues.length) { rejected++; continue; }
+        if (checked.issues.length) { rejected++; onDecision?.(group, checked.issues, false); continue; }
         // A currently valid crossing can close the other hand's next recovery. Compare only
         // the two existing own-side placements against four upcoming REAL groups before commit.
         // This preserves rhythmic slots instead of allowing an irreversible one-hand dead end.
@@ -285,6 +286,7 @@ export function guardRhythmMovement(chart: readonly RhythmNote[], config: Rhythm
             }
         }
         if (selected !== group) revoiced += group.length;
+        onDecision?.(selected, checked.issues, selected !== group);
         checked.commit(); accepted.push(...selected);
     }
     return { chart: accepted, removedNotes: chart.length - accepted.length, rejectedGroups: rejected, revoicedNotes: revoiced };

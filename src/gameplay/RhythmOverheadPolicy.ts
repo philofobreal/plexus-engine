@@ -104,7 +104,8 @@ function bigMoment(note: RhythmNote, context: OverheadContext, strength: { media
  * Returns a new chart with some targets moved to the overhead row; `notes` is never mutated and
  * equal input always yields an equal chart.
  */
-export function liftOverheadTargets(notes: readonly RhythmNote[], context: OverheadContext): RhythmNote[] {
+export function liftOverheadTargets(notes: readonly RhythmNote[], context: OverheadContext,
+    onDropped?: (notes: readonly RhythmNote[]) => void): RhythmNote[] {
     const out = notes.slice();
     // Per-hand note order, so each candidate sees its previous and next same-hand target.
     const byHand: Record<Hand, number[]> = { left: [], right: [] };
@@ -195,5 +196,6 @@ export function liftOverheadTargets(notes: readonly RhythmNote[], context: Overh
         const drops = feasible(i, note.hand);
         if (drops) lift(i, drops);
     }
+    if (dropped.size) onDropped?.([...dropped].map(i => out[i]));
     return dropped.size ? out.filter((_, i) => !dropped.has(i)) : out;
 }

@@ -5,6 +5,7 @@ import { DEFAULT_RHYTHM_GAME_CONFIG, type RhythmGameConfig } from './RhythmGameC
 import type { RhythmNote } from './RhythmTypes';
 import { normalizeGenerationSettings, playSpaceConfig, type RhythmGenerationSettings } from './RhythmGenerationProfile';
 import { guardRhythmMovement, mirrorRhythmChart } from './RhythmMovement';
+import { RhythmChartTrace, type RhythmChartDiagnostics } from './RhythmChartDiagnostics';
 
 export interface RhythmChartSource {
     readonly events: readonly BeatEvent[];
@@ -29,13 +30,32 @@ export interface RhythmChartSource {
  */
 export function buildRhythmChart(source: RhythmChartSource,
     config: RhythmGameConfig = DEFAULT_RHYTHM_GAME_CONFIG, settings?: Partial<RhythmGenerationSettings>): RhythmNote[] {
-    if (!Number.isFinite(source.durationSec) || source.durationSec <= 0) return [];
+    return build(source, config, settings).chart;
+}
+
+/** Same pipeline and final chart, with one decision for every original source event. */
+export function buildRhythmChartWithDiagnostics(source: RhythmChartSource,
+    config: RhythmGameConfig = DEFAULT_RHYTHM_GAME_CONFIG, settings?: Partial<RhythmGenerationSettings>): {
+        chart: RhythmNote[]; diagnostics: RhythmChartDiagnostics;
+    } {
+    const trace = new RhythmChartTrace(source.events);
+    const result = build(source, config, settings, trace);
+    return { chart: result.chart, diagnostics: trace.finish(result.chart, result.revoicedNotes) };
+}
+
+function build(source: RhythmChartSource, config: RhythmGameConfig, settings?: Partial<RhythmGenerationSettings>,
+    trace?: RhythmChartTrace): { chart: RhythmNote[]; revoicedNotes: number } {
+    if (!Number.isFinite(source.durationSec) || source.durationSec <= 0) {
+        if (trace) source.events.forEach((_, index) => trace.reject(index, 'invalid-duration'));
+        return { chart: [], revoicedNotes: 0 };
+    }
     const normalized = normalizeGenerationSettings(settings);
     const mirrored = normalized.motionSafety === 'guarded' && normalized.handLead === 'right';
     const canonical = mirrored ? { ...normalized, handLead: 'left' as const } : normalized;
-    const chart = choreographRhythmChart(source, playSpaceConfig(config, normalized.playSpace), canonical);
-    if (normalized.motionSafety !== 'guarded') return chart;
-    const guarded = guardRhythmMovement(chart, config, canonical).chart;
-    return mirrored ? mirrorRhythmChart(guarded) : guarded;
+    const chart = choreographRhythmChart(source, playSpaceConfig(config, normalized.playSpace), canonical, trace);
+    if (normalized.motionSafety !== 'guarded') return { chart, revoicedNotes: 0 };
+    const guarded = guardRhythmMovement(chart, config, canonical,
+        trace ? (notes, issues, revoiced) => trace.movementDecision(notes, issues, revoiced) : undefined);
+    return { chart: mirrored ? mirrorRhythmChart(guarded.chart) : guarded.chart, revoicedNotes: guarded.revoicedNotes };
 }
 

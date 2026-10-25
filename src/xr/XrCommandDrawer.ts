@@ -28,6 +28,7 @@ export class XrCommandDrawer {
     readonly progressEl: HTMLParagraphElement;
     readonly errorEl: HTMLParagraphElement;
     readonly trackInfoEl: HTMLParagraphElement;
+    readonly chartDiagnosticsEl: HTMLParagraphElement;
     readonly capabilityEl: HTMLParagraphElement;
     readonly enterVrButton: HTMLButtonElement;
     readonly previewButton: HTMLButtonElement;
@@ -95,6 +96,7 @@ export class XrCommandDrawer {
         this.errorEl = el('p', 'xr-error');
         this.errorEl.setAttribute('role', 'alert');
         this.trackInfoEl = el('p', 'xr-track-info');
+        this.chartDiagnosticsEl = el('p', 'xr-chart-diagnostics');
         this.capabilityEl = el('p', 'xr-capability');
         this.capabilityEl.textContent = 'Checking WebXR support...';
 
@@ -111,7 +113,7 @@ export class XrCommandDrawer {
         const hint = el('p', 'xr-menu-hint');
         hint.textContent = 'Settings, pause and results: game menu (⚙ or Esc). During play, drag with the mouse or swipe with one finger to look around.';
 
-        this.panel.append(title, this.fileInput, this.trackTitleEl, this.progressEl, this.errorEl, this.trackInfoEl,
+        this.panel.append(title, this.fileInput, this.trackTitleEl, this.progressEl, this.errorEl, this.trackInfoEl, this.chartDiagnosticsEl,
             actions, this.capabilityEl, hint);
         this.root.append(this.menuButton, this.gameMenuButton, this.panel);
         doc.addEventListener('keydown', this.handleKeyDown);

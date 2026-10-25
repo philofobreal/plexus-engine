@@ -206,6 +206,7 @@ html, body {
 .xr-file-input::file-selector-button:hover { background: rgba(79, 216, 255, 0.16); }
 
 .xr-progress,
+.xr-chart-diagnostics,
 .xr-track-info,
 .xr-capability {
     margin: 0;
@@ -230,7 +231,7 @@ html, body {
     min-height: 1.2em;
 }
 
-.xr-progress:empty, .xr-error:empty, .xr-track-info:empty { display: none; }
+.xr-progress:empty, .xr-error:empty, .xr-track-info:empty, .xr-chart-diagnostics:empty { display: none; }
 
 .xr-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
 
@@ -472,3 +473,5 @@ html, body {
 .xr-game-menu-icon { display: block; font-size: 22px; line-height: 1; color: var(--xr-ink); }
 .xr-menu-hint { margin: 0.2rem 0 0; color: var(--xr-muted); font-size: 0.8rem; }
 #xr-app > canvas[data-menu-hover="true"] { cursor: pointer; }
+
+.xr-chart-diagnostics { white-space: pre-line; overflow-wrap: anywhere; }

@@ -1,5 +1,6 @@
 export { DEFAULT_RHYTHM_GAME_CONFIG, LANE_HAND, type RhythmGameConfig } from './RhythmGameConfig';
-export { buildRhythmChart, type RhythmChartSource } from './RhythmChartBuilder';
+export { buildRhythmChart, buildRhythmChartWithDiagnostics, type RhythmChartSource } from './RhythmChartBuilder';
+export type { RhythmChartDiagnostics, RhythmChartDecision, ChartRejectionReason } from './RhythmChartDiagnostics';
 export { rhythmCharacterSections } from './RhythmPhrasePlanner';
 export { DEFAULT_RHYTHM_GENERATION_SETTINGS, DIFFICULTIES, HAND_LEADS, HAND_PATTERNS, HAND_ZONES, normalizeGenerationSettings,
     PLAY_SPACES, playSpaceConfig, TALL_ROW_SPACING_METERS,

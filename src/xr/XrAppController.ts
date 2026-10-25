@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import type { AudioEngine } from '../audio/AudioEngine';
-import { buildRhythmChart, buildRhythmMusicalRolePlan, rhythmCharacterSections, DEFAULT_RHYTHM_GAME_CONFIG, RhythmGameSession, scoreRank, type RhythmGameConfig, type RhythmNote, type RhythmRoleSection } from '../gameplay';
+import { buildRhythmChart, buildRhythmChartWithDiagnostics, buildRhythmMusicalRolePlan, rhythmCharacterSections, DEFAULT_RHYTHM_GAME_CONFIG, RhythmGameSession, scoreRank, type RhythmGameConfig, type RhythmNote, type RhythmRoleSection, type RhythmChartSource, type RhythmChartDiagnostics } from '../gameplay';
 import { State } from '../state/store';
 import { detectImmersiveVrSupport, type ImmersiveVrSupport } from './runtime/XrCapabilityDetector';
 import { XrInputAdapter, type ControllerHand } from './runtime/XrInputAdapter';
@@ -69,6 +69,13 @@ function formatTime(seconds: number): string {
 
 const EMPTY_SAMPLES: readonly number[] = [];
 
+function chartSource(analysis: VisualAnalysisSnapshot): RhythmChartSource {
+    return { events: analysis.events, durationSec: analysis.duration, beats: analysis.trackAnalysis.beats,
+        barStarts: analysis.trackAnalysis.barStarts, timingConfidence: analysis.trackAnalysis.timingConfidence?.overall,
+        performancePlan: analysis.performancePlan, sectionStarts: analysis.trackAnalysis.sections.map(section => section.start),
+        sections: analysis.trackAnalysis.sections };
+}
+
 export class XrAppController {
     private readonly engine: AudioEngine;
     private readonly runtime: XrRuntime;
@@ -100,6 +107,9 @@ export class XrAppController {
     private readonly settingsStore: XrSettingsStore;
     private published: PublishedAnalysis | null = null;
     private preparedPlan: PreparedPlan | null = null;
+    private chartDiagnostics: RhythmChartDiagnostics | null = null;
+    private chartSummary = '';
+    private chartDetails = '';
     /** The current track's section timeline still has to reach the scene (set by whichever compose publishes first). */
     private sectionTimelinePending = false;
     private disposed = false;
@@ -274,11 +284,13 @@ export class XrAppController {
             this.published = { events: State.events, frames: State.frames, trackAnalysis: State.trackAnalysis,
                 sampleRate: State.sampleRate, hopSize: State.hopSize, bpm: State.bpm, duration: State.duration };
             this.preparedPlan = null;
+            this.clearChartDiagnostics();
             this.sectionTimelinePending = true;
             await this.composeChoreography(this.loadGeneration, true);
         };
         this.engine.onAnalysisError = (message) => {
             if (this.disposed) return;
+            this.clearChartDiagnostics();
             this.loading = false;
             this.showError(`Analysis failed: ${message}`);
             this.progressEl.textContent = '';
@@ -313,14 +325,11 @@ export class XrAppController {
         if (this.disposed || generation !== this.loadGeneration || !this.loading) return;
         // One offline plan, passed as plain data to both gameplay and the optional background.
         const analysis: VisualAnalysisSnapshot = { ...published, performancePlan: prepared.plan };
-        const chart = buildRhythmChart(
-            { events: analysis.events, durationSec: analysis.duration, beats: analysis.trackAnalysis.beats,
-                barStarts: analysis.trackAnalysis.barStarts, timingConfidence: analysis.trackAnalysis.timingConfidence?.overall,
-                performancePlan: analysis.performancePlan, sectionStarts: analysis.trackAnalysis.sections.map(section => section.start),
-                sections: analysis.trackAnalysis.sections },
-            // Chart-defining fields are never player settings: note speed and saber length leave the chart unchanged.
-            DEFAULT_RHYTHM_GAME_CONFIG, settings
-        );
+        // Detailed accounting is opt-in, through exactly the same pure chart pipeline.
+        const source = chartSource(analysis);
+        const detailed = this.diagnostics ? buildRhythmChartWithDiagnostics(source, DEFAULT_RHYTHM_GAME_CONFIG, settings) : null;
+        const chart = detailed?.chart ?? buildRhythmChart(source, DEFAULT_RHYTHM_GAME_CONFIG, settings);
+        this.setChartDiagnostics(detailed?.diagnostics ?? null);
         this.preparedPlan = prepared;
         // Roles and chart publish under the same generation guard. Never reuse a stale sidecar.
         this.haloChart = chart;
@@ -408,6 +417,7 @@ export class XrAppController {
      * regenerated from the captured analysis: no re-analysis, reload or new AudioEngine state.
      */
     private regenerateChart(): void {
+        this.clearChartDiagnostics();
         if (!this.published) return;
         this.pauseGame();
         this.engine.stop(true);
@@ -474,12 +484,35 @@ export class XrAppController {
         if (this.diagnostics === this.diagnosticsShown) return;
         this.diagnosticsShown = this.diagnostics;
         this.runtime.measureFrameCost = this.diagnostics;
-        this.backgroundDiagnostics.clear();
         this.diagnosticPathRevision = -1;
         this.diagnosticBackgroundMs = -1;
         delete this.overlay.dataset.xrTrackPath;
         delete this.overlay.dataset.xrBackgroundMs;
+        this.clearChartDiagnostics();
+        // Explicit UI transition only: reuse captured analysis/plan, never reset playback or DSP.
+        if (this.diagnostics && !this.loading && this.published && this.preparedPlan) {
+            const result = buildRhythmChartWithDiagnostics(chartSource({ ...this.published, performancePlan: this.preparedPlan.plan }),
+                DEFAULT_RHYTHM_GAME_CONFIG, this.settings.generation);
+            this.setChartDiagnostics(result.diagnostics);
+        }
+    }
+
+    private clearChartDiagnostics(): void {
+        this.setChartDiagnostics(null);
+        // A new chart cannot inherit a measurement made under another track/setup.
+        this.backgroundDiagnostics.clear();
         delete this.overlay.dataset.xrBackgroundStages;
+        delete this.overlay.dataset.xrScore;
+    }
+
+    private setChartDiagnostics(report: RhythmChartDiagnostics | null): void {
+        this.chartDiagnostics = report;
+        this.chartSummary = report ? `Chart: ${report.retainedEvents}/${report.sourceEvents} events - ${report.notes} notes (L${report.hands.left}/R${report.hands.right})` : '';
+        this.chartDetails = report ? `${this.chartSummary}\nSkipped ${report.skippedEvents}; revoiced ${report.revoicedNotes} notes.\n` +
+            Object.entries(report.rejected).map(([reason, count]) => `${reason}: ${count}`).join(' · ') : '';
+        this.drawer.chartDiagnosticsEl.textContent = this.chartDetails;
+        if (report) this.overlay.dataset.xrChartSelection = JSON.stringify({ ...report, decisions: undefined });
+        else delete this.overlay.dataset.xrChartSelection;
     }
 
     private updateWormholeAnalysis(analysis: VisualAnalysisSnapshot | null): void {
@@ -542,6 +575,7 @@ export class XrAppController {
             this.loading = true;
             this.published = null;
             this.preparedPlan = null;
+            this.clearChartDiagnostics();
             this.haloChart = [];
             this.applyNoteHalos(true);
             this.session.clear();
@@ -756,8 +790,9 @@ export class XrAppController {
                 this.copyToClipboard(settingsReport(this.settings, this.trackTitleEl.textContent ?? ''), 'Settings');
                 return;
             case 'copy-diagnostics':
-                if (this.backgroundDiagnostics.summary) {
-                    this.copyToClipboard(diagnosticsReport(this.backgroundDiagnostics.summary, this.settings, this.trackTitleEl.textContent ?? ''), 'Diagnostics + settings');
+                if (this.diagnostics && (this.backgroundDiagnostics.summary || this.chartDiagnostics)) {
+                    this.copyToClipboard(diagnosticsReport(this.backgroundDiagnostics.summary, this.settings,
+                        this.trackTitleEl.textContent ?? '', this.chartDiagnostics ?? undefined), 'Diagnostics + settings');
                 }
                 return;
         }
@@ -830,6 +865,7 @@ export class XrAppController {
             results: state === 'finished' ? menuResults(this.session.getSnapshot()) : null,
             input: this.runtime.isPresenting() ? 'vr' : 'desktop',
             ...(this.diagnostics && this.backgroundDiagnostics.summary ? { diagnostics: this.backgroundDiagnostics.summary } : {}),
+            ...(this.diagnostics && this.chartSummary ? { chartDiagnostics: this.chartSummary } : {}),
             ...(this.copyNotice ? { notice: this.copyNotice } : {}) };
     }
 
@@ -1025,6 +1061,7 @@ export class XrAppController {
     }
 
     dispose(): void {
+        this.clearChartDiagnostics();
         if (this.disposed) return;
         this.disposed = true;
         this.loadGeneration++;
