@@ -2640,7 +2640,8 @@
             "algorithm": {
               "type": "string",
               "enum": [
-                "attack-local-excess-v1"
+                "attack-local-excess-v1",
+                "attack-local-excess-v2"
               ]
             },
             "confidence": {

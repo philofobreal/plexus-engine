@@ -259,3 +259,15 @@ test('positive and censored fixed-band evidence fits the additive worker schema'
     validateSchema(JSON.parse(JSON.stringify(result)), schema, schema);
   }
 });
+
+
+test('worker schema accepts both short-spectrum versions and rejects unknown versions', () => {
+  const schema = readJson(join(FIXTURE_ROOT, 'analysis-result.schema.json'));
+  const result = JSON.parse(JSON.stringify(analyzeFixture()));
+  for (const algorithm of ['attack-local-excess-v1', 'attack-local-excess-v2']) {
+    result.trackAnalysis.musicActivity.attackChanges.algorithm = algorithm;
+    validateSchema(result, schema, schema);
+  }
+  result.trackAnalysis.musicActivity.attackChanges.algorithm = 'attack-local-excess-v3';
+  assert.throws(() => validateSchema(result, schema, schema), /must be one of/);
+});

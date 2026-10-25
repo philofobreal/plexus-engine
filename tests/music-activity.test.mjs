@@ -634,12 +634,90 @@ test('quiet crossings abstain on nonquiet prefix, clipped body and insufficient 
 });
 
 test('quiet-crossing normalizer binds window policy, clones arrays and accepts predecessor omission', () => {
-    const r = json(extract(attackChangeFixture('tone-late-noise'))), n = normalizeAcousticActivity(r, r.clock);
+    const fixture = attackChangeFixture('tone-late-noise');
+    const r = json(extract(fixture)), n = normalizeAcousticActivity(r, r.clock);
     assert.ok(n.attacks[0].quietOnset); n.attacks[0].quietOnset.prefixSamples[0]++; assert.notDeepEqual(json(n), r);
     const old = json(r); for (const a of old.attacks) delete a.quietOnset;
+    // A predecessor payload used v1 legacy-bound windows. Merely deleting v2's anchor is invalid.
+    old.attackChanges.algorithm = 'attack-local-excess-v1';
+    old.attackChanges.records = old.attacks.map(a => json(measureFixedAttack(fixture.samples, fixture.sampleRate, 512, a.sampleIndex).records[0]));
     assert.deepEqual(json(normalizeAcousticActivity(old, old.clock)), old);
     for (const mutate of [q => q.algorithm = 'note-onset', q => q.sampleIndex++, q => q.prefixSamples[0]++, q => q.supportSamples[1]++,
         q => q.prefixPower = 1, q => q.thresholdPower *= 2, q => q.crossingPower = q.thresholdPower, q => q.crossingPower = Infinity, q => q.decisionSample--, q => q.confidence = .99, q => q.sourceOwnership = 'known']) {
         const b = json(r); mutate(b.attacks[0].quietOnset); assert.equal(normalizeAcousticActivity(b, b.clock), undefined);
+    }
+});
+
+
+// T11h: use the existing alternative crossing to bind the short measurement, without another sidecar.
+test('v2 short spectra stay exact across all forty-five later additions, including legacy retargets', () => {
+    let pairs = 0, retargeted = 0;
+    for (const tuple of [...ACTIVITY_TUPLES.development, ...ACTIVITY_TUPLES.transfer]) for (const phase of ATTACK_CHANGE_PHASES) {
+        const hop = tuple.sampleRate === 16000 ? 512 : 1024, isolated = new Map();
+        for (const kind of ATTACK_CHANGE_KINDS) {
+            const f = attackChangeFixture(kind, tuple, hop, phase), r = json(extract(f, hop));
+            assert.equal(r.attackChanges.algorithm, 'attack-local-excess-v2');
+            const { attackId, ...measurement } = r.attackChanges.records[0];
+            assert.equal(attackId, r.attacks[0].id, 'association retains the historical energy attack ID');
+            assert.equal(measurement.bodySamples[0], r.attacks[0].quietOnset.sampleIndex - Math.ceil(.002 * f.sampleRate));
+            if (!kind.includes('-late-')) isolated.set(kind, { measurement, attackId });
+            else {
+                const base = isolated.get(kind.split('-')[0]);
+                assert.deepEqual(measurement, base.measurement, `${tuple.sampleRate}/${phase}/${kind}`);
+                assert.ok(measurement.bodySamples[1] < f.laterSample);
+                if (attackId !== base.attackId) retargeted++;
+                pairs++;
+            }
+            assert.ok(normalizeAcousticActivity(r, r.clock));
+        }
+    }
+    assert.equal(pairs, 45); assert.equal(retargeted, 11);
+});
+
+test('v2 window binding rejects version relabeling and supports genuine legacy v1 payloads', () => {
+    const tuple = ACTIVITY_TUPLES.development[0];
+    let r, fixture;
+    for (const phase of ATTACK_CHANGE_PHASES) {
+        fixture = attackChangeFixture('impulse-late-tone', tuple, 512, phase);
+        const candidate = json(extract(fixture));
+        if (candidate.attacks[0].sampleIndex !== candidate.attacks[0].quietOnset.sampleIndex) { r = candidate; break; }
+    }
+    assert.ok(r); const a = r.attacks[0];
+    const legacy = json(measureFixedAttack(fixture.samples, tuple.sampleRate, 512, a.sampleIndex));
+    legacy.algorithm = 'attack-local-excess-v1';
+    const v1 = json(r); v1.attackChanges = legacy;
+    assert.deepEqual(json(normalizeAcousticActivity(v1, v1.clock)), v1);
+    const v1WithoutQuiet = json(v1); delete v1WithoutQuiet.attacks[0].quietOnset;
+    assert.ok(normalizeAcousticActivity(v1WithoutQuiet, v1WithoutQuiet.clock));
+    const relabeledV1 = json(v1); relabeledV1.attackChanges.algorithm = 'attack-local-excess-v2';
+    assert.equal(normalizeAcousticActivity(relabeledV1, relabeledV1.clock), undefined);
+    const relabeledV2 = json(r); relabeledV2.attackChanges.algorithm = 'attack-local-excess-v1';
+    assert.equal(normalizeAcousticActivity(relabeledV2, relabeledV2.clock), undefined);
+    const missingQuiet = json(r); delete missingQuiet.attacks[0].quietOnset;
+    assert.equal(normalizeAcousticActivity(missingQuiet, missingQuiet.clock), undefined);
+    const cloned = normalizeAcousticActivity(r, r.clock); cloned.attackChanges.records[0].prefixSamples[0]++;
+    assert.notDeepEqual(json(cloned), r);
+});
+
+test('v2 retains legacy windows without a qualified crossing and keeps boundary/resolution abstentions', () => {
+    for (const kind of ACTIVITY_KINDS) {
+        const f = activityFixture(kind), r = extract(f);
+        for (let i = 0; i < r.attacks.length; i++) if (!r.attacks[i].quietOnset) {
+            const a = r.attacks[i], expected = measureFixedAttack(f.samples, f.sampleRate, 512, a.sampleIndex).records[0];
+            assert.deepEqual(json(r.attackChanges.records[i]), json(expected));
+        }
+    }
+    // Even a crossing near the start cannot justify padding a missing clean prefix window.
+    const fs = 16000, samples = new Float32Array(6400);
+    for (let i = 256; i < samples.length; i++) samples[i] = .02 * Math.sin(i * .4);
+    samples[450] = 2;
+    const r = extract({ samples, sampleRate: fs }, 256);
+    assert.ok(r.attacks[0].quietOnset); assert.equal(r.attackChanges.records[0].status, 'file-boundary');
+    assert.equal(measureFixedAttack(samples, fs, 256, r.attacks[0].sampleIndex).records[0].status, 'measured', 'do not silently return the supported legacy measurement');
+    assert.ok(normalizeAcousticActivity(r, r.clock));
+    for (const [fs, hop] of [[1000, 512], [16000, 64], [384000, 1024]]) {
+        const a = new MusicActivity(samples, fs, hop), result = { attacks: [{ id: 'acoustic:3200', sampleIndex: 3200, quietOnset: { sampleIndex: 3100 } }] };
+        a.attackChanges(result); assert.equal(result.attackChanges.records[0].status, 'insufficient-resolution');
+        assert.equal(result.attackChanges.records[0].bodySamples, null);
     }
 });

@@ -303,7 +303,7 @@ export class MusicActivity {
     private attackChanges(result: AcousticActivityLayer): void {
         const { sampleRate: fs, sampleCount: length, hopSize: hop } = this.clock;
         const size = attackChangeWindowSize(fs, hop);
-        const layer = result.attackChanges = { algorithm: 'attack-local-excess-v1', confidence: null,
+        const layer = result.attackChanges = { algorithm: 'attack-local-excess-v2', confidence: null,
             consumerUse: 'signal-evidence-only', xrScoring: 'ineligible', scope: 'local-window-positive-spectrum',
             sourceOwnership: 'unresolved', publication: 'full-track-analysis', windowSize: size,
             records: [] } as NonNullable<AcousticActivityLayer['attackChanges']>;
@@ -324,7 +324,9 @@ export class MusicActivity {
                 status: size === null ? 'insufficient-resolution' : 'file-boundary',
                 positivePower: null, positivePowerFraction: null, peakBin: null, peakNeighborhoodFraction: null };
             layer.records.push(r);
-            const bodyStart = a.sampleIndex - Math.ceil(.002 * fs), prefixEnd = bodyStart - Math.ceil(.004 * fs);
+            // Prefer the observed quiet-prefix crossing; retain legacy anchoring when unavailable.
+            const anchor = a.quietOnset?.sampleIndex ?? a.sampleIndex;
+            const bodyStart = anchor - Math.ceil(.002 * fs), prefixEnd = bodyStart - Math.ceil(.004 * fs);
             if (size === null || prefixEnd - size < 0 || bodyStart + size > length) continue;
             if (!fft) {
                 fft = new FFT(size); prefix = new Float64Array(size / 2); delta = new Float64Array(size / 2);

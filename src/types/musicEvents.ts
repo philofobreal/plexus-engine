@@ -45,9 +45,11 @@ export interface AcousticActivityLayer {
     spectralEntries?: SpectralEntryLayer; // Absent in T11b/legacy payloads.
 }
 
-/** Short-window positive spectral change, never a sound-family or source classifier. */
+/** Short-window positive spectral change, never a sound-family or source classifier.
+ * v1 binds the legacy attack time; v2 prefers its qualified quietOnset, else legacy time.
+ */
 export interface AttackChangeLayer {
-    algorithm: 'attack-local-excess-v1'; confidence: null;
+    algorithm: 'attack-local-excess-v1' | 'attack-local-excess-v2'; confidence: null;
     consumerUse: 'signal-evidence-only'; xrScoring: 'ineligible';
     scope: 'local-window-positive-spectrum'; sourceOwnership: 'unresolved'; publication: 'full-track-analysis';
     windowSize: number | null;
@@ -271,14 +273,15 @@ export function normalizeAcousticActivity(value: AcousticActivityLayer | undefin
         let attackChanges: AttackChangeLayer | undefined;
         if (value.attackChanges !== undefined) {
             const layer = value.attackChanges, size = attackChangeWindowSize(clock.sampleRate, clock.hopSize);
-            if (!layer || layer.algorithm !== 'attack-local-excess-v1' || layer.confidence !== null
+            if (!layer || !['attack-local-excess-v1', 'attack-local-excess-v2'].includes(layer.algorithm) || layer.confidence !== null
                 || layer.consumerUse !== 'signal-evidence-only' || layer.xrScoring !== 'ineligible'
                 || layer.scope !== 'local-window-positive-spectrum' || layer.sourceOwnership !== 'unresolved'
                 || layer.publication !== 'full-track-analysis' || layer.windowSize !== size
                 || !Array.isArray(layer.records) || layer.records.length !== value.attacks.length) return undefined;
             for (let i = 0; i < layer.records.length; i++) {
                 const a = layer.records[i], attack = value.attacks[i];
-                const bodyStart = attack.sampleIndex - Math.ceil(.002 * clock.sampleRate);
+                const anchor = layer.algorithm === 'attack-local-excess-v2' ? attack.quietOnset?.sampleIndex ?? attack.sampleIndex : attack.sampleIndex;
+                const bodyStart = anchor - Math.ceil(.002 * clock.sampleRate);
                 const prefixEnd = bodyStart - Math.ceil(.004 * clock.sampleRate);
                 const boundary = size !== null && (prefixEnd - size < 0 || bodyStart + size > length);
                 if (!a || a.attackId !== attack.id || a.decisionSample !== length) return undefined;
