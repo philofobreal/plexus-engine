@@ -1514,7 +1514,7 @@ Textures still redraw only on displayed-state changes, and no gameplay/DSP work 
 T12a is the visible section-character portion of T12. General tonal/vocal/dominance source
 selection and fusion require qualified producers and remain deferred, not inferred from section
 names. Full per-event rejection diagnostics are a later T12 delivery. Physical Quest comfort
-and musical/gameplay acceptance remain manual. [Current evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12a1-hand-recovery-2026-10-25).
+and musical/gameplay acceptance remain manual. [Current evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12b-chart-decisions-2026-10-25).
 
 ## Addendum AX — T12a1 hand recovery and cockpit default Off (2026-10-25)
 
@@ -1531,3 +1531,39 @@ its existing Scroll preference but is hidden with Cockpit Off. Reset defaults no
 no forced migration of a player's explicit choice, geometry deletion or menu/persistence change.
 Historical T07 default-Full descriptions remain delivery records. All unrelated user settings,
 including Wall Off and the MVP/XR Offscreen paths, stay unchanged.
+
+
+## Addendum AY - T12b source-event chart decisions (2026-10-25)
+
+Gameplay owns an opt-in detailed build beside the unchanged array-returning `buildRhythmChart`.
+Both call the same planner, Tall overhead policy and final movement guard. A diagnostic collector
+records the first actual rejection for every original `source.events` index, including filtered
+input, pair preparation, section/phrase/echo/run policy, combined spacing, hand policy, overhead
+rest/parity and authoritative guard rejection. Spacing includes its earliest allowed time and
+required gap; movement rejection includes the actual issue codes. Preview branches never report.
+Intensity is an engineering strength, not confidence; type 3 can be an FX transient. No invented
+classifier, duplicate detector, confidence rejection, onset or musical identity is introduced.
+
+A selected onset and a two-note accent each count as one retained source event. Proposed IDs and
+final note IDs stay distinct. Final hands are read after reflection, not inferred from ID suffixes.
+Guard revoicing is retained, separately annotated/counted, and does not include overhead lifts.
+Every final note must belong to exactly one source decision. The source array remains immutable;
+records refer to its original indices, rather than sort order or approximate timestamps.
+
+XR owns publication under the existing generation guard and the existing System > Diagnostics
+switch. The shared menu's main/pause view and desktop track panel show cached summaries; Copy
+stats / Copy diagnostics includes the complete v1 decision JSON plus settings, immediately after
+chart-ready without waiting for background playback. No new tab, setting record, URL switch,
+preset parameter or automatically written measurement file. Full JSON serializes on Copy only;
+the DOM contains summary counters, and no detailed chart work runs in a frame callback.
+With Diagnostics off the normal builder allocates no trace. Turning it on for an existing chart
+rebuilds accounting once from captured analysis and prepared plan, without analysis, playback
+reset or session chart publication. New chart/load, analysis error, disposal and diagnostic
+toggle invalidate old records and old performance summaries. A background/VR/halo error does
+not invalidate an otherwise valid chart report.
+
+T12b completes rejection accounting for the supported accepted-BeatEvent path. General accepted
+music-event arbitration, tonal/vocal source selection and fusion remain deferred with the T11
+qualification limits; T12 is not claimed fully complete against the original recognition scope.
+This deferred capability does not require reopening research before T13's independent cue and
+visual-arrival work. Wall remains Off and cockpit defaults Off; MVP/XR Offscreen paths unchanged.

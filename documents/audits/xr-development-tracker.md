@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-25 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T12a manual feedback: one-hand starvation corrected in T12a1, cockpit default Off requested; final validation/deployment handoff below. T11 research remains closed for this phase with recognition limitations retained.** Existing MVP/XR Offscreen rendering stays intact. [T11 capability limits](../features/music-events.md). [Previous merged review](xr-review-checkpoint.md).
+**T12a1 accepted. T12b adds complete accepted-event chart decision diagnostics through the existing System switch and Copy; current validation/deployment handoff below. T11 research remains closed for this phase.** Existing MVP/XR Offscreen rendering stays intact. [T11 capability limits](../features/music-events.md). [Previous merged review](xr-review-checkpoint.md).
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -58,7 +58,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T09 | Gameplay + input/render: playable hand policy and motion | T08 | Accepted by user; Guarded optional, Legacy default. [Evidence](xr-movement-validation.md) |
 | T10 | Analyzer timing cleanup | T00-T01 | Rejected experiments removed at user request; established XR path and equivalent Band search retained. Accuracy beyond available evidence remains unproven. [Record](xr-timing-cleanup.md) |
 | T11 | Timed evidence and qualification | Stable T10 clock/evidence boundary | Closed for this phase by explicit user decision after T11i; limited signal/provenance capabilities only. Research retained, no classifier promoted. General tonal/vocal recognition and dominance deferred; further research is not a T12a prerequisite. [Scope](../features/music-events.md) |
-| T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09; supported T11 capabilities only | T12a opt-in Musical: section-led motifs/density/layout from accepted BeatEvents, mandatory Guarded movement, Classic fallback; larger shared menu, localStorage/Copy. Full source fusion/rejection diagnostics and physical acceptance remain undelivered. Current checkpoint below |
+| T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09; supported T11 capabilities only | T12a opt-in Musical: section-led motifs/density/layout from accepted BeatEvents, mandatory Guarded movement, Classic fallback; larger shared menu, localStorage/Copy. T12a1 hand recovery accepted; T12b rejection accounting added. General source fusion remains deferred, physical acceptance manual. Current checkpoint below |
 | T13 | Analyzer + automation + semantics: cue and visual arrival timing | T10; T11 additive | Planned |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
 | T15 | Presentation planner + XR: track-specific HUD | T13-T14 | Planned |
@@ -611,7 +611,7 @@ per-event rejection diagnostics are not delivered. After acceptance, continue th
 work from this checkpoint; do not restart T11 research or claim unqualified musical identities.
 Wall stays Off; MVP/XR Offscreen pipeline, DSP, source clock and worker contracts stay unchanged.
 
-## Current continuation checkpoint - T12a1 hand recovery, 2026-10-25
+## Historical checkpoint - T12a1 hand recovery, 2026-10-25
 
 Manual T12a feedback reported one hand disappearing, thinning the other hand's rhythm under
 Musical/Ultra/Active/Expressive/Alternate/Even/Guarded/Crossover/Tall on No Good. This is a T12a
@@ -665,3 +665,71 @@ ignored `logs/t12a1/handoff.json`; guarded deployment rebuilds the committed sou
 with cockpit default Off. Musical listening relevance and physical comfort are still manual;
 this does not improve onset recognition. T12 remains partial; continue from this correction only
 after feedback. T11 research remains closed for this phase. Wall Off and MVP/XR Offscreen remain.
+
+
+## Current continuation checkpoint - T12b chart decisions, 2026-10-25
+
+T12a1 hand recovery/default-Off cockpit accepted by the user's continuation. T12b completes
+per-source-event selection accounting for the existing accepted BeatEvent chart path. Gameplay
+owns one optional collector through the SAME planner/overhead/final-guard pipeline; XR owns
+capture, generation-guarded publication and existing menu/drawer/Copy projection. No analyzer,
+worker/state schema, frame DSP, visual preset, dependency or new persistable control.
+[Contract](../adr/ADR-009-xr-rhythm-game-host.md#addendum-ay---t12b-source-event-chart-decisions-2026-10-25).
+
+System > Diagnostics retains its existing localStorage/Copy policy. Main/pause menu and the track
+panel show retained/source events, final note count and left/right totals; the panel also shows
+skip reasons and guard revoicing. Copy stats includes full version-1 per-event decisions plus
+settings, immediately at chart-ready, even before playing or with Wormhole Off. Original source
+indices, proposal/final IDs, final mirrored hands, first rejection and actual guard issue codes
+remain distinct. A pair is one source event/two notes. Intensity is not confidence and FX hits
+are not asserted to be drums. No automatic experimental reports are written by the application.
+
+Diagnostics-off uses the normal path without trace allocation. Toggle-on may build accounting
+once from the captured analysis/plan, but never changes playback, scoring or the session chart.
+No detailed per-frame serialization: summaries are cached and DOM data contains counts only;
+full decisions serialize only on explicit Copy. Load/regeneration/error/dispose/toggle discard
+stale chart records and prior performance summaries. Unrelated VR/background/halo errors retain
+valid chart accounting. These two lifecycle distinctions were corrected during independent review.
+
+Three previously accepted cached sources retain EXACT T12a1 chart SHA-256, not just counts:
+No Good1500 source events ->920 retained events/999 notes (495L/504R),580 skipped,211 guard
+revoicings; Goa1294->842/909(455L/454R),452 skipped,144 revoicings; Scienide1114->776/822
+(416L/406R),338 skipped,149 revoicings. All source events and final note IDs account exactly once,
+all three final charts pass movement validation. This is source/motor parity, not acoustic accuracy.
+Receipts/full local decision JSON: ignored `logs/t12b/recording-summary.json`, `*-selection.json`.
+
+Validation: `npm run build` passes (existing bundle-size warning). Targeted
+`node --test --test-reporter=tap tests/xr-chart-diagnostics.test.mjs
+ tests/xr-controller-regeneration.test.mjs tests/xr-menu.test.mjs tests/rhythm-movement.test.mjs
+ tests/xr-musical-character.test.mjs`:63/63 before the final sixth lifecycle test; the final
+`node --test --test-reporter=tap tests/xr-chart-diagnostics.test.mjs`:6/6. Original chart goldens,
+movement/hand-starvation corpora and all historical studies/tests remain active. The first detailed
+matrix exposed existing Tall overhead rest/parity removals; those now have their own authoritative
+callback/reason, without changing placement. The initial failed attempt remains in ignored logs.
+`npm test -- --test-reporter=tap`: **1837 total,1828 pass,nine exact known failures,0 skips or
+cancellations**. Names AND assertion messages match `logs/timing-cleanup/baseline-failures.json`;
+final receipt `logs/t12b/validation.json`, full output `logs/t12b/full-tests.txt`. `git diff --check`
+passes. The existing DSP/preset suites account for the longer902-second cumulative run.
+
+Local browser automation with an18-second synthetic impulse fixture shows21/35 events retained,
+23 notes(13L/10R),14 skips with the actual five reason categories. Main menu summary and drawer
+are readable; Copy stats reports success without starting playback. The browser clipboard bridge
+returned empty despite that success notice, so native clipboard payload is not claimed verified;
+controller/report tests verify the complete copied JSON and settings. Two later canvas-coordinate
+calls timed out; DOM actions and captured screenshot still work, with no console warnings/errors.
+The fixture is UI wiring evidence only, not a music or Quest benchmark.
+
+One integration owner and independent read-only gameplay/UI reviews; all confirmed findings fixed.
+Node25.2.1/npm11.6.2, no package/runtime fallback or install. No Python inference/pytest (no such
+changes), no physical Quest FPS/comfort run (no headset). `diff_export.ps1` considered and skipped
+in favor of direct diff plus independent review. Graphify refresh is AST-only, no LLM backend,
+hooks or semantic corpus:894 files,8403 nodes,20231 raw/17740 canonical edges; canonical graph
+has0 dangling edges (raw unresolved references remain explicitly retained). Actual graph/source/Pages/public smoke receipts: `logs/t12b/handoff.json`.
+
+**Stop after deploy for manual acceptance.** Expect explainable counts/skip reasons through the
+existing Diagnostics switch and Copy, with the accepted T12a1 gameplay unchanged. T12 remains
+partial against the original general source-recognition/fusion scope: qualified multi-source
+producers and optional source arbitration are deferred, not replaced by guessed tonal/vocal
+labels. After acceptance continue T13 cue/visual-arrival timing on existing supported evidence;
+its independent work does not reopen T11 qualification research. Wall stays Off, cockpit defaults
+Off with explicit saved choices respected, and MVP/XR Offscreen rendering remains unchanged.
