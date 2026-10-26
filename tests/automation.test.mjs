@@ -269,7 +269,9 @@ test('generatePerformancePlan preserves evidenced boundaries and retains actual 
 
   const plan = await generatePerformancePlan(trackAnalysis, ['default.json', 'temporal1.json', 'temporal3.json'], 64);
 
-  assert.deepEqual(plan.points.map(point => point.time), [0, 17.7, 34.4, 41.2]);
+  // T13b: the first section starts at0.2; it is not an initial-state-at-zero exception.
+  // Original fixture/expectation retained in Git0471d12; other exact cue times stay pinned.
+  assert.deepEqual(plan.points.map(point => point.time), [0.2, 17.7, 34.4, 41.2]);
   assert.equal(plan.points.find(point => point.reason === 'drop')?.time, 34.4);
 });
 
@@ -403,4 +405,26 @@ test('weak-grid automation timing mode follows the section start boundary candid
   const drop = plan.points.find(p => p.reason === 'drop');
   assert.ok(drop);
   assert.equal(drop.timingMode, 'novelty');
+});
+
+test('boundary cue belongs to the next section and cannot replace its entry with prior-section dynamics', async () => {
+  const a=createTrackAnalysis([createSection(0,30,'peak','impact',1,1),createSection(30,60,'break','break',.2,.2)]);
+  a.significantMoments=[createCue(30,'impact')];
+  const plan=await generatePerformancePlan(a,['default.json','temporal1.json'],60);
+  const entry=plan.points.find(p=>p.time===30);
+  assert.ok(entry,'next section retains its accepted boundary');
+  assert.equal(entry.reason,'break');assert.equal(entry.cuePlacement.start,30);
+  assert.equal(entry.cuePlacement.role,'scene-entry');
+  assert.ok(plan.cueAlignmentReport.decisions.every(d=>d.reason!=='invalid-window'));
+});
+
+test('exact section-boundary lookup uses the succeeding section when remapping automatic targets', async () => {
+  const {featureFlags}=await import('../src/config/featureFlags.ts');
+  const before=featureFlags.heroEffect;featureFlags.heroEffect=true;
+  try {
+    const a=createTrackAnalysis([createSection(0,10,'verse','rhythm'),createSection(10,30,'drop','impact')]);
+    const plan=await generatePerformancePlan(a,['groove.json','drop.json'],30,{strategy:'hero',
+      presetMetadata:{'groove.json':{heroBeepMode:2},'drop.json':{heroBeepMode:4}},strictPresets:[],strictBars:8,strictMorph:1});
+    assert.equal(plan.points.find(p=>p.time===10).preset,'drop.json');
+  } finally {featureFlags.heroEffect=before;}
 });

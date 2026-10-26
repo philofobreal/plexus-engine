@@ -248,3 +248,15 @@ test('serialize coerces an invalid duration to null and tolerates a malformed pl
   const envelope = JSON.parse(text);
   assert.equal(envelope.duration, null);
 });
+
+test('generated placement provenance survives Copy/Load; malformed optional intent is removed', () => {
+  for (const role of ['scene-entry','attack','release','structure','melody','fx']) {
+    const cuePlacement={role,start:10,end:30};
+    const result=parseDramaturgyPlan(serializeDramaturgyPlan(makePlan([makePoint({cuePlacement})])));
+    assert.ok(result.ok); assert.deepEqual(result.plan.points[0].cuePlacement,cuePlacement);
+  }
+  for (const cuePlacement of [{role:'manual',start:0,end:30},{role:'attack',start:-1,end:30},{role:'attack',start:20,end:10}]) {
+    const result=parseDramaturgyPlan(JSON.stringify(makePlan([makePoint({cuePlacement})])));
+    assert.ok(result.ok); assert.equal(result.plan.points[0].cuePlacement,undefined);
+  }
+});

@@ -53,7 +53,7 @@ test('no musical evidence yields only initial state, while manual and locked pla
     assert.equal(alignAutomationToCues(edited, analysis), edited);
 });
 
-test('the production Visual OS loader publishes cue-aligned times, not just its unverified micro subdivisions', async () => {
+test('the production Visual OS loader rejects FX-only evidence for explicit scene-entry and structural handoff proposals', async () => {
     const { generateVisualOsPerformancePlan } = load('automation/visualOsPlanLoader.ts');
     const analysis = { ...EMPTY_TRACK_ANALYSIS, duration: 64, bpm: 120, gridConfidence: 0.8, bpmConfidence: 0.8,
         sections: [0, 16, 32, 48].map((start, i) => ({ start, end: start + 16, label: ['intro', 'build', 'drop', 'break'][i],
@@ -61,7 +61,9 @@ test('the production Visual OS loader publishes cue-aligned times, not just its 
         cues: Array.from({ length: 16 }, (_, i) => cue(0.15 + i * 4)) };
     const output = await generateVisualOsPerformancePlan(analysis, { stylePackId: 'cosmic-wormhole', duration: 64,
         stylePacksFile: JSON.parse(readFileSync('public/visual-tuning-presets/style-packs.json', 'utf8')) });
-    assert.ok(output.points.length > 3);
+    // T13b intentionally tightens the same FX-only fixture; predecessor retained in Git0471d12.
+    assert.equal(output.points.length, 1);
+    assert.ok(output.cueAlignmentReport.decisions.some(d => d.reason === 'no-role-evidence'));
     assert.ok(output.points.every(p => p.time === 0 || analysis.cues.some(c => c.time === p.time)));
     assert.ok(output.points.every(p => p.cueAnchor && p.meta));
     assert.equal(output.cueAlignmentReport.publishedPoints, output.points.length);
@@ -77,4 +79,17 @@ test('legacy dramaturgy section starts publish only with boundary evidence; unev
     const boundaryCandidates = [20, 40].map(time => ({ time, confidence: 0.9, timingMode: 'novelty', reasons: [] }));
     const evidenced = await generatePerformancePlan({ ...analysis, boundaryCandidates }, ['default.json', 'temporal1.json'], 64);
     assert.deepEqual(Array.from(evidenced.points, p => p.time), [0, 20, 40]);
+});
+
+test('production visual handoffs use accepted structural changes without pretending envelope onsets are drums', async () => {
+    const {generateVisualOsPerformancePlan}=load('automation/visualOsPlanLoader.ts');
+    const analysis={...EMPTY_TRACK_ANALYSIS,duration:80,bpm:120,gridConfidence:.8,bpmConfidence:.8,
+        sections:[{start:0,end:80,label:'verse',energy:.8,density:.7,dominantFeature:'rhythm',avgRms:.5,peakRms:.8}],
+        noveltyPeaks:Array.from({length:19},(_,i)=>({time:4+i*4,value:.9,reasons:['controlled-structural-change']}))};
+    const output=await generateVisualOsPerformancePlan(analysis,{stylePackId:'cosmic-wormhole',duration:80,
+        activityLevel:'active',variantMode:'expressive',stylePacksFile:JSON.parse(readFileSync('public/visual-tuning-presets/style-packs.json','utf8'))});
+    const handoffs=output.points.filter(p=>p.cuePlacement.role==='structure');
+    assert.ok(handoffs.length>=3,'a structurally changing scene keeps its visual variation');
+    assert.ok(handoffs.every(p=>p.cueAnchor.role==='structure'&&p.cueAnchor.kind==='novelty'));
+    assert.ok(output.points.every(p=>p.cuePlacement.role!=='attack'),'no percussion was measured by this fixture');
 });

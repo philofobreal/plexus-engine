@@ -107,6 +107,7 @@ interface RawPoint {
     sceneIndex: number;
     phase: string;
     isBirth: boolean;
+    cuePlacement: NonNullable<PerformanceAutomationPoint['cuePlacement']>;
     time: number;
     preset: string;
     reason: PerformanceAutomationReason;
@@ -158,7 +159,7 @@ export function adaptScenePlanToPerformancePlan(
 
     plan.scenes.forEach((scene, index) => {
         const ref = resolveTargetReference(scene, pack);
-        const reason = narrativeReason(scene.targetStateReference);
+        const reason = narrativeReason(scene.targetStateReference, options.analysis?.sections.find(s => scene.timeSec >= s.start && scene.timeSec < s.end)?.label);
         const narrative = narrativeKeyOf(scene.targetStateReference);
         const sceneCurve = resolveMorphCurve(scene, ref);
         const effectivePackId = scene.substyle ? `${scene.stylePack}#${scene.substyle}` : scene.stylePack;
@@ -218,7 +219,8 @@ export function adaptScenePlanToPerformancePlan(
             const dynamics = computeTransitionDynamicsProfile({ analysis: options.analysis, timeSec: scene.timeSec + seg.offsetSec });
             const env = adaptAutomationEnvelopeToDynamics(seg.envelope, dynamics);
 
-            // Attack waypoint: the segment is born here; morph length = the envelope attack.
+            // Visual envelope onset, not a detected drum attack. Nonbirth handoffs seek structural evidence.
+            // The segment is born here; morph length = the envelope attack.
             const attackFrac = scene.durationSec > 0 ? seg.offsetSec / scene.durationSec : 0;
             const attackLevel = evolutionLevelAt(scene.evolution, attackFrac);
             const attackPhase = evolutionPhaseAt(scene.evolution, attackFrac);
@@ -227,6 +229,7 @@ export function adaptScenePlanToPerformancePlan(
                 sceneIndex: index,
                 phase: attackPhase,
                 isBirth,
+                cuePlacement: { role: isBirth ? 'scene-entry' : 'structure', start: scene.timeSec, end: Math.min(scene.timeSec + scene.durationSec, duration) },
                 time: clampTime(scene.timeSec + seg.offsetSec, duration),
                 preset: segRef.preset,
                 reason,
@@ -257,6 +260,7 @@ export function adaptScenePlanToPerformancePlan(
                     sceneIndex: index,
                     phase: relPhase,
                     isBirth: false,
+                    cuePlacement: { role: 'release', start: scene.timeSec, end: Math.min(scene.timeSec + scene.durationSec, duration) },
                     time: clampTime(scene.timeSec + relOffset, duration),
                     preset: segRef.preset,
                     reason,
@@ -428,9 +432,10 @@ function evolutionPhaseAt(evolution: SceneEvolution | undefined, frac: number): 
     return phase;
 }
 
-function narrativeReason(handle: string): PerformanceAutomationReason {
+function narrativeReason(handle: string, sectionLabel?: PerformanceAutomationReason): PerformanceAutomationReason {
     const key = handle.split(':').pop() ?? '';
-    return NARRATIVE_TO_REASON[key as NarrativeType] ?? 'manual';
+    // A legal opaque pack handle is still automatic; never bypass the cue gate as user-authored.
+    return NARRATIVE_TO_REASON[key as NarrativeType] ?? sectionLabel ?? 'verse';
 }
 
 function resolveMorphCurve(scene: VisualScene, ref: StyleTargetReference): { curve: PerformanceAutomationPoint['morphCurve']; isExplicit: boolean } {
@@ -482,6 +487,7 @@ function finalize(raw: RawPoint[], stylePack: string, duration: number): Perform
             morphDurationSec: morph,
             morphCurve: morph < 0.2 ? 'linear' : point.curve,
             meta: point.meta,
+            cuePlacement: point.cuePlacement,
             ...(point.bendMirror === undefined ? {} : { bendMirror: point.bendMirror }),
             ...(point.spiralDirection === undefined ? {} : { spiralDirection: point.spiralDirection })
         };

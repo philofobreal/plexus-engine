@@ -159,6 +159,14 @@ function sanitizePoint(raw: unknown): PerformanceAutomationPoint | null {
     if (c.locked !== undefined) point.locked = c.locked as boolean;
     if (c.bendMirror !== undefined) point.bendMirror = c.bendMirror as boolean;
     if (c.spiralDirection !== undefined) point.spiralDirection = c.spiralDirection as -1 | 1;
+    const placement = c.cuePlacement as Record<string, unknown> | undefined;
+    if (placement && typeof placement === 'object'
+        && ['scene-entry', 'attack', 'release', 'structure', 'melody', 'fx'].includes(placement.role as string)
+        && isFiniteNumber(placement.start) && isFiniteNumber(placement.end)
+        && (placement.start as number) >= 0 && (placement.end as number) > (placement.start as number)) {
+        point.cuePlacement = { role: placement.role as NonNullable<PerformanceAutomationPoint['cuePlacement']>['role'],
+            start: placement.start as number, end: placement.end as number };
+    }
     // Optional Visual OS provenance (ADR-005). Kept and normalized, never a reason to reject a
     // point: malformed meta is dropped, valid sub-fields survive, legacy points have no meta.
     const meta = sanitizeMeta(c.meta);

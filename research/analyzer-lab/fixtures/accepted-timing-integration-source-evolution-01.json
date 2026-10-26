@@ -53,9 +53,9 @@
     {
       "path": "src/types/index.ts",
       "predecessorSha256": "cb8fc311a35415951019a814f1090806b1db53e78ee4fc9f3b8037944b4dbc32",
-      "replacementSha256": "72cfbfc9c4a5c03ea90fe18839591d35b497a966b0b11d046697a3e654e0cb4e",
-      "reviewedBy": "Single integration owner with independent read-only gameplay/render reviews, T13a",
-      "reviewedReason": "Add optional host-derived structure-v1 context/provenance types. Raw analyzer7/worker DSP, accepted events, grid and original boundaries unchanged; production AudioEngine interprets supported measurements once before callbacks. Original/current measured-source bytes and every superseded review remain retained; prior complete manifest in Git75d75a9e298445725451bc7e050342645afbe4c4. New structural controls and publication regressions accompany the intentional host behavior change; no historical numeric measurement or golden rewritten.",
+      "replacementSha256": "419df5b587a82301a6fa772bb38f68a790febd7324c0fb7d3042c217bcf6a41a",
+      "reviewedBy": "Single integration owner with independent read-only automation/runtime reviews, T13b",
+      "reviewedReason": "Add optional generated cue placement intent and indexed gate decisions. Raw analyzer7, timing DSP, accepted events and grid untouched; actual scene adapter emission branch now supplies role/causal scene span for normal production cue selection. All previous hashes/reasons retained; predecessor manifest/source in Git0471d12443642c9a11eb8645df74d12778f0b459. No historical measurement/golden rewrite.",
       "supersededReplacements": [
         {
           "sha256": "02c041e8cef7a9ce2008023c74f6edc9265f1f7d69690a2af031785f1971893b",
@@ -71,6 +71,11 @@
           "sha256": "6703405c3456d72329c1c8723f50af8b8d64842cd7bb4739176e0a2e6b458ef0",
           "reviewedBy": "Single integration owner with independent read-only analyzer audit",
           "reviewedReason": "T11b additive acoustic activity evidence only. Optional read-only shared FFT observer; original feature arithmetic, accepted event timing/grid and chart inputs unchanged. DC/low-resolution abstention, support/censoring, held/repeated/legato/overlap/silence, real worker normalization, synthetic transfer and exact full-recording legacy parity checked. No historical measurement or source archive rewritten. Prior source commit 201bf5d8a72d37d6fe9798420825add9e60fab57; no new source-copy tree."
+        },
+        {
+          "sha256": "72cfbfc9c4a5c03ea90fe18839591d35b497a966b0b11d046697a3e654e0cb4e",
+          "reviewedBy": "Single integration owner with independent read-only gameplay/render reviews, T13a",
+          "reviewedReason": "Add optional host-derived structure-v1 context/provenance types. Raw analyzer7/worker DSP, accepted events, grid and original boundaries unchanged; production AudioEngine interprets supported measurements once before callbacks. Original/current measured-source bytes and every superseded review remain retained; prior complete manifest in Git75d75a9e298445725451bc7e050342645afbe4c4. New structural controls and publication regressions accompany the intentional host behavior change; no historical numeric measurement or golden rewritten."
         }
       ]
     },

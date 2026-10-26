@@ -266,6 +266,14 @@ export interface PerformanceAutomationMeta {
 /** Canonical song-time origin of one published visual transition, never a playback clock. */
 export interface VisualTransitionAnchor { readonly id: string; readonly time: number }
 
+/** Requested evidence family for a generated visual proposal, not a detected event; time remains a morph START, not a target-arrival deadline. */
+export interface AutomationCuePlacement {
+    role: 'scene-entry' | 'attack' | 'release' | 'structure' | 'melody' | 'fx';
+    /** Half-open originating scene/section window on the existing song clock. */
+    start: number;
+    end: number;
+}
+
 export interface PerformanceAutomationPoint {
     id: string;
     time: number;
@@ -279,8 +287,9 @@ export interface PerformanceAutomationPoint {
     morphDurationSec: number;
     morphCurve: 'linear' | 'easeInOut' | 'exponential';
     locked?: boolean;
-    /** Provenance of automatic cue placement (ADR-005 addendum); user-authored/locked points are not moved.
-     *  Not updated by manual edits and not serialized by Copy/Load. */
+    /** Originating generated purpose/window, retained by Copy/Load; manual/locked points remain user-owned. */
+    cuePlacement?: AutomationCuePlacement;
+    /** Selected evidence; stale after manual editing, intentionally omitted by Copy/Load. */
     cueAnchor?: {
         plannedTime: number;
         sourceTime: number;
@@ -290,7 +299,7 @@ export interface PerformanceAutomationPoint {
         after: number;
         plannedBefore: number;
         plannedAfter: number;
-        /** Optional selection explanation for the experimental role-aware gate. */
+        /** Selection explanation; generated placement roles also apply in ordinary mode. */
         role?: string;
     };
     // Automation-only behaviour flag: mirror the resolved preset's horizontal wormhole turn.
@@ -306,7 +315,14 @@ export interface PerformanceAutomationPlan {
     version: 1;
     source: 'auto' | 'edited';
     points: PerformanceAutomationPoint[];
-    cueAlignmentReport?: { proposedPoints: number; publishedPoints: number; omittedTimes: number[] };
+    cueAlignmentReport?: {
+        proposedPoints: number; publishedPoints: number; omittedTimes: number[];
+        /** Indexed by original proposal position: IDs are not required to be unique. */
+        decisions?: Array<{ proposalIndex: number; pointId: string; plannedTime: number;
+            status: 'initial' | 'anchored' | 'protected' | 'omitted'; placement?: AutomationCuePlacement;
+            selectedTime?: number; role?: string;
+            reason?: 'no-evidence' | 'no-role-evidence' | 'invalid-window' | 'collision' | 'insufficient-space' }>;
+    };
 }
 
 // ── Semantic / Dramaturgy Layer (ADR-003) ──────────────────────────────────

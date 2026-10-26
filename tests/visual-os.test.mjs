@@ -1182,3 +1182,30 @@ test('new Visual OS variant presets are registered in the manifest', () => {
     'vos-verse-primary.json', 'vos-verse-motion.json', 'vos-peak-overdrive.json', 'vos-transition-slice.json', 'vos-outro-dissolve.json'];
   for (const p of required) assert.ok(manifest.presets.includes(p), `manifest missing ${p}`);
 });
+
+test('adapter distinguishes envelope handoffs from musical attacks even when artistic evolution stays in birth', () => {
+  const { resolveStylePack }=load('automation/styleTranslator.ts');
+  const { adaptScenePlanToPerformancePlan }=load('automation/scenePlanAdapter.ts');
+  const pack=resolveStylePack(STYLE_PACKS,'cyberpunk');
+  const scene=makeVariantScene(10,60,'release');
+  scene.evolution={steps:[{phase:'birth',at:0,level:.8}]};
+  const plan=adaptScenePlanToPerformancePlan({version:1,stylePack:'cyberpunk',scenes:[scene]},pack,
+    {duration:80,activityLevel:'active',variantMode:'expressive',maxWaypointsPerScene:10});
+  assert.equal(plan.points[0].cuePlacement.role,'scene-entry');
+  assert.equal(plan.points.filter(p=>p.cuePlacement.role==='scene-entry').length,1);
+  assert.ok(plan.points.some(p=>p.cuePlacement.role==='structure'&&p.meta.evolutionPhase==='birth'));
+  for(const p of plan.points){assert.equal(p.cuePlacement.start,10);assert.equal(p.cuePlacement.end,70);}
+});
+
+test('custom opaque scene targets remain automatic and cannot bypass cue publication as manual', () => {
+  const { adaptScenePlanToPerformancePlan }=load('automation/scenePlanAdapter.ts');
+  const { alignAutomationToCues }=load('automation/alignAutomationToCues.ts');
+  const { EMPTY_TRACK_ANALYSIS }=load('analyzer/normalizeAnalysisResult.ts');
+  const { resolveStylePack }=load('automation/styleTranslator.ts');
+  const resolved=resolveStylePack(STYLE_PACKS,'cyberpunk');
+  const pack={...resolved,id:'custom',targetMap:{...resolved.targetMap,customTarget:{preset:'custom.json'}}};
+  const scene=makeVariantScene(10,20,'customTarget','custom');
+  const raw=adaptScenePlanToPerformancePlan({version:1,stylePack:'custom',scenes:[scene]},pack,{duration:40});
+  assert.ok(raw.points.length>0);assert.ok(raw.points.every(p=>p.reason!=='manual'));
+  assert.equal(alignAutomationToCues(raw,{...EMPTY_TRACK_ANALYSIS,duration:40}).points.length,0);
+});

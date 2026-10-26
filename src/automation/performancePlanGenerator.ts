@@ -339,7 +339,8 @@ function generatePass3Patterns(
                 intensity: computeIntensity(section),
                 reason: 'harmonicShift',
                 morphDurationSec: profile.morphDurationSec,
-                morphCurve: profile.morphCurve
+                morphCurve: profile.morphCurve,
+                cuePlacement: { role: 'structure', start: section.start, end: section.end }
             });
         }
     }
@@ -384,7 +385,8 @@ function generatePass4MicroCues(
             intensity: computeIntensity(section) * (cue.kind === 'impact' ? 1.2 : 1.0),
             reason: cue.kind === 'impact' ? 'drop' : 'harmonicShift',
             morphDurationSec: Math.min(profile.morphDurationSec, 1.5),
-            morphCurve: 'exponential'
+            morphCurve: 'exponential',
+            cuePlacement: { role: cue.kind === 'impact' ? 'attack' : 'fx', start: section.start, end: section.end }
         });
     }
 
@@ -415,13 +417,13 @@ function makeDynamicGap(duration: number, sectionContext: TrackSectionLabel | 'i
 function scoreTensionPeak(segment: TensionTrendSegment): number { return 0.5 + segment.confidence * 0.5; }
 
 function getSectionAt(sections: TrackSection[], time: number): TrackSection | null {
-    return sections.find(s => time >= s.start && time <= s.end) ?? null;
+    return sections.find(s => time >= s.start && time < s.end) ?? null;
 }
 
 function getSignificantCuesInSection(trackAnalysis: TrackAnalysis, section: TrackSection): VisualCueEvent[] {
     const cues = trackAnalysis.significantMoments.length > 0 ? trackAnalysis.significantMoments : trackAnalysis.cues;
     return cues
-        .filter(cue => (cue.kind === 'impact' || cue.kind === 'break' || cue.intensity >= 0.75) && cue.time >= section.start && cue.time <= section.end)
+        .filter(cue => (cue.kind === 'impact' || cue.kind === 'break' || cue.intensity >= 0.75) && cue.time >= section.start && cue.time < section.end)
         .sort((a, b) => a.time - b.time);
 }
 
@@ -441,7 +443,8 @@ function createPoint(section: TrackSection, sectionIndex: number, time: number, 
         intensity: computeIntensity(section),
         reason: getAutomationReason(section),
         morphDurationSec: profile.morphDurationSec,
-        morphCurve: profile.morphCurve
+        morphCurve: profile.morphCurve,
+        cuePlacement: { role: time === section.start ? 'scene-entry' : 'structure', start: section.start, end: section.end } as NonNullable<PerformanceAutomationPoint['cuePlacement']>
     };
     (point as any)._score = score;
     return point;
@@ -453,7 +456,9 @@ function createCuePoint(section: TrackSection, sectionIndex: number, cue: Visual
         ...point,
         id: `performance-${sectionIndex}-${normalizeIdPart(cue.kind)}-cue-${cueIndex}-${formatTimeForId(point.time)}`,
         confidence: clampAnalysisConfidence(Math.max(point.confidence, cue.confidence), trackAnalysis),
-        reason: cue.kind === 'break' ? 'break' : point.reason
+        reason: cue.kind === 'break' ? 'break' : point.reason,
+        cuePlacement: { role: cue.kind === 'impact' ? 'attack' : cue.kind === 'break' ? 'release'
+            : cue.kind === 'melody' ? 'melody' : cue.kind === 'fx' ? 'fx' : 'structure', start: section.start, end: section.end }
     };
 }
 
