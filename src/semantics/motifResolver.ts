@@ -8,6 +8,7 @@ import type {
 } from '../types';
 import {
     cloneDefaultVisualTuning,
+    defaultVisualTuning,
     visualTuningControls,
     visualTuningKeys,
     type VisualTuningKey
@@ -104,9 +105,10 @@ const CONTROL_BOUNDS: Map<VisualTuningKey, { min: number; max: number }> = new M
 export function resolveSemanticState(
     choreography: ChoreographyFrame | null,
     style: VisualMode,
-    presets: Record<string, Partial<VisualTuningConfig>>
+    presets: Record<string, Partial<VisualTuningConfig>>,
+    output?: VisualTuningConfig
 ): VisualTuningConfig {
-    const out = resolveBaseTuning(style, presets);
+    const out = resolveBaseTuning(style, presets, output);
 
     // Empty / incomplete choreography is a valid steady state: return the clamped base.
     const actions = choreography?.actions ?? {};
@@ -178,8 +180,9 @@ function applyParamDeltas(target: VisualTuningConfig, deltas: ParamDelta[] | und
 // A complete, numeric base: start from engine defaults and overlay a provided preset for
 // this style (or a generic default). This keeps the resolver safe even if `presets` is
 // empty or a supplied preset is missing keys.
-function resolveBaseTuning(style: VisualMode, presets: Record<string, Partial<VisualTuningConfig>>): VisualTuningConfig {
-    const base = cloneDefaultVisualTuning();
+function resolveBaseTuning(style: VisualMode, presets: Record<string, Partial<VisualTuningConfig>>, output?: VisualTuningConfig): VisualTuningConfig {
+    const base = output ?? cloneDefaultVisualTuning();
+    if (output) Object.assign(base, defaultVisualTuning);
     const provided = presets?.[style] ?? presets?.default ?? presets?.['default.json'];
     if (provided && typeof provided === 'object') {
         for (const key of visualTuningKeys) {

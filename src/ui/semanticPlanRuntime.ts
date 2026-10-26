@@ -34,3 +34,9 @@ export function snapshotSemanticBaseTuning(hasTimeBasedPlan: boolean): void {
     if (!isActive) return;
     State.semanticBaseTuning = { ...State.targetTuning };
 }
+
+/** Preset merging must inherit raw controls, never the previous semantic contribution. */
+export function restoreSemanticBaseTuning(hasTimeBasedPlan: boolean): void {
+    if (State.semanticBaseTuning && isSemanticTuningActive(featureFlags, hasTimeBasedPlan, State.visualChoreography !== null))
+        Object.assign(State.targetTuning, State.semanticBaseTuning);
+}

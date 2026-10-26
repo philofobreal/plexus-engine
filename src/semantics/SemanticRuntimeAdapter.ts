@@ -17,6 +17,8 @@ export class SemanticRuntimeAdapter {
     private readonly baseProvider?: () => VisualTuningConfig | null;
     private fallbackBase: VisualTuningConfig | null = null;
     private readonly ownedKeys = new Set<VisualTuningKey>();
+    private readonly appliedValues = new Map<VisualTuningKey, number>();
+    private lastTarget: VisualTuningConfig | null = null;
 
     constructor(resolver: SemanticResolver, baseProvider?: () => VisualTuningConfig | null) {
         this.resolver = resolver;
@@ -33,6 +35,16 @@ export class SemanticRuntimeAdapter {
 
     hasPlan(): boolean {
         return this.resolver.hasPlan();
+    }
+
+    getBaseTuning(): Readonly<VisualTuningConfig> | null {
+        return this.baseProvider?.() ?? this.fallbackBase;
+    }
+
+    restoreBaseTuning(targetTuning: VisualTuningConfig): void {
+        const base = this.getBaseTuning();
+        if (targetTuning !== this.lastTarget || !base) return;
+        for (const key of this.ownedKeys) if (targetTuning[key] === this.appliedValues.get(key)) targetTuning[key] = base[key];
     }
 
     update(timeSec: number, targetTuning: VisualTuningConfig): ChoreographyFrame | null {
@@ -56,9 +68,11 @@ export class SemanticRuntimeAdapter {
             const delta = typeof candidate === 'number' && Number.isFinite(candidate) ? candidate : 0;
             const rawValue = baseValue + delta;
             targetTuning[key] = Math.max(bounds.min, Math.min(bounds.max, rawValue));
+            this.appliedValues.set(key, targetTuning[key]);
         }
 
-        if (!this.resolver.hasPlan()) this.ownedKeys.clear();
+        this.lastTarget = targetTuning;
+        if (!this.resolver.hasPlan()) { this.ownedKeys.clear(); this.appliedValues.clear(); }
         return result?.current ?? null;
     }
 }

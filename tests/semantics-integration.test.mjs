@@ -278,3 +278,22 @@ test('SemanticRendererBridge publishes a stable transition id when the active sc
   assert.match(firstId, /^score:/);
   assert.match(secondId, /^score:/);
 });
+
+test('ADR004 base restore releases only values still owned on the original target', () => {
+  const load = createLoader();
+  const { SemanticResolver } = load('semantics/SemanticResolver.ts');
+  const { SemanticRuntimeAdapter } = load('semantics/SemanticRuntimeAdapter.ts');
+  const { defaultVisualTuning } = load('config/visualTuning.ts');
+  const base = { ...defaultVisualTuning, audioSensitivity: 1 };
+  const resolver = new SemanticResolver({ map: () => ({ audioSensitivity: 1 }) });
+  resolver.setPlan({ version: '1.0', trackHash: 'owned', frames: [frame()] });
+  const adapter = new SemanticRuntimeAdapter(resolver, () => base), target = { ...base };
+  adapter.update(0, target); assert.equal(target.audioSensitivity, 2);
+  base.audioSensitivity = 1.2; adapter.restoreBaseTuning(target); assert.equal(target.audioSensitivity, 1.2);
+  adapter.update(0, target); assert.equal(target.audioSensitivity, 2.2);
+  target.audioSensitivity = 3; adapter.restoreBaseTuning(target); assert.equal(target.audioSensitivity, 3);
+  const replacement = { ...base, audioSensitivity: 3.5 };
+  adapter.restoreBaseTuning(replacement); assert.equal(replacement.audioSensitivity, 3.5);
+  adapter.update(0, target); resolver.setPlan(null); adapter.restoreBaseTuning(target);
+  assert.equal(target.audioSensitivity, 1.2);
+});

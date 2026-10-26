@@ -11,6 +11,7 @@ export { planTransitions } from './TransitionPlanner';
 export { applyInvert, applyMirror, applyEcho, applyOperators, sampleMotifGrammar, ACTION_ANTONYMS } from './PatternGrammar';
 export type { ActionMap, MotifGrammarSample } from './PatternGrammar';
 export { resolveSemanticState } from './motifResolver';
+export { MotifRuntimeAdapter } from './MotifRuntimeAdapter';
 export { SemanticResolver } from './SemanticResolver';
 export type { SemanticResolveResult } from './SemanticResolver';
 export { MAX_VISUAL_SCORE_FRAMES, VISUAL_SCORE_VERSION, normalizeVisualScorePlan } from './visualScoreValidation';
