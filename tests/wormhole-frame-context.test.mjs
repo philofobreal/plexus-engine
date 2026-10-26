@@ -225,3 +225,30 @@ test('mixed XR plans never acquire an automatic rescale of protected authored du
  c.preparePlan(publication.performancePlan,new Map([['fixed.json',payload]]));
  assert.equal(c.plan,publication.performancePlan);assert.equal(c.plan.points[0].morphDurationSec,4);
 });
+
+test('actual XR context samples semantic transitions continuously over finite preset pre-roll exactly once',()=>{
+ const {WormholeFrameContext}=baseLoad('visuals/WormholeFrameContext.ts'),input=seed('raw');
+ input.policy.semanticResolver=true;input.rawTuning.transitionSpeed=0;
+ const points=[{...point(0),preset:'a'},{...point(4),preset:'b',morphDurationSec:2}].map(p=>({...p,cuePlacement:{role:'structure',start:0,end:10}}));
+ const publication=analysis(baseLoad,points),c=new WormholeFrameContext(input);c.prepare(publication);
+ const f=(time,progress)=>({time,motifId:'a',phrasePosition:0,actions:{accelerate:progress},activeOperators:[],motifIntensity:0,motifDensity:0,motifMotion:0,novelty:0,
+  transition:{behavior:'morph',progress,preserve:[],fromMotif:'void-minimal',toMotif:'tunnel-drive'}});
+ c.choreography={version:1,frames:[f(2,0),f(3,.5),f(3.999999,1),{time:4,motifId:'b',actions:{},activeOperators:[]}],
+  score:{version:1,motifs:[],transitions:[{fromMotifId:'a',toMotifId:'b',startTime:2,duration:2,behavior:'morph',curve:'linear',preserve:[]}]}};
+ c.preparePlan(publication.performancePlan,new Map([['a',{visualTuning:{wormholeSpeed:.1,transitionSpeed:0}}],['b',{visualTuning:{wormholeSpeed:2,transitionSpeed:0}}]]));
+ c.step(3,false,0,null,true,true);near(c.state.visualTuning.wormholeSpeed,2.55);
+ const token=c.state.activeVisualTransitionId;c.step(3.2,false,.2,3,false,false);assert.notEqual(c.state.visualTuning.wormholeSpeed,2.55);
+ c.step(3,false,0,3.2,true,true);near(c.state.visualTuning.wormholeSpeed,2.55);assert.equal(c.state.activeVisualTransitionId,token);
+ c.step(3,false,0,3,false,false);near(c.state.visualTuning.wormholeSpeed,2.55);
+ c.step(4,false,1,3,false,false);near(c.state.visualTuning.wormholeSpeed,2);
+});
+
+test('XR partial preset changes cannot bake semantic bloom into a new raw base',()=>{
+ const {WormholeFrameContext}=baseLoad('visuals/WormholeFrameContext.ts'),input=seed('raw');input.policy.semanticResolver=true;
+ const publication=analysis(baseLoad,[{...point(0),preset:'a'},{...point(4),preset:'b'}]),c=new WormholeFrameContext(input);c.prepare(publication);
+ c.choreography={version:1,frames:[{time:0,motifId:'a',actions:{bloom:1},activeOperators:[]},{time:4,motifId:'b',actions:{},activeOperators:[]}],score:{version:1,motifs:[],transitions:[]}};
+ c.preparePlan(publication.performancePlan,new Map([['a',{visualTuning:{wormholeSpeed:1}}],['b',{visualTuning:{wormholeSpeed:2}}]]));
+ c.step(1,false,0,null,false,true);assert.ok(c.state.targetTuning.polygonFlash>input.rawTuning.polygonFlash);
+ c.step(4,false,0,1,true,true);near(c.semanticBase.polygonFlash,input.rawTuning.polygonFlash);near(c.state.visualTuning.polygonFlash,input.rawTuning.polygonFlash);
+ c.step(-.1,false,0,4,true,true);near(c.state.targetTuning.wormholeSpeed,input.rawTuning.wormholeSpeed);
+});

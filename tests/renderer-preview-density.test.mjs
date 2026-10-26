@@ -61,6 +61,9 @@ function startHost({ dpr, width, height, options }) {
         if (id === '../state/store') return { State: { visualMode: 'cosmic-wormhole', isExporting: false } };
         if (id === './P5RenderTargetCompositor') return load('src/visuals/P5RenderTargetCompositor.ts');
         if (id === './PausedPreviewGate') return load('src/visuals/PausedPreviewGate.ts');
+        // T13e adds reusable tuning buffers before setup. Keep the density-only boundary;
+        // original fixture/assertions are retained in Git7ffbd92.
+        if (id === '../config/visualTuning') return { cloneDefaultVisualTuning: () => ({}) };
         return new Proxy({}, { get: () => Empty });
       }
     });

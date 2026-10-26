@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
 
-function createHarness(applyAutomatedSpiral, createWormholeWorker) {
+function createHarness(applyAutomatedSpiral, createWormholeWorker, gain) {
   let p;
   let time = 0;
   let draws = 0;
@@ -54,7 +54,7 @@ function createHarness(applyAutomatedSpiral, createWormholeWorker) {
   startPlexusRenderer('preview', {
     setExportTarget() {}, updateDashboard() { updates++; },
     applyAutomatedSpiral,
-    getTuningForMorph(target) { Object.assign(boost, target, overrides); return boost; }
+    getTuningForMorph(target) { Object.assign(boost, target, overrides); gain?.(boost, target); return boost; }
   }, {
     getCurrentTime: () => time,
     addPositionChangedListener(listener) { position = listener; },
@@ -62,7 +62,7 @@ function createHarness(applyAutomatedSpiral, createWormholeWorker) {
   }, { get: () => identity, forEach: fn => fn(identity) }, undefined, { previewQuality: preference, createWormholeWorker });
   const overrides = {};
   return {
-    State, p, preference, overrides,
+    State, p, preference, overrides, flags: load(resolve('src/config/featureFlags.ts')).featureFlags,
     get draws() { return draws; }, get updates() { return updates; },
     tick(count = 1) { for (let i = 0; i < count; i++) { p.frameCount++; p.draw(); } },
     seek(value) { time = value; position(value); },
@@ -81,6 +81,27 @@ test('unchanged welcome and paused previews do not redraw identities or dashboar
   h.tick(600);
   assert.equal(h.draws, draws);
   assert.equal(h.updates, updates);
+});
+
+test('actual MVP/dashboard renderer follows semantic time once with aliased gains, pause and plan removal',()=>{
+ const h=createHarness(undefined,undefined,(out,target)=>{out.wormholeSpeed=target.wormholeSpeed*2;});
+ h.State.visualMode='cosmic-wormhole';h.State.duration=8;
+ const base={...h.State.targetTuning,wormholeSpeed:.35,transitionSpeed:0};
+ h.State.targetTuning={...base};h.State.semanticBaseTuning={...base};h.State.visualTuning={...base,wormholeSpeed:.7};
+ const f=(time,progress)=>({time,motifId:'a',actions:{accelerate:progress},activeOperators:[],motifIntensity:0,motifDensity:0,motifMotion:0,novelty:0,
+  transition:{behavior:'morph',progress,preserve:[],fromMotif:'void-minimal',toMotif:'tunnel-drive'}});
+ const plan={version:1,frames:[f(2,0),f(3,.5),f(3.999999,1)],score:{version:1,motifs:[],transitions:[{fromMotifId:'a',toMotifId:'b',startTime:2,duration:2,behavior:'morph',curve:'linear',preserve:[]}]}};
+ h.State.visualChoreography=plan;h.seek(2.5);h.tick();
+ assert.ok(Math.abs(h.State.visualTuning.wormholeSpeed-2.2)<1e-10,'base.7 + gained semantic1.5 exactly once');
+ const canonical=h.State.currentChoreography,token=h.State.activeVisualTransitionId;
+ h.seek(2.75);h.tick();assert.ok(Math.abs(h.State.visualTuning.wormholeSpeed-2.95)<1e-10);
+ assert.equal(h.State.currentChoreography,canonical);assert.equal(h.State.activeVisualTransitionId,token);
+ h.tick(120);assert.ok(Math.abs(h.State.visualTuning.wormholeSpeed-2.95)<1e-10);
+ h.seek(2.5);h.tick();assert.ok(Math.abs(h.State.visualTuning.wormholeSpeed-2.2)<1e-10);
+ h.State.visualChoreography=null;h.tick();assert.ok(Math.abs(h.State.visualTuning.wormholeSpeed-.7)<1e-10);
+ assert.equal(h.State.targetTuning.wormholeSpeed,.35);
+ h.State.visualChoreography=plan;h.tick();h.flags.semanticResolver=false;h.tick();
+ assert.ok(Math.abs(h.State.visualTuning.wormholeSpeed-.7)<1e-10);assert.equal(h.State.targetTuning.wormholeSpeed,.35);
 });
 
 test('the host spiral channel runs once after tuning with the canonical live/export time, including seeks', () => {

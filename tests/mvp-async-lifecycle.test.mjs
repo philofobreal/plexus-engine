@@ -17,6 +17,7 @@ const plan = (name) => ({ name, points: [{ id: 'shared-id', preset: `${name}.jso
 
 // Real controller and pure helpers; only audio, IO and offline planner boundaries are controlled.
 function harness({ saveSucceeds = () => true } = {}) {
+    const flags = {};
     const state = { trackAnalysis: { name: 'A' }, duration: 60, availablePresets: [], preloadedPresets: {},
         targetTuning: {}, performancePlan: null, editedPerformancePlan: null };
     const requests = [], hashes = [], saves = [], events = [], fallbackCalls = [], presetRequests = [];
@@ -38,7 +39,7 @@ function harness({ saveSucceeds = () => true } = {}) {
         'src/audio/AudioEngine.ts': {},
         'src/export/WebMExporter.ts': {},
         'src/export/ExportCapabilityDetector.ts': {},
-        'src/config/featureFlags.ts': { featureFlags: {} },
+        'src/config/featureFlags.ts': { featureFlags: flags },
         'src/automation/generatorRouting.ts': { shouldUseVisualOs: () => true, stylePackForVisualMode: () => 'wormhole' },
         'src/automation/visualOsPlanLoader.ts': { generateVisualOsPerformancePlan: (analysis, options) => {
             const result = deferred(); requests.push({ analysis, options, ...result }); return result.promise;
@@ -47,6 +48,7 @@ function harness({ saveSucceeds = () => true } = {}) {
             fallbackCalls.push(args); return plan('fallback');
         } },
         'src/ui/semanticPlanRuntime.ts': {
+            restoreSemanticBaseTuning: () => { if (state.semanticBaseTuning) Object.assign(state.targetTuning, state.semanticBaseTuning); },
             computeAndPublishSemanticPlan: () => events.push('semantic'), snapshotSemanticBaseTuning: () => events.push('snapshot')
         },
         'src/state/visualTransitionState.ts': { setActiveVisualTransitionComponent: () => {} },
@@ -93,7 +95,7 @@ function harness({ saveSucceeds = () => true } = {}) {
         state.trackAnalysis = { name };
         engine.onAnalysisComplete();
     }
-    return { state, controller, engine, callbacks, sessionSaves, sessions, requests, hashes, saves, events, storage, fallbackCalls, presetRequests, start,
+    return { state, flags, controller, engine, callbacks, sessionSaves, sessions, requests, hashes, saves, events, storage, fallbackCalls, presetRequests, start,
         normalizeCheckpoint: load(path.resolve(root, 'src/ui/mvp/sessionCheckpoint.ts')).normalizeCheckpoint };
 }
 
@@ -896,4 +898,36 @@ test('MVP automatic pre-roll preserves logical preset until cue and source plan 
  }
  assert.ok(Math.abs(values[2]-(values[1]+values[3])/2)<1e-10);assert.ok(Math.abs(values[4]-values[2])<1e-10);
  assert.equal(JSON.stringify(h.state.editedPerformancePlan),before);assert.deepEqual(h.state.preloadedPresets,{});
+});
+
+test('MVP finite timeline captures the raw base rather than a prior semantic target', () => {
+    const h = harness(), load = createLoader();
+    const base = load('config/visualTuning.ts').cloneDefaultVisualTuning();
+    h.flags.semanticResolver = true; h.state.visualChoreography = { frames: [] };
+    h.state.semanticBaseTuning = { ...base, wormholeSpeed: .4 };
+    h.state.targetTuning = { ...base, wormholeSpeed: 3.4 };
+    h.controller.configureFiniteAutomation(null);
+    assert.equal(h.controller.finiteSeed.wormholeSpeed, .4);
+    assert.equal(h.state.targetTuning.wormholeSpeed, 3.4, 'seed capture never strips a paused render target');
+    h.flags.semanticResolver = false; h.state.trackAnalysis = {};
+    h.controller.configureFiniteAutomation(null);
+    assert.equal(h.controller.finiteSeed.wormholeSpeed, 3.4, 'inactive semantics retain the manual target');
+});
+
+test('MVP consecutive track loads hand off the raw base before the old semantic plan is replaced', async () => {
+    const h = harness(), load = createLoader();
+    const raw = load('config/visualTuning.ts').cloneDefaultVisualTuning();
+    h.state.visualMode = 'cosmic-wormhole'; h.flags.semanticResolver = true;
+    for (const name of ['B', 'C']) {
+        h.state.visualChoreography = { frames: [] };
+        h.state.semanticBaseTuning = { ...raw, wormholeSpeed: .4 };
+        h.state.targetTuning = { ...raw, wormholeSpeed: 2.4 };
+        await h.start(name);
+        assert.equal(h.state.targetTuning.wormholeSpeed, .4);
+        h.requests.at(-1).resolve(plan(name)); await flush();
+        h.hashes.at(-1).resolve(name); await flush();
+        // A partial first preset omits speed; it inherits the clean value across loads.
+        Object.assign(h.state.targetTuning, { lineWeight: 2 });
+        assert.equal(h.state.targetTuning.wormholeSpeed, .4);
+    }
 });

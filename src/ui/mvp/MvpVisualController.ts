@@ -19,7 +19,8 @@ import {
     type AutomationPointEdit
 } from '../../automation/automationPlanEditing';
 import { resolveAutomationTrigger } from '../../automation/performanceAutomationRuntime';
-import { computeAndPublishSemanticPlan, snapshotSemanticBaseTuning } from '../semanticPlanRuntime';
+import { computeAndPublishSemanticPlan, restoreSemanticBaseTuning, snapshotSemanticBaseTuning } from '../semanticPlanRuntime';
+import { isSemanticTuningActive } from '../semanticAutomationPolicy';
 import { setActiveVisualTransitionComponent } from '../../state/visualTransitionState';
 import { featureFlags } from '../../config/featureFlags';
 import { cloneDefaultVisualTuning, type VisualTuningKey } from '../../config/visualTuning';
@@ -90,7 +91,9 @@ export class MvpVisualController {
     }
     private configureFiniteAutomation(plan = this.getAutomationPlanView()): void {
         if (this.finiteAnalysis !== State.trackAnalysis || !this.finiteSeed) {
-            this.finiteAnalysis = State.trackAnalysis; this.finiteSeed = { ...State.targetTuning };
+            this.finiteAnalysis = State.trackAnalysis;
+            const semanticActive = isSemanticTuningActive(featureFlags, this.hasTimeBasedSemanticPlan(), State.visualChoreography !== null);
+            this.finiteSeed = { ...(semanticActive ? State.semanticBaseTuning ?? State.targetTuning : State.targetTuning) };
         }
         this.finiteAutomation.configure(plan, this.spiralPreset, this.tuningSignature(), this.resolveSpiralTuning, this.finiteSeed);
     }
@@ -100,13 +103,13 @@ export class MvpVisualController {
         if (this.frameAutomationTime !== time) this.configureFiniteAutomation(plan);
         return this.finiteAutomation.apply(time, out, target);
     }
-    applyAutomatedSpiral(songTime: number, tuning: VisualTuningConfig) {
+    applyAutomatedSpiral(songTime: number, tuning: VisualTuningConfig, resolvedBase?: VisualTuningConfig) {
         if (State.visualMode !== 'cosmic-wormhole') return null;
         const plan = this.frameAutomationTime === songTime ? this.frameAutomationPlan : this.getAutomationPlanView();
         const finite = plan?.points.some(p => p.cuePlacement);
         if (finite && this.frameAutomationTime !== songTime) this.configureFiniteAutomation(plan);
         this.spiralAutomation.configure(plan, this.spiralPreset, this.tuningSignature(), this.resolveSpiralTuning, finite ? this.finiteSeed : undefined);
-        this.spiralAutomation.apply(songTime, tuning, this.getBoostedTuning(State.targetTuning));
+        this.spiralAutomation.apply(songTime, tuning, resolvedBase ?? this.getBoostedTuning(State.targetTuning));
         return this.spiralAutomation.transitionAnchor;
     }
     private readonly engine: AudioEngine;
@@ -182,6 +185,7 @@ export class MvpVisualController {
             this.callbacks.onSessionNotice?.('Browser storage is blocked. Could not discard the previous history checkpoint; retry after enabling storage.');
             return;
         }
+        if (State.visualMode === 'cosmic-wormhole') restoreSemanticBaseTuning(this.hasTimeBasedSemanticPlan());
         this.currentFile = file;
         this.currentFileHash = null;
         this.sessionDirty = false;
@@ -430,6 +434,7 @@ export class MvpVisualController {
      * same whichever UI drives it.
      */
     private applyAutomationPreset(payload: unknown, point: PerformanceAutomationPoint): void {
+        restoreSemanticBaseTuning(this.hasTimeBasedSemanticPlan());
         this.configureFiniteAutomation();
         this.appliedAutomationPoint = point;
         applyMvpWormholePreset(State.targetTuning, payload, point);

@@ -285,7 +285,7 @@ test('semantic resolver is wired behind a feature flag and owns targetTuning whe
   assert.match(flags, /semanticChoreography: true/);
 
   // Renderer: gated resolver writes targetTuning; FSM/modulation untouched in that block.
-  assert.match(renderer, /import \{ resolveSemanticState \} from '\.\.\/semantics'/);
+  assert.match(renderer, /import \{ MotifRuntimeAdapter, resolveSemanticState \} from '\.\.\/semantics'/);
   assert.match(renderer, /const hasTimeBasedSemanticPlan = semanticBridge\.hasPlan\(\)/);
   assert.match(renderer, /const isTimeBasedSemanticActive = featureFlags\.semanticChoreography && hasTimeBasedSemanticPlan/);
   assert.match(renderer, /if \(featureFlags\.semanticChoreography\) \{\s*const semanticTransitionId = semanticBridge\.updateSemantic\(ct, State\.targetTuning\);/);

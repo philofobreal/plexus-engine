@@ -3,13 +3,14 @@ import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
 import { featureFlags } from '../config/featureFlags';
-import { applyTuningMorph, tuneAudioValue, tuningMorphDeltaSec, visualTuningKeys, writeModulationBus } from '../config/visualTuning';
+import { applyTuningMorph, cloneDefaultVisualTuning, tuneAudioValue, tuningMorphDeltaSec, visualTuningKeys, writeModulationBus } from '../config/visualTuning';
 import { PausedPreviewGate } from './PausedPreviewGate';
 import { P5RendererBackend } from './P5RendererBackend';
 import type { AudioEngine } from '../audio/AudioEngine';
 import type { AudioFrame, MotifChoreographyFrame as ChoreographyFrame, VisualChoreographyPlan, VisualCueKind, VisualFeatureFrame, VisualMode, VisualTuningConfig } from '../types';
 import { VisualDirectorFSM } from './VisualDirectorFSM';
-import { resolveSemanticState } from '../semantics';
+import { MotifRuntimeAdapter, resolveSemanticState } from '../semantics';
+import { SemanticTuningProjection } from './SemanticTuningProjection';
 import type { StyleRegistry } from './StyleRegistry';
 import type { SemanticRuntimeAdapter } from '../semantics';
 import { ShockwaveLifecycle } from './ShockwaveLifecycle';
@@ -39,6 +40,9 @@ export class SemanticRendererBridge {
     hasPlan(): boolean {
         return this.semanticAdapter?.hasPlan() ?? false;
     }
+
+    getBaseTuning(): Readonly<VisualTuningConfig> | null { return this.semanticAdapter?.getBaseTuning?.() ?? null; }
+    restoreBaseTuning(target: VisualTuningConfig): void { this.semanticAdapter?.restoreBaseTuning?.(target); }
 
     updateSemantic(timeSec: number, targetTuning: VisualTuningConfig): string | null {
         if (!this.semanticAdapter) return null;
@@ -70,7 +74,7 @@ export interface PlexusRendererHost {
      */
     getTuningForMorph?(rawTuning: VisualTuningConfig): VisualTuningConfig;
     /** Host-owned absolute spiral channel, after the normal morph; receives the same live/export clock. */
-    applyAutomatedSpiral?(songTime: number, tuning: VisualTuningConfig): import('../types').VisualTransitionAnchor | null;
+    applyAutomatedSpiral?(songTime: number, tuning: VisualTuningConfig, resolvedBase?: VisualTuningConfig): import('../types').VisualTransitionAnchor | null;
 }
 
 export interface PlexusRendererOptions {
@@ -200,6 +204,11 @@ export function startPlexusRenderer(
         let lastResolvedStyle: VisualMode | null = null;
         let lastResolvedBase: VisualTuningConfig | null = null;
         let lastChoreoPlanRef: VisualChoreographyPlan | null = null;
+        const motifRuntime = new MotifRuntimeAdapter();
+        const semanticProjection = new SemanticTuningProjection();
+        const defaultSemanticBase = cloneDefaultVisualTuning();
+        const semanticTarget = cloneDefaultVisualTuning();
+        const semanticBaseTarget = cloneDefaultVisualTuning();
 
         p.setup = () => {
             const initialSize = getCanvasSize();
@@ -345,6 +354,9 @@ export function startPlexusRenderer(
 
             const hasTimeBasedSemanticPlan = semanticBridge.hasPlan();
             const isTimeBasedSemanticActive = featureFlags.semanticChoreography && hasTimeBasedSemanticPlan;
+            if (State.visualMode === 'cosmic-wormhole') semanticBridge.restoreBaseTuning(State.targetTuning);
+            if (isTimeBasedSemanticActive || !featureFlags.semanticResolver || !State.visualChoreography || State.visualMode !== 'cosmic-wormhole')
+                motifRuntime.clear(State.targetTuning, State.semanticBaseTuning ?? defaultSemanticBase);
             if (featureFlags.semanticChoreography) {
                 const semanticTransitionId = semanticBridge.updateSemantic(ct, State.targetTuning);
                 setActiveVisualTransitionComponent(
@@ -359,44 +371,65 @@ export function startPlexusRenderer(
             // owns targetTuning (the slow param channel). The VisualDirectorFSM and the
             // modulation bus below are untouched — they remain the fast audio-reactive channel.
             if (!isTimeBasedSemanticActive && featureFlags.semanticResolver && State.visualChoreography) {
-                // A recompute / dramaturgy load swaps the plan object: the old cursor and memo now
-                // index a stale frames array (wrong slice, or out of bounds). Reset everything.
-                if (State.visualChoreography !== lastChoreoPlanRef) {
-                    lastChoreoPlanRef = State.visualChoreography;
-                    choreoCursor = 0;
-                    lastChoreoTime = -1;
-                    lastResolvedChoreography = null;
-                    lastResolvedStyle = null;
-                    lastResolvedBase = null;
-                }
-
-                const frames = State.visualChoreography.frames;
-                if (ct < lastChoreoTime) choreoCursor = 0; // seek / loop rewind
-                lastChoreoTime = ct;
-                while (choreoCursor + 1 < frames.length && frames[choreoCursor + 1].time <= ct) choreoCursor++;
-                const activeFrame = frames.length > 0 && frames[choreoCursor].time <= ct ? frames[choreoCursor] : null;
-                State.currentChoreography = activeFrame;
-
-                const base = State.semanticBaseTuning;
-                // Only re-resolve (and re-allocate a tuning config) when something actually changed.
-                if (activeFrame !== lastResolvedChoreography || State.visualMode !== lastResolvedStyle || base !== lastResolvedBase) {
-                    if (activeFrame !== lastResolvedChoreography) {
-                        setActiveVisualTransitionComponent('motif', motifTransitionId(activeFrame));
-                    }
+                if (State.visualMode === 'cosmic-wormhole') {
+                    const activeFrame = motifRuntime.update(State.visualChoreography, ct, State.semanticBaseTuning ?? defaultSemanticBase, State.targetTuning);
+                    State.currentChoreography = activeFrame;
+                    if (activeFrame !== lastResolvedChoreography) setActiveVisualTransitionComponent('motif', motifTransitionId(activeFrame));
                     lastResolvedChoreography = activeFrame;
-                    lastResolvedStyle = State.visualMode;
-                    lastResolvedBase = base;
-                    const presets = base ? { [State.visualMode]: base } : {};
-                    Object.assign(State.targetTuning, resolveSemanticState(activeFrame, State.visualMode, presets));
+                    lastResolvedStyle = State.visualMode; lastResolvedBase = State.semanticBaseTuning;
+                } else {
+                    // A recompute / dramaturgy load swaps the plan object: the old cursor and memo now
+                    // index a stale frames array (wrong slice, or out of bounds). Reset everything.
+                    if (State.visualChoreography !== lastChoreoPlanRef) {
+                        lastChoreoPlanRef = State.visualChoreography;
+                        choreoCursor = 0;
+                        lastChoreoTime = -1;
+                        lastResolvedChoreography = null;
+                        lastResolvedStyle = null;
+                        lastResolvedBase = null;
+                    }
+
+                    const frames = State.visualChoreography.frames;
+                    if (ct < lastChoreoTime) choreoCursor = 0; // seek / loop rewind
+                    lastChoreoTime = ct;
+                    while (choreoCursor + 1 < frames.length && frames[choreoCursor + 1].time <= ct) choreoCursor++;
+                    const activeFrame = frames.length > 0 && frames[choreoCursor].time <= ct ? frames[choreoCursor] : null;
+                    State.currentChoreography = activeFrame;
+
+                    const base = State.semanticBaseTuning;
+                    // Only re-resolve (and re-allocate a tuning config) when something actually changed.
+                    if (activeFrame !== lastResolvedChoreography || State.visualMode !== lastResolvedStyle || base !== lastResolvedBase) {
+                        if (activeFrame !== lastResolvedChoreography) {
+                            setActiveVisualTransitionComponent('motif', motifTransitionId(activeFrame));
+                        }
+                        lastResolvedChoreography = activeFrame;
+                        lastResolvedStyle = State.visualMode;
+                        lastResolvedBase = base;
+                        const presets = base ? { [State.visualMode]: base } : {};
+                        Object.assign(State.targetTuning, resolveSemanticState(activeFrame, State.visualMode, presets));
+                    }
                 }
             } else {
                 setActiveVisualTransitionComponent('motif', null);
+                State.currentChoreography = null;
             }
 
-            const resolvedMorphTarget = ui.getTuningForMorph ? ui.getTuningForMorph(State.targetTuning) : State.targetTuning;
+            const projectSemantic = State.visualMode === 'cosmic-wormhole' && (isTimeBasedSemanticActive
+                || featureFlags.semanticResolver && !!State.visualChoreography?.score);
+            let resolvedMorphTarget = ui.getTuningForMorph ? ui.getTuningForMorph(State.targetTuning) : State.targetTuning;
+            if (projectSemantic) {
+                // MVP returns one reused gain buffer: retain semantic values before resolving base.
+                Object.assign(semanticTarget, resolvedMorphTarget);
+                const rawBase = isTimeBasedSemanticActive ? semanticBridge.getBaseTuning() ?? State.semanticBaseTuning ?? defaultSemanticBase
+                    : State.semanticBaseTuning ?? defaultSemanticBase;
+                Object.assign(semanticBaseTarget, ui.getTuningForMorph ? ui.getTuningForMorph(rawBase as VisualTuningConfig) : rawBase);
+                resolvedMorphTarget = semanticBaseTarget;
+            }
+            semanticProjection.restore(State.visualTuning);
             applyTuningMorph(State.visualTuning, resolvedMorphTarget, resolvedMorphTarget.transitionSpeed, tuningDeltaSec);
             ui.applyAutomatedTuning?.(ct, State.visualTuning, resolvedMorphTarget);
-            State.spiralTransitionAnchor = ui.applyAutomatedSpiral?.(ct, State.visualTuning) ?? null;
+            State.spiralTransitionAnchor = ui.applyAutomatedSpiral?.(ct, State.visualTuning, resolvedMorphTarget) ?? null;
+            if (projectSemantic) semanticProjection.apply(State.visualTuning, semanticBaseTarget, semanticTarget);
 
             if ((State.isPlaying || State.isExporting) && State.frames.length > 0) {
                 let frameIdx = Math.floor(ct * State.sampleRate / State.hopSize);

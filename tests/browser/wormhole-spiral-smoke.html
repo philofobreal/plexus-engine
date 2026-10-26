@@ -12,6 +12,7 @@ button { padding: 8px 16px; margin-bottom: 16px; } figcaption { padding: 8px; }
 <button id="four">At 4 s</button><button id="six">At 6 s</button>
 <button id="finite">Finite deadline</button><pre id="finite-result"></pre>
 <button id="arrival">Arrive at cue</button><pre id="arrival-result"></pre>
+<button id="semantic">Continuous semantic timing</button><pre id="semantic-result"></pre>
 <p>Shared dashboard/MVP timeline: automatic ramp2–4s, cue unchanged at4s.</p>
 <canvas id="arrival-timeline" style="width:1070px;height:120px"></canvas>
 <main><figure id="left"><figcaption>Left: loading</figcaption></figure><figure id="right"><figcaption>Right: loading</figcaption></figure></main>
@@ -87,6 +88,35 @@ document.querySelector('#arrival').onclick=async()=>{
   document.querySelector('#arrival-result').textContent=`${ok?'PASS':'FAIL'}: cue arrival; endpoint=${residual}; midpoint=${midpointError}; logical=${logical}; coloured pixels=${pixels}`;
   document.querySelector('#arrival-result').dataset.result=ok?'pass':'fail';
  }catch(e){document.querySelector('#arrival-result').textContent='ERROR: '+e.message;}
+};
+document.querySelector('#semantic').onclick=async()=>{
+ try{
+  let error=0,pauseError=0,pixels=0,logical=true;
+  for(const {label,source}of sources){
+   await source.prepare({frames:[],events:[],sampleRate:44100,hopSize:1024,bpm:128,duration:20,
+    trackAnalysis:createEmptyTrackAnalysis(),performancePlan:null});
+   // Explicit isolated test publication: no producer, audio clock or persistent setting is changed.
+   const context=source.context;context.policy.gains='raw';
+   context.semanticBase.wormholeSpeed=.4;context.semanticBase.transitionSpeed=0;
+   Object.assign(context.state.targetTuning,context.semanticBase);
+   const f=(time,progress)=>({time,motifId:'a',phrasePosition:0,actions:{accelerate:progress},activeOperators:[],
+    motifIntensity:0,motifDensity:0,motifMotion:0,novelty:0,
+    transition:{behavior:'morph',progress,preserve:[],fromMotif:'void-minimal',toMotif:'tunnel-drive'}});
+   context.choreography={version:1,frames:[f(2,0),f(3,.5),f(3.999999,1)],score:{version:1,motifs:[],
+    transitions:[{fromMotifId:'a',toMotifId:'b',startTime:2,duration:2,behavior:'morph',curve:'linear',preserve:[]}]}};
+   source.render(2.25,true,true);const first=context.state.activeVisualTransitionId;
+   source.render(2.5,true,true);const actual=context.state.visualTuning.wormholeSpeed;
+   error=Math.max(error,Math.abs(actual-1.15));logical&&=first===context.state.activeVisualTransitionId;
+   for(let i=0;i<20;i++)source.render(2.5,false,true);
+   pauseError=Math.max(pauseError,Math.abs(actual-context.state.visualTuning.wormholeSpeed));
+   const data=source.canvas.getContext('2d').getImageData(0,0,520,360).data;
+   for(let i=0;i<data.length;i+=4)if(Math.max(data[i],data[i+1],data[i+2])>35&&Math.max(data[i],data[i+1],data[i+2])-Math.min(data[i],data[i+1],data[i+2])>10)pixels++;
+   document.querySelector(`#${label} figcaption`).textContent=`${label}: semantic speed ${actual.toFixed(3)} at 2.5s; stable logical token`;
+  }
+  const ok=error<1e-9&&pauseError<1e-9&&logical&&pixels>100;
+  document.querySelector('#semantic-result').textContent=`${ok?'PASS':'FAIL'}: continuous semantic timing; sample error=${error}; pause drift=${pauseError}; logical=${logical}; coloured pixels=${pixels}`;
+  document.querySelector('#semantic-result').dataset.result=ok?'pass':'fail';
+ }catch(e){document.querySelector('#semantic-result').textContent='ERROR: '+e.message;}
 };
 window.addEventListener('pagehide', () => sources.forEach(({ source }) => source.dispose()), { once: true });
 draw(4);

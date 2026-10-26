@@ -668,7 +668,7 @@ export class MvpUI {
     applyAutomatedTuning(time: number, out: VisualTuningConfig, target: VisualTuningConfig): boolean {
         return this.controller.applyAutomatedTuning(time, out, target);
     }
-    applyAutomatedSpiral(songTime: number, tuning: VisualTuningConfig) {
-        return this.controller.applyAutomatedSpiral(songTime, tuning);
+    applyAutomatedSpiral(songTime: number, tuning: VisualTuningConfig, resolvedBase?: VisualTuningConfig) {
+        return this.controller.applyAutomatedSpiral(songTime, tuning, resolvedBase);
     }
 }

@@ -36,6 +36,7 @@ import { TuningController } from './controllers/TuningController';
 import { ExportController } from './controllers/ExportController';
 import { isSemanticTuningActive } from './semanticAutomationPolicy';
 import { applyAutomationMorphAuthority, automationMorphWindow, findActiveAutomationPoint } from '../automation/performanceAutomationRuntime';
+import { restoreSemanticBaseTuning } from './semanticPlanRuntime';
 import { shouldApplyVisualModePlanGeneration } from './visualModePlanRegeneration';
 import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
 import { requestVisualModeChange } from '../state/visualModeTransition';
@@ -77,7 +78,9 @@ export class DashboardUI {
     }
     private configureFiniteAutomation(plan = this.getAutomationPlanView()): void {
         if (this.finiteAnalysis !== State.trackAnalysis || !this.finiteSeed) {
-            this.finiteAnalysis = State.trackAnalysis; this.finiteSeed = { ...State.targetTuning };
+            this.finiteAnalysis = State.trackAnalysis;
+            const semanticActive = isSemanticTuningActive(featureFlags, this.semanticResolver.hasPlan(), State.visualChoreography !== null);
+            this.finiteSeed = { ...(semanticActive ? State.semanticBaseTuning ?? State.targetTuning : State.targetTuning) };
         }
         this.finiteAutomation.configure(plan, this.spiralPreset, 0, undefined, this.finiteSeed, false);
     }
@@ -88,13 +91,13 @@ export class DashboardUI {
         if (this.frameAutomationTime !== time) this.configureFiniteAutomation(plan);
         return this.finiteAutomation.apply(time, out, target);
     }
-    applyAutomatedSpiral(songTime: number, tuning: VisualTuningConfig) {
+    applyAutomatedSpiral(songTime: number, tuning: VisualTuningConfig, resolvedBase?: VisualTuningConfig) {
         if (State.visualMode !== 'cosmic-wormhole') return null;
         const plan = this.frameAutomationTime === songTime ? this.frameAutomationPlan : this.getAutomationPlanView();
         const finite = plan?.points.some(p => p.cuePlacement);
         if (finite && this.frameAutomationTime !== songTime) this.configureFiniteAutomation(plan);
         this.spiralAutomation.configure(plan, this.spiralPreset, 0, undefined, finite ? this.finiteSeed : undefined);
-        this.spiralAutomation.apply(songTime, tuning, State.targetTuning);
+        this.spiralAutomation.apply(songTime, tuning, resolvedBase ?? State.targetTuning);
         return this.spiralAutomation.transitionAnchor;
     }
     private presetCache = new Map<string, unknown>();
@@ -417,6 +420,7 @@ export class DashboardUI {
     // ─── File handling ────────────────────────────────────────────────────────
 
     private async handleFileSelected(file: File): Promise<void> {
+        if (State.visualMode === 'cosmic-wormhole') restoreSemanticBaseTuning(this.semanticResolver.hasPlan());
         this.engine.stop(true);
         State.automationMorphScale = 1;
         this.invalidateAutomationPlanView();
@@ -2038,6 +2042,7 @@ export class DashboardUI {
     }
 
     private applyPerformancePreset(payload: unknown, options: VisualPresetLoadOptions = {}): void {
+        if (State.visualMode === 'cosmic-wormhole') restoreSemanticBaseTuning(this.semanticResolver.hasPlan());
         if (options.automationPoint) this.configureFiniteAutomation();
         this.appliedAutomationPoint = options.automationPoint ?? null;
         const previousWormholeSpeed = State.targetTuning.wormholeSpeed;
