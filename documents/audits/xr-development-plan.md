@@ -211,3 +211,17 @@ then the T12 local-attention continuation (a break label must not universally di
 activity). Additional HUD/visual features follow these foundations. No wholesale T11 research
 reopening or unsupported detector promotion; retained studies/goldens remain evidence. Every
 subtask ends with cumulative validation, docs/Graphify, commit/push, guarded deploy and manual pause.
+
+
+### Continuation clarification - T13b (2026-10-26)
+
+After accepted T13a, ordinary production cue placement now uses explicit originating purposes
+and causal scene windows. A visual envelope attack is not a percussion detector: inner palette/
+behaviour handoffs request accepted structural changes; genuine impact factories request attacks,
+while unsupported decay requests may be omitted. The first overly strict envelope->attack mapping
+was rejected by the three-recording check, not promoted merely because unit tests passed.
+
+Next T13c owns point-time versus target-arrival semantics, exponential interpolation, safety-floor
+re-expansion and semantic anticipation. Existing cue consistency/coverage measurements do not
+satisfy the annotated p95 musical-arrival promotion gate. Then continue T12 local musical attention
+and its fixed-calm-policy correction. No manual timecodes are required as a prerequisite.

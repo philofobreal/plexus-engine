@@ -1514,7 +1514,7 @@ Textures still redraw only on displayed-state changes, and no gameplay/DSP work 
 T12a is the visible section-character portion of T12. General tonal/vocal/dominance source
 selection and fusion require qualified producers and remain deferred, not inferred from section
 names. Full per-event rejection diagnostics are a later T12 delivery. Physical Quest comfort
-and musical/gameplay acceptance remain manual. [Current evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13a-measured-structure-2026-10-26).
+and musical/gameplay acceptance remain manual. [Current evidence](../audits/xr-development-tracker.md#historical-checkpoint---t13a-measured-structure-2026-10-26).
 
 ## Addendum AX — T12a1 hand recovery and cockpit default Off (2026-10-25)
 
@@ -1610,4 +1610,43 @@ one corrected section list. Existing explicit saved MVP journeys remain user-own
 older plans. Raw-v7 cue/pattern labels/signatures are retained with their original provenance;
 recurring pattern occurrences are not relabeled from one occurrence. Cue placement roles, actual
 boundary relocation, onset-source recognition, local attention switching and visual arrival/morph
-contracts remain subsequent tasks. [Current evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13a-measured-structure-2026-10-26).
+contracts remain subsequent tasks. [Current evidence](../audits/xr-development-tracker.md#historical-checkpoint---t13a-measured-structure-2026-10-26).
+
+
+## Addendum BA - T13b cue purposes and causal scene placement (2026-10-26)
+
+T13a was accepted for continuation. T13b corrects ordinary production placement without opting
+into experimental attack timing. Automation owns the pure gate; the scene adapter and legacy
+factories explicitly emit the requested evidence family and half-open originating scene/section
+window in optional cuePlacement. This is a visual proposal, not a detected musical event.
+The shared accepted cues, novelty and boundary candidates remain the only anchor sources.
+No new detector, synthetic cue, BeatEvent, clock, worker field, preset switch or frame DSP.
+
+A real first scene requests scene-entry: same section role, then accepted structural evidence,
+never before its originating scene. Internal visual envelope starts request structure because
+micro-choreography schedules visual behaviour changes and does not detect drums. Actual impact
+factories request attack; optional visual decay requests release and can be omitted when release
+evidence is unavailable. EvolutionPhase, variantRole and heuristic point confidence do not prove
+an acoustic event. Explicit requests never fall back to unrelated evidence. Scene bounds intersect
+original neighbour midpoints and the existing +/-4-second search; scene ends are exclusive.
+Untyped legacy normal plans keep their old generic ranking. Old explicit experimental inference
+remains compatibility-only; every freshly generated production plan carries its explicit purpose.
+
+Manual/locked/edited points remain user-owned. Only an explicit opening scene gets the initial
+state exception; a late first surviving scene cannot be moved to zero. A following scene entry
+wins a close collision with a previous scene's small evolution point. Indexed gate decisions
+retain each original proposal, requested purpose/window, selection or omission and collision reason;
+duplicate point IDs do not falsify omittedTimes. Role selection retains the selected source's own
+kind/confidence at shared timestamps. Valid cuePlacement survives existing Copy/Load; selected
+cueAnchor and the derived report are not transferred as fresh evidence. XR caches the count in
+the existing Diagnostics drawer and serializes the full current ledger only on explicit Copy;
+load/regeneration/toggle/dispose clear it with the chart report.
+
+All hosts share this gate and its corrected half-open legacy section/cue ownership. Arbitrary
+valid opaque style targets remain automatic instead of acquiring reason:manual and bypassing
+placement. Wall Off, cockpit default Off and existing Offscreen rendering remain unchanged.
+
+This is cue-role and causal-placement correctness, not the T13 target-arrival promotion gate.
+Point.time still starts ownership/morphing; exponential smoothing and geometry safety floors can
+extend visual arrival. T13c must address those runtime contracts separately. No human precision,
+new instrument recognition or p95 arrival improvement is claimed. [Evidence and next step](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13b-cue-purposes-2026-10-26).

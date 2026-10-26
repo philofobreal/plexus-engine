@@ -7,7 +7,7 @@ The analyzer remains exactly T11h; no research classifier is promoted. T12a adds
 section-led chart profile using the existing accepted BeatEvents and published sections/plan.
 Tonal/vocal onset recognition, source dominance, background-present qualification and human
 accuracy validation remain deferred. They do not block T12a and must not be claimed as delivered.
-See [current continuation and validation](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13a-measured-structure-2026-10-26).
+See [current continuation and validation](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13b-cue-purposes-2026-10-26).
 T12b now accounts for every accepted BeatEvent through chart selection/rejection, including final
 note IDs and motor decisions; this is explainability of the existing source, not improved recognition.
 T13a adds a shared host-publication structural interpretation from existing bar/RMS/rhythmic evidence.
@@ -1158,3 +1158,10 @@ handoff compare all54 built-file hashes with the accepted T11h artifact; unchang
 artifacts permit HTTP-only verification without repeating the accepted UI smoke. Store actual
 source/Pages/input/artifact receipts and manual pause in `logs/t11i/handoff.json` and the
 workspace status file. No master merge or new PR is included in this task.
+
+
+T13b consumes accepted cue/novelty/boundary families with explicit generated purposes and causal
+scene windows in ordinary mode. Visual envelope starts request structural evolution, not guessed
+percussion. True impact requests remain strict; no music-event producer/confidence is added.
+Cue-consistency evidence does not establish audible target-arrival accuracy; that runtime contract
+is the next T13c slice.

@@ -1,8 +1,8 @@
 # Plexus XR development tracker
 
-Started: 2026-10-23; current checkpoint: 2026-10-25 (Europe/Budapest). Integration owner: the agent in this chat.
+Started: 2026-10-23; current checkpoint: 2026-10-26 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T12b accepted for continuation. The user requests automatic measured structural correction before further cue/arrival and local-attention work; T13a checkpoint below. T11 unsupported source recognition remains deferred.** Existing MVP/XR Offscreen rendering stays intact. [T11 capability limits](../features/music-events.md). [Previous merged review](xr-review-checkpoint.md).
+**T13a accepted for continuation. T13b corrects ordinary cue purposes and causal scene placement; checkpoint below. T13c target-arrival semantics and T12 local attention are next. T11 unsupported source recognition remains deferred.** Existing MVP/XR Offscreen rendering stays intact. [T11 capability limits](../features/music-events.md). [Previous merged review](xr-review-checkpoint.md).
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -59,7 +59,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T10 | Analyzer timing cleanup | T00-T01 | Rejected experiments removed at user request; established XR path and equivalent Band search retained. Accuracy beyond available evidence remains unproven. [Record](xr-timing-cleanup.md) |
 | T11 | Timed evidence and qualification | Stable T10 clock/evidence boundary | Closed for this phase by explicit user decision after T11i; limited signal/provenance capabilities only. Research retained, no classifier promoted. General tonal/vocal recognition and dominance deferred; further research is not a T12a prerequisite. [Scope](../features/music-events.md) |
 | T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09; supported T11 capabilities only | T12a opt-in Musical: section-led motifs/density/layout from accepted BeatEvents, mandatory Guarded movement, Classic fallback; larger shared menu, localStorage/Copy. T12a1 hand recovery accepted; T12b rejection accounting added. General source fusion remains deferred, physical acceptance manual. Current checkpoint below |
-| T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a measured structure implemented; cue/arrival pending |
+| T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a structure accepted; T13b cue purposes implemented; target arrival pending |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
 | T15 | Presentation planner + XR: track-specific HUD | T13-T14 | Planned |
 | T16 | Visuals + XR: optional central music display | T05, T14 tokens | Planned |
@@ -735,7 +735,7 @@ its independent work does not reopen T11 qualification research. Wall stays Off,
 Off with explicit saved choices respected, and MVP/XR Offscreen rendering remains unchanged.
 
 
-## Current continuation checkpoint - T13a measured structure, 2026-10-26
+## Historical checkpoint - T13a measured structure, 2026-10-26
 
 User accepted the audit recommendations and explicitly declined providing No Good timecodes.
 They require a logic that uses existing rhythm/energy/concurrent spectral evidence to reconsider
@@ -808,3 +808,79 @@ placement and visual arrival still need correction. T12 local musical attention 
 timing foundations; Musical's fixed calm treatment is not claimed solved here. No independent
 melody/vocal/instrument identification or human musical precision claim. Do not ask again for
 manual timecodes as a prerequisite; continue from existing evidence and known controls after feedback.
+
+
+## Current continuation checkpoint - T13b cue purposes, 2026-10-26
+
+User accepted T13a and authorized continuation with the usual per-task deploy/manual pause.
+One integration owner changed automation/type/transfer/XR diagnostics seams; independent read-only
+runtime and gameplay reviews checked the cross-module contract. [Contract](../adr/ADR-009-xr-rhythm-game-host.md#addendum-ba---t13b-cue-purposes-and-causal-scene-placement-2026-10-26).
+
+Fresh plans carry cuePlacement requested family + originating half-open window. Scene entry seeks
+matching section/structural evidence at or after its own start; inner visual envelope handoffs
+seek structural changes; actual impact factories still require attack, optional decay requires
+release. No generic fallback for an explicit request. Intersect original midpoint/+/-4s bounds,
+retain selected role's real source evidence, reject invalid explicit metadata and keep manual/
+locked/edited points unchanged. Only the actual opening gets initial-state-at-zero. Entry wins a
+close collision with a preceding scene accent; indexed decisions preserve duplicate-ID accounting.
+Unknown but resolved automatic target handles cannot masquerade as manual. Legacy section/cue
+lookup now agrees with half-open ownership. No raw analyzer/events/clock/render changes or toggle.
+
+Diagnostics uses the existing persisted switch; drawer has a cached count and Copy adds the full
+current Automation JSON with requested windows/selected times/omission reasons. Lifecycle clearing
+matches the chart report; valid generated intent survives the existing Copy/Load whitelist.
+
+Validation: 181/181 targeted tests pass: `node --test --test-reporter=tap tests/automation-cue-alignment.test.mjs tests/automation-cue-roles.test.mjs tests/dramaturgy-transfer.test.mjs tests/visual-os.test.mjs tests/automation.test.mjs tests/accepted-timing-measurement.test.mjs tests/dramaturgy.test.mjs tests/morph-scale.test.mjs tests/xr-chart-diagnostics.test.mjs tests/track-structure.test.mjs tests/xr-controller-regeneration.test.mjs`. Build/diff pass (existing chunk warning). Final native `npm test -- --test-reporter=tap`:1863 tests,1853 pass,10 raw failures,zero skips/
+cancellations (884.99s). Nine baseline failures match names AND assertion messages exactly.
+The extra unchanged PowerShell source-export case hit its30s child-process limit during the
+concurrent suite; isolated `node --test --test-reporter=tap tests/source-export-powershell.test.mjs`
+passes both pwsh/powershell cases2/2 in16.83s with identical source and timeout, no assertion change.
+Raw full failure remains in the log and separate execution-failure record, never added to the
+baseline. The validator checks that single exact extra failure, its isolated resolution and all
+nine baseline assertions separately. No unresolved new regression.
+Node25.2.1/npm11.6.2; no runtime/package install or substitution. The sandbox Windows Temp rename
+was denied with EPERM in dev-preset-save.test.mjs, independently reproduced; the unchanged test
+passes2/2 under native Windows Temp. Final cumulative npm test is therefore unsandboxed with the
+same runner, every active test, no exclusion or edited historical measurement. Initial sandbox and
+superseded runtime runs remain separately retained, not acceptance evidence. The only type
+provenance manifest migration retains the prior hash/reason and complete source in Git0471d12.
+
+Two old behavioural fixture expectations intentionally evolve, with fixtures unchanged and
+predecessors retained in Git0471d12: FX-only anchors no longer satisfy explicit scene/structural
+requests; a first section at0.2 stays0.2 instead of inventing an initial state at0. The cumulative
+suite still includes the original untyped normal and opted-in experimental compatibility tests.
+
+The initial envelope-start=percussion-attack policy published only15/186 No Good,17/167 Goa,
+16/164 Scienide proposals, all scene entries. These mixtures lack qualifying accepted impact-CUE
+coverage, not percussion. This negative result exposed a category error: micro-choreography's
+attack is a visual envelope phase, with no onset detector input. Replaced that request with
+explicit structure for inner handoffs, retaining strict true-attack/decay requests. Superseded
+reports and full runs are retained separately; no old measurement or golden overwritten.
+Final fresh ffmpeg44100Hz left-channel captures exactly retain T13a PCM hashes, accepted events,
+beats, corrected sections/structure. No Good103/186 proposals published (15entry/88structure),
+Goa130/167(17/113),Scienide117/164(16/101). Omitted respectively83(82no-role+1collision),37,47;
+all explicit unsupported requests abstain. Prior published points outside their now-explicit
+originating windows:13/16/8, now0. This establishes causal policy consistency, not human musical
+accuracy or target-arrival error. Charts1004(500L/504R),901(453L/448R),801(405L/396R); all valid
+and both hands in each populated30s window. Records: logs/t13b/*-accepted.json[.source.json] and
+recording-summary.json. Earlier -final/-reviewed runs are superseded, retained separately.
+
+Graphify final refresh:896 files,8423 nodes,20274 raw edges,17781 canonical edges,zero canonical dangling endpoints (2456 raw unresolved references retained). AST only, no LLM/hooks/semantic corpus. Direct diff + independent reviews;
+diff_export.ps1 considered/skipped. Local Vite HTTP/browser shell loaded. Tab attach initially timed out but appeared in inventory;
+No Good file chooser transfer took565s, then decode progressed to Worker analysis failed without
+captured warning/error details. Small-file chooser retry timed out and reset the automation
+session; subsequent tab binding also timed out. No completed browser analysis/play/Copy/pixel
+smoke or Quest acceptance is claimed. The analyzer.worker-CKk3Bkpp.js build SHA remains exactly
+eb5de8199ca4f3a44a8c3d64361515fa385bfd401a6b796853fd617300e65fb5, identical to T13a; new gate
+runs after that worker. Cause of browser failure remains unverified. Public artifact/routes must
+still pass guarded verification; automated UI coverage is separate from actual browser operation. No physical Quest test or Python model
+inference (no device/Python implementation change). Detailed commands, source/Pages receipts and
+limitations are in ignored logs/t13b/handoff.json. Source is pushed to the existing branch;
+no master merge/new PR is implied.
+
+Stop after deploy for manual acceptance. Reload the audio and compare automatic changes at scene
+entries and within long sections; use Diagnostics/Copy to inspect omitted/selected purposes.
+This improves cue selection and prevents early/cross-scene placements; point.time is still morph
+START. Actual interpolation/deadline, geometry-floor re-expansion and semantic anticipation are
+T13c, then T12 local attention. No annotated musical accuracy or p95 visible-arrival gain is claimed.
+Wall remains Off; cockpit defaults Off; existing saved explicit choices and MVP/XR Offscreen remain.
