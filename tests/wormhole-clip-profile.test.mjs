@@ -482,11 +482,12 @@ test('wormhole morph floor is deterministic, calibrated, and capped', () => {
   assert.equal(wormholeMorphDurationFloor(100, 100), WORMHOLE_MORPH_FLOOR_CAP, 'floor cap applies');
 });
 
-test('the wormhole morph floor is automation-only and can only raise the point morph', () => {
+test('the legacy wormhole morph floor is automation-only and can only raise the point morph', () => {
   const dashboard = readFileSync(join(SRC_ROOT, 'ui/DashboardUI.ts'), 'utf8');
   const method = dashboard.match(/private applyPerformancePreset\([\s\S]*?\r?\n    \}\r?\n\r?\n    private isPerformanceAutomationPlan/);
   assert.ok(method, 'isolates the preset application method');
-  assert.match(method[0], /if \(options\.overrideMorph\) applyAutomationMorphAuthority\(State\.targetTuning, options\.overrideMorph\);\r?\n        if \(options\.automationPointId && options\.overrideMorph\) \{[\s\S]*?State\.targetTuning\.morphDurationSec = Math\.max\(\s*options\.overrideMorph\.morphDurationSec,\s*wormholeMorphDurationFloor\(deltaSpeed, deltaBend\)/);
+  // T13c typed points retain their finite deadline; untyped predecessors keep the original floor.
+  assert.match(method[0], /if \(options\.overrideMorph\) applyAutomationMorphAuthority\(State\.targetTuning, options\.overrideMorph\);\r?\n        if \(options\.automationPointId && options\.overrideMorph && !options\.overrideMorph\.cuePlacement\) \{[\s\S]*?State\.targetTuning\.morphDurationSec = Math\.max\(\s*options\.overrideMorph\.morphDurationSec,\s*wormholeMorphDurationFloor\(deltaSpeed, deltaBend\)/);
   assert.match(dashboard, /onPresetLoad: \(fileName\) => \{ void this\.loadVisualPreset\(fileName\); \}/);
 });
 

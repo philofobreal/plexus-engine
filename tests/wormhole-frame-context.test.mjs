@@ -166,3 +166,25 @@ test('shared context has no host IO, canvas, clock, XR defaults or plan generati
     assert.ok(predecessor.includes('private readonly macros = { ...XR_WORMHOLE_MACROS }'));
     assert.equal(createHash('sha256').update(predecessor).digest('hex'), '173b0d2731d245798d76de6b157154d3c72c130f3e9b1c3aad4dbbe97554d436');
 });
+
+test('XR typed finite tuning is seek independent with partial presets and respects player spiral override',()=>{
+    const {WormholeFrameContext}=baseLoad('visuals/WormholeFrameContext.ts');
+    const points=[{...point(0),preset:'a'},{...point(2),preset:'b',morphDurationSec:.1,morphCurve:'linear'}]
+        .map(p=>({...p,cuePlacement:{role:'structure',start:0,end:10}}));
+    const publication=analysis(baseLoad,points),input=seed('raw');
+    const assets=new Map([['a',{visualTuning:{wormholeSpeed:.1,lineWeight:5}}],['b',{visualTuning:{wormholeSpeed:7,wormholeSpiral:.8,transitionSpeed:0}}]]);
+    const direct=new WormholeFrameContext(input),forward=new WormholeFrameContext(input);
+    for(const c of [direct,forward]){c.prepare(publication);c.preparePlan(publication.performancePlan,assets);c.setPresentation({spiralDirection:'left'});}
+    direct.step(2.05,false,0,null,true,true);
+    for(let i=0;i<=123;i++)forward.step(i/60,true,1/60,i?(i-1)/60:null,false,i===0);
+    near(direct.state.visualTuning.wormholeSpeed,3.55);
+    near(direct.state.visualTuning.lineWeight,5);
+    near(forward.state.visualTuning.wormholeSpeed,direct.state.visualTuning.wormholeSpeed);
+    near(direct.state.visualTuning.wormholeSpiral,.6);
+    assert.equal(direct.state.visualTuning.wormholeSpiralDirection,-1);
+    assert.equal(direct.state.spiralTransitionAnchor,null);
+    direct.step(2.1,false,.05,2.05,false,false);near(direct.state.visualTuning.wormholeSpeed,7);near(direct.state.visualTuning.wormholeSpiral,.8);
+    direct.step(2.05,false,0,2.1,true,true);near(direct.state.visualTuning.wormholeSpeed,3.55);near(direct.state.visualTuning.lineWeight,5);
+    direct.setPresentation({spiralDirection:'right'});direct.step(2.05,false,0,2.05,false,true);
+    assert.equal(direct.state.visualTuning.wormholeSpiralDirection,1);
+});

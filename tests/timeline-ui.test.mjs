@@ -35,7 +35,8 @@ test('automation size is a timeline-level non-destructive dynamic control', () =
   assert.match(ui, /State\.automationMorphScale = clampMorphScale\(plan, State\.automationMorphScale, \{ durationSec: State\.duration \}\)/);
   assert.match(main, /id="automation-morph-scale"[^>]*step="any"/);
   assert.match(ui, /performancePlan: this\.getAutomationPlanView\(\)/);
-  assert.match(ui, /private triggerPerformanceAutomation\(\)[\s\S]*const plan = this\.getAutomationPlanView\(\)/);
+  // T13c caches one scaled view per frame; the default still obtains the same non-destructive view.
+  assert.match(ui, /private triggerPerformanceAutomation\(plan = this\.getAutomationPlanView\(\)\)/);
   assert.match(timeline, /state\.automationMorphScale/);
 });
 

@@ -10,6 +10,7 @@ button { padding: 8px 16px; margin-bottom: 16px; } figcaption { padding: 8px; }
 <h2>Coherent spiral: same preset and song time, opposite directions</h2>
 <p>Isolated real renderer smoke. Path bend and lens are unchanged; no audio clock or camera roll.</p>
 <button id="four">At 4 s</button><button id="six">At 6 s</button>
+<button id="finite">Finite deadline</button><pre id="finite-result"></pre>
 <main><figure id="left"><figcaption>Left: loading</figcaption></figure><figure id="right"><figcaption>Right: loading</figcaption></figure></main>
 <script type="module">
 import { WormholeCanvasSource } from '../../src/visuals/WormholeCanvasSource.ts';
@@ -35,6 +36,27 @@ function draw(time) {
 }
 document.querySelector('#four').onclick = () => draw(4);
 document.querySelector('#six').onclick = () => draw(6);
+document.querySelector('#finite').onclick = async () => {
+ try {
+  let maxResidual=0,colouredPixels=0;
+  for(const {label,source} of sources){
+   const points=[0,4].map((time,i)=>({id:'finite-'+i,time,sectionId:'finite',preset:i?'vos-wh-overdrive.json':'vos-wh-drift.json',
+    confidence:1,intensity:1,reason:'verse',morphDurationSec:.1,morphCurve:'linear',spiralDirection:label==='left'?-1:1,
+    cuePlacement:{role:i?'structure':'scene-entry',start:0,end:20}}));
+   await source.prepare({frames:[],events:[],sampleRate:44100,hopSize:1024,bpm:128,duration:20,
+    trackAnalysis:createEmptyTrackAnalysis(),performancePlan:{version:1,source:'auto',points}});
+   for(let t=0;t<=4;t+=.25)source.render(t,true,true);
+   source.render(4.05,false,true);source.render(4.1,false,true);
+   const residual=Math.abs(source.context.state.visualTuning.wormholeSpeed-source.context.boosted.wormholeSpeed);maxResidual=Math.max(maxResidual,residual);
+   const pixels=source.canvas.getContext('2d').getImageData(0,0,520,360).data;
+   for(let i=0;i<pixels.length;i+=4)if(pixels[i]+pixels[i+1]+pixels[i+2]>20)colouredPixels++;
+   document.querySelector(`#${label} figcaption`).textContent=`${label}: finite deadline4.1s, residual ${residual.toExponential(2)}`;
+  }
+  const ok=maxResidual<1e-9&&colouredPixels>100;
+  document.querySelector('#finite-result').textContent=`${ok?'PASS':'FAIL'}: finite preset speed arrival; residual=${maxResidual}; coloured pixels=${colouredPixels}`;
+  document.querySelector('#finite-result').dataset.result=ok?'pass':'fail';
+ }catch(error){document.querySelector('#finite-result').textContent='ERROR: '+error.message;}
+};
 window.addEventListener('pagehide', () => sources.forEach(({ source }) => source.dispose()), { once: true });
 draw(4);
 </script>

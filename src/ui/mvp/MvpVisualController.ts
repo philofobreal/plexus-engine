@@ -1,3 +1,4 @@
+import { findActiveAutomationPoint } from '../../automation/performanceAutomationRuntime';
 import { AudioEngine } from '../../audio/AudioEngine';
 import { generatePerformancePlan } from '../../automation/performancePlanGenerator';
 import { generateVisualOsPerformancePlan } from '../../automation/visualOsPlanLoader';
@@ -5,6 +6,7 @@ import { shouldUseVisualOs, stylePackForVisualMode } from '../../automation/gene
 import { applyMvpWormholePreset } from '../../automation/applyMvpWormholePreset';
 import { clampMorphScale, computeMaxMorphScale } from '../../automation/morphScale';
 import { AutomationPlanViewCache } from '../../automation/automationPlanView';
+import { AutomationTuningTimeline } from '../../automation/AutomationTuningTimeline';
 import { WormholeSpiralAutomation } from '../../automation/WormholeSpiralAutomation';
 import {
     constrainAutomationPointTime,
@@ -63,13 +65,47 @@ export interface MvpVisualControllerCallbacks {
  * State.editedPerformancePlan / State.targetTuning, so a track opened in both UIs stays consistent.
  */
 export class MvpVisualController {
+    private readonly finiteAutomation = new AutomationTuningTimeline();
+    private frameAutomationPlan: PerformanceAutomationPlan | null = null;
+    private frameAutomationTime = NaN;
+    private finiteSeed: VisualTuningConfig | undefined;
+    private finiteAnalysis: unknown;
+    private finiteRevisionApplied = -1;
+    private lastTriggeredPointReference: PerformanceAutomationPoint | null = null;
+    private appliedAutomationPoint: PerformanceAutomationPoint | null = null;
     private readonly spiralAutomation = new WormholeSpiralAutomation();
-    private readonly spiralPreset = (name: string) => State.preloadedPresets[name];
+    private readonly spiralPreset = (name: string) => this.presetCache.get(name);
     private readonly resolveSpiralTuning = (raw: VisualTuningConfig, out: VisualTuningConfig) => resolveMetaTuning(raw, this.macros, this.advancedBoosts, out);
 
+    prepareAutomationFrame(): void {
+        const plan = this.getAutomationPlanView();
+        this.frameAutomationPlan = plan; this.frameAutomationTime = State.currentTime;
+        this.configureFiniteAutomation(plan);
+        const active = findActiveAutomationPoint(plan, State.currentTime);
+        if (active && active === this.appliedAutomationPoint && this.finiteRevisionApplied !== this.finiteAutomation.revision
+            && this.finiteAutomation.applyCanonicalTarget(active, State.targetTuning)) {
+            this.snapshotSemanticBase(); this.finiteRevisionApplied = this.finiteAutomation.revision;
+        }
+        this.tick(plan);
+    }
+    private configureFiniteAutomation(plan = this.getAutomationPlanView()): void {
+        if (this.finiteAnalysis !== State.trackAnalysis || !this.finiteSeed) {
+            this.finiteAnalysis = State.trackAnalysis; this.finiteSeed = { ...State.targetTuning };
+        }
+        this.finiteAutomation.configure(plan, this.spiralPreset, this.tuningSignature(), this.resolveSpiralTuning, this.finiteSeed);
+    }
+    applyAutomatedTuning(time: number, out: VisualTuningConfig, target: VisualTuningConfig): boolean {
+        const plan = this.frameAutomationTime === time ? this.frameAutomationPlan : this.getAutomationPlanView();
+        if (findActiveAutomationPoint(plan, time) !== this.appliedAutomationPoint) return false;
+        if (this.frameAutomationTime !== time) this.configureFiniteAutomation(plan);
+        return this.finiteAutomation.apply(time, out, target);
+    }
     applyAutomatedSpiral(songTime: number, tuning: VisualTuningConfig) {
         if (State.visualMode !== 'cosmic-wormhole') return null;
-        this.spiralAutomation.configure(this.getAutomationPlanView(), this.spiralPreset, this.tuningSignature(), this.resolveSpiralTuning);
+        const plan = this.frameAutomationTime === songTime ? this.frameAutomationPlan : this.getAutomationPlanView();
+        const finite = plan?.points.some(p => p.cuePlacement);
+        if (finite && this.frameAutomationTime !== songTime) this.configureFiniteAutomation(plan);
+        this.spiralAutomation.configure(plan, this.spiralPreset, this.tuningSignature(), this.resolveSpiralTuning, finite ? this.finiteSeed : undefined);
         this.spiralAutomation.apply(songTime, tuning);
         return this.spiralAutomation.transitionAnchor;
     }
@@ -363,6 +399,7 @@ export class MvpVisualController {
                 if (loadRevision === this.loadRevision) this.presetCache.set(preset, payload);
             } catch { /* opportunistic */ }
         }));
+        if (loadRevision === this.loadRevision) this.configureFiniteAutomation();
     }
 
     private async loadAndApplyPreset(fileName: string, point: PerformanceAutomationPoint): Promise<void> {
@@ -379,6 +416,7 @@ export class MvpVisualController {
             }
             if (!this.isCurrentRequest(loadRevision, planRevision)) return;
             if (point.id !== this.lastTriggeredAutomationPointId) return; // superseded by a later trigger
+            if (findActiveAutomationPoint(this.getAutomationPlanView(), State.currentTime) !== point) return;
             this.applyAutomationPreset(payload, point);
         } catch { /* preset unavailable; keep current tuning */ }
     }
@@ -392,7 +430,11 @@ export class MvpVisualController {
      * same whichever UI drives it.
      */
     private applyAutomationPreset(payload: unknown, point: PerformanceAutomationPoint): void {
+        this.configureFiniteAutomation();
+        this.appliedAutomationPoint = point;
         applyMvpWormholePreset(State.targetTuning, payload, point);
+        this.finiteAutomation.applyCanonicalTarget(point, State.targetTuning);
+        this.finiteRevisionApplied = this.finiteAutomation.revision;
         // Re-base the ADR-003/004 semantic layer's anchor on this point's own fully-resolved
         // tuning, mirroring DashboardUI.loadVisualPreset's own re-snapshot after
         // applyPerformancePreset. Without this, the slow modulation channel keeps modulating
@@ -902,9 +944,9 @@ export class MvpVisualController {
 
     // ─── Per-frame tick (called from the renderer host's updateDashboard hook) ─
 
-    tick(): void {
-        const plan = this.getAutomationPlanView();
-        const result = resolveAutomationTrigger(plan, State.currentTime, this.lastTriggeredAutomationPointId);
+    tick(plan = this.getAutomationPlanView()): void {
+        const activeReference = findActiveAutomationPoint(plan, State.currentTime);
+        const result = resolveAutomationTrigger(plan, State.currentTime, activeReference === this.lastTriggeredPointReference ? this.lastTriggeredAutomationPointId : null);
         switch (result.kind) {
             case 'empty':
                 setActiveVisualTransitionComponent('automation', null);
@@ -917,6 +959,7 @@ export class MvpVisualController {
                 return;
             case 'trigger':
                 this.lastTriggeredAutomationPointId = result.point.id;
+                this.lastTriggeredPointReference = result.point;
                 // Marks this point as the live transition source so CosmicWormholeIdentity's
                 // transition-disturbance envelope actually fires (it no-ops on a null id) --
                 // without this, the wormhole still eases the raw numbers via applyTuningMorph, but

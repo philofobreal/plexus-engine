@@ -6,6 +6,7 @@ import { tryResolveStylePack } from '../automation/styleTranslator';
 import { parseDramaturgyPlan, serializeDramaturgyPlan } from '../automation/dramaturgyTransfer';
 import { clampMorphScale, computeMaxMorphScale } from '../automation/morphScale';
 import { AutomationPlanViewCache } from '../automation/automationPlanView';
+import { AutomationTuningTimeline } from '../automation/AutomationTuningTimeline';
 import { WormholeSpiralAutomation } from '../automation/WormholeSpiralAutomation';
 import { wormholeMorphDurationFloor } from '../automation/morphFloor';
 import {
@@ -45,18 +46,54 @@ interface VisualPresetManifest {
 
 interface VisualPresetLoadOptions {
     automationPointId?: string;
-    overrideMorph?: Pick<PerformanceAutomationPoint, 'intensity' | 'morphDurationSec' | 'morphCurve' | 'bendMirror' | 'spiralDirection'>;
+    automationPoint?: PerformanceAutomationPoint;
+    overrideMorph?: Pick<PerformanceAutomationPoint, 'intensity' | 'morphDurationSec' | 'morphCurve' | 'bendMirror' | 'spiralDirection' | 'cuePlacement'>;
 }
 
 const VIDEO_FILE_EXTENSION_RE = /\.(mp4|m4v|webm|ogv|ogg|mov|mkv)$/i;
 
 export class DashboardUI {
+    private readonly finiteAutomation = new AutomationTuningTimeline();
+    private frameAutomationPlan: PerformanceAutomationPlan | null = null;
+    private frameAutomationTime = NaN;
+    private finiteSeed: VisualTuningConfig | undefined;
+    private finiteAnalysis: unknown;
+    private finiteRevisionApplied = -1;
+    private lastTriggeredPointReference: PerformanceAutomationPoint | null = null;
+    private appliedAutomationPoint: PerformanceAutomationPoint | null = null;
     private readonly spiralAutomation = new WormholeSpiralAutomation();
     private readonly spiralPreset = (name: string) => State.preloadedPresets[name];
 
+    prepareAutomationFrame(): void {
+        const plan = this.getAutomationPlanView();
+        this.frameAutomationPlan = plan; this.frameAutomationTime = State.currentTime;
+        this.configureFiniteAutomation(plan);
+        const active = findActiveAutomationPoint(plan, State.currentTime);
+        if (active && active === this.appliedAutomationPoint && this.finiteRevisionApplied !== this.finiteAutomation.revision
+            && this.finiteAutomation.applyCanonicalTarget(active, State.targetTuning)) {
+            this.snapshotSemanticBase(); this.finiteRevisionApplied = this.finiteAutomation.revision;
+        }
+        this.triggerPerformanceAutomation(plan);
+    }
+    private configureFiniteAutomation(plan = this.getAutomationPlanView()): void {
+        if (this.finiteAnalysis !== State.trackAnalysis || !this.finiteSeed) {
+            this.finiteAnalysis = State.trackAnalysis; this.finiteSeed = { ...State.targetTuning };
+        }
+        this.finiteAutomation.configure(plan, this.spiralPreset, 0, undefined, this.finiteSeed, false);
+    }
+    applyAutomatedTuning(time: number, out: VisualTuningConfig, target: VisualTuningConfig): boolean {
+        if (State.visualMode !== 'cosmic-wormhole') return false;
+        const plan = this.frameAutomationTime === time ? this.frameAutomationPlan : this.getAutomationPlanView();
+        if (findActiveAutomationPoint(plan, time) !== this.appliedAutomationPoint) return false;
+        if (this.frameAutomationTime !== time) this.configureFiniteAutomation(plan);
+        return this.finiteAutomation.apply(time, out, target);
+    }
     applyAutomatedSpiral(songTime: number, tuning: VisualTuningConfig) {
         if (State.visualMode !== 'cosmic-wormhole') return null;
-        this.spiralAutomation.configure(this.getAutomationPlanView(), this.spiralPreset);
+        const plan = this.frameAutomationTime === songTime ? this.frameAutomationPlan : this.getAutomationPlanView();
+        const finite = plan?.points.some(p => p.cuePlacement);
+        if (finite && this.frameAutomationTime !== songTime) this.configureFiniteAutomation(plan);
+        this.spiralAutomation.configure(plan, this.spiralPreset, 0, undefined, finite ? this.finiteSeed : undefined);
         this.spiralAutomation.apply(songTime, tuning);
         return this.spiralAutomation.transitionAnchor;
     }
@@ -1958,6 +1995,7 @@ export class DashboardUI {
             }
             // Ignore a stale async automation load after playback has advanced to another point.
             if (options.automationPointId && options.automationPointId !== this.lastTriggeredAutomationPointId) return;
+            if (options.automationPoint && findActiveAutomationPoint(this.getAutomationPlanView(), State.currentTime) !== options.automationPoint) return;
             this.cachePreloadedPreset(fileName, presetData);
             this.applyPerformancePreset(presetData, options);
             // In semantic mode the resolver owns targetTuning, so re-base it on the freshly
@@ -1983,6 +2021,7 @@ export class DashboardUI {
                 this.cachePreloadedPreset(preset, payload);
             } catch { /* opportunistic */ }
         }));
+        if (State.performancePlan === plan || this.getBaseAutomationPlan() === plan) this.configureFiniteAutomation();
     }
 
     private presetUrl(fileName: string): string {
@@ -1996,6 +2035,8 @@ export class DashboardUI {
     }
 
     private applyPerformancePreset(payload: unknown, options: VisualPresetLoadOptions = {}): void {
+        if (options.automationPoint) this.configureFiniteAutomation();
+        this.appliedAutomationPoint = options.automationPoint ?? null;
         const previousWormholeSpeed = State.targetTuning.wormholeSpeed;
         const previousWormholePathBend = State.targetTuning.wormholePathBend;
         const previousWormholePathBendVertical = State.targetTuning.wormholePathBendVertical;
@@ -2053,8 +2094,10 @@ export class DashboardUI {
             }
         }
         // Automation owns morph timing over preset visualTuning and morphProfile values.
+        if (options.automationPoint && State.visualMode === 'cosmic-wormhole') this.finiteAutomation.applyCanonicalTarget(options.automationPoint, State.targetTuning);
+        this.finiteRevisionApplied = this.finiteAutomation.revision;
         if (options.overrideMorph) applyAutomationMorphAuthority(State.targetTuning, options.overrideMorph);
-        if (options.automationPointId && options.overrideMorph) {
+        if (options.automationPointId && options.overrideMorph && !options.overrideMorph.cuePlacement) {
             const deltaSpeed = Math.abs(State.targetTuning.wormholeSpeed - previousWormholeSpeed);
             const deltaBend = Math.hypot(
                 State.targetTuning.wormholePathBend - previousWormholePathBend,
@@ -2138,10 +2181,9 @@ export class DashboardUI {
 
     // ─── Performance automation trigger ──────────────────────────────────────
 
-    private triggerPerformanceAutomation(): void {
+    private triggerPerformanceAutomation(plan = this.getAutomationPlanView()): void {
         // Preset automation always selects the slow-channel base. Semantic runtimes may own
         // tuning deltas above that base, but must not suppress the underlying preset change.
-        const plan = this.getAutomationPlanView();
         if (!plan?.points.length) {
             setActiveVisualTransitionComponent('automation', null);
             return;
@@ -2152,14 +2194,16 @@ export class DashboardUI {
             this.lastTriggeredAutomationPointId = null;
             return;
         }
-        if (activePoint.id === this.lastTriggeredAutomationPointId) return;
+        if (activePoint.id === this.lastTriggeredAutomationPointId && activePoint === this.lastTriggeredPointReference) return;
         this.lastTriggeredAutomationPointId = activePoint.id;
+        this.lastTriggeredPointReference = activePoint;
         setActiveVisualTransitionComponent('automation', `automation:${activePoint.id}`);
         // Morph authority is applied atomically with the preset payload in applyPerformancePreset
         // (via options.overrideMorph), not here -- otherwise the new morph metadata would act on
         // the still-old target tuning for the frame(s) between this call and the async preset load.
         void this.loadVisualPreset(activePoint.preset, {
             automationPointId: activePoint.id,
+            automationPoint: activePoint,
             overrideMorph: activePoint
         });
     }

@@ -1,6 +1,6 @@
 import type { CanvasVisualPresentation, GrainMaterialBoostKey, VisualAnalysisSnapshot } from '../types/CanvasVisualSource';
 import type { WormholeContextSeed } from '../types/WormholeContext';
-import type { MotifChoreographyFrame, PerformanceAutomationPlan, VisualChoreographyPlan, VisualTuningConfig } from '../types';
+import type { MotifChoreographyFrame, PerformanceAutomationPoint, PerformanceAutomationPlan, VisualChoreographyPlan, VisualTuningConfig } from '../types';
 import { createEmptyTrackAnalysis } from '../analyzer/normalizeAnalysisResult';
 import { cloneDefaultVisualTuning, applyTuningMorph, writeModulationBus, normalizeVisualTuningConfig } from '../config/visualTuning';
 import { resolveMetaTuning } from '../config/resolveMetaTuning';
@@ -8,6 +8,7 @@ import { defaultAdvancedBoosts, resolveAdvancedTuningValue } from '../config/met
 import { DEFAULT_WORMHOLE_WALL, WORMHOLE_WALL_GAIN_FIELDS, type WormholeWallPresentation } from '../types/WormholeWallPresentation';
 import { applyMvpWormholePreset } from '../automation/applyMvpWormholePreset';
 import { findActiveAutomationPoint } from '../automation/performanceAutomationRuntime';
+import { AutomationTuningTimeline } from '../automation/AutomationTuningTimeline';
 import { WormholeSpiralAutomation } from '../automation/WormholeSpiralAutomation';
 import { buildNarrative, generateIntents, processChoreography, resolveSemanticState, SemanticResolver, SemanticRuntimeAdapter } from '../semantics';
 import { motifTransitionId, semanticScoreTransitionId } from './VisualTransitionIdentity';
@@ -61,8 +62,10 @@ export class WormholeFrameContext {
     /** Borrowed immutable host publication; asset data is copied separately at preparation. */
     get performancePlan(): PerformanceAutomationPlan | null { return this.plan; }
     private presets = new Map<string, unknown>();
-    private lastPointId: string | null = null;
+    private finiteRevisionApplied = -1;
+    private lastPoint: PerformanceAutomationPoint | null = null;
     private readonly boosted = cloneDefaultVisualTuning();
+    private readonly finiteAutomation = new AutomationTuningTimeline();
     private readonly spiralAutomation = new WormholeSpiralAutomation();
     private readonly spiralPreset = (name: string) => this.presets.get(name);
     private readonly resolveSpiralTuning = (raw: typeof this.boosted, out: typeof this.boosted) => this.resolveTuning(raw, out);
@@ -79,7 +82,7 @@ export class WormholeFrameContext {
     /** Analysis is a borrowed immutable publication; live frame/features are copied before mutation. */
     prepare(analysis: VisualAnalysisSnapshot | null): void {
         this.analysis = analysis;
-        this.spiralAutomation.invalidate();
+        this.spiralAutomation.invalidate(); this.finiteAutomation.invalidate();
         this.state = emptyState();
         if (analysis) Object.assign(this.state, analysis);
         this.identity = new CosmicWormholeIdentity(this.state);
@@ -89,7 +92,7 @@ export class WormholeFrameContext {
         this.resolver.setPlan(analysis?.trackAnalysis.externalVisualScorePlan ?? null);
         this.semanticBase = { ...this.rawTuning };
         this.semantic = new SemanticRuntimeAdapter(this.resolver, () => this.semanticBase);
-        this.plan = null; this.presets.clear(); this.wallPresetGates.clear(); this.lastPointId = null; this.lastMotif = null;
+        this.plan = null; this.presets.clear(); this.wallPresetGates.clear(); this.lastPoint = null; this.lastMotif = null;
         this.denseEvents = this.state.events.filter(event => event.type === 2);
         this.choreography = analysis && this.policy.semanticResolver
             ? processChoreography(generateIntents(buildNarrative(analysis.trackAnalysis)), analysis.trackAnalysis) : null;
@@ -120,7 +123,9 @@ export class WormholeFrameContext {
         this.presets = presets;
         this.wallPresetGates.clear();
         for(const [name,asset] of presets)this.wallPresetGates.set(name,normalizeVisualTuningConfig(asset,this.rawTuning).wormholeOpticsEnabled>=.5);
-        this.spiralAutomation.invalidate();
+        this.spiralAutomation.invalidate(); this.finiteAutomation.invalidate();
+        this.finiteAutomation.configure(this.plan, this.spiralPreset, 0, this.resolveSpiralTuning, this.rawTuning);
+        this.spiralAutomation.configure(this.plan, this.spiralPreset, 0, this.resolveSpiralTuning, this.rawTuning);
     }
 
     private resolveTuning(raw: VisualTuningConfig, out: VisualTuningConfig): VisualTuningConfig {
@@ -153,14 +158,17 @@ export class WormholeFrameContext {
         state.currentTime = time;
         state.playbackFade = playing ? Math.min(1, state.playbackFade + dt) : state.playbackFade;
         if (jump && time < (previous ?? 0)) {
-            state.targetTuning = { ...this.rawTuning }; this.lastPointId = null; this.lastMotif = null;
+            state.targetTuning = { ...this.rawTuning }; this.lastPoint = null; this.lastMotif = null;
         }
+        this.finiteAutomation.configure(this.plan, this.spiralPreset, 0, this.resolveSpiralTuning, this.rawTuning);
         const point = findActiveAutomationPoint(this.plan, time);
         if(this.wall)this.identity.setWallEnabled(this.wall.mode==='on'||(this.wall.mode==='preset'
             &&(point?this.wallPresetGates.get(point.preset)??false:this.rawTuning.wormholeOpticsEnabled>=.5)));
-        if (point && point.id !== this.lastPointId) {
+        if (point && (point !== this.lastPoint || this.finiteRevisionApplied !== this.finiteAutomation.revision)) {
             applyMvpWormholePreset(state.targetTuning, this.presets.get(point.preset), point);
-            this.semanticBase = { ...state.targetTuning }; this.lastPointId = point.id; this.lastMotif = null;
+            this.finiteAutomation.applyCanonicalTarget(point, state.targetTuning);
+            this.finiteRevisionApplied = this.finiteAutomation.revision;
+            this.semanticBase = { ...state.targetTuning }; this.lastPoint = point; this.lastMotif = null;
         }
         let semanticId: string | null = null;
         if (this.policy.semanticChoreography && this.resolver.hasPlan()) {
@@ -181,11 +189,13 @@ export class WormholeFrameContext {
         // A player's Line stroke / Visual character change is a direct control, not a musical morph.
         if (snap) Object.assign(state.visualTuning, this.boosted);
         else applyTuningMorph(state.visualTuning, this.boosted, this.boosted.transitionSpeed, dt);
-        if (this.spiralDirection === 'auto') {
+        this.finiteAutomation.apply(time, state.visualTuning, this.boosted);
+        if (this.spiralDirection === 'auto' || point?.cuePlacement) {
             this.spiralAutomation.configure(this.plan, this.spiralPreset, 0, this.resolveSpiralTuning, this.rawTuning);
             this.spiralAutomation.apply(time, state.visualTuning);
-            state.spiralTransitionAnchor = this.spiralAutomation.transitionAnchor;
+            state.spiralTransitionAnchor = this.spiralDirection === 'auto' ? this.spiralAutomation.transitionAnchor : null;
         } else state.spiralTransitionAnchor = null;
+        if (this.spiralDirection !== 'auto' && point?.cuePlacement) state.visualTuning.wormholeSpiralDirection = this.spiralDirection === 'left' ? -1 : 1;
         const index = Math.max(0, Math.floor(time * state.sampleRate / state.hopSize));
         // Copy before the director mutates its live frame; published analysis remains immutable.
         if (state.frames[index]) Object.assign(state.currentFrame, state.frames[index]);
@@ -240,7 +250,7 @@ export class WormholeFrameContext {
             const value = Math.min(1, Math.max(0, stroke));
             if (value !== this.boosts.lineWeight) { this.boosts.lineWeight = value; tuningChanged = true; }
         }
-        if (tuningChanged) this.spiralAutomation.invalidate();
+        if (tuningChanged) { this.spiralAutomation.invalidate(); this.finiteAutomation.invalidate(); }
         if(this.cosmos.sky!==undefined)this.identity.setSkyboxEnabled(this.cosmos.sky>0);
         return { tuningChanged, directionChanged };
     }
@@ -248,7 +258,7 @@ export class WormholeFrameContext {
     dispose(): void {
         this.plan = null;
         this.presets.clear();
-        this.spiralAutomation.invalidate();
+        this.spiralAutomation.invalidate(); this.finiteAutomation.invalidate();
     }
 }
 

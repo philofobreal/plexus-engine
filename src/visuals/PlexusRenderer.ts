@@ -54,6 +54,8 @@ export class SemanticRendererBridge {
 /** Structural subset of DashboardUI (and any lighter host, e.g. the MVP UI) that the renderer loop needs. */
 export interface PlexusRendererHost {
     updateDashboard(): void;
+    prepareAutomationFrame?(): void;
+    applyAutomatedTuning?(time: number, out: VisualTuningConfig, target: VisualTuningConfig): boolean;
     setExportTarget(p5Instance: any, canvas: HTMLCanvasElement): void;
     /**
      * Optional final transform applied to State.targetTuning immediately before it's used as the
@@ -275,6 +277,8 @@ export function startPlexusRenderer(
             }
 
             const ct = State.isExporting ? State.exportTime : engine.getCurrentTime();
+            State.currentTime = ct;
+            ui.prepareAutomationFrame?.();
             const morphTarget = ui.getTuningForMorph ? ui.getTuningForMorph(State.targetTuning) : State.targetTuning;
             const idlePreview = !State.isPlaying && !State.isExporting && State.playbackFade <= 0;
             if (idlePreview) {
@@ -337,13 +341,7 @@ export function startPlexusRenderer(
             // host that boosts/cuts specific keys (the MVP surface) never has to write into
             // targetTuning itself to make that stick. A host without the hook (the advanced
             // dashboard) morphs toward targetTuning directly, exactly as before.
-            applyTuningMorph(
-                State.visualTuning,
-                morphTarget,
-                morphTarget.transitionSpeed,
-                tuningDeltaSec
-            );
-            State.spiralTransitionAnchor = ui.applyAutomatedSpiral?.(ct, State.visualTuning) ?? null;
+
 
             const hasTimeBasedSemanticPlan = semanticBridge.hasPlan();
             const isTimeBasedSemanticActive = featureFlags.semanticChoreography && hasTimeBasedSemanticPlan;
@@ -394,6 +392,11 @@ export function startPlexusRenderer(
             } else {
                 setActiveVisualTransitionComponent('motif', null);
             }
+
+            const resolvedMorphTarget = ui.getTuningForMorph ? ui.getTuningForMorph(State.targetTuning) : State.targetTuning;
+            applyTuningMorph(State.visualTuning, resolvedMorphTarget, resolvedMorphTarget.transitionSpeed, tuningDeltaSec);
+            ui.applyAutomatedTuning?.(ct, State.visualTuning, resolvedMorphTarget);
+            State.spiralTransitionAnchor = ui.applyAutomatedSpiral?.(ct, State.visualTuning) ?? null;
 
             if ((State.isPlaying || State.isExporting) && State.frames.length > 0) {
                 let frameIdx = Math.floor(ct * State.sampleRate / State.hopSize);

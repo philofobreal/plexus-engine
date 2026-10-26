@@ -664,6 +664,10 @@ export class MvpUI {
         return this.controller.getBoostedTuning(rawTuning);
     }
 
+    prepareAutomationFrame(): void { this.controller.prepareAutomationFrame(); }
+    applyAutomatedTuning(time: number, out: VisualTuningConfig, target: VisualTuningConfig): boolean {
+        return this.controller.applyAutomatedTuning(time, out, target);
+    }
     applyAutomatedSpiral(songTime: number, tuning: VisualTuningConfig) {
         return this.controller.applyAutomatedSpiral(songTime, tuning);
     }

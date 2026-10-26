@@ -309,7 +309,7 @@ test('semantic resolver is wired behind a feature flag and owns targetTuning whe
   assert.match(ui, /import \{ buildNarrative, generateIntents, processChoreography, type SemanticResolver \} from '\.\.\/semantics'/);
   assert.match(ui, /private computeSemanticPlan\(\): void \{[\s\S]*if \(!featureFlags\.semanticResolver\) return;[\s\S]*State\.visualChoreography = choreography;[\s\S]*State\.currentChoreography = null;\s*\}/);
   assert.match(ui, /private snapshotSemanticBase\(\): void \{[\s\S]*isSemanticTuningActive\([\s\S]*State\.visualChoreography !== null[\s\S]*if \(!isSemanticActive\) return;[\s\S]*State\.semanticBaseTuning = \{ \.\.\.State\.targetTuning \}/);
-  assert.match(ui, /private triggerPerformanceAutomation\(\): void \{[\s\S]*findActiveAutomationPoint\(plan, State\.currentTime\)[\s\S]*loadVisualPreset\(activePoint\.preset, \{/);
+  assert.match(ui, /private triggerPerformanceAutomation\(plan = this\.getAutomationPlanView\(\)\): void \{[\s\S]*findActiveAutomationPoint\(plan, State\.currentTime\)[\s\S]*loadVisualPreset\(activePoint\.preset, \{/);
 
   // Manual slider edit folds into the base per-key (no full re-snapshot, so no delta drift).
   assert.match(ui, /onTuningChange: \(key, value\) => \{[\s\S]*if \(\(featureFlags\.semanticResolver \|\| featureFlags\.semanticChoreography\) && State\.semanticBaseTuning\) State\.semanticBaseTuning\[key\] = value;/);
@@ -930,7 +930,7 @@ test('performance plan playback automation and preloading are wired to playback 
   assert.match(ui, /this\.presetCache\.set\(preset, payload\)/);
   assert.match(ui, /void this\.preloadPresetsForPlan\(plan\)/);
   assert.match(ui, /this\.lastTriggeredAutomationPointId = null/);
-  assert.match(ui, /private triggerPerformanceAutomation\(\): void/);
+  assert.match(ui, /private triggerPerformanceAutomation\(plan = this\.getAutomationPlanView\(\)\): void/);
   assert.match(ui, /const plan = this\.getAutomationPlanView\(\)/);
   assert.match(ui, /const activePoint = findActiveAutomationPoint\(plan, State\.currentTime\)/);
   assert.match(ui, /activePoint\.id === this\.lastTriggeredAutomationPointId/);
@@ -961,7 +961,7 @@ test('automation-triggered preset loads retain scaled morph authority while manu
   assert.match(ui, /this\.applyPerformancePreset\(presetData, options\)/);
   assert.match(ui, /if \(options\.overrideMorph\) applyAutomationMorphAuthority\(State\.targetTuning, options\.overrideMorph\)/);
   assert.match(ui, /if \(options\.automationPointId && options\.overrideMorph\?\.bendMirror === true\) \{\s*State\.targetTuning\.wormholePathBend = -State\.targetTuning\.wormholePathBend;/);
-  assert.match(ui, /overrideMorph\?: Pick<PerformanceAutomationPoint, 'intensity' \| 'morphDurationSec' \| 'morphCurve' \| 'bendMirror' \| 'spiralDirection'>/);
+  assert.match(ui, /overrideMorph\?: Pick<PerformanceAutomationPoint, 'intensity' \| 'morphDurationSec' \| 'morphCurve' \| 'bendMirror' \| 'spiralDirection' \| 'cuePlacement'>/);
   assert.match(ui, /onPresetLoad: \(fileName\) => \{ void this\.loadVisualPreset\(fileName\); \}/);
 });
 
