@@ -90,3 +90,15 @@ test('continuous semantic updates preserve unrelated manual host controls',()=>{
  a.update(p,2.5,base,target);assert.equal(target.performanceMode,1);near(target.wormholeSpeed,base.wormholeSpeed+.75);
  a.update(p,4,base,target);assert.equal(target.performanceMode,1);near(target.wormholeSpeed,base.wormholeSpeed);
 });
+
+test('equal-valued new raw snapshots rematerialize a held semantic frame after preset restoration',()=>{
+ const adapter=new MotifRuntimeAdapter(),base=cloneDefaultVisualTuning(),target={...base};
+ const p={version:1,frames:[{time:0,actions:{bloom:1},activeOperators:[]}],score:{transitions:[]}};
+ adapter.update(p,1,base,target);const expected=target.polygonFlash;
+ assert.ok(expected>base.polygonFlash);
+ for(let i=0;i<50;i++){
+  Object.assign(target,base);target.performanceMode=1;
+  adapter.update(p,1+i/100,{...base},target);
+  near(target.polygonFlash,expected);assert.equal(target.performanceMode,1);
+ }
+});

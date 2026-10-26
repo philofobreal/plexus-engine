@@ -19,6 +19,7 @@ export class MotifRuntimeAdapter {
     private time = NaN;
     private interpolated = false;
     private target: VisualTuningConfig | null = null;
+    private baseInput: Readonly<VisualTuningConfig> | null = null;
     private readonly base = cloneDefaultVisualTuning();
     private readonly resolved = cloneDefaultVisualTuning();
     private readonly presets: Record<string, Partial<VisualTuningConfig>> = {};
@@ -62,10 +63,10 @@ export class MotifRuntimeAdapter {
         }
         this.index = index; this.time = time; this.interpolated = interpolated;
         if (!plan || !current) { this.clear(target, base); return null; }
-        const changedBase = visualTuningKeys.some(key => this.base[key] !== base[key]);
+        const changedBase = base !== this.baseInput || visualTuningKeys.some(key => this.base[key] !== base[key]);
         if (changedPlan || changedSample || changedBase || target !== this.target) {
             this.clear(target, base);
-            Object.assign(this.base, base); this.presets['cosmic-wormhole'] = this.base;
+            Object.assign(this.base, base); this.baseInput = base; this.presets['cosmic-wormhole'] = this.base;
             resolveSemanticState(this.sampled, 'cosmic-wormhole', this.presets, this.resolved);
             for (const key of visualTuningKeys) if (this.resolved[key] !== this.base[key]) {
                 this.owned.add(key); target[key] = this.resolved[key];
