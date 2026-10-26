@@ -507,9 +507,16 @@ export class XrAppController {
 
     private setChartDiagnostics(report: RhythmChartDiagnostics | null): void {
         this.chartDiagnostics = report;
+        const structure = report ? this.published?.trackAnalysis.structureInterpretation : undefined;
         this.chartSummary = report ? `Chart: ${report.retainedEvents}/${report.sourceEvents} events - ${report.notes} notes (L${report.hands.left}/R${report.hands.right})` : '';
         this.chartDetails = report ? `${this.chartSummary}\nSkipped ${report.skippedEvents}; revoiced ${report.revoicedNotes} notes.\n` +
             Object.entries(report.rejected).map(([reason, count]) => `${reason}: ${count}`).join(' · ') : '';
+        if (structure) {
+            const form = `Structure: ${structure.changedSections}/${structure.decisions.length} labels updated from measured context`;
+            this.chartSummary += ` - structure ${structure.changedSections}/${structure.decisions.length}`;
+            this.chartDetails += `\n${form}`;
+            this.overlay.dataset.xrStructure = JSON.stringify({ version: structure.version, changedSections: structure.changedSections, sections: structure.decisions.length });
+        } else delete this.overlay.dataset.xrStructure;
         this.drawer.chartDiagnosticsEl.textContent = this.chartDetails;
         if (report) this.overlay.dataset.xrChartSelection = JSON.stringify({ ...report, decisions: undefined });
         else delete this.overlay.dataset.xrChartSelection;
@@ -792,7 +799,8 @@ export class XrAppController {
             case 'copy-diagnostics':
                 if (this.diagnostics && (this.backgroundDiagnostics.summary || this.chartDiagnostics)) {
                     this.copyToClipboard(diagnosticsReport(this.backgroundDiagnostics.summary, this.settings,
-                        this.trackTitleEl.textContent ?? '', this.chartDiagnostics ?? undefined), 'Diagnostics + settings');
+                        this.trackTitleEl.textContent ?? '', this.chartDiagnostics ?? undefined,
+                        this.chartDiagnostics ? this.published?.trackAnalysis.structureInterpretation : undefined), 'Diagnostics + settings');
                 }
                 return;
         }

@@ -29,13 +29,16 @@ if (['--recording', '--source'].includes(process.argv[2])) {
             const { analyzeAudio } = await import('data:text/javascript;base64,' + Buffer.from(result.output[0].code).toString('base64'));
             analysis = analyzeAudio({ samples: new Float32Array(pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.byteLength)), sampleRate: 44100 });
         } finally { await bundle.close(); }
+        // Match all hosts: structure-v1 is derived after raw analyzer-v7 publication.
+        const { interpretTrackStructure } = createLoader()('analyzer/TrackStructure.ts');
+        analysis = { ...analysis, trackAnalysis: interpretTrackStructure(analysis.trackAnalysis, analysis.events) };
         const { generateVisualOsPerformancePlan } = createLoader()('automation/visualOsPlanLoader.ts');
         const durationSec = pcm.length / 4 / 44100;
         const performancePlan = await generateVisualOsPerformancePlan(analysis.trackAnalysis, { duration: durationSec,
             stylePackId: 'cosmic-wormhole', activityLevel: 'active', variantMode: 'expressive',
             stylePacksFile: JSON.parse(fs.readFileSync('public/visual-tuning-presets/style-packs.json')) });
         if (!performancePlan?.points.length) throw Error('Expected the shipped Visual OS plan; no silent plan fallback');
-        capture = { recording: input, pcmSha256: createHash('sha256').update(pcm).digest('hex'), sampleRate: 44100,
+        capture = { recording: input, structureInterpretation: analysis.trackAnalysis.structureInterpretation, pcmSha256: createHash('sha256').update(pcm).digest('hex'), sampleRate: 44100,
             source: { events: analysis.events, durationSec, beats: analysis.trackAnalysis.beats,
                 barStarts: analysis.trackAnalysis.barStarts, timingConfidence: analysis.trackAnalysis.timingConfidence?.overall,
                 sections: analysis.trackAnalysis.sections, sectionStarts: analysis.trackAnalysis.sections.map(s => s.start), performancePlan } };
@@ -73,11 +76,11 @@ if (['--recording', '--source'].includes(process.argv[2])) {
         } finally { await bundle.close(); }
     }
     const report = { recording: capture.recording, pcmSha256: capture.pcmSha256, chartSourceSha256: hash(capture.source), baseline,
-        movementModelVersion: MOVEMENT_MODEL_VERSION, settings, raw: count(raw), guarded: count(guarded), windows,
+        structureInterpretation: capture.structureInterpretation, movementModelVersion: MOVEMENT_MODEL_VERSION, settings, raw: count(raw), guarded: count(guarded), windows,
         validation: validateRhythmMovement(guarded, config, settings),
         scope: 'Deterministic accepted-event/motor regression; not annotated musical accuracy or physical headset safety.' };
     fs.writeFileSync(output, JSON.stringify(report, null, 2) + '\n', { flag: 'wx' });
-    console.log(JSON.stringify({ ...report, windows: undefined, baseline: baseline ? { ...baseline, windows: undefined } : undefined,
+    console.log(JSON.stringify({ ...report, structureInterpretation: report.structureInterpretation ? { version: 1, changedSections: report.structureInterpretation.changedSections } : undefined, windows: undefined, baseline: baseline ? { ...baseline, windows: undefined } : undefined,
         validation: { valid: report.validation.valid } }));
     process.exit(report.validation.valid ? 0 : 1);
 }

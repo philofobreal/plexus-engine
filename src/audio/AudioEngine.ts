@@ -1,3 +1,4 @@
+import { interpretTrackStructure } from '../analyzer/TrackStructure';
 import AnalyzerWorker from './analyzer.worker.ts?worker';
 import { ANALYSIS_ALGORITHM_VERSION, createEmptyTrackAnalysis, normalizeTrackAnalysis, normalizeAudioFrame } from '../analyzer';
 import { featureFlags } from '../config/featureFlags';
@@ -169,7 +170,11 @@ export class AudioEngine {
                     State.frames = e.data.frames.map(normalizeAudioFrame);
                     State.events = e.data.events;
                     // Strict normalization mapping incoming generic objects to rigorous domain models
-                    State.trackAnalysis = normalizeTrackAnalysis(e.data.trackAnalysis, State.bpm, e.data.events);
+                    // One versioned structural view for all hosts, before callbacks/stems. No frame work.
+                    const normalizedAnalysis = normalizeTrackAnalysis(e.data.trackAnalysis, State.bpm, e.data.events);
+                    // Host-derived provenance is never accepted from a worker/import packet.
+                    delete normalizedAnalysis.structureInterpretation;
+                    State.trackAnalysis = interpretTrackStructure(normalizedAnalysis, e.data.events, e.data.trackAnalysis.bars);
                     this.onVisualScorePlan(State.trackAnalysis.externalVisualScorePlan ?? null);
                     State.trackAnalysis.bpm = e.data.bpm;
                     State.hopSize = e.data.hopSize;

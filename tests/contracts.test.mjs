@@ -188,7 +188,12 @@ test('visual track analysis is precomputed and exposed through shared state', ()
   assert.match(featureExtractor, /flatnessT\[i\]/);
   assert.match(featureExtractor, /centroidT\[i\]/);
   assert.match(audio, /ANALYSIS_ALGORITHM_VERSION/);
-  assert.match(audio, /State\.trackAnalysis = normalizeTrackAnalysis\(e\.data\.trackAnalysis, State\.bpm, e\.data\.events\)/);
+  assert.match(audio, /normalizeTrackAnalysis\(e\.data\.trackAnalysis, State\.bpm, e\.data\.events\)/);
+  assert.match(audio, /State\.trackAnalysis = interpretTrackStructure\(normalizedAnalysis, e\.data\.events, e\.data\.trackAnalysis\.bars\)/);
+  assert.match(audio, /delete normalizedAnalysis\.structureInterpretation/);
+  const normalizedAt = audio.indexOf('const normalizedAnalysis = normalizeTrackAnalysis');
+  const publishedAt = audio.indexOf('State.trackAnalysis = interpretTrackStructure');
+  assert.ok(normalizedAt < publishedAt && publishedAt < audio.indexOf('this.onVisualScorePlan(State.trackAnalysis'));
   assert.match(store, /currentFeatures/);
   assert.match(renderer, /State\.trackAnalysis\.cues/);
   assert.match(renderer, /State\.trackAnalysis\.features/);

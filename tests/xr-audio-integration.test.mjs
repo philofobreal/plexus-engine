@@ -19,9 +19,9 @@ function harness(options = { loopPlayback: false, heroMetronome: false }) {
         constructor() { workers.push(this); }
         postMessage(data) { this.request = data; }
         terminate() { this.terminated = true; }
-        complete(events = [{ time: 2, intensity: 0.8, type: 1 }]) {
+        complete(events = [{ time: 2, intensity: 0.8, type: 1 }], trackAnalysis = { beats: [1, 2], bpm: 120 }) {
             this.onmessage({ data: { type: 'analysis_done', requestId: this.request.requestId, bpm: 120,
-                adaptiveThreshold: 0.1, frames: [], events, hopSize: 1024, trackAnalysis: { beats: [1, 2], bpm: 120 } } });
+                adaptiveThreshold: 0.1, frames: [], events, hopSize: 1024, trackAnalysis } });
         }
     }
     const load = createLoader({
@@ -123,3 +123,25 @@ test('natural end survives large output latency and ignores a captured stale one
     h.sources.at(-1).onended(); assert.equal(h.game.getState(), 'finished');
 });
 
+
+
+test('all hosts publish the interpreted structure before analysis callbacks without changing raw worker data or events', async () => {
+    const h=harness();
+    const bars=Array.from({length:20},(_,i)=>({index:i,start:i*2,end:i*2+2,rmsAmplitude:i>=8&&i<12?.025:.08,
+        energy:.5,density:i>=8&&i<12?.1:.8,bass:.5,mid:.3,treble:.2,avgRms:.5,peakRms:.8,state:'HIGH',dominantFeature:'fx'}));
+    const raw={duration:40,bpm:120,bars,sections:Array.from({length:5},(_,i)=>({start:i*8,end:i*8+8,label:'outro',
+        energy:.5,density:.5,dominantFeature:'fx',avgRms:.5,peakRms:.8})),beats:[1,2],patterns:[],cues:[]};
+    const events=[{time:2,intensity:.8,type:1}], before=JSON.stringify(raw);
+    const loading=h.engine.loadFile({arrayBuffer:async()=>new ArrayBuffer(8)});
+    await new Promise(setImmediate); h.decodes.at(-1).resolve(h.buffer(40)); await loading;
+    let observed;
+    h.engine.onAnalysisComplete=()=>{ observed=h.state.trackAnalysis; assert.ok(observed.structureInterpretation); };
+    h.workers.at(-1).complete(events,raw);
+    assert.ok(observed);
+    assert.equal(observed.sections[1].label,'verse','middle body cannot remain outro');
+    assert.equal(observed.sections[2].label,'break');
+    assert.equal(h.state.events,events);
+    assert.equal(JSON.stringify(raw),before);
+    assert.equal(observed.cues,raw.cues);
+    assert.equal(observed.bars,raw.bars);
+});

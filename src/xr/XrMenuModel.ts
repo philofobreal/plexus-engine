@@ -1,3 +1,4 @@
+import type { TrackStructureInterpretation } from '../types';
 import type { RhythmChartDiagnostics } from '../gameplay/RhythmChartDiagnostics';
 // The in-game menu as pure data (ADR-009 Addendum O): screens, their layout on the VR panel canvas,
 // and what activating an item does. No Three.js, no DOM. The VR panel (`scene/XrMenuPanel`) draws
@@ -416,13 +417,16 @@ function resetArmed(state: XrMenuState): boolean {
 }
 
 /** The diagnostics line followed by the full settings report: one paste says what was measured under which setup. */
-export function diagnosticsReport(summary: string, settings: XrSettings, trackTitle = '', chart?: RhythmChartDiagnostics): string {
+export function diagnosticsReport(summary: string, settings: XrSettings, trackTitle = '', chart?: RhythmChartDiagnostics, structure?: TrackStructureInterpretation): string {
     const selection = chart ? `\nChart selection (v${chart.version}, accepted BeatEvents (including FX transients))\n` +
         `${chart.retainedEvents}/${chart.sourceEvents} events retained; ${chart.notes} notes; left ${chart.hands.left}, right ${chart.hands.right}.\n` +
         `${chart.skippedEvents} events skipped; ${chart.revoicedNotes} notes revoiced.\n` +
         `${Object.entries(chart.rejected).map(([reason, count]) => `${reason}: ${count}`).join('; ')}\n` +
         `First actual rejection reason per source event; intensity is not confidence.\nChart JSON: ${JSON.stringify(chart)}\n` : '';
-    return `Plexus XR diagnostics\n${summary}${selection}\n\n${settingsReport(settings, trackTitle)}`;
+    const form = structure ? `\nMeasured structure v${structure.version}: ${structure.changedSections}/${structure.decisions.length} labels updated.\n` +
+        `Original boundaries and accepted event times retained. Spectral shares are not instrument identity.\n` +
+        `Structure JSON: ${JSON.stringify(structure)}\n` : '';
+    return `Plexus XR diagnostics\n${summary}${selection}${form}\n\n${settingsReport(settings, trackTitle)}`;
 }
 
 /** Thumbstick tab switching on the Settings screen (wraps around). */

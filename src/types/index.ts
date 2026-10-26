@@ -1027,7 +1027,39 @@ export interface TensionTrends {
     segments: TensionTrendSegment[];
 }
 
+/** Derived once at host publication; raw analyzer-v7 measurements/cues/events remain unchanged. */
+export interface TrackStructureContext {
+    start: number; end: number;
+    rmsRatio: number;
+    rhythm: number;
+    impactRate: number;
+    /** Magnitude shares, not independent source power or instrument identity. */
+    spectrum: { low: number; mid: number; high: number } | null;
+    activeBands: Array<'low' | 'mid' | 'high'>;
+}
+export interface TrackStructureDecision {
+    sourceSectionIndex: number; start: number; end: number;
+    originalLabel: TrackSectionLabel; label: TrackSectionLabel;
+    reasons: string[];
+    energyRatio: number; rhythm: number;
+    entryEnergyRise: number; entryRhythmRise: number;
+    energyTrend: number; rhythmTrend: number;
+    lowShare: number | null;
+    activeBands: TrackStructureContext['activeBands'];
+}
+export interface TrackStructureInterpretation {
+    version: 1;
+    source: 'published-bar-measurements';
+    typicalRms: number;
+    changedSections: number;
+    limitations: string[];
+    decisions: TrackStructureDecision[];
+    contexts: TrackStructureContext[];
+}
+
 export interface TrackAnalysis {
+    /** Derived by AudioEngine after normalization, not a new worker detector. */
+    structureInterpretation?: TrackStructureInterpretation;
     /** Explicit experimental timing identity/provenance; no new accepted events. */
     eventTiming?: import('./eventTiming').EventTimingAnalysis;
     musicEvents?: import('./musicEvents').MusicEventLayer;
