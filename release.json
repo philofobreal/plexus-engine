@@ -1,7 +1,7 @@
 {
-  "id": "t13a-measured-structure-20261026T073635039Z",
-  "previousCommit": "54eb3b5bda1a201c2470cfc83559ade9ff721e39",
-  "sourceCommit": "0471d12443642c9a11eb8645df74d12778f0b459",
+  "id": "t13b-cue-purposes-20261026T194735357Z",
+  "previousCommit": "a71d62f2ffc977c0e4fc99edbe327276fbbe570c",
+  "sourceCommit": "3246bc0e0df774ba24f5a41b05d894ce7d637510",
   "inputs": [
     {
       "path": "bun.lock",
@@ -497,7 +497,7 @@
     },
     {
       "path": "src/automation/alignAutomationToCues.ts",
-      "sha256": "10b941ac035f1317585da4b119dcfc71b62dac4c275314fdd677f6b5e9e0fd49"
+      "sha256": "73a1b9eb20375d8721332cbba12d2e30792344bb74d32874fdfb349aaaa44158"
     },
     {
       "path": "src/automation/applyMvpWormholePreset.ts",
@@ -521,7 +521,7 @@
     },
     {
       "path": "src/automation/dramaturgyTransfer.ts",
-      "sha256": "708fd582f4504e57e8bcf1004b4c48148e288649244d14fe90e43064c4667630"
+      "sha256": "0bb3d0306743655c7dbcc7c8956c122c3bcb88e7d521251aef8dd4ca2a2e1d85"
     },
     {
       "path": "src/automation/generatorRouting.ts",
@@ -557,7 +557,7 @@
     },
     {
       "path": "src/automation/performancePlanGenerator.ts",
-      "sha256": "914d061179f3c5331339ab139bd40aa722a0b911d124dfed954d72fd287ea7ab"
+      "sha256": "44a0d70106e6ec8776e376dd27a3b31950cb9243079bc346d8005f4f36ae7cb9"
     },
     {
       "path": "src/automation/prepareWormholePerformance.ts",
@@ -565,7 +565,7 @@
     },
     {
       "path": "src/automation/scenePlanAdapter.ts",
-      "sha256": "282c98c87aa3840ce3ab5dcb5d4643a42301fa567bb4b16e4043b4953f65fafd"
+      "sha256": "88adb942e2297e89e1da042bf0a027cf4aefbdbef404d5258e0200cea845615e"
     },
     {
       "path": "src/automation/styleTranslator.ts",
@@ -777,7 +777,7 @@
     },
     {
       "path": "src/semantics/automationCueRoles.ts",
-      "sha256": "addedc7b5c2f76b3d16971b103b2b52ba6c882e3db92d747eb0b17a72360da7e"
+      "sha256": "3ab290f564669a9284dab73d5364bf9cd0a1ee796d04bd28a65e591232e173d0"
     },
     {
       "path": "src/semantics/cueEvidence.ts",
@@ -909,7 +909,7 @@
     },
     {
       "path": "src/types/index.ts",
-      "sha256": "72cfbfc9c4a5c03ea90fe18839591d35b497a966b0b11d046697a3e654e0cb4e"
+      "sha256": "419df5b587a82301a6fa772bb38f68a790febd7324c0fb7d3042c217bcf6a41a"
     },
     {
       "path": "src/types/musicEvents.ts",
@@ -1353,7 +1353,7 @@
     },
     {
       "path": "src/xr/XrAppController.ts",
-      "sha256": "474fae710023d9370613ebc4c9e57ef1ae12de746b4a339ef07206beb0d45824"
+      "sha256": "5f02a33b0ff87ddd9483499a066a292d9ba16a91349d0d4be4278906d0c7997e"
     },
     {
       "path": "src/xr/XrAppearanceSettings.ts",
@@ -1377,7 +1377,7 @@
     },
     {
       "path": "src/xr/XrMenuModel.ts",
-      "sha256": "2db215293addef29e2f129d086e330e99a8dd8202c8778b0a7ffcd8941e9d3cb"
+      "sha256": "26dd4e60f97b2ea6fc65259398a9b8eade6411771cec3af5215a78eceb05bc78"
     },
     {
       "path": "src/xr/XrPlayProfile.ts",
@@ -1578,12 +1578,12 @@
       "sha256": "eb5de8199ca4f3a44a8c3d64361515fa385bfd401a6b796853fd617300e65fb5"
     },
     {
-      "path": "assets/CanvasVisualSource-8ZufF1TO.js",
-      "sha256": "33360dff6fdeb47eec08c81c711b39e137e72ecafd2a1a6bd5cbfcedf0e0f1bf"
+      "path": "assets/CanvasVisualSource-BbbJUEAF.js",
+      "sha256": "fd67d226351d3397ad6f1928c56eeaaf6aac6efd6c55a36d5eb1087acbcbf958"
     },
     {
-      "path": "assets/CosmicWormholeIdentity-B7YvzMsp.js",
-      "sha256": "e4b090e93cbad9f826b0029e55e960ce6d58b74df0d095f8b15ec9ab6a5cae8b"
+      "path": "assets/CosmicWormholeIdentity-CvCltO0t.js",
+      "sha256": "43cae6a7a2f99487b9dee2bada900891f776584e619354cee304d8e48c59cd7c"
     },
     {
       "path": "assets/export.worker-Av-E_fEl.js",
@@ -1594,24 +1594,24 @@
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
-      "path": "assets/main-DgZy6hD-.js",
-      "sha256": "56f20487fb9047d568128dfe28b326b9e1b0e038064b18991e4071ff4a540e80"
-    },
-    {
-      "path": "assets/mvp-CY2M-zYx.js",
-      "sha256": "c276fd662a9d7382a6b1208dfa3934ac4622e8aec835f590ac97cbbcf2925d4a"
+      "path": "assets/main-DjCmJM1q.js",
+      "sha256": "59fd3c6523233af7023baa4ce18a4fd16d8f4521fbd142e25d67a434fd39edb8"
     },
     {
       "path": "assets/mvp-D0xy9ln6.css",
       "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
     },
     {
-      "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
-      "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+      "path": "assets/mvp-DE3HsuRf.js",
+      "sha256": "d59bb27ccf7038ea49030571fa30b957dbba394a5fd84994411c26bd6a441138"
     },
     {
-      "path": "assets/PreviewQualityControl-jgoyuirm.js",
-      "sha256": "d78787317f092836407b2b83a4cab2f822b83530291e861d5f50a006696256bc"
+      "path": "assets/PreviewQualityControl-Bdz9JDPP.js",
+      "sha256": "8829c61cd2f675e2f6f3e46fd16892b6a816abe4a1908c346b88170860e5c3af"
+    },
+    {
+      "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
+      "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
     },
     {
       "path": "assets/wormholeHostRender.worker-C0AYhcyr.js",
@@ -1630,8 +1630,8 @@
       "sha256": "23a8828e3e93d5f4b04c1594b0146aecf33fb331d60004fd60e77c0cdc98b264"
     },
     {
-      "path": "assets/xr-BBuTL-gN.js",
-      "sha256": "58e1bcb5bf2e419d2426d6b14710e412a3691217272ef191a01640288a8c535d"
+      "path": "assets/xr-Dwy8tEiF.js",
+      "sha256": "bc7ebdf674cd97076d33407ca1df70e66b62dcfc8e47bb541c2251c55e13d1f6"
     },
     {
       "path": "eso0932a.jpg",
@@ -1647,11 +1647,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "2f6032ff401b215ffbed31b073a9fedccd87700bc2d041b5de1a5160e0697ade"
+      "sha256": "898ce529f52982db4cfc508683785e3ea54dc11f57577bc5c2fe5e83a5ead2b9"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "c4d5dc4d0f0c879e9266607b652d649206521429bb98670d4752ddbf3a9ca797"
+      "sha256": "7e1ff664db23320f4c7e2e8ec3f98df8e69e0d0c339cfaefe442672d1c60b90d"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
@@ -1783,7 +1783,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "8fc78c3a9763e0879e981d66c77abba8119ed0169db89c624d554a3d16e7c7af"
+      "sha256": "d75ba6ee510ff0b963fd0e3f168d09a3f65b450f885af645c0111a16e1e271ce"
     }
   ]
 }
