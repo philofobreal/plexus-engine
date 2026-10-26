@@ -1,4 +1,5 @@
-import type { IntentType, RenderState, TimelineLayers, TrackSectionLabel } from '../types';
+import type { IntentType, PerformanceAutomationPoint, RenderState, TimelineLayers, TrackSectionLabel } from '../types';
+import { automationMorphProgress, automationMorphWindow, type AutomationMorphWindow } from '../automation/performanceAutomationRuntime.ts';
 
 interface TimelineViewport {
     start: number;
@@ -14,6 +15,9 @@ export class TimelineCanvas {
     private lastWaveformCacheKey = '';
     private cssWidth = 0;
     private cssHeight = 0;
+    private automationPoints: PerformanceAutomationPoint[] | null = null;
+    private sortedAutomationPoints: PerformanceAutomationPoint[] = [];
+    private automationWindows: AutomationMorphWindow[] = [];
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -187,7 +191,12 @@ export class TimelineCanvas {
         const bottomPad = 5;
         const graphBottom = height - bottomPad;
         const graphHeight = Math.max(8, height - topPad - bottomPad);
-        const sortedPoints = [...points].sort((a, b) => a.time - b.time);
+        if (points !== this.automationPoints) {
+            this.automationPoints = points;
+            this.sortedAutomationPoints = [...points].sort((a, b) => a.time - b.time);
+            this.automationWindows = this.sortedAutomationPoints.map((point, i, sorted) => automationMorphWindow(point, sorted[i - 1]));
+        }
+        const sortedPoints = this.sortedAutomationPoints;
 
         ctx.save();
 
@@ -216,24 +225,25 @@ export class TimelineCanvas {
 
         for (let i = 0; i < sortedPoints.length; i++) {
             const point = sortedPoints[i];
+            const window = this.automationWindows[i];
             const x = this.timeToX(point.time, width, viewport);
             const nextPoint = sortedPoints[i + 1];
             const nextX = nextPoint ? this.timeToX(nextPoint.time, width, viewport) : width;
 
             // JAVÍTVA: Csak akkor hagyjuk ki, ha a zóna teljes egésze a látható képernyőn kívül esik.
-            if (nextX < 0 || x > width) continue;
+            if (nextX < 0 || this.timeToX(window.start, width, viewport) > width) continue;
 
             const y = this.automationIntensityToY(point.intensity, topPad, graphBottom);
             const zoneLeft = Math.max(0, x);
             const zoneRight = Math.min(width, nextX);
             const zoneWidth = zoneRight - zoneLeft;
 
-            const xMorphEnd = this.timeToX(point.time + point.morphDurationSec, width, viewport);
+            const xMorphEnd = this.timeToX(window.end, width, viewport);
             
             // Ne vágjuk le a pontokat (Math.max/min) a görbe matek előtt, 
             // mert az torzítja a spline kirajzolását, ha a pont kilóg a képernyőről.
             // A canvas natív clippingje megoldja a képernyőn kívüli részek levágását.
-            const morphStart = x;
+            const morphStart = this.timeToX(window.start, width, viewport);
             const morphEnd = xMorphEnd;
             
             const isSelectedPoint = point.id === state.selectedPointId;
@@ -254,7 +264,7 @@ export class TimelineCanvas {
                 for (let segment = 0; segment <= segmentCount; segment++) {
                     const t = segment / segmentCount;
                     const segmentX = morphStart + t * (morphEnd - morphStart);
-                    const curveValue = this.applyCurveValue(t, point.morphCurve);
+                    const curveValue = point.cuePlacement ? automationMorphProgress(point, window.start + t * (window.end - window.start), window) : this.applyCurveValue(t, point.morphCurve);
                     const segmentY = topPad + (graphBottom - topPad) * curveValue;
                     ctx.lineTo(segmentX, segmentY);
                 }
@@ -273,7 +283,7 @@ export class TimelineCanvas {
                 for (let segment = 0; segment <= segmentCount; segment++) {
                     const t = segment / segmentCount;
                     const segmentX = morphStart + t * (morphEnd - morphStart);
-                    const curveValue = this.applyCurveValue(t, point.morphCurve);
+                    const curveValue = point.cuePlacement ? automationMorphProgress(point, window.start + t * (window.end - window.start), window) : this.applyCurveValue(t, point.morphCurve);
                     const segmentY = topPad + (graphBottom - topPad) * curveValue;
                     ctx.lineTo(segmentX, segmentY);
                 }
@@ -288,7 +298,7 @@ export class TimelineCanvas {
                 ctx.fillStyle = colors.border;
                 ctx.font = '8px monospace';
                 ctx.textBaseline = 'top';
-                ctx.fillText('< >', this.clamp(morphEnd - 7, 0, Math.max(0, width - 14)), topPad + 2);
+                ctx.fillText(window.arrivalAtCue ? 'ARRIVE' : '< >', this.clamp(morphEnd - 7, 0, Math.max(0, width - 14)), topPad + 2);
                 ctx.shadowBlur = 0;
             }
 

@@ -106,7 +106,7 @@ export class MvpVisualController {
         const finite = plan?.points.some(p => p.cuePlacement);
         if (finite && this.frameAutomationTime !== songTime) this.configureFiniteAutomation(plan);
         this.spiralAutomation.configure(plan, this.spiralPreset, this.tuningSignature(), this.resolveSpiralTuning, finite ? this.finiteSeed : undefined);
-        this.spiralAutomation.apply(songTime, tuning);
+        this.spiralAutomation.apply(songTime, tuning, this.getBoostedTuning(State.targetTuning));
         return this.spiralAutomation.transitionAnchor;
     }
     private readonly engine: AudioEngine;
@@ -873,7 +873,7 @@ export class MvpVisualController {
         const snapped = State.snapToGrid
             ? snapTimeToNearestGrid(proposedTime, State.trackAnalysis.bars, State.duration)
             : proposedTime;
-        point.time = constrainAutomationPointTime(plan, id, point.morphDurationSec, snapped, State.duration);
+        updateAutomationPointById(plan, id, { time: constrainAutomationPointTime(plan, id, point.morphDurationSec, snapped, State.duration) });
         plan.points.sort((a, b) => a.time - b.time);
         State.performancePlanEdited = true;
         this.lastTriggeredAutomationPointId = null;

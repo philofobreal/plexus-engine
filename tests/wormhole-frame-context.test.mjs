@@ -170,7 +170,7 @@ test('shared context has no host IO, canvas, clock, XR defaults or plan generati
 test('XR typed finite tuning is seek independent with partial presets and respects player spiral override',()=>{
     const {WormholeFrameContext}=baseLoad('visuals/WormholeFrameContext.ts');
     const points=[{...point(0),preset:'a'},{...point(2),preset:'b',morphDurationSec:.1,morphCurve:'linear'}]
-        .map(p=>({...p,cuePlacement:{role:'structure',start:0,end:10}}));
+        .map(p=>({...p,locked:true,cuePlacement:{role:'structure',start:0,end:10}}));
     const publication=analysis(baseLoad,points),input=seed('raw');
     const assets=new Map([['a',{visualTuning:{wormholeSpeed:.1,lineWeight:5}}],['b',{visualTuning:{wormholeSpeed:7,wormholeSpiral:.8,transitionSpeed:0}}]]);
     const direct=new WormholeFrameContext(input),forward=new WormholeFrameContext(input);
@@ -187,4 +187,41 @@ test('XR typed finite tuning is seek independent with partial presets and respec
     direct.step(2.05,false,0,2.1,true,true);near(direct.state.visualTuning.wormholeSpeed,3.55);near(direct.state.visualTuning.lineWeight,5);
     direct.setPresentation({spiralDirection:'right'});direct.step(2.05,false,0,2.05,false,true);
     assert.equal(direct.state.visualTuning.wormholeSpiralDirection,1);
+});
+
+test('XR automatic base and forced spiral arrive at cue without advancing event or logical ownership',()=>{
+ const {WormholeFrameContext}=baseLoad('visuals/WormholeFrameContext.ts');
+ const points=[{...point(0),preset:'a'},{...point(2),preset:'b',morphDurationSec:.1,morphCurve:'linear'}]
+  .map(p=>({...p,cuePlacement:{role:'structure',start:0,end:10}}));
+ const publication=analysis(baseLoad,points),original=JSON.stringify(publication.performancePlan);
+ publication.events=[{time:2,type:1}];publication.trackAnalysis.cues=[];
+ const c=new WormholeFrameContext(seed('raw'));c.prepare(publication);
+ c.preparePlan(publication.performancePlan,new Map([['a',{visualTuning:{wormholeSpeed:.1,lineWeight:5}}],['b',{visualTuning:{wormholeSpeed:7,wormholeSpiral:.8,transitionSpeed:0}}]]));
+ c.setPresentation({spiralDirection:'left'});c.step(1.95,false,0,null,true,true);
+ near(c.state.visualTuning.wormholeSpeed,3.55);near(c.state.visualTuning.wormholeSpiral,.6);near(c.state.visualTuning.lineWeight,5);
+ assert.equal(c.state.visualTuning.wormholeSpiralDirection,-1);assert.equal(c.state.activeVisualTransitionId,'automation:0');assert.equal(c.state.beatDecay,0);
+ c.step(2,false,.05,1.95,false,false);near(c.state.visualTuning.wormholeSpeed,7);near(c.state.visualTuning.wormholeSpiral,.8);
+ assert.equal(c.state.activeVisualTransitionId,'automation:2');assert.equal(c.state.beatDecay,baseLoad('visuals/transientDecay.ts').BEAT_DECAY_PER_FRAME);
+ c.step(1.95,false,0,2,true,true);near(c.state.visualTuning.wormholeSpeed,3.55);near(c.state.visualTuning.wormholeSpiral,.6);
+ assert.equal(c.state.activeVisualTransitionId,'automation:0');assert.equal(c.state.beatDecay,0);
+ assert.equal(JSON.stringify(publication.performancePlan),original);
+});
+
+test('XR default arrival projection matches the dashboard/MVP common scale without mutating publication',()=>{
+ const {WormholeFrameContext}=baseLoad('visuals/WormholeFrameContext.ts'),{applyMorphScale}=baseLoad('automation/morphScale.ts');
+ const points=[{...point(0),preset:'a'},{...point(.5),preset:'b'},{...point(9),preset:'c',morphDurationSec:1}]
+  .map(p=>({...p,cuePlacement:{role:'structure',start:0,end:10}}));
+ const publication=analysis(baseLoad,points),before=JSON.stringify(publication.performancePlan),c=new WormholeFrameContext(seed('raw'));
+ c.prepare(publication);c.preparePlan(publication.performancePlan,new Map(['a','b','c'].map(n=>[n,payload])));
+ assert.deepEqual(plain(c.plan),plain(applyMorphScale(publication.performancePlan,1,{durationSec:publication.duration})));
+ assert.equal(JSON.stringify(publication.performancePlan),before);
+});
+
+test('mixed XR plans never acquire an automatic rescale of protected authored durations',()=>{
+ const {WormholeFrameContext}=baseLoad('visuals/WormholeFrameContext.ts');
+ const points=[{...point(0),morphDurationSec:4,locked:true},{...point(.5)},{...point(9)}]
+  .map(p=>({...p,cuePlacement:{role:'structure',start:0,end:10}}));
+ const publication=analysis(baseLoad,points),c=new WormholeFrameContext(seed('raw'));c.prepare(publication);
+ c.preparePlan(publication.performancePlan,new Map([['fixed.json',payload]]));
+ assert.equal(c.plan,publication.performancePlan);assert.equal(c.plan.points[0].morphDurationSec,4);
 });

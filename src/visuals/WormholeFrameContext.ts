@@ -7,7 +7,8 @@ import { resolveMetaTuning } from '../config/resolveMetaTuning';
 import { defaultAdvancedBoosts, resolveAdvancedTuningValue } from '../config/metaTuningBoost';
 import { DEFAULT_WORMHOLE_WALL, WORMHOLE_WALL_GAIN_FIELDS, type WormholeWallPresentation } from '../types/WormholeWallPresentation';
 import { applyMvpWormholePreset } from '../automation/applyMvpWormholePreset';
-import { findActiveAutomationPoint } from '../automation/performanceAutomationRuntime';
+import { findActiveAutomationPoint, isAutomaticCuePoint } from '../automation/performanceAutomationRuntime';
+import { applyMorphScale } from '../automation/morphScale';
 import { AutomationTuningTimeline } from '../automation/AutomationTuningTimeline';
 import { WormholeSpiralAutomation } from '../automation/WormholeSpiralAutomation';
 import { buildNarrative, generateIntents, processChoreography, resolveSemanticState, SemanticResolver, SemanticRuntimeAdapter } from '../semantics';
@@ -119,7 +120,9 @@ export class WormholeFrameContext {
             if (!asset || typeof asset !== 'object') throw new Error(`Missing Wormhole preset: ${name}`);
             presets.set(name, JSON.parse(JSON.stringify(asset)));
         }
-        this.plan = plan;
+        // Same default scale projection as dashboard/MVP; keep the borrowed publication untouched.
+        // Untyped/protected plans retain their exact legacy path.
+        this.plan = plan.points.length > 0 && plan.points.every(isAutomaticCuePoint) ? applyMorphScale(plan, 1, { durationSec: this.analysis?.duration }) : plan;
         this.presets = presets;
         this.wallPresetGates.clear();
         for(const [name,asset] of presets)this.wallPresetGates.set(name,normalizeVisualTuningConfig(asset,this.rawTuning).wormholeOpticsEnabled>=.5);
@@ -192,7 +195,7 @@ export class WormholeFrameContext {
         this.finiteAutomation.apply(time, state.visualTuning, this.boosted);
         if (this.spiralDirection === 'auto' || point?.cuePlacement) {
             this.spiralAutomation.configure(this.plan, this.spiralPreset, 0, this.resolveSpiralTuning, this.rawTuning);
-            this.spiralAutomation.apply(time, state.visualTuning);
+            this.spiralAutomation.apply(time, state.visualTuning, this.boosted);
             state.spiralTransitionAnchor = this.spiralDirection === 'auto' ? this.spiralAutomation.transitionAnchor : null;
         } else state.spiralTransitionAnchor = null;
         if (this.spiralDirection !== 'auto' && point?.cuePlacement) state.visualTuning.wormholeSpiralDirection = this.spiralDirection === 'left' ? -1 : 1;

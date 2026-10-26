@@ -35,7 +35,7 @@ import { PlaybackController } from './controllers/PlaybackController';
 import { TuningController } from './controllers/TuningController';
 import { ExportController } from './controllers/ExportController';
 import { isSemanticTuningActive } from './semanticAutomationPolicy';
-import { applyAutomationMorphAuthority, findActiveAutomationPoint } from '../automation/performanceAutomationRuntime';
+import { applyAutomationMorphAuthority, automationMorphWindow, findActiveAutomationPoint } from '../automation/performanceAutomationRuntime';
 import { shouldApplyVisualModePlanGeneration } from './visualModePlanRegeneration';
 import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
 import { requestVisualModeChange } from '../state/visualModeTransition';
@@ -94,7 +94,7 @@ export class DashboardUI {
         const finite = plan?.points.some(p => p.cuePlacement);
         if (finite && this.frameAutomationTime !== songTime) this.configureFiniteAutomation(plan);
         this.spiralAutomation.configure(plan, this.spiralPreset, 0, undefined, finite ? this.finiteSeed : undefined);
-        this.spiralAutomation.apply(songTime, tuning);
+        this.spiralAutomation.apply(songTime, tuning, State.targetTuning);
         return this.spiralAutomation.transitionAnchor;
     }
     private presetCache = new Map<string, unknown>();
@@ -1276,12 +1276,14 @@ export class DashboardUI {
         const canvas = this.els.dramaturgyTimeline as HTMLCanvasElement;
         const rect = canvas.getBoundingClientRect();
         if (rect.height < 80) return null;
-        const points = this.getAutomationPlanView()?.points;
+        const points = this.getSortedScaledAutomationPoints();
         if (!points?.length) return null;
         const x = focusX * rect.width;
         let closestPoint: PerformanceAutomationPoint | null = null;
         let closestDistance = tolerancePx;
-        for (const point of points) {
+        for (const [i, point] of points.entries()) {
+            // Generated arrival bars are edited via the inspector; their cue remains selectable.
+            if (automationMorphWindow(point, points[i - 1]).arrivalAtCue) continue;
             const handleX = this.getTimelineXForTime(point.time + point.morphDurationSec, rect.width);
             const distance = Math.abs(handleX - x);
             if (distance <= closestDistance) { closestPoint = point; closestDistance = distance; }
@@ -1336,9 +1338,10 @@ export class DashboardUI {
         const y = focusY * rect.height;
         const { topPad, graphBottom } = this.getAutomationGraphMetrics(rect.height);
         if (y < topPad || y > graphBottom) return null;
-        for (const point of points) {
-            const startX = this.getTimelineXForTime(point.time, rect.width);
-            const endX = this.getTimelineXForTime(point.time + point.morphDurationSec, rect.width);
+        for (const [i, point] of points.entries()) {
+            const window = automationMorphWindow(point, points[i - 1]);
+            const startX = this.getTimelineXForTime(window.start, rect.width);
+            const endX = this.getTimelineXForTime(window.end, rect.width);
             if (endX <= startX || x < startX || x > endX) continue;
             return this.getBaseAutomationPointById(point.id);
         }

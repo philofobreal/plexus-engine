@@ -11,10 +11,20 @@ button { padding: 8px 16px; margin-bottom: 16px; } figcaption { padding: 8px; }
 <p>Isolated real renderer smoke. Path bend and lens are unchanged; no audio clock or camera roll.</p>
 <button id="four">At 4 s</button><button id="six">At 6 s</button>
 <button id="finite">Finite deadline</button><pre id="finite-result"></pre>
+<button id="arrival">Arrive at cue</button><pre id="arrival-result"></pre>
+<p>Shared dashboard/MVP timeline: automatic ramp2–4s, cue unchanged at4s.</p>
+<canvas id="arrival-timeline" style="width:1070px;height:120px"></canvas>
 <main><figure id="left"><figcaption>Left: loading</figcaption></figure><figure id="right"><figcaption>Right: loading</figcaption></figure></main>
 <script type="module">
 import { WormholeCanvasSource } from '../../src/visuals/WormholeCanvasSource.ts';
 import { createEmptyTrackAnalysis } from '../../src/analyzer/normalizeAnalysisResult.ts';
+import { TimelineCanvas } from '../../src/ui/TimelineCanvas.ts';
+const timelinePoints=[0,4].map((time,i)=>({id:'timeline-'+i,time,sectionId:'s',preset:i?'vos-wh-overdrive.json':'vos-wh-drift.json',confidence:1,intensity:1,
+ reason:'verse',morphDurationSec:2,morphCurve:'easeInOut',cuePlacement:{role:'structure',start:0,end:12}}));
+new TimelineCanvas(document.querySelector('#arrival-timeline')).render({isExporting:false,isPlaying:false,currentTime:3,duration:12,zoom:1,pan:0,bpm:120,
+ sampleRate:44100,hopSize:1024,frames:[],sections:[],bars:[],cues:[],significantMoments:[],buildupConfidence:[],spectralPivot:[],
+ tensionTrends:{globalSlope:0,peakTime:0,peakValue:0,segments:[]},performancePlan:{version:1,source:'auto',points:timelinePoints},
+ timelineLayers:{waveform:false,rms:false,buildup:false,cues:false,automation:true},audioSensitivity:1,dropAnticipation:0,gridOffset:0});
 const sources = [];
 for (const [label, direction] of [['left', -1], ['right', 1]]) {
  const source = new WormholeCanvasSource({ width: 520, height: 360 });
@@ -41,7 +51,7 @@ document.querySelector('#finite').onclick = async () => {
   let maxResidual=0,colouredPixels=0;
   for(const {label,source} of sources){
    const points=[0,4].map((time,i)=>({id:'finite-'+i,time,sectionId:'finite',preset:i?'vos-wh-overdrive.json':'vos-wh-drift.json',
-    confidence:1,intensity:1,reason:'verse',morphDurationSec:.1,morphCurve:'linear',spiralDirection:label==='left'?-1:1,
+    confidence:1,intensity:1,reason:'verse',locked:true,morphDurationSec:.1,morphCurve:'linear',spiralDirection:label==='left'?-1:1,
     cuePlacement:{role:i?'structure':'scene-entry',start:0,end:20}}));
    await source.prepare({frames:[],events:[],sampleRate:44100,hopSize:1024,bpm:128,duration:20,
     trackAnalysis:createEmptyTrackAnalysis(),performancePlan:{version:1,source:'auto',points}});
@@ -49,13 +59,34 @@ document.querySelector('#finite').onclick = async () => {
    source.render(4.05,false,true);source.render(4.1,false,true);
    const residual=Math.abs(source.context.state.visualTuning.wormholeSpeed-source.context.boosted.wormholeSpeed);maxResidual=Math.max(maxResidual,residual);
    const pixels=source.canvas.getContext('2d').getImageData(0,0,520,360).data;
-   for(let i=0;i<pixels.length;i+=4)if(pixels[i]+pixels[i+1]+pixels[i+2]>20)colouredPixels++;
+   for(let i=0;i<pixels.length;i+=4)if(Math.max(pixels[i],pixels[i+1],pixels[i+2])>35&&Math.max(pixels[i],pixels[i+1],pixels[i+2])-Math.min(pixels[i],pixels[i+1],pixels[i+2])>10)colouredPixels++;
    document.querySelector(`#${label} figcaption`).textContent=`${label}: finite deadline4.1s, residual ${residual.toExponential(2)}`;
   }
   const ok=maxResidual<1e-9&&colouredPixels>100;
   document.querySelector('#finite-result').textContent=`${ok?'PASS':'FAIL'}: finite preset speed arrival; residual=${maxResidual}; coloured pixels=${colouredPixels}`;
   document.querySelector('#finite-result').dataset.result=ok?'pass':'fail';
  }catch(error){document.querySelector('#finite-result').textContent='ERROR: '+error.message;}
+};
+document.querySelector('#arrival').onclick=async()=>{
+ try{
+  let residual=0,midpointError=0,pixels=0,logical=true;
+  for(const {label,source}of sources){
+   const points=[0,4].map((time,i)=>({id:'arrival-'+i,time,sectionId:'s',preset:i?'vos-wh-overdrive.json':'vos-wh-drift.json',confidence:1,intensity:1,
+    reason:'verse',morphDurationSec:.1,morphCurve:'linear',spiralDirection:label==='left'?-1:1,cuePlacement:{role:'structure',start:0,end:20}}));
+   await source.prepare({frames:[],events:[],sampleRate:44100,hopSize:1024,bpm:128,duration:20,trackAnalysis:createEmptyTrackAnalysis(),performancePlan:{version:1,source:'auto',points}});
+   for(let t=0;t<3.9;t+=.25)source.render(t,true,true);
+   source.render(3.9,false,true);const start=source.context.state.visualTuning.wormholeSpeed;
+   source.render(3.95,false,true);const mid=source.context.state.visualTuning.wormholeSpeed;
+   logical&&=source.context.state.activeVisualTransitionId?.includes('automation:arrival-0');
+   source.render(4,false,true);const end=source.context.state.visualTuning.wormholeSpeed;
+   residual=Math.max(residual,Math.abs(end-source.context.boosted.wormholeSpeed));midpointError=Math.max(midpointError,Math.abs(mid-(start+end)/2));
+   const data=source.canvas.getContext('2d').getImageData(0,0,520,360).data;for(let i=0;i<data.length;i+=4)if(Math.max(data[i],data[i+1],data[i+2])>35&&Math.max(data[i],data[i+1],data[i+2])-Math.min(data[i],data[i+1],data[i+2])>10)pixels++;
+   document.querySelector(`#${label} figcaption`).textContent=`${label}: pre-roll3.9s → cue4.0s; residual ${residual.toExponential(2)}`;
+  }
+  const ok=residual<1e-9&&midpointError<1e-9&&logical&&pixels>100;
+  document.querySelector('#arrival-result').textContent=`${ok?'PASS':'FAIL'}: cue arrival; endpoint=${residual}; midpoint=${midpointError}; logical=${logical}; coloured pixels=${pixels}`;
+  document.querySelector('#arrival-result').dataset.result=ok?'pass':'fail';
+ }catch(e){document.querySelector('#arrival-result').textContent='ERROR: '+e.message;}
 };
 window.addEventListener('pagehide', () => sources.forEach(({ source }) => source.dispose()), { once: true });
 draw(4);

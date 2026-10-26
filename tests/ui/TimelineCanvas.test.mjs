@@ -34,9 +34,9 @@ function createMockContext() {
       return { width: String(value).length * 6 };
     },
     fillText(...args) { calls.push(['fillText', ...args]); },
-    createLinearGradient() {
+    createLinearGradient(...args) {
       const gradient = { stops: [], addColorStop(offset, color) { this.stops.push([offset, color]); } };
-      calls.push(['createLinearGradient', gradient]);
+      calls.push(['createLinearGradient', gradient, ...args]);
       return gradient;
     }
   };
@@ -268,4 +268,19 @@ test('TimelineCanvas identifies an active global morph scale in the automation l
     audioSensitivity: 1, dropAnticipation: 0, videoDominantColor: { r: 0, g: 0, b: 0 }, gridOffset: 0
   });
   assert.ok(mockCanvas.context.calls.some(call => call[0] === 'fillText' && String(call[1]).includes('[200%]')));
+});
+
+test('TimelineCanvas draws automatic pre-roll before the unchanged cue and caches its layout',()=>{
+ const canvas=createMockCanvas(),timeline=new TimelineCanvas(canvas);
+ const points=[0,10].map((time,i)=>({id:String(i),time,sectionId:'s',preset:'default.json',confidence:1,intensity:1,reason:'verse',
+  morphDurationSec:4,morphCurve:'linear',cuePlacement:{role:'structure',start:0,end:20}}));
+ const original=JSON.stringify(points),state={isExporting:false,currentTime:8,duration:20,zoom:1,pan:0,bpm:120,
+  sampleRate:44100,hopSize:1024,frames:[],sections:[],bars:[],cues:[],significantMoments:[],buildupConfidence:[],spectralPivot:[],
+  tensionTrends:{globalSlope:0,peakTime:0,peakValue:0,segments:[]},performancePlan:{version:1,source:'auto',points},
+  timelineLayers:{waveform:false,rms:false,buildup:false,cues:false,automation:true},audioSensitivity:1,dropAnticipation:0,gridOffset:0};
+ timeline.render(state);
+ assert.ok(canvas.context.calls.some(c=>c[0]==='createLinearGradient'&&c[2]===60&&c[4]===100),'6–10s ramp at200px/20s');
+ assert.ok(canvas.context.calls.some(c=>c[0]==='fillText'&&c[1]==='ARRIVE'));
+ const windows=timeline.automationWindows;timeline.render(state);assert.equal(timeline.automationWindows,windows);
+ assert.equal(JSON.stringify(points),original);
 });
