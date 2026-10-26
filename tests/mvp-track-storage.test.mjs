@@ -27,7 +27,7 @@ function harness() {
             module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022
         } }).outputText;
         vm.runInNewContext(code, { exports, localStorage, TextEncoder, crypto: webcrypto,
-            require: request => load(path.resolve(path.dirname(file), request + '.ts')) }, { filename: file });
+            require: request => load(path.resolve(path.dirname(file), request.endsWith('.ts') ? request : request + '.ts')) }, { filename: file });
         return exports;
     }
     return { storage, localStorage, ...load(path.resolve('src/ui/mvp/metaTuningStorage.ts')) };

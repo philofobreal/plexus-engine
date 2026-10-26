@@ -1,11 +1,31 @@
 import type { PerformanceAutomationPlan, PerformanceAutomationPoint, VisualTuningConfig } from '../types';
 
-/** Finite authored phase, independent of device cadence and manual smoothing speed. */
-export function automationMorphProgress(point: Pick<PerformanceAutomationPoint, 'time' | 'morphDurationSec' | 'morphCurve'>, time: number): number {
-    if (!Number.isFinite(time) || !Number.isFinite(point.time) || !Number.isFinite(point.morphDurationSec) || time < point.time) return 0;
+export interface AutomationMorphWindow { start: number; end: number; arrivalAtCue: boolean }
+export function isAutomaticCuePoint(point: PerformanceAutomationPoint): boolean {
+    return !!point.cuePlacement && !point.locked && point.reason !== 'manual';
+}
+export function canAnticipateAutomationPoint(point: PerformanceAutomationPoint, previous?: PerformanceAutomationPoint): boolean {
+    return isAutomaticCuePoint(point) && !!previous && isAutomaticCuePoint(previous);
+}
+
+/** Render-only schedule. Canonical cue/trigger/event times and protected authored morphs stay intact. */
+export function automationMorphWindow(point: PerformanceAutomationPoint, previous?: PerformanceAutomationPoint): AutomationMorphWindow {
     const duration = Number.isFinite(point.morphDurationSec) ? Math.max(0, point.morphDurationSec) : 0;
-    if (duration === 0 || time >= point.time + duration) return 1;
-    const u = Math.max(0, Math.min(1, (time - point.time) / duration));
+    // No look-ahead before a late initial state or across a user-owned/legacy predecessor.
+    const arrivalAtCue = canAnticipateAutomationPoint(point, previous);
+    if (point.time === 0 && point.cuePlacement) return { start: 0, end: 0, arrivalAtCue };
+    return arrivalAtCue
+        ? { start: Math.max(0, previous!.time, point.time - duration), end: point.time, arrivalAtCue }
+        : { start: point.time, end: point.time + duration, arrivalAtCue: false };
+}
+
+/** Finite authored phase, independent of device cadence and manual smoothing speed. */
+export function automationMorphProgress(point: Pick<PerformanceAutomationPoint, 'time' | 'morphDurationSec' | 'morphCurve'>, time: number,
+    window?: AutomationMorphWindow): number {
+    const start = window?.start ?? point.time, end = window?.end ?? point.time + Math.max(0, point.morphDurationSec);
+    if (!Number.isFinite(time) || !Number.isFinite(start) || !Number.isFinite(end) || time < start) return 0;
+    if (end <= start || time >= end) return 1;
+    const u = Math.max(0, Math.min(1, (time - start) / (end - start)));
     return point.morphCurve === 'linear' ? u : point.morphCurve === 'exponential'
         ? Math.expm1(5 * u) / Math.expm1(5) : u * u * (3 - 2 * u);
 }

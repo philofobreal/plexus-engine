@@ -266,7 +266,8 @@ export interface PerformanceAutomationMeta {
 /** Canonical song-time origin of one published visual transition, never a playback clock. */
 export interface VisualTransitionAnchor { readonly id: string; readonly time: number }
 
-/** Requested evidence family for a generated visual proposal, not a detected event; time remains a morph START, not a target-arrival deadline. */
+/** Requested evidence family for a generated proposal, not a detected event. Time is the canonical cue;
+ * eligible automatic preset bases can pre-roll to it. Manual/locked/legacy transitions start at time. */
 export interface AutomationCuePlacement {
     role: 'scene-entry' | 'attack' | 'release' | 'structure' | 'melody' | 'fx';
     /** Half-open originating scene/section window on the existing song clock. */

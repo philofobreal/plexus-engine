@@ -1,12 +1,12 @@
 import { filterForeignIdentityTuningForAutomation } from '../config/identityTuningRegistry';
 import type { PerformanceAutomationPlan, PerformanceAutomationPoint, VisualTuningConfig } from '../types';
-import { applyTuningMorph, cloneDefaultVisualTuning, visualTuningKeys, visualTuningControls, tuningMorphAmount, mvpSurfaceTuningOverrides } from '../config/visualTuning';
+import { applyTuningMorph, cloneDefaultVisualTuning, visualTuningKeys, visualTuningControls, tuningMorphAmount, mvpSurfaceTuningOverrides, isDiscreteVisualTuningKey } from '../config/visualTuning';
 import { applyMvpWormholePreset } from './applyMvpWormholePreset';
-import { automationMorphProgress } from './performanceAutomationRuntime';
+import { automationMorphProgress, automationMorphWindow, type AutomationMorphWindow } from './performanceAutomationRuntime';
 
 type Resolve = (raw: VisualTuningConfig, out: VisualTuningConfig) => VisualTuningConfig;
 type Key = keyof VisualTuningConfig;
-interface Anchor { point: PerformanceAutomationPoint; start: VisualTuningConfig; target: VisualTuningConfig; raw: VisualTuningConfig; keys: Key[] }
+interface Anchor { point: PerformanceAutomationPoint; window: AutomationMorphWindow; start: VisualTuningConfig; target: VisualTuningConfig; raw: VisualTuningConfig; keys: Key[]; owned: ReadonlySet<Key> }
 const bounds = new Map(visualTuningControls.map(c => [c.key, c]));
 const copy: Resolve = (raw, out) => Object.assign(out, raw);
 
@@ -61,17 +61,18 @@ export class AutomationTuningTimeline {
             if (data.dramaturgyProfile) for (const key of ['buildupIntensity','dropDampening','breakRestraint','vocalHighlight','fxChaos'] as const)
                 if (Object.hasOwn(data.dramaturgyProfile, key)) owned.add(key);
             const start = cloneDefaultVisualTuning(), target = cloneDefaultVisualTuning();
-            if (previous) sample(previous, point.time, start); else resolve(raw, start);
+            const window = automationMorphWindow(point, previous?.point);
+            if (previous) sample(previous, window.start, start); else resolve(raw, start);
             applyMvpWormholePreset(raw, payload, point, surfacePolicy);
             resolve(raw, target);
             if (point.time === 0) Object.assign(start, target);
-            const anchor = { point, start, target, raw: { ...raw }, keys: [...owned] }; this.anchors.push(anchor); previous = anchor;
+            const anchor = { point, window, start, target, raw: { ...raw }, keys: [...owned], owned: new Set(owned) }; this.anchors.push(anchor); previous = anchor;
         }
     }
 
-    private indexAt(time: number): number {
+    private indexAt(time: number, logical = false): number {
         let low = 0, high = this.anchors.length;
-        while (low < high) { const mid = (low + high) >>> 1; if (this.anchors[mid].point.time <= time) low = mid + 1; else high = mid; }
+        while (low < high) { const mid = (low + high) >>> 1; if ((logical ? this.anchors[mid].point.time : this.anchors[mid].window.start) <= time) low = mid + 1; else high = mid; }
         return low - 1;
     }
 
@@ -79,7 +80,7 @@ export class AutomationTuningTimeline {
      * Unauthored global controls remain host-owned. Only an authoritative current point qualifies.
      */
     applyCanonicalTarget(point: PerformanceAutomationPoint, target: VisualTuningConfig): boolean {
-        const anchor = this.anchors[this.indexAt(point.time)];
+        const anchor = this.anchors[this.indexAt(point.time, true)];
         if (!point.cuePlacement || anchor?.point !== point) return false;
         for (const key of anchor.keys) target[key] = anchor.raw[key];
         return true;
@@ -95,7 +96,9 @@ export class AutomationTuningTimeline {
         // No inferred current target past a missing predecessor.
         const unresolved = this.ordered[index + 1];
         if (unresolved && time >= unresolved.time) return false;
-        const progress = anchor.point.time === 0 ? 1 : automationMorphProgress(anchor.point, time);
+        const current = this.anchors[this.indexAt(time, true)];
+        if (!current) return false;
+        const progress = anchor.point.time === 0 ? 1 : automationMorphProgress(anchor.point, time, anchor.window);
         const entering = index !== this.lastIndex || time < this.lastTime;
         this.lastIndex = index; this.lastTime = time;
         if (progress >= 1 && this.completed && !entering) return false;
@@ -103,7 +106,12 @@ export class AutomationTuningTimeline {
         sample(anchor, time, this.sampled);
         for (const key of anchor.keys) {
             if (key === 'wormholeSpiral' || key === 'wormholeSpiralDirection') continue;
-            const delta = currentTarget[key] - anchor.target[key];
+            // Enum/gate publication and semantic identity belong to the actual cue, never look-ahead.
+            if (time < anchor.point.time && isDiscreteVisualTuningKey(key)) { out[key] = currentTarget[key]; continue; }
+            const inheritedOffset = currentTarget[key] - current.target[key];
+            // A newly authored key inherits the player's current value at start, then gives up that
+            // inherited offset as the new preset acquires ownership, avoiding a snap at the cue.
+            const delta = inheritedOffset * (current.owned.has(key) ? 1 : 1 - progress);
             const value = this.sampled[key] + delta, control = bounds.get(key);
             out[key] = control && delta !== 0 ? Math.max(control.min, Math.min(control.max, value)) : value;
         }
@@ -113,7 +121,7 @@ export class AutomationTuningTimeline {
 function sample(anchor: Anchor, time: number, out: VisualTuningConfig): void {
     Object.assign(out, anchor.start);
     const p = anchor.point;
-    const amount = p.time === 0 ? 1 : p.cuePlacement ? automationMorphProgress(p, time)
+    const amount = p.time === 0 ? 1 : p.cuePlacement ? automationMorphProgress(p, time, anchor.window)
         : tuningMorphAmount(anchor.target, anchor.target.transitionSpeed, time - p.time);
     applyTuningMorph(out, anchor.target, anchor.target.transitionSpeed, 0, amount);
 }

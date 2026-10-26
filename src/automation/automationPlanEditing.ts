@@ -24,6 +24,10 @@ export function updateAutomationPointById(
 ): PerformanceAutomationPoint | null {
     const point = findAutomationPointById(plan, id);
     if (!point) return null;
+    if (Object.entries(edit).some(([key, value]) => point[key as keyof PerformanceAutomationPoint] !== value)) {
+        point.reason = 'manual';
+        delete point.cueAnchor; // A user edit cannot retain a selected source as fresh evidence.
+    }
     Object.assign(point, edit);
     return point;
 }
@@ -97,8 +101,7 @@ export function nudgeAutomationPointTime(
     if (!point) return null;
     const secondsPerBeat = bars.length >= 2 ? (bars[1].start - bars[0].start) / 4 : 0.5;
     const proposed = clampAutomationTime(point.time + deltaBeats * secondsPerBeat, 0, totalDurationSec);
-    point.time = constrainAutomationPointTime(plan, id, point.morphDurationSec, proposed, totalDurationSec);
-    return point;
+    return updateAutomationPointById(plan, id, { time: constrainAutomationPointTime(plan, id, point.morphDurationSec, proposed, totalDurationSec) });
 }
 
 export interface CreateAutomationPointOptions {

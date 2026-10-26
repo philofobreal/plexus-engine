@@ -53,9 +53,9 @@
     {
       "path": "src/types/index.ts",
       "predecessorSha256": "cb8fc311a35415951019a814f1090806b1db53e78ee4fc9f3b8037944b4dbc32",
-      "replacementSha256": "419df5b587a82301a6fa772bb38f68a790febd7324c0fb7d3042c217bcf6a41a",
-      "reviewedBy": "Single integration owner with independent read-only automation/runtime reviews, T13b",
-      "reviewedReason": "Add optional generated cue placement intent and indexed gate decisions. Raw analyzer7, timing DSP, accepted events and grid untouched; actual scene adapter emission branch now supplies role/causal scene span for normal production cue selection. All previous hashes/reasons retained; predecessor manifest/source in Git0471d12443642c9a11eb8645df74d12778f0b459. No historical measurement/golden rewrite.",
+      "replacementSha256": "a7613a21ba9cfceb97f0dd377d97ed16010a1d1207b04cf7b6da7bf887581d4e",
+      "reviewedBy": "Single integration owner with independent read-only runtime/gameplay contract reviews, T13d",
+      "reviewedReason": "Comment-only correction: canonical cue time can be a generated preset-base arrival; manual/locked/legacy start semantics retained. No type shape, DSP, event timestamp, worker or historical measurement change. Prior complete source/manifest in Git4bcb4946946e93e8df7c14b672f0baee36f6be85; all prior hashes/reasons retained.",
       "supersededReplacements": [
         {
           "sha256": "02c041e8cef7a9ce2008023c74f6edc9265f1f7d69690a2af031785f1971893b",
@@ -76,6 +76,11 @@
           "sha256": "72cfbfc9c4a5c03ea90fe18839591d35b497a966b0b11d046697a3e654e0cb4e",
           "reviewedBy": "Single integration owner with independent read-only gameplay/render reviews, T13a",
           "reviewedReason": "Add optional host-derived structure-v1 context/provenance types. Raw analyzer7/worker DSP, accepted events, grid and original boundaries unchanged; production AudioEngine interprets supported measurements once before callbacks. Original/current measured-source bytes and every superseded review remain retained; prior complete manifest in Git75d75a9e298445725451bc7e050342645afbe4c4. New structural controls and publication regressions accompany the intentional host behavior change; no historical numeric measurement or golden rewritten."
+        },
+        {
+          "sha256": "419df5b587a82301a6fa772bb38f68a790febd7324c0fb7d3042c217bcf6a41a",
+          "reviewedBy": "Single integration owner with independent read-only automation/runtime reviews, T13b",
+          "reviewedReason": "Add optional generated cue placement intent and indexed gate decisions. Raw analyzer7, timing DSP, accepted events and grid untouched; actual scene adapter emission branch now supplies role/causal scene span for normal production cue selection. All previous hashes/reasons retained; predecessor manifest/source in Git0471d12443642c9a11eb8645df74d12778f0b459. No historical measurement/golden rewrite."
         }
       ]
     },

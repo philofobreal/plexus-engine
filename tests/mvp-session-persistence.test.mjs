@@ -27,7 +27,7 @@ function harness() {
         vm.runInNewContext(ts.transpileModule(readFileSync(file, 'utf8'), {
             compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
         }).outputText, { exports, localStorage, sessionStorage, crypto: webcrypto, TextEncoder,
-            require: request => load(path.resolve(path.dirname(file), request + '.ts')) }, { filename: file });
+            require: request => load(path.resolve(path.dirname(file), request.endsWith('.ts') ? request : request + '.ts')) }, { filename: file });
         return exports;
     }
     const codec = load('src/ui/mvp/sessionCheckpoint.ts');

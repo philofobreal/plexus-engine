@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import {createLoader} from './helpers/xr-loader.mjs';
 const load=createLoader();
 const {AutomationTuningTimeline}=load('automation/AutomationTuningTimeline.ts');
-const {automationMorphProgress}=load('automation/performanceAutomationRuntime.ts');
+const {automationMorphProgress,automationMorphWindow,findActiveAutomationPoint}=load('automation/performanceAutomationRuntime.ts');
 const {cloneDefaultVisualTuning,applyTuningMorph,effectiveWormholeSpiral}=load('config/visualTuning.ts');
 const {applyMvpWormholePreset}=load('automation/applyMvpWormholePreset.ts');
 const {WormholeSpiralAutomation}=load('automation/WormholeSpiralAutomation.ts');
 const point=(time,preset,duration=.1,curve='linear')=>({id:String(time),time,preset,sectionId:'s',reason:'verse',intensity:1,confidence:.8,
-    morphDurationSec:duration,morphCurve:curve,cuePlacement:{role:time===0?'scene-entry':'structure',start:0,end:30}});
+    // Retain the T13c start-duration regression as the explicitly user-locked contract.
+    locked:true,morphDurationSec:duration,morphCurve:curve,cuePlacement:{role:time===0?'scene-entry':'structure',start:0,end:30}});
 const payloads={a:{visualTuning:{wormholeSpeed:.1,wormholePathBend:0,lineWeight:5,wormholeSpiral:.6,wormholeSpiralDirection:1,transitionSpeed:0}},
     b:{visualTuning:{wormholeSpeed:7,wormholePathBend:2,wormholeSpiral:.8,wormholeSpiralDirection:-1,transitionSpeed:0}},
     c:{visualTuning:{wormholeSpeed:1}}};
@@ -102,4 +103,102 @@ test('typed speed-only plans leave unauthored spiral controls alone; ready spira
  const out={...seed,wormholeSpiralDirection:-1};assert.equal(spiral.apply(2.05,out),false);assert.equal(out.wormholeSpiral,2.3);assert.equal(out.wormholeSpiralDirection,-1);
  const f=fixture([point(0,'a'),point(2,'b'),point(10,'missing')]);spiral.configure(f.input,n=>f.assets[n],0,undefined,seed);
  assert.equal(spiral.apply(2.1,out),true);near(effectiveWormholeSpiral(out),-.8);assert.equal(spiral.apply(10.1,out),false);
+});
+
+const automatic=(...args)=>({...point(...args),locked:false});
+test('automatic windows arrive at the canonical cue and never move the published plan',()=>{
+ const a=automatic(0,'a'),b=automatic(10,'b',4),original=JSON.stringify([a,b]);
+ assert.deepEqual({...automationMorphWindow(b,a)},{start:6,end:10,arrivalAtCue:true});
+ assert.equal(automationMorphProgress(b,8,automationMorphWindow(b,a)),.5);
+ assert.equal(findActiveAutomationPoint(plan([a,b]),8),a);
+ assert.equal(JSON.stringify([a,b]),original);
+ assert.deepEqual({...automationMorphWindow(automatic(2,'b',8),a)},{start:0,end:2,arrivalAtCue:true});
+ assert.deepEqual({...automationMorphWindow({...b,time:0},a)},{start:0,end:0,arrivalAtCue:true});
+});
+
+test('late first, manual, locked and legacy predecessors retain start-duration scheduling',()=>{
+ const a=automatic(10,'a',8),b=automatic(20,'b',8),old={...a};delete old.cuePlacement;
+ for(const previous of [undefined,{...a,locked:true},{...a,reason:'manual'},old]){
+  assert.deepEqual({...automationMorphWindow(b,previous)},{start:20,end:28,arrivalAtCue:false});
+ }
+ for(const current of [{...b,locked:true},{...b,reason:'manual'}])assert.equal(automationMorphWindow(current,a).start,20);
+});
+
+test('pre-roll samples future base while current logical semantics and token keep their cue',()=>{
+ const a=automatic(0,'a'),b=automatic(10,'b',4),f=fixture([a,b]),s=new WormholeSpiralAutomation();s.configure(f.input,n=>f.assets[n]);
+ const out=cloneDefaultVisualTuning(),before=target(f,8);before.wormholeSpeed+=.2;
+ f.timeline.apply(8,out,before);s.apply(8,out,before);near(out.wormholeSpeed,3.75);near(effectiveWormholeSpiral(out),-.1);
+ assert.deepEqual({...s.transitionAnchor},{id:'automation:0',time:0});
+ const end=target(f,10);f.timeline.apply(10,out,end);s.apply(10,out,end);near(out.wormholeSpeed,7);near(effectiveWormholeSpiral(out),-.8);
+ assert.deepEqual({...s.transitionAnchor},{id:'automation:10',time:10});
+ f.timeline.apply(8,out,before);s.apply(8,out,before);near(out.wormholeSpeed,3.75);
+});
+
+test('new continuous ownership fades inherited manual offset without a cue-time snap',()=>{
+ const f=fixture([automatic(0,'c'),automatic(10,'b',4)]);f.assets.b={visualTuning:{lineWeight:5}};f.timeline.configure(f.input,n=>f.assets[n]);
+ const out=cloneDefaultVisualTuning(),current=target(f,8);const seed=current.lineWeight;current.lineWeight=3;
+ f.timeline.apply(6,out,current);near(out.lineWeight,3);
+ f.timeline.apply(8,out,current);near(out.lineWeight,4);
+ f.timeline.apply(10-1e-7,out,current);assert.ok(Math.abs(out.lineWeight-5)<1e-6);
+ const end=target(f,10);f.timeline.apply(10,out,end);near(out.lineWeight,5);assert.notEqual(seed,5);
+});
+
+test('discrete shape, waveform and wall selectors remain logical until the cue',()=>{
+ const f=fixture([automatic(0,'a'),automatic(10,'b',4)]);
+ f.assets.a={visualTuning:{wormholeWallMode:0,wormholeRadiusLfoWaveform:0,wormholeGrainShape:0}};
+ f.assets.b={visualTuning:{wormholeWallMode:1,wormholeRadiusLfoWaveform:3,wormholeGrainShape:1}};
+ f.timeline.configure(f.input,n=>f.assets[n]);const out=cloneDefaultVisualTuning();
+ for(const t of [6,8,9.999]){f.timeline.apply(t,out,target(f,t));assert.equal(out.wormholeWallMode,0);assert.equal(out.wormholeRadiusLfoWaveform,0);assert.equal(out.wormholeGrainShape,0);}
+ f.timeline.apply(10,out,target(f,10));assert.equal(out.wormholeWallMode,1);assert.equal(out.wormholeRadiusLfoWaveform,3);
+});
+
+test('first authored spiral inherits the current unowned magnitude through pre-roll',()=>{
+ const f=fixture([automatic(0,'c'),automatic(10,'b',4)]),s=new WormholeSpiralAutomation();s.configure(f.input,n=>f.assets[n]);
+ const current=target(f,8),out=cloneDefaultVisualTuning();current.wormholeSpiral=2.3;current.wormholeSpiralDirection=1;
+ s.apply(6,out,current);near(out.wormholeSpiral,2.3);near(effectiveWormholeSpiral(out),2.3);
+ s.apply(8,out,current);near(out.wormholeSpiral,1.55);near(effectiveWormholeSpiral(out),.75);
+ s.apply(10,out,target(f,10));near(effectiveWormholeSpiral(out),-.8);
+});
+
+test('clipped and same-time windows retain stable canonical ownership with duplicate IDs',()=>{
+ const a={...automatic(0,'a'),id:'same'},b={...automatic(2,'b',8),id:'same'},c={...automatic(2,'c',8),id:'same'};
+ const f=fixture([a,b,c]),out=cloneDefaultVisualTuning();
+ const raw=cloneDefaultVisualTuning();assert.equal(f.timeline.applyCanonicalTarget(a,raw),true);
+ f.timeline.apply(1,out,target(f,1));near(out.wormholeSpeed,3.55);
+ f.timeline.apply(2,out,target(f,2));near(out.wormholeSpeed,1);assert.equal(findActiveAutomationPoint(f.input,2),c);
+});
+
+test('missing future payload never invents its pre-roll and late publication restores absolute phase',()=>{
+ const f=fixture([automatic(0,'a'),automatic(10,'missing',4)]),out=cloneDefaultVisualTuning();
+ f.timeline.apply(8,out,target(f,8));near(out.wormholeSpeed,.1);
+ f.assets.missing=payloads.b;f.timeline.configure(f.input,n=>f.assets[n]);f.timeline.apply(8,out,target(f,8));near(out.wormholeSpeed,3.55);
+ const saved=JSON.stringify(out);f.timeline.apply(8,out,target(f,8));assert.equal(JSON.stringify(out),saved);
+});
+
+test('spiral magnitude and direction acquire ownership separately',()=>{
+ const run=(a,b,host,check)=>{
+  const f=fixture([automatic(0,'a'),automatic(10,'b',4)]);f.assets.a={visualTuning:a};f.assets.b={visualTuning:b};
+  const s=new WormholeSpiralAutomation();s.configure(f.input,n=>f.assets[n]);const out=cloneDefaultVisualTuning();
+  for(const t of [6,8,10]){s.apply(t,out,host);check(t,out);}
+ };
+ run({wormholeSpiralDirection:-1},{wormholeSpiral:.8},{wormholeSpiral:2.3,wormholeSpiralDirection:-1},(t,out)=>{
+  near(out.wormholeSpiral,t===6?2.3:t===8?1.55:.8);
+  // A legacy preset without an authored direction still explicitly defaults to Right.
+  near(effectiveWormholeSpiral(out),t===6?-2.3:t===8?-.75:.8);
+ });
+ run({wormholeSpeed:1},{wormholeSpiralDirection:1},{wormholeSpiral:.6,wormholeSpiralDirection:-1},(t,out)=>{
+  near(out.wormholeSpiral,.6);near(effectiveWormholeSpiral(out),t===6?-.6:t===8?0:.6);
+ });
+ run({wormholeSpiralDirection:-1},{wormholeSpiralDirection:1},{wormholeSpiral:2.3,wormholeSpiralDirection:-1},(t,out)=>{
+  near(out.wormholeSpiral,2.3);near(effectiveWormholeSpiral(out),t===6?-2.3:t===8?0:2.3);
+ });
+});
+
+test('first magnitude acquisition anticipates the actual implicit Right target without a cue flip',()=>{
+ const f=fixture([automatic(0,'c'),automatic(10,'b',4)]);f.assets.b={visualTuning:{wormholeSpiral:.8}};
+ const s=new WormholeSpiralAutomation();s.configure(f.input,n=>f.assets[n]);const out=cloneDefaultVisualTuning();
+ const before={wormholeSpiral:2.3,wormholeSpiralDirection:-1};
+ s.apply(6,out,before);near(effectiveWormholeSpiral(out),-2.3);
+ s.apply(10-1e-7,out,before);assert.ok(Math.abs(effectiveWormholeSpiral(out)-.8)<1e-6);
+ s.apply(10,out,{wormholeSpiral:.8,wormholeSpiralDirection:1});near(effectiveWormholeSpiral(out),.8);
 });

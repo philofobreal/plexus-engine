@@ -76,7 +76,7 @@ function harness({ saveSucceeds = () => true } = {}) {
             const result = deferred(); presetRequests.push({ url, ...result }); return result.promise;
         }, require: request => {
             assert.ok(request.startsWith('.'), `Unexpected dependency: ${request}`);
-            return load(path.resolve(path.dirname(file), request + '.ts'));
+            return load(path.resolve(path.dirname(file), request.endsWith('.ts') ? request : request + '.ts'));
         } }, { filename: file });
         return exports;
     }
@@ -865,11 +865,11 @@ test('history invalidates late preset responses with reused IDs and resets on th
     assert.equal(c.getHistoryStatus().scope, 'all'); assert.equal(c.undo(), false);
 });
 
-test('fresh MVP finite lane uses only its owned cache and reaches the original deadline',()=>{
+test('fresh MVP locked finite lane uses only its owned cache and reaches the original deadline',()=>{
     const h=harness(),load=createLoader();const {cloneDefaultVisualTuning}=load('config/visualTuning.ts');
     h.state.targetTuning=cloneDefaultVisualTuning();h.state.visualMode='cosmic-wormhole';h.state.automationMorphScale=1;
     h.state.editedPerformancePlan={version:1,source:'auto',points:[0,2].map((time,i)=>({id:'duplicate',time,preset:i?'b':'a',sectionId:'s',reason:'verse',
-        confidence:.8,intensity:1,morphDurationSec:.1,morphCurve:'linear',cuePlacement:{role:'structure',start:0,end:60}}))};
+        confidence:.8,intensity:1,locked:true,morphDurationSec:.1,morphCurve:'linear',cuePlacement:{role:'structure',start:0,end:60}}))};
     h.controller.presetCache.set('a',{visualTuning:{wormholeSpeed:.1}});h.controller.presetCache.set('b',{visualTuning:{wormholeSpeed:7,transitionSpeed:0}});
     const values=[];
     for(const time of [0,2,2.05,2.1]){
@@ -879,4 +879,21 @@ test('fresh MVP finite lane uses only its owned cache and reaches the original d
     }
     assert.ok(Math.abs(values[2]-(values[1]+values[3])/2)<1e-10);
     assert.ok(values[3]>values[1]);assert.deepEqual(h.state.preloadedPresets,{});
+});
+
+test('MVP automatic pre-roll preserves logical preset until cue and source plan through seek',()=>{
+ const h=harness(),load=createLoader(),{cloneDefaultVisualTuning}=load('config/visualTuning.ts');
+ h.state.targetTuning=cloneDefaultVisualTuning();h.state.visualMode='cosmic-wormhole';h.state.automationMorphScale=1;
+ h.state.editedPerformancePlan={version:1,source:'auto',points:[0,2].map((time,i)=>({id:'same',time,preset:i?'b':'a',sectionId:'s',reason:'verse',
+  confidence:1,intensity:1,morphDurationSec:.1,morphCurve:'linear',cuePlacement:{role:'structure',start:0,end:60}}))};
+ const before=JSON.stringify(h.state.editedPerformancePlan);
+ h.controller.presetCache.set('a',{visualTuning:{wormholeSpeed:.1}});h.controller.presetCache.set('b',{visualTuning:{wormholeSpeed:7,transitionSpeed:0}});
+ const values=[];
+ for(const time of [0,1.9,1.95,2,1.95]){
+  h.state.currentTime=time;h.controller.prepareAutomationFrame();const out=cloneDefaultVisualTuning(),target=h.controller.getBoostedTuning(h.state.targetTuning);
+  assert.equal(h.controller.applyAutomatedTuning(time,out,target),true);values.push(out.wormholeSpeed);
+  assert.equal(h.controller.appliedAutomationPoint.time,time<2?0:2);
+ }
+ assert.ok(Math.abs(values[2]-(values[1]+values[3])/2)<1e-10);assert.ok(Math.abs(values[4]-values[2])<1e-10);
+ assert.equal(JSON.stringify(h.state.editedPerformancePlan),before);assert.deepEqual(h.state.preloadedPresets,{});
 });

@@ -24,6 +24,15 @@ const createPlan = () => ({
   points: [point('a', 0, 2), point('b', 8, 2)]
 });
 
+test('real generated edits become user-owned while selection and no-op edits retain automatic timing',()=>{
+ const plan=createPlan(),p=plan.points[0];p.reason='verse';p.cuePlacement={role:'structure',start:0,end:20};p.cueAnchor={sourceTime:0};
+ assert.equal(findAutomationPointById(plan,'a'),p);updateAutomationPointById(plan,'a',{intensity:p.intensity});
+ assert.equal(p.reason,'verse');assert.ok(p.cueAnchor);
+ updateAutomationPointById(plan,'a',{intensity:1.4});assert.equal(p.reason,'manual');assert.equal(p.cueAnchor,undefined);assert.ok(p.cuePlacement);
+ const next=plan.points[1];next.reason='verse';next.cuePlacement={role:'structure',start:0,end:20};
+ nudgeAutomationPointTime(plan,'b',1,[],30);assert.equal(next.reason,'manual');
+});
+
 test('selecting a scaled point and changing preset mutates the base edited plan', () => {
   const editedPlan = createPlan();
   const scaledPoint = applyMorphScale(editedPlan, 2).points[0];

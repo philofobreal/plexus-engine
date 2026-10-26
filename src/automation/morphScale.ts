@@ -1,4 +1,5 @@
 import type { PerformanceAutomationPlan } from '../types';
+import { canAnticipateAutomationPoint, isAutomaticCuePoint } from './performanceAutomationRuntime.ts';
 
 export interface MorphScaleOptions {
     safetyMarginSec?: number;
@@ -16,6 +17,8 @@ export function getAutomationPlanViewSignature(plan: PerformanceAutomationPlan):
         point.morphDurationSec,
         point.morphCurve,
         point.locked,
+        point.reason,
+        point.cuePlacement,
         point.bendMirror,
         point.spiralDirection
     ]));
@@ -37,8 +40,7 @@ export function computeMaxMorphScale(plan: PerformanceAutomationPlan | null | un
     for (let i = 0; i < points.length; i++) {
         const morph = points[i].morphDurationSec;
         if (!(Number.isFinite(morph) && morph > 0)) continue;
-        const boundary = Math.min(points[i + 1]?.time ?? Infinity, duration);
-        const room = boundary - points[i].time - margin;
+        const room = morphRoom(points, i, duration, margin);
         if (!Number.isFinite(room)) continue;
         limit = Math.min(limit, Math.max(0, room) / morph);
         found = true;
@@ -57,22 +59,26 @@ export function applyMorphScale(plan: PerformanceAutomationPlan | null, scale: n
     const safeScale = clampMorphScale(plan, scale, options);
     const margin = nonNegative(options.safetyMarginSec, DEFAULT_MARGIN_SEC);
     const sorted = sortedPoints(plan);
-    const nextTimeByPoint = new Map<PerformanceAutomationPlan['points'][number], number>();
-    for (let i = 0; i < sorted.length - 1; i++) nextTimeByPoint.set(sorted[i], sorted[i + 1].time);
     const duration = positive(options.durationSec, Infinity);
+    const roomByPoint = new Map(sorted.map((point, i) => [point, morphRoom(sorted, i, duration, margin)]));
     return {
         ...plan,
         points: plan.points.map((point) => {
             const scaled = point.morphDurationSec * safeScale;
-            const nextTime = nextTimeByPoint.get(point);
-            const room = nextTime !== undefined
-                ? nextTime - point.time - margin
-                : Number.isFinite(duration) ? duration - point.time - margin : scaled;
+            const room = roomByPoint.get(point) ?? scaled;
             // The authoring floor applies to base durations, not this proportional view.
             // Reapplying it here would stretch short morphs and contradict the bound.
             return { ...point, morphDurationSec: Math.max(0, Math.min(scaled, Math.max(0, room))) };
         })
     };
+}
+
+function morphRoom(points: PerformanceAutomationPlan['points'], i: number, duration: number, margin: number): number {
+    const point = points[i];
+    if (point.time === 0 && isAutomaticCuePoint(point)) return Infinity; // Already established.
+    return canAnticipateAutomationPoint(point, points[i - 1])
+        ? point.time - points[i - 1].time - margin
+        : Math.min(points[i + 1]?.time ?? Infinity, duration) - point.time - margin;
 }
 
 function sortedPoints(plan: PerformanceAutomationPlan | null | undefined) {

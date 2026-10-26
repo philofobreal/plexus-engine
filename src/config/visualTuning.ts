@@ -678,6 +678,12 @@ export function writeModulationBus(
 // below 0.026 of one 8-bit alpha code before bloom; authored positive amounts stay untouched.
 const NEBULA_OFF_MORPH_EPSILON = 1e-4;
 
+const discreteTuningKeys = new Set<keyof VisualTuningConfig>([
+    'chromaKeyMode', 'performanceMode', 'phraseSize', 'morphCurveValue', 'heroEventMode', 'heroBeepMode',
+    'wormholeRadiusLfoWaveform', 'wormholeDepthLfoWaveform', 'wormholeWallMode', 'wormholeOpticsEnabled', 'wormholeGrainShape'
+]);
+export function isDiscreteVisualTuningKey(key: keyof VisualTuningConfig): boolean { return discreteTuningKeys.has(key); }
+
 export function applyTuningMorph(
     current: VisualTuningConfig,
     target: VisualTuningConfig,
@@ -696,11 +702,7 @@ export function applyTuningMorph(
 
         // JAVÍTVA: A diszkrét (egész) beállításokat ne interpoláljuk, hanem azonnal pattintsuk be,
         // különben a lebegőpontos értékek érvénytelenítik a háttér és a teljesítmény-mód feltételeit.
-        if (key === 'chromaKeyMode' || key === 'performanceMode' || key === 'phraseSize'
-            || key === 'morphCurveValue' || key === 'heroEventMode' || key === 'heroBeepMode'
-            || key === 'wormholeRadiusLfoWaveform' || key === 'wormholeDepthLfoWaveform'
-            || key === 'wormholeWallMode' || key === 'wormholeOpticsEnabled' || key === 'wormholeGrainShape'
-            ) {
+        if (isDiscreteVisualTuningKey(key)) {
             current[key] = targetValue;
             continue;
         }

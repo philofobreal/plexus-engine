@@ -1,6 +1,6 @@
 import type { PerformanceAutomationPlan, VisualTransitionAnchor, VisualTuningConfig } from '../types';
 import { cloneDefaultVisualTuning, effectiveWormholeSpiral, normalizeSpiralDirection, tuningMorphAmount } from '../config/visualTuning';
-import { automationMorphProgress } from './performanceAutomationRuntime';
+import { automationMorphProgress, automationMorphWindow, type AutomationMorphWindow } from './performanceAutomationRuntime';
 import { applyMvpWormholePreset } from './applyMvpWormholePreset';
 
 type SpiralTuning = Pick<VisualTuningConfig, 'wormholeSpiral' | 'wormholeSpiralDirection'>;
@@ -8,8 +8,11 @@ type ResolveTuning = (raw: VisualTuningConfig, out: VisualTuningConfig) => Visua
 interface Anchor {
     transition: VisualTransitionAnchor;
     time: number;
+    window: AutomationMorphWindow;
     point: import('../types').PerformanceAutomationPoint;
     owned: boolean;
+    magnitudeOwned: boolean;
+    directionOwned: boolean;
     startMagnitude: number;
     startSigned: number;
     targetMagnitude: number;
@@ -54,7 +57,7 @@ export class WormholeSpiralAutomation {
         resolve(raw, resolved);
         previous.wormholeSpiral = resolved.wormholeSpiral;
         previous.wormholeSpiralDirection = resolved.wormholeSpiralDirection;
-        let owned = false;
+        let owned = false, magnitudeOwned = false, directionOwned = false;
         this.ordered = [...points].filter(p => Number.isFinite(p.time) && p.time >= 0).sort((a,b) => a.time - b.time);
         for (const point of this.ordered) {
             if (!Number.isFinite(point.time) || point.time < 0) continue;
@@ -65,16 +68,20 @@ export class WormholeSpiralAutomation {
                 ? payload.visualTuning as Partial<VisualTuningConfig> : payload;
             const relevant = typeof payload.visualMode !== 'string' || payload.visualMode === 'cosmic-wormhole';
             if (point.spiralDirection !== undefined || relevant && (typeof tuning.wormholeSpiral === 'number' || typeof tuning.wormholeSpiralDirection === 'number')) owned = true;
+            if (relevant && Number.isFinite(tuning.wormholeSpiral)) magnitudeOwned = true;
+            // A magnitude preset's omitted direction explicitly defaults to Right in the shared
+            // merge contract. Acquire that effective endpoint too, rather than flipping at its cue.
+            if (point.spiralDirection !== undefined || relevant && (Number.isFinite(tuning.wormholeSpiralDirection) || Number.isFinite(tuning.wormholeSpiral))) directionOwned = true;
             if (point.cuePlacement && owned) this.directional = true;
             if (relevant && (point.spiralDirection !== undefined || normalizeSpiralDirection(tuning.wormholeSpiralDirection) !== 1)) this.directional = true;
-            const last = this.anchors.at(-1);
-            if (last) sample(last, point.time, previous);
+            const last = this.anchors.at(-1), window = automationMorphWindow(point, last?.point);
+            if (last) sample(last, window.start, previous);
             applyMvpWormholePreset(raw, payload, point);
             resolve(raw, resolved);
             const magnitude = Math.max(0, resolved.wormholeSpiral);
             const signed = effectiveWormholeSpiral(resolved);
             // A track's initial preset is already established at time zero, like source.prepare.
-            this.anchors.push({ point, owned, time: point.time, transition: Object.freeze({ id: `automation:${point.id}`, time: point.time }),
+            this.anchors.push({ point, owned, magnitudeOwned, directionOwned, window, time: window.start, transition: Object.freeze({ id: `automation:${point.id}`, time: point.time }),
                 startMagnitude: point.time === 0 ? magnitude : previous.wormholeSpiral,
                 startSigned: point.time === 0 ? signed : effectiveWormholeSpiral(previous),
                 targetMagnitude: magnitude, targetSigned: signed,
@@ -84,7 +91,7 @@ export class WormholeSpiralAutomation {
     }
 
     /** Writes only the two coherent spiral keys, after the host's ordinary tuning morph. */
-    apply(time: number, out: SpiralTuning): boolean {
+    apply(time: number, out: SpiralTuning, currentTarget?: SpiralTuning): boolean {
         this.transitionAnchor = null;
         if (!this.directional || !Number.isFinite(time)) return false;
         let low = 0, high = this.anchors.length;
@@ -96,8 +103,28 @@ export class WormholeSpiralAutomation {
         const next = this.ordered[low];
         if (next && time >= next.time) return false;
         if (this.anchors[low - 1].point.cuePlacement && !this.anchors[low - 1].owned) return false;
-        sample(this.anchors[low - 1], time, out);
-        this.transitionAnchor = this.anchors[low - 1].transition;
+        const selected = this.anchors[low - 1];
+        // The render window may look ahead, but geometry disturbances retain the current cue token.
+        let logical = low - 1;
+        while (logical >= 0 && this.anchors[logical].point.time > time) logical--;
+        const current = this.anchors[logical];
+        if (!selected.point.cuePlacement) sample(selected, time, out); // Exact legacy law.
+        else {
+            const host = currentTarget ?? out, preroll = time < selected.point.time;
+            const amount = automationMorphProgress(selected.point, time, selected.window);
+            let startMagnitude = selected.startMagnitude, targetMagnitude = selected.targetMagnitude;
+            let startDirection = startMagnitude > 0 ? normalizeSpiralDirection(selected.startSigned / startMagnitude) : 1;
+            let targetDirection = targetMagnitude > 0 ? normalizeSpiralDirection(selected.targetSigned / targetMagnitude) : 1;
+            if (!selected.magnitudeOwned) startMagnitude = targetMagnitude = host.wormholeSpiral;
+            else if (preroll && current && !current.magnitudeOwned) startMagnitude += host.wormholeSpiral - current.targetMagnitude;
+            if (!selected.directionOwned) startDirection = targetDirection = host.wormholeSpiralDirection;
+            else if (preroll && current && !current.directionOwned) startDirection = host.wormholeSpiralDirection;
+            const magnitude = Math.max(0, startMagnitude + (targetMagnitude - startMagnitude) * amount);
+            const signed = startMagnitude * startDirection + (targetMagnitude * targetDirection - startMagnitude * startDirection) * amount;
+            out.wormholeSpiral = magnitude;
+            out.wormholeSpiralDirection = magnitude > 0 ? normalizeSpiralDirection(signed / magnitude) : 1;
+        }
+        this.transitionAnchor = this.anchors[logical]?.transition ?? null;
         return true;
     }
 }
@@ -105,7 +132,7 @@ export class WormholeSpiralAutomation {
 function copyTuning(raw: VisualTuningConfig, out: VisualTuningConfig): VisualTuningConfig { return Object.assign(out, raw); }
 
 function sample(anchor: Anchor, time: number, out: SpiralTuning): void {
-    const amount = anchor.point.cuePlacement ? automationMorphProgress(anchor.point, time)
+    const amount = anchor.point.cuePlacement ? automationMorphProgress(anchor.point, time, anchor.window)
         : tuningMorphAmount(anchor, anchor.transitionSpeed, time - anchor.time);
     const magnitude = anchor.startMagnitude + (anchor.targetMagnitude - anchor.startMagnitude) * amount;
     const signed = anchor.startSigned + (anchor.targetSigned - anchor.startSigned) * amount;

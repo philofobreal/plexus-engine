@@ -91,7 +91,9 @@ test('plan view signature tracks every point field used by the cached projection
     intensity: 1.5,
     morphDurationSec: 2.5,
     morphCurve: 'linear',
-    locked: true
+    locked: true,
+    reason: 'verse',
+    cuePlacement: { role: 'structure', start: 0, end: 30 }
   };
   const baseline = getAutomationPlanViewSignature(plan);
 
@@ -111,4 +113,13 @@ test('plan view signature tracks point order, insertion, and deletion', () => {
   assert.notEqual(getAutomationPlanViewSignature(reordered), baseline, 'point order must invalidate the plan view');
   assert.notEqual(getAutomationPlanViewSignature(inserted), baseline, 'point insertion must invalidate the plan view');
   assert.notEqual(getAutomationPlanViewSignature(deleted), baseline, 'point deletion must invalidate the plan view');
+});
+
+test('automatic arrival scaling uses the preceding gap and does not shrink a feasible default',()=>{
+ const points=[point('a',0,1),point('b',10,1),point('c',10.5,.1)].map(p=>({...p,reason:'verse',cuePlacement:{role:'structure',start:0,end:30}}));
+ const input={version:1,source:'auto',points},before=JSON.stringify(input);
+ assert.equal(computeMaxMorphScale(input,{durationSec:20}),4.8);
+ assert.equal(clampMorphScale(input,1,{durationSec:20}),1);
+ const scaled=applyMorphScale(input,4,{durationSec:20});assert.equal(scaled.points[1].morphDurationSec,4);assert.equal(scaled.points[2].morphDurationSec,.4);
+ assert.equal(JSON.stringify(input),before);
 });
