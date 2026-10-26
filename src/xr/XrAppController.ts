@@ -329,7 +329,7 @@ export class XrAppController {
         const source = chartSource(analysis);
         const detailed = this.diagnostics ? buildRhythmChartWithDiagnostics(source, DEFAULT_RHYTHM_GAME_CONFIG, settings) : null;
         const chart = detailed?.chart ?? buildRhythmChart(source, DEFAULT_RHYTHM_GAME_CONFIG, settings);
-        this.setChartDiagnostics(detailed?.diagnostics ?? null);
+        this.setChartDiagnostics(detailed?.diagnostics ?? null, prepared.plan.cueAlignmentReport);
         this.preparedPlan = prepared;
         // Roles and chart publish under the same generation guard. Never reuse a stale sidecar.
         this.haloChart = chart;
@@ -505,7 +505,7 @@ export class XrAppController {
         delete this.overlay.dataset.xrScore;
     }
 
-    private setChartDiagnostics(report: RhythmChartDiagnostics | null): void {
+    private setChartDiagnostics(report: RhythmChartDiagnostics | null, alignment = this.preparedPlan?.plan.cueAlignmentReport): void {
         this.chartDiagnostics = report;
         const structure = report ? this.published?.trackAnalysis.structureInterpretation : undefined;
         this.chartSummary = report ? `Chart: ${report.retainedEvents}/${report.sourceEvents} events - ${report.notes} notes (L${report.hands.left}/R${report.hands.right})` : '';
@@ -517,6 +517,11 @@ export class XrAppController {
             this.chartDetails += `\n${form}`;
             this.overlay.dataset.xrStructure = JSON.stringify({ version: structure.version, changedSections: structure.changedSections, sections: structure.decisions.length });
         } else delete this.overlay.dataset.xrStructure;
+        if (report && alignment) {
+            this.chartDetails += `
+Automation: ${alignment.publishedPoints}/${alignment.proposedPoints} cue placements; times are morph starts.`;
+            this.overlay.dataset.xrAutomation = JSON.stringify({ proposed: alignment.proposedPoints, published: alignment.publishedPoints });
+        } else delete this.overlay.dataset.xrAutomation;
         this.drawer.chartDiagnosticsEl.textContent = this.chartDetails;
         if (report) this.overlay.dataset.xrChartSelection = JSON.stringify({ ...report, decisions: undefined });
         else delete this.overlay.dataset.xrChartSelection;
@@ -800,7 +805,8 @@ export class XrAppController {
                 if (this.diagnostics && (this.backgroundDiagnostics.summary || this.chartDiagnostics)) {
                     this.copyToClipboard(diagnosticsReport(this.backgroundDiagnostics.summary, this.settings,
                         this.trackTitleEl.textContent ?? '', this.chartDiagnostics ?? undefined,
-                        this.chartDiagnostics ? this.published?.trackAnalysis.structureInterpretation : undefined), 'Diagnostics + settings');
+                        this.chartDiagnostics ? this.published?.trackAnalysis.structureInterpretation : undefined,
+                        this.chartDiagnostics ? this.preparedPlan?.plan.cueAlignmentReport : undefined), 'Diagnostics + settings');
                 }
                 return;
         }

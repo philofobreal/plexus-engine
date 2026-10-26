@@ -190,3 +190,19 @@ test('unrelated presentation errors retain a valid chart report; new charts inva
     assert.equal(h.controller.overlay.dataset.xrBackgroundStages, undefined);
     h.controller.dispose();
 });
+
+test('XR Copy exposes the current cue-placement ledger and clears it with the chart lifecycle', async () => {
+    const h=harness({diagnostics:true});
+    const cueAlignmentReport={proposedPoints:2,publishedPoints:1,omittedTimes:[10],decisions:[
+        {proposalIndex:0,pointId:'same',plannedTime:0,status:'initial',selectedTime:0},
+        {proposalIndex:1,pointId:'same',plannedTime:10,status:'omitted',reason:'no-role-evidence'}]};
+    h.setPrepare(async()=>({...h.source.performancePlan,cueAlignmentReport}));
+    await h.loadTrack();
+    assert.match(h.drawer.chartDiagnosticsEl.textContent,/Automation: 1\/2 cue placements/);
+    assert.ok(h.controller.overlay.dataset.xrAutomation);
+    let copied;h.controller.copyToClipboard=text=>{copied=text;};
+    h.controller.runMenuCommand({type:'copy-diagnostics'});
+    assert.deepEqual(JSON.parse(copied.split('Automation JSON: ')[1].split('\n')[0]),cueAlignmentReport);
+    assert.match(copied,/morph starts, not target-arrival deadlines/);
+    h.controller.dispose();assert.equal(h.controller.overlay.dataset.xrAutomation,undefined);
+});
