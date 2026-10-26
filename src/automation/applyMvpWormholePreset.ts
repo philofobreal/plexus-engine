@@ -5,7 +5,7 @@ import { filterForeignIdentityTuningForAutomation } from '../config/identityTuni
 import { normalizeVisualTuningConfig, mvpSurfaceTuningOverrides, presetSpiralDirection } from '../config/visualTuning';
 
 /** Shared MVP preset merge and morph authority, without global state writes. */
-export function applyMvpWormholePreset(target: VisualTuningConfig, payload: unknown, point: PerformanceAutomationPoint): void {
+export function applyMvpWormholePreset(target: VisualTuningConfig, payload: unknown, point: PerformanceAutomationPoint, surfacePolicy = true): void {
     const previousSpeed = target.wormholeSpeed;
     const previousBend = target.wormholePathBend;
     const previousBendVertical = target.wormholePathBendVertical;
@@ -20,7 +20,7 @@ export function applyMvpWormholePreset(target: VisualTuningConfig, payload: unkn
 
     // MVP surface policy (config-owned, see mvpSurfaceTuningOverrides): forced back to its
     // fixed value after every preset merge regardless of what the preset requested.
-    Object.assign(target, mvpSurfaceTuningOverrides);
+    if (surfacePolicy) Object.assign(target, mvpSurfaceTuningOverrides);
 
     const preset = filtered as { dramaturgyProfile?: Record<string, unknown> };
     const profile = preset.dramaturgyProfile;
@@ -38,5 +38,6 @@ export function applyMvpWormholePreset(target: VisualTuningConfig, payload: unkn
         target.wormholePathBend - previousBend,
         target.wormholePathBendVertical - previousBendVertical
     );
-    target.morphDurationSec = Math.max(point.morphDurationSec, wormholeMorphDurationFloor(deltaSpeed, deltaBend));
+    target.morphDurationSec = point.cuePlacement ? point.morphDurationSec
+        : Math.max(point.morphDurationSec, wormholeMorphDurationFloor(deltaSpeed, deltaBend));
 }

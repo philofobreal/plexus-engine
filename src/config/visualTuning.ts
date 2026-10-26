@@ -682,9 +682,11 @@ export function applyTuningMorph(
     current: VisualTuningConfig,
     target: VisualTuningConfig,
     transitionSpeed = target.transitionSpeed,
-    deltaSec = 1 / 60
+    deltaSec = 1 / 60,
+    absoluteBlend?: number
 ): VisualTuningConfig {
-    const speed = tuningMorphAmount(target, transitionSpeed, deltaSec);
+    const speed = absoluteBlend === undefined ? tuningMorphAmount(target, transitionSpeed, deltaSec)
+        : Math.max(0, Math.min(1, absoluteBlend));
 
     for (const key of visualTuningKeys) {
         const currentValue = current[key];

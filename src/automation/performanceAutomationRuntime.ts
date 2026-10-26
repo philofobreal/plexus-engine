@@ -1,5 +1,15 @@
 import type { PerformanceAutomationPlan, PerformanceAutomationPoint, VisualTuningConfig } from '../types';
 
+/** Finite authored phase, independent of device cadence and manual smoothing speed. */
+export function automationMorphProgress(point: Pick<PerformanceAutomationPoint, 'time' | 'morphDurationSec' | 'morphCurve'>, time: number): number {
+    if (!Number.isFinite(time) || !Number.isFinite(point.time) || !Number.isFinite(point.morphDurationSec) || time < point.time) return 0;
+    const duration = Number.isFinite(point.morphDurationSec) ? Math.max(0, point.morphDurationSec) : 0;
+    if (duration === 0 || time >= point.time + duration) return 1;
+    const u = Math.max(0, Math.min(1, (time - point.time) / duration));
+    return point.morphCurve === 'linear' ? u : point.morphCurve === 'exponential'
+        ? Math.expm1(5 * u) / Math.expm1(5) : u * u * (3 - 2 * u);
+}
+
 /** Finds the point whose preset owns the current timeline position. */
 export function findActiveAutomationPoint(
     plan: PerformanceAutomationPlan | null,

@@ -57,14 +57,14 @@ export function applyMorphScale(plan: PerformanceAutomationPlan | null, scale: n
     const safeScale = clampMorphScale(plan, scale, options);
     const margin = nonNegative(options.safetyMarginSec, DEFAULT_MARGIN_SEC);
     const sorted = sortedPoints(plan);
-    const nextTimeById = new Map<string, number>();
-    for (let i = 0; i < sorted.length - 1; i++) nextTimeById.set(sorted[i].id, sorted[i + 1].time);
+    const nextTimeByPoint = new Map<PerformanceAutomationPlan['points'][number], number>();
+    for (let i = 0; i < sorted.length - 1; i++) nextTimeByPoint.set(sorted[i], sorted[i + 1].time);
     const duration = positive(options.durationSec, Infinity);
     return {
         ...plan,
         points: plan.points.map((point) => {
             const scaled = point.morphDurationSec * safeScale;
-            const nextTime = nextTimeById.get(point.id);
+            const nextTime = nextTimeByPoint.get(point);
             const room = nextTime !== undefined
                 ? nextTime - point.time - margin
                 : Number.isFinite(duration) ? duration - point.time - margin : scaled;
