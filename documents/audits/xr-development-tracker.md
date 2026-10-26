@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-26 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T13b accepted for continuation. T13c implements finite preset-base deadlines; current checkpoint below. Cue-at-arrival/semantic anticipation and T12 local attention remain subsequent work. T11 unsupported source recognition remains deferred.** Existing MVP/XR Offscreen rendering stays intact. [T11 capability limits](../features/music-events.md). [Previous merged review](xr-review-checkpoint.md).
+**T13c accepted for continuation. T13d adds bounded preset-base pre-roll to the canonical cue; checkpoint below. Semantic anticipation, in-flight geometry and T12 local attention remain subsequent work. T11 unsupported source recognition remains deferred.** Existing MVP/XR Offscreen rendering stays intact. [T11 capability limits](../features/music-events.md). [Previous merged review](xr-review-checkpoint.md).
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -59,7 +59,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T10 | Analyzer timing cleanup | T00-T01 | Rejected experiments removed at user request; established XR path and equivalent Band search retained. Accuracy beyond available evidence remains unproven. [Record](xr-timing-cleanup.md) |
 | T11 | Timed evidence and qualification | Stable T10 clock/evidence boundary | Closed for this phase by explicit user decision after T11i; limited signal/provenance capabilities only. Research retained, no classifier promoted. General tonal/vocal recognition and dominance deferred; further research is not a T12a prerequisite. [Scope](../features/music-events.md) |
 | T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09; supported T11 capabilities only | T12a opt-in Musical: section-led motifs/density/layout from accepted BeatEvents, mandatory Guarded movement, Classic fallback; larger shared menu, localStorage/Copy. T12a1 hand recovery accepted; T12b rejection accounting added. General source fusion remains deferred, physical acceptance manual. Current checkpoint below |
-| T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a/b accepted; T13c finite preset-base deadlines implemented, manual handoff below; cue-at-arrival, semantic anticipation and geometry arrival remain partial |
+| T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a/b/c accepted; T13d preset-base cue arrival implemented, manual handoff below; semantic anticipation, geometry arrival and musical precision remain partial |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
 | T15 | Presentation planner + XR: track-specific HUD | T13-T14 | Planned |
 | T16 | Visuals + XR: optional central music display | T05, T14 tokens | Planned |
@@ -889,6 +889,8 @@ Wall remains Off; cockpit defaults Off; existing saved explicit choices and MVP/
 
 ## Current continuation checkpoint - T13c finite preset-base deadlines, 2026-10-26
 
+Historical handoff accepted by subsequent continuation; T13d below supersedes the automatic scheduling rule.
+
 T13b was accepted. One integration owner implements automation/config, host lifecycle and render
 ordering; independent read-only visual/gameplay reviews checked ownership and compatibility.
 [Contract](../adr/ADR-009-xr-rhythm-game-host.md#addendum-bb---t13c-finite-preset-base-deadlines-2026-10-26).
@@ -970,3 +972,117 @@ were stopped and no listeners remain on5177/5178. Temporary test tabs are not ma
 
 Wall remains Off; cockpit defaults Off; saved explicit choices remain. Source push/deployment
 receipts and exact public checks are retained in logs/t13c/handoff.json; no new PR/master merge.
+
+## Current continuation checkpoint - T13d preset-base cue arrival, 2026-10-26
+
+T13c accepted. One integration owner changes shared automation/config, host projection and UI
+timing presentation; independent read-only visual/gameplay reviews checked the contract and
+adversarial ownership cases. [Contract](../adr/ADR-009-xr-rhythm-game-host.md#addendum-bc---t13d-preset-base-arrival-at-the-canonical-cue-2026-10-26).
+Canonical cue times, source windows, plan/event/note timestamps and logical trigger tokens stay
+unchanged. Eligible automatic typed preset bases start before the cue and arrive AT it. Both
+current and previous point must be unlocked/non-manual with cuePlacement. A protected or legacy
+predecessor, or a late first state, retains start-duration timing. An initial state at0 is established.
+This is a bounded preset-base pre-roll, not the whole T13 musical/semantic arrival gate.
+
+Separate render-window and logical-cue lookups prevent early ownership/semantic/event publication.
+Newly acquired continuous fields fade their inherited host offset; selectors remain logical until
+the cue. Signed magnitude/direction have separate ownership, including the shared merge's implicit
+Right default when acquiring magnitude. Player forced direction applies last. Current disturbance
+anchor identity stays on the logical cue, rather than starting a future pulse at pre-roll start.
+Common scaling uses the preceding gap for arrival points and following gap for protected/legacy
+points. The established initial state uses no transition budget. XR prepares the same default
+projection as dashboard/MVP for fully automatic typed plans; raw publications stay immutable.
+Mixed/protected/legacy XR plans keep their original identity and authored durations; dashboard/MVP
+explicit global-scale behavior remains the existing host policy. A mixed locked4s regression
+prevents accidental common rescaling of a protected XR point.
+
+TimelineCanvas caches the derived layout, draws the same finite curve/window before the unchanged
+cue and labels ARRIVE. Its shared use covers dashboard and MVP. Generated arrival duration is
+edited through the inspector; canonical cue remains selectable. Actual edits, move and nudge
+become reason:manual and clear a stale selected cueAnchor. A no-op/selection retains automatic
+timing. Existing cuePlacement provenance survives; those manual points use T13c start-duration.
+No new switch, storage migration, dependency, FFT, worker interpolation or clock. Existing files
+are extended; no new product/research helper file is needed for this slice.
+
+Validation before the final cumulative run:244/244 targeted, TypeScript/Vite build pass (existing
+chunk warning). Command: `node --test --test-reporter=tap tests/automation-arrival.test.mjs tests/morph-scale.test.mjs tests/ui/TimelineCanvas.test.mjs tests/mvp-async-lifecycle.test.mjs tests/automation-plan-editing.test.mjs tests/wormhole-frame-context.test.mjs tests/mvp-morph-scale-control.test.mjs tests/contracts.test.mjs tests/morphing.test.mjs tests/timeline-ui.test.mjs tests/accepted-timing-measurement.test.mjs tests/wormhole-spiral-history.test.mjs tests/xr-wormhole-spatial.test.mjs tests/semantics-integration.test.mjs tests/mvp-macro-tuning-mapper.test.mjs tests/visual-mode-transition.test.mjs tests/styles-deterministic.test.mjs tests/gameplay-purity.test.mjs`.
+Acceptance logs: logs/t13d/targeted-freeze.txt and build-freeze.txt. Initial harness assertions
+mistakenly compared cross-VM object prototypes and one new event assertion omitted the existing
+per-frame decay; corrected without weakening value checks. New review regressions cover ownership
+acquisition, default direction, selectors, protected predecessors, clipping, duplicates, missing
+assets, source immutability, actual host seek, event timing, manualization and default scale parity.
+Three test-loader updates accept explicit .ts imports needed by the Node-compatible shared helper;
+they no longer append .ts twice. Storage/session tests pass28/28 separately. T13c finite fixture cases now explicitly locked, retaining their
+start-duration expectations alongside new automatic-arrival cases. Predecessor source/tests in
+Git4bcb4946946e93e8df7c14b672f0baee36f6be85; no previous golden or result overwritten.
+
+The only measured-source manifest change is a comment-only src/types/index.ts correction of the
+cue/start description. No DTO shape changes. Complete previous manifest/source retained at that
+same Git commit, all superseded hashes/review reasons retained in the migration; the unchanged
+historical replay/provenance assertions remain active. Review identified/fixed signed partial
+ownership and implicit default, shared scaling direction and XR default parity before acceptance.
+The first full run was deliberately interrupted for those final source corrections; its partial
+log remains logs/t13d/full-tests-final.txt. It is not acceptance evidence or a new baseline.
+
+Reusable evaluator extended, with exclusive output and exact source hashes:
+`node scripts/evaluate-automation-arrival.mjs logs/t13b/no-good-accepted.json.source.json logs/t13d/no-good-final-arrival.json`
+(repeat goa/scienide). It now measures actual default-scale windows and an ACTIVE warm pre-roll,
+including configure guards plus both samplers. All350 endpoints pass with residual0:347 cue
+arrivals (102/129/116) plus3 established initial states. Default scale1 on each recording.
+Preparation20.03/27.92/19.98ms and warm1000 samples102.17/112.93/151.85ms are informational desktop
+Node timings, not physical Quest budgets. Earlier unscaled/warm-after-arrival iteration results
+are retained separately and not used for performance claims. Scope excludes semantic modulation,
+emitted geometry and human-annotated musical accuracy.
+
+`node scripts/evaluate-movement.mjs --source logs/t13b/no-good-accepted.json.source.json logs/t13d/no-good-chart.json`
+(repeat goa/scienide) exactly matches the full retained T13c result values on all recordings:
+source hashes/settings, chart hashes, validation and hand windows,1004/901/801 notes. No fresh DSP
+or musical accuracy result is inferred. Recording summary: logs/t13d/recording-summary.json.
+
+Browser fixture uses real WormholeCanvasSource and shared TimelineCanvas, no audio upload. It
+checks0.1s pre-roll midpoint, endpoint at4.0s and unchanged logical ownership before cue, alongside
+the retained locked start-duration check. The pixel criterion now excludes the uniform background;
+the earlier sum>20 criterion counted that background and is not valid nonblank evidence. Its old
+result is retained. Actual pixel/console/compatibility receipt and screenshot are recorded in the
+handoff. No full No Good/MVP playback or physical Quest run is claimed; T13c's reproduced black
+background-IAB MVP preview remains a known unresolved environment/product symptom. No blind
+file-chooser retry. Existing actual host numeric/lifecycle coverage remains cumulative.
+
+Final cumulative command: `npm test -- --test-reporter=tap --test-concurrency=4`, native Windows
+Temp because the unchanged preset-save rename is blocked with EPERM in the sandbox. Same
+Node25.2.1/npm11.6.2, no install, runner substitution or Bun fallback. No Python/model change,
+so no Python pytest/inference. Full receipt, Graphify, document audit and public release checks
+are appended after completion; direct diff/read-only reviews used, diff_export.ps1 considered/skipped.
+
+After guarded source push/deploy, STOP for manual feedback. Reload the track and compare short
+automatic changes at section/cue markers and their ARRIVE bars; repeat after a seek. Protected
+predecessors intentionally keep start-based behavior. Semantic envelopes and in-flight geometry
+still have their own lifetimes; no p95 musical-accuracy promotion. Next bounded work is their
+timing contract, then T12 local musical attention. Wall Off, cockpit default Off and MVP/XR
+Offscreen remain. Detailed receipts/continuation: logs/t13d/handoff.json; no new PR/master merge.
+
+Final T13d receipt: `npm test -- --test-reporter=tap --test-concurrency=4` completes1893 tests,
+1884 pass,9 fail,0 skipped/cancelled in861.21s. All nine failure names AND messages exactly match
+the retained baseline. `node logs/t13d/check-validation.mjs` passes; acceptance is the complete
+logs/t13d/full-tests-acceptance.txt, not the interrupted earlier run. The mixed protected XR
+correction is also separately checked35/35 by `node --test --test-reporter=tap tests/wormhole-frame-context.test.mjs tests/gameplay-purity.test.mjs tests/xr-wormhole-spatial.test.mjs`.
+The two storage-loader migrations pass28/28 with `node --test --test-reporter=tap tests/mvp-track-storage.test.mjs tests/mvp-session-persistence.test.mjs`.
+Final `npm run build` and `git diff --check` pass. Inventory retains198 active files and256
+test/helper/fixture byte identities. Existing failures and all earlier test results remain retained.
+
+Final browser proof: actual new cue arrival has endpoint residual0, midpoint error1.865e-14,
+logical=true and302 bright chromatic pixels excluding the background. Locked compatibility
+has residual0 and26576 such pixels. Shared actual TimelineCanvas shows the2–4s ramp ending at
+the unchanged4s cue with ARRIVE; console warnings/errors0. Screenshot:
+logs/t13d/render-and-timeline-accepted.png. This replaces the invalid all-background pixel count
+as evidence without rewriting its old result. Own fixture tab closed; own5177 server stopped,
+no listener remains. No full MVP audio/pixel or headset acceptance is invented.
+
+Final Graphify full code-only refresh:899 files,8495 nodes,20486 raw edges,17984 canonical edges,
+canonical dangling endpoints0 (2464 raw unresolved references). Incremental extraction produced
+only40 nodes/128 edges; that partial is retained separately and was replaced by a complete
+manifest-cleared extraction before clustering. Raw AST retained before clustering. No LLM labels,
+backend/hooks/semantic corpus or visualization. Scoped runtime helper navigation resolves actual
+host consumers; graph communities do not establish ownership. `node logs/t13d/check-docs.mjs`
+checks128 local links/fragments. Final source/Pages/release verification is recorded in the handoff
+and workspace continuation file after guarded publication, followed by the manual pause.

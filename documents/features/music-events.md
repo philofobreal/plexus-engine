@@ -1171,3 +1171,8 @@ start + scaled duration is the interpolation deadline across dashboard/MVP/XR. I
 accepted event/cue/beat/section/chart timestamps or source confidence. Semantic modulation and
 emitted particles remain separate; cue-at-arrival/pre-roll and human audible alignment are not
 proven by a numeric preset endpoint. Existing source-recognition limitations remain unchanged.
+
+T13d subsequently schedules eligible automatic preset-base morphs BEFORE their unchanged canonical
+cue so the base reaches its target there. Manual/locked/legacy barriers retain start-based timing;
+events, semantic tokens and disallowed enum gates never fire early. This introduces no new musical
+measurement or source confidence. In-flight geometry and semantic anticipation remain separate.

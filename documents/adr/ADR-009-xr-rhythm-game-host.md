@@ -1684,3 +1684,42 @@ Their total visible arrival, semantic pre-roll and cue-at-arrival are subsequent
 musical precision/p95 promotion is established. No analyzer/event/chart timestamp, detector,
 schema, setting or storage migration. Wall Off, cockpit default Off and MVP/XR Offscreen remain.
 [Validation and handoff](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13c-finite-preset-base-deadlines-2026-10-26).
+
+## Addendum BC - T13d preset-base arrival at the canonical cue (2026-10-26)
+
+T13c was accepted. Canonical point.time, selected source time, originating cue window and logical
+trigger remain unchanged. A render-only AutomationMorphWindow pre-rolls an automatic typed point
+to arrive at point.time, starting no earlier than its predecessor's canonical time. Eligibility
+requires cuePlacement, unlocked and non-manual status on BOTH points. A late first state, manual,
+locked or legacy predecessor keeps start + duration scheduling; zero-time state is established.
+This conservative exception preserves protected morphs rather than interrupting them early.
+No new clock, detector, plan field, storage migration or player switch is added.
+
+The shared scaling law bounds eligible durations by the PRECEDING gap; protected/legacy spans
+keep the following-gap rule. Already-established automatic time-zero states consume no morph
+budget. Dashboard/MVP use their existing cached scaled view; XR context applies the same default
+scale projection once on fully automatic typed plan publication, leaving the borrowed plan immutable.
+Mixed, legacy and protected XR plans keep their exact former path and authored durations. Explicit
+dashboard/MVP global scale controls retain their existing host policy for edited plans. Rebuild triggers and prewarming
+remain those of T13c; warm sampling does no DSP or asynchronous work.
+
+Finite/signed anchors sample their preceding curve at the new window.start. Logical cue lookup
+remains separate from render-window lookup. Before the cue, semantic/manual deltas come from the
+CURRENT logical target; newly acquired continuous keys fade an inherited host offset to prevent
+an ownership snap. Enum/gate fields stay on the logical target until its cue. Signed magnitude
+and direction have separate ownership; a magnitude preset also acquires its existing implicit
+Right default. Unowned components keep the host value, and inherited newly owned components
+interpolate coherently. The player's XR forced direction still applies last. Disturbance anchor
+id/time remains the logical cue token, so pre-roll does not fire its pulse or event early.
+
+The shared TimelineCanvas caches windows by immutable point-array identity, draws the actual
+typed finite curve before the unchanged cue, and labels its endpoint ARRIVE. Start-based spans
+retain their duration handle; generated arrival spans are edited through the inspector. Curve
+hit testing uses that same window. Actual point edits, move and nudge mark reason:manual and
+clear stale cueAnchor; a no-op or mere selection does not. cuePlacement remains provenance and
+its manual point retains T13c start-duration interpolation. No analyzer, gameplay or event index
+ownership moves into this presentation helper.
+
+Only preset-base numeric arrival is guaranteed. Semantic envelopes, emitted particles, geometry
+lifetimes and perceptual musical alignment remain independent; no p95/human-precision promotion.
+Wall Off, cockpit default Off and MVP/XR Offscreen remain. [Evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13d-preset-base-cue-arrival-2026-10-26).

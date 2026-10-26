@@ -238,3 +238,14 @@ Do not mark the entire T13 target-arrival gate complete: musical cue-at-arrival/
 anticipation and in-flight geometry are not delivered here. After the usual deploy/manual pause,
 address those remaining timing contracts, then T12 local attention; do not require manual timecodes
 or reopen unsupported T11 source recognition. Detailed evidence is in the current tracker checkpoint.
+
+### Continuation clarification - T13d (2026-10-26)
+
+Eligible unlocked generated presets now pre-roll to the unchanged canonical cue; both the point
+and predecessor must be automatic typed points. Protected/manual/legacy predecessors and late
+initial states retain start-duration scheduling. Scaling uses the corresponding preceding or
+following gap in every host; the shared timeline draws the same derived window/finite curve.
+Actual point edits become manual, while selection/no-op does not change timing. Existing evidence,
+event/note times and analysis stay unchanged. This is preset-base arrival, not semantic pre-roll
+or replacement of in-flight particles. After the normal validation/deploy/manual pause, address
+those remaining timing contracts before claiming the whole T13 gate; then continue T12 attention.
