@@ -1,7 +1,7 @@
 {
-  "id": "t12b-chart-decisions-20261025T202752460Z",
-  "previousCommit": "fc24a6c044e0a3979c92d4dc0cc3e8d7df275d13",
-  "sourceCommit": "75d75a9e298445725451bc7e050342645afbe4c4",
+  "id": "t13a-measured-structure-20261026T073635039Z",
+  "previousCommit": "54eb3b5bda1a201c2470cfc83559ade9ff721e39",
+  "sourceCommit": "0471d12443642c9a11eb8645df74d12778f0b459",
   "inputs": [
     {
       "path": "bun.lock",
@@ -237,7 +237,7 @@
     },
     {
       "path": "scripts/evaluate-movement.mjs",
-      "sha256": "679de1c933b57c133aa7781923fecf8961366754fb774cebed8be25a233e785a"
+      "sha256": "aa696b26f9b900b493ae26d16bdb2133bda026e7eb2c0ff9c4a22b91f694bf5b"
     },
     {
       "path": "scripts/finalize-cockpit-refinement.mjs",
@@ -440,6 +440,10 @@
       "sha256": "112ca656b12a3ed28f83922d5e02f08c842850eaf73c8c70440154a61c11befb"
     },
     {
+      "path": "src/analyzer/TrackStructure.ts",
+      "sha256": "76dd6825c43437ef9c0c061c2a869bc2a620eb4b36ebb6f16bd3b1c9fb36f386"
+    },
+    {
       "path": "src/analyzer/analyzeAudio.ts",
       "sha256": "97dbd60cc9e1fdac58a711600868f9cd1c0cc70a5fa5c335424934076ea1b288"
     },
@@ -477,7 +481,7 @@
     },
     {
       "path": "src/audio/AudioEngine.ts",
-      "sha256": "005067ff86f95dc5a09d81fc3cc7804f518d0bd8c97d940548d4839f12a9893a"
+      "sha256": "ffdbb0acc5a998f9ff37a7d6ab3809c7927e1799d81b29613a304bbaaa39f740"
     },
     {
       "path": "src/audio/HeroMetronome.ts",
@@ -905,7 +909,7 @@
     },
     {
       "path": "src/types/index.ts",
-      "sha256": "6703405c3456d72329c1c8723f50af8b8d64842cd7bb4739176e0a2e6b458ef0"
+      "sha256": "72cfbfc9c4a5c03ea90fe18839591d35b497a966b0b11d046697a3e654e0cb4e"
     },
     {
       "path": "src/types/musicEvents.ts",
@@ -1349,7 +1353,7 @@
     },
     {
       "path": "src/xr/XrAppController.ts",
-      "sha256": "82faeca0b14548d83176e267c64a2fdaaedf74b253cab08effb3f348e1396222"
+      "sha256": "474fae710023d9370613ebc4c9e57ef1ae12de746b4a339ef07206beb0d45824"
     },
     {
       "path": "src/xr/XrAppearanceSettings.ts",
@@ -1373,7 +1377,7 @@
     },
     {
       "path": "src/xr/XrMenuModel.ts",
-      "sha256": "a6ed923249db1349d48328926df5076b82f40de955a9f605ce49c84982b72b32"
+      "sha256": "2db215293addef29e2f129d086e330e99a8dd8202c8778b0a7ffcd8941e9d3cb"
     },
     {
       "path": "src/xr/XrPlayProfile.ts",
@@ -1574,40 +1578,40 @@
       "sha256": "eb5de8199ca4f3a44a8c3d64361515fa385bfd401a6b796853fd617300e65fb5"
     },
     {
-      "path": "assets/CanvasVisualSource-Dlq60eUy.js",
-      "sha256": "75213e20ae17c3cf5d85d4b3a665f605b89fad76d535735cf1381026dee17b52"
+      "path": "assets/CanvasVisualSource-8ZufF1TO.js",
+      "sha256": "33360dff6fdeb47eec08c81c711b39e137e72ecafd2a1a6bd5cbfcedf0e0f1bf"
     },
     {
-      "path": "assets/CosmicWormholeIdentity-CfMficGw.js",
-      "sha256": "e355ca83993c49bb7d10dcde5e95f06316aea9db363d1ac5b2d078f4941cb006"
+      "path": "assets/CosmicWormholeIdentity-B7YvzMsp.js",
+      "sha256": "e4b090e93cbad9f826b0029e55e960ce6d58b74df0d095f8b15ec9ab6a5cae8b"
     },
     {
       "path": "assets/export.worker-Av-E_fEl.js",
       "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
     },
     {
-      "path": "assets/main-BqGoZQwy.js",
-      "sha256": "fdd99a13cd00a5fe833c362d2702e1bef1f334e999417c83e2f48cb2eb6c9e7b"
-    },
-    {
       "path": "assets/main-C7BsYBKL.css",
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
-      "path": "assets/mvp-BK-mMMxb.js",
-      "sha256": "0e3ac5f40a995c5aaa4fd709fb11b46c8311598c37e64f3df06b0e9a8698c1bf"
+      "path": "assets/main-DgZy6hD-.js",
+      "sha256": "56f20487fb9047d568128dfe28b326b9e1b0e038064b18991e4071ff4a540e80"
+    },
+    {
+      "path": "assets/mvp-CY2M-zYx.js",
+      "sha256": "c276fd662a9d7382a6b1208dfa3934ac4622e8aec835f590ac97cbbcf2925d4a"
     },
     {
       "path": "assets/mvp-D0xy9ln6.css",
       "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
     },
     {
-      "path": "assets/PreviewQualityControl-Bjhkp-Ug.js",
-      "sha256": "560382502989dc1fd5f24bb4fe10d36b94da67efe22cf936fa08925deac530fe"
-    },
-    {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
       "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+    },
+    {
+      "path": "assets/PreviewQualityControl-jgoyuirm.js",
+      "sha256": "d78787317f092836407b2b83a4cab2f822b83530291e861d5f50a006696256bc"
     },
     {
       "path": "assets/wormholeHostRender.worker-C0AYhcyr.js",
@@ -1626,8 +1630,8 @@
       "sha256": "23a8828e3e93d5f4b04c1594b0146aecf33fb331d60004fd60e77c0cdc98b264"
     },
     {
-      "path": "assets/xr-xPpLfatU.js",
-      "sha256": "f6cd445e9bf8e34605e89191ec2d3eed84323a050f9946f000c01f19f2049654"
+      "path": "assets/xr-BBuTL-gN.js",
+      "sha256": "58e1bcb5bf2e419d2426d6b14710e412a3691217272ef191a01640288a8c535d"
     },
     {
       "path": "eso0932a.jpg",
@@ -1643,11 +1647,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "0f7fd2fd24cb8af112a2b6bf596675171b62dc69c44223c0333a9d6e50bb6f9d"
+      "sha256": "2f6032ff401b215ffbed31b073a9fedccd87700bc2d041b5de1a5160e0697ade"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "b7fda24393639cfbb16f8239c7a84af6d8678c03bd2e728263dbcc4e98ef7048"
+      "sha256": "c4d5dc4d0f0c879e9266607b652d649206521429bb98670d4752ddbf3a9ca797"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
@@ -1779,7 +1783,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "0dd798fea073b6bd722f09f48b5ba27e268a1b4d717697f19ade024769d22c9d"
+      "sha256": "8fc78c3a9763e0879e981d66c77abba8119ed0169db89c624d554a3d16e7c7af"
     }
   ]
 }
