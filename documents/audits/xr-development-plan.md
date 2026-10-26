@@ -198,3 +198,16 @@ whitespace and CLAUDE inheritance. Result retained at `logs/t01/document-checks.
 `git diff --check` passed. `git diff --exit-code -- src tests public package.json
 package-lock.json bun.lock vite.config.ts AGENTS.md documents/governance` passed with no diff.
 No build, regression, browser or physical-device result is claimed for this documentation task.
+
+
+## Priority clarification - 2026-10-26
+
+The user accepted the analysis-quality audit and requested that existing measurements automatically
+correct structural interpretation; they explicitly declined supplying reference timecodes. T13a
+therefore begins with a measured, versioned structural view, using supported RMS/rhythm/spectral
+context and preserving original event/grid/boundary times. It must not claim human-annotated
+precision or independent instrument recognition. Next: T13 cue roles and target-arrival semantics,
+then the T12 local-attention continuation (a break label must not universally dictate low player
+activity). Additional HUD/visual features follow these foundations. No wholesale T11 research
+reopening or unsupported detector promotion; retained studies/goldens remain evidence. Every
+subtask ends with cumulative validation, docs/Graphify, commit/push, guarded deploy and manual pause.

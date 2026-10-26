@@ -1514,7 +1514,7 @@ Textures still redraw only on displayed-state changes, and no gameplay/DSP work 
 T12a is the visible section-character portion of T12. General tonal/vocal/dominance source
 selection and fusion require qualified producers and remain deferred, not inferred from section
 names. Full per-event rejection diagnostics are a later T12 delivery. Physical Quest comfort
-and musical/gameplay acceptance remain manual. [Current evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12b-chart-decisions-2026-10-25).
+and musical/gameplay acceptance remain manual. [Current evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13a-measured-structure-2026-10-26).
 
 ## Addendum AX — T12a1 hand recovery and cockpit default Off (2026-10-25)
 
@@ -1567,3 +1567,47 @@ music-event arbitration, tonal/vocal source selection and fusion remain deferred
 qualification limits; T12 is not claimed fully complete against the original recognition scope.
 This deferred capability does not require reopening research before T13's independent cue and
 visual-arrival work. Wall remains Off and cockpit defaults Off; MVP/XR Offscreen paths unchanged.
+
+
+## Addendum AZ - T13a measured structural interpretation (2026-10-26)
+
+The user approved the audit recommendations, then explicitly declined manual reference timecodes
+and requested automatic correction from existing measurements. Structural interpretation therefore
+precedes cue-role/arrival work. This delivery is a versioned production interpretation policy,
+not a newly qualified tonal/vocal detector or a claim of annotated musical accuracy.
+
+Analyzer owns pure `interpretTrackStructure`; AudioEngine calls it once inside the existing
+request-id-protected analysis_done publication, after normalization and before callbacks/stems.
+Every host receives the same corrected TrackAnalysis sections. Raw algorithm7 worker output,
+accepted events, frame/grid/cue/pattern timestamps and original section boundaries remain unchanged.
+No renderer callback, new FFT, audio clock, worker request option, preset key or player toggle.
+The optional structureInterpretation v1 sidecar retains original/corrected labels, reason codes,
+weighted measured context and per-bar concurrent spectral shares. Diagnostics/Copy are controlled
+by the existing persisted System switch. Summary is cached; full JSON serializes on explicit Copy.
+The application writes no experimental measurement files.
+
+Supported complete physical-RMS bar coverage is required. Availability is checked against RAW
+worker bars before normalizer defaults erase missing bands. Legacy/malformed/quiet/stationary
+inputs abstain. A supplied host-derived sidecar is stripped at the worker boundary; the pure
+helper reuses a previous result only after recomputing exact associated measurements/labels.
+RMS normalization is relative to the track. Rhythm combines accepted type1/2 event rate and
+spectral-change density; it is not isolated drum recognition. Short bar rate support is bounded.
+Low/mid/high values are FFT magnitude shares, not independent band power or instrument identity;
+partial spectral coverage is unavailable rather than negative evidence.
+
+Intro requires opening context before the body; outro requires terminal context without a later
+supported body return. Drop requires a measured rhythmic/energy arrival after withdrawn/build
+context; a supported rhythm-and-spectrum return can qualify at equal RMS. Build requires observed
+energy AND rhythmic increase; a fixed time ramp is not its evidence. Break can follow joint
+energy/rhythm withdrawal or rhythmic withdrawal with spectral redistribution despite a prominent
+mid/high texture. Peak compares sustained upper activity to other active SECTION means and their
+spread, not a fixed margin above single-bar peaks. Continuing/ambiguous body remains verse; this
+means a structural body role, not a recognized sung verse. Labels remain uncalibrated hypotheses.
+
+This changes host behavior: both Musical and Classic charts may change through the shared visual
+plan, and section score weights/maxima can change. HUD, scoring, halos and new auto plans all read
+one corrected section list. Existing explicit saved MVP journeys remain user-owned and may retain
+older plans. Raw-v7 cue/pattern labels/signatures are retained with their original provenance;
+recurring pattern occurrences are not relabeled from one occurrence. Cue placement roles, actual
+boundary relocation, onset-source recognition, local attention switching and visual arrival/morph
+contracts remain subsequent tasks. [Current evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13a-measured-structure-2026-10-26).

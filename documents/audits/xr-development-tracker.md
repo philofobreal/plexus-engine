@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-25 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T12a1 accepted. T12b adds complete accepted-event chart decision diagnostics through the existing System switch and Copy; current validation/deployment handoff below. T11 research remains closed for this phase.** Existing MVP/XR Offscreen rendering stays intact. [T11 capability limits](../features/music-events.md). [Previous merged review](xr-review-checkpoint.md).
+**T12b accepted for continuation. The user requests automatic measured structural correction before further cue/arrival and local-attention work; T13a checkpoint below. T11 unsupported source recognition remains deferred.** Existing MVP/XR Offscreen rendering stays intact. [T11 capability limits](../features/music-events.md). [Previous merged review](xr-review-checkpoint.md).
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -59,7 +59,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T10 | Analyzer timing cleanup | T00-T01 | Rejected experiments removed at user request; established XR path and equivalent Band search retained. Accuracy beyond available evidence remains unproven. [Record](xr-timing-cleanup.md) |
 | T11 | Timed evidence and qualification | Stable T10 clock/evidence boundary | Closed for this phase by explicit user decision after T11i; limited signal/provenance capabilities only. Research retained, no classifier promoted. General tonal/vocal recognition and dominance deferred; further research is not a T12a prerequisite. [Scope](../features/music-events.md) |
 | T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09; supported T11 capabilities only | T12a opt-in Musical: section-led motifs/density/layout from accepted BeatEvents, mandatory Guarded movement, Classic fallback; larger shared menu, localStorage/Copy. T12a1 hand recovery accepted; T12b rejection accounting added. General source fusion remains deferred, physical acceptance manual. Current checkpoint below |
-| T13 | Analyzer + automation + semantics: cue and visual arrival timing | T10; T11 additive | Planned |
+| T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a measured structure implemented; cue/arrival pending |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
 | T15 | Presentation planner + XR: track-specific HUD | T13-T14 | Planned |
 | T16 | Visuals + XR: optional central music display | T05, T14 tokens | Planned |
@@ -667,7 +667,7 @@ this does not improve onset recognition. T12 remains partial; continue from this
 after feedback. T11 research remains closed for this phase. Wall Off and MVP/XR Offscreen remain.
 
 
-## Current continuation checkpoint - T12b chart decisions, 2026-10-25
+## Historical checkpoint - T12b chart decisions, 2026-10-25
 
 T12a1 hand recovery/default-Off cockpit accepted by the user's continuation. T12b completes
 per-source-event selection accounting for the existing accepted BeatEvent chart path. Gameplay
@@ -733,3 +733,78 @@ producers and optional source arbitration are deferred, not replaced by guessed 
 labels. After acceptance continue T13 cue/visual-arrival timing on existing supported evidence;
 its independent work does not reopen T11 qualification research. Wall stays Off, cockpit defaults
 Off with explicit saved choices respected, and MVP/XR Offscreen rendering remains unchanged.
+
+
+## Current continuation checkpoint - T13a measured structure, 2026-10-26
+
+User accepted the audit recommendations and explicitly declined providing No Good timecodes.
+They require a logic that uses existing rhythm/energy/concurrent spectral evidence to reconsider
+drop/peak/verse/break roles. T13a therefore prioritizes measured structural interpretation before
+the originally proposed cue-role/arrival slice. [Contract](../adr/ADR-009-xr-rhythm-game-host.md#addendum-az---t13a-measured-structural-interpretation-2026-10-26).
+
+One integration owner: pure analyzer helper, optional dependency-light types and shared AudioEngine
+publication. All three hosts receive one interpreted section list before any analysis callback.
+No raw DSP/worker algorithm7 change, reanalysis option, accepted event/grid/cue/pattern timestamp
+change, section-boundary relocation, renderer frame work or dependency. Existing source fixtures,
+research and goldens remain active. Missing physical RMS/coverage/raw bands abstain; forged or
+stale sidecars cannot pass by version alone. Magnitude shares are not independent source power;
+constant-RMS rhythm/spectral changes remain meaningful. Source reasons/cue/pattern labels retain
+raw-v7 provenance; corrected labels plus evidence are separately reported as structure-v1.
+
+Synthetic controls distinguish observed build, contrast arrival, sustained peak, continuing body,
+withdrawal/return and terminal position; adversarial raw labels cannot determine the result.
+Controls include gain scaling, constant-RMS composition changes versus stationary evidence,
+missing raw bands before normalization, malformed/stale reports, weighted partial-bar support,
+immutable source and exact original boundaries. Shared AudioEngine ordering and existing
+superseded-load/play/pause/seek/end tests remain active; XR cached summary/Copy are covered.
+Targeted `node --test --test-reporter=tap tests/track-structure.test.mjs
+ tests/xr-audio-integration.test.mjs tests/xr-chart-diagnostics.test.mjs
+ tests/xr-controller-regeneration.test.mjs tests/xr-musical-character.test.mjs`:52/52.
+`npm run build` passes with the existing chunk-size warning. The source-evolution manifest keeps
+all prior hashes/review reasons and adds the derived type contract; the static publication
+contract now checks normalization->interpretation->callbacks. Its predecessor is retained in
+Git75d75a9. `node --test --test-reporter=tap tests/accepted-timing-measurement.test.mjs
+ tests/contracts.test.mjs tests/track-structure.test.mjs tests/xr-audio-integration.test.mjs`:57/57.
+The intermediate full run found those two intentional contract migrations; both were fixed,
+retested and that run retained as `full-tests-before-contract-migration.txt`.
+Final `npm test -- --test-reporter=tap`:1848 tests,1839 pass,nine failures,zero skips/cancellations;
+all nine failure names AND assertion messages exactly match `logs/timing-cleanup/baseline-failures.json`.
+No new regression; final run duration731.49s. `git diff --check` passes.
+Graphify final AST refresh:896 files,8418 nodes,20266 raw edges;17773 canonical edges,zero
+canonical dangling endpoints. Raw unresolved references remain navigation evidence, not ownership.
+
+Fresh ffmpeg44100Hz left-channel runs use the same PCM hashes as the accepted captures. All three
+retain EXACT accepted-event lists, beats and section intervals, with valid Guarded charts and both
+hands in every populated half-minute. Final No Good:27/36 label changes, including74.374–87.702s
+outro->break with mid/high coexistence;1014 notes(508L/506R),79 pairs. Goa15/32 changes,929notes
+(465L/464R),68pairs; Scienide18/30 changes,816notes(410L/406R),45pairs. No Good peak17->4,
+Goa13->6, Scienide11->1: these are policy decisions, not a measured accuracy score or target counts.
+Detailed records: ignored `logs/t13a/recording-summary-final.json` and `*-final.json`.
+
+The first peak rule compared section means with individual bar quantiles and was overly strict
+on compressed mixes; the final rule compares like-sized active-section means and relative spread.
+The superseded cumulative run was stopped after that material change and retained as
+`logs/t13a/full-tests-first.txt`; only the final full run supplies acceptance counts. Earlier local
+recording iterations remain separate and are excluded from final claims. No old result was rewritten.
+
+Independent read-only gameplay/render reviews led to equal-level, raw availability and stale
+sidecar corrections. The helper preserves its normalized input refs; the AudioEngine integration
+harness intentionally stubs normalization, while a separate test covers the real normalizer's
+missing-band defaults. Node25.2.1/npm11.6.2, no package/runtime fallback or install. No Python
+inference/pytest (no Python implementation change), no physical Quest FPS/comfort run. Direct diff
+and independent reviews used; diff_export.ps1 considered and skipped. Graphify AST-only refresh,
+no LLM backend/hooks/semantic corpus. Actual source/Pages/public smoke receipts: `logs/t13a/handoff.json`.
+Local HTTP smoke passes200/title. In-app browser creation twice timed out before webview attach;
+selected-browser inventory remained empty. A purpose-built open_in_codex attempt also did not
+complete and its wait was terminated. No pixel, actual browser audio, clipboard or headset
+acceptance is claimed for this slice unless a later public smoke receipt explicitly records it.
+Public artifact/route verification remains required before handoff.
+
+**Stop for manual acceptance after deployment.** Expect corrected structural captions and matching
+new auto-plan/gameplay/score character on reloading a track; Diagnostics/Copy expose old/new labels
+and measured reasons. Saved explicit journeys may retain older authored plans. Existing Wall Off,
+cockpit default Off and MVP/XR Offscreen remain. T13 is partial: exact boundaries, cue-role
+placement and visual arrival still need correction. T12 local musical attention is next after the
+timing foundations; Musical's fixed calm treatment is not claimed solved here. No independent
+melody/vocal/instrument identification or human musical precision claim. Do not ask again for
+manual timecodes as a prerequisite; continue from existing evidence and known controls after feedback.
