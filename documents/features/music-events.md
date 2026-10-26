@@ -1165,3 +1165,9 @@ scene windows in ordinary mode. Visual envelope starts request structural evolut
 percussion. True impact requests remain strict; no music-event producer/confidence is added.
 Cue-consistency evidence does not establish audible target-arrival accuracy; that runtime contract
 is the next T13c slice.
+
+T13c subsequently adds a finite preset-base runtime for generated cuePlacement points: authored
+start + scaled duration is the interpolation deadline across dashboard/MVP/XR. It changes no DSP,
+accepted event/cue/beat/section/chart timestamps or source confidence. Semantic modulation and
+emitted particles remain separate; cue-at-arrival/pre-roll and human audible alignment are not
+proven by a numeric preset endpoint. Existing source-recognition limitations remain unchanged.

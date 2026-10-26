@@ -225,3 +225,16 @@ Next T13c owns point-time versus target-arrival semantics, exponential interpola
 re-expansion and semantic anticipation. Existing cue consistency/coverage measurements do not
 satisfy the annotated p95 musical-arrival promotion gate. Then continue T12 local musical attention
 and its fixed-calm-policy correction. No manual timecodes are required as a prerequisite.
+
+### Continuation clarification - T13c (2026-10-26)
+
+The bounded delivery fixes finite preset-base interpolation and removes legacy duration-floor
+re-expansion for generated typed points. Point.time is still start, not arrival. Cached canonical
+partial-preset targets, host semantic/gain ordering and signed magnitude share the same absolute
+clock in dashboard/MVP/XR; legacy untyped/manual smoothing stays compatible. Asset publication
+prewarms anchors, while a policy change can still rebuild them once on demand. No frame DSP.
+
+Do not mark the entire T13 target-arrival gate complete: musical cue-at-arrival/pre-roll, semantic
+anticipation and in-flight geometry are not delivered here. After the usual deploy/manual pause,
+address those remaining timing contracts, then T12 local attention; do not require manual timecodes
+or reopen unsupported T11 source recognition. Detailed evidence is in the current tracker checkpoint.

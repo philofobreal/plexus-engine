@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-26 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T13a accepted for continuation. T13b corrects ordinary cue purposes and causal scene placement; checkpoint below. T13c target-arrival semantics and T12 local attention are next. T11 unsupported source recognition remains deferred.** Existing MVP/XR Offscreen rendering stays intact. [T11 capability limits](../features/music-events.md). [Previous merged review](xr-review-checkpoint.md).
+**T13b accepted for continuation. T13c implements finite preset-base deadlines; current checkpoint below. Cue-at-arrival/semantic anticipation and T12 local attention remain subsequent work. T11 unsupported source recognition remains deferred.** Existing MVP/XR Offscreen rendering stays intact. [T11 capability limits](../features/music-events.md). [Previous merged review](xr-review-checkpoint.md).
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -59,7 +59,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T10 | Analyzer timing cleanup | T00-T01 | Rejected experiments removed at user request; established XR path and equivalent Band search retained. Accuracy beyond available evidence remains unproven. [Record](xr-timing-cleanup.md) |
 | T11 | Timed evidence and qualification | Stable T10 clock/evidence boundary | Closed for this phase by explicit user decision after T11i; limited signal/provenance capabilities only. Research retained, no classifier promoted. General tonal/vocal recognition and dominance deferred; further research is not a T12a prerequisite. [Scope](../features/music-events.md) |
 | T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09; supported T11 capabilities only | T12a opt-in Musical: section-led motifs/density/layout from accepted BeatEvents, mandatory Guarded movement, Classic fallback; larger shared menu, localStorage/Copy. T12a1 hand recovery accepted; T12b rejection accounting added. General source fusion remains deferred, physical acceptance manual. Current checkpoint below |
-| T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a structure accepted; T13b cue purposes implemented; target arrival pending |
+| T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a/b accepted; T13c finite preset-base deadlines implemented, manual handoff below; cue-at-arrival, semantic anticipation and geometry arrival remain partial |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
 | T15 | Presentation planner + XR: track-specific HUD | T13-T14 | Planned |
 | T16 | Visuals + XR: optional central music display | T05, T14 tokens | Planned |
@@ -812,6 +812,8 @@ manual timecodes as a prerequisite; continue from existing evidence and known co
 
 ## Current continuation checkpoint - T13b cue purposes, 2026-10-26
 
+Historical handoff, accepted by the user's subsequent continuation; the T13c checkpoint below supersedes its next-step wording.
+
 User accepted T13a and authorized continuation with the usual per-task deploy/manual pause.
 One integration owner changed automation/type/transfer/XR diagnostics seams; independent read-only
 runtime and gameplay reviews checked the cross-module contract. [Contract](../adr/ADR-009-xr-rhythm-game-host.md#addendum-ba---t13b-cue-purposes-and-causal-scene-placement-2026-10-26).
@@ -884,3 +886,87 @@ This improves cue selection and prevents early/cross-scene placements; point.tim
 START. Actual interpolation/deadline, geometry-floor re-expansion and semantic anticipation are
 T13c, then T12 local attention. No annotated musical accuracy or p95 visible-arrival gain is claimed.
 Wall remains Off; cockpit defaults Off; existing saved explicit choices and MVP/XR Offscreen remain.
+
+## Current continuation checkpoint - T13c finite preset-base deadlines, 2026-10-26
+
+T13b was accepted. One integration owner implements automation/config, host lifecycle and render
+ordering; independent read-only visual/gameplay reviews checked ownership and compatibility.
+[Contract](../adr/ADR-009-xr-rhythm-game-host.md#addendum-bb---t13c-finite-preset-base-deadlines-2026-10-26).
+Generated cuePlacement points reach preset-base endpoints at start + authored/scaled duration,
+including short transitions; legacy untyped/manual laws remain. Canonical partial inheritance,
+interruption, rewind/pause, missing-asset suffix fencing, actual point references and per-track
+seeds prevent history-dependent base drift. MVP uses its own populated asset cache. Semantic and
+manual deltas compose separately after gains; ordinary smoothing resumes after arrival. Signed
+spiral magnitude shares the finite deadline, with the player's forced direction applied afterward.
+The normal legacy direction change still uses song-time smoothing, including while paused.
+Duplicate point IDs no longer collapse morph-scale durations. No new switch or storage migration.
+Prewarm on asset publication; bounded policy-change rebuild remains possible on demand. No FFT
+or new clock/worker interpolation. Existing MVP/XR Offscreen architecture remains authoritative.
+
+The reusable exclusive-output evaluator is `node scripts/evaluate-automation-arrival.mjs INPUT.source.json OUTPUT_NEW.json`.
+It reads an accepted source capture and shipped local presets, records source/evaluator hashes,
+and checks raw preset-base + signed endpoints. It does not decode audio or measure human musical
+accuracy, semantic modulation or particle arrival. Run on the retained T13b captures:
+`node scripts/evaluate-automation-arrival.mjs logs/t13b/no-good-accepted.json.source.json logs/t13c/no-good-final-arrival.json`
+(repeat for goa/scienide, with new output names). All350 points pass with zero residual:
+No Good103, Goa130, Scienide117. Desktop preparation14.23/13.07/11.73ms, warm1000 configure-guard
+plus base/signed samples74.45/84.76/87.65ms; informational only, not Quest frame-budget evidence.
+Earlier iteration outputs remain separately retained, never overwritten as historical evidence.
+`node scripts/evaluate-movement.mjs --source logs/t13b/no-good-accepted.json.source.json logs/t13c/no-good-chart.json`
+(repeat goa/scienide) exactly reproduces the entire T13b result value on all three recordings,
+including chart hashes, source provenance, settings, movement validation and every hand window:
+1004/901/801 notes. No new DSP run or timestamp change is claimed.
+
+Targeted178/178 before the full follow-up: `node --test --test-reporter=tap tests/automation-arrival.test.mjs tests/morphing.test.mjs tests/mvp-async-lifecycle.test.mjs tests/wormhole-frame-context.test.mjs tests/wormhole-spiral-history.test.mjs tests/wormhole-spiral-consumers.test.mjs tests/morph-scale.test.mjs tests/mvp-morph-scale-control.test.mjs tests/contracts.test.mjs tests/accepted-timing-measurement.test.mjs tests/semantics-integration.test.mjs tests/mvp-macro-tuning-mapper.test.mjs tests/visual-mode-transition.test.mjs tests/styles-deterministic.test.mjs`.
+The first full run1876/1864 pass/12 fail exposed one real untyped forced-direction regression
+(fixed), plus two source-shape assertions that required reviewed evolution. Follow-up
+`node --test --test-reporter=tap tests/xr-wormhole-spatial.test.mjs tests/wormhole-frame-context.test.mjs tests/timeline-ui.test.mjs tests/wormhole-clip-profile.test.mjs`
+is57/53 pass/4 exact retained preset baseline failures. The paused legacy direction test itself
+is unchanged and passes after the code correction. No first-run failure is hidden or reclassified
+as a new baseline. Final cumulative run:1876 tests,1867 pass,9 fail,0 skipped/cancelled,1044.13s.
+All nine failure names AND assertion messages exactly match logs/timing-cleanup/baseline-failures.json;
+no extra timeout or unresolved new regression. Strict checker: node logs/t13c/check-validation.mjs.
+Acceptance log: logs/t13c/full-tests-acceptance.txt; earlier full-tests-final.txt is superseded.
+Inventory retains198 active test files and256 test/helper/fixture identities in logs/t13c/test-inventory.json.
+
+Reviewed static/fixture migrations retain their predecessor in Git3246bc0: trigger now accepts
+the cached scaled view; the floor assertion explicitly applies only to untyped predecessors;
+contract signatures include the new optional cached-plan argument/cuePlacement guard; MVP signed
+fixture supplies the actual private owned cache rather than an unrelated global map. Original
+payloads/behavior assertions remain. New actual host/helper tests cover finite and legacy behavior
+together. No golden, prior result or measured analyzer-source manifest is rewritten.
+
+`npm run build` passes TypeScript/Vite (existing chunk-size warning). Node25.2.1/npm11.6.2,
+no dependency install, runner substitution or Bun fallback. Final cumulative command is
+`npm test -- --test-reporter=tap --test-concurrency=4`: native Windows execution is required because
+the unchanged preset-save atomic Temp rename is denied with EPERM in the sandbox. Four-way
+parallelism limits resource contention; every active discovered test remains included. No Python
+implementation/model inference change, so no Python pytest/inference; no physical Quest attached.
+Direct diff and independent read-only review used; optional diff_export.ps1 considered/skipped.
+
+Browser fixture `tests/browser/wormhole-spiral-smoke.html` retains its legacy buttons and adds a
+Finite deadline check using actual WormholeCanvasSource instances: opposing signed directions,
+0.1s typed transition, midpoint/end sampling, residual0 and374400 coloured pixels, no console
+warning/error. Screenshot: logs/t13c/finite-render-smoke.png. Native Vite localhost HTTP200;
+the earlier sandbox server was unreachable. Actual MVP accepts the existing12s WAV, completes
+analysis/plan, plays, pauses and seeks to6s with no captured console warning/error. Its main
+preview is black in background IAB. A separate Git3246bc0 source snapshot on localhost5178
+reproduces the same black preview with the same audio and6s seek. This rules out a new T13c-only
+symptom, but does not establish its cause or a successful MVP pixel test. The comparison file
+chooser stalled1466s despite a10s requested timeout; no long-audio retry is used. Screenshot
+proofs and browser limitations are retained in logs/t13c. This is not full No Good/Quest acceptance.
+
+Stop after guarded deploy for manual acceptance. Reload the track, compare short visual morphs
+and repeat a passage after forward/backward seeks. The expected improvement is a bounded preset
+transition instead of indefinitely approaching its base target. Point.time remains START:
+cue-at-arrival/pre-roll, semantic anticipation and in-flight geometry arrival remain later work,
+so the whole T13/p95 musical-arrival gate is still partial. Then continue T12 local attention.
+Graphify code-only refresh covers899 files,8482 nodes,20432 raw edges and17930 canonical edges;
+canonical dangling endpoints0 (2464 raw unresolved navigation references retained). The new helper
+resolves to actual dashboard/MVP/context callers. AST retained before clustering; no LLM labels,
+backend, hooks, semantic corpus or visualization. Generated graph remains ignored. Document audit
+checks126 local links including fragments; diff whitespace check passes. Both owned local servers
+were stopped and no listeners remain on5177/5178. Temporary test tabs are not marked as handoffs.
+
+Wall remains Off; cockpit defaults Off; saved explicit choices remain. Source push/deployment
+receipts and exact public checks are retained in logs/t13c/handoff.json; no new PR/master merge.

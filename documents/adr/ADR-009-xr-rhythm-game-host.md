@@ -1647,6 +1647,40 @@ valid opaque style targets remain automatic instead of acquiring reason:manual a
 placement. Wall Off, cockpit default Off and existing Offscreen rendering remain unchanged.
 
 This is cue-role and causal-placement correctness, not the T13 target-arrival promotion gate.
-Point.time still starts ownership/morphing; exponential smoothing and geometry safety floors can
-extend visual arrival. T13c must address those runtime contracts separately. No human precision,
+At this checkpoint point.time still starts ownership/morphing; exponential smoothing and geometry safety floors can
+extend visual arrival. The following T13c addendum addresses the preset-base runtime separately. No human precision,
 new instrument recognition or p95 arrival improvement is claimed. [Evidence and next step](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13b-cue-purposes-2026-10-26).
+
+## Addendum BB - T13c finite preset-base deadlines (2026-10-26)
+
+Generated cuePlacement selects finite interpolation on the existing song clock. Point.time remains
+the START; the endpoint is time + the authored/scaled morphDurationSec. Linear, easeInOut and
+normalized exponential curves reach exact endpoints, including zero and sub-0.2-second durations.
+Legacy untyped plans and manual morphs retain their prior exponential law and safety floor.
+This is not a migration of cue times to arrival times and does not anticipate semantic events.
+
+AutomationTuningTimeline owns pure cached preset-base anchors: immutable plan/payload/policy/seed
+identity, cumulative filtered field ownership, partial-preset inheritance, interrupted starts,
+and binary clock sampling. A missing asset fences the unknown suffix without disabling the known
+prefix. Canonical raw owned fields are restored before semantic resolution on point/revision/seek
+changes; semantic/manual deltas are composed after host gains, never baked into cached endpoints.
+Unauthored global fields remain host-owned. Normal smoothing resumes after preset arrival.
+No State/audio/DOM dependency or DSP is added to this helper. Asset publication prewarms caches;
+a host gain/presentation policy change can still trigger a bounded lazy rebuild. This is not a
+claim that all preparation is offline. Warm sampling reuses buffers and performs no FFT.
+
+Dashboard cosmic-wormhole and MVP apply the base after semantic resolution and gains, before
+director/draw and worker raster submission. Other dashboard identities retain legacy behavior.
+MVP resolves assets from its own populated presetCache, not the unrelated global preload map.
+XR WormholeFrameContext applies the same contract to native/worker/exact consumers. Signed spiral
+retains its separate coherent owner; only authored/inherited spiral fields acquire automation
+ownership. Forced Left/Right applies after sampling the authored magnitude. Stable per-track
+seeds and canonical partial inheritance support direct/backward seeks. Actual point references,
+load/plan revisions and payload availability guard late application; duplicate IDs no longer
+collapse morph-scale duration lookup. No second worker interpolation or new clock is introduced.
+
+Particle trails, existing emitted geometry and semantic envelopes retain their own lifetimes.
+Their total visible arrival, semantic pre-roll and cue-at-arrival are subsequent work; no human
+musical precision/p95 promotion is established. No analyzer/event/chart timestamp, detector,
+schema, setting or storage migration. Wall Off, cockpit default Off and MVP/XR Offscreen remain.
+[Validation and handoff](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13c-finite-preset-base-deadlines-2026-10-26).
