@@ -1,9 +1,52 @@
 // Deterministic T09 synthetic chart corpus; not physical Quest or independently annotated music.
 // node scripts/evaluate-movement.mjs [logs/t09/corpus.json]
 import fs from 'node:fs';
+import {pathToFileURL} from 'node:url';
+import {resolve} from 'node:path';
 import { createHash } from 'node:crypto';
 import { createLoader } from '../tests/helpers/xr-loader.mjs';
 import { chartSources } from '../tests/helpers/xr-chart-sources.mjs';
+/** Descriptive comparison of the SAME published features used by selection, not an independent
+ * musical-quality metric. Common stratum weights remove unequal note-count weighting. Uniform
+ * k-subset means are analytic expectations, not feasible random motor charts. Pairs count once.
+ */
+export function compareMeasuredChartSelection(source, before, after, {windowSec=4,offsetSec=0}={}) {
+ const unavailable=reason=>({version:1,status:'unavailable',reason,windowSec,offsetSec});
+ if(!Number.isFinite(windowSec)||windowSec<=0||!Number.isFinite(offsetSec)||offsetSec<0||offsetSec>=windowSec)throw Error('Invalid comparison strata');
+ const e=source?.attention,events=source?.events,finite=v=>typeof v==='number'&&Number.isFinite(v)&&v>=0;
+ if(!Array.isArray(events)||!e||e.version!==1||e.source!=='published-frame-change'||!Array.isArray(e.records)||e.records.length!==events.length)return unavailable('missing-or-invalid-evidence');
+ if(!Number.isFinite(source.durationSec)||source.durationSec<=0||!Number.isSafeInteger(e.sampleRate)||e.sampleRate<1000||e.sampleRate>384000
+  ||!Number.isSafeInteger(e.hopSize)||e.hopSize<4||e.hopSize>65536||!Number.isInteger(Math.log2(e.hopSize))
+  ||!Number.isSafeInteger(e.frameCount)||e.frameCount<=0||Math.abs(e.frameCount-Math.ceil(source.durationSec*e.sampleRate/e.hopSize))>1)return unavailable('invalid-evidence-clock');
+ if(!events.every((event,i)=>{const r=e.records[i];return event&&finite(event.time)&&event.time<source.durationSec&&finite(event.intensity)&&[1,2,3].includes(event.type)
+  &&r&&r.time===event.time&&r.intensity===event.intensity&&r.type===event.type&&finite(r.energy)
+  &&r.frame===Math.floor(Math.round(event.time*e.sampleRate)/e.hopSize)&&r.frame>=0&&r.frame<e.frameCount
+  &&Array.isArray(r.change)&&r.change.length===3&&[0,1,2].every(j=>finite(r.change[j]));}))return unavailable('invalid-evidence-association');
+ const ids=chart=>{if(!Array.isArray(chart))return null;const out=new Set();for(const n of chart){const match=/^note-(\d+)-(left|right)$/.exec(n?.id??'');const i=match?Number(match[1]):-1,event=events[i];
+  if(!event||n.time!==event.time||n.sourceType!==event.type)return null;out.add(i);}return out;};
+ const a=ids(before),b=ids(after);if(!a||!b)return unavailable('invalid-chart-association');
+ const buckets=new Map();for(let i=0;i<events.length;i++){const bin=Math.floor((events[i].time-offsetSec)/windowSec);if(!buckets.has(bin))buckets.set(bin,{before:[],after:[]});
+  if(a.has(i))buckets.get(bin).before.push(i);if(b.has(i))buckets.get(bin).after.push(i);}
+ const sum=xs=>xs.reduce((x,y)=>x+y,0),mean=(is,key)=>sum(is.map(i=>key==='intensity'?events[i].intensity:sum(e.records[i].change)))/is.length;
+ const totals={intensity:{before:0,after:0},publishedPositiveBandChange:{before:0,after:0}};
+ let matchedEvents=0,commonWindows=0,beforeOnly=0,afterOnly=0,bothEmpty=0,commonSeconds=0;
+ for(const [bin,group]of buckets){const k=Math.min(group.before.length,group.after.length);
+  if(!k){if(group.before.length)beforeOnly++;else if(group.after.length)afterOnly++;else bothEmpty++;continue;}
+  commonWindows++;matchedEvents+=k;commonSeconds+=Math.max(0,Math.min(source.durationSec,offsetSec+(bin+1)*windowSec)-Math.max(0,offsetSec+bin*windowSec));
+  for(const key of Object.keys(totals)){totals[key].before+=k*mean(group.before,key);totals[key].after+=k*mean(group.after,key);}}
+ const totalWindows=Math.ceil((source.durationSec-offsetSec)/windowSec)-Math.floor(-offsetSec/windowSec);
+ if(!Number.isSafeInteger(totalWindows))return unavailable('invalid-strata-size');
+ const sourceEmptyWindows=totalWindows-buckets.size;
+ const populatedSeconds=sum([...buckets.keys()].map(bin=>Math.max(0,Math.min(source.durationSec,offsetSec+(bin+1)*windowSec)-Math.max(0,offsetSec+bin*windowSec))));
+ const sourceEmptySeconds=Math.max(0,source.durationSec-populatedSeconds);
+ bothEmpty+=sourceEmptyWindows;
+ const metrics=Object.fromEntries(Object.entries(totals).map(([key,v])=>[key,matchedEvents?{before:v.before/matchedEvents,after:v.after/matchedEvents,delta:(v.after-v.before)/matchedEvents}:null]));
+ return{version:1,status:matchedEvents?'measured':'no-common-support',windowSec,offsetSec,sourceEvents:events.length,beforeEvents:a.size,afterEvents:b.size,
+  sharedEvents:[...a].filter(i=>b.has(i)).length,matchedEvents,commonWindows,commonSeconds,durationSec:source.durationSec,totalWindows,populatedSourceWindows:buckets.size,sourceEmptyWindows,sourceEmptySeconds,beforeOnly,afterOnly,bothEmpty,metrics,
+  scope:'Common-cardinality stratum expectation on published normalized features. Self-feature alignment only; not independent musical accuracy or a feasible random chart.'};
+}
+
+async function main() {
 const { buildRhythmChart, validateRhythmMovement, DIFFICULTIES, HAND_PATTERNS } = createLoader()('gameplay/index.ts');
 const hash = v => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 // Real-recording regression mode, with a cached plain-data chart source for exact before/after.
@@ -60,7 +103,7 @@ if (['--recording', '--source'].includes(process.argv[2])) {
     const windows = Array.from({ length: Math.ceil(capture.source.durationSec / 30) }, (_, i) => ({ start: i * 30,
         raw: count(raw.filter(n => n.time >= i * 30 && n.time < (i + 1) * 30)),
         guarded: count(guarded.filter(n => n.time >= i * 30 && n.time < (i + 1) * 30)) }));
-    let baseline;
+    let baseline, baselineChart;
     if (baselineRef) {
         const { execFileSync } = await import('node:child_process');
         const { rolldown } = await import('rolldown');
@@ -72,7 +115,7 @@ if (['--recording', '--source'].includes(process.argv[2])) {
         try {
             const result = await bundle.generate({ format: 'esm' });
             const old = await import('data:text/javascript;base64,' + Buffer.from(result.output[0].code).toString('base64'));
-            const chart = old.buildRhythmChart(capture.source, config, settings);
+            const chart = old.buildRhythmChart(capture.source, config, settings); baselineChart = chart;
             baseline = { commit: baselineRef, comparison: baselineFlag === '--baseline-chart' ? 'whole-chart-policy' : 'movement-only',
                 sourceHashes: Object.fromEntries([...retained].map(([name, code]) => [name, createHash('sha256').update(code).digest('hex')])),
                 movementSourceSha256: createHash('sha256').update(retained.get('RhythmMovement.ts')).digest('hex'),
@@ -82,6 +125,7 @@ if (['--recording', '--source'].includes(process.argv[2])) {
     }
     const detailed = load('gameplay/RhythmChartBuilder.ts').buildRhythmChartWithDiagnostics(capture.source, config, settings);
     const report = { recording: capture.recording, pcmSha256: capture.pcmSha256, chartSourceSha256: hash(capture.source), baseline,
+        transfer: baselineChart ? [0, 2].map(offsetSec => compareMeasuredChartSelection(capture.source, baselineChart, guarded, {offsetSec})) : undefined,
         attention: detailed.diagnostics.attention, selection: { ...detailed.diagnostics, decisions: undefined },
         structureInterpretation: capture.structureInterpretation, movementModelVersion: MOVEMENT_MODEL_VERSION, settings, raw: count(raw), guarded: count(guarded), windows,
         validation: validateRhythmMovement(guarded, config, settings),
@@ -111,3 +155,6 @@ const data = { pass: totals.guardedIssues === 0 && cases.every(c => c.guardedNot
 fs.writeFileSync(process.argv[2] ?? 'logs/t09/corpus.json', JSON.stringify(data, null, 2) + '\n');
 if (!data.pass) throw Error('Guarded corpus failed');
 console.log(JSON.stringify({ ...data, results: undefined }));
+
+}
+if(process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) await main();
