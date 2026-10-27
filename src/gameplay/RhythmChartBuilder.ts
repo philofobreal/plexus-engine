@@ -6,6 +6,7 @@ import type { RhythmNote } from './RhythmTypes';
 import { normalizeGenerationSettings, playSpaceConfig, type RhythmGenerationSettings } from './RhythmGenerationProfile';
 import { guardRhythmMovement, mirrorRhythmChart } from './RhythmMovement';
 import { RhythmChartTrace, type RhythmChartDiagnostics } from './RhythmChartDiagnostics';
+import type { RhythmAttentionEvidence } from './RhythmLocalAttention';
 
 export interface RhythmChartSource {
     readonly events: readonly BeatEvent[];
@@ -22,6 +23,8 @@ export interface RhythmChartSource {
     readonly sectionStarts?: readonly number[];
     /** Published intervals shape the opt-in musical profile; they never supply note times. */
     readonly sections?: readonly Pick<TrackSection, 'start' | 'end' | 'label'>[];
+    /** Compact original-frame change evidence, associated with these exact accepted events. */
+    readonly attention?: RhythmAttentionEvidence;
 }
 
 /**

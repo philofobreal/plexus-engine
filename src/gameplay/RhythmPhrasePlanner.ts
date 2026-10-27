@@ -2,6 +2,8 @@ import type { BeatEvent, PerformanceAutomationPoint, TrackSection } from '../typ
 import type { RhythmTexture } from './RhythmTypes';
 import { GESTURE_ENTRY_TEXTURE, rhythmTexture } from './RhythmChoreography';
 import { DEFAULT_RHYTHM_GENERATION_SETTINGS, difficultyProfile, motorProfile, type RhythmGenerationSettings } from './RhythmGenerationProfile';
+import { planRhythmAttention, type RhythmAttentionPlan } from './RhythmLocalAttention';
+import { DEFAULT_RHYTHM_GAME_CONFIG } from './RhythmGameConfig';
 
 export interface RhythmPhrase {
     index: number;
@@ -38,20 +40,6 @@ export function rhythmCharacterSections(sections: readonly CharacterSection[] | 
     return sorted;
 }
 
-function sectionCharacter(section: CharacterSection, time: number): RhythmPhraseCharacter {
-    if (section.label === 'intro' || section.label === 'break' || section.label === 'outro')
-        return { kind: 'calm', energy: 0.25, densityScale: 1.4 };
-    if (section.label === 'build') {
-        const progress = Math.max(0, Math.min(1, (time - section.start) / (section.end - section.start)));
-        return { kind: 'build', energy: 0.25 + progress * 0.7, densityScale: 1.3 - progress * 0.5 };
-    }
-    return section.label === 'drop' || section.label === 'peak'
-        ? { kind: 'peak', energy: 0.9, densityScale: 0.85 } : { kind: 'drive', energy: 0.65, densityScale: 1 };
-}
-const CHARACTER_VOCABULARY: Record<RhythmPhraseCharacter['kind'], readonly RhythmTexture[]> = {
-    calm: ['breath', 'pulse', 'echo'], build: ['build', 'pulse', 'build', 'weave'],
-    drive: ['drive', 'weave', 'pulse', 'echo'], peak: ['impact', 'weave', 'drive', 'impact']
-};
 const VOCABULARY: Record<RhythmTexture, readonly RhythmTexture[]> = {
     breath: ['breath', 'pulse', 'echo', 'weave'], pulse: ['pulse', 'weave', 'drive', 'echo'],
     drive: ['drive', 'weave', 'echo', 'pulse'], weave: ['weave', 'drive', 'pulse', 'echo'],
@@ -66,25 +54,49 @@ const VOCABULARY: Record<RhythmTexture, readonly RhythmTexture[]> = {
 export function planRhythmPhrases(events: readonly BeatEvent[], points: readonly PerformanceAutomationPoint[],
     duration: number, beats: readonly number[], confidence: number,
     settings: RhythmGenerationSettings = DEFAULT_RHYTHM_GENERATION_SETTINGS,
-    sections?: readonly CharacterSection[]): RhythmPhrase[] {
+    sections?: readonly CharacterSection[], attention?: RhythmAttentionPlan): RhythmPhrase[] {
     const profile = motorProfile(settings);
     const context = settings.chartProfile === 'musical-v1' ? rhythmCharacterSections(sections, duration) : [];
     const intervals = (confidence >= 0.5 ? beats.slice(1).map((t, i) => t - beats[i])
         : events.slice(1).map((e, i) => e.time - events[i].time)).filter(t => t >= 0.2 && t <= 1.5).sort((a, b) => a - b);
     const beatSec = Math.max(0.25, Math.min(1, intervals[Math.floor(intervals.length / 2)] ?? 0.5));
+    const local = context.length ? attention ?? planRhythmAttention(events.map((event, index) => ({ event, index })),
+        events, duration, beatSec, confidence >= .5 ? beats.filter((_, i) => i % 4 === 0) : [], confidence >= .5,
+        settings, Math.max(.01, DEFAULT_RHYTHM_GAME_CONFIG.minGlobalNoteSpacingSec * difficultyProfile(settings.difficulty).globalSpacingScale
+            * Math.max(1, profile.densityScale)), difficultyProfile(settings.difficulty).globalSpacingScale) : undefined;
+    if (local) {
+        const phrases: RhythmPhrase[] = [];
+        let previousBand: string | undefined;
+        for (const window of local.windows) {
+            const previous = phrases.at(-1);
+            if (previous && previous.end >= window.start - 1e-7 && previous.texture === window.texture
+                && previousBand === window.primaryBand && previous.character?.kind === window.kind
+                && Math.abs(previous.character.energy - window.energy) <= .2 && window.end - previous.start <= profile.phraseMaxSec) {
+                const weight = (previous.end - previous.start) / (window.end - previous.start);
+                previous.character.energy = previous.character.energy * weight + window.energy * (1 - weight);
+                previous.end = window.end; previous.pairTimes.push(...window.accents);
+                previous.pairTime = previous.pairTimes[0];
+            } else {
+                const first = events.find(e => e.time >= window.start && e.time < window.end)?.time ?? window.start;
+                phrases.push({ index: phrases.length, start: window.start, end: window.end,
+                    point: points.findLast(p => p.time <= first), texture: window.texture,
+                    pairTime: window.accents[0], pairTimes: window.accents.slice(), beatSec,
+                    character: { kind: window.kind, energy: window.energy, densityScale: 1 } });
+            }
+            previousBand = window.primaryBand;
+        }
+        return phrases;
+    }
     // Variation owns phrase pacing: expressive phrases develop twice as often.
     const span = Math.max(profile.phraseMinSec, Math.min(profile.phraseMaxSec, beatSec * profile.phraseBeats));
     const phrases: RhythmPhrase[] = [];
-    let cursor = 0, pointIndex = -1, sectionIndex = 0, sectionPhrases = 0, previousSection = -1;
+    let cursor = 0, pointIndex = -1;
     let previous: RhythmTexture | undefined, pointPhrases = 0;
     while (cursor < events.length) {
         const start = events[cursor].time;
         while (pointIndex + 1 < points.length && points[pointIndex + 1].time <= start) pointIndex++;
         const point = points[pointIndex];
-        while (sectionIndex + 1 < context.length && context[sectionIndex + 1].start <= start) sectionIndex++;
-        const section = context[sectionIndex];
-        const end = Math.min(duration + 0.001, start + span, points[pointIndex + 1]?.time ?? Infinity, section?.end ?? Infinity);
-        const character = section ? sectionCharacter(section, (start + end) / 2) : undefined;
+        const end = Math.min(duration + 0.001, start + span, points[pointIndex + 1]?.time ?? Infinity);
         let next = cursor + 1;
         while (next < events.length && events[next].time < end) next++;
         const family = VOCABULARY[rhythmTexture(point?.meta)];
@@ -101,16 +113,6 @@ export function planRhythmPhrases(events: readonly BeatEvent[], points: readonly
         let texture = family[(entry + step % profile.textureVocabulary) % family.length];
         if (texture === previous && (profile.phrasesPerTexture === 1 || pointPhrases === 0))
             texture = family[(family.indexOf(texture) + 1) % family.length];
-        if (character) {
-            sectionPhrases = previousSection === sectionIndex ? sectionPhrases + 1 : 0;
-            const vocabulary = CHARACTER_VOCABULARY[character.kind];
-            const member = Math.floor(sectionPhrases / profile.phrasesPerTexture) % Math.min(profile.textureVocabulary, vocabulary.length);
-            const authoredEntry = preferred && vocabulary.includes(preferred) ? vocabulary.indexOf(preferred) : 0;
-            texture = vocabulary[(authoredEntry + member) % vocabulary.length];
-            // Early builds establish a pulse; later phrases develop upward into the accent.
-            if (character.kind === 'build' && character.energy < 0.6) texture = 'pulse';
-            previousSection = sectionIndex;
-        }
         let pairTime: number | undefined;
         if (next - cursor >= 6 && events[next - 1].time - start >= 2) {
             let best = -Infinity;
@@ -126,8 +128,7 @@ export function planRhythmPhrases(events: readonly BeatEvent[], points: readonly
         if (settings.handPattern === 'together') togetherAccents(events, cursor, next, start, end, beatSec, texture, point, pairTimes);
         // Ultra: more two-hand accents for every other pattern, on windows twice Together's length.
         else if (difficultyProfile(settings.difficulty).extraPairs) togetherAccents(events, cursor, next, start, end, beatSec, texture, point, pairTimes, 2);
-        phrases.push({ index: phrases.length, start, end, texture, point, pairTime, pairTimes, beatSec,
-            ...(character ? { character } : {}) });
+        phrases.push({ index: phrases.length, start, end, texture, point, pairTime, pairTimes, beatSec });
         previous = texture; cursor = next;
     }
     return phrases;

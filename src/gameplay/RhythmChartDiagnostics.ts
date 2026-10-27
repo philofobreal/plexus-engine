@@ -2,10 +2,11 @@
 import type { BeatEvent } from '../types';
 import type { RhythmNote } from './RhythmTypes';
 import type { MovementIssueCode, RhythmMovementIssue } from './RhythmMovement';
+import type { RhythmAttentionSummary } from './RhythmLocalAttention';
 
 export type ChartRejectionReason = 'invalid-duration' | 'invalid-time' | 'before-approach' | 'after-duration'
     | 'invalid-intensity' | 'below-intensity-floor' | 'pair-preparation' | 'section-breath'
-    | 'dense-run-limit' | 'echo-window' | 'phrase-breath' | 'spacing' | 'hand-policy' | 'overhead-rest' | 'movement-rejected';
+    | 'dense-run-limit' | 'echo-window' | 'phrase-breath' | 'spacing' | 'hand-policy' | 'overhead-rest' | 'movement-rejected' | 'local-attention';
 export interface RhythmChartDecision {
     readonly sourceIndex: number;
     readonly time: number | null;
@@ -30,10 +31,12 @@ export interface RhythmChartDiagnostics {
     readonly rejected: Readonly<Partial<Record<ChartRejectionReason, number>>>;
     /** Original source-array order, including invalid/filtered events. Never a second onset detector. */
     readonly decisions: readonly RhythmChartDecision[];
+    readonly attention?: RhythmAttentionSummary;
 }
 
 /** A collector exists only for a detailed build; legacy builds allocate no decision records. */
 export class RhythmChartTrace {
+    attention?: RhythmAttentionSummary;
     private readonly decisions = new Map<number, RhythmChartDecision>();
     private readonly noteSources = new Map<string, number>();
     private readonly events: readonly BeatEvent[];
@@ -83,7 +86,7 @@ export class RhythmChartTrace {
             else rejected[decision.outcome as ChartRejectionReason] = (rejected[decision.outcome as ChartRejectionReason] ?? 0) + 1;
             return { ...decision, noteIds, hands: noteIds.map(id => retained.get(id)!.hand) };
         });
-        return { version: 1, source: 'accepted-beat-events', sourceEvents: this.events.length, retainedEvents,
+        return { version: 1, source: 'accepted-beat-events', ...(this.attention ? { attention: this.attention } : {}), sourceEvents: this.events.length, retainedEvents,
             skippedEvents: this.events.length - retainedEvents, notes: chart.length,
             hands: { left: chart.filter(n => n.hand === 'left').length, right: chart.filter(n => n.hand === 'right').length,
                 either: chart.filter(n => n.hand === 'either').length }, revoicedNotes, rejected, decisions };

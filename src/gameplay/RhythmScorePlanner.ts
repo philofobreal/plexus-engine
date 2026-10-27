@@ -3,7 +3,8 @@ import type { RhythmChartTrace } from './RhythmChartDiagnostics';
 import { LANE_HAND, type RhythmGameConfig } from './RhythmGameConfig';
 import { CUT_VECTORS, rhythmTexture } from './RhythmChoreography';
 import type { CutDirection, RhythmNote, RhythmTexture } from './RhythmTypes';
-import { planRhythmPhrases, type RhythmPhrase } from './RhythmPhrasePlanner';
+import { planRhythmPhrases, rhythmCharacterSections, type RhythmPhrase } from './RhythmPhrasePlanner';
+import { planRhythmAttention } from './RhythmLocalAttention';
 import { DEFAULT_RHYTHM_GENERATION_SETTINGS, difficultyProfile, motorProfile, type RhythmGenerationSettings } from './RhythmGenerationProfile';
 import { isOnBeat, RhythmHandPolicy } from './RhythmHandPolicy';
 import { zonePreference } from './RhythmZonePolicy';
@@ -52,12 +53,21 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
     const bars = (source.barStarts ?? []).filter(Number.isFinite).slice().sort((a, b) => a - b);
     const meter = bars.length ? bars : beats.filter((_, i) => i % 4 === 0);
     const points = (source.performancePlan?.points ?? []).filter(p => Number.isFinite(p.time)).slice().sort((a, b) => a.time - b.time);
+    const pointTimes = points.map(p => p.time);
     const reliable = (source.timingConfidence ?? 0) >= 0.5 && beats.length >= 2;
     // Ultra structure: silences before section changes (sorted starts; the first section has none).
     const silenceStarts = demand.sectionSilenceBeats > 0
         ? (source.sectionStarts ?? []).filter(t => Number.isFinite(t) && t > 0).slice().sort((a, b) => a - b) : [];
     let runStart = -Infinity;
-    const phrases = planRhythmPhrases(events.map(e => e.event), points, source.durationSec, beats, source.timingConfidence ?? 0, settings, source.sections);
+    const musical = settings.chartProfile === 'musical-v1' && rhythmCharacterSections(source.sections, source.durationSec).length > 0;
+    const intervals = musical ? (reliable ? beats.slice(1).map((t, i) => t - beats[i])
+        : events.slice(1).map((e, i) => e.event.time - events[i].event.time)).filter(t => t >= .2 && t <= 1.5).sort((a, b) => a - b) : [];
+    const localBeatSec = Math.max(.25, Math.min(1, intervals[Math.floor(intervals.length / 2)] ?? .5));
+    const attention = musical ? planRhythmAttention(events, source.events, source.durationSec, localBeatSec,
+        meter.filter((t, i) => t >= 0 && t < source.durationSec && (i === 0 || t > meter[i - 1])), reliable,
+        settings, Math.max(.01, minGlobal * Math.max(1, profile.densityScale)), demand.globalSpacingScale, source.attention) : undefined;
+    if (trace) trace.attention = attention?.summary;
+    const phrases = planRhythmPhrases(events.map(e => e.event), points, source.durationSec, beats, source.timingConfidence ?? 0, settings, source.sections, attention);
     const accents = phrases.flatMap(p => p.pairTimes);
     const phraseTimes = phrases.map(p => p.start);
     const result: RhythmNote[] = [];
@@ -100,12 +110,13 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
     }
     for (const { event, index } of events) {
         const time = event.time;
+        if (attention && !attention.selected.has(index)) { trace?.reject(index, 'local-attention'); continue; }
         // Reserve a preparation gap before authored two-hand accents; otherwise dense singles
         // would consume one hand just before every downbeat and make pairs unreachable.
         const nextAccent = accents[lastAt(accents, time) + 1];
-        if (nextAccent !== undefined && nextAccent - time < Math.max(demand.pairPrepSec, minSame)) { trace?.reject(index, 'pair-preparation'); continue; }
+        if (!attention && nextAccent !== undefined && nextAccent - time < Math.max(demand.pairPrepSec, minSame)) { trace?.reject(index, 'pair-preparation'); continue; }
         const passage = phrases[lastAt(phraseTimes, time)];
-        const point = passage.point;
+        const point = attention ? points[lastAt(pointTimes, time)] : passage.point;
         const texture: RhythmTexture = passage.texture;
         // Automation intensity is a 0.3..3 gain, while behaviour energy is normalized.
         const buildEnergy = passage.character?.energy ?? point?.meta?.behaviour?.energy ?? Math.min(1, (point?.intensity ?? 0) / 3);
@@ -117,7 +128,7 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
         const phase = Math.max(0, (time - (reliable ? barStart : passage.start)) / beatSec) % 4;
         const phrase = passage.index;
         const accent = passage.pairTimes.includes(time);
-        if (silenceStarts.length) {
+        if (!attention && silenceStarts.length) {
             // A breath before the next section change: two beats at fast tempos, one at slow ones.
             const boundary = silenceStarts[lastAt(silenceStarts, time) + 1];
             const silence = beatSec * (beatSec <= 0.5 ? demand.sectionSilenceBeats : Math.max(1, demand.sectionSilenceBeats - 1));
@@ -129,10 +140,10 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
         if (dense && time - runStart >= demand.maxRunBeats * beatSec - 1e-7) { trace?.reject(index, 'dense-run-limit'); continue; }
         // Echo answers in the second half of alternate bars, with actual syncopated onsets
         // retained inside that window. Empty answers stay empty instead of inventing beats.
-        if (!accent && texture === 'echo' && (phrase % 2 === 0 ? phase >= 2 : phase < 2)) { trace?.reject(index, 'echo-window'); continue; }
+        if (!attention && !accent && texture === 'echo' && (phrase % 2 === 0 ? phase >= 2 : phase < 2)) { trace?.reject(index, 'echo-window'); continue; }
         // A four-bar question/answer has a short breathing space at its tail.
         // Active keeps playing through it; the other activity levels leave the breath.
-        if (!accent && reliable && profile.densityScale >= 1 && barIndex % 4 === 3 && phase >= 3 && event.intensity < 0.85 && texture !== 'build') { trace?.reject(index, 'phrase-breath'); continue; }
+        if (!attention && !accent && reliable && profile.densityScale >= 1 && barIndex % 4 === 3 && phase >= 3 && event.intensity < 0.85 && texture !== 'build') { trace?.reject(index, 'phrase-breath'); continue; }
         const density = texture === 'breath' ? 2 : texture === 'pulse' ? 1
             : texture === 'build' ? buildEnergy < 0.65 ? 1 : 0.5 : 0.5;
         // Calm scenes (the breath family) may keep a gentler ceiling than the driving ones (Ultra).
@@ -140,10 +151,10 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
         // Activity owns total density: it scales every texture's ceiling, never below the global floor.
         // Calm also widens the global floor; Active can never go below it.
         // Difficulty scales the ceiling and the floors on top of that.
-        const spacing = Math.max(minGlobal * Math.max(1, profile.densityScale),
+        const spacing = attention ? minGlobal * Math.max(1, profile.densityScale) : Math.max(minGlobal * Math.max(1, profile.densityScale),
             beatSec * density * profile.densityScale * ceilingScale * (passage.character?.densityScale ?? 1));
         const changedPoint = result.length > 0 && point?.id !== result.at(-1)?.automationId;
-        const requiredGap = accent || changedPoint ? minSame : spacing;
+        const requiredGap = attention ? spacing : accent || changedPoint ? minSame : spacing;
         if ((!accent && !changedPoint && time < nextAllowed - 1e-7) || result.length && time - result[result.length - 1].time < requiredGap - 1e-7) { trace?.reject(index, 'spacing', { earliestTime: Math.max(!accent && !changedPoint ? nextAllowed : 0, result.length ? result[result.length - 1].time + requiredGap : 0), requiredGapSec: requiredGap }); continue; }
         const ready = (side: 'left' | 'right') => (!last[side] || time - last[side]!.time >= minSame)
             && !(crossBlock && crossBlock.hand !== side && time < crossBlock.until);
@@ -265,7 +276,7 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
         }
         hands.commit(hand, group.length === 2);
         if (!dense) runStart = time;
-        nextAllowed = time + (group.length === 2 ? Math.max(0.5, minSame) : spacing);
+        nextAllowed = time + (group.length === 2 ? attention ? minSame : Math.max(0.5, minSame) : spacing);
         if (group.length === 2) lastPair = time;
     }
     if (settings.playSpace !== 'tall') return result;

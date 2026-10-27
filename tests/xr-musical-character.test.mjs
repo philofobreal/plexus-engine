@@ -24,26 +24,16 @@ const source = {
 };
 const musical = { chartProfile: 'musical-v1', difficulty: 'expert', activity: 'active', variation: 'expressive' };
 
-test('Musical keeps calm phrases compact, develops builds and reserves wider motifs for peaks on the same source', () => {
+// T12c replaces the label-imposed calm/peak assertions. Predecessor retained at Git ea4b4ba.
+test('Musical follows identical event supply consistently across different section labels', () => {
     const settings = normalizeGenerationSettings(musical);
-    const phrases = planRhythmPhrases(source.events, [], source.durationSec, source.beats, 0.9, settings, sections);
-    for (const p of phrases) {
-        const s = sections.find(s => p.start >= s.start && p.start < s.end);
-        assert.ok(p.end <= s.end, 'a phrase never carries a preceding character past a section boundary');
-        if (s.label === 'intro' || s.label === 'break') assert.ok(['breath', 'pulse', 'echo'].includes(p.texture));
-        if (s.label === 'drop') assert.ok(['impact', 'weave', 'drive'].includes(p.texture));
-    }
-    const builds = phrases.filter(p => p.character.kind === 'build');
-    assert.ok(builds.at(-1).character.energy > builds[0].character.energy);
-    assert.ok(builds.at(-1).character.densityScale < builds[0].character.densityScale);
-    assert.equal(builds[0].texture, 'pulse'); assert.ok(builds.some(p => p.texture === 'build'));
     const chart = buildRhythmChart(source, config, musical);
-    const calm = chart.filter(n => n.time < 24 || n.time >= 104);
-    const peak = chart.filter(n => n.time >= 80 && n.time < 104);
-    assert.ok(calm.length > 0 && peak.length > 0);
-    assert.ok(calm.every(n => n.row === 1 && Math.abs(n.xOffsetMeters) <= 0.35));
-    assert.ok(peak.some(n => n.row !== 1));
-    assert.ok(peak.length / 24 > calm.length / 48, 'identical onset supply produces denser peak than calm');
+    assert.ok(chart.length > 0);
+    const other = { ...source, sections: sections.map(s => ({ ...s, label: 'break' })) };
+    assert.equal(json(buildRhythmChart(other, config, musical)), json(chart));
+    const a = planRhythmPhrases(source.events, [], source.durationSec, source.beats, .9, settings, sections);
+    const b = planRhythmPhrases(source.events, [], source.durationSec, source.beats, .9, settings, other.sections);
+    assert.equal(json(a), json(b), 'label replacement cannot synthesize different musical attention');
     assert.notEqual(json(chart), json(buildRhythmChart(source, config, { ...musical, chartProfile: 'legacy' })));
 });
 

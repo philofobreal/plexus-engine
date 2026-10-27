@@ -17,6 +17,8 @@ export { buildScoringPlan, scoreRank, SECTION_LABEL_FACTOR, MULTIPLIER_TIERS, ty
     type ScoringSectionSource, type SectionScoreProfile } from './RhythmScoring';
 export { notePosition } from './RhythmLayout';
 export { OVERHEAD_ROW } from './RhythmOverheadPolicy';
+export { measureRhythmAttention } from './RhythmLocalAttention';
+export type { RhythmAttentionEvidence, RhythmAttentionSummary } from './RhythmLocalAttention';
 export { CUT_VECTORS } from './RhythmChoreography';
 export type {
     CutDirection,
