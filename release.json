@@ -1,7 +1,7 @@
 {
-  "id": "t12c1-local-attention-20261027T093657590Z",
-  "previousCommit": "1295378fad4b9a56c9c0de12b34ccd96e3d896ec",
-  "sourceCommit": "8c5c2da12c5db6d14360e85238223691719182b2",
+  "id": "t12c2-transfer-review-20261027T104910871Z",
+  "previousCommit": "60a42c1f4fee382e0b4b6bafcd78e7c44b05daf3",
+  "sourceCommit": "0b78612d104bd57d0503b547c2eed8cc12ff8e86",
   "inputs": [
     {
       "path": "bun.lock",
@@ -241,7 +241,7 @@
     },
     {
       "path": "scripts/evaluate-movement.mjs",
-      "sha256": "6a71cbc3e5ebd02a187f86974d7a3f1b7031fa063adff99b90f5fec25ac48dcb"
+      "sha256": "4274bf507ac27376b088a26d69a18fbf3bb2567d332354d989692f2e61944471"
     },
     {
       "path": "scripts/finalize-cockpit-refinement.mjs",
