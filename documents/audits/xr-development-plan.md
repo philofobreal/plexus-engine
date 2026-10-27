@@ -260,3 +260,11 @@ precision claim is made. Current phase timing foundations are bounded here. Afte
 validation, deploy and manual acceptance, continue T12 local musical attention using supported
 local rhythmic/energy/spectral evidence. Do not turn remaining research limits into an endless
 T13 prerequisite. See the current tracker checkpoint for tested contracts and open limits.
+
+### User budget and continuation - T12c/1 (2026-10-27)
+
+Local Musical attention is delivered in bounded subtasks. T12c/1 integrates original-event local
+ranking and the first No Good comparison, without promoting structural/model accuracy. T12c/2
+broadens the three-recording transfer checks and calibration after manual feedback. The user
+requires an explicit stop and question before the next subtask because account budget is low.
+Full-song external structural models are a separate later task by explicit user choice.

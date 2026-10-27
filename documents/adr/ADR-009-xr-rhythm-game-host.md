@@ -1745,3 +1745,27 @@ Natural geometry/particle lifetimes are preserved; numeric semantic timing does 
 perceptual arrival or the annotated p95 musical precision gate. This completes the current
 bounded timing foundation; after manual acceptance continue T12 local musical attention.
 Wall Off, cockpit default Off and existing Offscreen paths remain. [Evidence and limits](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13e-semantic-timing-2026-10-26).
+
+## Addendum BE - T12c/1 local Musical attention (2026-10-27)
+
+The existing Musical setting now ranks accepted events using local relative intensity, explicit-
+clock frame spectral CHANGE and actual event spacing. Three equal-width groups of the published
+24-band balance describe change, not isolated source power or instrument identity. Narrow-band
+flux is not mixed into one group at a different scale. XR passes a compact event-associated
+projection, never copies PCM or changes the worker contract. Invalid/missing evidence explicitly
+uses event-only ranking; incomplete sections retain Classic/Guarded fallback. Classic output and
+motor limits stay intact. No new setting, storage migration, FFT or render-loop analysis.
+
+Activity/Difficulty set a local feasible event budget. A maximum-weight interval subset selects
+original source indices before hand/layout/Guarded decisions. Musical removes cyclic section-
+label vocabulary, echo-half-window suppression, automatic section/phrase silence and advance
+pair reservation. Dense-run fatigue and motor safety remain. Together explicitly requests more
+shared accents on real selected events; other patterns require local contrast and wider pair
+cadence. Stable measured windows may merge into motor phrases without resetting on visual cues.
+
+The user limited remaining account budget and requires approval between subtasks. This delivery
+is T12c/1: selector, XR integration, controls and first full No Good replay. T12c/2 is the broader
+three-recording transfer comparison/calibration, only after explicit continuation. The full-song
+external structural-model study follows separately, as the user selected; no model installation,
+inference, corrected boundaries or validated functional structure is claimed here.
+[Current evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12c1-local-attention-2026-10-27).

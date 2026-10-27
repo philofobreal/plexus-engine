@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-27 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T13d accepted for continuation. T13e continuously samples the existing scored semantic transitions and removes their second render lag; checkpoint below. After manual acceptance continue T12 local musical attention. Natural geometry lifetimes stay intentional; human musical precision remains unproven. T11 unsupported source recognition remains deferred.** Existing MVP/XR Offscreen rendering stays intact. [T11 capability limits](../features/music-events.md). [Previous merged review](xr-review-checkpoint.md).
+**T13e runtime timing delivered; T12c/1 now adds local Musical event selection. T12c/2 three-recording transfer and the later external structural-model study require explicit continuation. This is no annotated musical-accuracy promotion.** Existing MVP/XR Offscreen rendering stays intact.
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -1194,3 +1194,62 @@ Final targeted316/316, build, output-buffer120/120, retained chart/endpoint repl
 links and diff checks pass. Final source commits/public release verification are recorded after
 guarded publication in logs/t13e/handoff.json and the workspace continuation status. STOP then
 for manual acceptance; next T12 local musical attention, no new PR/master merge.
+
+## Current continuation checkpoint - T12c1 local attention (2026-10-27)
+
+User rejected the impression that changed charts imply better musical understanding. They
+explicitly selected local T12c first, external full-song model comparison later. With20% account
+budget remaining they require bounded subtasks, a stop and a question before each next subtask.
+T12c/1 owns pure gameplay ranking, compact XR measurement projection, existing diagnostics/menu
+wording and reproduction. Parent edits all crossing boundaries; independent read-only review.
+
+Musical now selects source events using local relative intensity, three-group published spectral
+CHANGE and real event gaps under an Activity/Difficulty budget. The explicit frame clock is
+sampleRate/hopSize; malformed values/association fail to declared events-only fallback. No source,
+melody/vocal identity, new onset or confidence is inferred. The eligible BeatEvents keep their
+exact original times/types/intensities. No worker schema, analyzer, DSP, audio clock or renderer
+changes. Classic remains separate; existing Musical storage/Copy choice is reused.
+
+Selection precedes layout and the unchanged Guarded model. Musical no longer forces calm from
+break/intro labels, cycles a section vocabulary, suppresses echo half-bars or section/phrase
+breaths, or reserves singles away for a potentially impossible future pair. Physical spacing,
+dense-run fatigue and explicit hand choices remain. Together keeps observable shared accents;
+Alternate accent cadence remains sparser. A missing/tail-truncated meter cannot reuse an expired
+window. Incomplete section context retains Classic/Guarded fallback. Diagnostics/Copy report
+frame-change versus events-only and separate local-attention from motor rejection.
+
+Controlled checks: matched-budget spectral swaps inside ONE break change selected original
+indices; relabeling and visual cue insertion cannot replace evidence; translated passages,
+explicit/malformed clocks, uniform/accented Together, immutability, original timing and Classic
+invariance are covered. Existing360 motor combinations and long hand-coverage cases remain.
+Targeted104/104 initially passed; final controls include11 new cases and the retained suites.
+The old test requiring a break to be calm was explicitly replaced with label invariance, with
+predecessor source retained in Git ea4b4ba9a3eec0bf9f377ee2dc08cdd9f3b1b890. Original independent
+safety/provenance/settings/golden assertions remain. No golden or old result was regenerated.
+
+Existing scripts/evaluate-movement.mjs now captures compact evidence and supports --baseline-chart
+SHA to compare the retained WHOLE chart policy; --baseline still means movement-only. Exclusive
+new output paths preserve prior results. Fresh No Good channel0/44100Hz PCM hash, accepted events,
+beats, corrected sections and plan exactly match the retained T13b capture. With the user's
+Musical/Ultra/Active/Expressive/Alternate/Even/Crossover/Tall/Guarded settings, baseline1004 notes
+(500L/504R,87pairs) becomes1180 (596L/584R,3pairs); model validation passes and both hands remain
+active.1342/1492 eligible candidates are selected before motor layout. Fewer forced pairs and
+more surviving source events are behavior changes, NOT a musical accuracy score. Earlier low-
+band-weight iteration is retained separately; acceptance uses no-good-reviewed.json only.
+Command: node scripts/evaluate-movement.mjs --recording AUDIO logs/t12c/no-good-reviewed.json
+--baseline-chart ea4b4ba. No external model was run. Acoustic/functional quality and physical Quest
+remain manual; broad three-recording transfer belongs to T12c/2. No independent structure fix.
+
+Final validation/build/full-regression/Graphify/public receipts are recorded after completion in
+logs/t12c/handoff.json. Commands use existing Node25.2.1/npm11.6.2; no install/Bun fallback. Full
+suite uses native Windows Temp due the known sandbox preset-save EPERM; compare all9 baseline
+failure names AND messages. Old results remain unchanged. No Python/model/inference changes.
+After commit/push/guarded deploy STOP. Explain visible behavior, request manual test and ASK before
+T12c/2. Do not continue automatically. Wall Off, cockpit default Off and Offscreen remain.
+
+Final T12c/1 receipt: 1921 cumulative tests,1912 pass,9 exact retained
+baseline failures,0 skipped/cancelled; names AND messages checked. Targeted104/104 and build pass.
+Graphify full904 files/8552 nodes/20655 raw/18145 canonical edges,
+0 canonical dangling endpoints; raw retained before clustering, no LLM/hooks.200 active test files,
+258 test/helper/fixture byte identities retained. Public receipt follows in logs/t12c/handoff.json.
+STOP for manual feedback and ask before T12c/2, as explicitly requested for remaining budget.
