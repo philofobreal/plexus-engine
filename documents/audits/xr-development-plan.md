@@ -249,3 +249,14 @@ Actual point edits become manual, while selection/no-op does not change timing. 
 event/note times and analysis stay unchanged. This is preset-base arrival, not semantic pre-roll
 or replacement of in-flight particles. After the normal validation/deploy/manual pause, address
 those remaining timing contracts before claiming the whole T13 gate; then continue T12 attention.
+
+### Continuation clarification - T13e (2026-10-26)
+
+The existing scored ADR-003 semantic pre-roll is now sampled continuously between eligible
+knots, then rendered once over the independently morphed preset base. No producer/event/note
+clock changes or new source recognition. Imported ADR-004 window rules remain unchanged.
+Already emitted geometry keeps its intentional lifespan; no perceptual p95/annotated musical
+precision claim is made. Current phase timing foundations are bounded here. After the usual
+validation, deploy and manual acceptance, continue T12 local musical attention using supported
+local rhythmic/energy/spectral evidence. Do not turn remaining research limits into an endless
+T13 prerequisite. See the current tracker checkpoint for tested contracts and open limits.

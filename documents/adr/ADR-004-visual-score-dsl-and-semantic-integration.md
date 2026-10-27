@@ -31,3 +31,11 @@ The active ADR-003 motif pipeline remains available alongside ADR-004. Its `Moti
 ## Implementation Notes
 
 **Note:** This PR implements the ADR-004 runtime consumer and state-write boundary. No default producer (analyzer stage) is included in this phase. `TrackAnalysis.externalVisualScorePlan` is an optional pass-through slot for an imported plan and is never populated by the analyzer core. The system falls back to ADR-003 or legacy automation if no external plan is provided.
+
+### T13e consumer composition note (2026-10-26)
+
+The imported DSL resolver's documented start-based windows and interpolation are unchanged.
+SemanticRuntimeAdapter exposes its raw base and can restore keys only on the original target
+whose value still equals its last write. Cosmic hosts use a render-only target/base projection
+to avoid smoothing the resolved semantic envelope twice. This does not reinterpret ADR-004 as
+cue-at-arrival or change its producer/pass-through slot. [Runtime evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13e-semantic-timing-2026-10-26).

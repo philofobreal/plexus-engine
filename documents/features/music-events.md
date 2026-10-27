@@ -1176,3 +1176,11 @@ T13d subsequently schedules eligible automatic preset-base morphs BEFORE their u
 cue so the base reaches its target there. Manual/locked/legacy barriers retain start-based timing;
 events, semantic tokens and disallowed enum gates never fire early. This introduces no new musical
 measurement or source confidence. In-flight geometry and semantic anticipation remain separate.
+
+T13e continuously samples already scored ADR-003 transition knots and removes a second render
+smoothing stage in cosmic hosts. It introduces no new analysis, event timestamp, confidence,
+source label or beat/note change. Raw preset-base ownership and imported ADR-004 timing stay
+separate. Three stored chart-source replays remain exactly equal to T13d; these are consistency
+checks, not new audio inference or human-annotated accuracy. Natural geometry lifetimes remain.
+After manual acceptance the next T12 slice concerns local musical attention using the supported
+evidence; unsupported T11 source recognition and perceptual p95 promotion remain deferred.

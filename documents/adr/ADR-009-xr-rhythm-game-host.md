@@ -1723,3 +1723,25 @@ ownership moves into this presentation helper.
 Only preset-base numeric arrival is guaranteed. Semantic envelopes, emitted particles, geometry
 lifetimes and perceptual musical alignment remain independent; no p95/human-precision promotion.
 Wall Off, cockpit default Off and MVP/XR Offscreen remain. [Evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13d-preset-base-cue-arrival-2026-10-26).
+
+## Addendum BD - T13e continuous semantic timing (2026-10-26)
+
+ADR-003 scored transitions already contain pre-roll; MotifRuntimeAdapter samples adjacent knots
+continuously only when explicit transition identity/span/progress agree. Published canonical
+frame/token metadata stays separate and immutable. Ordinary/legacy/mismatched frames hold.
+The resolver uses a reusable optional output buffer and writes only semantic-owned target keys.
+Raw base snapshots and finite seeds never inherit the preceding semantic delta, including on
+partial preset changes, reverse seek and cross-track load handoff.
+
+Cosmic dashboard/MVP and shared WormholeFrameContext restore a render-only semantic projection,
+morph/sample the independently gain-resolved preset base, then apply its resolved semantic delta
+once. Exact pre-overlay values are stored to avoid clamp drift; object identity and last-written
+values protect unrelated writes. MVP copies its shared gain scratch. Finite/signed automation
+receives the same resolved base. Other dashboard identities keep their prior consumer path.
+ADR-004 imported score window/interpolation rules and the producer plans remain unchanged.
+No new clock, worker interpolator, DSP, setting, DTO or storage migration.
+
+Natural geometry/particle lifetimes are preserved; numeric semantic timing does not establish
+perceptual arrival or the annotated p95 musical precision gate. This completes the current
+bounded timing foundation; after manual acceptance continue T12 local musical attention.
+Wall Off, cockpit default Off and existing Offscreen paths remain. [Evidence and limits](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13e-semantic-timing-2026-10-26).

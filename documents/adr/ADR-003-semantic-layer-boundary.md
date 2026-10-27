@@ -148,3 +148,14 @@ Tradeoffs:
   `documents/governance/anti-patterns.md` (to be updated in the migration's final task)
 - `tests/semantics.test.mjs`, `tests/visual-score-dsl.test.mjs`,
   `tests/contracts.test.mjs`, `tests/styles-deterministic.test.mjs`
+
+### T13e runtime continuation (2026-10-26)
+
+MotifRuntimeAdapter now samples numeric values between adjacent snapshots of the same explicit
+scored transition. It holds ordinary/legacy spans, preserves published identity, and releases
+only owned target keys. resolveSemanticState retains its three-argument contract and accepts
+an optional reusable output buffer. SemanticTuningProjection is render-only: consumers first
+sample/morph their separate resolved preset base, then apply the resolved target-minus-base
+contribution once. It does not infer semantic intent or mutate modulation/director output.
+The cosmic dashboard/MVP and shared Wormhole context use this path; other identities retain
+legacy consumption. [T13e contract/validation](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13e-semantic-timing-2026-10-26).
