@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-27 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T13e runtime timing delivered; T12c/1 now adds local Musical event selection. T12c/2 three-recording transfer and the later external structural-model study require explicit continuation. This is no annotated musical-accuracy promotion.** Existing MVP/XR Offscreen rendering stays intact.
+**T13e runtime timing and T12c/1 local Musical event selection are delivered. T12c/2 checks transfer on three recordings; the mixed self-feature evidence does not justify runtime recalibration. The separate external full-song structural-model study requires explicit continuation. This is no annotated musical-accuracy promotion.** Existing MVP/XR Offscreen rendering stays intact.
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -1253,3 +1253,75 @@ Graphify full904 files/8552 nodes/20655 raw/18145 canonical edges,
 0 canonical dangling endpoints; raw retained before clustering, no LLM/hooks.200 active test files,
 258 test/helper/fixture byte identities retained. Public receipt follows in logs/t12c/handoff.json.
 STOP for manual feedback and ask before T12c/2, as explicitly requested for remaining budget.
+
+## Current continuation checkpoint - T12c/2 transfer review (2026-10-27)
+
+The user accepted T12c/1 and authorized this bounded comparison, retaining an explicit STOP and
+question between subtasks because account budget is low. Owner: integration, research CLI/tests
+and documentation. No runtime source, new setting, dependency, analyzer/cache version, worker
+payload, clock or renderer change. Wall Off, cockpit default Off and MVP/XR Offscreen remain.
+
+`scripts/evaluate-movement.mjs` is now safely importable and adds a pure observer, exercised by
+six regressions in `tests/attention-transfer-metrics.test.mjs`. Importing runs no recording or
+file write. Existing CLI outputs remain exclusive new files. `--baseline-chart ea4b4ba` restores
+the four historical chart/movement/planner modules, rather than merely the movement limiter.
+
+Observer contract: chart IDs must map to the exact source event index/time/type; paired hands
+count once, while distinct simultaneous events remain distinct. Intensity comes from the source,
+not clamped chart notes. Explicit frame clock and event-associated evidence are validated;
+missing/malformed evidence abstains. Compare 4-second strata at BOTH offsets 0 and 2 seconds.
+For each stratum k=min(old unique event count,new unique event count); both feature means receive
+the same k weight. This removes note-count redistribution as an automatic advantage. It is the
+analytic expectation of matched-k subsampling, not a feasible randomly generated motor chart.
+Both empty and one-sided strata, clipped duration and common support are reported. Review caught
+and corrected an initial populated-source-only denominator; the earlier reports remain retained,
+and only `logs/t12c2/*-final.json` and `final-summary.json` are final coverage evidence.
+
+All three full recordings use the user's Musical/Ultra/Active/Expressive/Alternate/Even/Guarded/
+Crossover/Tall generation configuration. Presentation settings do not enter this offline chart
+comparison. GoA/Scienide were freshly decoded through the existing channel-0 44.1-kHz path;
+No Good reuses the immutable T12c/1 full-track enriched capture because its runtime is unchanged.
+PCM hashes and ALL prior capture keys (events, duration, beats, bars, timing confidence, sections,
+section starts, performance plan) exactly match the canonical T13b captures. Only compact
+frame-associated attention evidence is additive. Full chart/window hashes also match the
+pre-observer outputs. Receipts: `source-parity.json`, `runtime-parity.json` in `logs/t12c2/`.
+
+| Recording | Old policy notes | Local policy notes (L/R; pairs) | Raw -> Guarded notes | Model issues |
+| --- | ---: | --- | --- | ---: |
+| No Good | 1004 | 1180 (596/584; 3) | 1225 -> 1180 | 0 |
+| GoA | 901 | 1063 (538/525; 10) | 1119 -> 1063 | 0 |
+| Scienide | 801 | 899 (452/447; 22) | 921 -> 899 | 0 |
+
+Every populated 30-second final-chart window retains both hands. This model check does not
+establish physical Quest safety, listening accuracy or a musical-density target. Separate
+selection rejection reasons (local budget, hand policy, overhead rest, spacing, movement) are
+retained in each final report; Guarded losses are not silently presented as attention selection.
+
+| Recording | Source-intensity delta, offsets 0 / 2 | Published positive-band-change delta, offsets 0 / 2 | Common seconds; matched events, offsets 0 / 2 |
+| --- | --- | --- | --- |
+| No Good | +0.01753 / +0.01519 | +0.01701 / +0.01382 | 400;906 / 384;903 |
+| GoA | -0.00835 / -0.00774 | -0.00011 / +0.00031 | 340;812 / 340;821 |
+| Scienide | +0.02818 / +0.02944 | +0.01970 / +0.02346 | 340;728 / 344;731 |
+
+Published band change means positive differences in track-normalized perceptual 24-band balance,
+aggregated into three equal groups. It is NOT raw spectral flux, instrument separation, independent
+ground truth or a musical-quality score. The selector uses these same features. No Good/Scienide
+show improved self-feature retention on shared support; GoA is near-flat/offset-sensitive in band
+change and lower in source intensity. Neither higher note count nor these mixed measurements
+proves the user's perceived rhythmic relevance has been solved. No weights or runtime policies
+are tuned to make this small, self-scored corpus look better.
+
+Decision: close the local transfer/calibration slice with NO further runtime tuning. Expected
+player behavior is exactly T12c/1; this delivery improves reproducible checking and honest scope,
+not the visible game. Remaining full-song boundary/function validation needs the separately
+approved external structural-model preparation/study, independent evidence and listening. No
+external model is installed or run here, no structure labels/boundaries corrected, no automatic
+T12c/3 added. STOP after commit/push/deploy and ask before that separate next step.
+
+Final T12c/2 receipt: 1927 cumulative tests, 1918 pass, 9 exact retained
+baseline failures (names AND messages), 0 skipped/cancelled. Broad targeted110/110, reviewed
+observer/selector17/17 and final build pass. 201 active test files / 259 test-helper-fixture
+byte identities retained. Graphify code-only full905 files/8551 nodes,
+20666 raw/18150 canonical edges, 0 canonical dangling endpoints; raw retained, no LLM/hooks.
+Public release/source/artifact identity and final handoff: logs/t12c2/handoff.json.
+STOP and ask before separately preparing the full-song structural-model study.

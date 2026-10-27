@@ -1769,3 +1769,17 @@ three-recording transfer comparison/calibration, only after explicit continuatio
 external structural-model study follows separately, as the user selected; no model installation,
 inference, corrected boundaries or validated functional structure is claimed here.
 [Current evidence](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12c1-local-attention-2026-10-27).
+
+## Addendum BF - T12c/2 offline transfer observer (2026-10-27)
+
+The existing recording CLI now exports a pure, import-safe comparison observer. It validates
+source-index association and explicit frame clocks, deduplicates paired hands by source index,
+and compares both policies using common min-count weights within 4-second strata at offsets
+0 and 2. Missing evidence abstains; empty and one-sided support remain visible. This observer
+has no production consumer or new DTO/storage/worker contract. Its published normalized band
+change is a self-feature measurement, not raw flux, source identity or independent accuracy.
+
+Three full recordings preserve canonical source/PCM identity and valid motor-model output.
+Mixed transfer evidence does not justify runtime recalibration; T12c/1 behavior is retained.
+The separate external full-song structure study requires user continuation after this handoff.
+[Evidence and limits](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12c2-transfer-review-2026-10-27).

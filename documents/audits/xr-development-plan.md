@@ -268,3 +268,16 @@ ranking and the first No Good comparison, without promoting structural/model acc
 broadens the three-recording transfer checks and calibration after manual feedback. The user
 requires an explicit stop and question before the next subtask because account budget is low.
 Full-song external structural models are a separate later task by explicit user choice.
+
+### Transfer decision - T12c/2 (2026-10-27)
+
+Three full recordings now compare the T12c/1 local policy against the historical section-led
+policy with equal common-stratum cardinality weights, source-index pair deduplication, both
+4-second offsets, explicit missing coverage and immutable source parity. No Good and Scienide
+retain more of the selector's own normalized features; GoA is mixed. This is not independent
+musical validation and does not justify tuning runtime weights. The existing runtime is retained.
+The local T12c phase stops here for feedback; do not manufacture another calibration subtask.
+Next, only after explicit user continuation, prepare the separately requested complete-song
+structural-model comparison with concrete environment/download/license costs and limitations.
+No external model installation/inference or functional-boundary accuracy is delivered in T12c/2.
+See the current tracker checkpoint for measurements and final validation receipts.
