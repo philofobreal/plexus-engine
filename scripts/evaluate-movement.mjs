@@ -11,8 +11,8 @@ const hash = v => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 // Optional --baseline COMMIT_SHA compares the retained movement model on the SAME chart source.
 if (['--recording', '--source'].includes(process.argv[2])) {
     const [mode, input, output, baselineFlag, baselineRef] = process.argv.slice(2);
-    if (baselineFlag && (baselineFlag !== '--baseline' || !/^[a-f0-9]{7,40}$/.test(baselineRef ?? '')))
-        throw Error('Expected --baseline COMMIT_SHA');
+    if (baselineFlag && (!['--baseline', '--baseline-chart'].includes(baselineFlag) || !/^[a-f0-9]{7,40}$/.test(baselineRef ?? '')))
+        throw Error('Expected --baseline COMMIT_SHA or --baseline-chart COMMIT_SHA');
     if (!input || !output || fs.existsSync(output) || mode === '--recording' && fs.existsSync(output + '.source.json'))
         throw Error('Supply an input and an unused output path; retained results are never overwritten');
     let capture;
@@ -31,6 +31,7 @@ if (['--recording', '--source'].includes(process.argv[2])) {
         } finally { await bundle.close(); }
         // Match all hosts: structure-v1 is derived after raw analyzer-v7 publication.
         const { interpretTrackStructure } = createLoader()('analyzer/TrackStructure.ts');
+        const { measureRhythmAttention } = createLoader()('gameplay/RhythmLocalAttention.ts');
         analysis = { ...analysis, trackAnalysis: interpretTrackStructure(analysis.trackAnalysis, analysis.events) };
         const { generateVisualOsPerformancePlan } = createLoader()('automation/visualOsPlanLoader.ts');
         const durationSec = pcm.length / 4 / 44100;
@@ -41,7 +42,8 @@ if (['--recording', '--source'].includes(process.argv[2])) {
         capture = { recording: input, structureInterpretation: analysis.trackAnalysis.structureInterpretation, pcmSha256: createHash('sha256').update(pcm).digest('hex'), sampleRate: 44100,
             source: { events: analysis.events, durationSec, beats: analysis.trackAnalysis.beats,
                 barStarts: analysis.trackAnalysis.barStarts, timingConfidence: analysis.trackAnalysis.timingConfidence?.overall,
-                sections: analysis.trackAnalysis.sections, sectionStarts: analysis.trackAnalysis.sections.map(s => s.start), performancePlan } };
+                sections: analysis.trackAnalysis.sections, sectionStarts: analysis.trackAnalysis.sections.map(s => s.start), performancePlan,
+                attention: measureRhythmAttention(analysis.events, durationSec, analysis.frames, 44100, analysis.hopSize) } };
         fs.writeFileSync(output + '.source.json', JSON.stringify(capture), { flag: 'wx' });
     }
     if (!Number.isFinite(capture.source?.durationSec) || capture.source.durationSec <= 0 || !Array.isArray(capture.source.events))
@@ -62,20 +64,25 @@ if (['--recording', '--source'].includes(process.argv[2])) {
     if (baselineRef) {
         const { execFileSync } = await import('node:child_process');
         const { rolldown } = await import('rolldown');
-        const retained = execFileSync('git', ['show', `${baselineRef}:src/gameplay/RhythmMovement.ts`], { encoding: 'utf8', windowsHide: true });
+        const paths = baselineFlag === '--baseline-chart' ? ['RhythmMovement.ts', 'RhythmScorePlanner.ts', 'RhythmPhrasePlanner.ts', 'RhythmChartBuilder.ts'] : ['RhythmMovement.ts'];
+        const retained = new Map(paths.map(name => [name, execFileSync('git', ['show', `${baselineRef}:src/gameplay/${name}`], { encoding: 'utf8', windowsHide: true })]));
         const bundle = await rolldown({ input: 'src/gameplay/index.ts', plugins: [{ name: 'retained-movement', load(id) {
-            if (id.replaceAll('\\', '/').endsWith('/gameplay/RhythmMovement.ts')) return { code: retained, moduleType: 'ts' };
+            for (const [name, code] of retained) if (id.replaceAll('\\', '/').endsWith('/gameplay/' + name)) return { code, moduleType: 'ts' };
         } }] });
         try {
             const result = await bundle.generate({ format: 'esm' });
             const old = await import('data:text/javascript;base64,' + Buffer.from(result.output[0].code).toString('base64'));
             const chart = old.buildRhythmChart(capture.source, config, settings);
-            baseline = { commit: baselineRef, movementSourceSha256: createHash('sha256').update(retained).digest('hex'),
+            baseline = { commit: baselineRef, comparison: baselineFlag === '--baseline-chart' ? 'whole-chart-policy' : 'movement-only',
+                sourceHashes: Object.fromEntries([...retained].map(([name, code]) => [name, createHash('sha256').update(code).digest('hex')])),
+                movementSourceSha256: createHash('sha256').update(retained.get('RhythmMovement.ts')).digest('hex'),
                 modelVersion: old.MOVEMENT_MODEL_VERSION, ...count(chart),
                 windows: windows.map(w => ({ start: w.start, ...count(chart.filter(n => n.time >= w.start && n.time < w.start + 30)) })) };
         } finally { await bundle.close(); }
     }
+    const detailed = load('gameplay/RhythmChartBuilder.ts').buildRhythmChartWithDiagnostics(capture.source, config, settings);
     const report = { recording: capture.recording, pcmSha256: capture.pcmSha256, chartSourceSha256: hash(capture.source), baseline,
+        attention: detailed.diagnostics.attention, selection: { ...detailed.diagnostics, decisions: undefined },
         structureInterpretation: capture.structureInterpretation, movementModelVersion: MOVEMENT_MODEL_VERSION, settings, raw: count(raw), guarded: count(guarded), windows,
         validation: validateRhythmMovement(guarded, config, settings),
         scope: 'Deterministic accepted-event/motor regression; not annotated musical accuracy or physical headset safety.' };

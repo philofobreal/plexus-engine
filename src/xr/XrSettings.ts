@@ -197,7 +197,7 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
         { value: 'auto', label: 'Auto', hint: 'Follows the play space: 1.0 m, or 1.1 m in the Tall space.' }]),
     generationChoice('chartProfile', 'Chart profile', [
         { value: 'legacy', label: 'Classic', hint: 'The previous chart vocabulary; Movement chooses its motor policy.' },
-        { value: 'musical-v1', label: 'Musical', hint: 'Sections shape the phrases: compact calm parts, developing builds, wider peaks. Uses accepted onsets and Guarded movement. Missing section context falls back to Classic with Guarded movement.' }]),
+        { value: 'musical-v1', label: 'Musical', hint: 'Local rhythm and spectral changes select accepted events before Guarded movement. Section labels do not force calm patterns. Missing frame evidence uses event strengths; missing sections falls back to Classic / Guarded.' }]),
     generationChoice('difficulty', 'Difficulty', [
         { value: 'easy', label: 'Easy', hint: 'Slow and spacious: fewer targets, more free cuts, gentle moves.' },
         { value: 'normal', label: 'Normal', hint: 'The standard challenge.' },

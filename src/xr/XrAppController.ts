@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import type { AudioEngine } from '../audio/AudioEngine';
 import { buildRhythmChart, buildRhythmChartWithDiagnostics, buildRhythmMusicalRolePlan, rhythmCharacterSections, DEFAULT_RHYTHM_GAME_CONFIG, RhythmGameSession, scoreRank, type RhythmGameConfig, type RhythmNote, type RhythmRoleSection, type RhythmChartSource, type RhythmChartDiagnostics } from '../gameplay';
 import { State } from '../state/store';
+import { measureRhythmAttention } from '../gameplay/RhythmLocalAttention';
 import { detectImmersiveVrSupport, type ImmersiveVrSupport } from './runtime/XrCapabilityDetector';
 import { XrInputAdapter, type ControllerHand } from './runtime/XrInputAdapter';
 import { applyConservativeFoveation, applyTargetFrameRate } from './runtime/XrPerformanceProfile';
@@ -73,7 +74,8 @@ function chartSource(analysis: VisualAnalysisSnapshot): RhythmChartSource {
     return { events: analysis.events, durationSec: analysis.duration, beats: analysis.trackAnalysis.beats,
         barStarts: analysis.trackAnalysis.barStarts, timingConfidence: analysis.trackAnalysis.timingConfidence?.overall,
         performancePlan: analysis.performancePlan, sectionStarts: analysis.trackAnalysis.sections.map(section => section.start),
-        sections: analysis.trackAnalysis.sections };
+        sections: analysis.trackAnalysis.sections,
+        attention: measureRhythmAttention(analysis.events, analysis.duration, analysis.frames, analysis.sampleRate, analysis.hopSize) };
 }
 
 export class XrAppController {
@@ -511,6 +513,7 @@ export class XrAppController {
         this.chartSummary = report ? `Chart: ${report.retainedEvents}/${report.sourceEvents} events - ${report.notes} notes (L${report.hands.left}/R${report.hands.right})` : '';
         this.chartDetails = report ? `${this.chartSummary}\nSkipped ${report.skippedEvents}; revoiced ${report.revoicedNotes} notes.\n` +
             Object.entries(report.rejected).map(([reason, count]) => `${reason}: ${count}`).join(' · ') : '';
+        if (report?.attention) this.chartDetails += `\nLocal attention: ${report.attention.mode}; ${report.attention.selected}/${report.attention.candidates} candidates before movement.`;
         if (structure) {
             const form = `Structure: ${structure.changedSections}/${structure.decisions.length} labels updated from measured context`;
             this.chartSummary += ` - structure ${structure.changedSections}/${structure.decisions.length}`;
