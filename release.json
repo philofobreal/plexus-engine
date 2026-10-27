@@ -1,7 +1,7 @@
 {
-  "id": "t13e-semantic-timing-20261027T004807363Z",
-  "previousCommit": "9b3cb8f4092a59f9159aa26ea9ffacc7e2a737c6",
-  "sourceCommit": "ea4b4ba9a3eec0bf9f377ee2dc08cdd9f3b1b890",
+  "id": "t12c1-local-attention-20261027T093657590Z",
+  "previousCommit": "1295378fad4b9a56c9c0de12b34ccd96e3d896ec",
+  "sourceCommit": "8c5c2da12c5db6d14360e85238223691719182b2",
   "inputs": [
     {
       "path": "bun.lock",
@@ -241,7 +241,7 @@
     },
     {
       "path": "scripts/evaluate-movement.mjs",
-      "sha256": "aa696b26f9b900b493ae26d16bdb2133bda026e7eb2c0ff9c4a22b91f694bf5b"
+      "sha256": "6a71cbc3e5ebd02a187f86974d7a3f1b7031fa063adff99b90f5fec25ac48dcb"
     },
     {
       "path": "scripts/finalize-cockpit-refinement.mjs",
@@ -669,11 +669,11 @@
     },
     {
       "path": "src/gameplay/RhythmChartBuilder.ts",
-      "sha256": "0b45deb1e4c90caa61440bc4d67fdde0f9561a6d863b6be68538a8578ab8e44f"
+      "sha256": "f7a4b595ee0407a36eab1d919741d29d491404aff498c079f10ae56cad791acc"
     },
     {
       "path": "src/gameplay/RhythmChartDiagnostics.ts",
-      "sha256": "3d160aa4698cbe8dad7d8c411e23674e9924be7bc21ecdb20582786b86a0b6e4"
+      "sha256": "5caf35f338646aaa14d2688144811645ff4fc45ac1ca4f69436d3bc4a7c6e8ad"
     },
     {
       "path": "src/gameplay/RhythmChoreography.ts",
@@ -704,6 +704,10 @@
       "sha256": "1f0a0fa5edad46565cdd4d7cce5c33b6c7981c6b3fb7a2f8399cc9745cca16f9"
     },
     {
+      "path": "src/gameplay/RhythmLocalAttention.ts",
+      "sha256": "20a4072eb6f11308a61c146003a69fa7a9c27f38aabf982e7f89d6980bf32bd3"
+    },
+    {
       "path": "src/gameplay/RhythmMovement.ts",
       "sha256": "8565f7035cf1aa1065ce263c4fbb2173389405a15693f56aa85111ef2d75618c"
     },
@@ -721,11 +725,11 @@
     },
     {
       "path": "src/gameplay/RhythmPhrasePlanner.ts",
-      "sha256": "b93c928fd6ae880fe856dc89fefc3d8abf46e346d9297c603b73c236d8c00503"
+      "sha256": "d3ffe3c77d684819065a78419b61ae82c0e1067c759a237ca791f7ea803242c9"
     },
     {
       "path": "src/gameplay/RhythmScorePlanner.ts",
-      "sha256": "9f341777d3ca4061631a6303d89627b47816f131c837681b119a9a25e5ee1c1b"
+      "sha256": "08ccdeab39e8dd115b2ad11abc265b0fec2b84916b5fb015990ea9f038508c1d"
     },
     {
       "path": "src/gameplay/RhythmScoring.ts",
@@ -741,7 +745,7 @@
     },
     {
       "path": "src/gameplay/index.ts",
-      "sha256": "a318b36f6a15a000294e64afb60a7cb18f6194062e6f2bd0ca6f98abd13f109d"
+      "sha256": "bb208f066433e59c1a4f01998be78850d8fd01fa53b3f0185258a0a9e28fd039"
     },
     {
       "path": "src/main.ts",
@@ -1369,7 +1373,7 @@
     },
     {
       "path": "src/xr/XrAppController.ts",
-      "sha256": "5f02a33b0ff87ddd9483499a066a292d9ba16a91349d0d4be4278906d0c7997e"
+      "sha256": "ba4cce4a2ebd4a95c90ba7f37a9a5bd6f31fa0b85d4acd05329de0182ae69694"
     },
     {
       "path": "src/xr/XrAppearanceSettings.ts",
@@ -1405,7 +1409,7 @@
     },
     {
       "path": "src/xr/XrSettings.ts",
-      "sha256": "bca7c1a66f9c73622dc49825d9ce9877d31a7cbb9f24c13f68c0b46a8c1aca03"
+      "sha256": "fd980a14270ddccdaa3cf81f5ccd9b28ffd33f96eb5aaffe19b3f405c81fe619"
     },
     {
       "path": "src/xr/XrSettingsStore.ts",
@@ -1646,8 +1650,8 @@
       "sha256": "23a8828e3e93d5f4b04c1594b0146aecf33fb331d60004fd60e77c0cdc98b264"
     },
     {
-      "path": "assets/xr-BblP_0SW.js",
-      "sha256": "33c2056dec207c839db57d55269e0ac588d6f173d96914fc43a6b61b905fd2bd"
+      "path": "assets/xr-BTdMMDdV.js",
+      "sha256": "59c0e015b007789a12703f57a7afdb6c5e365e7549948b041ddc55075c98c915"
     },
     {
       "path": "eso0932a.jpg",
@@ -1799,7 +1803,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "d9038cd927674d0c353d399146aeb59c23f0309f0f2ebf3cea3c20e5e80141b2"
+      "sha256": "ad8b10c69d8f858193e5850ed03ff21562910cd6d457ec36f6252e89c21693f6"
     }
   ]
 }
