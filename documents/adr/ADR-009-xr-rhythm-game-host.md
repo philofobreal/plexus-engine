@@ -1615,6 +1615,9 @@ contracts remain subsequent tasks. [Current evidence](../audits/xr-development-t
 
 ## Addendum BA - T13b cue purposes and causal scene placement (2026-10-26)
 
+This historical checkpoint's hard entry-start bound is superseded only for evidence-supported
+scene entries by [T13g](ADR-005-visual-os-style-system.md#addendum-estimated-scene-entry-refinement---t13g-2026-10-28).
+
 T13a was accepted for continuation. T13b corrects ordinary production placement without opting
 into experimental attack timing. Automation owns the pure gate; the scene adapter and legacy
 factories explicitly emit the requested evidence family and half-open originating scene/section

@@ -297,3 +297,19 @@ multifeature/recurrence support and intact manual ownership. Then continue the s
 selection problem using qualified existing capabilities. Do not import oracle labels/weights, fit
 per-track timecodes, repeat an open-ended model study, or treat timing as solved before T14.
 The user waived only intermediate pauses inside this study; the final task boundary remains.
+
+### Original scene-entry correction delivered - T13g (2026-10-28)
+
+T13f was accepted. Estimated scene starts now admit bounded earlier/later accepted structural
+evidence only when stronger sustained multifeature contrast supports it. The original proposals,
+protected points, neighbouring ownership, event/meter clocks and runtime arrival semantics remain
+explicit. All three full-song analyses and prior plans were reproduced before exact-analysis
+replay; the existing two model families are references only. Some raw-boundary agreement improves,
+functional-boundary agreement stays unchanged, and added unmatched entries prevent a universal
+accuracy claim. No new model execution, detector, setting or per-song timestamp.
+
+After commit/push/deploy STOP for manual feedback. Then address the separate qualified acoustic
+note-source selection problem; local normalized band change is not dominant instrument identity.
+The wider macrostructure and meter-phase uncertainty remains open, not a reason to repeatedly
+run the same model study or prematurely call T13 fully precise. See the current tracker checkpoint
+for coverage, limits, validation and continuation.

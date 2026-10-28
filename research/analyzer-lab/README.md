@@ -125,3 +125,20 @@ original scripts and [configurable replay tools](tools/archive/README.md), inclu
 their limitations. Large generated audio/models/logs and environments remain
 ignored; compact evidence and source identities are versioned. A past result is
 never rewritten to represent an improvement in a later run.
+
+The [cue-placement evaluator](diagnostics/evaluate-cue-placement.mjs) reproduces the shipped
+Wormhole Visual OS gate on the same channel-0 float32/44.1kHz PCM as the movement evaluator, or
+replays one immutable full TrackAnalysis without decoding/DSP again. From the repository root:
+
+```powershell
+node research/analyzer-lab/diagnostics/evaluate-cue-placement.mjs --recording TRACK.mp3 logs/NEW-before.json
+node research/analyzer-lab/diagnostics/evaluate-cue-placement.mjs --capture logs/NEW-before.json logs/NEW-after.json
+```
+
+Use fresh paths; outputs are exclusive, include exact PCM/analysis and implementation identities,
+and fail if the shipped planner falls back or mutates its input. The canonical recording mode
+runs raw analyzeAudio plus published structure-v1, then Active/Expressive cosmic-wormhole planning.
+It does not run external models or validate source labels as musical truth. The source projection
+can feed the [full-song observer](diagnostics/compare-full-structure.mjs); large captures remain
+ignored local artifacts. [T13g](docs/FULL-SONG-STRUCTURE-STUDY.md#product-follow-up---t13g-2026-10-28)
+records the bounded product correction and changing-cohort limits.

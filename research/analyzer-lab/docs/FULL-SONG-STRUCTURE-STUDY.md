@@ -211,3 +211,34 @@ These are retained local receipts, not redistributed audio/models or training la
 | logs/t13f/songformer-full/predictions.json | ea0d16583b406e5c05b1f570aa95831c24bedd07c2401bbee28743e5ad2c1633 |
 | logs/t13f/comparison-accepted.json | e7477ac8cefdc49bee1344375a4acf000a677a2736944cb4af519af25475d892 |
 | logs/t13f/structure-comparison.png | a1f35f6ad5111df5a9862fc238712c60aa40bd79aeb22f27fcc5b37fd9d357eb |
+
+## Product follow-up - T13g (2026-10-28)
+
+The accepted study is retained above without rewriting its findings. The next bounded product
+correction now distinguishes an estimated scene start from protected cue ownership. Existing
+accepted structural anchors can refine an entry on either side using stronger sustained contrast
+in at least two published feature projections. Exact clock/coverage and hard neighbour limits
+are required; single attacks, one projection, missing evidence and user-owned points cannot
+authorize it. No source separation, model labeling, meter retune or new detected event is implied.
+The complete policy and uncalibrated margins are in
+[ADR-005](../../../documents/adr/ADR-005-visual-os-style-system.md#addendum-estimated-scene-entry-refinement---t13g-2026-10-28).
+
+All three full PCM analyses were captured before the code correction, reproducing the earlier
+T12c plans exactly. Exact-analysis replay then changes only cue publication. All six external
+outputs and all older studies/tests remain immutable. New local artifacts live in logs/t13g:
+*-before.json / *-after-final.json contain the full feature-clock analysis, PCM/analysis identities,
+implementation hashes and published plan; comparison-before.json / comparison-after-final.json reuse
+the same T13f raw AND label-changing external references at 0.5/1/3 seconds. source-parity.json
+checks previous plans/PCM, summary.json reports changing and common cohorts, and handoff.json
+records final checks/release. No model reinstall/inference was performed in this follow-up.
+
+Published entry coverage increases 15->19 / 17->18 / 16->18 including the opening state; 4/1/2
+omitted proposals recover and 0/0/3 existing entries move. All ten selected refinements happen
+to be earlier on these tracks, but the policy is symmetric and its later-change regression passes.
+Raw-reference matches at 0.5 seconds increase 4->5 / 3->3 / 2->5; jointly label-changing matches
+do not increase at any tolerance. Added unmatched entries reduce precision in some comparisons;
+do not claim a universal accuracy/F1 gain, use matched-only errors as whole-cohort accuracy, or
+silently drop those recovered points to improve a score. The original rule uses no external
+times/labels, and all raw sections/labels/beats/barStarts remain identical. Wider structure and
+meter-phase uncertainty remains unresolved. Detailed measurements and next-work boundary are in
+the [T13g tracker](../../../documents/audits/xr-development-tracker.md#current-continuation-checkpoint---t13g-scene-entry-refinement-2026-10-28).

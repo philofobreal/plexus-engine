@@ -598,3 +598,43 @@ validates cycles/missing-parents/unknown enums atomically and falls back to lega
   renderer-independence guard, adapter-to-plan contract, legacy fallback).
 - Tests: `tests/transition-dynamics.test.mjs` (soft/aggressive attack adaptation, explicit no-evidence
   fallback, determinism, and real feature-window contrast).
+
+## Addendum: Estimated scene-entry refinement - T13g (2026-10-28)
+
+The T13f study identified one-sided publication: a generated scene entry at placement.start
+could only move forward even when accepted structural evidence lay just before that estimate.
+The pure semantic cue helpers now compare sustained multifeature contrast around accepted
+structural anchors. This is offline projection of published features, not a new detector or
+parallel narrative. No section labels, bar/beat grids, acoustic events or playback clocks change.
+
+Only unprotected scene-entry proposals exactly at their originating start can be refined.
+With a validated exact feature clock and a finite 40..300 BPM tempo, the search spans two beats
+on either side, capped at two seconds. The original predecessor plus 0.12 seconds, original next
+neighbour midpoint, scene end and existing four-second/tail limits remain hard bounds. It never
+crosses an original predecessor even when that proposal is subsequently omitted. Other purposes
+retain their original causal half-open window and role preference; manual/locked/edited plans
+and untyped compatibility plans retain their prior rules.
+
+Contrast compares the mean of six existing projections (density/FX/melody/vocal/brightness/tension)
+in [-2,-0.25] beats to [0.25,1] and [1,2] beats around each cut. A channel must keep the same
+change direction in both post-windows. The second-largest minimum change requires at least two
+projections; these are correlated proxies, not independent sources or instrument identity. At
+least three feature samples per window are required. Missing/invalid clocks, holes, nonfinite or
+out-of-range features and truncated windows cannot authorize refinement. Existing cueContext also
+fails closed on missing frames instead of throwing.
+
+An accepted structure-role candidate needs support >=0.05 and >0.02 above both the proposed cut
+and the old selected anchor. Rank by that sustained support, then distance, then earlier time.
+These are explicit uncalibrated policy margins, not probabilities. No per-song/model thresholds.
+Already accepted anchors remain the only source; no unrelated attack/FX or invented timestamp.
+When selected time precedes the estimated start, publication clones cuePlacement with start equal
+to that source time. The indexed report retains the ORIGINAL proposal window/time, and cueAnchor
+retains plannedTime/sourceTime/kind/role. Other scene records and TrackAnalysis remain immutable.
+The existing Copy/Load schema therefore retains the refined window without a new version/flag.
+Selected evidence is still deliberately not imported as fresh evidence.
+
+The shared gate serves dashboard/MVP/XR; target-arrival/pre-roll/seek remain runtime-owned under
+T13d/T13e. This adds no render-frame work, UI controls, localStorage keys, model dependencies or
+worker schema/cache changes. Raw analyzer publications remain identical. See the
+[T13g checkpoint](../audits/xr-development-tracker.md#current-continuation-checkpoint---t13g-scene-entry-refinement-2026-10-28)
+for retained before/after coverage, external-reference limits and continuation.

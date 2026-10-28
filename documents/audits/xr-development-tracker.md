@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-28 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T13e timing and T12c local event selection are delivered. The separately authorized T13f now completes actual full-song All-In-One/SongFormer research on all three recordings. It identifies meter/structure/cue limitations, repairs research execution and does not promote oracle labels or retune the game. Next work is an original bounded structure/cue correction, not another open-ended model study.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
+**T13g implements bounded, evidence-supported scene-entry refinement after the completed T13f model study. Estimated starts can now use nearby earlier structural evidence when a stronger sustained multifeature change supports it. Existing meter/section labels and event sources remain unchanged. Next, after manual acceptance, address qualified note-source selection; complete structural/meter accuracy remains open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -59,7 +59,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T10 | Analyzer timing cleanup | T00-T01 | Rejected experiments removed at user request; established XR path and equivalent Band search retained. Accuracy beyond available evidence remains unproven. [Record](xr-timing-cleanup.md) |
 | T11 | Timed evidence and qualification | Stable T10 clock/evidence boundary | Closed for this phase by explicit user decision after T11i; limited signal/provenance capabilities only. Research retained, no classifier promoted. General tonal/vocal recognition and dominance deferred; further research is not a T12a prerequisite. [Scope](../features/music-events.md) |
 | T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09; supported T11 capabilities only | T12a/T12b accepted; T12c local Musical attention and bounded three-recording transfer delivered. Classic/Guarded/menu persistence remain. T13f supplies external structural-reference context; qualified acoustic note-source selection remains separate, no source/instrument recognition promotion |
-| T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a-e bounded timing foundation delivered; T13f actual two-family/full-three-song study and research bridge repair complete. Meter/macrostructure/cue limitations are documented. Next original structure/ownership correction; human precision and perceptual geometry arrival remain unproven |
+| T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a-e timing foundation and T13f two-family/full-three-song study delivered. T13g now refines estimated scene entries with bounded sustained multifeature evidence. Meter phase/macrostructure, human precision and perceptual geometry arrival remain unproven; next separate qualified note-source work |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
 | T15 | Presentation planner + XR: track-specific HUD | T13-T14 | Planned |
 | T16 | Visuals + XR: optional central music display | T05, T14 tokens | Planned |
@@ -1414,3 +1414,76 @@ All259 earlier Node test/helper/fixture identities preserved;202active/260total.
 The six actual model outputs are complete, and the full comparison/figure has been reviewed.
 Source/push,54-file byte-equivalent app release and3-host public verification: logs/t13f/handoff.json.
 STOP for manual review of this completed study; next original product correction is separate.
+
+## Current continuation checkpoint - T13g scene-entry refinement (2026-10-28)
+
+The user accepted T13f and authorized the next product task. This bounded correction removes the
+one-sided entry defect without treating uncertain estimated boundaries as immutable acoustic truth.
+The semantic evidence helper compares existing feature projections on both sides of already
+accepted structural anchors. A stronger sustained change in at least two projections, supported
+in two post-windows, may refine a scene entry within two beats (maximum two seconds). Exact
+feature-clock coverage and original-neighbour/scene-end/tail protection are mandatory. Missing,
+malformed, transient-only or one-projection evidence cannot authorize it. Manual/locked/edited
+points, other cue purposes and compatibility rules keep their existing ownership.
+
+The publication gate refines a copied scene-entry window start only when selected evidence
+precedes the estimate. Original placement/time remain in the indexed report and plannedTime;
+the selected time remains an exact accepted source timestamp. Copy/Load and T13d/T13e arrival,
+pre-roll and direct seek use the existing schema/clocks. No new control, experimental mode,
+detector, worker/cache version, runtime ML, waveform DSP or render-frame work. The stale morph
+START comment in the gate is corrected to the actual runtime arrival contract. See the
+[normative policy](../adr/ADR-005-visual-os-style-system.md#addendum-estimated-scene-entry-refinement---t13g-2026-10-28).
+
+Three real recordings were analyzed once under the preceding implementation, then the exact
+immutable published analyses were replayed under the correction. PCM matches all six retained
+T13f model outputs, and all three BEFORE plans exactly match the older T12c captures. No model
+was rerun, no timestamp/label imported and no old result/test rewritten. Analysis hashes and
+full before/after captures remain in logs/t13g; the reusable evaluator is versioned under
+research/analyzer-lab/diagnostics/evaluate-cue-placement.mjs.
+
+| Recording | Published scene entries incl. opening, before / after | Existing entries retimed / omitted entries recovered | Raw shared-boundary matches at 0.5 / 1 / 3 seconds, before -> after |
+| --- | --- | --- | --- |
+| No Good | 15 / 19 of 36 proposals | 0 / 4 | 4/4/8 -> 5/5/9 |
+| GoA | 17 / 18 of 32 proposals | 0 / 1 | 3/3/3 -> 3/3/3 |
+| Scienide | 16 / 18 of 30 proposals | 3 / 2 | 2/11/14 -> 5/12/14 |
+
+The references contain 21/15/23 raw boundaries and only 4/3/2 jointly label-changing boundaries.
+Against the latter, cue matches stay 1/1/4, 1/1/1, 1/1/2 across the three tolerances. Cohorts
+grow here: more matches alone are NOT an accuracy gain. GoA adds an unmatched entry, and
+Scienide's 3-second F1 decreases with added unmatched entries despite tighter-tolerance gains.
+This is a local ownership/placement correction supported by original sustained evidence; it does
+not solve macro-function detection, meter phase or dominant-source recognition. The whole-song
+sections/labels, beats and barStarts remain byte-equivalent and are deliberately not retuned.
+
+Under the reported Musical/Ultra/Active/Expressive/Alternate/Even/Guarded/Crossover/Tall settings,
+the resulting full charts contain No Good1181 (587L/594R), GoA1063 (538L/525R), Scienide901
+(453L/448R); all motor checks pass. Changes in phrase context can slightly affect downstream
+choreography; this does not replace its accepted acoustic-event source or claim new music identity.
+Wall Off, cockpit default Off and MVP/XR Offscreen remain. User expectation: some previously late
+or missing section entries can align earlier to an audible sustained change; no universal new
+drop/verse detector or wholesale note-rhythm improvement should be inferred.
+
+Validation and final source/push/public release receipts: logs/t13g/handoff.json. All prior Node
+test/helper/fixture identities and Python test sources are retained; the new ten-case suite
+adds transient/repeated-rhythm negatives, exact-clock failure, stronger-current preservation,
+neighbour/manual/locked protection, Copy/Load and arrival/seek checks. Stop after deployment for
+manual testing. Next authorized work should address qualified acoustic note-source selection
+with explicit capability limits, while the unresolved structure/meter problem stays documented.
+
+The first full integration run exposed a missing explicit .ts runtime import in the new helper
+and the measured-source identity guard on an unnecessary type-comment edit. The import is fixed;
+the entire type file is restored to its exact predecessor bytes, and the policy is documented
+in ADR-005 instead. No protected fixture/test/hash allowlist was changed. The 33-case integration
+recheck passes, numerical plans are identical to the initial replay, and the final full suite
+runs again on the corrected source. Earlier failures/replays remain retained separately.
+
+Final acceptance: Node1945/1936 pass/9 exact retained baseline failures (names AND messages),
+zero skipped/cancelled; targeted89/89 and integration33/33, Python341/341. TypeScript/Vite build,
+diff and177 local documentation links pass. All260 predecessor test/helper/fixture identities
+remain unchanged;203 active files/261 identities now include the ten new cases. Final full
+code-only Graphify:911 files/8592 nodes/20754 raw edges/18212 canonical edges, dangling0.
+No LLM/hooks/semantic-corpus rebuild. Warmed desktop publication medians (nine repeats) are
+37/77/47 ms on the three tracks; they are load-time-only observations, not Quest frame benchmarks.
+Two logical commits, remote identity, guarded54-file/396-input release and three-route public
+verification are recorded in logs/t13g/handoff.json; only the three intended cue implementation
+build inputs change. STOP for manual testing after deploy; all earlier artifacts remain retained.
