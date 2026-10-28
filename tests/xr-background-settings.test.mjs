@@ -244,9 +244,9 @@ test('Line stroke follows the MVP Advanced slider semantics and redraws even whi
 test('Visuals and Character settings are live presentation settings that never touch the game', () => {
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS, changeScope } = createLoader()('xr/XrSettings.ts');
     const visuals = XR_SETTINGS.filter(d => d.section === 'background'), character = XR_SETTINGS.filter(d => d.section === 'character');
-    assert.equal(visuals.map(d => d.id).join(), 'wormhole,noteDesign,noteHalos,quality,rateHz,distanceMeters,lineStroke,sharpness');
+    assert.equal(visuals.map(d => d.id).join(), 'wormhole,hudStyle,noteDesign,noteHalos,quality,rateHz,distanceMeters,lineStroke,sharpness');
     assert.equal(character.map(d => d.id).join(), 'intensity,motion,depth,detail');
-    assert.equal(visuals.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), 'on,shard,off,max,36,200,30,100');
+    assert.equal(visuals.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), 'on,classic,shard,off,max,36,200,30,100');
     assert.equal(character.map(d => d.read(DEFAULT_XR_SETTINGS)).join(), '100,100,30,100', 'the XR host authored Visual character');
     for (const descriptor of [...visuals, ...character]) {
         assert.equal(descriptor.scope, 'presentation', descriptor.id);
