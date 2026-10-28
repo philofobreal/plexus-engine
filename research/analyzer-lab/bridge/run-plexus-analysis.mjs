@@ -8,10 +8,15 @@ import ts from 'typescript';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const analyzerRoot = join(root, 'src/analyzer');
+// Analyzer-owned code may consume dependency-light shared runtime constants (AGENTS.md).
+// Keep every other runtime subsystem and every external package outside this loader.
+const allowedRoots = [analyzerRoot, join(root, 'src/types')];
 const cache = new Map();
 function load(file) {
-  const boundary = relative(analyzerRoot, file);
-  if (boundary.startsWith('..') || isAbsolute(boundary)) throw new Error(`Forbidden runtime import: ${file}`);
+  if (!allowedRoots.some(base => {
+    const boundary = relative(base, file);
+    return !boundary.startsWith('..') && !isAbsolute(boundary);
+  })) throw new Error(`Forbidden runtime import: ${file}`);
   if (cache.has(file)) return cache.get(file).exports;
   const source = readFileSync(file, 'utf8');
   const code = ts.transpileModule(source, {
