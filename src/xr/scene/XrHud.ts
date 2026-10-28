@@ -5,6 +5,8 @@
 import * as THREE from 'three';
 import { XR_INSTRUMENT_FONT, XR_INSTRUMENT_INK } from './XrInstrumentStyle';
 import type { RhythmSessionSnapshot } from '../../gameplay';
+import type { HudStyle } from '../../presentation/InstrumentDesign';
+import { paintInstrumentFrame } from './InstrumentDesignRenderer';
 
 const WIDTH = 768;
 const HEIGHT = 384;
@@ -46,6 +48,8 @@ export class XrHud {
     private lastCombo = Number.NaN;
     private lastMultiplier = Number.NaN;
     private lastInstruction: string | null = null;
+    private hudStyle: HudStyle = 'classic';
+    setHudStyle(style: HudStyle): void { if (style !== this.hudStyle) { this.hudStyle = style; this.lastInstruction = null; } }
 
     constructor() {
         this.canvas = document.createElement('canvas');
@@ -85,6 +89,11 @@ export class XrHud {
 
     /** Angular instrument frame: corner brackets, hairlines, notches and faint scanlines. */
     private drawFrame(): void {
+        if (this.hudStyle !== 'classic') {
+            if (this.hudStyle === 'off') this.rect('rgba(2,6,16,0.78)', 20, 20, WIDTH - 40, HEIGHT - 40);
+            paintInstrumentFrame(this.ctx, this.hudStyle, WIDTH, HEIGHT, 'panel', 14, 'rgba(2,6,16,0.78)');
+            return;
+        }
         const left = 20, top = 20, right = WIDTH - 20, bottom = HEIGHT - 20, arm = 44, t = 3;
         // Low-alpha glass panel keeps text legible over the Wormhole without a solid card.
         this.rect('rgba(2, 6, 16, 0.46)', left, top, right - left, bottom - top);

@@ -5,6 +5,8 @@
 
 import * as THREE from 'three';
 import { XR_INSTRUMENT_FONT, XR_INSTRUMENT_INK } from './XrInstrumentStyle';
+import type { HudStyle } from '../../presentation/InstrumentDesign';
+import { paintInstrumentFrame } from './InstrumentDesignRenderer';
 import { MENU_CANVAS, menuItemAt, menuLayout, type XrMenuContext, type XrMenuItem, type XrMenuLayout, type XrMenuState,
     type XrMenuTextRole } from '../XrMenuModel';
 
@@ -62,6 +64,8 @@ export class XrMenuPanel {
     private lastState: XrMenuState | null = null;
     private lastContext: XrMenuContext | null = null;
     private redraws = 0;
+    private hudStyle: HudStyle = 'classic';
+    setHudStyle(style: HudStyle): void { if (style !== this.hudStyle) { this.hudStyle = style; this.key = ''; this.lastState = null; } }
     private readonly inverse = new THREE.Matrix4();
     private readonly localRay = new THREE.Ray();
 
@@ -157,12 +161,15 @@ export class XrMenuPanel {
         const ctx = this.ctx, w = MENU_CANVAS.width, h = MENU_CANVAS.height;
         ctx.clearRect(0, 0, w, h);
         ctx.fillStyle = 'rgba(4, 10, 24, 0.94)';
-        ctx.fillRect(0, 0, w, h);
+        if (this.hudStyle === 'classic' || this.hudStyle === 'off') ctx.fillRect(0, 0, w, h);
+        else paintInstrumentFrame(ctx, this.hudStyle, w, h, 'menu', 28, 'rgba(2,6,16,0.94)');
         // Instrument frame: hairline border with hand-coloured corner ticks.
         ctx.fillStyle = 'rgba(79, 216, 255, 0.35)';
-        ctx.fillRect(0, 0, w, 2); ctx.fillRect(0, h - 2, w, 2); ctx.fillRect(0, 0, 2, h); ctx.fillRect(w - 2, 0, 2, h);
-        ctx.fillStyle = CYAN; ctx.fillRect(0, 0, 60, 5); ctx.fillRect(0, 0, 5, 60);
-        ctx.fillStyle = MAGENTA; ctx.fillRect(w - 60, h - 5, 60, 5); ctx.fillRect(w - 5, h - 60, 5, 60);
+        if (this.hudStyle === 'classic') {
+            ctx.fillRect(0, 0, w, 2); ctx.fillRect(0, h - 2, w, 2); ctx.fillRect(0, 0, 2, h); ctx.fillRect(w - 2, 0, 2, h);
+            ctx.fillStyle = CYAN; ctx.fillRect(0, 0, 60, 5); ctx.fillRect(0, 0, 5, 60);
+            ctx.fillStyle = MAGENTA; ctx.fillRect(w - 60, h - 5, 60, 5); ctx.fillRect(w - 5, h - 60, 5, 60);
+        }
         for (const entry of layout.items) this.drawItem(entry, entry.id === hover);
         ctx.textBaseline = 'middle';
         for (const line of layout.texts) {
@@ -185,13 +192,24 @@ export class XrMenuPanel {
         ctx.globalAlpha = entry.disabled ? 0.35 : 1;
         ctx.fillStyle = entry.selected ? 'rgba(79, 216, 255, 0.28)' : entry.primary ? 'rgba(255, 95, 180, 0.22)'
             : hovered ? 'rgba(79, 216, 255, 0.16)' : 'rgba(20, 34, 58, 0.9)';
-        ctx.fillRect(entry.x, entry.y, entry.w, entry.h);
+        const fill = String(ctx.fillStyle);
+        if (this.hudStyle === 'angular' || this.hudStyle === 'orbital') {
+            ctx.save(); ctx.translate(entry.x, entry.y);
+            paintInstrumentFrame(ctx, this.hudStyle, entry.w, entry.h, 'control', 14, fill,
+                hovered && !entry.disabled ? '#eef8ff' : entry.primary ? MAGENTA : CYAN);
+            ctx.restore();
+        } else ctx.fillRect(entry.x, entry.y, entry.w, entry.h);
         // Border: bright when hovered, accent underline when selected.
         ctx.fillStyle = hovered && !entry.disabled ? '#eef8ff' : 'rgba(79, 216, 255, 0.35)';
         const t = hovered && !entry.disabled ? 3 : 1;
-        ctx.fillRect(entry.x, entry.y, entry.w, t); ctx.fillRect(entry.x, entry.y + entry.h - t, entry.w, t);
-        ctx.fillRect(entry.x, entry.y, t, entry.h); ctx.fillRect(entry.x + entry.w - t, entry.y, t, entry.h);
-        if (entry.selected || entry.primary) { ctx.fillStyle = accent; ctx.fillRect(entry.x, entry.y + entry.h - 4, entry.w, 4); }
+        if (this.hudStyle === 'classic') {
+            ctx.fillRect(entry.x, entry.y, entry.w, t); ctx.fillRect(entry.x, entry.y + entry.h - t, entry.w, t);
+            ctx.fillRect(entry.x, entry.y, t, entry.h); ctx.fillRect(entry.x + entry.w - t, entry.y, t, entry.h);
+        }
+        if (entry.selected || entry.primary) {
+            const inset = this.hudStyle === 'angular' || this.hudStyle === 'orbital' ? 12 : 0;
+            ctx.fillStyle = accent; ctx.fillRect(entry.x + inset, entry.y + entry.h - 4 - (inset ? 2 : 0), entry.w - 2 * inset, 4);
+        }
         ctx.fillStyle = entry.selected || hovered ? '#ffffff' : '#dbeaf8';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';

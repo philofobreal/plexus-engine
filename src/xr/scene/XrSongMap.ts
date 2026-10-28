@@ -9,6 +9,8 @@
 
 import * as THREE from 'three';
 import type { RhythmSessionSnapshot } from '../../gameplay';
+import type { HudStyle } from '../../presentation/InstrumentDesign';
+import { paintInstrumentFrame } from './InstrumentDesignRenderer';
 import {
     createOverviewState, FLAWLESS_COLOR, formatPoints, overviewStateAt, SECTION_FLASH_SEC, type OverviewState, type ScoreOverview
 } from './XrScoreOverview';
@@ -65,6 +67,12 @@ export class XrSongMap {
     /** Caption state last drawn (numeric: no per-frame string). NaN forces a redraw. */
     private lastKey = Number.NaN;
     private redraws = 0;
+    private hudStyle: HudStyle = 'classic';
+    setHudStyle(style: HudStyle): void {
+        if (style === this.hudStyle) return;
+        this.hudStyle = style; this.lastKey = Number.NaN; this.lastTime = Number.NaN;
+        if (this.overview) this.drawStrips(this.overview);
+    }
 
     constructor(doc: Document = document) {
         const canvas = (w: number, h: number) => { const c = doc.createElement('canvas'); c.width = w; c.height = h; return c; };
@@ -159,6 +167,7 @@ export class XrSongMap {
         if (!ctx) return;
         const w = CAPTION_WIDTH_PX, h = CAPTION_HEIGHT_PX;
         ctx.clearRect(0, 0, w, h);
+        paintInstrumentFrame(ctx, this.hudStyle, w, h, 'strip', 56);
         ctx.textBaseline = 'middle';
         if (state.hasFlash) {
             const section = overview.sections[state.flash.index];

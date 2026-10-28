@@ -2,7 +2,10 @@ import * as THREE from 'three';
 import type { RhythmGameConfig } from '../../gameplay';
 import type { XrCockpitMode, XrCockpitTitleMode } from '../XrAppearanceSettings';
 import { SCENE_CONFIG, type XrStageLayout } from './SceneConfig';
-import { XrTrackMarquee } from './XrTrackMarquee';
+import { XrTrackMarquee, TRACK_MARQUEE_WIDTH_METERS, TRACK_MARQUEE_HEIGHT_METERS } from './XrTrackMarquee';
+import type { HudStyle } from '../../presentation/InstrumentDesign';
+import { instrumentGateParts } from './InstrumentDesignRenderer';
+import { mergeColoredParts } from './SceneGeometry';
 
 import { appendCockpitPanel, appendCockpitRail, type CockpitBatch, type CockpitPoint } from './CockpitGeometry';
 
@@ -99,6 +102,20 @@ export class XrCockpit {
     private mode: XrCockpitMode = 'full';
     private layoutKey = '';
     private disposed = false;
+    private hudStyle: HudStyle = 'classic';
+    private instrumentBezel: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> | null = null;
+    setHudStyle(style: HudStyle): void {
+        if (this.disposed || style === this.hudStyle) return;
+        this.hudStyle = style;
+        if (style === 'classic' || style === 'off') { if (this.instrumentBezel) this.instrumentBezel.visible = false; return; }
+        const geometry = mergeColoredParts(instrumentGateParts(style, TRACK_MARQUEE_WIDTH_METERS / 2 + .02, TRACK_MARQUEE_HEIGHT_METERS / 2 + .02));
+        if (!this.instrumentBezel) {
+            this.instrumentBezel = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({color:0x4fd8ff,transparent:true,opacity:.7,depthWrite:false,toneMapped:false,side:THREE.DoubleSide}));
+            this.instrumentBezel.material.forceSinglePass = true;
+            this.instrumentBezel.position.z = .002; this.instrumentBezel.name = 'cockpitInstrumentBezel';
+            this.title.mesh.add(this.instrumentBezel);
+        } else { this.instrumentBezel.geometry.dispose(); this.instrumentBezel.geometry = geometry; this.instrumentBezel.visible = true; }
+    }
 
     constructor(doc: Pick<Document, 'createElement'> = document) {
         this.root.name = 'xr-cockpit-v1';
@@ -188,6 +205,7 @@ export class XrCockpit {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true; this.root.visible = false;
+        if (this.instrumentBezel) { this.instrumentBezel.geometry.dispose(); this.instrumentBezel.material.dispose(); }
         for (const g of new Set([this.body.geometry,this.trim.geometry,...this.reduced,...this.full])) g.dispose();
         this.body.material.dispose(); this.trim.material.dispose(); this.title.dispose();
         this.root.removeFromParent();

@@ -1,0 +1,49 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>T14 instrument design visual check</title>
+<style>body{margin:24px;background:#080e1a;color:#eef8ff;font:16px system-ui}button{padding:12px 20px}#gallery{display:grid;grid-template-columns:repeat(2,minmax(300px,1fr));gap:24px}figure{margin:0;padding:12px;background:radial-gradient(at 10% 70%,#14364d,transparent 60%),radial-gradient(at 95% 30%,#381d44,transparent 65%),#07101e}img{display:block;width:100%;height:auto}pre{white-space:pre-wrap}@media(max-width:750px){#gallery{grid-template-columns:1fr}}</style>
+<h1>Angular / Orbital — actual HUD and menu</h1><button id="run">Render all styles and run checks</button><p id="status">Ready</p><div id="gallery"></div><pre id="result"></pre>
+<script type="module">
+import * as THREE from 'three';
+import {XrHud} from '../../src/xr/scene/XrHud.ts';
+import {XrMenuPanel} from '../../src/xr/scene/XrMenuPanel.ts';
+import {XrSectionCallout} from '../../src/xr/scene/XrSectionCallout.ts';
+import {XrSectionGates} from '../../src/xr/scene/XrSectionGates.ts';
+import {XrProgressRing} from '../../src/xr/scene/XrProgressRing.ts';
+import {XrCockpit} from '../../src/xr/scene/XrCockpit.ts';
+import {resolvePlayProfile} from '../../src/xr/XrPlayProfile.ts';
+import {DEFAULT_MENU_STATE} from '../../src/xr/XrMenuModel.ts';
+import {normalizeXrSettings} from '../../src/xr/XrSettings.ts';
+const gallery=document.querySelector('#gallery'),status=document.querySelector('#status'),result=document.querySelector('#result');
+const snapshot={state:'playing',score:124580,combo:128,multiplier:8,hitCount:128,missCount:0,sections:[]};
+const show=(canvas,label)=>{const f=document.createElement('figure'),c=document.createElement('figcaption'),img=document.createElement('img');c.textContent=label;img.src=canvas.toDataURL();f.append(c,img);gallery.append(f)};
+const require=(v,label)=>{if(!v)throw Error(label)};
+document.querySelector('#run').onclick=()=>{try{
+ gallery.replaceChildren();const rows=[];
+ for(const style of ['classic','angular','orbital','off']){
+  const hud=new XrHud(),menu=new XrMenuPanel();hud.setHudStyle(style);menu.setHudStyle(style);
+  const context={settings:normalizeXrSettings({appearance:{hudStyle:style}}),sessionState:'ready',trackTitle:'NO GOOD / START THE DANCE',busy:false,canStart:true,status:'Ready',results:null,input:'desktop'};
+  const state={...DEFAULT_MENU_STATE,screen:'settings',tab:'background'};
+  hud.update(snapshot,'Follow the accents. Keep both hands moving.');menu.update(state,context);
+  const version=hud.mesh.material.map.version,redraws=menu.redrawCount;
+  for(let i=0;i<20;i++){hud.update(snapshot,'Follow the accents. Keep both hands moving.');menu.update(state,context)}
+  require(version===hud.mesh.material.map.version&&redraws===menu.redrawCount,'unchanged text/upload cadence');
+  show(hud.mesh.material.map.image,style+' — score / combo / instructions');show(menu.mesh.material.map.image,style+' — settings, identical hit areas');
+  rows.push({style,hudUploads:version,menuDraws:redraws,items:menu.layout.items.length});hud.dispose();menu.dispose();
+ }
+ const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(1);renderer.setSize(1000,650);
+ renderer.debug.onShaderError=()=>{throw Error('GPU shader compilation failed')};
+ const overview={durationSec:60,sections:[{start:0,end:20,label:'intro',title:'INTRO',color:0x4aa8ff,weight:1,noteCount:20},{start:20,end:60,label:'drop',title:'DROP',color:0xff4fae,weight:1.5,noteCount:60}]};
+ for(const style of ['angular','orbital'])for(const space of ['standard','tall']){
+  const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(70,1000/650,.05,100);scene.background=new THREE.Color(0x080e1a);
+  const p=resolvePlayProfile({},space),cockpit=new XrCockpit(),callout=new XrSectionCallout(),gates=new XrSectionGates(),ring=new XrProgressRing();
+  cockpit.fit(p.config,p.stage,1.65);cockpit.setSettings('full','static');cockpit.setTitle('PLEXUS / INSTRUMENT DESIGN / NO GOOD');cockpit.setHudStyle(style);cockpit.setViewOrigin(2.6);cockpit.update(4);
+  callout.setFrame(p.stage.frameCenterYMeters,p.stage.frameHalfHeightMeters);callout.setHudStyle(style);callout.setTimeline([{start:0,end:60,label:'drop',title:'DROP',leadIn:0,beatSec:.5}]);callout.update(4);
+  gates.setFrame(p.stage.frameCenterYMeters,p.stage.frameHalfHeightMeters);gates.setHudStyle(style);gates.setOverview(overview);
+  ring.setHudStyle(style);ring.setOverview(overview);ring.update(15,snapshot);
+  const field=new THREE.Group();field.position.y=1.0;field.add(callout.root,gates.root);scene.add(cockpit.root,field,ring.mesh);
+  camera.position.set(0,1.65,2.6);camera.lookAt(0,1.25,-2);renderer.render(scene,camera);require(renderer.info.render.calls<16,'bounded draws');
+  show(renderer.domElement,style+' — '+space+' actual GPU frame/cockpit');rows.push({style,space,calls:renderer.info.render.calls,triangles:renderer.info.render.triangles});
+  cockpit.dispose();callout.dispose();gates.dispose();ring.dispose();
+ }
+ renderer.dispose();result.textContent=JSON.stringify({pass:true,rows,scope:'Desktop Canvas/WebGL and unchanged-value redraw checks; physical Quest readability remains manual'},null,2);status.textContent='PASS — real Canvas and GPU checks complete';
+}catch(e){status.textContent='FAIL: '+e.message;result.textContent=e.stack;throw e}};
+</script></html>

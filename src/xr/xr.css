@@ -45,6 +45,23 @@ html, body {
 
 .xr-chrome[hidden] { display: none; }
 
+/* T14: same generated border description as the XR canvas; hit areas and layout stay fixed. */
+.xr-chrome[data-hud-style="angular"] .xr-drawer,
+.xr-chrome[data-hud-style="orbital"] .xr-drawer {
+    background-color: rgba(2, 6, 16, .94);
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    border-color: transparent;
+    box-shadow: 0 12px 44px rgba(0,0,0,.55);
+}
+.xr-chrome[data-hud-style="angular"] .xr-drawer { border-radius: 5px; }
+.xr-chrome[data-hud-style="orbital"] .xr-drawer { border-radius: 24px; }
+.xr-chrome[data-hud-style="orbital"] button,
+.xr-chrome[data-hud-style="orbital"] select { border-radius: 12px; }
+.xr-chrome[data-hud-style="angular"] button,
+.xr-chrome[data-hud-style="angular"] select { border-radius: 3px; }
+.xr-chrome[data-hud-style="off"] .xr-drawer { background-image: none; box-shadow: none; }
+
 .xr-menu-button {
     position: absolute;
     top: calc(var(--xr-gutter) + env(safe-area-inset-top, 0px));

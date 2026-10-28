@@ -1,3 +1,4 @@
 /** Shared instrument typography for menu, score HUD and cockpit filename display. */
-export const XR_INSTRUMENT_FONT = '"Segoe UI", "Roboto", system-ui, sans-serif';
-export const XR_INSTRUMENT_INK = '#eef8ff';
+import { INSTRUMENT_TOKENS } from '../../presentation/InstrumentDesign';
+export const XR_INSTRUMENT_FONT = INSTRUMENT_TOKENS.font;
+export const XR_INSTRUMENT_INK = INSTRUMENT_TOKENS.ink;

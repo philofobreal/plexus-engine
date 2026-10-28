@@ -19,6 +19,7 @@ import { XrSliceEffect } from './XrSliceEffect';
 import { XrNoteHalos } from './XrNoteHalos';
 import type { XrNoteDesign, XrCockpitMode, XrCockpitTitleMode } from '../XrAppearanceSettings';
 import { XrCockpit } from './XrCockpit';
+import type { HudStyle } from '../../presentation/InstrumentDesign';
 import type { ScoreOverview } from './XrScoreOverview';
 import type { CanvasVisualPresentation, CanvasVisualSourceFactory, VisualAnalysisSnapshot } from '../../types/CanvasVisualSource';
 import { backgroundFrameDivider, DEFAULT_XR_BACKGROUND_SETTINGS, grainMaterialBoosts, MAX_BACKGROUND_SHARPEN, XR_BACKGROUND_MIPMAPPED,
@@ -203,6 +204,10 @@ export class RhythmGameScene {
     /** One sidecar per accepted chart publication; null immediately removes stale presentation. */
     setNoteRolePlan(plan: RhythmNoteRolePlan | null): void { this.noteHalos.setPlan(plan); }
     setCockpitSettings(mode: XrCockpitMode, title: XrCockpitTitleMode): void { this.cockpit.setSettings(mode, title); }
+    setHudStyle(style: HudStyle): void {
+        this.hud.setHudStyle(style); this.sectionCallout.setHudStyle(style); this.sectionGates.setHudStyle(style);
+        this.songMap.setHudStyle(style); this.progressRing.setHudStyle(style); this.cockpit.setHudStyle(style);
+    }
     setTrackTitle(filename: string): void { this.cockpit.setTitle(filename); }
     setCockpitViewOrigin(z: number): void { this.cockpit.setViewOrigin(z); }
     /**

@@ -11,6 +11,7 @@
 // when a section's outcome changes. No geometry or texture is ever uploaded during play.
 
 import * as THREE from 'three';
+import { INSTRUMENT_TOKENS, type HudStyle } from '../../presentation/InstrumentDesign';
 import type { RhythmSessionSnapshot, SectionResult } from '../../gameplay';
 import { RUNWAY_PALETTE } from './XrRunway';
 import { FLAWLESS_COLOR, sectionAccuracy, sectionOutcome, type ScoreOverview } from './XrScoreOverview';
@@ -37,6 +38,7 @@ uniform float uTier;
 uniform vec3 uLeft;
 uniform vec3 uRight;
 uniform vec3 uGold;
+uniform float uDesign;
 const float TAU = 6.28318530718;
 
 float band(float r, float inner, float outer) {
@@ -78,6 +80,13 @@ void main() {
             color += (right >= 0.0 && right < 1.0 ? uRight : uLeft) * sideArc * gap * lit;
         }
     }
+    // Static family marks share the original floor envelope and do not change data arcs.
+    if (uDesign > 0.5 && uDesign < 2.5) {
+        float steps = uDesign < 1.5 ? ${INSTRUMENT_TOKENS.angularDivisions}.0 : ${INSTRUMENT_TOKENS.orbitalDivisions}.0;
+        float ticks = step(0.14, fract(t * steps)) * step(fract(t * steps), 0.72);
+        color += mix(uLeft, uRight, step(0.5, t)) * band(r, 0.503, 0.51) * ticks * 0.5;
+        if (uDesign > 1.5) color += mix(uRight, uLeft, t) * band(r, 0.435, 0.439) * 0.35;
+    }
     gl_FragColor = vec4(color, 1.0);
 }`;
 
@@ -100,7 +109,7 @@ export class XrProgressRing {
             blending: THREE.AdditiveBlending, toneMapped: false,
             uniforms: {
                 uSections: { value: this.sections }, uColors: { value: this.colors }, uCount: { value: 0 },
-                uProgress: { value: 0 }, uTier: { value: 0 },
+                uProgress: { value: 0 }, uTier: { value: 0 }, uDesign: { value: 0 },
                 uLeft: { value: new THREE.Color(RUNWAY_PALETTE.left) }, uRight: { value: new THREE.Color(RUNWAY_PALETTE.right) },
                 uGold: { value: new THREE.Color(FLAWLESS_COLOR) }
             }
@@ -115,6 +124,7 @@ export class XrProgressRing {
     }
 
     get uniforms(): Record<string, THREE.IUniform> { return this.mesh.material.uniforms; }
+    setHudStyle(style: HudStyle): void { this.uniforms.uDesign.value = style === 'angular' ? 1 : style === 'orbital' ? 2 : style === 'off' ? 3 : 0; }
 
     setOverview(overview: ScoreOverview | null): void {
         this.overview = overview && overview.sections.length ? overview : null;

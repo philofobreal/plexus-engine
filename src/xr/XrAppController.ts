@@ -12,6 +12,7 @@ import { buildRhythmChart, buildRhythmChartWithDiagnostics, buildRhythmMusicalRo
 import { State } from '../state/store';
 import { measureRhythmAttention } from '../gameplay/RhythmLocalAttention';
 import { selectRhythmEvents } from '../gameplay/RhythmEventSource';
+import { instrumentSvg } from '../presentation/InstrumentDesign';
 import { detectImmersiveVrSupport, type ImmersiveVrSupport } from './runtime/XrCapabilityDetector';
 import { XrInputAdapter, type ControllerHand } from './runtime/XrInputAdapter';
 import { applyConservativeFoveation, applyTargetFrameRate } from './runtime/XrPerformanceProfile';
@@ -259,6 +260,7 @@ export class XrAppController {
         this.capabilityEl = dom.capabilityEl;
         this.enterVrButton = dom.enterVrButton;
         this.previewButton = dom.previewButton;
+        this.applyHudStyle();
         dom.onGameMenu = () => this.toggleGameMenu();
         // An off-thread background finishing a frame while paused needs one more desktop frame.
         this.scene.onBackgroundFrame = () => this.runtime.invalidate();
@@ -443,6 +445,7 @@ export class XrAppController {
 
     /** Presentation only: never touches the chart, plan, score or playback. */
     private applyPresentation(): void {
+        this.applyHudStyle();
         this.scene.setNoteDesign(this.settings.appearance.noteDesign);
         this.scene.setCockpitSettings?.(this.settings.appearance.cockpit, this.settings.appearance.cockpitTitle);
         this.scene.setSpiralDirection(this.settings.appearance.spiralDirection);
@@ -456,6 +459,15 @@ export class XrAppController {
         void Promise.all([pipeline, background]).then(() => this.runtime.invalidate())
             .catch(error => this.handleWormholeError(error));
         this.runtime.invalidate();
+    }
+
+    private applyHudStyle(): void {
+        const style = this.settings.appearance.hudStyle ?? 'classic';
+        // Additive presentation capability: older embedded scene adapters keep their current look.
+        this.scene.setHudStyle?.(style); this.menuPanel.setHudStyle?.(style);
+        this.drawer.root.dataset.hudStyle = style;
+        this.drawer.panel.style.backgroundImage = style === 'angular' || style === 'orbital'
+            ? `url("data:image/svg+xml,${encodeURIComponent(instrumentSvg(style))}")` : '';
     }
 
     /** Diagnostics are on when the player switched them on, or `?xrDiagnostics=1` forced them. */

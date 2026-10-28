@@ -13,6 +13,8 @@ import type { RhythmGameConfig } from '../../gameplay';
 import { boxAt, mergeColoredParts, type ColoredPart } from './SceneGeometry';
 import type { ScoreOverview } from './XrScoreOverview';
 import type { XrTrackPath } from './XrTrackPath';
+import type { HudStyle } from '../../presentation/InstrumentDesign';
+import { instrumentGateParts } from './InstrumentDesignRenderer';
 
 /** Gates visible at once (the nearest upcoming boundaries). */
 export const MAX_VISIBLE_GATES = 2;
@@ -93,6 +95,17 @@ export class XrSectionGates {
     private atlasDraws = 0;
     private centerY = 0;
     private halfHeight = GATE_HALF_HEIGHT;
+    private hudStyle: HudStyle = 'classic';
+    setHudStyle(style: HudStyle): void {
+        if (style === this.hudStyle) return;
+        this.hudStyle = style; this.brackets.visible = style !== 'off';
+        this.brackets.material.side = style === 'angular' || style === 'orbital' ? THREE.DoubleSide : THREE.FrontSide;
+        this.brackets.material.forceSinglePass = style === 'angular' || style === 'orbital';
+        this.brackets.material.needsUpdate = true;
+        this.brackets.geometry.dispose();
+        this.brackets.geometry = mergeColoredParts(style === 'classic' || style === 'off' ? gateParts(this.halfHeight)
+            : instrumentGateParts(style, GATE_HALF_WIDTH, this.halfHeight));
+    }
 
     constructor(doc: Document = document) {
         this.brackets = new THREE.InstancedMesh(mergeColoredParts(gateParts(GATE_HALF_HEIGHT)),
@@ -143,7 +156,8 @@ export class XrSectionGates {
         if (!Number.isFinite(centerY) || !(innerHalfHeight > 0) || (centerY === this.centerY && halfHeight === this.halfHeight)) return;
         this.centerY = centerY; this.halfHeight = halfHeight;
         this.brackets.geometry.dispose();
-        this.brackets.geometry = mergeColoredParts(gateParts(halfHeight));
+        this.brackets.geometry = mergeColoredParts(this.hudStyle === 'classic' || this.hudStyle === 'off' ? gateParts(halfHeight)
+            : instrumentGateParts(this.hudStyle, GATE_HALF_WIDTH, halfHeight));
     }
 
     /** Outer half-height of the gate outline (follows the start frame). */

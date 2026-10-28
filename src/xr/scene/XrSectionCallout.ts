@@ -11,6 +11,8 @@
 import * as THREE from 'three';
 import type { TrackSection, TrackSectionLabel } from '../../types';
 import { boxAt, mergeColoredParts, type ColoredPart } from './SceneGeometry';
+import type { HudStyle } from '../../presentation/InstrumentDesign';
+import { instrumentGateParts, paintInstrumentFrame } from './InstrumentDesignRenderer';
 
 /** Section display names and colours (hues follow the MVP dramaturgy panel palette). */
 export const SECTION_STYLE: Readonly<Record<TrackSectionLabel, { readonly name: string; readonly color: number }>> = {
@@ -159,6 +161,17 @@ export class XrSectionCallout {
     private redraws = 0;
     private frameCenterY = 0;
     private frameHalfHeight = GATE_Y;
+    private hudStyle: HudStyle = 'classic';
+    setHudStyle(style: HudStyle): void {
+        if (style === this.hudStyle) return;
+        this.hudStyle = style; this.lastKey = Number.NaN; this.lastTime = Number.NaN;
+        this.frame.material.side = style === 'angular' || style === 'orbital' ? THREE.DoubleSide : THREE.FrontSide;
+        this.frame.material.forceSinglePass = style === 'angular' || style === 'orbital';
+        this.frame.material.needsUpdate = true;
+        this.frame.visible = style !== 'off'; this.frame.geometry.dispose();
+        this.frame.geometry = mergeColoredParts(style === 'classic' || style === 'off' ? XrSectionCallout.frameParts(this.frameHalfHeight)
+            : instrumentGateParts(style, GATE_X + .035, this.frameHalfHeight + .035));
+    }
 
     constructor(doc: Document = document) {
         this.canvas = doc.createElement('canvas');
@@ -194,7 +207,8 @@ export class XrSectionCallout {
         if (centerY === this.frameCenterY && halfHeight === this.frameHalfHeight) return;
         this.frameCenterY = centerY; this.frameHalfHeight = halfHeight;
         this.frame.geometry.dispose();
-        this.frame.geometry = mergeColoredParts(XrSectionCallout.frameParts(halfHeight));
+        this.frame.geometry = mergeColoredParts(this.hudStyle === 'classic' || this.hudStyle === 'off' ? XrSectionCallout.frameParts(halfHeight)
+            : instrumentGateParts(this.hudStyle, GATE_X + .035, halfHeight + .035));
         this.caption.position.y = halfHeight + 0.04 + CAPTION_PLANE_HEIGHT / 2;
         // The root pivots on the frame's center, so the arrival pulse scales around it.
         this.root.position.y = centerY;
@@ -265,6 +279,7 @@ export class XrSectionCallout {
         // Low-alpha backing keeps the caption legible over the Wormhole without a solid card.
         ctx.fillStyle = 'rgba(2, 6, 16, 0.55)';
         ctx.fillRect(0, 8, w, h - 16);
+        paintInstrumentFrame(ctx, this.hudStyle, w, h, 'strip', 42);
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'left';
         const font = '"Segoe UI", "Roboto", system-ui, sans-serif';

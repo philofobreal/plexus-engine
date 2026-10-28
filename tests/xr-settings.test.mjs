@@ -43,7 +43,7 @@ test('the /xr/ player defaults are the authored menu values (ADR-009 Addenda T, 
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS, DEFAULT_XR_GENERATION_SETTINGS, normalizeXrSettings } = settingsModule();
     const expected = {
         presentationMode: 'hybrid',
-        cockpit: 'off', cockpitTitle: 'scroll',
+        cockpit: 'off', cockpitTitle: 'scroll', hudStyle: 'classic',
         playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'auto',
         chartProfile: 'legacy', difficulty: 'ultra', activity: 'active', variation: 'expressive', handPattern: 'alternate', handLead: 'even', motionSafety: 'legacy', zones: 'cross',
         wormhole: 'on', noteDesign: 'shard', noteHalos: 'off', spiralDirection: 'auto', quality: 'max', rateHz: '36', distanceMeters: '200', lineStroke: 30, sharpness: 100,

@@ -234,6 +234,13 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
             { value: 'on', label: 'On', hint: 'The music-driven Wormhole behind the runway (the heaviest part of the frame).' }],
         read: settings => (settings.background.wormhole ? 'on' : 'off'),
         write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background, wormhole: value === 'on' }) }) },
+    { id: 'hudStyle', section: 'background', label: 'HUD design', scope: 'presentation', kind: 'choice',
+        choices: [{ value: 'classic', label: 'Current', hint: 'Existing instrument frame' },
+            { value: 'angular', label: 'Angular', hint: 'Cut corners and segmented lines' },
+            { value: 'orbital', label: 'Orbital', hint: 'Rounded frames and orbital marks' },
+            { value: 'off', label: 'Off', hint: 'Essential information without decorative frames' }],
+        read: s => s.appearance.hudStyle ?? 'classic',
+        write: (s, value) => ({ ...s, appearance: normalizeAppearanceSettings({ ...s.appearance, hudStyle: value as XrAppearanceSettings['hudStyle'] }) }) },
     { id: 'noteDesign', section: 'background', label: 'Note design', scope: 'presentation', kind: 'choice',
         choices: [
             { value: 'classic', label: 'Classic', hint: 'Chamfered blocks with an arrow to follow; dots allow any direction.' },
