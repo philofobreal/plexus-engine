@@ -1,7 +1,7 @@
 {
-  "id": "t13f-full-song-structure-20261028T143354921Z",
-  "previousCommit": "4dff7e014fec3536453d21823e21385123b9d042",
-  "sourceCommit": "548835545da3fcff499caa99d8ddfa2d7efd3282",
+  "id": "t13g-scene-entry-20261028T153558653Z",
+  "previousCommit": "b6dc344035134ca66610282b18abb749e3ea7443",
+  "sourceCommit": "18c891574ec3501055d91934944fc45df985940c",
   "inputs": [
     {
       "path": "bun.lock",
@@ -505,7 +505,7 @@
     },
     {
       "path": "src/automation/alignAutomationToCues.ts",
-      "sha256": "73a1b9eb20375d8721332cbba12d2e30792344bb74d32874fdfb349aaaa44158"
+      "sha256": "a986d134316abba01bf8b8583468af0fe53357fdd90cad4793c6fb457fff5225"
     },
     {
       "path": "src/automation/applyMvpWormholePreset.ts",
@@ -793,11 +793,11 @@
     },
     {
       "path": "src/semantics/automationCueRoles.ts",
-      "sha256": "3ab290f564669a9284dab73d5364bf9cd0a1ee796d04bd28a65e591232e173d0"
+      "sha256": "8a1e55a01a79897f7a3ee367a2f30c0c2a65572f743463b34f9348da50cfa247"
     },
     {
       "path": "src/semantics/cueEvidence.ts",
-      "sha256": "be3eafd5c3a12d2fb243e9d8b9b54487aa6346955e25b4921d38629b2974d532"
+      "sha256": "6886563bc434eb68b9a49d61789bd08a76726563c6a925af490e404538c431e1"
     },
     {
       "path": "src/semantics/index.ts",
@@ -1598,12 +1598,12 @@
       "sha256": "eb5de8199ca4f3a44a8c3d64361515fa385bfd401a6b796853fd617300e65fb5"
     },
     {
-      "path": "assets/CanvasVisualSource-2EF5NncV.js",
-      "sha256": "b89abdd4799ebbcafd1d20ee65c33ab6f259a1913a1c471a4b9e84366d5e7827"
+      "path": "assets/CanvasVisualSource-DoW_ERcf.js",
+      "sha256": "587921cb98a6f52cf6efcf973d14528aa863533dd2c26df6f10549cd083a892d"
     },
     {
-      "path": "assets/CosmicWormholeIdentity-D4x4ckps.js",
-      "sha256": "0d4060c5b054922d6e95cebebfa5c451fcf57399133166dd4a1fae136c375f88"
+      "path": "assets/CosmicWormholeIdentity-CftGGFWH.js",
+      "sha256": "d2ab3041a25face2cda95df460d249e27a5467922bcb0467dbe8eb4c873d57e4"
     },
     {
       "path": "assets/export.worker-Av-E_fEl.js",
@@ -1614,24 +1614,24 @@
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
-      "path": "assets/main-DrJ4hM6O.js",
-      "sha256": "60b279ce2696c0204ed706ca10af60cc5c820b52170011e96b218a4ad3ee263a"
-    },
-    {
-      "path": "assets/mvp-CwBUFhsB.js",
-      "sha256": "167fa2c3fff9d07bcd021ea064f028a3661ab01106dd4264edfcf63904d3460c"
+      "path": "assets/main-DS8j6cqw.js",
+      "sha256": "09f633ce4a40bc94c9970ed29a3ac564d2b78059ff5d9e880ecc1f8059c47bda"
     },
     {
       "path": "assets/mvp-D0xy9ln6.css",
       "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
     },
     {
-      "path": "assets/PreviewQualityControl-Cm7jmsg0.js",
-      "sha256": "abd293c2acc7741d8edaf1da0c96dbf8a8537d90129296c56f7c25bca870a1c4"
+      "path": "assets/mvp-DXsmhm6A.js",
+      "sha256": "f6d67ca6f22c0c105cbb8f96aaf8e34029cd4b9592466da06a2426039666fa36"
     },
     {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
       "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+    },
+    {
+      "path": "assets/PreviewQualityControl-DxySvLR7.js",
+      "sha256": "3fa8564e24576bc5144b7d377bdec8fbac1d9d0cf2ba2d2658adf2d972015e8c"
     },
     {
       "path": "assets/wormholeHostRender.worker-C0AYhcyr.js",
@@ -1650,8 +1650,8 @@
       "sha256": "23a8828e3e93d5f4b04c1594b0146aecf33fb331d60004fd60e77c0cdc98b264"
     },
     {
-      "path": "assets/xr-BTdMMDdV.js",
-      "sha256": "59c0e015b007789a12703f57a7afdb6c5e365e7549948b041ddc55075c98c915"
+      "path": "assets/xr-RgEEAInT.js",
+      "sha256": "df0490569d2f2264d34d24b69d058465e2770f49a6efa3ebf3c5d08cb9a02908"
     },
     {
       "path": "eso0932a.jpg",
@@ -1667,11 +1667,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "238442ed3ad576c8ea3504b571df1f38437559f82df83d19de0f02b80222824d"
+      "sha256": "444ded731afe8c7e61ab215079706efbb67deb4ce3b5c082baadf32428b722a4"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "3e66d282b247809e155eb42682a76d32c3b2afb84f550d4d52a0e6631be396a4"
+      "sha256": "06044584d730dd828142a9df3fa0c70fc9cb51e08b9f0af709184a050dbaa34f"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
@@ -1803,7 +1803,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "ad8b10c69d8f858193e5850ed03ff21562910cd6d457ec36f6252e89c21693f6"
+      "sha256": "c8bb03b83417d620bd52dce2c246c6708abcb356685996383b542c1cb6770782"
     }
   ]
 }
