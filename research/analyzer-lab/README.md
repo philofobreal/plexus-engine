@@ -142,3 +142,20 @@ It does not run external models or validate source labels as musical truth. The 
 can feed the [full-song observer](diagnostics/compare-full-structure.mjs); large captures remain
 ignored local artifacts. [T13g](docs/FULL-SONG-STRUCTURE-STUDY.md#product-follow-up---t13g-2026-10-28)
 records the bounded product correction and changing-cohort limits.
+
+The existing movement evaluator also supports the requested percussive pool and exact replay:
+
+```powershell
+node scripts/evaluate-movement.mjs --recording TRACK.mp3 logs/NEW-musical.json --percussive-pool
+node scripts/evaluate-movement.mjs --source logs/NEW-musical.json.source.json logs/NEW-replay.json --percussive-pool
+```
+
+Recording mode retains legacy events/attention, the additional pool/clock/attention, PCM identity
+and the hash of the complete interpreted analysis excluding only the new pool. Source mode
+reuses those values without decode or DSP. The current pool consumer separates the legacy
+Activity budget from expanded candidate choice. A missing/invalid requested pool throws instead
+of producing a misleading fallback score. Ordinary invocations keep their historical meaning.
+Use exclusive new paths and retain source/version identities for both policies. The equal-
+cardinality comparison describes the selector's own published features; it is not independent
+music accuracy. [T12d protocol and amendment](../../documents/features/music-events.md#t12d-percussive-source-projection---predeclared-product-experiment-2026-10-28)
+records the rejected density-inflating draft and the bounded accepted consumer.

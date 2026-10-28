@@ -1184,3 +1184,34 @@ separate. Three stored chart-source replays remain exactly equal to T13d; these 
 checks, not new audio inference or human-annotated accuracy. Natural geometry lifetimes remain.
 After manual acceptance the next T12 slice concerns local musical attention using the supported
 evidence; unsupported T11 source recognition and perceptual p95 promotion remain deferred.
+
+### T12d percussive source projection - predeclared product experiment (2026-10-28)
+
+Owners: analyzer percussive publication, thin audio/worker request transport, shared types,
+pure gameplay source selection, XR composition/diagnostics, render-worker preparation and docs.
+Hypothesis: visual grid/proximity suppression hides strong measured peaks from Musical attention.
+Expose the SAME existing strong supplemental percussive gates before that suppression, union
+all legacy events, and let the existing attention/motor budgets choose. No new threshold/grid fit,
+source classifier or promotion of T11/AN-03 research-only candidates. Frame-window timestamps
+remain engineering measurements; no millisecond acoustic localization claim.
+
+Freeze the implementation before three-track replay. Required gates: unchanged default analyzer
+and Classic output, exact legacy-event inclusion, a stronger nearby off-grid peak available to
+Musical ranking, all original percussive negatives and raw-audio silence/tonal/sustain checks,
+validated clock/shape/order/fallback, immutable publications, request-id/transfer/regeneration
+tests and no new frame DSP/worker payload growth in the renderer. Explicit experimental accepted
+retiming retains its legacy source rather than mixing incompatible frame timestamps. New cases
+are authored regression evidence, not an independent music holdout. Keep every previous test and
+measurement. Real three-song replays must retain PCM and legacy structures/events exactly, disclose
+source/note cardinality, source membership and guarded hand/movement checks. More notes or model
+agreement alone cannot promote acoustic accuracy; no parameter fitting to the three recordings.
+
+Before promotion, the first full recording replay exposed candidate-count/density coupling:
+larger pools raised Activity budgets and reduced same-feature, equal-cardinality alignment on
+all three recordings. That initial result stays in logs/t12d/*-musical.json and recording-summary.json.
+Protocol amendment before the second replay: retain the SAME legacy eligible-event count per
+meter window for Activity's existing budget formula, while ranking all newly available choices.
+A newly evidenced, formerly empty window permits one physically spaced hit; invalid budget
+evidence fails conservatively to one rather than expanding density. No strength/flux threshold
+or track-specific time is fitted. Legacy-only inputs take the exact old path. The budgeted
+source/tool identities are frozen separately; both runs and descriptive metrics stay retained.

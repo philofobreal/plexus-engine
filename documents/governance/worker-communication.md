@@ -14,6 +14,8 @@ Current analysis request fields:
 - `sampleRate`.
 - Optional `eventTiming`: `local-band-v1` or `local-band-v2`. Absence preserves default event timing.
   The current v2 publishes `accepted-frame-band-timing-v2-dc1`; historical v2 reports remain readable.
+- Optional boolean `rhythmOnsets`: XR requests an additional percussive chart pool. Absence/false
+  preserves default analysis; explicit experimental event retiming retains its legacy source.
 
 Current analysis success message fields:
 
@@ -32,6 +34,12 @@ Current analysis success message fields:
 - `barStarts` — authoritative downbeat (bar start) times (seconds).
 - `timingConfidence` — unified `{ tempo, beat, grid, overall }` confidence model, each in `[0, 1]`.
 - `trackAnalysis`.
+- Optional nested `trackAnalysis.rhythmOnsets`: percussive-pool-v1, exact feature clock and ordered
+  frame-peak events, retaining every legacy hit. It adds chart choices before visual proximity
+  suppression, without changing the legacy event/cue/grid arrays or promoting raw research
+  candidates. Runtime normalization checks clock, frames, types/intensities and legacy inclusion.
+  The JSON schema is additive; renderer-worker preparation omits this unused chart-only field.
+  [Consumer ownership and limits](../adr/ADR-009-xr-rhythm-game-host.md#addendum-bg---t12d-percussive-chart-source-and-independent-density-budget-2026-10-28).
 - Optional nested `trackAnalysis.eventTiming`: algorithm/policy identity, original PCM clock and
   per-accepted-event status/time/sample-support provenance. It localizes existing events only;
   beats, bars and the playback clock retain their original ownership. The strict result schema

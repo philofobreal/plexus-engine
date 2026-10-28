@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-28 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T13g implements bounded, evidence-supported scene-entry refinement after the completed T13f model study. Estimated starts can now use nearby earlier structural evidence when a stronger sustained multifeature change supports it. Existing meter/section labels and event sources remain unchanged. Next, after manual acceptance, address qualified note-source selection; complete structural/meter accuracy remains open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
+**T12d now gives Musical a wider percussive event choice before visual proximity suppression, with a separate legacy Activity budget. T13g scene-entry refinement remains delivered. The Classic source and legacy analysis stay exact; source/instrument identity, macrostructure and meter precision remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -58,7 +58,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T09 | Gameplay + input/render: playable hand policy and motion | T08 | Accepted by user; Guarded optional, Legacy default. [Evidence](xr-movement-validation.md) |
 | T10 | Analyzer timing cleanup | T00-T01 | Rejected experiments removed at user request; established XR path and equivalent Band search retained. Accuracy beyond available evidence remains unproven. [Record](xr-timing-cleanup.md) |
 | T11 | Timed evidence and qualification | Stable T10 clock/evidence boundary | Closed for this phase by explicit user decision after T11i; limited signal/provenance capabilities only. Research retained, no classifier promoted. General tonal/vocal recognition and dominance deferred; further research is not a T12a prerequisite. [Scope](../features/music-events.md) |
-| T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09; supported T11 capabilities only | T12a/T12b accepted; T12c local Musical attention and bounded three-recording transfer delivered. Classic/Guarded/menu persistence remain. T13f supplies external structural-reference context; qualified acoustic note-source selection remains separate, no source/instrument recognition promotion |
+| T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09; supported T11 capabilities only | T12a-c delivered; T12d adds a percussive chart pool before visual suppression and separates choice from Activity density. Classic/Guarded/menu persistence remain; no research candidate or source/instrument recognition promotion |
 | T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a-e timing foundation and T13f two-family/full-three-song study delivered. T13g now refines estimated scene entries with bounded sustained multifeature evidence. Meter phase/macrostructure, human precision and perceptual geometry arrival remain unproven; next separate qualified note-source work |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
 | T15 | Presentation planner + XR: track-specific HUD | T13-T14 | Planned |
@@ -1487,3 +1487,85 @@ No LLM/hooks/semantic-corpus rebuild. Warmed desktop publication medians (nine r
 Two logical commits, remote identity, guarded54-file/396-input release and three-route public
 verification are recorded in logs/t13g/handoff.json; only the three intended cue implementation
 build inputs change. STOP for manual testing after deploy; all earlier artifacts remain retained.
+
+## Current continuation checkpoint - T12d percussive note source (2026-10-28)
+
+The user accepted T13g and authorized the next task. Owners: analyzer/shared contracts and thin
+audio/worker transport, pure gameplay, XR composition/diagnostics, renderer preparation and docs.
+The existing strong supplemental percussive gates now expose a separate optional chart pool
+BEFORE visual grid/proximity suppression. Every legacy hit is retained exactly. The same adaptive
+floor, sustain/bass exclusions and engineering types are reused; no detector thresholds or model
+labels are fitted. These are frame-window measured peaks, not certified drum/vocal/source onsets.
+Raw T11/AN-03 candidate-only/scoring-ineligible layers stay ineligible and are not consumed.
+
+AudioEngine requests the pool only for XR. The worker forwards one optional typed flag; default
+headless/dashboard/MVP publications remain unchanged. Normalization validates clock, strict
+frame order, values and legacy inclusion; invalid/missing pools and explicit experimental accepted
+retiming retain the legacy source. The existing Musical profile selects the pool and measures its
+compact attention once. Classic returns the original event array; all five difficulties on all
+three recordings produce exactly the old Classic charts. Diagnostics use the selected array's
+indices and report origin, potential additions and budget. Existing generation guards/lifecycle,
+copied/persisted settings and motor/spacing policies remain. No new player switch or storage key.
+
+The first full three-song replay revealed an actual implementation problem: pool growth also
+raised Activity's candidate-count budget. Counts became1321/1225/1083 and equal-cardinality
+self-feature alignment decreased. This draft is retained, not promoted. A separately frozen
+protocol amendment decouples choice and density: the same existing budget formula uses eligible
+legacy-event cardinality per attention window while ranking the enlarged pool. Newly evidenced
+empty windows allow one spaced hit; invalid budgets fail conservatively. No score/threshold/time
+was tuned to music. Both freezes, initial and corrected outputs remain in logs/t12d.
+
+| Recording | Legacy / expanded events | Potential added peaks / actually chosen added source events | Old / final notes | Final left / right |
+| --- | --- | --- | --- | --- |
+| No Good | 1500 / 2046 | 546 / 88 | 1181 / 1129 | 564 / 565 |
+| GoA | 1294 / 2188 | 894 / 177 | 1063 / 1043 | 529 / 514 |
+| Scienide | 1114 / 1567 | 453 / 81 | 901 / 899 | 457 / 442 |
+
+All PCM hashes match T13g/T13f. The ENTIRE interpreted analysis excluding only the new pool
+hashes identically to T13g on each full song; all legacy events, cues, grids, sections and prepared
+automation plans match. All final notes refer to measured selected-source events. Motor checks
+pass, populated30s windows retain both hands, and every Classic difficulty is byte-equivalent.
+Same-feature, common-cardinality four-second comparisons at offsets0/2 improve positive band-
+change retention on all three recordings (about+0.020..0.022 / +0.046 / +0.018). Intensity improves
+on No Good/GoA and slightly decreases on Scienide (about-0.004). These correlated, selector-owned
+features are NOT independent acoustic/musical accuracy. More candidates or fewer notes is no
+quality proof, and notes/IDs/hand placement may change with the supported source choice.
+
+The original nine percussive waveform/assertion controls were separately replayed against the
+pool through only a test-local projection adapter;9/9 pass, including rolling/offbeat bass,
+sustain and kick/rumble/ghost-hit controls. This derived replay is not new independent material
+or double-counted canonical coverage. The new canonical suite adds13 schema/source/budget/raw
+audio/worker/copy-transfer/stale-publication/renderer-omission/profile-regeneration cases. The
+strict JSON schema gains only the optional pool; prior schema bytes/constraints are preserved
+in documents/tests/analysis-result-schema.pre-t12d.json. The reviewed source-evolution registry
+retains all previous reasons/hashes and its exact predecessor archive; no old measurement or
+test/helper source is overwritten. Schema shape validation and physical runtime validation stay
+distinct. The broader current legacy percussion tests remain active in the complete suite.
+
+No extra FFT, draw-time ranking, onset packet or GPU work. The render-worker projection omits
+the pool alongside musicActivity while retaining main snapshot/cache identity. Wall Off, cockpit
+default Off and MVP/XR Offscreen remain. Existing diagnostic timing text now distinguishes
+manual/legacy morph starts from eligible automatic preset arrival deadlines. Policy:
+[ADR-009 BG](../adr/ADR-009-xr-rhythm-game-host.md#addendum-bg---t12d-percussive-chart-source-and-independent-density-budget-2026-10-28).
+
+Final cumulative validation, source/push, graph and guarded public release: logs/t12d/handoff.json.
+STOP after commit/push/deploy for manual Musical testing with the user's current settings.
+This closes the bounded note-source correction; dominant source/melody/vocal recognition and
+macrostructure/meter accuracy remain unresolved. After manual feedback, continue the main plan
+(T14 visible HUD work is independent) with those limits explicit; do not open another unbounded
+T11/model/tolerance-fitting loop or claim complete musical precision.
+
+Final acceptance: Node1958/1949 pass/9 exact baseline failures (names AND messages), zero
+skipped/cancelled; targeted142/142, Python341/341, separate percussive-pool replay9/9, schema
+positive/legacy and four shape-negative probes pass. Runtime normalizer tests cover physical
+clock/frame/order/inclusion constraints beyond the historical schema's numeric field shapes.
+All260 unaffected predecessor test/helper/fixture identities remain exact; the one strict schema
+extension has an exact archived predecessor and reviewed hashes. No old test/helper source was
+changed. Current204 active Node files/262 identities include13 new cases. Build/diff and196 local
+documentation references pass. Graphify full code-only914 files/8622 nodes/20824 raw/18279
+canonical edges, canonical dangling0; no LLM/hooks/semantic-corpus rebuild. Final18 implementation/
+tool hashes equal the pre-budgeted-replay freeze; only those18 build inputs change (398 total).
+The superseded first full development run was explicitly stopped to free resources; its output
+and cancellation reason remain retained, and it is never counted as completed coverage. The
+complete final run includes every prior active test on the frozen corrected source. Source/push,
+three logical commits and guarded public artifact/route verification: logs/t12d/handoff.json.

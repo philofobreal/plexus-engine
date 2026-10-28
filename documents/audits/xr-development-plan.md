@@ -313,3 +313,19 @@ note-source selection problem; local normalized band change is not dominant inst
 The wider macrostructure and meter-phase uncertainty remains open, not a reason to repeatedly
 run the same model study or prematurely call T13 fully precise. See the current tracker checkpoint
 for coverage, limits, validation and continuation.
+
+### Musical percussive source correction - T12d (2026-10-28)
+
+After accepted T13g, the next bounded product task expands Musical's choices before visual
+grid/proximity suppression under the SAME existing strong percussive gates. No raw research
+candidate, instrument identity or model pseudo-label is promoted. XR requests a clocked optional
+pool once; Classic and all legacy analysis values remain exact. The first density-inflating
+draft is retained and rejected. Final selection ranks the expanded pool within the unchanged
+legacy Activity budget, with normal Guarded movement and explicit diagnostic provenance.
+The [current tracker](xr-development-tracker.md#current-continuation-checkpoint---t12d-percussive-note-source-2026-10-28)
+records complete three-song replay, negative controls, an additive reviewed schema extension,
+both protocol freezes, limitations and final receipts.
+
+Stop after commit/push/deploy for manual testing. Then continue the main plan, with T14's visible
+HUD work available independently of still-open source identity and macrostructure/meter accuracy.
+No automatic broad model rerun, extra experimental menu mode or unsupported precision claim.

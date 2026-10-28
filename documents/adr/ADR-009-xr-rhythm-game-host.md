@@ -1786,3 +1786,42 @@ Three full recordings preserve canonical source/PCM identity and valid motor-mod
 Mixed transfer evidence does not justify runtime recalibration; T12c/1 behavior is retained.
 The separate external full-song structure study requires user continuation after this handoff.
 [Evidence and limits](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12c2-transfer-review-2026-10-27).
+
+## Addendum BG - T12d percussive chart source and independent density budget (2026-10-28)
+
+XR requests the optional percussive-pool-v1 once through AudioEngine. The analyzer unions every
+unchanged visual hit with the SAME existing strong supplemental percussive peaks before visual
+grid/proximity suppression. Existing adaptive floor, sustain/bass exclusions and engineering
+type/intensity mapping are shared, not retuned. The legacy event/cue/grid/section publication is
+unchanged; no research-only musicActivity/acousticOnsets candidate is promoted. The pool contains
+frame-window timestamps, not instrument classes, calibrated confidence or refined acoustic truth.
+
+Shared types and normalization validate algorithm, exact sample/hop/window clock, strict frame
+order, finite unit intensity/type and inclusion of every published legacy hit. Invalid/missing
+pools explicitly fall back. Experimental accepted-event retiming retains its old source and
+does not mix refined times with frame peaks. The JSON result schema adds only this optional
+strict object; every prior schema constraint is retained and its previous bytes are archived.
+The source-evolution registry retains prior reviews and exact old sources, not new old measurements.
+
+The existing persisted/copied Chart profile > Musical selects the pool; Classic retains the
+original event array and output. This is gameplay source ownership, not a visual-preset parameter.
+No new menu switch, storage key, detector threshold control or URL is introduced. The XR facade
+selects before compact attention measurement, tracing, motor guarding and generation-checked
+publication. All diagnostics indices refer to that selected array. The existing drawer/Copy
+reports source kind, potential extra events and the separate legacy density budget.
+
+Candidate choice and Activity density are separate: when using the pool, each attention window
+applies the existing fraction/budget formula to the eligible LEGACY event count, then ranks all
+available events. A newly evidenced formerly empty window permits one physically spaced hit;
+an invalid budget fails conservatively. Existing cross-window spacing, fatigue and Guarded
+movement rules stay authoritative. Legacy-only inputs take the exact old attention path. The
+first draft that let pool size raise density is retained as a rejected intermediate measurement,
+not an extra player mode. No weights/tolerances are fitted to per-song references.
+
+Playback, judging, visual event consumption and T13 cue clocks keep their owners. Profile changes
+reuse captured analysis and reset chart/role/diagnostics through the existing generation guard.
+The render-worker preparation projection omits both musicActivity and rhythmOnsets without
+mutating the host snapshot/cache key; no extra per-frame work or packets. Dashboard/MVP omit
+the request flag and retain default analysis/Offscreen behavior. See the
+[T12d checkpoint](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12d-percussive-note-source-2026-10-28)
+for complete recording/source parity, negative controls, limits and the manual gate.
