@@ -116,7 +116,7 @@ test('preview menu saves and copies the device renderer selection without mutati
         window: { localStorage: { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value) } },
         navigator: { clipboard: { writeText: async text => copied.push(JSON.parse(text)) } } });
     const { createPreviewQualityControl } = load('ui/PreviewQualityControl.ts');
-    const control = createPreviewQualityControl(false), select = control.root.children[2].children[0], copy = control.root.children[4];
+    const control = createPreviewQualityControl(false), select = control.root.children[2].children[0], copy = control.root.children.find(e => e.textContent === 'Copy preview settings');
     select.value = 'webgl'; select.listeners.change(); await copy.listeners.click();
     assert.equal(saved.get('plexus.wormholeRenderer'), 'webgl');
     assert.equal(copied[0].wormholeRenderer, 'webgl'); assert.equal(copied[0].previewQuality, 'auto');
@@ -131,7 +131,7 @@ test('preview Copy supports the synchronous browser fallback without async clipb
         body: { appendChild(area) { copied.push(area); } }, execCommand: () => true },
         window: { localStorage: { getItem: () => 'webgl' } }, navigator: {} });
     const { createPreviewQualityControl } = load('ui/PreviewQualityControl.ts');
-    const control = createPreviewQualityControl(false);await control.root.children[4].listeners.click();
+    const control = createPreviewQualityControl(false), copy = control.root.children.find(e => e.textContent === 'Copy preview settings');await copy.listeners.click();
     assert.equal(JSON.parse(copied[0].value).wormholeRenderer, 'webgl');
-    assert.equal(control.root.children[4].textContent, 'Copied preview settings');
+    assert.equal(copy.textContent, 'Copied preview settings');
 });

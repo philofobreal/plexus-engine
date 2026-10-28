@@ -22,9 +22,9 @@
     {
       "path": "src/types/CanvasVisualSource.ts",
       "predecessorSha256": "4ee966c35f677242e1d1245050e095f623e0119205e723a84e8234010305c2ff",
-      "replacementSha256": "14bb362e8aafe930c5543ee6443835004b171670cdb018ff5a64e0854bf410be",
-      "reviewedBy": "Codex single integration owner, T12d source/contract review",
-      "reviewedReason": "Add an XR-requested percussive chart pool using the existing supplemental gates before visual proximity suppression; retain every legacy hit, default analyzer output and Classic source. Typed clock validation, worker request identity, profile regeneration and render-worker evidence omission are covered by new regressions. No historical timing fixture/result/source is rewritten. Prior registry and all superseded reviews retained at documents/tests/accepted-timing-source-evolution.pre-t12d.json. Full cumulative and exact three-recording legacy parity required before release.",
+      "replacementSha256": "4a32df88cb2bb669f75dfc9c914909de40b56e92336e16391067a72c96be1e12",
+      "reviewedBy": "Codex single integration owner, T16 presentation contract review",
+      "reviewedReason": "Add only an optional normalized informational musicDisplay preference to CanvasVisualPresentation. Analysis/result/event/clock contracts and projectRenderWorkerAnalysis remain unchanged. Shared sampler reads existing 24 bands; no DSP or musical measurement changes. Old registry and all prior reviews retained exactly at documents/tests/accepted-timing-source-evolution.pre-t16.json; measured source archives and results untouched.",
       "supersededReplacements": [
         {
           "sha256": "c8af1d8a1ed1c42c343f2a3067dbfff76abb12078f2cead750425105105589cb",
@@ -45,6 +45,11 @@
           "sha256": "166b137867629c225956602411fe0297e1caa53e927eb180165003b0860bfe5d",
           "reviewedBy": "Single integration owner with independent read-only render-worker reviewer, T11f",
           "reviewedReason": "Add pure preparation-only projection that omits unused musicActivity from four render-worker publications. Main analysis, cache reference keys, plan-only updates and main fallback retain original objects; frame messages and clocks unchanged. Four publication regressions cover real structured-clone omission, no extra preparations, exact branch and native fallback. Preserve original timing fixtures/source bytes, prior hashes and all superseded review reasons; no old timing result regenerated."
+        },
+        {
+          "sha256": "14bb362e8aafe930c5543ee6443835004b171670cdb018ff5a64e0854bf410be",
+          "reviewedBy": "Codex single integration owner, T12d source/contract review",
+          "reviewedReason": "Add an XR-requested percussive chart pool using the existing supplemental gates before visual proximity suppression; retain every legacy hit, default analyzer output and Classic source. Typed clock validation, worker request identity, profile regeneration and render-worker evidence omission are covered by new regressions. No historical timing fixture/result/source is rewritten. Prior registry and all superseded reviews retained at documents/tests/accepted-timing-source-evolution.pre-t12d.json. Full cumulative and exact three-recording legacy parity required before release."
         }
       ]
     },
