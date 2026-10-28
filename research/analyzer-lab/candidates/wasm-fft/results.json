@@ -1,0 +1,1191 @@
+{
+  "schemaVersion": 1,
+  "task": "T17",
+  "clientDate": "2026-10-29",
+  "scope": "Offline scalar FFT feasibility; production stays TypeScript",
+  "promotion": "withheld: physical Quest 3 full-path and memory evidence missing",
+  "preregistered": {
+    "fullAnalysisMedianImprovementEach": 0.15,
+    "maxRSSRatioBelow": 1.1,
+    "coldCompileInstantiateMsBelow": 50,
+    "exactOutputRequired": true,
+    "quest3Required": true
+  },
+  "protocolBeforeResultsSha256": "6300114ad0b74d1fc4cfcf7feb210dcc537a9b7af6e672ebc7a6ed76f35df7bf",
+  "sourceHead": "50ecc0a178985a9fee768046d809ad7f3a026518",
+  "sourceHashes": {
+    "src/analyzer/analyzeAudio.ts": "a5728e8e3fd70a6d9e5b415dd6e0c62d805ca0d0c09e8a2448583ae55985f35a",
+    "src/analyzer/constants.ts": "24349a8b39fe61ffc81919816cdf43e1a3d08e67b8de845c31801c21b905c956",
+    "src/analyzer/DramaturgyBuilder.ts": "563660868e093d6e10e5d4ff6629657fba5501890e8d9f78e3eb4769e4d349f1",
+    "src/analyzer/BeatEventClassifier.ts": "113cc7350f4a1ec3ded9d2cf63cd257f568b78ef1f22f777defe53e86af76bfd",
+    "src/analyzer/utils.ts": "f08341cd5ed555a91c43e871d285b3ab4aaa37954b64ae844148ddf63a5e9024",
+    "src/analyzer/FeatureClassifier.ts": "6da5bc5cf7725ddd2709958be94572f32a98b13803594b12d8b1fa80ede60f0f",
+    "src/analyzer/FeatureExtractor.ts": "24f819a45ccb7e96724aa5f3337647aa0278455040dee486015d300aa136316a",
+    "src/analyzer/math/FFT.ts": "9f605e5a6561da6eb45bccd647803fe356b537684cdbfb10cf1a0530eda8bc34",
+    "src/analyzer/signalContract.ts": "fb64a5fcb50b6ad61e3b86717f80ace34c993e8d948c2865b9c05369861f294a",
+    "src/analyzer/FeatureNormalizer.ts": "418c3fc87e5d1ab81e21cf5d8bc683d7ca1945d828d8ee22fd3dbf21b36a05db",
+    "src/analyzer/GridAligner.ts": "45a358a4ac42a23e826ea8be123cbe8f0a1ede8676ddbafc98ecc65c65369817",
+    "src/analyzer/TempoEstimator.ts": "037bd0011b0af776926a5b8c914a1cbc21f8789b655abdca616f7bdbbd32ee31",
+    "src/analyzer/BeatTracker.ts": "e4387c0b781f75e857d6ec9f76107177a21c32cd64e7f8f8cbef55858795b945",
+    "src/analyzer/LowFrequencyExtractor.ts": "20cd8119c8ace3a03112c21d28f87b9776708e76c39d0c0c354824ff749df91a",
+    "src/analyzer/NoveltyAnalyzer.ts": "79609f97d92c6de4e64d6b2b5fc01f3f3e3defe8f6a4b9141a5d0578b1dff687",
+    "src/analyzer/SectionAnalyzer.ts": "a7613786c217f066dda4f8bf316ae8539011a6180fae000537c68944ff7dc6a8",
+    "src/analyzer/SpectralPivot.ts": "2d0eeb7d49f9b9b8053fc223104450d35960f89e444f687be71db376ea9ef1a5",
+    "src/analyzer/SpectralCalibration.ts": "cc19ad606d7c24ba33e2d3258d7c55b066550127d6d73bb1482e57c466dffd38",
+    "src/analyzer/TemporalSmoother.ts": "112ca656b12a3ed28f83922d5e02f08c842850eaf73c8c70440154a61c11befb",
+    "src/analyzer/AcousticOnsets.ts": "eba437661861f0d14d411246e6f6f093059f3e085a1cff8da65e9c39c3458491",
+    "src/analyzer/math/SpectralFlatness.ts": "becc5b05061ec36cd677097091862ca765f1ec5c1a7781ce03d0b262aa7dcaaa",
+    "src/analyzer/PredictiveOnsets.ts": "45534e7e0f232bff0fde918e49f53bc511dbba9b51af81afde7af3f1e320fc92",
+    "src/analyzer/AdaptiveOnsets.ts": "d6d6632dd2db6eced6062783bd4e9e7d9eaa5087e156f222aa5a4ad9419d93c3",
+    "src/analyzer/ResidualOnsets.ts": "247ffab22e8f7b1ddcb24343ccba102eddf692955b699a665211571488096084",
+    "src/analyzer/DifferenceOnsets.ts": "a2914d0c5555ffbef70405c87811809b7e25389aa768dd49d1ba07a99ac38bf2",
+    "src/analyzer/AcceptedEventTiming.ts": "bd8aa9b6ae994deed37dd307dbc3642218e8cdb30e002d51db0ff254180f11ca",
+    "src/analyzer/BandOnsets.ts": "38523259edae7e9ae7bf2d0c719d3ea29a72600961e6040ba8710bef6dd0cb4e",
+    "src/analyzer/ContinuationOnsets.ts": "374762a7c8382fc8499a1103e364331956773a51516e7066226ca5536acd4af1",
+    "src/analyzer/BandProposalIndex.ts": "7c3142182e99ea7a56ac62379cf8199240e8ae4463ab4c879320a3b02fd88736",
+    "src/types/musicEvents.ts": "9f6ff38aabf04204aefb9ef4021d6fa72e9703fde50a5b049b282128e6bcff42",
+    "src/analyzer/MusicActivity.ts": "760abab72456d36fd5e9ae8647e518f704a061f817b19a6a4bd838abee42f8b2"
+  },
+  "prototype": {
+    "README.md": "6300114ad0b74d1fc4cfcf7feb210dcc537a9b7af6e672ebc7a6ed76f35df7bf",
+    "fft.scalar.wat": "80ebec169c002b7f946ede5d61ab1c59ed7b868b68880fb66f6bd4b1433fa0f6",
+    "fft.scalar.wasm": "5fe5fb080b24f0c7fbbb305ced4b3d836d37351843709ad220ca72f8c8554a5c",
+    "adapter.mjs": "4c2a230ea63971fc9159feea1da526447e739d184d8b247b5d7d91d3092831b3",
+    "experiment.mjs": "b5d2d946bb6a687781f98c3784f9c82110fb2c94cd3dd47fce9d8c4d0ca9232f",
+    "browser.mjs": "a97510245a2e675a59e2343e85f3382c0c2fcf8ea70cfe602b645bbc844b873f"
+  },
+  "kernel": {
+    "sourceHead": "50ecc0a178985a9fee768046d809ad7f3a026518",
+    "node": "v25.2.1",
+    "v8": "14.1.146.11-node.14",
+    "platform": "win32",
+    "arch": "x64",
+    "typescript": "6.0.3",
+    "bytes": 537,
+    "gzipBytes": 357,
+    "coldCompileInstantiate1024Ms": [
+      0.667699999999968,
+      0.15099999999995362,
+      0.14889999999996917,
+      0.11859999999995807,
+      0.09919999999999618,
+      0.11480000000000246,
+      0.11930000000000973,
+      0.09350000000000591,
+      0.1058999999999628,
+      0.11630000000002383,
+      0.10509999999999309,
+      0.11990000000002965,
+      0.10899999999998045,
+      0.18720000000001846,
+      0.0635000000000332,
+      0.057599999999979445,
+      0.07720000000000482,
+      0.05560000000002674,
+      0.04959999999999809,
+      0.04930000000001655
+    ],
+    "coldMedianMs": 0.10899999999998045,
+    "timings": {
+      "1024": {
+        "reference": {
+          "medianMs": 0.027706500000000175,
+          "runsMs": [
+            0.02832550000000026,
+            0.025885000000000106,
+            0.02623500000000007,
+            0.027706500000000175,
+            0.028656000000000004
+          ],
+          "outputSha256": "3fef273713691032dc8ddb59a58ef8bd04717c9316b88bde8af3a80026a4b10a",
+          "privateWasmBytes": 0
+        },
+        "resident": {
+          "medianMs": 0.01805049999999994,
+          "runsMs": [
+            0.016734500000000027,
+            0.01830999999999989,
+            0.01653899999999993,
+            0.01805049999999994,
+            0.01928449999999998
+          ],
+          "outputSha256": "3fef273713691032dc8ddb59a58ef8bd04717c9316b88bde8af3a80026a4b10a",
+          "privateWasmBytes": 65536
+        },
+        "copy": {
+          "medianMs": 0.017603000000000008,
+          "runsMs": [
+            0.015964999999999917,
+            0.017960999999999956,
+            0.017603000000000008,
+            0.0193365,
+            0.015833999999999834
+          ],
+          "outputSha256": "3fef273713691032dc8ddb59a58ef8bd04717c9316b88bde8af3a80026a4b10a",
+          "privateWasmBytes": 65536
+        }
+      },
+      "4096": {
+        "reference": {
+          "medianMs": 0.12348899999999986,
+          "runsMs": [
+            0.11322450000000003,
+            0.12348899999999986,
+            0.11575249999999983,
+            0.13181600000000004,
+            0.1375709999999998
+          ],
+          "outputSha256": "01b161afbb235cb68ef0cf8c067afc8b3f015c2e32c5efd382190b2e1c8d0e86",
+          "privateWasmBytes": 0
+        },
+        "resident": {
+          "medianMs": 0.07864950000000022,
+          "runsMs": [
+            0.08013700000000029,
+            0.07529800000000023,
+            0.08218349999999987,
+            0.07864950000000022,
+            0.07727499999999964
+          ],
+          "outputSha256": "01b161afbb235cb68ef0cf8c067afc8b3f015c2e32c5efd382190b2e1c8d0e86",
+          "privateWasmBytes": 65536
+        },
+        "copy": {
+          "medianMs": 0.1365514999999999,
+          "runsMs": [
+            0.1275385,
+            0.13818699999999978,
+            0.1365514999999999,
+            0.13863249999999994,
+            0.12942000000000006
+          ],
+          "outputSha256": "01b161afbb235cb68ef0cf8c067afc8b3f015c2e32c5efd382190b2e1c8d0e86",
+          "privateWasmBytes": 65536
+        }
+      },
+      "16384": {
+        "reference": {
+          "medianMs": 0.8491480000000001,
+          "runsMs": [
+            0.9436215000000004,
+            0.8491480000000001,
+            0.8385894999999993,
+            0.8107674999999994,
+            0.8941909999999996
+          ],
+          "outputSha256": "2e72401e95b292ba01fcc05e65c2ae7adb888c43f4a142b1ef7efefbbb007538",
+          "privateWasmBytes": 0
+        },
+        "resident": {
+          "medianMs": 0.659257500000001,
+          "runsMs": [
+            0.6397664999999995,
+            0.6978729999999996,
+            0.6296614999999997,
+            0.6631060000000002,
+            0.659257500000001
+          ],
+          "outputSha256": "2e72401e95b292ba01fcc05e65c2ae7adb888c43f4a142b1ef7efefbbb007538",
+          "privateWasmBytes": 196608
+        },
+        "copy": {
+          "medianMs": 0.733742000000002,
+          "runsMs": [
+            0.6913569999999981,
+            0.7809940000000006,
+            0.733742000000002,
+            0.6760834999999997,
+            1.1182064999999988
+          ],
+          "outputSha256": "2e72401e95b292ba01fcc05e65c2ae7adb888c43f4a142b1ef7efefbbb007538",
+          "privateWasmBytes": 196608
+        }
+      }
+    }
+  },
+  "recordings": [
+    {
+      "name": "goa",
+      "sourceHead": "50ecc0a178985a9fee768046d809ad7f3a026518",
+      "node": "v25.2.1",
+      "v8": "14.1.146.11-node.14",
+      "platform": "win32",
+      "arch": "x64",
+      "typescript": "6.0.3",
+      "protocol": "T17 scalar exact FFT / XR full path / three alternating paired trials / fresh processes",
+      "audioFile": "The_Prodigy_More_Music_For_The_Jilted_Generation_-_Goa_The_Heat_The_Energy_Part_2_(mp3.pm).mp3",
+      "audioSha256": "ec7d6a28605d05ba763913fc5f05ab983bd23be27b5e7856c7ecadec00687e69",
+      "pcmSha256": "585c6d8f5922c149780310e21afb4cabf5985aaa05a1f94749cb3eb3a5614895",
+      "durationSec": 365.76759637188206,
+      "sampleRate": 44100,
+      "runs": [
+        {
+          "trial": 0,
+          "mode": "reference",
+          "elapsedMs": 6589.4342,
+          "importMs": 78.99370000000005,
+          "resultSha256": "5a368dceffe5de492ef29132c6af86291c29ac1638a7513d81422748e3bcc9c0",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 285474816,
+            "heapTotal": 89972736,
+            "heapUsed": 32846544,
+            "external": 136385386,
+            "arrayBuffers": 129069643
+          },
+          "memoryAfter": {
+            "rss": 310652928,
+            "heapTotal": 120250368,
+            "heapUsed": 73192880,
+            "external": 135875326,
+            "arrayBuffers": 133462815
+          },
+          "maxRSSKiB": 305876
+        },
+        {
+          "trial": 0,
+          "mode": "resident",
+          "elapsedMs": 4215.3225999999995,
+          "importMs": 72.7579,
+          "resultSha256": "5a368dceffe5de492ef29132c6af86291c29ac1638a7513d81422748e3bcc9c0",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 288628736,
+            "heapTotal": 89448448,
+            "heapUsed": 32860512,
+            "external": 136382242,
+            "arrayBuffers": 133830507
+          },
+          "memoryAfter": {
+            "rss": 311103488,
+            "heapTotal": 120512512,
+            "heapUsed": 65938112,
+            "external": 136317694,
+            "arrayBuffers": 133442335
+          },
+          "maxRSSKiB": 308092
+        },
+        {
+          "trial": 1,
+          "mode": "resident",
+          "elapsedMs": 3730.8929,
+          "importMs": 59.82800000000003,
+          "resultSha256": "5a368dceffe5de492ef29132c6af86291c29ac1638a7513d81422748e3bcc9c0",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 290107392,
+            "heapTotal": 94691328,
+            "heapUsed": 32856824,
+            "external": 136508266,
+            "arrayBuffers": 129069643
+          },
+          "memoryAfter": {
+            "rss": 333619200,
+            "heapTotal": 143056896,
+            "heapUsed": 107926464,
+            "external": 136569742,
+            "arrayBuffers": 133698479
+          },
+          "maxRSSKiB": 326980
+        },
+        {
+          "trial": 1,
+          "mode": "reference",
+          "elapsedMs": 6447.7508,
+          "importMs": 62.40859999999998,
+          "resultSha256": "5a368dceffe5de492ef29132c6af86291c29ac1638a7513d81422748e3bcc9c0",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 286154752,
+            "heapTotal": 88137728,
+            "heapUsed": 32845800,
+            "external": 134873042,
+            "arrayBuffers": 129069643
+          },
+          "memoryAfter": {
+            "rss": 343207936,
+            "heapTotal": 152756224,
+            "heapUsed": 63200672,
+            "external": 135435170,
+            "arrayBuffers": 133022659
+          },
+          "maxRSSKiB": 338240
+        },
+        {
+          "trial": 2,
+          "mode": "reference",
+          "elapsedMs": 6254.0956,
+          "importMs": 62.37710000000004,
+          "resultSha256": "5a368dceffe5de492ef29132c6af86291c29ac1638a7513d81422748e3bcc9c0",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 298278912,
+            "heapTotal": 99934208,
+            "heapUsed": 32850568,
+            "external": 137078518,
+            "arrayBuffers": 131818163
+          },
+          "memoryAfter": {
+            "rss": 333488128,
+            "heapTotal": 141221888,
+            "heapUsed": 106208400,
+            "external": 137513694,
+            "arrayBuffers": 135101183
+          },
+          "maxRSSKiB": 327072
+        },
+        {
+          "trial": 2,
+          "mode": "resident",
+          "elapsedMs": 3805.5335000000005,
+          "importMs": 65.33610000000004,
+          "resultSha256": "5a368dceffe5de492ef29132c6af86291c29ac1638a7513d81422748e3bcc9c0",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 289554432,
+            "heapTotal": 84467712,
+            "heapUsed": 32857320,
+            "external": 134995922,
+            "arrayBuffers": 132377079
+          },
+          "memoryAfter": {
+            "rss": 305524736,
+            "heapTotal": 116060160,
+            "heapUsed": 74060768,
+            "external": 136569742,
+            "arrayBuffers": 133698479
+          },
+          "maxRSSKiB": 302172
+        }
+      ],
+      "referenceMedianMs": 6447.7508,
+      "residentMedianMs": 3805.5335000000005,
+      "improvement": 0.40978899184503215,
+      "maxRSSRatio": 0.9667100283822138,
+      "parity": true,
+      "cpuSampleCount": 3663,
+      "cpuTop": [
+        [
+          "analyzer/math/FFT.js:transform",
+          2561
+        ],
+        [
+          "analyzer/FeatureExtractor.js:process",
+          267
+        ],
+        [
+          "analyzer/LowFrequencyExtractor.js:extractLowFrequencies",
+          154
+        ],
+        [
+          "analyzer/FeatureExtractor.js:getPerceptualBandBinOverlap",
+          126
+        ],
+        [
+          "analyzer/MusicActivity.js:observe",
+          81
+        ],
+        [
+          "analyzer/LowFrequencyExtractor.js:sample",
+          72
+        ],
+        [
+          "analyzer/FeatureExtractor.js:addPerceptualSpectrumBinEnergy",
+          64
+        ],
+        [
+          "analyzer/MusicActivity.js:concentrated",
+          43
+        ],
+        [
+          "analyzer/signalContract.js:validateAnalysisSamples",
+          36
+        ],
+        [
+          "analyzer/SpectralCalibration.js:collectCalibrationWindowStarts",
+          24
+        ],
+        [
+          "analyzer/analyzeAudio.js:getTypicalBandLevel",
+          23
+        ],
+        [
+          "analyzer/MusicActivity.js:attack",
+          18
+        ],
+        [
+          "analyzer/analyzeAudio.js:analyzeAudio",
+          17
+        ],
+        [
+          "analyzer/MusicActivity.js:powerAt",
+          14
+        ],
+        [
+          ":(garbage collector)",
+          11
+        ],
+        [
+          "analyzer/SpectralCalibration.js:pickCandidateStarts",
+          10
+        ],
+        [
+          "analyzer/analyzeAudio.js:inversePerceptualCompensation",
+          9
+        ],
+        [
+          "analyzer/MusicActivity.js:finish",
+          9
+        ],
+        [
+          "analyzer/MusicActivity.js:transform",
+          9
+        ],
+        [
+          "analyzer/MusicActivity.js:attackChanges",
+          7
+        ],
+        [
+          "analyzer/FeatureExtractor.js:getTypicalMax",
+          6
+        ],
+        [
+          "analyzer/GridAligner.js:beatOnsetAlignment",
+          6
+        ],
+        [
+          "analyzer/analyzeAudio.js:buildPerceptualSpectrum",
+          6
+        ],
+        [
+          "analyzer/GridAligner.js:detectOnsetPeaks",
+          5
+        ],
+        [
+          "analyzer/utils.js:clampUnit",
+          5
+        ],
+        [
+          "analyzer/NoveltyAnalyzer.js:compute",
+          5
+        ],
+        [
+          "analyzer/SpectralCalibration.js:",
+          4
+        ],
+        [
+          "analyzer/GridAligner.js:percentile",
+          4
+        ],
+        [
+          "analyzer/SpectralCalibration.js:fftMagnitudeEnvelope",
+          3
+        ],
+        [
+          "analyzer/MusicActivity.js:observeEntry",
+          3
+        ],
+        [
+          "analyzer/BeatTracker.js:trackBeats",
+          3
+        ],
+        [
+          "analyzer/analyzeAudio.js:",
+          3
+        ],
+        [
+          "analyzer/DramaturgyBuilder.js:addSupplementalPercussivePeaks",
+          3
+        ],
+        [
+          "analyzer/MusicActivity.js:observeBands",
+          2
+        ],
+        [
+          "analyzer/FeatureExtractor.js:clampUnit",
+          2
+        ]
+      ],
+      "quest3": "not measured; no physical device available",
+      "rawProfilePath": "logs/t17/final-goa.json.cpuprofile.json",
+      "rawProfileSha256": "330529133856c13e3ec79b0ef3ec5f0a53b2a8d71e49151b1d31ed3b5052b824"
+    },
+    {
+      "name": "no-good",
+      "sourceHead": "50ecc0a178985a9fee768046d809ad7f3a026518",
+      "node": "v25.2.1",
+      "v8": "14.1.146.11-node.14",
+      "platform": "win32",
+      "arch": "x64",
+      "typescript": "6.0.3",
+      "protocol": "T17 scalar exact FFT / XR full path / three alternating paired trials / fresh processes",
+      "audioFile": "The_Prodigy_More_Music_For_The_Jilted_Generation_-_No_Good_Start_The_Dance_Bad_For_You_Mix_(mp3.pm).mp3",
+      "audioSha256": "95cb3354d324829ab8f62d7ff8e9679db7c44b146f39d07e21d38bd60fbf8da1",
+      "pcmSha256": "03219f20d927b28d68216a00cca105d85985292dc31eb91e0542cb352393f512",
+      "durationSec": 410.5937188208617,
+      "sampleRate": 44100,
+      "runs": [
+        {
+          "trial": 0,
+          "mode": "reference",
+          "elapsedMs": 6080.091100000001,
+          "importMs": 69.16989999999998,
+          "resultSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 304185344,
+            "heapTotal": 104128512,
+            "heapUsed": 32813232,
+            "external": 151096858,
+            "arrayBuffers": 144884299
+          },
+          "memoryAfter": {
+            "rss": 358092800,
+            "heapTotal": 160821248,
+            "heapUsed": 92824192,
+            "external": 152219422,
+            "arrayBuffers": 149806911
+          },
+          "maxRSSKiB": 351688
+        },
+        {
+          "trial": 0,
+          "mode": "resident",
+          "elapsedMs": 3799.1052,
+          "importMs": 54.815999999999974,
+          "resultSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 312897536,
+            "heapTotal": 109633536,
+            "heapUsed": 32830176,
+            "external": 154811598,
+            "arrayBuffers": 144884299
+          },
+          "memoryAfter": {
+            "rss": 376033280,
+            "heapTotal": 176685056,
+            "heapUsed": 107958272,
+            "external": 152661790,
+            "arrayBuffers": 149790527
+          },
+          "maxRSSKiB": 368052
+        },
+        {
+          "trial": 1,
+          "mode": "resident",
+          "elapsedMs": 4773.809799999999,
+          "importMs": 54.317999999999984,
+          "resultSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 311586816,
+            "heapTotal": 106225664,
+            "heapUsed": 32828840,
+            "external": 154812018,
+            "arrayBuffers": 144884299
+          },
+          "memoryAfter": {
+            "rss": 389758976,
+            "heapTotal": 190181376,
+            "heapUsed": 58844176,
+            "external": 152944718,
+            "arrayBuffers": 150069359
+          },
+          "maxRSSKiB": 382780
+        },
+        {
+          "trial": 1,
+          "mode": "reference",
+          "elapsedMs": 5971.374399999999,
+          "importMs": 55.25999999999999,
+          "resultSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 296579072,
+            "heapTotal": 92332032,
+            "heapUsed": 32812104,
+            "external": 151096858,
+            "arrayBuffers": 147540387
+          },
+          "memoryAfter": {
+            "rss": 352145408,
+            "heapTotal": 155197440,
+            "heapUsed": 81482432,
+            "external": 151724298,
+            "arrayBuffers": 149311787
+          },
+          "maxRSSKiB": 347244
+        },
+        {
+          "trial": 2,
+          "mode": "reference",
+          "elapsedMs": 6307.9683,
+          "importMs": 52.42510000000004,
+          "resultSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 296148992,
+            "heapTotal": 95215616,
+            "heapUsed": 32814392,
+            "external": 151096858,
+            "arrayBuffers": 144884299
+          },
+          "memoryAfter": {
+            "rss": 361672704,
+            "heapTotal": 163966976,
+            "heapUsed": 95670424,
+            "external": 152502350,
+            "arrayBuffers": 150089839
+          },
+          "maxRSSKiB": 354272
+        },
+        {
+          "trial": 2,
+          "mode": "resident",
+          "elapsedMs": 4215.0172,
+          "importMs": 56.75670000000002,
+          "resultSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 301170688,
+            "heapTotal": 98361344,
+            "heapUsed": 32830360,
+            "external": 154812018,
+            "arrayBuffers": 144884299
+          },
+          "memoryAfter": {
+            "rss": 355651584,
+            "heapTotal": 156889088,
+            "heapUsed": 71533120,
+            "external": 153109902,
+            "arrayBuffers": 150238639
+          },
+          "maxRSSKiB": 349784
+        }
+      ],
+      "referenceMedianMs": 6080.091100000001,
+      "residentMedianMs": 4215.0172,
+      "improvement": 0.30675097943844953,
+      "maxRSSRatio": 1.0804692439707344,
+      "parity": true,
+      "cpuSampleCount": 3996,
+      "cpuTop": [
+        [
+          "analyzer/math/FFT.js:transform",
+          2623
+        ],
+        [
+          "analyzer/FeatureExtractor.js:process",
+          332
+        ],
+        [
+          "analyzer/LowFrequencyExtractor.js:extractLowFrequencies",
+          164
+        ],
+        [
+          "analyzer/FeatureExtractor.js:getPerceptualBandBinOverlap",
+          149
+        ],
+        [
+          "analyzer/MusicActivity.js:observe",
+          102
+        ],
+        [
+          "analyzer/LowFrequencyExtractor.js:sample",
+          89
+        ],
+        [
+          "analyzer/FeatureExtractor.js:addPerceptualSpectrumBinEnergy",
+          72
+        ],
+        [
+          "analyzer/MusicActivity.js:concentrated",
+          55
+        ],
+        [
+          "analyzer/signalContract.js:validateAnalysisSamples",
+          43
+        ],
+        [
+          "analyzer/analyzeAudio.js:getTypicalBandLevel",
+          32
+        ],
+        [
+          "analyzer/MusicActivity.js:attack",
+          29
+        ],
+        [
+          "analyzer/SpectralCalibration.js:collectCalibrationWindowStarts",
+          27
+        ],
+        [
+          ":(garbage collector)",
+          22
+        ],
+        [
+          "analyzer/analyzeAudio.js:analyzeAudio",
+          20
+        ],
+        [
+          "analyzer/MusicActivity.js:powerAt",
+          16
+        ],
+        [
+          "analyzer/analyzeAudio.js:inversePerceptualCompensation",
+          15
+        ],
+        [
+          "analyzer/GridAligner.js:percentile",
+          14
+        ],
+        [
+          "analyzer/MusicActivity.js:observeEntry",
+          12
+        ],
+        [
+          "analyzer/SpectralCalibration.js:pickCandidateStarts",
+          10
+        ],
+        [
+          "analyzer/SpectralCalibration.js:",
+          9
+        ],
+        [
+          "analyzer/FeatureExtractor.js:getTypicalMax",
+          9
+        ],
+        [
+          "analyzer/MusicActivity.js:finish",
+          9
+        ],
+        [
+          "analyzer/MusicActivity.js:transform",
+          8
+        ],
+        [
+          "analyzer/BeatTracker.js:trackBeats",
+          7
+        ],
+        [
+          "analyzer/GridAligner.js:beatOnsetAlignment",
+          7
+        ],
+        [
+          "analyzer/GridAligner.js:buildOnsetEnvelope",
+          6
+        ],
+        [
+          "analyzer/analyzeAudio.js:buildPerceptualSpectrum",
+          6
+        ],
+        [
+          "analyzer/GridAligner.js:detectOnsetPeaks",
+          5
+        ],
+        [
+          "analyzer/TempoEstimator.js:scoreWindow",
+          5
+        ],
+        [
+          "analyzer/FeatureClassifier.js:classifyFrames",
+          5
+        ],
+        [
+          "analyzer/utils.js:clampUnit",
+          5
+        ],
+        [
+          "analyzer/DramaturgyBuilder.js:addSupplementalPercussivePeaks",
+          5
+        ],
+        [
+          "analyzer/MusicActivity.js:attackChanges",
+          5
+        ],
+        [
+          "analyzer/analyzeAudio.js:",
+          4
+        ],
+        [
+          "analyzer/FeatureNormalizer.js:normalizeArray",
+          4
+        ]
+      ],
+      "quest3": "not measured; no physical device available",
+      "rawProfilePath": "logs/t17/final-no-good.json.cpuprofile.json",
+      "rawProfileSha256": "c67898e776bf32a1596a1a97e7a1e3ed5e7e50e91ef0694b0c2753ee9ebc8102"
+    },
+    {
+      "name": "scienide",
+      "sourceHead": "50ecc0a178985a9fee768046d809ad7f3a026518",
+      "node": "v25.2.1",
+      "v8": "14.1.146.11-node.14",
+      "platform": "win32",
+      "arch": "x64",
+      "typescript": "6.0.3",
+      "protocol": "T17 scalar exact FFT / XR full path / three alternating paired trials / fresh processes",
+      "audioFile": "The_Prodigy_More_Music_For_The_Jilted_Generation_-_Scienide_(mp3.pm).mp3",
+      "audioSha256": "805a5c2038c8be448a33350c8d1f13e35c04998c1999008c511a535b8c307ddd",
+      "pcmSha256": "c5c3e8e1188bbfda27c568c2d9df59c79410b44651004bc97214be8922b98fac",
+      "durationSec": 350.45984126984126,
+      "sampleRate": 44100,
+      "runs": [
+        {
+          "trial": 0,
+          "mode": "reference",
+          "elapsedMs": 6983.8045999999995,
+          "importMs": 58.01990000000001,
+          "resultSha256": "79c1adf6dce53119dbafbcfdb42b0816aa1d3817e78834f26cda04fe99d57530",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 273440768,
+            "heapTotal": 88924160,
+            "heapUsed": 32849760,
+            "external": 132061002,
+            "arrayBuffers": 127974379
+          },
+          "memoryAfter": {
+            "rss": 291622912,
+            "heapTotal": 118390784,
+            "heapUsed": 73574840,
+            "external": 129389258,
+            "arrayBuffers": 126976747
+          },
+          "maxRSSKiB": 287708
+        },
+        {
+          "trial": 0,
+          "mode": "resident",
+          "elapsedMs": 3537.7553,
+          "importMs": 81.90370000000001,
+          "resultSha256": "79c1adf6dce53119dbafbcfdb42b0816aa1d3817e78834f26cda04fe99d57530",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 273907712,
+            "heapTotal": 87089152,
+            "heapUsed": 32861520,
+            "external": 131448102,
+            "arrayBuffers": 128896367
+          },
+          "memoryAfter": {
+            "rss": 294989824,
+            "heapTotal": 118390784,
+            "heapUsed": 80060880,
+            "external": 130313706,
+            "arrayBuffers": 127442443
+          },
+          "maxRSSKiB": 290068
+        },
+        {
+          "trial": 1,
+          "mode": "resident",
+          "elapsedMs": 3634.0537000000004,
+          "importMs": 66.5643,
+          "resultSha256": "79c1adf6dce53119dbafbcfdb42b0816aa1d3817e78834f26cda04fe99d57530",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 273592320,
+            "heapTotal": 93118464,
+            "heapUsed": 32863624,
+            "external": 130904718,
+            "arrayBuffers": 123669067
+          },
+          "memoryAfter": {
+            "rss": 289587200,
+            "heapTotal": 113700864,
+            "heapUsed": 78869728,
+            "external": 130313706,
+            "arrayBuffers": 127442443
+          },
+          "maxRSSKiB": 285284
+        },
+        {
+          "trial": 1,
+          "mode": "reference",
+          "elapsedMs": 5413.3706999999995,
+          "importMs": 64.84929999999997,
+          "resultSha256": "79c1adf6dce53119dbafbcfdb42b0816aa1d3817e78834f26cda04fe99d57530",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 273006592,
+            "heapTotal": 88137728,
+            "heapUsed": 32853192,
+            "external": 130661086,
+            "arrayBuffers": 128115567
+          },
+          "memoryAfter": {
+            "rss": 288751616,
+            "heapTotal": 115273728,
+            "heapUsed": 71250912,
+            "external": 129871338,
+            "arrayBuffers": 127458827
+          },
+          "maxRSSKiB": 284940
+        },
+        {
+          "trial": 2,
+          "mode": "reference",
+          "elapsedMs": 5555.8594,
+          "importMs": 50.42450000000002,
+          "resultSha256": "79c1adf6dce53119dbafbcfdb42b0816aa1d3817e78834f26cda04fe99d57530",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 264736768,
+            "heapTotal": 84729856,
+            "heapUsed": 32851440,
+            "external": 129393134,
+            "arrayBuffers": 126726871
+          },
+          "memoryAfter": {
+            "rss": 288518144,
+            "heapTotal": 115273728,
+            "heapUsed": 66949464,
+            "external": 129871338,
+            "arrayBuffers": 127458827
+          },
+          "maxRSSKiB": 284172
+        },
+        {
+          "trial": 2,
+          "mode": "resident",
+          "elapsedMs": 7010.478,
+          "importMs": 60.031600000000026,
+          "resultSha256": "79c1adf6dce53119dbafbcfdb42b0816aa1d3817e78834f26cda04fe99d57530",
+          "pcmUnchanged": true,
+          "memoryBefore": {
+            "rss": 267264000,
+            "heapTotal": 87351296,
+            "heapUsed": 32861656,
+            "external": 130783966,
+            "arrayBuffers": 123669067
+          },
+          "memoryAfter": {
+            "rss": 289550336,
+            "heapTotal": 115011584,
+            "heapUsed": 57854680,
+            "external": 130313706,
+            "arrayBuffers": 127442443
+          },
+          "maxRSSKiB": 285288
+        }
+      ],
+      "referenceMedianMs": 5555.8594,
+      "residentMedianMs": 3634.0537000000004,
+      "improvement": 0.34590610770315744,
+      "maxRSSRatio": 1.0082027611328153,
+      "parity": true,
+      "cpuSampleCount": 3615,
+      "cpuTop": [
+        [
+          "analyzer/math/FFT.js:transform",
+          2453
+        ],
+        [
+          "analyzer/FeatureExtractor.js:process",
+          317
+        ],
+        [
+          "analyzer/LowFrequencyExtractor.js:extractLowFrequencies",
+          144
+        ],
+        [
+          "analyzer/FeatureExtractor.js:getPerceptualBandBinOverlap",
+          128
+        ],
+        [
+          "analyzer/LowFrequencyExtractor.js:sample",
+          81
+        ],
+        [
+          "analyzer/MusicActivity.js:observe",
+          79
+        ],
+        [
+          "analyzer/FeatureExtractor.js:addPerceptualSpectrumBinEnergy",
+          73
+        ],
+        [
+          "analyzer/signalContract.js:validateAnalysisSamples",
+          40
+        ],
+        [
+          "analyzer/SpectralCalibration.js:collectCalibrationWindowStarts",
+          38
+        ],
+        [
+          "analyzer/MusicActivity.js:concentrated",
+          35
+        ],
+        [
+          "analyzer/analyzeAudio.js:getTypicalBandLevel",
+          24
+        ],
+        [
+          "analyzer/analyzeAudio.js:analyzeAudio",
+          22
+        ],
+        [
+          "analyzer/MusicActivity.js:attack",
+          15
+        ],
+        [
+          "analyzer/MusicActivity.js:powerAt",
+          14
+        ],
+        [
+          "analyzer/analyzeAudio.js:inversePerceptualCompensation",
+          12
+        ],
+        [
+          "analyzer/SpectralCalibration.js:pickCandidateStarts",
+          8
+        ],
+        [
+          ":(garbage collector)",
+          8
+        ],
+        [
+          "analyzer/NoveltyAnalyzer.js:compute",
+          7
+        ],
+        [
+          "analyzer/MusicActivity.js:attackChanges",
+          7
+        ],
+        [
+          "analyzer/SpectralCalibration.js:",
+          6
+        ],
+        [
+          "analyzer/FeatureExtractor.js:getTypicalMax",
+          5
+        ],
+        [
+          "analyzer/GridAligner.js:percentile",
+          5
+        ],
+        [
+          "analyzer/analyzeAudio.js:buildPerceptualSpectrum",
+          5
+        ],
+        [
+          "analyzer/SpectralCalibration.js:fftMagnitudeEnvelope",
+          4
+        ],
+        [
+          "analyzer/MusicActivity.js:observeEntry",
+          4
+        ],
+        [
+          "analyzer/GridAligner.js:detectOnsetPeaks",
+          4
+        ],
+        [
+          "analyzer/utils.js:clampUnit",
+          4
+        ],
+        [
+          "analyzer/DramaturgyBuilder.js:",
+          4
+        ],
+        [
+          "analyzer/MusicActivity.js:finish",
+          4
+        ],
+        [
+          "analyzer/MusicActivity.js:transform",
+          4
+        ],
+        [
+          "analyzer/GridAligner.js:calculate",
+          3
+        ],
+        [
+          "analyzer/TempoEstimator.js:scoreWindow",
+          3
+        ],
+        [
+          "analyzer/GridAligner.js:beatOnsetAlignment",
+          3
+        ],
+        [
+          "analyzer/analyzeAudio.js:getPerceptualBandCenterHz",
+          3
+        ],
+        [
+          "analyzer/analyzeAudio.js:",
+          3
+        ]
+      ],
+      "quest3": "not measured; no physical device available",
+      "rawProfilePath": "logs/t17/final-scienide.json.cpuprofile.json",
+      "rawProfileSha256": "a52b4fb9c10cad3b37ae96094151902e65ce4a888c5fb687f95181ee8d17f8fb"
+    }
+  ],
+  "browser": {
+    "kind": "T17 secondary desktop browser observation",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "hardwareConcurrency": 8,
+    "crossOriginIsolated": false,
+    "importMs": {
+      "reference": 382.10000002384186,
+      "resident": 398.5
+    },
+    "runs": [
+      {
+        "trial": 0,
+        "mode": "reference",
+        "elapsedMs": 6630.199999988079,
+        "resultSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908"
+      },
+      {
+        "trial": 0,
+        "mode": "resident",
+        "elapsedMs": 6344.899999976158,
+        "resultSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908"
+      },
+      {
+        "trial": 1,
+        "mode": "resident",
+        "elapsedMs": 6113.399999976158,
+        "resultSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908"
+      },
+      {
+        "trial": 1,
+        "mode": "reference",
+        "elapsedMs": 7902,
+        "resultSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908"
+      },
+      {
+        "trial": 2,
+        "mode": "reference",
+        "elapsedMs": 8575.899999976158,
+        "resultSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908"
+      },
+      {
+        "trial": 2,
+        "mode": "resident",
+        "elapsedMs": 5499.299999952316,
+        "resultSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908"
+      }
+    ],
+    "referenceMedianMs": 7902,
+    "residentMedianMs": 6113.399999976158,
+    "improvement": 0.22634776006376134,
+    "pcmSha256": "03219f20d927b28d68216a00cca105d85985292dc31eb91e0542cb352393f512",
+    "pcmUnchanged": true,
+    "parity": true,
+    "memory": {
+      "usedJSHeapSize": 154022015,
+      "totalJSHeapSize": 235546867
+    },
+    "limitations": "One desktop browser/recording, same page, no forced GC or process maxRSS; not the primary gate or a Quest measurement.",
+    "sourceReceiptSha256": "ab443a2f823a5988e1761ac42184a7d453e7e64f6ba8c4b2a555ff684abfeed8"
+  },
+  "desktopGatePassed": true,
+  "quest3": "not measured",
+  "download": "537 bytes raw / 357 gzip; no real WAN download timing",
+  "memoryScope": "Fresh Node-process high-water maxRSS includes compiler/import/warmup, not analyzer-only heap attribution; browser heap snapshot is not peak.",
+  "preliminary": "Development runs retained in ignored logs/t17/{goa,no-good,scienide}.json. One preliminary Goa maxRSS ratio was 1.110; final frozen serial rerun followed provenance-guard work and completed inventory I/O. No preliminary receipt was overwritten. The variation prevents a physical-device memory claim."
+}
