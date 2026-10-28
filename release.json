@@ -1,7 +1,7 @@
 {
-  "id": "t12d-percussive-source-20261028T165823112Z",
-  "previousCommit": "3d045f981f025b833635b158beba899173ae42f7",
-  "sourceCommit": "7d2e2b6b93782ab6fa7233a4493dfa3a3d0d2341",
+  "id": "t14-instrument-design-20261028T195535198Z",
+  "previousCommit": "68adcb9cf3b21f91612ffa9ea2a32946613c4273",
+  "sourceCommit": "690a38cdf9f4bb1eb5ba8586630e709b8be17a17",
   "inputs": [
     {
       "path": "bun.lock",
@@ -756,6 +756,10 @@
       "sha256": "b95c183c2caa35fdb6b33f14cd8976926b0f614162eee775ff606f9eb1c29a34"
     },
     {
+      "path": "src/presentation/InstrumentDesign.ts",
+      "sha256": "43ec3b0b649cdcab5eb82d3bfd5b6243fb9bb8d74345a2e0d807f2242d979592"
+    },
+    {
       "path": "src/semantics/ChoreographyEngine.ts",
       "sha256": "fcdbad15244685645d28b102b912dc48c74875465fce0449157f6efaedf90481"
     },
@@ -1381,11 +1385,11 @@
     },
     {
       "path": "src/xr/XrAppController.ts",
-      "sha256": "904d16ab9061010fdfb7662939e90d89f85fc5360bd0b6e7ce8483bdb270a629"
+      "sha256": "9a0525fcf012ebefbdaca6f0150287853b176e127fe2cb1fc7dfa31bd97decc0"
     },
     {
       "path": "src/xr/XrAppearanceSettings.ts",
-      "sha256": "5a81527582ee300d0495a1659ff6ba2d1a3cced6818ea342f629c7fc4d76bda1"
+      "sha256": "1a13f9fb495fdc93abd9a3d067253f2cc20727f1b44b044476f3d71a3763916f"
     },
     {
       "path": "src/xr/XrBackgroundSettings.ts",
@@ -1417,7 +1421,7 @@
     },
     {
       "path": "src/xr/XrSettings.ts",
-      "sha256": "fd980a14270ddccdaa3cf81f5ccd9b28ffd33f96eb5aaffe19b3f405c81fe619"
+      "sha256": "6a6156b50da4ff5052e96fcc150d1bc8de9b16bf6447a5291880f2082fcc5a21"
     },
     {
       "path": "src/xr/XrSettingsStore.ts",
@@ -1472,6 +1476,10 @@
       "sha256": "677fbd16c004f3f251fc5adcaa5ffda21dbe1dc3aa4875c5d8cd4e2a8e287104"
     },
     {
+      "path": "src/xr/scene/InstrumentDesignRenderer.ts",
+      "sha256": "026a2b520ec06b728f9fb901a5a1c2bc287c289aa3fdb5cdece51ba65865b91f"
+    },
+    {
       "path": "src/xr/scene/NativeWormholeCosmos.ts",
       "sha256": "5dc85678b7d0c2af6af9f87f59d1ccdcca971b13852049229981a97b167f8d69"
     },
@@ -1485,7 +1493,7 @@
     },
     {
       "path": "src/xr/scene/RhythmGameScene.ts",
-      "sha256": "c2c12d389d8f1da9422dbbe15a5d7fba9df25638aeb3d09ade0903813f64cfc3"
+      "sha256": "95b7dfed7507ea477ddc88c551348eed8f80d56d8ec51a27e4a35ddb25990859"
     },
     {
       "path": "src/xr/scene/RhythmNoteField.ts",
@@ -1505,7 +1513,7 @@
     },
     {
       "path": "src/xr/scene/XrCockpit.ts",
-      "sha256": "49c1b203c43beb70f0acc071728b0649d78b482124b6a0bd43854601242fb5ee"
+      "sha256": "dffee257eb682cf70c4b12071ca788a23e15fba8a9dd8fa39867a5235b8963fc"
     },
     {
       "path": "src/xr/scene/XrFrameSignal.ts",
@@ -1513,15 +1521,15 @@
     },
     {
       "path": "src/xr/scene/XrHud.ts",
-      "sha256": "5eeca760d5ac9dd6e55c21e44781c8d8a18317688165e5818d49eccb27107e22"
+      "sha256": "cb03850a4491f8e2b100eb7869c3dedbe5c196de788fbfe6883820d039ed2728"
     },
     {
       "path": "src/xr/scene/XrInstrumentStyle.ts",
-      "sha256": "35f82c57ee85cc5f977590bb451f09b14665fea877bc7428429017b704bfbfd1"
+      "sha256": "3640d88989ce7b89e94e9bfd28ca17c14ded5f63e3bfac4a81cbafe11b03fcf6"
     },
     {
       "path": "src/xr/scene/XrMenuPanel.ts",
-      "sha256": "7dcee6c2c4916c5d1c7b15ca1cb99bc5be6b05074446357e7292ced5dc4fddb2"
+      "sha256": "d412e9d69b7336d93f598fa256140ac36c713cee2ea47520a58adad5c70784a4"
     },
     {
       "path": "src/xr/scene/XrNativeWormhole.ts",
@@ -1533,7 +1541,7 @@
     },
     {
       "path": "src/xr/scene/XrProgressRing.ts",
-      "sha256": "6ea790fa8c72ea64d1e5ea4e0d15b2407840fec8c8cebc8dacbae01a0ee05206"
+      "sha256": "576b17fdfd3316ce22c4951bda7b64dcabb51826f9189a039c4467f93e3ddc9a"
     },
     {
       "path": "src/xr/scene/XrRunway.ts",
@@ -1545,11 +1553,11 @@
     },
     {
       "path": "src/xr/scene/XrSectionCallout.ts",
-      "sha256": "04701f11e01029e8ca397496f7dcb3ffc24f16c58b672c1b007020f0404bb79b"
+      "sha256": "e31fdde14992779e5e948aa09ce7739c8047810f9e06e03489e2ea57a5e68b12"
     },
     {
       "path": "src/xr/scene/XrSectionGates.ts",
-      "sha256": "71cffce6de734873a2a861017e28f38a10a7056c0f85d23758bb656272348512"
+      "sha256": "d99e0b871ad82b4a0d7d7058005e5f077ce9822dcc7a5e999a5de3340c8b6b49"
     },
     {
       "path": "src/xr/scene/XrSliceEffect.ts",
@@ -1557,7 +1565,7 @@
     },
     {
       "path": "src/xr/scene/XrSongMap.ts",
-      "sha256": "d47dcb6eec65db586f5cd07c3ee2949acee8d99348deae54a0a99428043065fd"
+      "sha256": "603cbd3bb696b1de38aa079498cf09c5856115a8ba35d1968276acf1880f6240"
     },
     {
       "path": "src/xr/scene/XrSpatialFlights.ts",
@@ -1581,7 +1589,7 @@
     },
     {
       "path": "src/xr/xr.css",
-      "sha256": "fea413ba70cd259c17f69979f7a21a6d09f93a1d62ad8803008735eb0448efdb"
+      "sha256": "45eb4e09df83e5936d504e09dd821b1b0492c2c81e501cc165c80a6f73ee4c71"
     },
     {
       "path": "tsconfig.json",
@@ -1654,12 +1662,12 @@
       "sha256": "4dc1b09df91e720347a9152a77a74dcd698cf4f6339b8d35976d4fef84861926"
     },
     {
-      "path": "assets/xr-B00zUbaN.css",
-      "sha256": "23a8828e3e93d5f4b04c1594b0146aecf33fb331d60004fd60e77c0cdc98b264"
+      "path": "assets/xr-Bb_odg6M.css",
+      "sha256": "e3bd00a1bee28d11285da166f19fc3f9ae0c501f9f3e08e067e13154a222ab58"
     },
     {
-      "path": "assets/xr-BfOqEeyd.js",
-      "sha256": "270a930970b82023f18b89ef6082518b520097f657eaae280cc93e156546a46f"
+      "path": "assets/xr-BQH5J_gE.js",
+      "sha256": "a2a1ae6782fe562b144e468132f303626bc99c6cf0df5c2a032f537ecd94142d"
     },
     {
       "path": "eso0932a.jpg",
@@ -1811,7 +1819,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "4d3c7fbd29dbbaf4e90a925131ea09055915cf9357a518f8d888f98e62c62a71"
+      "sha256": "2a39cb3b1a2f3c84f4679020a40f09c980e7b12a93bb2d5abb43e965de93d998"
     }
   ]
 }
