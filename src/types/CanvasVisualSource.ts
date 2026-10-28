@@ -19,8 +19,8 @@ export interface VisualAnalysisSnapshot {
  * intact and omit this growing evidence tree only at worker preparation, never per frame.
  */
 export function projectRenderWorkerAnalysis<T extends { trackAnalysis: TrackAnalysis }>(analysis: T): T {
-    if (!analysis.trackAnalysis?.musicActivity) return analysis;
-    const { musicActivity: _unused, ...trackAnalysis } = analysis.trackAnalysis;
+    if (!analysis.trackAnalysis?.musicActivity && !analysis.trackAnalysis?.rhythmOnsets) return analysis;
+    const { musicActivity: _unused, rhythmOnsets: _chartOnly, ...trackAnalysis } = analysis.trackAnalysis;
     return { ...analysis, trackAnalysis };
 }
 /**

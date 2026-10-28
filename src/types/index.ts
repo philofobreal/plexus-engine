@@ -1075,6 +1075,8 @@ export interface TrackStructureInterpretation {
 }
 
 export interface TrackAnalysis {
+    /** Optional chart-specific pool; no source identity, timing refinement or grid-only notes. */
+    rhythmOnsets?: import('./rhythmOnsets').RhythmOnsetPool;
     /** Derived by AudioEngine after normalization, not a new worker detector. */
     structureInterpretation?: TrackStructureInterpretation;
     /** Explicit experimental timing identity/provenance; no new accepted events. */
@@ -1199,6 +1201,7 @@ export interface AnalysisResult {
 }
 
 export interface AnalysisRequest {
+    rhythmOnsets?: boolean;
     eventTiming?: 'local-band-v1' | 'local-band-v2';
     requestId: number;
     algorithmVersion: number;

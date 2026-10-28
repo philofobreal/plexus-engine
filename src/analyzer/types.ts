@@ -1,6 +1,8 @@
 import type { AnalysisResult, AudioFrame, TempoCandidate, TrackAnalysis } from '../types';
 
 export interface AnalyzerOptions {
+    /** Additional chart pool under existing percussive gates; legacy visual events stay unchanged. */
+    rhythmOnsets?: boolean;
     algorithmVersion?: number;
     phraseSize?: number;
     requestId?: number;

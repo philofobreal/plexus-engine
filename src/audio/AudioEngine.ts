@@ -10,6 +10,8 @@ import { HeroMetronome } from './HeroMetronome';
 const EMPTY_FEATURES: VisualFeatureFrame = { melody: 0, vocal: 0, fx: 0, density: 0, brightness: 0, tension: 0 };
 
 export interface AudioEngineOptions {
+    /** XR prepares an additional percussive pool once; other hosts retain their exact default. */
+    readonly rhythmOnsets?: boolean;
     /** Host-owned opt-in, carried across the request-id-protected worker boundary. */
     readonly eventTiming?: 'local-band-v1' | 'local-band-v2';
     /** Omit to retain the dashboard's live State.loopPlayback preference. */
@@ -150,6 +152,7 @@ export class AudioEngine {
                 samples: analysisSamples.buffer,
                 sampleRate: State.sampleRate,
                 phraseSize: State.targetTuning.phraseSize,
+                ...(this.options.rhythmOnsets ? { rhythmOnsets: true } : {}),
                 ...(this.options.eventTiming ? { eventTiming: this.options.eventTiming } : {})
             }, [analysisSamples.buffer]);
 

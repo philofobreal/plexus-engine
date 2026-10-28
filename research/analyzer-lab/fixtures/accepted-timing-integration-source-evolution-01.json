@@ -22,9 +22,9 @@
     {
       "path": "src/types/CanvasVisualSource.ts",
       "predecessorSha256": "4ee966c35f677242e1d1245050e095f623e0119205e723a84e8234010305c2ff",
-      "replacementSha256": "166b137867629c225956602411fe0297e1caa53e927eb180165003b0860bfe5d",
-      "reviewedBy": "Single integration owner with independent read-only render-worker reviewer, T11f",
-      "reviewedReason": "Add pure preparation-only projection that omits unused musicActivity from four render-worker publications. Main analysis, cache reference keys, plan-only updates and main fallback retain original objects; frame messages and clocks unchanged. Four publication regressions cover real structured-clone omission, no extra preparations, exact branch and native fallback. Preserve original timing fixtures/source bytes, prior hashes and all superseded review reasons; no old timing result regenerated.",
+      "replacementSha256": "14bb362e8aafe930c5543ee6443835004b171670cdb018ff5a64e0854bf410be",
+      "reviewedBy": "Codex single integration owner, T12d source/contract review",
+      "reviewedReason": "Add an XR-requested percussive chart pool using the existing supplemental gates before visual proximity suppression; retain every legacy hit, default analyzer output and Classic source. Typed clock validation, worker request identity, profile regeneration and render-worker evidence omission are covered by new regressions. No historical timing fixture/result/source is rewritten. Prior registry and all superseded reviews retained at documents/tests/accepted-timing-source-evolution.pre-t12d.json. Full cumulative and exact three-recording legacy parity required before release.",
       "supersededReplacements": [
         {
           "sha256": "c8af1d8a1ed1c42c343f2a3067dbfff76abb12078f2cead750425105105589cb",
@@ -40,6 +40,11 @@
           "sha256": "da037164e767dacf653d1c206ba9549df318f93bab489bd2d9a9571d0e8b835e",
           "reviewedBy": "Codex single integration owner, T06e wall contract/source review",
           "reviewedReason": "Optional wall-only preset/manual presentation; no audio/analyzer clock, event publication, raster frame or exact lease layout change. Wall controls use existing event/preset/gain owners and renderer handoff. Preserve historical measurements/source, entire prior manifest and superseded reviews. Native spatial, worker lease/race, old defaults, preset/Off and full regression gates accompany this addition. Predecessor manifest: documents/tests/accepted-timing-source-evolution.pre-t06e.json"
+        },
+        {
+          "sha256": "166b137867629c225956602411fe0297e1caa53e927eb180165003b0860bfe5d",
+          "reviewedBy": "Single integration owner with independent read-only render-worker reviewer, T11f",
+          "reviewedReason": "Add pure preparation-only projection that omits unused musicActivity from four render-worker publications. Main analysis, cache reference keys, plan-only updates and main fallback retain original objects; frame messages and clocks unchanged. Four publication regressions cover real structured-clone omission, no extra preparations, exact branch and native fallback. Preserve original timing fixtures/source bytes, prior hashes and all superseded review reasons; no old timing result regenerated."
         }
       ]
     },
@@ -53,9 +58,9 @@
     {
       "path": "src/types/index.ts",
       "predecessorSha256": "cb8fc311a35415951019a814f1090806b1db53e78ee4fc9f3b8037944b4dbc32",
-      "replacementSha256": "a7613a21ba9cfceb97f0dd377d97ed16010a1d1207b04cf7b6da7bf887581d4e",
-      "reviewedBy": "Single integration owner with independent read-only runtime/gameplay contract reviews, T13d",
-      "reviewedReason": "Comment-only correction: canonical cue time can be a generated preset-base arrival; manual/locked/legacy start semantics retained. No type shape, DSP, event timestamp, worker or historical measurement change. Prior complete source/manifest in Git4bcb4946946e93e8df7c14b672f0baee36f6be85; all prior hashes/reasons retained.",
+      "replacementSha256": "f4e4d73c12aac582fcb67f1279553c949039ae4ec16910f08978d2c3b087a8a8",
+      "reviewedBy": "Codex single integration owner, T12d source/contract review",
+      "reviewedReason": "Add an XR-requested percussive chart pool using the existing supplemental gates before visual proximity suppression; retain every legacy hit, default analyzer output and Classic source. Typed clock validation, worker request identity, profile regeneration and render-worker evidence omission are covered by new regressions. No historical timing fixture/result/source is rewritten. Prior registry and all superseded reviews retained at documents/tests/accepted-timing-source-evolution.pre-t12d.json. Full cumulative and exact three-recording legacy parity required before release.",
       "supersededReplacements": [
         {
           "sha256": "02c041e8cef7a9ce2008023c74f6edc9265f1f7d69690a2af031785f1971893b",
@@ -81,6 +86,11 @@
           "sha256": "419df5b587a82301a6fa772bb38f68a790febd7324c0fb7d3042c217bcf6a41a",
           "reviewedBy": "Single integration owner with independent read-only automation/runtime reviews, T13b",
           "reviewedReason": "Add optional generated cue placement intent and indexed gate decisions. Raw analyzer7, timing DSP, accepted events and grid untouched; actual scene adapter emission branch now supplies role/causal scene span for normal production cue selection. All previous hashes/reasons retained; predecessor manifest/source in Git0471d12443642c9a11eb8645df74d12778f0b459. No historical measurement/golden rewrite."
+        },
+        {
+          "sha256": "a7613a21ba9cfceb97f0dd377d97ed16010a1d1207b04cf7b6da7bf887581d4e",
+          "reviewedBy": "Single integration owner with independent read-only runtime/gameplay contract reviews, T13d",
+          "reviewedReason": "Comment-only correction: canonical cue time can be a generated preset-base arrival; manual/locked/legacy start semantics retained. No type shape, DSP, event timestamp, worker or historical measurement change. Prior complete source/manifest in Git4bcb4946946e93e8df7c14b672f0baee36f6be85; all prior hashes/reasons retained."
         }
       ]
     },
@@ -101,28 +111,38 @@
     {
       "path": "src/analyzer/analyzeAudio.ts",
       "predecessorSha256": "ab59c383d3ae78bd19ad2148e780dd63b2cde6fcedc1ed6f87899d9c73acc042",
-      "replacementSha256": "97dbd60cc9e1fdac58a711600868f9cd1c0cc70a5fa5c335424934076ea1b288",
-      "reviewedBy": "Single integration owner with independent read-only analyzer audit",
-      "reviewedReason": "T11b additive acoustic activity evidence only. Optional read-only shared FFT observer; original feature arithmetic, accepted event timing/grid and chart inputs unchanged. DC/low-resolution abstention, support/censoring, held/repeated/legato/overlap/silence, real worker normalization, synthetic transfer and exact full-recording legacy parity checked. No historical measurement or source archive rewritten. Prior source commit 201bf5d8a72d37d6fe9798420825add9e60fab57; no new source-copy tree.",
+      "replacementSha256": "a5728e8e3fd70a6d9e5b415dd6e0c62d805ca0d0c09e8a2448583ae55985f35a",
+      "reviewedBy": "Codex single integration owner, T12d source/contract review",
+      "reviewedReason": "Add an XR-requested percussive chart pool using the existing supplemental gates before visual proximity suppression; retain every legacy hit, default analyzer output and Classic source. Typed clock validation, worker request identity, profile regeneration and render-worker evidence omission are covered by new regressions. No historical timing fixture/result/source is rewritten. Prior registry and all superseded reviews retained at documents/tests/accepted-timing-source-evolution.pre-t12d.json. Full cumulative and exact three-recording legacy parity required before release.",
       "supersededReplacements": [
         {
           "sha256": "085d4ce446695f33590696f490f61b0dad706c345174b772a9e6216b6e65daee",
           "reviewedBy": "Single integration owner",
           "reviewedReason": "Additive T11a accepted-event provenance layer only; no event time/intensity/type, DSP, chart, cache or default change. Functional legacy parity and cumulative regressions cover the addition. No copied source tree; existing measured predecessor retained."
+        },
+        {
+          "sha256": "97dbd60cc9e1fdac58a711600868f9cd1c0cc70a5fa5c335424934076ea1b288",
+          "reviewedBy": "Single integration owner with independent read-only analyzer audit",
+          "reviewedReason": "T11b additive acoustic activity evidence only. Optional read-only shared FFT observer; original feature arithmetic, accepted event timing/grid and chart inputs unchanged. DC/low-resolution abstention, support/censoring, held/repeated/legato/overlap/silence, real worker normalization, synthetic transfer and exact full-recording legacy parity checked. No historical measurement or source archive rewritten. Prior source commit 201bf5d8a72d37d6fe9798420825add9e60fab57; no new source-copy tree."
         }
       ]
     },
     {
       "path": "src/analyzer/normalizeAnalysisResult.ts",
       "predecessorSha256": "a1fe940ac9f6e907fba909d0e501ef77252ea56d281b5f709f0ac01a4ab0a94e",
-      "replacementSha256": "73bfd6f945fe6ed3cb0238b1decf2941a46769163dde2bce7cba03d29ff893d1",
-      "reviewedBy": "Single integration owner with independent read-only analyzer audit",
-      "reviewedReason": "T11b additive acoustic activity evidence only. Optional read-only shared FFT observer; original feature arithmetic, accepted event timing/grid and chart inputs unchanged. DC/low-resolution abstention, support/censoring, held/repeated/legato/overlap/silence, real worker normalization, synthetic transfer and exact full-recording legacy parity checked. No historical measurement or source archive rewritten. Prior source commit 201bf5d8a72d37d6fe9798420825add9e60fab57; no new source-copy tree.",
+      "replacementSha256": "f8bebf42dda09328a0725da0f12d1cc078322c2e119c378d15635a954ba249e0",
+      "reviewedBy": "Codex single integration owner, T12d source/contract review",
+      "reviewedReason": "Add an XR-requested percussive chart pool using the existing supplemental gates before visual proximity suppression; retain every legacy hit, default analyzer output and Classic source. Typed clock validation, worker request identity, profile regeneration and render-worker evidence omission are covered by new regressions. No historical timing fixture/result/source is rewritten. Prior registry and all superseded reviews retained at documents/tests/accepted-timing-source-evolution.pre-t12d.json. Full cumulative and exact three-recording legacy parity required before release.",
       "supersededReplacements": [
         {
           "sha256": "9c034c50af0285f4b24df3436d514e11a090d2cfb92a2f18340db671c7b3d7de",
           "reviewedBy": "Single integration owner",
           "reviewedReason": "Additive T11a accepted-event provenance layer only; no event time/intensity/type, DSP, chart, cache or default change. Functional legacy parity and cumulative regressions cover the addition. No copied source tree; existing measured predecessor retained."
+        },
+        {
+          "sha256": "73bfd6f945fe6ed3cb0238b1decf2941a46769163dde2bce7cba03d29ff893d1",
+          "reviewedBy": "Single integration owner with independent read-only analyzer audit",
+          "reviewedReason": "T11b additive acoustic activity evidence only. Optional read-only shared FFT observer; original feature arithmetic, accepted event timing/grid and chart inputs unchanged. DC/low-resolution abstention, support/censoring, held/repeated/legato/overlap/silence, real worker normalization, synthetic transfer and exact full-recording legacy parity checked. No historical measurement or source archive rewritten. Prior source commit 201bf5d8a72d37d6fe9798420825add9e60fab57; no new source-copy tree."
         }
       ]
     },
@@ -132,6 +152,20 @@
       "replacementSha256": "24f819a45ccb7e96724aa5f3337647aa0278455040dee486015d300aa136316a",
       "reviewedBy": "Single integration owner with independent read-only analyzer audit",
       "reviewedReason": "T11b additive acoustic activity evidence only. Optional read-only shared FFT observer; original feature arithmetic, accepted event timing/grid and chart inputs unchanged. DC/low-resolution abstention, support/censoring, held/repeated/legato/overlap/silence, real worker normalization, synthetic transfer and exact full-recording legacy parity checked. No historical measurement or source archive rewritten. Prior source commit 201bf5d8a72d37d6fe9798420825add9e60fab57; no new source-copy tree."
+    },
+    {
+      "path": "src/analyzer/DramaturgyBuilder.ts",
+      "predecessorSha256": "4149cf109dc6b5045801c04c8409d7a64433085a4c4eadf81c69c6ceb7cf4210",
+      "replacementSha256": "563660868e093d6e10e5d4ff6629657fba5501890e8d9f78e3eb4769e4d349f1",
+      "reviewedBy": "Codex single integration owner, T12d source/contract review",
+      "reviewedReason": "Add an XR-requested percussive chart pool using the existing supplemental gates before visual proximity suppression; retain every legacy hit, default analyzer output and Classic source. Typed clock validation, worker request identity, profile regeneration and render-worker evidence omission are covered by new regressions. No historical timing fixture/result/source is rewritten. Prior registry and all superseded reviews retained at documents/tests/accepted-timing-source-evolution.pre-t12d.json. Full cumulative and exact three-recording legacy parity required before release."
+    },
+    {
+      "path": "src/analyzer/types.ts",
+      "predecessorSha256": "cc9508fd388b6fd47cf11d7de59995e04468f0d3928e76bfa107a057d897a7eb",
+      "replacementSha256": "80013e3d89dafb4f0d675264dddd1a42763b20ab9a38b00f099eeb6ae3f99f9b",
+      "reviewedBy": "Codex single integration owner, T12d source/contract review",
+      "reviewedReason": "Add an XR-requested percussive chart pool using the existing supplemental gates before visual proximity suppression; retain every legacy hit, default analyzer output and Classic source. Typed clock validation, worker request identity, profile regeneration and render-worker evidence omission are covered by new regressions. No historical timing fixture/result/source is rewritten. Prior registry and all superseded reviews retained at documents/tests/accepted-timing-source-evolution.pre-t12d.json. Full cumulative and exact three-recording legacy parity required before release."
     }
   ]
 }

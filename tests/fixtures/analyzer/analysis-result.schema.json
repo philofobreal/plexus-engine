@@ -1098,6 +1098,9 @@
         },
         "musicActivity": {
           "$ref": "#/$defs/acousticActivity"
+        },
+        "rhythmOnsets": {
+          "$ref": "#/$defs/rhythmOnsetPool"
         }
       }
     },
@@ -2803,6 +2806,29 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "rhythmOnsetPool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "clock",
+        "events"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "percussive-pool-v1"
+        },
+        "clock": {
+          "$ref": "#/$defs/featureClock"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/beatEvent"
           }
         }
       }

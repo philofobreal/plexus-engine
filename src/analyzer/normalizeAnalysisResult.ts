@@ -8,6 +8,7 @@ import { normalizeAdaptiveOnsets } from '../types/adaptiveOnsets';
 import { normalizeResidualOnsets } from '../types/residualOnsets';
 import { normalizeDifferenceOnsets } from '../types/differenceOnsets';
 import { normalizeMusicEvents, normalizeAcousticActivity } from '../types/musicEvents';
+import { normalizeRhythmOnsets } from '../types/rhythmOnsets';
 
 /** Additive v4 frame fields: legacy absence and malformed numbers are silent, never inferred
  * from independently normalized display-spectrum bars. Preserve the worker-owned source. */
@@ -58,6 +59,7 @@ export function normalizeTrackAnalysis(trackAnalysis: TrackAnalysis, fallbackBpm
         ...EMPTY_TRACK_ANALYSIS,
         ...trackAnalysis,
         featureClock,
+        ...(trackAnalysis.rhythmOnsets !== undefined ? { rhythmOnsets: normalizeRhythmOnsets(trackAnalysis.rhythmOnsets, trackAnalysis.duration, featureClock, publishedEvents) } : {}),
         ...(trackAnalysis.musicEvents !== undefined ? { musicEvents: normalizeMusicEvents(trackAnalysis.musicEvents, featureClock, publishedEvents) } : {}),
         ...(trackAnalysis.musicActivity !== undefined ? { musicActivity: normalizeAcousticActivity(trackAnalysis.musicActivity, featureClock) } : {}),
         ...(trackAnalysis.eventTiming !== undefined ? { eventTiming: normalizeEventTiming(trackAnalysis.eventTiming, trackAnalysis.duration, featureClock, publishedEvents) } : {}),

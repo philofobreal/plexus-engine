@@ -29,6 +29,8 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     const requestId = options?.requestId ?? 0;
     validateAnalysisClock(sampleRate, hopSize);
     validateAnalysisSamples(channel);
+    if (options?.rhythmOnsets !== undefined && typeof options.rhythmOnsets !== 'boolean')
+        throw new Error('Rhythm onset option must be boolean');
     if (!Number.isSafeInteger(requestId) || requestId < 0) throw new Error('Analysis request id must be a nonnegative integer');
     const duration = channel.length / sampleRate;
     if (options?.eventTiming !== undefined && !['local-band-v1', 'local-band-v2'].includes(options.eventTiming))
@@ -184,6 +186,10 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
         timingConfidence: grid.timingConfidence
     };
     trackAnalysis.musicEvents = projectAcceptedMusicEvents(publishedEvents, trackAnalysis.featureClock!);
+    // Explicit experimental accepted-event retiming retains its own source and compatibility.
+    if (options?.rhythmOnsets && !refined) trackAnalysis.rhythmOnsets = {
+        algorithm: 'percussive-pool-v1', clock: { ...trackAnalysis.featureClock! }, events: cueBuilder.rhythmEvents()
+    };
     trackAnalysis.musicActivity = activity.finish();
 
     return {

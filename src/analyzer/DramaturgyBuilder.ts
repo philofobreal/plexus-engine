@@ -210,6 +210,24 @@ export class DramaturgyBuilder {
 
     private addSupplementalPercussivePeaks(percussiveFloor: number): void {
         const minGapSec = Math.max(0.06, Math.min(0.14, this.grid.secondsPerBeat * 0.25));
+        for (const event of this.supplementalPercussivePeaks(percussiveFloor)) {
+            if (this.events.some(existing => Math.abs(existing.time - event.time) < minGapSec)) continue;
+            this.events.push(event);
+        }
+        this.events.sort((a, b) => a.time - b.time);
+    }
+
+    /** Same accepted visual hits plus strong off-grid peaks; choreography owns physical spacing.
+     * No research-only acoustic/spectral-entry candidates are promoted by this projection.
+     */
+    public rhythmEvents(): BeatEvent[] {
+        const events = new Map(this.events.map(e => [e.time, { ...e }]));
+        for (const event of this.supplementalPercussivePeaks(this.adaptivePercussiveFloor()))
+            if (!events.has(event.time)) events.set(event.time, event);
+        return [...events.values()].sort((a, b) => a.time - b.time);
+    }
+
+    private *supplementalPercussivePeaks(percussiveFloor: number): Generator<BeatEvent> {
         const threshold = Math.max(0.22, percussiveFloor * 1.15);
         for (let i = 1; i < this.features.totalFrames - 1; i++) {
             const score = this.features.percussiveT[i] || 0;
@@ -218,11 +236,9 @@ export class DramaturgyBuilder {
             if (sustain >= 0.82 && score < Math.max(0.32, percussiveFloor * 1.65)) continue;
             if (this.isBasslineOnlyPeak(i)) continue;
             const time = i * this.hopSize / this.sampleRate;
-            if (this.events.some(event => Math.abs(event.time - time) < minGapSec)) continue;
             const type: 1 | 2 | 3 = mapToPublicType(classifyBeat(i, this.features));
-            this.events.push({ time, intensity: Math.min(1, Math.max(0.05, score)), type });
+            yield { time, intensity: Math.min(1, Math.max(0.05, score)), type };
         }
-        this.events.sort((a, b) => a.time - b.time);
     }
 
     private isBasslineOnlyPeak(frame: number): boolean {
