@@ -49,7 +49,7 @@ test('the /xr/ player defaults are the authored menu values (ADR-009 Addenda T, 
         wormhole: 'on', noteDesign: 'shard', noteHalos: 'off', spiralDirection: 'auto', quality: 'max', rateHz: '36', distanceMeters: '200', lineStroke: 30, sharpness: 100,
         intensity: 100, motion: 100, depth: 30, detail: 100,
         grainAmount: 30, grainDetail: 100, grainBloom: 100, grainWeave: 100, grainSpiral: 30, grainArms: 100, grainDensity: 100,
-        cosmosStars: 100, cosmosGalaxies: 0, cosmosSky: 0,
+        cosmosStars: 100, cosmosGalaxies: 0, cosmosSky: 0, musicDisplay: 'off', musicDisplaySize: 50, musicDisplayOpacity: 50,
         wallMode: 'off', wallMaterial: 'preset', wallAmount: 50, wallFringe: 50, wallCaustics: 50, wallWaves: 50, wallCracks: 50,
         materialRenderer: 'gpu', diagnostics: 'on', grainLines: 'gpu', backgroundPacing: 'adaptive', backgroundRaster: 'webgl', spatialField: 'particles'
     };

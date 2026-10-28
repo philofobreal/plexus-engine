@@ -1,6 +1,7 @@
 // Player-facing appearance of the targets (ADR-009 Addendum Q). Pure data: presentation only, the
 // chart, judging and score never depend on it.
 import { normalizeHudStyle, type HudStyle } from '../presentation/InstrumentDesign';
+import { normalizeMusicDisplay, isDefaultMusicDisplay, type MusicDisplaySettings } from '../types/MusicDisplay';
 
 /** Classic: chamfered block with an arrow glyph. Shard: a crystal whose shape points along the cut. */
 export type XrNoteDesign = 'classic' | 'shard';
@@ -10,6 +11,7 @@ export type XrCockpitMode = 'off' | 'reduced' | 'full';
 export type XrCockpitTitleMode = 'off' | 'static' | 'scroll';
 
 export interface XrAppearanceSettings {
+    readonly musicDisplay?: MusicDisplaySettings;
     /** Omitted in historical/current-look records; new styles remain version-1 compatible. */
     readonly hudStyle?: HudStyle;
     readonly noteDesign: XrNoteDesign;
@@ -32,7 +34,8 @@ export function normalizeAppearanceSettings(settings?: Partial<XrAppearanceSetti
     const design = settings?.noteDesign;
     const halos = settings?.noteHalos;
     const hudStyle = normalizeHudStyle(settings?.hudStyle);
-    return { ...(hudStyle !== 'classic' ? { hudStyle } : {}), noteDesign: design && XR_NOTE_DESIGNS.includes(design) ? design : DEFAULT_XR_APPEARANCE_SETTINGS.noteDesign,
+    const musicDisplay=normalizeMusicDisplay(settings?.musicDisplay);
+    return { ...(!isDefaultMusicDisplay(musicDisplay)?{musicDisplay}:{}), ...(hudStyle !== 'classic' ? { hudStyle } : {}), noteDesign: design && XR_NOTE_DESIGNS.includes(design) ? design : DEFAULT_XR_APPEARANCE_SETTINGS.noteDesign,
         noteHalos: halos && XR_NOTE_HALOS.includes(halos) ? halos : DEFAULT_XR_APPEARANCE_SETTINGS.noteHalos,
         spiralDirection: settings?.spiralDirection && XR_SPIRAL_DIRECTIONS.includes(settings.spiralDirection)
             ? settings.spiralDirection : DEFAULT_XR_APPEARANCE_SETTINGS.spiralDirection,

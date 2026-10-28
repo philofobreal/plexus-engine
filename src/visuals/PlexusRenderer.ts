@@ -1,4 +1,5 @@
 import p5 from 'p5';
+import type { MusicDisplaySettings } from '../types/MusicDisplay';
 import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
@@ -85,6 +86,7 @@ export interface PlexusRendererOptions {
         readonly maxBackingLongEdge: number;
         /** Device preference, independent of artistic tuning and presets. */
         readonly wormholeRenderer?: 'compatible' | 'webgl' | 'offscreen';
+        readonly musicDisplay?: MusicDisplaySettings;
     };
     /** Smaller material rasters for compact/mobile previews; exports retain their own budget. */
     compactMaterialPreview?: boolean;
@@ -126,6 +128,8 @@ export function startPlexusRenderer(
         let workerRaster: WormholeHostRasterSource | null = null;
         let workerUsed = false, activeRaster = 'compatible', workerNeedsMainSync = false;
         const drawIdentity: IdentityDraw = (identity, target, particles, shockwaves, context) => {
+            const musicDisplay=options?.previewQuality?.musicDisplay;
+            if(identity.id==='cosmic-wormhole') (identity as {setMusicDisplay?(s?:MusicDisplaySettings):void}).setMusicDisplay?.(musicDisplay);
             const mode = options?.previewQuality?.wormholeRenderer ?? 'compatible';
             if (mode === 'offscreen' && !State.isExporting && identity.id === 'cosmic-wormhole'
                 && target instanceof P5RendererBackend && options?.createWormholeWorker) {
@@ -133,7 +137,7 @@ export function startPlexusRenderer(
                 workerRaster ??= options.createWormholeWorker(() => { canvasRevision++; pausedPreview.invalidate(); });
                 workerUsed = true;
                 if (workerRaster.draw(State, target, (identity as { depthCueStrength?: number }).depthCueStrength ?? 0,
-                    State.videoBackplateActive, State.isPlaying)) {
+                    State.videoBackplateActive, State.isPlaying,musicDisplay)) {
                     activeRaster = workerRaster.rasterKind; workerNeedsMainSync = true; return;
                 }
             }
@@ -316,6 +320,7 @@ export function startPlexusRenderer(
                 pausedPreview.watch(State.videoDominantColor.b);
                 pausedPreview.watch(compactMaterialPreview());
                 pausedPreview.watch(options?.previewQuality?.wormholeRenderer);
+                pausedPreview.watch(options?.previewQuality?.musicDisplay);
                 pausedPreview.watch(semanticBridge.hasPlan());
                 for (const key of renderFeatureKeys) pausedPreview.watch(featureFlags[key]);
                 for (const key of visualTuningKeys) {

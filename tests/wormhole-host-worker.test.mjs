@@ -132,7 +132,7 @@ test('MVP menu defaults to Offscreen on a fresh device and saves/copies/reloads 
     const control=createPreviewQualityControl(false,true);
     assert.equal(control.preference.wormholeRenderer,'offscreen');
     const select=control.root.children[2].children[0];select.value='offscreen';select.listeners.change();
-    await control.root.children[4].listeners.click();
+    await control.root.children.find(e => e.textContent === 'Copy preview settings').listeners.click();
     assert.equal(payloads[0].wormholeRenderer,'offscreen');assert.equal(saved.get('plexus.wormholeRenderer'),'offscreen');
     assert.equal(createPreviewQualityControl(false,true).preference.wormholeRenderer,'offscreen');
     assert.equal(createPreviewQualityControl(false,false).preference.wormholeRenderer,'compatible','Studio never silently selects unavailable worker');

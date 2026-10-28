@@ -19,6 +19,8 @@ import { XrSliceEffect } from './XrSliceEffect';
 import { XrNoteHalos } from './XrNoteHalos';
 import type { XrNoteDesign, XrCockpitMode, XrCockpitTitleMode } from '../XrAppearanceSettings';
 import { XrCockpit } from './XrCockpit';
+import { XrMusicDisplay } from './XrMusicDisplay';
+import { DEFAULT_MUSIC_DISPLAY, normalizeMusicDisplay, type MusicDisplaySettings } from '../../types/MusicDisplay';
 import type { HudStyle } from '../../presentation/InstrumentDesign';
 import type { ScoreOverview } from './XrScoreOverview';
 import type { CanvasVisualPresentation, CanvasVisualSourceFactory, VisualAnalysisSnapshot } from '../../types/CanvasVisualSource';
@@ -54,6 +56,16 @@ export class RhythmGameScene {
     readonly sliceEffect: XrSliceEffect;
     readonly noteHalos = new XrNoteHalos();
     readonly cockpit = new XrCockpit();
+    private musicDisplaySettings:Readonly<MusicDisplaySettings>=DEFAULT_MUSIC_DISPLAY;
+    private musicDisplayConfigured=false;
+    private nativeMusicDisplay:XrMusicDisplay|null=null;
+    setMusicDisplay(value?:MusicDisplaySettings):void {
+        const next=normalizeMusicDisplay(value);
+        if(JSON.stringify(next)===JSON.stringify(this.musicDisplaySettings))return;
+        this.musicDisplayConfigured=true;this.musicDisplaySettings=next;
+        if(next.mode==='off'){this.nativeMusicDisplay?.dispose();this.nativeMusicDisplay=null;}
+        this.configureWormhole();
+    }
     /** Only accepted session results can start bursts; this object has no session reference. */
     readonly resolutionObserver: RhythmResolutionObserver = Object.freeze<RhythmResolutionObserver>({
         onRunReset: () => this.noteHalos.reset(),
@@ -178,6 +190,11 @@ export class RhythmGameScene {
         // The spatial state of the same displayed frame as the focus (null hides the field); its
         // time stamps the focus, so the path follows it smoothly between background frames.
         const spatial = this.wormhole?.spatialFrame ?? null;
+        if(this.nativeWormholeActive&&focus&&spatial&&this.musicDisplaySettings.mode==='spectrum'){
+            if(!this.nativeMusicDisplay){this.nativeMusicDisplay=new XrMusicDisplay();this.root.add(this.nativeMusicDisplay.mesh);}
+            const a=this.wormholeAnalysis;
+            this.nativeMusicDisplay.update(a?.frames??[],a?.sampleRate??0,a?.hopSize??0,spatial.time,focus,this.background.distanceMeters,this.eyeHeight,this.musicDisplaySettings);
+        }else if(this.nativeMusicDisplay)this.nativeMusicDisplay.mesh.visible=false;
         if (focus && spatial) {
             this.path.setFocus(this.focusX.sample(songTime, spatial.time, focus.x), this.focusY.sample(songTime, spatial.time, focus.y));
         } else {
@@ -439,6 +456,7 @@ export class RhythmGameScene {
         const divider = backgroundFrameDivider(this.displayHz, this.background.rateHz);
         // The source learns the effective rate (display cadence / divider), never above the request.
         this.wormhole?.configure({ lineStroke: this.background.lineStroke, maxFrameRateHz: this.displayHz / divider,
+            ...(this.musicDisplayConfigured?{musicDisplay:this.musicDisplaySettings}:{}),
             ...(forceSpiralDirection || this.spiralDirection !== 'auto' ? { spiralDirection: this.spiralDirection } : {}),
             ...(this.background.character ? { macros: this.background.character } : {}),
             ...(this.background.grain ? { grainMaterial: grainMaterialBoosts(this.background.grain) } : {}),
@@ -454,6 +472,7 @@ export class RhythmGameScene {
         if (this.disposed) return;
         this.disposed = true;
         this.cockpit.dispose();
+        this.nativeMusicDisplay?.dispose();
         this.noteHalos.dispose();
         this.wormhole?.dispose();
         this.noteField.dispose(); this.hud.dispose(); this.runway.dispose(); this.sectionCallout.dispose();

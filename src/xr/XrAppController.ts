@@ -261,6 +261,7 @@ export class XrAppController {
         this.enterVrButton = dom.enterVrButton;
         this.previewButton = dom.previewButton;
         this.applyHudStyle();
+        this.scene.setMusicDisplay?.(this.settings.appearance.musicDisplay);
         dom.onGameMenu = () => this.toggleGameMenu();
         // An off-thread background finishing a frame while paused needs one more desktop frame.
         this.scene.onBackgroundFrame = () => this.runtime.invalidate();
@@ -445,6 +446,7 @@ export class XrAppController {
 
     /** Presentation only: never touches the chart, plan, score or playback. */
     private applyPresentation(): void {
+        this.scene.setMusicDisplay?.(this.settings.appearance.musicDisplay);
         this.applyHudStyle();
         this.scene.setNoteDesign(this.settings.appearance.noteDesign);
         this.scene.setCockpitSettings?.(this.settings.appearance.cockpit, this.settings.appearance.cockpitTitle);

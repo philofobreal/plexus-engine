@@ -1,4 +1,5 @@
 import { PreviewQualityPreference } from '../config/previewQuality';
+import { DEFAULT_MUSIC_DISPLAY, isDefaultMusicDisplay, normalizeMusicDisplay, type MusicDisplaySettings } from '../types/MusicDisplay';
 import './previewQualityControl.css';
 
 const STORAGE_KEY = 'plexus.previewQuality';
@@ -12,6 +13,9 @@ export function createPreviewQualityControl(automaticCompact: boolean, offscreen
     const selectedRenderer = renderer === 'offscreen' && !offscreenAvailable ? 'compatible'
         : renderer ?? (offscreenAvailable ? 'offscreen' : 'compatible');
     const preference = new PreviewQualityPreference(automaticCompact, saved, selectedRenderer);
+    preference.setMusicDisplay(normalizeMusicDisplay());
+    const currentDisplay=()=>preference.musicDisplay??DEFAULT_MUSIC_DISPLAY;
+    try { preference.setMusicDisplay(normalizeMusicDisplay(JSON.parse(window.localStorage.getItem('plexus.musicDisplay')??'null'))); } catch { /* Safe defaults. */ }
     const root = document.createElement('div');
     root.className = 'preview-quality-control';
     const label = document.createElement('label');
@@ -55,7 +59,8 @@ export function createPreviewQualityControl(automaticCompact: boolean, offscreen
     copy.addEventListener('click', async () => {
         try {
             const payload = JSON.stringify({ version: 1, previewQuality: preference.mode,
-                wormholeRenderer: preference.wormholeRenderer }, null, 2);
+                wormholeRenderer: preference.wormholeRenderer,
+                ...(!isDefaultMusicDisplay(currentDisplay())?{musicDisplay:currentDisplay()}:{}) }, null, 2);
             // Keep the synchronous user gesture on browsers with restricted async clipboard access.
             // The dashboard uses the same textarea fallback for its existing Copy actions.
             const area = document.createElement('textarea');
@@ -72,7 +77,18 @@ export function createPreviewQualityControl(automaticCompact: boolean, offscreen
             copy.textContent = 'Copied preview settings';
         } catch { copy.textContent = 'Could not copy — try again'; }
     });
-    root.append(label, hint, rendererLabel, rendererHint, copy);
+    root.append(label, hint, rendererLabel, rendererHint);
+    const display=document.createElement('label');display.textContent='Music display';
+    const mode=document.createElement('select');mode.setAttribute('aria-label','Music display');
+    for(const [value,text]of [['off','Off'],['spectrum','Circular spectrum']]){const option=document.createElement('option');option.value=value;option.textContent=text;mode.append(option)}
+    mode.value=currentDisplay().mode;
+    const saveDisplay=(value:Partial<MusicDisplaySettings>)=>{preference.setMusicDisplay(normalizeMusicDisplay({...currentDisplay(),...value}));try{window.localStorage.setItem('plexus.musicDisplay',JSON.stringify(currentDisplay()))}catch{/* Session only. */}};
+    mode.addEventListener('change',()=>saveDisplay({mode:mode.value==='spectrum'?'spectrum':'off'}));display.append(mode);root.append(display);
+    for(const key of ['size','opacity']as const){const label=document.createElement('label');label.textContent=`Spectrum ${key}`;
+        const input=document.createElement('input');input.type='range';input.min='0';input.max='100';input.step='5';input.value=String(currentDisplay()[key]*100);input.setAttribute('aria-label',`Spectrum ${key}`);
+        input.addEventListener('input',()=>saveDisplay({[key]:Number(input.value)/100}));label.append(input);root.append(label);
+    }
+    const displayHint=document.createElement('p');displayHint.textContent='24 precomputed, track-relative bands (20 Hz–16 kHz). Open below the center; size and opacity preserve readability. Also used in export. Saved independently of presets.';root.append(displayHint,copy);
     return { root, preference, setMode(mode: 'auto' | 'reduced') {
         preference.setMode(mode);
         select.value = preference.mode;

@@ -1,3 +1,4 @@
+import type { MusicDisplaySettings } from '../types/MusicDisplay';
 export type PreviewQualityMode = 'auto' | 'reduced';
 export type WormholeRendererMode = 'compatible' | 'webgl' | 'offscreen';
 
@@ -6,6 +7,10 @@ export class PreviewQualityPreference {
     private readonly automaticCompact: boolean;
     private selectedMode: PreviewQualityMode;
     private renderer: WormholeRendererMode;
+    private display?: Readonly<MusicDisplaySettings>;
+    get musicDisplay(): Readonly<MusicDisplaySettings> | undefined { return this.display; }
+    /** The UI/storage owner supplies the normalized shared contract. */
+    setMusicDisplay(value: MusicDisplaySettings): void { this.display=value; }
 
     constructor(automaticCompact: boolean, savedMode: unknown = 'auto', renderer: unknown = 'compatible') {
         this.automaticCompact = automaticCompact;

@@ -16,6 +16,7 @@ import { DEFAULT_XR_BACKGROUND_SETTINGS, normalizeBackgroundSettings, type XrBac
 import { DEFAULT_XR_APPEARANCE_SETTINGS, normalizeAppearanceSettings, type XrAppearanceSettings } from './XrAppearanceSettings';
 import { DEFAULT_XR_PLAY_SETTINGS, normalizePlaySettings, resolvePlayProfile, type XrPlayProfile, type XrPlaySettings } from './XrPlayProfile';
 import { DEFAULT_XR_SYSTEM_SETTINGS, normalizeSystemSettings, type XrSystemSettings } from './XrSystemSettings';
+import { normalizeMusicDisplay } from '../types/MusicDisplay';
 
 export interface XrSettings {
     /** Note speed and saber length (session scope: the chart stays, the stage and judging change). */
@@ -127,6 +128,13 @@ function cosmosRange(field: keyof XrBackgroundSettings['cosmos'], label: string,
         write:(settings,value)=>({...settings,background:normalizeBackgroundSettings({...settings.background,
             cosmos:{...settings.background.cosmos,[field]:value/100}})})};
 }
+
+function musicDisplayRange(field:'size'|'opacity',label:string):XrRangeSetting {
+    return {id:`musicDisplay${field==='size'?'Size':'Opacity'}`,section:'cosmos',label,scope:'presentation',kind:'range',min:0,max:100,step:5,
+        hint:'Central informational display only; keeps the center and lower target corridor open. Saved independently of presets.',
+        read:s=>Math.round(normalizeMusicDisplay(s.appearance.musicDisplay)[field]*100),
+        write:(s,value)=>({...s,appearance:normalizeAppearanceSettings({...s.appearance,musicDisplay:{...normalizeMusicDisplay(s.appearance.musicDisplay),[field]:value/100}})})};
+}
 function grainRange(field: keyof XrGrainMaterial, label: string, hint: string): XrRangeSetting {
     return { id: `grain${field[0].toUpperCase()}${field.slice(1)}`, section: 'material', label, scope: 'presentation', kind: 'range',
         min: 0, max: 100, step: 1, hint: `${hint} 50 is neutral (the presets as authored).`,
@@ -234,6 +242,12 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
             { value: 'on', label: 'On', hint: 'The music-driven Wormhole behind the runway (the heaviest part of the frame).' }],
         read: settings => (settings.background.wormhole ? 'on' : 'off'),
         write: (settings, value) => ({ ...settings, background: normalizeBackgroundSettings({ ...settings.background, wormhole: value === 'on' }) }) },
+    { id:'musicDisplay',section:'cosmos',label:'Music display',scope:'presentation',kind:'choice',
+        choices:[{value:'off',label:'Off',hint:'Hide the spectrum; no additional display draw.'},
+            {value:'spectrum',label:'Spectrum',hint:'24 precomputed track-relative bands (20 Hz–16 kHz), with an open center and lower corridor.'}],
+        read:s=>normalizeMusicDisplay(s.appearance.musicDisplay).mode,
+        write:(s,value)=>({...s,appearance:normalizeAppearanceSettings({...s.appearance,musicDisplay:{...normalizeMusicDisplay(s.appearance.musicDisplay),mode:value==='spectrum'?'spectrum':'off'}})})},
+    musicDisplayRange('size','Spectrum size'),musicDisplayRange('opacity','Spectrum opacity'),
     { id: 'hudStyle', section: 'background', label: 'HUD design', scope: 'presentation', kind: 'choice',
         choices: [{ value: 'classic', label: 'Current', hint: 'Existing instrument frame' },
             { value: 'angular', label: 'Angular', hint: 'Cut corners and segmented lines' },
