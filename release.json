@@ -1,7 +1,7 @@
 {
-  "id": "t13g-scene-entry-20261028T153558653Z",
-  "previousCommit": "b6dc344035134ca66610282b18abb749e3ea7443",
-  "sourceCommit": "18c891574ec3501055d91934944fc45df985940c",
+  "id": "t12d-percussive-source-20261028T165823112Z",
+  "previousCommit": "3d045f981f025b833635b158beba899173ae42f7",
+  "sourceCommit": "7d2e2b6b93782ab6fa7233a4493dfa3a3d0d2341",
   "inputs": [
     {
       "path": "bun.lock",
@@ -241,7 +241,7 @@
     },
     {
       "path": "scripts/evaluate-movement.mjs",
-      "sha256": "4274bf507ac27376b088a26d69a18fbf3bb2567d332354d989692f2e61944471"
+      "sha256": "4f67412f9a0f76c7bab210e6af79503e33ef992e8788ed6647154ecef2fc75e5"
     },
     {
       "path": "scripts/finalize-cockpit-refinement.mjs",
@@ -361,7 +361,7 @@
     },
     {
       "path": "src/analyzer/DramaturgyBuilder.ts",
-      "sha256": "4149cf109dc6b5045801c04c8409d7a64433085a4c4eadf81c69c6ceb7cf4210"
+      "sha256": "563660868e093d6e10e5d4ff6629657fba5501890e8d9f78e3eb4769e4d349f1"
     },
     {
       "path": "src/analyzer/FeatureClassifier.ts",
@@ -449,7 +449,7 @@
     },
     {
       "path": "src/analyzer/analyzeAudio.ts",
-      "sha256": "97dbd60cc9e1fdac58a711600868f9cd1c0cc70a5fa5c335424934076ea1b288"
+      "sha256": "a5728e8e3fd70a6d9e5b415dd6e0c62d805ca0d0c09e8a2448583ae55985f35a"
     },
     {
       "path": "src/analyzer/constants.ts",
@@ -469,7 +469,7 @@
     },
     {
       "path": "src/analyzer/normalizeAnalysisResult.ts",
-      "sha256": "73bfd6f945fe6ed3cb0238b1decf2941a46769163dde2bce7cba03d29ff893d1"
+      "sha256": "f8bebf42dda09328a0725da0f12d1cc078322c2e119c378d15635a954ba249e0"
     },
     {
       "path": "src/analyzer/signalContract.ts",
@@ -477,7 +477,7 @@
     },
     {
       "path": "src/analyzer/types.ts",
-      "sha256": "de359b44e3aef69f7b2fe197250746c9645958a147261f89d057ff8fa8289509"
+      "sha256": "80013e3d89dafb4f0d675264dddd1a42763b20ab9a38b00f099eeb6ae3f99f9b"
     },
     {
       "path": "src/analyzer/utils.ts",
@@ -485,7 +485,7 @@
     },
     {
       "path": "src/audio/AudioEngine.ts",
-      "sha256": "ffdbb0acc5a998f9ff37a7d6ab3809c7927e1799d81b29613a304bbaaa39f740"
+      "sha256": "acdee07e797c0242b6234c36409149a23ba5faeb80a8be8f63c9cea757bb5e55"
     },
     {
       "path": "src/audio/HeroMetronome.ts",
@@ -493,7 +493,7 @@
     },
     {
       "path": "src/audio/analyzer.worker.ts",
-      "sha256": "fcac1abb61e0563ed21c54b5e8fe0d1dae60b83648bce8eb76a21223a6247a8c"
+      "sha256": "67a498bb9417f1072118a343e489fa634b3d16c2fd6bbc82346bf67687aab275"
     },
     {
       "path": "src/automation/AutomationTuningTimeline.ts",
@@ -669,15 +669,19 @@
     },
     {
       "path": "src/gameplay/RhythmChartBuilder.ts",
-      "sha256": "f7a4b595ee0407a36eab1d919741d29d491404aff498c079f10ae56cad791acc"
+      "sha256": "27de8a731ba51c892cc80518b736cc3c17ee15c3d15e22451fd409359e0b747b"
     },
     {
       "path": "src/gameplay/RhythmChartDiagnostics.ts",
-      "sha256": "5caf35f338646aaa14d2688144811645ff4fc45ac1ca4f69436d3bc4a7c6e8ad"
+      "sha256": "df8c3f708d40f95a2791c29243c14752c3b5b82d0859b38e49cac3fc12116ea7"
     },
     {
       "path": "src/gameplay/RhythmChoreography.ts",
       "sha256": "c4b739283ffa77a247e3819eeca85b53cb32299a12de5a07ddc61ca707840d2c"
+    },
+    {
+      "path": "src/gameplay/RhythmEventSource.ts",
+      "sha256": "3d2102fbbb786f2c36910ffb96948602ea5371f0935cd34cea3a9ccfdcdc687c"
     },
     {
       "path": "src/gameplay/RhythmGameConfig.ts",
@@ -705,7 +709,7 @@
     },
     {
       "path": "src/gameplay/RhythmLocalAttention.ts",
-      "sha256": "20a4072eb6f11308a61c146003a69fa7a9c27f38aabf982e7f89d6980bf32bd3"
+      "sha256": "c2a54ddfebd52a691187d88396ddb612ec26ee60dd44ab8843edae05ea486669"
     },
     {
       "path": "src/gameplay/RhythmMovement.ts",
@@ -729,7 +733,7 @@
     },
     {
       "path": "src/gameplay/RhythmScorePlanner.ts",
-      "sha256": "08ccdeab39e8dd115b2ad11abc265b0fec2b84916b5fb015990ea9f038508c1d"
+      "sha256": "48e78777b236d1f78cc2d0e5a8a30f3a5b0cc76a04fd8617e63259deb2c4973b"
     },
     {
       "path": "src/gameplay/RhythmScoring.ts",
@@ -841,7 +845,7 @@
     },
     {
       "path": "src/types/CanvasVisualSource.ts",
-      "sha256": "166b137867629c225956602411fe0297e1caa53e927eb180165003b0860bfe5d"
+      "sha256": "14bb362e8aafe930c5543ee6443835004b171670cdb018ff5a64e0854bf410be"
     },
     {
       "path": "src/types/GrainLineFrame.ts",
@@ -925,7 +929,7 @@
     },
     {
       "path": "src/types/index.ts",
-      "sha256": "a7613a21ba9cfceb97f0dd377d97ed16010a1d1207b04cf7b6da7bf887581d4e"
+      "sha256": "f4e4d73c12aac582fcb67f1279553c949039ae4ec16910f08978d2c3b087a8a8"
     },
     {
       "path": "src/types/musicEvents.ts",
@@ -950,6 +954,10 @@
     {
       "path": "src/types/residualOnsets.ts",
       "sha256": "b14d55abacd9a7cf35e330197647561f96bb6c0e056c6437bb001e3dbe013bc3"
+    },
+    {
+      "path": "src/types/rhythmOnsets.ts",
+      "sha256": "1a458df78ec737f1c992d8c0788c8d9d2f5547bf5ceab40b9ad86ee1347621a0"
     },
     {
       "path": "src/types/semantics.ts",
@@ -1373,7 +1381,7 @@
     },
     {
       "path": "src/xr/XrAppController.ts",
-      "sha256": "ba4cce4a2ebd4a95c90ba7f37a9a5bd6f31fa0b85d4acd05329de0182ae69694"
+      "sha256": "904d16ab9061010fdfb7662939e90d89f85fc5360bd0b6e7ce8483bdb270a629"
     },
     {
       "path": "src/xr/XrAppearanceSettings.ts",
@@ -1397,7 +1405,7 @@
     },
     {
       "path": "src/xr/XrMenuModel.ts",
-      "sha256": "26dd4e60f97b2ea6fc65259398a9b8eade6411771cec3af5215a78eceb05bc78"
+      "sha256": "95ab2241b3d37ffa59efc6c118fb3638d43dbe14388bb2532afec0a4c1afc3ca"
     },
     {
       "path": "src/xr/XrPlayProfile.ts",
@@ -1421,7 +1429,7 @@
     },
     {
       "path": "src/xr/main.ts",
-      "sha256": "b5cc09d7d0dc0bb88db06644f632dfda5aa0c46d06a741f29e0ac4655b35ea41"
+      "sha256": "966cf1c4b32fbdef5e5f381f6f3408c6ccf33bb114fb4ed31a04137d05ff7e9e"
     },
     {
       "path": "src/xr/runtime/GpuFrameTimer.ts",
@@ -1594,16 +1602,16 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "path": "assets/analyzer.worker-CKk3Bkpp.js",
-      "sha256": "eb5de8199ca4f3a44a8c3d64361515fa385bfd401a6b796853fd617300e65fb5"
+      "path": "assets/analyzer.worker-BYMKWe6D.js",
+      "sha256": "0346d6982f57eba8f04c23b993ff084b6e0b17cf7ab16c725c245c7967422e68"
     },
     {
-      "path": "assets/CanvasVisualSource-DoW_ERcf.js",
-      "sha256": "587921cb98a6f52cf6efcf973d14528aa863533dd2c26df6f10549cd083a892d"
+      "path": "assets/CanvasVisualSource-zxPjYFNZ.js",
+      "sha256": "0e1d81927041dacced52444a663ef76860c9f33f417693f69145b875abc47bd5"
     },
     {
-      "path": "assets/CosmicWormholeIdentity-CftGGFWH.js",
-      "sha256": "d2ab3041a25face2cda95df460d249e27a5467922bcb0467dbe8eb4c873d57e4"
+      "path": "assets/CosmicWormholeIdentity-FjrCRElH.js",
+      "sha256": "d58ab835462c3e416345b92dd5e13291c8f2a9e98530e1e13183f483f0ea3591"
     },
     {
       "path": "assets/export.worker-Av-E_fEl.js",
@@ -1614,24 +1622,24 @@
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
-      "path": "assets/main-DS8j6cqw.js",
-      "sha256": "09f633ce4a40bc94c9970ed29a3ac564d2b78059ff5d9e880ecc1f8059c47bda"
+      "path": "assets/main-DzT3RDR5.js",
+      "sha256": "5942392e2219cbbcb6f045fc93b8ed633d7238fb534f20bfbfef46c4dfdea785"
     },
     {
       "path": "assets/mvp-D0xy9ln6.css",
       "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
     },
     {
-      "path": "assets/mvp-DXsmhm6A.js",
-      "sha256": "f6d67ca6f22c0c105cbb8f96aaf8e34029cd4b9592466da06a2426039666fa36"
+      "path": "assets/mvp-D2LB3su9.js",
+      "sha256": "39a4f032e3d5f17e227476abfaaa8c721447184c3cc376df4c913e9c67816d9f"
     },
     {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
       "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
     },
     {
-      "path": "assets/PreviewQualityControl-DxySvLR7.js",
-      "sha256": "3fa8564e24576bc5144b7d377bdec8fbac1d9d0cf2ba2d2658adf2d972015e8c"
+      "path": "assets/PreviewQualityControl-FaPlT4j_.js",
+      "sha256": "f006530fba22b63fb0a1e326be7b8717cbe1fb0c20b5145b15cd58a12c7bd574"
     },
     {
       "path": "assets/wormholeHostRender.worker-C0AYhcyr.js",
@@ -1650,8 +1658,8 @@
       "sha256": "23a8828e3e93d5f4b04c1594b0146aecf33fb331d60004fd60e77c0cdc98b264"
     },
     {
-      "path": "assets/xr-RgEEAInT.js",
-      "sha256": "df0490569d2f2264d34d24b69d058465e2770f49a6efa3ebf3c5d08cb9a02908"
+      "path": "assets/xr-BfOqEeyd.js",
+      "sha256": "270a930970b82023f18b89ef6082518b520097f657eaae280cc93e156546a46f"
     },
     {
       "path": "eso0932a.jpg",
@@ -1667,11 +1675,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "444ded731afe8c7e61ab215079706efbb67deb4ce3b5c082baadf32428b722a4"
+      "sha256": "d3fa44d38e95477e4ddda95685f569a4e88d7c651af33fe6cffe8ec9c42e3174"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "06044584d730dd828142a9df3fa0c70fc9cb51e08b9f0af709184a050dbaa34f"
+      "sha256": "f3253686c0cb93422f92a47dfa6bd34f5bcada44665726de349785951f719561"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
@@ -1803,7 +1811,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "c8bb03b83417d620bd52dce2c246c6708abcb356685996383b542c1cb6770782"
+      "sha256": "4d3c7fbd29dbbaf4e90a925131ea09055915cf9357a518f8d888f98e62c62a71"
     }
   ]
 }
