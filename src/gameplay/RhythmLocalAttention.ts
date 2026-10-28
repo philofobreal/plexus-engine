@@ -19,6 +19,7 @@ export interface RhythmAttentionSummary {
     readonly fallbackReason?: 'missing-or-invalid-frame-evidence';
     readonly candidates: number; readonly selected: number; readonly windows: number;
     readonly bands: Readonly<Record<'low' | 'mid' | 'high' | 'mixed', number>>;
+    readonly budgetSource?: 'legacy-visual' | 'invalid-budget';
 }
 export interface RhythmAttentionWindow {
     start: number; end: number; texture: RhythmTexture;
@@ -81,8 +82,17 @@ function validEvidence(evidence: RhythmAttentionEvidence | undefined, events: re
 export function planRhythmAttention(candidates: readonly RhythmAttentionCandidate[], events: readonly BeatEvent[],
     duration: number, beatSec: number, bars: readonly number[], reliable: boolean,
     settings: RhythmGenerationSettings, minimumSpacing: number, difficultyScale: number,
-    evidence?: RhythmAttentionEvidence): RhythmAttentionPlan {
+    evidence?: RhythmAttentionEvidence, budgetEvents?: readonly BeatEvent[]): RhythmAttentionPlan {
     const measured = validEvidence(evidence, events, duration);
+    const byTime = budgetEvents ? new Map(events.map(e => [e.time, e])) : undefined;
+    const validBudget = budgetEvents?.every((e, i) => finite(e.time) && (i === 0 || e.time > budgetEvents[i - 1].time)
+        && byTime!.get(e.time)?.intensity === e.intensity && byTime!.get(e.time)?.type === e.type);
+    const budgetTimes = budgetEvents ? validBudget ? budgetEvents.map(e => e.time) : [] : undefined;
+    const lowerBound = (times: readonly number[], t: number) => {
+        let lo = 0, hi = times.length;
+        while (lo < hi) { const mid = (lo + hi) >>> 1; if (times[mid] < t) lo = mid + 1; else hi = mid; }
+        return lo;
+    };
     const selected = new Set<number>(), scores = new Array<number>(events.length).fill(0);
     const windows: RhythmAttentionWindow[] = [], bands = { low: 0, mid: 0, high: 0, mixed: 0 };
     const fraction = (settings.activity === 'active' ? .8 : settings.activity === 'macro' ? .5 : 2 / 3)
@@ -124,7 +134,10 @@ export function planRhythmAttention(candidates: readonly RhythmAttentionCandidat
         const texture: RhythmTexture = sparse && energy < .4 ? 'breath' : trend > .18 && members.length >= 4 ? 'build'
             : contrast > 1.45 ? 'impact' : regularity > .8 ? 'pulse' : primary === 1 || primary === 2 ? 'weave' : 'drive';
         const kind = texture === 'breath' ? 'calm' : texture === 'build' ? 'build' : texture === 'impact' ? 'peak' : 'drive';
-        const budget = Math.min(128, members.length <= 2 ? members.length : Math.max(1, Math.ceil(members.length * fraction)),
+        // The accepted choice set may grow without raising the player's existing density budget.
+        // A newly evidenced but previously empty window can contribute one physically spaced hit.
+        const budgetMembers = budgetTimes ? Math.max(1, lowerBound(budgetTimes, end) - lowerBound(budgetTimes, start)) : members.length;
+        const budget = Math.min(128, budgetMembers <= 2 ? budgetMembers : Math.max(1, Math.ceil(budgetMembers * fraction)),
             Math.max(1, Math.ceil((end - start) / minimumSpacing)));
         const choices = select(members, scores, budget, minimumSpacing);
         for (const i of choices) selected.add(i);
@@ -148,6 +161,7 @@ export function planRhythmAttention(candidates: readonly RhythmAttentionCandidat
         } else previous = c;
     }
     return { selected, scores, windows, summary: { version: 1, mode: measured ? 'frame-change' : 'events-only',
+        ...(budgetEvents ? { budgetSource: validBudget ? 'legacy-visual' as const : 'invalid-budget' as const } : {}),
         ...(!measured ? { fallbackReason: 'missing-or-invalid-frame-evidence' as const } : {}),
         candidates: candidates.length, selected: selected.size, windows: windows.length, bands } };
 }

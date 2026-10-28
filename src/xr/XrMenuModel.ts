@@ -429,7 +429,7 @@ export function diagnosticsReport(summary: string, settings: XrSettings, trackTi
     const placement = alignment ? `
 Automation: ${alignment.publishedPoints}/${alignment.proposedPoints} cue placements.
 ` +
-        `Cue times are morph starts, not target-arrival deadlines.
+        `Manual/legacy cue times are morph starts, not target-arrival deadlines; eligible automatic preset bases arrive at cues.
 Automation JSON: ${JSON.stringify(alignment)}
 ` : '';
     return `Plexus XR diagnostics

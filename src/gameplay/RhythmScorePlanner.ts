@@ -65,7 +65,9 @@ export function choreographRhythmChart(source: RhythmChartSource, config: Rhythm
     const localBeatSec = Math.max(.25, Math.min(1, intervals[Math.floor(intervals.length / 2)] ?? .5));
     const attention = musical ? planRhythmAttention(events, source.events, source.durationSec, localBeatSec,
         meter.filter((t, i) => t >= 0 && t < source.durationSec && (i === 0 || t > meter[i - 1])), reliable,
-        settings, Math.max(.01, minGlobal * Math.max(1, profile.densityScale)), demand.globalSpacingScale, source.attention) : undefined;
+        settings, Math.max(.01, minGlobal * Math.max(1, profile.densityScale)), demand.globalSpacingScale, source.attention,
+        source.attentionBudgetEvents?.filter(e => Number.isFinite(e.time) && e.time >= config.approachTimeSec && e.time <= source.durationSec
+            && Number.isFinite(e.intensity) && e.intensity >= config.intensityFloor)) : undefined;
     if (trace) trace.attention = attention?.summary;
     const phrases = planRhythmPhrases(events.map(e => e.event), points, source.durationSec, beats, source.timingConfidence ?? 0, settings, source.sections, attention);
     const accents = phrases.flatMap(p => p.pairTimes);

@@ -7,6 +7,7 @@ import { normalizeGenerationSettings, playSpaceConfig, type RhythmGenerationSett
 import { guardRhythmMovement, mirrorRhythmChart } from './RhythmMovement';
 import { RhythmChartTrace, type RhythmChartDiagnostics } from './RhythmChartDiagnostics';
 import type { RhythmAttentionEvidence } from './RhythmLocalAttention';
+import type { RhythmEventSourceInfo } from './RhythmEventSource';
 
 export interface RhythmChartSource {
     readonly events: readonly BeatEvent[];
@@ -25,6 +26,10 @@ export interface RhythmChartSource {
     readonly sections?: readonly Pick<TrackSection, 'start' | 'end' | 'label'>[];
     /** Compact original-frame change evidence, associated with these exact accepted events. */
     readonly attention?: RhythmAttentionEvidence;
+    /** Selected source-array identity; indices in notes/diagnostics never refer to another pool. */
+    readonly eventSource?: RhythmEventSourceInfo;
+    /** Optional legacy candidate budget; expanding the choice pool must not inflate Activity. */
+    readonly attentionBudgetEvents?: readonly BeatEvent[];
 }
 
 /**
@@ -41,7 +46,7 @@ export function buildRhythmChartWithDiagnostics(source: RhythmChartSource,
     config: RhythmGameConfig = DEFAULT_RHYTHM_GAME_CONFIG, settings?: Partial<RhythmGenerationSettings>): {
         chart: RhythmNote[]; diagnostics: RhythmChartDiagnostics;
     } {
-    const trace = new RhythmChartTrace(source.events);
+    const trace = new RhythmChartTrace(source.events, source.eventSource);
     const result = build(source, config, settings, trace);
     return { chart: result.chart, diagnostics: trace.finish(result.chart, result.revoicedNotes) };
 }

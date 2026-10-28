@@ -53,7 +53,8 @@ const hash = v => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 // --recording AUDIO OUTPUT_NEW.json | --source PREVIOUS.json.source.json OUTPUT_NEW.json
 // Optional --baseline COMMIT_SHA compares the retained movement model on the SAME chart source.
 if (['--recording', '--source'].includes(process.argv[2])) {
-    const [mode, input, output, baselineFlag, baselineRef] = process.argv.slice(2);
+    const poolMode = process.argv.includes('--percussive-pool');
+    const [mode, input, output, baselineFlag, baselineRef] = process.argv.slice(2).filter(a => a !== '--percussive-pool');
     if (baselineFlag && (!['--baseline', '--baseline-chart'].includes(baselineFlag) || !/^[a-f0-9]{7,40}$/.test(baselineRef ?? '')))
         throw Error('Expected --baseline COMMIT_SHA or --baseline-chart COMMIT_SHA');
     if (!input || !output || fs.existsSync(output) || mode === '--recording' && fs.existsSync(output + '.source.json'))
@@ -70,7 +71,8 @@ if (['--recording', '--source'].includes(process.argv[2])) {
         try {
             const result = await bundle.generate({ format: 'esm' });
             const { analyzeAudio } = await import('data:text/javascript;base64,' + Buffer.from(result.output[0].code).toString('base64'));
-            analysis = analyzeAudio({ samples: new Float32Array(pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.byteLength)), sampleRate: 44100 });
+            analysis = analyzeAudio({ samples: new Float32Array(pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.byteLength)), sampleRate: 44100,
+                ...(poolMode ? { options: { rhythmOnsets: true } } : {}) });
         } finally { await bundle.close(); }
         // Match all hosts: structure-v1 is derived after raw analyzer-v7 publication.
         const { interpretTrackStructure } = createLoader()('analyzer/TrackStructure.ts');
@@ -87,11 +89,28 @@ if (['--recording', '--source'].includes(process.argv[2])) {
                 barStarts: analysis.trackAnalysis.barStarts, timingConfidence: analysis.trackAnalysis.timingConfidence?.overall,
                 sections: analysis.trackAnalysis.sections, sectionStarts: analysis.trackAnalysis.sections.map(s => s.start), performancePlan,
                 attention: measureRhythmAttention(analysis.events, durationSec, analysis.frames, 44100, analysis.hopSize) } };
+        if (poolMode) {
+            const { rhythmOnsets, ...legacyAnalysis } = analysis.trackAnalysis;
+            if (!rhythmOnsets) throw Error('Requested percussive pool was not published');
+            capture.rhythmOnsets = rhythmOnsets;
+            capture.featureClock = analysis.trackAnalysis.featureClock;
+            capture.poolAttention = measureRhythmAttention(rhythmOnsets.events, durationSec, analysis.frames, 44100, analysis.hopSize);
+            capture.legacyAnalysisSha256 = hash(legacyAnalysis);
+            capture.poolImplementationHashes = ['src/analyzer/DramaturgyBuilder.ts', 'src/analyzer/analyzeAudio.ts', 'src/types/rhythmOnsets.ts',
+                'src/gameplay/RhythmEventSource.ts'].map(path => ({ path, sha256: createHash('sha256').update(fs.readFileSync(path)).digest('hex') }));
+        }
         fs.writeFileSync(output + '.source.json', JSON.stringify(capture), { flag: 'wx' });
     }
     if (!Number.isFinite(capture.source?.durationSec) || capture.source.durationSec <= 0 || !Array.isArray(capture.source.events))
         throw Error('Invalid capture duration/events; refuse a misleading empty-chart measurement');
     const load = createLoader(), { choreographRhythmChart } = load('gameplay/RhythmScorePlanner.ts');
+    if (poolMode) {
+        const selected = load('gameplay/RhythmEventSource.ts').selectRhythmEvents(capture.source.events, capture.source.durationSec,
+            'musical-v1', capture.rhythmOnsets, capture.featureClock);
+        if (selected.info.kind !== 'grid-independent-percussive') throw Error('Requested recording evaluation has no valid pool; no silent fallback');
+        capture = { ...capture, source: { ...capture.source, events: selected.events, eventSource: selected.info,
+            attentionBudgetEvents: capture.source.events, attention: capture.poolAttention } };
+    }
     const { DEFAULT_RHYTHM_GAME_CONFIG: config, normalizeGenerationSettings, playSpaceConfig, MOVEMENT_MODEL_VERSION } = load('gameplay/index.ts');
     const settings = normalizeGenerationSettings({ chartProfile: 'musical-v1', difficulty: 'ultra', activity: 'active', variation: 'expressive',
         handPattern: 'alternate', handLead: 'even', zones: 'cross', playSpace: 'tall', motionSafety: 'guarded' });

@@ -11,6 +11,7 @@ import type { AudioEngine } from '../audio/AudioEngine';
 import { buildRhythmChart, buildRhythmChartWithDiagnostics, buildRhythmMusicalRolePlan, rhythmCharacterSections, DEFAULT_RHYTHM_GAME_CONFIG, RhythmGameSession, scoreRank, type RhythmGameConfig, type RhythmNote, type RhythmRoleSection, type RhythmChartSource, type RhythmChartDiagnostics } from '../gameplay';
 import { State } from '../state/store';
 import { measureRhythmAttention } from '../gameplay/RhythmLocalAttention';
+import { selectRhythmEvents } from '../gameplay/RhythmEventSource';
 import { detectImmersiveVrSupport, type ImmersiveVrSupport } from './runtime/XrCapabilityDetector';
 import { XrInputAdapter, type ControllerHand } from './runtime/XrInputAdapter';
 import { applyConservativeFoveation, applyTargetFrameRate } from './runtime/XrPerformanceProfile';
@@ -70,12 +71,14 @@ function formatTime(seconds: number): string {
 
 const EMPTY_SAMPLES: readonly number[] = [];
 
-function chartSource(analysis: VisualAnalysisSnapshot): RhythmChartSource {
-    return { events: analysis.events, durationSec: analysis.duration, beats: analysis.trackAnalysis.beats,
+function chartSource(analysis: VisualAnalysisSnapshot, profile?: string): RhythmChartSource {
+    const selected = selectRhythmEvents(analysis.events, analysis.duration, profile, analysis.trackAnalysis.rhythmOnsets, analysis.trackAnalysis.featureClock);
+    return { events: selected.events, eventSource: selected.info, durationSec: analysis.duration, beats: analysis.trackAnalysis.beats,
+        ...(selected.info.kind === 'grid-independent-percussive' ? { attentionBudgetEvents: analysis.events } : {}),
         barStarts: analysis.trackAnalysis.barStarts, timingConfidence: analysis.trackAnalysis.timingConfidence?.overall,
         performancePlan: analysis.performancePlan, sectionStarts: analysis.trackAnalysis.sections.map(section => section.start),
         sections: analysis.trackAnalysis.sections,
-        attention: measureRhythmAttention(analysis.events, analysis.duration, analysis.frames, analysis.sampleRate, analysis.hopSize) };
+        attention: measureRhythmAttention(selected.events, analysis.duration, analysis.frames, analysis.sampleRate, analysis.hopSize) };
 }
 
 export class XrAppController {
@@ -328,7 +331,7 @@ export class XrAppController {
         // One offline plan, passed as plain data to both gameplay and the optional background.
         const analysis: VisualAnalysisSnapshot = { ...published, performancePlan: prepared.plan };
         // Detailed accounting is opt-in, through exactly the same pure chart pipeline.
-        const source = chartSource(analysis);
+        const source = chartSource(analysis, settings.chartProfile);
         const detailed = this.diagnostics ? buildRhythmChartWithDiagnostics(source, DEFAULT_RHYTHM_GAME_CONFIG, settings) : null;
         const chart = detailed?.chart ?? buildRhythmChart(source, DEFAULT_RHYTHM_GAME_CONFIG, settings);
         this.setChartDiagnostics(detailed?.diagnostics ?? null, prepared.plan.cueAlignmentReport);
@@ -493,7 +496,7 @@ export class XrAppController {
         this.clearChartDiagnostics();
         // Explicit UI transition only: reuse captured analysis/plan, never reset playback or DSP.
         if (this.diagnostics && !this.loading && this.published && this.preparedPlan) {
-            const result = buildRhythmChartWithDiagnostics(chartSource({ ...this.published, performancePlan: this.preparedPlan.plan }),
+            const result = buildRhythmChartWithDiagnostics(chartSource({ ...this.published, performancePlan: this.preparedPlan.plan }, this.settings.generation.chartProfile),
                 DEFAULT_RHYTHM_GAME_CONFIG, this.settings.generation);
             this.setChartDiagnostics(result.diagnostics);
         }
@@ -513,7 +516,8 @@ export class XrAppController {
         this.chartSummary = report ? `Chart: ${report.retainedEvents}/${report.sourceEvents} events - ${report.notes} notes (L${report.hands.left}/R${report.hands.right})` : '';
         this.chartDetails = report ? `${this.chartSummary}\nSkipped ${report.skippedEvents}; revoiced ${report.revoicedNotes} notes.\n` +
             Object.entries(report.rejected).map(([reason, count]) => `${reason}: ${count}`).join(' · ') : '';
-        if (report?.attention) this.chartDetails += `\nLocal attention: ${report.attention.mode}; ${report.attention.selected}/${report.attention.candidates} candidates before movement.`;
+        if (report?.attention) this.chartDetails += `\nLocal attention: ${report.attention.mode}; ${report.attention.selected}/${report.attention.candidates} candidates before movement${report.attention.budgetSource ? `; budget: ${report.attention.budgetSource}` : ''}.`;
+        if (report?.eventSource) this.chartDetails += `\nEvent source: ${report.eventSource.kind}; ${report.eventSource.addedEvents} additional measured peaks${report.eventSource.fallbackReason ? `; ${report.eventSource.fallbackReason}` : ''}.`;
         if (structure) {
             const form = `Structure: ${structure.changedSections}/${structure.decisions.length} labels updated from measured context`;
             this.chartSummary += ` - structure ${structure.changedSections}/${structure.decisions.length}`;
@@ -522,7 +526,7 @@ export class XrAppController {
         } else delete this.overlay.dataset.xrStructure;
         if (report && alignment) {
             this.chartDetails += `
-Automation: ${alignment.publishedPoints}/${alignment.proposedPoints} cue placements; times are morph starts.`;
+Automation: ${alignment.publishedPoints}/${alignment.proposedPoints} cue placements; automatic preset bases arrive at cues.`;
             this.overlay.dataset.xrAutomation = JSON.stringify({ proposed: alignment.proposedPoints, published: alignment.publishedPoints });
         } else delete this.overlay.dataset.xrAutomation;
         this.drawer.chartDiagnosticsEl.textContent = this.chartDetails;

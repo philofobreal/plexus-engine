@@ -3,6 +3,7 @@ import type { BeatEvent } from '../types';
 import type { RhythmNote } from './RhythmTypes';
 import type { MovementIssueCode, RhythmMovementIssue } from './RhythmMovement';
 import type { RhythmAttentionSummary } from './RhythmLocalAttention';
+import type { RhythmEventSourceInfo } from './RhythmEventSource';
 
 export type ChartRejectionReason = 'invalid-duration' | 'invalid-time' | 'before-approach' | 'after-duration'
     | 'invalid-intensity' | 'below-intensity-floor' | 'pair-preparation' | 'section-breath'
@@ -21,7 +22,8 @@ export interface RhythmChartDecision {
 }
 export interface RhythmChartDiagnostics {
     readonly version: 1;
-    readonly source: 'accepted-beat-events';
+    readonly source: 'accepted-beat-events' | 'grid-independent-percussive';
+    readonly eventSource?: RhythmEventSourceInfo;
     readonly sourceEvents: number;
     readonly retainedEvents: number;
     readonly skippedEvents: number;
@@ -40,7 +42,8 @@ export class RhythmChartTrace {
     private readonly decisions = new Map<number, RhythmChartDecision>();
     private readonly noteSources = new Map<string, number>();
     private readonly events: readonly BeatEvent[];
-    constructor(events: readonly BeatEvent[]) { this.events = events; }
+    private readonly eventSource?: RhythmEventSourceInfo;
+    constructor(events: readonly BeatEvent[], eventSource?: RhythmEventSourceInfo) { this.events = events; this.eventSource = eventSource; }
 
     reject(index: number, reason: ChartRejectionReason, spacing?: RhythmChartDecision['spacing']): void {
         this.record(index, reason, []);
@@ -86,7 +89,8 @@ export class RhythmChartTrace {
             else rejected[decision.outcome as ChartRejectionReason] = (rejected[decision.outcome as ChartRejectionReason] ?? 0) + 1;
             return { ...decision, noteIds, hands: noteIds.map(id => retained.get(id)!.hand) };
         });
-        return { version: 1, source: 'accepted-beat-events', ...(this.attention ? { attention: this.attention } : {}), sourceEvents: this.events.length, retainedEvents,
+        return { version: 1, source: this.eventSource?.kind === 'grid-independent-percussive' ? 'grid-independent-percussive' : 'accepted-beat-events',
+            ...(this.eventSource ? { eventSource: { ...this.eventSource } } : {}), ...(this.attention ? { attention: this.attention } : {}), sourceEvents: this.events.length, retainedEvents,
             skippedEvents: this.events.length - retainedEvents, notes: chart.length,
             hands: { left: chart.filter(n => n.hand === 'left').length, right: chart.filter(n => n.hand === 'right').length,
                 either: chart.filter(n => n.hand === 'either').length }, revoicedNotes, rejected, decisions };
