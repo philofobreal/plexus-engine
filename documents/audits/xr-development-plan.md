@@ -329,3 +329,14 @@ both protocol freezes, limitations and final receipts.
 Stop after commit/push/deploy for manual testing. Then continue the main plan, with T14's visible
 HUD work available independently of still-open source identity and macrostructure/meter accuracy.
 No automatic broad model rerun, extra experimental menu mode or unsupported precision claim.
+
+### Generic instrument presentation - T14 (2026-10-28)
+
+After the user's acceptance of T12d, deliver Angular and Orbital with a shared pure seeded
+generator and bounded static adapters. Current stays default and Off retains essential data.
+The existing Visuals menu, localStorage and Copy own this player preference. All important
+information, layout/hit areas, play-space anchors and timing semantics remain unchanged.
+See the [T14 checkpoint](xr-development-tracker.md#current-continuation-checkpoint---t14-generic-instrument-design-2026-10-28)
+for runtime coverage, render evidence and limits. Stop after commit/push/deploy for manual
+readability/selection checks. Only after acceptance continue T15's bounded presentation planner,
+using explicit existing data and retaining a generic fallback; do not infer new musical truth.

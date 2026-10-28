@@ -1825,3 +1825,36 @@ mutating the host snapshot/cache key; no extra per-frame work or packets. Dashbo
 the request flag and retain default analysis/Offscreen behavior. See the
 [T12d checkpoint](../audits/xr-development-tracker.md#current-continuation-checkpoint---t12d-percussive-note-source-2026-10-28)
 for complete recording/source parity, negative controls, limits and the manual gate.
+
+## Addendum BH - shared generic instrument presentation (T14, 2026-10-28)
+
+`src/presentation/InstrumentDesign.ts` owns deterministic seeded pixel-space geometry and tokens,
+independent of the renderer, audio and gameplay. Angular uses chamfered outlines and divided
+rhythm bars; Orbital uses broad rounded outlines, continuous corner arcs and circular floor
+markers. Explicit section names/colors and all essential score/combo/instructions retain their
+meaning. This is a generic visual vocabulary, not a music classifier or a second semantic engine.
+
+The existing Visuals menu adds HUD design: Current (default), Angular, Orbital, Off. It is a
+player presentation preference, saved/copied in the existing version-1 appearance record, not
+a per-track visual preset. Omission/unknown input keeps the exact historical default object.
+Off removes this decoration while retaining data, state/selection feedback and controls; the
+separate Cockpit preference still owns the metal shell and remains Off by default.
+
+The XR adapter consumes bounded static paths (at most 12/192 paths/vertices), caches at most 32
+descriptions, and uses the existing Canvas uploads/merged geometry/instancing. Gate corners are
+continuous indexed ribbons with bounded miters and a single two-sided pass. Style changes
+dispose replaced geometry. The optional cockpit title bezel reuses one lazily created mesh;
+the approved shell, filename atlas and scroll shader retain their implementation. The progress
+ring adds one static uniform inside its existing shader/envelope. No new render-time text,
+random/clock sampling, detector, plan, worker message, analysis or per-segment draw is introduced.
+
+HUD, game menu, callout, song-map caption, section gates, progress ring and title bezel consume
+the same vocabulary. Desktop drawer CSS consumes a static SVG from that description. Text
+fonts, semantic colors, layout rectangles, ray hit areas, Standard/Tall anchors and score data
+remain authoritative. The pure module is available to a future launcher without an XR import;
+T15 may later select bounded presentation variants from explicit published data.
+
+The [T14 checkpoint](../audits/xr-development-tracker.md#current-continuation-checkpoint---t14-generic-instrument-design-2026-10-28)
+records validation, historical test retention and the manual Quest/readability gate. Existing
+musical source identity, macrostructure/meter accuracy and physical-headset performance limits
+remain open; generic HUD styling does not resolve them.

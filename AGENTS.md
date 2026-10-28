@@ -68,6 +68,7 @@ repository-navigation aid before broad source exploration.
 - `src/visuals/` owns p5 rendering, particle lifecycle, shockwaves, and visual consumption of precomputed events.
 - `src/ui/` owns DOM binding, controls, dashboard projection, and user-facing state display.
 - `src/types/` owns shared contracts and must remain dependency-light.
+- `src/presentation/` owns pure seeded instrument geometry and visual tokens (ADR-009 Addendum BH). It must not import runtime/renderer, DOM, audio, analyzer, gameplay, automation or state modules, read clocks, perform I/O or infer music. Hosts adapt its static descriptions to their own renderers.
 - `src/automation/` owns offline performance-plan generation (legacy generator and the ADR-005 Visual OS pipeline), the cue-evidenced publication gate, plan editing/transfer helpers, and host-shared preset-merge/runtime helpers. It returns plans and never writes `State`; see [ADR-005](documents/adr/ADR-005-visual-os-style-system.md).
 - `src/config/` owns tuning-control metadata, feature flags, identity tuning ownership, and the shared macro/Advanced gain resolution used by the MVP and the XR Wormhole background. It holds pure helpers and constants, not runtime state.
 - `src/semantics/` owns the pure, offline, deterministic Visual Score DSL pipeline. It must follow [ADR-003](documents/adr/ADR-003-semantic-layer-boundary.md), must not import runtime state, DOM, p5, audio, UI, or visual modules, and may affect rendering only through the resolver-owned `State.targetTuning` channel.

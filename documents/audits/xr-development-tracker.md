@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-28 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T12d now gives Musical a wider percussive event choice before visual proximity suppression, with a separate legacy Activity budget. T13g scene-entry refinement remains delivered. The Classic source and legacy analysis stay exact; source/instrument identity, macrostructure and meter precision remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
+**T14 adds selectable Angular / Orbital instrument presentation with Current and Off fallbacks. T12d's accepted Musical percussive choice and T13g cue refinement remain intact; source/instrument identity, macrostructure and meter precision remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -60,7 +60,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T11 | Timed evidence and qualification | Stable T10 clock/evidence boundary | Closed for this phase by explicit user decision after T11i; limited signal/provenance capabilities only. Research retained, no classifier promoted. General tonal/vocal recognition and dominance deferred; further research is not a T12a prerequisite. [Scope](../features/music-events.md) |
 | T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09; supported T11 capabilities only | T12a-c delivered; T12d adds a percussive chart pool before visual suppression and separates choice from Activity density. Classic/Guarded/menu persistence remain; no research candidate or source/instrument recognition promotion |
 | T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a-e timing foundation and T13f two-family/full-three-song study delivered. T13g now refines estimated scene entries with bounded sustained multifeature evidence. Meter phase/macrostructure, human precision and perceptual geometry arrival remain unproven; next separate qualified note-source work |
-| T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
+| T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Delivered; manual acceptance pending |
 | T15 | Presentation planner + XR: track-specific HUD | T13-T14 | Planned |
 | T16 | Visuals + XR: optional central music display | T05, T14 tokens | Planned |
 | T17 | Analyzer + performance + build: measured WASM kernel feasibility | T01, fixed T10 reference | Planned; clarify tsrs when starting |
@@ -1569,3 +1569,67 @@ The superseded first full development run was explicitly stopped to free resourc
 and cancellation reason remain retained, and it is never counted as completed coverage. The
 complete final run includes every prior active test on the frozen corrected source. Source/push,
 three logical commits and guarded public artifact/route verification: logs/t12d/handoff.json.
+
+### Current continuation checkpoint - T14 generic instrument design (2026-10-28)
+
+The user accepted T12d and authorized the next main-plan task. T14 adds two generic instrument
+families: Angular (chamfered panels, divided rhythm bars) and Orbital (broad rounded panels,
+continuous corner arcs and circular floor marks). This is visible presentation work; no note
+source, chart, detector, cue boundary, musical label, judging or audio clock changes.
+
+**Try:** Settings > Visuals > HUD design > Angular / Orbital. Current remains the default; Off
+removes the added decoration but keeps score/combo/instructions, section information, selection
+feedback and all controls. The setting is saved/copied in the existing version-1 appearance
+record. Omitted/invalid values retain the historical default object. It is a player preference,
+not a Wormhole preset parameter. Cockpit and Wall remain Off by default; the separate Cockpit
+control still owns the approved metal shell and filename display.
+
+One pure shared seeded generator/tokens module feeds Canvas, static SVG and merged Three
+adapters: HUD/menu, song-map caption, callout, travelling section gates, progress ring and an
+optional title bezel. The future launcher may consume that pure module without XR dependencies.
+No extra tab, storage key, model or experimental player mode is introduced. All font/content
+anchors, menu rectangles/ray hit areas and Standard/Tall envelopes stay authoritative. Paths
+are bounded (12 paths/192 vertices), cached descriptions at most 32; unchanged values produce
+no canvas uploads. Gate ribbons use continuous miter joins and one two-sided pass; replacements
+are disposed. The title bezel reuses one lazy mesh, leaving the approved shell and scroll atlas
+unchanged. No segment meshes or new per-frame geometry/text generation.
+
+The new regression covers determinism/invalid input/bounds, persistence/Copy, exact HUD text
+anchors, unchanged menu controls, upload cadence, Standard/Tall ribbon envelopes, disposal,
+Off information retention, disabled/hover feedback, static ring uniforms, cockpit shell reuse
+and live controller switching without chart/replan/reload/rewind. The exhaustive authored-default
+map in the old settings test adds only hudStyle:classic. The Visuals test's exhaustive descriptor
+and default lists add only hudStyle/classic; every prior assertion/case remains and now also
+checks the new setting's presentation scope. Exact predecessors are retained as inert snapshots
+for [authored defaults](../tests/xr-settings.pre-t14.mjs.snapshot) and
+[Visuals scope](../tests/xr-background-settings.pre-t14.mjs.snapshot), with reviewed hashes in
+logs/t14/settings-review.json and background-settings-review.json. These snapshots are evidence,
+not executed coverage. All260 other predecessor test/helper/fixture identities remain unchanged.
+
+The reusable [browser probe](../../tests/browser/instrument-design-smoke.html) exercises real
+Canvas and GPU rendering, four styles and Standard/Tall frames. Desktop visual checks do not
+establish physical Quest readability, comfort or FPS; these remain the user's manual gate.
+The final local receipt logs/t14/handoff.json records exact validation, Graphify, source/push and
+guarded Pages artifact/route identities. Do not promote the previous musical evidence into
+instrument identity or macrostructure/meter truth. T12d/T13g limitations remain explicit.
+
+Validation: the complete1969-case Node run passed1959, with nine exact predecessor failures
+(names AND messages) plus one obsolete exhaustive Visuals-list expectation. After reviewing
+only that test's two literal lists, complete replay of all three affected settings/design files
+passed41/41. The reconciled cumulative matrix is1960 pass/9 unchanged baseline failures, zero
+skipped/cancelled; it is not represented as a second full run. All runtime and other test-source
+hashes remain frozen. New design tests11/11, Python341/341, tsc/Vite/diff pass; no package install.
+System Python lacked pytest, so the existing analyzer-lab Python3.11 environment was used.
+Current205 active Node files/264 identities preserve260 unaffected sources exactly and the two
+reviewed list extensions with exact inert predecessors. Graphify full code-only917 files/8662
+nodes/20960 raw/18408 canonical edges, dangling0; no LLM/hooks/semantic rebuild.
+
+The initial real Chrome Canvas/GPU probe passed all four styles and Standard/Tall render cases;
+HUD/menu screenshots were inspected. Subsequent menu-corner/selection and single-pass ribbon
+refinements passed final geometry/lifecycle/cadence/controller tests and production compilation.
+The final browser rerun timed out/disconnected, so it is not claimed as another completed GPU
+smoke. The retained probe and manual Quest gate make that remaining visual/device check explicit.
+
+**Stop after commit/push/deploy for manual testing. Next, only after acceptance: T15**, a bounded
+presentation planner consuming explicit existing published data, with stable gameplay anchors
+and these generic fallbacks. Do not start another broad musical-model study automatically.

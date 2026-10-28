@@ -40,6 +40,7 @@ The app is a Vite TypeScript project with explicit runtime layers:
 
 - Composition: `src/main.ts` (dashboard), `src/ui/mvp/main.ts` (MVP; explicit entrypoint exception to UI import restrictions, [ADR-008](../adr/ADR-008-mvp-host-and-shared-renderer.md)), and `src/xr/main.ts` (WebXR rhythm-game host, a third independent runtime, [ADR-009](../adr/ADR-009-xr-rhythm-game-host.md))
 - Renderer-independent XR rhythm-game domain: `src/gameplay/`
+- Shared renderer-independent instrument design: `src/presentation/` (T14, ADR-009 Addendum BH)
 - Three.js/WebXR runtime, scene, and input: `src/xr/`
 - Audio playback and analysis orchestration: `src/audio/`
 - Offline analyzer core: `src/analyzer/`
@@ -97,6 +98,13 @@ Allowed dependency directions:
 - `src/types/` must not import app runtime modules.
 
 Forbidden dependency directions:
+
+T14 presentation boundary: `src/presentation/` owns pure seeded instrument geometry and visual
+tokens only. It must not import Three.js, DOM, audio, analyzer, gameplay, automation, state or
+renderer modules, perform I/O, read clocks or infer music. `src/xr/` may import that module for
+static Canvas/SVG/Three adapters; this narrow addition does not expand any other XR import
+exception. Future launcher composition may reuse the same pure vocabulary without importing XR.
+Chart, score, cue semantics, playback time and physical input anchors keep their existing owners.
 
 - Analyzer core to Worker APIs, DOM, p5, UI, renderer, audio engine, or shared mutable state.
 - Worker adapter to DOM, p5, UI, renderer, audio engine, shared mutable state, or duplicated analyzer logic.
