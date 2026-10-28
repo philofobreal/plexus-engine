@@ -1,8 +1,8 @@
 # Plexus XR development tracker
 
-Started: 2026-10-23; current checkpoint: 2026-10-27 (Europe/Budapest). Integration owner: the agent in this chat.
+Started: 2026-10-23; current checkpoint: 2026-10-28 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T13e runtime timing and T12c/1 local Musical event selection are delivered. T12c/2 checks transfer on three recordings; the mixed self-feature evidence does not justify runtime recalibration. The separate external full-song structural-model study requires explicit continuation. This is no annotated musical-accuracy promotion.** Existing MVP/XR Offscreen rendering stays intact.
+**T13e timing and T12c local event selection are delivered. The separately authorized T13f now completes actual full-song All-In-One/SongFormer research on all three recordings. It identifies meter/structure/cue limitations, repairs research execution and does not promote oracle labels or retune the game. Next work is an original bounded structure/cue correction, not another open-ended model study.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -58,8 +58,8 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T09 | Gameplay + input/render: playable hand policy and motion | T08 | Accepted by user; Guarded optional, Legacy default. [Evidence](xr-movement-validation.md) |
 | T10 | Analyzer timing cleanup | T00-T01 | Rejected experiments removed at user request; established XR path and equivalent Band search retained. Accuracy beyond available evidence remains unproven. [Record](xr-timing-cleanup.md) |
 | T11 | Timed evidence and qualification | Stable T10 clock/evidence boundary | Closed for this phase by explicit user decision after T11i; limited signal/provenance capabilities only. Research retained, no classifier promoted. General tonal/vocal recognition and dominance deferred; further research is not a T12a prerequisite. [Scope](../features/music-events.md) |
-| T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09; supported T11 capabilities only | T12a opt-in Musical: section-led motifs/density/layout from accepted BeatEvents, mandatory Guarded movement, Classic fallback; larger shared menu, localStorage/Copy. T12a1 hand recovery accepted; T12b rejection accounting added. General source fusion remains deferred, physical acceptance manual. Current checkpoint below |
-| T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a/b/c/d accepted; T13e existing semantic pre-roll sampling and single render projection implemented, manual handoff below. Phase timing foundation bounded here; human precision and perceptual geometry arrival remain unproven. Next T12 local attention |
+| T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09; supported T11 capabilities only | T12a/T12b accepted; T12c local Musical attention and bounded three-recording transfer delivered. Classic/Guarded/menu persistence remain. T13f supplies external structural-reference context; qualified acoustic note-source selection remains separate, no source/instrument recognition promotion |
+| T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a-e bounded timing foundation delivered; T13f actual two-family/full-three-song study and research bridge repair complete. Meter/macrostructure/cue limitations are documented. Next original structure/ownership correction; human precision and perceptual geometry arrival remain unproven |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Planned |
 | T15 | Presentation planner + XR: track-specific HUD | T13-T14 | Planned |
 | T16 | Visuals + XR: optional central music display | T05, T14 tokens | Planned |
@@ -1325,3 +1325,92 @@ byte identities retained. Graphify code-only full905 files/8551 nodes,
 20666 raw/18150 canonical edges, 0 canonical dangling endpoints; raw retained, no LLM/hooks.
 Public release/source/artifact identity and final handoff: logs/t12c2/handoff.json.
 STOP and ask before separately preparing the full-song structural-model study.
+
+## Current continuation checkpoint - T13f full-song structure study (2026-10-28)
+
+The user explicitly authorized ALL subtasks of the separate full-song model study without the
+old between-subtask pause. Preparation, local inference, comparison, review/repairs, evidence,
+versioning and guarded publication belong to this delivery. Stop after its final handoff; do not
+continue into the next implementation automatically. This is not another T12c/3 calibration loop.
+Owner: integration, research tools/tests and documentation. No production src, DTO/cache version,
+worker, playback clock, preset, menu/localStorage setting or renderer change.
+
+Actual external inference is complete: All-In-One harmonix-all (all eight checkpoints, one family
+vote) and the official integrated SongFormer checkpoint, each on the complete No Good, GoA and
+Scienide recordings. No audio upload, new training or model source/weights enter the product.
+All six decoded PCM identities exactly match the retained Plexus captures. SongFormer loads with
+zero missing/unexpected/mismatched parameters. The isolated CPU environment, model/source hashes,
+rights limitations, exact reproduction and all data are described in the
+[study](../../research/analyzer-lab/docs/FULL-SONG-STRUCTURE-STUDY.md).
+
+| Recording | Plexus / All-In-One / SongFormer sections | Shared external boundaries / label-changing subset | Plexus internal boundary matches at 0.5 / 1 / 3 seconds |
+| --- | --- | --- | --- |
+| No Good | 36 / 27 / 29 | 21 / 4 | 0 / 12 / 18 (35 Plexus boundaries) |
+| GoA | 32 / 22 / 25 | 15 / 3 | 5 / 5 / 6 (31 Plexus boundaries) |
+| Scienide | 30 / 27 / 27 | 23 / 2 | 13 / 19 / 23 (29 Plexus boundaries) |
+
+These are one-to-one prediction agreements, not accuracy. Function-changing means each external
+classifier changes its label there, not that both agree on the same named function. Both raw and
+label-changing references are retained; no chorus-to-drop mapping. Training-set overlap is
+unverified, the models share some postprocessing ancestry, and the unannotated three-song cohort
+is not a held-out generalization claim. Most time has no directly comparable label spelling;
+Plexus verse is also a continuing-body/ambiguous-role fallback, not a learned vocal-verse class.
+
+The pulse grid must not be conflated with meter phase or cue choice. At 70 ms, Plexus vs All-In-One
+beat-grid agreement F1 is 0.97069 / 0.84337 / 0.81888. No Good downbeat matching is 0 of 243/244
+at BOTH 150 and 500 ms despite strong beat agreement; first boundaries 1.0449 vs 0.21 seconds
+show a roughly half-bar phase difference relative to that model. This is not evidence of an
+AudioContext/playback-clock drift. Quiet-span grid extrapolation and unsupported SongFormer
+beat/downbeat output remain distinct from false detections (SongFormer capability is null).
+
+Actual published automation was also checked, rather than scoring only raw sections. The
+36 / 32 / 30 proposed scene entries become 15 / 17 / 16 published entries (21 / 15 / 14 omitted).
+The paired timing cohort excludes the initial state and contains the SAME surviving 14 / 16 / 15
+points before and after cue anchoring; internal evolution cues are not macrosection targets.
+Against shared raw boundaries, planned -> published matches at 0.5 seconds are 0->4 / 3->3 /
+10->2; at 1 second 4->4 / 3->3 / 14->11; at 3 seconds 7->8 / 3->3 / 14->14. Thus T13b's local
+anchoring is not a universal improvement on these references. Small moves can cross a tolerance
+edge; these counts do not justify an automatic rollback. Against the smaller shared function-
+changing subset, published matches at 1 second are only 1/4 / 1/3 / 1/2. Neither subset is truth.
+
+Source review explains an asymmetry worth addressing in the NEXT original implementation:
+alignAutomationToCues bounds accepted evidence by cuePlacement.start. A scene-entry proposal
+starts exactly there, so it can move later but cannot correct an early candidate lying before
+that approximate scene boundary. All surviving scene-entry shifts here are forward; median
+0.627 / 0.302 / 0.139 seconds. This intentional ownership guard must not simply be deleted or
+replaced with a hardcoded track offset. The next design needs to distinguish uncertain measured
+scene boundaries from protected cue ownership, and evaluate meter phase plus multifeature/
+recurrence support. Preserve deterministic clocks and manual/locked-point protection.
+
+Repairs delivered here: the existing research bridge now admits the analyzer's legitimate
+shared-types runtime constants while rejecting other subsystems/external imports. This fixes
+real Python integration failures. The provider recheck's 260-character Windows temp-path issue
+was resolved with a shorter test path; the existing lab was registered with --no-deps. No old
+test was weakened. The new runner fails closed on nonfinite PCM and SongFormer input outside
+its validated complete 1..420-second window. It never truncates a longer song. The pure observer
+and plotter retain immutable results, input/source hashes, distinct family votes, missing support,
+raw terminal quantization, actual planned/published cue cohorts and both reference resolutions.
+
+Decision: close this full model-study task with NO production threshold/label/tempo retuning.
+The original source still needs bounded structure/meter/cue work; T12c's local note attention
+also does not identify drums, vocals or a dominant musical source. The next implementation should
+address that structure/ownership defect first, then note-source selection using qualified existing
+capabilities; do not reopen unbounded T11 research or silently advance T14 as if music precision
+were solved. No per-song timestamps, ML weights, new experimental menu buttons or default changes.
+Expected game behavior remains T12c/1. Wall Off, cockpit default Off and MVP/XR Offscreen remain.
+
+Acceptance: full Python341/341; final targeted14/14 (8 new structure cases +6 retained attention
+observer cases), real six-output comparison and visual inspection of the standalone figure.
+Final cumulative Node, Graphify, exact build/public/source identity and commit receipts are in
+logs/t13f/handoff.json. Prior failures/download attempts/observer revisions remain separate from
+comparison-accepted.json; its numeric results exactly match the inspected figure's input.
+STOP after commit/push/deploy for manual review; the next product implementation is separate.
+
+Final T13f acceptance: final cumulative Node1935/1926 pass/9 exact baseline
+failures (names AND messages), 0 skipped/cancelled; Python341/341, targeted14/14, build/diff pass.
+Graphify full code-only909 files/8572 nodes/20717 raw/18180
+canonical edges, 0 canonical dangling endpoints; raw retained, no LLM/hooks/semantic rebuild.
+All259 earlier Node test/helper/fixture identities preserved;202active/260total.
+The six actual model outputs are complete, and the full comparison/figure has been reviewed.
+Source/push,54-file byte-equivalent app release and3-host public verification: logs/t13f/handoff.json.
+STOP for manual review of this completed study; next original product correction is separate.

@@ -281,3 +281,19 @@ Next, only after explicit user continuation, prepare the separately requested co
 structural-model comparison with concrete environment/download/license costs and limitations.
 No external model installation/inference or functional-boundary accuracy is delivered in T12c/2.
 See the current tracker checkpoint for measurements and final validation receipts.
+
+### External full-song study completed - T13f (2026-10-28)
+
+The user authorized all subtasks of the separate study. Actual All-In-One eight-fold ensemble
+and SongFormer predictions now cover all three complete recordings with exact PCM identity.
+The study separates beat period, meter phase, raw versus function-changing boundaries and actual
+planned/published scene cues. It is no annotated accuracy promotion and supplies no safe universal
+threshold/label replacement. Existing T12c behavior is preserved; research bridge execution is fixed.
+[Full protocol/results](../../research/analyzer-lab/docs/FULL-SONG-STRUCTURE-STUDY.md).
+
+After this task's deploy/manual handoff, the next bounded PRODUCT implementation should address
+meter/structure uncertainty and the one-sided scene-entry evidence window, with original measured
+multifeature/recurrence support and intact manual ownership. Then continue the separate note-source
+selection problem using qualified existing capabilities. Do not import oracle labels/weights, fit
+per-track timecodes, repeat an open-ended model study, or treat timing as solved before T14.
+The user waived only intermediate pauses inside this study; the final task boundary remains.

@@ -1,5 +1,10 @@
 # Plexus Analyzer Oracle Lab
 
+The [T13f full-song study](docs/FULL-SONG-STRUCTURE-STUDY.md) runs actual All-In-One and
+SongFormer predictions on three complete local recordings, with original PCM identity,
+one-to-one boundary agreement and explicit taxonomy/rights limits. These optional isolated
+research tools do not register an automatic provider or promote predictions into the product.
+
 The [AN-03G record](docs/AN-03G-VALIDATION.md) adds an actual physical-band DSP
 improvement:63 more known and71 more new authored attacks at2 ms without extra
 or negative increases. A pure semantic evidence gate retains both-library

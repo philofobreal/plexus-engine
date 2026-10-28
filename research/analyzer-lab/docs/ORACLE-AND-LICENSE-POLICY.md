@@ -45,3 +45,21 @@ No optional provider is installed or launched automatically. Its checked-in mani
 - MSAF [0.1.80 package](https://pypi.org/project/msaf/0.1.80/), [MIT license](https://github.com/urinieto/msaf/blob/main/LICENSE.md), [packaging and OLDA asset inclusion](https://github.com/urinieto/msaf/blob/main/setup.py), [OLDA model directory](https://github.com/urinieto/msaf/tree/main/msaf/algorithms/olda/models), [dataset installation notes](https://msaf.readthedocs.io/en/latest/install.html).
 
 Release-pinned URLs are used where verified. Moving master/main URLs are explicitly audit evidence snapshots rather than immutable model provenance. Before promotion, save an exact commit/model source and hash in the local run manifest, review per-artifact LICENSE/metadata, record dataset permissions and preserve attribution notices. Policy changes must identify which evidence resolves each existing `unknown` or conflict.
+
+## T13f extension - checked 2026-10-28
+
+The separately authorized [full-song study](FULL-SONG-STRUCTURE-STUDY.md) executes two external
+families explicitly through standalone local research commands, not an automatically enabled
+registry provider. All-In-One harmonix-all (eight folds = one vote) uses the fixed official model
+revision and the MIT-tagged [checkpoint repository](https://huggingface.co/taejunkim/allinone), via
+[all-in-one-infer](https://github.com/openmirlab/all-in-one-infer) 3.1.0. Actual code/dependency/model
+hashes and HTDemucs preprocessing are retained per run. This does not qualify the inference port
+or model for production embedding or establish independent musical accuracy.
+
+SongFormer uses the fixed official [integrated checkpoint](https://huggingface.co/ASLP-lab/SongFormer)
+and reviewed local source. Its repository CC-BY-4.0 notice is not a separate grant for every
+embedded model; its MuQ component's [official model card](https://huggingface.co/OpenMuQ/MuQ-large-msd-iter)
+states CC-BY-NC-4.0. Keep the combined artifact reference-only/requires-review; no production
+commercial-use permission, derived training target eligibility or redistribution grant is inferred.
+MSAF is imported by the upstream SongFormer code and is not counted as another structural model.
+This structural prediction study does not replace the existing two-library onset-reference policy.
