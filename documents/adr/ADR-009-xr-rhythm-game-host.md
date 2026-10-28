@@ -1858,3 +1858,42 @@ The [T14 checkpoint](../audits/xr-development-tracker.md#current-continuation-ch
 records validation, historical test retention and the manual Quest/readability gate. Existing
 musical source identity, macrostructure/meter accuracy and physical-headset performance limits
 remain open; generic HUD styling does not resolve them.
+
+## Addendum BI - optional shared circular spectrum (T16, 2026-10-28)
+
+The user explicitly skipped T15 before implementation. T16 adds an informational circular
+spectrum, not a track-specific HUD planner. `src/types/MusicDisplay.ts` normalizes viewer
+preferences; `src/presentation/MusicSpectrum.ts` samples exactly 24 published perceptual bands
+and projects bounded radial bars. Values are track-relative, logarithmic20 Hz..16 kHz display
+data, not calibrated dB, a spectrogram, PCM waveform or evidence of instrument identity.
+Missing/malformed data hides the display; no realtime FFT or new musical detector exists.
+
+Sampling linearly interpolates adjacent published frames on explicit songTime*sampleRate/hopSize.
+No history, runtime randomness or frame-count phase is accumulated. The clear center is at least
+4.5% of canvas height in radius; a fixed90-degree lower opening leaves the incoming corridor
+clear. Radius/alpha are bounded. Orientation stays upright for clearance; the module never changes
+the existing signed spiral, path, judging, scoring, note geometry or musical cue clocks.
+
+XR: Settings > Cosmos > Music display (Off / Spectrum), Spectrum size, Spectrum opacity.
+MVP/Studio: the existing preview/display controls expose the same three preferences and include
+them in Copy preview settings. These are informational display/readability preferences rather
+than Wormhole preset art; automatic preset changes cannot re-enable or resize them. XR retains
+its version-1 appearance record; MVP/Studio use one device record plexus.musicDisplay. Default
+Off preserves historical appearance object and packet shapes. Cockpit and Wall remain Off.
+
+Raster: `WormholeMusicDisplay` draws at the identity's authoritative focal point in its current
+backend. This includes compatible Canvas/P5, shared WebGL, MVP Offscreen and the exact-frame
+source/worker. Canonical export song time remains authoritative. Background backends clear their
+frame before the display pass, so the spectrum does not become retained afterimage history.
+Display changes have their own embedded redraw flag, separated from tuning/automation invalidation.
+
+Native XR: `XrMusicDisplay` uses the same sampled bands/normalized bar endpoints, displayed
+spatial frame time and focal point. It lazily owns one96-vertex/48-triangle batch, a single
+two-sided pass, fixed buffers and bounded alpha. Geometry uploads only on changed display time,
+source clock/publication or size; changing opacity/pose/distance reuses it. It sits at the scaled
+backdrop distance, behind gameplay, with depth writes disabled. Off disposes the native mesh;
+missing/hidden background suppresses it. Hybrid/native fallback cannot double-render the module.
+
+The [T16 checkpoint](../audits/xr-development-tracker.md#current-continuation-checkpoint---t16-shared-music-display-2026-10-28)
+records source retention, real worker/GPU checks and the manual Quest gate. Optional circular
+spectrogram and PCM oscilloscope modes are not implemented or represented by synthetic waves.

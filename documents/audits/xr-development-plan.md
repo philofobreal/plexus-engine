@@ -340,3 +340,14 @@ See the [T14 checkpoint](xr-development-tracker.md#current-continuation-checkpoi
 for runtime coverage, render evidence and limits. Stop after commit/push/deploy for manual
 readability/selection checks. Only after acceptance continue T15's bounded presentation planner,
 using explicit existing data and retaining a generic fallback; do not infer new musical truth.
+
+### User-directed skip and shared music display - T16 (2026-10-28)
+
+The user accepted T14, then explicitly asked to skip T15 before any planner implementation.
+T15 remains skipped/deferred; do not silently resume it. Continue with T16's required circular
+spectrum in all current Wormhole host paths, reusing published display bands, the authoritative
+focal frame and existing worker/export clocks. Default Off; menu/localStorage/Copy, bounded size
+and opacity, clear center/lower corridor, no musical inference or fabricated waveform.
+See the [T16 checkpoint](xr-development-tracker.md#current-continuation-checkpoint---t16-shared-music-display-2026-10-28).
+Commit/push/deploy and stop for manual testing. After acceptance, T17 is the next main-plan task;
+its toolchain/feasibility questions remain separate from this display implementation.

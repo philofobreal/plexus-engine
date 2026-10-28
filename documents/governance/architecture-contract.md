@@ -99,12 +99,22 @@ Allowed dependency directions:
 
 Forbidden dependency directions:
 
-T14 presentation boundary: `src/presentation/` owns pure seeded instrument geometry and visual
-tokens only. It must not import Three.js, DOM, audio, analyzer, gameplay, automation, state or
+T14/T16 presentation boundary: `src/presentation/` owns pure seeded instrument geometry, visual
+tokens and bounded sampling/projection of published display data. Shared type imports are allowed.
+It must not import Three.js, DOM, audio, analyzer, gameplay, automation, state or
 renderer modules, perform I/O, read clocks or infer music. `src/xr/` may import that module for
 static Canvas/SVG/Three adapters; this narrow addition does not expand any other XR import
 exception. Future launcher composition may reuse the same pure vocabulary without importing XR.
 Chart, score, cue semantics, playback time and physical input anchors keep their existing owners.
+
+T16: `MusicSpectrum` samples the published 24-band array on the explicit sample/hop/song clock;
+it never computes DSP or accumulates render history. `WormholeMusicDisplay` adapts it inside the
+identity's existing raster draw, including the MVP host worker and exact-frame worker. The root
+passes normalized viewer preferences without writing State. The optional host-frame field is
+configuration only; the thin worker forwards it to the identity. Embedded context display changes
+request a redraw separately from tuning/direction changes and must not snap or invalidate musical
+automation. Native XR adapts the same projection in one lazy GPU batch at the displayed spatial
+frame time/focal point. No new worker output, analysis schema or collision component is introduced.
 
 - Analyzer core to Worker APIs, DOM, p5, UI, renderer, audio engine, or shared mutable state.
 - Worker adapter to DOM, p5, UI, renderer, audio engine, shared mutable state, or duplicated analyzer logic.

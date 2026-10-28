@@ -2,6 +2,14 @@
 
 This document extends `../../AGENTS.md`. If there is a conflict, `AGENTS.md` is authoritative.
 
+T16 informational spectrum: the resolved MVP host-frame request may carry optional normalized
+`musicDisplay` preferences (mode/size/opacity). Default Off omits the field and preserves the old
+packet shape; omission resets a previously enabled worker display. Analysis/spectrum frames still
+cross only in the existing generation-checked prepare publication. The worker merely forwards
+preferences; the identity owns the bounded display pass. Embedded v1 preview/v2 exact requests
+reuse the existing presentation message. No new transfer buffers, analysis result fields or second
+clock are added. Display-only changes redraw while paused without snapping tuning or replaying cues.
+
 ## Boundary Contract
 
 Worker input and output are public contracts. Keep them typed and versionable.

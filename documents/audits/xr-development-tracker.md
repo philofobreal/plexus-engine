@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-28 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T14 adds selectable Angular / Orbital instrument presentation with Current and Off fallbacks. T12d's accepted Musical percussive choice and T13g cue refinement remain intact; source/instrument identity, macrostructure and meter precision remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
+**T14 accepted; T15 explicitly skipped by the user before implementation. T16 adds an optional shared 24-band circular music display. T12d's Musical source and T13g cue refinement remain intact; source/instrument identity, macrostructure and meter precision remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -60,9 +60,9 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T11 | Timed evidence and qualification | Stable T10 clock/evidence boundary | Closed for this phase by explicit user decision after T11i; limited signal/provenance capabilities only. Research retained, no classifier promoted. General tonal/vocal recognition and dominance deferred; further research is not a T12a prerequisite. [Scope](../features/music-events.md) |
 | T12 | Gameplay + analyzer + automation: evidence-based chart sources | T09; supported T11 capabilities only | T12a-c delivered; T12d adds a percussive chart pool before visual suppression and separates choice from Activity density. Classic/Guarded/menu persistence remain; no research candidate or source/instrument recognition promotion |
 | T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a-e timing foundation and T13f two-family/full-three-song study delivered. T13g now refines estimated scene entries with bounded sustained multifeature evidence. Meter phase/macrostructure, human precision and perceptual geometry arrival remain unproven; next separate qualified note-source work |
-| T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Delivered; manual acceptance pending |
-| T15 | Presentation planner + XR: track-specific HUD | T13-T14 | Planned |
-| T16 | Visuals + XR: optional central music display | T05, T14 tokens | Planned |
+| T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Accepted for continuation by user; no physical Quest report inferred |
+| T15 | Presentation planner + XR: track-specific HUD | T13-T14 | Skipped/deferred at the user's explicit request, 2026-10-28; no implementation |
+| T16 | Visuals + XR: optional central music display | T05, T14 tokens | Delivered; manual acceptance pending |
 | T17 | Analyzer + performance + build: measured WASM kernel feasibility | T01, fixed T10 reference | Planned; clarify tsrs when starting |
 | T18 | Analyzer + worker + audio + build: production kernel integration | Successful T17 gate | Conditional; no speedup presumed |
 | T19 | Export + visuals/state + MVP: isolated snapshot/runtime | T01, T05 | Planned; single integration owner required |
@@ -1633,3 +1633,75 @@ smoke. The retained probe and manual Quest gate make that remaining visual/devic
 **Stop after commit/push/deploy for manual testing. Next, only after acceptance: T15**, a bounded
 presentation planner consuming explicit existing published data, with stable gameplay anchors
 and these generic fallbacks. Do not start another broad musical-model study automatically.
+
+### Current continuation checkpoint - T16 shared music display (2026-10-28)
+
+The user accepted T14, then explicitly instructed: skip the current T15 task. No T15 planner,
+content-identity layout or musical inference was implemented. T15 is skipped/deferred and must
+not be silently resumed. The next authorized task is T16's required circular spectrometer.
+
+**Try XR:** Settings > Cosmos > Music display > Spectrum. Spectrum size and Spectrum opacity
+control readability. **MVP/Studio:** Music display in the existing preview/display control
+panel, with the same two sliders and Copy preview settings. Off is the default. XR retains its
+version-1 store/Copy format; MVP/Studio keep one shared device record plexus.musicDisplay. The
+display is an informational/readability preference, independent of automatic artistic presets.
+Existing Cockpit/Wall defaults, background worker/raster choices and chart settings stay intact.
+
+One pure sampler reads/interpolates the existing24 track-relative log-frequency display bands
+on songTime*sampleRate/hopSize; no FFT, accumulated history, synthetic waveform, new detector or
+instrument recognition is introduced. The same bounded endpoints feed every raster backend and
+the native XR batch. The center remains clear, with a90-degree lower opening and bounded radius
+(up to11.6% canvas height), thickness and alpha. No opaque plate or collision object. Native XR
+draws behind the runway/notes at the authoritative displayed focal/spatial-frame time, including
+distance/recenter scaling. It cannot duplicate the Hybrid pass during fallback.
+
+MVP Offscreen keeps display work in the existing render worker; analysis frames still cross once
+per generation. Its frame adds only optional three-field preferences, omitted for default Off.
+The thin adapter forwards them. Direct P5/WebGL and embedded Canvas/WebGL/exact workers draw the
+display inside the identity pass, at canonical preview/export time. A dedicated embedded redraw
+flag bypasses paused cadence without snapping tuning or invalidating musical automation. Native
+XR lazily creates one96-vertex/48-triangle, single-pass batch with fixed buffers; unchanged frames,
+opacity and pose do not upload geometry. Off disposes it. Missing data/background hides it.
+
+The [browser probe](../../tests/browser/music-display-smoke.html) passed on the final frozen
+implementation: local versus exact Offscreen worker pixels at0.375s have normalized MAE0; exact
+seek/repeat is pixel-identical; the real MVP worker returns offscreen-webgl; native rendering uses
+1 draw/48 triangles and Off uses0 draws. Native/shared24-band values match exactly. Screenshots,
+JSON and source/receipt hashes are retained under logs/t16/. This is synthetic display evidence,
+not musical truth, a full-song benchmark or a physical Quest FPS/comfort test.
+
+The new regression covers missing/hostile bands/clocks, deterministic sampling after pause/seek/
+reload, central/lower clearance, reused buffers, native/raster endpoints and alpha, upload cadence,
+disposal, generation-scoped worker preference transfer/Off clearing, no tuning snap across exact
+rewind, storage failure, Copy/persistence and live XR switching without chart/replan/rewind.
+The old authored-default map adds only the three defaults. The old MVP Copy test now finds its
+button semantically instead of a child index; all old assertions/cases remain. Exact predecessors
+are retained as inert snapshots for [defaults](../tests/xr-settings.pre-t16.mjs.snapshot),
+[host Copy](../tests/wormhole-host-worker.pre-t16.mjs.snapshot) and
+[raster Copy](../tests/wormhole-raster-pass.pre-t16.mjs.snapshot), with reviewed hashes in
+logs/t16/test-source-reviews.json. They are evidence, not extra executed coverage.
+
+The source-evolution registry updates only CanvasVisualPresentation's current reviewed hash for
+the optional preference field. All older reviews are retained, including the superseded current
+entry, with an [exact pre-T16 registry](../tests/accepted-timing-source-evolution.pre-t16.json).
+No measured source archive, timing fixture/result, analyzer or gameplay implementation is changed.
+
+Validation: complete Node1984-case run1972 pass/12 fail, then complete29/29 replay of the affected
+retention/Copy/display files after registry/selector-only reviews. All runtime bytes remain frozen;
+the reconciled matrix is1975 pass/9 exact predecessor failures (names AND messages), zero
+skip/cancel. This is not called a second full run. Targeted144/144, new display15/15, Python341/341,
+production tsc/Vite/diff pass. Current206 active Node files/266 identities preserve261 unaffected
+predecessors exactly and retain all three reviewed test sources. Final receipts include the
+real render evidence, document references, Graphify and guarded release verification.
+Graphify refreshed with full code-only922 files/8708 nodes/21110 raw and18553 canonical edges,
+canonical dangling0; no LLM/hooks/semantic-corpus rebuild. The185 local documentation references
+checked for this checkpoint resolve. No package/runtime dependency was installed.
+
+Full regression/build/inventory/Graphify, source commits/push, guarded Pages artifact/route checks
+and explicit omissions are recorded in logs/t16/handoff.json after release. Musical source identity,
+macrostructure/meter precision and physical Quest readability remain open. Optional spectrogram
+and PCM oscilloscope modes are not implemented. Existing export orchestration is unchanged;
+T19 must include these viewer preferences in its isolated job snapshot when that integration lands.
+
+**Stop after commit/push/deploy for manual testing. Next after acceptance: T17**, with its separate
+tsrs/toolchain/feasibility clarification. T15 remains skipped unless the user explicitly restores it.
