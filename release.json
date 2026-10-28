@@ -1,7 +1,7 @@
 {
-  "id": "t14-instrument-design-20261028T195535198Z",
-  "previousCommit": "68adcb9cf3b21f91612ffa9ea2a32946613c4273",
-  "sourceCommit": "690a38cdf9f4bb1eb5ba8586630e709b8be17a17",
+  "id": "t16-music-display-20261028T220852651Z",
+  "previousCommit": "c6af5896d2297dfe87cdd3006a2ec9840408d71d",
+  "sourceCommit": "50ecc0a178985a9fee768046d809ad7f3a026518",
   "inputs": [
     {
       "path": "bun.lock",
@@ -617,7 +617,7 @@
     },
     {
       "path": "src/config/previewQuality.ts",
-      "sha256": "2a57311dc9419b377e2d6fb844b138010d62f206e6e233a88c5369bcabeee2ca"
+      "sha256": "399f272e099342711432ac38205ca23ac210959ab532afdaf0c4dfbb91982963"
     },
     {
       "path": "src/config/resolveMetaTuning.ts",
@@ -760,6 +760,10 @@
       "sha256": "43ec3b0b649cdcab5eb82d3bfd5b6243fb9bb8d74345a2e0d807f2242d979592"
     },
     {
+      "path": "src/presentation/MusicSpectrum.ts",
+      "sha256": "63fc0d034e5c56a91f75c9502ed7aeb939825f27ae8ba8447b67af415b7bdcc6"
+    },
+    {
       "path": "src/semantics/ChoreographyEngine.ts",
       "sha256": "fcdbad15244685645d28b102b912dc48c74875465fce0449157f6efaedf90481"
     },
@@ -849,7 +853,7 @@
     },
     {
       "path": "src/types/CanvasVisualSource.ts",
-      "sha256": "14bb362e8aafe930c5543ee6443835004b171670cdb018ff5a64e0854bf410be"
+      "sha256": "4a32df88cb2bb669f75dfc9c914909de40b56e92336e16391067a72c96be1e12"
     },
     {
       "path": "src/types/GrainLineFrame.ts",
@@ -858,6 +862,10 @@
     {
       "path": "src/types/GrainMaterialFrame.ts",
       "sha256": "17d2cdb132e76396f48993973ceafd803fffe83d14c765b095d838df3d3276a1"
+    },
+    {
+      "path": "src/types/MusicDisplay.ts",
+      "sha256": "bab1aece682cddf1a8fd107f211c655d27550e9de68418416c8527dc13fe7cb2"
     },
     {
       "path": "src/types/WormholeContext.ts",
@@ -869,7 +877,7 @@
     },
     {
       "path": "src/types/WormholeHostFrame.ts",
-      "sha256": "6e9cc664dc9c58622e5bbfd6edbc34defcdc5b4ea42231972b70a9b5363cdf02"
+      "sha256": "f8249b70f6c7f5d43e7e0f9cd7fec83d011a7beb3ab4868ca18efb52d690700b"
     },
     {
       "path": "src/types/WormholeNativeFrame.ts",
@@ -977,7 +985,7 @@
     },
     {
       "path": "src/ui/PreviewQualityControl.ts",
-      "sha256": "f3b00b27a3b7afe59d7766f81c96e9a15a7b8306378506fd7d975edee1308b11"
+      "sha256": "db0a39d13807a1ba76648381e8cfdf7de8a6541bfce71341661c4b4c4bf2b26c"
     },
     {
       "path": "src/ui/TimelineCanvas.ts",
@@ -1145,7 +1153,7 @@
     },
     {
       "path": "src/visuals/CosmicWormholeIdentity.ts",
-      "sha256": "049ee8c8943d17eef7f0d9690575779e52390365ddbf314ef283400fec4280a3"
+      "sha256": "4632fb5547b2369c15add7b1b0c118ac905d0e8977184e09c919f5f183a1bb27"
     },
     {
       "path": "src/visuals/CyberpunkIdentity.ts",
@@ -1193,7 +1201,7 @@
     },
     {
       "path": "src/visuals/PlexusRenderer.ts",
-      "sha256": "79844ab60bd91a0fb1ab32c5f00d3ddb974303e74fe8acb5391d28b122283ea2"
+      "sha256": "997de9c01073809618bc39d84df0d523a18972f2d669b5fa02970d94854fbac8"
     },
     {
       "path": "src/visuals/PostFxPipeline.ts",
@@ -1249,7 +1257,7 @@
     },
     {
       "path": "src/visuals/WormholeCanvasSource.ts",
-      "sha256": "d2fb93caf6ac7715b8dfab16cef9306240bc63ca33d072ba169208e3eb22e6d5"
+      "sha256": "bfbd0b9460c6d1e9b7966efba8e992a5ec87550d09be298e2ed4ee0626f4408d"
     },
     {
       "path": "src/visuals/WormholeCosmicSync.ts",
@@ -1277,7 +1285,7 @@
     },
     {
       "path": "src/visuals/WormholeFrameContext.ts",
-      "sha256": "15060f9fa1875976305a30106de58d1c8ac4b47142b2d617d26d20995d4c6671"
+      "sha256": "d477e3064cfc3759b23cd529625e3c8aad1f1d34eb157ac040fb37cb8817328f"
     },
     {
       "path": "src/visuals/WormholeGeometryLfo.ts",
@@ -1289,7 +1297,7 @@
     },
     {
       "path": "src/visuals/WormholeHostWorkerSource.ts",
-      "sha256": "4f2fcb8078def3842ea15336e03cf35df340fa9f10829a7d43ba8bf8c17d6d72"
+      "sha256": "1ebf8cfecac24089c053244897ae73e384c6ead3b87e07ac03618f3d6354ee90"
     },
     {
       "path": "src/visuals/WormholeLensWarp.ts",
@@ -1298,6 +1306,10 @@
     {
       "path": "src/visuals/WormholeMotionProfile.ts",
       "sha256": "94f670911e159cf6922d432acfeba0f5037c80a0c0656e8e1d8bd933b6ae779c"
+    },
+    {
+      "path": "src/visuals/WormholeMusicDisplay.ts",
+      "sha256": "0fba841d0f1b83b2e6a49bb9cfc9e6c16ae9e81a59eb22cdd0db2b27c09732e3"
     },
     {
       "path": "src/visuals/WormholeNativeSource.ts",
@@ -1361,7 +1373,7 @@
     },
     {
       "path": "src/visuals/wormholeHostRender.worker.ts",
-      "sha256": "bf0604f66762228d68f42ca5d51cc66a68d1a3aa2bdc75a27fe53bd5c11efce8"
+      "sha256": "d258fbf3bc856f8cfcd07fdc5aeb3a96525a257a0a9c86343f3673f8e26ee369"
     },
     {
       "path": "src/visuals/wormholeNative.worker.ts",
@@ -1385,11 +1397,11 @@
     },
     {
       "path": "src/xr/XrAppController.ts",
-      "sha256": "9a0525fcf012ebefbdaca6f0150287853b176e127fe2cb1fc7dfa31bd97decc0"
+      "sha256": "beb5879bcd30a5a0d763d865bed1fef67ba49faf1e10feb70a543549515220d6"
     },
     {
       "path": "src/xr/XrAppearanceSettings.ts",
-      "sha256": "1a13f9fb495fdc93abd9a3d067253f2cc20727f1b44b044476f3d71a3763916f"
+      "sha256": "4891c8522adc9ee79c01babd767100f074149558c2f827a703b43c9cee46ec93"
     },
     {
       "path": "src/xr/XrBackgroundSettings.ts",
@@ -1421,7 +1433,7 @@
     },
     {
       "path": "src/xr/XrSettings.ts",
-      "sha256": "6a6156b50da4ff5052e96fcc150d1bc8de9b16bf6447a5291880f2082fcc5a21"
+      "sha256": "2cc51081f0ef58e4ffbc5c5a58506c2be023270c1c96622369fe8d32ba4a7e39"
     },
     {
       "path": "src/xr/XrSettingsStore.ts",
@@ -1493,7 +1505,7 @@
     },
     {
       "path": "src/xr/scene/RhythmGameScene.ts",
-      "sha256": "95b7dfed7507ea477ddc88c551348eed8f80d56d8ec51a27e4a35ddb25990859"
+      "sha256": "93014644214de06fea700b840bb086ff1004aaa80b6c66e317e30cdeed248677"
     },
     {
       "path": "src/xr/scene/RhythmNoteField.ts",
@@ -1530,6 +1542,10 @@
     {
       "path": "src/xr/scene/XrMenuPanel.ts",
       "sha256": "d412e9d69b7336d93f598fa256140ac36c713cee2ea47520a58adad5c70784a4"
+    },
+    {
+      "path": "src/xr/scene/XrMusicDisplay.ts",
+      "sha256": "d127b8a0ebfa5e102693718132ec41c3c21dc795a4beb6aa0c6b8f5882300c8d"
     },
     {
       "path": "src/xr/scene/XrNativeWormhole.ts",
@@ -1614,12 +1630,12 @@
       "sha256": "0346d6982f57eba8f04c23b993ff084b6e0b17cf7ab16c725c245c7967422e68"
     },
     {
-      "path": "assets/CanvasVisualSource-zxPjYFNZ.js",
-      "sha256": "0e1d81927041dacced52444a663ef76860c9f33f417693f69145b875abc47bd5"
+      "path": "assets/CanvasVisualSource-DlMNU5xH.js",
+      "sha256": "00035bfcd8c833983a8c9ebf13e35d08a55c6879e7243060b0ac131b808b2b2f"
     },
     {
-      "path": "assets/CosmicWormholeIdentity-FjrCRElH.js",
-      "sha256": "d58ab835462c3e416345b92dd5e13291c8f2a9e98530e1e13183f483f0ea3591"
+      "path": "assets/CosmicWormholeIdentity-WIfo9WoQ.js",
+      "sha256": "41cfcff7b00c521b7582d11de915d91516ab5cc9dc4298819cc19c8576c5e2ae"
     },
     {
       "path": "assets/export.worker-Av-E_fEl.js",
@@ -1630,44 +1646,44 @@
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
-      "path": "assets/main-DzT3RDR5.js",
-      "sha256": "5942392e2219cbbcb6f045fc93b8ed633d7238fb534f20bfbfef46c4dfdea785"
+      "path": "assets/main-D5hmnJuE.js",
+      "sha256": "1cb31feba69823c27ada3d2c71f9bf71bc330bb2ae253bdc2b2a93fc85fc99e3"
     },
     {
       "path": "assets/mvp-D0xy9ln6.css",
       "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
     },
     {
-      "path": "assets/mvp-D2LB3su9.js",
-      "sha256": "39a4f032e3d5f17e227476abfaaa8c721447184c3cc376df4c913e9c67816d9f"
+      "path": "assets/mvp-DjbUzn-A.js",
+      "sha256": "aaa5ce3992800f6fe7c2040607ed748f44d3d94688085273660cdb0dd798ffe3"
     },
     {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
       "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
     },
     {
-      "path": "assets/PreviewQualityControl-FaPlT4j_.js",
-      "sha256": "f006530fba22b63fb0a1e326be7b8717cbe1fb0c20b5145b15cd58a12c7bd574"
+      "path": "assets/PreviewQualityControl-Dk0Id8rT.js",
+      "sha256": "ba73e3c04c05f42318b80bbae02231845cd7ec218cc182e8aa0da53146c37ad0"
     },
     {
-      "path": "assets/wormholeHostRender.worker-C0AYhcyr.js",
-      "sha256": "5f3d07f2dbf08bf585991f8c0d2dba54ae5da2c94e26827ba244254ab6e4fcef"
+      "path": "assets/wormholeHostRender.worker-BHKvsM3O.js",
+      "sha256": "f1db86f042cd2f241c84bdf9e65eaef5da526900212213bf7e8bd34ec71a8578"
     },
     {
-      "path": "assets/wormholeNative.worker-CTwhNE5o.js",
-      "sha256": "ca927c6dd6d89cfd9637cb91e1287580d508dfca15d208827dff35d407a633e7"
+      "path": "assets/wormholeNative.worker-BP25Bbi3.js",
+      "sha256": "631a7ffd9c7fda1d6445136b23864a2fa1ae762ac64a354b7dffb475cc6e3b77"
     },
     {
-      "path": "assets/wormholeRender.worker-DOTYM1LN.js",
-      "sha256": "4dc1b09df91e720347a9152a77a74dcd698cf4f6339b8d35976d4fef84861926"
+      "path": "assets/wormholeRender.worker-luGR0zhq.js",
+      "sha256": "4bf4525d9ac5d925cc5603d021ba10458faa3bb9e63527ae6242bbc6921c1ffc"
     },
     {
       "path": "assets/xr-Bb_odg6M.css",
       "sha256": "e3bd00a1bee28d11285da166f19fc3f9ae0c501f9f3e08e067e13154a222ab58"
     },
     {
-      "path": "assets/xr-BQH5J_gE.js",
-      "sha256": "a2a1ae6782fe562b144e468132f303626bc99c6cf0df5c2a032f537ecd94142d"
+      "path": "assets/xr-zdewA1YY.js",
+      "sha256": "ca36f1acd2567080850aa06bd647037494b63e71d7e1505b0efd4094557d1073"
     },
     {
       "path": "eso0932a.jpg",
@@ -1683,11 +1699,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "d3fa44d38e95477e4ddda95685f569a4e88d7c651af33fe6cffe8ec9c42e3174"
+      "sha256": "23d7fd2833130d2e010789dcd8a2e2f145ed4b25774da2436f29a31234e9b439"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "f3253686c0cb93422f92a47dfa6bd34f5bcada44665726de349785951f719561"
+      "sha256": "4af3260f86987384ab77e33875fa562da5c9e42d2dfba1a41cf583d5fa149700"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
@@ -1819,7 +1835,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "2a39cb3b1a2f3c84f4679020a40f09c980e7b12a93bb2d5abb43e965de93d998"
+      "sha256": "6e891edce4b360bfec7f41aa45ae00a6bc380f96ce37584886d63fdf46e00a71"
     }
   ]
 }
