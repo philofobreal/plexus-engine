@@ -3,6 +3,7 @@ import { projectRenderWorkerAnalysis } from '../types/CanvasVisualSource';
 import type { WormholeHostAnalysis, WormholeHostFrame, WormholeHostRequest, WormholeHostResponse, WormholeHostRasterSource, WormholeHostTarget } from '../types/WormholeHostFrame';
 import type { WormholeRenderState } from './CosmicWormholeIdentity';
 import { featureFlags } from '../config/featureFlags';
+import { isDefaultMusicDisplay, type MusicDisplaySettings } from '../types/MusicDisplay';
 
 export interface HostWorkerPort {
     onmessage: ((event: MessageEvent<WormholeHostResponse>) => void) | null;
@@ -79,7 +80,7 @@ export class WormholeHostWorkerSource implements WormholeHostRasterSource {
         this.analysis = analysis; this.armDeadline();
         worker.postMessage({ type: 'prepare', generation: this.generation, analysis: projectRenderWorkerAnalysis(analysis) });
     }
-    draw(state: WormholeRenderState, target: WormholeHostTarget, depthCue: number, transparent: boolean, playing = false): boolean {
+    draw(state: WormholeRenderState, target: WormholeHostTarget, depthCue: number, transparent: boolean, playing = false, musicDisplay?: MusicDisplaySettings): boolean {
         if (this.failed || this.disposed) return false;
         try {
             const a = this.analysis;
@@ -94,6 +95,7 @@ export class WormholeHostWorkerSource implements WormholeHostRasterSource {
             if (state.currentTime < this.lastTime) this.reset();
             this.lastTime = state.currentTime;
             const frame: WormholeHostFrame = {
+                ...(musicDisplay&&!isDefaultMusicDisplay(musicDisplay)?{musicDisplay}:{}),
                 width: target.width, height: target.height,
                 density: Math.min(target.rasterPixelRatio, (target.compactMaterialPreview ? 640 : 960) / Math.max(target.width, target.height)),
                 compact: target.compactMaterialPreview, depthCue, transparent, skybox: featureFlags.wormholeSkybox,

@@ -19,6 +19,7 @@ export interface WormholeHostTarget {
 /** Already resolved host input. No second director, preset/gain resolver or audio clock. */
 export type WormholeHostAnalysis = Pick<WormholeRenderState, 'frames' | 'events' | 'sampleRate' | 'hopSize' | 'bpm' | 'trackAnalysis'>;
 export type WormholeHostFrame = Omit<WormholeRenderState, keyof WormholeHostAnalysis> & {
+    musicDisplay?: import('./MusicDisplay').MusicDisplaySettings;
     width: number; height: number; density: number; compact: boolean; depthCue: number;
     transparent: boolean; skybox: boolean; frameCount: number; reset: boolean;
 };
@@ -32,7 +33,8 @@ export type WormholeHostResponse =
     | { type: 'failure'; message: string };
 export interface WormholeHostRasterSource {
     readonly rasterKind: string;
-    draw(state: WormholeRenderState, target: WormholeHostTarget, depthCue: number, transparent: boolean, playing?: boolean): boolean;
+    draw(state: WormholeRenderState, target: WormholeHostTarget, depthCue: number, transparent: boolean, playing?: boolean,
+        musicDisplay?: import('./MusicDisplay').MusicDisplaySettings): boolean;
     reset(): void;
     dispose(): void;
 }

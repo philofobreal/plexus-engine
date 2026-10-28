@@ -1,5 +1,7 @@
 import { effectiveWormholeSpiral, getBackgroundClearStyle, hueToRgbInto, shouldUseExpensiveGlow } from '../config/visualTuning';
 import { featureFlags } from '../config/featureFlags';
+import type { MusicDisplaySettings } from '../types/MusicDisplay';
+import { WormholeMusicDisplay } from './WormholeMusicDisplay';
 import { State } from '../state/store';
 import type { VisualTuningConfig } from '../types';
 import type { Particle } from './Particle';
@@ -498,6 +500,8 @@ export class CosmicWormholeIdentity implements VisualIdentity {
      * half-extent with +y up. Embedded hosts (XR) consume it instead of re-deriving the route.
      */
     readonly routeFocus = { x: 0, y: 0 };
+    private readonly musicDisplay = new WormholeMusicDisplay();
+    setMusicDisplay(settings?: MusicDisplaySettings): void { this.musicDisplay.setSettings(settings); }
     /**
      * Read-only drive of the last drawn frame for embedded hosts (XR spatial field), written from the
      * very values that frame used: the travel distance in horizons (`Z_REFERENCE`, unwrapped), the
@@ -1856,6 +1860,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             backend.drawFieldRaster(0, 0, 0, backend.width, backend.height, 1, 'lighter');
             if (stageClock) this.markStage('composite', stageStart);
         }
+        if (!this.nativeSink) this.musicDisplay.draw(backend,this.state.frames,this.state.sampleRate,this.state.hopSize,timeSec,this.routeFocus);
         if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.endFrame();
     }
 

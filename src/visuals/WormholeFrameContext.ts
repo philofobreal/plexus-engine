@@ -16,6 +16,7 @@ import { SemanticTuningProjection } from './SemanticTuningProjection';
 import { motifTransitionId, semanticScoreTransitionId } from './VisualTransitionIdentity';
 import { CosmicWormholeIdentity, type WormholeRenderState } from './CosmicWormholeIdentity';
 import { VisualDirectorFSM } from './VisualDirectorFSM';
+import { DEFAULT_MUSIC_DISPLAY, normalizeMusicDisplay, type MusicDisplaySettings } from '../types/MusicDisplay';
 import { BEAT_DECAY_PER_FRAME, CUE_DECAY_PER_FRAME, DENSE_IMPACT_DECAY_PER_FRAME, transientDecayAfter } from './transientDecay';
 
 function emptyState(): WormholeRenderState {
@@ -50,6 +51,7 @@ export class WormholeFrameContext {
     private spiralDirection: CanvasVisualPresentation['spiralDirection'] = 'auto';
     private cosmos: NonNullable<CanvasVisualPresentation['cosmos']> = {};
     private wall: WormholeWallPresentation | null = null;
+    private musicDisplay: Readonly<MusicDisplaySettings> = DEFAULT_MUSIC_DISPLAY;
     private readonly wallPresetGates=new Map<string,boolean>();
     private denseEvents: { time: number }[] = [];
     activePreset = '';
@@ -90,6 +92,7 @@ export class WormholeFrameContext {
         this.state = emptyState();
         if (analysis) Object.assign(this.state, analysis);
         this.identity = new CosmicWormholeIdentity(this.state);
+        this.identity.setMusicDisplay?.(this.musicDisplay);
         if(this.cosmos.sky!==undefined)this.identity.setSkyboxEnabled(this.cosmos.sky>0);
         this.director = new VisualDirectorFSM();
         this.resolver = new SemanticResolver();
@@ -228,8 +231,14 @@ export class WormholeFrameContext {
         this.activePreset = point?.preset ?? '';
     }
 
-    setPresentation(presentation: CanvasVisualPresentation): { tuningChanged: boolean; directionChanged: boolean } {
-        let tuningChanged = false, directionChanged = false;
+    setPresentation(presentation: CanvasVisualPresentation): { tuningChanged: boolean; directionChanged: boolean; displayChanged?: true } {
+        let tuningChanged = false, directionChanged = false, displayChanged = false;
+        if(presentation.musicDisplay!==undefined){
+            const next=normalizeMusicDisplay(presentation.musicDisplay);
+            if(JSON.stringify(next)!==JSON.stringify(this.musicDisplay)){
+                this.musicDisplay=next;this.identity.setMusicDisplay?.(next);displayChanged=true;
+            }
+        }
         if(presentation.wall){
             const next={...(this.wall??DEFAULT_WORMHOLE_WALL)},p=presentation.wall;
             if(p.mode==='off'||p.mode==='preset'||p.mode==='on')next.mode=p.mode;
@@ -265,7 +274,7 @@ export class WormholeFrameContext {
         }
         if (tuningChanged) { this.spiralAutomation.invalidate(); this.finiteAutomation.invalidate(); }
         if(this.cosmos.sky!==undefined)this.identity.setSkyboxEnabled(this.cosmos.sky>0);
-        return { tuningChanged, directionChanged };
+        return { tuningChanged, directionChanged, ...(displayChanged?{displayChanged:true as const}:{}) };
     }
 
     dispose(): void {

@@ -108,6 +108,7 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     private minFrameIntervalSec = 1 / DEFAULT_FRAME_RATE_HZ - 0.001;
     /** A presentation change must reach the canvas even while steadily paused. */
     private presentationDirty = false;
+    private displayDirty = false;
     private directionDirty = false;
     private lastTime: number | null = null;
     private lastPlaying = false;
@@ -255,7 +256,8 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         const jump = previous !== null && !continuousStep && (time < previous || step > 0.25);
         // Texture work is capped (30 Hz unless the host sets a rate), independently of headset pose / gameplay cadence.
         const presentationChanged = this.presentationDirty;
-        if (!exact && previous !== null && playing === this.lastPlaying && !jump && !presentationChanged && !this.directionDirty && step < this.minFrameIntervalSec) return false;
+        if (!exact && previous !== null && playing === this.lastPlaying && !jump && !presentationChanged && !this.directionDirty && !this.displayDirty && step < this.minFrameIntervalSec) return false;
+        this.displayDirty = false;
         this.presentationDirty = false;
         this.directionDirty = false;
         const dt = exact ? (previous === null ? 1 / 60 : step)
@@ -296,6 +298,7 @@ export class WormholeCanvasSource implements CanvasVisualSource {
      */
     setPresentation(presentation: CanvasVisualPresentation): void {
         const changed = this.context.setPresentation(presentation);
+        this.displayDirty ||= changed.displayChanged === true;
         this.presentationDirty ||= changed.tuningChanged;
         this.directionDirty ||= changed.directionChanged;
         const rate = presentation.maxFrameRateHz;

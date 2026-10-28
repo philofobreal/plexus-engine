@@ -41,6 +41,7 @@ scope.onmessage = event => {
         backend.frameCount = frame.frameCount;
         featureFlags.wormholeSkybox = frame.skybox;
         identity.setDepthCue(frame.depthCue);
+        identity.setMusicDisplay?.(frame.musicDisplay);
         if (frame.reset) identity.syncPosition(frame.currentTime);
         identity.draw(backend, [], []);
         if (backend instanceof WebGLRendererBackend) backend.finish();

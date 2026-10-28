@@ -126,6 +126,7 @@ export interface CanvasVisualSource {
  * source keeps resolving its own tuning and only layers these on top.
  */
 export interface CanvasVisualPresentation {
+    readonly musicDisplay?: import('./MusicDisplay').MusicDisplaySettings;
     /** Optional XR wall-only overrides. Missing preserves the host's existing optics policy. */
     readonly wall?: Readonly<Partial<import('./WormholeWallPresentation').WormholeWallPresentation>>;
     /** Coherent twist override only; auto retains the authored/automation direction. */
