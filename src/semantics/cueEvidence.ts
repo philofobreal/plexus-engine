@@ -1,5 +1,5 @@
 import type { TrackAnalysis, TrackSectionLabel } from '../types';
-import { featureFrameStepSeconds } from '../types/featureClock.ts';
+import { featureFrameStepSeconds, normalizeFeatureClock } from '../types/featureClock.ts';
 
 // Musical evidence for automatic automation placement (ADR-005 publication gate).
 // Pure and offline: reads only already-published TrackAnalysis cues, novelty peaks, boundary
@@ -15,6 +15,39 @@ export interface CueContext { before: number; after: number; contrast: number; p
 
 const finite = (n: number) => Number.isFinite(n);
 
+/** Sustained multifeature contrast across a cut, distinct from a single transient peak.
+ * Two post-cut windows must keep the same change against the pre-cut texture. The second
+ * largest channel change requires more than one projection, not independent source identity.
+ * Exact feature-clock coverage is required for crossing an estimated scene boundary.
+ */
+export function sustainedCueContrast(analysis: TrackAnalysis, time: number, beat: number): number | undefined {
+    const clock = normalizeFeatureClock(analysis);
+    if (!clock || !finite(time) || !finite(beat) || beat < 0.2 || beat > 1.5
+        || time - 2 * beat < 0 || time + 2 * beat >= analysis.duration) return undefined;
+    const step = clock.hopSize / clock.sampleRate;
+    const mean = (start: number, end: number): number[] | undefined => {
+        const a = Math.ceil(start / step), b = Math.floor(end / step);
+        if (b - a < 2) return undefined;
+        const sum = [0, 0, 0, 0, 0, 0];
+        for (let i = a; i <= b; i++) {
+            const f = analysis.features[i];
+            if (!f) return undefined;
+            const values = [f.density, f.fx, f.melody, f.vocal, f.brightness, f.tension];
+            if (values.some(v => !finite(v) || v < 0 || v > 1)) return undefined;
+            values.forEach((v, j) => sum[j] += v);
+        }
+        return sum.map(v => v / (b - a + 1));
+    };
+    const before = mean(time - 2 * beat, time - 0.25 * beat);
+    const early = mean(time + 0.25 * beat, time + beat), late = mean(time + beat, time + 2 * beat);
+    if (!before || !early || !late) return undefined;
+    const changes = before.map((v, i) => {
+        const a = early[i] - v, b = late[i] - v;
+        return a * b > 0 ? Math.min(Math.abs(a), Math.abs(b)) : 0;
+    });
+    return changes.sort((a, b) => b - a)[1];
+}
+
 /** Compare both sides of a proposed cut using immutable, already-published features. No new DSP. */
 export function cueContext(analysis: TrackAnalysis, time: number): CueContext {
     const frames = analysis.features ?? [];
@@ -26,11 +59,13 @@ export function cueContext(analysis: TrackAnalysis, time: number): CueContext {
         const a = at(start), b = Math.max(a, at(end));
         for (let i = a; i <= b; i++) {
             const f = frames[i];
+            if (!f) return undefined;
             [f.density, f.fx, f.melody, f.vocal, f.brightness, f.tension].forEach((v, j) => values[j] += Number.isFinite(v) ? v : 0);
         }
         return values.map(v => v / (b - a + 1));
     };
     const before = mean(time - 0.5, time - 0.06), after = mean(time + 0.06, time + 0.5), center = mean(time - 0.04, time + 0.04);
+    if (!before || !after || !center) return { before: 0, after: 0, contrast: 0, peak: 0 };
     return { before: Math.max(...before), after: Math.max(...after),
         contrast: Math.max(...before.map((v, i) => Math.abs(v - after[i]))),
         peak: Math.max(...center.map((v, i) => v - Math.max(before[i], after[i]))) };

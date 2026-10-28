@@ -1,10 +1,11 @@
 import type { PerformanceAutomationPlan, PerformanceAutomationPoint, TrackAnalysis } from '../types';
 import { cueContext, musicalCueAnchors } from '../semantics/cueEvidence.ts';
-import { preferredAutomationAnchors } from '../semantics/automationCueRoles.ts';
+import { preferredAutomationAnchors, refineSceneEntry } from '../semantics/automationCueRoles.ts';
 
 /** Offline publication gate. Typed generated purposes require matching accepted evidence in
- * their originating scene. Untyped legacy plans retain their placement policy; manual/locked
- * points remain user-owned. A cue is a morph START here, not a target-arrival deadline.
+ * their originating scene, with bounded evidence-led refinement of estimated scene entries.
+ * Untyped legacy plans retain their placement policy; manual/locked points remain user-owned.
+ * Eligible typed preset bases arrive at the cue; the runtime owns their derived pre-roll.
  */
 export function alignAutomationToCues(plan: PerformanceAutomationPlan, analysis: TrackAnalysis): PerformanceAutomationPlan {
     if (plan.source !== 'auto' || !plan.points.length) return plan;
@@ -46,14 +47,20 @@ export function alignAutomationToCues(plan: PerformanceAutomationPlan, analysis:
         const selection = placement || experimental ? preferredAutomationAnchors(point, bounded) : { candidates: bounded, role: undefined };
         selection.candidates.sort((a, b) => (Math.abs(a.time - point.time) - a.confidence * 0.15)
             - (Math.abs(b.time - point.time) - b.confidence * 0.15));
-        const anchor = selection.candidates[0];
+        // Refinement may cross only the estimated scene start, never an original neighbour.
+        const refinement = refineSceneEntry(point, anchors.filter(a => a.time <= upper && a.time < analysis.duration - 0.12),
+            analysis, proposals[i - 1]?.point.time ?? 0, selection.candidates[0]);
+        const anchor = refinement ?? selection.candidates[0];
+        const role = refinement ? 'structure' : selection.role;
         if (!anchor) continue;
         const context = cueContext(analysis, anchor.time);
-        const published = { ...point, time: anchor.time, cueAnchor: { plannedTime: point.time, sourceTime: anchor.time,
+        const published = { ...point, time: anchor.time,
+            ...(placement && anchor.time < placement.start ? { cuePlacement: { ...placement, start: anchor.time } } : {}),
+            cueAnchor: { plannedTime: point.time, sourceTime: anchor.time,
             kind: anchor.kind, confidence: anchor.confidence, before: context.before, after: context.after,
-            plannedBefore: prior.before, plannedAfter: prior.after, ...(selection.role ? { role: selection.role } : {}) } };
+            plannedBefore: prior.before, plannedAfter: prior.after, ...(role ? { role } : {}) } };
         result.push({ point: published, index });
-        decision.status = 'anchored'; decision.selectedTime = anchor.time; decision.role = selection.role; delete decision.reason;
+        decision.status = 'anchored'; decision.selectedTime = anchor.time; decision.role = role; delete decision.reason;
     }
     result.sort((a, b) => a.point.time - b.point.time || a.index - b.index);
     const protectedPoints = result.filter(({ point: p }) => p.locked || p.reason === 'manual');
