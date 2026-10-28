@@ -1,8 +1,8 @@
 # Plexus XR development tracker
 
-Started: 2026-10-23; current checkpoint: 2026-10-28 (Europe/Budapest). Integration owner: the agent in this chat.
+Started: 2026-10-23; current checkpoint: 2026-10-29 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T14 accepted; T15 explicitly skipped by the user before implementation. T16 adds an optional shared 24-band circular music display. T12d's Musical source and T13g cue refinement remain intact; source/instrument identity, macrostructure and meter precision remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
+**T16 accepted; T15 remains explicitly skipped. T17's exact scalar FFT prototype passed its desktop feasibility gate; production promotion/T18 stay deferred pending physical Quest evidence. Next independent task after manual acceptance: T19. T12d's Musical source and T13g cue refinement remain intact; source/instrument identity, macrostructure and meter precision remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -62,9 +62,9 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T13 | Analyzer + automation + semantics: measured structure, cue and visual arrival timing | T10; T11 additive | T13a-e timing foundation and T13f two-family/full-three-song study delivered. T13g now refines estimated scene entries with bounded sustained multifeature evidence. Meter phase/macrostructure, human precision and perceptual geometry arrival remain unproven; next separate qualified note-source work |
 | T14 | XR + UI: two generic procedural HUD styles | T07-T08 | Accepted for continuation by user; no physical Quest report inferred |
 | T15 | Presentation planner + XR: track-specific HUD | T13-T14 | Skipped/deferred at the user's explicit request, 2026-10-28; no implementation |
-| T16 | Visuals + XR: optional central music display | T05, T14 tokens | Delivered; manual acceptance pending |
-| T17 | Analyzer + performance + build: measured WASM kernel feasibility | T01, fixed T10 reference | Planned; clarify tsrs when starting |
-| T18 | Analyzer + worker + audio + build: production kernel integration | Successful T17 gate | Conditional; no speedup presumed |
+| T16 | Visuals + XR: optional central music display | T05, T14 tokens | Accepted by user for continuation |
+| T17 | Analyzer + performance + build: measured WASM kernel feasibility | T01, fixed T10 reference | Research delivered; desktop gate passed, physical Quest open; no production promotion |
+| T18 | Analyzer + worker + audio + build: production kernel integration | Successful T17 gate including target device | Deferred; physical Quest full-path/cold/memory evidence absent |
 | T19 | Export + visuals/state + MVP: isolated snapshot/runtime | T01, T05 | Planned; single integration owner required |
 | T20 | Export + build + platform: confirmed output format/backend | T19, format/environment decision | Planned |
 | T21 | Caption parser/layout + MVP + export: timed Markdown | T19 | Planned; explicit timing and overlap policy needed |
@@ -1705,3 +1705,98 @@ T19 must include these viewer preferences in its isolated job snapshot when that
 
 **Stop after commit/push/deploy for manual testing. Next after acceptance: T17**, with its separate
 tsrs/toolchain/feasibility clarification. T15 remains skipped unless the user explicitly restores it.
+
+### Current continuation checkpoint - T17 scalar FFT feasibility (2026-10-29)
+
+**Authorized:** T16 accepted, continue with T17. User clarification: WASM acceleration
+is the objective; ts-rs only if justified. Research/build/docs are owned by the
+integration owner. No production/analyzer/worker/audio/state/UI changes occur.
+All 404 production build inputs match T16 exactly. Neither ts-rs nor a Rust DTO
+toolchain is needed for this numeric-only prototype.
+
+The [research protocol](../../research/analyzer-lab/candidates/wasm-fft/README.md)
+fixes a >=15% full-analysis median gain on each of the three complete recordings,
+exact output/PCM parity, <10% process maxRSS increase, <50 ms compile/instantiate
+overhead, plus physical Quest evidence before production promotion. The
+[versioned receipt](../../research/analyzer-lab/candidates/wasm-fft/results.json)
+retains ordered trials, source/input/output identities, CPU sample summaries and
+memory observations. Native ESM avoids the VM fixture loader's performance bias.
+
+Measured Windows/Node 25 desktop XR path (`rhythmOnsets: true`), one full warmup
+then three alternating paired trials in fresh backend processes:
+
+| Recording | TS median | Resident WASM median | Gain | maxRSS ratio |
+| --- | ---: | ---: | ---: | ---: |
+| Goa, 365.77 s | 6.448 s | 3.806 s | 41.0% | 0.967 |
+| No Good, 410.59 s | 6.080 s | 4.215 s | 30.7% | 1.080 |
+| Scienide, 350.46 s | 5.556 s | 3.634 s | 34.6% | 1.008 |
+
+All measured publications match per-track hashes and leave PCM unchanged. CPU
+self samples put about 66-70% in FFT; feature extraction and LF work outside FFT
+are the next larger costs. Tempo/grid/object work does not justify a second port
+yet. The unchanged scalar arithmetic promotes f32 reads to f64 and rounds exactly
+at reference f32 stores. Instance memory is fixed/private/page-rounded, N=2..65536,
+little-endian re/im/twiddles, no growth, threads, SIMD or per-sample imports.
+The copy alternative is explicitly measured and can lose the kernel gain.
+
+The module is 537 bytes (357 gzip), reproducibly assembled by isolated WABT 1.0.39;
+the first observed compile/instantiate/1024-point constructor took 0.668 ms.
+Repeated compiles may hit engine cache. Real WAN latency and worker-transfer
+overhead are unmeasured. No new transfer path is introduced. Chrome 156 desktop
+No Good was 7.902->6.113 s (22.6%), with exact output and PCM equality. Static loopback
+serving was used after Vite research import loading failed; the servers were stopped.
+Browser endpoint heap is not a peak. Preliminary host memory variation is preserved
+in local receipts, including a 1.110 Goa ratio; no prior measurement was overwritten.
+
+**Decision:** desktop feasibility passed; production promotion withheld. No physical
+Quest 3 complete-analysis/cold/memory measurement exists. T18 stays deferred; after
+manual acceptance continue to **T19**, the next independent task. This is neither
+a full WASM analyzer nor a musical-accuracy/FPS improvement. The published player
+continues to use TS and retains all previous controls/defaults.
+
+Validation: `node --test --test-reporter=tap tests/wasm-fft-prototype.test.mjs`
+passed 10/10. `npm run build` passed with the existing chunk-size warning. The binary
+rebuild is byte-identical. Full declared `npm test -- --test-reporter=tap
+--test-concurrency=4` and the complete Python lab suite are recorded in
+`logs/t17/handoff.json` at release, along with exact known-failure classification,
+Graphify refresh and public artifact verification. All 266 T16 test-source identities
+remain exact; one 10-case suite is added (207 active files/267 test-tree identities).
+No old fixture, result or protected test was changed.
+
+Final cumulative outcome: one complete 1994-case npm run returned 1979 pass/15 fail,
+zero skips/cancellations. Six failures were sandbox-temp permissions (preset rename
+and Git fixture initialization), not assertion changes. The three unchanged affected
+files were replayed in full with `TEMP`/`TMP` set to workspace `logs/t17/node-temp`:
+`node --test --test-reporter=tap --test-concurrency=2 tests/dev-preset-save.test.mjs tests/release-pages.test.mjs tests/source-export-powershell.test.mjs`
+passed 8/8. Reconciled result: 1985 pass/9 exact historical Wormhole failures, verified
+by both names and assertion messages. This is not a second full run or a green raw run.
+The complete Python command
+`research/analyzer-lab/.venv/Scripts/python.exe -m pytest research/analyzer-lab/tests --basetemp logs/t17/pt --tb=short`
+passed 341/341. The receipts retain original failures and replay evidence.
+
+Graphify full code-only refresh: 926 files, 8731 nodes, 21175 raw/18606 canonical
+edges, zero canonical dangling endpoints; no LLM/hooks/semantic rebuild. 113 local
+documentation references resolve. Hardware metadata observed after measurement:
+Intel Core Ultra 7 258V, 8 logical CPUs, Win32 x64; detailed host/validation/source
+receipts remain in `logs/t17/`. Temporary compiled ESM/PCM trees can be regenerated
+with the versioned experiment tool and are cleaned after validation.
+
+The older cumulative-harness inventory 17 is stale: its check reports 35 already
+changed predecessor paths and 2842 unindexed files, of which only the new T17 test
+belongs to this task. This failed audit is retained as `logs/t17/harness-check.json`;
+it is not presented as a passing harness run or reset with blanket migrations.
+The direct cumulative run uses the authoritative recursive npm discovery and exact
+T16 predecessor hashes. Restoring the old global inventory requires a separately
+reviewed historical migration; this task does not rewrite those histories.
+
+Node/npm used; no Bun or root dependency/lock changes. WABT is a necessary isolated
+development assembler, not a dependency added to enable tests. Existing Python 3.11
+ran the lab tests. Browser A/B was real automation on the full recording, not
+HTTP-only. `diff_export.ps1` was unnecessary for this narrow research change;
+review used direct source, WAT, hashes and targeted diffs. No manual human music
+annotation or physical device measurement was performed. Production lazy loading,
+fallback/error/cancellation/cache/asset/MIME integration remains T18 work.
+
+**Stop after commit/push/deploy for manual acceptance.** Expect no new player mode
+or gameplay behavior in this research-only release. Next: T19, not automatic T18;
+T15 remains skipped. Full source/release/continuation receipts: `logs/t17/handoff.json`.

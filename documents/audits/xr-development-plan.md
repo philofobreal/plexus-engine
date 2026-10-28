@@ -36,7 +36,7 @@ and its existing legacy fallback remain unchanged.
 
 | ID | Open decision | Working assumption / trigger |
 | --- | --- | --- |
-| D01 | Meaning of tsrs | Rust DSP + wasm-bindgen is only a planning hypothesis; ts-rs only for Rust DTO declarations. Ask at T17; no toolchain/dependency choice now |
+| D01 | Meaning of tsrs | Resolved by user at T17: WASM acceleration is the goal; ts-rs only if justified. Scalar WAT/WABT research ABI needs no Rust DTO generation or root dependency change |
 | D02 | DotRoll domain/package/runtime | Unknown; no server deployment assumptions. Ask before T23 environment selection, then verify actual platform at T24 |
 | D03 | Which business/IP computations move server-side | Auth/authorization/secrets server-side; client hot paths remain local. Ask before server service implementation; scaffold is not completed IP protection |
 | D04 | New export container/codecs | MP4/H.264/AAC proposed beside existing WebM; confirm at T20 before backend/license work |
@@ -351,3 +351,24 @@ and opacity, clear center/lower corridor, no musical inference or fabricated wav
 See the [T16 checkpoint](xr-development-tracker.md#current-continuation-checkpoint---t16-shared-music-display-2026-10-28).
 Commit/push/deploy and stop for manual testing. After acceptance, T17 is the next main-plan task;
 its toolchain/feasibility questions remain separate from this display implementation.
+
+### WASM feasibility decision - T17 (2026-10-29)
+
+T16 was accepted. The user clarified that WASM acceleration is the goal and ts-rs
+is optional only when justified. The scalar FFT research prototype uses a fixed
+typed-array ABI and an isolated pinned WABT development assembler; no Rust DTOs,
+root dependencies or production backend are introduced. The exact TS transform
+remains the mathematical reference.
+
+The preregistered desktop gate passed on three complete reference recordings:
+30.7-41.0% lower median `analyzeAudio` time including per-analysis initialization,
+exact output/PCM parity and process maxRSS ratios below 1.1. A secondary desktop
+browser No Good observation gave 22.6%. Cold compilation and byte size are reported
+separately; no WAN latency, musical accuracy or gameplay FPS improvement is inferred.
+See the [protocol and measured receipt](../../research/analyzer-lab/candidates/wasm-fft/README.md).
+
+Production promotion is withheld because physical Quest 3 full-path/cold/memory
+evidence is absent. T18 is deferred under its explicit prerequisite, rather than
+silently treating desktop results as headset evidence. After this task's
+commit/push/deploy and manual acceptance, **T19 is the next independent task**.
+T15 remains skipped. Do not resume either deferred task without resolving its gate.
