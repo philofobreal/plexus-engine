@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-29 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T17 accepted; T15 remains skipped. At the user's subsequent explicit direction, T18 integrates the measured scalar FFT as a selectable production backend with Auto/TS recovery. The full numerical WASM port and physical Quest performance remain open. Stop for manual testing; T19 follows acceptance. T12d's Musical source and T13g cue refinement remain intact; source/instrument identity, macrostructure and meter precision remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
+**T18 accepted for continuation; its commits/push/public release were reverified. T19a hardens the existing export lifecycle before the isolated snapshot/render-runtime migration. Stop after this slice for manual testing; T19b follows acceptance, not T20. T15 remains skipped. The full numerical WASM port, physical Quest performance, musical source identity and macrostructure/meter precision remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -65,7 +65,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T16 | Visuals + XR: optional central music display | T05, T14 tokens | Accepted by user for continuation |
 | T17 | Analyzer + performance + build: measured WASM kernel feasibility | T01, fixed T10 reference | Research delivered; desktop gate passed, physical Quest open; no production promotion |
 | T18 | Analyzer + worker + audio + build: production kernel integration | T17 desktop evidence; subsequent explicit user activation request | Scalar FFT integrated, Auto/TS/WASM saved/copied, whole-input recovery; physical Quest and full numerical port still open |
-| T19 | Export + visuals/state + MVP: isolated snapshot/runtime | T01, T05 | Planned; single integration owner required |
+| T19 | Export + visuals/state + MVP: isolated snapshot/runtime | T01, T05 | T19a lifecycle prerequisite delivered; immutable snapshot/private render context and background editing remain T19b/c |
 | T20 | Export + build + platform: confirmed output format/backend | T19, format/environment decision | Planned |
 | T21 | Caption parser/layout + MVP + export: timed Markdown | T19 | Planned; explicit timing and overlap policy needed |
 | T22 | Composition + UI + build: launcher and Studio entry | T01, T14; T23 for public release | Planned |
@@ -1877,3 +1877,72 @@ inputs and269 test-tree identities stayed frozen through the research-only C2 re
 Sixteen generated ESM/PCM trees and the temporary built-site copy were removed
 after resolved-path containment checks. Exact source, benchmarks and raw/replay
 receipts remain; no source cache or audio artifact is deployed.
+
+### Current continuation checkpoint - T19a export lifecycle (2026-10-29)
+
+The user accepted T18 and requested commit/push/deploy plus the next task. T18 source
+`dac46e6` and Pages `c6be9f6` were already published and reverified; no duplicate
+empty commit or deployment was created. One owner now handles export/worker/UI/docs.
+
+This bounded T19 slice reserves the export before capability detection and retains
+it through teardown. Stop/Cancel latch once, Cancel overrides Stop and suppresses
+queued completion/download. Output settings are captured before await; this is not
+the proposed immutable musical/PCM snapshot. Studio/MVP do not unlock early on
+Cancel. MVP preserves discard confirmation and reports pending control/status text.
+
+The backend covers failed allocation with cleanup, interrupts media/bitmap/finalize
+waits, closes late bitmaps, removes event listeners and has separate 30-second
+stalled-operation/queue deadlines. Only two frames await admission acknowledgement.
+The worker serializes asynchronous OPFS preparation, frame admission and finalize,
+preventing startup frame loss. Existing API/packet shapes and PCM sample rounding
+are retained. Prior test sources/fixtures and T18 receipts remain unchanged.
+
+New `tests/export-lifecycle.test.mjs` has20 cases covering preparation overlap,
+control precedence, output-settings capture, stale callbacks/results, prefix PCM,
+allocation failure, late resources, queue bounds, timeout, media listeners, worker
+startup ordering and actual MVP dialog latches/confirmation. Targeted six-file
+suite129/129 and build pass. Full-suite outcomes and browser/HTTP limitations are
+recorded at final handoff; an HTTP response alone is not an executed codec test.
+
+See [lifecycle contract](../features/export-lifecycle.md) and ADR-012. The existing
+p5/global export state still runs. Do not enable free editing/playback/new-file
+loading, minimize the modal, or claim isolated export yet. Next after deployment
+and explicit manual acceptance: T19b immutable musical snapshot/private resources
+and render context, then T19c background controls and multi-minute acceptance.
+T20/T21 remain later. No new settings, format/dependency or WASM kernel was added.
+
+Exact validation, source inventory, public release and continuation receipts:
+`logs/t19a/handoff.json`. Stop after commit/push/deploy for manual testing.
+
+Final validation: complete `npm test -- --test-reporter=tap --test-concurrency=4`
+finished2038 cases:2029 pass/9 fail/0 skipped/0 cancelled (904.29s). The exact names
+and messages are checked against the retained Wormhole baseline; no passing global
+audit is claimed. A final MVP status-only refinement changes Preparing to Exporting
+when frame progress begins and protects Stop/Cancel text from later progress. The
+entire129-case affected suite passes afterward; this is a reviewed replay, not a
+second complete run. Full-run predecessor sources/hashes and the final projection
+review are retained in logs/t19a. Final `npm run build` passes with the existing
+chunk-size warning. Prior269 test/helper/fixture sources remain byte-identical;
+there are209 active test files and271 test-tree identities.
+
+Browser validation was NOT completed: two IAB webview attachment timeouts; local
+Vite servers started, but HTTP requests to both the sandbox and external server
+also timed out, including proxy-free curl. No successful HTTP-only/codec/decoded-
+file smoke is claimed. The reusable synthetic test page is retained for manual
+execution. Servers were stopped. Physical Quest testing is outside this export
+slice. No Python/lab source, input, contract or dependency changed, so Python was
+not rerun; prior T18 evidence is retained without counting it as this task's run.
+
+Node25.2.1/npm11.6.2 used. The guarded Node release publisher replaces the existing
+Bun-dependent deploy command without adding dependencies. diff_export.ps1 was
+considered and skipped as unnecessary; review used direct source/diff/hash checks.
+The older global harness inventory remains stale; exact task-local cumulative
+source inventories are retained rather than resetting the historical audit.
+
+Final Graphify refresh:934 code files/8820 nodes/21357 raw edges/18772 canonical
+edges, canonical dangling0. An initial incremental extraction produced an incomplete
+navigation graph; its manifest/output were retained and superseded by full code-only
+extraction. Final status refinement was included in a second full refresh. No LLM,
+hooks, semantic corpus, or dependency installation.163 local documentation targets
+resolve (historical fragments not all rechecked). Guarded release receipts follow
+in logs/t19a/handoff.json; after the manual pause continue T19b, never auto-start T20.

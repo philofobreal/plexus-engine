@@ -2,10 +2,15 @@
 
 ## Status
 
-Proposed by T01 on 2026-10-23; not implemented. Integration owner: this chat.
+Proposed by T01 on 2026-10-23; isolated snapshot/runtime not implemented.
+T19a (2026-10-29) hardens the existing export lifecycle and serial worker startup
+without accepting the complete proposed architecture. Integration owner: this chat.
 Owners: export, visuals/state contracts, MVP facade/UI, build.
 Related: [ADR-011](ADR-011-shared-wormhole-frame-context.md),
 [plan](../audits/xr-development-plan.md), [baseline](../audits/xr-development-baseline.md).
+
+Delivered prerequisite: [T19a lifecycle contract](../features/export-lifecycle.md).
+The legacy global render-state path remains; background editing is not enabled.
 
 ## Problem
 

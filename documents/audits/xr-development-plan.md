@@ -388,3 +388,17 @@ retained. This user direction authorizes reversible integration, not a claim tha
 the physical Quest performance gate or the complete numerical WASM port is done.
 Those remain explicit limitations. Stop after commit/push/deploy for manual
 testing; **T19 follows only after acceptance**. T15 remains skipped.
+
+### T19 staged export migration - T19a (2026-10-29)
+
+T18 was accepted for continuation. First stabilize the existing public workflow:
+synchronous job reservation, latched Stop/Cancel through teardown, suppressed late
+progress/result, interruptible frame/media waits, allocation cleanup and ordered
+asynchronous worker startup. This is the T19a vertical slice; it keeps the current
+renderer/global-state limitations explicit and is followed by deploy/manual pause.
+
+T19b captures the immutable musical snapshot, copies/owns resources with admission
+checks and integrates a private render context. T19c enables background editing,
+persistent controls/leave guard and complete multi-minute decoded-file acceptance.
+Do not advance to T20 or mark ADR-012 implemented after lifecycle repairs alone.
+See [export lifecycle](../features/export-lifecycle.md) for the delivered boundary.

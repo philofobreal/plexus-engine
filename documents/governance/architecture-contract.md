@@ -3,6 +3,14 @@ This document extends `../../AGENTS.md`. If there is a conflict, `AGENTS.md` is 
 
 ## System Shape
 
+T19a retains the existing export ownership and renderer path. WebMExporter owns a
+synchronously reserved job through asynchronous backend teardown; Studio/MVP
+facades must not drop the job or unlock controls immediately on Cancel. Backend
+allocation is covered by cleanup and frame/media waits are interruptible. This
+does not authorize global State swapping or background editing. The isolated
+snapshot/render-context boundary remains proposed in ADR-012. See
+[export lifecycle](../features/export-lifecycle.md).
+
 MVP Offscreen preview preserves the existing host-owned preset/semantic/director/gain resolution.
 `WormholeHostFrame` is a dependency-light resolved-frame contract; the preview worker owns identity
 geometry/material/raster and transfers one finished bitmap. No second audio clock or analysis is

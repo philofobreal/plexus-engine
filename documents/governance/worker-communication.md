@@ -26,6 +26,14 @@ next load, are saved/copied device settings and never regenerate the current cha
 
 Worker input and output are public contracts. Keep them typed and versionable.
 
+T19a export transport remains the existing dedicated-worker packet shape. The
+worker serializes asynchronous start/frame/finalize commands so OPFS preparation
+cannot be overtaken. The backend limits unacknowledged frame admission to two;
+`frame_encoded` acknowledges input admission, while finalize drains encoders.
+Coordinator object identity and dedicated worker identity suppress old progress/
+results until teardown settles. This is not the proposed versioned T19 job protocol
+or isolated snapshot/runtime. See [export lifecycle](../features/export-lifecycle.md).
+
 Current analysis request fields:
 
 - `requestId`.
