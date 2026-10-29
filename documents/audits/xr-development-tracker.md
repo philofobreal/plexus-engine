@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-29 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T18 accepted for continuation; its commits/push/public release were reverified. T19a hardens the existing export lifecycle before the isolated snapshot/render-runtime migration. Stop after this slice for manual testing; T19b follows acceptance, not T20. T15 remains skipped. The full numerical WASM port, physical Quest performance, musical source identity and macrostructure/meter precision remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
+**T19a accepted; next implementation is T19b snapshot/private resources/render context. User-requested conditional WASM export acceleration is scheduled: whole-job profiling and replay/copy review in T19b, justified CPU candidate in T19c or T20a, codec/format comparison in T20a. No WASM export backend or speedup has been delivered by this planning update. The T19a browser gate remains open. T15 stays skipped; the full numerical analyzer port, physical Quest performance and musical source/macrostructure/meter precision remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -65,8 +65,8 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T16 | Visuals + XR: optional central music display | T05, T14 tokens | Accepted by user for continuation |
 | T17 | Analyzer + performance + build: measured WASM kernel feasibility | T01, fixed T10 reference | Research delivered; desktop gate passed, physical Quest open; no production promotion |
 | T18 | Analyzer + worker + audio + build: production kernel integration | T17 desktop evidence; subsequent explicit user activation request | Scalar FFT integrated, Auto/TS/WASM saved/copied, whole-input recovery; physical Quest and full numerical port still open |
-| T19 | Export + visuals/state + MVP: isolated snapshot/runtime | T01, T05 | T19a lifecycle prerequisite delivered; immutable snapshot/private render context and background editing remain T19b/c |
-| T20 | Export + build + platform: confirmed output format/backend | T19, format/environment decision | Planned |
+| T19 | Export + visuals/state + MVP: isolated snapshot/runtime | T01, T05 | T19a accepted; T19b snapshot/private context includes export stage profiling and replay/copy review; T19c background controls and justified WASM CPU candidate if viable |
+| T20 | Export + build + platform: confirmed output format/backend | T19, format/environment decision | T20a compares direct WebCodecs/remux/conditional WASM/native-server options using T19 evidence; production acceleration only after explicit parity/performance/resource gates |
 | T21 | Caption parser/layout + MVP + export: timed Markdown | T19 | Planned; explicit timing and overlap policy needed |
 | T22 | Composition + UI + build: launcher and Studio entry | T01, T14; T23 for public release | Planned |
 | T23 | Server/platform + host integration: auth and business boundary | T01 hosting decision, T22 routes | Planned; concrete hosting capabilities unknown |
@@ -1946,3 +1946,36 @@ extraction. Final status refinement was included in a second full refresh. No LL
 hooks, semantic corpus, or dependency installation.163 local documentation targets
 resolve (historical fragments not all rechecked). Guarded release receipts follow
 in logs/t19a/handoff.json; after the manual pause continue T19b, never auto-start T20.
+
+### T19a accepted - conditional export acceleration planning (2026-10-29)
+
+The user requests a professional, conditional WASM acceleration path within the
+current export work, and risk-based tests for every new behavior. This request is
+now explicit in the T19b/T19c/T20a schedule rather than another duplicate task or
+an assumed FFmpeg/WASM replacement. T19a is accepted; next implementation stays
+T19b. This checkpoint changes documentation only, not the export/analyzer/runtime.
+
+Inspection findings: existing worker encode telemetry measures synchronous encode
+submission, not asynchronous codec completion; exact Wormhole replay from song zero
+must not become a quadratic long-export sampler without a sequential/parity design.
+These are code facts, not new performance results or a claim that the current
+legacy export already uses the exact sampler. Whole-job profiling and algorithm/
+copy review precede a measured CPU kernel or separate codec/format comparison.
+
+The existing proposed >=15% whole-job gain/<=5% protected slowdown gate is joined
+with predeclared quality, A/V prefix, memory and control-latency requirements.
+WASM stays conditional/lazy/fallback-capable. Published FFmpeg/WASM timings are
+not application/WebCodecs evidence; hardware preferences are hints, not confirmed
+hardware use. Sources, trial methodology and negative/failure cases are recorded
+in the feature contract and export testing matrix. No speedup is claimed now.
+
+Validation: `node logs/t19-wasm-plan/check.mjs`, `git diff --check`, governance
+inheritance/direct source review. All409 production build inputs and271 prior test
+sources are unchanged.141 local document targets and the three new anchor links
+resolve. No new regression/Python/browser/performance run is claimed for this
+planning-only change; existing T19a2038/2029+9 baseline and129 replay are historical.
+T19a's real browser/decoded-file gate remains open. Code-only Graphify is unchanged;
+no full extraction/LLM/dependency was necessary. diff_export.ps1 skipped as
+unnecessary for the scoped planning diff. Normal commit/push/guarded Pages build
+and verification receipts: logs/t19-wasm-plan/handoff.json. Continue at T19b;
+T20 is not started, T15 remains skipped. No user setting or default has changed.

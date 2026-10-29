@@ -154,7 +154,40 @@ Automation publication changes (ADR-005 cue-evidenced gate):
 - Run `node --test tests/automation-cue-alignment.test.mjs tests/dramaturgy.test.mjs tests/automation.test.mjs tests/visual-os.test.mjs`.
 - The gate affects dashboard, MVP and XR plans. Pin omissions explicitly; do not add cues, novelty peaks or boundary candidates to a fixture only to keep an expected point.
 
-Documentation and governance changes:
+## Export refactor and acceleration
+
+Before a new export behavior is implemented, identify its owning boundary and
+map its risks to assertions. Add focused tests for new behavior; do not substitute
+implementation-shaped mocks or line coverage for independent expected outcomes.
+Purely textual/cosmetic changes may use appropriate document/render checks rather
+than adding low-value unit tests. Keep earlier cumulative regression and immutable
+reference fixtures alongside new cases.
+
+- Pure fixtures: configuration bounds, frame/sample rounding, prefix boundaries,
+  immutable snapshot/PCM ownership, seed/frame identity and no input mutation.
+- Lifecycle integration: preparation/render/admission/drain/finalize Stop/Cancel,
+  duplicate commands, Cancel precedence, stale job/generation results, rejection
+  and retry, capability/worker/asset failures and idempotent cleanup. Cover failed
+  preparation and late resources, not just the happy path.
+- Host integration: editing, seek/playback/new-load ownership where enabled,
+  persistence/Copy for new choices and old API/payload compatibility. A new private
+  renderer must prove it cannot change the preview's state or clock.
+- Actual browser output: decode full and saved prefix videos with audio, check
+  contiguous timestamps, A/V end alignment, nonblank image/quality and a single
+  result/download; verify cancellation leaves no active job/resource lease. Include
+  multi-minute/large-output and unsupported-capability cases at their acceptance
+  gate. Node or mocked encoders cannot establish these results.
+- Acceleration: independent TS/native reference, predeclared numeric/image/quality
+  tolerances, original and candidate identities, cold/warm/copy/whole-job timing,
+  bounded peak memory and command-to-ack latency. Exercise missing/failed WASM and
+  fallback where introduced. Report speed outside deterministic CI assertions.
+
+Record planned, automated-passed, browser-passed, manual-pending and blocked gates
+separately. An unexecuted fixture or HTTP-only smoke is not a passed codec/GPU test;
+a build or deployment does not close that gap. The T19a browser gate remains open
+until a real run is recorded. See [export lifecycle and scheduled work](../features/export-lifecycle.md).
+
+## Documentation and governance changes
 
 - Verify every referenced governance file exists.
 - Verify `AGENTS.md` remains the only canonical root policy and `CLAUDE.md` remains a thin inheritance shim.

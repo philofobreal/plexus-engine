@@ -11,6 +11,9 @@ Related: [ADR-011](ADR-011-shared-wormhole-frame-context.md),
 
 Delivered prerequisite: [T19a lifecycle contract](../features/export-lifecycle.md).
 The legacy global render-state path remains; background editing is not enabled.
+T19a was accepted on 2026-10-29. The user's additional conditional WASM export
+request is [scheduled across T19b/T19c/T20a](../features/export-lifecycle.md#scheduled-export-acceleration---user-direction-2026-10-29).
+It grants no second render pipeline, codec replacement or unmeasured speed claim.
 
 ## Problem
 

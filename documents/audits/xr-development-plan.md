@@ -130,7 +130,7 @@ All cross-boundary handoffs have this chat's single integration owner.
 | T17 | No WASM backend -> one/two bottleneck kernels measured | Interop/copy/cold cost exceeds gain; TS numerical reference and full-pipeline cold/warm/Quest benchmark; reject prototype if gate fails |
 | T18 | Only promoted T17 kernels -> optional production backend | Detach/OOM/worker race; adapter failures/cancellation/cache parity, TS+WASM same corpus, lazy asset/MIME smoke; TS fallback |
 | T19 | Global export redraw -> snapshot/private runtime/job/UI | PCM duplication, UI stalls/stale IDs/leaks; phase control matrix, full/prefix/cancel files, editing/new-load parity; legacy path at next start |
-| T20 | WebM codecs -> confirmed new container/backend | Double lossy transcode/RAM/license; capability/remux evaluation, 720p/1080p/4K sync/memory/prefix tests; WebM |
+| T20 | WebM codecs -> confirmed new container/backend, conditional WASM acceleration | T19b whole-job profiling first; T19c/T20a evidence-gated CPU kernel/FFmpeg comparison, no presumed speedup. Double transcode/RAM/license; 720p/1080p/4K sync/memory/prefix tests; WebM |
 | T21 | No timed captions -> validated immutable subset/layout | Unsafe HTML/font/parity; parser/time-boundary/unicode/overlap/length tests, aspects, seek+real export, snapshot/undo; empty captions |
 | T22 | Root dashboard MPA -> launcher and /studio/ entry | Heavy startup/404/base/storage drift; dev+production direct URLs/reload/assets, host startup and MVP history; prior entry/base mapping |
 | T23 | No auth/server -> verified session/gate/business authority | Client bypass/cache/session fixation/CSRF; direct route/asset/API/logout/expiry integration, public host regression; fail-closed verified gate |
@@ -402,3 +402,22 @@ checks and integrates a private render context. T19c enables background editing,
 persistent controls/leave guard and complete multi-minute decoded-file acceptance.
 Do not advance to T20 or mark ADR-012 implemented after lifecycle repairs alone.
 See [export lifecycle](../features/export-lifecycle.md) for the delivered boundary.
+
+### Export WASM acceleration schedule - accepted direction (2026-10-29)
+
+T19a accepted. The user requests WASM export acceleration where justified by a
+professional implementation, and asks for risk-based, well-designed tests for new
+behavior. T20 already contained a WASM/FFmpeg evaluation; explicitly bring whole-job
+profiling and algorithm/copy-cost review into T19b. A measured, isolated CPU kernel
+can be prototyped in T19c without waiting for a new format. Codec/remux/FFmpeg choice
+remains T20a after its format decision. Promotion is conditional on the existing
+>=15% whole-job gain, <=5% protected slowdown and export correctness/memory/control
+gates. Reject a losing candidate without blocking T19 delivery or adding a default
+backend. No WASM exporter, package, runtime switch or speedup is delivered by this
+schedule update. The next implementation is still T19b, not T20.
+
+The [detailed scheduled work and source findings](../features/export-lifecycle.md#scheduled-export-acceleration---user-direction-2026-10-29)
+define measurement scope, reference sampling, parity, cold/warm costs and primary
+sources. Apply the [export validation matrix](../governance/testing-validation.md#export-refactor-and-acceleration)
+before the implementation; mocked controls alone cannot satisfy decoded-file or
+browser performance acceptance. The T19a failed browser smoke remains open.
