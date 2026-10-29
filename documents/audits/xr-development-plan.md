@@ -372,3 +372,19 @@ evidence is absent. T18 is deferred under its explicit prerequisite, rather than
 silently treating desktop results as headset evidence. After this task's
 commit/push/deploy and manual acceptance, **T19 is the next independent task**.
 T15 remains skipped. Do not resume either deferred task without resolving its gate.
+
+### User-authorized FFT integration - T18 (2026-10-29)
+
+After accepting T17, the user explicitly requested implementing the justified WASM
+acceleration. The measured scalar FFT now has a request-local production adapter,
+Auto/TS/WASM menu/storage/Copy in all hosts, lazy binary loading and whole-input TS
+recovery. The [technical contract](../features/analyzer-wasm.md) records ownership,
+precision, ABI, numerical migration matrix, failure behavior and evidence.
+
+Native full-path gains are37.5-38.4% across the same complete three recordings;
+the actual built-browser No Good worker path improves22.6%. Output hashes remain
+identical within each comparison. A development-browser outlier is separately
+retained. This user direction authorizes reversible integration, not a claim that
+the physical Quest performance gate or the complete numerical WASM port is done.
+Those remain explicit limitations. Stop after commit/push/deploy for manual
+testing; **T19 follows only after acceptance**. T15 remains skipped.

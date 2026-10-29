@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-29 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T16 accepted; T15 remains explicitly skipped. T17's exact scalar FFT prototype passed its desktop feasibility gate; production promotion/T18 stay deferred pending physical Quest evidence. Next independent task after manual acceptance: T19. T12d's Musical source and T13g cue refinement remain intact; source/instrument identity, macrostructure and meter precision remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
+**T17 accepted; T15 remains skipped. At the user's subsequent explicit direction, T18 integrates the measured scalar FFT as a selectable production backend with Auto/TS recovery. The full numerical WASM port and physical Quest performance remain open. Stop for manual testing; T19 follows acceptance. T12d's Musical source and T13g cue refinement remain intact; source/instrument identity, macrostructure and meter precision remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -64,7 +64,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T15 | Presentation planner + XR: track-specific HUD | T13-T14 | Skipped/deferred at the user's explicit request, 2026-10-28; no implementation |
 | T16 | Visuals + XR: optional central music display | T05, T14 tokens | Accepted by user for continuation |
 | T17 | Analyzer + performance + build: measured WASM kernel feasibility | T01, fixed T10 reference | Research delivered; desktop gate passed, physical Quest open; no production promotion |
-| T18 | Analyzer + worker + audio + build: production kernel integration | Successful T17 gate including target device | Deferred; physical Quest full-path/cold/memory evidence absent |
+| T18 | Analyzer + worker + audio + build: production kernel integration | T17 desktop evidence; subsequent explicit user activation request | Scalar FFT integrated, Auto/TS/WASM saved/copied, whole-input recovery; physical Quest and full numerical port still open |
 | T19 | Export + visuals/state + MVP: isolated snapshot/runtime | T01, T05 | Planned; single integration owner required |
 | T20 | Export + build + platform: confirmed output format/backend | T19, format/environment decision | Planned |
 | T21 | Caption parser/layout + MVP + export: timed Markdown | T19 | Planned; explicit timing and overlap policy needed |
@@ -1800,3 +1800,80 @@ fallback/error/cancellation/cache/asset/MIME integration remains T18 work.
 **Stop after commit/push/deploy for manual acceptance.** Expect no new player mode
 or gameplay behavior in this research-only release. Next: T19, not automatic T18;
 T15 remains skipped. Full source/release/continuation receipts: `logs/t17/handoff.json`.
+
+### Current continuation checkpoint - T18 production FFT backend (2026-10-29)
+
+**User direction:** accept T17 and implement WASM where justified, with detailed
+technical explanation. This supersedes the prior decision to leave all production
+integration deferred. It does not prove unmeasured Quest performance. One owner
+integrates analyzer/audio/worker/UI/build/docs; no further numeric kernel is ported.
+See the [technical contract and migration matrix](../features/analyzer-wasm.md)
+and [versioned ordered measurements](../../research/analyzer-lab/candidates/wasm-fft/production-results.json).
+
+The exact T17 scalar binary is537 bytes, kernel `fft-scalar-f64-v1`. Every relevant
+FFT construction accepts the request-local pure factory. TS stays the headless
+default and exact reference. Auto in normal hosts prefers WASM; explicit TS/WASM
+are available. No Rust/ts-rs, root dependency/lock change, global backend or shared
+scratch. Private fixed memory, f64 arithmetic/f32 stores, resident views and one
+call per transform preserve original math and public musical results.
+
+XR: System > Analysis backend. Studio/MVP: Analysis backend in existing preview
+settings. The choice is saved/copied device policy, applies to the next file load,
+and never regenerates the current chart or rebuilds its background. Startup takes
+a snapshot of the choice. Async generation checks and existing parent request IDs
+protect publication. Failed loading or kernel execution selects TS; partial
+analysis is discarded before complete retry. Used backend/fallback is visible in
+Studio/MVP status, XR diagnostics and the AudioEngine diagnostic getter.
+
+Native production runner gains: Goa37.5%, No Good37.9%, Scienide38.4%, full recordings,
+three alternating paired fresh-process trials; process maxRSS ratios1.002/1.016/0.934.
+All publications/PCM match. The built-browser No Good worker path,44.1kHz, measured
+10.171->7.876s (two-run means,22.6% gain), including initialization/copy/loading/
+publication, excluding decode/hash. The development-browser run's38-second WASM
+outlier and negative two-run mean remain separately retained; its cause is not
+isolated. No universal gain, physical Quest FPS or musical-accuracy claim follows.
+
+Both dev and built browser worker smoke passed six selections/faults, cancellation
+during initialization, exact output and actual `application/wasm`/537-byte asset.
+Studio's real built control restores on reload; shared MVP widget and XR storage/
+Copy/next-load scope pass Node tests. The MVP welcome page keeps workbench controls
+unmounted before loading; full MVP playback and physical VR are manual checks.
+Twelve existing golden/semantic fixtures also publish exact TS/WASM equality, with
+unchanged PCM, preserving the existing ground-truth fixture outcomes.
+
+Validation: full authoritative recursive npm run,2018 cases,2007 pass/11 fail,
+zero skip/cancel. Two failures were C2's strict prior-source identity guard. Review
+proved only the optional FFT factory API changed, with unchanged mathematics.
+Its historical and new exact identities are accepted separately; unknown bytes
+remain rejected, and the export identity names the actual source. The full C2,
+backend and retention files replay35/35 after this research-adapter-only repair:
+reconciled2009 pass/9 exact old Wormhole failures, not a second full run. Production
+runtime stays frozen. A preliminary attempt interrupted during temp setup is
+retained and not counted as completed coverage. Python 341/341; targeted 137/137;
+new backend cases 24. Existing tests269 source identities:265 exact T17 predecessors,
+two reviewed replacements with archived originals, two new files;208 active test files.
+All old measurements/fixtures remain unchanged; the source-evolution registry has
+explicit reviews and its exact pre-T18 version. The old global harness inventory17
+remains stale; task-local source/test hashes and recursive discovery are explicit.
+
+Commands: `npm run build`; `npm test -- --test-reporter=tap --test-concurrency=4`
+with fresh workspace TEMP/TMP; `node --test --test-reporter=tap --test-concurrency=2 tests/analyzer-acoustic-challenges.test.mjs tests/analyzer-wasm-backend.test.mjs tests/accepted-timing-measurement.test.mjs`;
+`research/analyzer-lab/.venv/Scripts/python.exe -m pytest research/analyzer-lab/tests --basetemp logs/t18/pt --tb=short`.
+Node/npm and existing Python3.11 used; no Bun. The guarded Node publisher is the
+existing fallback for Bun-dependent deploy. Direct diff/source/WAT/hash review;
+`diff_export.ps1` was unnecessary. Real browser worker/Studio smoke, not HTTP-only.
+Graphify code-only full refresh and guarded source/push/Pages receipts are recorded
+in `logs/t18/handoff.json`; no LLM/hooks/semantic corpus rebuild.
+
+**Stop after commit/push/deploy for manual testing.** Expect faster offline loading
+where WASM helps, with the same chart/automation results and a menu comparison to
+TS. Short clips/cold startup can lose. Next task after acceptance: **T19**. T15 is
+still skipped. Remaining numerical stages, target-device performance and later
+export isolation are not delivered by this single-kernel integration.
+
+Final Graphify receipt:933 files/8786 nodes,21314 raw and18731 canonical edges,
+canonical dangling0. Local documentation references checked:150. All409 production
+inputs and269 test-tree identities stayed frozen through the research-only C2 repair.
+Sixteen generated ESM/PCM trees and the temporary built-site copy were removed
+after resolved-path containment checks. Exact source, benchmarks and raw/replay
+receipts remain; no source cache or audio artifact is deployed.
