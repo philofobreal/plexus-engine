@@ -1,7 +1,7 @@
 {
-  "id": "t18-wasm-fft-20261029T012547643Z",
-  "previousCommit": "799c94a52adf00286b2e2f7820d58c302ba0b3c6",
-  "sourceCommit": "dac46e6afc265bafa60420bd9cf8d572d6bf6d18",
+  "id": "t19a-export-lifecycle-20261029T195545573Z",
+  "previousCommit": "c6be9f62ea271c015e4222b898d3de2dffd1d4c2",
+  "sourceCommit": "6ccf154aa5973eb344d3eb6f69c90c105fc2327d",
   "inputs": [
     {
       "path": "bun.lock",
@@ -669,11 +669,11 @@
     },
     {
       "path": "src/export/WebCodecsBackend.ts",
-      "sha256": "c0d99698cd1541fa2d2c0e480ade0ff337c11849cb59d69be99b5440d670ae4c"
+      "sha256": "d64be3003baf09655011472a769d6058f6e70cb0d0bb45017a7839268efa85f5"
     },
     {
       "path": "src/export/WebMExporter.ts",
-      "sha256": "c35e09cede5e24c70234b10ba911427afbfd5c566b01c340291c6f84315d6d7d"
+      "sha256": "b943983e6ca0c798701521b6f886f83db107cb81151e27472eb1e3bd68eaa692"
     },
     {
       "path": "src/export/WebMMuxer.ts",
@@ -681,7 +681,7 @@
     },
     {
       "path": "src/export/export.worker.ts",
-      "sha256": "4898bd441ed26b22666656c6a82a092e62b376c88f65329c2847bfbcfa04df3c"
+      "sha256": "7e9ae8f1fdc7c7da61fb85b55f72235c9bd5cd078d530915a958fb9e5cca0e88"
     },
     {
       "path": "src/gameplay/RhythmChartBuilder.ts",
@@ -997,7 +997,7 @@
     },
     {
       "path": "src/ui/DashboardUI.ts",
-      "sha256": "63b773d1946ed859617ac15568c5243561ddd6d411a687425648bcafc561bc4d"
+      "sha256": "c339866df3af8a59b9b19d14280696c52776f1c71c33b03d8ceb3400bec12b5e"
     },
     {
       "path": "src/ui/GestureEngine.ts",
@@ -1041,7 +1041,7 @@
     },
     {
       "path": "src/ui/mvp/ExportDialog.ts",
-      "sha256": "43855bd137dcbcba1ca8d97813d709178213675c910501a87d40b05c51233e9b"
+      "sha256": "e05f3e20616299da1c8fab58456b97230ee253afc459f84d16281332d53c23b1"
     },
     {
       "path": "src/ui/mvp/FirstRunScreen.ts",
@@ -1069,11 +1069,11 @@
     },
     {
       "path": "src/ui/mvp/MvpUI.ts",
-      "sha256": "78c1d85cc9e23a5949009e426a0b1b3f0f2cb664586a1a830354029d7e4f777c"
+      "sha256": "82e78ed136507f072c707303c14105346e58de34175348814225653a1f4a0223"
     },
     {
       "path": "src/ui/mvp/MvpVisualController.ts",
-      "sha256": "59ae5806c116d2ea3cc22a8f7d09b7b2b4c2773d8785551bb964ccea148e42ce"
+      "sha256": "94dc1a908c880097f906faf0b71b64776ac85c40424c1c1832a6b6bd45e585e2"
     },
     {
       "path": "src/ui/mvp/PreviewStage.ts",
@@ -1658,8 +1658,8 @@
       "sha256": "0b31b780ac1f55bf8ea1745febe8c0cf2989cea1dda7a31c6dbf4e3136aa4392"
     },
     {
-      "path": "assets/export.worker-Av-E_fEl.js",
-      "sha256": "c13cdd6a1e97fa4ccc92cd00ed86f5556b573e443c60fc53880bf91e77785cde"
+      "path": "assets/export.worker-CKwGGsx4.js",
+      "sha256": "cec8c77ad0b5aa045bbbf8f8e20e68ae2bede1c2f22d4192d54da99998f18457"
     },
     {
       "path": "assets/fft.scalar-BRpMaUFy.wasm",
@@ -1670,20 +1670,20 @@
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
-      "path": "assets/main-FDdZv2d3.js",
-      "sha256": "6cd43fac279e2a016ee4a67698852fc469baad466c1f4c109e91db1a59dd0828"
+      "path": "assets/main-C91Ykftn.js",
+      "sha256": "4b8cec40d9a2bc793b24217301780564acb564257eac3bd717df03358cce1f6e"
     },
     {
       "path": "assets/mvp-D0xy9ln6.css",
       "sha256": "9ede93355506a0745cdf397c23de3f4e5bcb58fdd943f056b7323867b4b6a494"
     },
     {
-      "path": "assets/mvp-ZeVHXQE-.js",
-      "sha256": "609ad683e56c94dc65a3c4466a620b8c35191e4c5a2f708df58207e85990d0f7"
+      "path": "assets/mvp-DC67Momx.js",
+      "sha256": "c86c7e9729476b8ff545f752083873e18b06070823f56dc99123d4a28b62f2eb"
     },
     {
-      "path": "assets/PreviewQualityControl-Dbllicd_.js",
-      "sha256": "fcd421d8bf2b1c52fc5c96d7a6c990eba486c55e1fff00f332f6c0452e7ca8c0"
+      "path": "assets/PreviewQualityControl-Bhw98Che.js",
+      "sha256": "8c20622e8ce6b4c7d6c742b1dd6711f118e00baf2a113df5d89bf7e4d02e752f"
     },
     {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
@@ -1723,11 +1723,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "9bc585971cedfe9088dcc20624b36b009510d2b4f361b0cfc9c481382dbfbc20"
+      "sha256": "92c3c1c2824eb5b42e29c1216e3728f3f00e89d6877f9dfdf4fcec808aaf95c9"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "0276db893a19fc5d0316395d49b6436c9473e4812607dbc113f438a359c41460"
+      "sha256": "022905321cfa1f9b981d97060a608911b1fe79e51ee6c7ca4cb814be6194dc88"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
