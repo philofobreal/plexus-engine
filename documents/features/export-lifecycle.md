@@ -1,7 +1,8 @@
-# Export lifecycle - T19a
+# Export lifecycle - T19a and T19b
 
 Implemented 2026-10-29. One integration owner covers export, worker ordering and
-Studio/MVP controls. This is the first bounded T19 slice, not isolated rendering.
+Studio/MVP controls. The following historical T19a section describes the lifecycle
+prerequisite. The T19b section records the additional opt-in isolated MVP path.
 
 ## Delivered behavior
 
@@ -72,6 +73,116 @@ resource-lease migration; the existing temporary-file policy is not redesigned h
 Exact outcomes, browser accessibility limits, source/test identities and release
 verification belong in `logs/t19a/handoff.json`. A served test page alone is only
 HTTP evidence. Stop after deployment for manual export testing.
+
+## T19b - opt-in isolated MVP Wormhole export, 2026-10-29
+
+MVP Export > Rendering offers `Compatible (current)` (default) and
+`Isolated Wormhole (preview)`. The device/job choice uses `plexus.exportRuntime`
+localStorage and Copy settings & diagnostics. Studio remains compatible. The
+MVP still pauses playback and keeps its modal locked during export; minimizing,
+free editing and navigation while exporting are T19c, not delivered behavior.
+
+Composition injects `WormholeExportRuntime` through shared type-only contracts.
+The facade captures a resolved plan, cached preset payloads, raw seed/macros/
+boosts/semantic policy, render analysis, music display/sky and output controls.
+Snapshot v1 includes the audio content SHA-256, analysis and preset hashes,
+original morph scale, frame dimensions/fps and title/watermark. Configuration and
+plain data are copied before hashing awaits. The scaled plan is not scaled again
+inside the private context. Load/plan/session/tuning/morph revision changes during
+hashing reject preparation before constructing the renderer.
+
+`ExportSnapshot` imports no State, audio, UI or visuals. It admits resources
+before PCM copying and owns one copied Float32Array per mono/stereo channel;
+playback buffers are never transferred. A 384 MiB engineering estimate includes
+PCM, doubled descriptor size, five pixel surfaces and 64 MiB codec headroom.
+This is not a measured browser/process peak-RAM guarantee or Quest budget.
+Invalid clocks, nonfinite data/PCM, cycles, unsupported dimensions/fps and missing
+presets fail visibly. The plain descriptor is deeply frozen; private typed PCM
+views are borrowed by trusted encoding code and released with the lease.
+
+WebMExporter owns the reservation, abort signal and runtime/PCM lease through
+backend teardown. The backend borrows it. Failed preparation/capability/render,
+Stop before frame zero, Cancel and normal completion all release ownership.
+Cancel still wins over a queued successful result. The isolated branch never
+reads/writes live State, p5 or AudioEngine; dependency proxies assert this.
+The private source/output and injected-state PostFX reuse existing rendering
+logic. The final composite receives PostFX once. No preset fetch or second
+musical analysis is introduced. Existing default PostFX state readers are intact.
+
+The export sampler advances canonical 60 Hz ticks sequentially at supported
+30/60 output fps. Repeat requests do not advance simulation; backward requests
+and presentation changes reset/replay. Tests compare identity draw commands and
+scalars against the retained arbitrary-frame rewind oracle, including gaps and
+scaled transitions. Sixty-one consecutive 60fps requests perform 61 canonical
+draws rather than replaying every prefix. This is an operation-count improvement,
+not a measured whole-job speedup or new WASM kernel.
+
+Optional profile output distinguishes snapshot/hash/renderer preparation,
+render requests, bitmap work, queue waits, finalize waits and worker
+preparation/input-window/video flush/audio flush/mux-file finalization. Intervals
+can overlap; input-window time includes host gaps. Synchronous encode-call
+telemetry is submission cost, not asynchronous codec CPU time. Copy includes
+configuration and the last report, never PCM or the full analysis. No comparative
+browser throughput, peak memory or 5+ minute performance gate has passed yet.
+
+### Opus correction found during actual output inspection
+
+A real two-second Chrome output decoded to 1.94 seconds: the old muxer hard-coded
+80 ms CodecDelay while generating zero Opus pre-skip. It now retains the encoder's
+valid stereo OpusHead and derives CodecDelay from pre-skip at 48 kHz; SeekPreRoll
+remains the separate 80 ms value. The inspected encoder reported 312 samples,
+or 6.5 ms; this value is read, not hard-coded. Missing optional raw-Opus
+description uses an explicit zero-pre-skip header. Invalid headers are rejected.
+One final audio packet is held for DiscardPadding to the submitted sample boundary.
+Streaming waits for audio configuration before writing the header and buffers at
+most 16 MiB of earlier clusters. This does not accumulate the whole output in RAM.
+An audio encoder failure fails isolated export rather than silently saving video.
+
+Primary references: [WebCodecs Opus registration](https://www.w3.org/TR/webcodecs-opus-codec-registration/)
+and [Matroska A_OPUS mapping](https://www.matroska.org/technical/codec_specs.html).
+
+### Validation and open gates
+
+- `npm test -- --test-reporter=tap --test-concurrency=4`: 2060 cases, 2051 pass,
+  9 failures matching the retained baseline names and assertion messages exactly,
+  no skips/cancellations. This run precedes the last Opus/audio-error and revision
+  refinements. All 15 affected files then replayed on final source: 221/221 pass.
+  The union includes 26 new cases; this is not a second complete all-green run.
+- `npm run build` passes (existing chunk-size warning); `git diff --check` passes.
+  Full commands, inventories and omissions: `logs/t19b/validation.json`.
+- `tests/export-isolated.test.mjs` has 23 cases and
+  `tests/export-opus-muxer.test.mjs` has 3 independent EBML/Opus byte checks.
+  Existing lifecycle assertions are unchanged. Its bounded polling helper now
+  yields up to 2000 x 1 ms instead of 200 setImmediate spins, avoiding CPU-load
+  dependent false timeouts. The exact predecessor is retained in
+  `documents/tests/export-lifecycle.pre-t19b.mjs.snapshot` with identities in the
+  local validation receipt. No old golden or result was overwritten.
+- The real-browser fixture is `tests/browser/export-isolated-smoke.html`:
+  synthetic stereo, private renderer, coordinator/worker/OPFS, full/prefix/Cancel,
+  decode duration and nonblank video assertions. Opus metadata was inspected and
+  corrected duration/video metadata observed. The final rerun was interrupted:
+  Computer Use could not safely determine the current Windows browser URL.
+  No final browser full/prefix/Cancel or pixel pass is claimed. No screenshot,
+  long-duration or physical Quest proof exists for this change.
+- No analyzer/lab/Python inputs, dependencies or algorithms changed; Python was
+  not rerun and historical results are not counted as new coverage. No dependency
+  was added. Node/npm ran validation; guarded Node release tooling replaces the
+  Bun-dependent package deploy script. `diff_export.ps1` was skipped: focused
+  diffs/inventories provide this handoff without its unrelated fetch/artifact.
+- Retention: 270 previous test-tree identities remain byte-exact; the one reviewed
+  helper replacement has its exact archived predecessor. There are now 211 active
+  test files / 274 test-tree identities and 412 production build inputs. Full local
+  code-only Graphify refresh: 939 files, 8905 nodes, 18974 canonical edges,
+  21564 raw edges and zero dangling canonical endpoints; no LLM extraction/labels.
+  Documentation checks cover 174 local links and all eight root-contract
+  inheritance declarations. Generated graph/logs stay ignored.
+
+Manual handoff: compare Compatible and Isolated on a short Wormhole track; verify
+title/preset/morph/PostFX and stereo duration, Stop-prefix playback and Cancel
+without download. Check saved choice and Copy. Default promotion is withheld.
+T19c follows manual feedback: real multi-minute/resource/latency evidence,
+job-specific OPFS cleanup and versioned commands, persistent/minimizable controls
+and only then background editing. Conditional WASM remains evidence-gated below.
 
 ## Scheduled export acceleration - user direction, 2026-10-29
 

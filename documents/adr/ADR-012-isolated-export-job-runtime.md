@@ -2,7 +2,11 @@
 
 ## Status
 
-Proposed by T01 on 2026-10-23; isolated snapshot/runtime not implemented.
+Proposed by T01 on 2026-10-23; partially implemented by T19b on 2026-10-29.
+The MVP has an opt-in isolated Wormhole snapshot/runtime. Compatible remains the
+default and Studio retains the legacy path. Background editing, minimizable UI,
+job-versioned worker/resource migration and complete browser acceptance remain
+open; this is not full acceptance of the proposed architecture.
 T19a (2026-10-29) hardens the existing export lifecycle and serial worker startup
 without accepting the complete proposed architecture. Integration owner: this chat.
 Owners: export, visuals/state contracts, MVP facade/UI, build.
@@ -10,7 +14,7 @@ Related: [ADR-011](ADR-011-shared-wormhole-frame-context.md),
 [plan](../audits/xr-development-plan.md), [baseline](../audits/xr-development-baseline.md).
 
 Delivered prerequisite: [T19a lifecycle contract](../features/export-lifecycle.md).
-The legacy global render-state path remains; background editing is not enabled.
+The legacy global render-state path remains in Compatible; background editing is not enabled.
 T19a was accepted on 2026-10-29. The user's additional conditional WASM export
 request is [scheduled across T19b/T19c/T20a](../features/export-lifecycle.md#scheduled-export-acceleration---user-direction-2026-10-29).
 It grants no second render pipeline, codec replacement or unmeasured speed claim.

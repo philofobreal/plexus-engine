@@ -26,6 +26,22 @@ next load, are saved/copied device settings and never regenerate the current cha
 
 Worker input and output are public contracts. Keep them typed and versionable.
 
+T19b Opus output forwards the first optional encoder decoderConfig.description
+to the muxer before its first audio packet. The validated OpusHead determines
+CodecDelay; SeekPreRoll is independent. Submitted sample count sets the final
+audio boundary/DiscardPadding. Isolated export treats audio encoder failure as
+job failure. Pending streaming clusters before audio configuration are bounded.
+
+T19b optional export profiling: start_export may set profile:true and export_done
+may add timings. Compatible requests omit the flag and retain the old done shape.
+Intervals use only the worker's own monotonic clock: preparation, first-input to
+flush window (includes host gaps), video/audio flush and mux/file finalization.
+Host render/bitmap/queue/finalize waits overlap worker work and must not be summed
+into a fictional total or called codec CPU time. Legacy avgEncodeTimeMs and
+peakEncodeTimeMs remain compatible names for synchronous submission overhead.
+Snapshot/private PCM remain host-owned; each outgoing audio slice/bitmap is still
+a dedicated transfer. No new shared-memory requirement or job protocol is claimed.
+
 T19a export transport remains the existing dedicated-worker packet shape. The
 worker serializes asynchronous start/frame/finalize commands so OPFS preparation
 cannot be overtaken. The backend limits unacknowledged frame admission to two;

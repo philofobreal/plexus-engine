@@ -8,8 +8,27 @@ synchronously reserved job through asynchronous backend teardown; Studio/MVP
 facades must not drop the job or unlock controls immediately on Cancel. Backend
 allocation is covered by cleanup and frame/media waits are interruptible. This
 does not authorize global State swapping or background editing. The isolated
-snapshot/render-context boundary remains proposed in ADR-012. See
+snapshot/render-context boundary is partly implemented by T19b below. See
 [export lifecycle](../features/export-lifecycle.md).
+
+T19b adds an opt-in MVP-only isolated Wormhole path. The composition root injects
+an ExportRuntimeFactory from visuals into MvpUI/facade. MvpVisualController alone
+captures its consistent input/revision and may import the export-owned
+`ExportSnapshot` workflow beside WebMExporter. That helper imports only export
+config/shared contracts and owns admission, deep data copies/hashes and one PCM
+copy/channel. It never imports State, audio, UI or visuals. WebMExporter owns the
+lease until the encoding backend settles; backend borrows the runtime and never
+disposes another owner's resources. Studio and the default Compatible path retain
+their existing behavior.
+
+`WormholeExportRuntime` owns private source/output/PostFX resources. It reuses
+WormholeFrameContext/identity/automation and the existing PostFX classes through
+explicit state readers. Legacy PostFX readers still default to State; isolated
+composition always injects its own view. It never swaps State, renders from live
+preview images, fetches presets or controls playback. Source.prepareExport takes
+already resolved/frozen assets and scaled plan. Its 30/60fps sequential canonical
+tick adapter must match the independent renderExact rewind reference. Other FPS
+remain unsupported on this opt-in path. No XR defaults or analyzer change follows.
 
 MVP Offscreen preview preserves the existing host-owned preset/semantic/director/gain resolution.
 `WormholeHostFrame` is a dependency-light resolved-frame contract; the preview worker owns identity

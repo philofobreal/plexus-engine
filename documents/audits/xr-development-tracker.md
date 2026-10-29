@@ -2,7 +2,7 @@
 
 Started: 2026-10-23; current checkpoint: 2026-10-29 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T19a accepted; next implementation is T19b snapshot/private resources/render context. User-requested conditional WASM export acceleration is scheduled: whole-job profiling and replay/copy review in T19b, justified CPU candidate in T19c or T20a, codec/format comparison in T20a. No WASM export backend or speedup has been delivered by this planning update. The T19a browser gate remains open. T15 stays skipped; the full numerical analyzer port, physical Quest performance and musical source/macrostructure/meter precision remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
+**T19b delivered as an opt-in MVP isolated Wormhole preview; Compatible remains default. Snapshot/private PCM/context, sequential canonical sampling, job-local profiling and Opus delay/padding correction are implemented. Full suite: 2060/2051 pass/9 exact baseline failures; final affected replay: 221/221. Final browser full/prefix/Cancel and long-duration/resource acceptance remain open after a Computer Use URL-safety stop. Pause for manual feedback; next is T19c, not T20. Conditional WASM export acceleration remains scheduled and unpromoted. T15 stays skipped; physical Quest and musical accuracy limits remain open.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -65,7 +65,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T16 | Visuals + XR: optional central music display | T05, T14 tokens | Accepted by user for continuation |
 | T17 | Analyzer + performance + build: measured WASM kernel feasibility | T01, fixed T10 reference | Research delivered; desktop gate passed, physical Quest open; no production promotion |
 | T18 | Analyzer + worker + audio + build: production kernel integration | T17 desktop evidence; subsequent explicit user activation request | Scalar FFT integrated, Auto/TS/WASM saved/copied, whole-input recovery; physical Quest and full numerical port still open |
-| T19 | Export + visuals/state + MVP: isolated snapshot/runtime | T01, T05 | T19a accepted; T19b snapshot/private context includes export stage profiling and replay/copy review; T19c background controls and justified WASM CPU candidate if viable |
+| T19 | Export + visuals/state + MVP: isolated snapshot/runtime | T01, T05 | T19a accepted; T19b opt-in MVP implementation delivered, manual/browser gates pending. [Contract and evidence](../features/export-lifecycle.md#t19b---opt-in-isolated-mvp-wormhole-export-2026-10-29). Next T19c controls/resources and justified WASM candidate if viable |
 | T20 | Export + build + platform: confirmed output format/backend | T19, format/environment decision | T20a compares direct WebCodecs/remux/conditional WASM/native-server options using T19 evidence; production acceleration only after explicit parity/performance/resource gates |
 | T21 | Caption parser/layout + MVP + export: timed Markdown | T19 | Planned; explicit timing and overlap policy needed |
 | T22 | Composition + UI + build: launcher and Studio entry | T01, T14; T23 for public release | Planned |

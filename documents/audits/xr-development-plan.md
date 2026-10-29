@@ -397,8 +397,13 @@ progress/result, interruptible frame/media waits, allocation cleanup and ordered
 asynchronous worker startup. This is the T19a vertical slice; it keeps the current
 renderer/global-state limitations explicit and is followed by deploy/manual pause.
 
-T19b captures the immutable musical snapshot, copies/owns resources with admission
-checks and integrates a private render context. T19c enables background editing,
+T19b now captures the immutable musical snapshot, copies/owns resources with admission
+checks and integrates a private render context as an opt-in MVP Wormhole preview.
+It adds sequential canonical sampling, honest stage profiling and Opus timing
+repair; Compatible remains default. Full 2060-case run retains 9 exact baseline
+failures; final affected replay passes 221/221. Browser final decode/prefix/Cancel,
+long-duration memory and UI-latency gates remain open after a Computer Use URL
+safety stop. Pause for manual feedback. T19c enables background editing,
 persistent controls/leave guard and complete multi-minute decoded-file acceptance.
 Do not advance to T20 or mark ADR-012 implemented after lifecycle repairs alone.
 See [export lifecycle](../features/export-lifecycle.md) for the delivered boundary.
@@ -414,7 +419,8 @@ remains T20a after its format decision. Promotion is conditional on the existing
 >=15% whole-job gain, <=5% protected slowdown and export correctness/memory/control
 gates. Reject a losing candidate without blocking T19 delivery or adding a default
 backend. No WASM exporter, package, runtime switch or speedup is delivered by this
-schedule update. The next implementation is still T19b, not T20.
+schedule update. T19b has since delivered the foundation above; next is T19c
+after manual feedback, not T20. No whole-job WASM speed result is claimed.
 
 The [detailed scheduled work and source findings](../features/export-lifecycle.md#scheduled-export-acceleration---user-direction-2026-10-29)
 define measurement scope, reference sampling, parity, cold/warm costs and primary
