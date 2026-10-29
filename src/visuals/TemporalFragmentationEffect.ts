@@ -30,8 +30,14 @@ export class TemporalFragmentationEffect implements PostProcessEffect {
 
     private readonly plan: TemporalFragmentationPlan = createTemporalFragmentationPlan();
     private readonly input: TemporalFragmentationInput = createTemporalFragmentationInput();
+    private readonly readState: () => Pick<typeof State, 'directorOutput' | 'modulation' | 'visualTuning'>;
+
+    constructor(readState: () => Pick<typeof State, 'directorOutput' | 'modulation' | 'visualTuning'> = () => State) {
+        this.readState = readState;
+    }
 
     isActive(_frame: PostFxFrameContext): boolean {
+        const State = this.readState();
         return isTemporalFragmentationActive(
             State.directorOutput.glitchIntensity,
             State.visualTuning.postFxFragmentAmount
@@ -76,6 +82,7 @@ export class TemporalFragmentationEffect implements PostProcessEffect {
     }
 
     private readInput(frame: PostFxFrameContext): TemporalFragmentationInput {
+        const State = this.readState();
         const input = this.input;
         input.timeSec = frame.timeSec;
         input.widthPx = frame.widthPx;

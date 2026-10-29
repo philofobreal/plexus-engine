@@ -36,10 +36,15 @@ import { computeAudioContentHash } from './audioContentHash';
 import { normalizeSessionSnapshot, type SessionCheckpoint, type WorkspaceSnapshot } from './sessionCheckpoint';
 import { ExportCapabilityDetector } from '../../export/ExportCapabilityDetector';
 import { WebMExporter, type ExportConfig } from '../../export/WebMExporter';
+import { captureExportSnapshot } from '../../export/ExportSnapshot';
+import type { ExportRuntimeFactory, ExportProfile } from '../../types/ExportRenderJob';
+import { projectRenderWorkerAnalysis } from '../../types/CanvasVisualSource';
+import { DEFAULT_MUSIC_DISPLAY, type MusicDisplaySettings } from '../../types/MusicDisplay';
 import { State } from '../../state/store';
 import type { DramaturgyActivityLevel, DramaturgyVariantMode, PerformanceAutomationPlan, PerformanceAutomationPoint, VisualTuningConfig } from '../../types';
 
 export interface MvpVisualControllerCallbacks {
+    onExportProfile?: (profile: ExportProfile) => void;
     onLoadStart: (fileName: string) => void;
     onProgress: (progress: number, stage: string) => void;
     onAnalysisComplete: () => void;
@@ -148,13 +153,16 @@ export class MvpVisualController {
     private currentExporter: WebMExporter | null = null;
     private activityLevel: DramaturgyActivityLevel = 'balanced';
     private variantMode: DramaturgyVariantMode = 'paired';
+    private readonly isolatedExport;
 
     private readonly automationPlanView = new AutomationPlanViewCache();
 
-    constructor(engine: AudioEngine, hasTimeBasedSemanticPlan: () => boolean, callbacks: MvpVisualControllerCallbacks) {
+    constructor(engine: AudioEngine, hasTimeBasedSemanticPlan: () => boolean, callbacks: MvpVisualControllerCallbacks,
+        isolatedExport?: { factory: ExportRuntimeFactory; musicDisplay: () => MusicDisplaySettings }) {
         this.engine = engine;
         this.hasTimeBasedSemanticPlan = hasTimeBasedSemanticPlan;
         this.callbacks = callbacks;
+        this.isolatedExport = isolatedExport;
 
         engine.onProgress = (progress, stage) => this.callbacks.onProgress(progress, stage);
         engine.onAnalysisError = (message) => this.callbacks.onAnalysisError(message);
@@ -992,7 +1000,38 @@ export class MvpVisualController {
         const wasPlaying = State.isPlaying;
         if (wasPlaying) this.engine.stop(false);
 
-        const exporter = new WebMExporter(this.exportP5Instance, this.exportCanvas!, this.engine, null);
+        const isolatedExport = this.isolatedExport;
+        const exporter = new WebMExporter(this.exportP5Instance, this.exportCanvas!, this.engine, null, isolatedExport ? {
+            prepareRuntime: async (capturedConfig, signal) => {
+                if (this.preparingTrack || this.regeneratingPlan || State.visualMode !== 'cosmic-wormhole' || State.videoBackplateActive)
+                    throw new Error('Wait for the Wormhole track preparation before isolated export.');
+                const revisionKey = () => `${this.loadRevision}/${this.planRevision}/${this.sessionRevision}/${this.tuningSignature()}/${State.automationMorphScale}`;
+                this.configureFiniteAutomation();
+                const plan = this.getAutomationPlanView() ?? { version: 1 as const, source: 'auto' as const, points: [] };
+                const presets = Object.fromEntries([...new Set(plan.points.map(p => p.preset))].map(name => [name, this.presetCache.get(name)]));
+                const revision = revisionKey();
+                const started = performance.now();
+                const lease = await captureExportSnapshot({ audioContentId: this.currentFileHash ?? '',
+                    analysis: projectRenderWorkerAnalysis({ frames: State.frames, events: State.events, trackAnalysis: State.trackAnalysis,
+                        sampleRate: State.sampleRate, hopSize: State.hopSize, bpm: State.bpm, duration: State.duration, performancePlan: plan }),
+                    seed: { version: 1, rawTuning: this.finiteSeed ?? State.semanticBaseTuning ?? State.targetTuning,
+                        macros: this.macros, boosts: this.advancedBoosts,
+                        policy: { gains: 'meta', semanticResolver: featureFlags.semanticResolver, semanticChoreography: featureFlags.semanticChoreography } },
+                    presets, musicDisplay: isolatedExport.musicDisplay() ?? DEFAULT_MUSIC_DISPLAY, skybox: featureFlags.wormholeSkybox,
+                    morphScale: State.automationMorphScale
+                }, this.engine.getAudioBuffer()!, capturedConfig, signal);
+                try {
+                    if (signal.aborted) throw new Error('Export cancelled.');
+                    if (revision !== revisionKey()) throw new Error('Track or settings changed during export preparation. Start again.');
+                    const runtime = isolatedExport.factory(lease.snapshot, lease.audio), dispose = runtime.dispose.bind(runtime);
+                    const preparationMs = performance.now() - started;
+                    runtime.dispose = () => { try { dispose(); } finally { lease.dispose(); } };
+                    this.exportPreparationMs = preparationMs;
+                    return runtime;
+                } catch (error) { lease.dispose(); throw error; }
+            },
+            onProfile: report => this.callbacks.onExportProfile?.({ ...report, stagesMs: { snapshotHashAndRendererPreparation: this.exportPreparationMs, ...report.stagesMs } })
+        } : undefined);
         this.currentExporter = exporter;
         try {
             return await exporter.startExport(config, onProgress);
@@ -1002,6 +1041,7 @@ export class MvpVisualController {
     }
 
     stopAndSaveExport(): void { this.currentExporter?.stopAndSave(); }
+    private exportPreparationMs = 0;
     cancelExport(): void { this.currentExporter?.cancelExport(); }
 
     static async detectExportCapabilities() {

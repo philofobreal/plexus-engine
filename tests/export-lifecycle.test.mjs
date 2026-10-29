@@ -10,7 +10,7 @@ const deferred = () => {
 };
 const flush = () => new Promise(resolve => setImmediate(resolve));
 async function until(predicate) {
-    for (let i = 0; i < 200 && !predicate(); i++) await flush();
+    for (let i = 0; i < 2000 && !predicate(); i++) await new Promise(resolve => setTimeout(resolve, 1));
     assert.ok(predicate(), 'Expected boundary was not reached');
 }
 

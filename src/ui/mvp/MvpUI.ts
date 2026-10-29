@@ -1,5 +1,7 @@
 import type { AudioEngine } from '../../audio/AudioEngine';
 import type { ExportConfig } from '../../export/ExportTypes';
+import type { ExportRuntimeFactory } from '../../types/ExportRenderJob';
+import { DEFAULT_MUSIC_DISPLAY } from '../../types/MusicDisplay';
 import type { DramaturgyActivityLevel, DramaturgyVariantMode, VisualTuningConfig } from '../../types';
 import { State } from '../../state/store';
 import { MvpVisualController } from './MvpVisualController';
@@ -78,7 +80,7 @@ export class MvpUI {
     private readonly previewQualityControl?: ReturnType<typeof createPreviewQualityControl>;
 
     constructor(engine: AudioEngine, hasTimeBasedSemanticPlan: () => boolean = () => false,
-        previewQualityControl?: ReturnType<typeof createPreviewQualityControl>) {
+        previewQualityControl?: ReturnType<typeof createPreviewQualityControl>, isolatedExportFactory?: ExportRuntimeFactory) {
         this.previewQualityControl = previewQualityControl;
         this.root = document.createElement('div');
         this.root.className = 'mvp-shell';
@@ -238,7 +240,7 @@ export class MvpUI {
             onStart: (config) => void this.runExport(config),
             onStop: () => this.controller.stopAndSaveExport(),
             onCancel: () => this.controller.cancelExport()
-        });
+        }, Boolean(isolatedExportFactory));
 
         this.root.appendChild(topbar);
         this.root.appendChild(main);
@@ -281,6 +283,7 @@ export class MvpUI {
         this.updateTimelineVisibility();
 
         this.controller = new MvpVisualController(engine, hasTimeBasedSemanticPlan, {
+            onExportProfile: profile => this.exportDialog.setProfile(profile),
             onLoadStart: (fileName) => { this.currentFileName = fileName; this.hasAutoSelected = false; this.showAnalyzing(fileName); },
             onProgress: (progress) => this.analyzing.setProgress(progress),
             onAnalysisComplete: () => this.showReady(),
@@ -305,7 +308,8 @@ export class MvpUI {
             getWorkspaceSnapshot: () => this.captureWorkspace(),
             onSessionNotice: message => this.showToast(message),
             onWorkspaceRestored: workspace => this.restoreWorkspace(workspace)
-        });
+        }, isolatedExportFactory ? { factory: isolatedExportFactory,
+            musicDisplay: () => previewQualityControl?.preference.musicDisplay ?? DEFAULT_MUSIC_DISPLAY } : undefined);
 
         new HistoryInput(window, {
             undo: () => this.applyHistory(false), redo: () => this.applyHistory(true),

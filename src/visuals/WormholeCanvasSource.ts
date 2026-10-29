@@ -16,6 +16,7 @@ import { createWormholeSpatialFrame, resolveWormholeSpatialFrame } from './wormh
 
 
 export interface WormholeCanvasSourceOptions {
+    readonly skybox?: boolean;
     /** Explicit host policy; omission preserves the existing XR adapter defaults. */
     readonly contextSeed?: WormholeContextSeed;
     /** Opt-in debug surface (`?xrDiagnostics=1`), decided by the composition root. */
@@ -118,6 +119,7 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     private disposed = false;
     private preparationReady = false;
     private duration = 0;
+    private sequentialTick = -1;
     private readonly diagnostics: boolean;
     private readonly profile: boolean;
     /** External material (Addendum W): the identity hands its carriers here instead of rasterizing. */
@@ -132,6 +134,8 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     /** Opt-in stage times of the last redraw: tuning / director work, then the identity's stages. */
     private readonly stages: Record<string, number> | null;
     private readonly depthCue: number;
+    private readonly skybox: boolean | undefined;
+    get exportState(): Readonly<import('./CosmicWormholeIdentity').WormholeRenderState> { return this.state; }
     private readonly midBackend: Canvas2DRendererBackend | null;
     private readonly nearBackend: Canvas2DRendererBackend | null;
     readonly layers?: readonly HTMLCanvasElement[];
@@ -153,6 +157,7 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         this.rasterKind = this.backend instanceof WebGLRendererBackend ? 'webgl' : 'canvas2d';
         this.canvas = this.backend.canvas;
         this.depthCue = options.depthCue ?? 0;
+        this.skybox = options.skybox;
         this.midBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT, createSurface) : null;
         this.nearBackend = options.depthLayers ? new Canvas2DRendererBackend(LAYER_WIDTH, LAYER_HEIGHT, createSurface) : null;
         if (this.midBackend && this.nearBackend) this.layers = [this.canvas, this.midBackend.canvas, this.nearBackend.canvas];
@@ -189,6 +194,7 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     get stageTimes(): Readonly<Record<string, number>> | null { return this.stages; }
 
     async prepare(analysis: VisualAnalysisSnapshot | null): Promise<void> {
+        this.sequentialTick = -1;
         const revision = ++this.revision;
         this.preparationReady = false;
         this.duration = analysis?.duration ?? 0;
@@ -212,7 +218,33 @@ export class WormholeCanvasSource implements CanvasVisualSource {
     }
 
     render(time: number, playing: boolean, continuous?: boolean): boolean {
+        this.sequentialTick = -1;
         return this.renderFrame(time, playing, continuous, false);
+    }
+
+    /** Frozen assets are supplied by the export owner; no mutable preset IO after capture. */
+    prepareExport(analysis: VisualAnalysisSnapshot, presets: ReadonlyMap<string, unknown>): void {
+        if (this.disposed) throw new Error('Wormhole source disposed.');
+        ++this.revision; this.preparationReady = false; this.sequentialTick = -1;
+        this.duration = analysis.duration;
+        this.context.prepare(analysis); this.configureIdentity();
+        this.context.preparePlan(analysis.performancePlan, presets, true);
+        this.lastTime = null; this.spatialDrawn = false; this.preparationReady = true;
+    }
+
+    /** Integer canonical ticks only. Fractional endpoints stay on the independent exact oracle. */
+    renderExportFrame(frameIndex: number, fps: number): void {
+        if (!Number.isSafeInteger(frameIndex) || frameIndex < 0 || (fps !== 30 && fps !== 60)) throw new Error('Invalid sequential Wormhole frame.');
+        const tick = frameIndex * (60 / fps), time = frameIndex / fps;
+        if (!this.preparationReady || this.disposed || !Number.isSafeInteger(tick) || time > this.duration) throw new Error('Sequential Wormhole frame outside prepared track.');
+        if (this.sequentialTick < 0 || tick < this.sequentialTick) {
+            this.context.rewind(); this.configureIdentity(); this.lastTime = null; this.lastPlaying = false;
+            this.backend.frameCount = 0; this.sequentialTick = -1;
+        }
+        for (let next = this.sequentialTick + 1; next <= tick; next++) {
+            if (!this.renderFrame(next / 60, true, true, true)) throw new Error('Sequential Wormhole frame unavailable.');
+            this.sequentialTick = next;
+        }
     }
 
     /** Offline only: canonical 60 Hz replay from song zero, then the exact fractional endpoint.
@@ -220,6 +252,7 @@ export class WormholeCanvasSource implements CanvasVisualSource {
      * pacing, preview lead, wall-clock classification or skipped unchanged frame is involved.
      */
     renderExact(time: number): void {
+        this.sequentialTick = -1;
         if (this.disposed || !this.preparationReady) throw new Error('Exact Wormhole source is not prepared.');
         if (!Number.isFinite(this.duration) || this.duration < 0 || !Number.isFinite(time) || time < 0 || time > this.duration)
             throw new Error('Exact Wormhole time outside prepared track.');
@@ -298,6 +331,7 @@ export class WormholeCanvasSource implements CanvasVisualSource {
      */
     setPresentation(presentation: CanvasVisualPresentation): void {
         const changed = this.context.setPresentation(presentation);
+        if (changed.tuningChanged || changed.directionChanged || changed.displayChanged) this.sequentialTick = -1;
         this.displayDirty ||= changed.displayChanged === true;
         this.presentationDirty ||= changed.tuningChanged;
         this.directionDirty ||= changed.directionChanged;
@@ -321,6 +355,7 @@ export class WormholeCanvasSource implements CanvasVisualSource {
         if (this.collector) this.identity.setMaterialSink(this.collector);
         if (this.lineCollector) this.identity.setLineSink(this.lineCollector);
         this.identity.setDepthCue(this.depthCue);
+        if (this.skybox !== undefined) this.identity.setSkyboxEnabled(this.skybox);
         this.identity.setDepthLayers(this.midBackend && this.nearBackend ? { mid: this.midBackend, near: this.nearBackend } : null);
     }
 }

@@ -64,6 +64,7 @@ export class WormholeFrameContext {
     private semanticProjection = new SemanticTuningProjection();
     private plan: PerformanceAutomationPlan | null = null;
     private analysis: VisualAnalysisSnapshot | null = null;
+    private resolvedPlan = false;
     /** Borrowed immutable host publication; asset data is copied separately at preparation. */
     get performancePlan(): PerformanceAutomationPlan | null { return this.plan; }
     private presets = new Map<string, unknown>();
@@ -100,6 +101,7 @@ export class WormholeFrameContext {
         this.semanticBase = { ...this.rawTuning };
         this.semantic = new SemanticRuntimeAdapter(this.resolver, () => this.semanticBase);
         this.plan = null; this.presets.clear(); this.wallPresetGates.clear(); this.lastPoint = null;
+        this.resolvedPlan = false;
         this.motifRuntime = new MotifRuntimeAdapter(); this.semanticProjection = new SemanticTuningProjection();
         this.denseEvents = this.state.events.filter(event => event.type === 2);
         this.choreography = analysis && this.policy.semanticResolver
@@ -113,14 +115,14 @@ export class WormholeFrameContext {
      * never refetch or regenerate a plan while sampling. Presentation controls survive rewind.
      */
     rewind(): void {
-        const plan = this.plan, assets = new Map(this.presets);
+        const plan = this.plan, assets = new Map(this.presets), resolved = this.resolvedPlan;
         this.prepare(this.analysis);
-        if(plan)this.preparePlan(plan,assets);
+        if(plan)this.preparePlan(plan,assets,resolved);
         else this.presets=assets;
     }
 
     /** Publish all required assets together, only after the adapter's preparation revision check. */
-    preparePlan(plan: PerformanceAutomationPlan, assets: ReadonlyMap<string, unknown>): void {
+    preparePlan(plan: PerformanceAutomationPlan, assets: ReadonlyMap<string, unknown>, alreadyResolved = false): void {
         const presets = new Map<string, unknown>();
         for (const name of new Set(plan.points.map(point => point.preset))) {
             const asset = assets.get(name);
@@ -129,7 +131,8 @@ export class WormholeFrameContext {
         }
         // Same default scale projection as dashboard/MVP; keep the borrowed publication untouched.
         // Untyped/protected plans retain their exact legacy path.
-        this.plan = plan.points.length > 0 && plan.points.every(isAutomaticCuePoint) ? applyMorphScale(plan, 1, { durationSec: this.analysis?.duration }) : plan;
+        this.resolvedPlan = alreadyResolved;
+        this.plan = !alreadyResolved && plan.points.length > 0 && plan.points.every(isAutomaticCuePoint) ? applyMorphScale(plan, 1, { durationSec: this.analysis?.duration }) : plan;
         this.presets = presets;
         this.wallPresetGates.clear();
         for(const [name,asset] of presets)this.wallPresetGates.set(name,normalizeVisualTuningConfig(asset,this.rawTuning).wormholeOpticsEnabled>=.5);

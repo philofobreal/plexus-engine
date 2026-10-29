@@ -24,8 +24,11 @@ export class PostFxPipeline {
     private readonly frame: PostFxFrameContext = { timeSec: 0, widthPx: 0, heightPx: 0 };
     private readonly activeEffects: PostProcessEffect[];
     private activeCount = 0;
+    private readonly readState: () => Pick<typeof State, 'visualTuning' | 'isPlaying' | 'isExporting'>;
 
-    constructor(effects: readonly PostProcessEffect[], surface: CanvasPostFxSurface = new CanvasPostFxSurface()) {
+    constructor(effects: readonly PostProcessEffect[], surface: CanvasPostFxSurface = new CanvasPostFxSurface(),
+        readState: () => Pick<typeof State, 'visualTuning' | 'isPlaying' | 'isExporting'> = () => State) {
+        this.readState = readState;
         for (const effect of effects) {
             if (postFxChainIndex(effect.id) < 0) throw new Error(`Unknown post FX effect id '${effect.id}'`);
         }
@@ -40,6 +43,7 @@ export class PostFxPipeline {
      * otherwise), so a given song time yields the same decisions live and in export.
      */
     render(host: PostFxSurfaceHost | null | undefined, timeSec: number): void {
+        const State = this.readState();
         if (this.effects.length === 0) return;
         // Explicit low-latency bypass: performance mode removes the whole seam, including the
         // snapshot blit and any buffer allocation, rather than degrading it.

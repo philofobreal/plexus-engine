@@ -1,4 +1,5 @@
 import type { ExportCapabilities, ExportConfig, ExportResolution } from '../../export/ExportTypes';
+import type { ExportProfile } from '../../types/ExportRenderJob';
 
 export interface ExportDialogCallbacks {
     onStart: (config: ExportConfig) => void;
@@ -19,9 +20,13 @@ export class ExportDialog {
     private isActive = false;
     private controlPending = false;
     private blockedMessage: string | null = null;
+    private readonly runtimeSelect: HTMLSelectElement;
+    private profile: ExportProfile | null = null;
+    private readonly isolatedAvailable: boolean;
 
-    constructor(callbacks: ExportDialogCallbacks) {
+    constructor(callbacks: ExportDialogCallbacks, isolatedAvailable = false) {
         this.callbacks = callbacks;
+        this.isolatedAvailable = isolatedAvailable;
         this.root = document.createElement('div');
         this.root.className = 'mvp-modal-scrim mvp-hidden';
         this.root.innerHTML = `
@@ -35,10 +40,18 @@ export class ExportDialog {
                         <button type="button" data-res="4K">4K</button>
                     </div>
                 </div>
+                <div class="mvp-field"><label>Rendering
+                    <select class="mvp-export-runtime" aria-label="Export rendering">
+                        <option value="compatible">Compatible (current)</option>
+                        <option value="isolated-wormhole">Isolated Wormhole (preview)</option>
+                    </select></label>
+                    <small>Isolated uses a frozen track and private renderer. Try a short clip first.</small>
+                </div>
                 <div class="mvp-capability-warning mvp-hidden"></div>
                 <div class="mvp-modal-progress mvp-hidden"><div class="mvp-modal-progress-bar"></div></div>
                 <div class="mvp-modal-status"></div>
                 <div class="mvp-modal-actions">
+                    <button type="button" class="mvp-btn mvp-export-copy">Copy settings &amp; diagnostics</button>
                     <button type="button" class="mvp-btn mvp-export-cancel">Cancel</button>
                     <button type="button" class="mvp-btn mvp-export-stop mvp-hidden">Stop &amp; save</button>
                     <button type="button" class="mvp-btn mvp-btn-accent mvp-export-start">Export</button>
@@ -52,6 +65,21 @@ export class ExportDialog {
         this.statusEl = this.root.querySelector('.mvp-modal-status')!;
         this.capabilityWarningEl = this.root.querySelector('.mvp-capability-warning')!;
         this.resolutionBtns = Array.from(this.root.querySelectorAll('.mvp-export-resolution button'));
+        this.runtimeSelect = this.root.querySelector('.mvp-export-runtime')!;
+        let stored: string | null = null;
+        try { stored = window.localStorage.getItem('plexus.exportRuntime'); } catch { /* Session default. */ }
+        this.runtimeSelect.value = isolatedAvailable && stored === 'isolated-wormhole' ? stored : 'compatible';
+        const isolatedOption = this.runtimeSelect.querySelector<HTMLOptionElement>('[value="isolated-wormhole"]');
+        if (isolatedOption) isolatedOption.disabled = !isolatedAvailable;
+        this.runtimeSelect.addEventListener('change', () => {
+            if (this.isActive) return;
+            try { window.localStorage.setItem('plexus.exportRuntime', this.getConfig().runtime ?? 'compatible'); } catch { /* Session only. */ }
+        });
+        this.root.querySelector('.mvp-export-copy')!.addEventListener('click', () => {
+            if (!navigator.clipboard?.writeText) { this.setStatus('Clipboard unavailable.'); return; }
+            void navigator.clipboard.writeText(JSON.stringify({ export: this.getConfig(), diagnostics: this.profile }, null, 2))
+                .catch(() => this.setStatus('Unable to copy export settings.'));
+        });
 
         this.resolutionBtns.forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -91,7 +119,8 @@ export class ExportDialog {
     private getConfig(): ExportConfig {
         const active = this.root.querySelector('.mvp-export-resolution button.is-active') as HTMLElement | null;
         const resolution = (active?.dataset.res ?? '720p') as ExportResolution;
-        return { resolution, aspectRatio: '16:9', fps: 60, watermark: false };
+        return { resolution, aspectRatio: '16:9', fps: 60, watermark: false,
+            ...(this.isolatedAvailable && this.runtimeSelect.value === 'isolated-wormhole' ? { runtime: 'isolated-wormhole' as const } : {}) };
     }
 
     open(): void {
@@ -112,6 +141,8 @@ export class ExportDialog {
 
     setActive(isActive: boolean): void {
         this.isActive = isActive;
+        this.runtimeSelect.disabled = isActive;
+        if (isActive) this.profile = null;
         this.controlPending = false;
         this.stopBtn.disabled = !isActive;
         this.cancelBtn.disabled = false;
@@ -135,6 +166,7 @@ export class ExportDialog {
     setStatus(message: string): void {
         this.statusEl.textContent = message;
     }
+    setProfile(profile: ExportProfile): void { this.profile = profile; }
 
     /**
      * Applies a detected export-capability report (see ExportCapabilityDetector, mirroring
