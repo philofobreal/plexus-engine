@@ -1,4 +1,125 @@
-# Export lifecycle - T19a and T19b
+# Staged export lifecycle
+
+## T19c resource follow-up - staged for quota-aware delivery
+
+User direction, 2026-10-29: replace the premature fixed 384 MiB refusal with real
+output-capability checks and configurable admission; deliver bounded subtasks and
+pause after each deployment for manual feedback. No new WASM exporter is implied.
+
+| Slice | Scope | Handoff |
+| --- | --- | --- |
+| T19c1 | Exact worker configuration/probe, memory policy and MVP controls | Implemented below; manual short 4K export gate pending |
+| T19c2 | Reduce copied analysis/PCM overhead where ownership allows; review surface/queue/storage lifetimes | After T19c1 feedback; preserve deterministic output and playback buffers |
+| T19c3 | Multi-minute/large-output, decoded full/prefix sync, cancellation/retry and resource/performance evidence | After T19c2; no measured claim until real runs |
+
+The original T19c persistent/minimizable controls and background-editing acceptance
+remain scheduled after these resource prerequisites. T20 and conditional WASM
+promotion do not advance automatically. T15 remains skipped.
+
+### T19c1 - exact capability trial and export planning limits
+
+Production MVP isolated export now requests `preflight:true`. A dedicated worker
+checks the exact width/height/fps/bitrate/rate-control/latency configuration using
+VideoEncoder.isConfigSupported, and stereo Opus support at the actual sample
+rate. VP9 profile 0/8-bit level is selected from picture size (32px edge padding),
+luma rate, bitrate and maximum dimension; 4K60 requests level 5.1 instead of the
+legacy level 1.0 string. VP8 is an explicitly reported alternative at unchanged
+dimensions/fps if the preferred candidate is unsupported or fails its trial.
+Neither resolution nor fps is silently reduced. Hardware acceleration is not
+claimed: the browser can select a software encoder.
+
+The trial creates one private output-size OffscreenCanvas, encodes three coloured
+frames and optional stereo PCM, flushes both codecs and finalizes a bounded WebM.
+Exactly three video packets and required audio output are checked. Trial mux
+output is capped at 8 MiB and codec flush at 10 seconds/candidate; the host's existing
+30-second operation deadline bounds the entire preparation, including capability
+queries. All trial frames/AudioData/encoders/canvas references are released in
+finally. Probe packets never enter the saved file or advance its frame-zero clock.
+Only after the probe succeeds does the worker create the normal OPFS file and
+configure the verified encoder. `export_prepared` gates real host frames/bitmaps;
+Cancel/Stop/failure during that wait terminates the worker without captured frames.
+The synthetic trial is not a decoded-file, real-Wormhole quality, throughput,
+whole-job memory or long-duration guarantee.
+
+The frozen snapshot/private renderer is still prepared before the worker trial;
+avoiding that preparation cost on unsupported devices is not delivered here.
+Compatible/Studio and older direct API callers omit the new flag and retain their
+legacy path. Generic capability reports still carry their old device heuristic;
+a tagged heuristic alone no longer disables 4K in the production MVP. Explicit
+non-heuristic restrictions and missing WebCodecs remain respected.
+
+MVP Export adds `Export memory limit`: Auto (up to 2 GiB), 512 MiB, 1 GiB, 2 GiB.
+This controls isolated snapshot admission; it is not a physical-memory allocation,
+free-RAM measurement, or guarantee about browser/GPU/codec peak use. Auto uses a
+fixed 2 GiB application ceiling and displays a high-demand notice above 1 GiB.
+It deliberately does not pretend to detect all 32 GB or current available RAM.
+The existing estimate still includes PCM, descriptor copies, five pixel surfaces
+and codec headroom; reducing this estimate/actual copies belongs to T19c2.
+Manual limits are validated before PCM access. Rejection shows both the estimated
+MiB and selected ceiling and offers an actionable alternative. The setting uses
+`plexus.exportMemoryLimit`, is locked during jobs, ignored by Compatible and is
+included in Copy. Invalid/unavailable storage uses Auto/session defaults. The
+selected codec and probe dimensions/count/bytes are copied with the final isolated
+profile. Source of truth: ExportSnapshot, ExportPreparation, worker and MVP dialog.
+The added controls reuse the existing select styling; the export modal scrolls
+within the viewport and its action row wraps on constrained screens.
+
+Validation adds ten cases in `tests/export-preparation.test.mjs`: known VP9 level
+boundaries, exact trial configuration and teardown, VP8 recovery, missing APIs,
+unsupported video/audio, empty output/stalled flush, budget-before-PCM, MVP
+storage/Copy/locking/device-heuristic handling, real backend preparation gating,
+Stop/Cancel/errors and a worker-through-OPFS integration using controlled codecs.
+These are not hardware codec tests. All earlier test sources remain active; the
+browser fixture was extended with resolution selection and production preflight,
+retaining its exact predecessor in
+`documents/tests/export-isolated-smoke.pre-t19c1.html.snapshot`.
+
+Final automated results: full2074 /2065 pass /9 failures matching the retained
+baseline names and assertion messages exactly, with zero skipped/cancelled cases.
+The final affected export replay passes62/62. The full run and replay overlap;
+they are not summed or presented as a second all-green suite. The last change
+after those functional inputs was scoped modal scrolling/wrapping CSS, followed
+by a successful build. Earlier Node test sources remain unchanged;273 previous
+test-tree identities are byte-exact, and the one changed browser fixture retains
+its exact archive. There are212 active files /275 test-tree identities and413
+production build inputs. Code-only Graphify refresh:941 files,8934 nodes,19023
+canonical edges,21620 raw edges, zero dangling canonical endpoints; no LLM.
+Changed-document checks verify139 local links and the new resource-section anchor.
+
+Commands (Node25.2.1/npm11.6.2; no dependency installation):
+
+```text
+npm run build
+npm test -- --test-reporter=tap --test-concurrency=4
+node --test --test-concurrency=2 tests/export-preparation.test.mjs tests/export-isolated.test.mjs tests/export-lifecycle.test.mjs tests/export-capability.test.mjs tests/export-opus-muxer.test.mjs
+git diff --check
+```
+
+The complete suite took909.2 seconds while concurrent validation/AST work was
+running; this is regression runtime, not an export performance measurement.
+Release uses the existing guarded Node prepare/publish/verify workflow because
+the package deploy script is Bun-dependent.
+
+Browser automation could not create the Chrome test tab: two creation timeouts,
+with an intervening lookup confirming that no test tab existed. No native/headless
+workaround or repeated retry loop was used. The built fixture serves HTTP200;
+this is HTTP-only evidence, not a passed 4K export. Actual full/prefix/Cancel and
+decoded-image/stereo acceptance remain manual-pending. Node/build/counts,
+identities, known failures, exact commands and release verification are recorded in
+`logs/t19c1/handoff.json`. No analyzer/lab/Python/dependency changed; Python is not
+rerun or counted as current coverage. `diff_export.ps1` is skipped because focused
+diffs and retained identities cover this bounded handoff without its fetch/artifact.
+
+Primary references: [WebCodecs configuration checks](https://www.w3.org/TR/webcodecs/#dom-videoencoder-isconfigsupported),
+[WebM VP9 levels](https://www.webmproject.org/vp9/levels/),
+[VP9 registration](https://www.w3.org/TR/webcodecs-vp9-codec-registration/).
+
+Manual check: choose Isolated Wormhole, Auto and 4K on the reference track; verify
+the preparation/result and stereo/video duration. Try 512 MiB for a demanding job,
+then a larger limit, Copy/reload, Stop-prefix and Cancel/retry. Default Compatible
+remains available. No long-job or RAM-guarantee claim closes T19c2/T19c3.
+
+## Historical T19a and T19b delivery
 
 Implemented 2026-10-29. One integration owner covers export, worker ordering and
 Studio/MVP controls. The following historical T19a section describes the lifecycle

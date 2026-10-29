@@ -391,6 +391,15 @@ testing; **T19 follows only after acceptance**. T15 remains skipped.
 
 ### T19 staged export migration - T19a (2026-10-29)
 
+Quota-aware resource follow-up accepted by the user: T19c1 exact codec/trial and
+configurable memory admission; T19c2 copy/surface/storage review and reductions;
+T19c3 real multi-minute/full/prefix/cancel resource validation. Each slice deploys
+and pauses for manual feedback. T19c1 is implemented as an opt-in MVP isolated
+export repair; browser acceptance is pending. Minimizable controls/background
+editing remain later T19c work, not delivered by these resource changes. The
+[staged contract](../features/export-lifecycle.md#t19c-resource-follow-up---staged-for-quota-aware-delivery)
+records limits and exact remaining scope. No WASM exporter is promoted.
+
 T18 was accepted for continuation. First stabilize the existing public workflow:
 synchronous job reservation, latched Stop/Cancel through teardown, suppressed late
 progress/result, interruptible frame/media waits, allocation cleanup and ordered

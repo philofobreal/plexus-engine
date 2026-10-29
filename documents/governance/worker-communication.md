@@ -12,6 +12,17 @@ clock are added. Display-only changes redraw while paused without snapping tunin
 
 ## Boundary Contract
 
+T19c1 export adds optional start_export.preflight and export_prepared(report).
+Only requesting hosts wait for that acknowledgement before rendering/admitting
+real frames. The dedicated worker checks the exact output configuration and
+finishes its private three-frame/sound/mux trial before output-file creation;
+the normal encoder uses that verified configuration. Probe samples/frames never
+reach real output counters or timestamps. Report fields identify codec, dimensions,
+fps, probe count and bytes, not free memory or a hardware-acceleration guarantee.
+Omission preserves the legacy path and packet shape. Existing worker-identity,
+Stop/Cancel, timeout and teardown rules also cover preparation. See the
+[delivery and remaining resource gates](../features/export-lifecycle.md).
+
 T18: hosts explicitly send optional `analysisBackend` (`auto`, `typescript`, `wasm`)
 captured before decoding. Omission keeps the legacy synchronous TS path and exact
 packet shape. Success may add `backend` diagnostics outside the musical result:
