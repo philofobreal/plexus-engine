@@ -1,5 +1,6 @@
 import { DEFAULT_FREQUENCY_BANDS_HZ, type FrequencyBand, type FrequencyBandKey, type FrequencyBands } from './FeatureExtractor';
 import { FFT } from './math/FFT';
+import type { FftKernelFactory } from './math/FFT';
 
 export interface SpectralCalibrationConfidence {
     overall: number;
@@ -359,10 +360,10 @@ function buildMusicalProfile(envelope: Float32Array, sampleRate: number, confide
     };
 }
 
-function fftMagnitudeEnvelope(samples: Float32Array, sampleRate: number, fftSize: number): { envelope: Float32Array; confidence: SpectralCalibrationConfidence; musicalProfile?: SpectralCalibrationMusicalProfile } {
+function fftMagnitudeEnvelope(samples: Float32Array, sampleRate: number, fftSize: number, fftKernelFactory?: FftKernelFactory): { envelope: Float32Array; confidence: SpectralCalibrationConfidence; musicalProfile?: SpectralCalibrationMusicalProfile } {
     const binCount = Math.floor(fftSize / 2);
     const envelope = new Float32Array(binCount);
-    const fft = new FFT(fftSize);
+    const fft = new FFT(fftSize, fftKernelFactory);
     const starts = collectCalibrationWindowStarts(samples, sampleRate, fftSize);
     let windows = 0;
     const rmsValues: number[] = [];
@@ -446,12 +447,12 @@ function buildAdaptiveBands(centersHz: Record<FrequencyBandKey, number>, nyquist
     return bandsAreStrictlyOrdered(bands, nyquist) ? bands : fallback;
 }
 
-export function estimateSpectralCalibration(samples: Float32Array, sampleRate: number, fftSize: number): SpectralCalibration {
+export function estimateSpectralCalibration(samples: Float32Array, sampleRate: number, fftSize: number, fftKernelFactory?: FftKernelFactory): SpectralCalibration {
     const nyquist = sampleRate / 2;
     const fallback = createDefaultCalibration(sampleRate, fftSize, { ...ZERO_CONFIDENCE });
     if (samples.length < fftSize || sampleRate <= 0 || fftSize <= 0) return fallback;
 
-    const { envelope, confidence, musicalProfile } = fftMagnitudeEnvelope(samples, sampleRate, fftSize);
+    const { envelope, confidence, musicalProfile } = fftMagnitudeEnvelope(samples, sampleRate, fftSize, fftKernelFactory);
     if (confidence.overall < MIN_CONFIDENCE) return createDefaultCalibration(sampleRate, fftSize, confidence);
 
     const centersHz = { ...fallback.centersHz };

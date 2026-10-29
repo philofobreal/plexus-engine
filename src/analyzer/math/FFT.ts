@@ -1,3 +1,11 @@
+/** Per-analysis numeric dependency. No global backend or shared scratch buffers. */
+export interface FftKernel {
+    readonly re: Float32Array;
+    readonly im: Float32Array;
+    transform(): void;
+}
+export type FftKernelFactory = (size: number, cos: Float32Array, sin: Float32Array) => FftKernel;
+
 export class FFT {
     public readonly size: number;
     public readonly binCount: number;
@@ -6,8 +14,9 @@ export class FFT {
     public readonly window: Float32Array;
     private readonly cosTable: Float32Array;
     private readonly sinTable: Float32Array;
+    private readonly kernel?: FftKernel;
 
-    constructor(size: number) {
+    constructor(size: number, kernelFactory?: FftKernelFactory) {
         if (!Number.isSafeInteger(size) || size < 2 || size > 65536 || !Number.isInteger(Math.log2(size))) {
             throw new Error(`FFT size must be a power of two, got ${size}`);
         }
@@ -24,6 +33,11 @@ export class FFT {
             this.cosTable[i] = Math.cos((2 * Math.PI * i) / size);
             this.sinTable[i] = Math.sin((-2 * Math.PI * i) / size);
         }
+        if (kernelFactory) {
+            this.kernel = kernelFactory(size, this.cosTable, this.sinTable);
+            this.re = this.kernel.re;
+            this.im = this.kernel.im;
+        }
     }
 
     public setWindowedSamples(samples: Float32Array, start: number): number {
@@ -38,6 +52,7 @@ export class FFT {
     }
 
     public transform(): void {
+        if (this.kernel) { this.kernel.transform(); return; }
         let j = 0;
         for (let i = 0; i < this.size - 1; i++) {
             if (i < j) {

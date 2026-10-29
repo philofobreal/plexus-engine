@@ -286,7 +286,8 @@ semanticBridge.setSemanticAdapter(semanticAdapter);
 // width/height, not just the raster budget. Capping it keeps the advanced dashboard from being
 // disproportionately more expensive than the now-capped MVP page for the exact same preset.
 const isDesktopViewport = window.matchMedia('(min-width: 1024px)').matches;
-const previewQuality = createPreviewQualityControl(!isDesktopViewport);
+const previewQuality = createPreviewQualityControl(!isDesktopViewport, false, backend => engine.setAnalyzerBackend(backend));
+engine.onAnalysisBackend = previewQuality.showAnalysisBackend;
 document.getElementById('visual-tuning-controls')!.before(previewQuality.root);
 const appReadyPromise = new Promise<void>(resolve => {
   startPlexusRenderer('canvas-container', ui, engine, styleRegistry, semanticBridge, {

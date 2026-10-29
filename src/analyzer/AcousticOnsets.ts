@@ -1,11 +1,12 @@
 import type { AcousticOnsetAnalysis, AcousticOnsetCandidate, AcousticOnsetOptions } from '../types/acousticOnsets';
 import { FFT } from './math/FFT';
+import type { FftKernelFactory } from './math/FFT';
 import { magnitudeFlatness } from './math/SpectralFlatness';
 import { validateAnalysisClock, validateAnalysisSamples } from './signalContract';
 import { applyEMAInSeconds } from './TemporalSmoother';
 
 /** Offline opt-in candidate evidence; never feeds the legacy beat/visual acceptance paths. */
-export function extractAcousticOnsets(samples: Float32Array, sampleRate: number, options: AcousticOnsetOptions = {}): AcousticOnsetAnalysis {
+export function extractAcousticOnsets(samples: Float32Array, sampleRate: number, options: AcousticOnsetOptions = {}, fftKernelFactory?: FftKernelFactory): AcousticOnsetAnalysis {
     if (!options || typeof options !== 'object' || Array.isArray(options)) throw new Error('Acoustic onset options must be an object');
     const windowSize = options.windowSize ?? 512, hopSize = options.hopSize ?? 128;
     validateAnalysisClock(sampleRate, windowSize);
@@ -17,7 +18,7 @@ export function extractAcousticOnsets(samples: Float32Array, sampleRate: number,
     // One final context center beyond the last sample covers the 50%-overlap Hann
     // endpoint. Only actual observed sample positions can become candidates.
     const frameCount = Math.ceil(samples.length / hopSize) + 1, half = windowSize / 2;
-    const fft = new FFT(windowSize), previous = new Float32Array(half), magnitudes = new Float32Array(half);
+    const fft = new FFT(windowSize, fftKernelFactory), previous = new Float32Array(half), magnitudes = new Float32Array(half);
     const flux = new Float32Array(frameCount), flatness = new Float32Array(frameCount);
     for (let frame = 0; frame < frameCount; frame++) {
         fft.setWindowedSamples(samples, frame * hopSize - half);

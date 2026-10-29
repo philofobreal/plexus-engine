@@ -115,6 +115,7 @@ export class XrAppController {
     private preparedPlan: PreparedPlan | null = null;
     private chartDiagnostics: RhythmChartDiagnostics | null = null;
     private chartSummary = '';
+    private analysisBackendSummary = '';
     private chartDetails = '';
     /** The current track's section timeline still has to reach the scene (set by whichever compose publishes first). */
     private sectionTimelinePending = false;
@@ -198,6 +199,12 @@ export class XrAppController {
         this.settingsStore = options.settingsStore ?? MEMORY_ONLY_SETTINGS_STORE;
         // Normalized again: an injected store may predate newer setting groups.
         this.settings = normalizeXrSettings(this.settingsStore.load());
+        this.engine.setAnalyzerBackend?.(this.settings.system.analysisBackend ?? 'auto');
+        this.engine.onAnalysisBackend = info => {
+            this.analysisBackendSummary = info ? `FFT ${info.used === 'wasm' ? 'WASM' : 'TypeScript'}${info.fallback ? ' (fallback)' : ''}` : '';
+            if (info) this.overlay.dataset.xrAnalysisBackend = `${info.used}${info.fallback ? ':' + info.fallback : ''}`;
+            else delete this.overlay.dataset.xrAnalysisBackend;
+        };
         this.diagnosticsShown = this.diagnostics;
         this.runtime.measureFrameCost = this.diagnostics;
         this.playProfile = resolvePlayFromSettings(this.settings);
@@ -391,6 +398,8 @@ export class XrAppController {
         if (this.disposed) return;
         this.settings = settings;
         this.settingsStore.save(settings);
+        this.engine.setAnalyzerBackend?.(settings.system.analysisBackend ?? 'auto');
+        if (scope === 'analysis') return; // Next load only: no background rebuild, chart or clock change.
         if (scope === 'presentation') this.applyPresentation();
         else if (scope === 'session') this.applySessionConfig();
         else {
@@ -900,7 +909,8 @@ Automation: ${alignment.publishedPoints}/${alignment.proposedPoints} cue placeme
             results: state === 'finished' ? menuResults(this.session.getSnapshot()) : null,
             input: this.runtime.isPresenting() ? 'vr' : 'desktop',
             ...(this.diagnostics && this.backgroundDiagnostics.summary ? { diagnostics: this.backgroundDiagnostics.summary } : {}),
-            ...(this.diagnostics && this.chartSummary ? { chartDiagnostics: this.chartSummary } : {}),
+            ...(this.diagnostics && (this.chartSummary || this.analysisBackendSummary) ? { chartDiagnostics:
+                [this.analysisBackendSummary, this.chartSummary].filter(Boolean).join(' | ') } : {}),
             ...(this.copyNotice ? { notice: this.copyNotice } : {}) };
     }
 
@@ -1108,6 +1118,7 @@ Automation: ${alignment.publishedPoints}/${alignment.proposedPoints} cue placeme
         this.desktopInput.dispose();
         this.engine.onProgress = undefined;
         this.engine.onAnalysisComplete = undefined;
+        this.engine.onAnalysisBackend = undefined;
         this.engine.onAnalysisError = undefined;
         this.runtime.setUpdateCallback(null);
         this.runtime.onSessionStart = null;

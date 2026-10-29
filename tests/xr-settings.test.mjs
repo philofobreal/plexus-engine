@@ -16,7 +16,7 @@ test('every setting is described once, round-trips through its control value; th
     // The menu finds descriptors by id alone, so ids are unique across sections too.
     assert.equal(new Set(XR_SETTINGS.map(d => d.id)).size, XR_SETTINGS.length, 'setting ids are globally unique');
     assert.ok(XR_SETTINGS.every(d => XR_SETTING_SECTIONS.some(s => s.id === d.section)));
-    assert.ok(XR_SETTINGS.every(d => ['chart', 'session', 'presentation'].includes(d.scope)));
+    assert.ok(XR_SETTINGS.every(d => ['chart', 'session', 'presentation', 'analysis'].includes(d.scope)));
     for (const descriptor of XR_SETTINGS) {
         if (descriptor.kind === 'choice') {
             for (const choice of descriptor.choices) assert.equal(descriptor.read(descriptor.write(DEFAULT_XR_SETTINGS, choice.value)), choice.value, ids.join());
@@ -42,7 +42,7 @@ test('every setting is described once, round-trips through its control value; th
 test('the /xr/ player defaults are the authored menu values (ADR-009 Addenda T, AC)', () => {
     const { XR_SETTINGS, DEFAULT_XR_SETTINGS, DEFAULT_XR_GENERATION_SETTINGS, normalizeXrSettings } = settingsModule();
     const expected = {
-        presentationMode: 'hybrid',
+        analysisBackend: 'auto', presentationMode: 'hybrid',
         cockpit: 'off', cockpitTitle: 'scroll', hudStyle: 'classic',
         playSpace: 'tall', noteSpeed: 'hyper', saberLength: 'auto',
         chartProfile: 'legacy', difficulty: 'ultra', activity: 'active', variation: 'expressive', handPattern: 'alternate', handLead: 'even', motionSafety: 'legacy', zones: 'cross',
@@ -109,15 +109,15 @@ test('the System tab: Material renderer (GPU), Diagnostics (On), Grain lines (GP
     const { XR_SETTINGS, XR_SETTING_SECTIONS, DEFAULT_XR_SETTINGS, changeScope, normalizeXrSettings } = settingsModule();
     assert.deepEqual({ ...XR_SETTING_SECTIONS.at(-1) }, { id: 'system', title: 'System', prefix: 'xr-system' });
     const system = XR_SETTINGS.filter(d => d.section === 'system');
-    assert.equal(system.map(d => `${d.id}:${d.choices.map(c => c.value).join('/')}`).join(), 'presentationMode:hybrid/native-grains,materialRenderer:gpu/cpu,diagnostics:off/on,grainLines:canvas/gpu,backgroundPacing:fixed/adaptive,backgroundRaster:gpu/cpu/webgl,spatialField:off/particles/full');
+    assert.equal(system.map(d => `${d.id}:${d.choices.map(c => c.value).join('/')}`).join(), 'analysisBackend:auto/typescript/wasm,presentationMode:hybrid/native-grains,materialRenderer:gpu/cpu,diagnostics:off/on,grainLines:canvas/gpu,backgroundPacing:fixed/adaptive,backgroundRaster:gpu/cpu/webgl,spatialField:off/particles/full');
     const defaults = { materialRenderer: 'gpu', diagnostics: true, grainLines: 'gpu', backgroundPacing: 'adaptive', backgroundRaster: 'webgl' };
     assert.deepEqual({ ...DEFAULT_XR_SETTINGS.system }, defaults);
     for (const descriptor of system) {
-        assert.equal(descriptor.scope, 'presentation');
+        assert.equal(descriptor.scope, descriptor.id === 'analysisBackend' ? 'analysis' : 'presentation');
         const other = descriptor.choices.find(c => c.value !== descriptor.read(DEFAULT_XR_SETTINGS)).value;
         const next = descriptor.write(DEFAULT_XR_SETTINGS, other);
         assert.equal(descriptor.read(next), other);
-        assert.equal(changeScope(DEFAULT_XR_SETTINGS, next), 'presentation', descriptor.id);
+        assert.equal(changeScope(DEFAULT_XR_SETTINGS, next), descriptor.id === 'analysisBackend' ? 'analysis' : 'presentation', descriptor.id);
         // Spatial field sits on this tab but is stored with the background it decorates.
         const background = descriptor.id === 'spatialField' ? { ...next.background, spatialField: DEFAULT_XR_SETTINGS.background.spatialField }
             : descriptor.id === 'presentationMode' ? { ...next.background, presentationMode: DEFAULT_XR_SETTINGS.background.presentationMode } : next.background;

@@ -1,11 +1,18 @@
 import { PreviewQualityPreference } from '../config/previewQuality';
 import { DEFAULT_MUSIC_DISPLAY, isDefaultMusicDisplay, normalizeMusicDisplay, type MusicDisplaySettings } from '../types/MusicDisplay';
 import './previewQualityControl.css';
+import { normalizeAnalyzerBackend, type AnalyzerBackend, type AnalysisBackendInfo } from '../types/AnalyzerBackend';
 
 const STORAGE_KEY = 'plexus.previewQuality';
 const RENDERER_KEY = 'plexus.wormholeRenderer';
 
-export function createPreviewQualityControl(automaticCompact: boolean, offscreenAvailable = false) {
+export function createPreviewQualityControl(automaticCompact: boolean, offscreenAvailable = false,
+    onAnalysisBackendChange?: (backend: AnalyzerBackend) => void) {
+    let analyzerBackend: AnalyzerBackend = 'auto';
+    if (onAnalysisBackendChange) {
+        try { analyzerBackend = normalizeAnalyzerBackend(window.localStorage.getItem('plexus.analyzerBackend')); } catch { /* Session only. */ }
+        onAnalysisBackendChange(analyzerBackend);
+    }
     let saved: string | null = null;
     let renderer: string | null = null;
     try { saved = window.localStorage.getItem(STORAGE_KEY); } catch { /* Session-only preference. */ }
@@ -60,6 +67,7 @@ export function createPreviewQualityControl(automaticCompact: boolean, offscreen
         try {
             const payload = JSON.stringify({ version: 1, previewQuality: preference.mode,
                 wormholeRenderer: preference.wormholeRenderer,
+                ...(onAnalysisBackendChange ? { analyzerBackend } : {}),
                 ...(!isDefaultMusicDisplay(currentDisplay())?{musicDisplay:currentDisplay()}:{}) }, null, 2);
             // Keep the synchronous user gesture on browsers with restricted async clipboard access.
             // The dashboard uses the same textarea fallback for its existing Copy actions.
@@ -88,8 +96,29 @@ export function createPreviewQualityControl(automaticCompact: boolean, offscreen
         const input=document.createElement('input');input.type='range';input.min='0';input.max='100';input.step='5';input.value=String(currentDisplay()[key]*100);input.setAttribute('aria-label',`Spectrum ${key}`);
         input.addEventListener('input',()=>saveDisplay({[key]:Number(input.value)/100}));label.append(input);root.append(label);
     }
-    const displayHint=document.createElement('p');displayHint.textContent='24 precomputed, track-relative bands (20 Hz–16 kHz). Open below the center; size and opacity preserve readability. Also used in export. Saved independently of presets.';root.append(displayHint,copy);
-    return { root, preference, setMode(mode: 'auto' | 'reduced') {
+    const displayHint=document.createElement('p');displayHint.textContent='24 precomputed, track-relative bands (20 Hz–16 kHz). Open below the center; size and opacity preserve readability. Also used in export. Saved independently of presets.';root.append(displayHint);
+    const analysisHint = document.createElement('p');
+    const defaultAnalysisHint = 'Applies on the next audio load. Auto uses WebAssembly FFT when available; failures fall back to TypeScript. Gameplay and musical decisions stay the same.';
+    analysisHint.textContent = defaultAnalysisHint;
+    if (onAnalysisBackendChange) {
+        const label = document.createElement('label'); label.textContent = 'Analysis backend';
+        const select = document.createElement('select'); select.setAttribute('aria-label', 'Analysis backend');
+        for (const [value, text] of [['auto', 'Auto'], ['typescript', 'TypeScript'], ['wasm', 'WebAssembly FFT']]) {
+            const option = document.createElement('option'); option.value = value; option.textContent = text; select.append(option);
+        }
+        select.value = analyzerBackend;
+        select.addEventListener('change', () => {
+            analyzerBackend = normalizeAnalyzerBackend(select.value);
+            onAnalysisBackendChange(analyzerBackend);
+            try { window.localStorage.setItem('plexus.analyzerBackend', analyzerBackend); } catch { /* Session only. */ }
+            analysisHint.textContent = defaultAnalysisHint;
+        });
+        label.append(select); root.append(label, analysisHint);
+    }
+    root.append(copy);
+    return { root, preference, showAnalysisBackend(info: AnalysisBackendInfo | null) {
+        analysisHint.textContent = info ? `Last analysis: ${info.used === 'wasm' ? 'WebAssembly FFT' : 'TypeScript'}${info.fallback ? ` (${info.fallback})` : ''}. ${defaultAnalysisHint}` : defaultAnalysisHint;
+    }, setMode(mode: 'auto' | 'reduced') {
         preference.setMode(mode);
         select.value = preference.mode;
         try { window.localStorage.setItem(STORAGE_KEY, preference.mode); } catch { /* Live setting still restored. */ }

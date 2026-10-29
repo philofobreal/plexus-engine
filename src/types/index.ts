@@ -1201,6 +1201,8 @@ export interface AnalysisResult {
 }
 
 export interface AnalysisRequest {
+    /** Omission preserves legacy TS worker behavior; hosts explicitly request Auto. */
+    analysisBackend?: import('./AnalyzerBackend').AnalyzerBackend;
     rhythmOnsets?: boolean;
     eventTiming?: 'local-band-v1' | 'local-band-v2';
     requestId: number;
@@ -1212,6 +1214,8 @@ export interface AnalysisRequest {
 
 export interface AnalysisSuccessMessage extends AnalysisResult {
     type: 'analysis_done';
+    /** Device/backend diagnostics, outside the immutable musical AnalysisResult. */
+    backend?: import('./AnalyzerBackend').AnalysisBackendInfo;
 }
 
 export interface AnalysisErrorMessage {

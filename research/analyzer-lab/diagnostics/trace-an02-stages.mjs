@@ -6,9 +6,14 @@ import { createLoader } from '../../../tests/helpers/xr-loader.mjs';
 import { sha256 } from '../../../tests/fixtures/acoustic-onset-challenges.mjs';
 
 export const KERNEL_SHA256 = 'eba437661861f0d14d411246e6f6f093059f3e085a1cff8da65e9c39c3458491';
+// T18 review: only a type import, optional factory argument and FFT constructor forwarding.
+// Removing exactly those three additions reproduces the predecessor source. Default
+// math and the 144-case observation-only parity matrix remain unchanged; old receipts stay frozen.
+const FACTORY_KERNEL_SHA256 = 'a5f65814ac7f5a834cab818c912ecb82f404a595f1a063912a4017a4cbf50b1c';
 
 export function instrumentSource(source) {
-    if (sha256(source) !== KERNEL_SHA256) throw new Error('Unreviewed acoustic kernel identity');
+    const identity = sha256(source);
+    if (identity !== KERNEL_SHA256 && identity !== FACTORY_KERNEL_SHA256) throw new Error('Unreviewed acoustic kernel identity');
     const replace = (needle, replacement) => {
         if (source.split(needle).length !== 2) throw new Error('Instrumentation anchor is not unique');
         source = source.replace(needle, replacement);

@@ -1,4 +1,5 @@
 import { FFT } from './math/FFT';
+import type { FftKernelFactory } from './math/FFT';
 
 /** Fixed musical bands, independent of the adaptive classification bands. */
 export const LOW_FREQUENCY_BANDS = { sub: [20, 60], bass: [60, 180] } as const;
@@ -16,7 +17,7 @@ export interface LowFrequencyFeatures {
  * 120..240 ms centered Hann windows resolve low notes; 25 Hz evaluation bounds FFT work.
  * Positive magnitude differences indicate spectral change, NOT kick/stem identification.
  */
-export function extractLowFrequencies(samples: Float32Array, sampleRate: number, hopSize: number): LowFrequencyFeatures {
+export function extractLowFrequencies(samples: Float32Array, sampleRate: number, hopSize: number, fftKernelFactory?: FftKernelFactory): LowFrequencyFeatures {
     if (!Number.isFinite(sampleRate) || sampleRate < 1000 || sampleRate > 384000
         || !Number.isSafeInteger(hopSize) || hopSize < 1) throw new Error('Invalid low-frequency analysis clock');
     const count = Math.ceil(samples.length / hopSize);
@@ -26,7 +27,7 @@ export function extractLowFrequencies(samples: Float32Array, sampleRate: number,
     };
     if (!count) return result;
     const size = 2 ** Math.ceil(Math.log2(sampleRate * 0.12));
-    const fft = new FFT(size);
+    const fft = new FFT(size, fftKernelFactory);
     const step = Math.max(1, Math.round(sampleRate * STEP_SEC));
     const n = Math.ceil(samples.length / step) + 1;
     const sub = new Float32Array(n), bass = new Float32Array(n);

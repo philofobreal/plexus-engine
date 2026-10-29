@@ -1,0 +1,884 @@
+{
+  "schemaVersion": 1,
+  "task": "T18 scalar FFT production integration",
+  "clientDate": "2026-10-29",
+  "userDirection": "Activate the justified WebAssembly acceleration; explain the implementation. Physical Quest performance remains unmeasured.",
+  "numericKernel": "fft-scalar-f64-v1",
+  "wasmBytes": 537,
+  "wasmSha256": "5fe5fb080b24f0c7fbbb305ced4b3d836d37351843709ad220ca72f8c8554a5c",
+  "sourceHashes": {
+    "src/audio/AnalyzerBackendRunner.ts": "4d92710a1a3fc224119c9ad032d9d64245749f3c72ec7de6315c2e31f07369ff",
+    "src/analyzer/analyzeAudio.ts": "02a4407f79a21f0cb4d66fa8f996a170010eb5fa7b48011a19849c94389b2ea5",
+    "src/analyzer/constants.ts": "24349a8b39fe61ffc81919816cdf43e1a3d08e67b8de845c31801c21b905c956",
+    "src/analyzer/DramaturgyBuilder.ts": "563660868e093d6e10e5d4ff6629657fba5501890e8d9f78e3eb4769e4d349f1",
+    "src/analyzer/BeatEventClassifier.ts": "113cc7350f4a1ec3ded9d2cf63cd257f568b78ef1f22f777defe53e86af76bfd",
+    "src/analyzer/utils.ts": "f08341cd5ed555a91c43e871d285b3ab4aaa37954b64ae844148ddf63a5e9024",
+    "src/analyzer/FeatureClassifier.ts": "6da5bc5cf7725ddd2709958be94572f32a98b13803594b12d8b1fa80ede60f0f",
+    "src/analyzer/FeatureExtractor.ts": "482fbe6ffb85aa6020f6d5b4f191b8bbc31d046de9e24adbb31883ae405c5dc0",
+    "src/analyzer/math/FFT.ts": "7f6adab59d2d11f4416b48aec084c84c38b9e1df1a42721a03190efb4498c51f",
+    "src/analyzer/signalContract.ts": "fb64a5fcb50b6ad61e3b86717f80ace34c993e8d948c2865b9c05369861f294a",
+    "src/analyzer/FeatureNormalizer.ts": "418c3fc87e5d1ab81e21cf5d8bc683d7ca1945d828d8ee22fd3dbf21b36a05db",
+    "src/analyzer/GridAligner.ts": "45a358a4ac42a23e826ea8be123cbe8f0a1ede8676ddbafc98ecc65c65369817",
+    "src/analyzer/TempoEstimator.ts": "037bd0011b0af776926a5b8c914a1cbc21f8789b655abdca616f7bdbbd32ee31",
+    "src/analyzer/BeatTracker.ts": "e4387c0b781f75e857d6ec9f76107177a21c32cd64e7f8f8cbef55858795b945",
+    "src/analyzer/LowFrequencyExtractor.ts": "271e714f3a2e45f4b854a42d8b6fc6357b9a3a6f0f6a2e1a428f674f9f20f39c",
+    "src/analyzer/NoveltyAnalyzer.ts": "79609f97d92c6de4e64d6b2b5fc01f3f3e3defe8f6a4b9141a5d0578b1dff687",
+    "src/analyzer/SectionAnalyzer.ts": "a7613786c217f066dda4f8bf316ae8539011a6180fae000537c68944ff7dc6a8",
+    "src/analyzer/SpectralPivot.ts": "2d0eeb7d49f9b9b8053fc223104450d35960f89e444f687be71db376ea9ef1a5",
+    "src/analyzer/SpectralCalibration.ts": "dd61105e4c598a3ac63ae6ecfb306c5a0410ddd4c9ad69b344f4679d937d7337",
+    "src/analyzer/TemporalSmoother.ts": "112ca656b12a3ed28f83922d5e02f08c842850eaf73c8c70440154a61c11befb",
+    "src/analyzer/AcousticOnsets.ts": "a5f65814ac7f5a834cab818c912ecb82f404a595f1a063912a4017a4cbf50b1c",
+    "src/analyzer/math/SpectralFlatness.ts": "becc5b05061ec36cd677097091862ca765f1ec5c1a7781ce03d0b262aa7dcaaa",
+    "src/analyzer/PredictiveOnsets.ts": "45534e7e0f232bff0fde918e49f53bc511dbba9b51af81afde7af3f1e320fc92",
+    "src/analyzer/AdaptiveOnsets.ts": "d6d6632dd2db6eced6062783bd4e9e7d9eaa5087e156f222aa5a4ad9419d93c3",
+    "src/analyzer/ResidualOnsets.ts": "247ffab22e8f7b1ddcb24343ccba102eddf692955b699a665211571488096084",
+    "src/analyzer/DifferenceOnsets.ts": "a2914d0c5555ffbef70405c87811809b7e25389aa768dd49d1ba07a99ac38bf2",
+    "src/analyzer/AcceptedEventTiming.ts": "bd8aa9b6ae994deed37dd307dbc3642218e8cdb30e002d51db0ff254180f11ca",
+    "src/analyzer/BandOnsets.ts": "38523259edae7e9ae7bf2d0c719d3ea29a72600961e6040ba8710bef6dd0cb4e",
+    "src/analyzer/ContinuationOnsets.ts": "374762a7c8382fc8499a1103e364331956773a51516e7066226ca5536acd4af1",
+    "src/analyzer/BandProposalIndex.ts": "7c3142182e99ea7a56ac62379cf8199240e8ae4463ab4c879320a3b02fd88736",
+    "src/types/musicEvents.ts": "9f6ff38aabf04204aefb9ef4021d6fa72e9703fde50a5b049b282128e6bcff42",
+    "src/analyzer/MusicActivity.ts": "a99de66a2c53c0b60aa8bf4c279dc921085110b152c67c0786a5b36f5db2dc28",
+    "src/analyzer/math/WasmFftKernel.ts": "623d11fe0a6500c5bdb1cb41c0da959c04d430fd49f0b3722825a9fe8979a406"
+  },
+  "nodeProtocol": "T18 production Runner + explicit factory; three alternating pairs/fresh processes; one warmup; XR onsets true; complete recording",
+  "nodeRuntime": "v25.2.1",
+  "recordings": [
+    {
+      "name": "goa",
+      "protocol": "T18 production Runner + explicit factory; three alternating pairs/fresh processes; one warmup; XR onsets true; complete recording",
+      "node": "v25.2.1",
+      "v8": "14.1.146.11-node.14",
+      "toolSha256": "bb4b5077e05c84f596408d74235da6a2e058031a2f06f60f940047933ac9bfe9",
+      "wasmSha256": "5fe5fb080b24f0c7fbbb305ced4b3d836d37351843709ad220ca72f8c8554a5c",
+      "audioFile": "The_Prodigy_More_Music_For_The_Jilted_Generation_-_Goa_The_Heat_The_Energy_Part_2_(mp3.pm).mp3",
+      "audioSha256": "ec7d6a28605d05ba763913fc5f05ab983bd23be27b5e7856c7ecadec00687e69",
+      "pcmSha256": "585c6d8f5922c149780310e21afb4cabf5985aaa05a1f94749cb3eb3a5614895",
+      "sampleRate": 44100,
+      "durationSec": 365.76759637188206,
+      "runs": [
+        {
+          "trial": 0,
+          "mode": "typescript",
+          "elapsedMs": 4982.194600000001,
+          "backend": {
+            "requested": "typescript",
+            "used": "typescript"
+          },
+          "outputSha256": "5a368dceffe5de492ef29132c6af86291c29ac1638a7513d81422748e3bcc9c0",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 279961600,
+            "heapTotal": 96661504,
+            "heapUsed": 46468136,
+            "external": 134873042,
+            "arrayBuffers": 132196235
+          },
+          "after": {
+            "rss": 362909696,
+            "heapTotal": 181678080,
+            "heapUsed": 146407776,
+            "external": 135875326,
+            "arrayBuffers": 133462815
+          },
+          "maxRSSKiB": 383876
+        },
+        {
+          "trial": 0,
+          "mode": "wasm",
+          "elapsedMs": 3016.1904,
+          "backend": {
+            "requested": "wasm",
+            "used": "wasm",
+            "kernel": "fft-scalar-f64-v1"
+          },
+          "outputSha256": "5a368dceffe5de492ef29132c6af86291c29ac1638a7513d81422748e3bcc9c0",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 281178112,
+            "heapTotal": 102690816,
+            "heapUsed": 46472872,
+            "external": 136382242,
+            "arrayBuffers": 129510727
+          },
+          "after": {
+            "rss": 365621248,
+            "heapTotal": 182202368,
+            "heapUsed": 147130448,
+            "external": 135940550,
+            "arrayBuffers": 133069287
+          },
+          "maxRSSKiB": 386816
+        },
+        {
+          "trial": 1,
+          "mode": "wasm",
+          "elapsedMs": 3215.3773,
+          "backend": {
+            "requested": "wasm",
+            "used": "wasm",
+            "kernel": "fft-scalar-f64-v1"
+          },
+          "outputSha256": "5a368dceffe5de492ef29132c6af86291c29ac1638a7513d81422748e3bcc9c0",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 278036480,
+            "heapTotal": 97710080,
+            "heapUsed": 46474464,
+            "external": 135054838,
+            "arrayBuffers": 129069643
+          },
+          "after": {
+            "rss": 368308224,
+            "heapTotal": 184037376,
+            "heapUsed": 98882848,
+            "external": 136569742,
+            "arrayBuffers": 133698479
+          },
+          "maxRSSKiB": 388516
+        },
+        {
+          "trial": 1,
+          "mode": "typescript",
+          "elapsedMs": 4900.118300000001,
+          "backend": {
+            "requested": "typescript",
+            "used": "typescript"
+          },
+          "outputSha256": "5a368dceffe5de492ef29132c6af86291c29ac1638a7513d81422748e3bcc9c0",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 279240704,
+            "heapTotal": 101380096,
+            "heapUsed": 46469880,
+            "external": 137456590,
+            "arrayBuffers": 129069643
+          },
+          "after": {
+            "rss": 360808448,
+            "heapTotal": 180367360,
+            "heapUsed": 144801912,
+            "external": 135434242,
+            "arrayBuffers": 133021731
+          },
+          "maxRSSKiB": 382652
+        },
+        {
+          "trial": 2,
+          "mode": "typescript",
+          "elapsedMs": 4926.429399999999,
+          "backend": {
+            "requested": "typescript",
+            "used": "typescript"
+          },
+          "outputSha256": "5a368dceffe5de492ef29132c6af86291c29ac1638a7513d81422748e3bcc9c0",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 280805376,
+            "heapTotal": 96661504,
+            "heapUsed": 46471552,
+            "external": 134873042,
+            "arrayBuffers": 132196235
+          },
+          "after": {
+            "rss": 366505984,
+            "heapTotal": 183513088,
+            "heapUsed": 112693008,
+            "external": 135875326,
+            "arrayBuffers": 133462815
+          },
+          "maxRSSKiB": 387708
+        },
+        {
+          "trial": 2,
+          "mode": "wasm",
+          "elapsedMs": 3078.7224,
+          "backend": {
+            "requested": "wasm",
+            "used": "wasm",
+            "kernel": "fft-scalar-f64-v1"
+          },
+          "outputSha256": "5a368dceffe5de492ef29132c6af86291c29ac1638a7513d81422748e3bcc9c0",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 289447936,
+            "heapTotal": 110817280,
+            "heapUsed": 46472944,
+            "external": 136508266,
+            "arrayBuffers": 129069643
+          },
+          "after": {
+            "rss": 357789696,
+            "heapTotal": 173813760,
+            "heapUsed": 138692680,
+            "external": 136569742,
+            "arrayBuffers": 133698479
+          },
+          "maxRSSKiB": 379080
+        }
+      ],
+      "tsMedianMs": 4926.429399999999,
+      "wasmMedianMs": 3078.7224,
+      "improvement": 0.3750600790097589,
+      "parity": true,
+      "maxRSSRatio": 1.0020840426300206,
+      "scope": "Actual production numerical injection/retry adapter; WASM compile/instance/table copy inside timed request. Decode/ESM imports/result hashing outside. No HTTP/worker startup or physical Quest measurement."
+    },
+    {
+      "name": "no-good",
+      "protocol": "T18 production Runner + explicit factory; three alternating pairs/fresh processes; one warmup; XR onsets true; complete recording",
+      "node": "v25.2.1",
+      "v8": "14.1.146.11-node.14",
+      "toolSha256": "bb4b5077e05c84f596408d74235da6a2e058031a2f06f60f940047933ac9bfe9",
+      "wasmSha256": "5fe5fb080b24f0c7fbbb305ced4b3d836d37351843709ad220ca72f8c8554a5c",
+      "audioFile": "The_Prodigy_More_Music_For_The_Jilted_Generation_-_No_Good_Start_The_Dance_Bad_For_You_Mix_(mp3.pm).mp3",
+      "audioSha256": "95cb3354d324829ab8f62d7ff8e9679db7c44b146f39d07e21d38bd60fbf8da1",
+      "pcmSha256": "03219f20d927b28d68216a00cca105d85985292dc31eb91e0542cb352393f512",
+      "sampleRate": 44100,
+      "durationSec": 410.5937188208617,
+      "runs": [
+        {
+          "trial": 0,
+          "mode": "typescript",
+          "elapsedMs": 5539.2478,
+          "backend": {
+            "requested": "typescript",
+            "used": "typescript"
+          },
+          "outputSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 303878144,
+            "heapTotal": 109887488,
+            "heapUsed": 47999280,
+            "external": 153431070,
+            "arrayBuffers": 144884299
+          },
+          "after": {
+            "rss": 419307520,
+            "heapTotal": 219947008,
+            "heapUsed": 151298184,
+            "external": 152219422,
+            "arrayBuffers": 149806911
+          },
+          "maxRSSKiB": 442392
+        },
+        {
+          "trial": 0,
+          "mode": "wasm",
+          "elapsedMs": 3476.6547,
+          "backend": {
+            "requested": "wasm",
+            "used": "wasm",
+            "kernel": "fft-scalar-f64-v1"
+          },
+          "outputSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 314449920,
+            "heapTotal": 117489664,
+            "heapUsed": 47993416,
+            "external": 154811598,
+            "arrayBuffers": 144884299
+          },
+          "after": {
+            "rss": 426295296,
+            "heapTotal": 224927744,
+            "heapUsed": 98282816,
+            "external": 152945646,
+            "arrayBuffers": 150074383
+          },
+          "maxRSSKiB": 449300
+        },
+        {
+          "trial": 1,
+          "mode": "wasm",
+          "elapsedMs": 3449.6586,
+          "backend": {
+            "requested": "wasm",
+            "used": "wasm",
+            "kernel": "fft-scalar-f64-v1"
+          },
+          "outputSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 301424640,
+            "heapTotal": 107528192,
+            "heapUsed": 48000144,
+            "external": 151219738,
+            "arrayBuffers": 144884299
+          },
+          "after": {
+            "rss": 404787200,
+            "heapTotal": 203169792,
+            "heapUsed": 135213096,
+            "external": 152662718,
+            "arrayBuffers": 149791455
+          },
+          "maxRSSKiB": 428668
+        },
+        {
+          "trial": 1,
+          "mode": "typescript",
+          "elapsedMs": 5557.9568,
+          "backend": {
+            "requested": "typescript",
+            "used": "typescript"
+          },
+          "outputSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 317038592,
+            "heapTotal": 115130368,
+            "heapUsed": 48002824,
+            "external": 151096858,
+            "arrayBuffers": 148601367
+          },
+          "after": {
+            "rss": 416698368,
+            "heapTotal": 216276992,
+            "heapUsed": 147996616,
+            "external": 152503278,
+            "arrayBuffers": 150090767
+          },
+          "maxRSSKiB": 440344
+        },
+        {
+          "trial": 2,
+          "mode": "typescript",
+          "elapsedMs": 5586.1658,
+          "backend": {
+            "requested": "typescript",
+            "used": "typescript"
+          },
+          "outputSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 296071168,
+            "heapTotal": 98877440,
+            "heapUsed": 47995080,
+            "external": 151096858,
+            "arrayBuffers": 144884299
+          },
+          "after": {
+            "rss": 390021120,
+            "heapTotal": 190062592,
+            "heapUsed": 117822808,
+            "external": 152219422,
+            "arrayBuffers": 149806911
+          },
+          "maxRSSKiB": 414068
+        },
+        {
+          "trial": 2,
+          "mode": "wasm",
+          "elapsedMs": 3424.6375,
+          "backend": {
+            "requested": "wasm",
+            "used": "wasm",
+            "kernel": "fft-scalar-f64-v1"
+          },
+          "outputSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 310272000,
+            "heapTotal": 116178944,
+            "heapUsed": 47991856,
+            "external": 154261270,
+            "arrayBuffers": 144884299
+          },
+          "after": {
+            "rss": 396922880,
+            "heapTotal": 196235264,
+            "heapUsed": 127769088,
+            "external": 152662718,
+            "arrayBuffers": 149791455
+          },
+          "maxRSSKiB": 421092
+        }
+      ],
+      "tsMedianMs": 5557.9568,
+      "wasmMedianMs": 3449.6586,
+      "improvement": 0.37932972059084724,
+      "parity": true,
+      "maxRSSRatio": 1.0156151105806615,
+      "scope": "Actual production numerical injection/retry adapter; WASM compile/instance/table copy inside timed request. Decode/ESM imports/result hashing outside. No HTTP/worker startup or physical Quest measurement."
+    },
+    {
+      "name": "scienide",
+      "protocol": "T18 production Runner + explicit factory; three alternating pairs/fresh processes; one warmup; XR onsets true; complete recording",
+      "node": "v25.2.1",
+      "v8": "14.1.146.11-node.14",
+      "toolSha256": "bb4b5077e05c84f596408d74235da6a2e058031a2f06f60f940047933ac9bfe9",
+      "wasmSha256": "5fe5fb080b24f0c7fbbb305ced4b3d836d37351843709ad220ca72f8c8554a5c",
+      "audioFile": "The_Prodigy_More_Music_For_The_Jilted_Generation_-_Scienide_(mp3.pm).mp3",
+      "audioSha256": "805a5c2038c8be448a33350c8d1f13e35c04998c1999008c511a535b8c307ddd",
+      "pcmSha256": "c5c3e8e1188bbfda27c568c2d9df59c79410b44651004bc97214be8922b98fac",
+      "sampleRate": 44100,
+      "durationSec": 350.45984126984126,
+      "runs": [
+        {
+          "trial": 0,
+          "mode": "typescript",
+          "elapsedMs": 4691.0403,
+          "backend": {
+            "requested": "typescript",
+            "used": "typescript"
+          },
+          "outputSha256": "79c1adf6dce53119dbafbcfdb42b0816aa1d3817e78834f26cda04fe99d57530",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 273952768,
+            "heapTotal": 97185792,
+            "heapUsed": 45366368,
+            "external": 129332758,
+            "arrayBuffers": 126726871
+          },
+          "after": {
+            "rss": 328265728,
+            "heapTotal": 152178688,
+            "heapUsed": 117287224,
+            "external": 129871338,
+            "arrayBuffers": 127458827
+          },
+          "maxRSSKiB": 348732
+        },
+        {
+          "trial": 0,
+          "mode": "wasm",
+          "elapsedMs": 2948.9213,
+          "backend": {
+            "requested": "wasm",
+            "used": "wasm",
+            "kernel": "fft-scalar-f64-v1"
+          },
+          "outputSha256": "79c1adf6dce53119dbafbcfdb42b0816aa1d3817e78834f26cda04fe99d57530",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 267751424,
+            "heapTotal": 95350784,
+            "heapUsed": 45361600,
+            "external": 129455638,
+            "arrayBuffers": 123669067
+          },
+          "after": {
+            "rss": 324702208,
+            "heapTotal": 147984384,
+            "heapUsed": 93057512,
+            "external": 130313706,
+            "arrayBuffers": 127438347
+          },
+          "maxRSSKiB": 344604
+        },
+        {
+          "trial": 1,
+          "mode": "wasm",
+          "elapsedMs": 2902.0630000000006,
+          "backend": {
+            "requested": "wasm",
+            "used": "wasm",
+            "kernel": "fft-scalar-f64-v1"
+          },
+          "outputSha256": "79c1adf6dce53119dbafbcfdb42b0816aa1d3817e78834f26cda04fe99d57530",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 269991936,
+            "heapTotal": 96923648,
+            "heapUsed": 45359960,
+            "external": 130783966,
+            "arrayBuffers": 123910571
+          },
+          "after": {
+            "rss": 324268032,
+            "heapTotal": 147984384,
+            "heapUsed": 110139232,
+            "external": 130313706,
+            "arrayBuffers": 127442443
+          },
+          "maxRSSKiB": 344892
+        },
+        {
+          "trial": 1,
+          "mode": "typescript",
+          "elapsedMs": 5087.3314,
+          "backend": {
+            "requested": "typescript",
+            "used": "typescript"
+          },
+          "outputSha256": "79c1adf6dce53119dbafbcfdb42b0816aa1d3817e78834f26cda04fe99d57530",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 273031168,
+            "heapTotal": 96923648,
+            "heapUsed": 45367200,
+            "external": 130661086,
+            "arrayBuffers": 128055199
+          },
+          "after": {
+            "rss": 350797824,
+            "heapTotal": 173412352,
+            "heapUsed": 138244080,
+            "external": 130595850,
+            "arrayBuffers": 128183339
+          },
+          "maxRSSKiB": 370520
+        },
+        {
+          "trial": 2,
+          "mode": "typescript",
+          "elapsedMs": 4712.711,
+          "backend": {
+            "requested": "typescript",
+            "used": "typescript"
+          },
+          "outputSha256": "79c1adf6dce53119dbafbcfdb42b0816aa1d3817e78834f26cda04fe99d57530",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 272166912,
+            "heapTotal": 100069376,
+            "heapUsed": 45363824,
+            "external": 130661086,
+            "arrayBuffers": 123669067
+          },
+          "after": {
+            "rss": 320143360,
+            "heapTotal": 143556608,
+            "heapUsed": 80278928,
+            "external": 130294898,
+            "arrayBuffers": 127882387
+          },
+          "maxRSSKiB": 339812
+        },
+        {
+          "trial": 2,
+          "mode": "wasm",
+          "elapsedMs": 2898.8675,
+          "backend": {
+            "requested": "wasm",
+            "used": "wasm",
+            "kernel": "fft-scalar-f64-v1"
+          },
+          "outputSha256": "79c1adf6dce53119dbafbcfdb42b0816aa1d3817e78834f26cda04fe99d57530",
+          "pcmUnchanged": true,
+          "before": {
+            "rss": 268951552,
+            "heapTotal": 96661504,
+            "heapUsed": 45357224,
+            "external": 130844342,
+            "arrayBuffers": 123669067
+          },
+          "after": {
+            "rss": 325115904,
+            "heapTotal": 148246528,
+            "heapUsed": 102893416,
+            "external": 130313706,
+            "arrayBuffers": 127442443
+          },
+          "maxRSSKiB": 346112
+        }
+      ],
+      "tsMedianMs": 4712.711,
+      "wasmMedianMs": 2902.0630000000006,
+      "improvement": 0.3842051846591059,
+      "parity": true,
+      "maxRSSRatio": 0.9341250134945482,
+      "scope": "Actual production numerical injection/retry adapter; WASM compile/instance/table copy inside timed request. Decode/ESM imports/result hashing outside. No HTTP/worker startup or physical Quest measurement."
+    }
+  ],
+  "developmentBrowser": {
+    "kind": "T18 production worker full recording",
+    "pass": true,
+    "fileName": "The_Prodigy_More_Music_For_The_Jilted_Generation_-_No_Good_Start_The_Dance_Bad_For_You_Mix_(mp3.pm).mp3",
+    "durationSec": 410.5937083333333,
+    "sampleRate": 48000,
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "observations": [
+      {
+        "mode": "typescript",
+        "elapsedMs": 11283.599999964237,
+        "backend": {
+          "requested": "typescript",
+          "used": "typescript"
+        },
+        "outputSha256": "1c35549cac9397b706cbda2c9d3019f40d185b14922165a6b6a998c75c879892"
+      },
+      {
+        "mode": "wasm",
+        "elapsedMs": 38219.09999996424,
+        "backend": {
+          "requested": "wasm",
+          "used": "wasm",
+          "kernel": "fft-scalar-f64-v1"
+        },
+        "outputSha256": "1c35549cac9397b706cbda2c9d3019f40d185b14922165a6b6a998c75c879892"
+      },
+      {
+        "mode": "wasm",
+        "elapsedMs": 8204.899999976158,
+        "backend": {
+          "requested": "wasm",
+          "used": "wasm",
+          "kernel": "fft-scalar-f64-v1"
+        },
+        "outputSha256": "1c35549cac9397b706cbda2c9d3019f40d185b14922165a6b6a998c75c879892"
+      },
+      {
+        "mode": "typescript",
+        "elapsedMs": 16201.699999988079,
+        "backend": {
+          "requested": "typescript",
+          "used": "typescript"
+        },
+        "outputSha256": "1c35549cac9397b706cbda2c9d3019f40d185b14922165a6b6a998c75c879892"
+      }
+    ],
+    "improvement": -0.6890483276522699,
+    "scope": "Two worker runs per backend on one desktop browser; includes worker start/module fetch/compile/analysis/publication. Decode/hash outside. Not a Quest measurement."
+  },
+  "productionBrowser": {
+    "kind": "T18 production worker full recording",
+    "pass": true,
+    "fileName": "The_Prodigy_More_Music_For_The_Jilted_Generation_-_No_Good_Start_The_Dance_Bad_For_You_Mix_(mp3.pm).mp3",
+    "durationSec": 410.5937188208617,
+    "sampleRate": 44100,
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "observations": [
+      {
+        "mode": "typescript",
+        "elapsedMs": 10351.700000047684,
+        "backend": {
+          "requested": "typescript",
+          "used": "typescript"
+        },
+        "outputSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908"
+      },
+      {
+        "mode": "wasm",
+        "elapsedMs": 8283.200000047684,
+        "backend": {
+          "requested": "wasm",
+          "used": "wasm",
+          "kernel": "fft-scalar-f64-v1"
+        },
+        "outputSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908"
+      },
+      {
+        "mode": "wasm",
+        "elapsedMs": 7468.399999976158,
+        "backend": {
+          "requested": "wasm",
+          "used": "wasm",
+          "kernel": "fft-scalar-f64-v1"
+        },
+        "outputSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908"
+      },
+      {
+        "mode": "typescript",
+        "elapsedMs": 9990.200000047684,
+        "backend": {
+          "requested": "typescript",
+          "used": "typescript"
+        },
+        "outputSha256": "d33635ed64233d35a47eb0386f1ad8bbf3075285a70806b30caea8729cb26908"
+      }
+    ],
+    "improvement": 0.22565738697221027,
+    "scope": "Two worker runs per backend on one desktop browser; includes worker start/module fetch/compile/analysis/publication. Decode/hash outside. Not a Quest measurement."
+  },
+  "workerContracts": {
+    "kind": "T18 real worker contract smoke",
+    "pass": true,
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "observations": [
+      {
+        "requested": "typescript",
+        "fault": null,
+        "backend": {
+          "requested": "typescript",
+          "used": "typescript"
+        },
+        "elapsedMs": 200.5,
+        "outputSha256": "de5b6df7223f1dddf560d95dbcf320e0e5ecc529cddb8f619405cba5c023d74f"
+      },
+      {
+        "requested": "auto",
+        "fault": null,
+        "backend": {
+          "requested": "auto",
+          "used": "wasm",
+          "kernel": "fft-scalar-f64-v1"
+        },
+        "elapsedMs": 264.80000001192093,
+        "outputSha256": "de5b6df7223f1dddf560d95dbcf320e0e5ecc529cddb8f619405cba5c023d74f"
+      },
+      {
+        "requested": "wasm",
+        "fault": null,
+        "backend": {
+          "requested": "wasm",
+          "used": "wasm",
+          "kernel": "fft-scalar-f64-v1"
+        },
+        "elapsedMs": 73.19999998807907,
+        "outputSha256": "de5b6df7223f1dddf560d95dbcf320e0e5ecc529cddb8f619405cba5c023d74f"
+      },
+      {
+        "requested": "wasm",
+        "fault": "missing",
+        "backend": {
+          "requested": "wasm",
+          "used": "typescript",
+          "fallback": "load-failed"
+        },
+        "elapsedMs": 85.60000002384186,
+        "outputSha256": "de5b6df7223f1dddf560d95dbcf320e0e5ecc529cddb8f619405cba5c023d74f"
+      },
+      {
+        "requested": "auto",
+        "fault": "unavailable",
+        "backend": {
+          "requested": "auto",
+          "used": "typescript",
+          "fallback": "unsupported"
+        },
+        "elapsedMs": 101.30000001192093,
+        "outputSha256": "de5b6df7223f1dddf560d95dbcf320e0e5ecc529cddb8f619405cba5c023d74f"
+      },
+      {
+        "requested": "wasm",
+        "fault": "wrong-mime",
+        "backend": {
+          "requested": "wasm",
+          "used": "wasm",
+          "kernel": "fft-scalar-f64-v1"
+        },
+        "elapsedMs": 87.40000003576279,
+        "outputSha256": "de5b6df7223f1dddf560d95dbcf320e0e5ecc529cddb8f619405cba5c023d74f"
+      }
+    ],
+    "cancellation": true,
+    "asset": {
+      "contentType": "application/wasm",
+      "bytes": 537
+    },
+    "pcmUnchanged": true
+  },
+  "productionHost": {
+    "kind": "T18 built-worker smoke host",
+    "worker": "analyzer.worker-Bn_0hdwo.js",
+    "wasm": "fft.scalar-BRpMaUFy.wasm",
+    "workerSha256": "6589a9a8131f90d59d75489a6fb13db7c977b096524418fd11557c433eea45dc",
+    "wasmSha256": "5fe5fb080b24f0c7fbbb305ced4b3d836d37351843709ad220ca72f8c8554a5c",
+    "fixtureSha256": "4d5b1cc58e15e24f027a972743062ab1052e46ef445c2a619371d5ec80f18147",
+    "generatedHtmlSha256": "16eabd65ccfbc449fae79e9ca7ad132b2aaad780ef92317c7facd0ab5395f1fc",
+    "pcmSha256": "03219f20d927b28d68216a00cca105d85985292dc31eb91e0542cb352393f512",
+    "note": "Generated local validation host only; optional first-channel44.1kHz PCM is excluded from source control and deployment."
+  },
+  "ui": {
+    "host": "built Studio",
+    "choices": [
+      "auto",
+      "typescript",
+      "wasm"
+    ],
+    "restoredBackend": "typescript",
+    "restoredAuto": "auto",
+    "mvpWelcomeHasNoWorkbench": true
+  },
+  "limitations": [
+    "Only the FFT transform is WASM; the analyzer orchestration and all remaining numerical stages stay TS.",
+    "No physical Quest performance or independent musical-accuracy claim.",
+    "The development-browser outlier and negative mean are retained; its cause is not isolated. Production worker measured separately on44.1kHz PCM.",
+    "Node process maxRSS includes imports/warmup; three pairs and one two-pair production-browser recording are observations, not a universal speed guarantee.",
+    "Short clips can lose the cold-load cost; TypeScript remains selectable."
+  ],
+  "goldenSemanticParity": {
+    "pass": true,
+    "fixtures": [
+      {
+        "id": "house-120",
+        "outputSha256": "3204e39a6a569f684ab573f0ddab058eb8250e7f353432478e1c7a363d8b4d12",
+        "pcmSha256": "8e3e8c2b3fb46f835173f2a5406a2b99a19120c55586e1c49b5bfada58ff2a73",
+        "parity": true
+      },
+      {
+        "id": "house-128",
+        "outputSha256": "a5bcbc3543ed56b436b0b12e8fa3a915590647d1fe69786f24b1b3b246f2aeec",
+        "pcmSha256": "c216bb5c19521f9ab1a7076058705c702fb67e1ff6c5e73a66ea768cd5d87a6d",
+        "parity": true
+      },
+      {
+        "id": "techno-140",
+        "outputSha256": "2d3b842ab052642174bed8dfa9c4d5922caf0a61d8e9aa412796393df2c9642c",
+        "pcmSha256": "529d997c4f5d12335c70ace849d6e114bf9084ffc471ddd839079b9c373e9698",
+        "parity": true
+      },
+      {
+        "id": "trance-150",
+        "outputSha256": "a81e11ade2fd36497883650f198b790669ce9829c7a1ce3069172a3a9ea0ca92",
+        "pcmSha256": "9bbd6232e053a621c58c6f65b36f73695a183a7cb1d9182d2cc82d01861db369",
+        "parity": true
+      },
+      {
+        "id": "dnb-176",
+        "outputSha256": "6c8d4c26a04db704b7172da916e07b671527b150531c01c8b90024b849356a6e",
+        "pcmSha256": "c236799748b2fc396de5947ea9a185ade8478fd0d8892236a82cade78d391e13",
+        "parity": true
+      },
+      {
+        "id": "breakbeat-140",
+        "outputSha256": "0dfd6575e7d6a93f9024698fee98b2e7910bcc1dd9e9b7624479270317971e62",
+        "pcmSha256": "d153d4f6f59d067fa03645453e6ce05d5f212bce44009133638e085bac098ec8",
+        "parity": true
+      },
+      {
+        "id": "sparse-techno-90",
+        "outputSha256": "a0dcd8cd5ac81bbe9c3b97bab422fb04d466db021addb38ef5b9fd67e8293537",
+        "pcmSha256": "c96022b30bef758818cc7eccda4b0578199e7e2c9c68fa47423711b3e62a2bb7",
+        "parity": true
+      },
+      {
+        "id": "slow-floor-70",
+        "outputSha256": "17f41a17a71f3dd06b3b3766e7136f3d18bb8fa2d4302495ceafa0dc9ca4bf71",
+        "pcmSha256": "7573ed62ec36f50044f5a579093875368a10703fc565cb5662cf86bc805776e6",
+        "parity": true
+      },
+      {
+        "id": "breakdown-124",
+        "outputSha256": "dbe2eb4ce153572245fa6d01a0a0d93af252e3ac667ae77d32066f23459f19a4",
+        "pcmSha256": "cd90cf456291f238c222f057a23f6ca60b61c01324c1bcd0f9debbf28b2f03b1",
+        "parity": true
+      },
+      {
+        "id": "ambient-no-grid",
+        "outputSha256": "a9a29111e0a7c301d9804571a71a6b399154e5d30dd245938329a7219eaec751",
+        "pcmSha256": "968526ed3bb84c0e3aa3ff84d7c944517c9a9d1ea40df1c69fd39258ae1785a3",
+        "parity": true
+      },
+      {
+        "id": "halftime-trap-140",
+        "outputSha256": "6f308d5e233af338858dc45c068595adfe332170d277d57e25c5f78471fcaa5c",
+        "pcmSha256": "ceef29974871238a1a8475a3d008ac6b4ed9cd1183a500bada77a94249f5b488",
+        "parity": true
+      },
+      {
+        "id": "long-breakdown-house",
+        "outputSha256": "1e8a386096dbb4e1a411d4f2e11eddc3888d71c8a2ed4522d962115479a67e1b",
+        "pcmSha256": "7a9b91c53b9c1524e7609d29a2cfa2268cccb3810ecf770220b935b38934ae25",
+        "parity": true
+      }
+    ],
+    "scope": "Existing verification assertions passed for TS in the complete suite; exact WASM publication equality preserves those results. No new human-annotated real-track accuracy claim."
+  },
+  "validationSummary": {
+    "completeCases": 2018,
+    "rawPass": 2007,
+    "rawFail": 11,
+    "reviewedReplayPass": 35,
+    "reconciledPass": 2009,
+    "exactKnownFailures": 9,
+    "newBackendCases": 24,
+    "pythonPass": 341,
+    "productionSourcesFrozen": 409
+  }
+}

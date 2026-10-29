@@ -2,6 +2,7 @@ import type { FeatureClock } from '../types/featureClock';
 import type { AcousticActivityLayer, AcousticAttack, AcousticTexture } from '../types/musicEvents';
 import { validateAnalysisClock, validateAnalysisSamples } from './signalContract';
 import { FFT } from './math/FFT';
+import type { FftKernelFactory } from './math/FFT';
 import { classifyEntryNeighborhood, attackChangeWindowSize } from '../types/musicEvents';
 
 // A bounded monitor of frozen frequency bins, never ownership of an isolated sound source.
@@ -38,7 +39,10 @@ export class MusicActivity {
     // AC RMS floor = 1e-5 amplitude (-100 dBFS); no per-track quantile amplification.
     private static readonly FLOOR_POWER = 1e-10;
 
-    constructor(samples: Float32Array, sampleRate: number, hopSize: number) {
+    private readonly fftKernelFactory?: FftKernelFactory;
+
+    constructor(samples: Float32Array, sampleRate: number, hopSize: number, fftKernelFactory?: FftKernelFactory) {
+        this.fftKernelFactory = fftKernelFactory;
         validateAnalysisClock(sampleRate, hopSize); validateAnalysisSamples(samples);
         this.samples = samples;
         this.clock = { sampleRate, sampleCount: samples.length, hopSize, windowSize: hopSize,
@@ -54,7 +58,7 @@ export class MusicActivity {
     }
 
     private hannSpectrum(valid: number): FFT {
-        const fft = new FFT(this.clock.hopSize);
+        const fft = new FFT(this.clock.hopSize, this.fftKernelFactory);
         for (let i = 0; i < valid; i++) fft.re[i] = fft.window[i];
         fft.transform(); return fft;
     }
@@ -329,7 +333,7 @@ export class MusicActivity {
             const bodyStart = anchor - Math.ceil(.002 * fs), prefixEnd = bodyStart - Math.ceil(.004 * fs);
             if (size === null || prefixEnd - size < 0 || bodyStart + size > length) continue;
             if (!fft) {
-                fft = new FFT(size); prefix = new Float64Array(size / 2); delta = new Float64Array(size / 2);
+                fft = new FFT(size, this.fftKernelFactory); prefix = new Float64Array(size / 2); delta = new Float64Array(size / 2);
                 for (const w of fft.window) { windowSum += w; windowPower += w * w; }
             }
             r.prefixSamples = [prefixEnd - size, prefixEnd]; r.bodySamples = [bodyStart, bodyStart + size];

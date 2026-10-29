@@ -63,9 +63,9 @@
     {
       "path": "src/types/index.ts",
       "predecessorSha256": "cb8fc311a35415951019a814f1090806b1db53e78ee4fc9f3b8037944b4dbc32",
-      "replacementSha256": "f4e4d73c12aac582fcb67f1279553c949039ae4ec16910f08978d2c3b087a8a8",
-      "reviewedBy": "Codex single integration owner, T12d source/contract review",
-      "reviewedReason": "Add an XR-requested percussive chart pool using the existing supplemental gates before visual proximity suppression; retain every legacy hit, default analyzer output and Classic source. Typed clock validation, worker request identity, profile regeneration and render-worker evidence omission are covered by new regressions. No historical timing fixture/result/source is rewritten. Prior registry and all superseded reviews retained at documents/tests/accepted-timing-source-evolution.pre-t12d.json. Full cumulative and exact three-recording legacy parity required before release.",
+      "replacementSha256": "43b5d3d00f77b64b1ac1507bda40431148ebb3d03ffbf016c41c15e6aaa2e96a",
+      "reviewedBy": "Codex integration owner, T18 explicit numerical-backend review",
+      "reviewedReason": "Optional requested backend and success diagnostics outside AnalysisResult. Omitted legacy messages keep synchronous TS and exact result packets; host Auto is explicit.",
       "supersededReplacements": [
         {
           "sha256": "02c041e8cef7a9ce2008023c74f6edc9265f1f7d69690a2af031785f1971893b",
@@ -96,6 +96,11 @@
           "sha256": "a7613a21ba9cfceb97f0dd377d97ed16010a1d1207b04cf7b6da7bf887581d4e",
           "reviewedBy": "Single integration owner with independent read-only runtime/gameplay contract reviews, T13d",
           "reviewedReason": "Comment-only correction: canonical cue time can be a generated preset-base arrival; manual/locked/legacy start semantics retained. No type shape, DSP, event timestamp, worker or historical measurement change. Prior complete source/manifest in Git4bcb4946946e93e8df7c14b672f0baee36f6be85; all prior hashes/reasons retained."
+        },
+        {
+          "sha256": "f4e4d73c12aac582fcb67f1279553c949039ae4ec16910f08978d2c3b087a8a8",
+          "reviewedBy": "Codex single integration owner, T12d source/contract review",
+          "reviewedReason": "Add an XR-requested percussive chart pool using the existing supplemental gates before visual proximity suppression; retain every legacy hit, default analyzer output and Classic source. Typed clock validation, worker request identity, profile regeneration and render-worker evidence omission are covered by new regressions. No historical timing fixture/result/source is rewritten. Prior registry and all superseded reviews retained at documents/tests/accepted-timing-source-evolution.pre-t12d.json. Full cumulative and exact three-recording legacy parity required before release."
         }
       ]
     },
@@ -116,9 +121,9 @@
     {
       "path": "src/analyzer/analyzeAudio.ts",
       "predecessorSha256": "ab59c383d3ae78bd19ad2148e780dd63b2cde6fcedc1ed6f87899d9c73acc042",
-      "replacementSha256": "a5728e8e3fd70a6d9e5b415dd6e0c62d805ca0d0c09e8a2448583ae55985f35a",
-      "reviewedBy": "Codex single integration owner, T12d source/contract review",
-      "reviewedReason": "Add an XR-requested percussive chart pool using the existing supplemental gates before visual proximity suppression; retain every legacy hit, default analyzer output and Classic source. Typed clock validation, worker request identity, profile regeneration and render-worker evidence omission are covered by new regressions. No historical timing fixture/result/source is rewritten. Prior registry and all superseded reviews retained at documents/tests/accepted-timing-source-evolution.pre-t12d.json. Full cumulative and exact three-recording legacy parity required before release.",
+      "replacementSha256": "02a4407f79a21f0cb4d66fa8f996a170010eb5fa7b48011a19849c94389b2ea5",
+      "reviewedBy": "Codex integration owner, T18 explicit numerical-backend review",
+      "reviewedReason": "One authoritative pipeline forwards an optional pure FFT factory; no timing/threshold/schema/default mathematical change. Production adapter retries the whole untouched PCM on kernel failure.",
       "supersededReplacements": [
         {
           "sha256": "085d4ce446695f33590696f490f61b0dad706c345174b772a9e6216b6e65daee",
@@ -129,6 +134,11 @@
           "sha256": "97dbd60cc9e1fdac58a711600868f9cd1c0cc70a5fa5c335424934076ea1b288",
           "reviewedBy": "Single integration owner with independent read-only analyzer audit",
           "reviewedReason": "T11b additive acoustic activity evidence only. Optional read-only shared FFT observer; original feature arithmetic, accepted event timing/grid and chart inputs unchanged. DC/low-resolution abstention, support/censoring, held/repeated/legato/overlap/silence, real worker normalization, synthetic transfer and exact full-recording legacy parity checked. No historical measurement or source archive rewritten. Prior source commit 201bf5d8a72d37d6fe9798420825add9e60fab57; no new source-copy tree."
+        },
+        {
+          "sha256": "a5728e8e3fd70a6d9e5b415dd6e0c62d805ca0d0c09e8a2448583ae55985f35a",
+          "reviewedBy": "Codex single integration owner, T12d source/contract review",
+          "reviewedReason": "Add an XR-requested percussive chart pool using the existing supplemental gates before visual proximity suppression; retain every legacy hit, default analyzer output and Classic source. Typed clock validation, worker request identity, profile regeneration and render-worker evidence omission are covered by new regressions. No historical timing fixture/result/source is rewritten. Prior registry and all superseded reviews retained at documents/tests/accepted-timing-source-evolution.pre-t12d.json. Full cumulative and exact three-recording legacy parity required before release."
         }
       ]
     },
@@ -154,9 +164,16 @@
     {
       "path": "src/analyzer/FeatureExtractor.ts",
       "predecessorSha256": "3e07d4b88ab7167f5cf46e0491df45e98518ff37fe2a4fe0495892559d24fb2b",
-      "replacementSha256": "24f819a45ccb7e96724aa5f3337647aa0278455040dee486015d300aa136316a",
-      "reviewedBy": "Single integration owner with independent read-only analyzer audit",
-      "reviewedReason": "T11b additive acoustic activity evidence only. Optional read-only shared FFT observer; original feature arithmetic, accepted event timing/grid and chart inputs unchanged. DC/low-resolution abstention, support/censoring, held/repeated/legato/overlap/silence, real worker normalization, synthetic transfer and exact full-recording legacy parity checked. No historical measurement or source archive rewritten. Prior source commit 201bf5d8a72d37d6fe9798420825add9e60fab57; no new source-copy tree."
+      "replacementSha256": "482fbe6ffb85aa6020f6d5b4f191b8bbc31d046de9e24adbb31883ae405c5dc0",
+      "reviewedBy": "Codex integration owner, T18 explicit numerical-backend review",
+      "reviewedReason": "Retain every feature formula, window and published frame; only select the injected resident FFT per instance. Exact normal/XR publication parity is tested at three clocks and full recordings.",
+      "supersededReplacements": [
+        {
+          "sha256": "24f819a45ccb7e96724aa5f3337647aa0278455040dee486015d300aa136316a",
+          "reviewedBy": "Single integration owner with independent read-only analyzer audit",
+          "reviewedReason": "T11b additive acoustic activity evidence only. Optional read-only shared FFT observer; original feature arithmetic, accepted event timing/grid and chart inputs unchanged. DC/low-resolution abstention, support/censoring, held/repeated/legato/overlap/silence, real worker normalization, synthetic transfer and exact full-recording legacy parity checked. No historical measurement or source archive rewritten. Prior source commit 201bf5d8a72d37d6fe9798420825add9e60fab57; no new source-copy tree."
+        }
+      ]
     },
     {
       "path": "src/analyzer/DramaturgyBuilder.ts",
@@ -168,9 +185,62 @@
     {
       "path": "src/analyzer/types.ts",
       "predecessorSha256": "cc9508fd388b6fd47cf11d7de59995e04468f0d3928e76bfa107a057d897a7eb",
-      "replacementSha256": "80013e3d89dafb4f0d675264dddd1a42763b20ab9a38b00f099eeb6ae3f99f9b",
-      "reviewedBy": "Codex single integration owner, T12d source/contract review",
-      "reviewedReason": "Add an XR-requested percussive chart pool using the existing supplemental gates before visual proximity suppression; retain every legacy hit, default analyzer output and Classic source. Typed clock validation, worker request identity, profile regeneration and render-worker evidence omission are covered by new regressions. No historical timing fixture/result/source is rewritten. Prior registry and all superseded reviews retained at documents/tests/accepted-timing-source-evolution.pre-t12d.json. Full cumulative and exact three-recording legacy parity required before release."
+      "replacementSha256": "9f695256874f3a8a8541706acb9c67edda54a0dc3ae72bb1526b4700954ac945",
+      "reviewedBy": "Codex integration owner, T18 explicit numerical-backend review",
+      "reviewedReason": "Optional headless FFT factory injection only; it is never serialized across worker messages or included in the musical output.",
+      "supersededReplacements": [
+        {
+          "sha256": "80013e3d89dafb4f0d675264dddd1a42763b20ab9a38b00f099eeb6ae3f99f9b",
+          "reviewedBy": "Codex single integration owner, T12d source/contract review",
+          "reviewedReason": "Add an XR-requested percussive chart pool using the existing supplemental gates before visual proximity suppression; retain every legacy hit, default analyzer output and Classic source. Typed clock validation, worker request identity, profile regeneration and render-worker evidence omission are covered by new regressions. No historical timing fixture/result/source is rewritten. Prior registry and all superseded reviews retained at documents/tests/accepted-timing-source-evolution.pre-t12d.json. Full cumulative and exact three-recording legacy parity required before release."
+        }
+      ]
+    },
+    {
+      "path": "src/analyzer/AcousticOnsets.ts",
+      "predecessorSha256": "4abd71de6b1868c453bf2d1c3734fb0e82533659fd921fa81e24d3024b71a3b3",
+      "replacementSha256": "a5f65814ac7f5a834cab818c912ecb82f404a595f1a063912a4017a4cbf50b1c",
+      "reviewedBy": "Codex integration owner, T18 explicit numerical-backend review",
+      "reviewedReason": "Thread an optional request-local FFT factory into the opt-in spectral onset transform; preserve samples, overlap, thresholding and all default decisions."
+    },
+    {
+      "path": "src/analyzer/LowFrequencyExtractor.ts",
+      "predecessorSha256": "20cd8119c8ace3a03112c21d28f87b9776708e76c39d0c0c354824ff749df91a",
+      "replacementSha256": "271e714f3a2e45f4b854a42d8b6fc6357b9a3a6f0f6a2e1a428f674f9f20f39c",
+      "reviewedBy": "Codex integration owner, T18 explicit numerical-backend review",
+      "reviewedReason": "Pass an optional FFT factory into the same long-window transform. Band edges, stepping, interpolation, noise floor and normalization remain exact."
+    },
+    {
+      "path": "src/analyzer/SpectralCalibration.ts",
+      "predecessorSha256": "cc19ad606d7c24ba33e2d3258d7c55b066550127d6d73bb1482e57c466dffd38",
+      "replacementSha256": "dd61105e4c598a3ac63ae6ecfb306c5a0410ddd4c9ad69b344f4679d937d7337",
+      "reviewedBy": "Codex integration owner, T18 explicit numerical-backend review",
+      "reviewedReason": "Carry the same optional numerical dependency through the calibration helper; unchanged spectrum math, confidence, peak selection and fallback bands."
+    },
+    {
+      "path": "src/analyzer/math/FFT.ts",
+      "predecessorSha256": "9f605e5a6561da6eb45bccd647803fe356b537684cdbfb10cf1a0530eda8bc34",
+      "replacementSha256": "7f6adab59d2d11f4416b48aec084c84c38b9e1df1a42721a03190efb4498c51f",
+      "reviewedBy": "Codex integration owner, T18 explicit numerical-backend review",
+      "reviewedReason": "Add request-local resident kernel dispatch while retaining the complete original TypeScript transform. The exact T17 scalar f64/f32-store binary supplies private fixed memory; no global backend or arithmetic rewrite."
+    }
+  ],
+  "researchAdapterReviews": [
+    {
+      "path": "research/analyzer-lab/diagnostics/trace-an02-stages.mjs",
+      "predecessorArchive": "documents/tests/trace-an02-stages.pre-t18.mjs.snapshot",
+      "reviewedReason": "Retain the original exact source hash and additionally accept only the reviewed T18 factory-injection hash. Reversing exactly the type import/optional argument/FFT constructor forwarding reproduces the predecessor; every other byte change remains rejected. 144-case observation parity retained.",
+      "predecessorSha256": "bf2eb5dece72073f115c6676c28b3329e06938163818008a8c39df144c8d6c39",
+      "replacementSha256": "0193f838880d43f3ac97d03fac66bfc6724b4c5cf4a62bfb25187306bb2af1ad",
+      "reviewedBy": "Codex integration owner"
+    },
+    {
+      "path": "research/analyzer-lab/diagnostics/export-an02-challenges.mjs",
+      "predecessorArchive": "documents/tests/export-an02-challenges.pre-t18.mjs.snapshot",
+      "reviewedReason": "Report the actual currently traced kernel source hash instead of relabelling it with the historical constant; all case generation, truth and observations remain unchanged.",
+      "predecessorSha256": "e7bbc6aefbfc40319b89d9f0e1543cbf5b908bf545bd64a4823bdfe836687723",
+      "replacementSha256": "361ea677a4f3d8a3e0ebcdbab92f22816ecd4c6abbcb510ad0802b1db79939a3",
+      "reviewedBy": "Codex integration owner"
     }
   ]
 }

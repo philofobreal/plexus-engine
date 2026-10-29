@@ -179,7 +179,7 @@ test('visual track analysis is precomputed and exposed through shared state', ()
   assert.match(analyzer, /significantMoments/);
   assert.match(analyzer, /DramaturgyBuilder/);
   assert.match(featureExtractor, /export class FeatureExtractor/);
-  assert.match(featureExtractor, /const fft = new FFT\(N\)/);
+  assert.match(featureExtractor, /const fft = new FFT\(N, this\.fftKernelFactory\)/);
   assert.match(featureExtractor, /re\[j\] = sample \* fft\.window\[j\]/);
   assert.match(featureExtractor, /fft\.transform\(\)/);
   assert.match(fft, /export function createHannWindow\(size: number\): Float32Array/);

@@ -12,6 +12,18 @@ clock are added. Display-only changes redraw while paused without snapping tunin
 
 ## Boundary Contract
 
+T18: hosts explicitly send optional `analysisBackend` (`auto`, `typescript`, `wasm`)
+captured before decoding. Omission keeps the legacy synchronous TS path and exact
+packet shape. Success may add `backend` diagnostics outside the musical result:
+requested/used backend, scalar kernel identity and a bounded fallback reason.
+No functions or WASM memory cross the message boundary. A pure request-local FFT
+factory is injected by the audio-owned adapter. Asynchronous initialization checks
+worker generation before DSP/publication; parent request-ID filtering/termination
+remain authoritative. Failed kernel execution discards partial analysis and retries
+the untouched input once in TS; invalid PCM remains an error. See the
+[technical contract](../features/analyzer-wasm.md). Backend preferences apply on the
+next load, are saved/copied device settings and never regenerate the current chart.
+
 Worker input and output are public contracts. Keep them typed and versionable.
 
 Current analysis request fields:

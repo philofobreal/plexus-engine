@@ -1,5 +1,6 @@
 import type { SpectralCalibration } from './SpectralCalibration';
 import { FFT } from './math/FFT';
+import type { FftKernelFactory } from './math/FFT';
 import { validateAnalysisClock } from './signalContract';
 
 export interface FrequencyBand {
@@ -99,7 +100,10 @@ export class FeatureExtractor {
     public typFlux: number = 0;
     public typOnset: number = 0;
 
-    constructor(channel: Float32Array, sampleRate: number, hopSize: number, calibration?: SpectralCalibration) {
+    private readonly fftKernelFactory?: FftKernelFactory;
+
+    constructor(channel: Float32Array, sampleRate: number, hopSize: number, calibration?: SpectralCalibration, fftKernelFactory?: FftKernelFactory) {
+        this.fftKernelFactory = fftKernelFactory;
         validateAnalysisClock(sampleRate, hopSize);
         this.channel = channel;
         this.sampleRate = sampleRate;
@@ -146,7 +150,7 @@ export class FeatureExtractor {
     public process(onProgress?: (p: number) => void,
         observeSpectrum?: (start: number, re: Float32Array, im: Float32Array) => void): void {
         const N = this.hopSize;
-        const fft = new FFT(N);
+        const fft = new FFT(N, this.fftKernelFactory);
         const re = fft.re;
         const im = fft.im;
         const prevMag = new Float32Array(N / 2);

@@ -1,0 +1,73 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>T18 production analyzer backend</title>
+<style>body{background:#101826;color:#d8edf4;font:16px system-ui;margin:28px;max-width:1050px}button,input{font:inherit;margin:8px;padding:8px}table{border-collapse:collapse;width:100%}td,th{padding:10px;text-align:left;border-bottom:1px solid #345}pre{white-space:pre-wrap;font-size:13px}#status{color:#67e5cd}label{display:block}</style>
+<h1>T18 production analyzer / WebAssembly FFT</h1><p>Actual production worker, loader and DSP. Test fault injection affects only test-created workers.</p>
+<button id="contracts">Run worker contracts</button><input id="file" type="file" accept="audio/*"><button id="record">Run full recording A/B</button>
+<p id="status">Ready</p><table><thead><tr><th>Check</th><th>Backend</th><th>Outcome</th></tr></thead><tbody id="rows"></tbody></table><pre id="result"></pre>
+<script type="module">
+import AnalyzerWorker from '../../src/audio/analyzer.worker.ts?worker';
+import workerURL from '../../src/audio/analyzer.worker.ts?worker&url';
+import wasmURL from '../../src/analyzer/math/fft.scalar.wasm?url&no-inline';
+import {analyzeAudio} from '../../src/analyzer/analyzeAudio.ts';
+const status=document.querySelector('#status'),rows=document.querySelector('#rows'),out=document.querySelector('#result');
+let serial=0;
+const hash=async value=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value))))].map(n=>n.toString(16).padStart(2,'0')).join('');
+const check=(condition,message)=>{if(!condition)throw Error(message)};
+function worker(fault){
+ if(!fault)return new AnalyzerWorker();
+ const url=new URL(workerURL,location.href).href;
+ const patch=fault==='unavailable'?`globalThis.WebAssembly=undefined;`:
+  fault==='missing'?`const originalFetch=fetch;globalThis.fetch=(input,init)=>String(input).includes('.wasm')?Promise.resolve(new Response('',{status:404})):originalFetch(input,init);`:
+  fault==='wrong-mime'?`const originalFetch=fetch;globalThis.fetch=async(input,init)=>{const r=await originalFetch(new URL(input,${JSON.stringify(url)}),init);return String(input).includes('.wasm')?new Response(await r.arrayBuffer(),{headers:{'Content-Type':'application/octet-stream'}}):r};`:
+  `const originalFetch=fetch;globalThis.fetch=(input,init)=>String(input).includes('.wasm')?new Promise(()=>{}):originalFetch(input,init);`;
+ const script=`const queued=[];self.onmessage=e=>queued.push(e);${patch}await import(${JSON.stringify(url)});const handle=self.onmessage;for(const e of queued)handle(e);`;
+ const blob=URL.createObjectURL(new Blob([script],{type:'text/javascript'}));
+ const instance=new Worker(blob,{type:'module'});instance.blobURL=blob;return instance;
+}
+function run(samples,sampleRate,requested,fault){
+ return new Promise((resolve,reject)=>{
+  const w=worker(fault),requestId=++serial,start=performance.now(),copy=new Float32Array(samples),stages=[];
+  const finish=()=>{clearTimeout(timer);w.terminate();if(w.blobURL)URL.revokeObjectURL(w.blobURL)};
+  const timer=setTimeout(()=>{finish();reject(Error('Worker timeout'))},90000);
+  w.onerror=e=>{finish();reject(Error(e.message))};w.onmessageerror=()=>{finish();reject(Error('Message decode failed'))};
+  w.onmessage=e=>{const m=e.data;if(m.type==='test-debug'){stages.push(m.message);return}if(m.requestId!==requestId)return;if(m.type==='analysis_progress'){stages.push(m.stage);return}
+   finish();if(m.type==='analysis_error'){reject(Error(m.message));return}const{type,backend,...result}=m;
+   resolve({result,backend,elapsedMs:performance.now()-start,stages});};
+  w.postMessage({requestId,algorithmVersion:7,phraseSize:8,sampleRate,samples:copy.buffer,rhythmOnsets:true,analysisBackend:requested},[copy.buffer]);
+ });
+}
+const musicalHash=async r=>hash({...r,requestId:0});
+function row(name,backend,message){const tr=document.createElement('tr');for(const text of[name,backend,message]){const td=document.createElement('td');td.textContent=text;tr.append(td)}rows.append(tr)}
+async function task(fn){document.querySelectorAll('button').forEach(b=>b.disabled=true);rows.textContent='';out.textContent='';try{const result=await fn();out.textContent=JSON.stringify(result,null,2);status.textContent='PASS'}catch(e){status.textContent='FAIL: '+e.message;out.textContent=String(e.stack)}finally{document.querySelectorAll('button').forEach(b=>b.disabled=false)}}
+document.querySelector('#contracts').onclick=()=>task(async()=>{
+ status.textContent='Checking production workers...';
+ const sampleRate=22050,samples=Float32Array.from({length:sampleRate*4+17},(_,i)=>.12*Math.sin(i*2*Math.PI*330/sampleRate)+.6*Math.exp(-(i/sampleRate%.5)*70)*Math.sin(i*2*Math.PI*63/sampleRate));
+ const before=await hash([...samples]);const reference=analyzeAudio({samples,sampleRate,options:{requestId:0,algorithmVersion:7,phraseSize:8,rhythmOnsets:true}}),expected=await musicalHash(reference),observations=[];
+ for(const[requested,fault,used,fallback]of[['typescript',null,'typescript',undefined],['auto',null,'wasm',undefined],['wasm',null,'wasm',undefined],['wasm','missing','typescript','load-failed'],['auto','unavailable','typescript','unsupported'],['wasm','wrong-mime','wasm',undefined]]){
+  status.textContent=`Checking ${requested}${fault?' / '+fault:''}...`;
+  const measured=await run(samples,sampleRate,requested,fault);
+  check(measured.backend.used===used,'wrong backend: '+JSON.stringify(measured.backend)+' / '+measured.stages.join('; '));check(measured.backend.fallback===fallback,'wrong fallback');
+  check(await musicalHash(measured.result)===expected,'musical output changed');observations.push({requested,fault,backend:measured.backend,elapsedMs:measured.elapsedMs,outputSha256:expected});
+  row(requested+(fault?' / '+fault:''),used,`Exact output; ${measured.elapsedMs.toFixed(0)} ms`);
+ }
+ const waiting=worker('hang'),messages=[];waiting.onmessage=e=>messages.push(e.data);waiting.postMessage({requestId:1001,algorithmVersion:7,phraseSize:8,sampleRate,samples:new Float32Array(samples).buffer,analysisBackend:'auto'});
+ await new Promise(resolve=>{const start=performance.now();const poll=()=>messages.some(m=>m.type==='analysis_progress')?resolve():performance.now()-start>10000?resolve():setTimeout(poll,20);poll()});
+ check(messages.some(m=>m.type==='analysis_progress'),'worker never initialized');waiting.terminate();if(waiting.blobURL)URL.revokeObjectURL(waiting.blobURL);
+ const count=messages.length;await new Promise(resolve=>setTimeout(resolve,100));check(messages.length===count,'terminated worker published');row('Terminate during lazy load','cancelled','No result after termination');
+ const asset=await fetch(wasmURL);check(asset.ok,'WASM asset missing');const contentType=asset.headers.get('Content-Type'),assetBytes=(await asset.arrayBuffer()).byteLength;
+ check(contentType?.includes('application/wasm'),'unexpected deployment MIME');check(assetBytes===537,'wrong binary');row('WASM asset',contentType,`${assetBytes} bytes`);
+ check(await hash([...samples])===before,'input PCM changed');
+ return{kind:'T18 real worker contract smoke',pass:true,userAgent:navigator.userAgent,observations,cancellation:true,asset:{contentType,bytes:assetBytes},pcmUnchanged:true};
+});
+document.querySelector('#record').onclick=()=>task(async()=>{
+ const file=document.querySelector('#file').files[0];check(file,'Choose a local audio file first');status.textContent='Decoding recording...';
+ const context=new AudioContext();let decoded;try{decoded=await context.decodeAudioData(await file.arrayBuffer())}finally{await context.close()}
+ const samples=decoded.getChannelData(0),sampleRate=decoded.sampleRate,observations=[];let expected;
+ for(const mode of['typescript','wasm','wasm','typescript']){status.textContent=`Full recording: ${mode}...`;const result=await run(samples,sampleRate,mode),digest=await musicalHash(result.result);
+  check(result.backend.used===mode,'requested backend fell back');if(expected)check(digest===expected,'full recording output drift');expected=digest;
+  observations.push({mode,elapsedMs:result.elapsedMs,backend:result.backend,outputSha256:digest});row(mode,result.backend.used,`${(result.elapsedMs/1000).toFixed(3)} s; exact output`);
+ }
+ const mean=mode=>observations.filter(r=>r.mode===mode).reduce((s,r)=>s+r.elapsedMs,0)/2;
+ return{kind:'T18 production worker full recording',pass:true,fileName:file.name,durationSec:decoded.duration,sampleRate,userAgent:navigator.userAgent,observations,
+  improvement:1-mean('wasm')/mean('typescript'),scope:'Two worker runs per backend on one desktop browser; includes worker start/module fetch/compile/analysis/publication. Decode/hash outside. Not a Quest measurement.'};
+});
+</script></html>

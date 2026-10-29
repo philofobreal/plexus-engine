@@ -5,6 +5,7 @@
 // - `chart`        the chart is regenerated from the captured analysis and playback rewinds;
 // - `session`      the chart stays, but the game configuration changes, so playback rewinds;
 // - `presentation` applied live, even mid-song (the score and the chart are untouched).
+// - `analysis`     numerical backend for the next load; no current-session work.
 //
 // Adding a setting means adding one descriptor here; no menu or controller code changes.
 
@@ -31,9 +32,9 @@ export interface XrSettings {
     readonly system: XrSystemSettings;
 }
 
-export type XrSettingScope = 'chart' | 'session' | 'presentation';
+export type XrSettingScope = 'chart' | 'session' | 'presentation' | 'analysis';
 /** Strongest first: a change set is handled by its strongest scope. */
-const SCOPE_ORDER: readonly XrSettingScope[] = ['chart', 'session', 'presentation'];
+const SCOPE_ORDER: readonly XrSettingScope[] = ['chart', 'session', 'presentation', 'analysis'];
 
 export type XrSettingSectionId = 'gameplay' | 'choreography' | 'background' | 'character' | 'material' | 'cosmos' | 'wall' | 'cockpit' | 'system';
 
@@ -308,6 +309,13 @@ export const XR_SETTINGS: readonly XrSettingDescriptor[] = [
             spiralDirection: value as XrAppearanceSettings['spiralDirection'] }) }) },
     grainRange('arms', 'Spiral arms', 'Number of density-wave arms brightening the grains on their crest.'),
     grainRange('density', 'Grain density', 'Additional grain copies for a denser tunnel.'),
+    { id: 'analysisBackend', section: 'system', label: 'Analysis backend', scope: 'analysis', kind: 'choice',
+        choices: [
+            { value: 'auto', label: 'Auto', hint: 'Next audio load: WebAssembly FFT when available, otherwise TypeScript. No chart regeneration now.' },
+            { value: 'typescript', label: 'TypeScript', hint: 'Next audio load: use the unchanged numerical reference for comparison.' },
+            { value: 'wasm', label: 'WebAssembly FFT', hint: 'Next audio load: prefer the scalar WASM FFT. Failed loading/execution retries the complete analysis in TypeScript.' }],
+        read: settings => settings.system.analysisBackend ?? 'auto',
+        write: (settings, value) => ({ ...settings, system: normalizeSystemSettings({ ...settings.system, analysisBackend: value as XrSystemSettings['analysisBackend'] }) }) },
     { id: 'presentationMode', section: 'system', label: 'Wormhole mode', scope: 'presentation', kind: 'choice',
         choices: [
             { value: 'hybrid', label: 'Hybrid', hint: 'Complete background image with the selected spatial field. Quality controls raster resolution; distance places the image.' },

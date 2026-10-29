@@ -5,6 +5,7 @@
 
 /** GPU: the main WebGL context draws the grain material from the carrier list (Addendum W). CPU: the background thread rasterizes it. */
 export type XrMaterialRenderer = 'gpu' | 'cpu';
+import { normalizeAnalyzerBackend, type AnalyzerBackend } from '../types/AnalyzerBackend';
 /** Where the grain trail lines are drawn (Addendum AA): the background canvas (default) or the headset GPU. */
 export type XrGrainLines = 'canvas' | 'gpu';
 /** Background cadence (Addendum Z): the requested whole-frame divider, or widened to fit late worker frames. */
@@ -17,6 +18,8 @@ export type XrBackgroundPacing = 'fixed' | 'adaptive';
 export type XrBackgroundRaster = 'gpu' | 'cpu' | 'webgl';
 
 export interface XrSystemSettings {
+    /** Absent/Auto uses the numerical backend capability policy on the next load. */
+    readonly analysisBackend?: AnalyzerBackend;
     /** Requested grain material renderer; GPU falls back to CPU where half-float targets are unavailable. */
     readonly materialRenderer: XrMaterialRenderer;
     /** Background profiling and the fps / stage-time line on the menu's main and pause screens (Addendum U). */
@@ -44,6 +47,7 @@ export function normalizeSystemSettings(settings?: Partial<XrSystemSettings> | n
     const d = DEFAULT_XR_SYSTEM_SETTINGS;
     const renderer = settings?.materialRenderer;
     return {
+        ...(normalizeAnalyzerBackend(settings?.analysisBackend) !== 'auto' ? { analysisBackend: normalizeAnalyzerBackend(settings?.analysisBackend) } : {}),
         materialRenderer: renderer && XR_MATERIAL_RENDERERS.includes(renderer) ? renderer : d.materialRenderer,
         diagnostics: typeof settings?.diagnostics === 'boolean' ? settings.diagnostics : d.diagnostics,
         grainLines: settings?.grainLines && XR_GRAIN_LINES.includes(settings.grainLines) ? settings.grainLines : d.grainLines,

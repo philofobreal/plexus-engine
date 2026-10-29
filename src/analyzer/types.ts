@@ -20,6 +20,8 @@ export interface AnalyzerOptions {
 
 export interface AnalyzeAudioInput {
     samples: Float32Array;
+    /** Pure request-local numeric dependency; omitted retains the TS reference. */
+    fftKernelFactory?: import('./math/FFT').FftKernelFactory;
     sampleRate: number;
     options?: AnalyzerOptions;
     onProgress?: (progress: number, stage: string) => void;

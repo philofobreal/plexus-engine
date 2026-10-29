@@ -28,7 +28,8 @@ const eventTiming = timingMode === 'local-band-v1' || timingMode === 'local-band
 const engine = new AudioEngine((plan) => semanticResolver.setPlan(plan), { eventTiming });
 
 const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
-const previewQuality = createPreviewQualityControl(!isDesktop, true);
+const previewQuality = createPreviewQualityControl(!isDesktop, true, backend => engine.setAnalyzerBackend(backend));
+engine.onAnalysisBackend = previewQuality.showAnalysisBackend;
 const ui = new MvpUI(engine, () => semanticResolver.hasPlan(), previewQuality);
 document.querySelector<HTMLDivElement>('#mvp-app')!.appendChild(ui.root);
 

@@ -23,7 +23,7 @@ import { projectAcceptedMusicEvents } from '../types/musicEvents';
 import { MusicActivity } from './MusicActivity';
 
 export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
-    const { samples, sampleRate, options, onProgress } = input;
+    const { samples, sampleRate, options, onProgress, fftKernelFactory } = input;
     const channel = samples;
     const hopSize = options?.hopSize ?? DEFAULT_ANALYSIS_HOP_SIZE;
     const requestId = options?.requestId ?? 0;
@@ -46,11 +46,11 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
         ? extractResidualOnsets(channel, sampleRate) : extractAdaptiveOnsets(channel, sampleRate)) : undefined;
     const predictiveOnsets = options?.predictiveOnsets ? extractPredictiveOnsets(channel, sampleRate) : undefined;
     const acousticOnsets = options?.acousticOnsets === undefined ? undefined
-        : extractAcousticOnsets(channel, sampleRate, options.acousticOnsets);
+        : extractAcousticOnsets(channel, sampleRate, options.acousticOnsets, fftKernelFactory);
 
-    const calibration = estimateSpectralCalibration(channel, sampleRate, hopSize);
-    const features = new FeatureExtractor(channel, sampleRate, hopSize, calibration);
-    const activity = new MusicActivity(channel, sampleRate, hopSize);
+    const calibration = estimateSpectralCalibration(channel, sampleRate, hopSize, fftKernelFactory);
+    const features = new FeatureExtractor(channel, sampleRate, hopSize, calibration, fftKernelFactory);
+    const activity = new MusicActivity(channel, sampleRate, hopSize, fftKernelFactory);
     features.process((p) => {
         onProgress?.(p, 'Analyzing music...');
     }, (start, re, im) => activity.observe(start, re, im));
@@ -90,7 +90,7 @@ export function analyzeAudio(input: AnalyzeAudioInput): AnalysisResult {
     const brightness = applyEMA(classified.brightnessRaw, 0.1);
     const tension = applyEMA(classified.tensionRaw, 0.05);
     const perceptualSpectrum = buildPerceptualSpectrum(features);
-    const lowFrequency = extractLowFrequencies(channel, sampleRate, hopSize);
+    const lowFrequency = extractLowFrequencies(channel, sampleRate, hopSize, fftKernelFactory);
 
     let outFrames: AudioFrame[] = new Array(features.totalFrames);
     let visualFeatures: VisualFeatureFrame[] = new Array(features.totalFrames);

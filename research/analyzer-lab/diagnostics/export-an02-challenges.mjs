@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { createLoader } from '../../../tests/helpers/xr-loader.mjs';
 import { challengeSpecs, challengeFixture, pcmBytes, sha256 } from '../../../tests/fixtures/acoustic-onset-challenges.mjs';
-import { createStageTracer, strengthOrderedNms, KERNEL_SHA256 } from './trace-an02-stages.mjs';
+import { createStageTracer, strengthOrderedNms } from './trace-an02-stages.mjs';
 
 export function* exportChallenges() {
     const {extractAcousticOnsets} = createLoader({}, {Float32Array, Float64Array})('analyzer/AcousticOnsets.ts');
@@ -26,7 +26,7 @@ export function* exportChallenges() {
         'src/analyzer/TemporalSmoother.ts', 'src/analyzer/signalContract.ts', 'tests/helpers/xr-loader.mjs',
         'tests/fixtures/acoustic-onset-challenges.mjs', 'research/analyzer-lab/diagnostics/trace-an02-stages.mjs',
         'research/analyzer-lab/diagnostics/export-an02-challenges.mjs', 'research/analyzer-lab/docs/AN-02-C2-EXPERIMENT.md'];
-    yield {type: 'identity', nodeVersion: process.version, kernelSha256: KERNEL_SHA256,
+    yield {type: 'identity', nodeVersion: process.version, kernelSha256: sha256(readFileSync('src/analyzer/AcousticOnsets.ts')),
         sourceHashes: Object.fromEntries(paths.map(path => [path, sha256(readFileSync(path))]))};
 }
 

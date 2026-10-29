@@ -6,6 +6,7 @@ import { State } from '../state/store';
 import { resetActiveVisualTransitions } from '../state/visualTransitionState';
 import type { AnalysisWorkerMessage, VisualFeatureFrame, VisualScorePlan } from '../types';
 import { HeroMetronome } from './HeroMetronome';
+import { normalizeAnalyzerBackend, type AnalyzerBackend, type AnalysisBackendInfo } from '../types/AnalyzerBackend';
 
 const EMPTY_FEATURES: VisualFeatureFrame = { melody: 0, vocal: 0, fx: 0, density: 0, brightness: 0, tension: 0 };
 
@@ -20,6 +21,13 @@ export interface AudioEngineOptions {
 }
 
 export class AudioEngine {
+    private analysisBackendPreference: AnalyzerBackend = 'auto';
+    private backendInfo: AnalysisBackendInfo | null = null;
+    public onAnalysisBackend?: (info: AnalysisBackendInfo | null) => void;
+
+    /** Applies to the next load only; a running request keeps its captured backend. */
+    setAnalyzerBackend(value: AnalyzerBackend): void { this.analysisBackendPreference = normalizeAnalyzerBackend(value); }
+    getAnalysisBackendInfo(): AnalysisBackendInfo | null { return this.backendInfo; }
     private ctx: AudioContext | null = null;
     private buffer: AudioBuffer | null = null;
     private source: AudioBufferSourceNode | null = null;
@@ -77,6 +85,8 @@ export class AudioEngine {
     }
 
     private clearAnalysisState() {
+        this.backendInfo = null;
+        this.onAnalysisBackend?.(null);
         this.stopBeepSources();
         this.beepBuffers = [];
         State.duration = 0;
@@ -123,6 +133,7 @@ export class AudioEngine {
         this.stop(true);
         this.terminateActiveWorker();
         const requestId = ++this.currentAnalysisRequestId;
+        const analysisBackend = this.analysisBackendPreference;
         this.clearAnalysisState();
         this.buffer = null;
 
@@ -148,6 +159,7 @@ export class AudioEngine {
 
             worker.postMessage({
                 requestId,
+                analysisBackend,
                 algorithmVersion: ANALYSIS_ALGORITHM_VERSION,
                 samples: analysisSamples.buffer,
                 sampleRate: State.sampleRate,
@@ -167,6 +179,8 @@ export class AudioEngine {
                 this.terminateActiveWorker();
 
                 if (e.data.type === 'analysis_done') {
+                    this.backendInfo = e.data.backend ?? { requested: analysisBackend, used: 'typescript' };
+                    this.onAnalysisBackend?.(this.backendInfo);
                     State.bpm = e.data.bpm;
                     State.targetTuning.dynamicsThreshold = e.data.adaptiveThreshold;
                     State.visualTuning.dynamicsThreshold = e.data.adaptiveThreshold;
