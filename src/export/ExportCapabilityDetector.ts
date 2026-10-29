@@ -34,6 +34,7 @@ export class ExportCapabilityDetector {
         }
 
         const report = {
+            ...(isMobile ? { fourKRestriction: 'device-heuristic' as const } : {}),
             webcodecsSupported,
             webcodecsCodecs: {
                 vp9: webcodecsSupported,
@@ -62,6 +63,7 @@ export class ExportCapabilityDetector {
             warnings.push('4K rendering disabled on mobile viewports due to system memory limits.');
         }
         return {
+            ...(isMobile ? { fourKRestriction: 'device-heuristic' as const } : {}),
             webcodecsSupported,
             webcodecsCodecs: {
                 vp9: webcodecsSupported,

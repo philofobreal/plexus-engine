@@ -1,7 +1,7 @@
 import { State } from '../state/store';
 import type { ExportBackend } from './ExportBackend';
 import { ExportBackendRegistry, type ExportBackendFactory } from './ExportBackendRegistry';
-import type { ExportCapabilities, ExportConfig, ExportWorkerResponse } from './ExportTypes';
+import type { ExportCapabilities, ExportConfig, ExportWorkerResponse, ExportPreparationReport } from './ExportTypes';
 import ExportWorker from './export.worker.ts?worker';
 import type p5 from 'p5';
 import type { ExportAudioSource, ExportRuntime, ExportProfile } from '../types/ExportRenderJob';
@@ -34,6 +34,8 @@ export class WebCodecsBackend implements ExportBackend {
     private readonly videoElement: HTMLVideoElement | null;
     private runtime: ExportRuntime | undefined;
     private workerTimings: Record<string, number> = {};
+    private preparationReport: ExportPreparationReport | undefined;
+    private resolvePrepared: (() => void) | null = null;
 
     constructor(
         p5Instance: any,
@@ -59,6 +61,7 @@ export class WebCodecsBackend implements ExportBackend {
         if (config.runtime === 'isolated-wormhole' && !runtime) throw new Error('Isolated export runtime was not prepared.');
         this.runtime = runtime;
         this.workerTimings = {};
+        this.preparationReport = undefined;
         const now = runtime ? () => performance.now() : () => 0, started = now();
         const stages = { renderRequest: 0, bitmap: 0, queueWait: 0, finalizeWait: 0, backendRequest: 0 };
         let submittedFrames = 0, outcome: ExportProfile['outcome'] = 'failed';
@@ -85,6 +88,7 @@ export class WebCodecsBackend implements ExportBackend {
             }
             const audioBuffer = runtime?.audio ?? this.audioEngine?.getAudioBuffer?.() as ExportAudioSource | null | undefined;
             this.worker = new ExportWorker();
+            const prepared = config.preflight ? new Promise<void>(resolve => { this.resolvePrepared = resolve; }) : null;
             const done = this.waitForExportDone(this.worker);
             void done.catch(() => undefined);
             this.worker.postMessage({
@@ -94,8 +98,12 @@ export class WebCodecsBackend implements ExportBackend {
                 fps: config.fps,
                 sampleRate: audioBuffer?.sampleRate || 48_000,
                 hasAudio: Boolean(audioBuffer),
+                ...(config.preflight ? { preflight: true } : {}),
                 ...(runtime ? { profile: true } : {})
             });
+
+            // No real frames/bitmaps are rendered or admitted while the worker probes.
+            if (prepared) await this.waitForOperation(prepared);
 
             await this.waitForOperation(nextAnimationFrame());
             if (!runtime) { State.isExporting = true; State.exportTime = 0; }
@@ -197,6 +205,7 @@ export class WebCodecsBackend implements ExportBackend {
                 try { onProfile({ runtime: 'isolated-wormhole', analysisId: runtime.snapshot.analysisId,
                     estimatedBytes: runtime.snapshot.estimatedBytes, budgetBytes: runtime.snapshot.budgetBytes,
                     stagesMs: { ...stages, ...this.workerTimings }, framesSubmitted: submittedFrames,
+                    ...(this.preparationReport ? { preflight: this.preparationReport } : {}),
                     outcome: this.cancelled ? 'cancelled' : outcome,
                     scope: 'Host wall-clock waits; render includes simulation/raster/composition/PostFX. Worker intervals overlap the host. Never sum stages as a total or infer GPU/codec CPU time.' }); } catch { /* Diagnostics cannot change job completion. */ }
             }
@@ -232,6 +241,9 @@ export class WebCodecsBackend implements ExportBackend {
                     this.workerTimings = event.data.timings ?? {};
                     this.rejectExport = null;
                     resolve(event.data.blob);
+                } else if (event.data.type === 'export_prepared') {
+                    this.preparationReport = event.data.report;
+                    this.resolvePrepared?.(); this.resolvePrepared = null;
                 } else if (event.data.type === 'export_error') {
                     this.rejectExport = null;
                     this.exportError = new Error(event.data.message);
@@ -273,6 +285,7 @@ export class WebCodecsBackend implements ExportBackend {
         this.worker?.terminate();
         this.worker = null;
         this.rejectExport = null;
+        this.resolvePrepared = null;
         if (this.offscreenGraphics) {
             this.offscreenGraphics.remove();
             this.offscreenGraphics = null;

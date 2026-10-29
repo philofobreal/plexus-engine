@@ -44,6 +44,7 @@ import { State } from '../../state/store';
 import type { DramaturgyActivityLevel, DramaturgyVariantMode, PerformanceAutomationPlan, PerformanceAutomationPoint, VisualTuningConfig } from '../../types';
 
 export interface MvpVisualControllerCallbacks {
+    onExportPreparation?: (message: string) => void;
     onExportProfile?: (profile: ExportProfile) => void;
     onLoadStart: (fileName: string) => void;
     onProgress: (progress: number, stage: string) => void;
@@ -1023,6 +1024,8 @@ export class MvpVisualController {
                 try {
                     if (signal.aborted) throw new Error('Export cancelled.');
                     if (revision !== revisionKey()) throw new Error('Track or settings changed during export preparation. Start again.');
+                    const mib = Math.ceil(lease.snapshot.estimatedBytes / 1048576);
+                    this.callbacks.onExportPreparation?.(`Estimated export working set: ${mib} MiB; planning limit: ${Math.round(lease.snapshot.budgetBytes / 1048576)} MiB. ${mib > 1024 ? 'High memory demand. ' : ''}Checking output-size codec support…`);
                     const runtime = isolatedExport.factory(lease.snapshot, lease.audio), dispose = runtime.dispose.bind(runtime);
                     const preparationMs = performance.now() - started;
                     runtime.dispose = () => { try { dispose(); } finally { lease.dispose(); } };

@@ -1,5 +1,6 @@
 import type { EncodedChunkLike, Muxer } from './Muxer';
 import { WebMMuxer } from './WebMMuxer';
+import { probeExportEncoding } from './ExportPreparation';
 import type { EncodeFrameRequest, ExportWorkerRequest, StartExportRequest } from './ExportTypes';
 
 interface VideoFrameLike {
@@ -133,6 +134,17 @@ async function startExport(message: StartExportRequest) {
     totalEncodeTimeMs = 0;
     peakEncodeTimeMs = 0;
     exportSampleRate = Math.max(1, Math.round(message.sampleRate || 48_000));
+    let config: VideoEncoderConfigLike = {
+        codec: message.codec || 'vp09.00.10.08',
+        width: Math.max(1, Math.floor(message.width)), height: Math.max(1, Math.floor(message.height)),
+        bitrate: Number.isFinite(message.bitrate) && message.bitrate! > 0 ? Math.round(message.bitrate!) : getDefaultBitrate(message.width, message.height),
+        framerate: Math.max(1, Math.round(message.fps)), latencyMode: 'quality', bitrateMode: 'constant'
+    };
+    let prepared;
+    if (message.preflight) {
+        const result = await probeExportEncoding(config, exportSampleRate, message.hasAudio === true);
+        config = result.config; prepared = result.report;
+    }
     const dir = await navigator.storage.getDirectory();
     for await (const [name] of (dir as any).entries()) {
         if (name.startsWith('temp_plexus_export_')) {
@@ -143,18 +155,6 @@ async function startExport(message: StartExportRequest) {
     opfsFileHandle = await dir.getFileHandle(uniqueFileName, { create: true });
     opfsAccessHandle = await (opfsFileHandle as any).createSyncAccessHandle();
     opfsAccessHandle.truncate(0);
-
-    const config: VideoEncoderConfigLike = {
-        codec: message.codec || 'vp09.00.10.08',
-        width: Math.max(1, Math.floor(message.width)),
-        height: Math.max(1, Math.floor(message.height)),
-        bitrate: Number.isFinite(message.bitrate) && message.bitrate! > 0
-            ? Math.round(message.bitrate!)
-            : getDefaultBitrate(message.width, message.height),
-        framerate: Math.max(1, Math.round(message.fps)),
-        latencyMode: 'quality',
-        bitrateMode: 'constant'
-    };
 
     muxer = new WebMMuxer({
         width: config.width,
@@ -233,6 +233,7 @@ async function startExport(message: StartExportRequest) {
         }
     }, 50);
     preparationMs = profile ? performance.now() - preparationStarted : 0;
+    if (prepared) workerScope.postMessage({ type: 'export_prepared', report: prepared });
 }
 
 function encodeFrame(message: EncodeFrameRequest) {

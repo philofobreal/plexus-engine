@@ -21,6 +21,7 @@ export class ExportDialog {
     private controlPending = false;
     private blockedMessage: string | null = null;
     private readonly runtimeSelect: HTMLSelectElement;
+    private readonly memorySelect: HTMLSelectElement;
     private profile: ExportProfile | null = null;
     private readonly isolatedAvailable: boolean;
 
@@ -41,11 +42,20 @@ export class ExportDialog {
                     </div>
                 </div>
                 <div class="mvp-field"><label>Rendering
-                    <select class="mvp-export-runtime" aria-label="Export rendering">
+                    <select class="mvp-select mvp-export-runtime" aria-label="Export rendering">
                         <option value="compatible">Compatible (current)</option>
                         <option value="isolated-wormhole">Isolated Wormhole (preview)</option>
                     </select></label>
-                    <small>Isolated uses a frozen track and private renderer. Try a short clip first.</small>
+                    <small>Isolated uses a frozen track and private renderer. Codec support is tested before isolated export.</small>
+                </div>
+                <div class="mvp-field"><label>Export memory limit
+                    <select class="mvp-select mvp-export-memory" aria-label="Export memory limit">
+                        <option value="auto">Auto (up to 2 GiB)</option>
+                        <option value="512">512 MiB</option>
+                        <option value="1024">1 GiB</option>
+                        <option value="2048">2 GiB</option>
+                    </select></label>
+                    <small>Isolated export planning limit, not reserved or detected free RAM. Auto warns above 1 GiB. A short codec test cannot guarantee a full export.</small>
                 </div>
                 <div class="mvp-capability-warning mvp-hidden"></div>
                 <div class="mvp-modal-progress mvp-hidden"><div class="mvp-modal-progress-bar"></div></div>
@@ -66,13 +76,23 @@ export class ExportDialog {
         this.capabilityWarningEl = this.root.querySelector('.mvp-capability-warning')!;
         this.resolutionBtns = Array.from(this.root.querySelectorAll('.mvp-export-resolution button'));
         this.runtimeSelect = this.root.querySelector('.mvp-export-runtime')!;
+        this.memorySelect = this.root.querySelector('.mvp-export-memory')!;
+        let memory = 'auto';
+        try { memory = window.localStorage.getItem('plexus.exportMemoryLimit') ?? 'auto'; } catch { /* Session default. */ }
+        this.memorySelect.value = ['512', '1024', '2048'].includes(memory) ? memory : 'auto';
+        this.memorySelect.addEventListener('change', () => {
+            if (this.isActive) return;
+            try { window.localStorage.setItem('plexus.exportMemoryLimit', this.memorySelect.value); } catch { /* Session only. */ }
+        });
         let stored: string | null = null;
         try { stored = window.localStorage.getItem('plexus.exportRuntime'); } catch { /* Session default. */ }
         this.runtimeSelect.value = isolatedAvailable && stored === 'isolated-wormhole' ? stored : 'compatible';
+        this.memorySelect.disabled = !isolatedAvailable || this.runtimeSelect.value === 'compatible';
         const isolatedOption = this.runtimeSelect.querySelector<HTMLOptionElement>('[value="isolated-wormhole"]');
         if (isolatedOption) isolatedOption.disabled = !isolatedAvailable;
         this.runtimeSelect.addEventListener('change', () => {
             if (this.isActive) return;
+            this.memorySelect.disabled = !this.isolatedAvailable || this.runtimeSelect.value === 'compatible';
             try { window.localStorage.setItem('plexus.exportRuntime', this.getConfig().runtime ?? 'compatible'); } catch { /* Session only. */ }
         });
         this.root.querySelector('.mvp-export-copy')!.addEventListener('click', () => {
@@ -120,6 +140,9 @@ export class ExportDialog {
         const active = this.root.querySelector('.mvp-export-resolution button.is-active') as HTMLElement | null;
         const resolution = (active?.dataset.res ?? '720p') as ExportResolution;
         return { resolution, aspectRatio: '16:9', fps: 60, watermark: false,
+            ...(this.isolatedAvailable && this.runtimeSelect.value === 'isolated-wormhole' ? { preflight: true } : {}),
+            ...(this.isolatedAvailable && this.runtimeSelect.value === 'isolated-wormhole' && ['512', '1024', '2048'].includes(this.memorySelect.value)
+                ? { memoryLimitMiB: Number(this.memorySelect.value) as 512 | 1024 | 2048 } : {}),
             ...(this.isolatedAvailable && this.runtimeSelect.value === 'isolated-wormhole' ? { runtime: 'isolated-wormhole' as const } : {}) };
     }
 
@@ -142,6 +165,7 @@ export class ExportDialog {
     setActive(isActive: boolean): void {
         this.isActive = isActive;
         this.runtimeSelect.disabled = isActive;
+        this.memorySelect.disabled = isActive || !this.isolatedAvailable || this.runtimeSelect.value === 'compatible';
         if (isActive) this.profile = null;
         this.controlPending = false;
         this.stopBtn.disabled = !isActive;
@@ -182,7 +206,8 @@ export class ExportDialog {
             this.statusEl.textContent = this.blockedMessage;
         }
 
-        if (!report.canExport4K) {
+        const workerWillCheck4K = this.isolatedAvailable && report.fourKRestriction === 'device-heuristic';
+        if (!report.canExport4K && !workerWillCheck4K) {
             const fourK = this.resolutionBtns.find((btn) => btn.dataset.res === '4K');
             if (fourK) {
                 fourK.disabled = true;
@@ -196,7 +221,8 @@ export class ExportDialog {
         }
 
         if (report.warnings.length > 0) {
-            this.capabilityWarningEl.textContent = report.warnings.join(' ');
+            this.capabilityWarningEl.textContent = workerWillCheck4K
+                ? 'Isolated export checks 4K support at the selected output settings. Device type alone does not determine support.' : report.warnings.join(' ');
             this.capabilityWarningEl.classList.remove('mvp-hidden');
         }
     }

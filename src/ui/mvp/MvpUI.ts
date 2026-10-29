@@ -284,6 +284,7 @@ export class MvpUI {
 
         this.controller = new MvpVisualController(engine, hasTimeBasedSemanticPlan, {
             onExportProfile: profile => this.exportDialog.setProfile(profile),
+            onExportPreparation: message => this.exportDialog.setStatus(message),
             onLoadStart: (fileName) => { this.currentFileName = fileName; this.hasAutoSelected = false; this.showAnalyzing(fileName); },
             onProgress: (progress) => this.analyzing.setProgress(progress),
             onAnalysisComplete: () => this.showReady(),

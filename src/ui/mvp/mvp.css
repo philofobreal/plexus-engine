@@ -1224,6 +1224,12 @@ button, input, select {
   margin-top: 20px;
 }
 .mvp-modal-actions .mvp-btn { flex: 1; justify-content: center; }
+.mvp-modal[aria-label="Export video"] {
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+.mvp-modal[aria-label="Export video"] .mvp-modal-actions { flex-wrap: wrap; }
 .mvp-modal-progress {
   height: 6px;
   border-radius: 3px;

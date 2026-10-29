@@ -2,7 +2,14 @@ import type { ExportConfig } from './ExportTypes';
 import type { ExportAudioSource, ExportRenderInput, ExportRenderSnapshot } from '../types/ExportRenderJob';
 
 /** Admission estimate for owned buffers, not a browser/process peak-RAM guarantee. */
-export const EXPORT_SNAPSHOT_BUDGET_BYTES = 384 * 1024 * 1024;
+export const EXPORT_SNAPSHOT_BUDGET_BYTES = 2048 * 1024 * 1024;
+
+/** Auto is a bounded application policy, NOT detected available physical RAM. */
+export function exportMemoryBudget(config: ExportConfig): number {
+    const mib = config.memoryLimitMiB ?? 2048;
+    if (![512, 1024, 2048].includes(mib)) throw new Error('Invalid export memory planning limit.');
+    return mib * 1024 * 1024;
+}
 
 function dataBytes(value: unknown, seen = new WeakSet<object>()): number {
     if (typeof value === 'number') { if (!Number.isFinite(value)) throw new Error('Export snapshot contains a non-finite number.'); return 8; }
@@ -30,7 +37,7 @@ async function digest(value: unknown): Promise<string> {
 
 /** Captures every mutable control synchronously before hashing awaits; owns one PCM copy/channel. */
 export async function captureExportSnapshot(input: ExportRenderInput, audio: ExportAudioSource,
-    config: ExportConfig, signal: AbortSignal, budgetBytes = EXPORT_SNAPSHOT_BUDGET_BYTES) {
+    config: ExportConfig, signal: AbortSignal, budgetBytes = exportMemoryBudget(config)) {
     config = { ...config };
     const check = () => { if (signal.aborted) throw new Error('Export cancelled.'); };
     check();
@@ -52,7 +59,7 @@ export async function captureExportSnapshot(input: ExportRenderInput, audio: Exp
     // Source, output, lazy post snapshot and two admitted bitmap surfaces + encoder headroom.
     const estimatedBytes = pcmBytes + dataBytes(input) * 2 + width * height * 4 * 5 + 64 * 1024 * 1024;
     if (!Number.isSafeInteger(estimatedBytes) || !Number.isSafeInteger(budgetBytes) || budgetBytes <= 0 || estimatedBytes > budgetBytes)
-        throw new Error(`Isolated export exceeds its ${Math.round(budgetBytes / 1048576)} MiB admission budget. Choose a lower resolution or Compatible rendering.`);
+        throw new Error(`Estimated export working set: ${Math.ceil(estimatedBytes / 1048576)} MiB; admission budget: ${Math.round(budgetBytes / 1048576)} MiB. This is an application planning limit, not detected free RAM. Choose a larger Export memory limit, lower resolution or Compatible rendering.`);
     const copied: ExportRenderInput = JSON.parse(JSON.stringify(input));
     const required = new Set(copied.analysis.performancePlan.points.map(p => p.preset));
     for (const name of required) if (!copied.presets[name] || typeof copied.presets[name] !== 'object') throw new Error(`Missing frozen export preset: ${name}`);

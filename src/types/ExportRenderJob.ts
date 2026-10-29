@@ -40,7 +40,16 @@ export interface ExportRuntime {
     dispose(): void;
 }
 export type ExportRuntimeFactory = (snapshot: ExportRenderSnapshot, audio: ExportAudioSource) => ExportRuntime;
+export interface ExportPreparationReport {
+    codec: string;
+    width: number;
+    height: number;
+    fps: number;
+    probeFrames: number;
+    probeBytes: number;
+}
 export interface ExportProfile {
+    readonly preflight?: ExportPreparationReport;
     readonly runtime: 'isolated-wormhole';
     readonly analysisId: string;
     readonly estimatedBytes: number;

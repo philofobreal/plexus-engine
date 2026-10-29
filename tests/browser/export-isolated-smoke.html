@@ -4,6 +4,7 @@
 <h1>T19b isolated export</h1>
 <p>Real private Wormhole renderer, snapshot, PostFX, coordinator, encoding worker and OPFS. Synthetic stereo track; live State/p5/AudioEngine must stay untouched.</p>
 <button id="run">Run full / prefix / cancel</button>
+<label>Output <select id="resolution"><option>720p</option><option>1080p</option><option>4K</option></select></label>
 <button id="codec">Inspect Opus metadata</button><pre id="codec-result"></pre>
 <pre id="result">Ready</pre><div id="videos"></div>
 <script type="module">
@@ -23,7 +24,7 @@ const input = { audioContentId: 'f'.repeat(64), analysis: { frames: Array.from({
     sampleRate: 48000, hopSize: 1024, bpm: 120, duration: 2, performancePlan: {version:1,source:'edited',points:[]} },
     seed: { version:1,rawTuning:raw,macros:{intensity:.5,motion:.5,depth:.5,detail:.5},boosts:{},policy:{gains:'meta',semanticResolver:false,semanticChoreography:false} },
     presets:{},musicDisplay:{mode:'spectrum',size:.3,opacity:.7},skybox:false,morphScale:1 };
-const config = {resolution:'720p',aspectRatio:'16:9',fps:60,runtime:'isolated-wormhole'};
+const config = {resolution:'720p',aspectRatio:'16:9',fps:60,runtime:'isolated-wormhole',preflight:true};
 const live = new Proxy({}, { get(_t,key) { throw new Error(`Live renderer/audio access: ${String(key)}`); }, deleteProperty() { throw new Error('Live renderer mutation'); } });
 const output = document.querySelector('#result'), urls = [];
 const ensure = (v,message) => { if (!v) throw new Error(message); };
@@ -37,17 +38,19 @@ async function verify(blob, seconds) {
         const video=document.createElement('video');video.controls=true;video.muted=true;
         const url=URL.createObjectURL(blob);urls.push(url);video.src=url;document.querySelector('#videos').append(video);
         await new Promise((resolve,reject)=>{video.onloadeddata=resolve;video.onerror=()=>reject(new Error('Undecodable video'));});
-        ensure(video.videoWidth===1280&&video.videoHeight===720,'Wrong output size');
+        const height=config.resolution==='4K'?2160:config.resolution==='1080p'?1080:720,width=Math.round(height*16/9);
+        ensure(video.videoWidth===width&&video.videoHeight===height,'Wrong output size');
         // Frame zero deliberately has playbackFade=0. Inspect a later decoded frame.
         await new Promise((resolve,reject)=>{video.onseeked=resolve;video.onerror=()=>reject(new Error('Video seek failed'));video.currentTime=Math.min(.5,seconds/2);});
-        const canvas=document.createElement('canvas');canvas.width=1280;canvas.height=720;
+        const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
         const ctx=canvas.getContext('2d');ctx.drawImage(video,0,0);
-        ensure(ctx.getImageData(0,0,1280,720).data.some((v,i)=>i%4!==3&&v>4),'Blank Wormhole frame');
+        ensure(ctx.getImageData(0,0,width,height).data.some((v,i)=>i%4!==3&&v>4),'Blank Wormhole frame');
         return {audioSeconds:decoded.duration,video:[video.videoWidth,video.videoHeight],nonblank:true};
     }finally{await audio.close();}
 }
 document.querySelector('#run').onclick=async()=>{
     const button=document.querySelector('#run');button.disabled=true;const results=[];
+    const resolution=document.querySelector('#resolution');resolution.disabled=true;config.resolution=resolution.value;
     try{
         for(const mode of ['full','prefix','cancel']){
             output.textContent=`Running ${mode}…`;let frames=0,profile,disposed=0;
@@ -67,7 +70,7 @@ document.querySelector('#run').onclick=async()=>{
         }
         output.textContent=JSON.stringify({pass:true,results},null,2);
     }catch(e){output.textContent=JSON.stringify({pass:false,error:String(e),results},null,2);}
-    finally{button.disabled=false;}
+    finally{button.disabled=false;resolution.disabled=false;}
 };
 addEventListener('pagehide',()=>urls.forEach(url=>URL.revokeObjectURL(url)));
 document.querySelector('#codec').onclick=async()=>{
