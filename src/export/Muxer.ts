@@ -17,6 +17,8 @@ export interface MuxerConfig {
 }
 
 export interface Muxer {
+    setAudioConfig?(description?: ArrayBuffer | ArrayBufferView): void;
+    setAudioEndTime?(timeUs: number): void;
     enableAudio(): void;
     addVideoChunk(chunk: EncodedChunkLike): void;
     addAudioChunk(chunk: EncodedChunkLike): void;

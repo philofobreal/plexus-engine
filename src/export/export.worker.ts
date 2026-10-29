@@ -48,7 +48,7 @@ type VideoEncoderConstructor = new (init: {
 }) => VideoEncoderLike;
 
 type AudioEncoderConstructor = new (init: {
-    output: (chunk: EncodedChunkLike) => void;
+    output: (chunk: EncodedChunkLike, metadata?: { decoderConfig?: { description?: ArrayBuffer | ArrayBufferView } }) => void;
     error: (error: Error) => void;
 }) => AudioEncoderLike;
 
@@ -83,6 +83,8 @@ let peakEncodeTimeMs = 0;
 let submittedVideoFrameCount = 0;
 let keyframeIntervalFrames = 60;
 let queueCheckInterval: ReturnType<typeof setInterval> | null = null;
+let profile = false, preparationStarted = 0, preparationMs = 0, firstFrameAt: number | null = null;
+let audioSubmittedSamples = 0, audioConfigured = false;
 
 // OPFS preparation is asynchronous. Preserve command order so frames/finalize
 // cannot overtake start_export and silently disappear before the encoder exists.
@@ -116,6 +118,10 @@ async function handleMessage(message: ExportWorkerRequest) {
 }
 
 async function startExport(message: StartExportRequest) {
+    profile = message.profile === true;
+    preparationStarted = profile ? performance.now() : 0;
+    firstFrameAt = null;
+    audioSubmittedSamples = 0; audioConfigured = false;
     const Encoder = workerScope.VideoEncoder;
     if (!Encoder) throw new Error('WebCodecs VideoEncoder is not available in this worker.');
 
@@ -195,8 +201,9 @@ async function startExport(message: StartExportRequest) {
             if (!AudioEncoder || !workerScope.AudioData) throw new Error('WebCodecs AudioEncoder is not available.');
 
             audioEncoder = new AudioEncoder({
-                output: (chunk) => {
+                output: (chunk, metadata) => {
                     if (!muxer) throw new Error('Muxer is not initialized.');
+                    if (!audioConfigured) { muxer.setAudioConfig?.(metadata?.decoderConfig?.description); audioConfigured = true; }
                     muxer.addAudioChunk(chunk);
                 },
                 error: (error) => {
@@ -225,9 +232,11 @@ async function startExport(message: StartExportRequest) {
             workerScope.postMessage({ type: 'queue_update', size: (encoder as any).encodeQueueSize || 0 });
         }
     }, 50);
+    preparationMs = profile ? performance.now() - preparationStarted : 0;
 }
 
 function encodeFrame(message: EncodeFrameRequest) {
+    if (profile && firstFrameAt === null) firstFrameAt = performance.now();
     if (!encoder) {
         message.bitmap.close();
         postFrameEncoded(message.timestampUs, message.audioPlanar);
@@ -268,8 +277,11 @@ function encodeFrame(message: EncodeFrameRequest) {
         timestamp: message.timestampUs,
         data: message.audioPlanar
     });
-    audioEncoder.encode(audioData);
-    audioData.close();
+    try {
+        audioEncoder.encode(audioData);
+        audioSubmittedSamples += message.audioSampleCount;
+        muxer?.setAudioEndTime?.(audioSubmittedSamples * 1_000_000 / exportSampleRate);
+    } finally { audioData.close(); }
     postFrameEncoded(message.timestampUs, message.audioPlanar);
 }
 
@@ -293,7 +305,9 @@ async function finalizeExport() {
     if (!encoder || !muxer) throw new Error('Export encoder is not initialized.');
     if (!opfsFileHandle || !opfsAccessHandle) throw new Error('OPFS export file is not initialized.');
 
+    const beforeVideoFlush = profile ? performance.now() : 0;
     await encoder.flush();
+    const afterVideoFlush = profile ? performance.now() : 0;
     if (audioEncoder) {
         await audioEncoder.flush();
         audioEncoder.close();
@@ -301,6 +315,7 @@ async function finalizeExport() {
     }
     encoder.close();
     encoder = null;
+    const afterAudioFlush = profile ? performance.now() : 0;
 
     const blob = muxer.finalize();
     muxer = null;
@@ -312,7 +327,12 @@ async function finalizeExport() {
     opfsAccessHandle = null;
     const finalFile = await opfsFileHandle.getFile();
     opfsFileHandle = null;
-    workerScope.postMessage({ type: 'export_done', blob: finalFile });
+    workerScope.postMessage({ type: 'export_done', blob: finalFile,
+        ...(profile ? { timings: { workerPreparation: preparationMs,
+            workerInputWindow: firstFrameAt === null ? 0 : beforeVideoFlush - firstFrameAt,
+            workerVideoFlush: afterVideoFlush - beforeVideoFlush,
+            workerAudioFlush: afterAudioFlush - afterVideoFlush,
+            workerMuxAndFileFinalize: performance.now() - afterAudioFlush } } : {}) });
 }
 
 function getDefaultBitrate(width: number, height: number) {

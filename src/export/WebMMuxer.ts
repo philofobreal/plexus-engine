@@ -18,6 +18,12 @@ export class WebMMuxer implements Muxer {
     private clusterTimecode = 0;
     private clusterOpen = false;
     private durationMs = 0;
+    private audioHead: Uint8Array;
+    private audioConfigReady: boolean;
+    private audioEndUs: number | null = null;
+    private pendingAudio: EncodedChunkLike | null = null;
+    private readonly pendingClusters: Uint8Array[] = [];
+    private pendingClusterBytes = 0;
 
     constructor(config: WebMMuxerConfig) {
         this.width = config.width;
@@ -27,11 +33,36 @@ export class WebMMuxer implements Muxer {
         this.sampleRate = config.sampleRate;
         this.hasAudio = config.hasAudio;
         this.onChunk = config.onChunk;
+        this.audioHead = createOpusHead(config.sampleRate);
+        this.audioConfigReady = !config.hasAudio;
     }
 
     enableAudio(): void {
+        if (this.headerEmitted) throw new Error('Audio cannot be enabled after the WebM header.');
         this.hasAudio = true;
+        this.audioConfigReady = false;
     }
+
+    setAudioConfig(description?: ArrayBuffer | ArrayBufferView): void {
+        if (this.audioConfigReady && this.hasAudio) return;
+        if (description) {
+            const bytes = ArrayBuffer.isView(description) ? new Uint8Array(description.buffer, description.byteOffset, description.byteLength) : new Uint8Array(description);
+            if (bytes.length !== 19 || new TextDecoder().decode(bytes.subarray(0, 8)) !== 'OpusHead' || bytes[8] !== 1 || bytes[9] !== 2 || bytes[18] !== 0)
+                throw new Error('Unsupported Opus decoder configuration.');
+            this.audioHead = bytes.slice();
+        }
+        this.audioConfigReady = true;
+        this.emitHeader();
+        for (const cluster of this.pendingClusters) this.onChunk?.(cluster);
+        this.pendingClusters.length = 0; this.pendingClusterBytes = 0;
+    }
+
+    setAudioEndTime(timeUs: number): void {
+        if (!Number.isFinite(timeUs) || timeUs < 0) throw new Error('Invalid WebM audio boundary.');
+        this.audioEndUs = timeUs;
+    }
+
+    private get codecDelayUs(): number { return new DataView(this.audioHead.buffer, this.audioHead.byteOffset).getUint16(10, true) * 1_000_000 / 48_000; }
 
     addVideoChunk(chunk: EncodedChunkLike): void {
         const data = new Uint8Array(chunk.byteLength);
@@ -49,21 +80,36 @@ export class WebMMuxer implements Muxer {
     }
 
     addAudioChunk(chunk: EncodedChunkLike): void {
+        if (!this.audioConfigReady) this.setAudioConfig();
+        if (this.pendingAudio) this.appendAudioChunk(this.pendingAudio, false);
+        this.pendingAudio = chunk;
+    }
+
+    private appendAudioChunk(chunk: EncodedChunkLike, last: boolean): void {
         const data = new Uint8Array(chunk.byteLength);
         chunk.copyTo(data);
 
         const timeMs = Math.round(chunk.timestamp / 1000);
         const durationMs = Math.max(1, Math.round((chunk.duration || 0) / 1000));
-        this.durationMs = Math.max(this.durationMs, timeMs + durationMs);
+        this.durationMs = Math.max(this.durationMs, Math.min(this.audioEndUs ?? Infinity,
+            chunk.timestamp + durationMs * 1000 - this.codecDelayUs) / 1000);
 
         if (!this.clusterOpen || timeMs - this.clusterTimecode > 30_000) {
             this.startCluster(timeMs);
         }
 
-        this.currentClusterBlocks.push(ebmlElement(0xA3, this.createSimpleBlock(2, timeMs - this.clusterTimecode, false, data)));
+        const excessUs = last && this.audioEndUs !== null ? Math.max(0, chunk.timestamp + (chunk.duration ?? 0) - this.codecDelayUs - this.audioEndUs) : 0;
+        const block = this.createSimpleBlock(2, timeMs - this.clusterTimecode, false, data);
+        if (excessUs > 0) {
+            const padding = new Uint8Array(8);
+            new DataView(padding.buffer).setBigInt64(0, BigInt(Math.round(excessUs * 1000)), false);
+            this.currentClusterBlocks.push(ebmlElement(0xA0, concatBytes(ebmlElement(0xA1, block), ebmlElement(0x75A2, padding))));
+        } else this.currentClusterBlocks.push(ebmlElement(0xA3, block));
     }
 
     finalize(): Blob {
+        if (this.pendingAudio) { this.appendAudioChunk(this.pendingAudio, true); this.pendingAudio = null; }
+        if (this.hasAudio && !this.audioConfigReady) throw new Error('No audio codec configuration was received.');
         this.closeCurrentCluster();
         if (this.onChunk) {
             this.emitHeader();
@@ -124,11 +170,11 @@ export class WebMMuxer implements Muxer {
             ebmlUIntElement(0x73C5, 2),
             ebmlUIntElement(0x83, 2),
             ebmlStringElement(0x86, 'A_OPUS'),
-            ebmlUIntElement(0x56AA, 80_000_000),
+            ebmlUIntElement(0x56AA, Math.round(this.codecDelayUs * 1000)),
             ebmlUIntElement(0x56BB, 80_000_000),
-            ebmlElement(0x63A2, createOpusHead(this.sampleRate)),
+            ebmlElement(0x63A2, this.audioHead),
             ebmlElement(0xE1, concatBytes(
-                ebmlFloatElement(0xB5, this.sampleRate),
+                ebmlFloatElement(0xB5, new DataView(this.audioHead.buffer, this.audioHead.byteOffset).getUint32(12, true) || this.sampleRate),
                 ebmlUIntElement(0x9F, 2)
             ))
         ));
@@ -159,14 +205,18 @@ export class WebMMuxer implements Muxer {
         this.currentClusterBlocks = [];
         this.clusterOpen = false;
         if (this.onChunk) {
-            this.onChunk(clusterBytes);
+            if (!this.headerEmitted) {
+                this.pendingClusterBytes += clusterBytes.byteLength;
+                if (this.pendingClusterBytes > 16 * 1024 * 1024) throw new Error('Audio configuration did not arrive within the WebM header buffer budget.');
+                this.pendingClusters.push(clusterBytes);
+            } else this.onChunk(clusterBytes);
             return;
         }
         this.clusters.push(clusterBytes);
     }
 
     private emitHeader(): void {
-        if (!this.onChunk || this.headerEmitted) return;
+        if (!this.onChunk || this.headerEmitted || (this.hasAudio && !this.audioConfigReady)) return;
         const headerBytes = concatBytes(
             ebmlElement(0x1A45DFA3, this.createEbmlHeader()),
             ebmlId(0x18538067),

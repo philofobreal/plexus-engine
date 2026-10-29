@@ -4,6 +4,8 @@ export type ExportBackendId = 'webcodecs' | 'none';
 export type ExportVideoCodec = 'vp8' | 'vp09.00.10.08';
 
 export interface ExportConfig {
+    /** Device/job policy, never a visual preset property. Omission preserves the existing backend. */
+    runtime?: 'compatible' | 'isolated-wormhole';
     resolution: ExportResolution;
     aspectRatio: ExportAspectRatio;
     fps: number;
@@ -26,6 +28,7 @@ export interface ExportCapabilities {
 export type ExportCapabilityReport = ExportCapabilities;
 
 export interface StartExportRequest {
+    profile?: boolean;
     type: 'start_export';
     width: number;
     height: number;
@@ -54,6 +57,7 @@ export type ExportWorkerRequest =
     | FinalizeExportRequest;
 
 export interface DoneResponse {
+    timings?: Record<string, number>;
     type: 'export_done';
     blob: Blob;
 }
@@ -88,6 +92,7 @@ export interface ExportTelemetry {
     framesEncoded: number;
     encodedBytes: number;
     queueDepth: number;
+    /** Legacy names: synchronous encoder submission cost, NOT asynchronous codec completion. */
     avgEncodeTimeMs: number;
     peakEncodeTimeMs: number;
 }
