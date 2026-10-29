@@ -237,7 +237,7 @@ export class MvpUI {
         this.exportDialog = new ExportDialog({
             onStart: (config) => void this.runExport(config),
             onStop: () => this.controller.stopAndSaveExport(),
-            onCancel: () => { this.controller.cancelExport(); this.exportDialog.setActive(false); }
+            onCancel: () => this.controller.cancelExport()
         });
 
         this.root.appendChild(topbar);
@@ -606,13 +606,14 @@ export class MvpUI {
 
     private async runExport(config: ExportConfig): Promise<void> {
         this.exportDialog.setActive(true);
+        this.exportDialog.setStatus('Preparing export…');
         try {
             const blob = await this.controller.startExport(config, (progress) => this.exportDialog.setProgress(progress));
             this.downloadBlob(blob, 'plexus-visual.webm');
             this.exportDialog.setStatus('Done — check your downloads.');
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            if (!message.includes('cancelled')) this.exportDialog.setStatus('Export failed.');
+            this.exportDialog.setStatus(message.includes('cancelled') ? 'Export cancelled.' : message);
         } finally {
             this.exportDialog.setActive(false);
         }

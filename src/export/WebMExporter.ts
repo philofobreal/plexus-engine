@@ -7,7 +7,8 @@ import './WebCodecsBackend';
 export type { ExportConfig } from './ExportTypes';
 
 export class WebMExporter {
-    private backend: ExportBackend | null = null;
+    // Reserve synchronously, including capability detection and asynchronous teardown.
+    private activeJob: { backend: ExportBackend | null; command: 'stop' | 'cancel' | null } | null = null;
     private readonly p5Instance: any;
     private readonly canvas: HTMLCanvasElement;
     private readonly audioEngine: any;
@@ -26,24 +27,38 @@ export class WebMExporter {
     }
 
     async startExport(config: ExportConfig, onProgress: (progress: number) => void): Promise<Blob> {
-        if (this.backend) throw new Error('An export is already running.');
-
-        const trackName = config.trackName || 'Plexus Performance';
-        this.backend = await this.createBackend(trackName);
+        if (this.activeJob) throw new Error('An export is already running.');
+        const job = { backend: null as ExportBackend | null, command: null as 'stop' | 'cancel' | null };
+        this.activeJob = job;
+        const capturedConfig = { ...config };
         try {
-            return await this.backend.start(config, onProgress);
+            const backend = await this.createBackend(capturedConfig.trackName || 'Plexus Performance');
+            if (job.command === 'cancel') throw new Error('Export cancelled.');
+            if (job.command === 'stop') throw new Error('No video frames were captured before stopping.');
+            job.backend = backend;
+            const blob = await backend.start(capturedConfig, progress => {
+                if (this.activeJob === job && job.command !== 'cancel') onProgress(progress);
+            });
+            // A backend completion already queued when Cancel arrived must not download.
+            if (job.command === 'cancel') throw new Error('Export cancelled.');
+            return blob;
         } finally {
-            this.backend = null;
+            if (this.activeJob === job) this.activeJob = null;
         }
     }
 
     cancelExport(): void {
-        this.backend?.cancelExport();
-        this.backend = null;
+        const job = this.activeJob;
+        if (!job || job.command === 'cancel') return;
+        job.command = 'cancel';
+        job.backend?.cancelExport();
     }
 
     stopAndSave(): void {
-        this.backend?.stopAndSave();
+        const job = this.activeJob;
+        if (!job || job.command) return;
+        job.command = 'stop';
+        job.backend?.stopAndSave();
     }
 
     private async createBackend(trackName: string): Promise<ExportBackend> {

@@ -25,6 +25,11 @@ export class WebCodecsBackend implements ExportBackend {
     private offscreenGraphics: p5.Graphics | null = null;
     private captureCanvas: HTMLCanvasElement | null = null;
     private workerQueueDepth = 0;
+    private outstandingFrames = 0;
+    private running = false;
+    private ownsLoop = false;
+    private interruptWait: ((error: Error) => void) | null = null;
+    private waitingForFrame = false;
     private readonly videoElement: HTMLVideoElement | null;
 
     constructor(
@@ -42,30 +47,31 @@ export class WebCodecsBackend implements ExportBackend {
     }
 
     async start(config: ExportConfig, onProgress: (progress: number) => void): Promise<Blob> {
-        if (this.worker) throw new Error('An export is already running.');
+        if (this.running) throw new Error('An export is already running.');
         if (typeof globalThis.createImageBitmap === 'undefined') throw new Error('createImageBitmap is not available in this browser.');
+        if (!Number.isFinite(config.fps) || config.fps <= 0 || !Number.isFinite(State.duration)
+            || Math.floor(State.duration * config.fps) < 1) throw new Error('Export requires a positive frame rate and at least one video frame.');
 
+        this.running = true;
         this.cancelled = false;
         this.stoppedEarly = false;
         this.exportError = null;
-        this.p5Instance.noLoop();
-
-        const target = getExportDimensions(config);
-        const exportGraphics: p5.Graphics = this.p5Instance.createGraphics(target.width, target.height);
-        // Export dimensions are already device pixels. Never inherit preview downsampling
-        // (or HiDPI supersampling) from the parent p5 canvas.
-        exportGraphics.pixelDensity(1);
-        this.offscreenGraphics = exportGraphics;
-        if (typeof document !== 'undefined') {
-            this.captureCanvas = document.createElement('canvas');
-            this.captureCanvas.width = target.width;
-            this.captureCanvas.height = target.height;
-        }
-        this.p5Instance.__plexusExportTarget = this.offscreenGraphics;
-        const audioBuffer = this.audioEngine?.getAudioBuffer?.() as AudioBuffer | null | undefined;
-        this.worker = new ExportWorker();
-
         try {
+            this.p5Instance.noLoop();
+            this.ownsLoop = true;
+            const target = getExportDimensions(config);
+            const exportGraphics: p5.Graphics = this.p5Instance.createGraphics(target.width, target.height);
+            this.offscreenGraphics = exportGraphics;
+            // Export dimensions are device pixels, independent of preview density.
+            exportGraphics.pixelDensity(1);
+            if (typeof document !== 'undefined') {
+                this.captureCanvas = document.createElement('canvas');
+                this.captureCanvas.width = target.width;
+                this.captureCanvas.height = target.height;
+            }
+            this.p5Instance.__plexusExportTarget = exportGraphics;
+            const audioBuffer = this.audioEngine?.getAudioBuffer?.() as AudioBuffer | null | undefined;
+            this.worker = new ExportWorker();
             const done = this.waitForExportDone(this.worker);
             void done.catch(() => undefined);
             this.worker.postMessage({
@@ -77,46 +83,62 @@ export class WebCodecsBackend implements ExportBackend {
                 hasAudio: Boolean(audioBuffer)
             });
 
-            await nextAnimationFrame();
+            await this.waitForOperation(nextAnimationFrame());
             State.isExporting = true;
             State.exportTime = 0;
 
             const totalFrames = Math.floor(State.duration * config.fps);
             this.workerQueueDepth = 0;
+            this.outstandingFrames = 0;
+            let submittedFrames = 0;
             for (let i = 0; i < totalFrames; i++) {
                 if (this.cancelled || this.stoppedEarly || !this.offscreenGraphics) break;
 
-                while (this.workerQueueDepth >= 2 && !this.exportError && !this.cancelled && !this.stoppedEarly) {
+                const queueWaitStarted = Date.now();
+                while ((this.workerQueueDepth >= 2 || this.outstandingFrames >= 2)
+                    && !this.exportError && !this.cancelled && !this.stoppedEarly) {
+                    if (Date.now() - queueWaitStarted >= 30_000) throw new Error('Export encoder queue timed out.');
                     await sleep(2);
                 }
                 if (this.exportError) throw this.exportError;
+                if (this.cancelled || this.stoppedEarly) break;
 
                 State.exportTime = i / config.fps;
-                await this.seekVideoFrame(State.exportTime);
-                this.renderOffscreenFrame();
-
-                await nextAnimationFrame();
-                if (this.cancelled || this.stoppedEarly || !this.worker) {
-                    break;
+                let bitmap: ImageBitmap;
+                try {
+                    await this.seekVideoFrame(State.exportTime);
+                    if (this.cancelled || this.stoppedEarly) break;
+                    this.renderOffscreenFrame();
+                    await this.waitForOperation(nextAnimationFrame());
+                    if (this.cancelled || this.stoppedEarly || !this.worker) break;
+                    const bitmapSource = this.prepareBitmapSource(target.width, target.height, config.watermark === true);
+                    bitmap = await this.waitForOperation(globalThis.createImageBitmap(bitmapSource), late => late.close());
+                } catch (error) {
+                    if (this.cancelled) throw new Error('Export cancelled.');
+                    if (this.stoppedEarly && !this.exportError) break;
+                    throw error;
                 }
-
-                const bitmapSource = this.prepareBitmapSource(target.width, target.height, config.watermark === true);
+                if (this.cancelled || this.stoppedEarly || !this.worker) { bitmap.close(); break; }
                 const timestampUs = Math.round((i * 1_000_000) / config.fps);
-                const bitmap = await globalThis.createImageBitmap(bitmapSource);
-
-                const audioPayload = audioBuffer ? this.getPlanarAudioFrame(audioBuffer, i, config.fps) : null;
-
-                if (audioPayload) {
-                    this.worker.postMessage({
-                        type: 'encode_frame',
-                        bitmap,
-                        timestampUs,
-                        audioPlanar: audioPayload.audioPlanar,
-                        audioSampleCount: audioPayload.audioSampleCount
-                    }, [bitmap, audioPayload.audioPlanar.buffer]);
-                } else {
-                    this.worker.postMessage({ type: 'encode_frame', bitmap, timestampUs }, [bitmap]);
+                try {
+                    const audioPayload = audioBuffer ? this.getPlanarAudioFrame(audioBuffer, i, config.fps) : null;
+                    this.outstandingFrames++;
+                    if (audioPayload) {
+                        this.worker.postMessage({
+                            type: 'encode_frame',
+                            bitmap,
+                            timestampUs,
+                            audioPlanar: audioPayload.audioPlanar,
+                            audioSampleCount: audioPayload.audioSampleCount
+                        }, [bitmap, audioPayload.audioPlanar.buffer]);
+                    } else {
+                        this.worker.postMessage({ type: 'encode_frame', bitmap, timestampUs }, [bitmap]);
+                    }
+                } catch (error) {
+                    bitmap.close();
+                    throw error;
                 }
+                submittedFrames++;
 
                 this.workerQueueDepth++; // Optimistic increment until worker replies
                 if (i % 2 === 0) {
@@ -127,10 +149,15 @@ export class WebCodecsBackend implements ExportBackend {
             }
 
             if (this.cancelled) throw new Error('Export cancelled.');
+            if (this.exportError) throw this.exportError;
+            if (submittedFrames === 0) throw new Error('No video frames were captured before stopping.');
 
             this.worker.postMessage({ type: 'finalize_export' });
-            const doneBlob = await done;
+            const doneBlob = await this.waitForOperation(done, undefined, undefined, false);
+            if (this.cancelled) throw new Error('Export cancelled.');
+            if (this.exportError) throw this.exportError;
             onProgress(1);
+            if (this.cancelled) throw new Error('Export cancelled.');
             return doneBlob;
         } finally {
             this.cleanup();
@@ -138,26 +165,40 @@ export class WebCodecsBackend implements ExportBackend {
     }
 
     cancelExport(): void {
+        if (!this.running || this.cancelled) return;
         this.cancelled = true;
-        this.rejectExport?.(new Error('Export cancelled.'));
-        this.cleanup();
+        const error = new Error('Export cancelled.');
+        this.interruptWait?.(error);
+        this.rejectExport?.(error);
+        if (this.worker) {
+            this.worker.onmessage = null;
+            this.worker.onerror = null;
+            this.worker.terminate();
+            this.worker = null;
+        }
     }
 
     stopAndSave(): void {
+        if (!this.running || this.cancelled || this.stoppedEarly) return;
         this.stoppedEarly = true;
+        if (this.waitingForFrame) this.interruptWait?.(new Error('No video frames were captured before stopping.'));
     }
 
     private waitForExportDone(worker: Worker): Promise<Blob> {
         return new Promise((resolve, reject) => {
             this.rejectExport = reject;
             worker.onmessage = (event: MessageEvent<ExportWorkerResponse>) => {
+                if (this.worker !== worker || this.cancelled) return;
                 if (event.data.type === 'export_done') {
                     this.rejectExport = null;
                     resolve(event.data.blob);
                 } else if (event.data.type === 'export_error') {
                     this.rejectExport = null;
                     this.exportError = new Error(event.data.message);
+                    this.interruptWait?.(this.exportError);
                     reject(this.exportError);
+                } else if (event.data.type === 'frame_encoded') {
+                    this.outstandingFrames = Math.max(0, this.outstandingFrames - 1);
                 } else if (event.data.type === 'queue_update') {
                     this.workerQueueDepth = (event.data as any).size;
                 } else if (event.data.type === 'export_telemetry') {
@@ -166,17 +207,25 @@ export class WebCodecsBackend implements ExportBackend {
                 }
             };
             worker.onerror = (event) => {
+                if (this.worker !== worker || this.cancelled) return;
                 this.rejectExport = null;
-                reject(new Error(event.message || 'Export worker failed.'));
+                this.exportError = new Error(event.message || 'Export worker failed.');
+                this.interruptWait?.(this.exportError);
+                reject(this.exportError);
             };
         });
     }
 
     private cleanup(): void {
+        if (!this.running) return;
         delete this.p5Instance.__plexusExportTarget;
-        State.isExporting = false;
-        State.exportTime = 0;
-        this.p5Instance.loop();
+        if (this.ownsLoop) {
+            State.isExporting = false;
+            State.exportTime = 0;
+            this.p5Instance.loop();
+            this.ownsLoop = false;
+        }
+        if (this.worker) { this.worker.onmessage = null; this.worker.onerror = null; }
         this.worker?.terminate();
         this.worker = null;
         this.rejectExport = null;
@@ -185,6 +234,32 @@ export class WebCodecsBackend implements ExportBackend {
             this.offscreenGraphics = null;
         }
         this.captureCanvas = null;
+        this.running = false;
+    }
+
+    /** Bound browser/encoder waits and release late bitmaps after Stop/Cancel. */
+    private waitForOperation<T>(operation: Promise<T>, onLate?: (value: T) => void,
+        onSettled?: () => void, frameWait = true): Promise<T> {
+        return new Promise<T>((resolve, reject) => {
+            let settled = false;
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            const finish = (error?: Error, value?: T) => {
+                if (settled) return;
+                settled = true;
+                if (timer !== undefined) clearTimeout(timer);
+                if (this.interruptWait === interrupt) { this.interruptWait = null; this.waitingForFrame = false; }
+                onSettled?.();
+                if (error) reject(error); else resolve(value as T);
+            };
+            const interrupt = (error: Error) => finish(error);
+            this.interruptWait = interrupt;
+            this.waitingForFrame = frameWait;
+            if (typeof setTimeout === 'function') timer = setTimeout(() => finish(new Error('Export operation timed out.')), 30_000);
+            operation.then(value => { if (settled) onLate?.(value); else finish(undefined, value); }, error => finish(error instanceof Error ? error : new Error(String(error))));
+            if (this.cancelled) interrupt(new Error('Export cancelled.'));
+            else if (frameWait && this.stoppedEarly) interrupt(new Error('No video frames were captured before stopping.'));
+            else if (this.exportError) interrupt(this.exportError);
+        });
     }
 
     private renderOffscreenFrame(): void {
@@ -295,23 +370,7 @@ export class WebCodecsBackend implements ExportBackend {
         const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : State.duration;
         const targetTime = Math.max(0, Math.min(time, Math.max(0, duration - 0.001)));
         if (Math.abs(video.currentTime - targetTime) > 0.001 || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-            await new Promise<void>((resolve, reject) => {
-                const cleanup = () => {
-                    video.removeEventListener('seeked', onSeeked);
-                    video.removeEventListener('error', onError);
-                };
-                const onSeeked = () => {
-                    cleanup();
-                    resolve();
-                };
-                const onError = () => {
-                    cleanup();
-                    reject(new Error('Video seek failed during export.'));
-                };
-                video.addEventListener('seeked', onSeeked, { once: true });
-                video.addEventListener('error', onError, { once: true });
-                video.currentTime = targetTime;
-            });
+            await this.waitForVideoEvent(video, 'seeked', 'Video seek failed during export.', () => { video.currentTime = targetTime; });
         }
 
         await this.waitForVideoFrame(video);
@@ -319,41 +378,27 @@ export class WebCodecsBackend implements ExportBackend {
 
     private waitForVideoMetadata(video: HTMLVideoElement): Promise<void> {
         if (video.readyState >= HTMLMediaElement.HAVE_METADATA) return Promise.resolve();
-        return new Promise((resolve, reject) => {
-            const cleanup = () => {
-                video.removeEventListener('loadedmetadata', onLoadedMetadata);
-                video.removeEventListener('error', onError);
-            };
-            const onLoadedMetadata = () => {
-                cleanup();
-                resolve();
-            };
-            const onError = () => {
-                cleanup();
-                reject(new Error('Video metadata failed during export.'));
-            };
-            video.addEventListener('loadedmetadata', onLoadedMetadata, { once: true });
-            video.addEventListener('error', onError, { once: true });
-        });
+        return this.waitForVideoEvent(video, 'loadedmetadata', 'Video metadata failed during export.');
     }
 
     private waitForVideoFrame(video: HTMLVideoElement): Promise<void> {
         if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return Promise.resolve();
-        return new Promise((resolve, reject) => {
-            const cleanup = () => {
-                video.removeEventListener('loadeddata', onLoadedData);
-                video.removeEventListener('error', onError);
-            };
-            const onLoadedData = () => {
-                cleanup();
-                resolve();
-            };
-            const onError = () => {
-                cleanup();
-                reject(new Error('Video frame failed during export.'));
-            };
-            video.addEventListener('loadeddata', onLoadedData, { once: true });
+        return this.waitForVideoEvent(video, 'loadeddata', 'Video frame failed during export.');
+    }
+
+    private waitForVideoEvent(video: HTMLVideoElement, type: string, errorMessage: string, action?: () => void): Promise<void> {
+        let onReady: () => void = () => {};
+        let onError: () => void = () => {};
+        const operation = new Promise<void>((resolve, reject) => {
+            onReady = resolve;
+            onError = () => reject(new Error(errorMessage));
+            video.addEventListener(type, onReady, { once: true });
             video.addEventListener('error', onError, { once: true });
+            action?.();
+        });
+        return this.waitForOperation(operation, undefined, () => {
+            video.removeEventListener(type, onReady);
+            video.removeEventListener('error', onError);
         });
     }
 

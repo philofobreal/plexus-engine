@@ -17,6 +17,7 @@ export class ExportDialog {
     private readonly resolutionBtns: HTMLButtonElement[];
     private readonly callbacks: ExportDialogCallbacks;
     private isActive = false;
+    private controlPending = false;
     private blockedMessage: string | null = null;
 
     constructor(callbacks: ExportDialogCallbacks) {
@@ -66,14 +67,22 @@ export class ExportDialog {
         });
         // Stop & save keeps everything captured so far — no confirmation needed, it's non-destructive.
         this.stopBtn.addEventListener('click', () => {
-            if (!this.isActive) return;
+            if (!this.isActive || this.stopBtn.disabled) return;
+            this.controlPending = true;
+            this.stopBtn.disabled = true;
+            this.setStatus('Stopping and saving captured video…');
             this.callbacks.onStop();
         });
         // Cancel while exporting throws away the footage captured so far, so — industry standard
         // for a destructive action — confirm before actually discarding it.
         this.cancelBtn.addEventListener('click', () => {
+            if (this.cancelBtn.disabled) return;
             if (!this.isActive) { this.close(); return; }
             if (!window.confirm('Discard the video captured so far? This cannot be undone.')) return;
+            this.controlPending = true;
+            this.stopBtn.disabled = true;
+            this.cancelBtn.disabled = true;
+            this.setStatus('Cancelling export…');
             this.callbacks.onCancel();
         });
         this.root.addEventListener('click', (e) => { if (e.target === this.root && !this.isActive) this.close(); });
@@ -103,6 +112,9 @@ export class ExportDialog {
 
     setActive(isActive: boolean): void {
         this.isActive = isActive;
+        this.controlPending = false;
+        this.stopBtn.disabled = !isActive;
+        this.cancelBtn.disabled = false;
         this.startBtn.classList.toggle('mvp-hidden', isActive);
         this.stopBtn.classList.toggle('mvp-hidden', !isActive);
         this.cancelBtn.textContent = 'Cancel';
@@ -117,6 +129,7 @@ export class ExportDialog {
 
     setProgress(progress: number): void {
         this.progressBar.style.width = `${Math.round(progress * 100)}%`;
+        if (this.isActive && !this.controlPending && progress < 1) this.setStatus('Exporting video…');
     }
 
     setStatus(message: string): void {

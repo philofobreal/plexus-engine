@@ -1,0 +1,85 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>T19a export lifecycle smoke</title>
+<style>
+body{background:#101923;color:#def2ff;font:16px system-ui;margin:24px;max-width:900px}button{padding:12px;margin:8px 8px 8px 0}pre{white-space:pre-wrap}canvas{width:320px;height:180px}.mvp-hidden{display:none}.mvp-modal{border:1px solid #52cde8;padding:16px}.mvp-modal-progress-bar{background:#52cde8;height:4px}.mvp-modal-status{padding:12px 0}
+</style>
+<h1>T19a — export controls</h1>
+<p>Real coordinator, WebCodecs backend, worker, OPFS and MVP dialog. Synthetic canvas/audio; not the full visual renderer or isolated export.</p>
+<button id="run">Run full / prefix / cancel</button>
+<button id="dialog">Open real MVP export dialog</button>
+<canvas id="canvas" width="1280" height="720"></canvas>
+<pre id="result">Ready</pre>
+<script type="module">
+import { WebMExporter } from '../../src/export/WebMExporter.ts';
+import { ExportDialog } from '../../src/ui/mvp/ExportDialog.ts';
+import { State } from '../../src/state/store.ts';
+
+const canvas = document.querySelector('canvas'), ctx = canvas.getContext('2d'), output = document.querySelector('#result');
+const pcm = new AudioBuffer({ numberOfChannels: 2, length: 48000 * 120, sampleRate: 48000 });
+for (let c = 0; c < 2; c++) { const data = pcm.getChannelData(c); for (let i = 0; i < data.length; i++) data[i] = .12 * Math.sin(2 * Math.PI * (220 + c * 110) * i / 48000); }
+const config = { resolution: '720p', aspectRatio: '16:9', fps: 30, watermark: false };
+let exporter, loops = 0, removes = 0;
+const p5 = {
+    noLoop() {}, loop() { loops++; },
+    createGraphics(width, height) { canvas.width = width; canvas.height = height; return { elt: canvas, pixelDensity() {}, clear() { ctx.clearRect(0, 0, width, height); }, remove() { removes++; } }; },
+    redraw() { ctx.fillStyle = '#18364e'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#00d9ed'; ctx.fillRect(60 + (State.exportTime * 160) % 1000, 180, 180, 180); ctx.fillStyle = 'white'; ctx.font = '48px sans-serif'; ctx.fillText(`T19a ${State.exportTime.toFixed(3)} s`, 60, 100); }
+};
+const dialog = new ExportDialog({ onStart: c => void runOne('manual', c), onStop: () => exporter?.stopAndSave(), onCancel: () => exporter?.cancelExport() });
+document.body.append(dialog.root);
+document.querySelector('#dialog').onclick = () => dialog.open();
+function check(value, message) { if (!value) throw new Error(message); }
+async function decode(blob, expectedSeconds) {
+    const audio = new AudioContext();
+    try {
+        const decoded = await audio.decodeAudioData(await blob.arrayBuffer());
+        check(decoded.numberOfChannels === 2, 'Stereo audio missing');
+        check(Math.abs(decoded.duration - expectedSeconds) < .15, `Audio duration ${decoded.duration} != ${expectedSeconds}`);
+        const url = URL.createObjectURL(blob), video = document.createElement('video'); video.muted = true; video.src = url;
+        try {
+            await new Promise((resolve, reject) => { video.onloadeddata = resolve; video.onerror = () => reject(new Error('Video cannot decode')); });
+            check(video.videoWidth === 1280 && video.videoHeight === 720, 'Wrong decoded video size');
+            const sample = document.createElement('canvas'); sample.width = 8; sample.height = 8;
+            const sc = sample.getContext('2d'); sc.drawImage(video, 0, 0, 8, 8);
+            check(sc.getImageData(0, 0, 8, 8).data.some((v, i) => i % 4 !== 3 && v > 20), 'Blank decoded frame');
+            return { audioSeconds: decoded.duration, channels: decoded.numberOfChannels, video: [video.videoWidth, video.videoHeight], nonblank: true };
+        } finally { video.removeAttribute('src'); video.load(); URL.revokeObjectURL(url); }
+    } finally { await audio.close(); }
+}
+async function runOne(mode, selected = config) {
+    if (exporter) throw new Error('Already running');
+    const duration = mode === 'full' ? 2 : 120; State.duration = duration;
+    exporter = new WebMExporter(p5, canvas, { getAudioBuffer: () => pcm });
+    const job = exporter; let rendered = 0; const beforeLoop = loops, beforeRemove = removes;
+    dialog.setActive(true); dialog.setStatus('Preparing export…');
+    const started = performance.now();
+    try {
+        const blob = await job.startExport(selected, p => {
+            dialog.setProgress(p);
+            if (p < 1) {
+                rendered++;
+                if (mode === 'prefix' && rendered === 12) { job.stopAndSave(); job.stopAndSave(); }
+                if (mode === 'cancel' && rendered === 8) job.cancelExport();
+            }
+        });
+        check(mode !== 'cancel', 'Cancelled export returned a result');
+        const decoded = await decode(blob, rendered / selected.fps);
+        check(loops === beforeLoop + 1 && removes === beforeRemove + 1 && !State.isExporting, 'Incomplete cleanup');
+        dialog.setStatus('Completed');
+        return { mode, pass: true, rendered, bytes: blob.size, milliseconds: performance.now() - started, ...decoded };
+    } catch (error) {
+        if (mode !== 'cancel' || !String(error).includes('cancelled')) throw error;
+        check(loops === beforeLoop + 1 && removes === beforeRemove + 1 && !State.isExporting, 'Cancel cleanup failed');
+        dialog.setStatus('Export cancelled.');
+        return { mode, pass: true, rendered, noResult: true, milliseconds: performance.now() - started };
+    } finally { exporter = null; dialog.setActive(false); }
+}
+document.querySelector('#run').onclick = async () => {
+    const btn = document.querySelector('#run'); btn.disabled = true; const results = [];
+    try {
+        for (const mode of ['full', 'prefix', 'cancel']) { output.textContent = `Running ${mode}…`; results.push(await runOne(mode)); }
+        output.textContent = JSON.stringify({ pass: true, results }, null, 2);
+    } catch (error) { output.textContent = JSON.stringify({ pass: false, results, error: String(error) }, null, 2); }
+    finally { btn.disabled = false; }
+};
+</script>

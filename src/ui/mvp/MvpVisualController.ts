@@ -1002,7 +1002,7 @@ export class MvpVisualController {
     }
 
     stopAndSaveExport(): void { this.currentExporter?.stopAndSave(); }
-    cancelExport(): void { this.currentExporter?.cancelExport(); this.currentExporter = null; }
+    cancelExport(): void { this.currentExporter?.cancelExport(); }
 
     static async detectExportCapabilities() {
         return ExportCapabilityDetector.detectCapabilities();

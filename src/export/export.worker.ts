@@ -84,8 +84,12 @@ let submittedVideoFrameCount = 0;
 let keyframeIntervalFrames = 60;
 let queueCheckInterval: ReturnType<typeof setInterval> | null = null;
 
+// OPFS preparation is asynchronous. Preserve command order so frames/finalize
+// cannot overtake start_export and silently disappear before the encoder exists.
+let commandChain = Promise.resolve();
 workerScope.onmessage = (event) => {
-    void handleMessage(event.data);
+    commandChain = commandChain.then(() => handleMessage(event.data));
+    return commandChain;
 };
 
 async function handleMessage(message: ExportWorkerRequest) {

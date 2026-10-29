@@ -412,7 +412,11 @@ export class DashboardUI {
             {
                 onExportStart: (config) => { void this.startVideoExport(config); },
                 onExportStop: () => { this.currentExporter?.stopAndSave(); },
-                onExportCancel: () => { this.currentExporter?.cancelExport(); this.exportCtrl.resetExportUi(); },
+                onExportCancel: () => {
+                    this.currentExporter?.cancelExport();
+                    this.exportCtrl.setStopButtonDisabled(true);
+                    this.exportCtrl.setExportButtonText('Cancelling...');
+                },
             }
         );
     }
