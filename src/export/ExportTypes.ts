@@ -35,6 +35,8 @@ export interface ExportCapabilities {
 export type ExportCapabilityReport = ExportCapabilities;
 
 export interface StartExportRequest {
+    /** Host-owned temporary file; omission uses a unique worker-owned legacy name. */
+    storageFile?: string;
     preflight?: boolean;
     profile?: boolean;
     type: 'start_export';

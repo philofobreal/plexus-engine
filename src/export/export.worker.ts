@@ -1,6 +1,7 @@
 import type { EncodedChunkLike, Muxer } from './Muxer';
 import { WebMMuxer } from './WebMMuxer';
 import { probeExportEncoding } from './ExportPreparation';
+import { exportStorageName, validExportStorageName } from './ExportStorageLease';
 import type { EncodeFrameRequest, ExportWorkerRequest, StartExportRequest } from './ExportTypes';
 
 interface VideoFrameLike {
@@ -111,6 +112,8 @@ async function handleMessage(message: ExportWorkerRequest) {
             clearInterval(queueCheckInterval);
             queueCheckInterval = null;
         }
+        for (const resource of [audioEncoder, encoder, opfsAccessHandle]) try { resource?.close(); } catch { /* Already closed. */ }
+        audioEncoder = null; encoder = null; opfsAccessHandle = null; opfsFileHandle = null; muxer = null;
         workerScope.postMessage({
             type: 'export_error',
             message: error instanceof Error ? error.message : String(error)
@@ -119,6 +122,7 @@ async function handleMessage(message: ExportWorkerRequest) {
 }
 
 async function startExport(message: StartExportRequest) {
+    if (message.storageFile !== undefined && !validExportStorageName(message.storageFile)) throw new Error('Invalid export storage filename.');
     profile = message.profile === true;
     preparationStarted = profile ? performance.now() : 0;
     firstFrameAt = null;
@@ -146,12 +150,7 @@ async function startExport(message: StartExportRequest) {
         config = result.config; prepared = result.report;
     }
     const dir = await navigator.storage.getDirectory();
-    for await (const [name] of (dir as any).entries()) {
-        if (name.startsWith('temp_plexus_export_')) {
-            await dir.removeEntry(name);
-        }
-    }
-    const uniqueFileName = `temp_plexus_export_${Date.now()}.webm`;
+    const uniqueFileName = message.storageFile ?? exportStorageName();
     opfsFileHandle = await dir.getFileHandle(uniqueFileName, { create: true });
     opfsAccessHandle = await (opfsFileHandle as any).createSyncAccessHandle();
     opfsAccessHandle.truncate(0);

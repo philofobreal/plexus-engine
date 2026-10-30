@@ -47,6 +47,13 @@ export class CanvasPostFxSurface {
         return this.resizeCount;
     }
 
+    /** Release only our snapshot; the target surface belongs to the renderer. */
+    dispose(): void {
+        if (this.snapshot) this.snapshot.width = this.snapshot.height = 1;
+        this.snapshot = null; this.snapshotCtx = null;
+        this.target.canvas = null; this.target.ctx = null;
+    }
+
     /**
      * Resolves the destination the identity frame was just drawn into. `__plexusExportTarget` is the
      * same export redirection `P5RendererBackend` honours, so live and export share one seam.

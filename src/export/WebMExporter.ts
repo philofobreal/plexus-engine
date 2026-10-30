@@ -53,6 +53,7 @@ export class WebMExporter {
             if (job.command === 'cancel') throw new Error('Export cancelled.');
             return blob;
         } catch (error) {
+            if (job.command === 'cancel') try { await job.backend?.discardResult?.(); } catch { /* Cleanup must not replace Cancel. */ }
             if (job.command === 'cancel') throw new Error('Export cancelled.');
             if (job.command === 'stop' && !job.backend) throw new Error('No video frames were captured before stopping.');
             throw error;

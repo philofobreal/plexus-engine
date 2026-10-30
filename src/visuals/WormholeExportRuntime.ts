@@ -48,7 +48,7 @@ export class WormholeExportRuntime implements ExportRuntime {
     }
 
     dispose(): void {
-        this.source?.dispose(); this.source = null; this.post = null; this.context = null;
+        this.source?.dispose(); this.source = null; this.post?.dispose?.(); this.post = null; this.context = null;
         if (this.canvas) this.canvas.width = this.canvas.height = 1;
         this.canvas = null;
     }

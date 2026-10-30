@@ -19,6 +19,7 @@ import { postFxChainIndex, type PostFxFrameContext, type PostProcessEffect } fro
  * - Zero per-frame allocation: the frame context and the active-effect list are preallocated.
  */
 export class PostFxPipeline {
+    dispose(): void { this.surface.dispose(); }
     private readonly effects: readonly PostProcessEffect[];
     private readonly surface: CanvasPostFxSurface;
     private readonly frame: PostFxFrameContext = { timeSec: 0, widthPx: 0, heightPx: 0 };

@@ -3,6 +3,7 @@ import type { ExportBackend } from './ExportBackend';
 import { ExportBackendRegistry, type ExportBackendFactory } from './ExportBackendRegistry';
 import type { ExportCapabilities, ExportConfig, ExportWorkerResponse, ExportPreparationReport } from './ExportTypes';
 import ExportWorker from './export.worker.ts?worker';
+import { ExportStorageLease } from './ExportStorageLease';
 import type p5 from 'p5';
 import type { ExportAudioSource, ExportRuntime, ExportProfile } from '../types/ExportRenderJob';
 
@@ -36,6 +37,12 @@ export class WebCodecsBackend implements ExportBackend {
     private workerTimings: Record<string, number> = {};
     private preparationReport: ExportPreparationReport | undefined;
     private resolvePrepared: (() => void) | null = null;
+    private storageLease: ExportStorageLease | null = null;
+    private storageDiscard: Promise<void> | null = null;
+    private audioPool: Float32Array[] = [];
+    private audioCapacity = 0;
+    private audioAllocations = 0;
+    private audioReuses = 0;
 
     constructor(
         p5Instance: any,
@@ -54,6 +61,8 @@ export class WebCodecsBackend implements ExportBackend {
     async start(config: ExportConfig, onProgress: (progress: number) => void, runtime?: ExportRuntime,
         onProfile?: (profile: ExportProfile) => void): Promise<Blob> {
         if (this.running) throw new Error('An export is already running.');
+        // A new request must never discard the previous, already published result.
+        this.storageLease = null; this.storageDiscard = null;
         if (typeof globalThis.createImageBitmap === 'undefined') throw new Error('createImageBitmap is not available in this browser.');
         const duration = runtime?.duration ?? State.duration;
         if (!Number.isFinite(config.fps) || config.fps <= 0 || !Number.isFinite(duration)
@@ -62,6 +71,9 @@ export class WebCodecsBackend implements ExportBackend {
         this.runtime = runtime;
         this.workerTimings = {};
         this.preparationReport = undefined;
+        this.audioPool = []; this.audioAllocations = 0; this.audioReuses = 0; this.audioCapacity = 0;
+        this.storageLease = typeof navigator !== 'undefined' && typeof navigator.storage?.getDirectory === 'function'
+            ? new ExportStorageLease(() => navigator.storage.getDirectory()) : null;
         const now = runtime ? () => performance.now() : () => 0, started = now();
         const stages = { renderRequest: 0, bitmap: 0, queueWait: 0, finalizeWait: 0, backendRequest: 0 };
         let submittedFrames = 0, outcome: ExportProfile['outcome'] = 'failed';
@@ -87,6 +99,7 @@ export class WebCodecsBackend implements ExportBackend {
                 throw new Error('Export settings differ from the frozen snapshot.');
             }
             const audioBuffer = runtime?.audio ?? this.audioEngine?.getAudioBuffer?.() as ExportAudioSource | null | undefined;
+            this.audioCapacity = audioBuffer ? Math.ceil(audioBuffer.sampleRate / config.fps) * 2 : 0;
             this.worker = new ExportWorker();
             const prepared = config.preflight ? new Promise<void>(resolve => { this.resolvePrepared = resolve; }) : null;
             const done = this.waitForExportDone(this.worker);
@@ -98,6 +111,7 @@ export class WebCodecsBackend implements ExportBackend {
                 fps: config.fps,
                 sampleRate: audioBuffer?.sampleRate || 48_000,
                 hasAudio: Boolean(audioBuffer),
+                ...(this.storageLease ? { storageFile: this.storageLease.name } : {}),
                 ...(config.preflight ? { preflight: true } : {}),
                 ...(runtime ? { profile: true } : {})
             });
@@ -200,15 +214,18 @@ export class WebCodecsBackend implements ExportBackend {
             return doneBlob;
         } finally {
             stages.backendRequest = now() - started;
-            this.cleanup();
+            await this.cleanup(outcome === 'completed');
             if (runtime && onProfile) {
                 try { onProfile({ runtime: 'isolated-wormhole', analysisId: runtime.snapshot.analysisId,
                     estimatedBytes: runtime.snapshot.estimatedBytes, budgetBytes: runtime.snapshot.budgetBytes,
                     stagesMs: { ...stages, ...this.workerTimings }, framesSubmitted: submittedFrames,
                     ...(this.preparationReport ? { preflight: this.preparationReport } : {}),
+                    resources: { audioBufferAllocations: this.audioAllocations, audioBuffersReused: this.audioReuses,
+                        audioPoolLimitBytes: this.audioCapacity * 4 * 2, storage: this.storageLease?.disposition ?? 'unmanaged' },
                     outcome: this.cancelled ? 'cancelled' : outcome,
                     scope: 'Host wall-clock waits; render includes simulation/raster/composition/PostFX. Worker intervals overlap the host. Never sum stages as a total or infer GPU/codec CPU time.' }); } catch { /* Diagnostics cannot change job completion. */ }
             }
+            if (this.cancelled && outcome === 'completed') { await this.discardResult(); throw new Error('Export cancelled.'); }
         }
     }
 
@@ -232,6 +249,11 @@ export class WebCodecsBackend implements ExportBackend {
         if (this.waitingForFrame) this.interruptWait?.(new Error('No video frames were captured before stopping.'));
     }
 
+    async discardResult(): Promise<void> {
+        this.storageDiscard ??= this.storageLease?.discard() ?? Promise.resolve();
+        await this.storageDiscard;
+    }
+
     private waitForExportDone(worker: Worker): Promise<Blob> {
         return new Promise((resolve, reject) => {
             this.rejectExport = reject;
@@ -251,6 +273,10 @@ export class WebCodecsBackend implements ExportBackend {
                     reject(this.exportError);
                 } else if (event.data.type === 'frame_encoded') {
                     this.outstandingFrames = Math.max(0, this.outstandingFrames - 1);
+                    const returned = event.data.audioBuffer;
+                    if (returned instanceof Float32Array && returned.buffer.byteLength > 0
+                        && returned.buffer.byteLength <= this.audioCapacity * 4 && this.audioPool.length < 2
+                        && !this.audioPool.some(item => item.buffer === returned.buffer)) this.audioPool.push(new Float32Array(returned.buffer));
                 } else if (event.data.type === 'export_audio_warning' && this.runtime) {
                     this.exportError = new Error(`Isolated export audio failed: ${event.data.message}`);
                     this.interruptWait?.(this.exportError);
@@ -272,7 +298,7 @@ export class WebCodecsBackend implements ExportBackend {
         });
     }
 
-    private cleanup(): void {
+    private async cleanup(completed = false): Promise<void> {
         if (!this.running) return;
         if (this.ownsLoop) {
             delete this.p5Instance.__plexusExportTarget;
@@ -291,8 +317,12 @@ export class WebCodecsBackend implements ExportBackend {
             this.offscreenGraphics = null;
         }
         this.captureCanvas = null;
-        this.running = false;
+        this.audioPool = [];
         this.runtime = undefined;
+        try {
+            if (completed && !this.cancelled) this.storageLease?.retain();
+            else await this.discardResult();
+        } finally { this.running = false; }
     }
 
     /** Bound browser/encoder waits and release late bitmaps after Stop/Cancel. */
@@ -489,7 +519,11 @@ export class WebCodecsBackend implements ExportBackend {
         if (audioSampleCount <= 0) return null;
 
         const requiredLength = audioSampleCount * 2;
-        const audioPlanar = new Float32Array(requiredLength);
+        let buffer = this.audioPool.pop();
+        if (!buffer || buffer.length < requiredLength || buffer.buffer.byteLength === 0) {
+            buffer = new Float32Array(requiredLength); this.audioAllocations++;
+        } else this.audioReuses++;
+        const audioPlanar = buffer.length === requiredLength ? buffer : buffer.subarray(0, requiredLength);
 
         const left = audioBuffer.getChannelData(0);
         const right = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : left;

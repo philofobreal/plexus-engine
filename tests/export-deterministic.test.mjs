@@ -4,6 +4,8 @@ import vm from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
+import { createLoader } from './helpers/xr-loader.mjs';
+const storageHelpers = () => createLoader({}, { setTimeout, clearTimeout })('export/ExportStorageLease.ts');
 
 function loadExportWorker() {
   const raw = readFileSync(join(process.cwd(), 'src/export/export.worker.ts'), 'utf8')
@@ -22,6 +24,7 @@ function loadExportWorker() {
   }
   const self = { VideoEncoder: FakeEncoder, VideoFrame: class { close() {} }, postMessage() {}, onmessage: null };
   const context = vm.createContext({
+    ...storageHelpers(),
     self,
     performance,
     setInterval: () => 1,
@@ -41,7 +44,8 @@ function loadExportWorker() {
 async function startWorkerExport(fps, width, height, bitrate) {
   const worker = loadExportWorker();
   worker.self.onmessage({ data: { type: 'start_export', fps, width, height, bitrate } });
-  while (!worker.encoders[0]?.config) await new Promise((resolve) => setTimeout(resolve, 0));
+  for (let i = 0; i < 2000 && !worker.encoders[0]?.config; i++) await new Promise((resolve) => setTimeout(resolve, 1));
+  assert.ok(worker.encoders[0]?.config, 'Worker startup did not configure its encoder');
   return worker;
 }
 
@@ -54,6 +58,7 @@ function loadWebMExporter() {
     .replace("import { ExportBackendRegistry, type ExportBackendFactory } from './ExportBackendRegistry';", '')
     .replace("import type { ExportCapabilities, ExportConfig, ExportWorkerResponse } from './ExportTypes';", '')
     .replace("import ExportWorker from './export.worker.ts?worker';", 'const ExportWorker = FakeWorker;')
+    .replace("import { ExportStorageLease } from './ExportStorageLease';", '')
     .replace("import type p5 from 'p5';", '')
     .replace(/export const WebCodecsBackendFactory[\s\S]*?ExportBackendRegistry\.register\(WebCodecsBackendFactory\);/, '');
   const exporterStub = `

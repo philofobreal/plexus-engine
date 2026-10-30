@@ -49,6 +49,8 @@ export interface ExportPreparationReport {
     probeBytes: number;
 }
 export interface ExportProfile {
+    readonly resources?: { audioBufferAllocations: number; audioBuffersReused: number; audioPoolLimitBytes: number;
+        storage: 'unmanaged' | 'pending' | 'retained-result' | 'removed' | 'cleanup-pending' };
     readonly preflight?: ExportPreparationReport;
     readonly runtime: 'isolated-wormhole';
     readonly analysisId: string;

@@ -19,13 +19,36 @@ function dataBytes(value: unknown, seen = new WeakSet<object>()): number {
         || (!Array.isArray(value) && Object.prototype.toString.call(value) !== '[object Object]')) throw new Error('Export snapshot must contain plain data.');
     if (seen.has(value)) throw new Error('Export snapshot contains a cycle.');
     seen.add(value);
-    let size = 32;
-    for (const [key, item] of Object.entries(value)) size += 16 + key.length * 2 + dataBytes(item, seen);
+    let size = 32, slots = 0;
+    // Avoid a whole entries-array; validate extra array properties too, as before.
+    for (const key in value) if (Object.hasOwn(value, key)) {
+        size += 16 + key.length * 2 + dataBytes((value as Record<string, unknown>)[key], seen);
+        if (Array.isArray(value) && Number.isInteger(+key) && +key >= 0 && String(+key) === key && +key < value.length) slots++;
+    }
+    if (Array.isArray(value)) size += (value.length - slots) * 8;
     seen.delete(value); return size;
+}
+/** Same JSON-data normalization as the old round trip, without its whole-input string.
+ * Already validated acyclic input may share immutable subtrees; copy each only once.
+ */
+function copyData<T>(value: T, copies = new Map<object, unknown>()): T {
+    if (!value || typeof value !== 'object') return (typeof value === 'number' && value === 0 ? 0 : value) as T;
+    if (copies.has(value)) return copies.get(value) as T;
+    const out: any = Array.isArray(value) ? new Array(value.length) : {};
+    copies.set(value, out);
+    if (Array.isArray(value)) for (let i = 0; i < value.length; i++) out[i] = value[i] === undefined ? null : copyData(value[i], copies);
+    else for (const key of Object.keys(value)) {
+        const item = (value as Record<string, unknown>)[key];
+        if (item === undefined) continue;
+        if (key === '__proto__') Object.defineProperty(out, key, { value: copyData(item, copies), enumerable: true, writable: true, configurable: true });
+        else out[key] = copyData(item, copies);
+    }
+    return out;
 }
 function freeze<T>(value: T): T {
     if (value && typeof value === 'object' && !Object.isFrozen(value)) {
-        for (const item of Object.values(value)) freeze(item);
+        if (Array.isArray(value)) for (const item of value) freeze(item);
+        else for (const key of Object.keys(value)) freeze((value as Record<string, unknown>)[key]);
         Object.freeze(value);
     }
     return value;
@@ -60,7 +83,7 @@ export async function captureExportSnapshot(input: ExportRenderInput, audio: Exp
     const estimatedBytes = pcmBytes + dataBytes(input) * 2 + width * height * 4 * 5 + 64 * 1024 * 1024;
     if (!Number.isSafeInteger(estimatedBytes) || !Number.isSafeInteger(budgetBytes) || budgetBytes <= 0 || estimatedBytes > budgetBytes)
         throw new Error(`Estimated export working set: ${Math.ceil(estimatedBytes / 1048576)} MiB; admission budget: ${Math.round(budgetBytes / 1048576)} MiB. This is an application planning limit, not detected free RAM. Choose a larger Export memory limit, lower resolution or Compatible rendering.`);
-    const copied: ExportRenderInput = JSON.parse(JSON.stringify(input));
+    const copied: ExportRenderInput = copyData(input);
     const required = new Set(copied.analysis.performancePlan.points.map(p => p.preset));
     for (const name of required) if (!copied.presets[name] || typeof copied.presets[name] !== 'object') throw new Error(`Missing frozen export preset: ${name}`);
     let channels: Float32Array[] | null = [];
