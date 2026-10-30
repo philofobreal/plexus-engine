@@ -1,7 +1,7 @@
 {
-  "id": "t19c2-export-resources-20261030T223347681Z",
-  "previousCommit": "fe3f032b4ca4224608158c5c242f5868018d01f3",
-  "sourceCommit": "d979e4d760ae1049765d5771bf01b82ea420ba88",
+  "id": "t19c3-export-acceptance-20261030T235818694Z",
+  "previousCommit": "d8916651066a2309de8f5693becb04f6603d46d6",
+  "sourceCommit": "2463f7367d984e5138483952016254f254941111",
   "inputs": [
     {
       "path": "bun.lock",
@@ -669,7 +669,7 @@
     },
     {
       "path": "src/export/ExportStorageLease.ts",
-      "sha256": "b61c4fe05a74571a3e12f16f44e7b2683c16ce986e8705b1d66aab25940cba1b"
+      "sha256": "1c6aad52d6eb1ad750b50bf6524e0f53578f043c52e059bf4bd3a4355f9ebddb"
     },
     {
       "path": "src/export/ExportTypes.ts",
@@ -1057,7 +1057,7 @@
     },
     {
       "path": "src/ui/mvp/ExportDialog.ts",
-      "sha256": "b114f69f1514c734c027e83758017e363fb5f42ced4e9e717735d4e429741a1b"
+      "sha256": "132f6204ab93450b7fe9684c7f0ceff38ae965b3948edc40695d6172209c9f55"
     },
     {
       "path": "src/ui/mvp/FirstRunScreen.ts",
@@ -1085,11 +1085,11 @@
     },
     {
       "path": "src/ui/mvp/MvpUI.ts",
-      "sha256": "55690f1cc9b01031e3caa3690403d6df3ef7f1e99d1a18f4c1dce056ba692f77"
+      "sha256": "cc0f5320f3acb22677cd1e04884293c086d135ead3aaef4491a5ac1f1b4542dd"
     },
     {
       "path": "src/ui/mvp/MvpVisualController.ts",
-      "sha256": "2ac0a2661dc50099b386f198235651100f7f59586e63d6184c480109bd0cefb2"
+      "sha256": "85a32f77d9684152fcc8967bbb552cccb608e32116deb1535497c6df42877d97"
     },
     {
       "path": "src/ui/mvp/PreviewStage.ts",
@@ -1141,7 +1141,7 @@
     },
     {
       "path": "src/ui/mvp/mvp.css",
-      "sha256": "fa852f12f05b481925a1816f25ebb2d203b390b7f5ab86c908f1569d000635fc"
+      "sha256": "17d1f4af190f7230dce1c139318e9cb91c5709599e89e5e933a2f48fc7f235a7"
     },
     {
       "path": "src/ui/mvp/mvpFormat.ts",
@@ -1674,32 +1674,32 @@
       "sha256": "0b31b780ac1f55bf8ea1745febe8c0cf2989cea1dda7a31c6dbf4e3136aa4392"
     },
     {
-      "path": "assets/export.worker-CVMUlQLa.js",
-      "sha256": "d8b1d4464a578ca2d236efffa080c43a469b99a784b97c12ad0e8a07b522daf4"
+      "path": "assets/export.worker-DxW16oB3.js",
+      "sha256": "db9242fe3a57cd5d3d69979d4c377df1c71cc737f668ed5a4f0d85fdc3548b0c"
     },
     {
       "path": "assets/fft.scalar-BRpMaUFy.wasm",
       "sha256": "5fe5fb080b24f0c7fbbb305ced4b3d836d37351843709ad220ca72f8c8554a5c"
     },
     {
+      "path": "assets/main-BzS8Hx0B.js",
+      "sha256": "aa0093f050548ee9351d6c01524018ca8d7b63cad3b312a3f8248691c10b4f25"
+    },
+    {
       "path": "assets/main-C7BsYBKL.css",
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
-      "path": "assets/main-D6kAkdOU.js",
-      "sha256": "f42441811e07a03ebebbf30d8c292f5ef191e0b89def6bb7a095abedcadec641"
+      "path": "assets/mvp-CkyG-IRC.css",
+      "sha256": "7021a7ec43e71c3bf0d425c856e86ea78be7ca44a08ff6e912c09eed85b2f38f"
     },
     {
-      "path": "assets/mvp-B06R7bE5.js",
-      "sha256": "31888ec3397cc917655de4d1c1a5cb4069d418473ed74bdcb328b68cf43db3ab"
+      "path": "assets/mvp-Dfj1Tcyd.js",
+      "sha256": "232d5f565301fd6aed18f45c589112c6f568f722988619de7277daac629035d4"
     },
     {
-      "path": "assets/mvp-Bizi9-5x.css",
-      "sha256": "c4f627717cfad7b8f9adec1beecf5c21700cda9b123a73cadfd37db7220759a7"
-    },
-    {
-      "path": "assets/PreviewQualityControl-CCRziVz5.js",
-      "sha256": "b10b81fa0ed6e72424d887ed4b2d4b42002a7345bc2bec4e1d5d80696d15547d"
+      "path": "assets/PreviewQualityControl-CybtEi8l.js",
+      "sha256": "e3a3ff999a2d8061be4df51538bd9d4c827f344b374326f2588719d90dbba38e"
     },
     {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
@@ -1743,11 +1743,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "ceb63675e2b92c84c402a87460deec883dd9d30bd142144400625bc302b2f368"
+      "sha256": "7cda4a8a659c2a8f7d48061e3b2ef6655e9fca28a4a43933e9b44633b2e4ad28"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "118749d97d6ec8e85070207a4fe0f057767d62943c0c4596eb2f957cc9977cbd"
+      "sha256": "a3b481b23cb4f6e89e11a439ce994aee922547edcd3f47c49606002ce9c40ebf"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
