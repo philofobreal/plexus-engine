@@ -1,8 +1,8 @@
 # Plexus XR development tracker
 
-Started: 2026-10-23; current checkpoint: 2026-10-29 (Europe/Budapest). Integration owner: the agent in this chat.
+Started: 2026-10-23; current checkpoint: 2026-10-30 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T19c1 resource slice implemented: exact worker configuration/three-frame codec trial, suitable VP9 levels, reported VP8 alternative, configurable admission and persisted/copied MVP memory limit. Compatible remains default/legacy. Auto means a 2 GiB application planning ceiling, not detected free RAM. Browser trial-page creation timed out twice; HTTP200 is not a passed export. Pause after deploy for manual short4K/full/prefix/Cancel feedback. Next T19c2 reduces memory/copies, then T19c3 validates long jobs. Persistent/minimizable controls/background editing remain later T19c work. No WASM export promotion; T15 remains skipped.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
+**T19c1 accepted; T19c2 implemented: direct frozen data copies without the full-input JSON round trip, bounded PCM reuse, private PostFX disposal and owned-file cleanup after worker termination. Successful File-backed results stay retained; automatic orphan/completed-cache pruning is not claimed. Compatible/default settings remain unchanged. Pause after deploy for manual same-output/Stop/Cancel/retry feedback. Next T19c3 validates real long4K, A/V, cross-job File readability, resource use and completed-cache policy. Browser/Quest/peak-memory proof remains open; no WASM export promotion. Persistent/minimizable controls/background editing remain later T19c work; T15 stays skipped.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
@@ -65,7 +65,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T16 | Visuals + XR: optional central music display | T05, T14 tokens | Accepted by user for continuation |
 | T17 | Analyzer + performance + build: measured WASM kernel feasibility | T01, fixed T10 reference | Research delivered; desktop gate passed, physical Quest open; no production promotion |
 | T18 | Analyzer + worker + audio + build: production kernel integration | T17 desktop evidence; subsequent explicit user activation request | Scalar FFT integrated, Auto/TS/WASM saved/copied, whole-input recovery; physical Quest and full numerical port still open |
-| T19 | Export + visuals/state + MVP: isolated snapshot/runtime | T01, T05 | T19a accepted; T19b opt-in MVP delivered. T19c1 codec/admission repair implemented, manual/browser gates pending. [Resource slices](../features/export-lifecycle.md#t19c-resource-follow-up---staged-for-quota-aware-delivery): next T19c2 memory/copies, T19c3 long validation; interaction/protocol migration still open |
+| T19 | Export + visuals/state + MVP: isolated snapshot/runtime | T01, T05 | T19c1 accepted; T19c2 bounded resource/cleanup delivery implemented, manual handoff pending. [Resource slices](../features/export-lifecycle.md#t19c-resource-follow-up---staged-for-quota-aware-delivery): next T19c3 long/decoded/cross-job/resource/cache acceptance; interaction/protocol migration still open |
 | T20 | Export + build + platform: confirmed output format/backend | T19, format/environment decision | T20a compares direct WebCodecs/remux/conditional WASM/native-server options using T19 evidence; production acceleration only after explicit parity/performance/resource gates |
 | T21 | Caption parser/layout + MVP + export: timed Markdown | T19 | Planned; explicit timing and overlap policy needed |
 | T22 | Composition + UI + build: launcher and Studio entry | T01, T14; T23 for public release | Planned |

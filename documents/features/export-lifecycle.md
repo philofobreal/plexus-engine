@@ -9,12 +9,127 @@ pause after each deployment for manual feedback. No new WASM exporter is implied
 | Slice | Scope | Handoff |
 | --- | --- | --- |
 | T19c1 | Exact worker configuration/probe, memory policy and MVP controls | Implemented below; manual short 4K export gate pending |
-| T19c2 | Reduce copied analysis/PCM overhead where ownership allows; review surface/queue/storage lifetimes | After T19c1 feedback; preserve deterministic output and playback buffers |
+| T19c2 | Reduce copied analysis/PCM overhead where ownership allows; review surface/queue/storage lifetimes | Implemented after T19c1 acceptance; manual handoff below |
 | T19c3 | Multi-minute/large-output, decoded full/prefix sync, cancellation/retry and resource/performance evidence | After T19c2; no measured claim until real runs |
 
 The original T19c persistent/minimizable controls and background-editing acceptance
 remain scheduled after these resource prerequisites. T20 and conditional WASM
 promotion do not advance automatically. T15 remains skipped.
+
+### T19c2 - bounded copies, reusable PCM and owned storage, 2026-10-30
+
+The user accepted T19c1 and authorized this resource slice. Export owns snapshot
+capture, transfer-buffer pooling and temporary-file leases; visuals owns private
+PostFX disposal. One integration owner covers the shared worker/host contract.
+No analyzer, musical timing, preset, display setting, WASM kernel or output-format
+change is introduced. Compatible remains default and the existing Auto/manual
+planning ceilings are unchanged.
+
+Snapshot capture now copies validated plain data directly instead of making a
+whole-input JSON string and reparsing it. JSON data normalization is retained:
+undefined object members are omitted, undefined/sparse array slots become null,
+negative zero becomes zero and object key order remains JSON-compatible. Safe
+own __proto__ handling avoids changing the new object's prototype. Shared input
+subtrees have one frozen private copy. Tests compare the complete normalized
+payload and analysis SHA-256 with the independent old JSON reference; live input
+is never frozen or changed. Admission no longer builds a giant entries-array and
+also counts sparse slots before allocating/copying PCM. Cycles on custom array
+properties still fail. Hashing retains its existing JSON/SHA algorithm: it still
+needs a transient analysis string and UTF-8 bytes; it is not streaming or zero-copy.
+
+No further analysis fields are stripped: semantic/director consumers can require
+the full remaining track publication. The existing render projection continues
+to omit only musicActivity/rhythmOnsets. The single private PCM copy per channel
+and small defensive preset copies remain. This preserves snapshot isolation and
+future editing safety instead of borrowing mutable playback storage.
+
+The host reuses audioPlanar buffers that the worker already returns after
+AudioData.close. It keeps at most two buffers, each at most two channels times
+ceil(sampleRate/fps) floats. Smaller final/alternating slices use a bounded view;
+every used sample is overwritten with the same half-open channel slices. Detached,
+oversized and duplicate pooled buffers are not retained. Transfer still detaches
+only job-owned chunks, never the playback channel. The existing two-frame/queue
+backpressure remains. Teardown drops the pool; Copy diagnostics reports allocation,
+reuse and pool-ceiling counters. A real structuredClone transfer test at1000Hz/60fps
+checks every sample for six frames: two allocations/four reuses versus six old
+per-frame allocations. This is allocation evidence, not a browser speed/RAM claim.
+
+CanvasPostFxSurface.dispose shrinks its owned lazy snapshot to1x1 and drops its
+context and borrowed target references. PostFxPipeline forwards disposal and the
+private export runtime invokes it before dropping the chain. The live target is
+never resized by the PostFX surface. Tests verify idempotence and that a borrowed
+3840x2160 output survives disposal. Browser/driver physical-memory reclamation is
+not measured or guaranteed by the canvas-size assertion.
+
+The worker no longer enumerates/deletes all temp_plexus_export_* files at startup.
+The host generates an owned unique filename and passes optional storageFile;
+legacy requests generate their own unique name. Names cannot contain a path.
+Worker startup/frame failures close held encoders and sync file handles. On
+failure/Cancel, host teardown terminates the worker first, then removes only its
+own file, with bounded lock retries and a1500ms overall cleanup deadline. Missing
+files count as removed. Unavailable/locked storage stays cleanup-pending in Copy
+diagnostics, without replacing Cancel/the original error or touching other jobs.
+The coordinator retains its reservation through teardown and discards an
+unpublished file if Cancel wins a queued backend completion. Discard is memoized
+once per job so repeated cleanup cannot double the timeout. A new request clears
+its old cleanup key before validation, protecting the previous published result.
+
+Successful full/Stop-prefix results are deliberately retained on disk. getFile()
+does not give a portable guarantee that bytes remain readable after their backing
+entry is removed. An anchor download/URL revocation also does not acknowledge
+that a download finished. The optional backend discardResult() boundary can be
+used when a result is known to be unneeded; the current MVP does not guess this
+from a timer. A completed-cache quota/retention policy and real cross-job File
+readability/locked-file tests remain T19c3 acceptance work. Tab/process termination
+can leave orphan files; no safe automatic orphan sweep is claimed here.
+References: [File API snapshot state](https://www.w3.org/TR/FileAPI/),
+[File System getFile behavior](https://fs.spec.whatwg.org/#api-filesystemfilehandle).
+
+Fourteen new cases in tests/export-resources.test.mjs cover copy/reference/hash
+parity, sparse hostile input, real transfer ownership and sample identity, lease
+isolation, retries/missing/stalled/failed storage, full/Stop/Cancel/error cleanup,
+worker handle closure, PostFX ownership and late-result cancellation. The older
+deterministic VM harness now injects the real storage helper instead of leaving a
+stripped import undefined; its encoder-start polling is bounded rather than an
+infinite wait. All eight original cases/assertions remain, with the exact source
+archived in documents/tests/export-deterministic.pre-t19c2.mjs.snapshot. Initial
+harness failures/interrupted polling are retained in logs/t19c2, not rewritten as
+passes. The production TypeScript build uses erasable class fields; no dependency
+or compiler policy was changed.
+
+Validation: the complete run has2087 cases /2078 pass /9 failures, all matching
+the retained baseline names/assertion messages; zero skips/cancellations. This run
+predates the final cleanup memoization/reused-backend guard. All17 affected files
+then pass245/245 on final source, including the additional guard case. The union
+has2088 distinct cases, not a second complete or all-green run. Build and diff
+checks pass. There are213 active files /276 test-tree identities:274 prior
+identities remain byte-exact, and the reviewed harness predecessor is archived.
+The final source inventory has414 build inputs. Full code-only Graphify refresh
+contains943 files /8970 nodes /19087 canonical edges /21688 raw edges, with zero
+dangling canonical endpoints and no LLM use. Changed-document checks verify139
+local references and the resource-section heading. Receipts stay with task logs.
+
+Commands (Node25.2.1/npm11.6.2; guarded Node publisher replaces Bun-based deploy):
+
+```text
+npm run build
+npm test -- --test-reporter=tap --test-concurrency=4
+node --test --test-concurrency=2 tests/export-resources.test.mjs tests/export-preparation.test.mjs tests/export-isolated.test.mjs tests/export-opus-muxer.test.mjs tests/export-lifecycle.test.mjs tests/export-deterministic.test.mjs tests/export-capability.test.mjs tests/postfx-fragmentation.test.mjs tests/contracts.test.mjs tests/gameplay-purity.test.mjs tests/mvp-async-lifecycle.test.mjs tests/mvp-unsaved-changes.test.mjs tests/wormhole-frame-context.test.mjs tests/wormhole-exact-frame.test.mjs tests/wormhole-raster-pass.test.mjs tests/visual-mode-transition.test.mjs tests/styles-deterministic.test.mjs
+git diff --check
+```
+
+Actual browser/full-prefix decode, long4K and physical memory/Quest measurements
+are deferred to the agreed T19c3 matrix; none is claimed by Node mocks. No browser
+was driven in this slice. No analyzer/lab/Python inputs or dependency changed,
+so Python was not rerun or counted as current coverage. diff_export.ps1 is skipped:
+focused diffs, protected identities and the handoff receipt suffice without its
+unrelated fetch/artifact. Exact commands/results and release identity are retained
+in logs/t19c2/handoff.json. Pause after commit/push/deploy for manual acceptance;
+do not start T19c3 or the later interaction/WASM work automatically.
+
+Manual check: export the same Isolated track/settings and compare appearance,
+audio/end timing and Stop-prefix playback; Cancel/retry and two concurrent tabs
+must not invalidate each other's results. Copy diagnostics now includes resources.
 
 ### T19c1 - exact capability trial and export planning limits
 

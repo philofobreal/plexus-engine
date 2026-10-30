@@ -400,6 +400,14 @@ editing remain later T19c work, not delivered by these resource changes. The
 [staged contract](../features/export-lifecycle.md#t19c-resource-follow-up---staged-for-quota-aware-delivery)
 records limits and exact remaining scope. No WASM exporter is promoted.
 
+T19c1 accepted for continuation on 2026-10-30. T19c2 now removes the full-input
+JSON copy round trip, recycles bounded transferred PCM buffers, explicitly
+disposes private PostFX storage and replaces the global temporary-file sweep with
+per-job cleanup through termination. Full semantic analysis and the single private
+PCM copy stay intact. Successful File-backed output must stay readable; completed
+cache retention/quota, real cross-tab results and long-job acceptance are explicit
+T19c3 gates. Deploy/manual pause still applies before that next slice.
+
 T18 was accepted for continuation. First stabilize the existing public workflow:
 synchronous job reservation, latched Stop/Cancel through teardown, suppressed late
 progress/result, interruptible frame/media waits, allocation cleanup and ordered

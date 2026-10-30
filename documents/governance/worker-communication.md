@@ -12,6 +12,17 @@ clock are added. Display-only changes redraw while paused without snapping tunin
 
 ## Boundary Contract
 
+T19c2 export start may include host-owned storageFile. It is one validated plain
+filename, not a path or the proposed versioned job protocol. Worker startup never
+sweeps other export files. Host owns that cleanup key through worker termination
+and removes only unpublished failed/cancelled output with a bounded cleanup wait;
+successful File-backed output stays retained until its consumer can release it.
+Missing legacy keys use a unique worker name. Worker errors close held codecs and
+sync file handles. Existing returned frame_encoded.audioBuffer chunks may be
+recycled by the host only after the worker closes AudioData, with a two-buffer
+size bound; neither borrowed playback PCM nor the immutable snapshot is transferred.
+Resource diagnostics distinguish retained/removed/cleanup-pending/unmanaged status.
+
 T19c1 export adds optional start_export.preflight and export_prepared(report).
 Only requesting hosts wait for that acknowledgement before rendering/admitting
 real frames. The dedicated worker checks the exact output configuration and
