@@ -5,6 +5,8 @@ export interface ExportDialogCallbacks {
     onStart: (config: ExportConfig) => void;
     onStop: () => void;
     onCancel: () => void;
+    getCacheSummary?: () => { files: number; cleanupPending: number; scope: string };
+    onClearCache?: () => Promise<{ removed: number; remaining: number }>;
 }
 
 export class ExportDialog {
@@ -22,6 +24,8 @@ export class ExportDialog {
     private blockedMessage: string | null = null;
     private readonly runtimeSelect: HTMLSelectElement;
     private readonly memorySelect: HTMLSelectElement;
+    private readonly clearCacheBtn: HTMLButtonElement;
+    private cacheClearing = false;
     private profile: ExportProfile | null = null;
     private readonly isolatedAvailable: boolean;
 
@@ -60,6 +64,10 @@ export class ExportDialog {
                 <div class="mvp-capability-warning mvp-hidden"></div>
                 <div class="mvp-modal-progress mvp-hidden"><div class="mvp-modal-progress-bar"></div></div>
                 <div class="mvp-modal-status"></div>
+                <div class="mvp-field">
+                    <button type="button" class="mvp-btn mvp-export-clear-cache">Clear this tab's finished exports</button>
+                    <small class="mvp-export-cache-status"></small>
+                </div>
                 <div class="mvp-modal-actions">
                     <button type="button" class="mvp-btn mvp-export-copy">Copy settings &amp; diagnostics</button>
                     <button type="button" class="mvp-btn mvp-export-cancel">Cancel</button>
@@ -77,6 +85,10 @@ export class ExportDialog {
         this.resolutionBtns = Array.from(this.root.querySelectorAll('.mvp-export-resolution button'));
         this.runtimeSelect = this.root.querySelector('.mvp-export-runtime')!;
         this.memorySelect = this.root.querySelector('.mvp-export-memory')!;
+        this.clearCacheBtn = this.root.querySelector('.mvp-export-clear-cache')!;
+        this.clearCacheBtn.addEventListener('click', () => { void this.clearCache(); });
+        // The composition root wires its controller after constructing leaf views.
+        this.clearCacheBtn.disabled = true;
         let memory = 'auto';
         try { memory = window.localStorage.getItem('plexus.exportMemoryLimit') ?? 'auto'; } catch { /* Session default. */ }
         this.memorySelect.value = ['512', '1024', '2048'].includes(memory) ? memory : 'auto';
@@ -97,7 +109,8 @@ export class ExportDialog {
         });
         this.root.querySelector('.mvp-export-copy')!.addEventListener('click', () => {
             if (!navigator.clipboard?.writeText) { this.setStatus('Clipboard unavailable.'); return; }
-            void navigator.clipboard.writeText(JSON.stringify({ export: this.getConfig(), diagnostics: this.profile }, null, 2))
+            void navigator.clipboard.writeText(JSON.stringify({ export: this.getConfig(), diagnostics: this.profile,
+                ...(this.callbacks.getCacheSummary ? { cache: this.callbacks.getCacheSummary() } : {}) }, null, 2))
                 .catch(() => this.setStatus('Unable to copy export settings.'));
         });
 
@@ -110,7 +123,7 @@ export class ExportDialog {
         });
 
         this.startBtn.addEventListener('click', () => {
-            if (this.isActive) return;
+            if (this.isActive || this.cacheClearing) return;
             this.callbacks.onStart(this.getConfig());
         });
         // Stop & save keeps everything captured so far — no confirmation needed, it's non-destructive.
@@ -149,6 +162,28 @@ export class ExportDialog {
     open(): void {
         this.root.classList.remove('mvp-hidden');
         this.statusEl.textContent = this.blockedMessage ?? '';
+        this.refreshCache();
+    }
+
+    private refreshCache(): void {
+        const summary = this.callbacks.getCacheSummary?.();
+        this.clearCacheBtn.disabled = this.isActive || this.cacheClearing || !this.callbacks.onClearCache || !summary?.files;
+        this.root.querySelector('.mvp-export-cache-status')!.textContent = summary
+            ? `${summary.files} finished file(s), ${summary.cleanupPending} pending cleanup. Only this tab since reload. Clear after downloads finish; other tabs and earlier visits are untouched.`
+            : 'Cache cleanup is unavailable in this host.';
+    }
+    private async clearCache(): Promise<void> {
+        if (this.clearCacheBtn.disabled || !this.callbacks.onClearCache) return;
+        if (!window.confirm('Have all export downloads finished? This permanently removes this tab’s finished export files. Their previews or pending downloads may stop working. Downloaded copies are kept.')) return;
+        this.cacheClearing = true;
+        this.startBtn.disabled = true;
+        this.refreshCache();
+        this.setStatus('Clearing finished export files…');
+        try {
+            const result = await this.callbacks.onClearCache();
+            this.setStatus(`Removed ${result.removed} export file(s). ${result.remaining} remain${result.remaining ? '; retry cleanup later' : ''}.`);
+        } catch (error) { this.setStatus(error instanceof Error ? error.message : 'Export cleanup failed. Try again.'); }
+        finally { this.cacheClearing = false; this.startBtn.disabled = Boolean(this.blockedMessage); this.refreshCache(); }
     }
 
     getResolution(): ExportResolution { return this.getConfig().resolution; }
@@ -164,6 +199,7 @@ export class ExportDialog {
 
     setActive(isActive: boolean): void {
         this.isActive = isActive;
+        this.refreshCache();
         this.runtimeSelect.disabled = isActive;
         this.memorySelect.disabled = isActive || !this.isolatedAvailable || this.runtimeSelect.value === 'compatible';
         if (isActive) this.profile = null;

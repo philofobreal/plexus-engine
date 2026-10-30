@@ -1,0 +1,94 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createLoader } from './helpers/xr-loader.mjs';
+const flush = () => new Promise(resolve => setImmediate(resolve));
+const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
+function cache() {
+    let id = 0;
+    return createLoader({}, { setTimeout, clearTimeout, crypto: { randomUUID: () => `cache-${++id}` } })('export/ExportStorageLease.ts');
+}
+
+test('cache clears only explicitly finished document-owned jobs; active, foreign and older-visit files survive', async () => {
+    const c = cache(), files = new Set(['foreign', 'temp_plexus_export_older.webm']), removed = [];
+    const dir = { async removeEntry(key) { removed.push(key); files.delete(key); }, entries() { assert.fail('No sweep'); } };
+    const active = new c.ExportStorageLease(async () => dir), done = new c.ExportStorageLease(async () => dir);
+    files.add(active.name); files.add(done.name); done.retain();
+    assert.match(done.name, /^plexus_export_job_v1_/); assert.ok(c.validExportStorageName(done.name));
+    assert.ok(c.validExportStorageName('temp_plexus_export_legacy.webm'), 'Old typed requests remain compatible');
+    assert.equal(c.getExportCacheSummary().files, 1);
+    assert.equal((await c.clearFinishedExportCache()).removed, 1);
+    assert.deepEqual(removed, [done.name]); assert.ok(files.has(active.name)); assert.ok(files.has('foreign')); assert.ok(files.has('temp_plexus_export_older.webm'));
+    assert.equal((await c.clearFinishedExportCache()).removed, 0);
+});
+
+test('failed cleanup stays retryable and a missing owned file counts as already removed', async () => {
+    const c = cache(); let fail = true;
+    const lease = new c.ExportStorageLease(async () => ({ async removeEntry() { if (fail) throw new Error('quota API unavailable'); } }));
+    await lease.discard(); assert.equal(c.getExportCacheSummary().cleanupPending, 1);
+    assert.equal((await c.clearFinishedExportCache()).remaining, 1);
+    fail = false; assert.equal((await c.clearFinishedExportCache()).removed, 1); assert.equal(c.getExportCacheSummary().files, 0);
+    const missing = new c.ExportStorageLease(async () => ({ async removeEntry() { throw { name: 'NotFoundError' }; } }));
+    missing.retain(); assert.equal((await c.clearFinishedExportCache()).remaining, 0);
+});
+
+test('cleanup snapshots candidates before awaits and never removes a newly completed result', async () => {
+    const c = cache(), gate = deferred(), removed = [];
+    const first = new c.ExportStorageLease(async () => ({ async removeEntry(name) { await gate.promise; removed.push(name); } }));
+    const later = new c.ExportStorageLease(async () => ({ async removeEntry() { assert.fail('New result removed'); } }));
+    first.retain(); const clearing = c.clearFinishedExportCache(); later.retain(); gate.resolve();
+    assert.equal((await clearing).remaining, 1); assert.deepEqual(removed, [first.name]); assert.equal(later.disposition, 'retained-result');
+});
+
+test('overlapping cache requests coalesce each lease removal', async () => {
+    const c = cache(), gate = deferred(); let calls = 0;
+    const lease = new c.ExportStorageLease(async () => ({ async removeEntry() { calls++; await gate.promise; } }));
+    lease.retain(); const a = c.clearFinishedExportCache(), b = c.clearFinishedExportCache(); gate.resolve();
+    await Promise.all([a, b]); assert.equal(calls, 1); assert.equal(c.getExportCacheSummary().files, 0);
+});
+
+class Element extends EventTarget {
+    disabled = false; dataset = {}; style = {}; textContent = ''; value = ''; children = new Map();
+    classList = { toggle() {}, remove() {}, add() {}, contains() { return false; } };
+    querySelector(s) { if (!this.children.has(s)) this.children.set(s, new Element()); return this.children.get(s); }
+    querySelectorAll() { return []; } click() { this.dispatchEvent(new Event('click')); }
+}
+function dialog({ confirm = () => true, clear = async () => ({ removed: 1, remaining: 0 }) } = {}) {
+    let clears = 0, starts = 0, files = 1; const copied = [];
+    const Dialog = createLoader({}, { document: { createElement: () => new Element() }, window: { confirm,
+        localStorage: { getItem() {}, setItem() { assert.fail('Cleanup must not persist a setting'); } } },
+        navigator: { clipboard: { async writeText(s) { copied.push(JSON.parse(s)); } } } })('ui/mvp/ExportDialog.ts').ExportDialog;
+    const instance = new Dialog({ onStart() { starts++; }, onStop() {}, onCancel() {},
+        getCacheSummary: () => ({ files, cleanupPending: 0, scope: 'this document' }),
+        async onClearCache() { clears++; const result = await clear(); files = result.remaining; return result; } }, true);
+    return { instance, copied, get clears() { return clears; }, get starts() { return starts; }, button: instance.root.querySelector('.mvp-export-clear-cache') };
+}
+test('MVP cleanup requires finished-download confirmation and remains disabled during export', async () => {
+    const h = dialog({ confirm: () => false }); h.instance.open(); h.button.click(); await flush(); assert.equal(h.clears, 0);
+    h.instance.setActive(true); h.button.click(); await flush(); assert.equal(h.clears, 0); assert.equal(h.button.disabled, true);
+    h.instance.setActive(false); assert.equal(h.button.disabled, false);
+});
+test('MVP cleanup locks duplicate cleanup/start, reports completion and includes cache counts in Copy', async () => {
+    const gate = deferred(), h = dialog({ clear: () => gate.promise }); h.button.click(); h.button.click();
+    h.instance.root.querySelector('.mvp-export-start').click(); assert.equal(h.clears, 1); assert.equal(h.starts, 0);
+    gate.resolve({ removed: 1, remaining: 0 }); await flush(); assert.equal(h.button.disabled, true);
+    assert.match(h.instance.root.querySelector('.mvp-modal-status').textContent, /Removed 1/);
+    h.instance.root.querySelector('.mvp-export-copy').click(); await flush(); assert.equal(h.copied[0].cache.files, 0);
+});
+test('MVP failed cleanup restores controls and permits an explicit retry', async () => {
+    let calls = 0; const h = dialog({ clear: async () => { if (++calls === 1) throw new Error('storage failed'); return { removed: 1, remaining: 0 }; } });
+    h.button.click(); await flush(); assert.equal(h.button.disabled, false); assert.equal(h.instance.root.querySelector('.mvp-export-start').disabled, false);
+    h.button.click(); await flush(); assert.equal(h.clears, 2); assert.equal(h.button.disabled, true);
+});
+
+test('facade refuses cleanup during export and export during cleanup, coalescing repeated cleanup', async () => {
+    const gate = deferred(); let clears = 0;
+    const Controller = createLoader({ '../../audio/AudioEngine': {}, '../../export/WebMExporter': {}, '../../export/ExportCapabilityDetector': {},
+        '../../export/ExportStorageLease': { getExportCacheSummary: () => ({ files: 1 }), clearFinishedExportCache: () => { clears++; return gate.promise; } }
+    })('ui/mvp/MvpVisualController.ts').MvpVisualController;
+    const controller = Object.create(Controller.prototype); controller.currentExporter = {}; controller.exportCacheClearing = null;
+    await assert.rejects(controller.clearExportCache(), /active export/); assert.equal(clears, 0);
+    controller.currentExporter = null; controller.canExport = () => true;
+    const a = controller.clearExportCache(), b = controller.clearExportCache(); assert.equal(a, b); assert.equal(clears, 1);
+    await assert.rejects(controller.startExport({}, () => {}), /not available/);
+    gate.resolve({ removed: 1, remaining: 0 }); await a; assert.equal(controller.exportCacheClearing, null);
+});

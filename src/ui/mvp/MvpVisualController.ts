@@ -37,6 +37,7 @@ import { normalizeSessionSnapshot, type SessionCheckpoint, type WorkspaceSnapsho
 import { ExportCapabilityDetector } from '../../export/ExportCapabilityDetector';
 import { WebMExporter, type ExportConfig } from '../../export/WebMExporter';
 import { captureExportSnapshot } from '../../export/ExportSnapshot';
+import { clearFinishedExportCache, getExportCacheSummary } from '../../export/ExportStorageLease';
 import type { ExportRuntimeFactory, ExportProfile } from '../../types/ExportRenderJob';
 import { projectRenderWorkerAnalysis } from '../../types/CanvasVisualSource';
 import { DEFAULT_MUSIC_DISPLAY, type MusicDisplaySettings } from '../../types/MusicDisplay';
@@ -152,6 +153,7 @@ export class MvpVisualController {
     private exportP5Instance: unknown = null;
     private exportCanvas: HTMLCanvasElement | null = null;
     private currentExporter: WebMExporter | null = null;
+    private exportCacheClearing: Promise<{ removed: number; remaining: number }> | null = null;
     private activityLevel: DramaturgyActivityLevel = 'balanced';
     private variantMode: DramaturgyVariantMode = 'paired';
     private readonly isolatedExport;
@@ -996,7 +998,7 @@ export class MvpVisualController {
     }
 
     async startExport(config: ExportConfig, onProgress: (progress: number) => void): Promise<Blob> {
-        if (!this.canExport() || this.currentExporter) throw new Error('Export is not available right now.');
+        if (!this.canExport() || this.currentExporter || this.exportCacheClearing) throw new Error('Export is not available right now.');
         this.markSessionChanged();
         const wasPlaying = State.isPlaying;
         if (wasPlaying) this.engine.stop(false);
@@ -1046,6 +1048,11 @@ export class MvpVisualController {
     stopAndSaveExport(): void { this.currentExporter?.stopAndSave(); }
     private exportPreparationMs = 0;
     cancelExport(): void { this.currentExporter?.cancelExport(); }
+    getExportCacheSummary() { return getExportCacheSummary(); }
+    clearExportCache() {
+        if (this.currentExporter) return Promise.reject(new Error('Wait for the active export to finish.'));
+        return this.exportCacheClearing ??= clearFinishedExportCache().finally(() => { this.exportCacheClearing = null; });
+    }
 
     static async detectExportCapabilities() {
         return ExportCapabilityDetector.detectCapabilities();

@@ -239,7 +239,9 @@ export class MvpUI {
         this.exportDialog = new ExportDialog({
             onStart: (config) => void this.runExport(config),
             onStop: () => this.controller.stopAndSaveExport(),
-            onCancel: () => this.controller.cancelExport()
+            onCancel: () => this.controller.cancelExport(),
+            getCacheSummary: () => this.controller.getExportCacheSummary(),
+            onClearCache: () => this.controller.clearExportCache()
         }, Boolean(isolatedExportFactory));
 
         this.root.appendChild(topbar);

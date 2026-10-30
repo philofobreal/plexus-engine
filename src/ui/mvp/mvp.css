@@ -1230,6 +1230,8 @@ button, input, select {
   overflow-y: auto;
 }
 .mvp-modal[aria-label="Export video"] .mvp-modal-actions { flex-wrap: wrap; }
+.mvp-export-clear-cache { max-width: 100%; white-space: normal; }
+.mvp-export-cache-status { display: block; margin-top: 8px; line-height: 1.4; color: var(--mvp-text-muted); }
 .mvp-modal-progress {
   height: 6px;
   border-radius: 3px;

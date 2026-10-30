@@ -1,21 +1,27 @@
 <!doctype html>
-<meta charset="utf-8"><title>T19b isolated export</title>
-<style>body{font:16px system-ui;background:#101923;color:#dff3ff;margin:24px;max-width:1000px}button{padding:12px}pre{white-space:pre-wrap}video{width:320px}</style>
-<h1>T19b isolated export</h1>
+<meta charset="utf-8"><title>T19c3 isolated export acceptance</title>
+<style>body{font:16px system-ui;background:#101923;color:#dff3ff;margin:24px;max-width:1000px}button{padding:12px}pre{white-space:pre-wrap;max-height:24rem;overflow:auto}video{width:320px}#videos{position:fixed;right:12px;bottom:12px;z-index:1}#videos video{display:none}#videos video:last-child{display:block}</style>
+<h1>T19c3 isolated export acceptance</h1>
 <p>Real private Wormhole renderer, snapshot, PostFX, coordinator, encoding worker and OPFS. Synthetic stereo track; live State/p5/AudioEngine must stay untouched.</p>
 <button id="run">Run full / prefix / cancel</button>
 <label>Output <select id="resolution"><option>720p</option><option>1080p</option><option>4K</option></select></label>
+<label>Track length <select id="duration"><option value="2">2 seconds</option><option value="300">5 minutes</option></select></label>
+<button id="dialog">Open real MVP export dialog</button>
 <button id="codec">Inspect Opus metadata</button><pre id="codec-result"></pre>
-<pre id="result">Ready</pre><div id="videos"></div>
+<p id="summary">Ready: full, Stop-prefix, Cancel, retry and retained File checks.</p><pre id="result">Ready</pre><div id="videos"></div>
 <script type="module">
 import { WebMExporter } from '../../src/export/WebMExporter.ts';
 import { captureExportSnapshot } from '../../src/export/ExportSnapshot.ts';
 import { WormholeExportRuntime } from '../../src/visuals/WormholeExportRuntime.ts';
 import { cloneDefaultVisualTuning } from '../../src/config/visualTuning.ts';
 import { createEmptyTrackAnalysis } from '../../src/analyzer/normalizeAnalysisResult.ts';
+import { inspectExportWebM } from '../helpers/inspect-export-webm.mjs';
+import '../../src/ui/mvp/mvp.css';
+import { ExportDialog } from '../../src/ui/mvp/ExportDialog.ts';
+import { getExportCacheSummary, clearFinishedExportCache } from '../../src/export/ExportStorageLease.ts';
 import { State } from '../../src/state/store.ts';
 
-const pcm = new AudioBuffer({ numberOfChannels: 2, sampleRate: 48000, length: 96000 });
+let pcm = new AudioBuffer({ numberOfChannels: 2, sampleRate: 48000, length: 96000 });
 for (let c = 0; c < 2; c++) { const data = pcm.getChannelData(c); for (let i = 0; i < data.length; i++) data[i] = .1 * Math.sin(2 * Math.PI * (220 + c * 110) * i / 48000); }
 const track = createEmptyTrackAnalysis(); track.duration = 2; track.bpm = 120;
 const raw = cloneDefaultVisualTuning(); Object.assign(raw, { wormholeGrainDensity: .02, wormholeNebulaAmount: 0, wormholeGalaxy: 0, wormholeStarfield: .1 });
@@ -27,12 +33,17 @@ const input = { audioContentId: 'f'.repeat(64), analysis: { frames: Array.from({
 const config = {resolution:'720p',aspectRatio:'16:9',fps:60,runtime:'isolated-wormhole',preflight:true};
 const live = new Proxy({}, { get(_t,key) { throw new Error(`Live renderer/audio access: ${String(key)}`); }, deleteProperty() { throw new Error('Live renderer mutation'); } });
 const output = document.querySelector('#result'), urls = [];
+const dialog = new ExportDialog({onStart:()=>dialog.setStatus('This acceptance fixture runs through its Run button.'),onStop(){},onCancel(){},getCacheSummary:getExportCacheSummary,onClearCache:clearFinishedExportCache},true);
+document.body.append(dialog.root);document.querySelector('#dialog').onclick=()=>dialog.open();
 const ensure = (v,message) => { if (!v) throw new Error(message); };
 const liveSignature = () => JSON.stringify({t:State.currentTime,d:State.duration,e:State.exportTime,x:State.isExporting,v:State.visualTuning,target:State.targetTuning});
 async function verify(blob, seconds) {
+    ensure(blob.size <= 64*1024*1024, 'Acceptance reader 64 MiB bound exceeded; not a production export limit');
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const packets = inspectExportWebM(bytes,{frames:Math.round(seconds*60),fps:60});
     const audio = new AudioContext();
     try {
-        const decoded = await audio.decodeAudioData(await blob.arrayBuffer());
+        const decoded = await audio.decodeAudioData(bytes.buffer);
         ensure(decoded.numberOfChannels===2,'Missing stereo audio');
         ensure(Math.abs(decoded.duration-seconds)<=1/60+.002,`Audio duration mismatch: ${decoded.duration} vs ${seconds}`);
         const video=document.createElement('video');video.controls=true;video.muted=true;
@@ -40,20 +51,30 @@ async function verify(blob, seconds) {
         await new Promise((resolve,reject)=>{video.onloadeddata=resolve;video.onerror=()=>reject(new Error('Undecodable video'));});
         const height=config.resolution==='4K'?2160:config.resolution==='1080p'?1080:720,width=Math.round(height*16/9);
         ensure(video.videoWidth===width&&video.videoHeight===height,'Wrong output size');
-        // Frame zero deliberately has playbackFade=0. Inspect a later decoded frame.
-        await new Promise((resolve,reject)=>{video.onseeked=resolve;video.onerror=()=>reject(new Error('Video seek failed'));video.currentTime=Math.min(.5,seconds/2);});
         const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
-        const ctx=canvas.getContext('2d');ctx.drawImage(video,0,0);
-        ensure(ctx.getImageData(0,0,width,height).data.some((v,i)=>i%4!==3&&v>4),'Blank Wormhole frame');
-        return {audioSeconds:decoded.duration,video:[video.videoWidth,video.videoHeight],nonblank:true};
+        const ctx=canvas.getContext('2d'), seeks=[...new Set([Math.min(.5,seconds/2),seconds/2,Math.max(seconds/2,seconds-.1)])];
+        for(const time of seeks){
+            await new Promise((resolve,reject)=>{
+                const timer=setTimeout(()=>reject(new Error('Decoded frame presentation timed out')),15000);
+                video.onerror=()=>{clearTimeout(timer);reject(new Error('Video seek failed'));};
+                video.requestVideoFrameCallback(()=>{clearTimeout(timer);resolve();});video.currentTime=time;
+            });
+            ctx.drawImage(video,0,0);ensure(ctx.getImageData(0,0,width,height).data.some((v,i)=>i%4!==3&&v>4),`Blank Wormhole frame at ${time}`);
+        }
+        return {audioSeconds:decoded.duration,video:[video.videoWidth,video.videoHeight],nonblank:true,seeks,packets};
     }finally{await audio.close();}
 }
 document.querySelector('#run').onclick=async()=>{
-    const button=document.querySelector('#run');button.disabled=true;const results=[];
+    const button=document.querySelector('#run');button.disabled=true;dialog.setActive(true);const results=[];
     const resolution=document.querySelector('#resolution');resolution.disabled=true;config.resolution=resolution.value;
+    const duration=document.querySelector('#duration');duration.disabled=true;const seconds=Number(duration.value);
+    pcm=new AudioBuffer({numberOfChannels:2,sampleRate:48000,length:48000*seconds});
+    for(let c=0;c<2;c++){const data=pcm.getChannelData(c);for(let i=0;i<data.length;i++)data[i]=.1*Math.sin(2*Math.PI*(220+c*110)*i/48000);}
+    track.duration=seconds;input.analysis.duration=seconds;input.analysis.frames=Array.from({length:Math.ceil(seconds*48000/1024)},()=>({...frame}));
+    const retained=[];
     try{
-        for(const mode of ['full','prefix','cancel']){
-            output.textContent=`Running ${mode}…`;let frames=0,profile,disposed=0;
+        for(const mode of ['full','prefix','cancel','retry']){
+            output.textContent=`Running ${mode}…`;let frames=0,profile,disposed=0;const started=performance.now();
             const before=liveSignature();
             const exporter=new WebMExporter(live,{},live,null,{prepareRuntime:async(c,signal)=>{
                 const lease=await captureExportSnapshot(input,pcm,c,signal);
@@ -62,15 +83,19 @@ document.querySelector('#run').onclick=async()=>{
                 }catch(e){lease.dispose();throw e;}
             },onProfile:p=>{profile=p;}});
             try{
-                const blob=await exporter.startExport(config,p=>{if(p<1){frames++;if(mode==='prefix'&&frames===12)exporter.stopAndSave();if(mode==='cancel'&&frames===8)exporter.cancelExport();}});
+                const blob=await exporter.startExport(config,p=>{if(p<1){frames++;if(frames%300===0)output.textContent=`Running ${mode}: ${frames}/${seconds*60} frames (${config.resolution})`; if((mode==='prefix'||mode==='retry')&&frames===12)exporter.stopAndSave();if(mode==='cancel'&&frames===8)exporter.cancelExport();}});
                 ensure(mode!=='cancel','Cancel returned video');
-                const decoded=await verify(blob,frames/60);results.push({mode,pass:true,frames,bytes:blob.size,...decoded,profile});
+                const exportWallMs=performance.now()-started;const decoded=await verify(blob,frames/60);
+                retained.push({blob,head:[...new Uint8Array(await blob.slice(0,32).arrayBuffer())]});
+                results.push({mode,pass:true,frames,sourceSeconds:seconds,exportWallMs,bytes:blob.size,...decoded,profile});
             }catch(e){if(mode!=='cancel'||!String(e).includes('cancelled'))throw e;results.push({mode,pass:true,frames,noResult:true,profile});}
             ensure(disposed===1,'Runtime lease not released exactly once');ensure(before===liveSignature(),'Live state changed');
         }
-        output.textContent=JSON.stringify({pass:true,results},null,2);
-    }catch(e){output.textContent=JSON.stringify({pass:false,error:String(e),results},null,2);}
-    finally{button.disabled=false;resolution.disabled=false;}
+        for(const item of retained)ensure(JSON.stringify([...new Uint8Array(await item.blob.slice(0,32).arrayBuffer())])===JSON.stringify(item.head),'A later job invalidated a retained File');
+        document.querySelector('#summary').textContent=`PASS: ${config.resolution} / ${seconds}s full track; Stop-prefix, Cancel, retry and retained File reads. Packet clocks within 1ms.`;
+        output.textContent=JSON.stringify({pass:true,retainedFilesReadable:true,fixture:{sourceSeconds:seconds,resolution:config.resolution,fps:60,density:.02,readerLimitBytes:64*1024*1024,peakMemory:'unmeasured'},results},null,2);
+    }catch(e){document.querySelector('#summary').textContent=`FAIL: ${String(e)}`;output.textContent=JSON.stringify({pass:false,error:String(e),results},null,2);}
+    finally{dialog.setActive(false);button.disabled=false;resolution.disabled=false;duration.disabled=false;}
 };
 addEventListener('pagehide',()=>urls.forEach(url=>URL.revokeObjectURL(url)));
 document.querySelector('#codec').onclick=async()=>{
