@@ -12,6 +12,11 @@ clock are added. Display-only changes redraw while paused without snapping tunin
 
 ## Boundary Contract
 
+T19c3 generates `plexus_export_job_v1_*.webm` outside the old worker sweep prefix;
+validation still accepts legacy `temp_plexus_export_*.webm` typed requests. The
+document-local finished-file registry and explicit confirmed cleanup are host-owned.
+No worker enumeration, durable cross-tab registry or new packet is introduced.
+
 T19c2 export start may include host-owned storageFile. It is one validated plain
 filename, not a path or the proposed versioned job protocol. Worker startup never
 sweeps other export files. Host owns that cleanup key through worker termination

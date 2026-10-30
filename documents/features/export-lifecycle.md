@@ -8,13 +8,132 @@ pause after each deployment for manual feedback. No new WASM exporter is implied
 
 | Slice | Scope | Handoff |
 | --- | --- | --- |
-| T19c1 | Exact worker configuration/probe, memory policy and MVP controls | Implemented below; manual short 4K export gate pending |
-| T19c2 | Reduce copied analysis/PCM overhead where ownership allows; review surface/queue/storage lifetimes | Implemented after T19c1 acceptance; manual handoff below |
-| T19c3 | Multi-minute/large-output, decoded full/prefix sync, cancellation/retry and resource/performance evidence | After T19c2; no measured claim until real runs |
+| T19c1 | Exact worker configuration/probe, memory policy and MVP controls | Accepted; real short/long 4K evidence in T19c3 |
+| T19c2 | Reduce copied analysis/PCM overhead where ownership allows; review surface/queue/storage lifetimes | Accepted; ownership and pooling retained |
+| T19c3 | Multi-minute/large-output, decoded full/prefix sync, cancellation/retry and resource/performance evidence | First real 4K acceptance/cache slice below; manual handoff and remaining gates explicit |
 
 The original T19c persistent/minimizable controls and background-editing acceptance
 remain scheduled after these resource prerequisites. T20 and conditional WASM
 promotion do not advance automatically. T15 remains skipped.
+
+### T19c3 - real output acceptance and explicit cache release, 2026-10-31
+
+The user accepted T19c2. Export owns the document-local finished-file registry;
+the MVP facade serializes cleanup against export, and its dialog exposes the
+action. `Clear this tab's finished exports` requires confirmation that downloads
+have finished. It removes only registered ended jobs, including retryable failed
+cleanup. Counts and scope are included in Copy. Active jobs, files from other
+tabs and previous visits are excluded; there is no directory enumeration, timer
+based deletion or automatic orphan sweep. Downloaded copies are unaffected.
+The registry retains names/cleanup leases, not output blobs or PCM. Cleanup
+snapshots its candidates before awaits, coalesces each lease's removal and keeps
+failures available for retry. Export and duplicate cleanup are locked in both
+the facade and the view. This action is not a persistent artistic setting.
+
+New jobs use `plexus_export_job_v1_*.webm`, outside the old worker's global
+`temp_plexus_export_*` sweep namespace. Validation still accepts old typed
+requests. This protects new results from an older cached worker's prefix sweep;
+it does not grant the new host ownership of unknown historical files. Reload or
+process termination can still leave orphans. A durable cross-tab ownership and
+quota manager is a separate remaining gate, not an inferred free-storage promise.
+
+The existing browser fixture now selects two-second or five-minute synthetic
+stereo input and checks full output, Stop-prefix, Cancel and a fresh export after
+Cancel. The independent acceptance reader in `tests/helpers/inspect-export-webm.mjs`
+walks actual EBML blocks, checks every video timestamp against the frame clock,
+Opus packet continuity, header pre-skip/CodecDelay and final DiscardPadding.
+The predeclared container tolerance is 1 ms; decoded audio duration uses
+1/60 s + 2 ms. Decoded video size and nonblank frames are checked near the start,
+middle and end. Presented-frame callbacks synchronize pixel reads after seeking.
+The reader is intentionally limited to this exporter's un-laced VP8/VP9 + Opus
+layout, not a general-purpose demuxer. Hand-assembled EBML fixtures test its
+expected clocks and rejection of gaps, duplicates, wrong endpoints and truncation.
+
+The acceptance reader caps a whole-file copy at 64 MiB; this is a test bound,
+not a production export limit. Whole-file audio decode adds a private decoded
+PCM buffer and video checks allocate a readback canvas. Those test costs are
+outside the export's reported whole-job time and must not be presented as exporter
+peak RAM. Reliable process/GPU/free-RAM counters remain unmeasured. This synthetic
+low-density fixture and an empty performance plan do not prove dense preset parity,
+No Good musical accuracy, physical Quest performance or every browser's codecs.
+
+Actual IAB/Chromium output: the five-minute 3840x2160/60 fps run passes with
+18,000 video packets and 15,001 Opus packets, all inspected for continuity.
+Its 62,636,619-byte output decodes to stereo 299.9995 s; container audio ends at
+300000 ms. Nonblank frames decode at 0.5, 150 and 299.9 s. The 12-frame Stop-prefix
+and Cancel-then-12-frame retry decode to 0.1995 s with a 200 ms container endpoint;
+Cancel at 8 frames publishes no result and reports owned storage removed.
+Earlier retained File headers remain readable after subsequent jobs. This is
+same-document cross-job evidence, not a cross-tab deletion/lock experiment.
+
+The full job takes 1,021,160.9 ms (~17 min 1 s) while cumulative Node tests and local
+Graphify work overlap it. This is an observed loaded run, not an isolated benchmark
+or speedup comparison. Render-request wall time is 565343.1 ms, queue wait 328554.6 ms,
+bitmap work 15023.3 ms and finalization wait 157.6 ms. Worker input-window intervals
+overlap host work; these values must not be summed into CPU/GPU time. Two audio
+buffers serve 18,000 frames with 17,998 reuses; the pool ceiling is 12,800 bytes.
+Admission estimates 381,865,828 bytes under Auto's 2 GiB planning ceiling; that is
+neither measured peak RAM nor a detected/reserved amount of the reported 32 GB RAM.
+The remaining cost justifies profiling private raster/queue/presentation waits
+before selecting a WASM kernel, rather than claiming this run is fast.
+
+The long run uses the retained `logs/t19c3/long-fixture.html` build; later fixture
+changes add a real dialog, progress text and visible decoded previews. Production
+renderer/worker/storage source is unchanged between those runs. Raw results,
+initial failed attempts and final replay/validation receipts live in logs/t19c3.
+No WASM export kernel or default-backend promotion is introduced.
+
+Validation: `npm test -- --test-reporter=tap --test-concurrency=4` runs all 215
+active files: 2100 cases, 2091 pass, nine exact retained baseline failures and no
+skips/cancellations. All 19 affected files also pass 258/258. A final two-rule
+dialog-layout CSS refinement receives a 61/61 export/UI replay and final
+`npm run build` plus browser layout verification. `git diff --check` passes.
+The complete run precedes the final composition correction: leaf construction
+must not invoke the cache callback before MvpUI has wired its controller. Reads
+now begin on dialog open; a new regression pins that order. The final 258-case
+replay covers this correction, giving 2101 distinct cases across the runs, not a
+second complete run. The eight earlier cache test bodies stay unchanged; their
+exact predecessor is retained in documents/tests/export-cache.pre-t19c3-composition.mjs.snapshot.
+The actual final production MVP starts, loads the two-second synthetic WAV,
+finishes analysis and completes a 4K isolated export through the real dialog.
+The download is observed and copied to logs/t19c3/mvp-4k-final.webm: 7,251,453 bytes,
+120 video packets, 101 Opus packets, continuous timestamps and a 2000 ms audio
+endpoint. This downloaded artifact receives independent packet inspection, not
+a second full codec decode. The dialog correctly changes from zero to one owned
+finished file. File-chooser/automation delays are not export-throughput evidence.
+Thirteen new cases are added; 275 prior test-tree identities remain byte-exact and
+the expanded browser fixture's predecessor is archived. The current tree contains
+279 test sources/helpers/fixtures and 414 production inputs. Full code-only
+Graphify: 946 files, 9004 nodes, 19145 canonical edges, 21750 raw edges, no dangling
+canonical endpoints or LLM extraction. Python/lab tests are not rerun because
+their source/contracts/inputs are untouched. Guarded Node release tooling replaces
+the Bun-dependent package deploy script; no dependency is installed. Detailed
+commands, baseline assertions, omitted gates and receipts: logs/t19c3.
+
+Primary commands (Node 25.2.1 / npm 11.6.2):
+
+```text
+npm run build
+npm test -- --test-reporter=tap --test-concurrency=4
+node --test --test-reporter=tap --test-concurrency=2 tests/export-cache.test.mjs tests/export-isolated.test.mjs tests/export-preparation.test.mjs tests/export-lifecycle.test.mjs
+node logs/t19c3/check.mjs
+git diff --check
+```
+
+The exact 19-file affected-run command is retained in
+logs/t19c3/targeted-final-command.txt. The browser fixture is built with local Vite
+and served by the existing analyzer-lab Python interpreter's `http.server`; this
+uses no new dependency or Python test run.
+
+Manual handoff: choose MVP Export > Isolated Wormhole > Auto > 4K; inspect a saved
+full track and Stop-prefix with audio, Cancel/retry, Copy plus actual OS paste.
+After downloads finish, confirm `Clear this tab's finished exports` and check the
+remaining count. The actual destructive browser action and live file-lock behavior
+remain manual. Automated clipboard readback did not return the dialog JSON, so
+only Node's Copy payload checks and visible dialog state are claimed. Stop for
+feedback before further T19 interaction work. Reliable peak RAM, dense-scene image
+parity, cross-tab locks, durable orphan/quota policy and physical Quest remain
+explicit acceptance gaps; this is not complete ADR-012/T19 acceptance.
 
 ### T19c2 - bounded copies, reusable PCM and owned storage, 2026-10-30
 

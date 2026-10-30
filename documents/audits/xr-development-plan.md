@@ -408,6 +408,15 @@ PCM copy stay intact. Successful File-backed output must stay readable; complete
 cache retention/quota, real cross-tab results and long-job acceptance are explicit
 T19c3 gates. Deploy/manual pause still applies before that next slice.
 
+T19c2 accepted; T19c3 (2026-10-31) now exercises actual synthetic full/prefix/Cancel
+and retry output, independent WebM packet clocks and decoded frame/audio checks.
+The MVP offers confirmed cleanup of this document's finished exports, excluding
+active jobs and other tabs/visits. New filenames avoid the old worker sweep prefix.
+The [current acceptance record](../features/export-lifecycle.md#t19c3---real-output-acceptance-and-explicit-cache-release-2026-10-31)
+distinguishes measurements from remaining dense-scene, reliable peak-memory and
+durable orphan/quota gates. Stop after publication for manual testing; persistent
+controls/background editing remain later T19c work, T20/WASM are not promoted.
+
 T18 was accepted for continuation. First stabilize the existing public workflow:
 synchronous job reservation, latched Stop/Cancel through teardown, suppressed late
 progress/result, interruptible frame/media waits, allocation cleanup and ordered

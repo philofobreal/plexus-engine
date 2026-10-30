@@ -19,6 +19,13 @@ T19a was accepted on 2026-10-29. The user's additional conditional WASM export
 request is [scheduled across T19b/T19c/T20a](../features/export-lifecycle.md#scheduled-export-acceleration---user-direction-2026-10-29).
 It grants no second render pipeline, codec replacement or unmeasured speed claim.
 
+T19c1/c2 add configuration-specific codec admission, configurable planning limits,
+bounded copies/pools and owned-file cleanup. T19c3 adds document-local finished-file
+release after explicit download-finished confirmation and actual-output acceptance
+fixtures. Durable cross-tab/orphan quota management, complete format/dense-scene
+acceptance and reliable peak-memory evidence remain open. The delivered resource
+policy is described in the [T19c3 contract](../features/export-lifecycle.md#t19c3---real-output-acceptance-and-explicit-cache-release-2026-10-31).
+
 ## Problem
 
 WebCodecsBackend.start calls p5.noLoop, assigns the export target, writes global

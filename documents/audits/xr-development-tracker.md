@@ -1,8 +1,73 @@
 # Plexus XR development tracker
 
-Started: 2026-10-23; current checkpoint: 2026-10-30 (Europe/Budapest). Integration owner: the agent in this chat.
+Started: 2026-10-23; current checkpoint: 2026-10-31 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T19c1 accepted; T19c2 implemented: direct frozen data copies without the full-input JSON round trip, bounded PCM reuse, private PostFX disposal and owned-file cleanup after worker termination. Successful File-backed results stay retained; automatic orphan/completed-cache pruning is not claimed. Compatible/default settings remain unchanged. Pause after deploy for manual same-output/Stop/Cancel/retry feedback. Next T19c3 validates real long4K, A/V, cross-job File readability, resource use and completed-cache policy. Browser/Quest/peak-memory proof remains open; no WASM export promotion. Persistent/minimizable controls/background editing remain later T19c work; T15 stays skipped.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
+**T19c2 accepted; T19c3 delivers real five-minute synthetic 4K/60 fps acceptance, decoded full/Stop-prefix, packet continuity, Cancel/retry and retained File-header checks. The MVP now offers confirmed cleanup of this tab's finished exports, with counts in Copy and exclusion of active jobs/other visits. Compatible remains default. Stop after deploy for manual 4K/Stop/Cancel/retry/cache feedback. Dense scenes, actual peak RAM, physical Quest, cross-tab locks and durable orphan/quota management remain open; no WASM promotion. Persistent/minimizable controls/background editing remain later T19c work; T15 stays skipped.** Existing MVP/XR Offscreen rendering stays intact; annotated musical accuracy remains unproven.
+
+### T19c3 acceptance / manual handoff (2026-10-31)
+
+Export owns the finished-file registry and validated new filename namespace;
+the MVP facade serializes export/cleanup and its dialog owns confirmation/status.
+Only ended jobs registered since this document loaded can be removed. Downloaded
+copies survive; users must finish downloads first. Other tabs, active jobs and
+older visits are untouched. Old prefix requests remain compatible, while newly
+generated names avoid older cached workers' global sweep. No orphan scan or RAM
+reservation/detection is claimed.
+
+Actual IAB synthetic 4K/60 fps: 300 s, 18,000 video packets, 15,001 Opus packets,
+62,636,619 bytes, stereo decoded duration 299.9995 s; every packet clock and the
+300000 ms audio endpoint pass the declared 1 ms container tolerance. Nonblank
+seeks at 0.5/150/299.9 s pass. Stop12 and Cancel-then-Stop12 produce decoded
+0.1995 s prefixes; Cancel8 publishes no result and reports removed storage.
+Retained File headers remain readable after later jobs. This is not a full-file
+bitwise or cross-tab lock proof. A final two-second 4K replay also passes all modes.
+
+The long job takes 1,021,160.9 ms (~17 min 1 s) under overlapping Node/Graphify
+load. It uses two PCM transfer buffers with 17,998 reuses and a 12,800-byte pool
+ceiling. Its 381,865,828-byte admission estimate is a planning value, not observed
+peak/free RAM. Raster/request and queue waits remain substantial; any acceleration
+must improve a measured whole job. No comparative speedup, hardware-codec claim
+or WASM kernel is delivered. See the [detailed contract](../features/export-lifecycle.md#t19c3---real-output-acceptance-and-explicit-cache-release-2026-10-31).
+
+Validation: complete Node 2100 / 2091 pass / 9 exact retained failures / 0 skipped
+or cancelled, and all 19 affected files 258/258. Two final dialog-layout CSS rules
+receive another 61/61 replay plus final build/browser layout checks. Thirteen new
+cases cover safe cleanup and the independent output inspector. All 275 unchanged
+prior test-tree identities remain exact; the expanded browser fixture retains
+its exact predecessor in documents/tests. There are 215 active Node files / 279
+test-tree identities and 414 production inputs. Graphify code-only full refresh:
+946 files / 9004 nodes / 19145 canonical edges / 21750 raw / 0 dangling; no LLM.
+Python is not rerun: no analyzer/lab/Python source, input or dependency changed.
+
+The complete run precedes a final composition fix: ExportDialog no longer invokes
+its owner callback before MvpUI constructs the controller. A new deferred-read
+regression joins the final 258-case affected replay; the run union is 2101 cases,
+not a second full run. The exact eight-case cache predecessor is archived and
+its test bodies remain unchanged. The final production MVP starts, loads the
+synthetic two-second WAV, finishes analysis and opens the real export dialog.
+Its actual isolated 4K download is observed: 7,251,453 bytes, 120 continuous video
+packets, 101 Opus packets and a 2000 ms audio endpoint. Packet inspection passes;
+this particular download is not independently codec-decoded again. The dialog
+shows Done and one finished owned file. The retained five-minute fixture remains
+the decoded long-output proof.
+The file-chooser call returned after an unexpected ~18-minute automation delay;
+that is retained as tooling behavior, not an analysis/export timing measurement.
+
+The actual dialog shows three finished job files. Destructive browser cleanup
+is left for manual confirmation; Node tests verify removal/retry/locking. Copy's
+automated clipboard reader returned no matching JSON despite no dialog error;
+actual OS paste remains manual, and no browser clipboard round trip is claimed.
+Two extra IAB-tab attachment attempts timed out; the original tab completed all
+runs. No cross-tab acceptance is inferred. Initial harness failures and final
+results are retained separately, never rewritten as passes.
+
+Node/npm validate and the guarded Node publisher replaces Bun-only deploy tooling.
+`diff_export.ps1` was considered and skipped: bounded diffs, protected identities
+and task receipts suffice without its unrelated fetch/artifact. Validation,
+artifact hashes and publication receipt: logs/t19c3. Commit/push/deploy precede
+the manual pause. Remaining T19 interaction work and the explicit acceptance
+gaps stay scheduled; T20 and T15 do not start automatically.
+
 Source requirements: the user-provided `plexus-xr-fejlesztesi-master-prompt.md`, T00-T25.
 Canonical policy: [AGENTS.md](../../AGENTS.md); this is a delivery record, not new governance.
 
