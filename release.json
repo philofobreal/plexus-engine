@@ -1,7 +1,7 @@
 {
-  "id": "t19c3-export-acceptance-20261030T235818694Z",
-  "previousCommit": "d8916651066a2309de8f5693becb04f6603d46d6",
-  "sourceCommit": "2463f7367d984e5138483952016254f254941111",
+  "id": "t19c4-export-panel-20261104T161823867Z",
+  "previousCommit": "9b2b0416cd21837d9ab92304b6bd45dde4119a23",
+  "sourceCommit": "5f1a1d746172aa21d6dbdfc871097f637672abba",
   "inputs": [
     {
       "path": "bun.lock",
@@ -1057,7 +1057,7 @@
     },
     {
       "path": "src/ui/mvp/ExportDialog.ts",
-      "sha256": "132f6204ab93450b7fe9684c7f0ceff38ae965b3948edc40695d6172209c9f55"
+      "sha256": "9a955d949a2475cc9b3db024f0474120cbc824b9d5794349b43bf6a79cec74a9"
     },
     {
       "path": "src/ui/mvp/FirstRunScreen.ts",
@@ -1085,11 +1085,11 @@
     },
     {
       "path": "src/ui/mvp/MvpUI.ts",
-      "sha256": "cc0f5320f3acb22677cd1e04884293c086d135ead3aaef4491a5ac1f1b4542dd"
+      "sha256": "09065518768c63d6c92d4cf7ff3be0a3858f5006ec082ee9ff663d3647c5a093"
     },
     {
       "path": "src/ui/mvp/MvpVisualController.ts",
-      "sha256": "85a32f77d9684152fcc8967bbb552cccb608e32116deb1535497c6df42877d97"
+      "sha256": "8f3d5d306c344b108d5ab5a3336dfbdfd5f8b24b175a148e346d177e0b41c0f0"
     },
     {
       "path": "src/ui/mvp/PreviewStage.ts",
@@ -1117,7 +1117,7 @@
     },
     {
       "path": "src/ui/mvp/UnsavedChangesGuard.ts",
-      "sha256": "387dfab176ff5f136f3d274750e8d374ad74947ae18ca1795e93b164789fdfd7"
+      "sha256": "68ddac06b606371c16794d296884fbc76b8578d6fa1ec0af7909ec51c0e589d5"
     },
     {
       "path": "src/ui/mvp/audioContentHash.ts",
@@ -1141,7 +1141,7 @@
     },
     {
       "path": "src/ui/mvp/mvp.css",
-      "sha256": "17d1f4af190f7230dce1c139318e9cb91c5709599e89e5e933a2f48fc7f235a7"
+      "sha256": "d5f4dcd876564ec3902ba141a3e79e5375232850ed9e589debc4c0534f1b1352"
     },
     {
       "path": "src/ui/mvp/mvpFormat.ts",
@@ -1690,12 +1690,12 @@
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
-      "path": "assets/mvp-CkyG-IRC.css",
-      "sha256": "7021a7ec43e71c3bf0d425c856e86ea78be7ca44a08ff6e912c09eed85b2f38f"
+      "path": "assets/mvp-BAtjf-TP.css",
+      "sha256": "7ad3770813fc3f2d7ed222d918e2f93e0b6ac0d2572fa1fde614fed3c8b9b7a8"
     },
     {
-      "path": "assets/mvp-Dfj1Tcyd.js",
-      "sha256": "232d5f565301fd6aed18f45c589112c6f568f722988619de7277daac629035d4"
+      "path": "assets/mvp-CekEIreB.js",
+      "sha256": "e0d3ad2100adfc9f47b23327a67fdb401782d0e4007e114465f5d440f172c4eb"
     },
     {
       "path": "assets/PreviewQualityControl-CybtEi8l.js",
@@ -1747,7 +1747,7 @@
     },
     {
       "path": "mvp/index.html",
-      "sha256": "a3b481b23cb4f6e89e11a439ce994aee922547edcd3f47c49606002ce9c40ebf"
+      "sha256": "bd4c2c77c01eeb3b777107c8f2901863a8f584fed10662cb9590d246a49775d1"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
