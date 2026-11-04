@@ -4,9 +4,10 @@
 
 Proposed by T01 on 2026-10-23; partially implemented by T19b on 2026-10-29.
 The MVP has an opt-in isolated Wormhole snapshot/runtime. Compatible remains the
-default and Studio retains the legacy path. Background editing, minimizable UI,
-job-versioned worker/resource migration and complete browser acceptance remain
-open; this is not full acceptance of the proposed architecture.
+default and Studio retains the legacy path. T19c4 adds the minimizable panel.
+T19c5 enables background editing, playback and track replacement from that panel
+after the isolated job submits a frame. Job-versioned worker/resource migration
+and complete browser acceptance remain open.
 T19a (2026-10-29) hardens the existing export lifecycle and serial worker startup
 without accepting the complete proposed architecture. Integration owner: this chat.
 Owners: export, visuals/state contracts, MVP facade/UI, build.
@@ -14,7 +15,8 @@ Related: [ADR-011](ADR-011-shared-wormhole-frame-context.md),
 [plan](../audits/xr-development-plan.md), [baseline](../audits/xr-development-baseline.md).
 
 Delivered prerequisite: [T19a lifecycle contract](../features/export-lifecycle.md).
-The legacy global render-state path remains in Compatible; background editing is not enabled.
+Compatible retains the global render-state path and reserves the workspace until
+export settles. See the [T19c5 workflow](../features/export-lifecycle.md#t19c5-background-work-during-isolated-export-2026-11-04).
 T19a was accepted on 2026-10-29. The user's additional conditional WASM export
 request is [scheduled across T19b/T19c/T20a](../features/export-lifecycle.md#scheduled-export-acceleration---user-direction-2026-10-29).
 It grants no second render pipeline, codec replacement or unmeasured speed claim.
@@ -28,10 +30,10 @@ policy is described in the [T19c3 contract](../features/export-lifecycle.md#t19c
 
 ## Problem
 
-WebCodecsBackend.start calls p5.noLoop, assigns the export target, writes global
-State.isExporting/exportTime and redraws the same renderer. Encoding in a worker does not isolate
-that rendering from editing. Current ExportBackend has start/progress, stopAndSave and cancel;
-worker messages have no job ID. A minimizable panel alone cannot provide safe background editing.
+In Compatible, WebCodecsBackend.start calls p5.noLoop, assigns the export target,
+writes global State.isExporting/exportTime and redraws the same renderer. Isolated
+jobs own a private rendering context and a frozen input lease. The worker encoder
+still uses start/progress, stopAndSave and cancel without job IDs.
 
 ## Proposed job and snapshot boundary (T19)
 

@@ -2,7 +2,7 @@
 
 Started 2026-10-23. Checkpoint 2026-11-04 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**T19c4 implements minimizable export controls and active-export navigation protection. The user requested this delivery after reporting stable mobile export. Pause after deployment for manual panel, Stop/Cancel and reload checks. The next T19 delivery covers background interaction and real workload profiling. The accelerated option is scheduled as a single desktop/mobile delivery, gated on matched measurements. T15 remains deferred.** The T19c3 evidence below retains the decoded five-minute 4K run and the remaining manual checks.
+**The user manually accepted T19c4. T19c5 allows playing, editing and loading another track while an isolated export runs in the compact panel. Pause after deployment for manual acceptance. The accelerated option remains a single desktop/mobile delivery, gated on matched measurements. T15 remains deferred.** The T19c3 evidence below retains the decoded five-minute 4K run.
 
 ### Remaining work in execution order (2026-11-04)
 
@@ -11,15 +11,15 @@ The live Pages release marker reports source `2463f73`, matching the local and r
 The latter is an ancestor of the shipped source, with 74 commits on the development
 branch beyond it. Treat source integration into `master` as a separate release decision.
 The source and Pages IDs above describe the baseline verified at the schedule review.
-The user reported stable mobile export and authorized the next delivery. Detailed
-T19c3 checks for 4K output, clipboard paste and finished-file cleanup remain useful
-alongside the panel handoff.
+T19c4 subsequently shipped at source `5f1a1d7` and Pages `898201d`.
+The user manually accepted that delivery. Detailed T19c3 checks for 4K output,
+clipboard paste and finished-file cleanup remain useful alongside T19c5.
 
 | Order | Work and relevance | Entry and exit conditions |
 | --- | --- | --- |
 | 1 | **T19c3 acceptance follow-up.** Real Wormhole track on the target laptop, 4K full export, Stop & save, Cancel/retry, clipboard paste and confirmed cleanup after downloads finish. | The user authorized continuing after reporting stable mobile export. Carry the detailed checks into the next manual round and prioritize any reproduced failure. |
-| 2 | **T19c4 export panel.** Compact status, Stop/Cancel, Details and active-export navigation protection. | Implemented. See [manual acceptance](../features/export-lifecycle.md#t19c4-minimizable-mvp-export-panel-2026-11-04). Deploy and pause before background interaction. |
-| 3 | **T19 interaction and profiling, second delivery. High.** Enable editing, playback and new-track load against the isolated job's frozen input. Profile the real workload with the editor active. | Start with a short 1080p comparison, then a dense multi-minute 4K run. Check frozen output parity, decoded full/prefix files, responsiveness, resource cleanup and cross-tab file ownership. Use the existing 1080p command acknowledgement budgets of p95 ≤100 ms and p99 ≤250 ms. Record peak memory where counters support it. Deploy and pause. |
+| 2 | **T19c4 export panel.** Compact status, Stop/Cancel, Details and active-export navigation protection. | Deployed and manually accepted. See [delivery](../features/export-lifecycle.md#t19c4-minimizable-mvp-export-panel-2026-11-04). |
+| 3 | **T19c5 interaction and profiling. High.** Editing, playback and track replacement against the isolated job's frozen input. | Implemented. See the [T19c5 acceptance record](../features/export-lifecycle.md#t19c5-background-work-during-isolated-export-2026-11-04). A paired 1080p run verified the original soundtrack after replacement. The 150-second 4K run completed, with video decoded near the beginning, middle and end. Physical-device controls, repeated matched runs, full decoded parity, peak memory and cross-tab ownership remain qualification checks. Deploy and pause. |
 | 4 | **T19/T20a optional accelerated export. High to measure, conditional to ship.** Compare current scheduling with an ordered OffscreenCanvas render worker feeding WebCodecs. Test WASM for a demonstrated CPU bottleneck and evaluate codec alternatives if the encoder limits throughput. | One desktop/mobile delivery at the user's direction. Preserve Standard and qualify the user-selectable Accelerated mode on desktop and physical mobile with matched full-job, quality, memory and control checks. Choose the available path by runtime capabilities. See [candidate order and measurements](../features/export-lifecycle.md#optional-accelerated-export-research-2026-11-04). Treat durable orphan/quota cleanup separately if evidence warrants it. |
 | 5 | **T21 and T20 output format. Medium.** Put timed Markdown captions first once T19 is stable. Bring forward the output-format slice if an actual destination requires MP4 or another specific format. | T21 requires a timing/overlap policy and matching preview/export across aspects. T20 requires a confirmed destination, container and codec choice before backend or licensing work. Both retain full/prefix/Cancel acceptance. |
 | 6 | **T22–T24 Studio and own-domain release. Conditional on product direction.** Confirm the intended access and business-logic boundary and inspect the real hosting package early in this stream. Then build the launcher and Studio route, server-side session enforcement, and staging. | T22 and T23 gate public Studio release. T24 requires a verified runtime, HTTPS, route/asset smoke checks and a tested rollback before any live migration. See [ADR-013](../adr/ADR-013-studio-server-session-boundary.md). |
@@ -162,7 +162,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T16 | Visuals + XR: optional central music display | T05, T14 tokens | Accepted by user for continuation |
 | T17 | Analyzer + performance + build: measured WASM kernel feasibility | T01, fixed T10 reference | Research delivered; desktop gate passed, physical Quest open; no production promotion |
 | T18 | Analyzer + worker + audio + build: production kernel integration | T17 desktop evidence; subsequent explicit user activation request | Scalar FFT integrated, Auto/TS/WASM saved/copied, whole-input recovery; physical Quest and full numerical port still open |
-| T19 | Export + visuals/state + MVP: isolated snapshot/runtime | T01, T05 | T19c1–c3 deployed. T19c4 panel implemented, with manual acceptance after deploy. Background interaction and real workload profiling follow the [current schedule](#remaining-work-in-execution-order-2026-11-04). |
+| T19 | Export + visuals/state + MVP: isolated snapshot/runtime | T01, T05 | T19c1–c4 deployed and accepted for continuation. T19c5 background interaction implemented. See the [current schedule](#remaining-work-in-execution-order-2026-11-04) for measurement and manual acceptance. |
 | T20 | Export + build + platform: confirmed output format/backend | T19, format/environment decision | T20a compares direct WebCodecs/remux/conditional WASM/native-server options using T19 evidence; production acceleration only after explicit parity/performance/resource gates |
 | T21 | Caption parser/layout + MVP + export: timed Markdown | T19 | Planned; explicit timing and overlap policy needed |
 | T22 | Composition + UI + build: launcher and Studio entry | T01, T14; T23 for public release | Planned |

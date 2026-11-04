@@ -576,6 +576,69 @@ Manual handoff on desktop and mobile:
 4. During another run, attempt to reload, choose to stay, and verify the same export
    continues on browsers that present the unload prompt.
 
+## T19c5 background work during isolated export (2026-11-04)
+
+The user manually accepted T19c4. In the MVP, start Isolated Wormhole export and
+minimize the panel. The editor becomes interactive after the first submitted frame.
+The job keeps its copied soundtrack and frozen analysis, automation, presets and
+tuning while the editor plays, edits or loads a different track. The existing
+unsaved-edits prompt still guards replacement. Reopening Details temporarily locks
+the editor. The compact panel keeps Stop & save and Cancel available. Compatible
+keeps the workspace locked until its job settles. Entering native fullscreen
+during an active job is disabled so its controls stay reachable.
+
+MVP waits for any missing journey presets during cancellable preparation and
+rechecks the captured revision before and after snapshot hashing. It rejects
+a changed revision or an unavailable preset. A replacement track can restore its
+own preferred resolution for the next job. Copy settings & diagnostics includes
+`diagnosticExport` when a profile exists, so that profile can be read with the job
+settings that produced it. No track audio or session data is written by the panel.
+
+For manual acceptance, start a 1080p export of a recognizable song, minimize it,
+play and edit the live preview, then replace the track. Confirm the unsaved-edits
+dialog, the original audio and visual journey in the exported file, and a separate
+retry with Stop & save or Cancel. Repeat with a long 4K track on supported hardware.
+
+A local Chromium test exported the same eight-second No Good excerpt at 1080p60
+twice, with the full MVP and isolated renderer. The second run played and edited
+the live track, confirmed replacement, and played a Scienide excerpt before the
+export finished. Both jobs submitted 480 frames with the same frozen analysis ID.
+Both decoded at 1920×1080, with 7.9995 s of audio and correlation 0.99335 to the
+original channel over the sampled interval. Downsampled first frames passed a
+mean absolute pixel-difference tolerance of 4 on the 0–255 scale.
+
+| 1080p60 run | Start to finished file | Render requests | Encoder queue wait | rAF interval p95 / p99 |
+| --- | ---: | ---: | ---: | ---: |
+| Editor idle | 20.70 s | 13.89 s | 5.26 s | 33.5 / 58.3 ms |
+| Playback, edit and replacement | 23.67 s | 14.03 s | 7.46 s | 41.6 / 58.4 ms |
+
+Four scheduled actions in the active run started after 4.7–33.9 ms. The timer
+samples measure dispatch delay and do not qualify the product's acknowledgement
+percentiles. The two jobs used the same machine while regression tests were
+running. This pair is a functional comparison and a profiling sample. The cache
+reported two finished files and zero pending cleanup.
+
+A full 4K60 export of a 150-second No Good excerpt finished after track replacement.
+It submitted 9,000 frames, produced a 573,152,141-byte file and completed in 661.97 s.
+Chromium decoded nonblank frames at 0.5 s, 75 s and 149.8 s at 3840×2160.
+Render requests took 508.49 s and the encoder queue wait 95.66 s. The observed rAF intervals were 100.1 ms at p95 and
+158.3 ms at p99. Four sampled editor commands started after 38.4–228.5 ms.
+These measurements include other local test load. Physical mobile and peak RAM,
+repeated matched runs, full decoded pixel and audio parity, and command
+acknowledgement qualification remain open.
+
+The production build and the focused regressions exercise the readiness gate,
+preserved playback, cold preset preparation, new-track load with frozen PCM and
+visual inputs, resolution restoration, and the previously delivered job controls.
+Run the following for the build, cumulative suite and affected tests.
+
+```text
+npm run build
+npm test -- --test-reporter=tap --test-concurrency=4
+node --test --test-reporter=tap --test-concurrency=3 tests/mvp-background-export.test.mjs tests/mvp-export-panel.test.mjs tests/mvp-async-lifecycle.test.mjs tests/export-isolated.test.mjs tests/export-lifecycle.test.mjs tests/export-cache.test.mjs tests/export-preparation.test.mjs tests/mvp-unsaved-changes.test.mjs
+git diff --check
+```
+
 ## Optional accelerated export research (2026-11-04)
 
 The user reports that their current mobile export is stable and slow. Preserve that workflow
