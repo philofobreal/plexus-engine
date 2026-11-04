@@ -2,6 +2,11 @@
 
 ## Status
 
+T19e is scheduled to retire the isolated runtime from MVP export and remove
+its MVP-only integration. This decision covers MVP export only. The prior
+implementation and benchmarks below remain historical evidence. See the
+[retirement scope](../features/export-lifecycle.md#scheduled-retirement-from-mvp-export).
+
 Proposed by T01 on 2026-10-23; partially implemented by T19b on 2026-10-29.
 The MVP has an opt-in isolated Wormhole snapshot/runtime. Compatible remains the
 default and Studio retains the legacy path. T19c4 adds the minimizable panel.

@@ -717,6 +717,57 @@ For the live release check, run a short Isolated Wormhole export and copy the
 diagnostics after completion. Confirm that the schedule is `display`, the display
 wait is recorded separately, and Stop & save still produces a playable prefix.
 
+## T19d2 very short WebM Stop saves
+
+On the same eight-second stereo excerpt used in T19d1, the production MVP
+composition reproduced the Chromium demuxer seek failure on both the
+12-frame and 90-frame 4K60 Stop saves. Video and audio packet clocks were
+continuous. The standalone FFmpeg demuxer reported a video frame duration
+of 4,715,209,459.135 seconds in the original file. The muxer encoded the
+`DefaultDuration` payload as a float. It now writes an unsigned integer
+count of nanoseconds per frame. [Matroska DefaultDuration](https://www.rfc-editor.org/rfc/rfc9559.html#section-5.1.4.1.13)
+
+The corrected frame duration alone left the Chromium seek error reproducible.
+Testing the same packets with only the regular Opus SimpleBlock keyframe bit
+set made the 200 ms clip playable. The shared muxer now writes that bit on
+normal Opus blocks. A final trimmed packet uses its existing BlockGroup and
+DiscardPadding, with the Block keyframe bit reserved. No codec settings or
+payloads need to change. [Matroska block flags and seek points](https://www.rfc-editor.org/rfc/rfc9559.html#section-10.2)
+
+With both fixes applied, Chromium played the Compatible and Isolated
+4K60 outputs to their 200 ms and 1,500 ms endpoints. The Compatible
+Cancel produced no file, the retry produced a playable 200 ms file, and
+a full Compatible export played to 8 s. The independent packet reader
+verified contiguous video and audio and the audio endpoint for each output.
+FFmpeg decoded and sought within the short exported files.
+
+The local receipts under `logs/t19d2/` retain the failing files, the header
+variants and the production-path rerun. For manual acceptance, use Stop & save
+near the start of a 4K MVP export and play the downloaded file from the beginning.
+Then try a full export or Cancel followed by a fresh export. The physical mobile
+check remains open.
+
+```text
+npm run build
+npm test -- --test-reporter=tap --test-concurrency=4
+node --test --test-reporter=tap --test-concurrency=3 tests/export-webm-duration.test.mjs tests/export-opus-muxer.test.mjs tests/export-scheduling.test.mjs tests/export-isolated.test.mjs tests/export-lifecycle.test.mjs tests/export-cache.test.mjs tests/export-preparation.test.mjs tests/export-deterministic.test.mjs tests/mvp-background-export.test.mjs tests/mvp-export-panel.test.mjs
+git diff --check
+```
+
+## Scheduled retirement from MVP export
+
+The user approved T19d1 and scheduled T19e to retire Isolated Wormhole from MVP
+export. First check very short Stop saves on the remaining MVP route. Then remove
+the MVP render-mode selector, the isolated memory preference, the snapshot
+factory and diagnostics wiring, and the editor unlock tied to a frozen job.
+Existing sessions and stale export preferences should use the remaining route.
+Keep the common resolution, export controls, compact status, download and
+finished-file cleanup. The change is scoped to MVP export. Wormhole playback,
+preview, Studio and XR are outside the retirement scope.
+
+Keep the earlier benchmarks as historical evidence. Base any later MVP
+acceleration proposal on matched measurements of the remaining export route.
+
 ## Optional accelerated export research (2026-11-04)
 
 The user reports that their current mobile export is stable and slow. Preserve that workflow
