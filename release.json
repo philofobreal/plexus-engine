@@ -1,7 +1,7 @@
 {
-  "id": "t19c5-background-export-20261104T172558491Z",
-  "previousCommit": "898201dc93efa70486f26612033f4514650eb13f",
-  "sourceCommit": "480bb816c9f487955f6c4ce572c8ef505f263797",
+  "id": "t19d1-export-scheduling-20261104T181238989Z",
+  "previousCommit": "59ade404faa009c060ce39a24f47b0cabad1c0f1",
+  "sourceCommit": "a501801a0653cf33f480ff8402937de60bc0c88b",
   "inputs": [
     {
       "path": "bun.lock",
@@ -681,7 +681,7 @@
     },
     {
       "path": "src/export/WebCodecsBackend.ts",
-      "sha256": "f74c583f6383ab96f49695f7e3bcffac38d930dc266a2da33acc3660d252dfac"
+      "sha256": "a67f2499438b7a420fbd3e7077978b8c252958362ed6771b64d87bbf4bdf00b0"
     },
     {
       "path": "src/export/WebMExporter.ts",
@@ -889,7 +889,7 @@
     },
     {
       "path": "src/types/ExportRenderJob.ts",
-      "sha256": "3f1a7abeed0ca9416ef20bd030840fab91e7ee9bbe000a035b6062de91c6e171"
+      "sha256": "73c15d4de0a3f046087cb4dbbb4ac1a374ae2250a14b43374bc214eaae89e7c5"
     },
     {
       "path": "src/types/GrainLineFrame.ts",
@@ -1682,28 +1682,28 @@
       "sha256": "5fe5fb080b24f0c7fbbb305ced4b3d836d37351843709ad220ca72f8c8554a5c"
     },
     {
-      "path": "assets/main-BzS8Hx0B.js",
-      "sha256": "aa0093f050548ee9351d6c01524018ca8d7b63cad3b312a3f8248691c10b4f25"
-    },
-    {
       "path": "assets/main-C7BsYBKL.css",
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+    },
+    {
+      "path": "assets/main-DukvXcqT.js",
+      "sha256": "a67ee273affbe2c8fbbd1349ac5b55d33be9732b867962088db3a66576ffe1ca"
+    },
+    {
+      "path": "assets/mvp-B-2YunQV.js",
+      "sha256": "cee3336383babcc8fbced7bf58325af897ab05da0c0deb770b1f441003452f66"
     },
     {
       "path": "assets/mvp-BAtjf-TP.css",
       "sha256": "7ad3770813fc3f2d7ed222d918e2f93e0b6ac0d2572fa1fde614fed3c8b9b7a8"
     },
     {
-      "path": "assets/mvp-DRkomK0O.js",
-      "sha256": "9def92b2502398a17e62b33d34f436acc196ffb20d5f66c4fb0f9f4a20367d47"
-    },
-    {
-      "path": "assets/PreviewQualityControl-CybtEi8l.js",
-      "sha256": "e3a3ff999a2d8061be4df51538bd9d4c827f344b374326f2588719d90dbba38e"
-    },
-    {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
       "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+    },
+    {
+      "path": "assets/PreviewQualityControl-DkGZSbz8.js",
+      "sha256": "afbbce89c49e15c909fe9420d0238b5baac62f061ab34ad708ac127c2d43b91e"
     },
     {
       "path": "assets/WormholeCanvasSource-Qb2WrWdG.js",
@@ -1743,11 +1743,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "7cda4a8a659c2a8f7d48061e3b2ef6655e9fca28a4a43933e9b44633b2e4ad28"
+      "sha256": "bc1ccb4c8e363ac614c12a472017bc1664deba57a539d841a33d291412919577"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "09d439805dc2ca5006f664fc9536732113fe8b967c86e9a738b3aea501ca98c2"
+      "sha256": "7a98c8b85f48ad54cc2b70a80faf4fcf0f93f3264f0c5342306d3802b8afa29c"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
