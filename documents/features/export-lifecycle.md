@@ -836,18 +836,17 @@ node research/export/ffmpeg-baseline.mjs logs/t20a path/to/short.webm path/to/lo
 
 ### Delivery order
 
-1. **T20a1 browser prototype.** On the current host, measure the Compatible
-   job from start to downloaded file. Compare a worker-local FFmpeg muxer
-   fed once-encoded H.264/AAC with direct FFmpeg encoding from ordered frame
-   and PCM inputs. Choose a timestamp-bearing input seam and measure actual
-   copies and peak memory. Start with 720p and 1080p and then check supported
-   4K. A direct encoder needs bounded frame admission and storage, including
-   on mobile. Record unsupported codec and platform cases.
-2. **T20a2 MVP integration.** Integrate the viable candidate behind an explicit
-   export choice. Reuse the current resolution, job controls and file ownership.
-   Preflight the requested config, preserve the contiguous Stop prefix and
-   discard incomplete output on Cancel. Use the existing WebM option when the
-   candidate is unavailable and give the user the reason.
+1. **T20a1 browser prototype — completed as research.** The hybrid browser
+   export produced valid 720p, 1080p and 4K MP4 without re-encoding the video.
+   The evidence and remaining limits are below.
+2. **T20a2 MVP integration.** Carry forward the hybrid compressed-video seam.
+   Compare browser AAC plus an MP4 writer as a same-format control and isolate
+   the value of FFmpeg finalization. Qualify an on-demand, minimal FFmpeg core
+   and its distribution requirements. Bound PCM, intermediate and final output
+   storage for long jobs before exposing an explicit export choice. Reuse the
+   current resolution, job controls and file ownership. Preflight the requested
+   config, preserve the contiguous Stop prefix and discard incomplete output on
+   Cancel. Keep WebM available and explain when MP4 is unavailable.
 3. **T20a3 release and promotion.** Run cold and warm jobs on desktop and
    physical Android and iOS, with short prefixes, long runs and supported 4K.
    Measure whole-job time, command latency, maximum resources, recovery and
@@ -866,6 +865,79 @@ A threaded Emscripten core needs cross-origin isolation and a separate
 non-threaded build for devices without it. A native hosted service would need
 a separate runtime and an explicit product decision about processing user
 media. [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages), [ffmpeg.wasm architecture](https://ffmpegwasm.netlify.app/docs/overview/#architecture), [Emscripten pthreads](https://emscripten.org/docs/porting/pthreads.html)
+
+### T20a1 browser evidence (2026-11-04)
+
+The [local comparison](../../research/export/ffmpeg-browser.html) uses the real
+Compatible WebM exporter, its worker and normal storage selection with synthetic
+canvas and stereo PCM input. The two MP4 variants use the same frame clock,
+scene and samples, with PCM16 WAV input to FFmpeg. The hybrid route uses browser
+WebCodecs to encode H.264 into a video-only MP4; FFmpeg copies those packets and
+encodes AAC once. The direct route encodes RGBA with libx264 and the same AAC
+settings. Each FFmpeg run starts its own worker; browser asset caches are not
+cleared between jobs. A fresh network load and download UI time are outside these
+timings. Windows Chromium 156, no cross-origin isolation; the browser reported
+8 logical processors and a 32 GiB device-memory hint.
+
+| Full synthetic clip (12 frames, 30 fps) | Compatible VP9/Opus | Hybrid H.264/AAC | Direct WASM H.264/AAC |
+| --- | ---: | ---: | ---: |
+| 720p | 464 ms | 415 ms | 505 ms |
+| 1080p | 471 ms | 524 ms | 787 ms |
+| 4K | 648 ms | 861 ms | Declined by the fixture before allocation |
+
+Values are medians of three runs from job start to finished Blob, before
+validation. In the same order as the table, the three measurements per route
+were `537/464/455, 638/415/413, 505/485/533` ms at 720p,
+`471/466/493, 524/521/527, 786/787/823` ms at 1080p, and
+`648/627/686, 805/861/919` ms at 4K. 720p hybrid worker initialization
+varied from 130 to 354 ms. The hybrid FFmpeg command itself took 63–83 ms at 720p
+and 4K; at 1080p it took 68–84 ms, versus 513–561 ms for direct FFmpeg.
+Different codecs, rate control and short synthetic content prevent a
+like-for-like quality or production speed claim.
+
+In each run all 14 executed cases passed and direct 4K was declined as intended.
+Each complete export contained 12 video packets and the 720p Stop case contained
+the exact six-frame prefix. For both MP4 paths Chromium decoded 19,200 stereo
+samples for the full clip and 9,600 for Stop. Compatible decoded 24 samples
+fewer in each case. The image flash and stereo audio cue aligned at frame 3.
+Hybrid H.264 packet SHA-256 values and timestamps matched the intermediate.
+Compatible Cancel returned no result after frame 4; both FFmpeg variants
+terminated their worker during an active command and returned no Blob, then
+successfully ran the Stop case with a new worker.
+
+Direct 1080p staged 99,532,800 bytes of raw RGBA for 12 frames plus transient
+frame readback and a Blob copy. Direct 4K would stage 398,131,200 bytes, so the
+prototype refuses it at its 96 MiB raw-input guard. In 4K the hybrid fed
+36,451 bytes of compressed video plus 76,844 bytes of WAV and returned a
+46,759-byte MP4. WORKERFS mounts the Blobs without a whole-file write into
+MEMFS; the output still occupies MEMFS and is read into a transferable array
+before construction of the result Blob. These are observed payload sizes
+and known copies, not a peak browser, WASM or GPU memory measurement. Neither
+whole-file buffering nor the bundled test core is a production design.
+
+The core WASM is 32,232,419 bytes (SHA-256
+`9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7`).
+It was used locally only. It includes libx264, which has
+[GPL distribution implications](https://ffmpeg.org/legal.html). The hybrid
+candidate does not use that encoder; evaluate a reproducible reduced build
+without it, with appropriate notices and source availability, before shipping.
+Chromium reported that it can encode browser AAC; actual output and fallbacks
+on physical Android/iOS, long jobs, cold startup, 4K limits and destination
+player/editor compatibility remain unqualified.
+
+Reproduce from the project root, with the existing project dependencies:
+
+```powershell
+npm install --prefix logs/t20a1/vendor --no-audit --no-fund --ignore-scripts --save-exact @ffmpeg/ffmpeg@0.12.15 @ffmpeg/core@0.12.10 mediabunny@1.39.1
+node research/export/serve-ffmpeg-browser.mjs
+```
+
+Open `http://127.0.0.1:5209/plexus-engine/research/export/ffmpeg-browser.html`,
+select **Run export comparison** and inspect the JSON and verified download
+links. The server binds only to loopback; the generated site, downloaded
+packages and media are excluded from the production build and Git. The 37
+targeted existing Node export tests also passed; this research did not change
+application sources or the active regression inventory.
 
 ## Optional accelerated export research (2026-11-04)
 

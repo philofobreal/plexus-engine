@@ -2,7 +2,7 @@
 
 Started 2026-10-23. Checkpoint 2026-11-04 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**The user accepted T19e and prioritized the FFmpeg transition for MVP export. T20a now leads the export work. It starts with a native reference and a browser prototype against the remaining Compatible path. T15 remains deferred.**
+**The user prioritized the FFmpeg transition for MVP export. T20a0 and T20a1 established the native and browser references. T20a2 is next after manual acceptance. T15 remains deferred.**
 
 ### Remaining work in execution order (2026-11-04)
 
@@ -24,8 +24,8 @@ remain useful alongside the acceleration work.
 | 4 | **T19d2 very short Stop saves.** Qualify the shared WebM output on the remaining MVP export path. | Reproduced and corrected in the [shared WebM muxer](../features/export-lifecycle.md#t19d2-very-short-webm-stop-saves). Deployed and manually accepted before T19e. |
 | 5 | **T19e retire Isolated Wormhole from MVP export.** Remove the export choice and MVP-only snapshot wiring, memory override, isolated diagnostics and concurrent editing/playback/replacement behavior. | Deployed and manually accepted. See the [retirement record](../features/export-lifecycle.md#scheduled-retirement-from-mvp-export) for saved preferences, workspace locking and preserved research coverage. |
 | 6 | **T20a0 FFmpeg reference and decision.** Measure the real Compatible short 4K output with native FFmpeg. | Completed as research. See the [FFmpeg transition schedule](../features/export-lifecycle.md#ffmpeg-transition-priority-t20a). Treat MP4/H.264/AAC as the first candidate. Confirm the intended playback/editor destinations during qualification. |
-| 7 | **T20a1 browser prototype.** Compare browser-local FFmpeg finalization of streams encoded once with direct FFmpeg encoding and the current export. | Use one job clock. Measure exact codec support, bounded input/output storage and initialization. Verify full export, contiguous Stop, Cancel/retry, decoded timing and cleanup before integrating the job. |
-| 8 | **T20a2 integration and T20a3 qualification.** Integrate the selected FFmpeg path into the MVP coordinator and qualify desktop and physical mobile together. | Keep the existing WebM option. Publish the FFmpeg option only after the matched quality, resource and lifecycle gates pass. Promote it to default only after separate acceptance. |
+| 7 | **T20a1 browser prototype.** Compare FFmpeg finalization of H.264 packets, direct WASM encoding and Compatible WebM. | Research complete, awaiting manual acceptance. Hybrid produced valid 4K MP4, preserved every compressed video packet and passed the 720p Stop/Cancel/retry checks. Direct 4K crossed the fixture's raw buffer limit. See the [browser evidence](../features/export-lifecycle.md#t20a1-browser-evidence-2026-11-04). |
+| 8 | **T20a2 integration and T20a3 qualification.** Use the hybrid compressed-video seam for the MVP candidate. Check the same-format browser control, reduced core, long-job storage and device capability first. Then qualify desktop and physical mobile together. | Keep the existing WebM option. Publish the FFmpeg option only after the matched quality, resource and lifecycle gates pass. Promote it to default only after separate acceptance. |
 | 9 | **T19 performance follow-up and T21 captions.** Run extra render-worker work when measurements identify it as the bottleneck. Schedule timed captions after the FFmpeg route is stable. | T19d1 remains historical evidence. T21 defines timing/overlap and verifies preview/export parity. |
 | 10 | **T22–T24 Studio and own-domain release.** Confirm access and hosting scope. | T22 and T23 gate public Studio release. T24 requires a verified runtime, HTTPS, route/asset smoke checks and a tested rollback. See [ADR-013](../adr/ADR-013-studio-server-session-boundary.md). |
 

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>T20a1 browser export comparison</title>
+<style>
+body { background: #101923; color: #def2ff; font: 16px system-ui; margin: 24px; max-width: 960px }
+button { padding: 12px; margin: 8px 0 }
+canvas { width: 320px; display: block }
+pre { white-space: pre-wrap; overflow-wrap: anywhere }
+</style>
+<h1>T20a1 — browser export comparison</h1>
+<p>Local synthetic fixture. Compares Plexus Compatible WebM, browser H.264 with FFmpeg finalization, and direct FFmpeg encoding. No uploads.</p>
+<button id="run" disabled>Run export comparison</button>
+<canvas width="1280" height="720"></canvas>
+<ul id="downloads" aria-label="Verified exports"></ul>
+<pre id="result">Ready</pre>
+<script type="module" src="./ffmpeg-browser.mjs"></script>
+</html>
