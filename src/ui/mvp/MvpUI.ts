@@ -1,7 +1,5 @@
 import type { AudioEngine } from '../../audio/AudioEngine';
 import type { ExportConfig } from '../../export/ExportTypes';
-import type { ExportRuntimeFactory } from '../../types/ExportRenderJob';
-import { DEFAULT_MUSIC_DISPLAY } from '../../types/MusicDisplay';
 import type { DramaturgyActivityLevel, DramaturgyVariantMode, VisualTuningConfig } from '../../types';
 import { State } from '../../state/store';
 import { MvpVisualController } from './MvpVisualController';
@@ -77,15 +75,11 @@ export class MvpUI {
     private timelineHidden = false;
     private toastTimer: number | null = null;
     private viewKey = '';
-    private exportJob: {
-        ready: boolean;
-        minimized: boolean;
-        updateWorkspace: () => void;
-    } | null = null;
+    private exportJob: symbol | null = null;
     private readonly previewQualityControl?: ReturnType<typeof createPreviewQualityControl>;
 
     constructor(engine: AudioEngine, hasTimeBasedSemanticPlan: () => boolean = () => false,
-        previewQualityControl?: ReturnType<typeof createPreviewQualityControl>, isolatedExportFactory?: ExportRuntimeFactory) {
+        previewQualityControl?: ReturnType<typeof createPreviewQualityControl>) {
         this.previewQualityControl = previewQualityControl;
         this.root = document.createElement('div');
         this.root.className = 'mvp-shell';
@@ -245,10 +239,9 @@ export class MvpUI {
             onStart: (config) => void this.runExport(config),
             onStop: () => { if (this.exportJob) this.controller.stopAndSaveExport(); },
             onCancel: () => { if (this.exportJob) this.controller.cancelExport(); },
-            onMinimizedChange: minimized => this.setExportMinimized(minimized),
             getCacheSummary: () => this.controller.getExportCacheSummary(),
             onClearCache: () => this.controller.clearExportCache()
-        }, Boolean(isolatedExportFactory));
+        });
 
         this.root.appendChild(topbar);
         this.root.appendChild(main);
@@ -292,8 +285,6 @@ export class MvpUI {
         this.updateTimelineVisibility();
 
         this.controller = new MvpVisualController(engine, hasTimeBasedSemanticPlan, {
-            onExportProfile: profile => this.exportDialog.setProfile(profile),
-            onExportPreparation: message => this.exportDialog.setPreparationStatus(message),
             onLoadStart: (fileName) => { this.currentFileName = fileName; this.hasAutoSelected = false; this.showAnalyzing(fileName); },
             onProgress: (progress) => this.analyzing.setProgress(progress),
             onAnalysisComplete: () => this.showReady(),
@@ -318,8 +309,7 @@ export class MvpUI {
             getWorkspaceSnapshot: () => this.captureWorkspace(),
             onSessionNotice: message => this.showToast(message),
             onWorkspaceRestored: workspace => this.restoreWorkspace(workspace)
-        }, isolatedExportFactory ? { factory: isolatedExportFactory,
-            musicDisplay: () => previewQualityControl?.preference.musicDisplay ?? DEFAULT_MUSIC_DISPLAY } : undefined);
+        });
 
         new HistoryInput(window, {
             undo: () => this.applyHistory(false), redo: () => this.applyHistory(true),
@@ -387,22 +377,10 @@ export class MvpUI {
     // ─── File lifecycle ─────────────────────────────────────────────────────
 
     private handleFile(file: File): void {
-        if (this.exportBlocksWorkspace()) return;
+        if (this.exportJob) return;
         void this.unsavedChangesGuard.run(() => {
-            if (!this.exportBlocksWorkspace()) void this.controller.loadFile(file);
+            if (!this.exportJob) void this.controller.loadFile(file);
         });
-    }
-
-    private setExportMinimized(minimized: boolean): void {
-        const job = this.exportJob;
-        if (!job) return;
-        job.minimized = minimized;
-        job.updateWorkspace();
-    }
-
-    private exportBlocksWorkspace(): boolean {
-        const job = this.exportJob;
-        return job !== null && !(job.ready && job.minimized);
     }
 
     private showAnalyzing(fileName: string): void {
@@ -520,7 +498,7 @@ export class MvpUI {
 
     private historyBlocked(): boolean {
         return !this.controller.canUseHistory() || Boolean(document.querySelector('dialog[open]'))
-            || (this.exportJob ? this.exportBlocksWorkspace() : this.exportDialog.blocksWorkspaceShortcuts());
+            || this.exportDialog.blocksWorkspaceShortcuts();
     }
 
     private applyHistory(redo: boolean): void {
@@ -636,38 +614,17 @@ export class MvpUI {
 
     private async runExport(config: ExportConfig): Promise<void> {
         if (this.exportJob) return;
-        const isolated = config.runtime === 'isolated-wormhole';
-        const locked = new Set<HTMLElement>();
-        const unlock = () => {
-            for (const element of locked) element.inert = false;
-            locked.clear();
-        };
-        const job = {
-            ready: false,
-            minimized: false,
-            updateWorkspace: () => {
-                if (!this.exportBlocksWorkspace()) { unlock(); return; }
-                for (const element of Array.from(this.root.children)) {
-                    if (element instanceof HTMLElement && element !== this.exportDialog.root && !element.inert) {
-                        element.inert = true;
-                        locked.add(element);
-                    }
-                }
-            }
-        };
+        const job = Symbol();
+        const locked = Array.from(this.root.children).filter((element): element is HTMLElement =>
+            element instanceof HTMLElement && element !== this.exportDialog.root && !element.inert);
         this.exportJob = job;
         try {
-            this.exportDialog.setActive(true, config);
+            this.exportDialog.setActive(true);
             this.exportDialog.setStatus('Preparing export…');
-            job.updateWorkspace();
+            for (const element of locked) element.inert = true;
             this.unsavedChangesGuard.sync();
             const blob = await this.controller.startExport(config, progress => {
-                if (this.exportJob !== job) return;
-                if (isolated && progress < 1 && !job.ready) {
-                    job.ready = true;
-                    job.updateWorkspace();
-                }
-                this.exportDialog.setProgress(progress);
+                if (this.exportJob === job) this.exportDialog.setProgress(progress);
             });
             if (this.exportJob !== job) return;
             this.downloadBlob(blob, 'plexus-visual.webm');
@@ -680,7 +637,7 @@ export class MvpUI {
         } finally {
             if (this.exportJob === job) {
                 this.exportJob = null;
-                unlock();
+                for (const element of locked) element.inert = false;
                 this.unsavedChangesGuard.sync();
                 this.exportDialog.setActive(false);
             }

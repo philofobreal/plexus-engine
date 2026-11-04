@@ -7,7 +7,6 @@ const config = { resolution: '720p', aspectRatio: '16:9', fps: 60, runtime: 'iso
 const plain = x => JSON.parse(JSON.stringify(x));
 const hash = x => createHash('sha256').update(JSON.stringify(x)).digest('hex');
 const deferred = () => { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; };
-const flush = () => new Promise(resolve => setImmediate(resolve));
 async function until(f) { for (let i = 0; i < 200 && !f(); i++) await new Promise(resolve => setTimeout(resolve, 1)); assert.ok(f(), 'boundary not reached'); }
 function fixture(globals = {}) {
     const load = createLoader({}, { crypto: webcrypto, TextEncoder, Float32Array, AbortController, ...globals });
@@ -266,31 +265,6 @@ test('coordinator keeps Compatible as the legacy path and explicitly rejects uns
     await assert.rejects(legacy.startExport(config, () => {}), /unavailable in this host/);
 });
 
-test('MVP isolated selection restores/saves/copies settings and diagnostics without persisting PCM or resetting legacy defaults', async () => {
-    class Element extends EventTarget {
-        disabled = false; dataset = {}; style = {}; textContent = ''; value = ''; children = new Map();
-        classList = { toggle() {}, remove() {}, add() {}, contains() { return false; } };
-        querySelector(s) { if (!this.children.has(s)) this.children.set(s, new Element()); return this.children.get(s); }
-        querySelectorAll() { return []; } click() { this.dispatchEvent(new Event('click')); }
-    }
-    const storage = new Map([['plexus.exportRuntime', 'isolated-wormhole']]), copied = [], starts = [];
-    const load = createLoader({}, { document: { createElement: () => new Element() },
-        window: { localStorage: { getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v) } },
-        navigator: { clipboard: { async writeText(text) { copied.push(JSON.parse(text)); } } } });
-    const { ExportDialog } = load('ui/mvp/ExportDialog.ts');
-    const dialog = new ExportDialog({ onStart: c => starts.push(c), onStop() {}, onCancel() {} }, true);
-    const select = dialog.root.querySelector('.mvp-export-runtime');
-    assert.equal(select.value, 'isolated-wormhole');
-    dialog.root.querySelector('.mvp-export-start').click(); assert.equal(starts[0].runtime, 'isolated-wormhole');
-    dialog.setProfile({ analysisId: 'test', stagesMs: { bitmap: 2 }, outcome: 'completed' });
-    dialog.root.querySelector('.mvp-export-copy').click(); await flush();
-    assert.equal(copied[0].export.runtime, 'isolated-wormhole'); assert.equal(copied[0].diagnostics.stagesMs.bitmap, 2);
-    select.value = 'compatible'; select.dispatchEvent(new Event('change'));
-    assert.equal(storage.get('plexus.exportRuntime'), 'compatible');
-    const legacy = new ExportDialog({ onStart() {}, onStop() {}, onCancel() {} });
-    assert.equal(legacy.root.querySelector('.mvp-export-runtime').value, 'compatible');
-});
-
 test('worker profiling is additive, identifies flush stages and preserves the unprofiled done packet', async () => {
     for (const profiling of [false, true]) {
         const messages = []; let time = 0;
@@ -343,28 +317,3 @@ test('coordinator releases a prepared private runtime after capability/backend f
     await assert.rejects(exporter.startExport(config, () => {}), /codec unavailable/); assert.equal(disposed, 1);
     await assert.rejects(exporter.startExport(config, () => {}), /codec unavailable/); assert.equal(disposed, 2);
 });
-
-test('MVP rejects a settings revision changed during snapshot hashing before constructing its renderer', async () => {
-    const gate = deferred(); let prepare, constructed = 0;
-    class Exporter {
-        constructor(_p, _c, _e, _v, options) { prepare = options.prepareRuntime; }
-        async startExport(c) { const runtime = await prepare(c, new AbortController().signal); runtime.dispose(); return new Blob(['video']); }
-    }
-    const stubs = { '../../export/WebMExporter': { WebMExporter: Exporter } };
-    const h = fixture({ crypto: { subtle: { digest: () => gate.promise } } });
-    const load = createLoader(stubs, { crypto: { subtle: { digest: () => gate.promise } }, TextEncoder, Float32Array, AbortController, performance,
-        fetch: async () => ({ ok: true, json: async () => ({ presets: [] }) }) });
-    const state = load('state/store.ts').State;
-    Object.assign(state, h.input.analysis); state.targetTuning = h.input.seed.rawTuning;
-    const engine = { addPlaybackStateListener() {}, addPositionChangedListener() {}, stop() {}, getAudioBuffer: () => h.audio };
-    const Controller = load('ui/mvp/MvpVisualController.ts').MvpVisualController;
-    const controller = new Controller(engine, () => false, { onProgress() {}, onAnalysisError() {}, onPlaybackEnded() {}, onPlaybackStateChange() {}, onPositionChange() {} },
-        { factory() { constructed++; throw new Error('must not construct'); }, musicDisplay: () => h.input.musicDisplay });
-    controller.setExportTarget({}, {}); controller.currentFileHash = 'a'.repeat(64);
-    controller.presetCache.set('p.json', h.input.presets['p.json']);
-    state.performancePlan = h.input.analysis.performancePlan;
-    const result = controller.startExport(config, () => {});
-    controller.macros.motion = .8; gate.resolve(new ArrayBuffer(32));
-    await assert.rejects(result, /changed during export preparation/); assert.equal(constructed, 0);
-});
-

@@ -95,36 +95,6 @@ test('Auto has a documented 2GiB planning ceiling; explicit smaller limits are e
     assert.equal(reads, 1); // No huge allocation is made by this admission test.
 });
 
-test('MVP memory choice restores, saves, copies and locks with the active job; invalid storage falls back to Auto', async () => {
-    class Element extends EventTarget {
-        disabled = false; dataset = {}; style = {}; textContent = ''; value = ''; children = new Map();
-        classList = { toggle() {}, remove() {}, add() {}, contains() { return false; } };
-        querySelector(s) { if (!this.children.has(s)) this.children.set(s, new Element()); return this.children.get(s); }
-        querySelectorAll(selector) {
-            if (selector !== '.mvp-export-resolution button') return [];
-            return this.buttons ??= ['720p', '1080p', '4K'].map(res => Object.assign(new Element(), { dataset: { res } }));
-        } click() { this.dispatchEvent(new Event('click')); }
-    }
-    const storage = new Map([['plexus.exportRuntime', 'isolated-wormhole'], ['plexus.exportMemoryLimit', '1024']]), copied = [], starts = [];
-    const uiLoad = createLoader({}, { document: { createElement: () => new Element() },
-        window: { localStorage: { getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v) } },
-        navigator: { clipboard: { async writeText(s) { copied.push(JSON.parse(s)); } } } });
-    const Dialog = uiLoad('ui/mvp/ExportDialog.ts').ExportDialog;
-    const dialog = new Dialog({ onStart: c => starts.push(c), onStop() {}, onCancel() {} }, true);
-    const memory = dialog.root.querySelector('.mvp-export-memory'); assert.equal(memory.value, '1024'); assert.equal(memory.disabled, false);
-    memory.value = '512'; memory.dispatchEvent(new Event('change')); assert.equal(storage.get('plexus.exportMemoryLimit'), '512');
-    dialog.root.querySelector('.mvp-export-start').click(); assert.equal(starts[0].memoryLimitMiB, 512); assert.equal(starts[0].preflight, true);
-    dialog.root.querySelector('.mvp-export-copy').click(); await Promise.resolve(); assert.equal(copied[0].export.memoryLimitMiB, 512);
-    dialog.setActive(true); assert.equal(memory.disabled, true); dialog.setActive(false); assert.equal(memory.disabled, false);
-    storage.set('plexus.exportMemoryLimit', '999999999'); const fresh = new Dialog({ onStart() {}, onStop() {}, onCancel() {} }, true);
-    assert.equal(fresh.root.querySelector('.mvp-export-memory').value, 'auto');
-    dialog.applyCapabilityReport({ preferredBackend: 'webcodecs', canExport4K: false, fourKRestriction: 'device-heuristic', warnings: ['4K rendering disabled'] });
-    const fourK = dialog.root.querySelectorAll('.mvp-export-resolution button').find(b => b.dataset.res === '4K');
-    assert.equal(fourK.disabled, false, 'A device-class guess cannot override actual worker testing in MVP');
-    dialog.applyCapabilityReport({ preferredBackend: 'webcodecs', canExport4K: false, warnings: [] });
-    assert.equal(fourK.disabled, true, 'An explicit non-heuristic capability restriction is retained');
-});
-
 function backendHarness() {
     const messages = [], rendered = [], profiles = []; let worker;
     const forbidden = new Proxy({}, { get() { throw new Error('Live access'); }, set() { throw new Error('Live mutation'); } });

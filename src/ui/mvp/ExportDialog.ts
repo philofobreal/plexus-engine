@@ -1,11 +1,9 @@
 import type { ExportCapabilities, ExportConfig, ExportResolution } from '../../export/ExportTypes';
-import type { ExportProfile } from '../../types/ExportRenderJob';
 
 export interface ExportDialogCallbacks {
     onStart: (config: ExportConfig) => void;
     onStop: () => void;
     onCancel: () => void;
-    onMinimizedChange?: (minimized: boolean) => void;
     getCacheSummary?: () => { files: number; cleanupPending: number; scope: string };
     onClearCache?: () => Promise<{ removed: number; remaining: number }>;
 }
@@ -27,19 +25,13 @@ export class ExportDialog {
     private isActive = false;
     private controlPending = false;
     private compact = false;
-    private jobConfig: ExportConfig | null = null;
     private returnFocus: HTMLElement | null = null;
     private blockedMessage: string | null = null;
-    private readonly runtimeSelect: HTMLSelectElement;
-    private readonly memorySelect: HTMLSelectElement;
     private readonly clearCacheBtn: HTMLButtonElement;
     private cacheClearing = false;
-    private profile: ExportProfile | null = null;
-    private readonly isolatedAvailable: boolean;
 
-    constructor(callbacks: ExportDialogCallbacks, isolatedAvailable = false) {
+    constructor(callbacks: ExportDialogCallbacks) {
         this.callbacks = callbacks;
-        this.isolatedAvailable = isolatedAvailable;
         this.root = document.createElement('div');
         this.root.className = 'mvp-modal-scrim mvp-hidden';
         this.root.innerHTML = `
@@ -53,22 +45,6 @@ export class ExportDialog {
                         <button type="button" data-res="1080p">1080p</button>
                         <button type="button" data-res="4K">4K</button>
                     </div>
-                </div>
-                <div class="mvp-field"><label>Rendering
-                    <select class="mvp-select mvp-export-runtime" aria-label="Export rendering">
-                        <option value="compatible">Compatible (current)</option>
-                        <option value="isolated-wormhole">Isolated Wormhole (preview)</option>
-                    </select></label>
-                    <small>Isolated checks codec support and freezes the track. Minimize once exporting starts to keep working.</small>
-                </div>
-                <div class="mvp-field"><label>Export memory limit
-                    <select class="mvp-select mvp-export-memory" aria-label="Export memory limit">
-                        <option value="auto">Auto (up to 2 GiB)</option>
-                        <option value="512">512 MiB</option>
-                        <option value="1024">1 GiB</option>
-                        <option value="2048">2 GiB</option>
-                    </select></label>
-                    <small>Isolated export planning limit, not reserved or detected free RAM. Auto warns above 1 GiB. A short codec test cannot guarantee a full export.</small>
                 </div>
                 <div class="mvp-capability-warning mvp-hidden"></div>
                 </div>
@@ -84,7 +60,7 @@ export class ExportDialog {
                 <div class="mvp-modal-actions">
                     <button type="button" class="mvp-btn mvp-export-minimize mvp-hidden">Minimize</button>
                     <button type="button" class="mvp-btn mvp-export-details">Details</button>
-                    <button type="button" class="mvp-btn mvp-export-copy">Copy settings &amp; diagnostics</button>
+                    <button type="button" class="mvp-btn mvp-export-copy">Copy export settings</button>
                     <button type="button" class="mvp-btn mvp-export-cancel">Cancel</button>
                     <button type="button" class="mvp-btn mvp-export-stop mvp-hidden">Stop &amp; save</button>
                     <button type="button" class="mvp-btn mvp-btn-accent mvp-export-start">Export</button>
@@ -104,35 +80,13 @@ export class ExportDialog {
         this.statusEl = this.root.querySelector('.mvp-modal-status')!;
         this.capabilityWarningEl = this.root.querySelector('.mvp-capability-warning')!;
         this.resolutionBtns = Array.from(this.root.querySelectorAll('.mvp-export-resolution button'));
-        this.runtimeSelect = this.root.querySelector('.mvp-export-runtime')!;
-        this.memorySelect = this.root.querySelector('.mvp-export-memory')!;
         this.clearCacheBtn = this.root.querySelector('.mvp-export-clear-cache')!;
         this.clearCacheBtn.addEventListener('click', () => { void this.clearCache(); });
         // The composition root wires its controller after constructing leaf views.
         this.clearCacheBtn.disabled = true;
-        let memory = 'auto';
-        try { memory = window.localStorage.getItem('plexus.exportMemoryLimit') ?? 'auto'; } catch { /* Session default. */ }
-        this.memorySelect.value = ['512', '1024', '2048'].includes(memory) ? memory : 'auto';
-        this.memorySelect.addEventListener('change', () => {
-            if (this.isActive) return;
-            try { window.localStorage.setItem('plexus.exportMemoryLimit', this.memorySelect.value); } catch { /* Session only. */ }
-        });
-        let stored: string | null = null;
-        try { stored = window.localStorage.getItem('plexus.exportRuntime'); } catch { /* Session default. */ }
-        this.runtimeSelect.value = isolatedAvailable && stored === 'isolated-wormhole' ? stored : 'compatible';
-        this.memorySelect.disabled = !isolatedAvailable || this.runtimeSelect.value === 'compatible';
-        const isolatedOption = this.runtimeSelect.querySelector<HTMLOptionElement>('[value="isolated-wormhole"]');
-        if (isolatedOption) isolatedOption.disabled = !isolatedAvailable;
-        this.runtimeSelect.addEventListener('change', () => {
-            if (this.isActive) return;
-            this.memorySelect.disabled = !this.isolatedAvailable || this.runtimeSelect.value === 'compatible';
-            try { window.localStorage.setItem('plexus.exportRuntime', this.getConfig().runtime ?? 'compatible'); } catch { /* Session only. */ }
-        });
         this.root.querySelector('.mvp-export-copy')!.addEventListener('click', () => {
             if (!navigator.clipboard?.writeText) { this.setStatus('Clipboard unavailable.'); return; }
-            const exportConfig = this.isActive && this.jobConfig ? this.jobConfig : this.getConfig();
-            void navigator.clipboard.writeText(JSON.stringify({ export: exportConfig, diagnostics: this.profile,
-                ...(this.profile && this.jobConfig ? { diagnosticExport: this.jobConfig } : {}),
+            void navigator.clipboard.writeText(JSON.stringify({ export: this.getConfig(),
                 ...(this.callbacks.getCacheSummary ? { cache: this.callbacks.getCacheSummary() } : {}) }, null, 2))
                 .catch(() => this.setStatus('Unable to copy export settings.'));
         });
@@ -181,11 +135,7 @@ export class ExportDialog {
     private getConfig(): ExportConfig {
         const active = this.root.querySelector('.mvp-export-resolution button.is-active') as HTMLElement | null;
         const resolution = (active?.dataset.res ?? '720p') as ExportResolution;
-        return { resolution, aspectRatio: '16:9', fps: 60, watermark: false,
-            ...(this.isolatedAvailable && this.runtimeSelect.value === 'isolated-wormhole' ? { preflight: true } : {}),
-            ...(this.isolatedAvailable && this.runtimeSelect.value === 'isolated-wormhole' && ['512', '1024', '2048'].includes(this.memorySelect.value)
-                ? { memoryLimitMiB: Number(this.memorySelect.value) as 512 | 1024 | 2048 } : {}),
-            ...(this.isolatedAvailable && this.runtimeSelect.value === 'isolated-wormhole' ? { runtime: 'isolated-wormhole' as const } : {}) };
+        return { resolution, aspectRatio: '16:9', fps: 60, watermark: false };
     }
 
     open(): void {
@@ -199,12 +149,10 @@ export class ExportDialog {
     }
 
     private setCompact(compact: boolean): void {
-        const changed = this.compact !== compact;
         this.compact = compact;
         this.root.classList.toggle('mvp-export-compact', compact);
         this.panel.ariaModal = compact ? 'false' : 'true';
         this.cancelBtn.textContent = compact && !this.isActive ? 'Dismiss' : 'Cancel';
-        if (changed) this.callbacks.onMinimizedChange?.(compact);
     }
 
     private minimize(): void {
@@ -253,14 +201,10 @@ export class ExportDialog {
         return this.isActive || (!this.compact && !this.root.classList.contains('mvp-hidden'));
     }
 
-    setActive(isActive: boolean, config?: ExportConfig): void {
+    setActive(isActive: boolean): void {
         const focused = document.activeElement;
         this.isActive = isActive;
-        if (isActive) this.jobConfig = { ...(config ?? this.getConfig()) };
         this.refreshCache();
-        this.runtimeSelect.disabled = isActive;
-        this.memorySelect.disabled = isActive || !this.isolatedAvailable || this.runtimeSelect.value === 'compatible';
-        if (isActive) this.profile = null;
         this.controlPending = false;
         this.stopBtn.disabled = !isActive;
         this.cancelBtn.disabled = false;
@@ -293,11 +237,6 @@ export class ExportDialog {
         if (this.statusEl.textContent !== message) this.statusEl.textContent = message;
     }
 
-    setPreparationStatus(message: string): void {
-        if (this.isActive && !this.controlPending) this.setStatus(message);
-    }
-    setProfile(profile: ExportProfile): void { this.profile = profile; }
-
     /**
      * Applies a detected export-capability report (see ExportCapabilityDetector, mirroring
      * ExportController.applyCapabilityReport on the advanced dashboard): disables the whole
@@ -312,8 +251,7 @@ export class ExportDialog {
             if (!this.isActive) this.setStatus(this.blockedMessage);
         }
 
-        const workerWillCheck4K = this.isolatedAvailable && report.fourKRestriction === 'device-heuristic';
-        if (!report.canExport4K && !workerWillCheck4K) {
+        if (!report.canExport4K) {
             const fourK = this.resolutionBtns.find((btn) => btn.dataset.res === '4K');
             if (fourK) {
                 fourK.disabled = true;
@@ -327,8 +265,7 @@ export class ExportDialog {
         }
 
         if (report.warnings.length > 0) {
-            this.capabilityWarningEl.textContent = workerWillCheck4K
-                ? 'Isolated export checks 4K support at the selected output settings. Device type alone does not determine support.' : report.warnings.join(' ');
+            this.capabilityWarningEl.textContent = report.warnings.join(' ');
             this.capabilityWarningEl.classList.remove('mvp-hidden');
         }
     }

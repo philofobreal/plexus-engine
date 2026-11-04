@@ -46,7 +46,6 @@ test('the compact export retains progress, the pending command and the final out
     assert.equal(find('.mvp-export-progress output').textContent, '23%');
     stop.click();
     details.click();
-    view.setPreparationStatus('Late preparation');
     view.setProgress(.24);
     stop.click();
     assert.equal(compact(), false);

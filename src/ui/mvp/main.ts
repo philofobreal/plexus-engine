@@ -13,7 +13,6 @@ import { MvpUI } from './MvpUI';
 import { MVP_CANVAS_CONTAINER_ID } from './PreviewStage';
 import { createPreviewQualityControl } from '../PreviewQualityControl';
 import { WormholeHostWorkerSource } from '../../visuals/WormholeHostWorkerSource';
-import { WormholeExportRuntime } from '../../visuals/WormholeExportRuntime';
 
 // The MVP is locked to the Cosmic Wormhole identity (design doc: "the user never sees a Visual
 // Mode selector"). Asserted explicitly and routed through the one sanctioned State.visualMode
@@ -31,7 +30,7 @@ const engine = new AudioEngine((plan) => semanticResolver.setPlan(plan), { event
 const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
 const previewQuality = createPreviewQualityControl(!isDesktop, true, backend => engine.setAnalyzerBackend(backend));
 engine.onAnalysisBackend = previewQuality.showAnalysisBackend;
-const ui = new MvpUI(engine, () => semanticResolver.hasPlan(), previewQuality, (snapshot, audio) => new WormholeExportRuntime(snapshot, audio));
+const ui = new MvpUI(engine, () => semanticResolver.hasPlan(), previewQuality);
 document.querySelector<HTMLDivElement>('#mvp-app')!.appendChild(ui.root);
 
 const styleRegistry = createDefaultStyleRegistry();

@@ -36,17 +36,11 @@ import { computeAudioContentHash } from './audioContentHash';
 import { normalizeSessionSnapshot, type SessionCheckpoint, type WorkspaceSnapshot } from './sessionCheckpoint';
 import { ExportCapabilityDetector } from '../../export/ExportCapabilityDetector';
 import { WebMExporter, type ExportConfig } from '../../export/WebMExporter';
-import { captureExportSnapshot } from '../../export/ExportSnapshot';
 import { clearFinishedExportCache, getExportCacheSummary } from '../../export/ExportStorageLease';
-import type { ExportRuntimeFactory, ExportProfile } from '../../types/ExportRenderJob';
-import { projectRenderWorkerAnalysis } from '../../types/CanvasVisualSource';
-import { DEFAULT_MUSIC_DISPLAY, type MusicDisplaySettings } from '../../types/MusicDisplay';
 import { State } from '../../state/store';
 import type { DramaturgyActivityLevel, DramaturgyVariantMode, PerformanceAutomationPlan, PerformanceAutomationPoint, VisualTuningConfig } from '../../types';
 
 export interface MvpVisualControllerCallbacks {
-    onExportPreparation?: (message: string) => void;
-    onExportProfile?: (profile: ExportProfile) => void;
     onLoadStart: (fileName: string) => void;
     onProgress: (progress: number, stage: string) => void;
     onAnalysisComplete: () => void;
@@ -153,20 +147,16 @@ export class MvpVisualController {
     private exportP5Instance: unknown = null;
     private exportCanvas: HTMLCanvasElement | null = null;
     private currentExporter: WebMExporter | null = null;
-    private exportSnapshotReady = false;
     private exportCacheClearing: Promise<{ removed: number; remaining: number }> | null = null;
     private activityLevel: DramaturgyActivityLevel = 'balanced';
     private variantMode: DramaturgyVariantMode = 'paired';
-    private readonly isolatedExport;
 
     private readonly automationPlanView = new AutomationPlanViewCache();
 
-    constructor(engine: AudioEngine, hasTimeBasedSemanticPlan: () => boolean, callbacks: MvpVisualControllerCallbacks,
-        isolatedExport?: { factory: ExportRuntimeFactory; musicDisplay: () => MusicDisplaySettings }) {
+    constructor(engine: AudioEngine, hasTimeBasedSemanticPlan: () => boolean, callbacks: MvpVisualControllerCallbacks) {
         this.engine = engine;
         this.hasTimeBasedSemanticPlan = hasTimeBasedSemanticPlan;
         this.callbacks = callbacks;
-        this.isolatedExport = isolatedExport;
 
         engine.onProgress = (progress, stage) => this.callbacks.onProgress(progress, stage);
         engine.onAnalysisError = (message) => this.callbacks.onAnalysisError(message);
@@ -402,8 +392,8 @@ export class MvpVisualController {
         return `${import.meta.env.BASE_URL}visual-tuning-presets/${encodeURIComponent(fileName)}`;
     }
 
-    private async fetchPreset(name: string, signal?: AbortSignal): Promise<unknown> {
-        const response = await fetch(this.presetUrl(name), { cache: 'no-store', signal });
+    private async fetchPreset(name: string): Promise<unknown> {
+        const response = await fetch(this.presetUrl(name), { cache: 'no-store' });
         if (!response.ok) throw new Error(String(response.status));
         return response.json();
     }
@@ -756,7 +746,7 @@ export class MvpVisualController {
         this.callbacks.onHistoryChanged?.();
     }
     getHistoryStatus(): HistoryStatus { return this.history.getStatus(); }
-    canUseHistory(): boolean { return this.canSaveJourney() && (!this.currentExporter || this.exportSnapshotReady); }
+    canUseHistory(): boolean { return this.canSaveJourney() && !this.currentExporter; }
 
     private historySnapshot(domain: HistoryDomain): HistorySnapshot {
         return domain === 'tuning'
@@ -1002,84 +992,19 @@ export class MvpVisualController {
 
     async startExport(config: ExportConfig, onProgress: (progress: number) => void): Promise<Blob> {
         if (!this.canExport() || this.currentExporter || this.exportCacheClearing) throw new Error('Export is not available right now.');
-        const isolated = config.runtime === 'isolated-wormhole';
-        if (!isolated) {
-            this.markSessionChanged();
-            if (State.isPlaying) this.engine.stop(false);
-        }
+        this.markSessionChanged();
+        if (State.isPlaying) this.engine.stop(false);
 
-        const isolatedExport = this.isolatedExport;
-        let preparationMs = 0;
-        const exporter = new WebMExporter(this.exportP5Instance, this.exportCanvas!, this.engine, null, isolatedExport ? {
-            prepareRuntime: async (capturedConfig, signal) => {
-                if (this.preparingTrack || this.regeneratingPlan || State.visualMode !== 'cosmic-wormhole' || State.videoBackplateActive)
-                    throw new Error('Wait for the Wormhole track preparation before isolated export.');
-                const revisionKey = () => `${this.loadRevision}/${this.planRevision}/${this.sessionRevision}/${this.tuningSignature()}/${State.automationMorphScale}`;
-                this.configureFiniteAutomation();
-                const plan = this.getAutomationPlanView() ?? { version: 1 as const, source: 'auto' as const, points: [] };
-                const revision = revisionKey();
-                const assertCurrent = () => {
-                    if (signal.aborted) throw new Error('Export cancelled.');
-                    if (revision !== revisionKey()) throw new Error('Track or settings changed during export preparation. Start again.');
-                };
-                const started = performance.now();
-                const names = [...new Set(plan.points.map(point => point.preset))];
-                const presets = Object.fromEntries(names.map(name => [name, this.presetCache.get(name)]));
-                const missing = names.filter(name => presets[name] === undefined);
-                if (missing.length) {
-                    if (this.currentExporter === exporter) this.callbacks.onExportPreparation?.('Loading journey presets for export…');
-                    await Promise.all(missing.map(async name => {
-                        try {
-                            presets[name] = await this.fetchPreset(name, signal);
-                        } catch (error) {
-                            if (signal.aborted) throw new Error('Export cancelled.');
-                            throw new Error(`Could not load journey preset for export: ${name}.`, { cause: error });
-                        }
-                    }));
-                    assertCurrent();
-                }
-                const lease = await captureExportSnapshot({ audioContentId: this.currentFileHash ?? '',
-                    analysis: projectRenderWorkerAnalysis({ frames: State.frames, events: State.events, trackAnalysis: State.trackAnalysis,
-                        sampleRate: State.sampleRate, hopSize: State.hopSize, bpm: State.bpm, duration: State.duration, performancePlan: plan }),
-                    seed: { version: 1, rawTuning: this.finiteSeed ?? State.semanticBaseTuning ?? State.targetTuning,
-                        macros: this.macros, boosts: this.advancedBoosts,
-                        policy: { gains: 'meta', semanticResolver: featureFlags.semanticResolver, semanticChoreography: featureFlags.semanticChoreography } },
-                    presets, musicDisplay: isolatedExport.musicDisplay() ?? DEFAULT_MUSIC_DISPLAY, skybox: featureFlags.wormholeSkybox,
-                    morphScale: State.automationMorphScale
-                }, this.engine.getAudioBuffer()!, capturedConfig, signal);
-                try {
-                    assertCurrent();
-                    const mib = Math.ceil(lease.snapshot.estimatedBytes / 1048576);
-                    if (this.currentExporter === exporter) {
-                        this.callbacks.onExportPreparation?.(`Estimated export working set: ${mib} MiB; planning limit: ${Math.round(lease.snapshot.budgetBytes / 1048576)} MiB. ${mib > 1024 ? 'High memory demand. ' : ''}Checking output-size codec support…`);
-                    }
-                    const runtime = isolatedExport.factory(lease.snapshot, lease.audio), dispose = runtime.dispose.bind(runtime);
-                    preparationMs = performance.now() - started;
-                    runtime.dispose = () => { try { dispose(); } finally { lease.dispose(); } };
-                    return runtime;
-                } catch (error) { lease.dispose(); throw error; }
-            },
-            onProfile: report => {
-                if (this.currentExporter === exporter) {
-                    this.callbacks.onExportProfile?.({ ...report, stagesMs: { snapshotHashAndRendererPreparation: preparationMs, ...report.stagesMs } });
-                }
-            }
-        } : undefined);
+        // Pass the supported MVP options only, including when given an old export config.
+        const { resolution, aspectRatio, fps, watermark, trackName } = config;
+        const exporter = new WebMExporter(this.exportP5Instance, this.exportCanvas!, this.engine);
         this.currentExporter = exporter;
         try {
-            return await exporter.startExport(config, progress => {
-                if (this.currentExporter !== exporter) return;
-                if (isolated && progress < 1 && !this.exportSnapshotReady) {
-                    this.exportSnapshotReady = true;
-                    this.callbacks.onHistoryChanged?.();
-                }
-                onProgress(progress);
+            return await exporter.startExport({ resolution, aspectRatio, fps, watermark, trackName }, progress => {
+                if (this.currentExporter === exporter) onProgress(progress);
             });
         } finally {
-            if (this.currentExporter === exporter) {
-                this.currentExporter = null;
-                this.exportSnapshotReady = false;
-            }
+            if (this.currentExporter === exporter) this.currentExporter = null;
         }
     }
 
