@@ -1,11 +1,11 @@
 {
-  "id": "t20a2b-ffmpeg-core-20261104T224358586Z",
-  "previousCommit": "47f27249d5af577ce55eb3435dfeec4e630081db",
-  "sourceCommit": "a70017ca485e98d583b44bbebd81577ab2a25bff",
+  "id": "t20a2c-mvp-mp4-20261104T234318952Z",
+  "previousCommit": "e28648a9d13e1a620e729aef2c28a31d5b9648d1",
+  "sourceCommit": "380063d1f31e51b6842808e7929040d5c2b675e5",
   "inputs": [
     {
       "path": "bun.lock",
-      "sha256": "21e93aec036a5c24e7f3359249aa7472367cedebb5c077bf2db03284bb848bfd"
+      "sha256": "67f727ee93879d629e8b887c13b6852b81f9e09d24c2694abc384a2a2afeffdd"
     },
     {
       "path": "index.html",
@@ -17,15 +17,51 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "5b96d1bc07eeb56d59a306e0579843e815542bd139d7db349ff1def643d0e0b9"
+      "sha256": "c71662e67dfa790718c5221f84c0f60f7138e2a608fc13613e58b455e6a614a9"
     },
     {
       "path": "package.json",
-      "sha256": "e708d92559c18e95b2f7ca613c2c6648fccdfca553d37464d5aad5d6938fcb32"
+      "sha256": "96836b1780bfe4bec149b2a3ebae4ae38bf5ee0e759ec0e76255b7c5fee846d9"
     },
     {
       "path": "public/eso0932a.jpg",
       "sha256": "9055c7a801035211706565d838a6fa52ac9e670168b788e0008bd947e55e5c0e"
+    },
+    {
+      "path": "public/export/ffmpeg-5.1.10/FFmpeg-COPYING.LGPLv2.1",
+      "sha256": "246041b6ecf9bc32d718a62c57877c78b5eb397b6467e74ed7ae2626ab189c30"
+    },
+    {
+      "path": "public/export/ffmpeg-5.1.10/Mediabunny-LICENSE",
+      "sha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
+    },
+    {
+      "path": "public/export/ffmpeg-5.1.10/ffmpeg-core.js",
+      "sha256": "c91aee5492ab7b8cdb2f160ee0b3514269fe09f2e20f641c9c40f9003154cacc"
+    },
+    {
+      "path": "public/export/ffmpeg-5.1.10/ffmpeg-core.wasm",
+      "sha256": "8e71567f34b4ccb3b06bb75057cec95e68e49462d876b5a2e1a2a20f0d515aee"
+    },
+    {
+      "path": "public/export/ffmpeg-5.1.10/ffmpeg-mp4-core.Dockerfile",
+      "sha256": "a761596ea9663e8178e5c1da7cba4d4bcd446aa96de92dbc654e4b8cadd2a87e"
+    },
+    {
+      "path": "public/export/ffmpeg-5.1.10/ffmpeg-source.tar.gz",
+      "sha256": "bbb08946e1a4dcba2f0962c7bb79bc3fc900dbc3251c044aab9bbf81b93c47a1"
+    },
+    {
+      "path": "public/export/ffmpeg-5.1.10/ffmpeg-wasm-binding-source.tar.gz",
+      "sha256": "0b1f8c757793a8bbc513a408f56cad2236934dc1e1bfbbe90826ab9a5af0df0a"
+    },
+    {
+      "path": "public/export/ffmpeg-5.1.10/ffmpeg.wasm-LICENSE",
+      "sha256": "3e123e29517d76504ffce77b3f8e2ccffd4712493f27694b0aba3e376676459f"
+    },
+    {
+      "path": "public/export/ffmpeg-5.1.10/index.html",
+      "sha256": "0649015c4e6f29fe03eba678341d6357d9b697fb524ea10b6d836a6a0b6ef909"
     },
     {
       "path": "public/favicon.svg",
@@ -669,11 +705,15 @@
     },
     {
       "path": "src/export/ExportStorageLease.ts",
-      "sha256": "1c6aad52d6eb1ad750b50bf6524e0f53578f043c52e059bf4bd3a4355f9ebddb"
+      "sha256": "8bac1bcebe17eb0962b88adcb474634fd3f98d9862c4332a177ab7f86264b307"
     },
     {
       "path": "src/export/ExportTypes.ts",
-      "sha256": "d20e7f71ff07de5d7b6c0f8e4f73ce1a56cf14c24e3ad380217b96379bba1061"
+      "sha256": "6518ed5a8194d71e5dd381aeba48f830701e8b4edcc18e385c67f8a1f95193de"
+    },
+    {
+      "path": "src/export/Mp4StorageAdmission.ts",
+      "sha256": "f41627f9d9b6e23c45c3a3a3a72f5c896cb483b3ca9be0ebe8bbd96b079c619d"
     },
     {
       "path": "src/export/Muxer.ts",
@@ -681,11 +721,11 @@
     },
     {
       "path": "src/export/WebCodecsBackend.ts",
-      "sha256": "a67f2499438b7a420fbd3e7077978b8c252958362ed6771b64d87bbf4bdf00b0"
+      "sha256": "acebd1d60bbb29854ebab6f2f04b4d257b618c8586b7fb7ce644ebf6278fac6b"
     },
     {
       "path": "src/export/WebMExporter.ts",
-      "sha256": "fa257496c7f9ef544eda8ebe1e83b1dd60a637693f9123bfb39607a04b148123"
+      "sha256": "ca117459b7dff94dfd3e445e8a4116b72572dafbcadb9d38a0f4659297c9ee4d"
     },
     {
       "path": "src/export/WebMMuxer.ts",
@@ -694,6 +734,10 @@
     {
       "path": "src/export/export.worker.ts",
       "sha256": "ae39181fa620c37739fd2ea2d1937399c12165377f8f0632591840f2f7cd95c8"
+    },
+    {
+      "path": "src/export/mp4-export.worker.ts",
+      "sha256": "fe44815c7c2755eeb9f74b53a1b3fcb52130622806f5488c6cac1fb761607246"
     },
     {
       "path": "src/gameplay/RhythmChartBuilder.ts",
@@ -1057,7 +1101,7 @@
     },
     {
       "path": "src/ui/mvp/ExportDialog.ts",
-      "sha256": "2a0e1213d89e53e2db66cc5d08acf4133c8d69f78c1ae2cccb8bcbd26b16f0ba"
+      "sha256": "6d1e0804ae3268c7734db1ae3623ba343d92f79879a30458c670c0fcdfb6f6ac"
     },
     {
       "path": "src/ui/mvp/FirstRunScreen.ts",
@@ -1085,11 +1129,11 @@
     },
     {
       "path": "src/ui/mvp/MvpUI.ts",
-      "sha256": "5340f930e075940a1dc71d0a45323a19e054d7f603e790cbd960be774a171e23"
+      "sha256": "d1dc10e860e5a139c2a92082da2b930d8e16e4b384e2cecc32e76374c3ad0576"
     },
     {
       "path": "src/ui/mvp/MvpVisualController.ts",
-      "sha256": "865346ca9cac03622a1fdfa57f166062039f93dd0825e7d8c64f0be59b71ff29"
+      "sha256": "691e76535cd123149d0969ab21b791f62f4194ec53a3510e4773ae7a94331f10"
     },
     {
       "path": "src/ui/mvp/PreviewStage.ts",
@@ -1141,7 +1185,7 @@
     },
     {
       "path": "src/ui/mvp/mvp.css",
-      "sha256": "d5f4dcd876564ec3902ba141a3e79e5375232850ed9e589debc4c0534f1b1352"
+      "sha256": "0052f04968181cc20ca3c0c44645a4d781d5fdd5700ca4e088c6d2462d561951"
     },
     {
       "path": "src/ui/mvp/mvpFormat.ts",
@@ -1678,8 +1722,8 @@
       "sha256": "0b31b780ac1f55bf8ea1745febe8c0cf2989cea1dda7a31c6dbf4e3136aa4392"
     },
     {
-      "path": "assets/export.worker-COphA55j.js",
-      "sha256": "e70d11b2533a51bda8d37792ccd38e90f9b973d698f49f2589c02564d864c16b"
+      "path": "assets/export.worker-Ch-312Ll.js",
+      "sha256": "12e9ecc1936ba2fdcc7f30889dc927beb607848df2563e77666505871dfdbaef"
     },
     {
       "path": "assets/fft.scalar-BRpMaUFy.wasm",
@@ -1690,24 +1734,32 @@
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
-      "path": "assets/main-CuhGbu_B.js",
-      "sha256": "2cce01035b81b874a2145034a6815b3cda7b81351c97603c6a966e13c67d2844"
+      "path": "assets/main-CpoD5WPV.js",
+      "sha256": "17de7573b27e04090647b568b6d7078cb858263877d596b0b69d9d896a25c79c"
     },
     {
-      "path": "assets/mvp-BAtjf-TP.css",
-      "sha256": "7ad3770813fc3f2d7ed222d918e2f93e0b6ac0d2572fa1fde614fed3c8b9b7a8"
+      "path": "assets/mp4-export.worker-BQsia2DN.js",
+      "sha256": "f054e35d473308cd6971f4f5098051c8064f7303ba04083b503f44be787b76b0"
     },
     {
-      "path": "assets/mvp-BkEBhdCX.js",
-      "sha256": "141e8e75270448f57cc9f3e0ad1ea25eff7b59386fa87cbb1814a99921d39849"
+      "path": "assets/mp4-export.worker-g4-S4KBB.js",
+      "sha256": "8ffcb0df6116b0c46c34a2d8e925a0a854e8da2a7de8b66916851cd54affb4b5"
     },
     {
-      "path": "assets/PreviewQualityControl-B_P06R08.js",
-      "sha256": "a08650211168d1bd5a6674767102946d1653d5824b5d10b0aa6c0a7ba691b7a9"
+      "path": "assets/mvp-N3uY_MIF.js",
+      "sha256": "98e9cdcfbd7682662f81cbc4c32cd808582fdd0ebc084247528486be2b43875c"
+    },
+    {
+      "path": "assets/mvp-sPSHbSJ7.css",
+      "sha256": "cb96120abd23cfdbc780f2f9a1c1c2374de5f7eaf9834ff98e8185abf16c1405"
     },
     {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
       "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+    },
+    {
+      "path": "assets/PreviewQualityControl-DrPfsjP2.js",
+      "sha256": "d2db1956bb96baa14dce5f8889809164166db57d45a8eea4cf6bd68661917f92"
     },
     {
       "path": "assets/wormholeHostRender.worker-BHKvsM3O.js",
@@ -1734,6 +1786,42 @@
       "sha256": "9055c7a801035211706565d838a6fa52ac9e670168b788e0008bd947e55e5c0e"
     },
     {
+      "path": "export/ffmpeg-5.1.10/FFmpeg-COPYING.LGPLv2.1",
+      "sha256": "246041b6ecf9bc32d718a62c57877c78b5eb397b6467e74ed7ae2626ab189c30"
+    },
+    {
+      "path": "export/ffmpeg-5.1.10/ffmpeg-core.js",
+      "sha256": "c91aee5492ab7b8cdb2f160ee0b3514269fe09f2e20f641c9c40f9003154cacc"
+    },
+    {
+      "path": "export/ffmpeg-5.1.10/ffmpeg-core.wasm",
+      "sha256": "8e71567f34b4ccb3b06bb75057cec95e68e49462d876b5a2e1a2a20f0d515aee"
+    },
+    {
+      "path": "export/ffmpeg-5.1.10/ffmpeg-mp4-core.Dockerfile",
+      "sha256": "a761596ea9663e8178e5c1da7cba4d4bcd446aa96de92dbc654e4b8cadd2a87e"
+    },
+    {
+      "path": "export/ffmpeg-5.1.10/ffmpeg-source.tar.gz",
+      "sha256": "bbb08946e1a4dcba2f0962c7bb79bc3fc900dbc3251c044aab9bbf81b93c47a1"
+    },
+    {
+      "path": "export/ffmpeg-5.1.10/ffmpeg-wasm-binding-source.tar.gz",
+      "sha256": "0b1f8c757793a8bbc513a408f56cad2236934dc1e1bfbbe90826ab9a5af0df0a"
+    },
+    {
+      "path": "export/ffmpeg-5.1.10/ffmpeg.wasm-LICENSE",
+      "sha256": "3e123e29517d76504ffce77b3f8e2ccffd4712493f27694b0aba3e376676459f"
+    },
+    {
+      "path": "export/ffmpeg-5.1.10/index.html",
+      "sha256": "0649015c4e6f29fe03eba678341d6357d9b697fb524ea10b6d836a6a0b6ef909"
+    },
+    {
+      "path": "export/ffmpeg-5.1.10/Mediabunny-LICENSE",
+      "sha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
+    },
+    {
       "path": "favicon.svg",
       "sha256": "61bc9a161de58248288e6905425d7180f0624c2865007b97d763fdac12043a66"
     },
@@ -1743,11 +1831,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "160f4b4be155b5f49705f479f0f8f089aa27129a34bcba0e2bc1333991be41c8"
+      "sha256": "9edccce43b61977e829d9bc04d10bae5a8da4f259c4834fcd9685860a864bece"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "e524c577e48d09d66986ad5dcec9240638e453166845a14d7ced358c337a8882"
+      "sha256": "bd983459072b1c3345a9bbd862ef67e306a39dbdeb087862a6661478580aeadd"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
