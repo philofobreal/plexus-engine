@@ -627,7 +627,7 @@ export class MvpUI {
                 if (this.exportJob === job) this.exportDialog.setProgress(progress);
             });
             if (this.exportJob !== job) return;
-            this.downloadBlob(blob, 'plexus-visual.webm');
+            this.downloadBlob(blob, config.format === 'mp4' ? 'plexus-visual.mp4' : 'plexus-visual.webm');
             this.exportDialog.setStatus('Done — check your downloads.');
         } catch (error) {
             if (this.exportJob === job) {

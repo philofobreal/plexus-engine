@@ -847,11 +847,9 @@ node research/export/ffmpeg-baseline.mjs logs/t20a path/to/short.webm path/to/lo
      small FFmpeg core without libx264, a per-job storage budget and full-track
      results. The browser path is the performance control; the FFmpeg path
      uses no browser AAC encoder and is the candidate for exact finalization.
-   - **T20a2c — coordinator and UI.** Add an explicit MP4 choice when the
-     preceding gates pass. Reuse resolution, job controls and file ownership.
-     Preflight the exact config, save the contiguous Stop prefix and discard
-     incomplete files on Cancel. Keep WebM available with a clear explanation
-     when MP4 is unavailable.
+   - **T20a2c — coordinator and UI.** MVP now offers MP4 beside WebM. The
+     application probes the exact output, uses the current job controls and
+     keeps one owned result. See the [MVP delivery](#t20a2c-mvp-mp4-choice).
 3. **T20a3 release and promotion.** Run cold and warm jobs on desktop and
    physical Android and iOS, with short prefixes, long runs and supported 4K.
    Measure whole-job time, command latency, maximum resources, recovery and
@@ -1071,6 +1069,40 @@ distribution and codec obligations, and set an upstream update policy.
 See [FFmpeg licensing](https://ffmpeg.org/legal.html) and
 [FFmpeg security releases](https://ffmpeg.org/security.html). No binary or
 reference media is included in Git or the Pages application build.
+
+### T20a2c MVP MP4 choice
+
+**Export video → Format** offers **WebM** and **MP4 (H.264 + AAC)**.
+WebM is the default for new profiles. The MVP remembers an explicit format
+choice locally and includes it in copied MP4 settings. Resolution, frame
+rate, workspace locking, Stop & save, Cancel, and the tab-owned cache use
+the existing export coordinator. Only MVP supplies the alternate backend.
+
+MP4 preflight checks the browser storage estimate and encodes one probe
+frame at the requested size and rate. The worker loads the reduced FFmpeg
+core only for MP4. It accepts the current renderer's same ordered frames
+and exact PCM slices, writes H.264 and WAV to OPFS and lets FFmpeg copy video
+and encode AAC into a fragmented MP4. There is a second storage check before
+finalization and byte caps on writes. On success only the completed result
+is retained; on cancellation or failure the coordinator terminates the worker
+and discards only the job's directory. WebM is always an explicit choice;
+a failed MP4 job does not silently download a different format.
+
+Chromium verified a full 720p/60 synthetic clip (24 frames, 19,200 samples
+per channel at 48 kHz) and a 4K/60 Stop clip (9 frames, 6,615 samples at
+44.1 kHz). Both files played through the browser's video decoder. Cancel
+during finalization returned no file; retry, unsupported-audio refusal and
+cache cleanup passed. A separate smoke check loaded a synthetic track in
+the actual MVP and completed Stop & save through the export menu.
+The [browser fixture](../../tests/browser/mvp-mp4-smoke.html) exercises the
+real coordinator and worker. Native browser AAC remains a performance
+control from T20a2a; the new user-facing MP4 uses FFmpeg for AAC on every job.
+
+The on-demand module, its licenses, the two corresponding source archives
+and the build recipe are available from the export dialog's FFmpeg source
+link. The MVP's existing mobile 4K guard remains in effect. Long real
+renders, physical Android/iOS, 4K device limits and third-party playback
+and editors remain T20a3 checks before default promotion.
 
 ## Optional accelerated export research (2026-11-04)
 

@@ -997,10 +997,21 @@ export class MvpVisualController {
 
         // Pass the supported MVP options only, including when given an old export config.
         const { resolution, aspectRatio, fps, watermark, trackName } = config;
-        const exporter = new WebMExporter(this.exportP5Instance, this.exportCanvas!, this.engine);
+        const mp4 = config.format === 'mp4';
+        const p5 = this.exportP5Instance, canvas = this.exportCanvas!;
+        const exporter = mp4
+            ? new WebMExporter(p5, canvas, this.engine, null, {
+                createMp4Backend: async name => {
+                    const [{ WebCodecsBackend }, { default: Mp4Worker }] = await Promise.all([
+                        import('../../export/WebCodecsBackend'), import('../../export/mp4-export.worker.ts?worker'),
+                    ]);
+                    return new WebCodecsBackend(p5, canvas, this.engine, name, null, 'display', Mp4Worker);
+                },
+            })
+            : new WebMExporter(p5, canvas, this.engine);
         this.currentExporter = exporter;
         try {
-            return await exporter.startExport({ resolution, aspectRatio, fps, watermark, trackName }, progress => {
+            return await exporter.startExport({ resolution, aspectRatio, fps, watermark, trackName, ...(mp4 ? { format: 'mp4' as const } : {}) }, progress => {
                 if (this.currentExporter === exporter) onProgress(progress);
             });
         } finally {

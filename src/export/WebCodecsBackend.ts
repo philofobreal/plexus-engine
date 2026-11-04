@@ -45,6 +45,7 @@ export class WebCodecsBackend implements ExportBackend {
     private audioCapacity = 0;
     private audioAllocations = 0;
     private audioReuses = 0;
+    private readonly Mp4Worker?: new () => Worker;
 
     constructor(
         p5Instance: any,
@@ -53,7 +54,8 @@ export class WebCodecsBackend implements ExportBackend {
         trackName: string,
         videoElement: HTMLVideoElement | null = null,
         // The production factory uses display scheduling. The browser benchmark injects the candidate.
-        isolatedScheduling: 'display' | 'cooperative' = 'display'
+        isolatedScheduling: 'display' | 'cooperative' = 'display',
+        Mp4Worker?: new () => Worker
     ) {
         void canvas;
         this.p5Instance = p5Instance;
@@ -61,6 +63,7 @@ export class WebCodecsBackend implements ExportBackend {
         this.trackName = trackName;
         this.videoElement = videoElement;
         this.isolatedScheduling = isolatedScheduling;
+        this.Mp4Worker = Mp4Worker;
     }
 
     async start(config: ExportConfig, onProgress: (progress: number) => void, runtime?: ExportRuntime,
@@ -70,6 +73,7 @@ export class WebCodecsBackend implements ExportBackend {
         this.storageLease = null; this.storageDiscard = null;
         if (typeof globalThis.createImageBitmap === 'undefined') throw new Error('createImageBitmap is not available in this browser.');
         const duration = runtime?.duration ?? State.duration;
+        const mp4 = config.format === 'mp4';
         if (!Number.isFinite(config.fps) || config.fps <= 0 || !Number.isFinite(duration)
             || Math.floor(duration * config.fps) < 1) throw new Error('Export requires a positive frame rate and at least one video frame.');
         if (config.runtime === 'isolated-wormhole' && !runtime) throw new Error('Isolated export runtime was not prepared.');
@@ -78,12 +82,16 @@ export class WebCodecsBackend implements ExportBackend {
         this.preparationReport = undefined;
         this.audioPool = []; this.audioAllocations = 0; this.audioReuses = 0; this.audioCapacity = 0;
         this.storageLease = typeof navigator !== 'undefined' && typeof navigator.storage?.getDirectory === 'function'
-            ? new ExportStorageLease(() => navigator.storage.getDirectory()) : null;
+            ? new ExportStorageLease(() => navigator.storage.getDirectory(), mp4 ? 'mp4' : 'webm') : null;
+        if (mp4 && (!this.Mp4Worker || !this.storageLease)) {
+            throw new Error('MP4 requires browser-local export storage. Choose WebM or try another browser.');
+        }
         const now = runtime ? () => performance.now() : () => 0, started = now();
         const cooperative = Boolean(runtime && this.isolatedScheduling === 'cooperative');
         const stages = { renderRequest: 0, animationFrameWait: 0, mainThreadYield: 0,
             bitmap: 0, queueWait: 0, finalizeWait: 0, backendRequest: 0 };
         let submittedFrames = 0, peakOutstandingFrames = 0, outcome: ExportProfile['outcome'] = 'failed';
+        const totalFrames = Math.floor(duration * config.fps);
 
         this.running = true;
         this.cancelled = false;
@@ -107,8 +115,8 @@ export class WebCodecsBackend implements ExportBackend {
             }
             const audioBuffer = runtime?.audio ?? this.audioEngine?.getAudioBuffer?.() as ExportAudioSource | null | undefined;
             this.audioCapacity = audioBuffer ? Math.ceil(audioBuffer.sampleRate / config.fps) * 2 : 0;
-            this.worker = new ExportWorker();
-            const prepared = config.preflight ? new Promise<void>(resolve => { this.resolvePrepared = resolve; }) : null;
+            this.worker = mp4 && this.Mp4Worker ? new this.Mp4Worker() : new ExportWorker();
+            const prepared = config.preflight || mp4 ? new Promise<void>(resolve => { this.resolvePrepared = resolve; }) : null;
             const done = this.waitForExportDone(this.worker);
             void done.catch(() => undefined);
             this.worker.postMessage({
@@ -118,6 +126,7 @@ export class WebCodecsBackend implements ExportBackend {
                 fps: config.fps,
                 sampleRate: audioBuffer?.sampleRate || 48_000,
                 hasAudio: Boolean(audioBuffer),
+                ...(mp4 ? { frames: totalFrames, sourceSamples: audioBuffer?.length ?? 0 } : {}),
                 ...(this.storageLease ? { storageFile: this.storageLease.name } : {}),
                 ...(config.preflight ? { preflight: true } : {}),
                 ...(runtime ? { profile: true } : {})
@@ -133,7 +142,6 @@ export class WebCodecsBackend implements ExportBackend {
             }
             if (!runtime) { State.isExporting = true; State.exportTime = 0; }
 
-            const totalFrames = Math.floor(duration * config.fps);
             this.workerQueueDepth = 0;
             this.outstandingFrames = 0;
             for (let i = 0; i < totalFrames; i++) {
@@ -216,7 +224,7 @@ export class WebCodecsBackend implements ExportBackend {
                     stages.mainThreadYield += now() - yieldStarted;
                 }
 
-                onProgress(totalFrames > 0 ? i / totalFrames : 1);
+                onProgress(mp4 ? .9 * i / totalFrames : (totalFrames > 0 ? i / totalFrames : 1));
             }
 
             if (this.cancelled) throw new Error('Export cancelled.');
@@ -224,8 +232,10 @@ export class WebCodecsBackend implements ExportBackend {
             if (submittedFrames === 0) throw new Error('No video frames were captured before stopping.');
 
             this.worker.postMessage({ type: 'finalize_export' });
+            if (mp4) onProgress(.9);
             const finalizeStarted = now();
-            const doneBlob = await this.waitForOperation(done, undefined, undefined, false);
+            const doneBlob = await this.waitForOperation(done, undefined, undefined, false,
+                mp4 ? Math.min(900_000, Math.max(90_000, submittedFrames / config.fps * 1000 + 30_000)) : 30_000);
             stages.finalizeWait = now() - finalizeStarted;
             if (this.cancelled) throw new Error('Export cancelled.');
             if (this.exportError) throw this.exportError;
@@ -300,6 +310,8 @@ export class WebCodecsBackend implements ExportBackend {
                 } else if (event.data.type === 'export_prepared') {
                     this.preparationReport = event.data.report;
                     this.resolvePrepared?.(); this.resolvePrepared = null;
+                } else if (event.data.type === 'export_ready') {
+                    this.resolvePrepared?.(); this.resolvePrepared = null;
                 } else if (event.data.type === 'export_error') {
                     this.rejectExport = null;
                     this.exportError = new Error(event.data.message);
@@ -363,7 +375,7 @@ export class WebCodecsBackend implements ExportBackend {
 
     /** Bound browser/encoder waits and release late bitmaps after Stop/Cancel. */
     private waitForOperation<T>(operation: Promise<T>, onLate?: (value: T) => void,
-        onSettled?: () => void, frameWait = true): Promise<T> {
+        onSettled?: () => void, frameWait = true, timeoutMs = 30_000): Promise<T> {
         return new Promise<T>((resolve, reject) => {
             let settled = false;
             let timer: ReturnType<typeof setTimeout> | undefined;
@@ -378,7 +390,7 @@ export class WebCodecsBackend implements ExportBackend {
             const interrupt = (error: Error) => finish(error);
             this.interruptWait = interrupt;
             this.waitingForFrame = frameWait;
-            if (typeof setTimeout === 'function') timer = setTimeout(() => finish(new Error('Export operation timed out.')), 30_000);
+            if (typeof setTimeout === 'function') timer = setTimeout(() => finish(new Error('Export operation timed out.')), timeoutMs);
             operation.then(value => { if (settled) onLate?.(value); else finish(undefined, value); }, error => finish(error instanceof Error ? error : new Error(String(error))));
             if (this.cancelled) interrupt(new Error('Export cancelled.'));
             else if (frameWait && this.stoppedEarly) interrupt(new Error('No video frames were captured before stopping.'));

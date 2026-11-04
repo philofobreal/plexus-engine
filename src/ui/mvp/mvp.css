@@ -556,6 +556,10 @@ button, input, select {
 
 .mvp-field { margin-bottom: 16px; }
 .mvp-field:last-child { margin-bottom: 0; }
+.mvp-export-settings label.mvp-field { display: block; margin-top: 16px; margin-bottom: 8px; }
+.mvp-export-format { background: var(--mvp-bg, #15151d); color: var(--mvp-text-main); padding: 7px 10px; border-radius: 8px; }
+.mvp-export-mp4-note { display: block; margin-bottom: 8px; }
+.mvp-export-mp4-note a { color: inherit; }
 .mvp-field-row {
   display: flex;
   align-items: center;

@@ -2,10 +2,13 @@ import type { ExportPreparationReport } from '../types/ExportRenderJob';
 export type { ExportPreparationReport } from '../types/ExportRenderJob';
 export type ExportResolution = '720p' | '1080p' | '4K';
 export type ExportAspectRatio = '16:9' | '9:16' | '1:1';
+export type ExportFormat = 'webm' | 'mp4';
 export type ExportBackendId = 'webcodecs' | 'none';
 export type ExportVideoCodec = 'vp8' | `vp09.00.${string}.08`;
 
 export interface ExportConfig {
+    /** MP4 is opt-in and currently owned by the MVP host. */
+    format?: ExportFormat;
     /** Device/job policy, never a visual preset property. Omission preserves the existing backend. */
     runtime?: 'compatible' | 'isolated-wormhole';
     /** Optional explicit planning ceiling; omission is Auto, not a free-RAM claim. */
@@ -45,6 +48,8 @@ export interface StartExportRequest {
     fps: number;
     sampleRate: number;
     hasAudio?: boolean;
+    frames?: number;
+    sourceSamples?: number;
     bitrate?: number;
     codec?: ExportVideoCodec;
 }
@@ -121,6 +126,7 @@ export type ExportTelemetryMessage = TelemetryResponse;
 
 export type ExportWorkerResponse =
     | { type: 'export_prepared'; report: ExportPreparationReport }
+    | { type: 'export_ready' }
     | DoneResponse
     | ChunkResponse
     | ErrorResponse

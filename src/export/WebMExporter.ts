@@ -21,7 +21,8 @@ export class WebMExporter {
         canvas: HTMLCanvasElement,
         audioEngine: any,
         videoElement: HTMLVideoElement | null = null,
-        options?: { prepareRuntime: (config: ExportConfig, signal: AbortSignal) => Promise<ExportRuntime>; onProfile?: (profile: ExportProfile) => void }
+        options?: { prepareRuntime?: (config: ExportConfig, signal: AbortSignal) => Promise<ExportRuntime>;
+            onProfile?: (profile: ExportProfile) => void; createMp4Backend?: (trackName: string) => Promise<ExportBackend> }
     ) {
         this.p5Instance = p5Instance;
         this.canvas = canvas;
@@ -38,11 +39,11 @@ export class WebMExporter {
         try {
             const capturedConfig = { ...config };
             if (capturedConfig.runtime === 'isolated-wormhole') {
-                if (!this.options) throw new Error('Isolated Wormhole export is unavailable in this host.');
+                if (!this.options?.prepareRuntime) throw new Error('Isolated Wormhole export is unavailable in this host.');
                 job.abort = new AbortController();
                 runtime = await this.options.prepareRuntime(capturedConfig, job.abort.signal);
             }
-            const backend = await this.createBackend(capturedConfig.trackName || 'Plexus Performance');
+            const backend = await this.createBackend(capturedConfig);
             if (job.command === 'cancel') throw new Error('Export cancelled.');
             if (job.command === 'stop') throw new Error('No video frames were captured before stopping.');
             job.backend = backend;
@@ -78,7 +79,12 @@ export class WebMExporter {
         job.backend?.stopAndSave();
     }
 
-    private async createBackend(trackName: string): Promise<ExportBackend> {
+    private async createBackend(config: ExportConfig): Promise<ExportBackend> {
+        const trackName = config.trackName || 'Plexus Performance';
+        if (config.format === 'mp4') {
+            if (!this.options?.createMp4Backend || config.runtime === 'isolated-wormhole') throw new Error('MP4 export is unavailable in this host.');
+            return this.options.createMp4Backend(trackName);
+        }
         const capabilities = await ExportCapabilityDetector.detectCapabilities();
         return ExportBackendRegistry.getPreferred(this.p5Instance, this.canvas, this.audioEngine, trackName, capabilities, this.videoElement);
     }

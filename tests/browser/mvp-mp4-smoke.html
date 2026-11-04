@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>MVP MP4 smoke test</title>
+<h1>MVP MP4 smoke test</h1>
+<button id="run">Run MVP MP4 smoke</button>
+<canvas width="1280" height="720" style="width:320px"></canvas>
+<ul id="files"></ul>
+<pre id="result">Ready</pre>
+<script type="module">
+import { BlobSource, EncodedPacketSink, Input, MP4 } from 'mediabunny';
+import { WebMExporter } from '../../src/export/WebMExporter.ts';
+import { WebCodecsBackend } from '../../src/export/WebCodecsBackend.ts';
+import { clearFinishedExportCache, getExportCacheSummary } from '../../src/export/ExportStorageLease.ts';
+import { ExportDialog } from '../../src/ui/mvp/ExportDialog.ts';
+import { State } from '../../src/state/store.ts';
+import Mp4Worker from '../../src/export/mp4-export.worker.ts?worker';
+
+const run = document.querySelector('#run'), canvas = document.querySelector('canvas');
+const output = document.querySelector('#result'), links = document.querySelector('#files'), urls = [];
+const check = (yes, msg) => { if (!yes) throw Error(msg); };
+const resolution = { '720p': [1280, 720], '4K': [3840, 2160] };
+let exporter, resumed = 0, removed = 0;
+const ctx = canvas.getContext('2d');
+const p5 = {
+    noLoop() {}, loop() { resumed++; },
+    createGraphics(w,h) { canvas.width=w; canvas.height=h;
+        return { elt: canvas, pixelDensity() {}, clear() {}, remove() { removed++; } }; },
+    redraw() { const i = Math.round(State.exportTime * 60);
+        ctx.fillStyle='#0a2545'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle=i === 3 ? '#10fe85' : '#32a8d0'; ctx.fillRect(canvas.width/3,canvas.height/4,canvas.width/3,canvas.height/2); },
+};
+const dialog = new ExportDialog({ onStart: () => {}, onStop: () => exporter.stopAndSave(), onCancel: () => exporter.cancelExport() });
+document.body.append(dialog.root);
+dialog.root.querySelector('.mvp-export-format').value = 'mp4';
+
+async function verify(blob, size, frames, rate) {
+    const input = new Input({ formats: [MP4], source: new BlobSource(blob) });
+    const ac = new AudioContext({ sampleRate: rate });
+    try {
+        const video = await input.getPrimaryVideoTrack(), sound = await input.getPrimaryAudioTrack();
+        check(video?.codec === 'avc' && sound?.codec === 'aac', 'Not H.264/AAC MP4');
+        check(video.codedWidth === size[0] && video.codedHeight === size[1], 'Wrong dimensions');
+        const pts = [];
+        for await (const p of new EncodedPacketSink(video).packets()) pts.push(p.timestamp);
+        pts.sort((a,b) => a-b);
+        check(pts.length === frames && pts.every((p,i) => Math.abs(p-i/60)<.001), 'Wrong frame clock');
+        const decoded = await ac.decodeAudioData(await blob.arrayBuffer());
+        check(decoded.numberOfChannels === 2, 'Wrong channel count');
+        const target = Math.floor(frames * rate / 60);
+        check(Math.abs(decoded.length-target)<=48, `Audio endpoint differs: ${decoded.length} vs ${target}`);
+        const a = decoded.getChannelData(0);
+        check(a.some(x=>Math.abs(x)>.2), 'No decoded audio cue');
+        const url=URL.createObjectURL(blob), element=document.createElement('video');
+        try {
+            await new Promise((resolve,reject)=>{element.onloadeddata=resolve;element.onerror=()=>reject(Error('Video element cannot decode MP4'));element.src=url;});
+            check(element.videoWidth===size[0]&&element.videoHeight===size[1],'Wrong decoded dimensions');
+        } finally { element.removeAttribute('src'); element.load(); URL.revokeObjectURL(url); }
+        return { bytes: blob.size, frames, samples: decoded.length, expectedSamples: target };
+    } finally { input.dispose(); await ac.close(); }
+}
+
+async function one(mode, res, rate) {
+    State.duration = .4;
+    const audio = new AudioBuffer({ length: rate, numberOfChannels: 2, sampleRate: rate });
+    for (let c=0;c<2;c++) {
+        const data=audio.getChannelData(c);
+        for(let i=0;i<data.length;i++) {
+            const t=i/rate;
+            data[i]=(t>.052&&t<.064?.7:.02)*Math.sin(2*Math.PI*(900+c*100)*t);
+        }
+    }
+    const before=resumed, beforeRemoved=removed;
+    const audioEngine = { getAudioBuffer: () => audio };
+    exporter = new WebMExporter(p5, canvas, audioEngine, null, {
+        createMp4Backend: async name => new WebCodecsBackend(p5, canvas, audioEngine, name, null, 'display', Mp4Worker),
+    });
+    dialog.setActive(true);
+    let progressFrames=0, finalizing=false;
+    try {
+        const blob=await exporter.startExport({ format:'mp4', resolution:res, aspectRatio:'16:9', fps:60 }, p=>{
+            dialog.setProgress(p);
+            if (p===.9) { finalizing=true; if(mode==='cancel') exporter.cancelExport(); }
+            if(p>=.9)return;
+            progressFrames++;
+            if(mode==='stop'&&progressFrames===9) dialog.root.querySelector('.mvp-export-stop').click();
+        });
+        check(mode!=='cancel'&&finalizing,'Expected finalizing and no cancelled result');
+        const verified=await verify(blob,resolution[res],mode==='stop'?9:24,rate);
+        const item=document.createElement('li'), a=document.createElement('a');
+        a.href=URL.createObjectURL(new Blob([await blob.arrayBuffer()],{type:'video/mp4'}));urls.push(a.href);
+        a.download=a.textContent=`${res}-${mode}.mp4`; item.append(a); links.append(item);
+        return {mode,res,rate,...verified};
+    } catch(error) {
+        if(mode!=='cancel'||!finalizing||!String(error).includes('cancelled'))throw error;
+        return {mode,res,rate,noFile:true};
+    } finally {
+        dialog.setActive(false);
+        check(resumed===before+1&&removed===beforeRemoved+1&&!State.isExporting,'Preview cleanup failed');
+    }
+}
+
+async function denied() {
+    const worker=new Mp4Worker();
+    try {
+        return await new Promise((resolve,reject)=>{
+            const timer=setTimeout(()=>reject(Error('MP4 refusal did not finish')),5000);
+            worker.onmessage=({data})=>{ clearTimeout(timer); if(data.type==='export_error'&&/Choose WebM/.test(data.message)) resolve(data.message); else reject(Error('Expected MP4 refusal')); };
+            worker.onerror=e=>{clearTimeout(timer);reject(Error(e.message));};
+            worker.postMessage({type:'start_export',storageFile:'plexus_export_mp4_v1_smoke_denied',width:1280,height:720,
+                fps:60,frames:24,sampleRate:12345,sourceSamples:9999,hasAudio:true});
+        });
+    } finally { worker.terminate(); }
+}
+run.onclick=async()=>{
+    run.disabled=true; links.replaceChildren(); for(const url of urls.splice(0))URL.revokeObjectURL(url);
+    const result={rows:[]};
+    try {
+        const root=await navigator.storage.getDirectory();
+        const owned=async()=>{const names=[];for await(const [name]of root.entries())if(name.startsWith('plexus_export_mp4_v1_'))names.push(name);return names.sort().join('|');};
+        const initial=await owned();
+        for(const [mode,res,rate]of [['full','720p',48000],['stop','4K',44100],['cancel','720p',48000],['retry','720p',48000]]) {
+            output.textContent=`Running ${mode} ${res}…`;
+            result.rows.push(await one(mode,res,rate));
+        }
+        result.denied=await denied();
+        result.cache=getExportCacheSummary();
+        check(result.cache.files===3,'The cancelled job was retained');
+        check((await clearFinishedExportCache()).removed===3,'Finished MP4 cleanup failed');
+        check(await owned()===initial,'An export directory was left behind');
+        result.pass=true;
+    }catch(error){result.pass=false;result.error=String(error);}
+    finally{output.textContent=JSON.stringify(result,null,2);run.disabled=false;}
+};
+</script>
+</html>

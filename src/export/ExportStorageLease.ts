@@ -13,11 +13,14 @@ export async function clearFinishedExportCache(): Promise<{ removed: number; rem
     for (const lease of candidates) { await lease.discard(); if (lease.disposition === 'removed') removed++; }
     return { removed, remaining: finished.size };
 }
-export function exportStorageName(): string {
+export function exportStorageName(format: 'webm' | 'mp4' = 'webm'): string {
     const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID() : `${Date.now()}_${++serial}_${Math.random().toString(16).slice(2)}`;
     // Older cached workers swept temp_plexus_export_*. Keep new jobs outside that namespace.
-    return `plexus_export_job_v1_${id}.webm`;
+    return format === 'mp4' ? `plexus_export_mp4_v1_${id}` : `plexus_export_job_v1_${id}.webm`;
+}
+export function validMp4ExportStorageName(name: string): boolean {
+    return /^plexus_export_mp4_v1_[a-zA-Z0-9_-]{1,100}$/.test(name);
 }
 export function validExportStorageName(name: string): boolean {
     return /^(?:plexus_export_job_v1_|temp_plexus_export_)[a-zA-Z0-9_-]{1,100}\.webm$/.test(name);
@@ -27,11 +30,16 @@ export function validExportStorageName(name: string): boolean {
  * Successful File results remain on disk: unlinking could invalidate their unread bytes.
  */
 export class ExportStorageLease {
-    readonly name = exportStorageName();
+    readonly name: string;
     disposition: 'pending' | 'retained-result' | 'removed' | 'cleanup-pending' = 'pending';
     private pending: Promise<void> | null = null;
-    private readonly directory: () => Promise<{ removeEntry(name: string): Promise<void> }>;
-    constructor(directory: () => Promise<{ removeEntry(name: string): Promise<void> }>) { this.directory = directory; }
+    private readonly directory: () => Promise<{ removeEntry(name: string, options?: { recursive: boolean }): Promise<void> }>;
+    private readonly format: 'webm' | 'mp4';
+    constructor(directory: () => Promise<{ removeEntry(name: string, options?: { recursive: boolean }): Promise<void> }>, format: 'webm' | 'mp4' = 'webm') {
+        this.directory = directory;
+        this.format = format;
+        this.name = exportStorageName(format);
+    }
 
     retain(): void { this.disposition = 'retained-result'; finished.add(this); }
     discard(): Promise<void> {
@@ -45,7 +53,11 @@ export class ExportStorageLease {
         const work = async () => {
             const dir = await this.directory();
             for (let attempt = 0; attempt < 5; attempt++) {
-                try { await dir.removeEntry(this.name); this.disposition = 'removed'; finished.delete(this); return; }
+                try {
+                    if (this.format === 'mp4') await dir.removeEntry(this.name, { recursive: true });
+                    else await dir.removeEntry(this.name);
+                    this.disposition = 'removed'; finished.delete(this); return;
+                }
                 catch (error) {
                     const name = (error as { name?: string })?.name;
                     if (name === 'NotFoundError') { this.disposition = 'removed'; finished.delete(this); return; }

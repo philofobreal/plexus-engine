@@ -2,7 +2,7 @@
 
 Started 2026-10-23. Checkpoint 2026-11-04 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**The user prioritized the FFmpeg transition for MVP export. T20a2a validated the on-disk MP4 seam and T20a2b built the reduced core and verified storage admission with full tracks. T20a2c is next after manual acceptance. T15 remains deferred.**
+**The user prioritized the FFmpeg transition for MVP export. T20a2 is implemented through the explicit MVP MP4 option. T20a3 physical-device and output qualification is next after manual acceptance. T15 remains deferred.**
 
 ### Remaining work in execution order (2026-11-04)
 
@@ -25,7 +25,7 @@ remain useful alongside the acceleration work.
 | 5 | **T19e retire Isolated Wormhole from MVP export.** Remove the export choice and MVP-only snapshot wiring, memory override, isolated diagnostics and concurrent editing/playback/replacement behavior. | Deployed and manually accepted. See the [retirement record](../features/export-lifecycle.md#scheduled-retirement-from-mvp-export) for saved preferences, workspace locking and preserved research coverage. |
 | 6 | **T20a0 FFmpeg reference and decision.** Measure the real Compatible short 4K output with native FFmpeg. | Completed as research. See the [FFmpeg transition schedule](../features/export-lifecycle.md#ffmpeg-transition-priority-t20a). Treat MP4/H.264/AAC as the first candidate. Confirm the intended playback/editor destinations during qualification. |
 | 7 | **T20a1 browser prototype.** Compare FFmpeg finalization of H.264 packets, direct WASM encoding and Compatible WebM. | Research complete and manually accepted. See the [browser evidence](../features/export-lifecycle.md#t20a1-browser-evidence-2026-11-04). |
-| 8 | **T20a2 integration and T20a3 qualification.** T20a2a verified the [OPFS path and browser MP4 control](../features/export-lifecycle.md#t20a2a-on-disk-mp4-and-same-format-control). T20a2b verified the [reduced core and storage admission](../features/export-lifecycle.md#t20a2b-reduced-ffmpeg-core-and-storage-admission) locally. Next, T20a2c connects the choice to the MVP coordinator, and T20a3 qualifies desktop and physical mobile. | Keep WebM available. Use the native browser route as the speed control and FFmpeg for AAC fallback and exact finalization. Verify distribution materials, device preflight and job ownership before exposing MP4. |
+| 8 | **T20a2 integration and T20a3 qualification.** The [MVP MP4 choice](../features/export-lifecycle.md#t20a2c-mvp-mp4-choice) uses the reduced FFmpeg core, device preflight and on-disk files. T20a3 qualifies desktop and physical mobile, long jobs and external players/editors. | WebM stays the default. Apply the matched quality, resource, timing and lifecycle gates before changing that default. |
 | 9 | **T19 performance follow-up and T21 captions.** Run extra render-worker work when measurements identify it as the bottleneck. Schedule timed captions after the FFmpeg route is stable. | T19d1 remains historical evidence. T21 defines timing/overlap and verifies preview/export parity. |
 | 10 | **T22–T24 Studio and own-domain release.** Confirm access and hosting scope. | T22 and T23 gate public Studio release. T24 requires a verified runtime, HTTPS, route/asset smoke checks and a tested rollback. See [ADR-013](../adr/ADR-013-studio-server-session-boundary.md). |
 

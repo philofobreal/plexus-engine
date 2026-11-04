@@ -1,5 +1,7 @@
 import type { ExportCapabilities, ExportConfig, ExportResolution } from '../../export/ExportTypes';
 
+const exportFormatKey = 'plexus.mvp.exportFormat';
+
 export interface ExportDialogCallbacks {
     onStart: (config: ExportConfig) => void;
     onStop: () => void;
@@ -21,6 +23,7 @@ export class ExportDialog {
     private readonly statusEl: HTMLElement;
     private readonly capabilityWarningEl: HTMLElement;
     private readonly resolutionBtns: HTMLButtonElement[];
+    private readonly formatSelect: HTMLSelectElement;
     private readonly callbacks: ExportDialogCallbacks;
     private isActive = false;
     private controlPending = false;
@@ -46,6 +49,14 @@ export class ExportDialog {
                         <button type="button" data-res="4K">4K</button>
                     </div>
                 </div>
+                <label class="mvp-field">
+                    <span class="mvp-field-row">Format</span>
+                    <select class="mvp-export-format">
+                        <option value="webm">WebM</option>
+                        <option value="mp4">MP4 (H.264 + AAC)</option>
+                    </select>
+                </label>
+                <small class="mvp-export-mp4-note mvp-hidden">MP4 uses temporary browser storage. <a href="../export/ffmpeg-5.1.10/" target="_blank" rel="noopener">FFmpeg and source code</a></small>
                 <div class="mvp-capability-warning mvp-hidden"></div>
                 </div>
                 <div class="mvp-export-progress mvp-hidden">
@@ -80,6 +91,14 @@ export class ExportDialog {
         this.statusEl = this.root.querySelector('.mvp-modal-status')!;
         this.capabilityWarningEl = this.root.querySelector('.mvp-capability-warning')!;
         this.resolutionBtns = Array.from(this.root.querySelectorAll('.mvp-export-resolution button'));
+        this.formatSelect = this.root.querySelector('.mvp-export-format')!;
+        try { this.formatSelect.value = localStorage.getItem(exportFormatKey) === 'mp4' ? 'mp4' : 'webm'; } catch { /* WebM default. */ }
+        const refreshFormatNote = () => this.root.querySelector('.mvp-export-mp4-note')!.classList.toggle('mvp-hidden', this.formatSelect.value !== 'mp4');
+        refreshFormatNote();
+        this.formatSelect.addEventListener('change', () => {
+            try { localStorage.setItem(exportFormatKey, this.formatSelect.value); } catch { /* Storage may be disabled. */ }
+            refreshFormatNote();
+        });
         this.clearCacheBtn = this.root.querySelector('.mvp-export-clear-cache')!;
         this.clearCacheBtn.addEventListener('click', () => { void this.clearCache(); });
         // The composition root wires its controller after constructing leaf views.
@@ -135,7 +154,8 @@ export class ExportDialog {
     private getConfig(): ExportConfig {
         const active = this.root.querySelector('.mvp-export-resolution button.is-active') as HTMLElement | null;
         const resolution = (active?.dataset.res ?? '720p') as ExportResolution;
-        return { resolution, aspectRatio: '16:9', fps: 60, watermark: false };
+        return { resolution, aspectRatio: '16:9', fps: 60, watermark: false,
+            ...(this.formatSelect.value === 'mp4' ? { format: 'mp4' } : {}) };
     }
 
     open(): void {
@@ -218,6 +238,7 @@ export class ExportDialog {
         this.resolutionBtns.forEach((btn) => {
             if (btn.dataset.capabilityDisabled !== 'true') btn.disabled = isActive;
         });
+        this.formatSelect.disabled = isActive;
         this.progressBar.style.width = '0%';
         this.progressValue.textContent = '0%';
         if (focused === this.startBtn && isActive) this.minimizeBtn.focus();
@@ -230,7 +251,9 @@ export class ExportDialog {
         const percent = `${Math.round(progress * 100)}%`;
         this.progressBar.style.width = percent;
         this.progressValue.textContent = percent;
-        if (this.isActive && !this.controlPending && progress < 1) this.setStatus('Exporting video…');
+        if (this.isActive && !this.controlPending && progress < 1) {
+            this.setStatus(this.formatSelect.value === 'mp4' && progress >= .9 ? 'Finishing MP4 and encoding audio…' : 'Exporting video…');
+        }
     }
 
     setStatus(message: string): void {
