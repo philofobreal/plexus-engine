@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Isolated export scheduling benchmark</title>
+<style>
+body { font: 16px system-ui; background: #101923; color: #def2ff; margin: 24px; max-width: 980px }
+button, input, select { margin: 8px; padding: 6px } pre { white-space: pre-wrap; overflow-wrap: anywhere }
+</style>
+<h1>Isolated export scheduling benchmark</h1>
+<p>Compare the shipped schedule and cooperative candidate on the same frozen analysis, render, codec and PCM.
+Use a short local stereo excerpt. When no file is selected, the fixture reads sample.wav alongside this page.</p>
+<label>Audio <input id="audio" type="file" accept="audio/*"></label>
+<label>Resolution <select id="resolution"><option>1080p</option><option>4K</option></select></label>
+<button id="run">Run three alternating pairs</button>
+<button id="controls">Check Stop, Cancel and retry</button>
+<pre id="result">Ready</pre>
+<script type="module">
+import { AudioEngine } from '../../src/audio/AudioEngine.ts';
+import { captureExportSnapshot } from '../../src/export/ExportSnapshot.ts';
+import { clearFinishedExportCache, getExportCacheSummary } from '../../src/export/ExportStorageLease.ts';
+import { WebCodecsBackend } from '../../src/export/WebCodecsBackend.ts';
+import { cloneDefaultVisualTuning } from '../../src/config/visualTuning.ts';
+import { State } from '../../src/state/store.ts';
+import { projectRenderWorkerAnalysis } from '../../src/types/CanvasVisualSource.ts';
+import { WormholeExportRuntime } from '../../src/visuals/WormholeExportRuntime.ts';
+import { inspectExportWebM } from '../helpers/inspect-export-webm.mjs';
+
+const get = id => document.getElementById(id);
+const print = value => { get('result').textContent = JSON.stringify(value, null, 2); };
+const check = (condition, reason) => { if (!condition) throw new Error(reason); };
+const digest = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+    .map(value => value.toString(16).padStart(2, '0')).join('');
+const quantile = (values, p) => [...values].sort((a,b) => a-b)[Math.ceil(values.length * p) - 1] ?? 0;
+const live = new Proxy({}, { get(_target, key) { throw new Error('Isolated export accessed live ' + String(key)); } });
+
+async function withDeadline(work, description) {
+    let timer;
+    try {
+        return await Promise.race([work, new Promise((_,reject) => {
+            timer = setTimeout(() => reject(new Error(description + ' timed out')), 30000);
+        })]);
+    } finally { clearTimeout(timer); }
+}
+
+const engine = new AudioEngine(undefined, { heroMetronome: false });
+
+async function analyze(file) {
+    await withDeadline(new Promise((resolve, reject) => {
+        engine.onAnalysisComplete = resolve;
+        engine.onAnalysisError = message => reject(new Error(message));
+        void engine.loadFile(file).catch(reject);
+    }), 'Audio analysis');
+    const pcm = engine.getAudioBuffer();
+    check(pcm && pcm.duration >= 1 && pcm.duration <= 10 && pcm.numberOfChannels === 2, 'Use a 1–10 s stereo excerpt');
+    const response = await fetch(import.meta.env.BASE_URL + 'visual-tuning-presets/vos-wh-drive.json');
+    check(response.ok, 'Missing built-in drive preset');
+    const { visualTuning } = await response.json();
+    const input = {
+        audioContentId: await digest(await file.arrayBuffer()),
+        analysis: projectRenderWorkerAnalysis({
+            frames: State.frames, events: State.events, trackAnalysis: State.trackAnalysis, duration: State.duration,
+            sampleRate: State.sampleRate, hopSize: State.hopSize, bpm: State.bpm,
+            performancePlan: { version: 1, source: 'edited', points: [] }
+        }),
+        seed: { version: 1, rawTuning: { ...cloneDefaultVisualTuning(), ...visualTuning },
+            macros: { intensity: .5, motion: .5, depth: .5, detail: .5 }, boosts: {},
+            policy: { gains: 'meta', semanticResolver: false, semanticChoreography: false } },
+        presets: {}, musicDisplay: { mode: 'spectrum', size: .3, opacity: .7 }, skybox: false, morphScale: 1
+    };
+    return { input, pcm };
+}
+
+async function decode(blob, frames, config) {
+    check(blob.size <= 64 * 1024 * 1024, 'Fixture reader limit exceeded. Use a shorter sample.');
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const packets = inspectExportWebM(bytes, { frames, fps: config.fps });
+    const audio = new AudioContext();
+    const url = URL.createObjectURL(blob);
+    const video = document.createElement('video');
+    const canvas = Object.assign(document.createElement('canvas'), { width: 64, height: 36 });
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    const pixels = [];
+    try {
+        const decoded = await audio.decodeAudioData(bytes.buffer);
+        check(decoded.numberOfChannels === 2 && Math.abs(decoded.duration - frames / config.fps) <= 1/config.fps+.002,
+            'Decoded audio duration or channels differ');
+        const pcmHashes = await Promise.all([0,1].map(channel => digest(decoded.getChannelData(channel))));
+        video.muted = true;
+        await withDeadline(new Promise((resolve,reject) => {
+            video.onloadeddata = resolve;
+            video.onerror = () => reject(new Error('Video cannot decode'));
+            video.src = url;
+        }), 'Initial video decode');
+        const expected = config.resolution === '4K' ? [3840,2160] : [1920,1080];
+        check(video.videoWidth === expected[0] && video.videoHeight === expected[1], 'Decoded dimensions differ');
+        const seconds = frames / config.fps;
+        for (const time of seconds < 1 ? [0] : [seconds/4, seconds/2, 3*seconds/4]) {
+            if (time > 0) {
+                await withDeadline(new Promise((resolve,reject) => {
+                    video.onseeked = resolve;
+                    video.onerror = () => reject(new Error('Video seek failed at ' + time));
+                    video.currentTime = time;
+                }), 'Seek ' + time);
+            }
+            context.drawImage(video,0,0,64,36);
+            const rgba = context.getImageData(0,0,64,36).data;
+            if (seconds >= 1) check(rgba.some((value,index) => index % 4 !== 3 && value > 6), 'Blank decoded frame');
+            pixels.push(rgba.filter((_value,index) => index % 4 !== 3));
+        }
+        if (seconds < 1) {
+            await withDeadline(new Promise((resolve,reject) => {
+                video.onended = resolve;
+                video.onerror = () => reject(new Error('Prefix playback failed'));
+                void video.play().catch(reject);
+            }), 'Prefix playback');
+            check(video.currentTime >= seconds - .05, 'Playback did not reach the prefix endpoint');
+        }
+        return { packets, pcmHashes, pixels, audioSeconds: decoded.duration };
+    } finally { video.removeAttribute('src'); video.load(); URL.revokeObjectURL(url); await audio.close(); }
+}
+
+async function measure(source, config, scheduling, command = 'full', onFrame = () => {}) {
+    const start = performance.now();
+    const lease = await captureExportSnapshot(source.input, source.pcm, config, new AbortController().signal);
+    const totalFrames = Math.floor(source.input.analysis.duration * config.fps);
+    const stopAt = Math.min(90, Math.floor(totalFrames / 2));
+    let runtime, profile, frames = 0, elapsedMs, blob;
+    const backend = new WebCodecsBackend(live, {}, live, 'Frozen sample', null, scheduling);
+    const delays = [];
+    let last = performance.now();
+    const timer = setInterval(() => {
+        const now = performance.now();
+        delays.push(Math.max(0, now - last - 25)); last = now;
+    }, 25);
+    try {
+        runtime = new WormholeExportRuntime(lease.snapshot, lease.audio);
+        blob = await backend.start(config, progress => {
+            if (progress >= 1) return;
+            frames++;
+            if (command === 'stop' && frames === stopAt) backend.stopAndSave();
+            if (command === 'cancel' && frames === 8) backend.cancelExport();
+            onFrame(frames);
+        }, runtime, result => { profile = result; });
+        elapsedMs = performance.now() - start;
+    } catch (error) {
+        if (command !== 'cancel' || profile?.outcome !== 'cancelled' || !/cancelled/.test(String(error))) throw error;
+    } finally {
+        clearInterval(timer);
+        try { runtime?.dispose(); } finally { lease.dispose(); }
+    }
+    check(profile?.scheduling === scheduling && profile.resources.peakOutstandingFrames <= 2, 'Scheduling or queue cap differs');
+    if (command === 'cancel') { check(!blob && frames === 8, 'Cancel published output'); return { scheduling, command, frames, profile }; }
+    check(blob && profile.outcome === 'completed', 'Export did not complete');
+    check(frames === (command === 'stop' ? stopAt : totalFrames), 'Frame count differs');
+    const { pixels, ...decoded } = await decode(blob, frames, config);
+    return { scheduling, command, elapsedMs, bytes: blob.size, frames, profile, decoded, pixels,
+        timerDelayMs: { p95: quantile(delays,.95), p99: quantile(delays,.99), samples: delays.length } };
+}
+
+function compare(first, second) {
+    check(first.profile.analysisId === second.profile.analysisId && first.profile.preflight.codec === second.profile.preflight.codec,
+        'Snapshot or codec differs');
+    check(JSON.stringify(first.decoded.packets) === JSON.stringify(second.decoded.packets), 'Packet clocks differ');
+    check(JSON.stringify(first.decoded.pcmHashes) === JSON.stringify(second.decoded.pcmHashes), 'Decoded PCM differs');
+    const maxMeanRgbDifference = Math.max(...first.pixels.map((frame,index) =>
+        frame.reduce((sum,value,i) => sum + Math.abs(value - second.pixels[index][i]),0) / frame.length));
+    check(maxMeanRgbDifference <= 4, 'Decoded sampled frames differ');
+    return { maxMeanRgbDifference, exactDecodedPcm: true };
+}
+
+async function runBenchmark(controlsOnly) {
+    for (const id of ['run','controls','audio','resolution']) get(id).disabled = true;
+    const runs = [], pairs = [];
+    try {
+        print({ status: 'analyzing' });
+        let file = get('audio').files[0];
+        if (!file) {
+            const response = await fetch(new URL('sample.wav', location.href));
+            check(response.ok, 'Select a local sample or add sample.wav alongside the fixture');
+            file = new File([await response.blob()], 'sample.wav', { type: 'audio/wav' });
+        }
+        const source = await analyze(file);
+        const config = { resolution: get('resolution').value, fps: 60, aspectRatio: '16:9',
+            runtime: 'isolated-wormhole', preflight: true, watermark: false };
+        const orders = controlsOnly ? [] : [['display','cooperative'],['cooperative','display'],['display','cooperative']];
+        for (const order of orders) {
+            const pair = {};
+            for (const scheduling of order) {
+                print({ status: 'encoding', scheduling, completed: runs.length });
+                const row = await measure(source,config,scheduling,'full',frames => {
+                    if (frames % 60 === 0) print({ status: 'encoding', scheduling, frames, completed: runs.length });
+                });
+                pair[scheduling] = row;
+                const { pixels, ...receipt } = row;
+                runs.push(receipt);
+            }
+            pairs.push(compare(pair.display,pair.cooperative));
+        }
+        print({ status: 'checking controls', completed: runs.length });
+        const controls = [];
+        const baselinePrefix = await measure(source,config,'display','stop');
+        let prefixParity;
+        for (const command of ['stop','cancel','stop']) {
+            const { pixels, ...receipt } = await measure(source,config,'cooperative',command);
+            if (command === 'stop') prefixParity = compare(baselinePrefix, { ...receipt, pixels });
+            controls.push(receipt);
+        }
+        let metrics = {};
+        if (!controlsOnly) {
+            const median = scheduling => quantile(runs.filter(row => row.scheduling === scheduling).map(row => row.elapsedMs),.5);
+            const displayMs = median('display'), cooperativeMs = median('cooperative');
+            metrics = { displayMs, cooperativeMs, improvementPercent: (1-cooperativeMs/displayMs)*100 };
+        }
+        const beforeCleanup = getExportCacheSummary();
+        const cleanup = await clearFinishedExportCache();
+        check(cleanup.removed === runs.length + 3 && cleanup.remaining === 0, 'Owned output cleanup differs');
+        print({ status: 'passed', resolution: config.resolution, sourceSeconds: source.pcm.duration, mediaId: source.input.audioContentId,
+            platform: navigator.userAgent, ...metrics,
+            runs, pairs, controls, prefixParity, beforeCleanup, cleanup });
+    } catch (error) {
+        await clearFinishedExportCache();
+        print({ status: 'failed', error: String(error), stack: error.stack, runs, pairs });
+    } finally { for (const id of ['run','controls','audio','resolution']) get(id).disabled = false; }
+}
+get('run').onclick = () => void runBenchmark(false);
+get('controls').onclick = () => void runBenchmark(true);
+</script>
+</html>

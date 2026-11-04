@@ -19,6 +19,7 @@ export class WebCodecsBackend implements ExportBackend {
     private readonly p5Instance: any;
     private readonly audioEngine: any;
     private readonly trackName: string;
+    private readonly isolatedScheduling: 'display' | 'cooperative';
     private worker: Worker | null = null;
     private cancelled = false;
     private stoppedEarly = false;
@@ -28,6 +29,7 @@ export class WebCodecsBackend implements ExportBackend {
     private captureCanvas: HTMLCanvasElement | null = null;
     private workerQueueDepth = 0;
     private outstandingFrames = 0;
+    private resumeQueueWait: (() => void) | null = null;
     private running = false;
     private ownsLoop = false;
     private interruptWait: ((error: Error) => void) | null = null;
@@ -49,13 +51,16 @@ export class WebCodecsBackend implements ExportBackend {
         canvas: HTMLCanvasElement,
         audioEngine: any,
         trackName: string,
-        videoElement: HTMLVideoElement | null = null
+        videoElement: HTMLVideoElement | null = null,
+        // The production factory uses display scheduling. The browser benchmark injects the candidate.
+        isolatedScheduling: 'display' | 'cooperative' = 'display'
     ) {
         void canvas;
         this.p5Instance = p5Instance;
         this.audioEngine = audioEngine;
         this.trackName = trackName;
         this.videoElement = videoElement;
+        this.isolatedScheduling = isolatedScheduling;
     }
 
     async start(config: ExportConfig, onProgress: (progress: number) => void, runtime?: ExportRuntime,
@@ -75,8 +80,10 @@ export class WebCodecsBackend implements ExportBackend {
         this.storageLease = typeof navigator !== 'undefined' && typeof navigator.storage?.getDirectory === 'function'
             ? new ExportStorageLease(() => navigator.storage.getDirectory()) : null;
         const now = runtime ? () => performance.now() : () => 0, started = now();
-        const stages = { renderRequest: 0, bitmap: 0, queueWait: 0, finalizeWait: 0, backendRequest: 0 };
-        let submittedFrames = 0, outcome: ExportProfile['outcome'] = 'failed';
+        const cooperative = Boolean(runtime && this.isolatedScheduling === 'cooperative');
+        const stages = { renderRequest: 0, animationFrameWait: 0, mainThreadYield: 0,
+            bitmap: 0, queueWait: 0, finalizeWait: 0, backendRequest: 0 };
+        let submittedFrames = 0, peakOutstandingFrames = 0, outcome: ExportProfile['outcome'] = 'failed';
 
         this.running = true;
         this.cancelled = false;
@@ -119,7 +126,11 @@ export class WebCodecsBackend implements ExportBackend {
             // No real frames/bitmaps are rendered or admitted while the worker probes.
             if (prepared) await this.waitForOperation(prepared);
 
-            await this.waitForOperation(nextAnimationFrame());
+            if (!cooperative) {
+                const animationFrameStarted = now();
+                await this.waitForOperation(nextAnimationFrame());
+                stages.animationFrameWait += now() - animationFrameStarted;
+            }
             if (!runtime) { State.isExporting = true; State.exportTime = 0; }
 
             const totalFrames = Math.floor(duration * config.fps);
@@ -128,12 +139,15 @@ export class WebCodecsBackend implements ExportBackend {
             for (let i = 0; i < totalFrames; i++) {
                 if (this.cancelled || this.stoppedEarly || (!this.offscreenGraphics && !runtime)) break;
 
-                const queueWaitStarted = Date.now();
                 const queueStageStarted = now();
-                while ((this.workerQueueDepth >= 2 || this.outstandingFrames >= 2)
-                    && !this.exportError && !this.cancelled && !this.stoppedEarly) {
-                    if (Date.now() - queueWaitStarted >= 30_000) throw new Error('Export encoder queue timed out.');
-                    await sleep(2);
+                if (cooperative) {
+                    if (!this.hasQueueCapacity()) await this.waitForQueueCapacity();
+                } else {
+                    const queueWaitStarted = Date.now();
+                    while (!this.hasQueueCapacity() && !this.exportError && !this.cancelled && !this.stoppedEarly) {
+                        if (Date.now() - queueWaitStarted >= 30_000) throw new Error('Export encoder queue timed out.');
+                        await sleep(2);
+                    }
                 }
                 stages.queueWait += now() - queueStageStarted;
                 if (this.exportError) throw this.exportError;
@@ -151,7 +165,11 @@ export class WebCodecsBackend implements ExportBackend {
                         this.renderOffscreenFrame();
                     }
                     stages.renderRequest += now() - renderStarted;
-                    await this.waitForOperation(nextAnimationFrame());
+                    if (!cooperative) {
+                        const animationFrameStarted = now();
+                        await this.waitForOperation(nextAnimationFrame());
+                        stages.animationFrameWait += now() - animationFrameStarted;
+                    }
                     if (this.cancelled || this.stoppedEarly || !this.worker) break;
                     if (!runtime) image = this.prepareBitmapSource(target.width, target.height, config.watermark === true);
                     if (!image) throw new Error('Export frame surface unavailable.');
@@ -173,6 +191,7 @@ export class WebCodecsBackend implements ExportBackend {
                 try {
                     const audioPayload = audioBuffer ? this.getPlanarAudioFrame(audioBuffer, i, config.fps) : null;
                     this.outstandingFrames++;
+                    if (runtime) peakOutstandingFrames = Math.max(peakOutstandingFrames, this.outstandingFrames);
                     if (audioPayload) {
                         this.worker.postMessage({
                             type: 'encode_frame',
@@ -192,7 +211,9 @@ export class WebCodecsBackend implements ExportBackend {
 
                 this.workerQueueDepth++; // Optimistic increment until worker replies
                 if (i % 2 === 0) {
-                    await sleep(1); // Yield to browser event loop so UI doesn't freeze
+                    const yieldStarted = now();
+                    await sleep(1); // Allow input and worker messages even without a display frame.
+                    stages.mainThreadYield += now() - yieldStarted;
                 }
 
                 onProgress(totalFrames > 0 ? i / totalFrames : 1);
@@ -220,8 +241,10 @@ export class WebCodecsBackend implements ExportBackend {
                     estimatedBytes: runtime.snapshot.estimatedBytes, budgetBytes: runtime.snapshot.budgetBytes,
                     stagesMs: { ...stages, ...this.workerTimings }, framesSubmitted: submittedFrames,
                     ...(this.preparationReport ? { preflight: this.preparationReport } : {}),
+                    scheduling: cooperative ? 'cooperative' : 'display',
                     resources: { audioBufferAllocations: this.audioAllocations, audioBuffersReused: this.audioReuses,
-                        audioPoolLimitBytes: this.audioCapacity * 4 * 2, storage: this.storageLease?.disposition ?? 'unmanaged' },
+                        audioPoolLimitBytes: this.audioCapacity * 4 * 2, peakOutstandingFrames,
+                        storage: this.storageLease?.disposition ?? 'unmanaged' },
                     outcome: this.cancelled ? 'cancelled' : outcome,
                     scope: 'Host wall-clock waits; render includes simulation/raster/composition/PostFX. Worker intervals overlap the host. Never sum stages as a total or infer GPU/codec CPU time.' }); } catch { /* Diagnostics cannot change job completion. */ }
             }
@@ -246,7 +269,18 @@ export class WebCodecsBackend implements ExportBackend {
     stopAndSave(): void {
         if (!this.running || this.cancelled || this.stoppedEarly) return;
         this.stoppedEarly = true;
+        this.resumeQueueWait?.();
         if (this.waitingForFrame) this.interruptWait?.(new Error('No video frames were captured before stopping.'));
+    }
+
+    private hasQueueCapacity(): boolean {
+        return this.workerQueueDepth < 2 && this.outstandingFrames < 2;
+    }
+
+    private waitForQueueCapacity(): Promise<void> {
+        const ready = new Promise<void>(resolve => { this.resumeQueueWait = resolve; });
+        // Stop wakes this wait directly. Cancel, worker errors and the watchdog interrupt it.
+        return this.waitForOperation(ready, undefined, () => { this.resumeQueueWait = null; }, false);
     }
 
     async discardResult(): Promise<void> {
@@ -277,12 +311,14 @@ export class WebCodecsBackend implements ExportBackend {
                     if (returned instanceof Float32Array && returned.buffer.byteLength > 0
                         && returned.buffer.byteLength <= this.audioCapacity * 4 && this.audioPool.length < 2
                         && !this.audioPool.some(item => item.buffer === returned.buffer)) this.audioPool.push(new Float32Array(returned.buffer));
+                    if (this.resumeQueueWait && this.hasQueueCapacity()) this.resumeQueueWait();
                 } else if (event.data.type === 'export_audio_warning' && this.runtime) {
                     this.exportError = new Error(`Isolated export audio failed: ${event.data.message}`);
                     this.interruptWait?.(this.exportError);
                     reject(this.exportError);
                 } else if (event.data.type === 'queue_update') {
-                    this.workerQueueDepth = (event.data as any).size;
+                    this.workerQueueDepth = event.data.size;
+                    if (this.resumeQueueWait && this.hasQueueCapacity()) this.resumeQueueWait();
                 } else if (event.data.type === 'export_telemetry') {
                     const telemetry = event.data.telemetry;
                     console.info(`[Telemetry] Frames: ${telemetry.framesEncoded}, Avg submission: ${telemetry.avgEncodeTimeMs.toFixed(2)} ms, Queue: ${telemetry.queueDepth}`);
