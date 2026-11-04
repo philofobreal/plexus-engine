@@ -5,6 +5,7 @@ export interface ExportDialogCallbacks {
     onStart: (config: ExportConfig) => void;
     onStop: () => void;
     onCancel: () => void;
+    onMinimizedChange?: (minimized: boolean) => void;
     getCacheSummary?: () => { files: number; cleanupPending: number; scope: string };
     onClearCache?: () => Promise<{ removed: number; remaining: number }>;
 }
@@ -26,6 +27,7 @@ export class ExportDialog {
     private isActive = false;
     private controlPending = false;
     private compact = false;
+    private jobConfig: ExportConfig | null = null;
     private returnFocus: HTMLElement | null = null;
     private blockedMessage: string | null = null;
     private readonly runtimeSelect: HTMLSelectElement;
@@ -57,7 +59,7 @@ export class ExportDialog {
                         <option value="compatible">Compatible (current)</option>
                         <option value="isolated-wormhole">Isolated Wormhole (preview)</option>
                     </select></label>
-                    <small>Isolated uses a frozen track and private renderer. Codec support is tested before isolated export.</small>
+                    <small>Isolated checks codec support and freezes the track. Minimize once exporting starts to keep working.</small>
                 </div>
                 <div class="mvp-field"><label>Export memory limit
                     <select class="mvp-select mvp-export-memory" aria-label="Export memory limit">
@@ -128,7 +130,9 @@ export class ExportDialog {
         });
         this.root.querySelector('.mvp-export-copy')!.addEventListener('click', () => {
             if (!navigator.clipboard?.writeText) { this.setStatus('Clipboard unavailable.'); return; }
-            void navigator.clipboard.writeText(JSON.stringify({ export: this.getConfig(), diagnostics: this.profile,
+            const exportConfig = this.isActive && this.jobConfig ? this.jobConfig : this.getConfig();
+            void navigator.clipboard.writeText(JSON.stringify({ export: exportConfig, diagnostics: this.profile,
+                ...(this.profile && this.jobConfig ? { diagnosticExport: this.jobConfig } : {}),
                 ...(this.callbacks.getCacheSummary ? { cache: this.callbacks.getCacheSummary() } : {}) }, null, 2))
                 .catch(() => this.setStatus('Unable to copy export settings.'));
         });
@@ -195,10 +199,12 @@ export class ExportDialog {
     }
 
     private setCompact(compact: boolean): void {
+        const changed = this.compact !== compact;
         this.compact = compact;
         this.root.classList.toggle('mvp-export-compact', compact);
         this.panel.ariaModal = compact ? 'false' : 'true';
         this.cancelBtn.textContent = compact && !this.isActive ? 'Dismiss' : 'Cancel';
+        if (changed) this.callbacks.onMinimizedChange?.(compact);
     }
 
     private minimize(): void {
@@ -230,7 +236,7 @@ export class ExportDialog {
 
     getResolution(): ExportResolution { return this.getConfig().resolution; }
     restoreResolution(resolution: ExportResolution): void {
-        const selected = this.resolutionBtns.find(b => b.dataset.res === resolution && !b.disabled)
+        const selected = this.resolutionBtns.find(b => b.dataset.res === resolution && b.dataset.capabilityDisabled !== 'true')
             ?? this.resolutionBtns.find(b => b.dataset.res === '720p');
         this.resolutionBtns.forEach(b => b.classList.toggle('is-active', b === selected));
     }
@@ -247,9 +253,10 @@ export class ExportDialog {
         return this.isActive || (!this.compact && !this.root.classList.contains('mvp-hidden'));
     }
 
-    setActive(isActive: boolean): void {
+    setActive(isActive: boolean, config?: ExportConfig): void {
         const focused = document.activeElement;
         this.isActive = isActive;
+        if (isActive) this.jobConfig = { ...(config ?? this.getConfig()) };
         this.refreshCache();
         this.runtimeSelect.disabled = isActive;
         this.memorySelect.disabled = isActive || !this.isolatedAvailable || this.runtimeSelect.value === 'compatible';

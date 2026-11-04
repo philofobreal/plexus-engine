@@ -153,6 +153,7 @@ export class MvpVisualController {
     private exportP5Instance: unknown = null;
     private exportCanvas: HTMLCanvasElement | null = null;
     private currentExporter: WebMExporter | null = null;
+    private exportSnapshotReady = false;
     private exportCacheClearing: Promise<{ removed: number; remaining: number }> | null = null;
     private activityLevel: DramaturgyActivityLevel = 'balanced';
     private variantMode: DramaturgyVariantMode = 'paired';
@@ -401,6 +402,12 @@ export class MvpVisualController {
         return `${import.meta.env.BASE_URL}visual-tuning-presets/${encodeURIComponent(fileName)}`;
     }
 
+    private async fetchPreset(name: string, signal?: AbortSignal): Promise<unknown> {
+        const response = await fetch(this.presetUrl(name), { cache: 'no-store', signal });
+        if (!response.ok) throw new Error(String(response.status));
+        return response.json();
+    }
+
     private async preloadPresetsForPlan(plan: PerformanceAutomationPlan | null): Promise<void> {
         if (!plan?.points.length) return;
         const loadRevision = this.loadRevision;
@@ -408,9 +415,7 @@ export class MvpVisualController {
         await Promise.all(uniquePresets.map(async (preset) => {
             if (this.presetCache.has(preset)) return;
             try {
-                const response = await fetch(this.presetUrl(preset), { cache: 'no-store' });
-                if (!response.ok) throw new Error(String(response.status));
-                const payload = await response.json();
+                const payload = await this.fetchPreset(preset);
                 if (loadRevision === this.loadRevision) this.presetCache.set(preset, payload);
             } catch { /* opportunistic */ }
         }));
@@ -423,9 +428,7 @@ export class MvpVisualController {
         try {
             let payload = this.presetCache.get(fileName);
             if (payload === undefined) {
-                const response = await fetch(this.presetUrl(fileName), { cache: 'no-store' });
-                if (!response.ok) throw new Error(String(response.status));
-                payload = await response.json();
+                payload = await this.fetchPreset(fileName);
                 if (!this.isCurrentRequest(loadRevision, planRevision)) return;
                 this.presetCache.set(fileName, payload);
             }
@@ -753,7 +756,7 @@ export class MvpVisualController {
         this.callbacks.onHistoryChanged?.();
     }
     getHistoryStatus(): HistoryStatus { return this.history.getStatus(); }
-    canUseHistory(): boolean { return this.canSaveJourney() && !this.currentExporter; }
+    canUseHistory(): boolean { return this.canSaveJourney() && (!this.currentExporter || this.exportSnapshotReady); }
 
     private historySnapshot(domain: HistoryDomain): HistorySnapshot {
         return domain === 'tuning'
@@ -999,9 +1002,11 @@ export class MvpVisualController {
 
     async startExport(config: ExportConfig, onProgress: (progress: number) => void): Promise<Blob> {
         if (!this.canExport() || this.currentExporter || this.exportCacheClearing) throw new Error('Export is not available right now.');
-        this.markSessionChanged();
-        const wasPlaying = State.isPlaying;
-        if (wasPlaying) this.engine.stop(false);
+        const isolated = config.runtime === 'isolated-wormhole';
+        if (!isolated) {
+            this.markSessionChanged();
+            if (State.isPlaying) this.engine.stop(false);
+        }
 
         const isolatedExport = this.isolatedExport;
         let preparationMs = 0;
@@ -1012,9 +1017,27 @@ export class MvpVisualController {
                 const revisionKey = () => `${this.loadRevision}/${this.planRevision}/${this.sessionRevision}/${this.tuningSignature()}/${State.automationMorphScale}`;
                 this.configureFiniteAutomation();
                 const plan = this.getAutomationPlanView() ?? { version: 1 as const, source: 'auto' as const, points: [] };
-                const presets = Object.fromEntries([...new Set(plan.points.map(p => p.preset))].map(name => [name, this.presetCache.get(name)]));
                 const revision = revisionKey();
+                const assertCurrent = () => {
+                    if (signal.aborted) throw new Error('Export cancelled.');
+                    if (revision !== revisionKey()) throw new Error('Track or settings changed during export preparation. Start again.');
+                };
                 const started = performance.now();
+                const names = [...new Set(plan.points.map(point => point.preset))];
+                const presets = Object.fromEntries(names.map(name => [name, this.presetCache.get(name)]));
+                const missing = names.filter(name => presets[name] === undefined);
+                if (missing.length) {
+                    if (this.currentExporter === exporter) this.callbacks.onExportPreparation?.('Loading journey presets for export…');
+                    await Promise.all(missing.map(async name => {
+                        try {
+                            presets[name] = await this.fetchPreset(name, signal);
+                        } catch (error) {
+                            if (signal.aborted) throw new Error('Export cancelled.');
+                            throw new Error(`Could not load journey preset for export: ${name}.`, { cause: error });
+                        }
+                    }));
+                    assertCurrent();
+                }
                 const lease = await captureExportSnapshot({ audioContentId: this.currentFileHash ?? '',
                     analysis: projectRenderWorkerAnalysis({ frames: State.frames, events: State.events, trackAnalysis: State.trackAnalysis,
                         sampleRate: State.sampleRate, hopSize: State.hopSize, bpm: State.bpm, duration: State.duration, performancePlan: plan }),
@@ -1025,8 +1048,7 @@ export class MvpVisualController {
                     morphScale: State.automationMorphScale
                 }, this.engine.getAudioBuffer()!, capturedConfig, signal);
                 try {
-                    if (signal.aborted) throw new Error('Export cancelled.');
-                    if (revision !== revisionKey()) throw new Error('Track or settings changed during export preparation. Start again.');
+                    assertCurrent();
                     const mib = Math.ceil(lease.snapshot.estimatedBytes / 1048576);
                     if (this.currentExporter === exporter) {
                         this.callbacks.onExportPreparation?.(`Estimated export working set: ${mib} MiB; planning limit: ${Math.round(lease.snapshot.budgetBytes / 1048576)} MiB. ${mib > 1024 ? 'High memory demand. ' : ''}Checking output-size codec support…`);
@@ -1045,9 +1067,19 @@ export class MvpVisualController {
         } : undefined);
         this.currentExporter = exporter;
         try {
-            return await exporter.startExport(config, onProgress);
+            return await exporter.startExport(config, progress => {
+                if (this.currentExporter !== exporter) return;
+                if (isolated && progress < 1 && !this.exportSnapshotReady) {
+                    this.exportSnapshotReady = true;
+                    this.callbacks.onHistoryChanged?.();
+                }
+                onProgress(progress);
+            });
         } finally {
-            if (this.currentExporter === exporter) this.currentExporter = null;
+            if (this.currentExporter === exporter) {
+                this.currentExporter = null;
+                this.exportSnapshotReady = false;
+            }
         }
     }
 
