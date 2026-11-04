@@ -843,11 +843,10 @@ node research/export/ffmpeg-baseline.mjs logs/t20a path/to/short.webm path/to/lo
    - **T20a2a — storage and same-format control.** Completed as research.
      Both MP4 paths use OPFS; the browser path is faster on the measured
      Chromium fixture, and the FFmpeg path has sample-exact audio endpoints.
-   - **T20a2b — reduced core and admission.** Qualify a reproducible on-demand
-     FFmpeg core without libx264, its distribution terms, realistic storage
-     budgets and cleanup. Include a browser-AAC-unavailable case and a
-     same-format matched quality test. The browser path is the performance
-     control; FFmpeg is the candidate for AAC fallback and exact finalization.
+   - **T20a2b — reduced core and admission.** The local research now has a
+     small FFmpeg core without libx264, a per-job storage budget and full-track
+     results. The browser path is the performance control; the FFmpeg path
+     uses no browser AAC encoder and is the candidate for exact finalization.
    - **T20a2c — coordinator and UI.** Add an explicit MP4 choice when the
      preceding gates pass. Reuse resolution, job controls and file ownership.
      Preflight the exact config, save the contiguous Stop prefix and discard
@@ -997,6 +996,81 @@ real-track storage and resource tests, player/editor compatibility with
 fragmented MP4 and physical mobile qualification. See
 [Mediabunny output targets](https://mediabunny.dev/guide/writing-media-files#output-targets)
 and the [FFmpeg WASM custom-build guide](https://ffmpegwasm.netlify.app/docs/contribution/core/#custom-build--reduce-build-size).
+
+### T20a2b reduced FFmpeg core and storage admission
+
+The [local build recipe](../../research/export/ffmpeg-mp4-core.Dockerfile)
+pins Emscripten 3.1.40 by image digest, FFmpeg 5.1.10 and the FFmpeg WASM
+binding by source commit. It has one thread, a 32 MiB initial WASM linear
+memory and a 256 MiB linear memory ceiling. The only intended job copies
+browser-encoded H.264, reads PCM16 WAV, encodes AAC and writes MP4. There is
+no video encoder, libx264, or network protocol in this FFmpeg build.
+The WASM is 1,477,933 bytes versus the full core's 32,232,419 bytes
+(95.4% smaller; SHA-256
+`8e71567f34b4ccb3b06bb75057cec95e68e49462d876b5a2e1a2a20f0d515aee`).
+The local build reports LGPL 2.1 or later for the selected FFmpeg components.
+The dedicated worker is the only code loading it. The AAC fallback never
+calls the browser audio encoder; actual codec discovery and fallback
+selection belong to the MVP coordinator task.
+
+The [admission policy](../../research/export/mp4-storage-admission.mjs)
+starts with frame count, exact PCM extent and the requested bitrates.
+It reserves all three coexisting OPFS files, with bitrate headroom for
+variable output and a separate 64–256 MiB quota reserve. It checks the
+origin estimate again before finalization and caps writes; missing or
+insufficient estimates are reported before admitting the phase.
+[StorageManager.estimate](https://storage.spec.whatwg.org/#dom-storagemanager-estimate)
+is a browser origin estimate; it does not reserve bytes, report free physical
+disk, or measure RAM. Actual write errors still require cleanup, and concurrent
+tabs can consume storage after preflight. The factor and reserve are research
+policy, not a platform guarantee.
+
+| Local reference | Clip duration (s) | 720p budget | 4K projected budget | Actual 720p MP4 |
+| --- | ---: | ---: | ---: | ---: |
+| Goa | 365.767 | 0.913 GB | 3.930 GB | 38.926 MB |
+| No Good | 410.567 | 1.024 GB | 4.411 GB | 43.352 MB |
+| Scienide | 350.433 | 0.875 GB | 3.766 GB | 37.081 MB |
+
+Decimal GB, excluding the separate reserve. The reference workload pairs real
+music with a repeated 720p/30 pre-encoded visual fixture. The measured files are
+smaller than the conservative requested-rate budget. These data exercise the
+full-length storage and finalization seam, not MVP rendering or full-song
+4K performance. The source tracks and generated fixtures stay local.
+
+All three FFmpeg 5.1.10 jobs preserved the exact video packets and timestamps
+(10,973 / 12,317 / 10,513 packets). Chromium decoded exactly 17,556,800 /
+19,707,200 / 16,820,800 audio samples per channel. Active test windows
+correlated 0.944–1.000 with the normalized PCM; quiet source windows stayed
+quiet. This is a clock and signal check rather than a listening or perceptual
+quality assessment. The worker's linear memory stayed at 32 MiB in each job;
+this does not include the browser, decoder or OPFS implementation. The
+largest output write was 114,493 bytes. Scratch removal was verified. The
+measured times include a loopback fixture transfer and were collected with
+the Node suite running, so they are not used for performance comparisons.
+
+Reproduce from the project root after the T20a1 vendor setup:
+
+```powershell
+docker buildx build --file research/export/ffmpeg-mp4-core.Dockerfile --output type=local,dest=logs/t20a2b/core research/export
+node research/export/prepare-mp4-track-fixtures.mjs '<local reference MP3 directory>'
+node --test research/export/mp4-storage-admission.test.mjs
+node research/export/serve-ffmpeg-browser.mjs
+```
+
+At the loopback page, **Run local track admission** uses the reduced core if
+present and reports which build it actually used. Use `?core=reduced` with
+**Run MP4 storage comparison** for the short 4K and Stop/Cancel/limit cases.
+All ten cases passed on the reduced core, including exact Stop, forced
+write-limit failure, cancellation cleanup and retry. The three Node research
+tests cover frame/PCM budget math, exact admission boundaries and failure on
+invalid quota or RIFF overflow. The 37 existing focused export tests passed.
+The locally generated core includes the upstream license notices in its
+output folder. Before serving it publicly, package the exact corresponding
+sources and build instructions with the notices, check the applicable
+distribution and codec obligations, and set an upstream update policy.
+See [FFmpeg licensing](https://ffmpeg.org/legal.html) and
+[FFmpeg security releases](https://ffmpeg.org/security.html). No binary or
+reference media is included in Git or the Pages application build.
 
 ## Optional accelerated export research (2026-11-04)
 
