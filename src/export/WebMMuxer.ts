@@ -99,7 +99,7 @@ export class WebMMuxer implements Muxer {
         }
 
         const excessUs = last && this.audioEndUs !== null ? Math.max(0, chunk.timestamp + (chunk.duration ?? 0) - this.codecDelayUs - this.audioEndUs) : 0;
-        const block = this.createSimpleBlock(2, timeMs - this.clusterTimecode, false, data);
+        const block = this.createSimpleBlock(2, timeMs - this.clusterTimecode, excessUs === 0, data);
         if (excessUs > 0) {
             const padding = new Uint8Array(8);
             new DataView(padding.buffer).setBigInt64(0, BigInt(Math.round(excessUs * 1000)), false);
@@ -156,7 +156,7 @@ export class WebMMuxer implements Muxer {
             ebmlUIntElement(0x73C5, this.videoTrackNumber),
             ebmlUIntElement(0x83, 1),
             ebmlStringElement(0x86, this.codecId),
-            ebmlFloatElement(0x23E383, 1_000_000_000 / this.fps),
+            ebmlUIntElement(0x23E383, Math.max(1, Math.round(1_000_000_000 / this.fps))),
             ebmlElement(0xE0, concatBytes(
                 ebmlUIntElement(0xB0, this.width),
                 ebmlUIntElement(0xBA, this.height)
