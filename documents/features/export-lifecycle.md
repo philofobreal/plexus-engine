@@ -639,6 +639,84 @@ node --test --test-reporter=tap --test-concurrency=3 tests/mvp-background-export
 git diff --check
 ```
 
+## T19d1 isolated export scheduling benchmark (2026-11-04)
+
+The user accepted T19c5. The first acceleration control experiment compares the
+current display-paced isolated export with an internal cooperative candidate.
+Both use the same ordered Wormhole renderer, frozen PCM, worker codec probe, WebM
+muxer, and two-frame admission bound. The candidate skips per-frame display waits,
+keeps the task yield after every other submitted frame, and wakes the host from the
+existing worker acknowledgements and queue-depth messages. It retains the 30-second
+watchdog. Stop wakes a blocked queue and drains its submitted prefix. Cancel and
+worker failures interrupt the wait and clean up as before. The worker's depth
+report still arrives every 50 ms. No changes to the worker protocol or codec were needed.
+
+The production factory selects display scheduling. Isolated Copy settings &
+diagnostics adds the effective `scheduling`, `stagesMs.animationFrameWait`,
+`stagesMs.mainThreadYield` and `resources.peakOutstandingFrames` fields. The
+display interval is separated from the renderer request time. All stage times
+are wall-clock waits. Two outstanding transfers do not bound total codec/GPU RAM.
+The cooperative candidate is selectable by the local benchmark only.
+
+The [benchmark page](../../tests/browser/export-scheduling-benchmark.html)
+loads a local 1–10 second stereo excerpt and uses the production audio analyzer and
+private renderer with the built-in Drive preset. It runs three alternating pairs at
+the chosen resolution. It compares exact video/Opus packet clocks, hashes of both
+decoded PCM channels and three sampled RGB frames per pair. The predeclared RGB
+tolerance is at most 4 mean absolute levels on the 0–255 scale. The same page checks
+a Stop prefix against both schedules, Cancel with no result, Stop on a fresh retry
+and owned-file cleanup. The controls can also be checked on their own.
+Choose a local clip, or serve `sample.wav` next to the benchmark. The audio remains
+on the local machine. With Vite running, open
+`/plexus-engine/tests/browser/export-scheduling-benchmark.html`.
+
+```text
+npm run dev -- --host 127.0.0.1
+npm run build
+npm test -- --test-reporter=tap --test-concurrency=4
+node --test --test-reporter=tap --test-concurrency=3 tests/export-scheduling.test.mjs tests/export-isolated.test.mjs tests/export-lifecycle.test.mjs tests/export-cache.test.mjs tests/export-preparation.test.mjs tests/mvp-background-export.test.mjs tests/mvp-export-panel.test.mjs tests/mvp-async-lifecycle.test.mjs tests/mvp-unsaved-changes.test.mjs
+git diff --check
+```
+
+The local Windows Chromium 156 benchmark used an eight-second excerpt from
+No Good, cut at 45 seconds, and a fixed Drive preset. The fixture SHA-256 is
+`63f76da30827d0fbc139236b4991f77c67848205bf35e9c5d72dbf1ed29fbe47`.
+Each full job submitted 480 frames. Both resolutions used VP9 at the reported
+level with Opus audio. Both decoded PCM hashes and three sampled 64×36 RGB frames
+matched within each pair, with measured mean RGB difference 0. Full-frame
+pixel parity across the video remains unmeasured.
+
+| Resolution | Full-job median, display / cooperative | Gain | Render requests | Encoder queue wait | Timer excess p95 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1080p60, VP9 level 4.1 | 17.27 / 15.42 s | 10.7% | 12.35 / 12.55 s | 3.72 / 1.99 s | 22.2 / 45.1 ms |
+| 4K60, VP9 level 5.1 | 19.02 / 16.49 s | 13.3% | 13.13 / 13.19 s | 4.33 / 2.28 s | 20.0 / 48.2 ms |
+
+The timer values are medians of per-job p95 excess delay from a 25 ms timer,
+with no live editor workload. User command latency, peak RAM and physical mobile
+performance require their own measurements. Display wait fell from 0.21 s at
+1080p and 0.20 s at 4K to zero. The largest saving was in encoder queue wait.
+Both speed gains fell below the 15% promotion threshold. Ship the diagnostics
+and retain the cooperative path as a local benchmark control.
+
+The 1080p suite and the separate 4K controls run produced playable 90-frame
+prefixes with both schedules, matched PCM, packet clocks and sampled pixels,
+cancelled at eight frames without a result, and removed their retained files
+after verification. An earlier
+200 ms display-paced 4K prefix passed packet and audio checks but Chromium
+reported a playback error. Retain that receipt and isolate the very-short-prefix
+behavior before promoting a new schedule. The current evidence points first to
+an ordered render worker and a direct measurement of canvas/codec handoff.
+A WASM prototype requires a measured CPU kernel.
+
+The production build and 130 focused cases passed. The cumulative suite had
+2,110 cases, with 2,101 passed and nine exact retained baseline failures.
+The local run receipts are under `logs/t19d1/`; the raw 4K pairs and later
+control pass are preserved separately from their combined summary.
+
+For the live release check, run a short Isolated Wormhole export and copy the
+diagnostics after completion. Confirm that the schedule is `display`, the display
+wait is recorded separately, and Stop & save still produces a playable prefix.
+
 ## Optional accelerated export research (2026-11-04)
 
 The user reports that their current mobile export is stable and slow. Preserve that workflow
