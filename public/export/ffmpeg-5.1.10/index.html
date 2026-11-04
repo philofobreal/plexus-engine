@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Plexus MP4 export — source and notices</title>
+<h1>Plexus MP4 export: source and notices</h1>
+<p>Plexus uses FFmpeg 5.1.10, licensed under LGPL 2.1 or later, in a separate
+Web Worker for AAC encoding and MP4 muxing. The core contains no libx264.
+You can rebuild and replace the core files below. The browser supplies H.264.</p>
+<ul>
+  <li><a href="FFmpeg-COPYING.LGPLv2.1">FFmpeg LGPL license</a> and <a href="ffmpeg-source.tar.gz">exact FFmpeg source</a></li>
+  <li><a href="ffmpeg.wasm-LICENSE">FFmpeg WASM binding license</a> and <a href="ffmpeg-wasm-binding-source.tar.gz">exact binding source</a></li>
+  <li><a href="ffmpeg-mp4-core.Dockerfile">build instructions</a>, <a href="ffmpeg-core.js">JavaScript module</a> and <a href="ffmpeg-core.wasm">WASM module</a></li>
+  <li><a href="Mediabunny-LICENSE">Mediabunny MPL 2.0 license</a> and <a href="https://registry.npmjs.org/mediabunny/-/mediabunny-1.39.1.tgz">Mediabunny 1.39.1 source package</a> (includes <code>src/</code>)</li>
+</ul>
+<p>Rebuild from this directory with Docker:</p>
+<pre>docker buildx build -f ffmpeg-mp4-core.Dockerfile --output type=local,dest=rebuilt .</pre>
+<p>In a local build or deployment of Plexus, replace the two <code>ffmpeg-core</code>
+files in this directory with the rebuilt files, then reload the app. The worker
+uses the module interface from the supplied binding source.</p>
+</html>
