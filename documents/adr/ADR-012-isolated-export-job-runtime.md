@@ -2,17 +2,16 @@
 
 ## Status
 
-T19e is scheduled to retire the isolated runtime from MVP export and remove
-its MVP-only integration. This decision covers MVP export only. The prior
-implementation and benchmarks below remain historical evidence. See the
-[retirement scope](../features/export-lifecycle.md#scheduled-retirement-from-mvp-export).
+T19e retired the isolated runtime and its dependent UI from MVP export. The
+MVP uses Compatible, with compact export status and workspace locking through
+cleanup. The isolated runtime remains available to research fixtures. See the
+[retirement record](../features/export-lifecycle.md#scheduled-retirement-from-mvp-export).
 
-Proposed by T01 on 2026-10-23; partially implemented by T19b on 2026-10-29.
-The MVP has an opt-in isolated Wormhole snapshot/runtime. Compatible remains the
-default and Studio retains the legacy path. T19c4 adds the minimizable panel.
-T19c5 enables background editing, playback and track replacement from that panel
-after the isolated job submits a frame. Job-versioned worker/resource migration
-and complete browser acceptance remain open.
+T01 proposed this architecture on 2026-10-23 and T19b partially implemented
+it on 2026-10-29 as an opt-in MVP mode. T19c4 added the minimizable panel.
+T19c5 used the frozen job to enable concurrent editing, playback and track
+replacement. The descriptions below record that implementation and the
+remaining architecture proposal.
 T19a (2026-10-29) hardens the existing export lifecycle and serial worker startup
 without accepting the complete proposed architecture. Integration owner: this chat.
 Owners: export, visuals/state contracts, MVP facade/UI, build.

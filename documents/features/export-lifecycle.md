@@ -756,17 +756,48 @@ git diff --check
 
 ## Scheduled retirement from MVP export
 
-The user approved T19d1 and scheduled T19e to retire Isolated Wormhole from MVP
-export. First check very short Stop saves on the remaining MVP route. Then remove
-the MVP render-mode selector, the isolated memory preference, the snapshot
-factory and diagnostics wiring, and the editor unlock tied to a frozen job.
-Existing sessions and stale export preferences should use the remaining route.
-Keep the common resolution, export controls, compact status, download and
-finished-file cleanup. The change is scoped to MVP export. Wormhole playback,
-preview, Studio and XR are outside the retirement scope.
+T19e removed Isolated Wormhole from MVP export after the user accepted the
+shared WebM playback fix. The export dialog offers resolution, compact status,
+Stop & save, Cancel, downloads and finished-file cleanup. Copy export settings
+includes the selected settings and this tab's cache counts. MVP no longer
+consults the legacy runtime or memory preference keys. Session resolution is
+restored through the existing capability check. On devices where Compatible
+disables 4K, a saved 4K selection falls back to 720p.
 
-Keep the earlier benchmarks as historical evidence. Base any later MVP
-acceleration proposal on matched measurements of the remaining export route.
+Compatible reserves the workspace through export teardown. Minimizing keeps
+the status and export controls accessible while playback, editing and file
+replacement wait for the job to settle. The retirement covers only MVP export.
+Wormhole preview, Studio and XR keep their existing entrypoints. Shared snapshot,
+codec preparation and renderer benchmarks remain in the research fixtures.
+
+The replacement tests cover stale configuration, saved resolution, copying
+settings, blocking a deferred replacement and releasing the workspace after
+the job. Three tests that required the retired UI or facade were removed from
+the active suite. The previously active source and exact assertions are retained
+at Git `6ed7857` and in the following archives.
+
+- [Isolated export tests](../tests/export-isolated.pre-t19e.mjs.snapshot)
+- [Export preparation tests](../tests/export-preparation.pre-t19e.mjs.snapshot)
+- [Background export tests](../tests/mvp-background-export.pre-t19e.mjs.snapshot)
+- [Compact panel tests](../tests/mvp-export-panel.pre-t19e.mjs.snapshot)
+
+A local Chromium run started with both retired storage preferences present.
+It restored 4K and 720p from the workspace, held the compact export lock,
+rejected a track replacement while exporting, and released the workspace on
+settlement. It played two 12-frame 4K60 Stop files and an eight-second
+720p60 file to their endpoints. Cancel produced no file, and the cache owned
+only the three successful outputs. Physical mobile remains a manual check.
+
+Base any future acceleration proposal on matched measurements of Compatible,
+starting with the remaining MVP path and testing on physical mobile before
+promoting any user-selectable acceleration.
+
+```text
+npm run build
+npm test -- --test-reporter=tap --test-concurrency=4
+node --test --test-reporter=tap --test-concurrency=3 tests/mvp-background-export.test.mjs tests/mvp-export-panel.test.mjs tests/mvp-async-lifecycle.test.mjs tests/mvp-unsaved-changes.test.mjs tests/export-isolated.test.mjs tests/export-preparation.test.mjs tests/export-cache.test.mjs tests/export-lifecycle.test.mjs tests/export-webm-duration.test.mjs tests/export-scheduling.test.mjs
+git diff --check
+```
 
 ## Optional accelerated export research (2026-11-04)
 

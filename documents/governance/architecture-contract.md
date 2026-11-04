@@ -6,20 +6,16 @@ This document extends `../../AGENTS.md`. If there is a conflict, `AGENTS.md` is 
 T19a retains the existing export ownership and renderer path. WebMExporter owns a
 synchronously reserved job through asynchronous backend teardown; Studio/MVP
 facades must not drop the job or unlock controls immediately on Cancel. Backend
-allocation is covered by cleanup and frame/media waits are interruptible. This
-does not authorize global State swapping or background editing. The isolated
-snapshot/render-context boundary is partly implemented by T19b below. See
-[export lifecycle](../features/export-lifecycle.md).
+allocation is covered by cleanup and frame/media waits are interruptible. MVP
+uses the Compatible workflow after T19e and keeps its workspace locked until
+the job settles, including when the status panel is minimized. See
+[export lifecycle](../features/export-lifecycle.md#scheduled-retirement-from-mvp-export).
 
-T19b adds an opt-in MVP-only isolated Wormhole path. The composition root injects
-an ExportRuntimeFactory from visuals into MvpUI/facade. MvpVisualController alone
-captures its consistent input/revision and may import the export-owned
-`ExportSnapshot` workflow beside WebMExporter. That helper imports only export
-config/shared contracts and owns admission, deep data copies/hashes and one PCM
-copy/channel. It never imports State, audio, UI or visuals. WebMExporter owns the
-lease until the encoding backend settles; backend borrows the runtime and never
-disposes another owner's resources. Studio and the default Compatible path retain
-their existing behavior.
+T19b introduced a private snapshot/render context that remains in the isolated
+export research fixtures. The export-owned `ExportSnapshot` accepts data-only
+inputs and owns admission, deep copies, hashes and one PCM copy per channel.
+Its imports are limited to export config and shared contracts. WebMExporter
+owns the lease until encoding settles, and the backend borrows the runtime.
 
 `WormholeExportRuntime` owns private source/output/PostFX resources. It reuses
 WormholeFrameContext/identity/automation and the existing PostFX classes through
@@ -28,7 +24,7 @@ composition always injects its own view. It never swaps State, renders from live
 preview images, fetches presets or controls playback. Source.prepareExport takes
 already resolved/frozen assets and scaled plan. Its 30/60fps sequential canonical
 tick adapter must match the independent renderExact rewind reference. Other FPS
-remain unsupported on this opt-in path. No XR defaults or analyzer change follows.
+remain unsupported in this research path.
 
 MVP Offscreen preview preserves the existing host-owned preset/semantic/director/gain resolution.
 `WormholeHostFrame` is a dependency-light resolved-frame contract; the preview worker owns identity
