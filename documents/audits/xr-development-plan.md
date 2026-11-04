@@ -42,7 +42,7 @@ and its existing legacy fallback remain unchanged.
 | D01 | Meaning of tsrs | Resolved by user at T17: WASM acceleration is the goal; ts-rs only if justified. Scalar WAT/WABT research ABI needs no Rust DTO generation or root dependency change |
 | D02 | DotRoll domain/package/runtime | Unknown; no server deployment assumptions. Ask before T23 environment selection, then verify actual platform at T24 |
 | D03 | Which business/IP computations move server-side | Auth/authorization/secrets server-side; client hot paths remain local. Ask before server service implementation; scaffold is not completed IP protection |
-| D04 | New export container/codecs | MP4/H.264/AAC proposed beside existing WebM; confirm at T20 before backend/license work |
+| D04 | New export container/codecs | FFmpeg prioritized for MVP. MP4/H.264/AAC is the first qualification candidate alongside WebM. Confirm target playback/editor destinations and the chosen build before distribution. |
 | D05 | Meaning of highlighted note | Initial accent/phrase/section role, same judge/base score; ask at T08 if reference implies a different mechanic. Any bonus requires separate scoring policy |
 | D06 | Complete native 3D representation | T06 inventory covers every family; grains/trails spike alone stays partial. Do not promote until element representation and stereo/perf evidence are accepted |
 | D07 | Freedom while exporting | MVP editing/playback can continue against an immutable job snapshot. Host navigation/tab close need guard; persistence requires a separate server job |
@@ -133,7 +133,7 @@ All cross-boundary handoffs have this chat's single integration owner.
 | T17 | No WASM backend -> one/two bottleneck kernels measured | Interop/copy/cold cost exceeds gain; TS numerical reference and full-pipeline cold/warm/Quest benchmark; reject prototype if gate fails |
 | T18 | Only promoted T17 kernels -> optional production backend | Detach/OOM/worker race; adapter failures/cancellation/cache parity, TS+WASM same corpus, lazy asset/MIME smoke; TS fallback |
 | T19 | Global export redraw -> snapshot/private runtime/job/UI | PCM duplication, UI stalls/stale IDs/leaks; phase control matrix, full/prefix/cancel files, editing/new-load parity; legacy path at next start |
-| T20 | WebM codecs -> confirmed new container/backend, conditional WASM acceleration | T19b whole-job profiling first; T19c/T20a evidence-gated CPU kernel/FFmpeg comparison, no presumed speedup. Double transcode/RAM/license; 720p/1080p/4K sync/memory/prefix tests; WebM |
+| T20 | FFmpeg transition for MVP export | Native reference, browser prototype, MVP integration, desktop/mobile qualification. Compare single encode plus FFmpeg muxing with direct FFmpeg encoding. Preserve WebM. See the [current schedule](../features/export-lifecycle.md#ffmpeg-transition-priority-t20a). |
 | T21 | No timed captions -> validated immutable subset/layout | Unsafe HTML/font/parity; parser/time-boundary/unicode/overlap/length tests, aspects, seek+real export, snapshot/undo; empty captions |
 | T22 | Root dashboard MPA -> launcher and /studio/ entry | Heavy startup/404/base/storage drift; dev+production direct URLs/reload/assets, host startup and MVP history; prior entry/base mapping |
 | T23 | No auth/server -> verified session/gate/business authority | Client bypass/cache/session fixation/CSRF; direct route/asset/API/logout/expiry integration, public host regression; fail-closed verified gate |

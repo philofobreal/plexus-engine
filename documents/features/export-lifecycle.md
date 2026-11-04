@@ -799,6 +799,74 @@ node --test --test-reporter=tap --test-concurrency=3 tests/mvp-background-export
 git diff --check
 ```
 
+## FFmpeg transition priority (T20a)
+
+After T19e acceptance, the user moved FFmpeg ahead of the generic render-worker
+experiment and T21 captions. The scope is MVP export. Use MP4/H.264/AAC as the
+first candidate, and use the current Compatible WebM as the control and
+available export option. Destination-specific playback and editor support still
+need qualification. The proposed production path should encode the video once.
+
+### T20a0 native reference
+
+Native FFmpeg N-124279-g0f6ba39122-20260430 processed two actual Compatible
+4K60 VP9/Opus files from T19d2, containing 12 and 90 frames from the eight-second
+No Good reference excerpt. Each median below includes process startup and
+local file I/O across three passes. The inputs were already encoded. These
+measurements exclude browser rendering, WebAssembly startup, storage copies and
+mobile performance. [FFmpeg streamcopy and transcoding](https://ffmpeg.org/ffmpeg.html#Streamcopy)
+
+| Operation | 12 frames | 90 frames | Decoded output |
+| --- | ---: | ---: | --- |
+| FFmpeg WebM stream copy | 76 ms | 65 ms | Exact video and PCM hashes. Container duration is 20 ms longer than the decoded audio boundary. |
+| FFmpeg MP4 stream copy | 73 ms | 71 ms | Exact video hash. VP9 and Opus remain. The native decoder produced 624 extra PCM samples per channel in each clip. |
+| FFmpeg MP4 H.264/AAC transcode | 428 ms | 1,306 ms | Same dimensions and frame counts. The reported audio/video endpoints are 200 and 1,500 ms. Decoded AAC has padding and the decoded video differs from the original. |
+
+The MP4 stream-copy result changes the container while retaining the input
+codecs. For an H.264/AAC MP4 path, prefer testing browser encoders that produce
+the target streams once, then using FFmpeg to assemble the MP4. Keep the
+native re-encode as a reference. Validate AAC priming and final padding in
+actual players and editors using a synchronized signal, in addition to
+checking stream durations. The benchmark outputs and detailed JSON are local
+under `logs/t20a/`. To repeat the native comparison with two short stereo exports:
+
+```powershell
+node research/export/ffmpeg-baseline.mjs logs/t20a path/to/short.webm path/to/longer.webm
+```
+
+### Delivery order
+
+1. **T20a1 browser prototype.** On the current host, measure the Compatible
+   job from start to downloaded file. Compare a worker-local FFmpeg muxer
+   fed once-encoded H.264/AAC with direct FFmpeg encoding from ordered frame
+   and PCM inputs. Choose a timestamp-bearing input seam and measure actual
+   copies and peak memory. Start with 720p and 1080p and then check supported
+   4K. A direct encoder needs bounded frame admission and storage, including
+   on mobile. Record unsupported codec and platform cases.
+2. **T20a2 MVP integration.** Integrate the viable candidate behind an explicit
+   export choice. Reuse the current resolution, job controls and file ownership.
+   Preflight the requested config, preserve the contiguous Stop prefix and
+   discard incomplete output on Cancel. Use the existing WebM option when the
+   candidate is unavailable and give the user the reason.
+3. **T20a3 release and promotion.** Run cold and warm jobs on desktop and
+   physical Android and iOS, with short prefixes, long runs and supported 4K.
+   Measure whole-job time, command latency, maximum resources, recovery and
+   sync in selected players/editors. Apply the existing 15% median threshold
+   to any speed claim. Decide on the default after user acceptance.
+4. **Further work.** Schedule render-worker optimization against the measured
+   bottleneck and T21 captions after the export route is stable. Studio and
+   XR retain their own work streams.
+
+GitHub Pages serves the web app as static assets. Begin with a browser-local
+prototype in a dedicated worker. Verify the exact FFmpeg core's format and
+encoder support, file-system behavior, download size and distribution terms.
+The documented wasm wrapper requires access to the core's file system for
+input and output. Measure that boundary before using it for large exports.
+A threaded Emscripten core needs cross-origin isolation and a separate
+non-threaded build for devices without it. A native hosted service would need
+a separate runtime and an explicit product decision about processing user
+media. [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages), [ffmpeg.wasm architecture](https://ffmpegwasm.netlify.app/docs/overview/#architecture), [Emscripten pthreads](https://emscripten.org/docs/porting/pthreads.html)
+
 ## Optional accelerated export research (2026-11-04)
 
 The user reports that their current mobile export is stable and slow. Preserve that workflow
