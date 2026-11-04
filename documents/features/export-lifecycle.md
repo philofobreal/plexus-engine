@@ -539,6 +539,98 @@ T19c follows manual feedback: real multi-minute/resource/latency evidence,
 job-specific OPFS cleanup and versioned commands, persistent/minimizable controls
 and only then background editing. Conditional WASM remains evidence-gated below.
 
+## T19c4 minimizable MVP export panel (2026-11-04)
+
+The user requested the next scheduled delivery after reporting stable mobile export.
+The MVP export dialog can now minimize into a compact panel and reopen through Details.
+The same progress, status and Stop & save / Cancel controls stay attached to the running
+job. The result remains visible in the compact panel until dismissed. Progress and late
+preparation messages respect a pending Stop or Cancel.
+
+MvpUI owns the active presentation job, workspace lock and one download per completion.
+The facade gates preparation and diagnostic callbacks by exporter identity. It keeps
+preparation timing local to that exporter. The active job keeps the rest of the MVP
+workspace inert until cleanup settles, and the existing unload guard also protects
+a clean page during export. Reload, tab close and navigation prompts depend on the
+browser. Background editing, playback and track replacement are the next T19 delivery.
+
+Validation uses Node 25.2.1 and npm 11.6.2. The production build and 78 targeted
+tests pass, including three new panel, unload and job-lifecycle cases. The local
+browser fixture builds with the production styles and returns HTTP 200. Both the
+in-app browser and Chrome timed out attaching before interactive verification.
+The cumulative result and retained baseline assertions are recorded in
+`logs/t19c4/validation.json`. Previous test identities are retained byte for byte.
+
+```text
+npm run build
+npm test -- --test-reporter=tap --test-concurrency=4
+node --test --test-reporter=tap --test-concurrency=3 tests/mvp-export-panel.test.mjs tests/export-lifecycle.test.mjs tests/export-cache.test.mjs tests/export-isolated.test.mjs tests/export-preparation.test.mjs tests/mvp-unsaved-changes.test.mjs
+git diff --check
+```
+
+Manual handoff on desktop and mobile:
+
+1. Start an export, minimize it, verify changing progress and reopen Details.
+2. Stop & save from the compact panel and confirm one playable partial download.
+3. Start again, confirm Cancel and check that the workspace unlocks without a download.
+4. During another run, attempt to reload, choose to stay, and verify the same export
+   continues on browsers that present the unload prompt.
+
+## Optional accelerated export research (2026-11-04)
+
+The user reports that their current mobile export is stable and slow. Preserve that workflow
+and offer an explicit accelerated option if a candidate passes acceptance. The inspected
+Pages release `2463f73` encodes VP9 or VP8 plus Opus with WebCodecs in a dedicated worker and
+writes WebM to OPFS. Its WASM FFT runs in the audio analyzer. The reported mobile device,
+browser and selected export mode have yet to be recorded for a matched comparison.
+
+In the loaded T19c3 five-minute synthetic 4K/60 run, the whole job took 1,021 s. Host
+instrumentation recorded about 565 s in render requests, 329 s waiting for queue capacity and
+15 s creating bitmaps. Those figures identify work to investigate. They represent elapsed
+stage times, with worker metrics overlapping them. The worker's synchronous `encode()` timing
+measures submission. Use output timestamps, queue stalls and flush to measure codec throughput.
+The isolated renderer currently draws through a DOM canvas and the export loop awaits a
+display frame before each bitmap. Wormhole advances simulation in canonical song-time order.
+Independent clip segments would need verified state checkpoints, ordered output and keyframe
+boundaries. Assigning frame indices to a pool today would repeat simulation or change results.
+
+| Candidate | Evaluation |
+| --- | --- |
+| Existing sequential rendering and WebCodecs with tighter scheduling | First control experiment. Measure the display-frame wait separately. For the isolated path, test cooperative scheduling and event-driven backpressure where the codec supports it. Keep bounded slots, watchdogs and reliable Stop/Cancel acknowledgements. Test the same codec, size, fps and quality target. |
+| OffscreenCanvas render worker and WebCodecs | First parallel prototype. Keep one ordered simulation and overlap its output with encoding. Reuse the worker-compatible surface seams from preview, adapt export-only PostFX and overlays, and compare direct worker-to-worker frame transfer with a worker that owns both rendering and codec submission if transfer costs dominate. Measure internal copies and GPU/encoder contention. Regular worker messaging can use transferable frames. [HTML canvas specification](https://html.spec.whatwg.org/multipage/canvas.html), [WebCodecs specification](https://www.w3.org/TR/webcodecs/). |
+| Native codec preference | If the encoder limits throughput, compare the browser default with `prefer-hardware` under the same output requirements and exact capability probe. The preference is a hint. Keep image quality, packet continuity and prefix validity in the comparison. [WebCodecs specification](https://www.w3.org/TR/webcodecs/#hardware-acceleration). |
+| Small WASM or WASM SIMD kernel | Profile a pure CPU stage first. Try a bulk kernel inside the render worker and compare cold startup, transfer or copy costs and whole-job gain. Keep a reference implementation and an exact or predeclared tolerance. Split work across workers only if independent batches and bounded results demonstrate further benefit. |
+| Threaded WASM and ffmpeg.wasm | A secondary experiment when evidence points to a parallel CPU kernel or a confirmed codec/format gap. Emscripten pthreads need cross-origin isolation and separate threaded/non-threaded builds. The live MVP HTML response checked for this review did not send COOP/COEP. Verify staging headers, assets, embedding and XR behavior before seeking approval for any hosting change. ffmpeg.wasm's published multithread result compares its own cores and native FFmpeg. Compare the actual browser pipeline, input/output buffering, mobile CPU and memory cost, codec quality and Stop-prefix behavior before selecting it. [Emscripten pthreads](https://emscripten.org/docs/porting/pthreads), [ffmpeg.wasm performance](https://ffmpegwasm.netlify.app/docs/performance/), [ffmpeg.wasm architecture](https://ffmpegwasm.netlify.app/docs/overview/). |
+| Multiple render or encoder segments | Defer unless the preceding pipeline still misses the target and measurements isolate a bottleneck that segmentation can address. Require deterministic checkpoint restoration, independent keyframe starts, bounded reordering, continuous audio and a single contiguous prefix for Stop & save. Multiple encoders may compete for the same hardware. |
+
+Keep the existing T19 interaction deliveries and collect the baseline with the editor active.
+Run the scheduling comparison and parallel prototype in T19 after the job controls and
+snapshot lifecycle are stable. Continue to T20a for codec/format experiments when indicated.
+Record at least three alternating paired runs per claimed target stratum. Start with a short
+1080p dense real track, then extend a viable candidate to a multi-minute run and 4K on supported
+devices. Compare start-to-usable-file time, control latency, peak resources where observable,
+queue/slot high-water marks and repeat-run stability. On physical mobile, record the device,
+browser, effective codec and preset, then check sustained throughput over consecutive jobs
+and recovery after switching apps. At 4K, each additional full RGBA buffer
+represents roughly 31.6 MiB before any codec, GPU or driver allocation. Count buffers and
+bound the queue. The existing promotion goals are at least 15% lower median whole-job time in
+the target stratum, at most 5% slowdown in protected strata, and 1080p control acknowledgement
+p95 ≤100 ms and p99 ≤250 ms. Preserve decoded frame and audio parity, the one-result rule,
+Stop/Cancel/retry and cleanup. Record unsupported memory counters as unmeasured.
+
+After acceptance, expose Standard and Accelerated in MVP export settings, using the existing
+saved settings and Copy diagnostics policy. Keep the proven path as Standard. Record requested
+and effective mode, exact codec settings and the fallback reason. Detect capabilities for the
+selected output before frames are produced. A preparation failure can select Standard with a
+visible reason. An in-progress failure follows the existing error/cleanup path and offers an
+explicit Standard retry. The user requests a single platform-independent delivery. Use one
+settings and job contract across desktop and mobile. Select the available execution path by
+the exact output configuration and runtime capability checks. Qualify the accelerated mode
+in the same release on representative desktop browsers and physical Android/Chrome and
+iOS/Safari devices. Retain Standard on supported configurations where the accelerated
+preflight fails and show the reason. Record the tested browser, device and output settings.
+Give the accelerated option the same speed and stability gate on both device classes.
+
 ## Scheduled export acceleration - user direction, 2026-10-29
 
 The user accepted T19a and requested that professionally justified WASM export
