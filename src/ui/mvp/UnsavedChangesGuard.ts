@@ -1,6 +1,7 @@
 interface LeaveCallbacks {
     hasChanges: () => boolean;
     confirm: (continuing: boolean) => Promise<boolean>;
+    hasActiveExport?: () => boolean;
 }
 
 /** UI-owned navigation guard. Does not save automatically or own audio lifecycle. */
@@ -17,6 +18,11 @@ export class UnsavedChangesGuard {
     }
 
     private readonly beforeUnload = (event: BeforeUnloadEvent): void => {
+        if (this.callbacks.hasActiveExport?.()) {
+            event.preventDefault();
+            event.returnValue = true;
+            return;
+        }
         if (!this.callbacks.hasChanges()) return;
         event.preventDefault();
         event.returnValue = true;
@@ -26,16 +32,18 @@ export class UnsavedChangesGuard {
         if (this.returnTimer !== null) this.host.clearTimeout(this.returnTimer);
         this.returnTimer = this.host.setTimeout(() => {
             this.returnTimer = null;
-            if (this.callbacks.hasChanges() && !this.pendingAction) void this.callbacks.confirm(false);
+            if (this.callbacks.hasChanges() && !this.pendingAction && !this.callbacks.hasActiveExport?.()) {
+                void this.callbacks.confirm(false);
+            }
         }, 0);
     };
 
-    /** Attach only while dirty, avoiding an unnecessary unload listener on clean pages. */
+    /** Attach while an export or unsaved edits need unload protection. */
     sync(): void {
-        const dirty = this.callbacks.hasChanges();
-        if (dirty === this.listening) return;
-        this.listening = dirty;
-        if (dirty) this.host.addEventListener('beforeunload', this.beforeUnload);
+        const shouldListen = Boolean(this.callbacks.hasActiveExport?.()) || this.callbacks.hasChanges();
+        if (shouldListen === this.listening) return;
+        this.listening = shouldListen;
+        if (shouldListen) this.host.addEventListener('beforeunload', this.beforeUnload);
         else this.host.removeEventListener('beforeunload', this.beforeUnload);
     }
 

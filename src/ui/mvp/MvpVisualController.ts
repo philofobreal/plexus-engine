@@ -1004,6 +1004,7 @@ export class MvpVisualController {
         if (wasPlaying) this.engine.stop(false);
 
         const isolatedExport = this.isolatedExport;
+        let preparationMs = 0;
         const exporter = new WebMExporter(this.exportP5Instance, this.exportCanvas!, this.engine, null, isolatedExport ? {
             prepareRuntime: async (capturedConfig, signal) => {
                 if (this.preparingTrack || this.regeneratingPlan || State.visualMode !== 'cosmic-wormhole' || State.videoBackplateActive)
@@ -1027,15 +1028,20 @@ export class MvpVisualController {
                     if (signal.aborted) throw new Error('Export cancelled.');
                     if (revision !== revisionKey()) throw new Error('Track or settings changed during export preparation. Start again.');
                     const mib = Math.ceil(lease.snapshot.estimatedBytes / 1048576);
-                    this.callbacks.onExportPreparation?.(`Estimated export working set: ${mib} MiB; planning limit: ${Math.round(lease.snapshot.budgetBytes / 1048576)} MiB. ${mib > 1024 ? 'High memory demand. ' : ''}Checking output-size codec support…`);
+                    if (this.currentExporter === exporter) {
+                        this.callbacks.onExportPreparation?.(`Estimated export working set: ${mib} MiB; planning limit: ${Math.round(lease.snapshot.budgetBytes / 1048576)} MiB. ${mib > 1024 ? 'High memory demand. ' : ''}Checking output-size codec support…`);
+                    }
                     const runtime = isolatedExport.factory(lease.snapshot, lease.audio), dispose = runtime.dispose.bind(runtime);
-                    const preparationMs = performance.now() - started;
+                    preparationMs = performance.now() - started;
                     runtime.dispose = () => { try { dispose(); } finally { lease.dispose(); } };
-                    this.exportPreparationMs = preparationMs;
                     return runtime;
                 } catch (error) { lease.dispose(); throw error; }
             },
-            onProfile: report => this.callbacks.onExportProfile?.({ ...report, stagesMs: { snapshotHashAndRendererPreparation: this.exportPreparationMs, ...report.stagesMs } })
+            onProfile: report => {
+                if (this.currentExporter === exporter) {
+                    this.callbacks.onExportProfile?.({ ...report, stagesMs: { snapshotHashAndRendererPreparation: preparationMs, ...report.stagesMs } });
+                }
+            }
         } : undefined);
         this.currentExporter = exporter;
         try {
@@ -1046,7 +1052,6 @@ export class MvpVisualController {
     }
 
     stopAndSaveExport(): void { this.currentExporter?.stopAndSave(); }
-    private exportPreparationMs = 0;
     cancelExport(): void { this.currentExporter?.cancelExport(); }
     getExportCacheSummary() { return getExportCacheSummary(); }
     clearExportCache() {

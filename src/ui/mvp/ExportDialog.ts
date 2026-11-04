@@ -14,6 +14,10 @@ export class ExportDialog {
     private readonly startBtn: HTMLButtonElement;
     private readonly stopBtn: HTMLButtonElement;
     private readonly cancelBtn: HTMLButtonElement;
+    private readonly panel: HTMLElement;
+    private readonly minimizeBtn: HTMLButtonElement;
+    private readonly detailsBtn: HTMLButtonElement;
+    private readonly progressValue: HTMLOutputElement;
     private readonly progressBar: HTMLElement;
     private readonly statusEl: HTMLElement;
     private readonly capabilityWarningEl: HTMLElement;
@@ -21,6 +25,8 @@ export class ExportDialog {
     private readonly callbacks: ExportDialogCallbacks;
     private isActive = false;
     private controlPending = false;
+    private compact = false;
+    private returnFocus: HTMLElement | null = null;
     private blockedMessage: string | null = null;
     private readonly runtimeSelect: HTMLSelectElement;
     private readonly memorySelect: HTMLSelectElement;
@@ -37,6 +43,7 @@ export class ExportDialog {
         this.root.innerHTML = `
             <div class="mvp-modal" role="dialog" aria-modal="true" aria-label="Export video">
                 <h2 class="mvp-modal-title">Export video</h2>
+                <div class="mvp-export-settings">
                 <div class="mvp-field">
                     <div class="mvp-field-row"><span>Resolution</span></div>
                     <div class="mvp-segmented mvp-export-resolution">
@@ -62,13 +69,19 @@ export class ExportDialog {
                     <small>Isolated export planning limit, not reserved or detected free RAM. Auto warns above 1 GiB. A short codec test cannot guarantee a full export.</small>
                 </div>
                 <div class="mvp-capability-warning mvp-hidden"></div>
-                <div class="mvp-modal-progress mvp-hidden"><div class="mvp-modal-progress-bar"></div></div>
-                <div class="mvp-modal-status"></div>
-                <div class="mvp-field">
+                </div>
+                <div class="mvp-export-progress mvp-hidden">
+                    <div class="mvp-modal-progress"><div class="mvp-modal-progress-bar"></div></div>
+                    <output aria-label="Export progress" aria-live="off">0%</output>
+                </div>
+                <div class="mvp-modal-status" role="status"></div>
+                <div class="mvp-field mvp-export-cache">
                     <button type="button" class="mvp-btn mvp-export-clear-cache">Clear this tab's finished exports</button>
                     <small class="mvp-export-cache-status"></small>
                 </div>
                 <div class="mvp-modal-actions">
+                    <button type="button" class="mvp-btn mvp-export-minimize mvp-hidden">Minimize</button>
+                    <button type="button" class="mvp-btn mvp-export-details">Details</button>
                     <button type="button" class="mvp-btn mvp-export-copy">Copy settings &amp; diagnostics</button>
                     <button type="button" class="mvp-btn mvp-export-cancel">Cancel</button>
                     <button type="button" class="mvp-btn mvp-export-stop mvp-hidden">Stop &amp; save</button>
@@ -76,6 +89,12 @@ export class ExportDialog {
                 </div>
             </div>
         `;
+        this.panel = this.root.querySelector('.mvp-modal')!;
+        this.minimizeBtn = this.root.querySelector('.mvp-export-minimize')!;
+        this.detailsBtn = this.root.querySelector('.mvp-export-details')!;
+        this.progressValue = this.root.querySelector('.mvp-export-progress output')!;
+        this.minimizeBtn.addEventListener('click', () => this.minimize());
+        this.detailsBtn.addEventListener('click', () => this.open());
         this.startBtn = this.root.querySelector('.mvp-export-start')!;
         this.stopBtn = this.root.querySelector('.mvp-export-stop')!;
         this.cancelBtn = this.root.querySelector('.mvp-export-cancel')!;
@@ -147,6 +166,12 @@ export class ExportDialog {
             this.callbacks.onCancel();
         });
         this.root.addEventListener('click', (e) => { if (e.target === this.root && !this.isActive) this.close(); });
+        this.root.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape' || (this.isActive && this.compact)) return;
+            event.preventDefault();
+            event.stopPropagation();
+            this.close();
+        });
     }
 
     private getConfig(): ExportConfig {
@@ -160,9 +185,26 @@ export class ExportDialog {
     }
 
     open(): void {
+        const wasCompact = this.compact;
+        if (this.root.classList.contains('mvp-hidden')) this.returnFocus = document.activeElement as HTMLElement | null;
+        this.setCompact(false);
         this.root.classList.remove('mvp-hidden');
-        this.statusEl.textContent = this.blockedMessage ?? '';
+        if (this.blockedMessage && !this.statusEl.textContent) this.setStatus(this.blockedMessage);
         this.refreshCache();
+        if (wasCompact) (this.isActive ? this.minimizeBtn : this.cancelBtn).focus();
+    }
+
+    private setCompact(compact: boolean): void {
+        this.compact = compact;
+        this.root.classList.toggle('mvp-export-compact', compact);
+        this.panel.ariaModal = compact ? 'false' : 'true';
+        this.cancelBtn.textContent = compact && !this.isActive ? 'Dismiss' : 'Cancel';
+    }
+
+    private minimize(): void {
+        if (!this.isActive) return;
+        this.setCompact(true);
+        this.detailsBtn.focus();
     }
 
     private refreshCache(): void {
@@ -194,10 +236,19 @@ export class ExportDialog {
     }
 
     close(): void {
+        if (this.isActive) { this.minimize(); return; }
         this.root.classList.add('mvp-hidden');
+        this.setCompact(false);
+        this.returnFocus?.focus();
+        this.returnFocus = null;
+    }
+
+    blocksWorkspaceShortcuts(): boolean {
+        return this.isActive || (!this.compact && !this.root.classList.contains('mvp-hidden'));
     }
 
     setActive(isActive: boolean): void {
+        const focused = document.activeElement;
         this.isActive = isActive;
         this.refreshCache();
         this.runtimeSelect.disabled = isActive;
@@ -208,23 +259,35 @@ export class ExportDialog {
         this.cancelBtn.disabled = false;
         this.startBtn.classList.toggle('mvp-hidden', isActive);
         this.stopBtn.classList.toggle('mvp-hidden', !isActive);
-        this.cancelBtn.textContent = 'Cancel';
-        this.root.querySelector('.mvp-modal-progress')!.classList.toggle('mvp-hidden', !isActive);
+        this.minimizeBtn.classList.toggle('mvp-hidden', !isActive);
+        this.cancelBtn.textContent = this.compact && !isActive ? 'Dismiss' : 'Cancel';
+        this.root.querySelector('.mvp-export-progress')!.classList.toggle('mvp-hidden', !isActive);
         // A resolution the platform can't actually export (e.g. 4K on this device) stays disabled
         // regardless of export-in-progress state; see applyCapabilityReport.
         this.resolutionBtns.forEach((btn) => {
             if (btn.dataset.capabilityDisabled !== 'true') btn.disabled = isActive;
         });
-        if (!isActive) this.progressBar.style.width = '0%';
+        this.progressBar.style.width = '0%';
+        this.progressValue.textContent = '0%';
+        if (focused === this.startBtn && isActive) this.minimizeBtn.focus();
+        if (!isActive && (focused === this.stopBtn || focused === this.minimizeBtn)) {
+            (this.compact ? this.detailsBtn : this.cancelBtn).focus();
+        }
     }
 
     setProgress(progress: number): void {
-        this.progressBar.style.width = `${Math.round(progress * 100)}%`;
+        const percent = `${Math.round(progress * 100)}%`;
+        this.progressBar.style.width = percent;
+        this.progressValue.textContent = percent;
         if (this.isActive && !this.controlPending && progress < 1) this.setStatus('Exporting video…');
     }
 
     setStatus(message: string): void {
-        this.statusEl.textContent = message;
+        if (this.statusEl.textContent !== message) this.statusEl.textContent = message;
+    }
+
+    setPreparationStatus(message: string): void {
+        if (this.isActive && !this.controlPending) this.setStatus(message);
     }
     setProfile(profile: ExportProfile): void { this.profile = profile; }
 
@@ -239,7 +302,7 @@ export class ExportDialog {
         if (report.preferredBackend === 'none') {
             this.blockedMessage = report.warnings[0] || 'Video export is not supported in this browser.';
             this.startBtn.disabled = true;
-            this.statusEl.textContent = this.blockedMessage;
+            if (!this.isActive) this.setStatus(this.blockedMessage);
         }
 
         const workerWillCheck4K = this.isolatedAvailable && report.fourKRestriction === 'device-heuristic';

@@ -1230,6 +1230,27 @@ button, input, select {
   overflow-y: auto;
 }
 .mvp-modal[aria-label="Export video"] .mvp-modal-actions { flex-wrap: wrap; }
+.mvp-export-details { display: none; }
+.mvp-export-compact {
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  background: transparent;
+  pointer-events: none;
+}
+.mvp-export-compact .mvp-modal {
+  pointer-events: auto;
+  padding: 14px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+}
+.mvp-export-compact .mvp-modal-title { margin-bottom: 8px; }
+.mvp-export-compact .mvp-modal-actions { margin-top: 10px; }
+.mvp-export-compact .mvp-export-details { display: inline-flex; }
+.mvp-export-compact :is(.mvp-export-settings, .mvp-export-cache, .mvp-export-copy, .mvp-export-start, .mvp-export-minimize) {
+  display: none;
+}
+.mvp-export-progress { display: flex; align-items: center; gap: 10px; }
+.mvp-export-progress output { font-size: 12px; font-variant-numeric: tabular-nums; }
 .mvp-export-clear-cache { max-width: 100%; white-space: normal; }
 .mvp-export-cache-status { display: block; margin-top: 8px; line-height: 1.4; color: var(--mvp-text-muted); }
 .mvp-modal-progress {
@@ -1237,7 +1258,7 @@ button, input, select {
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.1);
   overflow: hidden;
-  margin-top: 14px;
+  flex: 1;
 }
 .mvp-modal-progress-bar {
   height: 100%;

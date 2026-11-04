@@ -77,6 +77,7 @@ export class MvpUI {
     private timelineHidden = false;
     private toastTimer: number | null = null;
     private viewKey = '';
+    private exportJob: symbol | null = null;
     private readonly previewQualityControl?: ReturnType<typeof createPreviewQualityControl>;
 
     constructor(engine: AudioEngine, hasTimeBasedSemanticPlan: () => boolean = () => false,
@@ -238,8 +239,8 @@ export class MvpUI {
 
         this.exportDialog = new ExportDialog({
             onStart: (config) => void this.runExport(config),
-            onStop: () => this.controller.stopAndSaveExport(),
-            onCancel: () => this.controller.cancelExport(),
+            onStop: () => { if (this.exportJob) this.controller.stopAndSaveExport(); },
+            onCancel: () => { if (this.exportJob) this.controller.cancelExport(); },
             getCacheSummary: () => this.controller.getExportCacheSummary(),
             onClearCache: () => this.controller.clearExportCache()
         }, Boolean(isolatedExportFactory));
@@ -261,6 +262,7 @@ export class MvpUI {
         );
         this.root.appendChild(this.unsavedChangesDialog.root);
         this.unsavedChangesGuard = new UnsavedChangesGuard(window, {
+            hasActiveExport: () => this.exportJob !== null,
             hasChanges: () => this.controller.hasUnsavedChanges(),
             confirm: (continuing) => this.unsavedChangesDialog.confirm(continuing)
         });
@@ -286,7 +288,7 @@ export class MvpUI {
 
         this.controller = new MvpVisualController(engine, hasTimeBasedSemanticPlan, {
             onExportProfile: profile => this.exportDialog.setProfile(profile),
-            onExportPreparation: message => this.exportDialog.setStatus(message),
+            onExportPreparation: message => this.exportDialog.setPreparationStatus(message),
             onLoadStart: (fileName) => { this.currentFileName = fileName; this.hasAutoSelected = false; this.showAnalyzing(fileName); },
             onProgress: (progress) => this.analyzing.setProgress(progress),
             onAnalysisComplete: () => this.showReady(),
@@ -380,7 +382,10 @@ export class MvpUI {
     // ─── File lifecycle ─────────────────────────────────────────────────────
 
     private handleFile(file: File): void {
-        void this.unsavedChangesGuard.run(() => { void this.controller.loadFile(file); });
+        if (this.exportJob) return;
+        void this.unsavedChangesGuard.run(() => {
+            if (!this.exportJob) void this.controller.loadFile(file);
+        });
     }
 
     private showAnalyzing(fileName: string): void {
@@ -498,7 +503,7 @@ export class MvpUI {
 
     private historyBlocked(): boolean {
         return !this.controller.canUseHistory() || Boolean(document.querySelector('dialog[open]'))
-            || !this.exportDialog.root.classList.contains('mvp-hidden');
+            || this.exportDialog.blocksWorkspaceShortcuts();
     }
 
     private applyHistory(redo: boolean): void {
@@ -612,17 +617,34 @@ export class MvpUI {
     // ─── Export ─────────────────────────────────────────────────────────────
 
     private async runExport(config: ExportConfig): Promise<void> {
-        this.exportDialog.setActive(true);
-        this.exportDialog.setStatus('Preparing export…');
+        if (this.exportJob) return;
+        const job = Symbol('MVP export');
+        this.exportJob = job;
+        const locked = Array.from(this.root.children).filter((element): element is HTMLElement =>
+            element instanceof HTMLElement && element !== this.exportDialog.root && !element.inert);
         try {
-            const blob = await this.controller.startExport(config, (progress) => this.exportDialog.setProgress(progress));
+            this.exportDialog.setActive(true);
+            this.exportDialog.setStatus('Preparing export…');
+            for (const element of locked) element.inert = true;
+            this.unsavedChangesGuard.sync();
+            const blob = await this.controller.startExport(config, progress => {
+                if (this.exportJob === job) this.exportDialog.setProgress(progress);
+            });
+            if (this.exportJob !== job) return;
             this.downloadBlob(blob, 'plexus-visual.webm');
             this.exportDialog.setStatus('Done — check your downloads.');
         } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.exportDialog.setStatus(message.includes('cancelled') ? 'Export cancelled.' : message);
+            if (this.exportJob === job) {
+                const message = error instanceof Error ? error.message : String(error);
+                this.exportDialog.setStatus(message.includes('cancelled') ? 'Export cancelled.' : message);
+            }
         } finally {
-            this.exportDialog.setActive(false);
+            if (this.exportJob === job) {
+                this.exportJob = null;
+                for (const element of locked) element.inert = false;
+                this.unsavedChangesGuard.sync();
+                this.exportDialog.setActive(false);
+            }
         }
     }
 
