@@ -839,14 +839,20 @@ node research/export/ffmpeg-baseline.mjs logs/t20a path/to/short.webm path/to/lo
 1. **T20a1 browser prototype — completed as research.** The hybrid browser
    export produced valid 720p, 1080p and 4K MP4 without re-encoding the video.
    The evidence and remaining limits are below.
-2. **T20a2 MVP integration.** Carry forward the hybrid compressed-video seam.
-   Compare browser AAC plus an MP4 writer as a same-format control and isolate
-   the value of FFmpeg finalization. Qualify an on-demand, minimal FFmpeg core
-   and its distribution requirements. Bound PCM, intermediate and final output
-   storage for long jobs before exposing an explicit export choice. Reuse the
-   current resolution, job controls and file ownership. Preflight the requested
-   config, preserve the contiguous Stop prefix and discard incomplete output on
-   Cancel. Keep WebM available and explain when MP4 is unavailable.
+2. **T20a2 MVP integration.**
+   - **T20a2a — storage and same-format control.** Completed as research.
+     Both MP4 paths use OPFS; the browser path is faster on the measured
+     Chromium fixture, and the FFmpeg path has sample-exact audio endpoints.
+   - **T20a2b — reduced core and admission.** Qualify a reproducible on-demand
+     FFmpeg core without libx264, its distribution terms, realistic storage
+     budgets and cleanup. Include a browser-AAC-unavailable case and a
+     same-format matched quality test. The browser path is the performance
+     control; FFmpeg is the candidate for AAC fallback and exact finalization.
+   - **T20a2c — coordinator and UI.** Add an explicit MP4 choice when the
+     preceding gates pass. Reuse resolution, job controls and file ownership.
+     Preflight the exact config, save the contiguous Stop prefix and discard
+     incomplete files on Cancel. Keep WebM available with a clear explanation
+     when MP4 is unavailable.
 3. **T20a3 release and promotion.** Run cold and warm jobs on desktop and
    physical Android and iOS, with short prefixes, long runs and supported 4K.
    Measure whole-job time, command latency, maximum resources, recovery and
@@ -938,6 +944,59 @@ links. The server binds only to loopback; the generated site, downloaded
 packages and media are excluded from the production build and Git. The 37
 targeted existing Node export tests also passed; this research did not change
 application sources or the active regression inventory.
+
+### T20a2a on-disk MP4 and same-format control
+
+On the same [local fixture](../../research/export/ffmpeg-browser.html), select
+**Run MP4 storage comparison**. The two paths start from the same canvas, PCM16
+samples and clock, with the same requested H.264 and AAC bitrates. The browser
+route streams H.264 and browser AAC to fragmented MP4 through Mediabunny.
+The hybrid route streams its H.264 intermediate and WAV to OPFS, mounts them
+read-only with WORKERFS and writes its fragmented MP4 through an Emscripten
+device to an OPFS sync access handle in a dedicated worker. It never reads the
+complete finished MP4 back through MEMFS. The fixture's playback validator
+does read the result after timing.
+
+| Synthetic job, 30 fps | Browser AAC + MP4 | Browser H.264 + FFmpeg |
+| --- | ---: | ---: |
+| 720p, 0.4 s | 228 ms | 723 ms |
+| 4K, 0.4 s | 602 ms | 907 ms |
+| 720p, 12 s | 1,034 ms | 1,707 ms |
+
+These are one final Windows Chromium 156 run, from capture start to completed
+OPFS file, before decode and fixture download. The hybrid column includes a
+new worker for each job; initialization for these jobs took 145–335 ms.
+The browser path was faster on all three tested samples. Matching format and
+requested rate does not establish matched perceptual quality, production
+performance or mobile availability.
+
+Both 12-second outputs had 360 contiguous video packets and the stereo cues
+at the beginning, middle and end measured 0 ms offset at 1 ms resolution.
+The hybrid preserved every compressed video packet byte-for-byte. Its decoded
+audio ended at exactly 576,000 samples per channel; browser AAC had 512 extra
+samples (10.7 ms). Hybrid Stop saved the first six frames and exactly 9,600
+audio samples per channel. An early fragment-header configuration shifted
+the packet clock; delayed initialization metadata, edit lists and disabling
+automatic timestamp shifts preserved the original clock in this fixture.
+
+The 12-second hybrid stored 594,639 bytes of compressed video and 2,304,044
+bytes of WAV, and wrote its 886,473-byte MP4 in 12 writes, with a largest
+worker output write of 80,338 bytes. Staging used a 6,400-byte PCM slice and
+observed video writes of at most 256 KiB. These sizes measure known file I/O,
+not total memory use or an upper bound on encoder/fragment memory. The
+24 MiB per-file guard is a research setting. A forced 16-byte output limit
+was rejected. Cancel at the first FFmpeg write returned no file, waited for
+the worker's storage handle to release, removed the scratch directory and
+allowed a new job. All ten cases verified scratch removal. Two 4K samples
+are available for manual playback from the fixture.
+
+The original T20a1 browser regression still passes (14 executed cases and
+the intended direct-4K refusal), as do 37 targeted Node export tests.
+The experiment does not change any application code. Next: reduced core,
+real-track storage and resource tests, player/editor compatibility with
+fragmented MP4 and physical mobile qualification. See
+[Mediabunny output targets](https://mediabunny.dev/guide/writing-media-files#output-targets)
+and the [FFmpeg WASM custom-build guide](https://ffmpegwasm.netlify.app/docs/contribution/core/#custom-build--reduce-build-size).
 
 ## Optional accelerated export research (2026-11-04)
 

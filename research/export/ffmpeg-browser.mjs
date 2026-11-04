@@ -1,7 +1,9 @@
 import { WebMExporter } from '../../src/export/WebMExporter.ts';
 import { State } from '../../src/state/store.ts';
+import { installMp4StorageComparison } from './mp4-storage-comparison.mjs';
 
 const FPS = 30, SR = 48000, FULL = 12, STOP = 6, CUE = 3;
+const SHORT_CUES = [CUE];
 const RAW_CAP = 96 * 1024 * 1024;
 const sizes = { '720p': [1280, 720, 6_000_000], '1080p': [1920, 1080, 12_000_000], '4k': [3840, 2160, 28_000_000] };
 const canvas = document.querySelector('canvas'), ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -16,27 +18,28 @@ let media, FFmpeg, liveWorkers = 0;
 function setup(resolution) {
     [canvas.width, canvas.height] = sizes[resolution];
 }
-function draw(frame) {
+function draw(frame, cues = SHORT_CUES) {
     const w = canvas.width, h = canvas.height;
     ctx.fillStyle = '#132b58'; ctx.fillRect(0, 0, w, h);
     for (let i = 0; i < 40; i++) {
         ctx.fillStyle = i % 2 ? '#872957' : '#307ab1';
         ctx.fillRect((i * 127 + frame * (7 + i)) % (w * .9), h * (.1 + (i % 9) * .08), w * .03, h * .015);
     }
-    ctx.fillStyle = frame === CUE ? '#3ef08a' : '#132b58';
+    ctx.fillStyle = cues.includes(frame) ? '#3ef08a' : '#132b58';
     ctx.fillRect(w * .4, h * .4, w * .2, h * .2);
 }
 function makeAudio() {
     const pcm = new AudioBuffer({ numberOfChannels: 2, length: SR * FULL / FPS, sampleRate: SR });
     for (let c = 0; c < 2; c++) {
         const samples = pcm.getChannelData(c);
-        for (let i = 0; i < samples.length; i++) {
-            const t = i / SR, cuePhase = t * FPS - CUE;
-            const amplitude = cuePhase > .18 && cuePhase < .82 ? .78 : .025;
-            samples[i] = amplitude * Math.sin(2 * Math.PI * (c ? 1200 : 900) * t);
-        }
+        for (let i = 0; i < samples.length; i++) samples[i] = sampleAt(i, c);
     }
     return pcm;
+}
+function sampleAt(index, channel, cues = SHORT_CUES) {
+    const t = index / SR, phase = t * FPS;
+    const amplitude = cues.includes(Math.floor(phase)) && phase % 1 > .18 && phase % 1 < .82 ? .78 : .025;
+    return amplitude * Math.sin(2 * Math.PI * (channel ? 1200 : 900) * t);
 }
 const pcm = makeAudio();
 function wavFor(frames) {
@@ -241,8 +244,12 @@ async function verify(blob, frames, width, height, lane, intermediate) {
 }
 
 button.disabled = false;
+const storageButton = document.querySelector('#storage');
+installMp4StorageComparison({ button: storageButton, otherButton: button, canvas, setup, draw, sizes,
+    fps: FPS, sampleRate: SR, cue: CUE, sampleAt, asset });
 button.onclick = async () => {
     button.disabled = true;
+    storageButton.disabled = true;
     downloads.replaceChildren();
     for (const url of downloadUrls.splice(0)) URL.revokeObjectURL(url);
     const report = { userAgent: navigator.userAgent, isolated: crossOriginIsolated, deviceMemoryHintGiB: navigator.deviceMemory ?? null,
@@ -299,5 +306,6 @@ button.onclick = async () => {
     } finally {
         output.textContent = JSON.stringify(report, null, 2);
         button.disabled = false;
+        storageButton.disabled = false;
     }
 };

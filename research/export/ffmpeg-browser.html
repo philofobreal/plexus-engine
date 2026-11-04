@@ -11,8 +11,11 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere }
 <h1>T20a1 — browser export comparison</h1>
 <p>Local synthetic fixture. Compares Plexus Compatible WebM, browser H.264 with FFmpeg finalization, and direct FFmpeg encoding. No uploads.</p>
 <button id="run" disabled>Run export comparison</button>
+<button id="storage" disabled>Run MP4 storage comparison</button>
 <canvas width="1280" height="720"></canvas>
 <ul id="downloads" aria-label="Verified exports"></ul>
 <pre id="result">Ready</pre>
+<ul id="storage-downloads" aria-label="Verified storage exports"></ul>
+<pre id="storage-result">MP4 storage comparison ready</pre>
 <script type="module" src="./ffmpeg-browser.mjs"></script>
 </html>
