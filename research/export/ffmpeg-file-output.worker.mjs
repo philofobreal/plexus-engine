@@ -1,6 +1,6 @@
 // Research: synchronous FFmpeg writes to an OPFS file through an Emscripten device.
 // The page owns the containing scratch directory and removes it after termination.
-self.onmessage = async ({ data: { coreURL, wasmURL, video, wav, output, limit } }) => {
+self.onmessage = async ({ data: { coreURL, wasmURL, video, wav, output, limit, timeout } }) => {
     let file, mounted = false, fs, offset = 0, peakWrite = 0, writes = 0, failure;
     const log = [];
     try {
@@ -41,7 +41,7 @@ self.onmessage = async ({ data: { coreURL, wasmURL, video, wav, output, limit } 
         });
         fs.mkdev('/dev/plexus-out', 0o222, dev);
         const execStart = performance.now();
-        core.setTimeout(45_000);
+        core.setTimeout(timeout);
         core.exec('-i', '/in/video.mp4', '-i', '/in/audio.wav', '-map', '0:v:0', '-map', '1:a:0',
             '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-f', 'mp4',
             '-avoid_negative_ts', 'disabled', '-use_editlist', '1', '-movflags',
@@ -53,7 +53,8 @@ self.onmessage = async ({ data: { coreURL, wasmURL, video, wav, output, limit } 
         file.flush();
         file.close();
         file = undefined;
-        postMessage({ type: 'result', loadMs, execMs, bytes: offset, writes, peakWrite });
+        postMessage({ type: 'result', loadMs, execMs, bytes: offset, writes, peakWrite,
+            wasmLinearBytes: core.HEAPU8?.byteLength ?? null });
     } catch (error) {
         postMessage({ type: 'error', error: String(error) + '\n' + log.join('\n') });
     } finally {

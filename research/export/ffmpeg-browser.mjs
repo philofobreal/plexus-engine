@@ -1,6 +1,7 @@
 import { WebMExporter } from '../../src/export/WebMExporter.ts';
 import { State } from '../../src/state/store.ts';
 import { installMp4StorageComparison } from './mp4-storage-comparison.mjs';
+import { installMp4TrackAdmission } from './mp4-track-admission.mjs';
 
 const FPS = 30, SR = 48000, FULL = 12, STOP = 6, CUE = 3;
 const SHORT_CUES = [CUE];
@@ -245,11 +246,14 @@ async function verify(blob, frames, width, height, lane, intermediate) {
 
 button.disabled = false;
 const storageButton = document.querySelector('#storage');
-installMp4StorageComparison({ button: storageButton, otherButton: button, canvas, setup, draw, sizes,
+const trackButton = document.querySelector('#tracks');
+installMp4StorageComparison({ button: storageButton, otherButtons: [button, trackButton], canvas, setup, draw, sizes,
     fps: FPS, sampleRate: SR, cue: CUE, sampleAt, asset });
+installMp4TrackAdmission({ button: trackButton, otherButtons: [button, storageButton], asset });
 button.onclick = async () => {
     button.disabled = true;
     storageButton.disabled = true;
+    trackButton.disabled = true;
     downloads.replaceChildren();
     for (const url of downloadUrls.splice(0)) URL.revokeObjectURL(url);
     const report = { userAgent: navigator.userAgent, isolated: crossOriginIsolated, deviceMemoryHintGiB: navigator.deviceMemory ?? null,
@@ -307,5 +311,6 @@ button.onclick = async () => {
         output.textContent = JSON.stringify(report, null, 2);
         button.disabled = false;
         storageButton.disabled = false;
+        trackButton.disabled = false;
     }
 };

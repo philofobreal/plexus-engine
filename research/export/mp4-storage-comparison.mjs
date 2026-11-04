@@ -75,13 +75,14 @@ async function stageInput(media, options, dir, resolution, frames, cues, browser
     }
 }
 
-async function finishOnDisk(options, dir, video, wav, scenario) {
+export async function finishOnDisk(options, dir, video, wav, scenario,
+    { limit = CAP, commandTimeout = 45_000, core = 'full' } = {}) {
     const output = await dir.getFileHandle('final.mp4', { create: true });
     const worker = new FileOutputWorker();
     let timer;
     try {
         const metrics = await new Promise((resolve, reject) => {
-            timer = setTimeout(() => reject(Error('FFmpeg file worker timed out')), 55_000);
+            timer = setTimeout(() => reject(Error('FFmpeg file worker timed out')), commandTimeout + 20_000);
             worker.onmessage = ({ data }) => {
                 if (data.type === 'writing' && scenario === 'cancel') {
                     worker.terminate();
@@ -90,8 +91,9 @@ async function finishOnDisk(options, dir, video, wav, scenario) {
                 else if (data.type === 'result') resolve(data);
             };
             worker.onerror = event => reject(Error(event.message));
-            worker.postMessage({ coreURL: options.asset('core/ffmpeg-core.js'), wasmURL: options.asset('core/ffmpeg-core.wasm'),
-                video, wav, output, limit: scenario === 'cap' ? 16 : CAP });
+            const coreAsset = name => core === 'reduced' ? new URL('/reduced-core/' + name, location.href).href : options.asset('core/' + name);
+            worker.postMessage({ coreURL: coreAsset('ffmpeg-core.js'), wasmURL: coreAsset('ffmpeg-core.wasm'),
+                video, wav, output, timeout: commandTimeout, limit: scenario === 'cap' ? 16 : limit });
         });
         if (metrics.cancelled) return metrics;
         const file = await output.getFile();
@@ -167,7 +169,7 @@ async function verify(media, options, file, resolution, frames, cues, intermedia
     }
 }
 
-async function removeScratch(root, name) {
+export async function removeScratch(root, name) {
     const deadline = performance.now() + 2000;
     for (;;) {
         try { await root.removeEntry(name, { recursive: true }); break; }
@@ -184,18 +186,20 @@ async function removeScratch(root, name) {
 }
 
 export function installMp4StorageComparison(options) {
-    const { button, otherButton, asset } = options;
+    const { button, otherButtons, asset } = options;
     const status = document.querySelector('#storage-result');
     const downloads = document.querySelector('#storage-downloads'), urls = [];
     button.disabled = false;
     button.onclick = async () => {
-        button.disabled = otherButton.disabled = true;
+        for (const control of [button, ...otherButtons]) control.disabled = true;
         downloads.replaceChildren();
         for (const url of urls.splice(0)) URL.revokeObjectURL(url);
         const report = { results: [], perFileCap: CAP, userAgent: navigator.userAgent };
         try {
             status.textContent = 'Opening local scratch storage…';
             const media = await import(/* @vite-ignore */ asset('mediabunny.mjs'));
+            const core = new URLSearchParams(location.search).get('core') === 'reduced' ? 'reduced' : 'full';
+            report.core = core;
             const root = await navigator.storage.getDirectory();
             const cases = [
                 ['720p', 12, 'full'], ['4k', 12, 'full'], ['720p', 360, 'long'],
@@ -214,7 +218,7 @@ export function installMp4StorageComparison(options) {
                         const { video, wav, largestVideoWrite, pcmSliceBytes } = await stageInput(media, options, dir, resolution, frames, cues, lane === 'browser');
                         Object.assign(entry, { stagingMs: roundMs(t), videoBytes: video.size, wavBytes: wav?.size ?? 0, largestVideoWrite, pcmSliceBytes });
                         const { file, type, ...details } = lane === 'ffmpeg'
-                            ? await finishOnDisk(options, dir, video, wav, scenario) : { file: video, bytes: video.size };
+                            ? await finishOnDisk(options, dir, video, wav, scenario, { core }) : { file: video, bytes: video.size };
                         Object.assign(entry, details, { finishedMs: roundMs(t) });
                         if (scenario === 'cancel') assert(details.cancelled && !file, 'Cancelled job returned a file');
                         else {
@@ -246,7 +250,7 @@ export function installMp4StorageComparison(options) {
         } catch (error) { report.pass = false; report.error = String(error); }
         finally {
             status.textContent = JSON.stringify(report, null, 2);
-            button.disabled = otherButton.disabled = false;
+            for (const control of [button, ...otherButtons]) control.disabled = false;
         }
     };
 }

@@ -29,6 +29,9 @@ for (const [name, , source, destination] of vendors) {
     await cp(path.join(installed, name, source), path.join(vendorOut, destination), { recursive: true });
 }
 const wasm = await stat(path.join(vendorOut, 'core/ffmpeg-core.wasm'));
+const reduced = path.resolve('logs/t20a2b/core');
+const tracks = path.resolve('logs/t20a2b/tracks');
+const optionalStat = file => stat(file).catch(error => { if (error.code !== 'ENOENT') throw error; return null; });
 const types = { '.html': 'text/html', '.mjs': 'text/javascript', '.js': 'text/javascript', '.wasm': 'application/wasm' };
 createServer(async (req, res) => {
     try {
@@ -36,14 +39,24 @@ createServer(async (req, res) => {
         const url = new URL(req.url, 'http://localhost');
         if (url.pathname === '/fixture-info.json') {
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(req.method === 'HEAD' ? undefined : JSON.stringify({ coreWasmBytes: wasm.size, versions: Object.fromEntries(vendors) }));
+            res.end(req.method === 'HEAD' ? undefined : JSON.stringify({
+                coreWasmBytes: wasm.size, versions: Object.fromEntries(vendors),
+                reducedWasmBytes: (await optionalStat(path.join(reduced, 'ffmpeg-core.wasm')))?.size ?? null,
+                tracksAvailable: Boolean(await optionalStat(path.join(tracks, 'manifest.json'))),
+            }));
             return;
         }
-        const file = path.resolve(root, '.' + decodeURIComponent(url.pathname));
-        if (!file.startsWith(root + path.sep) || !types[path.extname(file)]) { res.writeHead(404).end(); return; }
+        const audioFixture = /^\/track-fixtures\/(manifest\.json|[1-5]\.(?:mp4|wav))$/.exec(url.pathname);
+        const reducedAsset = /^\/reduced-core\/(ffmpeg-core\.(?:js|wasm))$/.exec(url.pathname);
+        const file = audioFixture ? path.join(tracks, audioFixture[1]) : reducedAsset ? path.join(reduced, reducedAsset[1])
+            : path.resolve(root, '.' + decodeURIComponent(url.pathname));
+        const type = { '.wav': 'audio/wav', '.mp4': 'video/mp4', '.json': 'application/json', ...types }[path.extname(file)];
+        if (!type || (!audioFixture && !reducedAsset && (!file.startsWith(root + path.sep) || !types[path.extname(file)]))) {
+            res.writeHead(404).end(); return;
+        }
         const info = await stat(file);
         if (!info.isFile()) { res.writeHead(404).end(); return; }
-        res.writeHead(200, { 'Content-Type': types[path.extname(file)], 'Content-Length': info.size });
+        res.writeHead(200, { 'Content-Type': type, 'Content-Length': info.size, ...((audioFixture || reducedAsset) ? { 'Cache-Control': 'no-store' } : {}) });
         if (req.method === 'HEAD') res.end();
         else createReadStream(file).on('error', () => res.destroy()).pipe(res);
     } catch { res.writeHead(404).end(); }
