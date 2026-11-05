@@ -105,14 +105,17 @@ test('a completed job callback cannot publish progress into the next job', async
     oldProgress(0.9); await second; assert.deepEqual(seen, []);
 });
 
-function backendHarness({ bitmap, ack = true, autoDone = true, failGraphics = false, video = null, audio = null } = {}) {
+function backendHarness({ bitmap, ack = true, autoDone = true, failGraphics = false, video = null, audio = null,
+    mp4 = false, redraw, scheduling } = {}) {
     const workers = [], messages = [], calls = [], deadlines = new Map();
+    let animationFrames = 0;
     const state = { duration: 4 / 60, isExporting: false, exportTime: 0, visualMode: 'cosmic-wormhole', videoBackplateActive: Boolean(video) };
     class Worker {
         onmessage = null; onerror = null; terminated = 0;
         constructor() { workers.push(this); }
         postMessage(m) {
             messages.push(m);
+            if (mp4 && m.type === 'start_export') queueMicrotask(() => this.onmessage?.({ data: { type: 'export_ready' } }));
             if (m.type === 'encode_frame' && ack) queueMicrotask(() => {
                 this.onmessage?.({ data: { type: 'frame_encoded', timestampUs: m.timestampUs } });
                 this.onmessage?.({ data: { type: 'queue_update', size: 0 } });
@@ -122,7 +125,7 @@ function backendHarness({ bitmap, ack = true, autoDone = true, failGraphics = fa
         terminate() { this.terminated++; }
     }
     const p5 = {
-        noLoop() { calls.push('noLoop'); }, loop() { calls.push('loop'); }, redraw() { calls.push('draw'); },
+        noLoop() { calls.push('noLoop'); }, loop() { calls.push('loop'); }, redraw() { calls.push('draw'); return redraw?.(state.exportTime); },
         createGraphics() {
             if (failGraphics) throw new Error('allocation failed');
             return { pixelDensity() {}, clear() {}, elt: { getContext: () => null }, remove() { calls.push('remove'); } };
@@ -131,7 +134,8 @@ function backendHarness({ bitmap, ack = true, autoDone = true, failGraphics = fa
     const globals = { Blob, performance, HTMLMediaElement: { HAVE_METADATA: 1, HAVE_CURRENT_DATA: 2 },
         setTimeout(fn, ms) { if (ms === 30_000) { const key = {}; deadlines.set(key, fn); return key; } return setTimeout(fn, ms); },
         clearTimeout(id) { if (!deadlines.delete(id)) clearTimeout(id); },
-        window: { requestAnimationFrame: cb => queueMicrotask(cb) },
+        navigator: mp4 ? { storage: { getDirectory: async () => ({ async removeEntry() {} }) } } : undefined,
+        window: { requestAnimationFrame: cb => { animationFrames++; queueMicrotask(cb); } },
         createImageBitmap: bitmap ?? (async () => ({ close() { calls.push('close'); } })) };
     const load = createLoader({
         '../state/store': { State: state },
@@ -139,9 +143,49 @@ function backendHarness({ bitmap, ack = true, autoDone = true, failGraphics = fa
         './export.worker.ts?worker': { __esModule: true, default: Worker }
     }, globals);
     const { WebCodecsBackend } = load('export/WebCodecsBackend.ts');
-    const backend = new WebCodecsBackend(p5, {}, { getAudioBuffer: () => audio }, 'track', video);
-    return { backend, state, workers, messages, calls, deadlines, p5 };
+    const backend = new WebCodecsBackend(p5, {}, { getAudioBuffer: () => audio }, 'track', video, scheduling, mp4 ? Worker : undefined);
+    return { backend, state, workers, messages, calls, deadlines, p5, get animationFrames() { return animationFrames; } };
 }
+
+test('cooperative MP4 captures only completed redraws and retains the initial preview handoff', async () => {
+    const captured = [], drawings = [];
+    let lastDrawn;
+    const h = backendHarness({ mp4: true, scheduling: 'cooperative',
+        redraw(time) {
+            const gate = deferred();
+            drawings.push(() => { lastDrawn = time; gate.resolve(); });
+            return gate.promise;
+        },
+        bitmap: async () => { captured.push(lastDrawn); return { close() {} }; },
+    });
+    const job = h.backend.start({ ...config(), format: 'mp4' }, () => {});
+    for (let i = 0; i < 4; i++) {
+        await until(() => drawings.length === i + 1);
+        assert.equal(captured.length, i);
+        drawings[i]();
+    }
+    await job;
+    assert.deepEqual(captured, [0, 1 / 60, 2 / 60, 3 / 60]);
+    assert.equal(h.animationFrames, 1);
+    assert.equal(h.workers[0].terminated, 1);
+});
+
+test('cooperative MP4 cancellation keeps the surface alive until the pending redraw ends', async () => {
+    const gate = deferred();
+    const h = backendHarness({ mp4: true, scheduling: 'cooperative', redraw: () => gate.promise,
+        bitmap: () => assert.fail('A cancelled redraw must not be captured') });
+    const job = h.backend.start({ ...config(), format: 'mp4' }, () => assert.fail('cancelled progress'));
+    const rejection = assert.rejects(job, /cancelled/);
+    await until(() => h.calls.includes('draw'));
+    h.backend.cancelExport();
+    assert.equal(h.workers[0].terminated, 1);
+    assert.ok(h.p5.__plexusExportTarget);
+    assert.ok(!h.calls.includes('remove'));
+    gate.resolve();
+    await rejection;
+    assert.ok(h.calls.includes('remove'));
+    assert.equal(h.p5.__plexusExportTarget, undefined);
+});
 
 test('graphics allocation failure restores the preview loop and releases the backend', async () => {
     const h = backendHarness({ failGraphics: true });
