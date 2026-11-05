@@ -1,7 +1,7 @@
 {
-  "id": "t20a3a-desktop-export-20261105T001119867Z",
-  "previousCommit": "6d599ee49a21790d85ddb4d78b5862f9f51bfd6c",
-  "sourceCommit": "5b08b24fc29d9fa16f0e0e2ff2da24e936aedce0",
+  "id": "t20a3c-mp4-default-20261105T002920436Z",
+  "previousCommit": "e36490abe0ee7f6a160bc619b89e1aeb281ce208",
+  "sourceCommit": "eafe48b509fcc571be1a396b05ab2d84ac0bfb0d",
   "inputs": [
     {
       "path": "bun.lock",
@@ -1101,7 +1101,7 @@
     },
     {
       "path": "src/ui/mvp/ExportDialog.ts",
-      "sha256": "6d1e0804ae3268c7734db1ae3623ba343d92f79879a30458c670c0fcdfb6f6ac"
+      "sha256": "7e752648543df4fbc3232cdc79c9c5ac1780197ee7ef0439c25d5106e7bceaae"
     },
     {
       "path": "src/ui/mvp/FirstRunScreen.ts",
@@ -1746,8 +1746,8 @@
       "sha256": "8ffcb0df6116b0c46c34a2d8e925a0a854e8da2a7de8b66916851cd54affb4b5"
     },
     {
-      "path": "assets/mvp-N3uY_MIF.js",
-      "sha256": "98e9cdcfbd7682662f81cbc4c32cd808582fdd0ebc084247528486be2b43875c"
+      "path": "assets/mvp-BptzvbTv.js",
+      "sha256": "bd3d4bb2c826f6ee98ea91052fc4afe94566d93fb092172273da292cd8d6ed98"
     },
     {
       "path": "assets/mvp-sPSHbSJ7.css",
@@ -1835,7 +1835,7 @@
     },
     {
       "path": "mvp/index.html",
-      "sha256": "bd983459072b1c3345a9bbd862ef67e306a39dbdeb087862a6661478580aeadd"
+      "sha256": "08a4b9ec01e148e848ab99367fc8596aca95a494717f5e2b47316bed8116915b"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
