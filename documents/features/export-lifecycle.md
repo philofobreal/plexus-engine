@@ -1403,6 +1403,61 @@ Track 4K encoder backpressure separately. The 4K queue wait overlaps the
 H.264 submission interval and warrants profiling the encoder before
 adding render workers.
 
+### T20b2 real MVP MP4 pacing comparison
+
+Run `npm run build` and `node research/export/mvp-export-qualification.mjs pacing "<reference MP3>"`.
+Open the printed loopback page and select **Compare real MVP MP4 pacing**.
+After the browser report completes, run
+`node research/export/mvp-export-qualification.mjs verify-pacing`.
+The runner builds the actual MVP entry point with a loopback-only bridge.
+It decodes and analyzes seconds 60–64 from the supplied track in a fresh
+MVP document for each measured job. The test forces one short burst
+through the real PostFX pass and records the draw time of each captured
+frame. It writes outputs and receipts under `logs/t20b2`.
+
+The candidate awaits p5 redraw before capture, listens for encoder
+capacity instead of polling, and yields to browser tasks on a time
+budget. It keeps the initial preview handoff and the two-frame limit.
+Cancellation terminates the worker immediately and keeps the capture
+surface alive until an already running redraw settles. The normal MVP
+export factory uses display pacing.
+
+Three alternating pairs at 720p/60 and three at 4K/60 exercise the same
+H.264/AAC configuration. The candidate also runs Cancel followed by a
+Stop & save retry in the same MVP document. Native verification decodes
+all saved frames, checks timestamps, codecs and audio alignment against
+the reference PCM, and compares full-file hashes. When hashes differ,
+the verifier reports downscaled structural similarity beside display
+repeat controls. Timing covers export start through the usable MP4
+result. Track analysis, fixture checks and copying output to the loopback
+runner are outside the timed interval.
+
+The Windows Headless Chrome 156 run used the No Good reference. Times are
+three-run medians in seconds for each mode.
+
+| MP4 | Display job | Candidate job | Candidate change | Candidate redraw wait | Candidate encoder queue | Candidate FFmpeg finalize |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 720p/60 | 11.519 | 12.444 | 8.0% slower | 10.472 | 0.041 | 0.339 |
+| 4K/60 | 12.290 | 12.858 | 4.6% slower | 10.227 | 0.260 | 0.504 |
+
+Each full run captured 240 ordered frames and executed the 33-frame
+PostFX interval. All six MP4s at each resolution had the same SHA-256.
+Both modes reached two outstanding frames. The Cancel check published
+no file; the following Stop & save captured a 61-frame prefix. The
+controls settled in 48 ms and 174 ms respectively, including cleanup or
+finalization. These are single control observations.
+
+Display pacing assigned roughly 10.5 s to the animation-frame wait
+because that interval included asynchronous drawing. Explicit redraw
+timing assigns roughly 10.2–10.5 s to drawing in the candidate, with
+roughly 1.2 s in scheduled yields. The results reject promotion of this
+pacing candidate. The next experiment splits the actual redraw into
+simulation, Wormhole raster, composition and PostFX. Use those
+measurements to choose the first bounded worker slice. The synthetic
+4K result from T20b1 still describes the encoder-heavy case; the real
+Wormhole workload measured here spends much more time rendering.
+Long clips and physical mobile devices remain separate qualification cases.
+
 ## Scheduled export acceleration - user direction, 2026-10-29
 
 The user accepted T19a and requested that professionally justified WASM export
