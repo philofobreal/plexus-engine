@@ -89,6 +89,21 @@ test('ExportCapabilityDetector returns none when no backend is available', async
   assert.match(report.warnings.join(' '), /Offline export requires a modern browser/);
 });
 
+test('MVP offers 4K on mobile when a browser can attempt the job, without changing the shared report', async () => {
+  for (const webcodecs of [true, false]) {
+    const { ExportCapabilityDetector: detector } = loadExportCapabilityModules({
+      userAgent: 'Mozilla/5.0 (Linux; Android 15)', maxTouchPoints: 5, innerWidth: 390, innerHeight: 844, webcodecs,
+    });
+    const standard = await detector.detectCapabilities();
+    const mvp = detector.detectMvpCapabilities();
+    assert.equal(mvp.isMobile, true);
+    assert.equal(mvp.canExport4K, webcodecs);
+    assert.equal(mvp.fourKRestriction, undefined);
+    assert.equal(detector.getReport(), standard);
+    assert.equal(standard.canExport4K, false);
+  }
+});
+
 test('ExportBackendRegistry selects the backend requested by capabilities', () => {
   const { ExportBackendRegistry } = loadExportCapabilityModules();
   ExportBackendRegistry.clear();

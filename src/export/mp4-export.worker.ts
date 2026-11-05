@@ -61,11 +61,12 @@ async function openAccess(dir: FileSystemDirectoryHandle, name: string) {
 async function probeH264(width: number, height: number, fps: number, encoding: ConstructorParameters<typeof VideoSampleSource>[0]) {
     const probe = new Output({ format: new Mp4OutputFormat(), target: new NullTarget() });
     let packets = 0;
+    let canvas: OffscreenCanvas | undefined;
     const source = new VideoSampleSource({ ...encoding, onEncodedPacket: () => { packets++; } });
     probe.addVideoTrack(source, { frameRate: fps });
     try {
         await probe.start();
-        const canvas = new OffscreenCanvas(width, height);
+        canvas = new OffscreenCanvas(width, height);
         const ctx = canvas.getContext('2d');
         if (!ctx) throw Error('Probe canvas unavailable');
         ctx.fillRect(0, 0, width, height);
@@ -76,6 +77,8 @@ async function probeH264(width: number, height: number, fps: number, encoding: C
     } catch {
         if (probe.state === 'started' || probe.state === 'pending') await probe.cancel().catch(() => {});
         throw mp4Error('H.264 encoding is unavailable at this resolution and frame rate.');
+    } finally {
+        if (canvas) canvas.width = canvas.height = 1;
     }
 }
 function finalizeMp4(core: Core, video: File, wav: File, access: Access, plan: Plan) {

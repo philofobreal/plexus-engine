@@ -8,7 +8,7 @@
 <ul id="files"></ul>
 <pre id="result">Ready</pre>
 <script type="module">
-import { BlobSource, EncodedPacketSink, Input, MP4 } from 'mediabunny';
+import { ALL_FORMATS, BlobSource, EncodedPacketSink, Input } from 'mediabunny';
 import { WebMExporter } from '../../src/export/WebMExporter.ts';
 import { WebCodecsBackend } from '../../src/export/WebCodecsBackend.ts';
 import { clearFinishedExportCache, getExportCacheSummary } from '../../src/export/ExportStorageLease.ts';
@@ -34,12 +34,13 @@ const dialog = new ExportDialog({ onStart: () => {}, onStop: () => exporter.stop
 document.body.append(dialog.root);
 dialog.root.querySelector('.mvp-export-format').value = 'mp4';
 
-async function verify(blob, size, frames, rate) {
-    const input = new Input({ formats: [MP4], source: new BlobSource(blob) });
+async function verify(blob, size, frames, rate, format) {
+    const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(blob) });
     const ac = new AudioContext({ sampleRate: rate });
     try {
         const video = await input.getPrimaryVideoTrack(), sound = await input.getPrimaryAudioTrack();
-        check(video?.codec === 'avc' && sound?.codec === 'aac', 'Not H.264/AAC MP4');
+        check(format === 'mp4' ? video?.codec === 'avc' && sound?.codec === 'aac'
+            : /^vp[89]$/.test(video?.codec) && sound?.codec === 'opus', 'Wrong output codecs');
         check(video.codedWidth === size[0] && video.codedHeight === size[1], 'Wrong dimensions');
         const pts = [];
         for await (const p of new EncodedPacketSink(video).packets()) pts.push(p.timestamp);
@@ -53,14 +54,14 @@ async function verify(blob, size, frames, rate) {
         check(a.some(x=>Math.abs(x)>.2), 'No decoded audio cue');
         const url=URL.createObjectURL(blob), element=document.createElement('video');
         try {
-            await new Promise((resolve,reject)=>{element.onloadeddata=resolve;element.onerror=()=>reject(Error('Video element cannot decode MP4'));element.src=url;});
+            await new Promise((resolve,reject)=>{element.onloadeddata=resolve;element.onerror=()=>reject(Error('Video element cannot decode output'));element.src=url;});
             check(element.videoWidth===size[0]&&element.videoHeight===size[1],'Wrong decoded dimensions');
         } finally { element.removeAttribute('src'); element.load(); URL.revokeObjectURL(url); }
         return { bytes: blob.size, frames, samples: decoded.length, expectedSamples: target };
     } finally { input.dispose(); await ac.close(); }
 }
 
-async function one(mode, res, rate) {
+async function one(mode, res, rate, format = 'mp4') {
     State.duration = .4;
     const audio = new AudioBuffer({ length: rate, numberOfChannels: 2, sampleRate: rate });
     for (let c=0;c<2;c++) {
@@ -78,19 +79,20 @@ async function one(mode, res, rate) {
     dialog.setActive(true);
     let progressFrames=0, finalizing=false;
     try {
-        const blob=await exporter.startExport({ format:'mp4', resolution:res, aspectRatio:'16:9', fps:60 }, p=>{
+        const blob=await exporter.startExport({ format, resolution:res, aspectRatio:'16:9', fps:60,
+            ...(format === 'webm' ? { preflight: true } : {}) }, p=>{
             dialog.setProgress(p);
             if (p===.9) { finalizing=true; if(mode==='cancel') exporter.cancelExport(); }
             if(p>=.9)return;
             progressFrames++;
             if(mode==='stop'&&progressFrames===9) dialog.root.querySelector('.mvp-export-stop').click();
         });
-        check(mode!=='cancel'&&finalizing,'Expected finalizing and no cancelled result');
-        const verified=await verify(blob,resolution[res],mode==='stop'?9:24,rate);
+        check(mode!=='cancel'&&(format==='webm'||finalizing),'Expected finalizing and no cancelled result');
+        const verified=await verify(blob,resolution[res],mode==='stop'?9:24,rate,format);
         const item=document.createElement('li'), a=document.createElement('a');
-        a.href=URL.createObjectURL(new Blob([await blob.arrayBuffer()],{type:'video/mp4'}));urls.push(a.href);
-        a.download=a.textContent=`${res}-${mode}.mp4`; item.append(a); links.append(item);
-        return {mode,res,rate,...verified};
+        a.href=URL.createObjectURL(new Blob([await blob.arrayBuffer()],{type:'video/'+format}));urls.push(a.href);
+        a.download=a.textContent=`${res}-${mode}.${format}`; item.append(a); links.append(item);
+        return {mode,res,rate,format,...verified};
     } catch(error) {
         if(mode!=='cancel'||!finalizing||!String(error).includes('cancelled'))throw error;
         return {mode,res,rate,noFile:true};
@@ -119,14 +121,15 @@ run.onclick=async()=>{
         const root=await navigator.storage.getDirectory();
         const owned=async()=>{const names=[];for await(const [name]of root.entries())if(name.startsWith('plexus_export_mp4_v1_'))names.push(name);return names.sort().join('|');};
         const initial=await owned();
-        for(const [mode,res,rate]of [['full','720p',48000],['stop','4K',44100],['cancel','720p',48000],['retry','720p',48000]]) {
-            output.textContent=`Running ${mode} ${res}…`;
-            result.rows.push(await one(mode,res,rate));
+        for(const [mode,res,rate,format]of [['full','720p',48000,'mp4'],['stop','4K',44100,'mp4'],
+            ['cancel','720p',48000,'mp4'],['retry','720p',48000,'mp4'],['stop','4K',48000,'webm']]) {
+            output.textContent=`Running ${mode} ${res} ${format}…`;
+            result.rows.push(await one(mode,res,rate,format));
         }
         result.denied=await denied();
         result.cache=getExportCacheSummary();
-        check(result.cache.files===3,'The cancelled job was retained');
-        check((await clearFinishedExportCache()).removed===3,'Finished MP4 cleanup failed');
+        check(result.cache.files===4,'The cancelled job was retained');
+        check((await clearFinishedExportCache()).removed===4,'Finished export cleanup failed');
         check(await owned()===initial,'An export directory was left behind');
         result.pass=true;
     }catch(error){result.pass=false;result.error=String(error);}

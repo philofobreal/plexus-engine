@@ -20,56 +20,40 @@ export class ExportCapabilityDetector {
     }
 
     static async detectCapabilities(): Promise<ExportCapabilities> {
-        const webcodecsSupported = this.isWebCodecsSupported();
-        const isMobile = this.isMobile();
-        const canExport4K = !isMobile;
-        const preferredBackend: ExportBackendId = webcodecsSupported ? 'webcodecs' : 'none';
-        const warnings: string[] = [];
-
-        if (!webcodecsSupported) {
-            warnings.push('Offline export requires a modern browser (Safari 16.4+ or Chrome 94+).');
-        }
-        if (!canExport4K) {
-            warnings.push('4K rendering disabled on mobile viewports due to system memory limits.');
-        }
-
-        const report = {
-            ...(isMobile ? { fourKRestriction: 'device-heuristic' as const } : {}),
-            webcodecsSupported,
-            webcodecsCodecs: {
-                vp9: webcodecsSupported,
-                vp8: webcodecsSupported
-            },
-            canExport4K,
-            isMobile,
-            preferredBackend,
-            warnings
-        };
+        const report = this.buildReport(false);
         this.cachedReport = report;
         return report;
     }
 
-    static getReport(): ExportCapabilities {
-        if (this.cachedReport) return this.cachedReport;
+    /** MVP admits each 4K job at start instead of hiding 4K by device class. */
+    static detectMvpCapabilities(): ExportCapabilities {
+        return this.buildReport(true);
+    }
 
+    static getReport(): ExportCapabilities {
+        return this.cachedReport ?? this.buildReport(false);
+    }
+
+    private static buildReport(useJobPreflight: boolean): ExportCapabilities {
         const webcodecsSupported = this.isWebCodecsSupported();
         const isMobile = this.isMobile();
+        const heuristicRestricted = isMobile && !useJobPreflight;
         const preferredBackend: ExportBackendId = webcodecsSupported ? 'webcodecs' : 'none';
         const warnings: string[] = [];
         if (!webcodecsSupported) {
             warnings.push('Offline export requires a modern browser (Safari 16.4+ or Chrome 94+).');
         }
-        if (isMobile) {
+        if (heuristicRestricted) {
             warnings.push('4K rendering disabled on mobile viewports due to system memory limits.');
         }
         return {
-            ...(isMobile ? { fourKRestriction: 'device-heuristic' as const } : {}),
+            ...(heuristicRestricted ? { fourKRestriction: 'device-heuristic' as const } : {}),
             webcodecsSupported,
             webcodecsCodecs: {
                 vp9: webcodecsSupported,
                 vp8: webcodecsSupported
             },
-            canExport4K: !isMobile,
+            canExport4K: useJobPreflight ? webcodecsSupported : !isMobile,
             isMobile,
             preferredBackend,
             warnings

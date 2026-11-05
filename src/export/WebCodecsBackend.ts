@@ -74,6 +74,7 @@ export class WebCodecsBackend implements ExportBackend {
         if (typeof globalThis.createImageBitmap === 'undefined') throw new Error('createImageBitmap is not available in this browser.');
         const duration = runtime?.duration ?? State.duration;
         const mp4 = config.format === 'mp4';
+        const needsPreflight = mp4 || config.preflight === true;
         if (!Number.isFinite(config.fps) || config.fps <= 0 || !Number.isFinite(duration)
             || Math.floor(duration * config.fps) < 1) throw new Error('Export requires a positive frame rate and at least one video frame.');
         if (config.runtime === 'isolated-wormhole' && !runtime) throw new Error('Isolated export runtime was not prepared.');
@@ -99,25 +100,15 @@ export class WebCodecsBackend implements ExportBackend {
         this.exportError = null;
         try {
             const target = getExportDimensions(config);
-            if (!runtime) {
-                this.p5Instance.noLoop(); this.ownsLoop = true;
-                const exportGraphics: p5.Graphics = this.p5Instance.createGraphics(target.width, target.height);
-                this.offscreenGraphics = exportGraphics;
-            // Export dimensions are device pixels, independent of preview density.
-                exportGraphics.pixelDensity(1);
-                if (typeof document !== 'undefined') {
-                    this.captureCanvas = document.createElement('canvas');
-                    this.captureCanvas.width = target.width; this.captureCanvas.height = target.height;
-                }
-                this.p5Instance.__plexusExportTarget = exportGraphics;
-            } else if (target.width !== runtime.snapshot.width || target.height !== runtime.snapshot.height || config.fps !== runtime.snapshot.fps) {
+            if (!runtime && !needsPreflight) this.prepareCaptureTarget(target.width, target.height);
+            if (runtime && (target.width !== runtime.snapshot.width || target.height !== runtime.snapshot.height || config.fps !== runtime.snapshot.fps)) {
                 throw new Error('Export settings differ from the frozen snapshot.');
             }
             const audioBuffer = runtime?.audio ?? this.audioEngine?.getAudioBuffer?.() as ExportAudioSource | null | undefined;
             this.audioCapacity = audioBuffer ? Math.ceil(audioBuffer.sampleRate / config.fps) * 2 : 0;
             this.worker = mp4 && this.Mp4Worker ? new this.Mp4Worker() : new ExportWorker();
-            const prepared = config.preflight || mp4 ? new Promise<void>(resolve => { this.resolvePrepared = resolve; }) : null;
-            const done = this.waitForExportDone(this.worker);
+            const prepared = needsPreflight ? new Promise<void>(resolve => { this.resolvePrepared = resolve; }) : null;
+            const done = this.waitForExportDone(this.worker, config.preflight === true);
             void done.catch(() => undefined);
             this.worker.postMessage({
                 type: 'start_export',
@@ -132,8 +123,13 @@ export class WebCodecsBackend implements ExportBackend {
                 ...(runtime ? { profile: true } : {})
             });
 
-            // No real frames/bitmaps are rendered or admitted while the worker probes.
-            if (prepared) await this.waitForOperation(prepared);
+            // Allocate real render surfaces only after the worker's temporary probe is released.
+            if (prepared) {
+                await this.waitForOperation(prepared);
+                if (this.cancelled) throw new Error('Export cancelled.');
+                if (this.stoppedEarly) throw new Error('No video frames were captured before stopping.');
+                if (!runtime) this.prepareCaptureTarget(target.width, target.height);
+            }
 
             if (!cooperative) {
                 const animationFrameStarted = now();
@@ -298,7 +294,7 @@ export class WebCodecsBackend implements ExportBackend {
         await this.storageDiscard;
     }
 
-    private waitForExportDone(worker: Worker): Promise<Blob> {
+    private waitForExportDone(worker: Worker, requireAudio: boolean): Promise<Blob> {
         return new Promise((resolve, reject) => {
             this.rejectExport = reject;
             worker.onmessage = (event: MessageEvent<ExportWorkerResponse>) => {
@@ -324,8 +320,8 @@ export class WebCodecsBackend implements ExportBackend {
                         && returned.buffer.byteLength <= this.audioCapacity * 4 && this.audioPool.length < 2
                         && !this.audioPool.some(item => item.buffer === returned.buffer)) this.audioPool.push(new Float32Array(returned.buffer));
                     if (this.resumeQueueWait && this.hasQueueCapacity()) this.resumeQueueWait();
-                } else if (event.data.type === 'export_audio_warning' && this.runtime) {
-                    this.exportError = new Error(`Isolated export audio failed: ${event.data.message}`);
+                } else if (event.data.type === 'export_audio_warning' && (this.runtime || requireAudio)) {
+                    this.exportError = new Error(`${this.runtime ? 'Isolated export' : 'Export'} audio failed: ${event.data.message}`);
                     this.interruptWait?.(this.exportError);
                     reject(this.exportError);
                 } else if (event.data.type === 'queue_update') {
@@ -396,6 +392,20 @@ export class WebCodecsBackend implements ExportBackend {
             else if (frameWait && this.stoppedEarly) interrupt(new Error('No video frames were captured before stopping.'));
             else if (this.exportError) interrupt(this.exportError);
         });
+    }
+
+    private prepareCaptureTarget(width: number, height: number): void {
+        this.p5Instance.noLoop();
+        this.ownsLoop = true;
+        const graphics: p5.Graphics = this.p5Instance.createGraphics(width, height);
+        this.offscreenGraphics = graphics;
+        graphics.pixelDensity(1);
+        if (typeof document !== 'undefined') {
+            this.captureCanvas = document.createElement('canvas');
+            this.captureCanvas.width = width;
+            this.captureCanvas.height = height;
+        }
+        this.p5Instance.__plexusExportTarget = graphics;
     }
 
     private renderOffscreenFrame(): void {

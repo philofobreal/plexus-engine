@@ -85,3 +85,30 @@ test('MP4 cache clears just its owned directory and leaves the WebM storage cont
     assert.deepEqual(removed[1], [webm.name]);
     assert.equal(pending.disposition, 'pending');
 });
+
+test('4K worker refusal and Stop are handled before allocating the render surface', async () => {
+    let worker;
+    class Worker {
+        constructor() { worker = this; }
+        postMessage(message) { this.message = message; }
+        terminate() { this.terminated = true; }
+    }
+    const load = createLoader({ './export.worker.ts?worker': { __esModule: true, default: Worker } }, {
+        createImageBitmap: () => assert.fail('No real bitmap during preflight'), setTimeout, clearTimeout, Float32Array,
+    });
+    const { State } = load('state/store.ts');
+    const { WebCodecsBackend } = load('export/WebCodecsBackend.ts');
+    State.duration = 1;
+    for (const command of ['refuse', 'stop']) {
+        const backend = new WebCodecsBackend({ noLoop: () => assert.fail('Live render must remain untouched') }, {}, {}, 'track');
+        const result = backend.start({ ...base, resolution: '4K', preflight: true }, () => {});
+        assert.equal(worker.message.width, 3840);
+        assert.equal(worker.message.height, 2160);
+        assert.equal(worker.message.preflight, true);
+        if (command === 'refuse') worker.onmessage({ data: { type: 'export_error', message: 'Unsupported 4K' } });
+        else backend.stopAndSave();
+        await assert.rejects(result, command === 'refuse' ? /Unsupported 4K/ : /No video frames/);
+        assert.equal(worker.terminated, true);
+        assert.equal(State.isExporting, false);
+    }
+});
