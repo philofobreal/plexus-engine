@@ -1,7 +1,7 @@
 {
-  "id": "t20b1-mp4-profile-20261105T011024604Z",
-  "previousCommit": "626aa9d4ac78d7c5e3ead21ce939858c7c1385b9",
-  "sourceCommit": "0ebc26c01c32a31b9153d05d580b3ffc58f32817",
+  "id": "t20b2-mvp-pacing-20261105T141300196Z",
+  "previousCommit": "cc35ab491f3fa60a50f600d86253e75fe0aad324",
+  "sourceCommit": "ea5e6efb5eb5a7b4a417bf8cb3911b3e8d35100d",
   "inputs": [
     {
       "path": "bun.lock",
@@ -721,7 +721,7 @@
     },
     {
       "path": "src/export/WebCodecsBackend.ts",
-      "sha256": "e36b201b4d594f6fc85fe4bba014b834c71aade16df4237fa20e0e0c1fae3209"
+      "sha256": "8b40a247c7d75f120c657c835c5c4be970676d49459aba4bbccf42b89d3dc0b6"
     },
     {
       "path": "src/export/WebMExporter.ts",
@@ -1738,8 +1738,8 @@
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
-      "path": "assets/main-YaJAgY2F.js",
-      "sha256": "f0d25c81aca124a9188f63a945a5422145091435a306431e4c35af72c7013020"
+      "path": "assets/main-CSD0DpEy.js",
+      "sha256": "34116ae1b9071e2940d25952b5d1b9ce9189ae7a9c6faa4db3a92b87e345e15e"
     },
     {
       "path": "assets/mp4-export.worker-B-JPqWwi.js",
@@ -1750,20 +1750,20 @@
       "sha256": "ed315f6df1302a358d01c61364f80fab76ee7988af0e56624aaae0c215406db7"
     },
     {
-      "path": "assets/mvp-DNpgdafS.js",
-      "sha256": "6fc8e04f5a00e581ec6e795dde3ac37a6241af24ad7ab7520f1b9bd00417b03f"
+      "path": "assets/mvp-B346mLhn.js",
+      "sha256": "9a8b0be4abcc6d0ad31c234e0450cd5ff124a0978ca77cb35363473764aba2fb"
     },
     {
       "path": "assets/mvp-sPSHbSJ7.css",
       "sha256": "cb96120abd23cfdbc780f2f9a1c1c2374de5f7eaf9834ff98e8185abf16c1405"
     },
     {
-      "path": "assets/PreviewQualityControl-BemHqteq.js",
-      "sha256": "50c1313978d64d0a520981dc712bc9f3efe33cc0107e81cc4486eee290e00a4d"
-    },
-    {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
       "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+    },
+    {
+      "path": "assets/PreviewQualityControl-s1Uliiy0.js",
+      "sha256": "2e6239fbf6081f959d9fa1045703e3955efc55da93c9950567ccbaf997f5d2a0"
     },
     {
       "path": "assets/wormholeHostRender.worker-BHKvsM3O.js",
@@ -1835,11 +1835,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "9c0ab26ed69cbe13bc7576657dfea6eef0e2b9e12038d559e777c7d594e458c8"
+      "sha256": "096c1e33f4645a92c1c63f7f8d9a142e394b99c4c7590d9fe96f1b8c333b4d06"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "ce1f5a6762c850c8f297f3c289d5c0cca1cc042b53160fb14ebe2e47d9cd3ac0"
+      "sha256": "e4a804ea2a414c7d472a77e70e3f9b1f5f37bad6a3ffc2c318c609da9d6e874a"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
