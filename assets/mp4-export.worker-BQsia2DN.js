@@ -1,1 +1,0 @@
-function e(e){return new Worker(`/plexus-engine/assets/mp4-export.worker-g4-S4KBB.js`,{name:e?.name})}export{e as default};
