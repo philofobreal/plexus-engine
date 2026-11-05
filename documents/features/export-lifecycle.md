@@ -1519,6 +1519,64 @@ one result for every admitted timestamp. Measure worker time, transfer
 and presentation, and the whole MP4 job against the display-paced
 control. Qualify frame and audio output before any user-facing option.
 
+### T20b4 full-resolution Wormhole worker prototype
+
+Run `npm run build`, then `node research/export/mvp-export-qualification.mjs worker "<reference MP3>"`.
+Select **Compare full-resolution Wormhole worker** and run
+`node research/export/mvp-export-qualification.mjs verify-worker` after
+the browser finishes. The loopback build adds an awaited raster handoff
+to the actual MVP draw. The host runs the existing director, modulation
+and automation. The worker receives projected analysis once and one
+resolved frame per admitted timestamp. It runs the existing Wormhole
+identity and material stages together and returns an owned bitmap at
+export resolution. The host presents it, closes it and applies PostFX
+before MP4 capture. The prototype has one raster request in flight and
+uses the existing two-frame encoder limit.
+
+The comparison uses the four-second reference at 720p and 4K, 60 fps,
+three alternating pairs per resolution, and identical H.264/AAC
+settings. The display-paced control uses the p5 raster. The candidate
+awaits the raster response and uses the existing cooperative MP4
+scheduler. The reused worker selects WebGL with Canvas2D fallback.
+Round-trip time includes message dispatch, scheduling and transfer.
+Its reported render interval also includes bitmap creation. Presentation
+is a separate host interval. Cancel is issued during a pending raster
+request. The next job saves and verifies a 61-frame prefix.
+
+Native verification checks decoded frame timestamps, audio alignment
+and the output dimensions. The exploratory gates are at least 15%
+whole-job median improvement and minimum 0.98 downscaled SSIM among
+matched clips. SSIM is a visual similarity screen. Longer jobs,
+representative presets, transitions, backplates and physical device
+qualification are required before any user-facing mode. The fixture
+rejects transitions and backplates explicitly.
+
+The Windows Headless Chrome 156 fixture chose the WebGL worker path.
+Three-run medians in seconds are shown below for the same No Good excerpt.
+
+| MP4 | Display job | Worker job | Change | Worker raster and bitmap | Host round trip | Host presentation |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 720p/60 | 26.696 | 27.967 | 4.8% slower | 23.492 | 24.053 | 0.019 |
+| 4K/60 | 25.767 | 29.643 | 15.0% slower | 22.889 | 23.988 | 0.022 |
+
+Each successful full job admitted 240 ordered frames. Cancel discarded
+the pending render and published no output. Stop & save produced the
+next job's 61-frame prefix. The individual settlement times were 64 ms
+and 512 ms. Raster and bitmap creation overlap the round-trip interval.
+The desktop browser reported WebGL; the benchmark did not identify its
+hardware renderer or qualify the Canvas2D worker fallback.
+
+The worker placement did not pass the speed gate. The raster interval
+dominated and the observed round-trip excess was about 0.6–1.1 seconds
+per clip. Native verification passed for all 13 saved files, including
+the Stop prefix. The lowest audio correlation with the reference was
+0.9943. Minimum matched SSIM was 0.998456 at 720p and 0.998615 at 4K.
+Prioritize reducing the grain and weave work itself before a more
+involved change to the bitmap handoff. For the next speed experiment,
+start with a frame-equivalent grain/weave optimization and compare the
+whole MP4 job with the control. Keep this worker path available in the
+local fixture.
+
 ## Scheduled export acceleration - user direction, 2026-10-29
 
 The user accepted T19a and requested that professionally justified WASM export

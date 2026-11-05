@@ -14,10 +14,11 @@ const [mode, source] = process.argv.slice(2);
 const profiling = mode === 'profile';
 const pacing = mode === 'pacing' || mode === 'verify-pacing';
 const renderProfiling = mode === 'render' || mode === 'verify-render';
-const realMvp = pacing || renderProfiling;
-const logs = path.resolve(renderProfiling ? 'logs/t20b3' : pacing ? 'logs/t20b2' : profiling ? 'logs/t20b1' : 'logs/t20a3a');
+const exactWorker = mode === 'worker' || mode === 'verify-worker';
+const realMvp = pacing || renderProfiling || exactWorker;
+const logs = path.resolve(exactWorker ? 'logs/t20b4' : renderProfiling ? 'logs/t20b3' : pacing ? 'logs/t20b2' : profiling ? 'logs/t20b1' : 'logs/t20a3a');
 const production = path.resolve('dist');
-const allowed = /^(?:benchmark\.json|mp4-profile\.json|(?:long|4k)\.(?:mp4|webm)|real-track\.mp4|pacing\.json|pacing-(?:(?:720p|4k)-(?:display|cooperative)-[1-3]|stop)\.mp4|render\.json|render-(?:720p|4k)-(?:control|[1-3])\.mp4)$/;
+const allowed = /^(?:benchmark\.json|mp4-profile\.json|(?:long|4k)\.(?:mp4|webm)|real-track\.mp4|pacing\.json|pacing-(?:(?:720p|4k)-(?:display|cooperative)-[1-3]|stop)\.mp4|render\.json|render-(?:720p|4k)-(?:control|[1-3])\.mp4|worker\.json|worker-(?:(?:720p|4k)-(?:display|exact)-[1-3]|stop)\.mp4)$/;
 const fixtureRoute = '/plexus-engine/research/export/mvp-export-qualification.html';
 const maxBytes = 128 * 1024 * 1024;
 const tool = (name, args) => execFileSync(name, args, { windowsHide: true, encoding: 'utf8', timeout: 180_000 });
@@ -38,6 +39,22 @@ function markRenderer(code) {
         code = code.replace(anchor, `\n            window.plexusRenderProbe?.('${name}');\n${line}\n`);
     }
     return code;
+}
+
+function wireExactRaster(code) {
+    code = code.replaceAll('\r\n', '\n');
+    const draw = '        p.draw = () => {';
+    const identity = '            workerUsed = false;\n            if (compositor) {';
+    for (const anchor of [draw, identity]) {
+        const start = code.indexOf(anchor);
+        assert.ok(start >= 0 && start === code.lastIndexOf(anchor), 'Exact raster fixture boundary changed');
+    }
+    return code.replace(draw, '        p.draw = async () => {').replace(identity, `            workerUsed = false;
+            if (State.isExporting && window.plexusExactRaster) {
+                const identity = styleRegistry.get(State.visualMode);
+                activeRaster = await window.plexusExactRaster.draw(State, backend, identity.depthCueStrength ?? 0,
+                    options?.previewQuality?.musicDisplay, featureFlags.wormholeSkybox);
+            } else if (compositor) {`);
 }
 
 async function serve(source) {
@@ -64,15 +81,16 @@ async function serve(source) {
             transform(code, id) {
                 const module = id.replaceAll('\\', '/');
                 if (renderProfiling && module.endsWith('/src/visuals/PlexusRenderer.ts')) return markRenderer(code);
+                if (exactWorker && module.endsWith('/src/visuals/PlexusRenderer.ts')) return wireExactRaster(code);
                 if (!module.endsWith('/src/ui/mvp/main.ts')) return;
                 return code + '\nimport { installPacingBridge } from "../../../research/export/mvp-pacing-bridge.mjs";\n'
-                    + 'installPacingBridge(ui, engine);\n';
+                    + `installPacingBridge(ui, engine, ${exactWorker});\n`;
             },
         }] : [],
         build: { outDir: fixture, emptyOutDir: false, assetsDir: 'qual-assets',
             rollupOptions: { input: ['research/export/mvp-export-qualification.html', ...(realMvp ? ['mvp/index.html'] : [])] } },
     });
-    const port = renderProfiling ? 5215 : pacing ? 5214 : profiling ? 5213 : 5211, origin = `http://127.0.0.1:${port}`;
+    const port = exactWorker ? 5216 : renderProfiling ? 5215 : pacing ? 5214 : profiling ? 5213 : 5211, origin = `http://127.0.0.1:${port}`;
     const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm',
         '.json': 'application/json', '.svg': 'image/svg+xml', '.wav': 'audio/wav' };
     const server = createServer(async (req, res) => {
@@ -119,7 +137,7 @@ async function serve(source) {
         }
     });
     await writeFile(activeRun, output + '\n');
-    server.listen(port, '127.0.0.1', () => console.log(origin + fixtureRoute + (renderProfiling ? '?render' : pacing ? '?pacing' : '')));
+    server.listen(port, '127.0.0.1', () => console.log(origin + fixtureRoute + (exactWorker ? '?worker' : renderProfiling ? '?render' : pacing ? '?pacing' : '')));
 }
 
 async function decodedSamples(file) {
@@ -158,7 +176,7 @@ function compareRealAudio(reference, exportFile, times = [3, 30, 56], seconds = 
 async function verifyPacing() {
     const root = (await readFile(activeRun, 'utf8')).trim();
     assert.ok(root.startsWith(logs + path.sep) && path.basename(root).startsWith('run-'));
-    const receipt = renderProfiling ? 'render' : 'pacing';
+    const receipt = exactWorker ? 'worker' : renderProfiling ? 'render' : 'pacing';
     const report = await readJson(path.join(root, receipt + '.json'));
     assert.equal(report.pass, true);
     assert.equal(report.rows.length, renderProfiling ? 8 : 14);
@@ -199,6 +217,10 @@ async function verifyPacing() {
     const visual = ['720p', '4k'].map(resolution => renderProfiling ? {
         resolution,
         matched: [1, 2, 3].map(run => compareVideo(`render-${resolution}-control.mp4`, `render-${resolution}-${run}.mp4`)),
+    } : exactWorker ? {
+        resolution,
+        displayRepeat: [2, 3].map(run => compareVideo(`worker-${resolution}-display-1.mp4`, `worker-${resolution}-display-${run}.mp4`)),
+        matched: [1, 2, 3].map(run => compareVideo(`worker-${resolution}-display-${run}.mp4`, `worker-${resolution}-exact-${run}.mp4`)),
     } : {
         resolution,
         displayRepeat: [2, 3].map(run => compareVideo(`pacing-${resolution}-display-1.mp4`, `pacing-${resolution}-display-${run}.mp4`)),
@@ -206,8 +228,26 @@ async function verifyPacing() {
     });
     const referenceSha256 = createHash('sha256').update(await readFile(path.join(root, 'reference.wav'))).digest('hex');
     if (renderProfiling) assert.ok(visual.every(row => row.matched.every(pair => pair.exactFile)), 'Profiling changed the exported MP4');
-    await writeFile(path.join(root, receipt + '-verification.json'), JSON.stringify({ ...report, referenceSha256, native, visual }, null, 2) + '\n');
-    console.log(JSON.stringify({ files: native.length, visual }));
+    const qualification = exactWorker ? visual.map(({ resolution, matched }) => {
+        const runs = variant => report.rows.filter(row => row.artifact?.startsWith(`worker-${resolution}-${variant}-`));
+        const median = values => {
+            assert.equal(values.length, 3);
+            return values.sort((a, b) => a - b)[1];
+        };
+        const workerRuns = runs('exact');
+        const displayMs = median(runs('display').map(row => row.elapsed));
+        const workerMs = median(workerRuns.map(row => row.elapsed));
+        const rasterMs = Object.fromEntries(['renderMs', 'roundTripMs', 'presentMs'].map(stage => [stage,
+            median(workerRuns.map(row => row.workerFrames.reduce((sum, frame) => sum + frame[stage], 0)))]));
+        const rasterKinds = [...new Set(workerRuns.flatMap(row => row.workerFrames.map(frame => frame.raster)))];
+        const speedGain = 1 - workerMs / displayMs;
+        const minSsim = Math.min(...matched.map(pair => pair.ssim));
+        return { resolution, displayMs, workerMs, rasterKinds, rasterMs, speedGain, minSsim,
+            speedGate: speedGain >= .15, similarityGate: minSsim >= .98 };
+    }) : undefined;
+    await writeFile(path.join(root, receipt + '-verification.json'),
+        JSON.stringify({ ...report, referenceSha256, native, visual, qualification }, null, 2) + '\n');
+    console.log(JSON.stringify({ files: native.length, visual, qualification }));
 }
 async function verify() {
     const root = (await readFile(activeRun, 'utf8')).trim();
@@ -253,6 +293,7 @@ if (mode === 'serve') await serve(source);
 else if (mode === 'profile') await serve();
 else if (mode === 'pacing') await serve(source);
 else if (mode === 'render') await serve(source);
+else if (mode === 'worker') await serve(source);
 else if (mode === 'verify') await verify();
-else if (mode === 'verify-pacing' || mode === 'verify-render') await verifyPacing();
-else throw Error('Use: node research/export/mvp-export-qualification.mjs serve [reference MP3] | profile | verify | pacing <reference MP3> | verify-pacing | render <reference MP3> | verify-render');
+else if (mode === 'verify-pacing' || mode === 'verify-render' || mode === 'verify-worker') await verifyPacing();
+else throw Error('Use: node research/export/mvp-export-qualification.mjs serve [reference MP3] | profile | verify | pacing <reference MP3> | verify-pacing | render <reference MP3> | verify-render | worker <reference MP3> | verify-worker');

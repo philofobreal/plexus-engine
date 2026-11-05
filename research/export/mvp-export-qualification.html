@@ -143,8 +143,10 @@ async function one(caseId, format, resolution, seconds, artifact, cues, pcm, pro
 const median = xs => xs.slice().sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 const qualificationMode = new URLSearchParams(location.search);
 const renderProfiling = qualificationMode.has('render');
-pacingButton.hidden = !qualificationMode.has('pacing') && !renderProfiling;
+const exactWorker = qualificationMode.has('worker');
+pacingButton.hidden = !qualificationMode.has('pacing') && !renderProfiling && !exactWorker;
 if (renderProfiling) pacingButton.textContent = 'Profile real MVP render stages';
+if (exactWorker) pacingButton.textContent = 'Compare full-resolution Wormhole worker';
 pacingButton.onclick = async () => {
     bench.disabled = profileButton.disabled = pacingButton.disabled = load.disabled = true;
     const report = { userAgent: navigator.userAgent, visible: !document.hidden, fps, rows: [] };
@@ -165,9 +167,9 @@ pacingButton.onclick = async () => {
             check(analysis.duration === 4 && analysis.analysisFrames > 0, 'Reference analysis is incomplete');
             return fixture;
         }
-        async function run(fixture, resolution, scheduling, artifact, command, profileRender = false) {
-            status.textContent = `Real MVP ${resolution} ${scheduling} ${command ?? artifact}…`;
-            const { blob, capturedTimes, ...result } = await fixture.run({ resolution, scheduling, command, fps, profileRender });
+        async function run(fixture, resolution, scheduling, artifact, command, profileRender = false, useWorker = false) {
+            status.textContent = `Real MVP ${resolution} ${useWorker ? 'worker' : scheduling} ${command ?? artifact}…`;
+            const { blob, capturedTimes, ...result } = await fixture.run({ resolution, scheduling, command, fps, profileRender, useWorker });
             const frames = command ? 61 : 240;
             check(result.profile?.framesSubmitted === frames && capturedTimes.length === frames
                 && capturedTimes.every((time, index) => Math.abs(time - index / fps) < 1e-9), 'MVP captured an unexpected frame or stale draw');
@@ -185,6 +187,14 @@ pacingButton.onclick = async () => {
                         && frame.wormhole <= frame.identityPipeline + .01, 'Invalid render-stage timings');
                 }
             } else check(!result.renderFrames, 'Render timing was enabled in a control');
+            if (useWorker) {
+                const [width, height] = resolution === '4K' ? [3840, 2160] : [1280, 720];
+                check(result.workerFrames?.length === frames && result.workerFrames.every((frame, index) =>
+                    frame.time === index / fps && frame.width === width && frame.height === height &&
+                    [frame.renderMs, frame.roundTripMs, frame.presentMs].every(ms => Number.isFinite(ms) && ms >= 0)),
+                    'Worker did not present every admitted frame at the export resolution');
+                if (command === 'cancel') check(result.cancelledDuringRaster, 'Cancel missed the pending render');
+            }
             check(Boolean(blob) === (command !== 'cancel'), 'Unexpected result publication');
             if (blob) await post(artifact, blob);
             const cleanup = await fixture.clear();
@@ -202,18 +212,21 @@ pacingButton.onclick = async () => {
             for (let pair = 1; pair <= 3; pair++) {
                 const order = pair % 2 === 1 ? ['display', 'cooperative'] : ['cooperative', 'display'];
                 for (const scheduling of order) {
-                    const artifact = `pacing-${resolution.toLowerCase()}-${scheduling}-${pair}.mp4`;
-                    await run(await loadMvp(), resolution, scheduling, artifact);
+                    const useWorker = exactWorker && scheduling === 'cooperative';
+                    const label = useWorker ? 'exact' : scheduling;
+                    const artifact = `${exactWorker ? 'worker' : 'pacing'}-${resolution.toLowerCase()}-${label}-${pair}.mp4`;
+                    await run(await loadMvp(), resolution, scheduling, artifact, undefined, false, useWorker);
                 }
             }
         }
         if (!renderProfiling) {
             const fixture = await loadMvp();
-            await run(fixture, '720p', 'cooperative', null, 'cancel');
-            await run(fixture, '720p', 'cooperative', 'pacing-stop.mp4', 'stop');
+            await run(fixture, '720p', 'cooperative', null, 'cancel', false, exactWorker);
+            await run(fixture, '720p', 'cooperative', exactWorker ? 'worker-stop.mp4' : 'pacing-stop.mp4', 'stop', false, exactWorker);
         }
         report.pass = true;
-        await post(renderProfiling ? 'render.json' : 'pacing.json', new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
+        await post(exactWorker ? 'worker.json' : renderProfiling ? 'render.json' : 'pacing.json',
+            new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
     } catch (error) { report.pass = false; report.error = String(error); }
     finally {
         status.textContent = JSON.stringify(report, null, 2);

@@ -63,7 +63,7 @@ function createRenderProbe() {
 }
 
 // This bridge is injected only into the loopback build of the actual MVP entry point.
-export function installPacingBridge(ui, engine) {
+export function installPacingBridge(ui, engine, workerFixture = false) {
     const controller = ui.controller;
     const effect = TemporalFragmentationEffect.prototype;
     const isActive = effect.isActive, apply = effect.apply;
@@ -98,7 +98,8 @@ export function installPacingBridge(ui, engine) {
             if (!State.trackAnalysis || State.visualMode !== 'cosmic-wormhole') throw Error('Missing MVP analysis or Wormhole');
             return { duration: State.duration, analysisFrames: State.frames.length };
         },
-        async run({ resolution, scheduling, command, fps, profileRender = false }) {
+        async run({ resolution, scheduling, command, fps, profileRender = false, useWorker = false }) {
+            if (useWorker && !workerFixture) throw Error('Worker benchmark build required');
             const p5 = controller.exportP5Instance, canvas = controller.exportCanvas;
             const draw = p5.draw, createBitmap = window.createImageBitmap;
             const capturedTimes = [];
@@ -108,6 +109,7 @@ export function installPacingBridge(ui, engine) {
                 const isExporting = State.isExporting;
                 if (isExporting) probe?.start(State.exportTime);
                 const result = draw.apply(this, args);
+                if (isExporting && useWorker) return Promise.resolve(result).then(() => { renderedTime = State.exportTime; });
                 if (isExporting) {
                     renderedTime = State.exportTime;
                     probe?.finish(canvas.dataset.wormholeRaster);
@@ -123,11 +125,23 @@ export function installPacingBridge(ui, engine) {
             });
             const initialPostFrames = postFrames;
             const started = performance.now();
+            let exactRaster, cancelledDuringRaster = false;
             try {
+                if (useWorker) {
+                    const { createExactRaster } = await import('./mvp-exact-raster.mjs');
+                    exactRaster = createExactRaster(time => {
+                        if (command !== 'cancel' || commandAt !== undefined || time < 61 / fps) return;
+                        cancelledDuringRaster = true;
+                        commandAt = performance.now();
+                        exporter.cancelExport();
+                        exactRaster.dispose();
+                    });
+                    window.plexusExactRaster = exactRaster;
+                }
                 let blob;
                 try {
                     blob = await exporter.startExport({ resolution, aspectRatio: '16:9', fps, format: 'mp4', watermark: false }, progress => {
-                        if (!command || commandAt !== undefined || progress < .225) return;
+                        if (!command || (useWorker && command === 'cancel') || commandAt !== undefined || progress < .225) return;
                         commandAt = performance.now();
                         if (command === 'stop') exporter.stopAndSave();
                         else exporter.cancelExport();
@@ -140,8 +154,11 @@ export function installPacingBridge(ui, engine) {
                 if (command === 'cancel' && (blob || profile?.outcome !== 'cancelled')) throw Error('Cancelled export published a result');
                 return { blob, elapsed, profile, capturedTimes, postFrames: postFrames - initialPostFrames,
                     ...(probe ? { renderFrames: probe.frames } : {}),
+                    ...(exactRaster ? { workerFrames: exactRaster.frames, workerSetupMs: exactRaster.setupMs, cancelledDuringRaster } : {}),
                     controlSettlementMs: commandAt === undefined ? undefined : performance.now() - commandAt };
             } finally {
+                exactRaster?.dispose();
+                if (exactRaster) delete window.plexusExactRaster;
                 probe?.dispose();
                 p5.draw = draw;
                 window.createImageBitmap = createBitmap;
