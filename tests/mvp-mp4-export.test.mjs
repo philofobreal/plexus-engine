@@ -3,6 +3,47 @@ import test from 'node:test';
 import { createLoader } from './helpers/xr-loader.mjs';
 
 const base = { resolution: '720p', aspectRatio: '16:9', fps: 60 };
+
+test('a new or unreadable format preference starts MP4, while an explicit WebM choice survives reopening', () => {
+    const saved = new Map(), starts = [];
+    let storageAvailable = true;
+    class Element extends EventTarget {
+        children = new Map();
+        classList = { toggle() {} };
+        querySelector(selector) {
+            if (selector === '.mvp-export-resolution button.is-active') return null;
+            if (!this.children.has(selector)) {
+                const child = new Element();
+                if (selector === '.mvp-export-format') {
+                    child.value = this.innerHTML.match(/<option value="(\w+)" selected>/)?.[1];
+                }
+                this.children.set(selector, child);
+            }
+            return this.children.get(selector);
+        }
+        querySelectorAll() { return []; }
+    }
+    const load = createLoader({}, {
+        document: { createElement: () => new Element() },
+        localStorage: {
+            getItem(key) { if (!storageAvailable) throw Error('Storage disabled'); return saved.get(key); },
+            setItem(key, value) { saved.set(key, value); },
+        },
+    });
+    const { ExportDialog } = load('ui/mvp/ExportDialog.ts');
+    const open = () => new ExportDialog({ onStart: config => starts.push(config.format ?? 'webm'), onStop() {}, onCancel() {} });
+    const start = dialog => dialog.root.querySelector('.mvp-export-start').dispatchEvent(new Event('click'));
+    const first = open();
+    start(first);
+    const select = first.root.querySelector('.mvp-export-format');
+    select.value = 'webm';
+    select.dispatchEvent(new Event('change'));
+    start(open());
+    storageAvailable = false;
+    start(open());
+    assert.deepEqual(starts, ['mp4', 'webm', 'mp4']);
+});
+
 test('MP4 is explicit, MVP-only, and can be cancelled while loading its alternate worker', async () => {
     let resolveWorker, alternateStarts = 0, compatibleStarts = 0;
     const backend = { start(config) { alternateStarts++; assert.equal(config.format, 'mp4'); return new Blob(['mp4']); } };

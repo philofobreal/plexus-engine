@@ -859,8 +859,9 @@ node research/export/ffmpeg-baseline.mjs logs/t20a path/to/short.webm path/to/lo
      4K. Measure whole-job time, command latency, resource peaks, recovery
      and sync in the user's target players/editors. Mobile 4K stays
      guarded until qualified.
-   - **T20a3c — default decision.** Apply the existing 15% median threshold
-     to any speed claim and decide on a default after user acceptance.
+   - **T20a3c — default decision.** The user accepted the Android Chrome
+     result and requested MP4 as the MVP default. Keep the existing 15%
+     median threshold for any separate speed claim.
 4. **Further work.** Schedule render-worker optimization against the measured
    bottleneck and T21 captions after the export route is stable. Studio and
    XR retain their own work streams.
@@ -1079,8 +1080,9 @@ reference media is included in Git or the Pages application build.
 ### T20a2c MVP MP4 choice
 
 **Export video → Format** offers **WebM** and **MP4 (H.264 + AAC)**.
-WebM is the default for new profiles. The MVP remembers an explicit format
-choice locally and includes it in copied MP4 settings. Resolution, frame
+WebM was the initial default. Since T20a3c, MP4 is the default for new
+profiles. The MVP remembers an explicit format choice locally and includes
+it in copied MP4 settings. Resolution, frame
 rate, workspace locking, Stop & save, Cancel, and the tab-owned cache use
 the existing export coordinator. Only MVP supplies the alternate backend.
 
@@ -1199,8 +1201,19 @@ run MP4 can still qualify the WebM fallback.
    memory and remaining device storage separately from the origin quota.
    Do not extrapolate from the WASM linear memory to total device usage.
 
-T20a3a does not stand in for a physical-device pass or editor sign-off.
-Keep WebM as default until the agreed platform coverage is verified.
+### T20a3b/T20a3c acceptance and default
+
+The user reported successful operation of the MP4 export on physical
+Android in Chrome. The exact phone/OS version, individual controls and
+timings were not supplied. iOS and editor-specific compatibility remain
+unverified. The user did not require an editor test to continue, and
+explicitly selected MP4 as the default target format.
+
+In MVP, a missing or unreadable format preference now selects MP4.
+A previously saved WebM choice remains WebM. If MP4 preflight fails,
+its existing explanation still offers WebM; export never silently changes
+the requested format. This preference change is independent of speed,
+4K admission and the remaining device coverage.
 
 ## Optional accelerated export research (2026-11-04)
 

@@ -2,7 +2,7 @@
 
 Started 2026-10-23. Checkpoint 2026-11-04 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**The user accepted the explicit MVP MP4 option. T20a3a covers the desktop comparison and decoded output. T20a3b physical Android/iOS and target editors remain next; keep WebM as the default. T15 remains deferred.**
+**The user reported successful MVP MP4 export on Android Chrome and chose MP4 as the default. iOS and specific editors remain follow-up checks. T21 timed captions is next after manual acceptance of the default change. T15 remains deferred.**
 
 ### Remaining work in execution order (2026-11-04)
 
@@ -25,7 +25,7 @@ remain useful alongside the acceleration work.
 | 5 | **T19e retire Isolated Wormhole from MVP export.** Remove the export choice and MVP-only snapshot wiring, memory override, isolated diagnostics and concurrent editing/playback/replacement behavior. | Deployed and manually accepted. See the [retirement record](../features/export-lifecycle.md#scheduled-retirement-from-mvp-export) for saved preferences, workspace locking and preserved research coverage. |
 | 6 | **T20a0 FFmpeg reference and decision.** Measure the real Compatible short 4K output with native FFmpeg. | Completed as research. See the [FFmpeg transition schedule](../features/export-lifecycle.md#ffmpeg-transition-priority-t20a). Treat MP4/H.264/AAC as the first candidate. Confirm the intended playback/editor destinations during qualification. |
 | 7 | **T20a1 browser prototype.** Compare FFmpeg finalization of H.264 packets, direct WASM encoding and Compatible WebM. | Research complete and manually accepted. See the [browser evidence](../features/export-lifecycle.md#t20a1-browser-evidence-2026-11-04). |
-| 8 | **T20a3 export qualification.** The [MVP MP4 choice](../features/export-lifecycle.md#t20a2c-mvp-mp4-choice) was accepted. [T20a3a desktop](../features/export-lifecycle.md#t20a3a-desktop-output-qualification) covers timing and output. T20a3b requires [physical devices and target editors](../features/export-lifecycle.md#t20a3-physical-device-acceptance-checklist). | WebM stays the default. Apply the matched quality, resource, timing and lifecycle gates before changing that default. |
+| 8 | **T20a3 export qualification.** [Desktop timing and output](../features/export-lifecycle.md#t20a3a-desktop-output-qualification) and user-reported Android Chrome acceptance support the requested [MP4 default](../features/export-lifecycle.md#t20a3bt20a3c-acceptance-and-default). | Retain saved WebM choices and the WebM option. iOS and specific editors are follow-up checks; no cross-platform speed claim. |
 | 9 | **T19 performance follow-up and T21 captions.** Run extra render-worker work when measurements identify it as the bottleneck. Schedule timed captions after the FFmpeg route is stable. | T19d1 remains historical evidence. T21 defines timing/overlap and verifies preview/export parity. |
 | 10 | **T22–T24 Studio and own-domain release.** Confirm access and hosting scope. | T22 and T23 gate public Studio release. T24 requires a verified runtime, HTTPS, route/asset smoke checks and a tested rollback. See [ADR-013](../adr/ADR-013-studio-server-session-boundary.md). |
 

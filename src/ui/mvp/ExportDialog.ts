@@ -53,7 +53,7 @@ export class ExportDialog {
                     <span class="mvp-field-row">Format</span>
                     <select class="mvp-export-format">
                         <option value="webm">WebM</option>
-                        <option value="mp4">MP4 (H.264 + AAC)</option>
+                        <option value="mp4" selected>MP4 (H.264 + AAC)</option>
                     </select>
                 </label>
                 <small class="mvp-export-mp4-note mvp-hidden">MP4 uses temporary browser storage. <a href="../export/ffmpeg-5.1.10/" target="_blank" rel="noopener">FFmpeg and source code</a></small>
@@ -92,7 +92,9 @@ export class ExportDialog {
         this.capabilityWarningEl = this.root.querySelector('.mvp-capability-warning')!;
         this.resolutionBtns = Array.from(this.root.querySelectorAll('.mvp-export-resolution button'));
         this.formatSelect = this.root.querySelector('.mvp-export-format')!;
-        try { this.formatSelect.value = localStorage.getItem(exportFormatKey) === 'mp4' ? 'mp4' : 'webm'; } catch { /* WebM default. */ }
+        try {
+            if (localStorage.getItem(exportFormatKey) === 'webm') this.formatSelect.value = 'webm';
+        } catch { /* The selected HTML option is the default. */ }
         const refreshFormatNote = () => this.root.querySelector('.mvp-export-mp4-note')!.classList.toggle('mvp-hidden', this.formatSelect.value !== 'mp4');
         refreshFormatNote();
         this.formatSelect.addEventListener('change', () => {
