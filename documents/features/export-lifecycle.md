@@ -1281,6 +1281,18 @@ Warn when the fully visible hold is too short. Preview and export must
 evaluate opacity from song time, including after a seek. Selection boxes,
 safe-area guides and fade handles are editor controls and never burn in.
 
+T21b includes a font picker with live samples, a saved per-track default
+and an optional cue-level override. The initial Google Fonts shortlist is
+Inter (readable neutral), Barlow Semi Condensed (compact), Exo 2 (electronic),
+Chakra Petch (angular display) and IBM Plex Mono (HUD/monospace). The
+[Google Fonts source metadata](https://github.com/google/fonts/tree/main/ofl)
+lists Latin Extended, italic faces and OFL for all five. Before shipping,
+verify the actual WOFF2 glyphs and styles, including Hungarian double acute,
+then self-host the pinned files with license notices. Load only the needed
+families and faces; preview, layout and export must use the same font metrics
+and must surface missing fonts before recording. Keep the chooser and preview
+in the next editor slice; no font assets are loaded by T21a.
+
 ## Optional accelerated export research (2026-11-04)
 
 The user reports that their current mobile export is stable and slow. Preserve that workflow
