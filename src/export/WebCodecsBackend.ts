@@ -178,20 +178,24 @@ export class WebCodecsBackend implements ExportBackend {
                 let bitmap: ImageBitmap;
                 try {
                     let image: HTMLCanvasElement | undefined;
+                    let displayFrame: Promise<void> | undefined;
                     const renderStarted = now();
                     if (runtime) image = await this.waitForOperation(runtime.renderFrame(i, config.fps));
                     else {
                         await this.seekVideoFrame(State.exportTime);
                         if (this.cancelled || this.stoppedEarly) break;
                         const redraw = this.renderOffscreenFrame();
-                        // Keep the capture target alive until p5 has finished drawing, including
-                        // when Stop or Cancel arrives while an asynchronous redraw is in progress.
-                        if (mp4Candidate) await redraw;
+                        if (mp4) {
+                            if (!cooperative) displayFrame = nextAnimationFrame();
+                            // A display callback may arrive before p5 has finished. Keep the
+                            // target alive through redraw, even if the job is stopped or cancelled.
+                            await redraw;
+                        }
                     }
                     stages.renderRequest += now() - renderStarted;
                     if (!cooperative) {
                         const animationFrameStarted = now();
-                        await this.waitForOperation(nextAnimationFrame());
+                        await this.waitForOperation(displayFrame ?? nextAnimationFrame());
                         stages.animationFrameWait += now() - animationFrameStarted;
                     }
                     if (this.cancelled || this.stoppedEarly || !this.worker) break;

@@ -1577,6 +1577,39 @@ start with a frame-equivalent grain/weave optimization and compare the
 whole MP4 job with the control. Keep this worker path available in the
 local fixture.
 
+### 4K/60 MP4 playback integrity follow-up
+
+The reported 410.58-second No Good export (Windows Media Player, source
+window 00:47–01:00) contains 24,635 consecutive video packet timestamps
+and 411 keyframes at one-second intervals. The entire file decoded with
+FFmpeg. It declared H.264 High Level 5.1 for 3840×2160 at 60 fps.
+This output needs Level 5.2 by the H.264 Annex A macroblock processing
+limit: 32,400 macroblocks per frame and 1,944,000 per second.
+[ITU-T H.264 Annex A](https://www.itu.int/rec/dologin_pub.asp?id=T-REC-H.264-202408-I%21%21PDF-E&lang=e&type=items)
+
+The MP4 worker now selects the minimum applicable level using picture
+size, frame rate and bitrate. The real probe and production encoder
+check the emitted AVC configuration before the job can publish output.
+MP4 capture also waits for p5 redraw completion. The display-paced
+route still schedules its normal display callback, concurrently with
+redraw, and waits for both before copying pixels.
+
+Run `node research/export/mvp-export-qualification.mjs integrity` after
+the build. The local fixture embeds a frame number in every 720p,
+1080p and 4K frame. `verify-integrity` checks the decoded frame numbers,
+encoded AVC levels, ordered timestamps and one-second keyframes.
+The browser also checks audio endpoints and cue alignment. Chromium
+and native FFmpeg verified all 960 decoded frame numbers across the
+three resolutions, including 720 frames at 4K. The emitted levels
+were 3.2, 4.2 and 5.2 respectively.
+
+For player diagnosis, the three local 00:45–01:03 remuxes preserve video
+samples while varying level signaling and then fragment layout. These
+separate a player issue from motion already present in the rendering.
+The signaling defect and redraw race are established independently;
+the exact cause of the reported layer motion in Windows Media Player
+still needs the matched playback check.
+
 ## Scheduled export acceleration - user direction, 2026-10-29
 
 The user accepted T19a and requested that professionally justified WASM export

@@ -39,7 +39,7 @@ const post = async (name, data) => {
     const response = await fetch('/qualification/output/' + name, { method: 'POST', body: data });
     check(response.status === 201, 'Local capture failed for ' + name);
 };
-function p5For(cues) {
+function p5For(cues, numbered) {
     return {
         noLoop() {}, loop() {},
         createGraphics(w, h) {
@@ -55,6 +55,13 @@ function p5For(cues) {
             }
             ctx.fillStyle = cues.some(c => Math.abs(t - c) <= .018) ? '#1eff71' : '#161f52';
             ctx.fillRect(w * .35, h * .35, w * .3, h * .3);
+            if (numbered) {
+                const index = Math.round(t * fps);
+                for (let bit = 0; bit < 12; bit++) {
+                    ctx.fillStyle = index & (1 << bit) ? '#fff' : '#000';
+                    ctx.fillRect(bit * 16, 0, 16, 16);
+                }
+            }
         },
     };
 }
@@ -108,8 +115,8 @@ async function verify(blob, seconds, width, height, cues, format) {
         return { frames: pts.length, samples: pcm.length, cueOffsetsMs, codecs: [video.codec, audio.codec] };
     } finally { media.dispose(); await audioContext.close(); }
 }
-async function one(caseId, format, resolution, seconds, artifact, cues, pcm, profiled = false) {
-    const p5 = p5For(cues), audio = { getAudioBuffer: () => pcm };
+async function one(caseId, format, resolution, seconds, artifact, cues, pcm, profiled = false, numbered = false) {
+    const p5 = p5For(cues, numbered), audio = { getAudioBuffer: () => pcm };
     let profile, profileCount = 0;
     const exporter = new WebMExporter(p5, canvas, audio, null, {
         createMp4Backend: async name => new WebCodecsBackend(p5, canvas, audio, name, null, 'display', Mp4Worker,
@@ -144,6 +151,8 @@ const median = xs => xs.slice().sort((a, b) => a - b)[Math.floor(xs.length / 2)]
 const qualificationMode = new URLSearchParams(location.search);
 const renderProfiling = qualificationMode.has('render');
 const exactWorker = qualificationMode.has('worker');
+const integrity = qualificationMode.has('integrity');
+if (integrity) profileButton.textContent = 'Check numbered MP4 frames';
 pacingButton.hidden = !qualificationMode.has('pacing') && !renderProfiling && !exactWorker;
 if (renderProfiling) pacingButton.textContent = 'Profile real MVP render stages';
 if (exactWorker) pacingButton.textContent = 'Compare full-resolution Wormhole worker';
@@ -238,6 +247,16 @@ profileButton.onclick = async () => {
     bench.disabled = profileButton.disabled = load.disabled = true;
     const report = { userAgent: navigator.userAgent, visible: !document.hidden, fps, rows: [] };
     try {
+        if (integrity) {
+            for (const [size, seconds] of [['720p', 2], ['1080p', 2], ['4K', 12]]) {
+                const cues = [.25, seconds / 2, seconds - .25];
+                const artifact = 'integrity-' + size.toLowerCase() + '.mp4';
+                report.rows.push(await one(size, 'mp4', size, seconds, artifact, cues, audioFor(seconds, cues), false, true));
+            }
+            report.pass = true;
+            await post('integrity.json', new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
+            return;
+        }
         for (const [size, seconds, runs] of [['720p', 4, 3], ['4K', 2, 3], ['720p', 30, 1]]) {
             const cues = [.25, seconds / 2, seconds - .25], pcm = audioFor(seconds, cues);
             for (let i = 0; i < runs; i++) {

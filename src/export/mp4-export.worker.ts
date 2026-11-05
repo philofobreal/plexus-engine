@@ -1,6 +1,7 @@
 import { Mp4OutputFormat, NullTarget, Output, StreamTarget, VideoSample, VideoSampleSource } from 'mediabunny';
 import { validMp4ExportStorageName } from './ExportStorageLease';
 import { checkMp4Storage, planMp4Storage } from './Mp4StorageAdmission';
+import { readMp4AvcLevel, selectMp4AvcLevel } from './Mp4AvcLevel';
 import type { EncodeFrameRequest, ExportWorkerRequest, ExportWorkerResponse, StartExportRequest } from './ExportTypes';
 
 type Access = { write(data: Uint8Array, options: { at: number }): number; flush(): void; close(): void };
@@ -58,11 +59,15 @@ async function openAccess(dir: FileSystemDirectoryHandle, name: string) {
     if (typeof file.createSyncAccessHandle !== 'function') throw mp4Error('Browser-local MP4 file writing is unavailable.');
     return { file, access: await file.createSyncAccessHandle() };
 }
-async function probeH264(width: number, height: number, fps: number, encoding: ConstructorParameters<typeof VideoSampleSource>[0]) {
+async function probeH264(width: number, height: number, fps: number, encoding: ConstructorParameters<typeof VideoSampleSource>[0], level: number) {
     const probe = new Output({ format: new Mp4OutputFormat(), target: new NullTarget() });
     let packets = 0;
+    let emittedLevel: number | undefined;
     let canvas: OffscreenCanvas | undefined;
-    const source = new VideoSampleSource({ ...encoding, onEncodedPacket: () => { packets++; } });
+    const source = new VideoSampleSource({ ...encoding, onEncodedPacket: (_packet, metadata) => {
+        packets++;
+        if (metadata?.decoderConfig) emittedLevel = readMp4AvcLevel(metadata.decoderConfig.description);
+    } });
     probe.addVideoTrack(source, { frameRate: fps });
     try {
         await probe.start();
@@ -79,6 +84,9 @@ async function probeH264(width: number, height: number, fps: number, encoding: C
         throw mp4Error('H.264 encoding is unavailable at this resolution and frame rate.');
     } finally {
         if (canvas) canvas.width = canvas.height = 1;
+    }
+    if (emittedLevel === undefined || emittedLevel < level) {
+        throw mp4Error('The browser H.264 encoder reported a level below the selected resolution and frame rate.');
     }
 }
 function finalizeMp4(core: Core, video: File, wav: File, access: Access, plan: Plan) {
@@ -141,8 +149,11 @@ async function start(request: StartExportRequest) {
     const budget = makePlan(request.frames ?? 0);
     await requireStorage(budget, 'start');
     measure('storageAdmission');
-    const encoding = { codec: 'avc' as const, bitrate, keyFrameInterval: 1, latencyMode: 'quality' as const };
-    await probeH264(width, height, fps, encoding);
+    const level = selectMp4AvcLevel(width, height, fps, bitrate);
+    if (level === undefined) throw mp4Error('H.264 cannot represent this resolution and frame rate.');
+    const encoding = { codec: 'avc' as const, bitrate, keyFrameInterval: 1, latencyMode: 'quality' as const,
+        fullCodecString: `avc1.6400${level.toString(16)}` };
+    await probeH264(width, height, fps, encoding, level);
     measure('codecProbe');
     const core = await loadCore();
     measure('coreLoad');
@@ -167,7 +178,14 @@ async function start(request: StartExportRequest) {
             },
         }), { chunked: true, chunkSize: 256 * 1024 });
         const output = writer = new Output({ format: new Mp4OutputFormat({ fastStart: 'fragmented', minimumFragmentDuration: 1 }), target });
-        const picture = new VideoSampleSource(encoding);
+        let reportedLevel = false, invalidLevel = false;
+        const picture = new VideoSampleSource({ ...encoding, onEncodedPacket: (_packet, metadata) => {
+            if (!metadata?.decoderConfig) return;
+            const actual = readMp4AvcLevel(metadata.decoderConfig.description);
+            reportedLevel = true;
+            if (actual === undefined || actual < level) invalidLevel = true;
+        } });
+        const levelError = () => mp4Error('The H.264 encoder produced a stream level below the selected resolution and frame rate.');
         output.addVideoTrack(picture, { frameRate: fps });
         await output.start();
         measure('stagingSetup');
@@ -183,6 +201,7 @@ async function start(request: StartExportRequest) {
                     }
                     const sample = new VideoSample(bitmap, { timestamp: frames / fps, duration: 1 / fps });
                     try { await picture.add(sample); } finally { sample.close(); }
+                    if (invalidLevel) throw levelError();
                     measure('videoSubmit');
                     if (audioPlanar && audioSampleCount > 0) {
                         for (let i = 0; i < audioSampleCount; i++) for (let c = 0; c < 2; c++) {
@@ -202,6 +221,7 @@ async function start(request: StartExportRequest) {
                 const plan = makePlan(frames);
                 if (samples !== plan.samples) throw mp4Error('MP4 could not finalize the captured audio prefix.');
                 picture.close(); await output.finalize();
+                if (invalidLevel || !reportedLevel) throw levelError();
                 measure('videoFlush');
                 write(wave.access, wavHeader(sampleRate, samples), 0, plan.limits.audio);
                 wave.access.flush(); wave.access.close(); waveAccess = undefined;

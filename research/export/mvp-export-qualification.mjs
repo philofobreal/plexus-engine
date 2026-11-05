@@ -15,10 +15,11 @@ const profiling = mode === 'profile';
 const pacing = mode === 'pacing' || mode === 'verify-pacing';
 const renderProfiling = mode === 'render' || mode === 'verify-render';
 const exactWorker = mode === 'worker' || mode === 'verify-worker';
+const integrity = mode === 'integrity' || mode === 'verify-integrity';
 const realMvp = pacing || renderProfiling || exactWorker;
-const logs = path.resolve(exactWorker ? 'logs/t20b4' : renderProfiling ? 'logs/t20b3' : pacing ? 'logs/t20b2' : profiling ? 'logs/t20b1' : 'logs/t20a3a');
+const logs = path.resolve(integrity ? 'logs/t20b5-integrity' : exactWorker ? 'logs/t20b4' : renderProfiling ? 'logs/t20b3' : pacing ? 'logs/t20b2' : profiling ? 'logs/t20b1' : 'logs/t20a3a');
 const production = path.resolve('dist');
-const allowed = /^(?:benchmark\.json|mp4-profile\.json|(?:long|4k)\.(?:mp4|webm)|real-track\.mp4|pacing\.json|pacing-(?:(?:720p|4k)-(?:display|cooperative)-[1-3]|stop)\.mp4|render\.json|render-(?:720p|4k)-(?:control|[1-3])\.mp4|worker\.json|worker-(?:(?:720p|4k)-(?:display|exact)-[1-3]|stop)\.mp4)$/;
+const allowed = /^(?:benchmark\.json|mp4-profile\.json|(?:long|4k)\.(?:mp4|webm)|real-track\.mp4|pacing\.json|pacing-(?:(?:720p|4k)-(?:display|cooperative)-[1-3]|stop)\.mp4|render\.json|render-(?:720p|4k)-(?:control|[1-3])\.mp4|worker\.json|worker-(?:(?:720p|4k)-(?:display|exact)-[1-3]|stop)\.mp4|integrity\.json|integrity-(?:720p|1080p|4k)\.mp4)$/;
 const fixtureRoute = '/plexus-engine/research/export/mvp-export-qualification.html';
 const maxBytes = 128 * 1024 * 1024;
 const tool = (name, args) => execFileSync(name, args, { windowsHide: true, encoding: 'utf8', timeout: 180_000 });
@@ -90,7 +91,8 @@ async function serve(source) {
         build: { outDir: fixture, emptyOutDir: false, assetsDir: 'qual-assets',
             rollupOptions: { input: ['research/export/mvp-export-qualification.html', ...(realMvp ? ['mvp/index.html'] : [])] } },
     });
-    const port = exactWorker ? 5216 : renderProfiling ? 5215 : pacing ? 5214 : profiling ? 5213 : 5211, origin = `http://127.0.0.1:${port}`;
+    const port = integrity ? 5217 : exactWorker ? 5216 : renderProfiling ? 5215 : pacing ? 5214 : profiling ? 5213 : 5211;
+    const origin = `http://127.0.0.1:${port}`;
     const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm',
         '.json': 'application/json', '.svg': 'image/svg+xml', '.wav': 'audio/wav' };
     const server = createServer(async (req, res) => {
@@ -137,7 +139,7 @@ async function serve(source) {
         }
     });
     await writeFile(activeRun, output + '\n');
-    server.listen(port, '127.0.0.1', () => console.log(origin + fixtureRoute + (exactWorker ? '?worker' : renderProfiling ? '?render' : pacing ? '?pacing' : '')));
+    server.listen(port, '127.0.0.1', () => console.log(origin + fixtureRoute + (integrity ? '?integrity' : exactWorker ? '?worker' : renderProfiling ? '?render' : pacing ? '?pacing' : '')));
 }
 
 async function decodedSamples(file) {
@@ -289,11 +291,53 @@ async function verify() {
     console.log(JSON.stringify({ native, version }));
 }
 
+async function verifyIntegrity() {
+    const root = (await readFile(activeRun, 'utf8')).trim();
+    assert.ok(root.startsWith(logs + path.sep) && path.basename(root).startsWith('run-'));
+    const report = await readJson(path.join(root, 'integrity.json'));
+    assert.equal(report.pass, true);
+    const expected = [
+        ['integrity-720p.mp4', 1280, 720, 32, 120],
+        ['integrity-1080p.mp4', 1920, 1080, 42, 120],
+        ['integrity-4k.mp4', 3840, 2160, 52, 720],
+    ];
+    assert.deepEqual(report.rows.map(row => row.artifact), expected.map(row => row[0]));
+    const native = [];
+    for (const [name, width, height, minimumLevel, count] of expected) {
+        const file = path.join(root, name);
+        const { streams: [stream], packets } = JSON.parse(tool('ffprobe', ['-v', 'error', '-select_streams', 'v:0',
+            '-show_entries', 'stream=codec_name,width,height,level:packet=pts_time,dts_time,flags', '-of', 'json', file]));
+        assert.deepEqual([stream.codec_name, stream.width, stream.height], ['h264', width, height]);
+        assert.ok(stream.level >= minimumLevel, `${name}: H.264 level ${stream.level}`);
+        assert.equal(packets.length, count);
+        const pts = packets.map(packet => Number(packet.pts_time)).sort((a, b) => a - b);
+        assert.ok(pts.every((time, index) => Math.abs(time - index / 60) < .00001));
+        assert.ok(packets.every((packet, index) => Number.isFinite(Number(packet.dts_time))
+            && (index === 0 || Number(packet.dts_time) > Number(packets[index - 1].dts_time))));
+        const keyframes = packets.filter(packet => packet.flags.startsWith('K')).map(packet => Number(packet.pts_time));
+        assert.deepEqual(keyframes, Array.from({ length: count / 60 }, (_, index) => index));
+        const codes = execFileSync('ffmpeg', ['-v', 'error', '-xerror', '-nostdin', '-threads', '4', '-i', file,
+            '-an', '-vf', 'crop=192:16:0:0,scale=12:1:flags=area,format=gray', '-fps_mode', 'passthrough', '-f', 'rawvideo', '-'],
+        { windowsHide: true, timeout: 180_000 });
+        assert.equal(codes.length, count * 12);
+        for (let frame = 0; frame < count; frame++) {
+            let decoded = 0;
+            for (let bit = 0; bit < 12; bit++) if (codes[frame * 12 + bit] >= 128) decoded |= 1 << bit;
+            assert.equal(decoded, frame, `${name}: decoded marker at frame ${frame}`);
+        }
+        native.push({ name, count, level: stream.level, keyframes });
+    }
+    await writeFile(path.join(root, 'integrity-verification.json'), JSON.stringify({ ...report, native }, null, 2) + '\n');
+    console.log(JSON.stringify(native));
+}
+
 if (mode === 'serve') await serve(source);
 else if (mode === 'profile') await serve();
 else if (mode === 'pacing') await serve(source);
 else if (mode === 'render') await serve(source);
 else if (mode === 'worker') await serve(source);
+else if (mode === 'integrity') await serve();
 else if (mode === 'verify') await verify();
 else if (mode === 'verify-pacing' || mode === 'verify-render' || mode === 'verify-worker') await verifyPacing();
-else throw Error('Use: node research/export/mvp-export-qualification.mjs serve [reference MP3] | profile | verify | pacing <reference MP3> | verify-pacing | render <reference MP3> | verify-render | worker <reference MP3> | verify-worker');
+else if (mode === 'verify-integrity') await verifyIntegrity();
+else throw Error('Use: node research/export/mvp-export-qualification.mjs serve [reference MP3] | profile | verify | pacing <reference MP3> | verify-pacing | render <reference MP3> | verify-render | worker <reference MP3> | verify-worker | integrity | verify-integrity');

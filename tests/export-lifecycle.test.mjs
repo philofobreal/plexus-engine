@@ -147,10 +147,10 @@ function backendHarness({ bitmap, ack = true, autoDone = true, failGraphics = fa
     return { backend, state, workers, messages, calls, deadlines, p5, get animationFrames() { return animationFrames; } };
 }
 
-test('cooperative MP4 captures only completed redraws and retains the initial preview handoff', async () => {
+for (const scheduling of ['display', 'cooperative']) test(`${scheduling} MP4 captures only completed redraws`, async () => {
     const captured = [], drawings = [];
     let lastDrawn;
-    const h = backendHarness({ mp4: true, scheduling: 'cooperative',
+    const h = backendHarness({ mp4: true, scheduling,
         redraw(time) {
             const gate = deferred();
             drawings.push(() => { lastDrawn = time; gate.resolve(); });
@@ -166,7 +166,7 @@ test('cooperative MP4 captures only completed redraws and retains the initial pr
     }
     await job;
     assert.deepEqual(captured, [0, 1 / 60, 2 / 60, 3 / 60]);
-    assert.equal(h.animationFrames, 1);
+    assert.equal(h.animationFrames, scheduling === 'display' ? 5 : 1);
     assert.equal(h.workers[0].terminated, 1);
 });
 

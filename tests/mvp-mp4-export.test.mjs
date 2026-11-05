@@ -86,6 +86,19 @@ test('MP4 cache clears just its owned directory and leaves the WebM storage cont
     assert.equal(pending.disposition, 'pending');
 });
 
+test('MP4 AVC level covers both picture size and frame rate, and reads the encoded level', () => {
+    const { selectMp4AvcLevel, readMp4AvcLevel } = createLoader()('export/Mp4AvcLevel.ts');
+    assert.equal(selectMp4AvcLevel(3840, 2160, 60, 28_000_000), 52);
+    assert.equal(selectMp4AvcLevel(2160, 3840, 60, 28_000_000), 52);
+    assert.equal(selectMp4AvcLevel(3840, 2160, 30, 28_000_000), 51);
+    assert.equal(selectMp4AvcLevel(1920, 1080, 60, 12_000_000), 42);
+    assert.equal(selectMp4AvcLevel(1280, 720, 60, 6_000_000), 32);
+    assert.equal(selectMp4AvcLevel(3840, 2160, Infinity, 28_000_000), undefined);
+    const header = Uint8Array.of(255, 1, 100, 0, 52, 255, 225, 0);
+    assert.equal(readMp4AvcLevel(header.subarray(1)), 52);
+    assert.equal(readMp4AvcLevel(header), undefined);
+});
+
 test('4K worker refusal and Stop are handled before allocating the render surface', async () => {
     let worker;
     class Worker {
