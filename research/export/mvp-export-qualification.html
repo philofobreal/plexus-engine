@@ -12,6 +12,7 @@ canvas { width: 256px; display: block; }
 <h1>MVP export desktop qualification</h1>
 <p>Local qualification only. Synthetic paired jobs and an optional reference excerpt in the actual MVP.</p>
 <button id="bench">Run matched export benchmark</button>
+<button id="profile">Profile matched MP4 exports</button>
 <button id="load" disabled>Load reference in real MVP</button>
 <span id="real">No real export yet.</span>
 <canvas width="1280" height="720"></canvas>
@@ -26,6 +27,7 @@ import { clearFinishedExportCache } from '../../src/export/ExportStorageLease.ts
 import Mp4Worker from '../../src/export/mp4-export.worker.ts?worker';
 
 const bench = document.querySelector('#bench'), status = document.querySelector('#report');
+const profileButton = document.querySelector('#profile');
 const canvas = document.querySelector('canvas'), ctx = canvas.getContext('2d'), frame = document.querySelector('iframe');
 const load = document.querySelector('#load'), real = document.querySelector('#real');
 const fps = 60, sampleRate = 48000;
@@ -104,10 +106,12 @@ async function verify(blob, seconds, width, height, cues, format) {
         return { frames: pts.length, samples: pcm.length, cueOffsetsMs, codecs: [video.codec, audio.codec] };
     } finally { media.dispose(); await audioContext.close(); }
 }
-async function one(caseId, format, resolution, seconds, artifact, cues, pcm) {
+async function one(caseId, format, resolution, seconds, artifact, cues, pcm, profiled = false) {
     const p5 = p5For(cues), audio = { getAudioBuffer: () => pcm };
+    let profile, profileCount = 0;
     const exporter = new WebMExporter(p5, canvas, audio, null, {
-        createMp4Backend: async name => new WebCodecsBackend(p5, canvas, audio, name, null, 'display', Mp4Worker),
+        createMp4Backend: async name => new WebCodecsBackend(p5, canvas, audio, name, null, 'display', Mp4Worker,
+            profiled ? result => { profile = result; profileCount++; } : undefined),
     });
     State.duration = seconds;
     const start = performance.now();
@@ -120,15 +124,39 @@ async function one(caseId, format, resolution, seconds, artifact, cues, pcm) {
     });
     const finished = performance.now(), width = canvas.width, height = canvas.height;
     const decoded = await verify(blob, seconds, width, height, cues, format);
+    if (profiled) {
+        check(profileCount === 1 && profile?.outcome === 'completed' && profile.framesSubmitted === decoded.frames, 'Invalid MP4 profile receipt');
+        for (const [stages, keys] of [
+            [profile.hostMs, ['backendRequest', 'preflight', 'captureSetup', 'renderRequest', 'animationFrameWait', 'composition', 'bitmap', 'transferSubmit', 'finalizeWait', 'cleanup']],
+            [profile.workerMs, ['workerTotal', 'storageAdmission', 'codecProbe', 'coreLoad', 'stagingSetup', 'videoSubmit', 'pcmStage', 'videoFlush', 'prepareMux', 'ffmpegFinalize', 'resultCleanup']],
+        ]) check(keys.every(key => Number.isFinite(stages[key]) && stages[key] >= 0), 'Missing or invalid MP4 stage timing');
+    }
     if (artifact) await post(artifact, blob);
     const cleanup = await clearFinishedExportCache();
     check(cleanup.removed === 1 && cleanup.remaining === 0, 'The finished job cache did not clear');
     return { caseId, format, resolution, width, height, seconds, artifact, bytes: blob.size, totalMs: round(finished - start),
-        firstProgressMs: round(first - start), finalizeMs: finishing === null ? null : round(finished - finishing), ...decoded };
+        firstProgressMs: round(first - start), finalizeMs: finishing === null ? null : round(finished - finishing), ...decoded,
+        ...(profile ? { profile } : {}) };
 }
 const median = xs => xs.slice().sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+profileButton.onclick = async () => {
+    bench.disabled = profileButton.disabled = load.disabled = true;
+    const report = { userAgent: navigator.userAgent, visible: !document.hidden, fps, rows: [] };
+    try {
+        for (const [size, seconds, runs] of [['720p', 4, 3], ['4K', 2, 3], ['720p', 30, 1]]) {
+            const cues = [.25, seconds / 2, seconds - .25], pcm = audioFor(seconds, cues);
+            for (let i = 0; i < runs; i++) {
+                report.rows.push(await one(`${size}/${seconds}s #${i + 1}`, 'mp4', size, seconds, null, cues, pcm, true));
+            }
+            if (runs > 1) report.rows.push(await one(`${size}/${seconds}s control`, 'mp4', size, seconds, null, cues, pcm));
+        }
+        report.pass = true;
+        await post('mp4-profile.json', new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
+    } catch (error) { report.pass = false; report.error = String(error); }
+    finally { status.textContent = JSON.stringify(report, null, 2); bench.disabled = profileButton.disabled = false; load.disabled = !referenceReady; }
+};
 bench.onclick = async () => {
-    bench.disabled = load.disabled = true;
+    bench.disabled = profileButton.disabled = load.disabled = true;
     const report = { userAgent: navigator.userAgent, fps, rows: [] };
     try {
         for (const [caseId, size, seconds, order] of [
@@ -145,7 +173,7 @@ bench.onclick = async () => {
         report.pass = true;
         await post('benchmark.json', new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
     } catch (error) { report.pass = false; report.error = String(error); }
-    finally { status.textContent = JSON.stringify(report, null, 2); bench.disabled = false; load.disabled = !referenceReady; }
+    finally { status.textContent = JSON.stringify(report, null, 2); bench.disabled = profileButton.disabled = false; load.disabled = !referenceReady; }
 };
 
 const referenceReady = await fetch('/qualification/reference.wav', { method: 'HEAD' }).then(r => r.ok, () => false);

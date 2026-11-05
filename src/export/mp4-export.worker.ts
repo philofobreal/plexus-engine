@@ -113,6 +113,18 @@ function finalizeMp4(core: Core, video: File, wav: File, access: Access, plan: P
 }
 
 async function start(request: StartExportRequest) {
+    const timings = request.profile ? {
+        storageAdmission: 0, codecProbe: 0, coreLoad: 0, stagingSetup: 0,
+        videoSubmit: 0, pcmStage: 0, videoFlush: 0, prepareMux: 0, ffmpegFinalize: 0, resultCleanup: 0, workerTotal: 0,
+    } : undefined;
+    const started = timings ? performance.now() : 0;
+    let mark = started;
+    function measure(stage: keyof NonNullable<typeof timings>) {
+        if (!timings) return;
+        const end = performance.now();
+        timings[stage] += end - mark;
+        mark = end;
+    }
     if (!request.storageFile || !validMp4ExportStorageName(request.storageFile)
         || typeof navigator.storage?.getDirectory !== 'function' || typeof navigator.storage?.estimate !== 'function') {
         throw mp4Error('Browser-local storage is unavailable.');
@@ -128,9 +140,12 @@ async function start(request: StartExportRequest) {
     };
     const budget = makePlan(request.frames ?? 0);
     await requireStorage(budget, 'start');
+    measure('storageAdmission');
     const encoding = { codec: 'avc' as const, bitrate, keyFrameInterval: 1, latencyMode: 'quality' as const };
     await probeH264(width, height, fps, encoding);
+    measure('codecProbe');
     const core = await loadCore();
+    measure('coreLoad');
     const dir = await (await navigator.storage.getDirectory()).getDirectoryHandle(request.storageFile, { create: true });
     let videoAccess: Access | undefined, waveAccess: Access | undefined, writer: Output | undefined;
     const close = async () => {
@@ -155,9 +170,11 @@ async function start(request: StartExportRequest) {
         const picture = new VideoSampleSource(encoding);
         output.addVideoTrack(picture, { frameRate: fps });
         await output.start();
+        measure('stagingSetup');
         return {
             close,
             async add({ bitmap, timestampUs, audioPlanar, audioSampleCount = 0 }: EncodeFrameRequest) {
+                if (timings) mark = performance.now();
                 try {
                     if (frames >= budget.frames || timestampUs !== Math.round(frames * 1e6 / fps)) throw mp4Error('MP4 received an unexpected frame timestamp.');
                     const end = Math.min(sourceSamples, Math.floor((frames + 1) * sampleRate / fps));
@@ -166,12 +183,14 @@ async function start(request: StartExportRequest) {
                     }
                     const sample = new VideoSample(bitmap, { timestamp: frames / fps, duration: 1 / fps });
                     try { await picture.add(sample); } finally { sample.close(); }
+                    measure('videoSubmit');
                     if (audioPlanar && audioSampleCount > 0) {
                         for (let i = 0; i < audioSampleCount; i++) for (let c = 0; c < 2; c++) {
                             view.setInt16((i * 2 + c) * 2, Math.round(Math.max(-1, Math.min(1, audioPlanar[c * audioSampleCount + i])) * 32767), true);
                         }
                         write(wave.access, pcm.subarray(0, audioSampleCount * 4), 44 + samples * 4, budget.limits.audio);
                     }
+                    measure('pcmStage');
                     samples = end; frames++;
                     scope.postMessage({ type: 'frame_encoded', timestampUs, ...(audioPlanar ? { audioBuffer: audioPlanar } : {}) },
                         audioPlanar ? [audioPlanar.buffer as ArrayBuffer] : []);
@@ -179,9 +198,11 @@ async function start(request: StartExportRequest) {
                 } finally { bitmap.close(); }
             },
             async finish() {
+                if (timings) mark = performance.now();
                 const plan = makePlan(frames);
                 if (samples !== plan.samples) throw mp4Error('MP4 could not finalize the captured audio prefix.');
                 picture.close(); await output.finalize();
+                measure('videoFlush');
                 write(wave.access, wavHeader(sampleRate, samples), 0, plan.limits.audio);
                 wave.access.flush(); wave.access.close(); waveAccess = undefined;
                 video.access.flush(); video.access.close(); videoAccess = undefined;
@@ -189,11 +210,15 @@ async function start(request: StartExportRequest) {
                 const videoFile = await video.file.getFile(), wav = await wave.file.getFile();
                 if (!videoBytes || videoFile.size !== videoBytes || wav.size !== plan.limits.audio) throw mp4Error('MP4 input files are incomplete.');
                 const final = await openAccess(dir, 'plexus-visual.mp4');
+                measure('prepareMux');
                 try { finalizeMp4(core, videoFile, wav, final.access, plan); final.access.flush(); }
                 finally { final.access.close(); }
+                measure('ffmpegFinalize');
                 const blob = await final.file.getFile();
                 await dir.removeEntry('video.mp4'); await dir.removeEntry('audio.wav');
-                return blob;
+                measure('resultCleanup');
+                if (timings) timings.workerTotal = mark - started;
+                return { blob, ...(timings ? { timings } : {}) };
             },
         };
     } catch (error) { await close(); throw error; }
@@ -208,7 +233,7 @@ scope.onmessage = ({ data }) => {
                 if (job) throw new Error('An MP4 job is already running.');
                 job = await start(data); scope.postMessage({ type: 'export_ready' });
             } else if (data.type === 'encode_frame' && job) await job.add(data);
-            else if (data.type === 'finalize_export' && job) scope.postMessage({ type: 'export_done', blob: await job.finish() });
+            else if (data.type === 'finalize_export' && job) scope.postMessage({ type: 'export_done', ...await job.finish() });
             else if (data.type === 'encode_frame') data.bitmap.close();
         } catch (error) {
             failed = true;

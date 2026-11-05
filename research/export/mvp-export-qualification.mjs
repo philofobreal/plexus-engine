@@ -10,9 +10,11 @@ import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { build } from 'vite';
 
-const logs = path.resolve('logs/t20a3a');
+const [mode, source] = process.argv.slice(2);
+const profiling = mode === 'profile';
+const logs = path.resolve(profiling ? 'logs/t20b1' : 'logs/t20a3a');
 const production = path.resolve('dist');
-const allowed = /^(?:benchmark\.json|(?:long|4k)\.(?:mp4|webm)|real-track\.mp4)$/;
+const allowed = /^(?:benchmark\.json|mp4-profile\.json|(?:long|4k)\.(?:mp4|webm)|real-track\.mp4)$/;
 const fixtureRoute = '/plexus-engine/research/export/mvp-export-qualification.html';
 const maxBytes = 128 * 1024 * 1024;
 const tool = (name, args) => execFileSync(name, args, { windowsHide: true, encoding: 'utf8', timeout: 180_000 });
@@ -38,7 +40,7 @@ async function serve(source) {
         build: { outDir: fixture, emptyOutDir: false, assetsDir: 'qual-assets',
             rollupOptions: { input: 'research/export/mvp-export-qualification.html' } },
     });
-    const port = 5211, origin = `http://127.0.0.1:${port}`;
+    const port = profiling ? 5213 : 5211, origin = `http://127.0.0.1:${port}`;
     const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm',
         '.json': 'application/json', '.svg': 'image/svg+xml', '.wav': 'audio/wav' };
     const server = createServer(async (req, res) => {
@@ -159,7 +161,7 @@ async function verify() {
     console.log(JSON.stringify({ native, version }));
 }
 
-const [mode, source] = process.argv.slice(2);
 if (mode === 'serve') await serve(source);
+else if (mode === 'profile') await serve();
 else if (mode === 'verify') await verify();
-else throw Error('Use: node research/export/mvp-export-qualification.mjs serve [reference MP3] | verify');
+else throw Error('Use: node research/export/mvp-export-qualification.mjs serve [reference MP3] | profile | verify');

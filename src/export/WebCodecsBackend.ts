@@ -7,6 +7,13 @@ import { ExportStorageLease } from './ExportStorageLease';
 import type p5 from 'p5';
 import type { ExportAudioSource, ExportRuntime, ExportProfile } from '../types/ExportRenderJob';
 
+export interface Mp4StageProfile {
+    framesSubmitted: number;
+    hostMs: Record<string, number>;
+    workerMs: Record<string, number>;
+    outcome: ExportProfile['outcome'];
+}
+
 const sleep = (ms: number) => new Promise(resolve => {
     if (typeof setTimeout === 'function') {
         setTimeout(resolve, ms);
@@ -46,6 +53,7 @@ export class WebCodecsBackend implements ExportBackend {
     private audioAllocations = 0;
     private audioReuses = 0;
     private readonly Mp4Worker?: new () => Worker;
+    private readonly onMp4Profile?: (profile: Mp4StageProfile) => void;
 
     constructor(
         p5Instance: any,
@@ -55,7 +63,8 @@ export class WebCodecsBackend implements ExportBackend {
         videoElement: HTMLVideoElement | null = null,
         // The production factory uses display scheduling. The browser benchmark injects the candidate.
         isolatedScheduling: 'display' | 'cooperative' = 'display',
-        Mp4Worker?: new () => Worker
+        Mp4Worker?: new () => Worker,
+        onMp4Profile?: (profile: Mp4StageProfile) => void,
     ) {
         void canvas;
         this.p5Instance = p5Instance;
@@ -64,6 +73,7 @@ export class WebCodecsBackend implements ExportBackend {
         this.videoElement = videoElement;
         this.isolatedScheduling = isolatedScheduling;
         this.Mp4Worker = Mp4Worker;
+        this.onMp4Profile = onMp4Profile;
     }
 
     async start(config: ExportConfig, onProgress: (progress: number) => void, runtime?: ExportRuntime,
@@ -87,10 +97,12 @@ export class WebCodecsBackend implements ExportBackend {
         if (mp4 && (!this.Mp4Worker || !this.storageLease)) {
             throw new Error('MP4 requires browser-local export storage. Choose WebM or try another browser.');
         }
-        const now = runtime ? () => performance.now() : () => 0, started = now();
+        const mp4Profile = mp4 && this.onMp4Profile;
+        const now = runtime || mp4Profile ? () => performance.now() : () => 0, started = now();
         const cooperative = Boolean(runtime && this.isolatedScheduling === 'cooperative');
         const stages = { renderRequest: 0, animationFrameWait: 0, mainThreadYield: 0,
             bitmap: 0, queueWait: 0, finalizeWait: 0, backendRequest: 0 };
+        const mp4Stages = { preflight: 0, captureSetup: 0, composition: 0, transferSubmit: 0 };
         let submittedFrames = 0, peakOutstandingFrames = 0, outcome: ExportProfile['outcome'] = 'failed';
         const totalFrames = Math.floor(duration * config.fps);
 
@@ -120,7 +132,7 @@ export class WebCodecsBackend implements ExportBackend {
                 ...(mp4 ? { frames: totalFrames, sourceSamples: audioBuffer?.length ?? 0 } : {}),
                 ...(this.storageLease ? { storageFile: this.storageLease.name } : {}),
                 ...(config.preflight ? { preflight: true } : {}),
-                ...(runtime ? { profile: true } : {})
+                ...(runtime || mp4Profile ? { profile: true } : {})
             });
 
             // Allocate real render surfaces only after the worker's temporary probe is released.
@@ -128,7 +140,9 @@ export class WebCodecsBackend implements ExportBackend {
                 await this.waitForOperation(prepared);
                 if (this.cancelled) throw new Error('Export cancelled.');
                 if (this.stoppedEarly) throw new Error('No video frames were captured before stopping.');
+                if (mp4Profile) mp4Stages.preflight = now() - started;
                 if (!runtime) this.prepareCaptureTarget(target.width, target.height);
+                if (mp4Profile) mp4Stages.captureSetup = now() - started - mp4Stages.preflight;
             }
 
             if (!cooperative) {
@@ -175,6 +189,7 @@ export class WebCodecsBackend implements ExportBackend {
                         stages.animationFrameWait += now() - animationFrameStarted;
                     }
                     if (this.cancelled || this.stoppedEarly || !this.worker) break;
+                    const compositionStarted = mp4Profile ? now() : 0;
                     if (!runtime) image = this.prepareBitmapSource(target.width, target.height, config.watermark === true);
                     if (!image) throw new Error('Export frame surface unavailable.');
                     if (runtime && config.watermark) {
@@ -183,6 +198,7 @@ export class WebCodecsBackend implements ExportBackend {
                         this.drawMetadataCard(ctx, target.width, target.height);
                     }
                     const bitmapStarted = now();
+                    if (mp4Profile) mp4Stages.composition += bitmapStarted - compositionStarted;
                     bitmap = await this.waitForOperation(globalThis.createImageBitmap(image), late => late.close());
                     stages.bitmap += now() - bitmapStarted;
                 } catch (error) {
@@ -193,6 +209,7 @@ export class WebCodecsBackend implements ExportBackend {
                 if (this.cancelled || this.stoppedEarly || !this.worker) { bitmap.close(); break; }
                 const timestampUs = Math.round((i * 1_000_000) / config.fps);
                 try {
+                    const transferStarted = mp4Profile ? now() : 0;
                     const audioPayload = audioBuffer ? this.getPlanarAudioFrame(audioBuffer, i, config.fps) : null;
                     this.outstandingFrames++;
                     if (runtime) peakOutstandingFrames = Math.max(peakOutstandingFrames, this.outstandingFrames);
@@ -207,6 +224,7 @@ export class WebCodecsBackend implements ExportBackend {
                     } else {
                         this.worker.postMessage({ type: 'encode_frame', bitmap, timestampUs }, [bitmap]);
                     }
+                    if (mp4Profile) mp4Stages.transferSubmit += now() - transferStarted;
                 } catch (error) {
                     bitmap.close();
                     throw error;
@@ -242,6 +260,12 @@ export class WebCodecsBackend implements ExportBackend {
         } finally {
             stages.backendRequest = now() - started;
             await this.cleanup(outcome === 'completed');
+            if (mp4Profile) {
+                try {
+                    mp4Profile({ framesSubmitted: submittedFrames, hostMs: { ...stages, ...mp4Stages, cleanup: now() - started - stages.backendRequest },
+                        workerMs: this.workerTimings, outcome: this.cancelled ? 'cancelled' : outcome });
+                } catch { /* Diagnostics cannot change job completion. */ }
+            }
             if (runtime && onProfile) {
                 try { onProfile({ runtime: 'isolated-wormhole', analysisId: runtime.snapshot.analysisId,
                     estimatedBytes: runtime.snapshot.estimatedBytes, budgetBytes: runtime.snapshot.budgetBytes,
