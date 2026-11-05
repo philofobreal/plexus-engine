@@ -1348,6 +1348,61 @@ iOS/Safari devices. Retain Standard on supported configurations where the accele
 preflight fails and show the reason. Record the tested browser, device and output settings.
 Give the accelerated option the same speed and stability gate on both device classes.
 
+### T20b1 matched MP4 stage profiling
+
+Use `node research/export/mvp-export-qualification.mjs profile` after
+`npm run build`, then select **Profile matched MP4 exports** on the loopback
+page printed by the runner. It uses the Compatible export backend and the
+production MP4 worker, with a synthetic moving 2D scene and stereo PCM.
+Each 720p/4 s and 4K/2 s group has three profiled runs and one unprofiled
+control at 60 fps. A 720p/30 s run exposes duration-dependent work. The
+harness verifies H.264 and AAC, the video packet count, contiguous video
+timestamps, the decoded audio endpoint, and three decoded audiovisual cues within one
+output frame. It writes the receipt to a new run directory under
+`logs/t20b1`. The production UI leaves the profiling callback unset.
+
+Host intervals cover worker admission, capture setup, render request,
+display wait, composition, bitmap creation, PCM copy and transfer
+submission, queue wait, finalization wait and cleanup. The worker
+separates storage admission, codec probe, WASM load, H.264 submission,
+PCM staging, H.264 drain, FFmpeg finalization and output cleanup.
+H.264 submission includes backpressure. FFmpeg finalization includes AAC,
+H.264 remuxing and storage writes. Host and worker intervals overlap, and
+the transfer submission timer measures PCM copy plus synchronous dispatch.
+The Compatible render-request timer ends at the p5 redraw call; p5 2.x
+completes redraw asynchronously. In the synthetic fixture, redraw is a
+synchronous canvas draw. These measurements cannot isolate GPU execution,
+message delivery or pure codec CPU time.
+
+Windows Headless Chrome 156, visible document, 60 fps, repeated after the
+cumulative suite finished. Short rows show the median of each column
+independently. Times are in milliseconds.
+
+| MP4 fixture | Whole job | Host display wait | Host yield | Host queue wait | Worker H.264 submit | Worker FFmpeg finalize |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 720p, 4 s (3 runs) | 5,431 | 1,322 | 487 | 1,184 | 902 | 849 |
+| 4K, 2 s (3 runs) | 4,492 | 353 | 143 | 2,330 | 2,614 | 312 |
+| 720p, 30 s (1 run) | 20,854 | 9,729 | 4,076 | 3,047 | 2,280 | 2,623 |
+
+All nine jobs passed. The largest measured audiovisual cue offset was
+0.92 ms. The unprofiled controls took 4,228 ms and 4,577 ms at 720p and
+4K respectively. Single controls and run-order effects do not quantify
+profiling overhead. The local receipt is `logs/t20b1/run-*/mp4-profile.json`
+with SHA-256 `cd77490d5b6b82a355ca865b4d3a8a3a1a1e42b3e9afaecde7e7b895606cc1d0`.
+The separate `mp4-profile-with-test-load.json` receipt records the earlier
+concurrent-load run. Real Wormhole rendering and physical mobile are
+outside this baseline.
+
+The scheduling candidate must await p5 redraw completion explicitly before
+capturing, use the worker acknowledgement for bounded backpressure, and
+keep a cooperative yield for input and cancellation. Compare that candidate
+with display pacing on the actual Wormhole and PostFX renderer. Make the
+render-worker decision after measuring the remaining render or transfer
+bottleneck, using the same output requirements and Stop-prefix checks.
+Track 4K encoder backpressure separately. The 4K queue wait overlaps the
+H.264 submission interval and warrants profiling the encoder before
+adding render workers.
+
 ## Scheduled export acceleration - user direction, 2026-10-29
 
 The user accepted T19a and requested that professionally justified WASM export
