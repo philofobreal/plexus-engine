@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>MVP export desktop qualification</title>
+<style>
+body { font: 15px system-ui; background: #0d1521; color: #e6f3ff; margin: 20px; }
+button { padding: 10px; margin: 6px; }
+pre { white-space: pre-wrap; }
+iframe { width: 100%; height: 700px; border: 1px solid #566f85; }
+canvas { width: 256px; display: block; }
+</style>
+<h1>MVP export desktop qualification</h1>
+<p>Local qualification only. Synthetic paired jobs and an optional reference excerpt in the actual MVP.</p>
+<button id="bench">Run matched export benchmark</button>
+<button id="load" disabled>Load reference in real MVP</button>
+<span id="real">No real export yet.</span>
+<canvas width="1280" height="720"></canvas>
+<pre id="report">Ready</pre>
+<iframe hidden title="Production MVP"></iframe>
+<script type="module">
+import { ALL_FORMATS, BlobSource, CanvasSink, EncodedPacketSink, Input } from 'mediabunny';
+import { State } from '../../src/state/store.ts';
+import { WebMExporter } from '../../src/export/WebMExporter.ts';
+import { WebCodecsBackend } from '../../src/export/WebCodecsBackend.ts';
+import { clearFinishedExportCache } from '../../src/export/ExportStorageLease.ts';
+import Mp4Worker from '../../src/export/mp4-export.worker.ts?worker';
+
+const bench = document.querySelector('#bench'), status = document.querySelector('#report');
+const canvas = document.querySelector('canvas'), ctx = canvas.getContext('2d'), frame = document.querySelector('iframe');
+const load = document.querySelector('#load'), real = document.querySelector('#real');
+const fps = 60, sampleRate = 48000;
+const check = (condition, message) => { if (!condition) throw Error(message); };
+const round = (x, digits = 0) => Number(x.toFixed(digits));
+const post = async (name, data) => {
+    const response = await fetch('/qualification/output/' + name, { method: 'POST', body: data });
+    check(response.status === 201, 'Local capture failed for ' + name);
+};
+function p5For(cues) {
+    return {
+        noLoop() {}, loop() {},
+        createGraphics(w, h) {
+            canvas.width = w; canvas.height = h;
+            return { elt: canvas, pixelDensity() {}, clear() {}, remove() {} };
+        },
+        redraw() {
+            const t = State.exportTime, w = canvas.width, h = canvas.height;
+            ctx.fillStyle = '#101733'; ctx.fillRect(0, 0, w, h);
+            for (let i = 0; i < 24; i++) {
+                ctx.fillStyle = i % 2 ? '#1667a3' : '#9b2364';
+                ctx.fillRect(w * ((i * .047 + t * (.14 + i * .003)) % 1), h * ((i % 12) / 12), w * .085, h * .06);
+            }
+            ctx.fillStyle = cues.some(c => Math.abs(t - c) <= .018) ? '#1eff71' : '#161f52';
+            ctx.fillRect(w * .35, h * .35, w * .3, h * .3);
+        },
+    };
+}
+function audioFor(seconds, cues) {
+    const buffer = new AudioBuffer({ numberOfChannels: 2, sampleRate, length: seconds * sampleRate });
+    for (let c = 0; c < 2; c++) {
+        const target = buffer.getChannelData(c);
+        for (let i = 0; i < target.length; i++) {
+            const t = i / sampleRate;
+            const gain = cues.some(cue => Math.abs(t - cue) < .014) ? .7 : .012;
+            target[i] = gain * Math.sin(2 * Math.PI * (c ? 1300 : 900) * t);
+        }
+    }
+    return buffer;
+}
+async function verify(blob, seconds, width, height, cues, format) {
+    const media = new Input({ formats: ALL_FORMATS, source: new BlobSource(blob) });
+    const audioContext = new AudioContext({ sampleRate });
+    try {
+        const [video, audio] = await Promise.all([media.getPrimaryVideoTrack(), media.getPrimaryAudioTrack()]);
+        check(video?.codedWidth === width && video?.codedHeight === height && audio?.numberOfChannels === 2, 'Invalid track metadata');
+        check(format === 'mp4' ? video.codec === 'avc' && audio.codec === 'aac' : /^vp[89]$/.test(video.codec) && audio.codec === 'opus', 'Wrong codecs');
+        const pts = [];
+        for await (const packet of new EncodedPacketSink(video).packets()) pts.push(packet.timestamp);
+        pts.sort((a, b) => a - b);
+        check(pts.length === seconds * fps && pts.every((t, i) => Math.abs(t - i / fps) < .0011), 'Frame count or clock continuity failed');
+        const decoder = new CanvasSink(video), pixel = new OffscreenCanvas(1, 1).getContext('2d');
+        const pcm = await audioContext.decodeAudioData(await blob.arrayBuffer());
+        check(pcm.numberOfChannels === 2 && Math.abs(pcm.length - seconds * sampleRate) <= 1024, 'Decoded audio endpoint failed');
+        const cueOffsetsMs = [];
+        for (const cue of cues) {
+            const image = await decoder.getCanvas(cue + .004);
+            check(image, 'A cue frame did not decode');
+            pixel.drawImage(image.canvas, width / 2, height / 2, 1, 1, 0, 0, 1, 1);
+            const [r, g, b] = pixel.getImageData(0, 0, 1, 1).data;
+            check(g > r + 70 && g > b + 70, 'The cue frame is not green at the expected time');
+            cueOffsetsMs.push([0, 1].map(c => {
+                const source = pcm.getChannelData(c), start = Math.round((cue - .06) * sampleRate);
+                const end = Math.round((cue + .06) * sampleRate);
+                let energy = 0, weighted = 0;
+                for (let i = start; i < end; i++) {
+                    const power = Math.max(0, source[i] ** 2 - .001);
+                    energy += power; weighted += power * i;
+                }
+                check(energy > 1, 'Decoded tone cue is missing');
+                const offset = 1000 * (weighted / energy / sampleRate - cue);
+                check(Math.abs(offset) < 1000 / fps, 'Cue offset exceeded one output frame');
+                return round(offset, 2);
+            }));
+        }
+        return { frames: pts.length, samples: pcm.length, cueOffsetsMs, codecs: [video.codec, audio.codec] };
+    } finally { media.dispose(); await audioContext.close(); }
+}
+async function one(caseId, format, resolution, seconds, artifact, cues, pcm) {
+    const p5 = p5For(cues), audio = { getAudioBuffer: () => pcm };
+    const exporter = new WebMExporter(p5, canvas, audio, null, {
+        createMp4Backend: async name => new WebCodecsBackend(p5, canvas, audio, name, null, 'display', Mp4Worker),
+    });
+    State.duration = seconds;
+    const start = performance.now();
+    let first = null, finishing = null;
+    const blob = await exporter.startExport({ resolution, aspectRatio: '16:9', fps, watermark: false,
+        ...(format === 'mp4' ? { format } : {}) }, p => {
+        first ??= performance.now();
+        if (format === 'mp4' && p === .9) finishing = performance.now();
+        status.textContent = `${caseId} — ${format}: ${Math.round(p * 100)}%`;
+    });
+    const finished = performance.now(), width = canvas.width, height = canvas.height;
+    const decoded = await verify(blob, seconds, width, height, cues, format);
+    if (artifact) await post(artifact, blob);
+    const cleanup = await clearFinishedExportCache();
+    check(cleanup.removed === 1 && cleanup.remaining === 0, 'The finished job cache did not clear');
+    return { caseId, format, resolution, width, height, seconds, artifact, bytes: blob.size, totalMs: round(finished - start),
+        firstProgressMs: round(first - start), finalizeMs: finishing === null ? null : round(finished - finishing), ...decoded };
+}
+const median = xs => xs.slice().sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+bench.onclick = async () => {
+    bench.disabled = load.disabled = true;
+    const report = { userAgent: navigator.userAgent, fps, rows: [] };
+    try {
+        for (const [caseId, size, seconds, order] of [
+            ['pair-1', '720p', 4, ['webm', 'mp4']], ['pair-2', '720p', 4, ['mp4', 'webm']],
+            ['pair-3', '720p', 4, ['webm', 'mp4']], ['long', '720p', 45, ['mp4', 'webm']], ['4k', '4K', 2, ['webm', 'mp4']],
+        ]) {
+            const cues = [.25, seconds / 2, seconds - .25], pcm = audioFor(seconds, cues);
+            for (const format of order) {
+                report.rows.push(await one(caseId, format, size, seconds, /^(long|4k)$/.test(caseId) ? caseId + '.' + format : null, cues, pcm));
+            }
+        }
+        report.shortMedianMs = Object.fromEntries(['webm', 'mp4'].map(format =>
+            [format, median(report.rows.filter(row => row.caseId.startsWith('pair') && row.format === format).map(row => row.totalMs))]));
+        report.pass = true;
+        await post('benchmark.json', new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
+    } catch (error) { report.pass = false; report.error = String(error); }
+    finally { status.textContent = JSON.stringify(report, null, 2); bench.disabled = false; load.disabled = !referenceReady; }
+};
+
+const referenceReady = await fetch('/qualification/reference.wav', { method: 'HEAD' }).then(r => r.ok, () => false);
+load.disabled = !referenceReady;
+load.onclick = async () => {
+    load.disabled = true;
+    real.textContent = 'Loading the 60-second reference in the actual MVP…';
+    try {
+        if (frame.hidden) {
+            frame.hidden = false;
+            const loaded = new Promise(resolve => frame.addEventListener('load', resolve, { once: true }));
+            frame.src = '/plexus-engine/mvp/';
+            await loaded;
+        }
+        const app = frame.contentWindow, input = app.document.querySelector('.mvp-file-input');
+        check(input, 'MVP file input unavailable');
+        // Capture only this fixture's MP4 download locally; the production UI is otherwise untouched.
+        const nativeClick = app.HTMLAnchorElement.prototype.click;
+        app.HTMLAnchorElement.prototype.click = function () {
+            if (this.download !== 'plexus-visual.mp4') return nativeClick.call(this);
+            real.textContent = 'Saving fixture MP4 locally…';
+            void fetch(this.href).then(r => r.blob()).then(blob => post('real-track.mp4', blob)).then(
+                () => { real.textContent = 'Real MVP MP4 captured.'; },
+                error => { real.textContent = 'Real capture failed: ' + error; },
+            );
+        };
+        const audio = await fetch('/qualification/reference.wav').then(r => r.blob());
+        const transfer = new DataTransfer();
+        transfer.items.add(new File([audio], 'No Good — 60 s qualification.wav', { type: 'audio/wav' }));
+        input.files = transfer.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        real.textContent = 'Track handed to MVP. When analysis finishes, choose 720p MP4 and let it finish.';
+    } catch (error) { real.textContent = String(error); load.disabled = false; }
+};
+</script>
+</html>

@@ -850,11 +850,17 @@ node research/export/ffmpeg-baseline.mjs logs/t20a path/to/short.webm path/to/lo
    - **T20a2c — coordinator and UI.** MVP now offers MP4 beside WebM. The
      application probes the exact output, uses the current job controls and
      keeps one owned result. See the [MVP delivery](#t20a2c-mvp-mp4-choice).
-3. **T20a3 release and promotion.** Run cold and warm jobs on desktop and
-   physical Android and iOS, with short prefixes, long runs and supported 4K.
-   Measure whole-job time, command latency, maximum resources, recovery and
-   sync in selected players/editors. Apply the existing 15% median threshold
-   to any speed claim. Decide on the default after user acceptance.
+3. **T20a3 release and promotion.**
+   - **T20a3a — desktop output qualification.** Compare the released
+     workers on a matched short fixture, a longer timeline and a supported
+     4K case. Verify decoded outputs in the browser and with native FFmpeg.
+   - **T20a3b — physical devices and target editors.** Run on desktop and
+     physical Android and iOS with short prefixes, long runs and supported
+     4K. Measure whole-job time, command latency, resource peaks, recovery
+     and sync in the user's target players/editors. Mobile 4K stays
+     guarded until qualified.
+   - **T20a3c — default decision.** Apply the existing 15% median threshold
+     to any speed claim and decide on a default after user acceptance.
 4. **Further work.** Schedule render-worker optimization against the measured
    bottleneck and T21 captions after the export route is stable. Studio and
    XR retain their own work streams.
@@ -1103,6 +1109,98 @@ and the build recipe are available from the export dialog's FFmpeg source
 link. The MVP's existing mobile 4K guard remains in effect. Long real
 renders, physical Android/iOS, 4K device limits and third-party playback
 and editors remain T20a3 checks before default promotion.
+
+### T20a3a desktop output qualification
+
+The [loopback runner](../../research/export/mvp-export-qualification.mjs)
+uses the released export coordinator and both encoder workers. It generates
+the same canvas frames and PCM for each paired job, measures to finished
+file (before decoding and local fixture capture), and validates every video
+timestamp. It decodes matching picture/audio cues at the beginning, middle
+and end. The separate real-render trial loads a 60-second excerpt of
+**No Good** in the built MVP and uses its regular **Export** menu.
+
+| Windows Chromium 156, 60 fps | WebM | FFmpeg MP4 |
+| --- | ---: | ---: |
+| 720p, 4 s (three runs, median) | 6.395 s | 3.326 s |
+| 720p, 45 s (one pair) | 69.013 s | 29.840 s |
+| 4K, 2 s (one pair) | 3.467 s | 4.033 s |
+
+The three 720p short pairs were 6.424/3.328 s, 6.395/3.326 s and
+6.267/3.288 s in WebM/MP4 order. The benchmark alternated execution order.
+The first local job is included; network cold-start is not established.
+MP4 finalization alone was 4.162 s on the 45-second job. These are
+descriptive times for this renderer fixture and browser. VP9/Opus and
+H.264/AAC differ in rate control and quality, so the 720p numbers do not
+establish a matched-quality or general speed claim. MP4 was slower at 4K
+on this sample. The results do not support changing the default.
+
+The 45-second outputs contained all 2,700 frames. Chromium decoded
+2,160,000 samples per channel for MP4 and 2,159,976 for WebM, at 48 kHz.
+Across all synthetic exports, the three audio cue offsets were within
+0.58 ms of the picture cue clock. Both 4K outputs had all 120 frames.
+The browser runner checked its owned cache after each job.
+
+Reproduce from the project root:
+
+```powershell
+npm run build
+node research/export/mvp-export-qualification.mjs serve '<path to reference MP3>'
+# Open http://127.0.0.1:5211/plexus-engine/research/export/mvp-export-qualification.html
+# Run the matched benchmark. Then optionally load the reference and export 720p MP4.
+node research/export/mvp-export-qualification.mjs verify
+```
+
+Native verification uses [ffprobe](https://ffmpeg.org/ffprobe.html) and
+FFmpeg to decode the captured files, check track metadata and seek near
+the end. Native FFmpeg read and sought all four synthetic files. Its AAC
+decoder exposed 640 extra samples at 45 seconds (13.3 ms) and 256 at
+two seconds (5.3 ms), while Chromium trimmed to the expected endpoint.
+Native Opus ended at the expected sample in both fixtures. Record the
+decoder-dependent AAC tail when checking editors and physical devices.
+
+The actual MVP exported **No Good 1:00–2:00**, at 720p/60, to a
+33,490,273-byte H.264/AAC file. Native FFmpeg decoded all **3,600 frames**
+and sought to the final section. Its audio output contained 2,880,512 samples
+per channel (512 samples or 10.7 ms beyond the 60-second picture).
+Mono PCM windows at 3, 30 and 56 seconds correlated 0.9967, 0.9817 and
+0.9970 with the source at the same clock positions. This checks content and
+timing at those windows, not a listening score or full-song timing claim.
+
+Audio and outputs remain in ignored local logs. This is one
+desktop environment, without a total browser memory profile, physical
+mobile results or editor-specific sign-off.
+The prior full application regression completed with 2,102 successes and
+the same nine known failures, out of 2,111. This qualification leaves
+production inputs and the active regression inventory unchanged.
+
+### T20a3 physical-device acceptance checklist
+
+Use the deployed MVP and the same music excerpt on each device. Record the
+device, OS and browser versions, resolution, export format and total time
+from **Export** to the completed download. Measure the first run and at
+least two subsequent runs separately; keep the same background and resolution
+for WebM and MP4. Include any precise admission error. A device that cannot
+run MP4 can still qualify the WebM fallback.
+
+1. Export 720p MP4 normally. Open it from the device's Downloads/Files app in
+   its normal player, then seek near the beginning, middle and end. Check
+   for missing audio, freeze, a truncated end or perceptible drift.
+2. Start a second job and press **Stop & save** after visible progress.
+   Check that the downloaded prefix plays and seeks. Start again, press
+   **Cancel**, verify there is no download, then immediately retry.
+3. Repeat the same input and resolution with WebM. Check a longer track
+   after the short cases work. Try 4K only where the app offers it. Test
+   the selected MP4 file in the intended editor by importing it, scrubbing
+   near the end and checking the decoded audio. Record app/version and
+   the exact outcome.
+4. Report any tab reload, crash, stall or inability to open the result.
+   If a supported profiler is available, record peak browser process
+   memory and remaining device storage separately from the origin quota.
+   Do not extrapolate from the WASM linear memory to total device usage.
+
+T20a3a does not stand in for a physical-device pass or editor sign-off.
+Keep WebM as default until the agreed platform coverage is verified.
 
 ## Optional accelerated export research (2026-11-04)
 
