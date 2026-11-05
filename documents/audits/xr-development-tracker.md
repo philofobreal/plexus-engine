@@ -2,7 +2,7 @@
 
 Started 2026-10-23. Checkpoint 2026-11-04 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**The user chose MP4 as the default and requested mobile 4K in MVP. T21a establishes timed Markdown parsing. T20b2 compares the two pacing policies on the real MVP renderer and finds that redraw dominates the measured Wormhole case. iOS and specific editors remain follow-up checks. T15 remains deferred.**
+**The user chose MP4 as the default and requested mobile 4K in MVP. T21a establishes timed Markdown parsing. T20b3 identifies grain projection and weave as the largest measured costs in the Wormhole export fixture. iOS and specific editors remain follow-up checks. T15 remains deferred.**
 
 ### Remaining work in execution order (2026-11-04)
 
@@ -26,7 +26,7 @@ remain useful alongside the acceleration work.
 | 6 | **T20a0 FFmpeg reference and decision.** Measure the real Compatible short 4K output with native FFmpeg. | Completed as research. See the [FFmpeg transition schedule](../features/export-lifecycle.md#ffmpeg-transition-priority-t20a). Treat MP4/H.264/AAC as the first candidate. Confirm the intended playback/editor destinations during qualification. |
 | 7 | **T20a1 browser prototype.** Compare FFmpeg finalization of H.264 packets, direct WASM encoding and Compatible WebM. | Research complete and manually accepted. See the [browser evidence](../features/export-lifecycle.md#t20a1-browser-evidence-2026-11-04). |
 | 8 | **T20a3 export qualification.** [Desktop timing and output](../features/export-lifecycle.md#t20a3a-desktop-output-qualification) and user-reported Android Chrome acceptance support the requested [MP4 default](../features/export-lifecycle.md#t20a3bt20a3c-acceptance-and-default). | Retain saved WebM choices and the WebM option. iOS and specific editors are follow-up checks; no cross-platform speed claim. |
-| 9 | **Export speed and T21 captions.** T21a implements [timed Markdown parsing](../features/export-lifecycle.md#t21a-timed-markdown-caption-format). [T20b2](../features/export-lifecycle.md#t20b2-real-mvp-mp4-pacing-comparison) rejects cooperative pacing for promotion after matched real MVP tests. | Next, profile simulation, Wormhole raster, composition and PostFX within the actual redraw to choose a bounded worker experiment. T21b adds placement and preview, then T21c checks burn-in parity. Release an accelerated choice after same-quality whole-job and physical-device qualification. |
+| 9 | **Export speed and T21 captions.** T21a implements [timed Markdown parsing](../features/export-lifecycle.md#t21a-timed-markdown-caption-format). [T20b3](../features/export-lifecycle.md#t20b3-mvp-render-stage-profile) profiles actual MVP redraw and measures grain projection plus weave at about 71–72% of draw time. | T20b4 prototypes one ordered Wormhole raster worker with full export resolution and bounded in-flight frames. T21b adds placement and preview, then T21c checks burn-in parity. Release an accelerated choice after same-quality whole-job and physical-device qualification. |
 | 10 | **T22–T24 Studio and own-domain release.** Confirm access and hosting scope. | T22 and T23 gate public Studio release. T24 requires a verified runtime, HTTPS, route/asset smoke checks and a tested rollback. See [ADR-013](../adr/ADR-013-studio-server-session-boundary.md). |
 
 Run **T25 as a gate for each delivery**. Keep the nine recorded Wormhole failures visible

@@ -141,7 +141,10 @@ async function one(caseId, format, resolution, seconds, artifact, cues, pcm, pro
         ...(profile ? { profile } : {}) };
 }
 const median = xs => xs.slice().sort((a, b) => a - b)[Math.floor(xs.length / 2)];
-pacingButton.hidden = !new URLSearchParams(location.search).has('pacing');
+const qualificationMode = new URLSearchParams(location.search);
+const renderProfiling = qualificationMode.has('render');
+pacingButton.hidden = !qualificationMode.has('pacing') && !renderProfiling;
+if (renderProfiling) pacingButton.textContent = 'Profile real MVP render stages';
 pacingButton.onclick = async () => {
     bench.disabled = profileButton.disabled = pacingButton.disabled = load.disabled = true;
     const report = { userAgent: navigator.userAgent, visible: !document.hidden, fps, rows: [] };
@@ -162,14 +165,26 @@ pacingButton.onclick = async () => {
             check(analysis.duration === 4 && analysis.analysisFrames > 0, 'Reference analysis is incomplete');
             return fixture;
         }
-        async function run(fixture, resolution, scheduling, artifact, command) {
+        async function run(fixture, resolution, scheduling, artifact, command, profileRender = false) {
             status.textContent = `Real MVP ${resolution} ${scheduling} ${command ?? artifact}…`;
-            const { blob, capturedTimes, ...result } = await fixture.run({ resolution, scheduling, command, fps });
+            const { blob, capturedTimes, ...result } = await fixture.run({ resolution, scheduling, command, fps, profileRender });
             const frames = command ? 61 : 240;
             check(result.profile?.framesSubmitted === frames && capturedTimes.length === frames
                 && capturedTimes.every((time, index) => Math.abs(time - index / fps) < 1e-9), 'MVP captured an unexpected frame or stale draw');
             check(result.profile.peakOutstandingFrames <= 2, 'MVP exceeded the in-flight frame limit');
             if (!command) check(result.postFrames >= 33, 'The real MVP PostFX pass did not run during the test interval');
+            if (profileRender) {
+                check(result.renderFrames?.length === frames, 'Missing render-stage frame measurements');
+                for (const [index, frame] of result.renderFrames.entries()) {
+                    check(frame.time === index / fps && frame.wormholeCalls >= 1 && frame.raster, 'Missing ordered Wormhole draw');
+                    const stages = [frame.hostPreparation, frame.identityPipeline, frame.postFx, frame.tail];
+                    const nested = Object.values(frame.wormholeMs);
+                    check([...stages, ...nested].every(ms => Number.isFinite(ms) && ms >= 0)
+                        && Math.abs(stages.reduce((a, b) => a + b) - frame.drawMs) < .01
+                        && nested.reduce((a, b) => a + b) <= frame.wormhole + .01
+                        && frame.wormhole <= frame.identityPipeline + .01, 'Invalid render-stage timings');
+                }
+            } else check(!result.renderFrames, 'Render timing was enabled in a control');
             check(Boolean(blob) === (command !== 'cancel'), 'Unexpected result publication');
             if (blob) await post(artifact, blob);
             const cleanup = await fixture.clear();
@@ -177,6 +192,13 @@ pacingButton.onclick = async () => {
             report.rows.push({ resolution, scheduling, artifact, command, frames, ...result });
         }
         for (const resolution of ['720p', '4K']) {
+            if (renderProfiling) {
+                for (const label of [1, 'control', 2, 3]) {
+                    await run(await loadMvp(), resolution, 'display', `render-${resolution.toLowerCase()}-${label}.mp4`,
+                        undefined, label !== 'control');
+                }
+                continue;
+            }
             for (let pair = 1; pair <= 3; pair++) {
                 const order = pair % 2 === 1 ? ['display', 'cooperative'] : ['cooperative', 'display'];
                 for (const scheduling of order) {
@@ -185,11 +207,13 @@ pacingButton.onclick = async () => {
                 }
             }
         }
-        const fixture = await loadMvp();
-        await run(fixture, '720p', 'cooperative', null, 'cancel');
-        await run(fixture, '720p', 'cooperative', 'pacing-stop.mp4', 'stop');
+        if (!renderProfiling) {
+            const fixture = await loadMvp();
+            await run(fixture, '720p', 'cooperative', null, 'cancel');
+            await run(fixture, '720p', 'cooperative', 'pacing-stop.mp4', 'stop');
+        }
         report.pass = true;
-        await post('pacing.json', new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
+        await post(renderProfiling ? 'render.json' : 'pacing.json', new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
     } catch (error) { report.pass = false; report.error = String(error); }
     finally {
         status.textContent = JSON.stringify(report, null, 2);

@@ -1458,6 +1458,67 @@ measurements to choose the first bounded worker slice. The synthetic
 Wormhole workload measured here spends much more time rendering.
 Long clips and physical mobile devices remain separate qualification cases.
 
+### T20b3 MVP render stage profile
+
+Run `npm run build`, then `node research/export/mvp-export-qualification.mjs render "<reference MP3>"`.
+Open the printed loopback page and select **Profile real MVP render stages**.
+Run `node research/export/mvp-export-qualification.mjs verify-render` after
+the browser finishes. The existing fixture uses seconds 60–64 of the
+reference, display pacing, H.264/AAC, 60 fps, and a 33-frame PostFX burst.
+At 720p and 4K it runs three measured exports and one export with the
+render probes disabled. The verifier decodes all files and requires
+byte equality with the corresponding control.
+
+The loopback build adds three checked source boundaries to the real p5
+draw. The outer intervals cover host preparation (automation,
+audio-state projection, modulation, director and dashboard), identity
+draw, the PostFX pass, and draw tail. Wormhole's existing stage clock
+subdivides identity work into background and motion setup, grains, weave,
+material resolve, and material composition. Crossfade target
+preparation, crossfade blending, and raster presentation are tracked as
+nested intervals when used. The export stage report already measures
+capture composition and bitmap creation separately.
+
+The measurements record synchronous elapsed intervals in the host.
+Deferred GPU work can appear in a later wait, and the grain phase
+includes both geometry and raster writes. Nested timers overlap their
+parent; use outer intervals to account for total draw time.
+
+Windows Headless Chrome 156, No Good reference, Compatible raster.
+The table reports independent medians of three four-second jobs at each
+resolution. Stage times are totals across 240 frames, in seconds.
+
+| Interval | 720p/60 | 4K/60 |
+| --- | ---: | ---: |
+| Whole export | 15.930 | 17.739 |
+| Total inside p5 draw | 13.047 | 13.662 |
+| Host preparation | 0.089 | 0.088 |
+| Wormhole identity | 12.861 | 13.537 |
+| ↳ Background and motion setup | 1.974 | 2.101 |
+| ↳ Grain projection and accumulation | 4.475 | 4.791 |
+| ↳ Weave | 4.841 | 5.062 |
+| ↳ Material resolve | 1.160 | 1.201 |
+| ↳ Material composition | 0.507 | 0.520 |
+| PostFX | 0.018 | 0.028 |
+| Capture composition outside p5 | 0.006 | 0.006 |
+
+Grains and weave together represent about 71–72% of measured p5 draw
+time. The 720p and 4K controls took 16.303 and 17.621 seconds. Single
+controls establish output parity, with insufficient data to quantify
+timer overhead. The crossfade and extra raster presentation intervals
+recorded zero time in this clip. Other presets, transitions, video
+backplates, longer clips and physical mobile still need coverage.
+
+For T20b4, keep projection and weave in the same worker with the
+identity's existing frame-local scratch data. Prototype one ordered
+Wormhole raster with bounded in-flight frames, preserving host
+automation, full export resolution and the material settings. Use the
+existing host worker's identity and raster seam as a reference. Preview
+uses a lower backing resolution and can skip timestamps; export requires
+one result for every admitted timestamp. Measure worker time, transfer
+and presentation, and the whole MP4 job against the display-paced
+control. Qualify frame and audio output before any user-facing option.
+
 ## Scheduled export acceleration - user direction, 2026-10-29
 
 The user accepted T19a and requested that professionally justified WASM export
