@@ -140,7 +140,8 @@ async function start(request: StartExportRequest) {
     if (!request.hasAudio || !audioRates.has(request.sampleRate)) throw mp4Error('The source audio is unavailable or uses an unsupported sample rate.');
     const { width, height, fps, sampleRate, sourceSamples = 0 } = request;
     const area = width * height;
-    const bitrate = area >= 3840 * 2160 ? 28_000_000 : area >= 1920 * 1080 ? 12_000_000 : 6_000_000;
+    const ultraHd = area >= 3840 * 2160;
+    const bitrate = ultraHd ? 40_000_000 : area >= 1920 * 1080 ? 12_000_000 : 6_000_000;
     const makePlan = (frames: number) => {
         const plan = planMp4Storage({ frames, fps, sampleRate, sourceSamples, videoBitrate: bitrate });
         if (!plan.ok) throw mp4Error('This audio or duration does not fit the MP4 export budget.');
@@ -151,9 +152,19 @@ async function start(request: StartExportRequest) {
     measure('storageAdmission');
     const level = selectMp4AvcLevel(width, height, fps, bitrate);
     if (level === undefined) throw mp4Error('H.264 cannot represent this resolution and frame rate.');
-    const encoding = { codec: 'avc' as const, bitrate, keyFrameInterval: 1, latencyMode: 'quality' as const,
-        fullCodecString: `avc1.6400${level.toString(16)}` };
-    await probeH264(width, height, fps, encoding, level);
+    const encoding: ConstructorParameters<typeof VideoSampleSource>[0] = {
+        codec: 'avc', bitrate, keyFrameInterval: 1, latencyMode: 'quality',
+        fullCodecString: `avc1.6400${level.toString(16)}`,
+        ...(ultraHd ? { bitrateMode: 'constant' } : {}),
+    };
+    try {
+        await probeH264(width, height, fps, encoding, level);
+    } catch (error) {
+        if (!encoding.bitrateMode) throw error;
+        // Some browser encoders can encode this level but do not admit constant rate control.
+        delete encoding.bitrateMode;
+        await probeH264(width, height, fps, encoding, level);
+    }
     measure('codecProbe');
     const core = await loadCore();
     measure('coreLoad');

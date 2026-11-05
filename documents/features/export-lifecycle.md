@@ -1610,6 +1610,60 @@ The signaling defect and redraw race are established independently;
 the exact cause of the reported layer motion in Windows Media Player
 still needs the matched playback check.
 
+### 4K MP4 temporal quality against WebM
+
+The original report covered 00:47–01:00 of No Good and persisted
+after level signaling and container changes. The three remuxes had
+identical decoded frames. Production FFmpeg copies the H.264 video and
+encodes AAC; the browser video encoder owns video quality, rate control,
+and keyframe decisions. [FFmpeg stream copy](https://ffmpeg.org/ffmpeg.html#Streamcopy)
+
+Build the app, run
+`node research/export/mvp-export-qualification.mjs motion "<reference MP3>"`,
+and select **Compare 4K motion against WebM**. Run
+`node research/export/mvp-motion-verify.mjs` after the browser completes.
+The local fixture reanalyzes seconds 46–60 and uses the actual MVP
+renderer. It compares 4K/60 WebM, the prior H.264 policy, and two
+H.264 candidates with a 40 Mbit/s constant target and different
+keyframe spacing. The 384×216 crop at (2176, 912) comes from the original
+render before encoding. Its hash must agree for all four jobs.
+
+Native decoding checks the full video clock and the audio endpoint,
+and measures the luma crop separately in every second. Spatial error
+is the mean absolute luma error. Temporal error is the mean absolute
+difference between the decoded and reference inter-frame luma change.
+Boundary error measures the same quantity at each whole-second edge.
+This controlled excerpt has its own track analysis. It is a codec
+comparison, with the original full-length playback still a manual case.
+
+The matched 840-frame input was identical in the measured crop. The
+following native results use 8-bit luma code units. The JSON receipt has
+the results for every second from 00:46 through 00:59.
+
+| 4K/60 export | Effective video Mbit/s | Spatial error | Temporal error | Whole-second boundary error |
+| --- | ---: | ---: | ---: | ---: |
+| Prior MP4, 28 Mbit/s variable target, 1 s keyframes | 23.711 | 1.2722 | 0.6022 | 0.5714 |
+| WebM, 40 Mbit/s constant target, 1 s keyframes | 39.243 | 2.2862 | 0.5915 | 0.6910 |
+| MP4, 40 Mbit/s constant target, 1 s keyframes | 28.705 | 1.2199 | 0.5740 | 0.5694 |
+| MP4, 40 Mbit/s constant target, 2 s keyframes | 28.550 | 1.2180 | 0.5757 | 0.5648 |
+
+The one-second candidate reduced temporal error by 4.7% overall and
+improved 12 of the 13 measured seconds in the reported window. Moving
+every other keyframe did not remove a recurring one-second error or
+improve overall temporal fidelity. All variants retained ordered video
+and audio correlation above 0.99 in the sampled windows. The test
+identifies a quality improvement and leaves the precise cause of the
+original layer reversal unconfirmed.
+
+Production uses the 40 Mbit/s constant target for UHD MP4 and keeps the
+one-second keyframes. If the actual browser probe rejects constant
+rate control, it retries variable rate control at the same target.
+Both paths admit storage at the configured target before starting.
+The matched candidate used about 21% more bytes than the prior MP4.
+Use `motion-production "<reference MP3>"` and
+`node research/export/mvp-motion-verify.mjs --production` to check the
+actual production worker without the experiment transforms.
+
 ## Scheduled export acceleration - user direction, 2026-10-29
 
 The user accepted T19a and requested that professionally justified WASM export

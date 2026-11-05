@@ -67,7 +67,8 @@ export function installPacingBridge(ui, engine, workerFixture = false) {
     const controller = ui.controller;
     const effect = TemporalFragmentationEffect.prototype;
     const isActive = effect.isActive, apply = effect.apply;
-    const forcePostFx = () => State.isExporting && State.exportTime >= .7 && State.exportTime < 1.25;
+    let motionComparison = false;
+    const forcePostFx = () => !motionComparison && State.isExporting && State.exportTime >= .7 && State.exportTime < 1.25;
     let postFrames = 0;
     effect.isActive = function (frame) {
         // Ensure this short excerpt exercises the real PostFX pass in both modes.
@@ -98,13 +99,19 @@ export function installPacingBridge(ui, engine, workerFixture = false) {
             if (!State.trackAnalysis || State.visualMode !== 'cosmic-wormhole') throw Error('Missing MVP analysis or Wormhole');
             return { duration: State.duration, analysisFrames: State.frames.length };
         },
-        async run({ resolution, scheduling, command, fps, profileRender = false, useWorker = false }) {
+        async run({ resolution, scheduling, command, fps, profileRender = false, useWorker = false, motionVariant }) {
             if (useWorker && !workerFixture) throw Error('Worker benchmark build required');
+            if (motionVariant) await controller.preloadPresetsForPlan(controller.getAutomationPlanView());
             const p5 = controller.exportP5Instance, canvas = controller.exportCanvas;
             const draw = p5.draw, createBitmap = window.createImageBitmap;
             const capturedTimes = [];
             let renderedTime, profile, commandAt;
             const probe = profileRender ? createRenderProbe() : undefined;
+            const motion = motionVariant ? {
+                x: 2176, y: 912, width: 384, height: 216, frames: 14 * fps, index: 0,
+                pixels: new Uint8Array(384 * 216 * 14 * fps),
+                ctx: new OffscreenCanvas(384, 216).getContext('2d', { willReadFrequently: true }),
+            } : undefined;
             p5.draw = function (...args) {
                 const isExporting = State.isExporting;
                 if (isExporting) probe?.start(State.exportTime);
@@ -113,6 +120,16 @@ export function installPacingBridge(ui, engine, workerFixture = false) {
                 if (isExporting) {
                     renderedTime = State.exportTime;
                     probe?.finish(canvas.dataset.wormholeRaster);
+                    if (motion) {
+                        const { x, y, width, height, ctx, pixels } = motion;
+                        if (motion.index >= motion.frames) throw Error('Extra motion reference frame');
+                        ctx.drawImage(p5.__plexusExportTarget.elt, x, y, width, height, 0, 0, width, height);
+                        const rgba = ctx.getImageData(0, 0, width, height).data;
+                        let offset = motion.index++ * width * height;
+                        for (let i = 0; i < rgba.length; i += 4) {
+                            pixels[offset++] = (54 * rgba[i] + 183 * rgba[i + 1] + 19 * rgba[i + 2] + 128) >> 8;
+                        }
+                    }
                 }
                 return result;
             };
@@ -120,13 +137,23 @@ export function installPacingBridge(ui, engine, workerFixture = false) {
                 if (State.isExporting && args[0] instanceof HTMLCanvasElement) capturedTimes.push(renderedTime);
                 return createBitmap.apply(window, args);
             };
+            const CodecWorker = motionVariant && motionVariant !== 'webm' ? class {
+                constructor() {
+                    const worker = new Mp4Worker();
+                    const send = worker.postMessage.bind(worker);
+                    worker.postMessage = (message, transfer) =>
+                        send(message.type === 'start_export' ? { ...message, motionVariant } : message, transfer ?? []);
+                    return worker;
+                }
+            } : Mp4Worker;
             const exporter = new WebMExporter(p5, canvas, engine, null, {
-                createMp4Backend: async name => new WebCodecsBackend(p5, canvas, engine, name, null, scheduling, Mp4Worker, result => { profile = result; }),
+                createMp4Backend: async name => new WebCodecsBackend(p5, canvas, engine, name, null, scheduling, CodecWorker, result => { profile = result; }),
             });
             const initialPostFrames = postFrames;
             const started = performance.now();
             let exactRaster, cancelledDuringRaster = false;
             try {
+                motionComparison = Boolean(motion);
                 if (useWorker) {
                     const { createExactRaster } = await import('./mvp-exact-raster.mjs');
                     exactRaster = createExactRaster(time => {
@@ -140,7 +167,9 @@ export function installPacingBridge(ui, engine, workerFixture = false) {
                 }
                 let blob;
                 try {
-                    blob = await exporter.startExport({ resolution, aspectRatio: '16:9', fps, format: 'mp4', watermark: false }, progress => {
+                    const config = { resolution, aspectRatio: '16:9', fps, watermark: false,
+                        ...(motionVariant === 'webm' ? { preflight: true } : { format: 'mp4' }) };
+                    blob = await exporter.startExport(config, progress => {
                         if (!command || (useWorker && command === 'cancel') || commandAt !== undefined || progress < .225) return;
                         commandAt = performance.now();
                         if (command === 'stop') exporter.stopAndSave();
@@ -152,11 +181,15 @@ export function installPacingBridge(ui, engine, workerFixture = false) {
                 const elapsed = performance.now() - started;
                 if (State.isExporting || p5.__plexusExportTarget) throw Error('MVP export surface was not released');
                 if (command === 'cancel' && (blob || profile?.outcome !== 'cancelled')) throw Error('Cancelled export published a result');
+                if (motion && motion.index !== motion.frames) throw Error('Incomplete motion reference');
                 return { blob, elapsed, profile, capturedTimes, postFrames: postFrames - initialPostFrames,
+                    ...(motion ? { motion: { x: motion.x, y: motion.y, width: motion.width, height: motion.height,
+                        frames: motion.frames, pixels: motion.pixels } } : {}),
                     ...(probe ? { renderFrames: probe.frames } : {}),
                     ...(exactRaster ? { workerFrames: exactRaster.frames, workerSetupMs: exactRaster.setupMs, cancelledDuringRaster } : {}),
                     controlSettlementMs: commandAt === undefined ? undefined : performance.now() - commandAt };
             } finally {
+                motionComparison = false;
                 exactRaster?.dispose();
                 if (exactRaster) delete window.plexusExactRaster;
                 probe?.dispose();

@@ -152,10 +152,12 @@ const qualificationMode = new URLSearchParams(location.search);
 const renderProfiling = qualificationMode.has('render');
 const exactWorker = qualificationMode.has('worker');
 const integrity = qualificationMode.has('integrity');
+const motionComparison = qualificationMode.has('motion');
 if (integrity) profileButton.textContent = 'Check numbered MP4 frames';
-pacingButton.hidden = !qualificationMode.has('pacing') && !renderProfiling && !exactWorker;
+pacingButton.hidden = !qualificationMode.has('pacing') && !renderProfiling && !exactWorker && !motionComparison;
 if (renderProfiling) pacingButton.textContent = 'Profile real MVP render stages';
 if (exactWorker) pacingButton.textContent = 'Compare full-resolution Wormhole worker';
+if (motionComparison) pacingButton.textContent = 'Compare 4K motion against WebM';
 pacingButton.onclick = async () => {
     bench.disabled = profileButton.disabled = pacingButton.disabled = load.disabled = true;
     const report = { userAgent: navigator.userAgent, visible: !document.hidden, fps, rows: [] };
@@ -173,8 +175,37 @@ pacingButton.onclick = async () => {
             const fixture = frame.contentWindow.plexusPacingFixture;
             check(fixture, 'Missing loopback MVP bridge');
             const analysis = await fixture.load(new File([reference], 'No Good — pacing excerpt.wav', { type: 'audio/wav' }));
-            check(analysis.duration === 4 && analysis.analysisFrames > 0, 'Reference analysis is incomplete');
+            check(analysis.duration === (motionComparison ? 14 : 4) && analysis.analysisFrames > 0, 'Reference analysis is incomplete');
             return fixture;
+        }
+        if (motionComparison) {
+            let referenceHash;
+            const variants = qualificationMode.has('production') ? ['production'] : ['current', 'webm', 'cbr', 'gop'];
+            for (const motionVariant of variants) {
+                const fixture = await loadMvp();
+                status.textContent = `4K motion comparison — ${motionVariant}…`;
+                const { blob, capturedTimes, motion, elapsed } = await fixture.run({
+                    resolution: '4K', scheduling: 'display', fps, motionVariant,
+                });
+                const { pixels, ...region } = motion;
+                check(capturedTimes.length === region.frames && capturedTimes.every((time, index) => time === index / fps),
+                    'Motion comparison captured an unexpected frame');
+                const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', pixels)),
+                    byte => byte.toString(16).padStart(2, '0')).join('');
+                if (referenceHash === undefined) {
+                    await post('motion.gray', new Blob([pixels]));
+                    referenceHash = hash;
+                }
+                check(hash === referenceHash, `Renderer output differs for ${motionVariant}`);
+                const artifact = motionVariant === 'webm' ? 'motion.webm' : `motion-${motionVariant}.mp4`;
+                await post(artifact, blob);
+                const cleanup = await fixture.clear();
+                check(cleanup.removed === 1 && cleanup.remaining === 0, 'MVP motion export cache did not clear');
+                report.rows.push({ motionVariant, artifact, totalMs: elapsed, referenceHash: hash, region });
+            }
+            report.pass = true;
+            await post('motion.json', new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
+            return;
         }
         async function run(fixture, resolution, scheduling, artifact, command, profileRender = false, useWorker = false) {
             status.textContent = `Real MVP ${resolution} ${useWorker ? 'worker' : scheduling} ${command ?? artifact}…`;

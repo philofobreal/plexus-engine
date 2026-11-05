@@ -16,10 +16,12 @@ const pacing = mode === 'pacing' || mode === 'verify-pacing';
 const renderProfiling = mode === 'render' || mode === 'verify-render';
 const exactWorker = mode === 'worker' || mode === 'verify-worker';
 const integrity = mode === 'integrity' || mode === 'verify-integrity';
-const realMvp = pacing || renderProfiling || exactWorker;
-const logs = path.resolve(integrity ? 'logs/t20b5-integrity' : exactWorker ? 'logs/t20b4' : renderProfiling ? 'logs/t20b3' : pacing ? 'logs/t20b2' : profiling ? 'logs/t20b1' : 'logs/t20a3a');
+const productionMotion = mode === 'motion-production';
+const motion = mode === 'motion' || productionMotion;
+const realMvp = pacing || renderProfiling || exactWorker || motion;
+const logs = path.resolve(productionMotion ? 'logs/mp4-motion/production' : motion ? 'logs/mp4-motion' : integrity ? 'logs/t20b5-integrity' : exactWorker ? 'logs/t20b4' : renderProfiling ? 'logs/t20b3' : pacing ? 'logs/t20b2' : profiling ? 'logs/t20b1' : 'logs/t20a3a');
 const production = path.resolve('dist');
-const allowed = /^(?:benchmark\.json|mp4-profile\.json|(?:long|4k)\.(?:mp4|webm)|real-track\.mp4|pacing\.json|pacing-(?:(?:720p|4k)-(?:display|cooperative)-[1-3]|stop)\.mp4|render\.json|render-(?:720p|4k)-(?:control|[1-3])\.mp4|worker\.json|worker-(?:(?:720p|4k)-(?:display|exact)-[1-3]|stop)\.mp4|integrity\.json|integrity-(?:720p|1080p|4k)\.mp4)$/;
+const allowed = /^(?:benchmark\.json|mp4-profile\.json|(?:long|4k)\.(?:mp4|webm)|real-track\.mp4|pacing\.json|pacing-(?:(?:720p|4k)-(?:display|cooperative)-[1-3]|stop)\.mp4|render\.json|render-(?:720p|4k)-(?:control|[1-3])\.mp4|worker\.json|worker-(?:(?:720p|4k)-(?:display|exact)-[1-3]|stop)\.mp4|integrity\.json|integrity-(?:720p|1080p|4k)\.mp4|motion\.(?:json|gray|webm)|motion-(?:current|cbr|gop|production)\.mp4)$/;
 const fixtureRoute = '/plexus-engine/research/export/mvp-export-qualification.html';
 const maxBytes = 128 * 1024 * 1024;
 const tool = (name, args) => execFileSync(name, args, { windowsHide: true, encoding: 'utf8', timeout: 180_000 });
@@ -58,17 +60,31 @@ function wireExactRaster(code) {
             } else if (compositor) {`);
 }
 
+function experimentEncoding(code, id) {
+    if (!id.replaceAll('\\', '/').endsWith('/src/export/mp4-export.worker.ts')) return;
+    const edit = (before, after) => {
+        assert.equal(code.split(before).length, 2, 'Motion comparison encoder boundary changed');
+        code = code.replace(before, after);
+    };
+    edit('const bitrate = ultraHd ? 40_000_000', `const variant = (request as StartExportRequest & { motionVariant?: string }).motionVariant;
+    const bitrate = ultraHd ? (variant === 'current' ? 28_000_000 : 40_000_000)`);
+    edit('keyFrameInterval: 1,', "keyFrameInterval: variant === 'gop' ? 2 : 1,");
+    edit("...(ultraHd ? { bitrateMode: 'constant' } : {}),",
+        "...(ultraHd && variant !== 'current' ? { bitrateMode: 'constant' } : {}),");
+    return code;
+}
+
 async function serve(source) {
     if (realMvp && !source) throw Error('Supply the reference MP3 for the real MVP benchmark.');
     await mkdir(logs, { recursive: true });
     const fixture = path.join(logs, 'site'), output = path.join(logs, 'run-' + randomUUID());
     await mkdir(output, { recursive: true });
     await stat(path.join(production, 'mvp/index.html'));
-    const clipSeconds = realMvp ? 4 : 60;
+    const clipSeconds = motion ? 14 : realMvp ? 4 : 60;
     if (source) {
         // One real excerpt exercises the actual MVP renderer. Never put it in public/ or dist/.
         const reference = path.join(output, 'reference.wav');
-        tool('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-ss', '60', '-i', path.resolve(source),
+        tool('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-ss', motion ? '46' : '60', '-i', path.resolve(source),
             '-t', String(clipSeconds), '-vn', '-ac', '2', '-ar', '48000', '-c:a', 'pcm_s16le', reference]);
         const samples = tool('ffprobe', ['-v', 'error', '-select_streams', 'a:0',
             '-show_entries', 'stream=duration_ts', '-of', 'default=nw=1:nk=1', reference]);
@@ -76,6 +92,7 @@ async function serve(source) {
     }
     await build({
         configFile: false, base: '/plexus-engine/', publicDir: false,
+        ...(motion && !productionMotion ? { worker: { plugins: () => [{ name: 'mp4-motion-encoding', enforce: 'pre', transform: experimentEncoding }] } } : {}),
         plugins: realMvp ? [{
             name: 'mvp-qualification-bridge',
             enforce: 'pre',
@@ -91,7 +108,7 @@ async function serve(source) {
         build: { outDir: fixture, emptyOutDir: false, assetsDir: 'qual-assets',
             rollupOptions: { input: ['research/export/mvp-export-qualification.html', ...(realMvp ? ['mvp/index.html'] : [])] } },
     });
-    const port = integrity ? 5217 : exactWorker ? 5216 : renderProfiling ? 5215 : pacing ? 5214 : profiling ? 5213 : 5211;
+    const port = productionMotion ? 5219 : motion ? 5218 : integrity ? 5217 : exactWorker ? 5216 : renderProfiling ? 5215 : pacing ? 5214 : profiling ? 5213 : 5211;
     const origin = `http://127.0.0.1:${port}`;
     const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm',
         '.json': 'application/json', '.svg': 'image/svg+xml', '.wav': 'audio/wav' };
@@ -139,7 +156,7 @@ async function serve(source) {
         }
     });
     await writeFile(activeRun, output + '\n');
-    server.listen(port, '127.0.0.1', () => console.log(origin + fixtureRoute + (integrity ? '?integrity' : exactWorker ? '?worker' : renderProfiling ? '?render' : pacing ? '?pacing' : '')));
+    server.listen(port, '127.0.0.1', () => console.log(origin + fixtureRoute + (productionMotion ? '?motion&production' : motion ? '?motion' : integrity ? '?integrity' : exactWorker ? '?worker' : renderProfiling ? '?render' : pacing ? '?pacing' : '')));
 }
 
 async function decodedSamples(file) {
@@ -337,7 +354,8 @@ else if (mode === 'pacing') await serve(source);
 else if (mode === 'render') await serve(source);
 else if (mode === 'worker') await serve(source);
 else if (mode === 'integrity') await serve();
+else if (motion) await serve(source);
 else if (mode === 'verify') await verify();
 else if (mode === 'verify-pacing' || mode === 'verify-render' || mode === 'verify-worker') await verifyPacing();
 else if (mode === 'verify-integrity') await verifyIntegrity();
-else throw Error('Use: node research/export/mvp-export-qualification.mjs serve [reference MP3] | profile | verify | pacing <reference MP3> | verify-pacing | render <reference MP3> | verify-render | worker <reference MP3> | verify-worker | integrity | verify-integrity');
+else throw Error('Use: node research/export/mvp-export-qualification.mjs serve [reference MP3] | profile | verify | pacing <reference MP3> | verify-pacing | render <reference MP3> | verify-render | worker <reference MP3> | verify-worker | integrity | verify-integrity | motion <reference MP3> | motion-production <reference MP3>');
