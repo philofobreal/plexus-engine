@@ -857,14 +857,18 @@ node research/export/ffmpeg-baseline.mjs logs/t20a path/to/short.webm path/to/lo
    - **T20a3b — physical devices and target editors.** Run on desktop and
      physical Android and iOS with short prefixes, long runs and supported
      4K. Measure whole-job time, command latency, resource peaks, recovery
-     and sync in the user's target players/editors. Mobile 4K stays
-     guarded until qualified.
+     and sync in the user's target players/editors. Mobile 4K is selectable
+     in MVP and each job must pass its encoder preflight.
    - **T20a3c — default decision.** The user accepted the Android Chrome
      result and requested MP4 as the MVP default. Keep the existing 15%
      median threshold for any separate speed claim.
-4. **Further work.** Schedule render-worker optimization against the measured
-   bottleneck and T21 captions after the export route is stable. Studio and
-   XR retain their own work streams.
+4. **Further work.** T21a establishes the caption parser. The recommended
+   next export slice is same-format profiling, then an ordered render-worker
+   prototype if rendering or frame transfer dominates. Qualify an optional
+   fast mode on desktop and physical mobile before exposing it. Test
+   threaded WASM only for a measured CPU bottleneck in WASM; multiple-fold
+   whole-job improvement is a target, not a release claim. Studio and XR
+   retain their own work streams.
 
 GitHub Pages serves the web app as static assets. Begin with a browser-local
 prototype in a dedicated worker. Verify the exact FFmpeg core's format and
@@ -1108,7 +1112,7 @@ control from T20a2a; the new user-facing MP4 uses FFmpeg for AAC on every job.
 
 The on-demand module, its licenses, the two corresponding source archives
 and the build recipe are available from the export dialog's FFmpeg source
-link. The MVP's existing mobile 4K guard remains in effect. Long real
+link. The initial MVP release still used the mobile 4K guard. Long real
 renders, physical Android/iOS, 4K device limits and third-party playback
 and editors remain T20a3 checks before default promotion.
 
@@ -1214,6 +1218,68 @@ A previously saved WebM choice remains WebM. If MP4 preflight fails,
 its existing explanation still offers WebM; export never silently changes
 the requested format. This preference change is independent of speed,
 4K admission and the remaining device coverage.
+
+### MVP mobile 4K admission
+
+The MVP offers 4K on mobile when WebCodecs is present. The shared capability
+report and the Studio guard retain their previous behavior. The exact MP4
+encoder and storage preflight still applies. MVP 4K WebM runs the existing
+worker-side VP9/VP8 and Opus probe and requires its normal browser-local file.
+Actual render surfaces are allocated only after the probe succeeds; the
+temporary MP4 probe canvas is released immediately. A rejected or stopped
+preflight does not begin rendering or silently select another resolution.
+This does not promise that an entire 4K job can finish on every phone.
+Desktop Chromium smoke verified playable 4K/60 Stop prefixes in both
+formats after preflight: nine video frames, 6,615 decoded MP4 samples at
+44.1 kHz and 7,176 decoded WebM samples at 48 kHz. Physical mobile 4K
+still requires a device check.
+
+### T21a timed Markdown caption format
+
+One cue per explicit header. Times are two or three minute digits, two
+second digits and three millisecond digits. An optional trailing style
+selects `normal`, `small` or `title`:
+
+```md
+## 00:12.500 --> 00:17.000 [title]
+**NEON PULSE**
+_A tér a ritmussal nyílik._
+
+## 00:32.000 --> 00:36.500
+Új szakasz.
+```
+
+The [parser](../../src/presentation/timedCaptions.ts) treats cues as
+`[start,end)`, permits adjacent cues, sorts by start and rejects overlap.
+An empty document clears captions. Paragraphs, explicit line breaks and
+single-level bold/italic are supported; other markup is inert text. Limits:
+64,000 UTF-16 units per document, 256 cues, eight explicit lines per cue and
+200 Unicode code points per line. A line-numbered error rejects the whole
+edit. The optional track duration bounds cue endpoints. Valid plans are
+immutable and resolve cues identically after seek or arbitrary-frame lookup.
+No lyric recognition or automatic timing is performed.
+
+The next caption slice adds a track-scoped timeline and preview, with a
+bottom-center default, per-cue placement overrides and normalized
+coordinates relative to the output frame. Use the [WebVTT cue-box model](https://www.w3.org/TR/webvtt1/#cues)
+for position, width and alignment. Use the [EBU R95 16:9 graphics safe area](https://tech.ebu.ch/publications/r095/)
+as a 5% inset baseline; 9:16 and 1:1 use separate safe-area profiles.
+Preview and burn-in export will share the same font, layout and song clock.
+The renderer will warn when a cue exceeds the safe box; it must not shrink
+text without a readable minimum or silently crop words. A separate WebVTT
+file can follow for switchable subtitles. T21a supplies the parser and
+lookup only; no production caption rendering is wired yet.
+
+Default to hard cuts for readable captions: no animation on entry, exit
+or cue replacement, and no simultaneous fading text. Use reading-time and
+frame-boundary guidance as advisory lint, without rewriting authored cues.
+The [Netflix subtitle timing guide](https://partnerhelp.netflixstudios.com/hc/en-us/articles/360051554394-Timed-Text-Style-Guide-Subtitle-Timing-Guidelines)
+is a production reference, not a mandatory delivery specification for this
+feature. Offer optional 120–200 ms fades for graphic titles as a Plexus
+design starting point, confined to each cue and visible in the timeline.
+Warn when the fully visible hold is too short. Preview and export must
+evaluate opacity from song time, including after a seek. Selection boxes,
+safe-area guides and fade handles are editor controls and never burn in.
 
 ## Optional accelerated export research (2026-11-04)
 

@@ -2,7 +2,7 @@
 
 Started 2026-10-23. Checkpoint 2026-11-04 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**The user reported successful MVP MP4 export on Android Chrome and chose MP4 as the default. iOS and specific editors remain follow-up checks. T21 timed captions is next after manual acceptance of the default change. T15 remains deferred.**
+**The user chose MP4 as the default and requested mobile 4K in MVP. T21a establishes timed Markdown parsing. After manual acceptance, measure the current export stages before selecting the parallel prototype. iOS and specific editors remain follow-up checks. T15 remains deferred.**
 
 ### Remaining work in execution order (2026-11-04)
 
@@ -26,7 +26,7 @@ remain useful alongside the acceleration work.
 | 6 | **T20a0 FFmpeg reference and decision.** Measure the real Compatible short 4K output with native FFmpeg. | Completed as research. See the [FFmpeg transition schedule](../features/export-lifecycle.md#ffmpeg-transition-priority-t20a). Treat MP4/H.264/AAC as the first candidate. Confirm the intended playback/editor destinations during qualification. |
 | 7 | **T20a1 browser prototype.** Compare FFmpeg finalization of H.264 packets, direct WASM encoding and Compatible WebM. | Research complete and manually accepted. See the [browser evidence](../features/export-lifecycle.md#t20a1-browser-evidence-2026-11-04). |
 | 8 | **T20a3 export qualification.** [Desktop timing and output](../features/export-lifecycle.md#t20a3a-desktop-output-qualification) and user-reported Android Chrome acceptance support the requested [MP4 default](../features/export-lifecycle.md#t20a3bt20a3c-acceptance-and-default). | Retain saved WebM choices and the WebM option. iOS and specific editors are follow-up checks; no cross-platform speed claim. |
-| 9 | **T19 performance follow-up and T21 captions.** Run extra render-worker work when measurements identify it as the bottleneck. Schedule timed captions after the FFmpeg route is stable. | T19d1 remains historical evidence. T21 defines timing/overlap and verifies preview/export parity. |
+| 9 | **Export speed and T21 captions.** T21a implements [timed Markdown parsing](../features/export-lifecycle.md#t21a-timed-markdown-caption-format). Next export slice: same-format stage profiling, then a bounded render-worker experiment and optional fast mode qualification. | T19d1 remains historical evidence. T21b adds placement/preview, T21c checks burn-in parity. Use measured same-quality whole-job gains before releasing acceleration. |
 | 10 | **T22–T24 Studio and own-domain release.** Confirm access and hosting scope. | T22 and T23 gate public Studio release. T24 requires a verified runtime, HTTPS, route/asset smoke checks and a tested rollback. See [ADR-013](../adr/ADR-013-studio-server-session-boundary.md). |
 
 Run **T25 as a gate for each delivery**. Keep the nine recorded Wormhole failures visible
@@ -169,7 +169,7 @@ DNS/hosting migration are separate operations, not implied by static deployment.
 | T18 | Analyzer + worker + audio + build: production kernel integration | T17 desktop evidence; subsequent explicit user activation request | Scalar FFT integrated, Auto/TS/WASM saved/copied, whole-input recovery; physical Quest and full numerical port still open |
 | T19 | Export + visuals/state + MVP: isolated snapshot/runtime | T01, T05 | T19c1–d2 deployed and accepted for continuation. T19e retires the isolated MVP export route. The [current schedule](#remaining-work-in-execution-order-2026-11-04) puts a new Compatible baseline before further acceleration. |
 | T20 | Export + build + platform: confirmed output format/backend | T19, format/environment decision | T20a compares direct WebCodecs/remux/conditional WASM/native-server options using T19 evidence; production acceleration only after explicit parity/performance/resource gates |
-| T21 | Caption parser/layout + MVP + export: timed Markdown | T19 | Planned; explicit timing and overlap policy needed |
+| T21 | Caption parser/layout + MVP + export: timed Markdown | T19 | T21a parser and seek lookup implemented; layout, editor and export compositor pending |
 | T22 | Composition + UI + build: launcher and Studio entry | T01, T14; T23 for public release | Planned |
 | T23 | Server/platform + host integration: auth and business boundary | T01 hosting decision, T22 routes | Planned; concrete hosting capabilities unknown |
 | T24 | Build/platform: reversible DotRoll staging/release | T22-T23 and backend requirements | Planned; domain/access unknown |
