@@ -99,6 +99,54 @@ test('MP4 AVC level covers both picture size and frame rate, and reads the encod
     assert.equal(readMp4AvcLevel(header), undefined);
 });
 
+test('MP4 accepts a working platform encoder at 60 fps even if its reported level is lower', async () => {
+    const { selectMp4AvcEncoding } = createLoader()('export/Mp4AvcLevel.ts');
+    for (const [requested, emitted, bitrate] of [[32, 31, 6e6], [42, 40, 12e6], [52, 51, 40e6]]) {
+        const preferred = { fullCodecString: `avc1.6400${requested.toString(16)}`, bitrate,
+            ...(requested === 52 ? { bitrateMode: 'constant' } : {}) };
+        const tried = [];
+        const encoding = await selectMp4AvcEncoding(preferred, requested, async candidate => {
+            tried.push({ ...candidate });
+            return emitted;
+        });
+        assert.equal(encoding, preferred);
+        assert.equal(tried.length, requested === 52 ? 2 : 1);
+        assert.ok(tried.every(config => config.bitrate === bitrate && config.fullCodecString === preferred.fullCodecString));
+    }
+});
+
+test('MP4 retains the preferred encoder when compliant and selects VBR if it fixes the AVC level', async () => {
+    const { selectMp4AvcEncoding } = createLoader()('export/Mp4AvcLevel.ts');
+    const preferred = { fullCodecString: 'avc1.640034', bitrateMode: 'constant', bitrate: 40e6 };
+    const tried = [];
+    assert.equal(await selectMp4AvcEncoding(preferred, 52, async candidate => {
+        tried.push(candidate);
+        return 52;
+    }), preferred);
+    assert.deepEqual(tried, [preferred]);
+    const variable = await selectMp4AvcEncoding(preferred, 52, async candidate => candidate.bitrateMode ? 51 : 52);
+    assert.equal(variable.fullCodecString, preferred.fullCodecString);
+    assert.equal(variable.bitrate, preferred.bitrate);
+    assert.equal(variable.bitrateMode, undefined);
+});
+
+test('MP4 retries an explicitly refused codec with browser defaults and surfaces real encoder failure', async () => {
+    const { selectMp4AvcEncoding } = createLoader()('export/Mp4AvcLevel.ts');
+    const preferred = { fullCodecString: 'avc1.640034', bitrateMode: 'constant', bitrate: 40e6, keyFrameInterval: 1 };
+    const refused = new Error('H.264 encoding is unavailable');
+    const tried = [];
+    const encoding = await selectMp4AvcEncoding(preferred, 52, async candidate => {
+        tried.push({ ...candidate });
+        if (candidate.fullCodecString) throw refused;
+        return 51;
+    });
+    assert.deepEqual(tried.map(candidate => candidate.fullCodecString), [preferred.fullCodecString, preferred.fullCodecString, undefined]);
+    assert.deepEqual(tried.map(candidate => candidate.bitrateMode), ['constant', undefined, undefined]);
+    assert.equal(encoding.keyFrameInterval, 1);
+    assert.equal(encoding.bitrate, preferred.bitrate);
+    await assert.rejects(selectMp4AvcEncoding(preferred, 52, async () => { throw refused; }), error => error === refused);
+});
+
 test('4K worker refusal and Stop are handled before allocating the render surface', async () => {
     let worker;
     class Worker {

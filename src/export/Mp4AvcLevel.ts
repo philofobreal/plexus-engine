@@ -30,3 +30,27 @@ export function readMp4AvcLevel(description: AllowSharedBufferSource | undefined
     // AVCDecoderConfigurationRecord starts with version, profile, constraints and level.
     return bytes.length >= 7 && bytes[0] === 1 ? bytes[3] : undefined;
 }
+
+export async function selectMp4AvcEncoding<Encoding extends { fullCodecString?: string; bitrateMode?: string }>(
+    preferred: Encoding,
+    level: number,
+    probe: (encoding: Encoding) => Promise<number | undefined>,
+): Promise<Encoding> {
+    const variable = { ...preferred };
+    delete variable.bitrateMode;
+    let usable: Encoding | undefined;
+    for (const encoding of preferred.bitrateMode ? [preferred, variable] : [preferred]) {
+        let emittedLevel: number | undefined;
+        try { emittedLevel = await probe(encoding); }
+        catch { continue; }
+        if (emittedLevel !== undefined && emittedLevel >= level) return encoding;
+        usable ??= encoding;
+    }
+    // Some platform encoders emit a lower level even when the requested size and rate work.
+    if (usable) return usable;
+
+    // Let the browser choose the profile and level if it refused the explicit codec string.
+    delete variable.fullCodecString;
+    await probe(variable);
+    return variable;
+}

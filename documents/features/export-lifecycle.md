@@ -1621,8 +1621,15 @@ limit: 32,400 macroblocks per frame and 1,944,000 per second.
 [ITU-T H.264 Annex A](https://www.itu.int/rec/dologin_pub.asp?id=T-REC-H.264-202408-I%21%21PDF-E&lang=e&type=items)
 
 The MP4 worker now selects the minimum applicable level using picture
-size, frame rate and bitrate. The real probe and production encoder
-check the emitted AVC configuration before the job can publish output.
+size, frame rate and bitrate. It verifies that the browser can encode
+and mux a real frame at those settings. If the preferred 4K configuration
+is refused or reports a lower level, the probe tries variable rate control
+at the same target bitrate. If the explicit codec configurations cannot
+encode, it tries the browser's default AVC profile and level.
+A working encoder may still report a lower AVC level. In that case MP4
+keeps the browser's original bitstream and logs the reported and requested
+levels in the worker console. Some players may rely on this declaration
+when selecting a decoder.
 MP4 capture also waits for p5 redraw completion. The display-paced
 route still schedules its normal display callback, concurrently with
 redraw, and waits for both before copying pixels.
