@@ -1610,6 +1610,53 @@ attempt should revisit this stage with a candidate that changes the
 measured cost enough to justify longer desktop and physical mobile
 tests. Proceed with T21b after the current manual handoff.
 
+### T20c optional Turbo export plan
+
+Start after the export quality baseline is accepted. Keep Standard as
+the default. Standard and Turbo must preserve the same output format,
+resolution, frame rate, audio sample range, timeline and quality policy.
+The choice belongs to the MVP Export dialog, persists locally and is
+included in Copy export settings. Its availability is checked per export
+configuration, independent of artistic presets.
+
+1. Reprofile complete jobs at the accepted quality settings. Compare
+   queue waits, grain and weave, post-FX, pixel transfer, video encoding,
+   audio and finalization. In T20b3 grain and weave took 71–72% of draw
+   time. Moving the whole raster to a worker in T20b4 slowed 4K export by
+   15%. The T20b5 scan-bound optimization gained 1.2% across the job.
+2. Keep one sequential owner of simulation, automation and frame numbers.
+   Prototype parallel grain and weave work on independent output tiles
+   with overlap at their edges and stable accumulation within each tile.
+   Compare a transferable-buffer CPU path with a GPU raster candidate
+   where supported. Keep raster results resident until composition when
+   practical. A worker location alone does not reduce raster work.
+3. Pipeline completed frames into one ordered encoder. Start with two
+   in-flight frames and recycle buffers. Admit frames against actual
+   acknowledgements and encoder queue pressure. One 4K RGBA frame is
+   about 32 MiB before encoder surfaces. Measure thermal throttling and
+   peak resources on long jobs. Use worker-local codec and render probes
+   before the full job starts. A failed Turbo preflight offers Standard.
+   Stop saves the last contiguous prefix and Cancel cleans up only its job.
+4. Promote Turbo per qualified configuration. Use three alternating
+   Standard/Turbo pairs at each claimed target and require at least 15%
+   lower median time from start through downloadable file, including a
+   cold run. Check short and five-minute clips, MP4 and WebM, desktop and
+   physical Android/iOS browsers, frame continuity, motion and image
+   error against source frames, A/V sync, Stop, Cancel and retry.
+5. Revisit segmented encoders or multithreaded WASM only if encoding or
+   finalization becomes the measured bottleneck. Segmented encoders
+   require independent keyframe starts, stable codec configuration and
+   ordered remux with a single audio clock. The current MP4 FFmpeg core
+   copies the WebCodecs video and encodes the audio. A faster FFmpeg core
+   would affect only its own portion of the current pipeline.
+
+The portable path uses dedicated workers and transferable frames or
+buffers. WebCodecs, OffscreenCanvas and any SIMD kernel are capability
+tested. Shared memory, when available, is an optional optimization with
+a separate deployment gate.
+[WebCodecs](https://www.w3.org/TR/webcodecs/#videoencoder-interface)
+and [HTML OffscreenCanvas](https://html.spec.whatwg.org/multipage/canvas.html#the-offscreencanvas-interface).
+
 ### 4K/60 MP4 playback integrity follow-up
 
 The reported 410.58-second No Good export (Windows Media Player, source
