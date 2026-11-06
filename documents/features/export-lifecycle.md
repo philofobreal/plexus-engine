@@ -1577,6 +1577,39 @@ start with a frame-equivalent grain/weave optimization and compare the
 whole MP4 job with the control. Keep this worker path available in the
 local fixture.
 
+### T20b5 conservative grain and weave scan bounds
+
+Run `npm run build`, then `node research/export/mvp-export-qualification.mjs raster "<reference MP3>"`.
+Select **Compare conservative raster bounds** and run
+`node research/export/mvp-export-qualification.mjs verify-raster` after
+the browser completes.
+
+Beyond a carrier's core, the halo alone must exceed the existing
+per-pixel threshold. The candidate solves that inequality once per
+carrier, keeps the entire core and a margin around the halo cutoff,
+and uses the resulting radius for the scan bounds. The visited pixels
+still use the same shading and accumulation order. Both variants run
+inside the loopback build of the actual MVP renderer.
+
+The comparison uses three alternating 4K/60 pairs and one 720p/60
+guard pair on the same four-second No Good excerpt. Both modes collect
+the existing grain and weave timings. The verifier checks complete
+decoded frames, audio alignment, and byte equality for each matched
+MP4. Whole-job median gain at 4K is compared with the 15% speed gate.
+
+The 4K median moved from 12.658 to 12.501 seconds per export. Grain and
+weave time moved from 7.849 to 7.817 seconds. The 1.2% whole-job
+difference falls below the speed gate. In the single 720p guard pair the
+job time moved from 12.368 to 11.756 seconds while grain and weave time
+increased from 7.450 to 7.825 seconds. That pair is a parity guard, with
+insufficient repeats for a speed claim. All four MP4 pairs matched byte
+for byte. All eight files passed native frame and audio verification.
+
+The candidate stays in the local benchmark. A later acceleration
+attempt should revisit this stage with a candidate that changes the
+measured cost enough to justify longer desktop and physical mobile
+tests. Proceed with T21b after the current manual handoff.
+
 ### 4K/60 MP4 playback integrity follow-up
 
 The reported 410.58-second No Good export (Windows Media Player, source

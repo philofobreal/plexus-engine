@@ -13,16 +13,18 @@ import { build } from 'vite';
 const [mode, source] = process.argv.slice(2);
 const profiling = mode === 'profile';
 const pacing = mode === 'pacing' || mode === 'verify-pacing';
-const renderProfiling = mode === 'render' || mode === 'verify-render';
+const raster = mode === 'raster' || mode === 'verify-raster';
+const renderProfiling = mode === 'render' || mode === 'verify-render' || raster;
 const exactWorker = mode === 'worker' || mode === 'verify-worker';
 const integrity = mode === 'integrity' || mode === 'verify-integrity';
 const productionMotion = mode === 'motion-production';
 const motion = mode === 'motion' || productionMotion;
 const realMvp = pacing || renderProfiling || exactWorker || motion;
-const logs = path.resolve(productionMotion ? 'logs/mp4-motion/production' : motion ? 'logs/mp4-motion' : integrity ? 'logs/t20b5-integrity' : exactWorker ? 'logs/t20b4' : renderProfiling ? 'logs/t20b3' : pacing ? 'logs/t20b2' : profiling ? 'logs/t20b1' : 'logs/t20a3a');
+const logs = path.resolve(raster ? 'logs/t20b5-raster' : productionMotion ? 'logs/mp4-motion/production' : motion ? 'logs/mp4-motion' : integrity ? 'logs/t20b5-integrity' : exactWorker ? 'logs/t20b4' : renderProfiling ? 'logs/t20b3' : pacing ? 'logs/t20b2' : profiling ? 'logs/t20b1' : 'logs/t20a3a');
 const production = path.resolve('dist');
 const allowed = /^(?:benchmark\.json|mp4-profile\.json|(?:long|4k)\.(?:mp4|webm)|real-track\.mp4|pacing\.json|pacing-(?:(?:720p|4k)-(?:display|cooperative)-[1-3]|stop)\.mp4|render\.json|render-(?:720p|4k)-(?:control|[1-3])\.mp4|worker\.json|worker-(?:(?:720p|4k)-(?:display|exact)-[1-3]|stop)\.mp4|integrity\.json|integrity-(?:720p|1080p|4k)\.mp4|motion\.(?:json|gray|webm)|motion-(?:current|cbr|gop|production)\.mp4)$/;
 const fixtureRoute = '/plexus-engine/research/export/mvp-export-qualification.html';
+const rasterArtifact = /^(?:raster\.json|raster-(?:720p|4k)-(?:control|candidate)-[1-3]\.mp4)$/;
 const maxBytes = 128 * 1024 * 1024;
 const tool = (name, args) => execFileSync(name, args, { windowsHide: true, encoding: 'utf8', timeout: 180_000 });
 const readJson = async file => JSON.parse(await readFile(file, 'utf8'));
@@ -40,6 +42,29 @@ function markRenderer(code) {
         const start = code.indexOf(anchor);
         assert.ok(start >= 0 && start === code.lastIndexOf(anchor), `Renderer profile boundary changed: ${name}`);
         code = code.replace(anchor, `\n            window.plexusRenderProbe?.('${name}');\n${line}\n`);
+    }
+    return code;
+}
+
+// Research build only. The pixel calculations and write order stay intact.
+function experimentRaster(code) {
+    const replace = (before, after) => {
+        assert.equal(code.split(before).length, 2, 'Raster comparison boundary changed');
+        code = code.replace(before, after);
+    };
+    replace('const depositScratch =', `const tighterSupport = new URLSearchParams(location.search).has('rasterCandidate');
+const depositScratch =`);
+    replace('    const minX = Math.max(0, Math.floor(Math.min(tailX, headX) - radius));', `    let scanRadius = radius;
+    if (tighterSupport) {
+        // Beyond the core, the halo alone must clear the shape gate.
+        // Keep the full core and a conservative margin around the halo cutoff.
+        const haloCutoff = (1 - 0.99 * Math.cbrt(negligible / haloGain)) / invRadiusSq;
+        scanRadius = Math.sqrt(Math.min(radiusSq, Math.max(coreRadius * coreRadius, haloCutoff)));
+    }
+    const minX = Math.max(0, Math.floor(Math.min(tailX, headX) - scanRadius));`);
+    for (const bound of ['Math.ceil(Math.max(tailX, headX) + radius)', 'Math.floor(Math.min(tailY, headY) - radius)',
+        'Math.ceil(Math.max(tailY, headY) + radius)', 'radius / Math.abs(normalX) : 0']) {
+        replace(bound, bound.replace('radius', 'scanRadius'));
     }
     return code;
 }
@@ -98,6 +123,7 @@ async function serve(source) {
             enforce: 'pre',
             transform(code, id) {
                 const module = id.replaceAll('\\', '/');
+                if (raster && module.endsWith('/src/visuals/wormholeGrainMaterialRaster.ts')) return experimentRaster(code);
                 if (renderProfiling && module.endsWith('/src/visuals/PlexusRenderer.ts')) return markRenderer(code);
                 if (exactWorker && module.endsWith('/src/visuals/PlexusRenderer.ts')) return wireExactRaster(code);
                 if (!module.endsWith('/src/ui/mvp/main.ts')) return;
@@ -108,7 +134,7 @@ async function serve(source) {
         build: { outDir: fixture, emptyOutDir: false, assetsDir: 'qual-assets',
             rollupOptions: { input: ['research/export/mvp-export-qualification.html', ...(realMvp ? ['mvp/index.html'] : [])] } },
     });
-    const port = productionMotion ? 5219 : motion ? 5218 : integrity ? 5217 : exactWorker ? 5216 : renderProfiling ? 5215 : pacing ? 5214 : profiling ? 5213 : 5211;
+    const port = raster ? 5220 : productionMotion ? 5219 : motion ? 5218 : integrity ? 5217 : exactWorker ? 5216 : renderProfiling ? 5215 : pacing ? 5214 : profiling ? 5213 : 5211;
     const origin = `http://127.0.0.1:${port}`;
     const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm',
         '.json': 'application/json', '.svg': 'image/svg+xml', '.wav': 'audio/wav' };
@@ -118,7 +144,7 @@ async function serve(source) {
             const url = new URL(req.url, origin);
             if (req.method === 'POST' && req.headers.origin === origin && url.pathname.startsWith('/qualification/output/')) {
                 const name = url.pathname.slice('/qualification/output/'.length);
-                if (!allowed.test(name) || Number(req.headers['content-length']) > maxBytes) { res.writeHead(400).end(); return; }
+                if (!(raster ? rasterArtifact : allowed).test(name) || Number(req.headers['content-length']) > maxBytes) { res.writeHead(400).end(); return; }
                 temp = path.join(output, '.incoming-' + randomUUID());
                 let bytes = 0;
                 await pipeline(req, new Transform({
@@ -156,7 +182,7 @@ async function serve(source) {
         }
     });
     await writeFile(activeRun, output + '\n');
-    server.listen(port, '127.0.0.1', () => console.log(origin + fixtureRoute + (productionMotion ? '?motion&production' : motion ? '?motion' : integrity ? '?integrity' : exactWorker ? '?worker' : renderProfiling ? '?render' : pacing ? '?pacing' : '')));
+    server.listen(port, '127.0.0.1', () => console.log(origin + fixtureRoute + (raster ? '?raster' : productionMotion ? '?motion&production' : motion ? '?motion' : integrity ? '?integrity' : exactWorker ? '?worker' : renderProfiling ? '?render' : pacing ? '?pacing' : '')));
 }
 
 async function decodedSamples(file) {
@@ -195,14 +221,14 @@ function compareRealAudio(reference, exportFile, times = [3, 30, 56], seconds = 
 async function verifyPacing() {
     const root = (await readFile(activeRun, 'utf8')).trim();
     assert.ok(root.startsWith(logs + path.sep) && path.basename(root).startsWith('run-'));
-    const receipt = exactWorker ? 'worker' : renderProfiling ? 'render' : 'pacing';
+    const receipt = raster ? 'raster' : exactWorker ? 'worker' : renderProfiling ? 'render' : 'pacing';
     const report = await readJson(path.join(root, receipt + '.json'));
     assert.equal(report.pass, true);
     assert.equal(report.rows.length, renderProfiling ? 8 : 14);
     assert.equal(report.fps, 60);
     const native = [];
     for (const row of report.rows.filter(row => row.artifact)) {
-        assert.match(row.artifact, allowed);
+        assert.match(row.artifact, raster ? rasterArtifact : allowed);
         const file = path.join(root, row.artifact);
         const video = JSON.parse(tool('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_frames',
             '-show_entries', 'stream=codec_name,width,height:frame=best_effort_timestamp_time', '-of', 'json', file]));
@@ -233,7 +259,11 @@ async function verifyPacing() {
         assert.ok(score > 0 && score <= 1, 'Missing frame similarity score');
         return { exactFile: false, ssim: score };
     }
-    const visual = ['720p', '4k'].map(resolution => renderProfiling ? {
+    const visual = ['720p', '4k'].map(resolution => raster ? {
+        resolution,
+        matched: (resolution === '4k' ? [1, 2, 3] : [1]).map(run =>
+            compareVideo(`raster-${resolution}-control-${run}.mp4`, `raster-${resolution}-candidate-${run}.mp4`)),
+    } : renderProfiling ? {
         resolution,
         matched: [1, 2, 3].map(run => compareVideo(`render-${resolution}-control.mp4`, `render-${resolution}-${run}.mp4`)),
     } : exactWorker ? {
@@ -247,7 +277,22 @@ async function verifyPacing() {
     });
     const referenceSha256 = createHash('sha256').update(await readFile(path.join(root, 'reference.wav'))).digest('hex');
     if (renderProfiling) assert.ok(visual.every(row => row.matched.every(pair => pair.exactFile)), 'Profiling changed the exported MP4');
-    const qualification = exactWorker ? visual.map(({ resolution, matched }) => {
+    const qualification = raster ? visual.map(({ resolution, matched }) => {
+        const median = values => values.sort((a, b) => a - b)[Math.floor(values.length / 2)];
+        const stats = variant => {
+            const rows = report.rows.filter(row => row.artifact.startsWith(`raster-${resolution}-${variant}-`));
+            assert.equal(rows.length, matched.length);
+            return {
+                jobMs: median(rows.map(row => row.elapsed)),
+                carrierMs: median(rows.map(row => row.renderFrames.reduce((sum, frame) =>
+                    sum + frame.wormholeMs.grains + frame.wormholeMs.weave, 0))),
+            };
+        };
+        const control = stats('control'), candidate = stats('candidate');
+        const gain = 1 - candidate.jobMs / control.jobMs;
+        return { resolution, pairs: matched.length, control, candidate, gain,
+            passesSpeedGate: resolution === '4k' && gain >= .15 };
+    }) : exactWorker ? visual.map(({ resolution, matched }) => {
         const runs = variant => report.rows.filter(row => row.artifact?.startsWith(`worker-${resolution}-${variant}-`));
         const median = values => {
             assert.equal(values.length, 3);
@@ -351,11 +396,11 @@ async function verifyIntegrity() {
 if (mode === 'serve') await serve(source);
 else if (mode === 'profile') await serve();
 else if (mode === 'pacing') await serve(source);
-else if (mode === 'render') await serve(source);
+else if (mode === 'render' || mode === 'raster') await serve(source);
 else if (mode === 'worker') await serve(source);
 else if (mode === 'integrity') await serve();
 else if (motion) await serve(source);
 else if (mode === 'verify') await verify();
-else if (mode === 'verify-pacing' || mode === 'verify-render' || mode === 'verify-worker') await verifyPacing();
+else if (mode === 'verify-pacing' || mode === 'verify-render' || mode === 'verify-worker' || mode === 'verify-raster') await verifyPacing();
 else if (mode === 'verify-integrity') await verifyIntegrity();
-else throw Error('Use: node research/export/mvp-export-qualification.mjs serve [reference MP3] | profile | verify | pacing <reference MP3> | verify-pacing | render <reference MP3> | verify-render | worker <reference MP3> | verify-worker | integrity | verify-integrity | motion <reference MP3> | motion-production <reference MP3>');
+else throw Error('Use: node research/export/mvp-export-qualification.mjs serve [reference MP3] | profile | verify | pacing <reference MP3> | verify-pacing | render <reference MP3> | verify-render | raster <reference MP3> | verify-raster | worker <reference MP3> | verify-worker | integrity | verify-integrity | motion <reference MP3> | motion-production <reference MP3>');

@@ -1,8 +1,8 @@
 # Plexus XR development tracker
 
-Started 2026-10-23. Checkpoint 2026-11-04 (Europe/Budapest). Integration owner: the agent in this chat.
+Started 2026-10-23. Checkpoint 2026-11-06 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**The user chose MP4 as the default and requested mobile 4K in MVP. T21a establishes timed Markdown parsing. T20b4 tests a full-resolution Wormhole worker and finds that raster work remains the largest cost in the measured desktop export. iOS and specific editors remain follow-up checks. T15 remains deferred.**
+**The user chose MP4 as the default and requested mobile 4K in MVP. T21a establishes timed Markdown parsing. T20b5 measured narrower raster scan bounds, with byte-identical output and a 1.2% 4K whole-job difference. T21b is next after manual acceptance. iOS and specific editors remain follow-up checks. T15 remains deferred.**
 
 ### Remaining work in execution order (2026-11-04)
 
@@ -26,7 +26,7 @@ remain useful alongside the acceleration work.
 | 6 | **T20a0 FFmpeg reference and decision.** Measure the real Compatible short 4K output with native FFmpeg. | Completed as research. See the [FFmpeg transition schedule](../features/export-lifecycle.md#ffmpeg-transition-priority-t20a). Treat MP4/H.264/AAC as the first candidate. Confirm the intended playback/editor destinations during qualification. |
 | 7 | **T20a1 browser prototype.** Compare FFmpeg finalization of H.264 packets, direct WASM encoding and Compatible WebM. | Research complete and manually accepted. See the [browser evidence](../features/export-lifecycle.md#t20a1-browser-evidence-2026-11-04). |
 | 8 | **T20a3 export qualification.** [Desktop timing and output](../features/export-lifecycle.md#t20a3a-desktop-output-qualification) and user-reported Android Chrome acceptance support the requested [MP4 default](../features/export-lifecycle.md#t20a3bt20a3c-acceptance-and-default). | Retain saved WebM choices and the WebM option. iOS and specific editors are follow-up checks; no cross-platform speed claim. |
-| 9 | **Export integrity, speed and T21 captions.** The [4K temporal quality comparison](../features/export-lifecycle.md#4k-mp4-temporal-quality-against-webm) selects the measured UHD MP4 rate control policy. [T20b4](../features/export-lifecycle.md#t20b4-full-resolution-wormhole-worker-prototype) validates full-resolution frame order but misses the speed gate. T21a implements [timed Markdown parsing](../features/export-lifecycle.md#t21a-timed-markdown-caption-format). | Check the new 4K MP4 on the reported Windows playback window. The next speed experiment targets frame-equivalent grain and weave optimization. T21b adds placement and preview, then T21c checks burn-in parity. |
+| 9 | **Export integrity, speed and T21 captions.** The [4K temporal quality comparison](../features/export-lifecycle.md#4k-mp4-temporal-quality-against-webm) selects the UHD MP4 rate control policy. [T20b5](../features/export-lifecycle.md#t20b5-conservative-grain-and-weave-scan-bounds) finishes the current raster experiment below the speed gate. T21a implements [timed Markdown parsing](../features/export-lifecycle.md#t21a-timed-markdown-caption-format). | T21b adds placement and preview, then T21c checks burn-in parity. Reopen accelerated export qualification when a candidate meets the whole-job speed and output quality gates. |
 | 10 | **T22–T24 Studio and own-domain release.** Confirm access and hosting scope. | T22 and T23 gate public Studio release. T24 requires a verified runtime, HTTPS, route/asset smoke checks and a tested rollback. See [ADR-013](../adr/ADR-013-studio-server-session-boundary.md). |
 
 Run **T25 as a gate for each delivery**. Keep the nine recorded Wormhole failures visible
