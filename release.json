@@ -1,7 +1,7 @@
 {
-  "id": "mvp-mp4-encoder-compat-20261106T194231455Z",
-  "previousCommit": "9849e6a229a6970cfb7cdaf09a835865e74dced7",
-  "sourceCommit": "c363dab3bd17f85f19f1f1049b98559d67028d71",
+  "id": "mvp-4k-webm-fidelity-20261106T221347580Z",
+  "previousCommit": "bd69b5def323736b7a180118a3fdbebed75f81d3",
+  "sourceCommit": "49d576af8a5fc25d546858e343ba6aef55af9cdf",
   "inputs": [
     {
       "path": "bun.lock",
@@ -709,7 +709,7 @@
     },
     {
       "path": "src/export/ExportTypes.ts",
-      "sha256": "6518ed5a8194d71e5dd381aeba48f830701e8b4edcc18e385c67f8a1f95193de"
+      "sha256": "d028d6750f045c4ebdc0123a658dd6e511e04a9052f8844d6f4c2166b55fd526"
     },
     {
       "path": "src/export/Mp4AvcLevel.ts",
@@ -725,7 +725,7 @@
     },
     {
       "path": "src/export/WebCodecsBackend.ts",
-      "sha256": "b39b088f3a3bfe27745b2b23d08b1e038cbd66a5b27ddf7740496a185e7d031d"
+      "sha256": "2608752ad515ff82e59ffda8fc644ec36f803f2ed7fda8f5574d5ce5b6d78de6"
     },
     {
       "path": "src/export/WebMExporter.ts",
@@ -737,7 +737,7 @@
     },
     {
       "path": "src/export/export.worker.ts",
-      "sha256": "ae39181fa620c37739fd2ea2d1937399c12165377f8f0632591840f2f7cd95c8"
+      "sha256": "d9a46c43067dd072d462ab6dde347059e17cbaae06ee0ee2ed61000c36a2e7af"
     },
     {
       "path": "src/export/mp4-export.worker.ts",
@@ -1141,7 +1141,7 @@
     },
     {
       "path": "src/ui/mvp/MvpVisualController.ts",
-      "sha256": "b1ed76658011a6759a457ac7911ed67e23bbed5dac8a777dbf90883f970d18be"
+      "sha256": "1257015c9ce025f747d8a25fd115eff20b9d936089a33dd1b00bf97682b165bc"
     },
     {
       "path": "src/ui/mvp/PreviewStage.ts",
@@ -1730,8 +1730,8 @@
       "sha256": "0b31b780ac1f55bf8ea1745febe8c0cf2989cea1dda7a31c6dbf4e3136aa4392"
     },
     {
-      "path": "assets/export.worker-Ch-312Ll.js",
-      "sha256": "12e9ecc1936ba2fdcc7f30889dc927beb607848df2563e77666505871dfdbaef"
+      "path": "assets/export.worker-CBSyq8BV.js",
+      "sha256": "2f887d3c01bebaa43277d27b314ecb1f58d775ced336b17b2208978c2bf5abef"
     },
     {
       "path": "assets/fft.scalar-BRpMaUFy.wasm",
@@ -1742,8 +1742,8 @@
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
-      "path": "assets/main-Cj9FD5dP.js",
-      "sha256": "3186d51576b84fd1df349846a941c3c76c9f2be1a7f7fd81ed1f8bfbab7b0662"
+      "path": "assets/main-CmPRcZB2.js",
+      "sha256": "570a66b79495206cc497cc7afd229ca4062b8a8dd8a2071d23a7b0040138fc96"
     },
     {
       "path": "assets/mp4-export.worker-DcfvZELc.js",
@@ -1754,16 +1754,16 @@
       "sha256": "e8cab06fc1fded6bebfe85d9faa9836863ea2337824f22d99c9d02f8bb7a50b1"
     },
     {
-      "path": "assets/mvp-DaRKxmLH.js",
-      "sha256": "4db2cd12a5f500acac80ece0c45b32ba5a63007a1348d00af1160147c8714ff2"
+      "path": "assets/mvp-BSgQMKdM.js",
+      "sha256": "3742c6dfae447c263e813602da359c050f9f54faca95ea24bd7d4326c9ab8c27"
     },
     {
       "path": "assets/mvp-sPSHbSJ7.css",
       "sha256": "cb96120abd23cfdbc780f2f9a1c1c2374de5f7eaf9834ff98e8185abf16c1405"
     },
     {
-      "path": "assets/PreviewQualityControl-bNBXMbCz.js",
-      "sha256": "e0b573a305c22748593fb2b28a66864493bb31a709f25cfc07ef7ac6c99d3815"
+      "path": "assets/PreviewQualityControl-BWCXvgS5.js",
+      "sha256": "01d434249683e78b1d90bd9e79f91588178d6f1fd0285048e8938aedaea1be97"
     },
     {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
@@ -1839,11 +1839,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "225cf590a371dcd38d68c70fde3e89635b18e42563160221ae018b26803410e4"
+      "sha256": "0262b89bf9d57e771ca47ad75623d4cad979bb295751e85c2d7ac22e81771270"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "d6ffb46c5503cc69cdc068a466c5e4b959680768286756f12aed9685b891669f"
+      "sha256": "63460524777a603b0ad00f86a842f9d2fe895e33849ae42c339a37ed65410953"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
