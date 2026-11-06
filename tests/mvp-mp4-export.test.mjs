@@ -5,7 +5,7 @@ import { createLoader } from './helpers/xr-loader.mjs';
 const base = { resolution: '720p', aspectRatio: '16:9', fps: 60 };
 
 test('a new or unreadable format preference starts MP4, while an explicit WebM choice survives reopening', () => {
-    const saved = new Map(), starts = [];
+    const saved = new Map(), starts = [], copied = [];
     let storageAvailable = true;
     class Element extends EventTarget {
         children = new Map();
@@ -25,13 +25,17 @@ test('a new or unreadable format preference starts MP4, while an explicit WebM c
     }
     const load = createLoader({}, {
         document: { createElement: () => new Element() },
+        navigator: { clipboard: { async writeText(value) { copied.push(JSON.parse(value).export); } } },
         localStorage: {
             getItem(key) { if (!storageAvailable) throw Error('Storage disabled'); return saved.get(key); },
             setItem(key, value) { saved.set(key, value); },
         },
     });
     const { ExportDialog } = load('ui/mvp/ExportDialog.ts');
-    const open = () => new ExportDialog({ onStart: config => starts.push(config.format ?? 'webm'), onStop() {}, onCancel() {} });
+    const open = () => new ExportDialog({
+        onStart: config => starts.push(config.format ?? (config.webmBitDepth === 10 ? 'webm10' : 'webm')),
+        onStop() {}, onCancel() {},
+    });
     const start = dialog => dialog.root.querySelector('.mvp-export-start').dispatchEvent(new Event('click'));
     const first = open();
     start(first);
@@ -39,9 +43,15 @@ test('a new or unreadable format preference starts MP4, while an explicit WebM c
     select.value = 'webm';
     select.dispatchEvent(new Event('change'));
     start(open());
+    select.value = 'webm10';
+    select.dispatchEvent(new Event('change'));
+    const reopened = open();
+    start(reopened);
+    reopened.root.querySelector('.mvp-export-copy').dispatchEvent(new Event('click'));
+    assert.equal(copied[0].webmBitDepth, 10);
     storageAvailable = false;
     start(open());
-    assert.deepEqual(starts, ['mp4', 'webm', 'mp4']);
+    assert.deepEqual(starts, ['mp4', 'webm', 'webm10', 'mp4']);
 });
 
 test('MP4 is explicit, MVP-only, and can be cancelled while loading its alternate worker', async () => {

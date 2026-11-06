@@ -1787,6 +1787,33 @@ error at keyframe boundaries and in the surrounding frames against
 that reference. Qualify the winning policy on the affected desktop
 encoder and physical mobile before changing the default.
 
+### Dark gradient precision in WebM
+
+The replacement 4K WebM reported on November 7 uses VP9 Profile 0
+with 8-bit limited-range YUV. In the dark lower-left glow at
+01:25–01:32, over 99% of luma pixels occupy three adjacent codes in
+each sampled whole-second frame. Several strong horizontal transitions
+align with codec block rows. A five-second No Good excerpt reanalysis
+compared the real MVP render before compression with the decoded export.
+Compression made neighboring dark RGB pixels substantially more likely
+to become identical. The raw render has its own fine dithering pattern.
+
+MVP offers **WebM (10-bit gradients)** alongside the existing WebM and
+MP4 choices. The format selection is saved locally and copied with the
+export settings. VP9 Profile 2 uses a worker-side encode/decode preflight
+at the requested size and frame rate. A refused profile gives an error
+before the real job starts. Standard WebM remains the compatible choice.
+The 10-bit file has a separate download name for comparison.
+[W3C VP9 codec registration](https://www.w3.org/TR/webcodecs-vp9-codec-registration/)
+
+In the matched 4K/60 desktop Chrome fixture, the mean absolute 8×8-tile
+luma error in the dark corner fell from 2.36 to 0.40 RGB code units.
+Five sampled frames were compared to their uncompressed renders.
+The 10-bit clip was about 48% larger and the observed single run took
+45 seconds versus 36 seconds. Some horizontal block structure remains
+and blue-chroma error increased in the sampled region. Manual playback
+on the affected system and physical mobile compatibility remain open.
+
 ## Scheduled export acceleration - user direction, 2026-10-29
 
 The user accepted T19a and requested that professionally justified WASM export

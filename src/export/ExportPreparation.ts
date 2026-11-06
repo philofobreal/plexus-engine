@@ -7,7 +7,7 @@ export interface ExportEncoderSettings {
 }
 
 /** WebM VP9 levels: picture size, luma sample rate, bitrate, max dimension. */
-export function vp9ExportCodec(width: number, height: number, fps: number, bitrate: number): string {
+export function vp9ExportCodec(width: number, height: number, fps: number, bitrate: number, bitDepth: 8 | 10 = 8): string {
     const levels = [[31, 983040, 36864000, 12000000, 2752], [40, 2228224, 83558400, 18000000, 4160],
         [41, 2228224, 160432128, 30000000, 4160], [50, 8912896, 311951360, 60000000, 8384],
         [51, 8912896, 588251136, 120000000, 8384]];
@@ -16,29 +16,33 @@ export function vp9ExportCodec(width: number, height: number, fps: number, bitra
     const pixels = Math.ceil(width / 32) * 32 * Math.ceil(height / 32) * 32;
     const level = levels.find(([, picture, rate, bits, dim]) => pixels <= picture && pixels * fps <= rate && bitrate <= bits && Math.max(width, height) <= dim);
     if (!level) throw new Error('Output exceeds the supported export codec levels.');
-    return `vp09.00.${level[0]}.08`;
+    return bitDepth === 10 ? `vp09.02.${level[0]}.10` : `vp09.00.${level[0]}.08`;
 }
 
 /** Runs only in the dedicated export worker, before output-file creation.
  * No audio/analysis input is borrowed. Synthetic 3-frame trial is not a long-job guarantee.
  * env is explicit so real resource ownership and failure cleanup can be tested.
  */
-export async function probeExportEncoding(config: ExportEncoderSettings, sampleRate: number, hasAudio: boolean,
+export async function probeExportEncoding({ webmBitDepth, ...config }: ExportEncoderSettings & { webmBitDepth?: 10 }, sampleRate: number, hasAudio: boolean,
     env: any = globalThis, timeoutMs = 10_000): Promise<{ config: ExportEncoderSettings; report: ExportPreparationReport }> {
     if (!env.VideoEncoder?.isConfigSupported || !env.OffscreenCanvas || !env.VideoFrame)
         throw new Error('Export preflight requires worker VideoEncoder configuration checks, OffscreenCanvas and VideoFrame.');
     const audioConfig = { codec: 'opus', sampleRate, numberOfChannels: 2 };
     if (hasAudio && (!env.AudioData || !env.AudioEncoder?.isConfigSupported
         || !(await env.AudioEncoder.isConfigSupported(audioConfig)).supported)) throw new Error('The selected stereo Opus audio configuration is not supported.');
-    const preferred = vp9ExportCodec(config.width, config.height, config.framerate, config.bitrate);
+    const highPrecision = webmBitDepth === 10;
+    const preferred = vp9ExportCodec(config.width, config.height, config.framerate, config.bitrate, highPrecision ? 10 : 8);
+    const decoderConfig = { codec: preferred, codedWidth: config.width, codedHeight: config.height };
+    if (highPrecision && !(await env.VideoDecoder?.isConfigSupported?.(decoderConfig))?.supported)
+        throw new Error('10-bit VP9 decoding is unavailable at the selected resolution. Choose WebM for 8-bit export.');
     const reasons: string[] = [];
-    for (const codec of [preferred, 'vp8']) {
+    for (const codec of highPrecision ? [preferred] : [preferred, 'vp8']) {
         const selected = { ...config, codec };
         try {
             if (!(await env.VideoEncoder.isConfigSupported(selected)).supported) { reasons.push(`${codec}: unsupported configuration`); continue; }
         } catch (error) { reasons.push(`${codec}: configuration query failed (${String(error)})`); continue; }
-        let video: any, audio: any, canvas: any, timer: ReturnType<typeof setTimeout> | undefined;
-        let videoPackets = 0, audioPackets = 0, bytes = 0, audioConfigured = false, callbackError: Error | undefined;
+        let video: any, decoder: any, audio: any, canvas: any, timer: ReturnType<typeof setTimeout> | undefined;
+        let videoPackets = 0, decodedFrames = 0, audioPackets = 0, bytes = 0, audioConfigured = false, callbackError: Error | undefined;
         const chunks: Uint8Array[] = [];
         let rejectFailure!: (error: Error) => void;
         const failure = new Promise<never>((_, reject) => { rejectFailure = reject; });
@@ -48,7 +52,16 @@ export async function probeExportEncoding(config: ExportEncoderSettings, sampleR
             const muxer = new WebMMuxer({ width: config.width, height: config.height, fps: config.framerate,
                 codecId: codec === 'vp8' ? 'V_VP8' : 'V_VP9', sampleRate, hasAudio,
                 onChunk: chunk => { bytes += chunk.byteLength; if (bytes > 8 * 1024 * 1024) throw new Error('Probe output exceeded its 8 MiB bound.'); chunks.push(chunk); } });
-            video = new env.VideoEncoder({ output: (chunk: any) => { try { videoPackets++; muxer.addVideoChunk(chunk); } catch (e) { fail(e); } }, error: fail });
+            if (highPrecision) {
+                decoder = new env.VideoDecoder({
+                    output: (frame: VideoFrame) => { frame.close(); decodedFrames++; },
+                    error: fail,
+                });
+                decoder.configure(decoderConfig);
+            }
+            video = new env.VideoEncoder({ output: (chunk: any) => { try {
+                videoPackets++; muxer.addVideoChunk(chunk); decoder?.decode(chunk);
+            } catch (e) { fail(e); } }, error: fail });
             video.configure(selected);
             if (hasAudio) {
                 audio = new env.AudioEncoder({ output: (chunk: any, metadata: any) => { try {
@@ -73,9 +86,10 @@ export async function probeExportEncoding(config: ExportEncoderSettings, sampleR
                 muxer.setAudioEndTime(count * 1e6 / sampleRate);
             }
             timer = setTimeout(() => fail(new Error('Export codec probe timed out.')), timeoutMs);
-            await Promise.race([Promise.all([video.flush(), audio?.flush()]), failure]);
+            await Promise.race([Promise.all([video.flush().then(() => decoder?.flush()), audio?.flush()]), failure]);
             if (callbackError) throw callbackError;
             if (videoPackets !== 3 || (hasAudio && !audioPackets)) throw new Error('Export codec probe produced no complete required media packet sequence.');
+            if (highPrecision && decodedFrames !== videoPackets) throw new Error('10-bit VP9 could not decode the complete video probe.');
             muxer.finalize();
             if (!bytes || !chunks.length) throw new Error('Export codec probe produced no WebM output.');
             return { config: selected, report: { codec, width: config.width, height: config.height,
@@ -83,10 +97,11 @@ export async function probeExportEncoding(config: ExportEncoderSettings, sampleR
         } catch (error) { reasons.push(`${codec}: ${error instanceof Error ? error.message : String(error)}`); }
         finally {
             if (timer !== undefined) clearTimeout(timer);
-            for (const encoder of [video, audio]) try { encoder?.close(); } catch { /* Already closed after codec failure. */ }
+            for (const codec of [video, decoder, audio]) try { codec?.close(); } catch { /* Already closed after codec failure. */ }
             if (canvas) canvas.width = canvas.height = 1;
             chunks.length = 0;
         }
     }
-    throw new Error(`Export preflight failed at ${config.width}x${config.height}/${config.framerate} fps. ${reasons.join('; ')}`);
+    const fallback = highPrecision ? ' Choose WebM for 8-bit export.' : '';
+    throw new Error(`Export preflight failed at ${config.width}x${config.height}/${config.framerate} fps. ${reasons.join('; ')}${fallback}`);
 }

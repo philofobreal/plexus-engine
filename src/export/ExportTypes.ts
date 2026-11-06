@@ -17,6 +17,8 @@ export interface ExportConfig {
     preflight?: boolean;
     /** Optional host-selected WebM video bitrate target in bits per second. */
     videoBitrate?: number;
+    /** Require the high-precision VP9 profile when exporting WebM. */
+    webmBitDepth?: 10;
     resolution: ExportResolution;
     aspectRatio: ExportAspectRatio;
     fps: number;
@@ -53,6 +55,7 @@ export interface StartExportRequest {
     frames?: number;
     sourceSamples?: number;
     bitrate?: number;
+    webmBitDepth?: 10;
     codec?: ExportVideoCodec;
 }
 

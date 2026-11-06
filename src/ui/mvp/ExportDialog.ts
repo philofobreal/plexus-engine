@@ -53,6 +53,7 @@ export class ExportDialog {
                     <span class="mvp-field-row">Format</span>
                     <select class="mvp-export-format">
                         <option value="webm">WebM</option>
+                        <option value="webm10">WebM (10-bit gradients)</option>
                         <option value="mp4" selected>MP4 (H.264 + AAC)</option>
                     </select>
                 </label>
@@ -93,7 +94,8 @@ export class ExportDialog {
         this.resolutionBtns = Array.from(this.root.querySelectorAll('.mvp-export-resolution button'));
         this.formatSelect = this.root.querySelector('.mvp-export-format')!;
         try {
-            if (localStorage.getItem(exportFormatKey) === 'webm') this.formatSelect.value = 'webm';
+            const saved = localStorage.getItem(exportFormatKey);
+            if (saved === 'webm' || saved === 'webm10') this.formatSelect.value = saved;
         } catch { /* The selected HTML option is the default. */ }
         const refreshFormatNote = () => this.root.querySelector('.mvp-export-mp4-note')!.classList.toggle('mvp-hidden', this.formatSelect.value !== 'mp4');
         refreshFormatNote();
@@ -157,7 +159,8 @@ export class ExportDialog {
         const active = this.root.querySelector('.mvp-export-resolution button.is-active') as HTMLElement | null;
         const resolution = (active?.dataset.res ?? '720p') as ExportResolution;
         return { resolution, aspectRatio: '16:9', fps: 60, watermark: false,
-            ...(this.formatSelect.value === 'mp4' ? { format: 'mp4' } : {}) };
+            ...(this.formatSelect.value === 'mp4' ? { format: 'mp4' }
+                : this.formatSelect.value === 'webm10' ? { webmBitDepth: 10 } : {}) };
     }
 
     open(): void {

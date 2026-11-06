@@ -146,10 +146,11 @@ async function startExport(message: StartExportRequest) {
         framerate: Math.max(1, Math.round(message.fps)), latencyMode: 'quality', bitrateMode: 'constant'
     };
     let prepared;
-    if (message.preflight) {
-        const result = await probeExportEncoding(config, exportSampleRate, message.hasAudio === true).catch(error => {
+    if (message.preflight || message.webmBitDepth === 10) {
+        const probeConfig = { ...config, webmBitDepth: message.webmBitDepth };
+        const result = await probeExportEncoding(probeConfig, exportSampleRate, message.hasAudio === true).catch(error => {
             if (config.bitrate <= defaultBitrate) throw error;
-            return probeExportEncoding({ ...config, bitrate: defaultBitrate }, exportSampleRate, message.hasAudio === true);
+            return probeExportEncoding({ ...probeConfig, bitrate: defaultBitrate }, exportSampleRate, message.hasAudio === true);
         });
         config = result.config; prepared = result.report;
     }

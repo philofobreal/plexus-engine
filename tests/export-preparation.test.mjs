@@ -13,6 +13,7 @@ test('VP9 levels cover actual picture/sample-rate/bitrate, including portrait an
     assert.equal(vp9ExportCodec(1920, 1080, 60, 14e6), 'vp09.00.41.08');
     assert.equal(vp9ExportCodec(3840, 2160, 30, 40e6), 'vp09.00.50.08');
     assert.equal(vp9ExportCodec(2160, 3840, 60, 40e6), 'vp09.00.51.08');
+    assert.equal(vp9ExportCodec(3840, 2160, 60, 64e6, 10), 'vp09.02.51.10');
     assert.throws(() => vp9ExportCodec(3840, 2160, 120, 40e6), /exceeds/);
     assert.throws(() => vp9ExportCodec(0, 1080, 60, 14e6), /Invalid/);
 });
@@ -68,6 +69,34 @@ test('unsupported video/audio and missing worker APIs fail before trial resource
         assert.equal(h.encoders.length, 0); assert.equal(h.frames.length, 0);
     }
     await assert.rejects(probeExportEncoding(settings, 48000, false, {}), /requires worker/);
+});
+
+test('10-bit WebM requires a successful encode and decode and preserves the explicit format choice', async () => {
+    const h = environment(), decoded = [];
+    const requested = { ...settings, webmBitDepth: 10 };
+    await assert.rejects(probeExportEncoding(requested, 48000, false, h.env), /Choose WebM for 8-bit/);
+    assert.equal(h.encoders.length, 0);
+    let decoder;
+    h.env.VideoDecoder = class {
+        static async isConfigSupported(config) {
+            assert.equal(config.codec, 'vp09.02.51.10');
+            return { supported: true };
+        }
+        constructor(init) { this.init = init; decoder = this; }
+        configure() {}
+        decode() { this.init.output({ close() { decoded.push(true); } }); }
+        flush() { return Promise.resolve(); }
+        close() { this.closed = true; }
+    };
+    const result = await probeExportEncoding(requested, 48000, false, h.env);
+    assert.equal(result.config.codec, 'vp09.02.51.10');
+    assert.equal(result.config.webmBitDepth, undefined);
+    assert.equal(decoded.length, 3);
+    assert.equal(decoder.closed, true);
+    h.env.VideoDecoder.prototype.decode = () => {};
+    await assert.rejects(probeExportEncoding(requested, 48000, false, h.env), /could not decode the complete video probe/);
+    assert.ok(h.events.filter(e => e[0] === 'support').every(e => e[1].codec === 'vp09.02.51.10'));
+    assert.equal(decoder.closed, true);
 });
 
 test('no output and stalled flush are failures and release all trial resources', async () => {

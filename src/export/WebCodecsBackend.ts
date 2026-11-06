@@ -85,7 +85,9 @@ export class WebCodecsBackend implements ExportBackend {
         if (typeof globalThis.createImageBitmap === 'undefined') throw new Error('createImageBitmap is not available in this browser.');
         const duration = runtime?.duration ?? State.duration;
         const mp4 = config.format === 'mp4';
-        const needsPreflight = mp4 || config.preflight === true;
+        const highPrecisionWebM = !mp4 && config.webmBitDepth === 10;
+        const webmPreflight = config.preflight === true || highPrecisionWebM;
+        const needsPreflight = mp4 || webmPreflight;
         if (!Number.isFinite(config.fps) || config.fps <= 0 || !Number.isFinite(duration)
             || Math.floor(duration * config.fps) < 1) throw new Error('Export requires a positive frame rate and at least one video frame.');
         if (config.runtime === 'isolated-wormhole' && !runtime) throw new Error('Isolated export runtime was not prepared.');
@@ -122,7 +124,7 @@ export class WebCodecsBackend implements ExportBackend {
             this.audioCapacity = audioBuffer ? Math.ceil(audioBuffer.sampleRate / config.fps) * 2 : 0;
             this.worker = mp4 && this.Mp4Worker ? new this.Mp4Worker() : new ExportWorker();
             const prepared = needsPreflight ? new Promise<void>(resolve => { this.resolvePrepared = resolve; }) : null;
-            const done = this.waitForExportDone(this.worker, config.preflight === true);
+            const done = this.waitForExportDone(this.worker, webmPreflight);
             void done.catch(() => undefined);
             this.worker.postMessage({
                 type: 'start_export',
@@ -133,8 +135,9 @@ export class WebCodecsBackend implements ExportBackend {
                 hasAudio: Boolean(audioBuffer),
                 ...(mp4 ? { frames: totalFrames, sourceSamples: audioBuffer?.length ?? 0 } : {}),
                 ...(!mp4 && config.videoBitrate !== undefined ? { bitrate: config.videoBitrate } : {}),
+                ...(highPrecisionWebM ? { webmBitDepth: 10 } : {}),
                 ...(this.storageLease ? { storageFile: this.storageLease.name } : {}),
-                ...(config.preflight ? { preflight: true } : {}),
+                ...(webmPreflight ? { preflight: true } : {}),
                 ...(runtime || mp4Profile ? { profile: true } : {})
             });
 
