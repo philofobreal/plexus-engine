@@ -15,6 +15,8 @@ export interface ExportConfig {
     memoryLimitMiB?: 512 | 1024 | 2048;
     /** Production MVP requests the worker-local probe; older direct callers remain compatible. */
     preflight?: boolean;
+    /** Optional host-selected WebM video bitrate target in bits per second. */
+    videoBitrate?: number;
     resolution: ExportResolution;
     aspectRatio: ExportAspectRatio;
     fps: number;

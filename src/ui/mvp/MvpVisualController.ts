@@ -1011,7 +1011,9 @@ export class MvpVisualController {
             : new WebMExporter(p5, canvas, this.engine);
         this.currentExporter = exporter;
         try {
-            return await exporter.startExport({ resolution, aspectRatio, fps, watermark, trackName, ...(mp4 ? { format: 'mp4' as const } : resolution === '4K' ? { preflight: true } : {}) }, progress => {
+            const encoding = mp4 ? { format: 'mp4' as const }
+                : resolution === '4K' ? { preflight: true, videoBitrate: 64_000_000 } : {};
+            return await exporter.startExport({ resolution, aspectRatio, fps, watermark, trackName, ...encoding }, progress => {
                 if (this.currentExporter === exporter) onProgress(progress);
             });
         } finally {

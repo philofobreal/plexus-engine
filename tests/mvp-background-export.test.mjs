@@ -93,6 +93,11 @@ test('MVP uses the supported renderer and locks playback history even when given
     progress(.9);
     assert.deepEqual(updates, [.4]);
     assert.equal(controller.canUseHistory(), true);
+
+    const uhd = controller.startExport({ ...config, resolution: '4K', videoBitrate: 1 }, () => {});
+    assert.deepEqual(selected, { ...config, resolution: '4K', preflight: true, videoBitrate: 64_000_000 });
+    finish(new Blob(['uhd']));
+    await uhd;
 });
 
 test('MVP export ignores stale mode and memory preferences and copies only current settings and cache', () => {

@@ -132,6 +132,7 @@ export class WebCodecsBackend implements ExportBackend {
                 sampleRate: audioBuffer?.sampleRate || 48_000,
                 hasAudio: Boolean(audioBuffer),
                 ...(mp4 ? { frames: totalFrames, sourceSamples: audioBuffer?.length ?? 0 } : {}),
+                ...(!mp4 && config.videoBitrate !== undefined ? { bitrate: config.videoBitrate } : {}),
                 ...(this.storageLease ? { storageFile: this.storageLease.name } : {}),
                 ...(config.preflight ? { preflight: true } : {}),
                 ...(runtime || mp4Profile ? { profile: true } : {})
@@ -185,12 +186,10 @@ export class WebCodecsBackend implements ExportBackend {
                         await this.seekVideoFrame(State.exportTime);
                         if (this.cancelled || this.stoppedEarly) break;
                         const redraw = this.renderOffscreenFrame();
-                        if (mp4) {
-                            if (!cooperative) displayFrame = nextAnimationFrame();
-                            // A display callback may arrive before p5 has finished. Keep the
-                            // target alive through redraw, even if the job is stopped or cancelled.
-                            await redraw;
-                        }
+                        if (!cooperative) displayFrame = nextAnimationFrame();
+                        // A display callback may arrive before p5 finishes the export frame.
+                        // Keep its target alive until redraw settles, including on cancellation.
+                        await redraw;
                     }
                     stages.renderRequest += now() - renderStarted;
                     if (!cooperative) {

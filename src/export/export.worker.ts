@@ -138,15 +138,19 @@ async function startExport(message: StartExportRequest) {
     totalEncodeTimeMs = 0;
     peakEncodeTimeMs = 0;
     exportSampleRate = Math.max(1, Math.round(message.sampleRate || 48_000));
+    const defaultBitrate = getDefaultBitrate(message.width, message.height);
     let config: VideoEncoderConfigLike = {
         codec: message.codec || 'vp09.00.10.08',
         width: Math.max(1, Math.floor(message.width)), height: Math.max(1, Math.floor(message.height)),
-        bitrate: Number.isFinite(message.bitrate) && message.bitrate! > 0 ? Math.round(message.bitrate!) : getDefaultBitrate(message.width, message.height),
+        bitrate: Number.isFinite(message.bitrate) && message.bitrate! > 0 ? Math.round(message.bitrate!) : defaultBitrate,
         framerate: Math.max(1, Math.round(message.fps)), latencyMode: 'quality', bitrateMode: 'constant'
     };
     let prepared;
     if (message.preflight) {
-        const result = await probeExportEncoding(config, exportSampleRate, message.hasAudio === true);
+        const result = await probeExportEncoding(config, exportSampleRate, message.hasAudio === true).catch(error => {
+            if (config.bitrate <= defaultBitrate) throw error;
+            return probeExportEncoding({ ...config, bitrate: defaultBitrate }, exportSampleRate, message.hasAudio === true);
+        });
         config = result.config; prepared = result.report;
     }
     const dir = await navigator.storage.getDirectory();

@@ -1751,6 +1751,42 @@ Use `motion-production "<reference MP3>"` and
 `node research/export/mvp-motion-verify.mjs --production` to check the
 actual production worker without the experiment transforms.
 
+### Full-length MP4 and WebM follow-up
+
+The two November 6 exports supplied for the No Good playback report each
+contain 24,635 decodable 3840×2160 frames at 60 fps. Their presentation
+timestamps are continuous at the container's precision and DTS increases
+throughout. MP4 has 411 one-second keys and WebM has the same cadence with
+two additional keys. The complete video payloads averaged 9.88 Mbit/s
+for MP4 and 30.89 Mbit/s for WebM. At 00:46–01:00 the rates were
+10.44 and 35.75 Mbit/s. Native D3D11 and software H.264 decoding
+matched byte for byte in the reduced luma comparison from 00:45–01:02.
+
+The measured inter-frame luma changes in the two files correlate at
+0.955 in the reported 00:47–01:00 window. The largest changes include
+the same frames near 00:53.583 and 00:56.683. The formats diverge
+more at whole-second boundaries than between them. This identifies
+common image motion and a compression difference. The comparison
+cannot assign the perceived reversal to an individual rendered layer.
+
+The WebM capture path now waits for the requested p5 redraw, as MP4
+already did. MVP 4K WebM requests 64 Mbit/s, with the prior 40 Mbit/s
+target retried during preflight if needed. In the matched 840-frame
+fixture, the mean temporal luma error fell from 0.5915 to 0.5667
+and boundary error fell from 0.6910 to 0.6706. The test file grew
+from 68.9 MB to 85.2 MB. Both numbers are measurements for this clip.
+
+The 80 Mbit/s MP4 request with half-second keys and automatic encoder
+selection barely moved the effective rate or the temporal error.
+The 80 Mbit/s software preference with two-second keys and variable
+rate control reduced mean temporal error from 0.5740 to 0.5265 but
+raised whole-second boundary error from 0.5694 to 0.6011. Keep the
+existing MP4 configuration. For the next MP4 quality experiment,
+capture the exact render before compression and evaluate temporal
+error at keyframe boundaries and in the surrounding frames against
+that reference. Qualify the winning policy on the affected desktop
+encoder and physical mobile before changing the default.
+
 ## Scheduled export acceleration - user direction, 2026-10-29
 
 The user accepted T19a and requested that professionally justified WASM export

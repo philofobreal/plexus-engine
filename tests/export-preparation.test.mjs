@@ -138,8 +138,13 @@ test('Cancel, Stop and worker errors during preflight release the worker without
     }
 });
 
-test('real worker start probes before OPFS, configures the verified codec, and excludes probe frames from saved output', async () => {
+test('real worker retries a refused WebM bitrate before OPFS and excludes probe frames from saved output', async () => {
     const h = environment(), messages = [], chunks = [], order = [];
+    const query = h.env.VideoEncoder.isConfigSupported;
+    h.env.VideoEncoder.isConfigSupported = async config => {
+        const result = await query(config);
+        return { supported: result.supported && config.bitrate <= 40_000_000 };
+    };
     const self = { ...h.env, postMessage: m => messages.push(m) };
     const workerLoad = createLoader({}, { ...h.env, self, setTimeout, clearTimeout, performance, TextEncoder, TextDecoder, Blob, Float32Array,
         setInterval: () => 1, clearInterval() {}, navigator: { storage: { async getDirectory() {
@@ -149,9 +154,12 @@ test('real worker start probes before OPFS, configures the verified codec, and e
             }; } };
         } } } });
     workerLoad('export/export.worker.ts');
-    await self.onmessage({ data: { type: 'start_export', width: 3840, height: 2160, fps: 60, sampleRate: 48000, hasAudio: true, preflight: true } });
+    await self.onmessage({ data: { type: 'start_export', width: 3840, height: 2160, fps: 60, sampleRate: 48000,
+        hasAudio: true, preflight: true, bitrate: 64_000_000 } });
     assert.deepEqual(order, [3]); assert.equal(messages.find(m => m.type === 'export_prepared').report.codec, 'vp09.00.51.08');
+    assert.deepEqual(h.events.filter(event => event[0] === 'support').map(event => event[1].bitrate), [64_000_000, 64_000_000, 40_000_000]);
     assert.equal(h.encoders.at(-2).config.codec, 'vp09.00.51.08');
+    assert.equal(h.encoders.at(-2).config.bitrate, 40_000_000);
     await self.onmessage({ data: { type: 'encode_frame', bitmap: { close() {} }, timestampUs: 0, audioPlanar: new Float32Array(1600), audioSampleCount: 800 } });
     await self.onmessage({ data: { type: 'finalize_export' } });
     assert.equal(messages.filter(m => m.type === 'frame_encoded').length, 1);
