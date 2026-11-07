@@ -1,10 +1,13 @@
 # Plexus XR development tracker
 
-Started 2026-10-23. Checkpoint 2026-11-06 (Europe/Budapest). Integration owner: the agent in this chat.
+Started 2026-10-23. Checkpoint 2026-11-07 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**The user chose MP4 as the default and requested mobile 4K in MVP. T21a establishes timed Markdown parsing. T20b5 measured narrower raster scan bounds, with byte-identical output and a 1.2% 4K whole-job difference. T21b is next after manual acceptance. iOS and specific editors remain follow-up checks. T15 remains deferred.**
+**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. Source audit WH-00 is complete; implementation starts with WH-01 after the plan handoff. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
 
 ### Remaining work in execution order (2026-11-04)
+
+This section retains the 2026-11-04 schedule and its subsequent historical
+deliveries. The rendering/acceleration priority is now the 2026-11-07 epic above.
 
 The live Pages release marker reports source `2463f73`, matching the local and remote
 `codex/t11-acoustic-activity` branch. Pages is at `9b2b041` and `master` is at `201bf5d`.

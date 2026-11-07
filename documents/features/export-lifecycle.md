@@ -1,5 +1,13 @@
 # Staged export lifecycle
 
+Current planning update, 2026-11-07: the requested
+[cross-host Wormhole rendering epic](../audits/cross-host-wormhole-rendering-epic.md)
+supersedes the export-only next-spike schedule. Dashboard and MVP playback and
+all existing exports will share a worker/GPU core, with distinct preview and
+exact-frame scheduling. WH-01 is the first implementation task; T20c2's GPU
+experiment is WH-02 and production export integration is WH-06. This is a plan,
+not a delivered backend or a reversal of MVP's Isolated Wormhole retirement.
+
 ## T19c resource follow-up - staged for quota-aware delivery
 
 User direction, 2026-10-29: replace the premature fixed 384 MiB refusal with real

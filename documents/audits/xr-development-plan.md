@@ -1,7 +1,9 @@
 # Plexus XR execution and measurement plan (T01)
 
+The [2026-11-07 cross-host rendering epic](cross-host-wormhole-rendering-epic.md)
+records the current Wormhole playback/export priority and staged implementation.
 The [2026-11-04 execution schedule](xr-development-tracker.md#remaining-work-in-execution-order-2026-11-04)
-records the current order, entry conditions and priorities for the remaining work.
+retains the earlier schedule and acceptance history; the tracker identifies superseding priorities.
 
 Date: 2026-10-23 (Europe/Budapest). Integration/contract owner: the agent in this chat.
 Status: T01 staged plan accepted by the user; individual proposals remain gated by their owning tasks.
