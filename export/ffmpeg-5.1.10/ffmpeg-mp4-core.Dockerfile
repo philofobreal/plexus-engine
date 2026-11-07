@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Research build for H.264 stream copy + PCM16 WAV to AAC only.
+# Browser-encoded AVC/VP9 stream copy and PCM16 WAV to AAC.
 FROM emscripten/emsdk:3.1.40@sha256:c1e807a6e03ac5bd5b37bae2ace3c46c08579e2ddeb951037a3b8dac7067f2cc AS build
 # FFmpeg n5.1.10; keep ABI compatibility with the pinned CLI binding.
 ADD https://github.com/FFmpeg/FFmpeg.git#19feb712f5c1821d8a3fa1ad63c5bd2e3b9672eb /src
@@ -11,7 +11,7 @@ RUN emconfigure ./configure \
       --disable-everything --disable-network --disable-pthreads --disable-w32threads --disable-os2threads \
       --nm=emnm --ar=emar --ranlib=emranlib --cc=emcc --cxx=em++ --objcc=emcc --dep-cc=emcc \
       --enable-protocol=file --enable-demuxer=mov,wav --enable-muxer=mp4 \
-      --enable-decoder=pcm_s16le --enable-encoder=aac --enable-parser=aac,h264 \
+      --enable-decoder=pcm_s16le,vp9 --enable-encoder=aac --enable-parser=aac,h264,vp9 \
       --enable-filter=abuffer,abuffersink,aformat,anull,aresample,atrim,buffer,buffersink,format,null,trim \
     && emmake make -j6
 RUN mkdir -p /out \

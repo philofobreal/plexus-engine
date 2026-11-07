@@ -1,7 +1,7 @@
 {
-  "id": "mvp-webm-10bit-gradients-20261106T233943478Z",
-  "previousCommit": "862805ea48e6f8ae42f51a816177371c630ce631",
-  "sourceCommit": "b07cb8196ed30ed5d75138732acb9e2db48bd996",
+  "id": "mvp-mp4-10bit-vp9-20261107T042129865Z",
+  "previousCommit": "f6f42b2bc205eab0320f235779640e8fc4a83e9b",
+  "sourceCommit": "5ba4460c1768d4e0b59c4cf4f9b94b3076e85aa2",
   "inputs": [
     {
       "path": "bun.lock",
@@ -37,15 +37,15 @@
     },
     {
       "path": "public/export/ffmpeg-5.1.10/ffmpeg-core.js",
-      "sha256": "c91aee5492ab7b8cdb2f160ee0b3514269fe09f2e20f641c9c40f9003154cacc"
+      "sha256": "b72028720fa6ab660c9a90af680e9587828fb54bc282632a4c59788412805dbf"
     },
     {
       "path": "public/export/ffmpeg-5.1.10/ffmpeg-core.wasm",
-      "sha256": "8e71567f34b4ccb3b06bb75057cec95e68e49462d876b5a2e1a2a20f0d515aee"
+      "sha256": "430d6a10612772ead0349d0d823b34b0771f00eec82f9c9e1a5399747b9f4e0b"
     },
     {
       "path": "public/export/ffmpeg-5.1.10/ffmpeg-mp4-core.Dockerfile",
-      "sha256": "a761596ea9663e8178e5c1da7cba4d4bcd446aa96de92dbc654e4b8cadd2a87e"
+      "sha256": "bb01db946eb1098bde743b64dd78c2116dcb4484fba0542381694d5ea28622b4"
     },
     {
       "path": "public/export/ffmpeg-5.1.10/ffmpeg-source.tar.gz",
@@ -61,7 +61,7 @@
     },
     {
       "path": "public/export/ffmpeg-5.1.10/index.html",
-      "sha256": "0649015c4e6f29fe03eba678341d6357d9b697fb524ea10b6d836a6a0b6ef909"
+      "sha256": "ffbd72941959628f7910dce06e772ec93d75858bb8c5d405284ad88c332320ae"
     },
     {
       "path": "public/favicon.svg",
@@ -709,7 +709,7 @@
     },
     {
       "path": "src/export/ExportTypes.ts",
-      "sha256": "437fd282c19c7adf1cf7b0921876d8830a9d9d4249d7794f26a4291530aff8ff"
+      "sha256": "b2b7d1788e118be63a187497d10459af31a25fe388b762da1357595006b6f477"
     },
     {
       "path": "src/export/Mp4AvcLevel.ts",
@@ -725,7 +725,7 @@
     },
     {
       "path": "src/export/WebCodecsBackend.ts",
-      "sha256": "c8ff3e09efb1ab2a451957f716b83e59d4e9a221ca3f19aa26a5f0b62b9decb0"
+      "sha256": "cba249972e4fc1bc69f2127eb2defe3046177b3a8499be3b4127722c40692bb8"
     },
     {
       "path": "src/export/WebMExporter.ts",
@@ -741,7 +741,7 @@
     },
     {
       "path": "src/export/mp4-export.worker.ts",
-      "sha256": "eaf610d76f54a02b51a6656c38976fc681c3282ca551736ef0b5929297dfba73"
+      "sha256": "808fe2d35ea62cd1a432c81cd561246d93d9ae31aa620145bbf00721884835d1"
     },
     {
       "path": "src/gameplay/RhythmChartBuilder.ts",
@@ -1109,7 +1109,7 @@
     },
     {
       "path": "src/ui/mvp/ExportDialog.ts",
-      "sha256": "78f5ad6908323c1934bdf93ff9595980cb347377d9726d1d0c796a5691964642"
+      "sha256": "6de6f6e005616b019299a5dd80cac29a29858570dd213aa51ac912507685015f"
     },
     {
       "path": "src/ui/mvp/FirstRunScreen.ts",
@@ -1137,11 +1137,11 @@
     },
     {
       "path": "src/ui/mvp/MvpUI.ts",
-      "sha256": "1ac7c58d0b3c76cae0611975eab970e9f657457471713bd004df3fbf7256f486"
+      "sha256": "725ff7dff0d383bd2271ef44952d5527290b9d7bc91464bf19a1c499356fe289"
     },
     {
       "path": "src/ui/mvp/MvpVisualController.ts",
-      "sha256": "81e632decd83f4c2cae12846a0fb22900b98a78d97fb127762d435ee574fde31"
+      "sha256": "c86f76b41743c313a50119f02038579cd38d843c3cf4197acf6567359c6e483c"
     },
     {
       "path": "src/ui/mvp/PreviewStage.ts",
@@ -1738,32 +1738,32 @@
       "sha256": "5fe5fb080b24f0c7fbbb305ced4b3d836d37351843709ad220ca72f8c8554a5c"
     },
     {
+      "path": "assets/main-BZvq0YU7.js",
+      "sha256": "6c6be0fecb3055cdedec7b62ca8850dcf260437bff0ca9a0b772ab384cd3ed6b"
+    },
+    {
       "path": "assets/main-C7BsYBKL.css",
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
     },
     {
-      "path": "assets/main-DME_Fuc8.js",
-      "sha256": "54dd99ed9eb937f681612112608d77b2282a12ecc12e852de56a5b2b862c5b74"
+      "path": "assets/mp4-export.worker-3urq0Zyt.js",
+      "sha256": "ec7b51420fe1acb2654b90bfe5d5f985f7e0725891ba5bfb5c2a5d7fbb46ec08"
     },
     {
-      "path": "assets/mp4-export.worker-DcfvZELc.js",
-      "sha256": "7daf2af1c7616e8bac2d71b9bb44d59e2405831aae6a5add43c53b35579cd927"
+      "path": "assets/mp4-export.worker-CzT0j-DD.js",
+      "sha256": "0ef084e58ac422aeabfd987577c6e9a31ddaa6f1f968e854668b340e6d9462d4"
     },
     {
-      "path": "assets/mp4-export.worker-DIRamTrx.js",
-      "sha256": "e8cab06fc1fded6bebfe85d9faa9836863ea2337824f22d99c9d02f8bb7a50b1"
-    },
-    {
-      "path": "assets/mvp-qk8id4Xd.js",
-      "sha256": "39ec456f20e65d50c56545a19f74ee33eb8d84132c605eae0517bae7797a7ddc"
+      "path": "assets/mvp-DB5Q416Q.js",
+      "sha256": "6679d0afec946d97663c1d8a9c47597eaee85ad28fc72f4687a21a2adee26af5"
     },
     {
       "path": "assets/mvp-sPSHbSJ7.css",
       "sha256": "cb96120abd23cfdbc780f2f9a1c1c2374de5f7eaf9834ff98e8185abf16c1405"
     },
     {
-      "path": "assets/PreviewQualityControl-C54SyoRf.js",
-      "sha256": "dca4488b90a1a9bedd238294d5ea4586c1eda679b95f41a3b21fe514ceb67379"
+      "path": "assets/PreviewQualityControl-CZogbosn.js",
+      "sha256": "5c14c56647d458401b4cc0b5f51a61dc6e5514e4f4f05b601c8896afa887aca2"
     },
     {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
@@ -1799,15 +1799,15 @@
     },
     {
       "path": "export/ffmpeg-5.1.10/ffmpeg-core.js",
-      "sha256": "c91aee5492ab7b8cdb2f160ee0b3514269fe09f2e20f641c9c40f9003154cacc"
+      "sha256": "b72028720fa6ab660c9a90af680e9587828fb54bc282632a4c59788412805dbf"
     },
     {
       "path": "export/ffmpeg-5.1.10/ffmpeg-core.wasm",
-      "sha256": "8e71567f34b4ccb3b06bb75057cec95e68e49462d876b5a2e1a2a20f0d515aee"
+      "sha256": "430d6a10612772ead0349d0d823b34b0771f00eec82f9c9e1a5399747b9f4e0b"
     },
     {
       "path": "export/ffmpeg-5.1.10/ffmpeg-mp4-core.Dockerfile",
-      "sha256": "a761596ea9663e8178e5c1da7cba4d4bcd446aa96de92dbc654e4b8cadd2a87e"
+      "sha256": "bb01db946eb1098bde743b64dd78c2116dcb4484fba0542381694d5ea28622b4"
     },
     {
       "path": "export/ffmpeg-5.1.10/ffmpeg-source.tar.gz",
@@ -1823,7 +1823,7 @@
     },
     {
       "path": "export/ffmpeg-5.1.10/index.html",
-      "sha256": "0649015c4e6f29fe03eba678341d6357d9b697fb524ea10b6d836a6a0b6ef909"
+      "sha256": "ffbd72941959628f7910dce06e772ec93d75858bb8c5d405284ad88c332320ae"
     },
     {
       "path": "export/ffmpeg-5.1.10/Mediabunny-LICENSE",
@@ -1839,11 +1839,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "ab2f28fd8a12fae42bc5b85956f41691a5716edb579d967a03523bbaba5ec025"
+      "sha256": "4c31b9682fcd0b421b52f385299bf9b4711fb159b0ecb55f23990adcbd5794da"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "894bc41be152637fc736d0b92d30a1ea0cdec8134fdc6fdf96cbcbba489e60ae"
+      "sha256": "1e2f2b9bd333ee8836149fbd0c74326c02da39c75f2894c7a1202f0d1381405a"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
