@@ -15,6 +15,13 @@ Production integration is still WH-06. The existing Compatible path and accepted
 10-bit quality remain the control; internal exact sessions will not restore the
 retired Isolated product mode.
 
+WH-02 now supplies the [shared GPU material laboratory and quality decision](../audits/wormhole-wh02-gpu-spike.md).
+Reference IIR bloom and mixed precision meet the fixed image gates; full GPU line
+coverage remains experimental, so the qualified laboratory profile keeps Canvas
+lines inside the worker. This demonstrates the kernel, not accelerated production
+export. WH-03a/03b prepare the common frame/timing seam before WH-04/05 playback
+and WH-06 export integration. Existing MP4/WebM bit depth and defaults are unchanged.
+
 ## T19c resource follow-up - staged for quota-aware delivery
 
 User direction, 2026-10-29: replace the premature fixed 384 MiB refusal with real

@@ -2,7 +2,20 @@
 
 Started 2026-10-23. Checkpoint 2026-11-07 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00 and WH-01 are complete; WH-02 is next after the manual handoff. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01 and WH-02 research are delivered; WH-03a is next after the manual handoff. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+
+### WH-02 research handoff (2026-11-07)
+
+[WH-02](wormhole-wh02-gpu-spike.md) extracts the original nine XR shaders unchanged,
+adds a plain WebGL2/Offscreen worker adapter and publishes a separate CPU/GPU image
+comparison laboratory. Mixed Float16 accumulation / Float32 reference IIR and
+Canvas-reference lines pass the eight fixed image cases. Full GPU line coverage
+is still unqualified; keep reference lines in the worker at integration.
+Full cumulative Node: 2150 / 2141 pass / the same nine preset failures / no skip/cancel;
+targeted: 88/88, including one release-input guard added after the full run
+(2151-case run union). Production host scheduling/export/profile choices are unchanged.
+Next: **WH-03a frame preparation extraction**, after the manual pause; WH-03b timing,
+WH-04 MVP, WH-05 dashboard, WH-06 exports and WH-07 profiles follow.
 
 ### WH-01 handoff (2026-11-07)
 

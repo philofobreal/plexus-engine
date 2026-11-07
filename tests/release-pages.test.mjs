@@ -70,3 +70,16 @@ test('historical task publishers fail before any deployment or source snapshot c
             error => error.status === 1 && error.stderr.toString().includes('Retired task publisher.'));
     }
 });
+
+test('release identity binds every published GPU laboratory input without unrelated research files', t => {
+    const f=fixture(t),files=['wormhole-gpu.html','wormhole-gpu-lab.mjs','wormhole-gpu.worker.ts',
+        'wormhole-baseline-capture.mjs','wormhole-quality.mjs','parallel-material-data.mjs'].map(n=>'research/export/'+n);
+    for(const name of files)f.write(name,'initial');
+    f.commit();const source=f.snapshot();
+    for(const name of files){
+        assert.ok(source.inputs.some(input=>input.path===name),name);
+        f.write(name,'changed');assert.throws(()=>checkReleaseSource(source,f.cwd),/inventory or content/);
+        f.write(name,'initial');
+    }
+    f.write('research/export/unrelated-experiment.mjs','unrelated');checkReleaseSource(source,f.cwd);
+});

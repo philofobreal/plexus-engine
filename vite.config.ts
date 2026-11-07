@@ -14,7 +14,8 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         mvp: resolve(__dirname, 'mvp/index.html'),
-        xr: resolve(__dirname, 'xr/index.html')
+        xr: resolve(__dirname, 'xr/index.html'),
+        wormholeGpuLab: resolve(__dirname, 'research/export/wormhole-gpu.html')
       }
     }
   }

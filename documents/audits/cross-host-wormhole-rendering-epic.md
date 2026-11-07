@@ -1,7 +1,7 @@
 # Közös, workerben és GPU-n futó Wormhole: epic terv
 
 Dátum: 2026-11-07, Europe/Budapest. Feltárt forrás: `9733a4a4aebf2ff0d68e41f8f3b102c0a40c52de`.
-Állapot: WH-00 feltárás és [WH-01 szerződés/baseline](wormhole-wh01-contract-baseline.md) elkészült; a következő task WH-02. Éles GPU-integráció még nincs.
+Állapot: WH-00, [WH-01 szerződés/baseline](wormhole-wh01-contract-baseline.md) és a [WH-02 GPU-próba](wormhole-wh02-gpu-spike.md) átadva. A minőségvédett GPU-anyagmag megvalósítható; következő WH-03a. Éles host/export GPU-integráció még nincs.
 Integrációs felelős: az aktuális fejlesztési munkamenet egyetlen szerződésgazdája.
 
 ## 1. Cél és helye a főtervben
@@ -25,6 +25,14 @@ leírás a várható viselkedésről, majd kézi tesztelési megálló. Az első
 összehasonlítás WH-02-ben, az MVP teljes lejátszási átállása WH-04-ben, a sima
 hosté WH-05-ben várható. Az export a WH-06 feladata. Ez függőségi sorrend,
 nem naptári vagy már igazolt gyorsulási ígéret.
+
+WH-02 döntés: a szigorú 2D referencia anyag/weave/bloom kapuit a vegyes
+Float16-akkumuláció/Float32-szűrés teljesíti. A Canvas-vonalak ugyanabban a
+workerben maradnak, amíg a külön GPU-vonalprofil is megfelel: két esetben még
+elbukott a rögzített sötét tile kapun. Ez minőségvédett fallback, nem a teljes
+GPU-vonalút promóciója. A WH-03a megkezdhető ezzel az anyagmaggal; WH-04-ben
+a vonalpolicy és a képesség-/hiba-fallback explicit bekötést kap. A még nyitott
+GPU-vonalminősítés nem jogosít küszöblazításra vagy csendes képcserére.
 
 ## 2. Mit igazolt a kódfeltárás?
 

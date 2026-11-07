@@ -12,7 +12,9 @@ const api=p=>JSON.parse(execFileSync('gh',['api',repo+p],{windowsHide:true}));
 const write=(p,x)=>fs.writeFileSync(p,JSON.stringify(x,null,2)+'\n');
 function files(root,prefix=''){return fs.readdirSync(root,{withFileTypes:true}).flatMap(e=>e.isDirectory()?files(path.join(root,e.name),prefix+e.name+'/'):[prefix+e.name]);}
 export function collectBuildInputs(cwd=process.cwd()){
- const paths=git(cwd,'ls-files','--cached','--others','--exclude-standard','--','src','public','scripts','index.html','mvp/index.html','xr/index.html','package.json','package-lock.json','bun.lock','tsconfig*.json','vite.config.*').split(/\r?\n/).filter(Boolean);
+ const paths=git(cwd,'ls-files','--cached','--others','--exclude-standard','--','src','public','scripts','index.html','mvp/index.html','xr/index.html','package.json','package-lock.json','bun.lock','tsconfig*.json','vite.config.*',
+  'research/export/wormhole-gpu.html','research/export/wormhole-gpu-lab.mjs','research/export/wormhole-gpu.worker.ts',
+  'research/export/wormhole-baseline-capture.mjs','research/export/wormhole-quality.mjs','research/export/parallel-material-data.mjs').split(/\r?\n/).filter(Boolean);
  return [...new Set(paths)].filter(p=>fs.existsSync(path.join(cwd,p))&&fs.statSync(path.join(cwd,p)).isFile()).sort().map(p=>({path:p,sha256:hash(fs.readFileSync(path.join(cwd,p)))}));
 }
 export function checkReleaseSource(release,cwd=process.cwd()){
