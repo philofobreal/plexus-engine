@@ -12,6 +12,7 @@ import { build } from 'vite';
 
 const [mode, source] = process.argv.slice(2);
 const profiling = mode === 'profile';
+const parallel = mode === 'parallel' || mode === 'verify-parallel';
 const pacing = mode === 'pacing' || mode === 'verify-pacing';
 const raster = mode === 'raster' || mode === 'verify-raster';
 const renderProfiling = mode === 'render' || mode === 'verify-render' || raster;
@@ -20,12 +21,13 @@ const precision = mode === 'integrity-precision' || mode === 'verify-integrity-p
 const integrity = mode === 'integrity' || mode === 'verify-integrity' || precision;
 const productionMotion = mode === 'motion-production';
 const motion = mode === 'motion' || productionMotion;
-const realMvp = pacing || renderProfiling || exactWorker || motion;
-const logs = path.resolve(raster ? 'logs/t20b5-raster' : productionMotion ? 'logs/mp4-motion/production' : motion ? 'logs/mp4-motion' : precision ? 'logs/mp4-precision-integrity' : integrity ? 'logs/t20b5-integrity' : exactWorker ? 'logs/t20b4' : renderProfiling ? 'logs/t20b3' : pacing ? 'logs/t20b2' : profiling ? 'logs/t20b1' : 'logs/t20a3a');
+const realMvp = pacing || renderProfiling || exactWorker || motion || parallel;
+const logs = path.resolve(parallel ? 'logs/t20c1-parallel-material' : raster ? 'logs/t20b5-raster' : productionMotion ? 'logs/mp4-motion/production' : motion ? 'logs/mp4-motion' : precision ? 'logs/mp4-precision-integrity' : integrity ? 'logs/t20b5-integrity' : exactWorker ? 'logs/t20b4' : renderProfiling ? 'logs/t20b3' : pacing ? 'logs/t20b2' : profiling ? 'logs/t20b1' : 'logs/t20a3a');
 const production = path.resolve('dist');
 const allowed = /^(?:benchmark\.json|mp4-profile\.json|(?:long|4k)\.(?:mp4|webm)|real-track\.mp4|pacing\.json|pacing-(?:(?:720p|4k)-(?:display|cooperative)-[1-3]|stop)\.mp4|render\.json|render-(?:720p|4k)-(?:control|[1-3])\.mp4|worker\.json|worker-(?:(?:720p|4k)-(?:display|exact)-[1-3]|stop)\.mp4|integrity\.json|integrity-(?:720p|1080p|4k)\.mp4|motion\.(?:json|gray|webm)|motion-(?:current|cbr|gop|production)\.mp4)$/;
 const fixtureRoute = '/plexus-engine/research/export/mvp-export-qualification.html';
 const rasterArtifact = /^(?:raster\.json|raster-(?:720p|4k)-(?:control|candidate)-[1-3]\.mp4)$/;
+const parallelArtifact = /^(?:parallel\.json|parallel-(?:(?:720p|4k)-(?:control|candidate)-[1-3]|stop)\.mp4)$/;
 const maxBytes = 128 * 1024 * 1024;
 const tool = (name, args) => execFileSync(name, args, { windowsHide: true, encoding: 'utf8', timeout: 180_000 });
 const readJson = async file => JSON.parse(await readFile(file, 'utf8'));
@@ -86,6 +88,20 @@ function wireExactRaster(code) {
             } else if (compositor) {`);
 }
 
+function wireParallelMaterial(code) {
+    code = code.replaceAll('\r\n', '\n');
+    const draw = '        p.draw = () => {';
+    const seam = '            workerUsed = false;\n            if (compositor) {';
+    for (const anchor of [draw, seam]) assert.equal(code.split(anchor).length, 2, 'Parallel material boundary changed');
+    return code.replace(draw, '        p.draw = async () => {').replace(seam, `            workerUsed = false;
+            if (State.isExporting && window.plexusParallelMaterial) {
+                await window.plexusParallelMaterial.draw(State, backend, styleRegistry.get(State.visualMode), () => {
+                    if (compositor) identityTransitionController.draw(ct, backend, compositor, styleRegistry, particles, shockwaves, drawIdentity);
+                    else drawIdentity(styleRegistry.get(State.visualMode), backend, particles, shockwaves, { timeSec: ct, advanceSharedSimulation: true });
+                });
+            } else if (compositor) {`);
+}
+
 function experimentEncoding(code, id) {
     if (!id.replaceAll('\\', '/').endsWith('/src/export/mp4-export.worker.ts')) return;
     const edit = (before, after) => {
@@ -117,7 +133,7 @@ async function serve(source) {
             '-show_entries', 'stream=duration_ts', '-of', 'default=nw=1:nk=1', reference]);
         assert.equal(Number(samples.trim()), clipSeconds * 48000, 'The reference excerpt is incomplete.');
     }
-    await build({
+    const built = await build({
         configFile: false, base: '/plexus-engine/', publicDir: false,
         ...(motion && !productionMotion ? { worker: { plugins: () => [{ name: 'mp4-motion-encoding', enforce: 'pre', transform: experimentEncoding }] } } : {}),
         plugins: realMvp ? [{
@@ -128,15 +144,27 @@ async function serve(source) {
                 if (raster && module.endsWith('/src/visuals/wormholeGrainMaterialRaster.ts')) return experimentRaster(code);
                 if (renderProfiling && module.endsWith('/src/visuals/PlexusRenderer.ts')) return markRenderer(code);
                 if (exactWorker && module.endsWith('/src/visuals/PlexusRenderer.ts')) return wireExactRaster(code);
+                if (parallel && module.endsWith('/src/visuals/PlexusRenderer.ts')) return wireParallelMaterial(code);
                 if (!module.endsWith('/src/ui/mvp/main.ts')) return;
                 return code + '\nimport { installPacingBridge } from "../../../research/export/mvp-pacing-bridge.mjs";\n'
-                    + `installPacingBridge(ui, engine, ${exactWorker});\n`;
+                    + `installPacingBridge(ui, engine, ${exactWorker}, ${parallel});\n`;
             },
         }] : [],
         build: { outDir: fixture, emptyOutDir: false, assetsDir: 'qual-assets',
             rollupOptions: { input: ['research/export/mvp-export-qualification.html', ...(realMvp ? ['mvp/index.html'] : [])] } },
     });
-    const port = raster ? 5220 : productionMotion ? 5219 : motion ? 5218 : precision ? 5232 : integrity ? 5217 : exactWorker ? 5216 : renderProfiling ? 5215 : pacing ? 5214 : profiling ? 5213 : 5211;
+    if (parallel) {
+        const bundles = (Array.isArray(built) ? built : [built]).flatMap(result => result.output);
+        const manifest = {
+            mode, baseCommit: tool('git', ['rev-parse', 'HEAD']).trim(),
+            dirty: Boolean(tool('git', ['status', '--porcelain']).trim()),
+            referenceSha256: createHash('sha256').update(await readFile(path.join(output, 'reference.wav'))).digest('hex'),
+            bundles: await Promise.all(bundles.map(async entry => ({ path: entry.fileName,
+                sha256: createHash('sha256').update(await readFile(path.join(fixture, entry.fileName))).digest('hex') }))),
+        };
+        await writeFile(path.join(output, 'build.json'), JSON.stringify(manifest, null, 2) + '\n');
+    }
+    const port = parallel ? 5237 : raster ? 5220 : productionMotion ? 5219 : motion ? 5218 : precision ? 5232 : integrity ? 5217 : exactWorker ? 5216 : renderProfiling ? 5215 : pacing ? 5214 : profiling ? 5213 : 5211;
     const origin = `http://127.0.0.1:${port}`;
     const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm',
         '.json': 'application/json', '.svg': 'image/svg+xml', '.wav': 'audio/wav' };
@@ -146,7 +174,7 @@ async function serve(source) {
             const url = new URL(req.url, origin);
             if (req.method === 'POST' && req.headers.origin === origin && url.pathname.startsWith('/qualification/output/')) {
                 const name = url.pathname.slice('/qualification/output/'.length);
-                if (!(raster ? rasterArtifact : allowed).test(name) || Number(req.headers['content-length']) > maxBytes) { res.writeHead(400).end(); return; }
+                if (!(parallel ? parallelArtifact : raster ? rasterArtifact : allowed).test(name) || Number(req.headers['content-length']) > maxBytes) { res.writeHead(400).end(); return; }
                 temp = path.join(output, '.incoming-' + randomUUID());
                 let bytes = 0;
                 await pipeline(req, new Transform({
@@ -183,8 +211,12 @@ async function serve(source) {
             else res.destroy();
         }
     });
+    await new Promise((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(port, '127.0.0.1', resolve);
+    });
     await writeFile(activeRun, output + '\n');
-    server.listen(port, '127.0.0.1', () => console.log(origin + fixtureRoute + (raster ? '?raster' : productionMotion ? '?motion&production' : motion ? '?motion' : precision ? '?integrity&precision' : integrity ? '?integrity' : exactWorker ? '?worker' : renderProfiling ? '?render' : pacing ? '?pacing' : '')));
+    console.log(origin + fixtureRoute + (parallel ? '?parallel' : raster ? '?raster' : productionMotion ? '?motion&production' : motion ? '?motion' : precision ? '?integrity&precision' : integrity ? '?integrity' : exactWorker ? '?worker' : renderProfiling ? '?render' : pacing ? '?pacing' : ''));
 }
 
 async function decodedSamples(file) {
@@ -223,21 +255,25 @@ function compareRealAudio(reference, exportFile, times = [3, 30, 56], seconds = 
 async function verifyPacing() {
     const root = (await readFile(activeRun, 'utf8')).trim();
     assert.ok(root.startsWith(logs + path.sep) && path.basename(root).startsWith('run-'));
-    const receipt = raster ? 'raster' : exactWorker ? 'worker' : renderProfiling ? 'render' : 'pacing';
+    const receipt = parallel ? 'parallel' : raster ? 'raster' : exactWorker ? 'worker' : renderProfiling ? 'render' : 'pacing';
     const report = await readJson(path.join(root, receipt + '.json'));
     assert.equal(report.pass, true);
-    assert.equal(report.rows.length, renderProfiling ? 8 : 14);
+    assert.equal(report.rows.length, parallel ? 10 : renderProfiling ? 8 : 14);
     assert.equal(report.fps, 60);
     const native = [];
     for (const row of report.rows.filter(row => row.artifact)) {
-        assert.match(row.artifact, raster ? rasterArtifact : allowed);
+        assert.match(row.artifact, parallel ? parallelArtifact : raster ? rasterArtifact : allowed);
         const file = path.join(root, row.artifact);
         const video = JSON.parse(tool('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_frames',
             '-show_entries', 'stream=codec_name,width,height:frame=best_effort_timestamp_time', '-of', 'json', file]));
         const audio = JSON.parse(tool('ffprobe', ['-v', 'error', '-select_streams', 'a:0',
             '-show_entries', 'stream=codec_name,channels,sample_rate', '-of', 'json', file])).streams[0];
         const [width, height] = row.resolution === '4K' ? [3840, 2160] : [1280, 720];
-        assert.deepEqual(video.streams[0], { codec_name: 'h264', width, height });
+        assert.deepEqual(video.streams[0], { codec_name: parallel ? 'vp9' : 'h264', width, height });
+        if (parallel) {
+            const format = tool('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=pix_fmt', '-of', 'csv=p=0', file]).trim();
+            assert.equal(format, 'yuv420p10le');
+        }
         assert.deepEqual(audio, { codec_name: 'aac', sample_rate: '48000', channels: 2 });
         assert.equal(video.frames.length, row.frames);
         assert.ok(video.frames.every((frame, index) => Math.abs(Number(frame.best_effort_timestamp_time) - index / 60) < .00001));
@@ -246,11 +282,16 @@ async function verifyPacing() {
         const audioWindows = compareRealAudio(path.join(root, 'reference.wav'), file, row.command ? [.25] : [.25, 2.75], .5);
         const hash = createHash('sha256');
         for await (const chunk of createReadStream(file)) hash.update(chunk);
-        native.push({ artifact: row.artifact, frames: row.frames, samples, audioWindows, sha256: hash.digest('hex') });
+        const videoHash = parallel ? tool('ffmpeg', ['-v', 'error', '-xerror', '-i', file,
+            '-map', '0:v:0', '-c', 'copy', '-f', 'hash', '-hash', 'sha256', '-']).trim() : undefined;
+        native.push({ artifact: row.artifact, frames: row.frames, samples, audioWindows, sha256: hash.digest('hex'), videoHash });
     }
     const hashes = new Map(native.map(row => [row.artifact, row.sha256]));
+    const videoHashes = new Map(native.map(row => [row.artifact, row.videoHash]));
     function compareVideo(left, right) {
         assert.ok(hashes.has(left) && hashes.has(right), 'Missing matched export');
+        if (parallel && videoHashes.get(left) === videoHashes.get(right))
+            return { exactFile: hashes.get(left) === hashes.get(right), exactVideo: true, ssim: 1 };
         if (hashes.get(left) === hashes.get(right)) return { exactFile: true, ssim: 1 };
         const result = spawnSync('ffmpeg', ['-hide_banner', '-nostdin', '-filter_complex_threads', '1',
             '-i', path.join(root, left), '-i', path.join(root, right),
@@ -261,7 +302,11 @@ async function verifyPacing() {
         assert.ok(score > 0 && score <= 1, 'Missing frame similarity score');
         return { exactFile: false, ssim: score };
     }
-    const visual = ['720p', '4k'].map(resolution => raster ? {
+    const visual = ['720p', '4k'].map(resolution => parallel ? {
+        resolution,
+        matched: (resolution === '4k' ? [1, 2, 3] : [1]).map(run =>
+            compareVideo(`parallel-${resolution}-control-${run}.mp4`, `parallel-${resolution}-candidate-${run}.mp4`)),
+    } : raster ? {
         resolution,
         matched: (resolution === '4k' ? [1, 2, 3] : [1]).map(run =>
             compareVideo(`raster-${resolution}-control-${run}.mp4`, `raster-${resolution}-candidate-${run}.mp4`)),
@@ -279,7 +324,21 @@ async function verifyPacing() {
     });
     const referenceSha256 = createHash('sha256').update(await readFile(path.join(root, 'reference.wav'))).digest('hex');
     if (renderProfiling) assert.ok(visual.every(row => row.matched.every(pair => pair.exactFile)), 'Profiling changed the exported MP4');
-    const qualification = raster ? visual.map(({ resolution, matched }) => {
+    const qualification = parallel ? visual.map(({ resolution, matched }) => {
+        const median = values => values.sort((a, b) => a - b)[Math.floor(values.length / 2)];
+        const runs = variant => report.rows.filter(row => row.artifact?.startsWith(`parallel-${resolution}-${variant}-`));
+        const controlMs = median(runs('control').map(row => row.elapsed));
+        const candidates = runs('candidate');
+        const candidateMs = median(candidates.map(row => row.elapsed));
+        assert.ok(matched.every(pair => pair.exactVideo), 'Parallel material changed encoded frame content');
+        const gain = 1 - candidateMs / controlMs;
+        return { resolution, pairs: matched.length, controlMs, candidateMs, gain,
+            tileRoundTripMs: median(candidates.map(row => row.parallelFrames.reduce((sum, f) => sum + f.roundTripMs, 0))),
+            resolveAndPresentMs: median(candidates.map(row => row.parallelFrames.reduce((sum, f) => sum + f.resolveAndPresentMs, 0))),
+            maxFrameTransferBytes: Math.max(...candidates.flatMap(row => row.parallelFrames.map(f => f.transferredBytes))),
+            passesSpeedGate: resolution === '4k' && gain >= .15,
+            guardWithinFivePercent: resolution === '720p' ? gain >= -.05 : undefined };
+    }) : raster ? visual.map(({ resolution, matched }) => {
         const median = values => values.sort((a, b) => a - b)[Math.floor(values.length / 2)];
         const stats = variant => {
             const rows = report.rows.filter(row => row.artifact.startsWith(`raster-${resolution}-${variant}-`));
@@ -401,9 +460,10 @@ else if (mode === 'profile') await serve();
 else if (mode === 'pacing') await serve(source);
 else if (mode === 'render' || mode === 'raster') await serve(source);
 else if (mode === 'worker') await serve(source);
+else if (mode === 'parallel') await serve(source);
 else if (mode === 'integrity' || mode === 'integrity-precision') await serve();
 else if (motion) await serve(source);
 else if (mode === 'verify') await verify();
-else if (mode === 'verify-pacing' || mode === 'verify-render' || mode === 'verify-worker' || mode === 'verify-raster') await verifyPacing();
+else if (mode === 'verify-pacing' || mode === 'verify-render' || mode === 'verify-worker' || mode === 'verify-raster' || mode === 'verify-parallel') await verifyPacing();
 else if (mode === 'verify-integrity' || mode === 'verify-integrity-precision') await verifyIntegrity();
-else throw Error('Use: node research/export/mvp-export-qualification.mjs serve [reference MP3] | profile | verify | pacing <reference MP3> | verify-pacing | render <reference MP3> | verify-render | raster <reference MP3> | verify-raster | worker <reference MP3> | verify-worker | integrity | verify-integrity | integrity-precision | verify-integrity-precision | motion <reference MP3> | motion-production <reference MP3>');
+else throw Error('Use: node research/export/mvp-export-qualification.mjs serve [reference MP3] | profile | verify | pacing <reference MP3> | verify-pacing | render <reference MP3> | verify-render | raster <reference MP3> | verify-raster | worker <reference MP3> | verify-worker | parallel <reference MP3> | verify-parallel | integrity | verify-integrity | integrity-precision | verify-integrity-precision | motion <reference MP3> | motion-production <reference MP3>');

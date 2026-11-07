@@ -1657,6 +1657,131 @@ a separate deployment gate.
 [WebCodecs](https://www.w3.org/TR/webcodecs/#videoencoder-interface)
 and [HTML OffscreenCanvas](https://html.spec.whatwg.org/multipage/canvas.html#the-offscreencanvas-interface).
 
+### T20c1 parallel material tiles
+
+The first Turbo experiment splits the material accumulation raster into
+two or four disjoint horizontal row ranges. One host still advances
+simulation, automation and frame numbers. Each worker visits all grain
+and weave carriers in their original order, with the full-raster sample
+coordinates, and writes only its own rows. This preserves contributions
+crossing tile boundaries without combining independently rounded sums.
+The scalar rasterizer's optional tile argument leaves ordinary callers
+on the full-raster path.
+
+`research/export/parallel-material.mjs` owns a bounded worker pool.
+The carrier list uses Float64 transport to preserve the original JS
+numbers. Transferable input and Float32 output buffers return to the
+same worker for reuse when sizes match. Input allocation follows the
+active carrier count. The host joins L0, runs the existing L1/L2 resolve,
+composites the original layers, draws the musical display and applies
+the existing PostFX pass. There is one material frame in flight, while
+the unchanged encoder admits at most two completed frames. Replies must
+match the frame serial, tile, carrier count and buffer sizes. Failure,
+timeout and cancellation terminate the pool and reject pending work.
+
+This is a loopback experiment for a steady Wormhole without a backplate.
+The qualification build alone injects an awaited material handoff and
+defers the musical display until the material completes. Production
+`p.draw`, live preview, XR, the export menu and its defaults do not use
+this prototype. Its private display interception must become an explicit
+renderer contract before production integration.
+
+Run `npm run build`, then
+`node research/export/mvp-export-qualification.mjs parallel "<reference MP3>"`.
+Open the printed URL, select the parallel comparison and then run
+`node research/export/mvp-export-qualification.mjs verify-parallel`.
+The optional `workers=4` query selects four workers; two is the fixture
+default. Compare each worker count in a separate retained run.
+
+The fixture uses the accepted MP4 VP9 Profile 2, 10-bit quality, 60 fps,
+one-second keyframes and the same four-second No Good excerpt. Three
+alternating 4K pairs and one 720p guard pair compare complete job times,
+including worker startup and codec finalization. Cancel interrupts a
+pending tile; the same host then retries Stop & save. Native validation
+checks every decoded frame timestamp, codec precision, AAC alignment and
+matched encoded video hashes. Transfer-byte counts describe traffic,
+not peak memory; concurrent stage times must not be added to job time.
+
+Windows Headless Chrome 156, Intel Core Ultra 7 258V, eight logical
+processors, about 32 GiB system RAM. Both worker counts used the same
+reference excerpt, whose SHA-256 is
+`73277217ce1d12e9172cad562ff2f5ebf1f791180b0d9269b3f4fedde2998c9a`.
+The three 4K pairs include the first worker start. The 720p result is a
+single guard pair, insufficient for a speed claim.
+
+| Workers | 4K control median | 4K candidate median | 4K job change | 720p guard change |
+| --- | ---: | ---: | ---: | ---: |
+| 2 | 32.510 s | 33.574 s | 3.3% slower | 4.5% slower |
+| 4 | 30.362 s | 31.766 s | 4.6% slower | 11.6% slower |
+
+All eight matched file pairs are byte-identical. Native validation
+decoded all 3,962 saved frames in 18 files, including both Stop prefixes.
+Minimum sampled audio correlation with the PCM reference was 0.9943.
+Cancel during a pending material frame published no file; the same host
+successfully retried Stop & save. Transfer traffic peaked at 6,007,200
+bytes per material frame with two workers and 8,328,000 with four.
+Two-worker median tile round-trip time totaled 18.994 seconds per 4K
+job, versus 17.788 with four; resolve/presentation totaled 2.221 and
+2.088 seconds. These intervals overlap other job stages.
+
+Neither count passes the 15% whole-job speed gate; four also fails the
+720p slowdown guard. Retain this as an unpromoted numerical reference.
+No public Turbo choice is enabled. Receipts are under
+`logs/t20c1-parallel-material`, with the first run located by
+`two-worker-run.txt` and the second by `active-run.txt`. Their verification
+receipt SHA-256 values are
+`5729f1d969d3371b575161bc438c060eb7c5fba33a19ab61571bc04e05f68b98`
+and `10c787e309bd8929dd7a79c8544361d9d4be38f04aebac846e2cda1eb5f30276`.
+The first experiment retains a served-file hash inventory; the second
+also retains a build manifest. Its historical `sourceCommit` is the
+base commit with an uncommitted prototype, identified by its bundle
+hashes. New manifests explicitly label the base commit and dirty state.
+
+Following the user's GPU question, next is **T20c2, a bounded GPU
+material-raster experiment**, before public UI integration. The XR
+`GrainMaterialRenderer` already implements the carrier capsule law on
+the GPU. Reuse its algorithm through a host-independent export adapter;
+do not import the XR scene/runtime into MVP. Keep one owner of simulation
+and frame numbers, and retain the original material resolution and
+accepted 10-bit codec policy. Measure preparation/upload, accumulation,
+resolve, GPU completion, canvas/bitmap handoff, encoding and whole-job
+time, including cold initialization. Prefer resident GPU composition
+where the host permits it; a GPU location alone is not a speed result.
+
+The XR half-float accumulation differs numerically from the CPU path
+and cannot inherit the byte-equality result above. Check render-target
+capabilities and precision, and predeclare image-error, dark-gradient,
+banding and temporal-continuity criteria against uncompressed scalar
+reference frames before running the comparison. Preserve the numbered
+frame, audio, PostFX, Stop/Cancel/retry and cleanup gates. Only a viable
+candidate proceeds to paired complete exports and broader qualification.
+
+A bulk scalar double-precision WASM kernel remains a reserve experiment
+if GPU capability, image quality or transfer cost prevents qualification,
+or if profiling still identifies CPU material work as a bottleneck.
+It must preserve noise identity, carrier order and explicit Float32
+raster stores, with transcendental/rounding checks. More JS workers
+alone have not helped at the accepted export quality.
+
+A viable candidate still needs long jobs, transitions, backplates,
+WebM, portrait layouts, physical mobile, peak resources and fallback
+qualification before the T20c menu/storage/Copy integration. T21b
+follows the Turbo investigation and manual handoff.
+
+Validation: `npm run build`, 185 targeted Node tests and a final
+five-test worker-pool rerun passed. The standalone research-worker
+type check passed with
+`node node_modules/typescript/bin/tsc --ignoreConfig --allowJs --noEmit --target es2023 --module esnext --moduleResolution bundler --skipLibCheck research/export/parallel-material.worker.ts`.
+`npm test -- --test-concurrency=4` ran all 2,136 cases: 2,121 passed,
+nine failed with the retained baseline names and assertion evidence,
+and six encountered sandbox filesystem/Git/PowerShell restrictions.
+The same three platform test files passed all eight cases with workspace
+`TEMP`/`TMP` and normal local permissions, without source changes. No
+test was skipped. `acceptance.json` retains the raw full-run hash,
+classifications, exact commands and hashes for all 222 active test files
+and 41 helper/fixture files. The previous 2,129-case MP4 precision run
+also completed with its same nine known failures.
+
 ### 4K/60 MP4 playback integrity follow-up
 
 The reported 410.58-second No Good export (Windows Media Player, source

@@ -151,17 +151,20 @@ async function one(caseId, format, resolution, seconds, artifact, cues, pcm, pro
 const median = xs => xs.slice().sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 const qualificationMode = new URLSearchParams(location.search);
 const precision = qualificationMode.has('precision');
+const parallelComparison = qualificationMode.has('parallel');
+const parallelWorkers = Number(qualificationMode.get('workers') ?? 2);
 const rasterComparison = qualificationMode.has('raster');
 const renderProfiling = qualificationMode.has('render') || rasterComparison;
 const exactWorker = qualificationMode.has('worker');
 const integrity = qualificationMode.has('integrity');
 const motionComparison = qualificationMode.has('motion');
 if (integrity) profileButton.textContent = 'Check numbered MP4 frames';
-pacingButton.hidden = !qualificationMode.has('pacing') && !renderProfiling && !exactWorker && !motionComparison;
+pacingButton.hidden = !qualificationMode.has('pacing') && !renderProfiling && !exactWorker && !motionComparison && !parallelComparison;
 if (renderProfiling) pacingButton.textContent = 'Profile real MVP render stages';
 if (rasterComparison) pacingButton.textContent = 'Compare conservative raster bounds';
 if (exactWorker) pacingButton.textContent = 'Compare full-resolution Wormhole worker';
 if (motionComparison) pacingButton.textContent = 'Compare 4K motion against WebM';
+if (parallelComparison) pacingButton.textContent = 'Compare parallel material tiles';
 pacingButton.onclick = async () => {
     bench.disabled = profileButton.disabled = pacingButton.disabled = load.disabled = true;
     const report = { userAgent: navigator.userAgent, visible: !document.hidden, fps, rows: [] };
@@ -211,9 +214,9 @@ pacingButton.onclick = async () => {
             await post('motion.json', new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
             return;
         }
-        async function run(fixture, resolution, scheduling, artifact, command, profileRender = false, useWorker = false) {
+        async function run(fixture, resolution, scheduling, artifact, command, profileRender = false, useWorker = false, workers = 0) {
             status.textContent = `Real MVP ${resolution} ${useWorker ? 'worker' : scheduling} ${command ?? artifact}…`;
-            const { blob, capturedTimes, ...result } = await fixture.run({ resolution, scheduling, command, fps, profileRender, useWorker });
+            const { blob, capturedTimes, ...result } = await fixture.run({ resolution, scheduling, command, fps, profileRender, useWorker, parallelWorkers: workers });
             const frames = command ? 61 : 240;
             check(result.profile?.framesSubmitted === frames && capturedTimes.length === frames
                 && capturedTimes.every((time, index) => Math.abs(time - index / fps) < 1e-9), 'MVP captured an unexpected frame or stale draw');
@@ -239,6 +242,13 @@ pacingButton.onclick = async () => {
                     'Worker did not present every admitted frame at the export resolution');
                 if (command === 'cancel') check(result.cancelledDuringRaster, 'Cancel missed the pending render');
             }
+            if (workers) {
+                check(result.parallelFrames?.length === frames && result.parallelFrames.every((frame, index) =>
+                    frame.time === index / fps && frame.workerCount === workers
+                    && [frame.roundTripMs, frame.resolveAndPresentMs, frame.transferredBytes, ...frame.workerMs].every(x => Number.isFinite(x) && x >= 0)),
+                    'Parallel material missed an ordered frame');
+                if (command === 'cancel') check(result.cancelledDuringRaster, 'Cancel missed the pending material tile');
+            }
             check(Boolean(blob) === (command !== 'cancel'), 'Unexpected result publication');
             if (blob) await post(artifact, blob);
             const cleanup = await fixture.clear();
@@ -246,6 +256,17 @@ pacingButton.onclick = async () => {
             report.rows.push({ resolution, scheduling, artifact, command, frames, ...result });
         }
         for (const resolution of ['720p', '4K']) {
+            if (parallelComparison) {
+                const pairs = resolution === '4K' ? 3 : 1;
+                for (let pair = 1; pair <= pairs; pair++) {
+                    for (const variant of pair % 2 ? ['control', 'candidate'] : ['candidate', 'control']) {
+                        await run(await loadMvp(), resolution, 'display',
+                            `parallel-${resolution.toLowerCase()}-${variant}-${pair}.mp4`,
+                            undefined, false, false, variant === 'candidate' ? parallelWorkers : 0);
+                    }
+                }
+                continue;
+            }
             if (rasterComparison) {
                 const pairCount = resolution === '4K' ? 3 : 1;
                 for (let pair = 1; pair <= pairCount; pair++) {
@@ -276,11 +297,12 @@ pacingButton.onclick = async () => {
         }
         if (!renderProfiling) {
             const fixture = await loadMvp();
-            await run(fixture, '720p', 'cooperative', null, 'cancel', false, exactWorker);
-            await run(fixture, '720p', 'cooperative', exactWorker ? 'worker-stop.mp4' : 'pacing-stop.mp4', 'stop', false, exactWorker);
+            await run(fixture, '720p', 'cooperative', null, 'cancel', false, exactWorker, parallelComparison ? parallelWorkers : 0);
+            await run(fixture, '720p', 'cooperative', parallelComparison ? 'parallel-stop.mp4' : exactWorker ? 'worker-stop.mp4' : 'pacing-stop.mp4',
+                'stop', false, exactWorker, parallelComparison ? parallelWorkers : 0);
         }
         report.pass = true;
-        await post(rasterComparison ? 'raster.json' : exactWorker ? 'worker.json' : renderProfiling ? 'render.json' : 'pacing.json',
+        await post(parallelComparison ? 'parallel.json' : rasterComparison ? 'raster.json' : exactWorker ? 'worker.json' : renderProfiling ? 'render.json' : 'pacing.json',
             new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
     } catch (error) { report.pass = false; report.error = String(error); }
     finally {

@@ -63,7 +63,7 @@ function createRenderProbe() {
 }
 
 // This bridge is injected only into the loopback build of the actual MVP entry point.
-export function installPacingBridge(ui, engine, workerFixture = false) {
+export function installPacingBridge(ui, engine, workerFixture = false, parallelFixture = false) {
     const controller = ui.controller;
     const effect = TemporalFragmentationEffect.prototype;
     const isActive = effect.isActive, apply = effect.apply;
@@ -99,7 +99,7 @@ export function installPacingBridge(ui, engine, workerFixture = false) {
             if (!State.trackAnalysis || State.visualMode !== 'cosmic-wormhole') throw Error('Missing MVP analysis or Wormhole');
             return { duration: State.duration, analysisFrames: State.frames.length };
         },
-        async run({ resolution, scheduling, command, fps, profileRender = false, useWorker = false, motionVariant }) {
+        async run({ resolution, scheduling, command, fps, profileRender = false, useWorker = false, motionVariant, parallelWorkers = 0 }) {
             if (useWorker && !workerFixture) throw Error('Worker benchmark build required');
             if (motionVariant) await controller.preloadPresetsForPlan(controller.getAutomationPlanView());
             const p5 = controller.exportP5Instance, canvas = controller.exportCanvas;
@@ -116,7 +116,7 @@ export function installPacingBridge(ui, engine, workerFixture = false) {
                 const isExporting = State.isExporting;
                 if (isExporting) probe?.start(State.exportTime);
                 const result = draw.apply(this, args);
-                if (isExporting && useWorker) return Promise.resolve(result).then(() => { renderedTime = State.exportTime; });
+                if (isExporting && (useWorker || parallelFixture)) return Promise.resolve(result).then(() => { renderedTime = State.exportTime; });
                 if (isExporting) {
                     renderedTime = State.exportTime;
                     probe?.finish(canvas.dataset.wormholeRaster);
@@ -151,9 +151,21 @@ export function installPacingBridge(ui, engine, workerFixture = false) {
             });
             const initialPostFrames = postFrames;
             const started = performance.now();
-            let exactRaster, cancelledDuringRaster = false;
+            let exactRaster, parallelMaterial, cancelledDuringRaster = false;
             try {
                 motionComparison = Boolean(motion);
+                if (parallelWorkers) {
+                    if (!parallelFixture) throw Error('Parallel material build required');
+                    const { createParallelMaterial } = await import('./parallel-material.mjs');
+                    parallelMaterial = createParallelMaterial(parallelWorkers, time => {
+                        if (command !== 'cancel' || commandAt !== undefined || time < 61 / fps) return;
+                        commandAt = performance.now();
+                        cancelledDuringRaster = true;
+                        exporter.cancelExport();
+                        parallelMaterial.dispose();
+                    });
+                    window.plexusParallelMaterial = parallelMaterial;
+                }
                 if (useWorker) {
                     const { createExactRaster } = await import('./mvp-exact-raster.mjs');
                     exactRaster = createExactRaster(time => {
@@ -168,9 +180,10 @@ export function installPacingBridge(ui, engine, workerFixture = false) {
                 let blob;
                 try {
                     const config = { resolution, aspectRatio: '16:9', fps, watermark: false,
+                        ...(parallelFixture ? { mp4VideoCodec: 'vp9-10bit' } : {}),
                         ...(motionVariant === 'webm' ? { preflight: true } : { format: 'mp4' }) };
                     blob = await exporter.startExport(config, progress => {
-                        if (!command || (useWorker && command === 'cancel') || commandAt !== undefined || progress < .225) return;
+                        if (!command || ((useWorker || parallelWorkers) && command === 'cancel') || commandAt !== undefined || progress < .225) return;
                         commandAt = performance.now();
                         if (command === 'stop') exporter.stopAndSave();
                         else exporter.cancelExport();
@@ -187,11 +200,14 @@ export function installPacingBridge(ui, engine, workerFixture = false) {
                         frames: motion.frames, pixels: motion.pixels } } : {}),
                     ...(probe ? { renderFrames: probe.frames } : {}),
                     ...(exactRaster ? { workerFrames: exactRaster.frames, workerSetupMs: exactRaster.setupMs, cancelledDuringRaster } : {}),
+                    ...(parallelMaterial ? { parallelFrames: parallelMaterial.frames, parallelSetupMs: parallelMaterial.setupMs, cancelledDuringRaster } : {}),
                     controlSettlementMs: commandAt === undefined ? undefined : performance.now() - commandAt };
             } finally {
                 motionComparison = false;
                 exactRaster?.dispose();
+                parallelMaterial?.dispose();
                 if (exactRaster) delete window.plexusExactRaster;
+                if (parallelMaterial) delete window.plexusParallelMaterial;
                 probe?.dispose();
                 p5.draw = draw;
                 window.createImageBitmap = createBitmap;
