@@ -95,6 +95,43 @@ test('long diagonal carriers skip most empty samples without changing pixels', (
   console.log(`Diagonal pixel candidates: ${reference.scanVisits} -> ${fast.scanVisits}`);
 });
 
+test('independent row tiles preserve overlapping grain and weave accumulation exactly', () => {
+  for (const [cols, rows, width, height] of [[128, 73, 1920, 1080], [73, 128, 1080, 1920], [480, 270, 3840, 2160]]) {
+    const carriers = Array.from({ length: 100 }, (_, i) => baseCarrier({
+      tailX: (0.45 + Math.sin(i * 1.7) * 0.6) * width,
+      tailY: (0.5 + Math.cos(i * 2.3) * 0.55) * height,
+      headX: (0.5 + Math.cos(i * 1.3) * 0.6) * width,
+      headY: (0.5 + Math.sin(i * 2.1) * 0.6) * height,
+      strokeWeight: i % 7 + 1, seed: i + .337, generation: i % 9,
+      materialPhase: i * .618, depth: i % 11 / 10, weave: i % 2
+    }));
+    const reference = new Float32Array(cols * rows * 4);
+    for (const carrier of carriers) material.accumulateWormholeGrainCarrier(reference, cols, rows, width, height, carrier, .9);
+    assert.ok(reference.some(value => value > 0));
+    for (const parts of [2, 3, 4]) {
+      const joined = new Float32Array(reference.length);
+      for (let part = 0; part < parts; part++) {
+        const firstRow = Math.floor(part * rows / parts);
+        const rowCount = Math.floor((part + 1) * rows / parts) - firstRow;
+        const tile = new Float32Array(cols * rowCount * 4);
+        for (const carrier of carriers) material.accumulateWormholeGrainCarrier(tile, cols, rows, width, height, carrier, .9, { firstRow, rowCount });
+        joined.set(tile, firstRow * cols * 4);
+      }
+      assert.deepEqual(bytes(joined), bytes(reference), `${cols}x${rows}, ${parts} tiles`);
+    }
+  }
+});
+
+test('invalid material tile bounds and undersized buffers are rejected before writing', () => {
+  const buffer = new Float32Array(16 * 8 * 4).fill(.25);
+  const before = bytes(buffer).slice();
+  for (const tile of [{ firstRow: -1, rowCount: 8 }, { firstRow: 1.5, rowCount: 8 },
+    { firstRow: 0, rowCount: 0 }, { firstRow: 8, rowCount: 9 }, { firstRow: 0, rowCount: 16 }]) {
+    material.accumulateWormholeGrainCarrier(buffer, 16, 16, 16, 16, baseCarrier(), .8, tile);
+    assert.deepEqual(bytes(buffer), before);
+  }
+});
+
 function createBuffers(cols = 64, rows = 36) {
   const l1Cols = Math.max(1, Math.round(cols / 3));
   const l1Rows = Math.max(1, Math.round(rows / 3));

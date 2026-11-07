@@ -304,6 +304,8 @@ const depositScratch = createPreparedWormholeGrainCarrier();
  * carrier. The deposited body is a depth-stratified capsule: a tight core, a flux-scaled haze halo,
  * a head-weighted taper, multi-octave along-carrier filament breakup, and carrier-local fibre and
  * micro-detail. All modulation lives inside the carrier support; none of it moves the carrier.
+ * An optional tile stores only its contiguous rows. Shading keeps full-raster coordinates so
+ * independently accumulated tiles join without seams or changes to floating-point write order.
  */
 export function accumulateWormholeGrainCarrier(
     l0: Float32Array,
@@ -312,11 +314,16 @@ export function accumulateWormholeGrainCarrier(
     viewportWidth: number,
     viewportHeight: number,
     carrier: ResolvedWormholeGrainCarrier,
-    detail: number
+    detail: number,
+    tile?: { firstRow: number; rowCount: number }
 ): void {
     const safeCols = Math.max(1, Math.floor(cols));
     const safeRows = Math.max(1, Math.floor(rows));
-    if (l0.length < safeCols * safeRows * 4) return;
+    const firstRow = tile?.firstRow ?? 0;
+    const rowCount = tile?.rowCount ?? safeRows;
+    if (!Number.isSafeInteger(firstRow) || !Number.isSafeInteger(rowCount)
+        || firstRow < 0 || rowCount <= 0 || firstRow + rowCount > safeRows) return;
+    if (l0.length < safeCols * rowCount * 4) return;
     const prepared = depositScratch;
     if (!prepareWormholeGrainCarrier(cols, rows, viewportWidth, viewportHeight, carrier, detail, prepared)) return;
 
@@ -331,8 +338,8 @@ export function accumulateWormholeGrainCarrier(
 
     const minX = Math.max(0, Math.floor(Math.min(tailX, headX) - radius));
     const maxX = Math.min(safeCols - 1, Math.ceil(Math.max(tailX, headX) + radius));
-    const minY = Math.max(0, Math.floor(Math.min(tailY, headY) - radius));
-    const maxY = Math.min(safeRows - 1, Math.ceil(Math.max(tailY, headY) + radius));
+    const minY = Math.max(firstRow, Math.floor(Math.min(tailY, headY) - radius));
+    const maxY = Math.min(firstRow + rowCount - 1, Math.ceil(Math.max(tailY, headY) + radius));
 
     // A capsule is contained in the infinite strip |across| <= radius. Intersect each row
     // with that strip before testing the exact rounded support below. This avoids the mostly
@@ -398,7 +405,7 @@ export function accumulateWormholeGrainCarrier(
             const contribution = flux * shape * taper * filament * texture * depositGain;
             if (contribution <= 1e-6) continue;
 
-            const index = (y * safeCols + x) * 4;
+            const index = ((y - firstRow) * safeCols + x) * 4;
             l0[index] += colorR * contribution;
             l0[index + 1] += colorG * contribution;
             l0[index + 2] += colorB * contribution;
