@@ -120,6 +120,20 @@ async function capture() {
         const first=await evaluate('(()=>{const r=document.querySelector("article").getBoundingClientRect();return {x:r.x+scrollX,y:r.y+scrollY,width:r.width,height:r.height,scale:1};})()');
         const detail=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:first});
         await writeFile(path.join(output,'comparison-first.png'),Buffer.from(detail.data,'base64'),{flag:'wx'});
+        const inspection=await evaluate(`(async()=>{
+            const article=[...document.querySelectorAll('article')].find(a=>a.querySelector('h2').textContent.startsWith('transparent'));
+            const canvases=[...article.querySelectorAll('canvas')].slice(0,2),select=document.querySelector('#background'),rows=[];
+            const hash=async c=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',c.getContext('2d').getImageData(0,0,c.width,c.height).data)),x=>x.toString(16).padStart(2,'0')).join('');
+            for(const mode of ['dark','black','white','checker']){select.value=mode;select.dispatchEvent(new Event('change',{bubbles:true}));
+                rows.push({mode,color:getComputedStyle(canvases[0]).backgroundColor,image:getComputedStyle(canvases[0]).backgroundImage,hashes:await Promise.all(canvases.map(hash))});}
+            return rows;
+        })()`);
+        await writeFile(path.join(output,'alpha-inspection.json'),JSON.stringify(inspection,null,2)+'\n',{flag:'wx'});
+        assert.equal(inspection.length,4);assert.ok(inspection.every(row=>JSON.stringify(row.hashes)===JSON.stringify(inspection[0].hashes)));
+        assert.equal(inspection[2].color,'rgb(255, 255, 255)');assert.notEqual(inspection[3].image,'none');
+        const transparent=await evaluate(`(()=>{const a=[...document.querySelectorAll('article')].find(a=>a.querySelector('h2').textContent.startsWith('transparent')),r=a.getBoundingClientRect();return{x:r.x+scrollX,y:r.y+scrollY,width:r.width,height:r.height,scale:1};})()`);
+        const alphaImage=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:transparent});
+        await writeFile(path.join(output,'transparent-checker.png'),Buffer.from(alphaImage.data,'base64'),{flag:'wx'});
         console.log('GPU report captured; checking existing host regression fixture');
         await send('Page.navigate', { url: origin + hostFixture });
         let host;

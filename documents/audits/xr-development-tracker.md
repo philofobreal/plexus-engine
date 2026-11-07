@@ -6,6 +6,12 @@ Started 2026-10-23. Checkpoint 2026-11-07 (Europe/Budapest). Integration owner: 
 
 ### WH-02 research handoff (2026-11-07)
 
+Manual follow-up: the [alpha inspection correction](wormhole-wh02-gpu-spike.md#kézi-visszajelzés-alfahelyes-különbségnézet-2026-11-07)
+fixes misleading straight-RGB difference pixels and adds black/white/checker
+inspection backgrounds. GPU output and fixed gates are unchanged. 91/91 targeted
+tests, build, eight Chrome image cases, four background hash checks and 16 host
+smoke rows pass. This stays within WH-02; WH-03a has not started.
+
 [WH-02](wormhole-wh02-gpu-spike.md) extracts the original nine XR shaders unchanged,
 adds a plain WebGL2/Offscreen worker adapter and publishes a separate CPU/GPU image
 comparison laboratory. Mixed Float16 accumulation / Float32 reference IIR and

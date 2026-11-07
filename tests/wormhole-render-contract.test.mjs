@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createLoader } from './helpers/xr-loader.mjs';
-import { QUALITY_POLICY, BASELINE_CASES, compareRgba, compareTemporal } from '../research/export/wormhole-quality.mjs';
+import { QUALITY_POLICY, BASELINE_CASES, compareRgba, compareTemporal, visibleDifferenceRgba } from '../research/export/wormhole-quality.mjs';
 import { CARRIER_FIELDS } from '../research/export/parallel-material-data.mjs';
 import { verifyPack } from '../research/export/wormhole-baseline.mjs';
 import { createHash } from 'node:crypto';
@@ -95,4 +95,23 @@ test('saved fixture validation rejects changed bytes, format, clocks, missing ca
         p.cases[0].raw = block(data, 'float64-le', { count: 1, stride: 15, fields: CARRIER_FIELDS });
         p.cases[0].repeatHashes.raw = p.cases[0].raw.sha256;
     });
+});
+
+
+test('visible difference suppresses hidden RGB and retains opaque channel errors without mutation',()=>{
+ const a=image(1,[255,0,0,0]),b=image(1,[0,255,255,0]),before=a.slice();
+ assert.deepEqual(Array.from(visibleDifferenceRgba(a,b,1,1)),[0,0,0,255]);assert.deepEqual(a,before);
+ assert.deepEqual(Array.from(visibleDifferenceRgba(image(1,[10,20,30,255]),image(1,[11,20,28,255]),1,1)),[8,0,16,255]);
+});
+test('visible difference respects low-alpha visibility but reveals alpha-only errors on white',()=>{
+ assert.deepEqual(Array.from(visibleDifferenceRgba(image(1,[200,100,50,1]),image(1,[0,0,0,1]),1,1)),[6,3,2,255]);
+ assert.deepEqual(Array.from(visibleDifferenceRgba(image(1,[0,0,0,0]),image(1,[0,0,0,255]),1,1)),[255,255,255,255]);
+});
+test('visible difference rejects malformed images and gains and has the same unamplified errors as the gate',()=>{
+ const a=image(1,[70,30,5,128]),b=image(1,[75,28,9,128]);
+ for(const gain of [0,-1,NaN,Infinity])assert.throws(()=>visibleDifferenceRgba(a,b,1,1,gain));
+ assert.throws(()=>visibleDifferenceRgba(a.subarray(1),b,1,1));
+ assert.throws(()=>visibleDifferenceRgba(a,b,2,1));
+ const shown=visibleDifferenceRgba(a,b,1,1,1),mean=(shown[0]+shown[1]+shown[2])/3;
+ assert.ok(Math.abs(mean-compareRgba(a,b,1,1).meanError)<=.5);
 });

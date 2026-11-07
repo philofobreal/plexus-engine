@@ -1,5 +1,5 @@
 import { captureBaseline, sha256 } from './wormhole-baseline-capture.mjs';
-import { compareRgba, compareTemporal, QUALITY_POLICY } from './wormhole-quality.mjs';
+import { compareRgba, compareTemporal, visibleDifferenceRgba, QUALITY_POLICY } from './wormhole-quality.mjs';
 import { sameWormholeRenderFrame } from '../../src/types/WormholeRenderFrame';
 
 const decode = block => Uint8Array.from(atob(block.bytes), x=>x.charCodeAt(0));
@@ -16,7 +16,7 @@ async function capturePixels(pixels){
 function show(label,pixels,w,h,parent) {
     const figure=document.createElement('figure'),caption=document.createElement('figcaption'),canvas=document.createElement('canvas');
     caption.textContent=label;canvas.width=w;canvas.height=h;
-    canvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(pixels),w,h),0,0);
+    canvas.getContext('2d',{willReadFrequently:true}).putImageData(new ImageData(new Uint8ClampedArray(pixels),w,h),0,0);
     figure.append(caption,canvas);parent.append(figure);
 }
 window.runWh02=async(precision=document.querySelector('#precision').value,cpuLines=document.querySelector('#lines').value==='reference')=>{
@@ -51,9 +51,8 @@ window.runWh02=async(precision=document.querySelector('#precision').value,cpuLin
             const bitmapParity=compareRgba(reply.pixels,bitmapPixels,frame.width,frame.height);
             const article=document.createElement('article'),heading=document.createElement('h2'),images=document.createElement('div');
             heading.textContent=frame.id+' — '+(quality.pass?'numeric gates pass':'quality gate failed');images.className='images';article.append(heading,images);views.append(article);
-            const diff=new Uint8Array(reference.length);
-            for(let i=0;i<diff.length;i+=4){for(let k=0;k<3;k++)diff[i+k]=Math.min(255,Math.abs(reference[i+k]-reply.pixels[i+k])*8);diff[i+3]=255;}
-            show('Scalar reference',reference,frame.width,frame.height,images);show('GPU '+precision,reply.pixels,frame.width,frame.height,images);show('Difference ×8',diff,frame.width,frame.height,images);
+            const diff=visibleDifferenceRgba(reference,reply.pixels,frame.width,frame.height);
+            show('Scalar reference',reference,frame.width,frame.height,images);show('GPU '+precision,reply.pixels,frame.width,frame.height,images);show('Visible difference ×8 (worst on black/white)',diff,frame.width,frame.height,images);
             const captures=frozenReference?{candidate:await capturePixels(reply.pixels),cpu:await capturePixels(reply.cpuPixels),bitmap:await capturePixels(bitmapPixels)}:undefined;
             const row={id:frame.id,width:frame.width,height:frame.height,captures,precision,quality,cpuReplay,bitmapParity,roundTripMs,initializationMs:reply.initializationMs,
                 warmup:reply.warmup,samples:reply.samples,cpuMs:median(reply.samples.map(s=>s.cpuMs)),gpuCompletedMs:median(reply.samples.map(s=>s.completedMs)),
@@ -90,3 +89,4 @@ window.runWh02=async(precision=document.querySelector('#precision').value,cpuLin
     finally{worker?.terminate();button.disabled=false;}
 };
 document.querySelector('#run').onclick=()=>window.runWh02();
+document.querySelector('#background').onchange=event=>{document.body.dataset.background=event.target.value;};

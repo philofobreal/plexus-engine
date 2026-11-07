@@ -206,3 +206,50 @@ A megvalósítható, minőségvédett GPU-anyagmag adott; a GPU-vonalprofil nyit
 minősítési ág marad, nem blokkolja a pontos Canvas-vonalakat őrző integrációt.
 MVP átállás WH-04, dashboard WH-05, tényleges exportgyorsítás WH-06,
 Takarékos/Turbó menü WH-07. Ezen task átadása után kézi megálló következik.
+
+## Kézi visszajelzés: alfahelyes különbségnézet (2026-11-07)
+
+A felhasználó a transparent eset sokkal színesebb Difference x8 képét jelezte.
+A labor a straight RGB-ket vonta ki alfa nélkül, majd teljesen fedő képként
+mutatta az eredményt. Ez a láthatatlan/alacsony alfájú RGB eltéréseit is erősen
+kiemelte. A numerikus kapuk már helyesen a fekete/fehér kompozitokat használták;
+azok és a GPU-raster változatlanok, a diagnosztikai megjelenítést javítottuk.
+
+A mentett producer-3 transparent esetben a nyers RGB abszolút átlaghibája
+0.5430 kódérték, a fekete kompozité 0.0128, a fehéré 0.0421 a 0..255 skálán;
+a pixelek 93.47%-án az alfa legfeljebb 8/255. Ezek helyi mentett adatok,
+nem a felhasználó böngészőjéből visszanyert mérések.
+
+A Visible difference x8 most ugyanazt a csatornánként rosszabb fekete/fehér
+kompoziteltérést mutatja, mint az RGB-kapu. Így az alfa-only hiba látható marad,
+a teljesen átlátszó RGB nem ad hamis jelzést. Új Inspection background:
+Dark/Black/White/Checkerboard, csak laborbeli CSS-háttér, nincs player/storage
+változás. Az ellenőrző canvasokat visszaolvasásra kérjük. Az első, hagyományos
+canvasos hash-próba sikertelen futása megőrzött; a visszaolvasásra kért
+displaycanvasokkal a szigorú, azonos pixelhash-követelmény teljesül mind a négy
+háttéren. A referencia, nyers capture és korábbi eredmények nem cserélődtek.
+
+Három új regresszió: láthatatlan RGB/opaque hiba, alacsony alfa és csak alfát
+érintő eltérés, hibás buffer/gain és a kapuval egyező skála. A korábbi teszt
+pontos [elődje](../tests/wormhole-render-contract.pre-wh02-alpha.mjs) megőrzött,
+SHA-256 `dd96c601248ef8b799fd24fde5085b070fd9e4ba387ee5874d411bcf7eec4cd2`;
+korábbi assertion nem változott. Célzott hét fájl **91/91**, `npm run build`
+sikeres. Új teljes Node-kör nem futott ehhez a kizárólag laborbeli javításhoz;
+az előző kumulatív kör és a 9 ismert preseteltérés továbbra is külön nyugta.
+
+Valódi Chrome: 8/8 kép, temporal/bitmap/lifecycle és 16 host smoke sor sikeres;
+a mentett pixeladatok metrikái külön újraszámolva. Mind a négy háttérhez azonos
+referencia/GPU canvas-hash; checker kép szemrevételezve. Végső helyi futás:
+`logs/wh02/run-f6df3a56-93b6-4b2c-b4a1-000b1c6463e1`, kiegészítő logok
+`logs/wh02-alpha/`. Reprodukció:
+
+```powershell
+node --test --test-reporter=tap tests/wormhole-render-contract.test.mjs tests/wormhole-gpu-raster.test.mjs tests/xr-gpu-material.test.mjs tests/xr-gpu-lines.test.mjs tests/gameplay-purity.test.mjs tests/contracts.test.mjs tests/release-pages.test.mjs
+npm run build
+node research/export/wormhole-gpu-spike.mjs capture float16 cpu-lines
+node research/export/wormhole-gpu-spike.mjs verify
+```
+
+A következő epic task változatlanul WH-03a, még nem indult. A kézi ellenőrzéshez
+az első két képet White/Checkerboard háttéren kell összevetni; a harmadik kép
+felerősített diagnosztika, nem önálló látványterv. Nincs szükség teljes exportpróbára.

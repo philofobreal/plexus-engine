@@ -26,6 +26,23 @@ function check(image, width, height) {
 const rgb = (image, i, bg) => image[i] * image[i - i % 4 + 3] / 255 + bg * (1 - image[i - i % 4 + 3] / 255);
 const luma = (image, i, bg = 0) => .2126 * rgb(image, i, bg) + .7152 * rgb(image, i + 1, bg) + .0722 * rgb(image, i + 2, bg);
 
+/** Display the same worst black/white composite error used by the RGB gate.
+ * Straight RGB alone can exaggerate invisible colour under low/zero alpha.
+ * The output is opaque for inspection; neither input nor any quality gate changes.
+ */
+export function visibleDifferenceRgba(reference, candidate, width, height, gain = 8) {
+    check(reference, width, height); check(candidate, width, height);
+    if (!Number.isFinite(gain) || gain <= 0) throw Error('Invalid difference gain');
+    const pixels = new Uint8ClampedArray(reference.length);
+    for (let i = 0; i < pixels.length; i += 4) {
+        for (let k = 0; k < 3; k++) pixels[i + k] = gain * Math.max(
+            Math.abs(rgb(reference, i + k, 0) - rgb(candidate, i + k, 0)),
+            Math.abs(rgb(reference, i + k, 255) - rgb(candidate, i + k, 255)));
+        pixels[i + 3] = 255;
+    }
+    return pixels;
+}
+
 export function compareRgba(reference, candidate, width, height) {
     check(reference, width, height); check(candidate, width, height);
     const errors = new Uint32Array(256);
