@@ -8,6 +8,13 @@ exact-frame scheduling. WH-01 is the first implementation task; T20c2's GPU
 experiment is WH-02 and production export integration is WH-06. This is a plan,
 not a delivered backend or a reversal of MVP's Isolated Wormhole retirement.
 
+WH-01 delivered the [common frame contract and scalar kernel baseline](../audits/wormhole-wh01-contract-baseline.md).
+Its raw inputs, repeatable images and fixed quality gates prepare the next WH-02 GPU
+spike; no active export render path, codec, bit depth or speed profile changed.
+Production integration is still WH-06. The existing Compatible path and accepted
+10-bit quality remain the control; internal exact sessions will not restore the
+retired Isolated product mode.
+
 ## T19c resource follow-up - staged for quota-aware delivery
 
 User direction, 2026-10-29: replace the premature fixed 384 MiB refusal with real

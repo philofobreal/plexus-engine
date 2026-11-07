@@ -81,6 +81,9 @@ test('only the XR composition root can import the bounded Wormhole canvas source
     if (file.endsWith(join('xr', 'main.ts'))) {
       const imports = [...source.matchAll(/from ['"]([^'"]*\/visuals\/[^'"]+)['"]/g)].map(match => match[1]);
         assert.deepEqual(imports, ['../visuals/WormholeCanvasSource', '../visuals/WormholeWorkerSource', '../visuals/WormholeNativeWorkerSource']);
+    } else if (['GrainMaterialRenderer.ts', 'GrainLineRenderer.ts'].some(name => file.endsWith(join('scene', name)))) {
+      const imports = [...source.matchAll(/from ['"]([^'"]*\/visuals\/[^'"]+)['"]/g)].map(match => match[1]);
+      assert.ok(imports.every(specifier => specifier === '../../visuals/gpu/WormholeGpuShaders'), `${file}: only the pure shared shader leaf is allowed`);
     } else assert.doesNotMatch(source, /from ['"].*\/visuals\//, `${file} must not import src/visuals/`);
     assert.doesNotMatch(source, /from ['"].*\/ui\//, `${file} must not import src/ui/`);
   }

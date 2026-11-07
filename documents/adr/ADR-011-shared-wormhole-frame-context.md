@@ -2,6 +2,11 @@
 
 ## Status
 
+WH-01 (2026-11-07) accepts the common frame stamp and staged ownership contract
+in [WH-01](../audits/wormhole-wh01-contract-baseline.md). The common GPU session
+and host ownership transfer remain WH-02/03/04 work. Existing clocks, gains and
+live worker messages are unchanged by this foundation.
+
 Proposed by T01 on 2026-10-23. Partially delivered through T04 and T05a/b/c; the appendices state
 the accepted scope. Remaining proposals do not amend current governance by themselves.
 Integration owner: this chat; owners: visuals/config, automation, host composition and export.

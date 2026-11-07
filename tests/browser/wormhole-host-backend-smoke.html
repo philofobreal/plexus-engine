@@ -65,7 +65,7 @@ try{
   pass:canvases.length===1&&canvases[0].width===500&&canvases[0].height===281});
 
  // The actual renderer/compositor/post chain, with an injected fixed clock and normal host gains.
- let postCalls=0,directorCalls=0,gainCalls=0;
+ let postCalls=0,directorCalls=0,projectionReads=0,projectionInputs=[];
  const oldPost=PostFxPipeline.prototype.render,oldDirector=VisualDirectorFSM.prototype.update;
  PostFxPipeline.prototype.render=function(...args){postCalls++;return oldPost.apply(this,args);};
  VisualDirectorFSM.prototype.update=function(...args){directorCalls++;return oldDirector.apply(this,args);};
@@ -74,12 +74,17 @@ try{
  State.targetTuning.postFxFragmentAmount=.4;State.visualTuning.postFxFragmentAmount=.4;
  const registry=createDefaultStyleRegistry();registry.forEach(i=>i.syncPosition?.(3));
  hostP=await new Promise(resolve=>startPlexusRenderer('host',{
-  updateDashboard(){},setExportTarget(p){p.noLoop();resolve(p);},getTuningForMorph(tuning){gainCalls++;return tuning;}
+  updateDashboard(){},setExportTarget(p){p.noLoop();resolve(p);},getTuningForMorph(tuning){projectionReads++;projectionInputs.push(JSON.stringify(tuning));return tuning;}
  },{getCurrentTime:()=>profileClockStart===null?99:3+(performance.now()-profileClockStart)/1000,addPositionChangedListener(){},addPlaybackEndedListener(){},syncMetronomeState(){}},registry,undefined,
  {getPreviewSize:()=>hostSize,previewQuality:hostQuality,createWormholeWorker:invalidate=>(profileSource=new WormholeHostWorkerSource(invalidate))}));
  await hostP.redraw();
- async function hostFrame(name){const before=[postCalls,directorCalls,gainCalls];await hostP.redraw();const delta=[postCalls-before[0],directorCalls-before[1],gainCalls-before[2]];
-  rows.push({case:name,postDirectorGainCalls:delta,raster:hostP.canvas.dataset.wormholeRaster,pass:delta.every(n=>n===1)});}
+ // The host hook is a pure projection: reads may occur before and after semantic resolution.
+ // Count actual director/PostFX execution, and prove every projection starts from unchanged raw input.
+ async function hostFrame(name){const before=[postCalls,directorCalls,projectionReads],rawBefore=JSON.stringify(State.targetTuning);projectionInputs=[];
+  await hostP.redraw();const delta=[postCalls-before[0],directorCalls-before[1],projectionReads-before[2]];
+  const rawUnchanged=JSON.stringify(State.targetTuning)===rawBefore&&projectionInputs.every(value=>value===rawBefore);
+  rows.push({case:name,postDirectorProjectionReads:delta,rawUnchanged,raster:hostP.canvas.dataset.wormholeRaster,
+   pass:delta[0]===1&&delta[1]===1&&delta[2]>0&&rawUnchanged});}
  await hostFrame('host direct + PostFX');
  State.visualMode='classic';State.visualModeTransition={from:'cosmic-wormhole',to:'classic',startTimeSec:2,durationSec:2,generation:1};
  await hostFrame('host crossfade + PostFX');

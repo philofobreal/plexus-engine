@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>WH-01 scalar reference</title>
+<style>body{background:#080c18;color:#dfeaff;font:15px system-ui;margin:24px}button{padding:12px}#views{display:flex;flex-wrap:wrap;gap:16px}canvas{max-width:320px;max-height:320px}figure{margin:0}pre{white-space:pre-wrap}</style>
+<h1>WH-01 scalar reference</h1><p>Synthetic private-identity fixtures. This captures inputs and current scalar images; it does not benchmark host playback or implement GPU acceleration.</p>
+<button id="run">Capture immutable reference pack</button>
+<p><a href="../../tests/browser/wormhole-host-backend-smoke.html">Existing host/worker/composition regression fixture</a></p>
+<pre id="result">Ready</pre><section id="views"></section>
+<script type="module">
+import { captureBaseline } from './wormhole-baseline-capture.mjs';
+const result=document.querySelector('#result'),button=document.querySelector('#run');
+window.runWh01=async()=>{
+ button.disabled=true;
+ try {
+  const data=await captureBaseline((canvas,record)=>{
+   result.textContent='Captured '+record.id;
+   const figure=document.createElement('figure'),caption=document.createElement('figcaption');
+   caption.textContent=record.id+' / '+record.raw.count+' carriers';figure.append(caption,canvas);document.querySelector('#views').append(figure);
+  });
+  const response=await fetch('/capture',{method:'POST',body:JSON.stringify(data)});
+  if(response.status!==201)throw Error('Reference pack was not accepted: '+await response.text());
+  result.textContent=JSON.stringify({pass:true,cases:data.cases.map(c=>({id:c.id,carriers:c.raw.count,sha256:c.reference.sha256}))},null,2);
+  return {pass:true};
+ } catch(error) { result.textContent=JSON.stringify({pass:false,error:String(error)});return {pass:false,error:String(error)}; }
+};
+button.onclick=window.runWh01;
+</script></html>

@@ -67,6 +67,7 @@ repository-navigation aid before broad source exploration.
 - `src/audio/analyzer.worker.ts` is a thin Web Worker adapter around `src/analyzer/analyzeAudio()`. It owns only request destructuring, progress forwarding, success posting, and error message formatting.
 - `src/state/` owns the shared state shape and documented mutation semantics.
 - `src/visuals/` owns p5 rendering, particle lifecycle, shockwaves, and visual consumption of precomputed events.
+- WH-01 shared GPU boundary: `src/visuals/gpu/WormholeGpuShaders.ts` owns dependency-light shader source/constants. Only the XR `GrainMaterialRenderer` and `GrainLineRenderer` adapters may import this visual leaf; its only permitted imports are the shared grain material/line data contracts. It must not create GPU resources or import/read Three, host state, DOM, UI, audio or planning. Other XR visual-runtime import restrictions remain in force. Actual kernel extraction is WH-02, not delivered by this contract change.
 - `src/ui/` owns DOM binding, controls, dashboard projection, and user-facing state display.
 - `src/types/` owns shared contracts and must remain dependency-light.
 - `src/presentation/` owns pure seeded instrument geometry, visual tokens and bounded sampling/projection of already published display data (ADR-009 Addenda BH-BI). It may import shared types; it must not import runtime/renderer, DOM, audio, analyzer, gameplay, automation or state modules, read clocks, perform I/O or infer music. Hosts adapt its descriptions to their own renderers.

@@ -2,6 +2,18 @@
 
 This document extends `../../AGENTS.md`. If there is a conflict, `AGENTS.md` is authoritative.
 
+WH-01 common identity (2026-11-07): `WormholeRenderFrameStamp` version 1 is a
+nested identity contract for the future common session, not a replacement for
+preview v1 or exact-worker v2. Existing packets are unchanged. Context,
+generation, request serial and presentation revision bind images/companions.
+Exact stamps add job, frame index, 30/60 fps and integer microseconds; preview
+stamps carry host song time without export fields. Validate before accepting a
+lease, then match every identity field. Load/reset/presentation revisions invalidate
+pending work; stale bitmaps close and carrier leases return once. Capability
+negotiation, deadlines and bounded queues remain mandatory at wire integration.
+The [WH-01 contract](../audits/wormhole-wh01-contract-baseline.md) specifies ownership,
+budgets and frozen capture gates. This foundation adds no active worker runtime.
+
 T16 informational spectrum: the resolved MVP host-frame request may carry optional normalized
 `musicDisplay` preferences (mode/size/opacity). Default Off omits the field and preserves the old
 packet shape; omission resets a previously enabled worker display. Analysis/spectrum frames still

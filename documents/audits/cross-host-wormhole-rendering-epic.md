@@ -1,7 +1,7 @@
 # Közös, workerben és GPU-n futó Wormhole: epic terv
 
 Dátum: 2026-11-07, Europe/Budapest. Feltárt forrás: `9733a4a4aebf2ff0d68e41f8f3b102c0a40c52de`.
-Állapot: forrásfeltárás és megvalósítási javaslat; az epic implementációja még nem indult.
+Állapot: WH-00 feltárás és [WH-01 szerződés/baseline](wormhole-wh01-contract-baseline.md) elkészült; a következő task WH-02. Éles GPU-integráció még nincs.
 Integrációs felelős: az aktuális fejlesztési munkamenet egyetlen szerződésgazdája.
 
 ## 1. Cél és helye a főtervben

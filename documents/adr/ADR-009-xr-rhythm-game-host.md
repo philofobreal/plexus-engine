@@ -2,6 +2,13 @@
 
 ## Status
 
+WH-01 (2026-11-07) adds one data/shader-only exception: the XR grain material and
+line GPU adapters may import `src/visuals/gpu/WormholeGpuShaders.ts`. Only the
+shared carrier contracts may be imported by that leaf; Three/resources/state/UI
+remain outside it. Extraction is WH-02. Other XR visual-runtime imports stay
+forbidden. See the [common render contract](../audits/wormhole-wh01-contract-baseline.md)
+and the updated architecture/purity guards. No XR shader or default changes here.
+
 Accepted and implemented; runtime candidate awaiting physical Quest 3 acceptance.
 
 ## Date

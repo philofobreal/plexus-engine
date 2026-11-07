@@ -2,7 +2,19 @@
 
 Started 2026-10-23. Checkpoint 2026-11-07 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. Source audit WH-00 is complete; implementation starts with WH-01 after the plan handoff. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00 and WH-01 are complete; WH-02 is next after the manual handoff. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+
+### WH-01 handoff (2026-11-07)
+
+[WH-01](wormhole-wh01-contract-baseline.md) delivers the additive common frame stamp,
+narrow shared shader import contract, eight repeatable scalar carrier/image fixtures,
+fixed quality/performance gates and a local Chrome capture/verifier. No production
+backend/default changes or speed claim. Full regression: 2144 / 2135 pass / the same
+nine exact retained preset failures / no skipped or cancelled cases. Targeted: 106/106.
+Browser: eight repeat captures and all 16 host smoke rows pass. All 288 prior test-tree
+files remain; two reviewed test predecessors are archived with exact hashes.
+Next: **WH-02 shared GPU material/line kernel spike**, after this handoff's manual pause.
+WH-03a/03b, WH-04 MVP, WH-05 dashboard, WH-06 exports, WH-07 profiles and WH-08 qualification follow.
 
 ### Remaining work in execution order (2026-11-04)
 

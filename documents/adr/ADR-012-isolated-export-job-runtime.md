@@ -2,6 +2,12 @@
 
 ## Status
 
+WH-01 (2026-11-07) records the [common render contract](../audits/wormhole-wh01-contract-baseline.md).
+Future exact adapters consume the common session internally under the existing
+export coordinator. This does not reinstate MVP's isolated product choice,
+workspace concurrency or fixed admission. Job/encoder/PCM/OPFS and Stop/Cancel
+stay export-owned. Production integration remains WH-06 with output acceptance.
+
 T19e retired the isolated runtime and its dependent UI from MVP export. The
 MVP uses Compatible, with compact export status and workspace locking through
 cleanup. The isolated runtime remains available to research fixtures. See the

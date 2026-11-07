@@ -1,0 +1,147 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Wormhole host backend gate</title>
+<style>body{background:#080b18;color:#eaf4ff;font:14px system-ui;margin:20px}section{display:flex;gap:12px;flex-wrap:wrap}figure{margin:0}canvas{max-width:320px;height:auto}pre{white-space:pre-wrap}button{padding:10px}figcaption{padding:6px}#host{width:320px;height:180px}</style>
+<h2>Studio/MVP Wormhole backend gate</h2><p>Same resolved input. Left: p5 reference. Right: shared WebGL. Fixed song time: 3 s.</p>
+<button id="loss" disabled>Lose WebGL context and verify fallback</button><section id="views"></section>
+<button id="profile" disabled>Measure MVP render paths</button><pre id="profile-result">Performance not measured yet.</pre><div id="host"></div><pre id="result">Preparing…</pre>
+<script type="module">
+import p5 from 'p5';
+import { WormholeHostWorkerSource } from '../../src/visuals/WormholeHostWorkerSource.ts';
+import { WormholeFrameContext } from '../../src/visuals/WormholeFrameContext.ts';
+import { WormholeRasterPass } from '../../src/visuals/WormholeRasterPass.ts';
+import { P5RendererBackend } from '../../src/visuals/P5RendererBackend.ts';
+import { cloneDefaultVisualTuning } from '../../src/config/visualTuning.ts';
+import { defaultAdvancedBoosts } from '../../src/config/metaTuningBoost.ts';
+import { startPlexusRenderer } from '../../src/visuals/PlexusRenderer.ts';
+import { createDefaultStyleRegistry } from '../../src/visuals/StyleRegistry.ts';
+import { PostFxPipeline } from '../../src/visuals/PostFxPipeline.ts';
+import { VisualDirectorFSM } from '../../src/visuals/VisualDirectorFSM.ts';
+import { State } from '../../src/state/store.ts';
+const result=document.querySelector('#result'), rows=[], contexts=[], graphics=[], canvases=[];
+let fixtureP, hostP, lossCase, pass, invalidations=0;
+const hostQuality={compactMaterialPreview:false,pixelRatioCap:1,maxBackingLongEdge:1920,wormholeRenderer:'webgl'};
+let hostSize={width:320,height:180},profileClockStart=null,profileSource=null;
+const raw={...cloneDefaultVisualTuning(),wormholeNebulaAmount:.32,wormholeNebulaDetail:.4,wormholeNebulaBloom:.3,
+ wormholeNebulaWeave:.35,wormholeGrainDensity:.1,wormholeSpiral:.4,wormholeSpiralDirection:-1,
+ wormholeWarp:.1,wormholeCurve:0,wormholePathBend:0,wormholeJitter:0,wormholeOpticsEnabled:1,wormholeWall:.2,
+ wormholeLens:.3,wormholeLensSwirl:.2,performanceMode:0};
+const seed=tuning=>({version:1,rawTuning:tuning,macros:{intensity:.5,motion:.5,depth:.5,detail:.5},boosts:defaultAdvancedBoosts(),
+ policy:{gains:'raw',semanticResolver:false,semanticChoreography:false}});
+const state=tuning=>{const c=new WormholeFrameContext(seed(tuning));c.state.currentTime=3;c.state.playbackFade=1;c.identity.syncPosition(3);contexts.push(c);return c;};
+const pixels=g=>g.drawingContext.getImageData(0,0,g.elt.width,g.elt.height).data;
+const hash=async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(x=>x.toString(16).padStart(2,'0')).join('');
+const figure=(label,g)=>{const f=document.createElement('figure'),caption=document.createElement('figcaption'),link=document.createElement('a');caption.textContent=label;g.elt.style.display='block';link.textContent=label+' PNG';link.download=label.replaceAll(/[^a-z0-9]+/gi,'-')+'.png';link.href=g.elt.toDataURL('image/png');f.append(caption,g.elt,link);document.querySelector('#views').append(f);};
+const gfx=(w,h,density)=>{const g=fixtureP.createGraphics(w,h);g.pixelDensity(density);graphics.push(g);return g;};
+function compare(a,b){let sum=0,changed=0;for(let i=0;i<a.length;i+=4){let max=0;for(let k=0;k<4;k++){const delta=Math.abs(a[i+k]-b[i+k]);sum+=delta;max=Math.max(max,delta);}if(max>32)changed++;}return {meanAbsoluteError:sum/a.length/255,changedFraction:changed/(a.length/4)};}
+function publish(){result.textContent=JSON.stringify({pass:rows.every(r=>r.pass),gates:{maxMeanAbsoluteError:.025,maxChangedFraction:.08},rows},null,2);}
+try{
+ fixtureP=await new Promise(resolve=>new p5(p=>{p.setup=()=>{p.createCanvas(1,1).hide();p.noLoop();resolve(p);};}));
+ pass=new WormholeRasterPass(()=>invalidations++,(w,h)=>{const c=Object.assign(document.createElement('canvas'),{width:w,height:h});canvases.push(c);return c;});
+ for(const [name,density,chroma,video] of [['opaque',1,0,false],['high density',2,0,false],['transparent',1,2,false],['chroma',1,1,false],['video backplate',1,0,true]]){
+  State.videoBackplateActive=video;
+  const tuning={...raw,chromaKeyMode:chroma}, a=state(tuning), b=state(tuning), reference=gfx(320,180,density), output=gfx(320,180,density);
+  const refBackend=new P5RendererBackend(reference,false), outBackend=new P5RendererBackend(output,false);
+  a.identity.draw(refBackend,[],[]);pass.draw(b.identity,outBackend,[],[],{timeSec:3,advanceSharedSimulation:true},'webgl',video);
+  const measure=compare(pixels(reference),pixels(output));
+  rows.push({case:name,raster:pass.rasterKind,density,...measure,pass:pass.rasterKind==='webgl'&&measure.meanAbsoluteError<=.025&&measure.changedFraction<=.08});
+  figure(name+' · reference',reference);figure(name+' · WebGL',output);
+  if(name==='opaque')lossCase={context:b,output,outBackend};
+ }
+ State.videoBackplateActive=false;
+ const workerContext=state(raw),workerReference=gfx(320,180,1),workerOutput=gfx(320,180,1);
+ workerContext.identity.draw(new P5RendererBackend(workerReference,false),[],[]);
+ const standaloneWorker=new WormholeHostWorkerSource(()=>{}),workerTarget=new P5RendererBackend(workerOutput,false);
+ for(let i=0;i<120&&!standaloneWorker.rasterKind.startsWith('offscreen-webgl');i++){
+  standaloneWorker.draw(workerContext.state,workerTarget,0,false);await new Promise(requestAnimationFrame);
+ }
+ standaloneWorker.draw(workerContext.state,workerTarget,0,false);
+ const workerCompare=compare(pixels(workerReference),pixels(workerOutput));
+ rows.push({case:'resolved worker bitmap parity',raster:standaloneWorker.rasterKind,...workerCompare,pass:standaloneWorker.rasterKind==='offscreen-webgl'&&workerCompare.meanAbsoluteError<=.025&&workerCompare.changedFraction<=.08});
+ standaloneWorker.dispose();
+ // One persistent GPU surface also survives a real size/density change.
+ State.videoBackplateActive=false;
+ const resized=gfx(400,225,1.25), resizeState=state(raw);
+ pass.draw(resizeState.identity,new P5RendererBackend(resized,false),[],[],{timeSec:3,advanceSharedSimulation:true},'webgl',false);
+ rows.push({case:'resize',logical:[400,225],backing:[canvases[0].width,canvases[0].height],surfaces:canvases.length,
+  pass:canvases.length===1&&canvases[0].width===500&&canvases[0].height===281});
+
+ // The actual renderer/compositor/post chain, with an injected fixed clock and normal host gains.
+ let postCalls=0,directorCalls=0,gainCalls=0;
+ const oldPost=PostFxPipeline.prototype.render,oldDirector=VisualDirectorFSM.prototype.update;
+ PostFxPipeline.prototype.render=function(...args){postCalls++;return oldPost.apply(this,args);};
+ VisualDirectorFSM.prototype.update=function(...args){directorCalls++;return oldDirector.apply(this,args);};
+ State.videoBackplateActive=false;State.isExporting=true;State.exportTime=3;State.isPlaying=false;State.playbackFade=1;
+ State.visualMode='cosmic-wormhole';Object.assign(State.visualTuning,raw);Object.assign(State.targetTuning,raw);
+ State.targetTuning.postFxFragmentAmount=.4;State.visualTuning.postFxFragmentAmount=.4;
+ const registry=createDefaultStyleRegistry();registry.forEach(i=>i.syncPosition?.(3));
+ hostP=await new Promise(resolve=>startPlexusRenderer('host',{
+  updateDashboard(){},setExportTarget(p){p.noLoop();resolve(p);},getTuningForMorph(tuning){gainCalls++;return tuning;}
+ },{getCurrentTime:()=>profileClockStart===null?99:3+(performance.now()-profileClockStart)/1000,addPositionChangedListener(){},addPlaybackEndedListener(){},syncMetronomeState(){}},registry,undefined,
+ {getPreviewSize:()=>hostSize,previewQuality:hostQuality,createWormholeWorker:invalidate=>(profileSource=new WormholeHostWorkerSource(invalidate))}));
+ await hostP.redraw();
+ async function hostFrame(name){const before=[postCalls,directorCalls,gainCalls];await hostP.redraw();const delta=[postCalls-before[0],directorCalls-before[1],gainCalls-before[2]];
+  rows.push({case:name,postDirectorGainCalls:delta,raster:hostP.canvas.dataset.wormholeRaster,pass:delta.every(n=>n===1)});}
+ await hostFrame('host direct + PostFX');
+ State.visualMode='classic';State.visualModeTransition={from:'cosmic-wormhole',to:'classic',startTimeSec:2,durationSec:2,generation:1};
+ await hostFrame('host crossfade + PostFX');
+ const liveBefore=await hash(hostP.drawingContext.getImageData(0,0,hostP.canvas.width,hostP.canvas.height).data);
+ const exported=hostP.__plexusExportTarget=hostP.createGraphics(640,360);exported.pixelDensity(1);graphics.push(exported);
+ await hostFrame('host offscreen export crossfade + PostFX');
+ const liveAfter=await hash(hostP.drawingContext.getImageData(0,0,hostP.canvas.width,hostP.canvas.height).data);
+ rows.push({case:'export target isolation',exportSize:[exported.elt.width,exported.elt.height],liveUnchanged:liveBefore===liveAfter,
+  pass:liveBefore===liveAfter&&exported.elt.width===640&&pixels(exported).some(x=>x>0)});
+ delete hostP.__plexusExportTarget;State.isExporting=false;
+ State.isPlaying=true;State.visualMode='cosmic-wormhole';State.visualModeTransition=null;hostQuality.wormholeRenderer='offscreen';
+ for(let i=0;i<120;i++){await hostP.redraw();await new Promise(requestAnimationFrame);if(hostP.canvas.dataset.wormholeRaster==='offscreen-webgl')break;}
+ await hostFrame('worker live + PostFX');
+ rows.push({case:'worker actually active',raster:hostP.canvas.dataset.wormholeRaster,pass:hostP.canvas.dataset.wormholeRaster==='offscreen-webgl'});
+ State.visualMode='classic';State.visualModeTransition={from:'cosmic-wormhole',to:'classic',startTimeSec:98,durationSec:2,generation:2};
+ await hostFrame('worker live crossfade + PostFX');
+ State.isExporting=true;State.exportTime=99;hostP.__plexusExportTarget=exported;
+ await hostFrame('offscreen selection uses synchronous full-size export');
+ rows.push({case:'export never uses preview bitmap',raster:hostP.canvas.dataset.wormholeRaster,pass:hostP.canvas.dataset.wormholeRaster==='compatible'&&exported.elt.width===640});
+ delete hostP.__plexusExportTarget;State.isExporting=false;State.isPlaying=false;
+ PostFxPipeline.prototype.render=oldPost;VisualDirectorFSM.prototype.update=oldDirector;
+ document.querySelector('#loss').disabled=false;
+ document.querySelector('#loss').onclick=async()=>{
+  const gl=canvases[0].getContext('webgl2'),extension=gl.getExtension('WEBGL_lose_context');
+  if(!extension)throw Error('Context-loss extension unavailable');extension.loseContext();
+  for(let i=0;i<4;i++)await new Promise(requestAnimationFrame);
+  pass.draw(lossCase.context.identity,lossCase.outBackend,[],[],{timeSec:3,advanceSharedSimulation:true},'webgl',false);
+  rows.push({case:'context loss fallback',raster:pass.rasterKind,invalidations,pass:pass.rasterKind==='fallback'&&invalidations===1});publish();
+ };
+ document.querySelector('#profile').disabled=false;
+ document.querySelector('#profile').onclick=async()=>{
+  const button=document.querySelector('#profile'),output=document.querySelector('#profile-result');button.disabled=true;
+  try{
+   State.visualMode='cosmic-wormhole';State.visualModeTransition=null;State.isExporting=false;State.isPlaying=true;
+   hostSize={width:1920,height:1080};hostP.windowResized();
+   const measurements=[];
+   for(const material of [false,true]){
+    const tuning={...raw,wormholeNebulaAmount:material ? .65 : 0,wormholeNebulaDetail:.8,postFxFragmentAmount:0};
+    Object.assign(State.visualTuning,tuning);Object.assign(State.targetTuning,tuning);
+    const variants=[['compatible',false],['webgl',false],['offscreen',false],['compatible',true],['webgl',true],['offscreen',true]];
+    const buckets=variants.map(()=>[]),observed=variants.map(()=>null);
+    for(let round=0;round<2;round++)for(const index of round?[5,4,3,2,1,0]:[0,1,2,3,4,5]){
+     profileClockStart=performance.now(); const [mode,reduced]=variants[index];Object.assign(hostQuality,{wormholeRenderer:mode,compactMaterialPreview:reduced,maxBackingLongEdge:reduced?1280:1920});hostP.windowResized();
+     for(let i=0;i<8;i++){await new Promise(requestAnimationFrame);await hostP.redraw();}
+     for(let wait=0;mode==='offscreen'&&hostP.canvas.dataset.wormholeRaster==='offscreen-pending'&&wait<120;wait++){await new Promise(requestAnimationFrame);await hostP.redraw();}
+     const receivedBefore=profileSource?.framesReceived??0;
+     for(let i=0;i<20;i++){await new Promise(requestAnimationFrame);const start=performance.now();await hostP.redraw();buckets[index].push(performance.now()-start);}
+     observed[index]={raster:hostP.canvas.dataset.wormholeRaster,backing:[hostP.canvas.width,hostP.canvas.height]};if(mode==='offscreen'){Object.assign(observed[index],{workerFrames:profileSource.framesReceived-receivedBefore,lastWorkerRenderMs:profileSource.lastRenderMs});if(observed[index].workerFrames<1)throw Error('Worker did not progress');}
+     if(mode==='offscreen'?!observed[index].raster.startsWith('offscreen-'):observed[index].raster!==mode)throw Error('Requested raster not active: '+mode);
+     output.textContent='Measuring '+(material?'material':'primitives')+' / '+mode+' / '+(reduced?'Reduced':'Auto')+'…';
+    }
+    for(let i=0;i<variants.length;i++){const a=buckets[i].sort((a,b)=>a-b),[mode,reduced]=variants[i];measurements.push({material,mode,quality:reduced?'reduced':'auto',...observed[i],samples:a.length,p50ms:a[Math.floor(a.length*.5)],p95ms:a[Math.floor(a.length*.95)]});}
+   }
+   State.isPlaying=false;profileClockStart=null;let identityDraws=0,posts=0;
+   const identity=registry.get('cosmic-wormhole'),draw=identity.draw,post=PostFxPipeline.prototype.render;
+   identity.draw=function(...args){identityDraws++;return draw.apply(this,args);};PostFxPipeline.prototype.render=function(...args){posts++;return post.apply(this,args);};
+   try{for(let i=0;i<180;i++)await hostP.redraw();identityDraws=0;posts=0;for(let i=0;i<20;i++)await hostP.redraw();}
+   finally{identity.draw=draw;PostFxPipeline.prototype.render=post;}
+   output.textContent=JSON.stringify({scope:'Desktop real PlexusRenderer CPU draw + submission wall time; includes final p5 copy. Not GPU completion, frame rate or Quest.',logicalSize:hostSize,rounds:'forward then reverse, 8 warmup +20 samples per variant per round',measurements,settledPaused:{samples:20,identityDraws,posts},activeRaster:hostP.canvas.dataset.wormholeRaster},null,2);
+  }catch(error){output.textContent='FAIL: '+error.stack;console.error(error);}finally{State.isPlaying=false;button.disabled=false;}
+ };
+ publish();
+}catch(error){result.textContent='FAIL: '+error.stack;console.error(error);}
+window.addEventListener('pagehide',()=>{pass?.dispose();hostP?.remove();fixtureP?.remove();contexts.forEach(c=>c.dispose());},{once:true});
+</script></html>
