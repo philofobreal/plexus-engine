@@ -282,7 +282,7 @@ test('a frame from the worker is uploaded and composited ahead, when it arrives,
 });
 
 test('the composite reads a frame uploaded ahead as the canvas texture would hold it: unflipped rows, un-premultiplied', () => {
-    const shader = readFileSync('src/xr/scene/GrainLineRenderer.ts', 'utf8');
+    const shader = load('visuals/gpu/WormholeGpuShaders.ts').LINE_COMPOSITE_FRAGMENT;
     assert.match(shader, /textureSize\(uCanvas, 0\)\.y - 1 - p\.y/, 'top row first: flipped back');
     assert.match(shader, /raw\.a > 0\.0 \? min\(raw\.rgb \/ raw\.a, vec3\(1\.0\)\) : vec3\(0\.0\)/, 'un-premultiplied, in the encoded bytes');
     const { GrainLineRenderer } = load('xr/scene/GrainLineRenderer.ts');

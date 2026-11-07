@@ -5,7 +5,9 @@
 WH-01 (2026-11-07) adds one data/shader-only exception: the XR grain material and
 line GPU adapters may import `src/visuals/gpu/WormholeGpuShaders.ts`. Only the
 shared carrier contracts may be imported by that leaf; Three/resources/state/UI
-remain outside it. Extraction is WH-02. Other XR visual-runtime imports stay
+remain outside it. WH-02 extracts the original shader bodies unchanged, with hash
+regressions, and adds a plain WebGL2 laboratory adapter plus separate strict 2D
+profiles. Other XR visual-runtime imports stay
 forbidden. See the [common render contract](../audits/wormhole-wh01-contract-baseline.md)
 and the updated architecture/purity guards. No XR shader or default changes here.
 

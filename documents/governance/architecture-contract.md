@@ -10,11 +10,14 @@ clock helper. It does not activate a new wire or transfer simulation ownership.
 
 The XR visual-import exception extends only to `GrainMaterialRenderer.ts` and
 `GrainLineRenderer.ts` importing `../../visuals/gpu/WormholeGpuShaders`. This
-reserved WH-02 leaf has shader source/constants and only shared grain material/
+implemented WH-02 leaf has shader source/constants and only shared grain material/
 line contract imports. It has no Three, State, DOM, GPU resource construction,
 audio, UI or planner dependency. Resource owners stay in host adapters/workers.
 Other scene modules cannot import the leaf or visual runtimes. The detailed
-import rules below incorporate this narrow addition. Actual extraction is WH-02.
+import rules below incorporate this narrow addition. The visuals-owned plain WebGL2
+adapter imports the leaf without importing Three/XR. WH-02's laboratory is a separate
+Vite entry, not a live host/export backend. Original XR shader bodies stay unchanged;
+strict 2D bloom/coverage profiles are separate constants, not an XR default change.
 
 Frame preparation stays under its current owner until WH-03. Existing preview
 and exact-v2 packets remain. The common session requires the specified lease,
