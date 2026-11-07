@@ -18,6 +18,16 @@ export interface WormholeHostTarget {
 
 /** Already resolved host input. No second director, preset/gain resolver or audio clock. */
 export type WormholeHostAnalysis = Pick<WormholeRenderState, 'frames' | 'events' | 'sampleRate' | 'hopSize' | 'bpm' | 'trackAnalysis'>;
+/** WH-03a internal view version, separate from existing preview-v1/exact-v2 wire versions.
+ * The producer must synchronously clone/post values before advancing its mutable state.
+ */
+export interface ResolvedWormholeFrameView {
+    readonly version: 1;
+    readonly tuningStage: 'resolved';
+    readonly ownership: 'borrowed-until-clone';
+    /** visualTuning is resolved; targetTuning retains the authored raw target. Nested data is borrowed. */
+    readonly values: Readonly<Omit<WormholeRenderState, keyof WormholeHostAnalysis>>;
+}
 export type WormholeHostFrame = Omit<WormholeRenderState, keyof WormholeHostAnalysis> & {
     musicDisplay?: import('./MusicDisplay').MusicDisplaySettings;
     width: number; height: number; density: number; compact: boolean; depthCue: number;

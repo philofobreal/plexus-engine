@@ -58,7 +58,8 @@ test('renderer reuses modulation state and lowers frame rate while paused or idl
 
   assert.match(state, /playbackFade: 0\.0/);
   assert.match(state, /rotationPhase: 0/);
-  assert.match(renderer, /writeModulationBus\(/);
+  assert.match(renderer, /prepareFrameSignals\(State, visualDirector/);
+  assert.match(read('src/visuals/VisualFramePreparation.ts'), /writeModulationBus\(state\.modulation/);
   assert.doesNotMatch(renderer, /State\.modulation = computeModulationBus/);
   assert.doesNotMatch(renderer, /State\.modulation = \{/);
   assert.match(renderer, /State\.modulation\.kineticTension = 0/);

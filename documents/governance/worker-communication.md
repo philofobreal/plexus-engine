@@ -14,6 +14,16 @@ negotiation, deadlines and bounded queues remain mandatory at wire integration.
 The [WH-01 contract](../audits/wormhole-wh01-contract-baseline.md) specifies ownership,
 budgets and frozen capture gates. This foundation adds no active worker runtime.
 
+WH-03a adds an internal `ResolvedWormholeFrameView` version 1, tagged resolved
+and borrowed-until-clone. It is a synchronous view, not the preview-v1 or exact-v2
+wire version and not an immutable lease. The host producer unwraps values into
+the existing packet and postMessage clones them synchronously before state can
+advance. Do not retain that view across awaits. `visualTuning` has already
+received gains; `targetTuning` remains the authored raw target/provenance.
+Workers do not resolve macros, presets or directors again. Ownership transfer
+and new asynchronous sessions remain WH-04/06, with the original stale-result,
+bitmap cleanup and generation rules in force.
+
 T16 informational spectrum: the resolved MVP host-frame request may carry optional normalized
 `musicDisplay` preferences (mode/size/opacity). Default Off omits the field and preserves the old
 packet shape; omission resets a previously enabled worker display. Analysis/spectrum frames still

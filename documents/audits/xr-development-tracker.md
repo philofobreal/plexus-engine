@@ -2,7 +2,25 @@
 
 Started 2026-10-23. Checkpoint 2026-11-07 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01 and WH-02 research are delivered; WH-03a is next after the manual handoff. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01, WH-02 research and WH-03a preparation are delivered; WH-03b is next after the manual handoff. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+
+### WH-03a preparation handoff (2026-11-07)
+
+[WH-03a](wormhole-wh03a-frame-preparation.md) shares gain/morph/semantic projection,
+analysis copies and bus/director preparation between the host and embedded context;
+host semantic cursor/cache now lives outside p5. The versioned resolved view is
+borrowed until synchronous clone; preview-v1/exact-v2 wires stay unchanged.
+Independent retained-source oracles, actual host lifecycle/semantic/automation tests
+and the unchanged eight-case pixel pack protect behavior. Canonical time, GPU host
+integration and export performance are later gates. Next: **WH-03b canonical time**,
+after this handoff's manual pause.
+
+Validation: 196/196 targeted; full cumulative 2164 / 2155 pass / the exact same
+nine retained preset failures / no skips or cancellations. One final morph-order
+case joins the targeted run after full-file loading (2165-case union). All 291
+prior test-tree files remain; modified source guards retain exact predecessors.
+The full eight-case baseline hash is unchanged; actual Chrome host/worker smoke
+passes all 16 rows. No speed/default promotion or physical-device claim.
 
 ### WH-02 research handoff (2026-11-07)
 

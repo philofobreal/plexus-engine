@@ -19,8 +19,17 @@ adapter imports the leaf without importing Three/XR. WH-02's laboratory is a sep
 Vite entry, not a live host/export backend. Original XR shader bodies stay unchanged;
 strict 2D bloom/coverage profiles are separate constants, not an XR default change.
 
-Frame preparation stays under its current owner until WH-03. Existing preview
-and exact-v2 packets remain. The common session requires the specified lease,
+WH-03a shares data preparation through `VisualFramePreparation` (gain/morph/
+semantic projection, analysis copies and bus/director arithmetic) and extracts
+the host semantic cursor/cache into `HostVisualFramePreparation`. Both accept
+explicit state/ports; neither imports State, audio, UI, p5, DOM or GPU code.
+The p5 facade retains transport/event/decay ownership; WormholeFrameContext
+retains its explicit embedded policy, assets and presentation. No second
+director or preset resolver runs in the render worker. A version-1
+`ResolvedWormholeFrameView` borrows resolved values until synchronous clone;
+the existing host producer unwraps values into the unchanged preview wire.
+This is not an immutable asynchronous lease. Existing preview and exact-v2
+packets remain. The common session requires the specified lease,
 scheduler and composition gates before default integration. The retired MVP
 isolated product mode and concurrent workspace editing are not reintroduced.
 

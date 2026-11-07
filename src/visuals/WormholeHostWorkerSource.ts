@@ -3,6 +3,7 @@ import { projectRenderWorkerAnalysis } from '../types/CanvasVisualSource';
 import type { WormholeHostAnalysis, WormholeHostFrame, WormholeHostRequest, WormholeHostResponse, WormholeHostRasterSource, WormholeHostTarget } from '../types/WormholeHostFrame';
 import type { WormholeRenderState } from './CosmicWormholeIdentity';
 import { featureFlags } from '../config/featureFlags';
+import { borrowResolvedWormholeFrame } from './VisualFramePreparation';
 import { isDefaultMusicDisplay, type MusicDisplaySettings } from '../types/MusicDisplay';
 
 export interface HostWorkerPort {
@@ -94,17 +95,18 @@ export class WormholeHostWorkerSource implements WormholeHostRasterSource {
             this.dimensions = dimensions;
             if (state.currentTime < this.lastTime) this.reset();
             this.lastTime = state.currentTime;
+            const resolved = borrowResolvedWormholeFrame(state).values;
             const frame: WormholeHostFrame = {
                 ...(musicDisplay&&!isDefaultMusicDisplay(musicDisplay)?{musicDisplay}:{}),
                 width: target.width, height: target.height,
                 density: Math.min(target.rasterPixelRatio, (target.compactMaterialPreview ? 640 : 960) / Math.max(target.width, target.height)),
                 compact: target.compactMaterialPreview, depthCue, transparent, skybox: featureFlags.wormholeSkybox,
-                frameCount: 0, reset: false, currentTime: state.currentTime, isExporting: false, exportTime: 0,
-                visualTuning: state.visualTuning, targetTuning: state.targetTuning, currentFrame: state.currentFrame,
-                currentFeatures: state.currentFeatures, modulation: state.modulation, beatDecay: state.beatDecay,
-                denseImpactFlash: state.denseImpactFlash, directorOutput: state.directorOutput,
-                activeVisualTransitionId: state.activeVisualTransitionId, spiralTransitionAnchor: state.spiralTransitionAnchor,
-                playbackFade: state.playbackFade
+                frameCount: 0, reset: false, currentTime: resolved.currentTime, isExporting: false, exportTime: 0,
+                visualTuning: resolved.visualTuning, targetTuning: resolved.targetTuning, currentFrame: resolved.currentFrame,
+                currentFeatures: resolved.currentFeatures, modulation: resolved.modulation, beatDecay: resolved.beatDecay,
+                denseImpactFlash: resolved.denseImpactFlash, directorOutput: resolved.directorOutput,
+                activeVisualTransitionId: resolved.activeVisualTransitionId, spiralTransitionAnchor: resolved.spiralTransitionAnchor,
+                playbackFade: resolved.playbackFade
             };
             const key = JSON.stringify(frame);
             if (this.ready && !this.flight && key !== this.lastKey && (!playing || this.needsReset || state.currentTime - this.sentTime >= 1 / 30 - .001)) {

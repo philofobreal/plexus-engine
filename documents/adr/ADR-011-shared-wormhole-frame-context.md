@@ -7,6 +7,13 @@ in [WH-01](../audits/wormhole-wh01-contract-baseline.md). The common GPU session
 and host ownership transfer remain WH-02/03/04 work. Existing clocks, gains and
 live worker messages are unchanged by this foundation.
 
+WH-03a (2026-11-07) extracts the shared gain/morph/projection and signal stage,
+plus host semantic cursor/cache, into data-only visuals preparation modules.
+The original p5 and embedded scheduling/decay policies stay explicit. The
+versioned borrowed frame view feeds the unchanged host-worker payload; it is
+not an async lease. See the [WH-03a delivery](../audits/wormhole-wh03a-frame-preparation.md).
+Canonical time is WH-03b; GPU session/host integration remains WH-04 onward.
+
 Proposed by T01 on 2026-10-23. Partially delivered through T04 and T05a/b/c; the appendices state
 the accepted scope. Remaining proposals do not amend current governance by themselves.
 Integration owner: this chat; owners: visuals/config, automation, host composition and export.

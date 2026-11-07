@@ -4,19 +4,19 @@ import { State } from '../state/store';
 import { Particle } from './Particle';
 import { Shockwave } from './Shockwave';
 import { featureFlags } from '../config/featureFlags';
-import { applyTuningMorph, cloneDefaultVisualTuning, tuneAudioValue, tuningMorphDeltaSec, visualTuningKeys, writeModulationBus } from '../config/visualTuning';
+import { tuneAudioValue, tuningMorphDeltaSec, visualTuningKeys } from '../config/visualTuning';
 import { PausedPreviewGate } from './PausedPreviewGate';
 import { P5RendererBackend } from './P5RendererBackend';
 import type { AudioEngine } from '../audio/AudioEngine';
-import type { AudioFrame, MotifChoreographyFrame as ChoreographyFrame, VisualChoreographyPlan, VisualCueKind, VisualFeatureFrame, VisualMode, VisualTuningConfig } from '../types';
+import type { VisualCueKind, VisualTuningConfig } from '../types';
 import { VisualDirectorFSM } from './VisualDirectorFSM';
-import { MotifRuntimeAdapter, resolveSemanticState } from '../semantics';
-import { SemanticTuningProjection } from './SemanticTuningProjection';
+import { HostVisualFramePreparation } from './HostVisualFramePreparation';
+import { publishAnalysisFrame, decayHostAnalysisFrame, prepareFrameSignals } from './VisualFramePreparation';
 import type { StyleRegistry } from './StyleRegistry';
 import type { SemanticRuntimeAdapter } from '../semantics';
 import { ShockwaveLifecycle } from './ShockwaveLifecycle';
 import type { ChoreographyFrame as SemanticScoreFrame } from '../types/semantics';
-import { motifTransitionId, semanticScoreTransitionId } from './VisualTransitionIdentity';
+import { semanticScoreTransitionId } from './VisualTransitionIdentity';
 import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
 import { IdentityTransitionController, type IdentityDraw } from './IdentityTransitionController';
 import { WormholeRasterPass } from './WormholeRasterPass';
@@ -199,20 +199,7 @@ export function startPlexusRenderer(
         // frame, so an untouched Post FX section costs nothing.
         const postFxPipeline = new PostFxPipeline([new TemporalFragmentationEffect()]);
 
-        // Semantic resolver (ADR-003): a monotonic cursor over the choreography frames plus a
-        // memo so the resolver only recomputes when the active frame, style, or base changes —
-        // not 60x/sec over an unchanged section.
-        let choreoCursor = 0;
-        let lastChoreoTime = -1;
-        let lastResolvedChoreography: ChoreographyFrame | null = null;
-        let lastResolvedStyle: VisualMode | null = null;
-        let lastResolvedBase: VisualTuningConfig | null = null;
-        let lastChoreoPlanRef: VisualChoreographyPlan | null = null;
-        const motifRuntime = new MotifRuntimeAdapter();
-        const semanticProjection = new SemanticTuningProjection();
-        const defaultSemanticBase = cloneDefaultVisualTuning();
-        const semanticTarget = cloneDefaultVisualTuning();
-        const semanticBaseTarget = cloneDefaultVisualTuning();
+        const framePreparation = new HostVisualFramePreparation(ui, semanticBridge, setActiveVisualTransitionComponent);
 
         p.setup = () => {
             const initialSize = getCanvasSize();
@@ -357,88 +344,11 @@ export function startPlexusRenderer(
             // dashboard) morphs toward targetTuning directly, exactly as before.
 
 
-            const hasTimeBasedSemanticPlan = semanticBridge.hasPlan();
-            const isTimeBasedSemanticActive = featureFlags.semanticChoreography && hasTimeBasedSemanticPlan;
-            if (State.visualMode === 'cosmic-wormhole') semanticBridge.restoreBaseTuning(State.targetTuning);
-            if (isTimeBasedSemanticActive || !featureFlags.semanticResolver || !State.visualChoreography || State.visualMode !== 'cosmic-wormhole')
-                motifRuntime.clear(State.targetTuning, State.semanticBaseTuning ?? defaultSemanticBase);
-            if (featureFlags.semanticChoreography) {
-                const semanticTransitionId = semanticBridge.updateSemantic(ct, State.targetTuning);
-                setActiveVisualTransitionComponent(
-                    'semantic-score',
-                    isTimeBasedSemanticActive ? semanticTransitionId : null
-                );
-            } else {
-                setActiveVisualTransitionComponent('semantic-score', null);
-            }
-
-            // Semantic dramaturgy layer (ADR-003): when enabled, the resolved choreography
-            // owns targetTuning (the slow param channel). The VisualDirectorFSM and the
-            // modulation bus below are untouched — they remain the fast audio-reactive channel.
-            if (!isTimeBasedSemanticActive && featureFlags.semanticResolver && State.visualChoreography) {
-                if (State.visualMode === 'cosmic-wormhole') {
-                    const activeFrame = motifRuntime.update(State.visualChoreography, ct, State.semanticBaseTuning ?? defaultSemanticBase, State.targetTuning);
-                    State.currentChoreography = activeFrame;
-                    if (activeFrame !== lastResolvedChoreography) setActiveVisualTransitionComponent('motif', motifTransitionId(activeFrame));
-                    lastResolvedChoreography = activeFrame;
-                    lastResolvedStyle = State.visualMode; lastResolvedBase = State.semanticBaseTuning;
-                } else {
-                    // A recompute / dramaturgy load swaps the plan object: the old cursor and memo now
-                    // index a stale frames array (wrong slice, or out of bounds). Reset everything.
-                    if (State.visualChoreography !== lastChoreoPlanRef) {
-                        lastChoreoPlanRef = State.visualChoreography;
-                        choreoCursor = 0;
-                        lastChoreoTime = -1;
-                        lastResolvedChoreography = null;
-                        lastResolvedStyle = null;
-                        lastResolvedBase = null;
-                    }
-
-                    const frames = State.visualChoreography.frames;
-                    if (ct < lastChoreoTime) choreoCursor = 0; // seek / loop rewind
-                    lastChoreoTime = ct;
-                    while (choreoCursor + 1 < frames.length && frames[choreoCursor + 1].time <= ct) choreoCursor++;
-                    const activeFrame = frames.length > 0 && frames[choreoCursor].time <= ct ? frames[choreoCursor] : null;
-                    State.currentChoreography = activeFrame;
-
-                    const base = State.semanticBaseTuning;
-                    // Only re-resolve (and re-allocate a tuning config) when something actually changed.
-                    if (activeFrame !== lastResolvedChoreography || State.visualMode !== lastResolvedStyle || base !== lastResolvedBase) {
-                        if (activeFrame !== lastResolvedChoreography) {
-                            setActiveVisualTransitionComponent('motif', motifTransitionId(activeFrame));
-                        }
-                        lastResolvedChoreography = activeFrame;
-                        lastResolvedStyle = State.visualMode;
-                        lastResolvedBase = base;
-                        const presets = base ? { [State.visualMode]: base } : {};
-                        Object.assign(State.targetTuning, resolveSemanticState(activeFrame, State.visualMode, presets));
-                    }
-                }
-            } else {
-                setActiveVisualTransitionComponent('motif', null);
-                State.currentChoreography = null;
-            }
-
-            const projectSemantic = State.visualMode === 'cosmic-wormhole' && (isTimeBasedSemanticActive
-                || featureFlags.semanticResolver && !!State.visualChoreography?.score);
-            let resolvedMorphTarget = ui.getTuningForMorph ? ui.getTuningForMorph(State.targetTuning) : State.targetTuning;
-            if (projectSemantic) {
-                // MVP returns one reused gain buffer: retain semantic values before resolving base.
-                Object.assign(semanticTarget, resolvedMorphTarget);
-                const rawBase = isTimeBasedSemanticActive ? semanticBridge.getBaseTuning() ?? State.semanticBaseTuning ?? defaultSemanticBase
-                    : State.semanticBaseTuning ?? defaultSemanticBase;
-                Object.assign(semanticBaseTarget, ui.getTuningForMorph ? ui.getTuningForMorph(rawBase as VisualTuningConfig) : rawBase);
-                resolvedMorphTarget = semanticBaseTarget;
-            }
-            semanticProjection.restore(State.visualTuning);
-            applyTuningMorph(State.visualTuning, resolvedMorphTarget, resolvedMorphTarget.transitionSpeed, tuningDeltaSec);
-            ui.applyAutomatedTuning?.(ct, State.visualTuning, resolvedMorphTarget);
-            State.spiralTransitionAnchor = ui.applyAutomatedSpiral?.(ct, State.visualTuning, resolvedMorphTarget) ?? null;
-            if (projectSemantic) semanticProjection.apply(State.visualTuning, semanticBaseTarget, semanticTarget);
+            framePreparation.prepareTuning(State, featureFlags, ct, tuningDeltaSec);
 
             if ((State.isPlaying || State.isExporting) && State.frames.length > 0) {
                 let frameIdx = Math.floor(ct * State.sampleRate / State.hopSize);
-                publishCurrentAnalysisFrame(frameIdx);
+                publishAnalysisFrame(State, frameIdx, 'host');
 
                 while (currentEventIdx < State.events.length && ct >= State.events[currentEventIdx].time) {
                     let ev = State.events[currentEventIdx];
@@ -462,7 +372,7 @@ export function startPlexusRenderer(
                     currentCueIdx++;
                 }
             } else {
-                decayCurrentAnalysisFrame();
+                decayHostAnalysisFrame(State);
             }
 
             State.beatDecay *= BEAT_DECAY_PER_FRAME;
@@ -473,24 +383,7 @@ export function startPlexusRenderer(
                 State.activePatternId = null;
             }
 
-            writeModulationBus(
-                State.modulation,
-                State.currentFrame,
-                State.currentFeatures,
-                State.beatDecay,
-                State.cueDecay,
-                State.visualTuning
-            );
-            const directorOutput = visualDirector.update(
-                ct,
-                State.currentFrame,
-                State.currentFeatures,
-                getBuildupValueAtCurrentFrame(),
-                getPivotValueAtCurrentFrame(),
-                State.visualTuning,
-                State.modulation,
-                getDropAnticipationFrame(ct)
-            );
+            const directorOutput = prepareFrameSignals(State, visualDirector, ct, State.cueDecay, 'host', State.isPlaying || State.isExporting);
             State.directorOutput.state = directorOutput.state;
             State.directorOutput.centripetalOrbit = directorOutput.centripetalOrbit;
             State.directorOutput.glitchIntensity = directorOutput.glitchIntensity;
@@ -526,67 +419,6 @@ export function startPlexusRenderer(
     });
 }
 
-function publishCurrentAnalysisFrame(frameIdx: number) {
-    if (frameIdx >= 0 && frameIdx < State.frames.length) {
-        copyAudioFrame(State.frames[frameIdx], State.currentFrame);
-    }
-    if (frameIdx >= 0 && frameIdx < State.trackAnalysis.features.length) {
-        copyVisualFeatures(State.trackAnalysis.features[frameIdx], State.currentFeatures);
-    }
-}
-
-function copyAudioFrame(source: AudioFrame, target: AudioFrame) {
-    target.e = source.e;
-    target.densityProj = source.densityProj;
-    target.melodyProj = source.melodyProj;
-    target.fxProj = source.fxProj;
-    target.perceptualSpectrum = source.perceptualSpectrum;
-    target.subEnergy = source.subEnergy ?? 0;
-    target.bassEnergy = source.bassEnergy ?? 0;
-    target.subFlux = source.subFlux ?? 0;
-    target.bassFlux = source.bassFlux ?? 0;
-    target.state = source.state;
-    target.eRatio = source.eRatio;
-}
-
-function copyVisualFeatures(source: VisualFeatureFrame, target: VisualFeatureFrame) {
-    target.melody = source.melody;
-    target.vocal = source.vocal;
-    target.fx = source.fx;
-    target.density = source.density;
-    target.brightness = source.brightness;
-    target.tension = source.tension;
-}
-
-function getDropAnticipationFrame(currentTime: number): AudioFrame | undefined {
-    const anticipation = State.visualTuning.dropAnticipation;
-    if (anticipation <= 0 || (!State.isPlaying && !State.isExporting) || State.frames.length === 0) return undefined;
-
-    const futureTime = currentTime + anticipation;
-    const futureIdx = Math.floor(futureTime * State.sampleRate / State.hopSize);
-    if (futureIdx < 0 || futureIdx >= State.frames.length) return undefined;
-    return State.frames[futureIdx];
-}
-
-function decayCurrentAnalysisFrame() {
-    State.currentFrame.subEnergy = (State.currentFrame.subEnergy ?? 0) * 0.9;
-    State.currentFrame.bassEnergy = (State.currentFrame.bassEnergy ?? 0) * 0.9;
-    State.currentFrame.subFlux = (State.currentFrame.subFlux ?? 0) * 0.9;
-    State.currentFrame.bassFlux = (State.currentFrame.bassFlux ?? 0) * 0.9;
-    State.currentFrame.e *= 0.9;
-    State.currentFrame.densityProj *= 0.9;
-    State.currentFrame.melodyProj *= 0.9;
-    State.currentFrame.fxProj *= 0.9;
-    State.currentFrame.perceptualSpectrum = State.currentFrame.perceptualSpectrum.map(value => value * 0.9);
-    State.currentFrame.eRatio *= 0.9;
-    State.currentFeatures.melody *= 0.9;
-    State.currentFeatures.vocal *= 0.9;
-    State.currentFeatures.fx *= 0.9;
-    State.currentFeatures.density *= 0.9;
-    State.currentFeatures.brightness *= 0.9;
-    State.currentFeatures.tension *= 0.9;
-}
-
 function resetTransientVisualState() {
     State.modulation.subEnergy = State.modulation.bassEnergy = State.modulation.subFlux = State.modulation.bassFlux = 0;
     State.beatDecay = 0;
@@ -604,16 +436,6 @@ function resetTransientVisualState() {
     State.currentChoreography = null;
     State.activeCueKind = null;
     State.activePatternId = null;
-}
-
-function getBuildupValueAtCurrentFrame() {
-    const frameIdx = Math.floor(State.currentTime * State.sampleRate / State.hopSize);
-    return State.trackAnalysis.buildupConfidence[frameIdx] || 0;
-}
-
-function getPivotValueAtCurrentFrame() {
-    const frameIdx = Math.floor(State.currentTime * State.sampleRate / State.hopSize);
-    return State.trackAnalysis.spectralPivot[frameIdx] || 0;
 }
 
 function cueTypeToShockwave(kind: VisualCueKind): number {

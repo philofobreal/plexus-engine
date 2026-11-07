@@ -2,7 +2,7 @@ import type { CanvasVisualPresentation, GrainMaterialBoostKey, VisualAnalysisSna
 import type { WormholeContextSeed } from '../types/WormholeContext';
 import type { PerformanceAutomationPoint, PerformanceAutomationPlan, VisualChoreographyPlan, VisualTuningConfig } from '../types';
 import { createEmptyTrackAnalysis } from '../analyzer/normalizeAnalysisResult';
-import { cloneDefaultVisualTuning, applyTuningMorph, writeModulationBus, normalizeVisualTuningConfig } from '../config/visualTuning';
+import { cloneDefaultVisualTuning, normalizeVisualTuningConfig } from '../config/visualTuning';
 import { resolveMetaTuning } from '../config/resolveMetaTuning';
 import { defaultAdvancedBoosts, resolveAdvancedTuningValue } from '../config/metaTuningBoost';
 import { DEFAULT_WORMHOLE_WALL, WORMHOLE_WALL_GAIN_FIELDS, type WormholeWallPresentation } from '../types/WormholeWallPresentation';
@@ -12,7 +12,7 @@ import { applyMorphScale } from '../automation/morphScale';
 import { AutomationTuningTimeline } from '../automation/AutomationTuningTimeline';
 import { WormholeSpiralAutomation } from '../automation/WormholeSpiralAutomation';
 import { buildNarrative, generateIntents, processChoreography, MotifRuntimeAdapter, SemanticResolver, SemanticRuntimeAdapter } from '../semantics';
-import { SemanticTuningProjection } from './SemanticTuningProjection';
+import { VisualFramePreparation, publishAnalysisFrame, prepareFrameSignals } from './VisualFramePreparation';
 import { motifTransitionId, semanticScoreTransitionId } from './VisualTransitionIdentity';
 import { CosmicWormholeIdentity, type WormholeRenderState } from './CosmicWormholeIdentity';
 import { VisualDirectorFSM } from './VisualDirectorFSM';
@@ -61,7 +61,7 @@ export class WormholeFrameContext {
     private semantic = new SemanticRuntimeAdapter(this.resolver, () => this.semanticBase);
     private choreography: VisualChoreographyPlan | null = null;
     private motifRuntime = new MotifRuntimeAdapter();
-    private semanticProjection = new SemanticTuningProjection();
+    private framePreparation!: VisualFramePreparation;
     private plan: PerformanceAutomationPlan | null = null;
     private analysis: VisualAnalysisSnapshot | null = null;
     private resolvedPlan = false;
@@ -71,7 +71,12 @@ export class WormholeFrameContext {
     private finiteRevisionApplied = -1;
     private lastPoint: PerformanceAutomationPoint | null = null;
     private readonly boosted = cloneDefaultVisualTuning();
-    private readonly boostedBase = cloneDefaultVisualTuning();
+    private readonly frameSemanticBase = () => this.semanticBase;
+    private readonly resolveFrameTuning = (raw: VisualTuningConfig) => {
+        this.resolveTuning(raw, this.boosted);
+        if (this.spiralDirection !== 'auto') this.boosted.wormholeSpiralDirection = this.spiralDirection === 'left' ? -1 : 1;
+        return this.boosted;
+    };
     private readonly finiteAutomation = new AutomationTuningTimeline();
     private readonly spiralAutomation = new WormholeSpiralAutomation();
     private readonly spiralPreset = (name: string) => this.presets.get(name);
@@ -102,7 +107,7 @@ export class WormholeFrameContext {
         this.semantic = new SemanticRuntimeAdapter(this.resolver, () => this.semanticBase);
         this.plan = null; this.presets.clear(); this.wallPresetGates.clear(); this.lastPoint = null;
         this.resolvedPlan = false;
-        this.motifRuntime = new MotifRuntimeAdapter(); this.semanticProjection = new SemanticTuningProjection();
+        this.motifRuntime = new MotifRuntimeAdapter(); this.framePreparation = new VisualFramePreparation();
         this.denseEvents = this.state.events.filter(event => event.type === 2);
         this.choreography = analysis && this.policy.semanticResolver
             ? processChoreography(generateIntents(buildNarrative(analysis.trackAnalysis)), analysis.trackAnalysis) : null;
@@ -195,18 +200,9 @@ export class WormholeFrameContext {
         } else this.motifRuntime.clear(state.targetTuning, this.semanticBase);
         const automationId = point ? `automation:${point.id}` : '';
         state.activeVisualTransitionId = automationId && semanticId ? `${automationId}|${semanticId}` : automationId || semanticId || null;
-        this.resolveTuning(state.targetTuning, this.boosted);
-        if (this.spiralDirection !== 'auto') this.boosted.wormholeSpiralDirection = this.spiralDirection === 'left' ? -1 : 1;
         const projectSemantic = this.policy.semanticChoreography && this.resolver.hasPlan() || !!this.choreography?.score;
-        if (projectSemantic) {
-            this.resolveTuning(this.semanticBase, this.boostedBase);
-            if (this.spiralDirection !== 'auto') this.boostedBase.wormholeSpiralDirection = this.spiralDirection === 'left' ? -1 : 1;
-        }
-        const morphTarget = projectSemantic ? this.boostedBase : this.boosted;
-        this.semanticProjection.restore(state.visualTuning);
-        // A player's Line stroke / Visual character change is a direct control, not a musical morph.
-        if (snap) Object.assign(state.visualTuning, morphTarget);
-        else applyTuningMorph(state.visualTuning, morphTarget, morphTarget.transitionSpeed, dt);
+        const morphTarget = this.framePreparation.beginTuning(state.visualTuning, state.targetTuning,
+            projectSemantic ? this.frameSemanticBase : null, this.resolveFrameTuning, dt, snap);
         this.finiteAutomation.apply(time, state.visualTuning, morphTarget);
         if (this.spiralDirection === 'auto' || point?.cuePlacement) {
             this.spiralAutomation.configure(this.plan, this.spiralPreset, 0, this.resolveSpiralTuning, this.rawTuning);
@@ -214,22 +210,17 @@ export class WormholeFrameContext {
             state.spiralTransitionAnchor = this.spiralDirection === 'auto' ? this.spiralAutomation.transitionAnchor : null;
         } else state.spiralTransitionAnchor = null;
         if (this.spiralDirection !== 'auto' && point?.cuePlacement) state.visualTuning.wormholeSpiralDirection = this.spiralDirection === 'left' ? -1 : 1;
-        if (projectSemantic) this.semanticProjection.apply(state.visualTuning, this.boostedBase, this.boosted);
+        this.framePreparation.finishTuning(state.visualTuning);
         const index = Math.max(0, Math.floor(time * state.sampleRate / state.hopSize));
         // Copy before the director mutates its live frame; published analysis remains immutable.
-        if (state.frames[index]) Object.assign(state.currentFrame, state.frames[index]);
-        if (state.trackAnalysis.features[index]) Object.assign(state.currentFeatures, state.trackAnalysis.features[index]);
+        publishAnalysisFrame(state, index, 'embedded');
         const beat = state.events[lastIndexAt(state.events, time)];
         const dense = this.denseEvents[lastIndexAt(this.denseEvents, time)];
         const cue = state.trackAnalysis.cues[lastIndexAt(state.trackAnalysis.cues, time)];
         state.beatDecay = beat ? transientDecayAfter(BEAT_DECAY_PER_FRAME, time - beat.time) : 0;
         state.denseImpactFlash = dense ? transientDecayAfter(DENSE_IMPACT_DECAY_PER_FRAME, time - dense.time) : 0;
         const cueDecay = cue ? cue.intensity * transientDecayAfter(CUE_DECAY_PER_FRAME, time - cue.time) : 0;
-        writeModulationBus(state.modulation, state.currentFrame, state.currentFeatures, state.beatDecay, cueDecay, state.visualTuning);
-        const future = state.frames[Math.floor((time + state.visualTuning.dropAnticipation) * state.sampleRate / state.hopSize)];
-        state.directorOutput = this.director.update(time, state.currentFrame, state.currentFeatures,
-            state.trackAnalysis.buildupConfidence[index] ?? 0, state.trackAnalysis.spectralPivot[index] ?? 0,
-            state.visualTuning, state.modulation, state.visualTuning.dropAnticipation > 0 ? future : undefined);
+        state.directorOutput = prepareFrameSignals(state, this.director, time, cueDecay, 'embedded', playing);
         if (jump) this.identity.syncPosition(time);
         this.activePreset = point?.preset ?? '';
     }

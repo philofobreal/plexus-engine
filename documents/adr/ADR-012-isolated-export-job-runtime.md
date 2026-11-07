@@ -8,6 +8,11 @@ export coordinator. This does not reinstate MVP's isolated product choice,
 workspace concurrency or fixed admission. Job/encoder/PCM/OPFS and Stop/Cancel
 stay export-owned. Production integration remains WH-06 with output acceptance.
 
+WH-03a's shared preparation arithmetic is also consumed by the retained
+private context. No snapshot, PCM, job, encoder, async lease or export UI
+ownership changes. In particular, the synchronous borrowed frame view cannot
+be retained as an immutable export snapshot. Canonical sampling stays WH-03b.
+
 T19e retired the isolated runtime and its dependent UI from MVP export. The
 MVP uses Compatible, with compact export status and workspace locking through
 cleanup. The isolated runtime remains available to research fixtures. See the

@@ -22,6 +22,12 @@ lines inside the worker. This demonstrates the kernel, not accelerated productio
 export. WH-03a/03b prepare the common frame/timing seam before WH-04/05 playback
 and WH-06 export integration. Existing MP4/WebM bit depth and defaults are unchanged.
 
+WH-03a now shares [frame preparation arithmetic and a resolved data view](../audits/wormhole-wh03a-frame-preparation.md)
+between the existing host and private context. Gain/projection order and borrowed
+analysis ownership are preserved; the host worker still consumes resolved input
+without a second director. Export job/codec/PCM/Stop/Cancel behavior is unchanged.
+WH-03b canonical time is next, before GPU playback and exact export integration.
+
 ## T19c resource follow-up - staged for quota-aware delivery
 
 User direction, 2026-10-29: replace the premature fixed 384 MiB refusal with real

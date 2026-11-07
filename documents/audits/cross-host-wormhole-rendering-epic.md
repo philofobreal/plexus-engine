@@ -1,7 +1,7 @@
 # Közös, workerben és GPU-n futó Wormhole: epic terv
 
 Dátum: 2026-11-07, Europe/Budapest. Feltárt forrás: `9733a4a4aebf2ff0d68e41f8f3b102c0a40c52de`.
-Állapot: WH-00, [WH-01 szerződés/baseline](wormhole-wh01-contract-baseline.md) és a [WH-02 GPU-próba](wormhole-wh02-gpu-spike.md) átadva. A minőségvédett GPU-anyagmag megvalósítható; következő WH-03a. Éles host/export GPU-integráció még nincs.
+Állapot: WH-00, [WH-01 szerződés/baseline](wormhole-wh01-contract-baseline.md), [WH-02 GPU-próba](wormhole-wh02-gpu-spike.md) és [WH-03a frame-előkészítés](wormhole-wh03a-frame-preparation.md) átadva. Következő WH-03b kanonikus idő; az éles host/export GPU-integráció WH-04/05/06.
 Integrációs felelős: az aktuális fejlesztési munkamenet egyetlen szerződésgazdája.
 
 ## 1. Cél és helye a főtervben

@@ -196,7 +196,8 @@ test('visual track analysis is precomputed and exposed through shared state', ()
   assert.ok(normalizedAt < publishedAt && publishedAt < audio.indexOf('this.onVisualScorePlan(State.trackAnalysis'));
   assert.match(store, /currentFeatures/);
   assert.match(renderer, /State\.trackAnalysis\.cues/);
-  assert.match(renderer, /State\.trackAnalysis\.features/);
+  assert.match(renderer, /publishAnalysisFrame\(State, frameIdx, 'host'\)/);
+  assert.match(read('src/visuals/VisualFramePreparation.ts'), /state\.trackAnalysis\.features/);
 });
 
 test('performance automation contracts and state are exposed and reset', () => {
@@ -276,7 +277,8 @@ test('semantic dramaturgy layer types and state are exposed (ADR-003)', () => {
 
 test('semantic resolver is wired behind a feature flag and owns targetTuning when on (ADR-003)', () => {
   const flags = read('src/config/featureFlags.ts');
-  const renderer = read('src/visuals/PlexusRenderer.ts');
+  const renderer = read('src/visuals/HostVisualFramePreparation.ts');
+  assert.match(read('src/visuals/PlexusRenderer.ts'), /framePreparation\.prepareTuning\(State, featureFlags, ct, tuningDeltaSec\)/);
   const ui = read('src/ui/DashboardUI.ts');
   const audio = read('src/audio/AudioEngine.ts');
 
@@ -286,23 +288,23 @@ test('semantic resolver is wired behind a feature flag and owns targetTuning whe
 
   // Renderer: gated resolver writes targetTuning; FSM/modulation untouched in that block.
   assert.match(renderer, /import \{ MotifRuntimeAdapter, resolveSemanticState \} from '\.\.\/semantics'/);
-  assert.match(renderer, /const hasTimeBasedSemanticPlan = semanticBridge\.hasPlan\(\)/);
-  assert.match(renderer, /const isTimeBasedSemanticActive = featureFlags\.semanticChoreography && hasTimeBasedSemanticPlan/);
-  assert.match(renderer, /if \(featureFlags\.semanticChoreography\) \{\s*const semanticTransitionId = semanticBridge\.updateSemantic\(ct, State\.targetTuning\);/);
-  assert.match(renderer, /if \(!isTimeBasedSemanticActive && featureFlags\.semanticResolver && State\.visualChoreography\)/);
-  assert.match(renderer, /featureFlags\.semanticResolver && State\.visualChoreography/);
+  assert.match(renderer, /const hasTimeBasedSemanticPlan = this\.bridge\.hasPlan\(\)/);
+  assert.match(renderer, /const isTimeBasedSemanticActive = flags\.semanticChoreography && hasTimeBasedSemanticPlan/);
+  assert.match(renderer, /if \(flags\.semanticChoreography\) \{\s*const semanticTransitionId = this\.bridge\.updateSemantic\(ct, state\.targetTuning\);/);
+  assert.match(renderer, /if \(!isTimeBasedSemanticActive && flags\.semanticResolver && state\.visualChoreography\)/);
+  assert.match(renderer, /flags\.semanticResolver && state\.visualChoreography/);
   // A swapped plan object resets cursor + memo so a stale cursor cannot index a new frames array.
-  assert.match(renderer, /if \(State\.visualChoreography !== lastChoreoPlanRef\) \{[\s\S]*lastChoreoPlanRef = State\.visualChoreography;[\s\S]*choreoCursor = 0;/);
+  assert.match(renderer, /if \(state\.visualChoreography !== this\.lastChoreoPlanRef\) \{[\s\S]*this\.lastChoreoPlanRef = state\.visualChoreography;[\s\S]*this\.choreoCursor = 0;/);
   // Cursor-based lookup with seek/loop rewind (no per-frame full scan).
-  assert.match(renderer, /if \(ct < lastChoreoTime\) choreoCursor = 0/);
-  assert.match(renderer, /while \(choreoCursor \+ 1 < frames\.length && frames\[choreoCursor \+ 1\]\.time <= ct\) choreoCursor\+\+/);
+  assert.match(renderer, /if \(ct < this\.lastChoreoTime\) this\.choreoCursor = 0/);
+  assert.match(renderer, /while \(this\.choreoCursor \+ 1 < frames\.length && frames\[this\.choreoCursor \+ 1\]\.time <= ct\) this\.choreoCursor\+\+/);
   // Memoized resolve: recompute only when the active frame, style, or base changed.
-  assert.match(renderer, /activeFrame !== lastResolvedChoreography \|\| State\.visualMode !== lastResolvedStyle \|\| base !== lastResolvedBase/);
+  assert.match(renderer, /activeFrame !== this\.lastResolvedChoreography \|\| state\.visualMode !== this\.lastResolvedStyle \|\| base !== this\.lastResolvedBase/);
   // Base is the snapshotted preset/look, not a hard-coded empty object.
-  assert.match(renderer, /const base = State\.semanticBaseTuning/);
-  assert.match(renderer, /const presets = base \? \{ \[State\.visualMode\]: base \} : \{\}/);
-  assert.match(renderer, /Object\.assign\(State\.targetTuning, resolveSemanticState\(activeFrame, State\.visualMode, presets\)\)/);
-  assert.match(renderer, /State\.currentChoreography = null/);
+  assert.match(renderer, /const base = state\.semanticBaseTuning/);
+  assert.match(renderer, /const presets = base \? \{ \[state\.visualMode\]: base \} : \{\}/);
+  assert.match(renderer, /Object\.assign\(state\.targetTuning, resolveSemanticState\(activeFrame, state\.visualMode, presets\)\)/);
+  assert.match(renderer, /state\.currentChoreography = null/);
 
   // DashboardUI: offline chain is a pure idempotent recompute (no base side-effect);
   // base snapshot is separate; preset automation keeps selecting the base under semantic overlays.
@@ -622,10 +624,11 @@ test('drop anticipation look-ahead dampens modulation and is shown on the timeli
 
   assert.match(config, /dropAnticipation: 0\.0/);
   assert.match(config, /key: 'dropAnticipation'[\s\S]*min: 0\.0[\s\S]*max: 5\.0/);
-  assert.match(renderer, /visualDirector\.update\(/);
-  assert.match(renderer, /getDropAnticipationFrame\(ct\)/);
-  assert.match(renderer, /const futureTime = currentTime \+ anticipation/);
-  assert.match(renderer, /const futureIdx = Math\.floor\(futureTime \* State\.sampleRate \/ State\.hopSize\)/);
+  assert.match(renderer, /prepareFrameSignals\(State, visualDirector, ct, State\.cueDecay, 'host', State\.isPlaying \|\| State\.isExporting\)/);
+  const preparation = read('src/visuals/VisualFramePreparation.ts');
+  assert.match(preparation, /director\.update\(time,[\s\S]*future\)/);
+  assert.match(preparation, /Math\.floor\(\(time \+ anticipation\) \* state\.sampleRate \/ state\.hopSize\)/);
+  assert.match(preparation, /anticipation > 0 && \(policy === 'embedded' \|\| active\)/);
   assert.match(director, /futureFrame\.state !== 'LOW' && futureFrame\.state !== 'LOW_DROP'/);
   assert.match(director, /const damp = Number\.isFinite\(tuning\.dropDampening\) \? tuning\.dropDampening : 1/);
   assert.match(director, /const scale = futureFrame\.state === 'LOW_DROP' \? 0\.72 \* damp : 0\.86 \* damp/);
@@ -727,14 +730,16 @@ test('playback seek and stop keep canonical time and visual sync callbacks align
 
 test('renderer keeps accepted worker results immutable while decaying render copies', () => {
   const renderer = read('src/visuals/PlexusRenderer.ts');
-
-  assert.match(renderer, /copyAudioFrame\(State\.frames\[frameIdx\], State\.currentFrame\)/);
-  assert.match(renderer, /copyVisualFeatures\(State\.trackAnalysis\.features\[frameIdx\], State\.currentFeatures\)/);
-  assert.doesNotMatch(renderer, /State\.currentFrame\s*=\s*State\.frames\[frameIdx\]/);
-  assert.doesNotMatch(renderer, /State\.currentFeatures\s*=\s*State\.trackAnalysis\.features\[frameIdx\]/);
-  assert.match(renderer, /function decayCurrentAnalysisFrame\(\)[\s\S]*State\.currentFrame\.e \*= 0\.9/);
-  assert.match(renderer, /function copyAudioFrame\(source: AudioFrame, target: AudioFrame\)/);
-  assert.match(renderer, /function copyVisualFeatures\(source: VisualFeatureFrame, target: VisualFeatureFrame\)/);
+  const preparation = read('src/visuals/VisualFramePreparation.ts');
+  assert.match(renderer, /publishAnalysisFrame\(State, frameIdx, 'host'\)/);
+  assert.match(renderer, /decayHostAnalysisFrame\(State\)/);
+  assert.match(preparation, /copyAudioFrame\(state\.frames\[index\], state\.currentFrame\)/);
+  assert.match(preparation, /copyVisualFeatures\(state\.trackAnalysis\.features\[index\], state\.currentFeatures\)/);
+  assert.doesNotMatch(renderer + preparation, /(?:State|state)\.currentFrame\s*=\s*(?:State|state)\.frames\[/);
+  assert.doesNotMatch(renderer + preparation, /(?:State|state)\.currentFeatures\s*=\s*(?:State|state)\.trackAnalysis\.features\[/);
+  assert.match(preparation, /function decayHostAnalysisFrame[\s\S]*state\.currentFrame\.e \*= 0\.9/);
+  assert.match(preparation, /function copyAudioFrame\(source: AudioFrame, target: AudioFrame\)/);
+  assert.match(preparation, /function copyVisualFeatures\(source: VisualFeatureFrame, target: VisualFeatureFrame\)/);
 });
 
 test('dense impact flash preserves former type 2 visual behavior', () => {
