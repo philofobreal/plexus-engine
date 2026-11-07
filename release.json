@@ -1,7 +1,7 @@
 {
-  "id": "t20c1-parallel-material-20261107T103604879Z",
-  "previousCommit": "5bd10e814b9b89627d8b3e745a5767a5f63d5e93",
-  "sourceCommit": "9733a4a4aebf2ff0d68e41f8f3b102c0a40c52de",
+  "id": "wh01-render-contract-baseline-20261107T121113492Z",
+  "previousCommit": "d62f97015d2b1c347793117e6e06190ac611dbe1",
+  "sourceCommit": "1cf7f56657ff168f4fdce313c1406ba8d28ed961",
   "inputs": [
     {
       "path": "bun.lock",
@@ -974,6 +974,10 @@
     {
       "path": "src/types/WormholeNativeWorkerProtocol.ts",
       "sha256": "0d560b7699cda5997cff481581ec376053327cab539d5a74057bd1693e4553be"
+    },
+    {
+      "path": "src/types/WormholeRenderFrame.ts",
+      "sha256": "039e7bb13b23a1e410ffb2c5a0f00eb1227c1f14ca5202c3adaec28398c06ba0"
     },
     {
       "path": "src/types/WormholeSpatialFrame.ts",
