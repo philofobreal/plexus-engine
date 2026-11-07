@@ -84,7 +84,7 @@ function workerHarness() {
         constructor() { instances.push(this); this.canvas = { transferToImageBitmap: bitmap }; this.focalPoint = { x: .1, y: .2 };
             this.materialFrame = { count: 1, data: new Float32Array(24).fill(.3) }; this.lineFrame = { count: 1, data: new Float32Array(9).fill(.5) }; }
         async prepare() {} setPresentation() {} dispose() {}
-        renderExact(time) { this.spatialFrame = { time }; this.time = time; }
+        renderRequestedFrame(i, fps) { const time = i / fps; this.spatialFrame = { time }; this.time = time; }
     }
     createLoader({ './WormholeCanvasSource': { WormholeCanvasSource: Source } }, { self: scope, performance: { now: () => 0 } })('visuals/wormholeRender.worker.ts');
     return { messages, instances, send: m => scope.onmessage({ data: m }) };
@@ -158,7 +158,7 @@ test('real identity exact replay agrees after 24/36/60 Hz histories, backward se
 test('local exact fallback owns immutable companions and closes delayed or superseded bitmap results', async () => {
     let resolveBitmap;
     class Source { constructor() { this.canvas = {}; this.focalPoint = { x: .1, y: .2 }; this.spatialFrame = { time: 0 }; }
-        async prepare() {} renderExact(t) { this.spatialFrame.time = t;
+        async prepare() {} renderRequestedFrame(i, fps) { this.spatialFrame.time = i / fps;
             this.materialFrame = { count: 1, data: new Float32Array(48).fill(.5) };
             this.lineFrame = { count: 1, data: new Float32Array(27).fill(.2) }; } setPresentation() {} dispose() {} }
     const load = createLoader({ './WormholeCanvasSource': { WormholeCanvasSource: Source } },

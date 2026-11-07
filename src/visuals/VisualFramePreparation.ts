@@ -3,6 +3,7 @@ import type { WormholeRenderState, ResolvedWormholeFrameView } from '../types/Wo
 import type { VisualDirectorFSM } from './VisualDirectorFSM';
 import { applyTuningMorph, cloneDefaultVisualTuning, writeModulationBus } from '../config/visualTuning';
 import { SemanticTuningProjection } from './SemanticTuningProjection';
+import { decayOverSeconds } from './transientDecay';
 
 /** Shared arithmetic, with one instance per host/context. Hosts retain clocks and event ownership. */
 export class VisualFramePreparation {
@@ -35,7 +36,7 @@ export class VisualFramePreparation {
     }
 }
 
-/** Explicit legacy policies: WH-03a preserves them; WH-03b owns cadence/time normalization. */
+/** Explicit publication/lookahead policies. Clock and presentation ownership stays in adapters. */
 export type FramePreparationPolicy = 'host' | 'embedded';
 
 export function publishAnalysisFrame(state: WormholeRenderState, index: number, policy: FramePreparationPolicy): void {
@@ -62,18 +63,19 @@ function copyVisualFeatures(source: VisualFeatureFrame, target: VisualFeatureFra
     target.density = source.density; target.brightness = source.brightness; target.tension = source.tension;
 }
 
-export function decayHostAnalysisFrame(state: WormholeRenderState): void {
-    state.currentFrame.subEnergy = (state.currentFrame.subEnergy ?? 0) * 0.9;
-    state.currentFrame.bassEnergy = (state.currentFrame.bassEnergy ?? 0) * 0.9;
-    state.currentFrame.subFlux = (state.currentFrame.subFlux ?? 0) * 0.9;
-    state.currentFrame.bassFlux = (state.currentFrame.bassFlux ?? 0) * 0.9;
-    state.currentFrame.e *= 0.9; state.currentFrame.densityProj *= 0.9;
-    state.currentFrame.melodyProj *= 0.9; state.currentFrame.fxProj *= 0.9;
-    state.currentFrame.perceptualSpectrum = state.currentFrame.perceptualSpectrum.map(value => value * 0.9);
-    state.currentFrame.eRatio *= 0.9;
-    state.currentFeatures.melody *= 0.9; state.currentFeatures.vocal *= 0.9;
-    state.currentFeatures.fx *= 0.9; state.currentFeatures.density *= 0.9;
-    state.currentFeatures.brightness *= 0.9; state.currentFeatures.tension *= 0.9;
+export function decayHostAnalysisFrame(state: WormholeRenderState, deltaSec = 1 / 60): void {
+    const factor = decayOverSeconds(0.9, deltaSec);
+    state.currentFrame.subEnergy = (state.currentFrame.subEnergy ?? 0) * factor;
+    state.currentFrame.bassEnergy = (state.currentFrame.bassEnergy ?? 0) * factor;
+    state.currentFrame.subFlux = (state.currentFrame.subFlux ?? 0) * factor;
+    state.currentFrame.bassFlux = (state.currentFrame.bassFlux ?? 0) * factor;
+    state.currentFrame.e *= factor; state.currentFrame.densityProj *= factor;
+    state.currentFrame.melodyProj *= factor; state.currentFrame.fxProj *= factor;
+    state.currentFrame.perceptualSpectrum = state.currentFrame.perceptualSpectrum.map(value => value * factor);
+    state.currentFrame.eRatio *= factor;
+    state.currentFeatures.melody *= factor; state.currentFeatures.vocal *= factor;
+    state.currentFeatures.fx *= factor; state.currentFeatures.density *= factor;
+    state.currentFeatures.brightness *= factor; state.currentFeatures.tension *= factor;
 }
 
 /** Bus/director stage only. Publication and transient advancement happen before this call. */

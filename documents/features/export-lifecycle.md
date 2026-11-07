@@ -8,6 +8,12 @@ exact-frame scheduling. WH-01 is the first implementation task; T20c2's GPU
 experiment is WH-02 and production export integration is WH-06. This is a plan,
 not a delivered backend or a reversal of MVP's Isolated Wormhole retirement.
 
+WH-03b delivered [song-time envelopes and canonical exact request scheduling](../audits/wormhole-wh03b-canonical-time.md).
+Thirty/sixty-fps exact requests reuse forward simulation; repeated bitmap requests
+redraw. The existing rewind oracle is retained. Preview policy is still separate;
+this does not promote the retired MVP isolated mode or activate the GPU export.
+WH-04 is the next manual-gated step; WH-06 owns product export integration.
+
 WH-01 delivered the [common frame contract and scalar kernel baseline](../audits/wormhole-wh01-contract-baseline.md).
 Its raw inputs, repeatable images and fixed quality gates prepare the next WH-02 GPU
 spike; no active export render path, codec, bit depth or speed profile changed.
@@ -26,7 +32,7 @@ WH-03a now shares [frame preparation arithmetic and a resolved data view](../aud
 between the existing host and private context. Gain/projection order and borrowed
 analysis ownership are preserved; the host worker still consumes resolved input
 without a second director. Export job/codec/PCM/Stop/Cancel behavior is unchanged.
-WH-03b canonical time is next, before GPU playback and exact export integration.
+WH-03b timing is delivered above; WH-04 MVP playback integration is next after manual acceptance.
 
 ## T19c resource follow-up - staged for quota-aware delivery
 

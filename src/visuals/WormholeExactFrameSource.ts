@@ -42,7 +42,7 @@ export class WormholeExactFrameSource implements ExactWormholeSource {
         this.busy = true;
         let bitmap: ImageBitmap | null = null;
         try {
-            await Promise.resolve(); check(); this.source.renderExact(songTime);
+            await Promise.resolve(); check(); this.source.renderRequestedFrame(frameIndex, fps);
             const focalPoint = Object.freeze({ ...this.source.focalPoint });
             const material = this.source.materialFrame ? { ...this.source.materialFrame,
                 data: this.source.materialFrame.data.slice(0, this.source.materialFrame.count * GRAIN_CARRIER_STRIDE) } : null;

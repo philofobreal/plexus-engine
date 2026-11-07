@@ -20,6 +20,7 @@ function createHarness(applyAutomatedSpiral, createWormholeWorker, gain) {
       this.windowWidth = this.width = 1280;
       this.windowHeight = this.height = 720;
       this.frameCount = 0;
+      this.deltaTime = 1000 / 30;
       this.density = 2;
       sketch(this);
       this.setup();

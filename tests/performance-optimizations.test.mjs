@@ -69,10 +69,9 @@ test('renderer reuses modulation state and lowers frame rate while paused or idl
   assert.match(renderer, /State\.modulation\.macroMomentum = 0/);
   assert.match(renderer, /State\.isPlaying \? 60 : State\.duration > 0 \? 30 : 15/);
   assert.match(renderer, /p\.frameRate\(targetFrameRate\)/);
-  assert.match(renderer, /const fadeStep = 1 \/ targetFrameRate/);
-  assert.match(renderer, /State\.playbackFade = Math\.min\(1\.0, State\.playbackFade \+ fadeStep\)/);
-  assert.match(renderer, /State\.playbackFade = Math\.max\(0\.0, State\.playbackFade - fadeStep\)/);
-  assert.match(renderer, /State\.rotationPhase \+= State\.playbackFade/);
+  assert.match(renderer, /State\.playbackFade = advancePlaybackFade\(State\.playbackFade, active, envelopeDelta, true\)/);
+  assert.match(renderer, /State\.rotationPhase \+= integratedFadeFrames\(State\.playbackFade, active, envelopeDelta\)/);
+  assert.doesNotMatch(renderer, /const fadeStep = 1 \/ targetFrameRate/);
 });
 
 test('temporal ring phases use playback-driven rotation phase instead of frame count', () => {

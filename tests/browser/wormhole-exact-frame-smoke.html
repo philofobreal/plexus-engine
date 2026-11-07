@@ -25,13 +25,13 @@ async function run(){button.disabled=true;output.textContent='Running real raste
  try{for(const [webglRaster,external] of [[false,true],[true,true],[true,false],[false,false]]){const options={width:320,height:180,contextSeed:seed,externalMaterial:external,externalLines:external,webglRaster};
  const local=new WormholeExactFrameSource('local-'+external,options),worker=new WormholeExactWorkerSource({contextId:'worker-'+external,...options});sources.push(local,worker);
  await Promise.all([local.prepare(analysis),worker.prepare(analysis)]);local.setPresentation({maxFrameRateHz:1});worker.setPresentation({maxFrameRateHz:1});
- const repeats=new Map();for(const time of external?[.625]:[0,.625,1.125,.625]){output.textContent=`Sampling ${time}s, external carriers ${external}…`;
- const before=performance.now();const a=await local.requestFrame(time*24,24),b=await worker.requestFrame(time*24,24);
+ const repeats=new Map();const requests=[...(external?[.625]:[0,.625,1.125,.625]).map(time=>[time*24,24]),...[0,1,30,60,60,25].map(i=>[i,60]),...[0,1,15,30,30,7].map(i=>[i,30])];for(const [frameIndex,fps] of requests){const time=frameIndex/fps;output.textContent=`Sampling ${time}s, external carriers ${external}…`;
+ const before=performance.now();const a=await local.requestFrame(frameIndex,fps),b=await worker.requestFrame(frameIndex,fps);
  try{const aa=paint(document.querySelector('#local'),a),bb=paint(document.querySelector('#worker'),b),comparison=diff(aa,bb);
  const repeated=repeats.get(time),repeat=repeated?{local:diff(aa,repeated.aa),worker:diff(bb,repeated.bb)}:null;repeats.set(time,{aa,bb});
- const companionsEqual=companion(a)===companion(b),identitiesExact=[a,b].every(l=>l.identity.songTime===time&&l.identity.frameIndex===time*24&&l.identity.fps===24&&l.spatial.time===time);
- const row={time,webglRaster,actualRaster:{local:local.rasterKind,worker:worker.rasterKind},external,comparison,repeat,companionsEqual,identitiesExact,materialCount:a.material?.count??0,lineCount:a.lines?.count??0,elapsedMs:performance.now()-before};
- row.pass=comparison.mae<=gates.normalizedRgbaMae&&comparison.badFraction<=gates.pixelFractionAbove2&&companionsEqual&&identitiesExact&&(!repeat||(repeat.local.max===0&&repeat.worker.max===0));rows.push(row);
+ const companionsEqual=companion(a)===companion(b),identitiesExact=[a,b].every(l=>l.identity.songTime===time&&l.identity.frameIndex===frameIndex&&l.identity.fps===fps&&l.spatial.time===time);
+ const row={time,frameIndex,fps,nonblank:aa.some((v,i)=>i%4!==3&&v>0),webglRaster,actualRaster:{local:local.rasterKind,worker:worker.rasterKind},external,comparison,repeat,companionsEqual,identitiesExact,materialCount:a.material?.count??0,lineCount:a.lines?.count??0,elapsedMs:performance.now()-before};
+ row.pass=row.nonblank&&comparison.mae<=gates.normalizedRgbaMae&&comparison.badFraction<=gates.pixelFractionAbove2&&companionsEqual&&identitiesExact&&(!repeat||(repeat.local.max===0&&repeat.worker.max===0));rows.push(row);
  }finally{a.release();b.release();}}
  local.dispose();worker.dispose();}
  last={pass:rows.every(r=>r.pass),sampler:'fixed-song-60-v1',gates,rows,totalMs:performance.now()-started};output.textContent=JSON.stringify(last,null,2);

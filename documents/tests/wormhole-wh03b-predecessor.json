@@ -1,0 +1,21 @@
+{
+  "commit": "67e3715e4b4d5cbf79f07767067f899b878bf0f1",
+  "retention": "Exact predecessor bytes retained by immutable Git commit; no baseline is overwritten.",
+  "files": {
+    "src/visuals/PlexusRenderer.ts": "61c1f0130efe9ba3d2d6d50f1909c6ea702e6b9879a1517fafee529142aa644b",
+    "src/visuals/WormholeFrameContext.ts": "c674bcb163c237c9c37617cd1f48adc010c4dba806635076ffb5c6c598947c4b",
+    "src/visuals/WormholeCanvasSource.ts": "dc212939152e1aebdac8c87890ba5e51bac7258bd2f901bb086a808a20c10875",
+    "src/visuals/VisualFramePreparation.ts": "e72336a7f9c8b98d7d0a23d8bf756250b664bb63f1b531d9ff5c49a30a4389ff",
+    "src/visuals/transientDecay.ts": "df1f2c16421f8aac0cfb55c2bb756b6e80eabd0f5af72f3b32a41eed62ef02ac",
+    "src/visuals/WormholeExactFrameSource.ts": "c11b087c9e425b4abb1d383fe5e843984a7411b08191bd7b5da73b79e5b016ae",
+    "src/visuals/wormholeRender.worker.ts": "4b3bceed238f245bd68452f9190c0ec55999ae226b1f5d603c9ecc173c4b70d5",
+    "tests/visual-frame-preparation.test.mjs": "472d78940b3d258f2719023f7e76f0191c8d22a72647fadd5eaadb88782c42da",
+    "tests/contracts.test.mjs": "d0cbbc73536178dd9d52b25e7f3b8ac00b443dde2f33a4e7b11680c84231853c",
+    "tests/performance-optimizations.test.mjs": "a1116d092d25f04c7286293a89365a832d8e2b314c9c9fb8584f2e38718d8dbe",
+    "tests/wormhole-exact-frame.test.mjs": "3ea70a857a3de4182d4631afa5937739ad0e328c5d7d5a85aa4f23825d57dd18",
+    "tests/paused-renderer.test.mjs": "fc491d0b5dd8df202709b2cf274b0bd86b256b1cf37e086ad4cdb716feabde56",
+    "tests/export-isolated.test.mjs": "f0bc5702652c89037b05da5b947705d8cd217173d65a8919c3b0008eb7bb5740",
+    "src/visuals/VisualDirectorFSM.ts": "a0c75353d2a38320e3d961c7a025eb94c25a33f05a66215ab68ec60f4cdceca4",
+    "tests/browser/wormhole-exact-frame-smoke.html": "67b59326f9238d72e1e2fc84007e488d8ee46d7356a6fea238013222ee4364fb"
+  }
+}

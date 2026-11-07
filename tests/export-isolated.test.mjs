@@ -317,3 +317,17 @@ test('coordinator releases a prepared private runtime after capability/backend f
     await assert.rejects(exporter.startExport(config, () => {}), /codec unavailable/); assert.equal(disposed, 1);
     await assert.rejects(exporter.startExport(config, () => {}), /codec unavailable/); assert.equal(disposed, 2);
 });
+
+test('production exact requests stay linear and redraw consumed repeated surfaces against rewind oracle',()=>{
+    const h=sequential(),initial=h.draws;
+    for(let i=0;i<=60;i++)h.a.renderRequestedFrame(i,60);
+    assert.equal(h.draws-initial,61,'forward requests do not replay zero');
+    const previous=h.draws;h.a.renderRequestedFrame(60,60);assert.ok(h.draws>previous,'repeat draws fresh surface');
+    h.b.renderExact(1);assert.equal(h.signature(h.a,0),h.signature(h.b,1));
+    for(const [i,fps] of [[31,30],[7,30],[7,30],[3,24],[40,60],[5,36]]){
+        h.a.renderRequestedFrame(i,fps);h.b.renderExact(i/fps);
+        assert.equal(h.signature(h.a,0),h.signature(h.b,1),i+'/'+fps);
+    }
+    for(const [i,fps] of [[-1,60],[1,0],[NaN,30],[-1,-30]])assert.throws(()=>h.a.renderRequestedFrame(i,fps));
+    h.a.dispose();h.b.dispose();
+});

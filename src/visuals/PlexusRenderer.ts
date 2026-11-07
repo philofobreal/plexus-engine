@@ -22,7 +22,7 @@ import { IdentityTransitionController, type IdentityDraw } from './IdentityTrans
 import { WormholeRasterPass } from './WormholeRasterPass';
 import { P5RenderTargetCompositor } from './P5RenderTargetCompositor';
 import { PostFxPipeline } from './PostFxPipeline';
-import { BEAT_DECAY_PER_FRAME, CUE_DECAY_PER_FRAME, DENSE_IMPACT_DECAY_PER_FRAME } from './transientDecay';
+import { VisualTransientSampler, advancePlaybackFade, integratedFadeFrames } from './transientDecay';
 import { TemporalFragmentationEffect } from './TemporalFragmentationEffect';
 import type { PostFxSurfaceHost } from './CanvasPostFxSurface';
 import type { WormholeHostRasterSource } from '../types/WormholeHostFrame';
@@ -189,6 +189,9 @@ export function startPlexusRenderer(
         let currentCueIdx = 0;
         let currentTargetFrameRate = 60;
         let lastTuningTime: number | null = null;
+        let lastEnvelopeTime: number | null = null;
+        let lastEnvelopeExport = State.isExporting;
+        const transientSampler = new VisualTransientSampler();
         let lastTuningClockWasExport = State.isExporting;
         const compactMaterialPreview = () => getPreviewPolicy()?.compactMaterialPreview ?? false;
         const backend = new P5RendererBackend(p, compactMaterialPreview);
@@ -229,6 +232,7 @@ export function startPlexusRenderer(
         };
 
         const syncEventIndex = (time: number) => {
+            lastEnvelopeTime = null;
             pausedPreview.invalidate();
             workerRaster?.reset();
             currentEventIdx = State.events.findIndex(e => e.time >= time);
@@ -242,6 +246,7 @@ export function startPlexusRenderer(
         engine.addPositionChangedListener(syncEventIndex);
 
         engine.addPlaybackEndedListener(() => {
+            lastEnvelopeTime = null;
             pausedPreview.invalidate();
             workerRaster?.reset();
             currentEventIdx = 0;
@@ -324,13 +329,15 @@ export function startPlexusRenderer(
 
             shockwaveLifecycle.syncMode(State.visualMode);
 
-            const fadeStep = 1 / targetFrameRate;
-            if (State.isPlaying || State.isExporting) {
-                State.playbackFade = Math.min(1.0, State.playbackFade + fadeStep);
-            } else {
-                State.playbackFade = Math.max(0.0, State.playbackFade - fadeStep);
-            }
-            State.rotationPhase += State.playbackFade;
+            const active = State.isPlaying || State.isExporting;
+            // Song time owns all musical envelopes. Only the host's cosmetic pause fade uses
+            // p5 elapsed time; it cannot advance events, automation, director or export time.
+            const envelopeDelta = lastEnvelopeTime === null || lastEnvelopeExport !== State.isExporting
+                ? 0 : active ? Math.max(0, ct - lastEnvelopeTime)
+                    : Math.min(0.25, Math.max(0, Number.isFinite(p.deltaTime) ? p.deltaTime / 1000 : 0));
+            lastEnvelopeTime = ct; lastEnvelopeExport = State.isExporting;
+            State.rotationPhase += integratedFadeFrames(State.playbackFade, active, envelopeDelta);
+            State.playbackFade = advancePlaybackFade(State.playbackFade, active, envelopeDelta, true);
 
             State.currentTime = ct;
             const tuningClockChanged = lastTuningClockWasExport !== State.isExporting;
@@ -346,24 +353,21 @@ export function startPlexusRenderer(
 
             framePreparation.prepareTuning(State, featureFlags, ct, tuningDeltaSec);
 
-            if ((State.isPlaying || State.isExporting) && State.frames.length > 0) {
+            if (State.frames.length > 0) {
                 let frameIdx = Math.floor(ct * State.sampleRate / State.hopSize);
                 publishAnalysisFrame(State, frameIdx, 'host');
 
-                while (currentEventIdx < State.events.length && ct >= State.events[currentEventIdx].time) {
+                while (active && currentEventIdx < State.events.length && ct >= State.events[currentEventIdx].time) {
                     let ev = State.events[currentEventIdx];
-                    State.beatDecay = 1.0;
-                    if (ev.type === 2) State.denseImpactFlash = 1.0;
                     shockwaveLifecycle.emit(State.visualMode, () =>
                         new Shockwave(p, tuneAudioValue(ev.intensity, State.visualTuning), State.currentFrame.state, ev.type)
                     );
                     currentEventIdx++;
                 }
 
-                while (currentCueIdx < State.trackAnalysis.cues.length && ct >= State.trackAnalysis.cues[currentCueIdx].time) {
+                while (active && currentCueIdx < State.trackAnalysis.cues.length && ct >= State.trackAnalysis.cues[currentCueIdx].time) {
                     let cue = State.trackAnalysis.cues[currentCueIdx];
                     let cueIntensity = tuneAudioValue(cue.intensity, State.visualTuning);
-                    State.cueDecay = Math.max(State.cueDecay, cueIntensity);
                     State.activeCueKind = cue.kind;
                     State.activePatternId = cue.kind === 'pattern' ? cue.patternId || null : State.activePatternId;
                     shockwaveLifecycle.emit(State.visualMode, () =>
@@ -372,12 +376,13 @@ export function startPlexusRenderer(
                     currentCueIdx++;
                 }
             } else {
-                decayHostAnalysisFrame(State);
+                decayHostAnalysisFrame(State, envelopeDelta);
             }
 
-            State.beatDecay *= BEAT_DECAY_PER_FRAME;
-            State.denseImpactFlash *= DENSE_IMPACT_DECAY_PER_FRAME;
-            State.cueDecay *= CUE_DECAY_PER_FRAME;
+            const transients = transientSampler.sample(State.events, State.trackAnalysis.cues, ct);
+            State.beatDecay = transients.beat;
+            State.denseImpactFlash = transients.dense;
+            State.cueDecay = tuneAudioValue(transients.cue, State.visualTuning);
             if (State.cueDecay < 0.02) {
                 State.activeCueKind = null;
                 State.activePatternId = null;

@@ -1,5 +1,6 @@
 import { CONTINUOUS_PLAYBACK_MAX_STEP_SEC, isContinuousPlaybackStep, type CanvasVisualPresentation, type CanvasVisualSource,
     type VisualAnalysisSnapshot, type VisualFocalPoint } from '../types/CanvasVisualSource';
+import { exactWormholeTime } from '../types/WormholeExactFrame';
 import type { GrainMaterialFrame } from '../types/GrainMaterialFrame';
 import type { GrainLineFrame } from '../types/GrainLineFrame';
 import type { WormholeSpatialFrame } from '../types/WormholeSpatialFrame';
@@ -245,6 +246,20 @@ export class WormholeCanvasSource implements CanvasVisualSource {
             if (!this.renderFrame(next / 60, true, true, true)) throw new Error('Sequential Wormhole frame unavailable.');
             this.sequentialTick = next;
         }
+    }
+
+    /** Normal exact requests reuse the canonical simulation at 30/60 fps. Other rates retain
+     * the independent rewind oracle until separately qualified. Presentation changes invalidate it.
+     */
+    renderRequestedFrame(frameIndex: number, fps: number): void {
+        const time = exactWormholeTime(frameIndex, fps);
+        if (fps === 30 || fps === 60) {
+            // A worker bitmap transfer consumes the surface. A repeated request must redraw,
+            // rather than lease the cleared canvas. Rewind keeps this rare case oracle-exact.
+            if (frameIndex * (60 / fps) === this.sequentialTick) this.sequentialTick = -1;
+            this.renderExportFrame(frameIndex, fps);
+        }
+        else this.renderExact(time);
     }
 
     /** Offline only: canonical 60 Hz replay from song zero, then the exact fractional endpoint.

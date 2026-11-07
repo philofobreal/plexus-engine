@@ -19,6 +19,16 @@ adapter imports the leaf without importing Three/XR. WH-02's laboratory is a sep
 Vite entry, not a live host/export backend. Original XR shader bodies stay unchanged;
 strict 2D bloom/coverage profiles are separate constants, not an XR default change.
 
+WH-03b normalizes musical transient envelopes in the shared, data-only
+transientDecay.ts sampler: actual event age, immutable publication indexes,
+overlapping cue peaks and logarithmic seeks. Hosts retain cursor/shockwave ownership.
+Host pause UI fading may use bounded p5 elapsed time but must never advance song
+events, automation, directors or exact-frame timestamps. Canonical 30/60 requests
+reuse the existing private 60 Hz simulation, retaining the independent rewind oracle;
+a repeated consumed bitmap request must redraw. This does not transfer product
+export ownership or imply pixel equality across different preview histories.
+See the [WH-03b evidence and limits](../audits/wormhole-wh03b-canonical-time.md).
+
 WH-03a shares data preparation through `VisualFramePreparation` (gain/morph/
 semantic projection, analysis copies and bus/director arithmetic) and extracts
 the host semantic cursor/cache into `HostVisualFramePreparation`. Both accept

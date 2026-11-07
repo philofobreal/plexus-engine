@@ -24,6 +24,12 @@ Workers do not resolve macros, presets or directors again. Ownership transfer
 and new asynchronous sessions remain WH-04/06, with the original stale-result,
 bitmap cleanup and generation rules in force.
 
+WH-03b routes the existing exact-v2/local 30/60 fps requests to incremental
+canonical simulation. Identity validation, capability, deadlines, one-lease bounds
+and returned companion ownership remain unchanged. Repeat requests must reconstruct
+a fresh surface after bitmap consumption. Other fps retain the rewind oracle; a
+preview rate cap cannot govern exact requests. This adds no wire schema.
+
 T16 informational spectrum: the resolved MVP host-frame request may carry optional normalized
 `musicDisplay` preferences (mode/size/opacity). Default Off omits the field and preserves the old
 packet shape; omission resets a previously enabled worker display. Analysis/spectrum frames still

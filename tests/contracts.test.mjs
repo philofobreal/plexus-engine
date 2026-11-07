@@ -732,12 +732,12 @@ test('renderer keeps accepted worker results immutable while decaying render cop
   const renderer = read('src/visuals/PlexusRenderer.ts');
   const preparation = read('src/visuals/VisualFramePreparation.ts');
   assert.match(renderer, /publishAnalysisFrame\(State, frameIdx, 'host'\)/);
-  assert.match(renderer, /decayHostAnalysisFrame\(State\)/);
+  assert.match(renderer, /decayHostAnalysisFrame\(State, envelopeDelta\)/);
   assert.match(preparation, /copyAudioFrame\(state\.frames\[index\], state\.currentFrame\)/);
   assert.match(preparation, /copyVisualFeatures\(state\.trackAnalysis\.features\[index\], state\.currentFeatures\)/);
   assert.doesNotMatch(renderer + preparation, /(?:State|state)\.currentFrame\s*=\s*(?:State|state)\.frames\[/);
   assert.doesNotMatch(renderer + preparation, /(?:State|state)\.currentFeatures\s*=\s*(?:State|state)\.trackAnalysis\.features\[/);
-  assert.match(preparation, /function decayHostAnalysisFrame[\s\S]*state\.currentFrame\.e \*= 0\.9/);
+  assert.match(preparation, /function decayHostAnalysisFrame[\s\S]*decayOverSeconds\(0\.9, deltaSec\)[\s\S]*state\.currentFrame\.e \*= factor/);
   assert.match(preparation, /function copyAudioFrame\(source: AudioFrame, target: AudioFrame\)/);
   assert.match(preparation, /function copyVisualFeatures\(source: VisualFeatureFrame, target: VisualFeatureFrame\)/);
 });
@@ -751,8 +751,8 @@ test('dense impact flash preserves former type 2 visual behavior', () => {
 
   assert.match(state, /denseImpactFlash: 0/);
   assert.match(audio, /State\.denseImpactFlash = 0/);
-  assert.match(renderer, /if \(ev\.type === 2\) State\.denseImpactFlash = 1\.0/);
-  assert.match(renderer, /State\.denseImpactFlash \*= DENSE_IMPACT_DECAY_PER_FRAME/);
+  assert.match(read('src/visuals/transientDecay.ts'), /events\.filter\(e => e\.type === 2\)/);
+  assert.match(renderer, /State\.denseImpactFlash = transients\.dense/);
   assert.match(read('src/visuals/transientDecay.ts'), /export const DENSE_IMPACT_DECAY_PER_FRAME = 0\.85;/);
   assert.match(renderer, /State\.denseImpactFlash = 0/);
   assert.match(classic, /State\.denseImpactFlash \* 150 \* State\.visualTuning\.polygonFlash/);

@@ -17,7 +17,7 @@ import { motifTransitionId, semanticScoreTransitionId } from './VisualTransition
 import { CosmicWormholeIdentity, type WormholeRenderState } from './CosmicWormholeIdentity';
 import { VisualDirectorFSM } from './VisualDirectorFSM';
 import { DEFAULT_MUSIC_DISPLAY, normalizeMusicDisplay, type MusicDisplaySettings } from '../types/MusicDisplay';
-import { BEAT_DECAY_PER_FRAME, CUE_DECAY_PER_FRAME, DENSE_IMPACT_DECAY_PER_FRAME, transientDecayAfter } from './transientDecay';
+import { VisualTransientSampler, advancePlaybackFade } from './transientDecay';
 
 function emptyState(): WormholeRenderState {
     return {
@@ -39,7 +39,7 @@ const GRAIN_MATERIAL_BOOST_KEYS: readonly GrainMaterialBoostKey[] = ['wormholeNe
 
 /** One simulation owner, independent of canvas, cadence, asset IO and host globals.
  * The host passes unboosted controls, an explicit policy and already resolved preset assets.
- * This preserves preview history behavior; it is not yet an exact-frame sampler (T05c).
+ * Preview keeps its seek/snap policy; the exact adapter supplies canonical replay ticks.
  */
 export class WormholeFrameContext {
     state!: WormholeRenderState;
@@ -53,7 +53,7 @@ export class WormholeFrameContext {
     private wall: WormholeWallPresentation | null = null;
     private musicDisplay: Readonly<MusicDisplaySettings> = DEFAULT_MUSIC_DISPLAY;
     private readonly wallPresetGates=new Map<string,boolean>();
-    private denseEvents: { time: number }[] = [];
+    private transientSampler = new VisualTransientSampler();
     activePreset = '';
     private director = new VisualDirectorFSM();
     private resolver = new SemanticResolver();
@@ -108,7 +108,7 @@ export class WormholeFrameContext {
         this.plan = null; this.presets.clear(); this.wallPresetGates.clear(); this.lastPoint = null;
         this.resolvedPlan = false;
         this.motifRuntime = new MotifRuntimeAdapter(); this.framePreparation = new VisualFramePreparation();
-        this.denseEvents = this.state.events.filter(event => event.type === 2);
+        this.transientSampler = new VisualTransientSampler();
         this.choreography = analysis && this.policy.semanticResolver
             ? processChoreography(generateIntents(buildNarrative(analysis.trackAnalysis)), analysis.trackAnalysis) : null;
         Object.assign(this.state.targetTuning, this.rawTuning);
@@ -174,7 +174,7 @@ export class WormholeFrameContext {
     step(time: number, playing: boolean, dt: number, previous: number | null, jump: boolean, snap: boolean): void {
         const state = this.state;
         state.currentTime = time;
-        state.playbackFade = playing ? Math.min(1, state.playbackFade + dt) : state.playbackFade;
+        state.playbackFade = advancePlaybackFade(state.playbackFade, playing, jump || previous === null ? 0 : dt);
         if (jump && time < (previous ?? 0)) {
             state.targetTuning = { ...this.rawTuning }; this.semanticBase = { ...this.rawTuning }; this.lastPoint = null;
         }
@@ -214,12 +214,10 @@ export class WormholeFrameContext {
         const index = Math.max(0, Math.floor(time * state.sampleRate / state.hopSize));
         // Copy before the director mutates its live frame; published analysis remains immutable.
         publishAnalysisFrame(state, index, 'embedded');
-        const beat = state.events[lastIndexAt(state.events, time)];
-        const dense = this.denseEvents[lastIndexAt(this.denseEvents, time)];
-        const cue = state.trackAnalysis.cues[lastIndexAt(state.trackAnalysis.cues, time)];
-        state.beatDecay = beat ? transientDecayAfter(BEAT_DECAY_PER_FRAME, time - beat.time) : 0;
-        state.denseImpactFlash = dense ? transientDecayAfter(DENSE_IMPACT_DECAY_PER_FRAME, time - dense.time) : 0;
-        const cueDecay = cue ? cue.intensity * transientDecayAfter(CUE_DECAY_PER_FRAME, time - cue.time) : 0;
+        const transients = this.transientSampler.sample(state.events, state.trackAnalysis.cues, time);
+        state.beatDecay = transients.beat;
+        state.denseImpactFlash = transients.dense;
+        const cueDecay = transients.cue;
         state.directorOutput = prepareFrameSignals(state, this.director, time, cueDecay, 'embedded', playing);
         if (jump) this.identity.syncPosition(time);
         this.activePreset = point?.preset ?? '';
@@ -276,10 +274,4 @@ export class WormholeFrameContext {
         this.presets.clear();
         this.spiralAutomation.invalidate(); this.finiteAutomation.invalidate();
     }
-}
-
-function lastIndexAt(entries: readonly { time: number }[], time: number): number {
-    let lo = 0, hi = entries.length;
-    while (lo < hi) { const mid = (lo + hi) >>> 1; if (entries[mid].time <= time) lo = mid + 1; else hi = mid; }
-    return lo - 1;
 }

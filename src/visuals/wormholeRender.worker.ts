@@ -155,7 +155,7 @@ scope.onmessage = event => {
                     if (!Number.isSafeInteger(id.requestSerial) || id.requestSerial <= 0
                         || exactWormholeTime(id.frameIndex, id.fps) !== id.songTime) throw new Error('Invalid exact Wormhole frame identity.');
                     const started = performance.now();
-                    source.renderExact(id.songTime);
+                    source.renderRequestedFrame(id.frameIndex, id.fps);
                     bitmap = (source.canvas as unknown as OffscreenCanvas).transferToImageBitmap();
                     const collected = source.materialFrame, strokes = collected ? source.lineFrame : null;
                     let material: GrainMaterialFrame | undefined, lines: GrainLineFrame | undefined;
