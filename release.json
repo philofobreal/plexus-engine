@@ -1,7 +1,7 @@
 {
-  "id": "wh02-gpu-material-lab-20261107T133226341Z",
-  "previousCommit": "c1b462cc26cd270e36ef525bf2357edd702883eb",
-  "sourceCommit": "faf23de1b8b723bde4e755c1fbcaf873dc45ec93",
+  "id": "wh02-alpha-inspection-20261107T140535693Z",
+  "previousCommit": "15ed2925dc1cde2e2ba7f276219ca0cf9b6a472a",
+  "sourceCommit": "f05963a59fb585c4d346ba5c57c1b16771dea35b",
   "inputs": [
     {
       "path": "bun.lock",
@@ -209,11 +209,11 @@
     },
     {
       "path": "research/export/wormhole-gpu-lab.mjs",
-      "sha256": "ca4906a434f50bbb4402f95a2b47a288d1272bf863402b0db6561ab77ddf2461"
+      "sha256": "7808decfefb2b9a243fdc02c71bba4f0f08a35d3a634ddc30ccccaa2619958bb"
     },
     {
       "path": "research/export/wormhole-gpu.html",
-      "sha256": "2402620a7fb7e46b6cc4d8d5d2a3586a49d8550122f6805b13f4ac78bd925a21"
+      "sha256": "828b18b6814f5fd327308aa06282476fcfbf81cbc97d48899eda103f64b87afc"
     },
     {
       "path": "research/export/wormhole-gpu.worker.ts",
@@ -221,7 +221,7 @@
     },
     {
       "path": "research/export/wormhole-quality.mjs",
-      "sha256": "b33483d976f1ffe419a9c7a19263ce0438d50e8c7fdfc34f7afcc85712e59630"
+      "sha256": "7478b6425e07b65ff6ce0155335b9bcbd0e5da6424b3f38ddbb6ac6faf25f31e"
     },
     {
       "path": "scripts/audit-cockpit-refinement.mjs",
@@ -1822,8 +1822,8 @@
       "sha256": "871e63e7469a24954d19e3b1782c8b69e41c7049f7806d0bfadae54626eaf283"
     },
     {
-      "path": "assets/wormholeGpuLab-C6LgPjE-.js",
-      "sha256": "43ce26dd93b5145b89b2f06802c2370abb304cdb3aeff0f8bd1c13754d966cb5"
+      "path": "assets/wormholeGpuLab-BFShG_F9.js",
+      "sha256": "ea2731c22a22ce3e3f074bf0a1bcf517a6ca777271528bd977d800e23e99461b"
     },
     {
       "path": "assets/wormholeHostRender.worker-CMeqVNwq.js",
@@ -1903,7 +1903,7 @@
     },
     {
       "path": "research/export/wormhole-gpu.html",
-      "sha256": "e87ceb56f152c1f2895a26e51fe1d3c2405ac62b9931e94f186b3b9ca798f436"
+      "sha256": "53468d2a37daa59e1334d8c1182b22a7b9897798a9ac692d9d9a07cdbd155d8e"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
