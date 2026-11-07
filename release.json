@@ -1,7 +1,7 @@
 {
-  "id": "mvp-mp4-10bit-vp9-20261107T042129865Z",
-  "previousCommit": "f6f42b2bc205eab0320f235779640e8fc4a83e9b",
-  "sourceCommit": "5ba4460c1768d4e0b59c4cf4f9b94b3076e85aa2",
+  "id": "t20c1-parallel-material-20261107T103604879Z",
+  "previousCommit": "5bd10e814b9b89627d8b3e745a5767a5f63d5e93",
+  "sourceCommit": "9733a4a4aebf2ff0d68e41f8f3b102c0a40c52de",
   "inputs": [
     {
       "path": "bun.lock",
@@ -1461,7 +1461,7 @@
     },
     {
       "path": "src/visuals/wormholeGrainMaterialRaster.ts",
-      "sha256": "a27a2bcf8cad4fb07240fb93b812169312ba6bf02598d3aea77e12eca6fbfa79"
+      "sha256": "6b9de148129c9eba019d094ad9c89f1683a27d2cbf5fbc5928d8ea87d5444fab"
     },
     {
       "path": "src/visuals/wormholeHostRender.worker.ts",
@@ -1722,12 +1722,12 @@
       "sha256": "6589a9a8131f90d59d75489a6fb13db7c977b096524418fd11557c433eea45dc"
     },
     {
-      "path": "assets/CanvasVisualSource-BpW_V-Nw.js",
-      "sha256": "061f2a985fc06dcdc2892a483c8bb7e5917a42beff82dea6b8bae258ff36513d"
+      "path": "assets/CanvasVisualSource-BUv5QUwf.js",
+      "sha256": "f3f928c3d19457e8579ab3756963c700584c2b7ac137023897582a53dd297dbe"
     },
     {
-      "path": "assets/CosmicWormholeIdentity-BufrVRns.js",
-      "sha256": "0b31b780ac1f55bf8ea1745febe8c0cf2989cea1dda7a31c6dbf4e3136aa4392"
+      "path": "assets/CosmicWormholeIdentity-ciaTY-wb.js",
+      "sha256": "cbf1dba64f57beebe7d3c962e2ea9bf207f14a3e9bd5b05f6ebd771b575b9756"
     },
     {
       "path": "assets/export.worker-D1TpZcqW.js",
@@ -1738,12 +1738,12 @@
       "sha256": "5fe5fb080b24f0c7fbbb305ced4b3d836d37351843709ad220ca72f8c8554a5c"
     },
     {
-      "path": "assets/main-BZvq0YU7.js",
-      "sha256": "6c6be0fecb3055cdedec7b62ca8850dcf260437bff0ca9a0b772ab384cd3ed6b"
-    },
-    {
       "path": "assets/main-C7BsYBKL.css",
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+    },
+    {
+      "path": "assets/main-CqEC3HVR.js",
+      "sha256": "6640aa1a6769bcb72c11558946b08927620ff019e272b2abec6b12b8b59c20da"
     },
     {
       "path": "assets/mp4-export.worker-3urq0Zyt.js",
@@ -1754,40 +1754,40 @@
       "sha256": "0ef084e58ac422aeabfd987577c6e9a31ddaa6f1f968e854668b340e6d9462d4"
     },
     {
-      "path": "assets/mvp-DB5Q416Q.js",
-      "sha256": "6679d0afec946d97663c1d8a9c47597eaee85ad28fc72f4687a21a2adee26af5"
+      "path": "assets/mvp-iYvFkBZT.js",
+      "sha256": "7d036fb2de90b4c0edf5907ca8fbbfc1db4f5d96b5fd60809496cb23d252951d"
     },
     {
       "path": "assets/mvp-sPSHbSJ7.css",
       "sha256": "cb96120abd23cfdbc780f2f9a1c1c2374de5f7eaf9834ff98e8185abf16c1405"
     },
     {
-      "path": "assets/PreviewQualityControl-CZogbosn.js",
-      "sha256": "5c14c56647d458401b4cc0b5f51a61dc6e5514e4f4f05b601c8896afa887aca2"
+      "path": "assets/PreviewQualityControl-BOXIRWpL.js",
+      "sha256": "911d92ea2fa7b22f2cfa43359fa92f4e6a43a0f2cf8f8a9281df173f56739cd3"
     },
     {
       "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
       "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
     },
     {
-      "path": "assets/wormholeHostRender.worker-BHKvsM3O.js",
-      "sha256": "f1db86f042cd2f241c84bdf9e65eaef5da526900212213bf7e8bd34ec71a8578"
+      "path": "assets/wormholeHostRender.worker-CMeqVNwq.js",
+      "sha256": "282e109b1964b914988f086f62e3a6303d5fb39fedef3b2ef3aa96bc69eabf2f"
     },
     {
-      "path": "assets/wormholeNative.worker-DMD6nsiT.js",
-      "sha256": "c9aef0a5ac3c7609b95ccdc025db53defeaa83e21237f74d81b60e5391b8c5a3"
+      "path": "assets/wormholeNative.worker-BIxVB3u3.js",
+      "sha256": "174277c730f0b1388762e1b7c4f9a8c79711b0f3c24f8081671cc30d0e0fd3d0"
     },
     {
-      "path": "assets/wormholeRender.worker-Do800pBG.js",
-      "sha256": "09c36c0a25df5e04989f76a62649b6b5cf049f757144ffc6d53f23729b53ced6"
+      "path": "assets/wormholeRender.worker-DArYoVHM.js",
+      "sha256": "5a598c0b6759dc06376e92e4d8ed5cba9c64c8e0691458873f98fca44cf15aaa"
     },
     {
       "path": "assets/xr-Bb_odg6M.css",
       "sha256": "e3bd00a1bee28d11285da166f19fc3f9ae0c501f9f3e08e067e13154a222ab58"
     },
     {
-      "path": "assets/xr-BQxi-JLL.js",
-      "sha256": "f7dd5245bd62915b683a5c8c68522bac343c5855e70125248fa7646fc3ed7834"
+      "path": "assets/xr-Cv4kUJ9P.js",
+      "sha256": "20b89ec63a8475c4318b5f0ad2bf0d8de648d23451b1be4dcb71f9688d65baca"
     },
     {
       "path": "eso0932a.jpg",
@@ -1839,11 +1839,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "4c31b9682fcd0b421b52f385299bf9b4711fb159b0ecb55f23990adcbd5794da"
+      "sha256": "86a92c4e76d899c75d42f3cd92d1538ab4f9898ed35f62ea902b0ae464eaaccb"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "1e2f2b9bd333ee8836149fbd0c74326c02da39c75f2894c7a1202f0d1381405a"
+      "sha256": "8e8637430fdef2472559aeb85d8b31930f02d235c23f70bc9e22d3bf1093c20f"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
@@ -1975,7 +1975,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "1a19855855b4e0112c01a2aa644fbdf3d87536edc2655f925c78f40065af57f8"
+      "sha256": "7faf2ce9c378cc4589ca093634d7802f1d84d99b7084862b250cd5325b5223d2"
     }
   ]
 }
