@@ -5,7 +5,8 @@
 <h1>Plexus MP4 export: source and notices</h1>
 <p>Plexus uses FFmpeg 5.1.10, licensed under LGPL 2.1 or later, in a separate
 Web Worker for AAC encoding and MP4 muxing. The core contains no libx264.
-You can rebuild and replace the core files below. The browser supplies H.264.</p>
+You can rebuild and replace the core files below. The browser supplies H.264 or
+10-bit VP9. FFmpeg reads VP9 stream properties while remuxing its original packets.</p>
 <ul>
   <li><a href="FFmpeg-COPYING.LGPLv2.1">FFmpeg LGPL license</a> and <a href="ffmpeg-source.tar.gz">exact FFmpeg source</a></li>
   <li><a href="ffmpeg.wasm-LICENSE">FFmpeg WASM binding license</a> and <a href="ffmpeg-wasm-binding-source.tar.gz">exact binding source</a></li>
