@@ -19,6 +19,8 @@ export interface ExportConfig {
     videoBitrate?: number;
     /** Require the high-precision VP9 profile when exporting WebM. */
     webmBitDepth?: 10;
+    /** Explicit high-precision MP4 video option. Audio remains AAC. */
+    mp4VideoCodec?: 'vp9-10bit';
     resolution: ExportResolution;
     aspectRatio: ExportAspectRatio;
     fps: number;
@@ -56,6 +58,7 @@ export interface StartExportRequest {
     sourceSamples?: number;
     bitrate?: number;
     webmBitDepth?: 10;
+    mp4VideoCodec?: 'vp9-10bit';
     codec?: ExportVideoCodec;
 }
 

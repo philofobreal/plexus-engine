@@ -147,8 +147,8 @@ function backendHarness({ bitmap, ack = true, autoDone = true, failGraphics = fa
     return { backend, state, workers, messages, calls, deadlines, p5, get animationFrames() { return animationFrames; } };
 }
 
-const redrawCases = [['mp4', 'display'], ['mp4', 'cooperative'], ['webm', 'display']];
-for (const [format, scheduling] of redrawCases) test(`${scheduling} ${format} captures only completed redraws`, async () => {
+const redrawCases = [['mp4', 'display'], ['mp4', 'cooperative'], ['webm', 'display'], ['mp4', 'display', 'vp9-10bit']];
+for (const [format, scheduling, mp4VideoCodec] of redrawCases) test(`${scheduling} ${format} ${mp4VideoCodec ?? ''} captures only completed redraws`, async () => {
     const captured = [], drawings = [];
     let lastDrawn;
     const h = backendHarness({ mp4: format === 'mp4', scheduling,
@@ -159,7 +159,7 @@ for (const [format, scheduling] of redrawCases) test(`${scheduling} ${format} ca
         },
         bitmap: async () => { captured.push(lastDrawn); return { close() {} }; },
     });
-    const job = h.backend.start({ ...config(), format, videoBitrate: 64_000_000 }, () => {});
+    const job = h.backend.start({ ...config(), format, videoBitrate: 64_000_000, mp4VideoCodec }, () => {});
     for (let i = 0; i < 4; i++) {
         await until(() => drawings.length === i + 1);
         assert.equal(captured.length, i);
@@ -168,6 +168,7 @@ for (const [format, scheduling] of redrawCases) test(`${scheduling} ${format} ca
     await job;
     assert.deepEqual(captured, [0, 1 / 60, 2 / 60, 3 / 60]);
     assert.equal(h.messages[0].bitrate, format === 'webm' ? 64_000_000 : undefined);
+    assert.equal(h.messages[0].mp4VideoCodec, mp4VideoCodec);
     assert.equal(h.animationFrames, scheduling === 'display' ? 5 : 1);
     assert.equal(h.workers[0].terminated, 1);
 });

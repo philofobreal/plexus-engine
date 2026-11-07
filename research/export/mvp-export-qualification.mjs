@@ -16,11 +16,12 @@ const pacing = mode === 'pacing' || mode === 'verify-pacing';
 const raster = mode === 'raster' || mode === 'verify-raster';
 const renderProfiling = mode === 'render' || mode === 'verify-render' || raster;
 const exactWorker = mode === 'worker' || mode === 'verify-worker';
-const integrity = mode === 'integrity' || mode === 'verify-integrity';
+const precision = mode === 'integrity-precision' || mode === 'verify-integrity-precision';
+const integrity = mode === 'integrity' || mode === 'verify-integrity' || precision;
 const productionMotion = mode === 'motion-production';
 const motion = mode === 'motion' || productionMotion;
 const realMvp = pacing || renderProfiling || exactWorker || motion;
-const logs = path.resolve(raster ? 'logs/t20b5-raster' : productionMotion ? 'logs/mp4-motion/production' : motion ? 'logs/mp4-motion' : integrity ? 'logs/t20b5-integrity' : exactWorker ? 'logs/t20b4' : renderProfiling ? 'logs/t20b3' : pacing ? 'logs/t20b2' : profiling ? 'logs/t20b1' : 'logs/t20a3a');
+const logs = path.resolve(raster ? 'logs/t20b5-raster' : productionMotion ? 'logs/mp4-motion/production' : motion ? 'logs/mp4-motion' : precision ? 'logs/mp4-precision-integrity' : integrity ? 'logs/t20b5-integrity' : exactWorker ? 'logs/t20b4' : renderProfiling ? 'logs/t20b3' : pacing ? 'logs/t20b2' : profiling ? 'logs/t20b1' : 'logs/t20a3a');
 const production = path.resolve('dist');
 const allowed = /^(?:benchmark\.json|mp4-profile\.json|(?:long|4k)\.(?:mp4|webm)|real-track\.mp4|pacing\.json|pacing-(?:(?:720p|4k)-(?:display|cooperative)-[1-3]|stop)\.mp4|render\.json|render-(?:720p|4k)-(?:control|[1-3])\.mp4|worker\.json|worker-(?:(?:720p|4k)-(?:display|exact)-[1-3]|stop)\.mp4|integrity\.json|integrity-(?:720p|1080p|4k)\.mp4|motion\.(?:json|gray|webm)|motion-(?:current|cbr|gop|production)\.mp4)$/;
 const fixtureRoute = '/plexus-engine/research/export/mvp-export-qualification.html';
@@ -91,9 +92,10 @@ function experimentEncoding(code, id) {
         assert.equal(code.split(before).length, 2, 'Motion comparison encoder boundary changed');
         code = code.replace(before, after);
     };
-    edit('const bitrate = ultraHd ? 40_000_000', `const variant = (request as StartExportRequest & { motionVariant?: string }).motionVariant;
-    const bitrate = ultraHd ? (variant === 'current' ? 28_000_000 : 40_000_000)`);
-    edit('keyFrameInterval: 1,', "keyFrameInterval: variant === 'gop' ? 2 : 1,");
+    edit('const highPrecision = request.mp4VideoCodec', `const variant = (request as StartExportRequest & { motionVariant?: string }).motionVariant;
+    const highPrecision = request.mp4VideoCodec`);
+    edit('ultraHd: 40_000_000', "ultraHd: variant === 'current' ? 28_000_000 : 40_000_000");
+    edit("codec: 'avc', bitrate, keyFrameInterval: 1,", "codec: 'avc', bitrate, keyFrameInterval: variant === 'gop' ? 2 : 1,");
     edit("...(ultraHd ? { bitrateMode: 'constant' } : {}),",
         "...(ultraHd && variant !== 'current' ? { bitrateMode: 'constant' } : {}),");
     return code;
@@ -134,7 +136,7 @@ async function serve(source) {
         build: { outDir: fixture, emptyOutDir: false, assetsDir: 'qual-assets',
             rollupOptions: { input: ['research/export/mvp-export-qualification.html', ...(realMvp ? ['mvp/index.html'] : [])] } },
     });
-    const port = raster ? 5220 : productionMotion ? 5219 : motion ? 5218 : integrity ? 5217 : exactWorker ? 5216 : renderProfiling ? 5215 : pacing ? 5214 : profiling ? 5213 : 5211;
+    const port = raster ? 5220 : productionMotion ? 5219 : motion ? 5218 : precision ? 5232 : integrity ? 5217 : exactWorker ? 5216 : renderProfiling ? 5215 : pacing ? 5214 : profiling ? 5213 : 5211;
     const origin = `http://127.0.0.1:${port}`;
     const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm',
         '.json': 'application/json', '.svg': 'image/svg+xml', '.wav': 'audio/wav' };
@@ -182,7 +184,7 @@ async function serve(source) {
         }
     });
     await writeFile(activeRun, output + '\n');
-    server.listen(port, '127.0.0.1', () => console.log(origin + fixtureRoute + (raster ? '?raster' : productionMotion ? '?motion&production' : motion ? '?motion' : integrity ? '?integrity' : exactWorker ? '?worker' : renderProfiling ? '?render' : pacing ? '?pacing' : '')));
+    server.listen(port, '127.0.0.1', () => console.log(origin + fixtureRoute + (raster ? '?raster' : productionMotion ? '?motion&production' : motion ? '?motion' : precision ? '?integrity&precision' : integrity ? '?integrity' : exactWorker ? '?worker' : renderProfiling ? '?render' : pacing ? '?pacing' : '')));
 }
 
 async function decodedSamples(file) {
@@ -368,9 +370,10 @@ async function verifyIntegrity() {
     for (const [name, width, height, minimumLevel, count] of expected) {
         const file = path.join(root, name);
         const { streams: [stream], packets } = JSON.parse(tool('ffprobe', ['-v', 'error', '-select_streams', 'v:0',
-            '-show_entries', 'stream=codec_name,width,height,level:packet=pts_time,dts_time,flags', '-of', 'json', file]));
-        assert.deepEqual([stream.codec_name, stream.width, stream.height], ['h264', width, height]);
-        assert.ok(stream.level >= minimumLevel, `${name}: H.264 level ${stream.level}`);
+            '-show_entries', 'stream=codec_name,width,height,level,pix_fmt:packet=pts_time,dts_time,flags', '-of', 'json', file]));
+        assert.deepEqual([stream.codec_name, stream.width, stream.height], [precision ? 'vp9' : 'h264', width, height]);
+        if (precision) assert.equal(stream.pix_fmt, 'yuv420p10le');
+        else assert.ok(stream.level >= minimumLevel, `${name}: H.264 level ${stream.level}`);
         assert.equal(packets.length, count);
         const pts = packets.map(packet => Number(packet.pts_time)).sort((a, b) => a - b);
         assert.ok(pts.every((time, index) => Math.abs(time - index / 60) < .00001));
@@ -387,7 +390,7 @@ async function verifyIntegrity() {
             for (let bit = 0; bit < 12; bit++) if (codes[frame * 12 + bit] >= 128) decoded |= 1 << bit;
             assert.equal(decoded, frame, `${name}: decoded marker at frame ${frame}`);
         }
-        native.push({ name, count, level: stream.level, keyframes });
+        native.push({ name, count, ...(precision ? { codec: stream.codec_name, pixelFormat: stream.pix_fmt } : { level: stream.level }), keyframes });
     }
     await writeFile(path.join(root, 'integrity-verification.json'), JSON.stringify({ ...report, native }, null, 2) + '\n');
     console.log(JSON.stringify(native));
@@ -398,9 +401,9 @@ else if (mode === 'profile') await serve();
 else if (mode === 'pacing') await serve(source);
 else if (mode === 'render' || mode === 'raster') await serve(source);
 else if (mode === 'worker') await serve(source);
-else if (mode === 'integrity') await serve();
+else if (mode === 'integrity' || mode === 'integrity-precision') await serve();
 else if (motion) await serve(source);
 else if (mode === 'verify') await verify();
 else if (mode === 'verify-pacing' || mode === 'verify-render' || mode === 'verify-worker' || mode === 'verify-raster') await verifyPacing();
-else if (mode === 'verify-integrity') await verifyIntegrity();
-else throw Error('Use: node research/export/mvp-export-qualification.mjs serve [reference MP3] | profile | verify | pacing <reference MP3> | verify-pacing | render <reference MP3> | verify-render | raster <reference MP3> | verify-raster | worker <reference MP3> | verify-worker | integrity | verify-integrity | motion <reference MP3> | motion-production <reference MP3>');
+else if (mode === 'verify-integrity' || mode === 'verify-integrity-precision') await verifyIntegrity();
+else throw Error('Use: node research/export/mvp-export-qualification.mjs serve [reference MP3] | profile | verify | pacing <reference MP3> | verify-pacing | render <reference MP3> | verify-render | raster <reference MP3> | verify-raster | worker <reference MP3> | verify-worker | integrity | verify-integrity | integrity-precision | verify-integrity-precision | motion <reference MP3> | motion-production <reference MP3>');

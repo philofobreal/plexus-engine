@@ -134,6 +134,7 @@ export class WebCodecsBackend implements ExportBackend {
                 sampleRate: audioBuffer?.sampleRate || 48_000,
                 hasAudio: Boolean(audioBuffer),
                 ...(mp4 ? { frames: totalFrames, sourceSamples: audioBuffer?.length ?? 0 } : {}),
+                ...(mp4 && config.mp4VideoCodec === 'vp9-10bit' ? { mp4VideoCodec: 'vp9-10bit' } : {}),
                 ...(!mp4 && config.videoBitrate !== undefined ? { bitrate: config.videoBitrate } : {}),
                 ...(highPrecisionWebM ? { webmBitDepth: 10 } : {}),
                 ...(this.storageLease ? { storageFile: this.storageLease.name } : {}),

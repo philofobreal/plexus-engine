@@ -83,7 +83,7 @@ async function verify(blob, seconds, width, height, cues, format) {
     try {
         const [video, audio] = await Promise.all([media.getPrimaryVideoTrack(), media.getPrimaryAudioTrack()]);
         check(video?.codedWidth === width && video?.codedHeight === height && audio?.numberOfChannels === 2, 'Invalid track metadata');
-        check(format === 'mp4' ? video.codec === 'avc' && audio.codec === 'aac' : /^vp[89]$/.test(video.codec) && audio.codec === 'opus', 'Wrong codecs');
+        check(format === 'mp4' ? video.codec === (precision ? 'vp9' : 'avc') && audio.codec === 'aac' : /^vp[89]$/.test(video.codec) && audio.codec === 'opus', 'Wrong codecs');
         const pts = [];
         for await (const packet of new EncodedPacketSink(video).packets()) pts.push(packet.timestamp);
         pts.sort((a, b) => a - b);
@@ -126,6 +126,7 @@ async function one(caseId, format, resolution, seconds, artifact, cues, pcm, pro
     const start = performance.now();
     let first = null, finishing = null;
     const blob = await exporter.startExport({ resolution, aspectRatio: '16:9', fps, watermark: false,
+        ...(format === 'mp4' && precision ? { mp4VideoCodec: 'vp9-10bit' } : {}),
         ...(format === 'mp4' ? { format } : {}) }, p => {
         first ??= performance.now();
         if (format === 'mp4' && p === .9) finishing = performance.now();
@@ -149,6 +150,7 @@ async function one(caseId, format, resolution, seconds, artifact, cues, pcm, pro
 }
 const median = xs => xs.slice().sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 const qualificationMode = new URLSearchParams(location.search);
+const precision = qualificationMode.has('precision');
 const rasterComparison = qualificationMode.has('raster');
 const renderProfiling = qualificationMode.has('render') || rasterComparison;
 const exactWorker = qualificationMode.has('worker');

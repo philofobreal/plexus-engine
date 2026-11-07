@@ -17,6 +17,7 @@ import { State } from '../../src/state/store.ts';
 import Mp4Worker from '../../src/export/mp4-export.worker.ts?worker';
 
 const run = document.querySelector('#run'), canvas = document.querySelector('canvas');
+const precise = new URLSearchParams(location.search).has('precision');
 const output = document.querySelector('#result'), links = document.querySelector('#files'), urls = [];
 const check = (yes, msg) => { if (!yes) throw Error(msg); };
 const resolution = { '720p': [1280, 720], '4K': [3840, 2160] };
@@ -32,14 +33,14 @@ const p5 = {
 };
 const dialog = new ExportDialog({ onStart: () => {}, onStop: () => exporter.stopAndSave(), onCancel: () => exporter.cancelExport() });
 document.body.append(dialog.root);
-dialog.root.querySelector('.mvp-export-format').value = 'mp4';
+dialog.root.querySelector('.mvp-export-format').value = precise ? 'mp4vp9' : 'mp4';
 
 async function verify(blob, size, frames, rate, format) {
     const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(blob) });
     const ac = new AudioContext({ sampleRate: rate });
     try {
         const video = await input.getPrimaryVideoTrack(), sound = await input.getPrimaryAudioTrack();
-        check(format === 'mp4' ? video?.codec === 'avc' && sound?.codec === 'aac'
+        check(format === 'mp4' ? video?.codec === (precise ? 'vp9' : 'avc') && sound?.codec === 'aac'
             : /^vp[89]$/.test(video?.codec) && sound?.codec === 'opus', 'Wrong output codecs');
         check(video.codedWidth === size[0] && video.codedHeight === size[1], 'Wrong dimensions');
         const pts = [];
@@ -80,6 +81,7 @@ async function one(mode, res, rate, format = 'mp4') {
     let progressFrames=0, finalizing=false;
     try {
         const blob=await exporter.startExport({ format, resolution:res, aspectRatio:'16:9', fps:60,
+            ...(format === 'mp4' && precise ? { mp4VideoCodec: 'vp9-10bit' } : {}),
             ...(format === 'webm' ? { preflight: true } : {}) }, p=>{
             dialog.setProgress(p);
             if (p===.9) { finalizing=true; if(mode==='cancel') exporter.cancelExport(); }

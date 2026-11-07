@@ -8,7 +8,7 @@ import { createLoader } from './helpers/xr-loader.mjs';
 const config = { resolution: '1080p', aspectRatio: '16:9', fps: 60, watermark: false };
 
 test('MVP holds workspace and file replacement through the export, including a deferred confirmation', async () => {
-    const exports = {};
+    const exports = {}, downloads = [];
     class Element { inert = false; }
     const source = ts.transpileModule(readFileSync('src/ui/mvp/MvpUI.ts', 'utf8'), {
         compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
@@ -31,7 +31,7 @@ test('MVP holds workspace and file replacement through the export, including a d
             loadFile: file => loaded.push(file)
         },
         unsavedChangesGuard: { run: action => { confirmReplacement = action; }, sync() {} },
-        downloadBlob() {}
+        downloadBlob(_blob, filename) { downloads.push(filename); }
     });
 
     ui.handleFile('delayed');
@@ -46,12 +46,17 @@ test('MVP holds workspace and file replacement through the export, including a d
 
     finish(new Blob(['video']));
     await job;
+    assert.deepEqual(downloads, ['plexus-visual.webm']);
     assert.equal(workspace.inert, false);
     assert.equal(priorLock.inert, true);
     assert.equal(ui.historyBlocked(), false);
     ui.handleFile('new track');
     confirmReplacement();
     assert.deepEqual(loaded, ['new track']);
+    const highPrecision = ui.runExport({ ...config, format: 'mp4', mp4VideoCodec: 'vp9-10bit' });
+    finish(new Blob(['10-bit video']));
+    await highPrecision;
+    assert.equal(downloads.at(-1), 'plexus-visual (10-bit).mp4');
 });
 
 test('MVP uses the supported renderer and locks playback history even when given old isolated settings', async () => {
@@ -98,6 +103,11 @@ test('MVP uses the supported renderer and locks playback history even when given
     assert.deepEqual(selected, { ...config, resolution: '4K', preflight: true, videoBitrate: 64_000_000 });
     finish(new Blob(['uhd']));
     await uhd;
+
+    const preciseMp4 = controller.startExport({ ...config, format: 'mp4', mp4VideoCodec: 'vp9-10bit', webmBitDepth: 10 }, () => {});
+    assert.deepEqual(selected, { ...config, format: 'mp4', mp4VideoCodec: 'vp9-10bit' });
+    finish(new Blob(['mp4']));
+    await preciseMp4;
 });
 
 test('MVP export ignores stale mode and memory preferences and copies only current settings and cache', () => {

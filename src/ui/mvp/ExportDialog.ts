@@ -55,9 +55,11 @@ export class ExportDialog {
                         <option value="webm">WebM</option>
                         <option value="webm10">WebM (10-bit gradients)</option>
                         <option value="mp4" selected>MP4 (H.264 + AAC)</option>
+                        <option value="mp4vp9">MP4 (10-bit VP9 + AAC)</option>
                     </select>
                 </label>
                 <small class="mvp-export-mp4-note mvp-hidden">MP4 uses temporary browser storage. <a href="../export/ffmpeg-5.1.10/" target="_blank" rel="noopener">FFmpeg and source code</a></small>
+                <small class="mvp-export-vp9-note mvp-hidden">10-bit MP4 needs a player or editor that supports VP9 in MP4.</small>
                 <div class="mvp-capability-warning mvp-hidden"></div>
                 </div>
                 <div class="mvp-export-progress mvp-hidden">
@@ -95,9 +97,13 @@ export class ExportDialog {
         this.formatSelect = this.root.querySelector('.mvp-export-format')!;
         try {
             const saved = localStorage.getItem(exportFormatKey);
-            if (saved === 'webm' || saved === 'webm10') this.formatSelect.value = saved;
+            if (saved === 'webm' || saved === 'webm10' || saved === 'mp4vp9') this.formatSelect.value = saved;
         } catch { /* The selected HTML option is the default. */ }
-        const refreshFormatNote = () => this.root.querySelector('.mvp-export-mp4-note')!.classList.toggle('mvp-hidden', this.formatSelect.value !== 'mp4');
+        const refreshFormatNote = () => {
+            const mp4 = this.formatSelect.value === 'mp4' || this.formatSelect.value === 'mp4vp9';
+            this.root.querySelector('.mvp-export-mp4-note')!.classList.toggle('mvp-hidden', !mp4);
+            this.root.querySelector('.mvp-export-vp9-note')!.classList.toggle('mvp-hidden', this.formatSelect.value !== 'mp4vp9');
+        };
         refreshFormatNote();
         this.formatSelect.addEventListener('change', () => {
             try { localStorage.setItem(exportFormatKey, this.formatSelect.value); } catch { /* Storage may be disabled. */ }
@@ -160,6 +166,7 @@ export class ExportDialog {
         const resolution = (active?.dataset.res ?? '720p') as ExportResolution;
         return { resolution, aspectRatio: '16:9', fps: 60, watermark: false,
             ...(this.formatSelect.value === 'mp4' ? { format: 'mp4' }
+                : this.formatSelect.value === 'mp4vp9' ? { format: 'mp4', mp4VideoCodec: 'vp9-10bit' }
                 : this.formatSelect.value === 'webm10' ? { webmBitDepth: 10 } : {}) };
     }
 
@@ -257,7 +264,8 @@ export class ExportDialog {
         this.progressBar.style.width = percent;
         this.progressValue.textContent = percent;
         if (this.isActive && !this.controlPending && progress < 1) {
-            this.setStatus(this.formatSelect.value === 'mp4' && progress >= .9 ? 'Finishing MP4 and encoding audio…' : 'Exporting video…');
+            const mp4 = this.formatSelect.value === 'mp4' || this.formatSelect.value === 'mp4vp9';
+            this.setStatus(mp4 && progress >= .9 ? 'Finishing MP4 and encoding audio…' : 'Exporting video…');
         }
     }
 

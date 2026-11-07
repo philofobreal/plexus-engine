@@ -1814,6 +1814,52 @@ The 10-bit clip was about 48% larger and the observed single run took
 and blue-chroma error increased in the sampled region. Manual playback
 on the affected system and physical mobile compatibility remain open.
 
+### MP4 at the accepted WebM precision
+
+The user accepted the 10-bit WebM quality and requested higher precision
+where possible, plus equivalent MP4 output. A real 4K/60 desktop Chrome
+probe encoded and decoded VP9 Profile 2 at 10 bits. The same browser
+refused 12-bit VP9, 10-bit H.264, 10-bit HEVC and VP9 Profile 3.
+AV1 accepted the configuration query but rejected actual encoding.
+Those are observations for this browser and machine.
+
+MVP offers **MP4 (10-bit VP9 + AAC)**. The format choice persists locally
+and Copy export settings includes `mp4VideoCodec: "vp9-10bit"`.
+This option uses the same VP9 profile, bitrate, frame rate and one-second
+keyframe policy as the 10-bit WebM option. Its file name is
+`plexus-visual (10-bit).mp4`. The worker checks real video encoding,
+decoding and MP4 staging before allocating the full render target.
+The 4K target is 64 Mbit/s, 1080p uses 14 Mbit/s and 720p uses 8 Mbit/s.
+Temporary storage admission uses the corresponding rate.
+
+VP9 has a defined MP4 binding. Player and editor support for VP9 in MP4
+must be checked for the intended destination. The export menu describes
+this requirement beside the format choice.
+[WebM Project VP Codec ISO Media File Format Binding](https://www.webmproject.org/vp9/mp4/)
+
+The FFmpeg 5.1.10 core now includes the VP9 parser and decoder so that
+its demuxer can determine the pixel format before writing the VP codec
+configuration box. Its CLI still copies the encoded video packets and
+encodes the PCM audio as AAC. The JavaScript and WASM URLs include the
+new build revision to avoid using a previously cached core. The build
+recipe, notices and corresponding upstream sources remain alongside
+the public core. The new WASM SHA-256 is
+`430d6a10612772ead0349d0d823b34b0771f00eec82f9c9e1a5399747b9f4e0b`.
+
+In the five-second 4K/60 No Good comparison, the 300-frame MP4 and the
+accepted WebM fixture have identical encoded video packet hashes
+`735dd69770d0db07b488c831c04008bb26a1d8d3dcf2ec67dfb32af32e621d15`.
+Both source-image hashes also match. Native probing identifies VP9
+Profile 2, 10-bit YUV and AAC in the MP4. This checks container
+conversion against the already accepted codec policy.
+
+Use `node research/export/mvp-export-qualification.mjs integrity-precision`
+and then `verify-integrity-precision` for the numbered 720p, 1080p and
+4K MP4 checks. Open `tests/browser/mvp-mp4-smoke.html?precision`
+through the local development server for full, Stop, Cancel, retry,
+audio, video-element playback and owned-storage checks. Physical
+mobile playback and the user's destination player remain manual gates.
+
 ## Scheduled export acceleration - user direction, 2026-10-29
 
 The user accepted T19a and requested that professionally justified WASM export

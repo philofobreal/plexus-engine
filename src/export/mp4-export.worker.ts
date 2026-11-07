@@ -2,6 +2,7 @@ import { Mp4OutputFormat, NullTarget, Output, StreamTarget, VideoSample, VideoSa
 import { validMp4ExportStorageName } from './ExportStorageLease';
 import { checkMp4Storage, planMp4Storage } from './Mp4StorageAdmission';
 import { readMp4AvcLevel, selectMp4AvcEncoding, selectMp4AvcLevel } from './Mp4AvcLevel';
+import { probeExportEncoding, vp9ExportCodec } from './ExportPreparation';
 import type { EncodeFrameRequest, ExportWorkerRequest, ExportWorkerResponse, StartExportRequest } from './ExportTypes';
 
 type Access = { write(data: Uint8Array, options: { at: number }): number; flush(): void; close(): void };
@@ -26,7 +27,9 @@ const audioRates = new Set([8000, 11025, 12000, 16000, 22050, 24000, 32000, 4410
 const coreBase = new URL(import.meta.env.BASE_URL + 'export/ffmpeg-5.1.10/', self.location.origin);
 const mp4Error = (reason: string) => new Error(reason + ' Choose WebM or try different export settings.');
 async function loadCore(): Promise<Core> {
-    const js = new URL('ffmpeg-core.js', coreBase).href, wasmURL = new URL('ffmpeg-core.wasm', coreBase).href;
+    const revision = '?revision=430d6a106127';
+    const js = new URL('ffmpeg-core.js' + revision, coreBase).href;
+    const wasmURL = new URL('ffmpeg-core.wasm' + revision, coreBase).href;
     try {
         const { default: createCore } = await import(/* @vite-ignore */ js);
         return await createCore({ mainScriptUrlOrBlob: js + '#' + btoa(JSON.stringify({ wasmURL })) });
@@ -59,7 +62,7 @@ async function openAccess(dir: FileSystemDirectoryHandle, name: string) {
     if (typeof file.createSyncAccessHandle !== 'function') throw mp4Error('Browser-local MP4 file writing is unavailable.');
     return { file, access: await file.createSyncAccessHandle() };
 }
-async function probeH264(width: number, height: number, fps: number, encoding: ConstructorParameters<typeof VideoSampleSource>[0]) {
+async function probeMp4Video(width: number, height: number, fps: number, encoding: ConstructorParameters<typeof VideoSampleSource>[0]) {
     const probe = new Output({ format: new Mp4OutputFormat(), target: new NullTarget() });
     let packets = 0;
     let emittedLevel: number | undefined;
@@ -81,7 +84,8 @@ async function probeH264(width: number, height: number, fps: number, encoding: C
         if (packets !== 1) throw Error('Probe produced no usable frame');
     } catch {
         if (probe.state === 'started' || probe.state === 'pending') await probe.cancel().catch(() => {});
-        throw mp4Error('H.264 encoding is unavailable at this resolution and frame rate.');
+        const codec = encoding.codec === 'avc' ? 'H.264' : 'VP9';
+        throw mp4Error(`${codec} encoding is unavailable at this resolution and frame rate.`);
     } finally {
         if (canvas) canvas.width = canvas.height = 1;
     }
@@ -139,7 +143,11 @@ async function start(request: StartExportRequest) {
     const { width, height, fps, sampleRate, sourceSamples = 0 } = request;
     const area = width * height;
     const ultraHd = area >= 3840 * 2160;
-    const bitrate = ultraHd ? 40_000_000 : area >= 1920 * 1080 ? 12_000_000 : 6_000_000;
+    const highPrecision = request.mp4VideoCodec === 'vp9-10bit';
+    const rates = highPrecision
+        ? { ultraHd: 64_000_000, fullHd: 14_000_000, hd: 8_000_000 }
+        : { ultraHd: 40_000_000, fullHd: 12_000_000, hd: 6_000_000 };
+    const bitrate = ultraHd ? rates.ultraHd : area >= 1920 * 1080 ? rates.fullHd : rates.hd;
     const makePlan = (frames: number) => {
         const plan = planMp4Storage({ frames, fps, sampleRate, sourceSamples, videoBitrate: bitrate });
         if (!plan.ok) throw mp4Error('This audio or duration does not fit the MP4 export budget.');
@@ -148,14 +156,25 @@ async function start(request: StartExportRequest) {
     const budget = makePlan(request.frames ?? 0);
     await requireStorage(budget, 'start');
     measure('storageAdmission');
-    const level = selectMp4AvcLevel(width, height, fps, bitrate);
-    if (level === undefined) throw mp4Error('H.264 cannot represent this resolution and frame rate.');
-    const preferred: ConstructorParameters<typeof VideoSampleSource>[0] = {
-        codec: 'avc', bitrate, keyFrameInterval: 1, latencyMode: 'quality',
-        fullCodecString: `avc1.6400${level.toString(16)}`,
-        ...(ultraHd ? { bitrateMode: 'constant' } : {}),
-    };
-    const encoding = await selectMp4AvcEncoding(preferred, level, candidate => probeH264(width, height, fps, candidate));
+    let level: number | undefined;
+    let encoding: ConstructorParameters<typeof VideoSampleSource>[0];
+    if (highPrecision) {
+        const fullCodecString = vp9ExportCodec(width, height, fps, bitrate, 10);
+        await probeExportEncoding({ codec: fullCodecString, width, height, framerate: fps, bitrate,
+            latencyMode: 'quality', bitrateMode: 'constant', webmBitDepth: 10 }, sampleRate, false);
+        encoding = { codec: 'vp9', fullCodecString, bitrate, keyFrameInterval: 1,
+            latencyMode: 'quality', bitrateMode: 'constant' };
+        await probeMp4Video(width, height, fps, encoding);
+    } else {
+        level = selectMp4AvcLevel(width, height, fps, bitrate);
+        if (level === undefined) throw mp4Error('H.264 cannot represent this resolution and frame rate.');
+        const preferred: ConstructorParameters<typeof VideoSampleSource>[0] = {
+            codec: 'avc', bitrate, keyFrameInterval: 1, latencyMode: 'quality',
+            fullCodecString: `avc1.6400${level.toString(16)}`,
+            ...(ultraHd ? { bitrateMode: 'constant' } : {}),
+        };
+        encoding = await selectMp4AvcEncoding(preferred, level, candidate => probeMp4Video(width, height, fps, candidate));
+    }
     measure('codecProbe');
     const core = await loadCore();
     measure('coreLoad');
@@ -182,7 +201,7 @@ async function start(request: StartExportRequest) {
         const output = writer = new Output({ format: new Mp4OutputFormat({ fastStart: 'fragmented', minimumFragmentDuration: 1 }), target });
         let warnedAboutLevel = false;
         const picture = new VideoSampleSource({ ...encoding, onEncodedPacket: (_packet, metadata) => {
-            if (warnedAboutLevel || !metadata?.decoderConfig) return;
+            if (level === undefined || warnedAboutLevel || !metadata?.decoderConfig) return;
             const actual = readMp4AvcLevel(metadata.decoderConfig.description);
             if (actual === undefined || actual >= level) return;
             warnedAboutLevel = true;

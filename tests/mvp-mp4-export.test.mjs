@@ -33,7 +33,8 @@ test('a new or unreadable format preference starts MP4, while an explicit WebM c
     });
     const { ExportDialog } = load('ui/mvp/ExportDialog.ts');
     const open = () => new ExportDialog({
-        onStart: config => starts.push(config.format ?? (config.webmBitDepth === 10 ? 'webm10' : 'webm')),
+        onStart: config => starts.push(config.mp4VideoCodec === 'vp9-10bit'
+            ? 'mp4vp9' : config.format ?? (config.webmBitDepth === 10 ? 'webm10' : 'webm')),
         onStop() {}, onCancel() {},
     });
     const start = dialog => dialog.root.querySelector('.mvp-export-start').dispatchEvent(new Event('click'));
@@ -49,9 +50,16 @@ test('a new or unreadable format preference starts MP4, while an explicit WebM c
     start(reopened);
     reopened.root.querySelector('.mvp-export-copy').dispatchEvent(new Event('click'));
     assert.equal(copied[0].webmBitDepth, 10);
+    select.value = 'mp4vp9';
+    select.dispatchEvent(new Event('change'));
+    const preciseMp4 = open();
+    start(preciseMp4);
+    preciseMp4.root.querySelector('.mvp-export-copy').dispatchEvent(new Event('click'));
+    assert.equal(copied[1].format, 'mp4');
+    assert.equal(copied[1].mp4VideoCodec, 'vp9-10bit');
     storageAvailable = false;
     start(open());
-    assert.deepEqual(starts, ['mp4', 'webm', 'webm10', 'mp4']);
+    assert.deepEqual(starts, ['mp4', 'webm', 'webm10', 'mp4vp9', 'mp4']);
 });
 
 test('MP4 is explicit, MVP-only, and can be cancelled while loading its alternate worker', async () => {
