@@ -2,7 +2,29 @@
 
 Started 2026-10-23. Checkpoint 2026-11-07 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01, WH-02 research, WH-03a preparation, WH-03b time envelopes/exact scheduling and WH-04 MVP GPU session and WH-05 dashboard/composition are delivered; WH-06 exact shared export is next after manual acceptance. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01, WH-02 research, WH-03a preparation, WH-03b time envelopes/exact scheduling and WH-04 MVP GPU session and WH-05 dashboard/composition are delivered; WH-06a exact resolved-input source is delivered; WH-06b host/export integration is next after manual acceptance. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+
+### WH-06a exact source handoff (2026-11-08)
+
+[WH-06a](wormhole-wh06a-exact-source.md) supplies the job-bound full-resolution
+worker source, copied resolved inputs and one-request/image lease. 30/60 fps,
+all current aspects, alpha/spectrum and dense 4K pass the fixed raw-image gates.
+Exact Float32/native per-layer composition fixes full-size alpha quantization;
+completed pixels repeat bit-exactly without another identity step. Startup uses
+complete Canvas fallback when necessary; mid-job GPU loss fails closed.
+
+Validation: build succeeds; 336/336 targeted, 21/21 exact raw-image matrix,
+37/37 retained host checks and preview GPU laboratory 8/8. Full cumulative
+2203/2194 pass with the same nine WH-05 preset failures by exact name/message,
+zero skips/cancellations. 226 active Node files and nine predecessor identities
+remain. No encoded-video speed or quality claim is made by the source gate.
+
+The product export coordinator/codecs/PCM/OPFS are unchanged. **Next WH-06b**
+connects this source and its frame barrier to dashboard/MVP export with full
+format/audio/Stop/Cancel acceptance. Then WH-07 Takarékos/Turbó and WH-08 platform
+qualification. No full-video speed multiplier is claimed by source validation.
+Stop for manual acceptance; public source test lives on the existing host smoke
+page under the opt-in exact button. Details and remaining gates are in the audit.
 
 ### WH-05 dashboard and paired composition handoff (2026-11-08)
 
@@ -19,7 +41,7 @@ GPU laboratory 8/8. Full cumulative 2183/2174 pass with the same nine WH-04
 preset failures by exact name/message, zero skips/cancellations. No new regression.
 225 active Node files and 15 predecessor identities retained; details in the audit.
 
-Stop for manual acceptance. Next: **WH-06 exact shared GPU export source**; then
+Historical WH-05 next step was WH-06; WH-06a is delivered above. Current next: **WH-06b host/export integration**, after manual acceptance; then
 WH-07 Takarékos/Turbó profile and WH-08 platform qualification. This task does not
 claim faster full exports, physical mobile/Quest acceptance or changed codec quality.
 

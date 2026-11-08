@@ -32,6 +32,20 @@ compatible material; worker failure uses the existing main fallback. Dashboard/
 multi-identity composition is WH-05, product GPU export WH-06.
 See [WH-04](../audits/wormhole-wh04-mvp-gpu-session.md).
 
+WH-06a supplies WormholeHostExactSource under visuals ownership, using the common
+resolved-input session. The export coordinator will own its job lifetime in
+WH-06b; there is no product export wiring in this part. Its optional prepare.exact
+negotiates job/fps/dimensions; exact stamps bind all clocks and companions. One
+request OR one leased image, copied inputs before deferred submission, no latest
+queue, preview rate/density policy or second resolver. Repeated unchanged inputs
+replay completed pixels, not identity steps. Exact uses Float32 GPU material and
+native per-layer Canvas composition; preview retains its qualified Float16 path.
+An additional reusable full-size transfer canvas preserves the completed source.
+Startup capability failure may use full Canvas material; GPU failure after a
+completed exact frame is terminal, preventing a silent mid-video re-anchor.
+See [WH-06a](../audits/wormhole-wh06a-exact-source.md). Product composition,
+encoder/PCM/OPFS/Stop/Cancel integration remains WH-06b.
+
 WH-05 activates that same preview factory and persisted renderer choice in the
 main dashboard. WorkerIdentityTransition is a renderer-private companion coordinator,
 not a transition/state writer. It borrows the existing two compositor surfaces:

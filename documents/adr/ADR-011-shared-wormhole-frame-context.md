@@ -2,6 +2,15 @@
 
 ## Status
 
+WH-06a (2026-11-08) accepts the job-bound resolved-input exact source and common
+session extension. Exact transport has no preview density/rate cap; it negotiates
+job/fps/full dimensions and returns one stamped owned image/companion lease.
+Unchanged repeats reuse completed pixels. Float32 material uses the same kernels
+with native Canvas per-layer composition; missing capability uses full Canvas,
+while a GPU failure after a completed exact frame terminates that source.
+See [WH-06a](../audits/wormhole-wh06a-exact-source.md). Host/export wiring and
+integrated output acceptance remain WH-06b, not delivered by this source gate.
+
 WH-04/05 (2026-11-08) deliver the common GPU-material preview session in MVP
 and dashboard. Both retain one host resolver/director and use the same bounded
 broker. WH-05's internal companion capture/ack pairs native crossfade pixels,

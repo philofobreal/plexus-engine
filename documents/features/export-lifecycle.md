@@ -8,6 +8,15 @@ exact-frame scheduling. WH-01 is the first implementation task; T20c2's GPU
 experiment is WH-02 and production export integration is WH-06. This is a plan,
 not a delivered backend or a reversal of MVP's Isolated Wormhole retirement.
 
+WH-06a delivers the [job-bound exact resolved-input source](../audits/wormhole-wh06a-exact-source.md).
+It negotiates full dimensions/30-or-60 fps and exact identities, copies inputs,
+bounds request/image ownership and returns pixel-stable repeats. Exact Float32 GPU
+material with native Canvas layer composition passes full-size alpha/dense gates;
+startup Canvas fallback is complete and mid-job GPU loss fails closed. This part
+does not change product export, codec, audio or storage. **WH-06b is the next
+manual-gated task**: connect its completion barrier and preserve integrated job
+controls and output acceptance. WH-07 adds Takarékos/Turbó after that handoff.
+
 WH-05 delivered [dashboard activation and matched worker/native composition](../audits/wormhole-wh05-dashboard-composition.md).
 Both live hosts now expose the same optimized preview. Captured-time crossfades
 and PostFX do not change exact export scheduling. WH-06 is next after manual

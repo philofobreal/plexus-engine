@@ -2,6 +2,16 @@
 
 ## Status
 
+WH-06a (2026-11-08) delivers the internal exact resolved-frame source under the
+existing common visual session, without restoring the isolated product mode.
+Its broker supplies a job/stamp-bound full-size image and captured values, one
+request OR lease, explicit abort/deadlines/release and pixel-stable repeats.
+No encoder, PCM, OPFS, workspace lock or export facade is changed. WH-06b must
+inject this source, await an explicit frame-completion barrier and preserve the
+existing integrated job controls/output checks. A mid-job GPU failure must not
+silently re-anchor the animation; a new compatible job is required instead.
+See [WH-06a scope, evidence and next gates](../audits/wormhole-wh06a-exact-source.md).
+
 WH-01 (2026-11-07) records the [common render contract](../audits/wormhole-wh01-contract-baseline.md).
 Future exact adapters consume the common session internally under the existing
 export coordinator. This does not reinstate MVP's isolated product choice,

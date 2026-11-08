@@ -64,6 +64,30 @@ its valid last image to avoid a black flash. No extra worker packet/schema, anal
 copy per draw, unbounded image queue, second resolver or clock is introduced.
 See [WH-05](../audits/wormhole-wh05-dashboard-composition.md).
 
+WH-06a adds optional prepare.exact and its ready echo to this host worker only.
+The descriptor binds jobId, 30/60 fps and fixed even full-size dimensions. Exact
+frames require density=1, compact=false, isExporting=true, frameCount=index+1,
+and currentTime/exportTime=index/fps. Validate protocol-1 exact stamps, job/fps,
+context/generation/serial/revision and output dimensions before accepting ownership.
+A preview-only ready cannot satisfy exact negotiation, and negotiated preview
+cannot consume exact requests. Legacy unnegotiated research and preview remain.
+
+The exact broker owns one job/source and one request OR one image lease, with no
+coalescing, rate cap or display waits. Prepare/frame deadlines are 15/30 seconds.
+Inputs are copied before scheduled posting; analysis is projected only at prepare.
+Explicit forward segments are allowed; the export coordinator must prove complete
+encoded order. Backward requests fail. Same-index replay requires unchanged bounded
+scalar companions and copies the completed image. It never redraws the identity.
+Source release/dispose/abort/failure close owned images and clear deadlines once;
+stale images close without resolving another request. Retry creates a new source.
+
+Exact uses Float32 accumulation with a real blend/FBO probe, native Canvas layer
+composition and full Canvas startup fallback. After a completed exact frame, a
+new GPU failure is terminal rather than re-anchoring the animation. Cached repeat
+can still succeed from completed pixels after GPU loss. The preview fallback is
+unchanged. The [WH-06a source gate](../audits/wormhole-wh06a-exact-source.md) is not
+an encoder protocol change or an end-to-end export acceptance claim.
+
 ## Boundary Contract
 
 T19c3 generates `plexus_export_job_v1_*.webm` outside the old worker sweep prefix;

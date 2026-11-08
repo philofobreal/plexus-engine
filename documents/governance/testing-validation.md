@@ -197,6 +197,17 @@ separately. An unexecuted fixture or HTTP-only smoke is not a passed codec/GPU t
 a build or deployment does not close that gap. The T19a browser gate remains open
 until a real run is recorded. See [export lifecycle and scheduled work](../features/export-lifecycle.md).
 
+WH-06a exact-source gates additionally bind negotiated job/fps/full dimensions,
+both clocks, density/compact flags, captured companions, one request OR image lease,
+repeat without a second identity step, backward refusal, stale/malformed images,
+startup/deadline/transfer failure, abort/dispose and fresh-job retry. Run the
+existing host smoke plus its opt-in exact 720p/4K aspect/FPS/alpha/spectrum/dense
+matrix against the unchanged WH-01 raw-pixel/temporal gates. Preserve failed
+precision/composition probes. Verify no CPU field raster on the fast path, complete
+startup fallback, and terminal mid-job GPU loss rather than a silently re-anchored
+video. Source images, even full-size PNGs, do not close the integrated codec/audio/
+Stop/Cancel/OPFS or physical-device gates assigned to WH-06b/08.
+
 ## Documentation and governance changes
 
 - Verify every referenced governance file exists.
