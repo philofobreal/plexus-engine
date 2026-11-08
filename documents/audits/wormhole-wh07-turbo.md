@@ -782,3 +782,123 @@ handoff; no PR requested. Final public input/artifact/hash checks and startup/UI
 QA are bound in `logs/wh07b4/final-*.json` and the checkpoint. Product runtime
 identity preserves the prior full encoded QA and newly received manual result;
 no redundant whole-video test is required for this unchanged-runtime handoff.
+
+
+## WH-07b5: predictive detail-loss boundary and short profile study (2026-11-08)
+
+The user waived a redundant manual test for unchanged WH-07b4 runtime, requested
+the remaining task/subtask list and authorized the next task. The list was given:
+WH-07b5 isolation, MP4 Turbo qualification, deferred mobile WH-06c2/e, WH-08
+full-song/platform/default/rollback work, T21b/c caption layout/editor/fonts/
+transitions/burn-in, T22 launcher/Studio, T23 auth/backend and T24 staging/domain.
+T25 remains a per-delivery test/docs/release gate; Wall/T15 deferred, WH-06d
+withdrawn. This step remains research-only; no `src/` or normal export change.
+
+### Last correct region and identical payloads
+
+The opt-in native packet worker gains a separate laboratory observation channel.
+Ordinary product messages still delegate to the existing worker handler. Before
+`VideoEncoder.encode`, a192x32 crop reads the actual VideoFrame's six binary ID
+cells. Capture is capped at63 inputs/packets and64MiB encoded data. Encoded bytes
+are copied before transfer; transferring observations cannot detach the muxer's
+packet data. Frames close in finally, native codecs/listeners/timers and probe
+surfaces release on closure/failure, and late callbacks cannot add reports. The
+library sample may carry inherited duration; the report records the actual value.
+No new product worker message, preference, renderer, clock or resource owner.
+
+The short fixture reuses the exact GPU renderer and real MP4 PCM/OPFS/FFmpeg
+path but stops at one eight-picture2160x2160/30fps job, VP9 profile2/10-bit,
+14Mbit/s, quality latency and constant bitrate. This is not the user's full
+3840x2160/60fps workload. Earlier main-thread bitmap IDs and the new worker-side
+VideoFrame IDs both read1..8. The native output already reads1,2,3,4,4,6,7,8.
+The same owned VP9 packets are placed into video-only WebM and MP4 references,
+then compared to the real product-path MP4 with original PCM-to-AAC. All packet
+hashes match exactly in all three files. Both browser and independent native
+FFmpeg decode the same changed-region loss. Explicit observed BT.709/sRGB/full-
+range metadata is retained in the references, matching WH-07b3's finalizer tags.
+No second lossy video encode is involved.
+
+Per-frame full-image FFmpeg hashes are all distinct: this is **not an entire
+missing/duplicated picture or missing timestamp**. A brief changed32x32 region
+is reconstructed as its previous state while the rest of the image changes.
+This establishes the boundary at native encoding/reconstruction for this fixture;
+it does not prove a particular driver, library defect, temporal filter or general
+browser bug. A lossy encoder's detail decisions are a plausible explanation,
+not measured internals. Readback can affect scheduling, so no timing result is
+claimed; the observed reference still reproduces the negative.
+
+### Controlled profiles and result
+
+| Profile | Native and all three file decodes | Run suffix |
+| --- | --- | --- |
+| Reference predictive, before changes | 1,2,3,4,4,6,7,8 | `3739883d-680d-46e0-914e-f989939f1a61` |
+| Reference all-key control | 1..8 | `4a5b523b-272e-4af7-9603-6ab2cb17c144` |
+| Predictive plus `contentHint: detail` | 1..8 | `1fa1ae98-b4d0-4707-9133-da80c86b4bfb` |
+| Predictive plus `contentHint: text` | 1..8 | `8ab023f4-bb7a-4d3d-acc1-61083e301d6f` |
+| Predictive plus variable bitrate | 1..8 | `1d53956a-c075-48b2-9f72-f50c75737298` |
+| Reference predictive, repeated last | 1,2,3,4,4,6,7,8 | `6567fd3b-28e8-453b-bf8d-c758146d8927` |
+
+Directories are `logs/wh01/run-<suffix>`, with `predictive-detail.json`, original
+files and independent `predictive-detail-artifacts.json`. Eighteen files give
+144 independently FFmpeg-decoded frame IDs. Native/container browser consumers
+are additional observations. Detail/text yield identical encoded packet data
+here; variable-rate data differs. The repeated reference reproduces the original
+negative, avoiding a warmup-only interpretation. An initial fixture was placed
+outside the HTML script and therefore had no callable diagnostic; its failed
+log remains and is excluded from media evidence. The script placement was fixed
+before these six runs. No earlier fixture or result is overwritten.
+
+`detail` is the preferred **next candidate**, retaining constant bitrate,
+quality mode, codec, precision and the tested one-second GOP. It is not production
+promotion or proof of full-song/perceptual/mobile quality. Hints are advisory:
+[WebCodecs contentHint](https://www.w3.org/TR/webcodecs/#dom-videoencoderconfig-contenthint)
+allows browser-specific handling and does not guarantee a particular algorithm.
+Quality mode keeps its no-frame-drop contract; no switch to realtime is made.
+Variable bitrate changes the size/quality budget and remains a separate control.
+
+```text
+node research/export/wormhole-baseline.mjs capture --detail-host
+node research/export/wormhole-baseline.mjs capture --detail-host --mp4-inter-frame --detail-profile=reference
+node research/export/wormhole-baseline.mjs capture --detail-host --mp4-inter-frame --detail-profile=detail
+node research/export/wormhole-baseline.mjs capture --detail-host --mp4-inter-frame --detail-profile=text
+node research/export/wormhole-baseline.mjs capture --detail-host --mp4-inter-frame --detail-profile=variable
+```
+
+The original export matrix/default benchmark/exact browser body remain. The new
+`detailOnly` path explicitly returns one diagnostic case and never claims the
+full matrix. Profile names are allowlisted and the detail runner cannot silently
+mix with another export benchmark. Four additive tests cover owned transfer,
+actual inherited duration, finite profiles without caller mutation, capture
+limits/readback failure and laboratory message validation/delegation. All four
+previous native-packet tests remain, with more faithful frame/data fixtures.
+
+### Next gate
+
+**WH-07b6** qualifies the detail-oriented predictive candidate on the full retained
+source/encoded/audio/aspect/FPS/Stop/Cancel/retry matrix, then measures separate
+uninstrumented whole jobs against the accepted all-key Economy control. Preserve
+same-GOP secondary comparisons where isolating adapter cost; a changed predictive
+profile is an explicitly new quality candidate, not an unchanged-pixel/GOP claim.
+Only a fully qualified candidate can enable actual MP4 Turbo through the existing
+menu/storage/Copy/fallback. A short marker study cannot waive image/temporal,
+resource or >=15% speed gates. Default all-key and the user's accepted runtime
+remain until then. Mobile10-bit and WH-08 follow in the recorded order.
+
+Validation commands, source/predecessor identities and profile artifacts are bound in
+[the WH-07b5 receipt](../tests/wormhole-wh07b5-research.json); final public identities
+are in `logs/wh07b5/final-*.json` and the session checkpoint.
+
+
+Build and explicit research-worker TypeScript check passed. Targeted **127/127**;
+cumulative **2261 / 2252 pass / exactly the same nine baseline names AND full
+messages / zero skip or cancel**,563421.2952ms. All233 previous active Node files
+remain, now233; the existing native-packet suite grows from4 to8 cases. Protected
+exact browser body and eight fixed baseline hashes remain. Each diagnostic
+`pass:true` means successful observation/payload comparison, not that the
+reference profile passed quality; the two negative reference outcomes remain.
+No new product runtime, software codec, dependency, golden reset or Graphify
+rebuild. Node/npm with workspace TEMP; the existing guarded Node Pages publisher
+replaces the package's Bun-only deploy command. `diff_export.ps1` is unnecessary
+for this bounded research handoff; no PR requested. No physical/full-song/editor/
+thermal gate is claimed. No redundant user video test is needed for unchanged
+product runtime; full candidate quality and speed remain WH-07b6.

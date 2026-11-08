@@ -2,7 +2,21 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-07b3 manually accepted at 4K60/10-bit MP4 (faster perceived export, good image). WH-07b4 packet candidate measured and rejected (5.07% at720p, -4.36% at4K; <15% gate). Next WH-07b5 short-detail loss isolation. WH-07a WebM Turbo is manually accepted. The user's mobile 10-bit deferral remains: Samsung 4K30 rejects the native encoder, and WH-06c2/WH-06e are not fixed. MP4 Turbo remains an explicit Economy fallback until its separate quality/resource/speed gates pass. The next completed task stops for handoff; WH-07b4 completed a bounded packet-sink comparison; no production replacement. WH-06d is withdrawn. MP4 default, accepted 10-bit quality, mobile 4K and deferred Wall/T15 remain.**
+**Current priority: WH-07b3 manually accepted at 4K60/10-bit MP4 (faster perceived export, good image). WH-07b4 packet candidate measured and rejected (5.07% at720p, -4.36% at4K; <15% gate). WH-07b5 isolates native detail loss; detail hint passes the short reference. Next WH-07b6 full candidate quality/speed qualification. WH-07a WebM Turbo is manually accepted. The user's mobile 10-bit deferral remains: Samsung 4K30 rejects the native encoder, and WH-06c2/WH-06e are not fixed. MP4 Turbo remains an explicit Economy fallback until its separate quality/resource/speed gates pass. The next completed task stops for handoff; WH-07b4 completed a bounded packet-sink comparison; no production replacement. WH-06d is withdrawn. MP4 default, accepted 10-bit quality, mobile 4K and deferred Wall/T15 remain.**
+
+### WH-07b5 short diagnostic complete; preferred candidate is detail hint
+
+Worker-side VideoFrame IDs are correct immediately before native encoding; the
+native VP9 stream already loses the fifth marker region. Identical payloads in
+WebM, raw MP4 and product FFmpeg MP4 decode identically. All full-frame hashes
+remain distinct: localized reconstruction loss, not a missing whole picture.
+The repeated reference fails again; all-key, detail/text hints and variable rate
+preserve all eight markers. Six bounded runs/18 files/144 independent FFmpeg IDs.
+No production change or speed promotion. Prefer `detail` with the retained
+constant bitrate/quality mode for **WH-07b6** full matrix and uninstrumented
+whole-job qualification. The user authorized this continuation after the prior
+unchanged-runtime handoff. Current tests/public identity are in the
+[WH-07b5 receipt](../tests/wormhole-wh07b5-research.json) and checkpoint; physical/full-song qualification remains separate.
 
 ### WH-07b4 research complete: retain accepted Economy
 

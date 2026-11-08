@@ -39,7 +39,10 @@ WASM codec is introduced. MP4 Turbo stays a stated Economy fallback pending
 a separately qualified candidate: WH-07b4's packet adapter missed the speed gate
 and the inter-frame profile still loses a short changed region. WH-07b3 is now
 manually accepted at 4K60/10-bit MP4; WH-07b5 isolates predictive-profile detail
-loss. Production has no new packet adapter or codec selection. See the audit for the
+loss. WH-07b5 now isolates the loss before container muxing and finds a promising
+`detail` hint in one eight-picture study. WH-07b6 must qualify its full quality/
+speed matrix before any MP4 Turbo promotion. Production has no new packet
+adapter or codec selection. See the audit for the
 reference, actual browser/WASM validation and manual gate.
 
 ## WH-06c1: explicit FPS and local codec diagnostics (2026-11-08)
