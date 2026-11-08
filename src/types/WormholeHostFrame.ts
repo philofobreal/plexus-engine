@@ -42,12 +42,19 @@ export type WormholeHostResponse =
     | { type: 'ready'; generation: number; contextId?: string }
     | { type: 'frame'; generation: number; serial: number; stamp?: WormholeRenderFrameStamp; bitmap: ImageBitmap; raster: 'webgl' | 'canvas2d' | 'gpu-material'; renderMs: number }
     | { type: 'failure'; generation?: number; contextId?: string; message: string };
+export interface WormholeHostPairing {
+    readonly key: string;
+    readonly revision?: string;
+    /** Synchronous owned counterpart capture, before the deferred request is submitted. */
+    capture(frame: Readonly<WormholeHostFrame>): void;
+}
 export interface WormholeHostRasterSource {
     readonly rasterKind: string;
     /** Private immutable snapshot belonging to the currently retained image; never live State. */
     readonly presentedFrame?: Readonly<WormholeHostFrame> | null;
     draw(state: WormholeRenderState, target: WormholeHostTarget, depthCue: number, transparent: boolean, playing?: boolean,
-        musicDisplay?: import('./MusicDisplay').MusicDisplaySettings): boolean;
+        musicDisplay?: import('./MusicDisplay').MusicDisplaySettings, pairing?: WormholeHostPairing): boolean;
+    acknowledgePresented?(frame: Readonly<WormholeHostFrame>): void;
     reset(): void;
     dispose(): void;
 }

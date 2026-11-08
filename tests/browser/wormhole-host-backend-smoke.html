@@ -12,6 +12,9 @@ import { compareRgba } from '../../research/export/wormhole-quality.mjs';
 import { WormholeHostWorkerSource } from '../../src/visuals/WormholeHostWorkerSource.ts';
 import { WormholeFrameContext } from '../../src/visuals/WormholeFrameContext.ts';
 import { WormholeRasterPass } from '../../src/visuals/WormholeRasterPass.ts';
+import { P5RenderTargetCompositor } from '../../src/visuals/P5RenderTargetCompositor.ts';
+import { Particle } from '../../src/visuals/Particle.ts';
+import { requestVisualModeChange } from '../../src/state/visualModeTransition.ts';
 import { P5RendererBackend } from '../../src/visuals/P5RendererBackend.ts';
 import { cloneDefaultVisualTuning } from '../../src/config/visualTuning.ts';
 import { defaultAdvancedBoosts } from '../../src/config/metaTuningBoost.ts';
@@ -23,7 +26,7 @@ import { State } from '../../src/state/store.ts';
 const result=document.querySelector('#result'), rows=[], contexts=[], graphics=[], canvases=[];
 let fixtureP, hostP, lossCase, pass, invalidations=0;
 const hostQuality={compactMaterialPreview:false,pixelRatioCap:1,maxBackingLongEdge:1920,wormholeRenderer:'webgl'};
-let hostSize={width:320,height:180},profileClockStart=null,profileSource=null;
+let hostSize={width:320,height:180},profileClockStart=null,profileSource=null,fixedLiveTime=null,positionChanged=null;
 const raw={...cloneDefaultVisualTuning(),wormholeNebulaAmount:.32,wormholeNebulaDetail:.4,wormholeNebulaBloom:.3,
  wormholeNebulaWeave:.35,wormholeGrainDensity:.1,wormholeSpiral:.4,wormholeSpiralDirection:-1,
  wormholeWarp:.1,wormholeCurve:0,wormholePathBend:0,wormholeJitter:0,wormholeOpticsEnabled:1,wormholeWall:.2,
@@ -120,16 +123,17 @@ try{
  const registry=createDefaultStyleRegistry();registry.forEach(i=>i.syncPosition?.(3));
  hostP=await new Promise(resolve=>startPlexusRenderer('host',{
   updateDashboard(){},setExportTarget(p){p.noLoop();resolve(p);},getTuningForMorph(tuning){projectionReads++;projectionInputs.push(JSON.stringify(tuning));return tuning;}
- },{getCurrentTime:()=>profileClockStart===null?99:3+(performance.now()-profileClockStart)/1000,addPositionChangedListener(){},addPlaybackEndedListener(){},syncMetronomeState(){}},registry,undefined,
+ },{getCurrentTime:()=>fixedLiveTime??(profileClockStart===null?99:3+(performance.now()-profileClockStart)/1000),addPositionChangedListener(listener){positionChanged=listener;},addPlaybackEndedListener(){},syncMetronomeState(){}},registry,undefined,
  {getPreviewSize:()=>hostSize,previewQuality:hostQuality,createWormholeWorker:invalidate=>(profileSource=new WormholeHostWorkerSource(invalidate))}));
  await hostP.redraw();
  // The host hook is a pure projection: reads may occur before and after semantic resolution.
  // Count actual director/PostFX execution, and prove every projection starts from unchanged raw input.
- async function hostFrame(name){const before=[postCalls,directorCalls,projectionReads],rawBefore=JSON.stringify(State.targetTuning);projectionInputs=[];
-  await hostP.redraw();const delta=[postCalls-before[0],directorCalls-before[1],projectionReads-before[2]];
+ async function hostFrame(name,waitForPair=false){const before=[postCalls,directorCalls,projectionReads],rawBefore=JSON.stringify(State.targetTuning);projectionInputs=[];
+  let draws=0;do{await hostP.redraw();draws++;if(postCalls>before[0])break;await new Promise(requestAnimationFrame);}while(waitForPair&&draws<120);
+  const delta=[postCalls-before[0],directorCalls-before[1],projectionReads-before[2]];
   const rawUnchanged=JSON.stringify(State.targetTuning)===rawBefore&&projectionInputs.every(value=>value===rawBefore);
-  rows.push({case:name,postDirectorProjectionReads:delta,rawUnchanged,raster:hostP.canvas.dataset.wormholeRaster,
-   pass:delta[0]===1&&delta[1]===1&&delta[2]>0&&rawUnchanged});}
+  rows.push({case:name,postDirectorProjectionReads:delta,draws,rawUnchanged,raster:hostP.canvas.dataset.wormholeRaster,
+   pass:delta[0]===1&&delta[1]===draws&&delta[2]>0&&rawUnchanged});}
  await hostFrame('host direct + PostFX');
  State.visualMode='classic';State.visualModeTransition={from:'cosmic-wormhole',to:'classic',startTimeSec:2,durationSec:2,generation:1};
  await hostFrame('host crossfade + PostFX');
@@ -145,12 +149,102 @@ try{
  await hostFrame('worker live + PostFX');
  rows.push({case:'worker actually active',raster:hostP.canvas.dataset.wormholeRaster,pass:hostP.canvas.dataset.wormholeRaster==='offscreen-gpu-material'});
  State.visualMode='classic';State.visualModeTransition={from:'cosmic-wormhole',to:'classic',startTimeSec:98,durationSec:2,generation:2};
- await hostFrame('worker live crossfade + PostFX');
+ await hostFrame('worker live crossfade + PostFX',true);
  State.isExporting=true;State.exportTime=99;hostP.__plexusExportTarget=exported;
  await hostFrame('offscreen selection uses synchronous full-size export');
  rows.push({case:'export never uses preview bitmap',raster:hostP.canvas.dataset.wormholeRaster,pass:hostP.canvas.dataset.wormholeRaster==='compatible'&&exported.elt.width===640});
  delete hostP.__plexusExportTarget;State.isExporting=false;State.isPlaying=false;
+ // WH-05: real worker + real native pools. Frozen targets are paired by identity, not arrival time.
+ const requireGate=(condition,message)=>{if(!condition)throw Error(message);};
+ const originalFreeze=P5RenderTargetCompositor.prototype.freezePairedCounterpart;
+ const originalComposite=P5RenderTargetCompositor.prototype.compositePaired;
+ const originalParticle=Particle.prototype.update,originalGraphics=hostP.createGraphics;
+ let frozenTime=null,frozenGeneration=null,pairPosts=0,pairs=0,poolUpdates=0,newTargets=0,waits=0;
+ P5RenderTargetCompositor.prototype.freezePairedCounterpart=function(...args){frozenTime=State.currentTime;frozenGeneration=State.visualModeTransition?.generation;return originalFreeze.apply(this,args);};
+ P5RenderTargetCompositor.prototype.compositePaired=function(alpha,image,incoming){
+  const f=profileSource.presentedFrame,t=State.visualModeTransition;
+  requireGate(f&&f.currentTime===frozenTime&&t?.generation===frozenGeneration,'Worker/native counterpart mismatch');
+  const progress=Math.max(0,Math.min(1,(f.currentTime-t.startTimeSec)/t.durationSec));
+  requireGate(Math.abs(alpha-progress*progress*(3-2*progress))<1e-12,'Crossfade used current instead of captured song time');
+  requireGate(incoming===(t.to==='cosmic-wormhole'),'Crossfade direction mismatch');
+  pairs++;return originalComposite.call(this,alpha,image,incoming);
+ };
+ Particle.prototype.update=function(...args){poolUpdates++;return originalParticle.apply(this,args);};
+ hostP.createGraphics=function(...args){newTargets++;return originalGraphics.apply(this,args);};
+ PostFxPipeline.prototype.render=function(...args){
+  const frame=profileSource?.presentedFrame;
+  if(State.visualModeTransition||pairs>pairPosts){const view=this.readState();
+   requireGate(frame&&args[1]===frame.currentTime&&view.visualTuning===frame.visualTuning&&view.modulation===frame.modulation&&view.directorOutput===frame.directorOutput,'PostFX frame mismatch');pairPosts++;}
+  postCalls++;return oldPost.apply(this,args);
+ };
+ State.isPlaying=true;State.videoBackplateActive=false;fixedLiveTime=100;State.currentTime=100;
+ async function pairedDraw(){const count=pairs,posts=postCalls,updates=poolUpdates,dimensions=[hostP.canvas.width,hostP.canvas.height];
+  const before=await hash(hostP.drawingContext.getImageData(0,0,hostP.canvas.width,hostP.canvas.height).data);
+  await hostP.redraw();
+  requireGate(poolUpdates-updates===75,'Native pool must advance exactly once per host draw: '+JSON.stringify({updates:poolUpdates-updates,time:fixedLiveTime,transition:State.visualModeTransition}));
+  requireGate(postCalls-posts===pairs-count,'PostFX must run once only for each finished pair');
+  if(pairs===count&&dimensions[0]===hostP.canvas.width&&dimensions[1]===hostP.canvas.height){waits++;const after=await hash(hostP.drawingContext.getImageData(0,0,hostP.canvas.width,hostP.canvas.height).data);
+   requireGate(before===after,'Waiting for a worker must retain the complete previous composite');}
+  await new Promise(requestAnimationFrame);
+ }
+ async function drivePair(name,to){State.currentTime=fixedLiveTime;requestVisualModeChange(to,{durationSec:.2});const start=pairs;
+  for(let n=0;n<160&&State.visualModeTransition;n++){fixedLiveTime+=1/30;await pairedDraw();}
+  rows.push({case:name,pairs:pairs-start,waits,newTargets,pass:!State.visualModeTransition&&pairs>start&&newTargets===0});
+  requireGate(!State.visualModeTransition,'Paired transition did not finish');
+ }
+ await drivePair('paired Classic to Wormhole, one native simulation, frozen PostFX','cosmic-wormhole');
+ await drivePair('paired Wormhole to Classic, one native simulation, frozen PostFX','classic');
+ // Replace two generations before the first request returns, then rewind and change backing density.
+ State.currentTime=fixedLiveTime;requestVisualModeChange('cosmic-wormhole',{durationSec:.2});await pairedDraw();
+ State.currentTime=fixedLiveTime;requestVisualModeChange('classic',{durationSec:.2});await pairedDraw();
+ State.currentTime=fixedLiveTime;requestVisualModeChange('cosmic-wormhole',{durationSec:.2});await pairedDraw();
+ fixedLiveTime-=.1;positionChanged(fixedLiveTime);State.currentTime=fixedLiveTime;
+ State.isPlaying=false;requestVisualModeChange('classic');State.isPlaying=true;requestVisualModeChange('cosmic-wormhole',{durationSec:.2});hostQuality.pixelRatioCap=.75;
+ const resizedFrom=hostP.canvas.width;hostP.windowResized();
+ const startReplacement=pairs;for(let n=0;n<160&&State.visualModeTransition;n++){fixedLiveTime+=1/30;await pairedDraw();}
+ rows.push({case:'paired rapid replacement, rewind and density resize',pairs:pairs-startReplacement,newTargets,
+  backing:[resizedFrom,hostP.canvas.width],pass:!State.visualModeTransition&&pairs>startReplacement&&newTargets===0&&hostP.canvas.width<resizedFrom});
+ Object.assign(State.targetTuning,{chromaKeyMode:1});Object.assign(State.visualTuning,{chromaKeyMode:1});
+ hostQuality.musicDisplay={mode:'spectrum',size:.6,opacity:1};
+ await drivePair('paired Wormhole to Temporal with chroma and spectrum','temporal');
+ await drivePair('paired Temporal to Wormhole with chroma and spectrum','cosmic-wormhole');
+ Object.assign(State.targetTuning,{chromaKeyMode:0});Object.assign(State.visualTuning,{chromaKeyMode:0});delete hostQuality.musicDisplay;
+ // A live host-owned video layer, not a video decoded or composited by the worker.
+ const videoCanvas=Object.assign(document.createElement('canvas'),{width:64,height:36}),videoCtx=videoCanvas.getContext('2d');
+ const stream=videoCanvas.captureStream(30),video=document.createElement('video');video.muted=true;video.playsInline=true;video.srcObject=stream;
+ video.style.cssText='position:absolute;width:320px;height:180px;z-index:-1';document.querySelector('#host').prepend(video);
+ videoCtx.fillStyle='#e05296';videoCtx.fillRect(0,0,64,36);stream.getVideoTracks()[0].requestFrame?.();await video.play();
+ const firstVideoTime=video.currentTime;
+ State.videoBackplateActive=true;await drivePair('paired Wormhole to native with live video backplate','classic');
+ videoCtx.fillStyle='#32b3ee';videoCtx.fillRect(0,0,64,36);stream.getVideoTracks()[0].requestFrame?.();
+ await drivePair('paired native to Wormhole with live video backplate','cosmic-wormhole');
+ const alphaPixels=hostP.drawingContext.getImageData(0,0,hostP.canvas.width,hostP.canvas.height).data;
+ let partialAlpha=0;for(let n=3;n<alphaPixels.length;n+=4)if(alphaPixels[n]<255)partialAlpha++;
+ rows.push({case:'video remains host-owned, canvas alpha preserved',videoTime:video.currentTime,partialAlpha,
+  pass:video.currentTime>firstVideoTime&&partialAlpha>0});
+ stream.getTracks().forEach(t=>t.stop());video.pause();video.remove();State.videoBackplateActive=false;
+ // Compare the paired compositor with its established synchronous source-over law, exact RGBA.
+ P5RenderTargetCompositor.prototype.freezePairedCounterpart=originalFreeze;
+ P5RenderTargetCompositor.prototype.compositePaired=originalComposite;
+ Particle.prototype.update=originalParticle;hostP.createGraphics=originalGraphics;
  PostFxPipeline.prototype.render=oldPost;VisualDirectorFSM.prototype.update=oldDirector;
+ fixtureP.resizeCanvas(24,16);
+ for(const transparent of [false,true])for(const incoming of [false,true]){
+  const compositor=new P5RenderTargetCompositor(fixtureP),w=gfx(24,16,1),other=gfx(24,16,1);
+  w.background(30,170,220,transparent?90:255);other.background(220,40,120,transparent?120:255);
+  const main=fixtureP.drawingContext;let exact=true;
+  for(const a of [0,.1,.5,.9,1]){
+   compositor.beginFrame(0,24,16);compositor.outgoingBackend.presentRaster(incoming?other.elt:w.elt);
+   compositor.incomingBackend.presentRaster(incoming?w.elt:other.elt);compositor.composite(a);
+   const expected=main.getImageData(0,0,fixtureP.canvas.width,fixtureP.canvas.height).data.slice();
+   compositor.beginPairedFrame(24,16);compositor.incomingBackend.presentRaster(other.elt);compositor.freezePairedCounterpart();compositor.compositePaired(a,w.elt,incoming);
+   const actual=main.getImageData(0,0,fixtureP.canvas.width,fixtureP.canvas.height).data;
+   exact&&=expected.every((v,i)=>v===actual[i]);
+  }
+  rows.push({case:'paired compositor exact synchronous law',transparent,incoming,pass:exact});compositor.dispose();compositor.dispose();
+ }
+ fixedLiveTime=null;State.isPlaying=false;hostQuality.pixelRatioCap=1;
+
  document.querySelector('#loss').disabled=false;
  document.querySelector('#loss').onclick=async()=>{
   const gl=canvases[0].getContext('webgl2'),extension=gl.getExtension('WEBGL_lose_context');

@@ -25,6 +25,8 @@ export class P5RendererBackend implements VisualRendererBackend {
         this.compactPreviewPolicy = compactMaterialPreview;
     }
 
+    invalidateDrawingState(): void { this.lastTarget = null; this.resetCachedState(); }
+
     get compactMaterialPreview(): boolean {
         return typeof this.compactPreviewPolicy === 'function' ? this.compactPreviewPolicy() : this.compactPreviewPolicy;
     }

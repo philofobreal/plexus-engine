@@ -1,6 +1,6 @@
 import HostWorker from './wormholeHostRender.worker.ts?worker';
 import { projectRenderWorkerAnalysis } from '../types/CanvasVisualSource';
-import type { WormholeHostAnalysis, WormholeHostFrame, WormholeHostRequest, WormholeHostResponse, WormholeHostRasterSource, WormholeHostTarget } from '../types/WormholeHostFrame';
+import type { WormholeHostAnalysis, WormholeHostFrame, WormholeHostRequest, WormholeHostResponse, WormholeHostRasterSource, WormholeHostTarget, WormholeHostPairing } from '../types/WormholeHostFrame';
 import { assertWormholeRenderFrameStamp, sameWormholeRenderFrame, type WormholeRenderFrameStamp } from '../types/WormholeRenderFrame';
 import type { WormholeRenderState } from './CosmicWormholeIdentity';
 import { featureFlags } from '../config/featureFlags';
@@ -32,6 +32,9 @@ export class WormholeHostWorkerSource implements WormholeHostRasterSource {
     private bitmap: ImageBitmap | null = null;
     private flightFrame: WormholeHostFrame | null = null;
     private bitmapFrame: WormholeHostFrame | null = null;
+    private pairingKey: string | null = null;
+    private awaitingPresentation = false;
+    private inputRevision = 0; private queuedRevision = -1;
     get presentedFrame(): Readonly<WormholeHostFrame> | null { return this.bitmapFrame; }
     private failed = false; private disposed = false; private needsReset = true;
     private lastTime = -Infinity; private sentTime = -Infinity;
@@ -50,7 +53,7 @@ export class WormholeHostWorkerSource implements WormholeHostRasterSource {
     }
     private armDeadline(): void { this.clearDeadline(); this.deadline = setTimeout(() => this.fail(), 15000); }
     private clearDeadline(): void { if (this.deadline !== null) clearTimeout(this.deadline); this.deadline = null; }
-    private closeImage(): void { this.bitmap?.close(); this.bitmap = null; this.bitmapFrame = null; }
+    private closeImage(): void { this.bitmap?.close(); this.bitmap = null; this.bitmapFrame = null; this.awaitingPresentation = false; }
     private fail(): void {
         if (this.failed || this.disposed) return;
         this.failed = true; this.ready = false; this.pending = null; this.flight = null; this.flightFrame = null;
@@ -91,9 +94,13 @@ export class WormholeHostWorkerSource implements WormholeHostRasterSource {
             }
             this.clearDeadline(); this.flight = null; this.closeImage(); this.bitmap = m.bitmap;
             this.bitmapFrame = this.flightFrame; this.flightFrame = null;
+            this.awaitingPresentation = this.pairingKey !== null;
             this.framesReceived++; this.kind = 'offscreen-' + m.raster; this.lastRenderMs = m.renderMs;
             this.enqueue(); this.invalidate();
         };
+    }
+    acknowledgePresented(frame: Readonly<WormholeHostFrame>): void {
+        if (frame === this.bitmapFrame && this.awaitingPresentation) { this.awaitingPresentation = false; this.invalidate(); }
     }
     private pump(): void {
         if (!this.analysis) return;
@@ -113,9 +120,16 @@ export class WormholeHostWorkerSource implements WormholeHostRasterSource {
         this.flight = stamp; this.flightFrame = frame; this.sentTime = frame.currentTime; this.armDeadline();
         this.worker!.postMessage({ type: 'render', generation: this.generation, serial: stamp.requestSerial, stamp, frame });
     }
-    draw(state: WormholeRenderState, target: WormholeHostTarget, depthCue: number, transparent: boolean, playing = false, musicDisplay?: MusicDisplaySettings): boolean {
+    draw(state: WormholeRenderState, target: WormholeHostTarget, depthCue: number, transparent: boolean, playing = false, musicDisplay?: MusicDisplaySettings, pairing?: WormholeHostPairing): boolean {
         if (this.failed || this.disposed) return false;
         try {
+            const pairKey = pairing?.key ?? null;
+            if (pairKey !== this.pairingKey) {
+                // Enter/re-arm a pair before any capture. Leaving for a pure Wormhole may reuse
+                // its already valid image; discarding it would flash black at transition end.
+                if (pairKey !== null) this.reset();
+                this.pairingKey = pairKey; this.awaitingPresentation = false; this.changed.invalidate();
+            }
             const a = this.analysis;
             if (!a || a.frames !== state.frames || a.events !== state.events || a.trackAnalysis !== state.trackAnalysis
                 || a.sampleRate !== state.sampleRate || a.hopSize !== state.hopSize || a.bpm !== state.bpm) {
@@ -153,14 +167,19 @@ export class WormholeHostWorkerSource implements WormholeHostRasterSource {
                 const value = (record as Record<string, unknown>)[key]; this.changed.watch(key);
                 if (value && typeof value === 'object') watch(value); else this.changed.watch(value);
             } };
-            watch(frame);
-            if (this.changed.shouldDraw() && (!playing || this.needsReset || frame.currentTime - this.sentTime >= 1 / 30 - .001)) {
+            watch(frame); this.changed.watch(pairing?.revision);
+            if (this.changed.shouldDraw()) this.inputRevision++;
+            if (this.inputRevision !== this.queuedRevision
+                && (!pairing || (this.ready && !this.flight && !this.pending && !this.awaitingPresentation))
+                && (!playing || this.needsReset || frame.currentTime - this.sentTime >= 1 / 30 - .001)) {
                 // Copy borrowed live values now: the deferred broker must never observe a later draw.
                 this.pending = { ...frame, visualTuning: { ...frame.visualTuning }, targetTuning: { ...frame.targetTuning },
                     currentFrame: { ...frame.currentFrame, perceptualSpectrum: [...frame.currentFrame.perceptualSpectrum] },
                     currentFeatures: { ...frame.currentFeatures }, modulation: { ...frame.modulation }, directorOutput: { ...frame.directorOutput },
                     spiralTransitionAnchor: frame.spiralTransitionAnchor ? { ...frame.spiralTransitionAnchor } : null,
                     ...(frame.musicDisplay ? { musicDisplay: { ...frame.musicDisplay } } : {}) };
+                pairing?.capture(this.pending);
+                this.queuedRevision = this.inputRevision;
                 this.enqueue();
             }
             if (this.failed) return false;

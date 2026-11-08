@@ -253,3 +253,30 @@ test('GPU material session consumes carriers once, separates foreground, reuses 
     for(const surface of surfaces)assert.equal(surface.canvas.width,1);
     assert.throws(()=>s.render(f),/disposed/);
 });
+
+
+test('paired preview admits one frozen counterpart and requires presentation ack before reuse',()=>{
+    const h=harness(),captures=[],pair={key:'transition:1',revision:'flags:0',capture:frame=>captures.push(frame)};
+    const draw=()=>h.source.draw(h.State,h.target,.6,false,false,undefined,pair);
+    h.State.currentTime=1;draw();assert.equal(captures.length,0,'prepare cannot capture a counterpart yet');
+    h.ready();draw();assert.equal(captures.length,1);
+    const first=h.messages.at(-1);h.State.visualTuning.lineAlpha=.2;draw();
+    assert.equal(captures.length,1,'flight counterpart is not overwritten');
+    h.frame(first);const shown=h.source.presentedFrame;draw();
+    assert.equal(captures.length,1,'unpresented reply owns its frozen target');
+    assert.equal(shown,captures[0]);
+    h.source.acknowledgePresented(shown);draw();
+    assert.equal(captures.length,2,'paused control change observed during flight is not lost');
+    assert.equal(h.messages.at(-1).frame.visualTuning.lineAlpha,.2);
+    h.source.dispose();
+});
+
+test('leaving a paired transition reuses the valid pure-Wormhole image without a black flash',()=>{
+    const h=harness(),pair={key:'transition:9',capture(){}};
+    const draw=p=>h.source.draw(h.State,h.target,.6,false,false,undefined,p);
+    draw(pair);h.ready();draw(pair);const request=h.messages.at(-1),image=h.frame(request);
+    h.source.acknowledgePresented(h.source.presentedFrame);
+    draw(undefined);assert.equal(h.presented.at(-1),image);assert.equal(image.closed,0);
+    assert.equal(h.messages.filter(m=>m.type==='reset').length,0,'no needless generation reset at completion');
+    h.source.dispose();assert.equal(image.closed,1);
+});

@@ -7,6 +7,7 @@ type GraphicsWithCanvas = p5.Graphics & { elt: HTMLCanvasElement };
 
 export class P5RenderTargetCompositor implements RenderTargetCompositor {
     private readonly p: p5;
+    private disposed = false;
     private readonly outgoing: p5.Graphics;
     private readonly incoming: p5.Graphics;
     readonly outgoingBackend: VisualRendererBackend;
@@ -20,25 +21,53 @@ export class P5RenderTargetCompositor implements RenderTargetCompositor {
         this.incomingBackend = new P5RendererBackend(this.incoming, compactMaterialPreview);
     }
 
-    beginFrame(_generation: number, width: number, height: number): void {
+    private sizeTargets(width: number, height: number): void {
         const safeWidth = Math.max(1, Math.floor(width));
         const safeHeight = Math.max(1, Math.floor(height));
         // Export owns its sampling density. Preview targets follow live quality/size changes.
         const target = (this.p as P5WithExportTarget).__plexusExportTarget ?? this.p;
         const density = target.pixelDensity();
+        const changed = this.outgoing.pixelDensity() !== density || this.outgoing.width !== safeWidth || this.outgoing.height !== safeHeight;
         if (this.outgoing.pixelDensity() !== density) this.outgoing.pixelDensity(density);
         if (this.incoming.pixelDensity() !== density) this.incoming.pixelDensity(density);
         if (this.outgoing.width !== safeWidth || this.outgoing.height !== safeHeight) {
             this.outgoing.resizeCanvas(safeWidth, safeHeight);
             this.incoming.resizeCanvas(safeWidth, safeHeight);
         }
+        if (changed) {
+            (this.outgoingBackend as P5RendererBackend).invalidateDrawingState();
+            (this.incomingBackend as P5RendererBackend).invalidateDrawingState();
+        }
+    }
+
+    beginFrame(_generation: number, width: number, height: number): void {
+        this.sizeTargets(width, height);
         // Transition targets never retain prior-frame pixels. This keeps transparent,
         // chroma-key, and video-backplate composition free from buffer ghosting.
         this.outgoing.clear();
         this.incoming.clear();
     }
 
+    /** Incoming is the current counterpart scratch; outgoing freezes the admitted frame. */
+    beginPairedFrame(width: number, height: number): void { this.sizeTargets(width, height); this.incoming.clear(); }
+    freezePairedCounterpart(): void {
+        const ctx = this.outgoing.drawingContext as CanvasRenderingContext2D, canvas = ctx.canvas;
+        ctx.save();
+        try { ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+            ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage((this.incoming as GraphicsWithCanvas).elt,0,0,canvas.width,canvas.height);
+        } finally { ctx.restore(); }
+    }
+    compositePaired(alpha: number, wormhole: CanvasImageSource, wormholeIncoming: boolean): void {
+        const other = (this.outgoing as GraphicsWithCanvas).elt;
+        this.compositeImages(alpha, wormholeIncoming ? other : wormhole, wormholeIncoming ? wormhole : other);
+    }
+    dispose(): void { if (this.disposed) return; this.disposed = true; this.outgoing.remove?.(); this.incoming.remove?.(); }
+
     composite(alpha: number): void {
+        this.compositeImages(alpha, (this.outgoing as GraphicsWithCanvas).elt, (this.incoming as GraphicsWithCanvas).elt);
+    }
+
+    private compositeImages(alpha: number, outgoing: CanvasImageSource, incoming: CanvasImageSource): void {
         const target = (this.p as P5WithExportTarget).__plexusExportTarget ?? this.p;
         const canvas = (target as p5 | GraphicsWithCanvas).drawingContext.canvas as HTMLCanvasElement;
         const ctx = target.drawingContext as CanvasRenderingContext2D;
@@ -50,9 +79,9 @@ export class P5RenderTargetCompositor implements RenderTargetCompositor {
         ctx.globalCompositeOperation = 'source-over';
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.globalAlpha = 1 - mix;
-        ctx.drawImage((this.outgoing as GraphicsWithCanvas).elt, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(outgoing, 0, 0, canvas.width, canvas.height);
         ctx.globalAlpha = mix;
-        ctx.drawImage((this.incoming as GraphicsWithCanvas).elt, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(incoming, 0, 0, canvas.width, canvas.height);
         ctx.restore();
     }
 }

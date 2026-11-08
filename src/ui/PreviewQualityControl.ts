@@ -123,7 +123,8 @@ export function createPreviewQualityControl(automaticCompact: boolean, offscreen
         activeRenderer = kind;
         const label = kind === 'offscreen-gpu-material' ? 'GPU material in worker'
             : kind.startsWith('offscreen-') && kind !== 'offscreen-pending' ? 'Compatible material in worker'
-            : kind === 'offscreen-pending' ? 'Preparing worker' : kind === 'fallback' ? 'Compatible fallback' : kind;
+            : kind === 'offscreen-pending' ? 'Preparing worker' : kind === 'fallback' ? 'Compatible fallback'
+            : kind === 'native' ? 'Other visual style (native)' : kind === 'compatible-transition' ? 'Compatible transition' : kind;
         rendererHint.textContent = defaultRendererHint + ' Active: ' + label + '.';
     }, showAnalysisBackend(info: AnalysisBackendInfo | null) {
         analysisHint.textContent = info ? `Last analysis: ${info.used === 'wasm' ? 'WebAssembly FFT' : 'TypeScript'}${info.fallback ? ` (${info.fallback})` : ''}. ${defaultAnalysisHint}` : defaultAnalysisHint;

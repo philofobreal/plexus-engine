@@ -1,0 +1,20 @@
+{
+  "commit": "b9376e7ed387dc45f3e743ab08fb80638045baef",
+  "retention": "Immutable Git predecessor bytes/SHA; no old case is removed.",
+  "files": {
+    "src/main.ts": "700b18e4b2424063ca9fc61f2d7c94145a000c680fb6d53a883e556d3b11fee1",
+    "src/types/WormholeHostFrame.ts": "2600f32bac24923898c0a89a089434b3247e5da3469984febd8afa2c1be1111a",
+    "src/visuals/WormholeHostWorkerSource.ts": "8852ab67a5313509999d29086cfda49582265b8b81bf2881b0cc7e7fdf2fa329",
+    "src/visuals/IdentityTransitionController.ts": "fa59decffee25a680fa0c30dbd0850f1ee6e6da8ae15cbd5ed6b1923eb6e614c",
+    "src/visuals/P5RenderTargetCompositor.ts": "912eee4ffa37967422c1786effaa62c09fb91125cd2a2bb05286fa2e7cbd54e5",
+    "src/visuals/P5RendererBackend.ts": "37b938011cc4a780c2e936b8472ebbd39c9296b97924cba11c75e971955e7108",
+    "src/visuals/PlexusRenderer.ts": "da7f978629d497b17c53727bc1ca5a6b7c549496c114a91481fd07118a3e26df",
+    "src/ui/PreviewQualityControl.ts": "cdd78b7dc26084436bad857b8a92112154730ad7c8bcce9e1a901bf2f9a9a201",
+    "tests/visual-mode-transition.test.mjs": "a81e78d4e92c2d6c4e281df998577f230b46d55d2e6c3f03099099300a3b9d4d",
+    "tests/postfx-fragmentation.test.mjs": "cd46a6900330ff3891b4b55ba76ff5380a11c5659332244e1f8d465f21fa7f82",
+    "tests/paused-renderer.test.mjs": "18180f11db184af8d8f66723b9b8304677c9863d2bc158393b06cb3ca3efdb0a",
+    "tests/wormhole-host-worker.test.mjs": "9bd9b813cf9700e671b16adf780ef1538ef3daae94f2ffb2a69b79d27d72fcbb",
+    "tests/browser/wormhole-host-backend-smoke.html": "3b81d9075903d5c84427bd89b49ac7e70f969c1cdff0199b64e4740ae67c2332",
+    "research/export/wormhole-gpu-spike.mjs": "f092d86a1b03e139051210fc87066ae89ef888a3f3cdcb9a9abdb3a77c034398"
+  }
+}

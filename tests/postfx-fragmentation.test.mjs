@@ -411,10 +411,11 @@ test('the renderer runs the post chain exactly once, after the finished identity
   assert.match(renderer, /const postFxPipeline = new PostFxPipeline\(\[new TemporalFragmentationEffect\(readPostState\)\], undefined, readPostState\);/);
   // The seam sits after the whole draw branch, so an active crossfade is post-processed once on the
   // final composite rather than once per participating identity.
-  assert.match(
-    renderer,
-    /identityTransitionController\.draw\(ct, backend, compositor, styleRegistry, particles, shockwaves, drawIdentity\);\r?\n\s*\} else \{\r?\n\s*drawIdentity\(styleRegistry\.get\(State\.visualMode\), backend, particles, shockwaves, \{ timeSec: ct, advanceSharedSimulation: true \}\);\r?\n\s*\}[\s\S]{0,400}?postFxPipeline\.render\(/
-  );
+  const seam = renderer.indexOf('if (completedFrame) postFxPipeline.render');
+  assert.ok(seam > renderer.indexOf('pairedTransition.draw('), 'paired image finishes before the seam');
+  assert.ok(seam > renderer.indexOf('identityTransitionController.draw(ct, backend, compositor, styleRegistry, particles, shockwaves, drawIdentity);'));
+  assert.match(renderer, /renderPostFrame = result\.frame; completedFrame = result\.frame !== null/);
+  assert.match(renderer, /postFxPipeline\.render\(p as unknown as PostFxSurfaceHost, renderPostFrame\?\.currentTime \?\? ct\)/);
   assert.doesNotMatch(renderer, /compositor[\s\S]{0,200}postFxPipeline\.render\([\s\S]{0,200}composite\(/);
 });
 

@@ -60,6 +60,12 @@ export class IdentityTransitionController {
         compositor.composite(alpha);
     }
 
+    finishPairedFrame(generation: number, timeSec: number): void {
+        const transition = State.visualModeTransition;
+        if (transition?.generation === generation && transition.to === State.visualMode
+            && computeCrossfadeAlpha(timeSec, transition.startTimeSec, transition.durationSec) >= 1) clearVisualModeTransition();
+    }
+
     private drawParticipants(
         incoming: VisualIdentity,
         outgoing: VisualIdentity,

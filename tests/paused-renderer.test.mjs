@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
 
-function createHarness(applyAutomatedSpiral, createWormholeWorker, gain, postProbe) {
+function createHarness(applyAutomatedSpiral, createWormholeWorker, gain, postProbe, identities) {
   let p;
   let time = 0;
   let draws = 0;
@@ -25,9 +25,14 @@ function createHarness(applyAutomatedSpiral, createWormholeWorker, gain, postPro
       sketch(this);
       this.setup();
     }
-    createCanvas(w, h) { this.width = w; this.height = h; this.canvas={dataset:{}}; return { parent() {}, elt: this.canvas }; }
+    createCanvas(w, h) { this.width=w;this.height=h;this.canvas={width:w,height:h,dataset:{}};
+      this.drawingContext={canvas:this.canvas,save(){},restore(){},setTransform(){},clearRect(){},drawImage(){}};
+      return {parent(){},elt:this.canvas}; }
     remove() {}
-    createGraphics(width, height) { return { width, height, pixelDensity: () => this.density }; }
+    createGraphics(width,height) { const canvas={width,height},g={width,height,elt:canvas,
+      pixelDensity:()=>this.density,clear(){},remove(){},resizeCanvas(w,h){this.width=w;this.height=h;canvas.width=w;canvas.height=h;}};
+      g.drawingContext={canvas,save(){},restore(){},setTransform(){},clearRect(){},drawImage(){}};
+      return g; }
     pixelDensity(value) { if (value !== undefined) this.density = value; return this.density; }
     resizeCanvas(w, h) { this.width = w; this.height = h; }
     frameRate() {}
@@ -62,7 +67,7 @@ function createHarness(applyAutomatedSpiral, createWormholeWorker, gain, postPro
     getCurrentTime: () => time,
     addPositionChangedListener(listener) { position = listener; },
     addPlaybackEndedListener() {}, syncMetronomeState() {}
-  }, { get: () => identity, forEach: fn => fn(identity) }, undefined, { previewQuality: preference, createWormholeWorker });
+  }, { get: id => identities?.[id] ?? identity, forEach: fn => identities ? Object.values(identities).forEach(fn) : fn(identity) }, undefined, { previewQuality: preference, createWormholeWorker });
   const overrides = {};
   return {
     State, p, preference, overrides, flags: load(resolve('src/config/featureFlags.ts')).featureFlags,
@@ -224,4 +229,43 @@ test('worker image and PostFX use the same frozen tuning, signals and song time'
     assert.notEqual(seen.at(-1).tuning,h.State.visualTuning,'live state is never swapped or mutated for async composition');
     h.State.isExporting=true;h.State.exportTime=2;h.tick();
     assert.equal(seen.at(-1).time,2);assert.equal(seen.at(-1).tuning,h.State.visualTuning,'export keeps its synchronous owner');
+});
+
+for (const wormholeIncoming of [true,false]) test('renderer presents a complete worker/native pair once, in direction '+wormholeIncoming,()=>{
+ const posts=[],native=[],sources=[];let active;
+ const identities={classic:{id:'classic',usesSharedSimulation:true,syncPosition(){},draw(b,p,w,c){native.push({...c});}},
+  'cosmic-wormhole':{id:'cosmic-wormhole',draw(){throw Error('Worker fast path must not draw main Wormhole');},syncPosition(){}}};
+ const h=createHarness(undefined,()=>{
+  const source={rasterKind:'offscreen-gpu-material',presentedFrame:null,pending:null,awaiting:false,disposed:0,
+   draw(state,target,depth,transparent,playing,display,pair){
+    if(pair&&!this.pending&&!this.awaiting){this.pending={currentTime:state.currentTime,visualTuning:{...state.visualTuning},
+     modulation:{...state.modulation},directorOutput:{...state.directorOutput}};pair.capture(this.pending);}
+    if(this.presentedFrame)target.presentRaster({});return true;
+   },complete(){this.presentedFrame=this.pending;this.pending=null;this.awaiting=true;},
+   acknowledgePresented(frame){assert.equal(frame,this.presentedFrame);this.awaiting=false;},reset(){},dispose(){this.disposed++;}};
+  sources.push(source);active=source;return source;
+ },undefined,(state,time)=>posts.push({state,time}),identities);
+ h.preference.wormholeRenderer='offscreen';h.State.isPlaying=true;
+ h.State.visualMode=wormholeIncoming?'cosmic-wormhole':'classic';
+ h.State.visualModeTransition={from:wormholeIncoming?'classic':'cosmic-wormhole',to:h.State.visualMode,startTimeSec:0,durationSec:1,generation:10};
+ h.advance(.1);h.tick();h.advance(.1);h.tick();
+ assert.equal(native.length,2);assert.ok(native.every(c=>c.advanceSharedSimulation));assert.equal(posts.length,0,'no PostFX on retained pixels');
+ active.complete();h.advance(.1);h.tick();
+ assert.equal(posts.length,1);assert.equal(posts[0].time,.1);assert.equal(posts[0].state.visualTuning,active.presentedFrame.visualTuning);
+ assert.equal(native.length,3);assert.ok(h.State.visualModeTransition,'only the completed song time can finish a transition');
+ h.advance(.9);h.tick();assert.equal(posts.length,1);active.complete();h.advance(.1);h.tick();
+ assert.equal(posts.length,2);assert.ok(Math.abs(posts[1].time-1.2)<1e-12);assert.equal(h.State.visualModeTransition,null);
+ assert.equal(native.length,5);h.p.remove();assert.equal(sources[0].disposed,1);
+});
+
+test('renderer worker failure after counterpart capture never advances native simulation twice',()=>{
+ let advances=0,draws=0,wormhole=0;
+ const identities={classic:{id:'classic',usesSharedSimulation:true,syncPosition(){},draw(b,p,w,c){draws++;if(c.advanceSharedSimulation)advances++;}},
+  'cosmic-wormhole':{id:'cosmic-wormhole',draw(){wormhole++;},syncPosition(){}}};
+ const h=createHarness(undefined,()=>({rasterKind:'fallback',acknowledgePresented(){},reset(){},dispose(){},
+  draw(state,target,depth,transparent,playing,display,pair){pair.capture({currentTime:state.currentTime});return false;}}),undefined,()=>{},identities);
+ h.preference.wormholeRenderer='offscreen';h.State.isPlaying=true;h.State.visualMode='cosmic-wormhole';
+ h.State.visualModeTransition={from:'classic',to:'cosmic-wormhole',startTimeSec:0,durationSec:1,generation:1};
+ h.advance(.2);h.tick();assert.equal(advances,1);assert.equal(draws,2,'the fallback redraw borrows the already advanced pool');
+ assert.equal(wormhole,1);assert.equal(h.p.canvas.dataset.wormholeRaster,'fallback');h.p.remove();
 });

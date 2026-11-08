@@ -110,6 +110,42 @@ async function capture() {
             socket.addEventListener('message', listener); socket.send(JSON.stringify({ id, method, params }));
         });
         const evaluate = async expression => (await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }))?.result?.value;
+        // Optional actual-deployment host check; local quality capture below stays immutable.
+        const publicRelease = process.argv.find(arg => arg.startsWith('--public-release='))?.slice(17);
+        if (publicRelease) {
+            assert.match(publicRelease,/^[a-zA-Z0-9-]+$/);
+            const exceptions=[],hosts=[];
+            socket.addEventListener('message',({data})=>{const event=JSON.parse(data);
+                if(event.method==='Runtime.exceptionThrown')exceptions.push(event.params.exceptionDetails);});
+            await send('Runtime.enable',{});
+            const raster='document.querySelector("canvas[data-wormhole-raster]")?.dataset.wormholeRaster';
+            for(const route of ['','mvp/']){
+                const url='https://philofobreal.github.io/plexus-engine/'+route+'?release='+publicRelease;
+                await send('Page.navigate',{url});
+                for(let i=0;i<400&&await evaluate(raster)!=='offscreen-gpu-material';i++)await sleep(50);
+                assert.equal(await evaluate(raster),'offscreen-gpu-material','Production GPU preview: '+route);
+                if(route==='mvp/')await evaluate("document.querySelector('[aria-label=\"Advanced tuning\"]').click()");
+                const hint=await evaluate('document.querySelector(".preview-quality-control")?.textContent');
+                assert.ok(hint?.includes('Active: GPU material in worker'),hint);
+                const modes=[];
+                for(const mode of ['compatible','offscreen']){
+                    await evaluate("(()=>{const s=document.querySelector('[aria-label=\"Wormhole renderer\"]');s.value="+JSON.stringify(mode)+';s.dispatchEvent(new Event("change",{bubbles:true}));})()');
+                    const expected=mode==='offscreen'?'offscreen-gpu-material':'compatible';
+                    for(let i=0;i<400&&await evaluate(raster)!==expected;i++)await sleep(50);
+                    const active=await evaluate(raster);assert.equal(active,expected);modes.push({mode,active});
+                }
+                const pixels=await evaluate('(()=>{const c=document.querySelector("canvas[data-wormhole-raster]"),d=c.getContext("2d").getImageData(0,0,c.width,c.height).data;return {width:c.width,height:c.height,nonblank:d.some((v,i)=>i%4!==3&&v>0),saved:localStorage.getItem("plexus.wormholeRenderer")};})()');
+                assert.equal(pixels.nonblank,true);assert.equal(pixels.saved,'offscreen');
+                // An explicit saved choice survives a fresh renderer, not just an in-memory menu change.
+                await evaluate('localStorage.setItem("plexus.wormholeRenderer","compatible")');await send('Page.navigate',{url});
+                for(let i=0;i<400&&await evaluate(raster)!=='compatible';i++)await sleep(50);
+                assert.equal(await evaluate(raster),'compatible','Saved Compatible respected: '+route);
+                await evaluate('localStorage.setItem("plexus.wormholeRenderer","offscreen")');
+                hosts.push({route,hint,modes,pixels,savedCompatibleRespected:true});
+            }
+            assert.equal(exceptions.length,0,JSON.stringify(exceptions));
+            await writeFile(path.join(output,'public-hosts.json'),JSON.stringify({release:publicRelease,hosts,exceptions,pass:true},null,2)+'\n',{flag:'wx'});
+        }
         await send('Page.navigate', { url: origin + fixture + '?frozen=1' });
         for (let i = 0; i < 100 && !await evaluate('Boolean(window.runWh02)'); i++) await sleep(100);
         const run = await evaluate('window.runWh02('+JSON.stringify(precision)+','+(process.argv[4]==='cpu-lines')+')'); assert.equal(run?.rows?.length, 8, JSON.stringify(run));
@@ -139,6 +175,7 @@ async function capture() {
         let host;
         for (let i = 0; i < 400; i++) {
             const text = await evaluate('document.querySelector("#result")?.textContent');
+            if (text?.startsWith('FAIL:')) throw Error(text);
             if (text?.startsWith('{')) { host = JSON.parse(text); break; } await sleep(200);
         }
         await writeFile(path.join(output, 'host-smoke.json'), JSON.stringify(host, null, 2) + '\n', { flag: 'wx' });
@@ -153,5 +190,5 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1]
         const dir=process.argv[3]??(await readFile(path.join(root,'active-run.txt'),'utf8')).trim();
         const baseline=JSON.parse(await readFile(path.join((await readFile('logs/wh01/active-run.txt','utf8')).trim(),'baseline.json')));
         console.log(JSON.stringify(verifyGpuReport(JSON.parse(await readFile(path.join(dir,'gpu-report.json'))),baseline)));
-    }else throw Error('Use: node research/export/wormhole-gpu-spike.mjs capture [float16|float32] [cpu-lines] | verify [run-directory]');
+    }else throw Error('Use: node research/export/wormhole-gpu-spike.mjs capture [float16|float32] [cpu-lines] [--public-release=ID] | verify [run-directory]');
 }

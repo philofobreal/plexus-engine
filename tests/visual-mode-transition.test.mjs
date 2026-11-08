@@ -142,3 +142,54 @@ test('State.visualMode has one runtime writer', () => {
   const writers = sourceFiles(SRC_ROOT).filter(path => /State\.visualMode\s*=(?!=)/.test(readFileSync(path, 'utf8')));
   assert.deepEqual(writers.map(path => normalize(path)), [normalize(join(SRC_ROOT, 'state/visualModeTransition.ts'))]);
 });
+
+
+function pairHarness(incomingWormhole=true) {
+  const load=createLoader(),{WorkerIdentityTransition}=load('visuals/WorkerIdentityTransition.ts');
+  const helper=new WorkerIdentityTransition(),draws=[],composites=[],freezes=[];
+  const scratch={},frozen={};let pending=null,shown=null,awaiting=false,key='',fail=false;
+  const source={rasterKind:'offscreen-gpu-material',get presentedFrame(){return shown;},
+    draw(state,target,depth,transparent,playing,display,pair){
+      if(fail)return false;
+      if(key!==pair.key){key=pair.key;pending=shown=null;awaiting=false;}
+      if(!pending&&!awaiting){const frame={...state};pair.capture(frame);pending=frame;}
+      if(shown)target.presentRaster({time:shown.currentTime});
+      return true;
+    },acknowledgePresented(frame){assert.equal(frame,shown);awaiting=false;},reset(){pending=shown=null;awaiting=false;},dispose(){}};
+  const compositor={incomingBackend:scratch,outgoingBackend:frozen,beginFrame(){},composite(){},
+    beginPairedFrame(){scratch.time=null;},freezePairedCounterpart(){frozen.time=scratch.time;freezes.push(scratch.time);},
+    compositePaired(alpha,image,incoming){composites.push({alpha,workerTime:image.time,nativeTime:frozen.time,incoming});}};
+  const w={id:'cosmic-wormhole'},other={id:'classic',usesSharedSimulation:true};
+  const transition={from:incomingWormhole?'classic':'cosmic-wormhole',to:incomingWormhole?'cosmic-wormhole':'classic',generation:1,startTimeSec:0,durationSec:1};
+  const input={time:0,transition,state:{currentTime:0},incoming:incomingWormhole?w:other,outgoing:incomingWormhole?other:w,
+    source,compositor,target:{width:100,height:60,rasterPixelRatio:1,compactMaterialPreview:false,frameCount:1},
+    depthCue:0,transparent:false,playing:true,revision:'0',particles:[],shockwaves:[],
+    drawIdentity(identity,backend,pool,waves,context){assert.equal(identity,other);backend.time=context.timeSec;draws.push({...context});}};
+  return {input,helper,draws,composites,freezes,step(t){input.time=input.state.currentTime=t;return helper.draw(input);},
+    complete(){shown=pending;pending=null;awaiting=true;},fail(){fail=true;},stale(frame){shown=frame;awaiting=true;}};
+}
+for(const incoming of [false,true])test('paired transition keeps times/weights matched and native simulation once, Wormhole incoming '+incoming,()=>{
+  const h=pairHarness(incoming);assert.equal(h.step(.1).frame,null);
+  h.step(.2);h.step(.3);assert.deepEqual(h.freezes,[.1]);assert.equal(h.composites.length,0,'no incomplete image reaches main');
+  h.complete();const accepted=h.step(.4).frame;assert.equal(accepted.currentTime,.1);
+  assert.deepEqual(h.composites,[{alpha:.028000000000000004,workerTime:.1,nativeTime:.1,incoming}]);
+  h.step(.5);assert.deepEqual(h.freezes,[.1,.5]);assert.equal(h.composites.length,1,'old worker image cannot mix with fresh native pixels');
+  h.complete();h.step(.6);assert.equal(h.composites[1].nativeTime,.5);assert.equal(h.composites[1].workerTime,.5);
+  assert.equal(h.draws.length,6);assert.ok(h.draws.every(c=>c.advanceSharedSimulation),'one native pool advance per host draw, including wait');
+});
+test('paired transition rejects mismatched metadata after replacement and reports fallback without a second advance',()=>{
+  const h=pairHarness();h.step(.1);h.input.transition={...h.input.transition,generation:2};h.step(.2);
+  h.stale({currentTime:.1});assert.equal(h.step(.3).frame,null);assert.equal(h.composites.length,0);
+  h.complete();h.step(.4);assert.equal(h.composites[0].workerTime,.2);
+  h.fail();const r=h.step(.5);assert.equal(r.handled,false);assert.equal(r.advanced,false);
+  assert.equal(h.draws.length,4,'failed source leaves the normal controller as sole simulation owner');
+});
+test('only controller completion for the current generation can clear an asynchronous transition',()=>{
+  const l=createLoader(),{State}=l('state/store.ts'),{requestVisualModeChange}=l('state/visualModeTransition.ts');
+  const C=l('visuals/IdentityTransitionController.ts').IdentityTransitionController,c=new C();
+  State.isPlaying=true;State.currentTime=1;State.visualMode='classic';requestVisualModeChange('cosmic-wormhole',{durationSec:1});
+  const generation=State.visualModeTransition.generation;
+  c.finishPairedFrame(generation+1,3);assert.ok(State.visualModeTransition);
+  c.finishPairedFrame(generation,1.5);assert.ok(State.visualModeTransition);
+  c.finishPairedFrame(generation,2);assert.equal(State.visualModeTransition,null);
+});

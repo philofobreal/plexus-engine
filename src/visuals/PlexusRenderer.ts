@@ -19,13 +19,14 @@ import type { ChoreographyFrame as SemanticScoreFrame } from '../types/semantics
 import { semanticScoreTransitionId } from './VisualTransitionIdentity';
 import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
 import { IdentityTransitionController, type IdentityDraw } from './IdentityTransitionController';
+import { WorkerIdentityTransition } from './WorkerIdentityTransition';
 import { WormholeRasterPass } from './WormholeRasterPass';
 import { P5RenderTargetCompositor } from './P5RenderTargetCompositor';
 import { PostFxPipeline } from './PostFxPipeline';
 import { VisualTransientSampler, advancePlaybackFade, integratedFadeFrames } from './transientDecay';
 import { TemporalFragmentationEffect } from './TemporalFragmentationEffect';
 import type { PostFxSurfaceHost } from './CanvasPostFxSurface';
-import type { WormholeHostRasterSource } from '../types/WormholeHostFrame';
+import type { WormholeHostRasterSource, WormholeHostFrame } from '../types/WormholeHostFrame';
 
 export class SemanticRendererBridge {
     private semanticAdapter?: SemanticRuntimeAdapter;
@@ -128,12 +129,15 @@ export function startPlexusRenderer(
         const wormholeRaster = new WormholeRasterPass(() => { canvasRevision++; pausedPreview.invalidate(); });
         let workerRaster: WormholeHostRasterSource | null = null;
         let reportedRaster = '';
+        const pairedTransition = new WorkerIdentityTransition();
+        let renderPostFrame: Readonly<WormholeHostFrame> | null = null;
+        let forceSynchronousWormhole = false;
         let workerUsed = false, activeRaster = 'compatible', workerNeedsMainSync = false;
         const drawIdentity: IdentityDraw = (identity, target, particles, shockwaves, context) => {
             const musicDisplay=options?.previewQuality?.musicDisplay;
             if(identity.id==='cosmic-wormhole') (identity as {setMusicDisplay?(s?:MusicDisplaySettings):void}).setMusicDisplay?.(musicDisplay);
             const mode = options?.previewQuality?.wormholeRenderer ?? 'compatible';
-            if (mode === 'offscreen' && !State.isExporting && identity.id === 'cosmic-wormhole'
+            if (mode === 'offscreen' && !forceSynchronousWormhole && !State.isExporting && identity.id === 'cosmic-wormhole'
                 && target instanceof P5RendererBackend && options?.createWormholeWorker) {
                 wormholeRaster.suspend();
                 workerRaster ??= options.createWormholeWorker(() => { canvasRevision++; pausedPreview.invalidate(); });
@@ -148,11 +152,12 @@ export function startPlexusRenderer(
             }
             wormholeRaster.draw(identity, target, particles, shockwaves, context,
                 mode === 'webgl' ? 'webgl' : 'compatible', State.videoBackplateActive);
-            activeRaster = mode === 'offscreen' && !State.isExporting ? 'fallback' : wormholeRaster.rasterKind;
+            activeRaster = mode === 'offscreen' && !State.isExporting
+                ? identity.id === 'cosmic-wormhole' ? 'fallback' : 'native' : wormholeRaster.rasterKind;
         };
         // p5 owns the render lifecycle; a GPU context must not survive removal of this renderer.
         const remove = p.remove?.bind(p);
-        if (remove) p.remove = () => { workerRaster?.dispose(); wormholeRaster.dispose(); remove(); };
+        if (remove) p.remove = () => { workerRaster?.dispose(); wormholeRaster.dispose(); pairedTransition.reset(); compositor?.dispose(); postFxPipeline.dispose(); remove(); };
 
         // Effective pixel density for a given CSS size: pixelRatioCap bounds the ratio, then
         // maxBackingLongEdge (if set) reduces it further so the backing store's long edge never
@@ -205,7 +210,7 @@ export function startPlexusRenderer(
         const workerPostState = { visualTuning: State.visualTuning, directorOutput: State.directorOutput,
             modulation: State.modulation, isPlaying: false, isExporting: false };
         const readPostState = () => {
-            const frame = workerUsed ? workerRaster?.presentedFrame : null;
+            const frame = renderPostFrame;
             if (!frame) return State;
             workerPostState.visualTuning = frame.visualTuning; workerPostState.directorOutput = frame.directorOutput;
             workerPostState.modulation = frame.modulation; workerPostState.isPlaying = State.isPlaying;
@@ -246,7 +251,7 @@ export function startPlexusRenderer(
         const syncEventIndex = (time: number) => {
             lastEnvelopeTime = null;
             pausedPreview.invalidate();
-            workerRaster?.reset();
+            workerRaster?.reset(); pairedTransition.reset();
             currentEventIdx = State.events.findIndex(e => e.time >= time);
             if (currentEventIdx === -1) currentEventIdx = State.events.length;
             currentCueIdx = State.trackAnalysis.cues.findIndex(e => e.time >= time);
@@ -260,7 +265,7 @@ export function startPlexusRenderer(
         engine.addPlaybackEndedListener(() => {
             lastEnvelopeTime = null;
             pausedPreview.invalidate();
-            workerRaster?.reset();
+            workerRaster?.reset(); pairedTransition.reset();
             currentEventIdx = 0;
             currentCueIdx = 0;
             resetTransientVisualState();
@@ -408,17 +413,54 @@ export function startPlexusRenderer(
 
             if (idlePreview || p.frameCount % 4 === 0) ui.updateDashboard();
 
-            workerUsed = false;
-            if (compositor) {
-                identityTransitionController.draw(ct, backend, compositor, styleRegistry, particles, shockwaves, drawIdentity);
+            workerUsed = false; renderPostFrame = null;
+            let completedFrame = true;
+            const transition = State.visualModeTransition;
+            const paired = compositor && transition && transition.to === State.visualMode && ct >= transition.startTimeSec
+                && (transition.from === 'cosmic-wormhole' || transition.to === 'cosmic-wormhole')
+                && options?.previewQuality?.wormholeRenderer === 'offscreen' && options.createWormholeWorker && !State.isExporting;
+            if (paired && compositor) {
+                wormholeRaster.suspend();
+                workerRaster ??= options!.createWormholeWorker!(() => { canvasRevision++; pausedPreview.invalidate(); });
+                const incoming = styleRegistry.get(transition.to), outgoing = styleRegistry.get(transition.from);
+                const wormhole = transition.to === 'cosmic-wormhole' ? incoming : outgoing;
+                const result = pairedTransition.draw({
+                    time: ct, transition, state: State, incoming, outgoing, compositor,
+                    source: workerRaster,
+                    target: { width: backend.width, height: backend.height, frameCount: backend.frameCount,
+                        rasterPixelRatio: backend.rasterPixelRatio, compactMaterialPreview: backend.compactMaterialPreview },
+                    depthCue: (wormhole as { depthCueStrength?: number }).depthCueStrength ?? 0,
+                    transparent: State.videoBackplateActive, playing: State.isPlaying, musicDisplay: options?.previewQuality?.musicDisplay,
+                    revision: renderFeatureKeys.map(key => featureFlags[key]).join('/') + '/' +
+                        State.videoDominantColor.r + '/' + State.videoDominantColor.g + '/' + State.videoDominantColor.b,
+                    particles, shockwaves, drawIdentity
+                });
+                workerUsed = true; // Keep a failed worker latched; never retry its startup every draw.
+                if (result.handled) {
+                    workerNeedsMainSync = true; activeRaster = workerRaster.rasterKind;
+                    renderPostFrame = result.frame; completedFrame = result.frame !== null;
+                    if (result.frame) identityTransitionController.finishPairedFrame(transition.generation, result.frame.currentTime);
+                } else {
+                    forceSynchronousWormhole = true;
+                    const fallbackDraw: IdentityDraw = (identity, target, pool, waves, context) =>
+                        drawIdentity(identity, target, pool, waves, result.advanced ? { ...context, advanceSharedSimulation: false } : context);
+                    try { identityTransitionController.draw(ct, backend, compositor, styleRegistry, particles, shockwaves, fallbackDraw); }
+                    finally { forceSynchronousWormhole = false; }
+                    activeRaster = workerRaster.rasterKind === 'fallback' ? 'fallback' : 'compatible-transition';
+                }
             } else {
-                drawIdentity(styleRegistry.get(State.visualMode), backend, particles, shockwaves, { timeSec: ct, advanceSharedSimulation: true });
+                pairedTransition.reset();
+                if (compositor) {
+                    identityTransitionController.draw(ct, backend, compositor, styleRegistry, particles, shockwaves, drawIdentity);
+                } else {
+                    drawIdentity(styleRegistry.get(State.visualMode), backend, particles, shockwaves, { timeSec: ct, advanceSharedSimulation: true });
+                }
+                renderPostFrame = workerUsed ? workerRaster?.presentedFrame ?? null : null;
             }
             // Single Post FX seam (ADR-007): the identity frame is finished here in both the
             // steady-state and the crossfade path, so the chain runs exactly once per frame on the
             // final composite, for the live canvas and the offscreen export target alike.
-            const postFrame = workerUsed ? workerRaster?.presentedFrame : null;
-            postFxPipeline.render(p as unknown as PostFxSurfaceHost, postFrame?.currentTime ?? ct);
+            if (completedFrame) postFxPipeline.render(p as unknown as PostFxSurfaceHost, renderPostFrame?.currentTime ?? ct);
             if (!workerUsed && workerRaster) { workerRaster.dispose(); workerRaster = null; }
             const canvas = (p as unknown as { canvas?: HTMLCanvasElement }).canvas;
             if (canvas?.dataset) canvas.dataset.wormholeRaster = activeRaster;
