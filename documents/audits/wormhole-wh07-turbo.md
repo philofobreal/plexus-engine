@@ -182,3 +182,12 @@ quality gate or codec changes. Final Pages input hashes and the product artifact
 are compared against this already qualified release; the final public control/
 layout check and its two PNGs close that observation. Earlier overlay screenshots
 remain distinct evidence, not replaced or called accepted layouts.
+
+
+The corrected layout capture also exposed missing shared select styling on FPS
+and throughput controls. A scoped MVP CSS follow-up applies the existing dark
+style consistently with full-width, touch-sized controls and block help text.
+The real 412px layout check requires both selectors to be readable and touch
+sized. This changes only export-dialog CSS; renderer/codec/worker source and
+accepted video pixels remain unchanged. Build and targeted UI checks run again;
+final release inputs and critical worker artifacts bind the follow-up.

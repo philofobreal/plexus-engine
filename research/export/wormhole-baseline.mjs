@@ -292,6 +292,11 @@ async function capture() {
                     await evaluate('document.querySelector(".mvp-export-performance").closest(".mvp-modal-scrim").classList.remove("mvp-hidden")');
                 }
                 await evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
+                if(route){
+                    const layout=await evaluate('Object.fromEntries([".mvp-export-fps",".mvp-export-performance"].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return[s,{width:r.width,height:r.height}]}))');
+                    assert.ok(Object.values(layout).every(r=>r.width>=200&&r.height>=40),'Export selectors must be readable and touch sized');
+                    hosts.at(-1).layout=layout;
+                }
                 const picture=await send('Page.captureScreenshot',{format:'png'});
                 await writeFile(path.join(output,route?'product-mvp-export-layout.png':'product-dashboard-layout.png'),Buffer.from(picture.data,'base64'),{flag:'wx'});
             }
