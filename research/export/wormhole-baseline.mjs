@@ -264,6 +264,8 @@ async function capture() {
                 await send('Page.navigate',{url:'https://philofobreal.github.io/plexus-engine/'+route+'?release='+publicRelease});
                 const selector=route?'.mvp-export-fps':'#export-fps';
                 for(let i=0;i<200&&!await evaluate('Boolean(document.querySelector('+JSON.stringify(selector)+'))');i++)await sleep(100);
+                for(let i=0;i<200&&await evaluate('Boolean(document.querySelector("#app-loader,#mvp-app-loader"))');i++)await sleep(50);
+                assert.equal(await evaluate('Boolean(document.querySelector("#app-loader,#mvp-app-loader"))'),false,'Product boot overlay did not finish');
                 const actual=await evaluate(`(()=>{
                     const fps=document.querySelector(${JSON.stringify(selector)});
                     const before=fps?.value;
@@ -289,6 +291,7 @@ async function capture() {
                     await send('Emulation.setDeviceMetricsOverride',{width:412,height:915,deviceScaleFactor:1,mobile:false});
                     await evaluate('document.querySelector(".mvp-export-performance").closest(".mvp-modal-scrim").classList.remove("mvp-hidden")');
                 }
+                await evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
                 const picture=await send('Page.captureScreenshot',{format:'png'});
                 await writeFile(path.join(output,route?'product-mvp-export-layout.png':'product-dashboard-layout.png'),Buffer.from(picture.data,'base64'),{flag:'wx'});
             }

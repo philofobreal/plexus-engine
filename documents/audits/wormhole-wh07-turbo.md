@@ -167,3 +167,18 @@ candidate; it must not weaken the accepted precision/GOP or advertise the
 rejected pacing control. Then the deferred mobile WH-06c2/WH-06e work and WH-08 long/platform
 qualification, in that order unless the user reprioritizes. T21b/c and
 T22–T24 follow the existing roadmap; Wall and WH-06d stay deferred/withdrawn.
+
+
+## Public qualification and layout follow-up
+
+Release `wh07a-webm-turbo-20261108T185100460Z`, source `3df577f`, passed the
+37 host / 21 source / 18 Economy + 21 Turbo/fallback cases publicly, with
+36 files / 770 independently decoded IDs and cross-host saved preferences.
+Run: `logs/wh01/run-07fbb535-9c4d-487b-909b-f173d9faa07d`.
+Visual inspection found the QA screenshots captured boot overlays before their
+fade completed. A research-runner-only follow-up waits for both product loaders
+to disappear and then two animation frames before capture. No product runtime,
+quality gate or codec changes. Final Pages input hashes and the product artifacts
+are compared against this already qualified release; the final public control/
+layout check and its two PNGs close that observation. Earlier overlay screenshots
+remain distinct evidence, not replaced or called accepted layouts.
