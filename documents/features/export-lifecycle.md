@@ -19,6 +19,12 @@ acceptance (received for 4K60 10-bit WebM). CPU/GPU/browser-codec/WASM responsib
 [WH-07a](../audits/wormhole-wh07-turbo.md).
 
 
+WH-07b2 isolates producer/transfer versus full encoding and tests exact native
+codec configurations; no product path changes. A packet-preserving native remux
+control passes FFmpeg but fails the browser packet/decoder gate. WH-07b3 must
+close that gate before considering a shared VP9/MP4 packet path. Keep current
+all-key MP4 protection, Economy policy and accepted WebM Turbo. See the audit.
+
 ## WH-06c1: explicit FPS and local codec diagnostics (2026-11-08)
 
 Dashboard and MVP expose an export-only 30/60 fps preference, default 60,

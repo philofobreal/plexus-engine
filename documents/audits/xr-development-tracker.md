@@ -2,7 +2,32 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-07b measured MP4 render/encode acceleration after manual acceptance of WH-07a. This follows the user's explicit choice to defer mobile 10-bit work. WH-00–06b and WH-06c1 are delivered. The Samsung 4K30 trace rejects the native VP9 10-bit encoder; WH-06c2/WH-06e are deferred, not fixed. WH-07 remains partial: first WH-07a qualified WebM throughput and explicit MP4 Economy fallback; next WH-07b must address MP4's actual render/encode bottleneck. WH-06d is withdrawn. MP4 default, accepted native 10-bit quality, mobile 4K and deferred Wall/T15 remain. Stop for manual testing after the next completed task.**
+**Current priority: WH-07b3 packet/decoder interoperability after WH-07b2 isolation after manual acceptance of WH-07a. This follows the user's explicit choice to defer mobile 10-bit work. WH-00–06b and WH-06c1 are delivered. The Samsung 4K30 trace rejects the native VP9 10-bit encoder; WH-06c2/WH-06e are deferred, not fixed. WH-07 remains partial: first WH-07a qualified WebM throughput and explicit MP4 Economy fallback; next WH-07b must address MP4's actual render/encode bottleneck. WH-06d is withdrawn. MP4 default, accepted native 10-bit quality, mobile 4K and deferred Wall/T15 remain. Stop for manual testing after the next completed task.**
+
+### WH-07b2 diagnostic handoff complete: codec/interop gate remains open
+
+The user waived a new manual video test for the unchanged research-only release
+and authorized continuation. Twelve producer/encoder isolation rows (six actual
+10-bit MP4 controls), final 24 real codec probes and a stream-copy reference now
+separate costs and compatibility. At 4K60 the full control median is about11.28s
+versus2.10s upstream-only; these are different workloads, not a Turbo gain or
+CPU-share estimate. VP9 no-preference/software works; requested hardware is
+refused. AV1 query can pass but real initialization fails; exact HEVC profiles
+are refused. No new format is promoted.
+
+Native FFmpeg retains every WebM video packet and decoded pixel in the MP4
+reference, but the browser packet/decoder route emits only key IDs1/31 of36.
+Corrected CFR does not close it; initial invalid-timebase and seek failures are
+retained. The cause is unassigned until packet bytes/configuration are compared.
+Keep the all-key MP4 protection and accepted WebM Turbo unchanged.
+
+Build and targeted54/54 pass; cumulative2247/2238 with only the same nine exact
+baseline failures, no skips/cancels. All230 original active Node files remain,
+now231. [Audit](wormhole-wh07-turbo.md#wh-07b2-pipeline-isolation-codec-probes-and-remux-control-2026-11-08)
+and [receipt](../tests/wormhole-wh07b2-research.json) bind evidence and commands.
+NextWH-07b3: actual packet bytes/decoder configuration first, then native VP9 /
+MP4 packet-sink qualification. MobileWH-06c2/e remains later; WH-07 incomplete.
+No new manual whole-video test is required for this diagnostic-only handoff.
 
 ### WH-07b1 research complete: no MP4 candidate promoted
 

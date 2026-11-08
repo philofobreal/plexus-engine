@@ -356,3 +356,152 @@ was requested. No physical phone, full-song/thermal or new-codec qualification
 is claimed. Public release identity, unchanged runtime/worker hashes and final
 host/control smoke are recorded in `logs/wh07b/final-*.json` and the session
 checkpoint. Stop after publication; WH-07b2 has not started.
+
+
+## WH-07b2: pipeline isolation, codec probes and remux control (2026-11-08)
+
+The user confirmed that the research-only predecessor needed no new manual
+video test and authorized continuation. This handoff is a bounded diagnostic
+step, **not an MP4 Turbo promotion**. Integration remains single-owned in this
+chat: export/visuals behavior is read-only; research owns the new module,
+fixtures and results, build owns the added input hash, docs owns the checkpoint.
+No file under `src/`, codec policy, preset or menu default changes.
+
+### Same producer, encoder removed as a diagnostic control
+
+`codec-isolation.mjs` has a laboratory-only transfer sink that accepts the actual
+backend's bitmap/PCM messages, verifies contiguous frame/sample indexes, closes
+each image and returns the PCM lease. It performs no encoding or disk output;
+its explicit `application/json` completion token is **not a video**. It is never
+wired by a product composition root. The caller records these rows as
+`media: false`, with `.json` names, and does not decode or offer them as exports.
+
+The original exact GPU renderer, host/PostFX completion, frame capture and
+transfer remain. Both arms use the existing MP4 Economy schedule. Each target
+has three alternating pairs plus warmup, 60 fps, 240 frames at 720p or 90 at 4K.
+Only full controls produce media: six 10-bit VP9/AAC MP4 files, independently
+counted/decoded with FFprobe/FFmpeg. Video copying/decoding is outside timing.
+
+| Target | Full MP4 median | Upstream-only median | Full render wait / upstream render wait |
+| --- | --- | --- | --- |
+| 720p60 | 7569.2 ms | 6093.1 ms | about 5900 / 4935 ms |
+| 4K60 | 11281.2 ms | 2104.7 ms | about 7712 / 1682 ms |
+
+Use exact values and individual observations in the
+[WH-07b2 receipt](../tests/wormhole-wh07b2-research.json); table values are rounded.
+These are different workloads, not a valid Turbo speed comparison or CPU/GPU
+percentage. The unencoded arm omits preflight/codec/mux/storage, and workers
+contend/overlap differently. The higher real render wait in the encoded 4K arm
+shows why a host render interval cannot simply be called GPU computation time.
+In this run bitmap construction itself accounts for tens of milliseconds, not
+the seconds separating the arms. The evidence prioritizes the codec/interop
+path before further small polling changes; it does not claim a precise additive
+cost or attribution to a particular hardware engine.
+
+### Native 10-bit configurations: query is not execution
+
+Twenty-four sequential, output-size, three-picture all-key probes use desktop
+Headless Chrome 156. Each records encoder query, real encode, decoder query,
+real decode, timing scope, counts, requested preference and bounded errors.
+A support query alone does not qualify a new product codec.
+
+| Exact profile | No preference / software | Hardware preference |
+| --- | --- | --- |
+| VP9 profile 2, 10-bit, 720p/8 Mbps and 4K/64 Mbps | Encodes and decodes 3/3 | Encoder query refused |
+| AV1 Main profile 10-bit, High tier 5.1; Main tier 5.1 at 720p and 6.1 at 4K | No-preference query can pass, actual initialization fails; software query refused | Query can pass, actual initialization fails |
+| HEVC Main10, High tier 5.1, same sizes/rates | Encoder query refused | Encoder query refused |
+
+All use 60 fps and the retained quality/constant-bitrate request. Refusals are
+specific to these configurations, browser and environment, not proof that a
+codec/GPU is globally unavailable. Main AV1 5.1 allows 40 Mbps, so the 64 Mbps
+Main-tier test correctly uses 6.1; High 5.1 allows 160 Mbps. See the primary
+[AOM level table](https://aomediacodec.github.io/av1-spec/#levels).
+
+Hardware preferences are hints; neither support booleans nor overlapping timing
+records identify actual CPU/video-engine assignment. See
+[WebCodecs hardware acceleration](https://www.w3.org/TR/webcodecs/#hardware-acceleration).
+The VP9 decoder exposes opaque frames here, so `decodedTenBitObserved: false`
+means **unobserved**, not a demonstrated downgrade. The six full control files
+are independently `yuv420p10le`. These synthetic three-picture probes do not
+establish perceptual quality, long-export reliability, editor compatibility or
+physical-phone support. There is no automatic codec substitution.
+
+The helper bounds each probe to eight seconds and 16 MiB of encoded packets;
+canvas, frames, codecs and timers release on rejection/failure/timeout/success.
+Callback failures take priority over an already resolved flush. A new test
+caught that race in the initial helper; it was fixed without weakening the test
+and the original failed log remains. The completed pipeline capture predates
+that codec-only correction and matrix expansion. Its sink is unchanged; the
+original source/bundle is retained, and final codec results are a separate run.
+
+### Accepted WebM packets copied to an MP4 reference
+
+A second control copies the prior accepted 4K30/10-bit 36-picture frame-ID WebM
+into fragmented MP4 with native FFmpeg `-c:v copy`. The video packet SHA-256s and
+independently decoded full-frame stream hash stay identical; FFprobe retains
+10-bit VP9. This is a small **native CLI** reference, not an implemented browser/
+WASM export, speed claim or final working candidate. Its audio is an Opus-to-AAC
+control; a product implementation must preserve original PCM-to-AAC ownership.
+The current minimal WASM core accepts MOV/WAV, not Matroska/Opus, so a product
+path would need an existing MP4 packet sink rather than feeding WebM to it.
+
+The browser check does **not** pass. For the final corrected CFR control,
+MediaBunny-demuxed packets fed to a separate native VideoDecoder produce only
+frame IDs **1 and 31**, the two key pictures, instead of all 36. The earlier
+CanvasSink seek check returns no image for picture 2. This is not yet attributed
+to a driver, OS, encoder or library: actual demuxed payload bytes and decoder
+configuration still need comparison against the accepted WebM route. Native
+FFmpeg's complete decode alone cannot qualify the intended browser path.
+
+The first explicit-CFR experiment mistakenly mixed the BSF input timebase with
+the output track timebase, producing three-second spacing. It is retained as an
+invalid experiment, not counted as codec evidence. The corrected expression
+uses `N / (fps * TB)` and fixes spacing; browser interoperability still fails.
+Neither negative is hidden or treated as a passed export. Do not remove the
+product's all-key MP4 protection or change GOP based on this remux reference.
+
+### Reproduction, validation and next gate
+
+```text
+node research/export/wormhole-baseline.mjs capture --isolate-host
+node research/export/wormhole-baseline.mjs capture --codec-host
+node research/export/wormhole-baseline.mjs capture --remux-reference=logs/wh01/run-07fbb535-9c4d-487b-909b-f173d9faa07d/export-006.webm --remux-cfr
+```
+
+The third command intentionally rejects the unqualified reference at its browser
+gate. It saves the negative `reference-remux.json` before failing. Input is bounded
+before allocation (64 MiB, 63 frame-ID pictures, at most 4K); source files are
+never overwritten. The stable UUID run directories retain all controls,
+negative experiments, flags, build/source hashes and outputs.
+
+- Pipeline: `logs/wh01/run-66b4735c-2f84-4d8b-a4b7-2129f2a00fab`.
+- Final codec matrix: `logs/wh01/run-d835d83c-7a7f-4fb1-8ea5-145a6d935c15`.
+- Initial reference: `logs/wh01/run-457dd861-a1f7-4edd-af8e-4577cf78adef`.
+- Invalid timebase: `logs/wh01/run-79908bf3-01b4-4e95-8a06-52f90979254c`.
+- Corrected CFR seek failure: `logs/wh01/run-850e5a9d-0881-48cf-b8be-f0e645ede29c`.
+- Separate native decoder failure: `logs/wh01/run-914cb611-c097-43f1-a0ad-c1693bca93f5`.
+
+Build passed; targeted suites **54/54** including five new diagnostic cases and
+the extended release guard. Cumulative **2247 / 2238 pass / exactly the same nine
+baseline failure names AND full messages / zero skip or cancel**, 651581.6521 ms.
+All 230 old active Node files remain, now 231; original exact-source browser
+body/default benchmark/earlier experiments remain. Both main diagnostic runs
+pass the 37 host cases and fixed eight-case baseline. New Node cases cover
+non-media prefix identity, PCM/image ownership, gaps, format observation,
+unsupported stages, callback precedence, late output, limits and cleanup.
+Actual native/FFmpeg observations remain separate from those mocked contracts.
+
+The publisher binds the new worker module in addition to the HTML that imports
+it. Node/npm with workspace-scoped TEMP/TMP and the existing guarded Node Pages
+publisher are used; package deploy requires Bun. No install, golden reset or
+Graphify rebuild. `diff_export.ps1` is unnecessary for this bounded diagnostic
+handoff; no PR review requested. Final release/public receipts are under
+`logs/wh07b2/final-*.json` and the session checkpoint.
+
+Next **WH-07b3** first compares demuxed packet bytes and decoder configurations
+across WebM and MP4, then tests a shared native VP9 encoder and an MP4 encoded-
+packet sink if warranted. Retain the working Economy all-key path, accepted
+WebM Turbo and all quality/lifecycle/resource gates. No new codec, GOP change,
+software encoder or larger queue is promoted here. MP4 Turbo and parent WH-07
+remain partial; mobile 10-bit is still later. No new manual whole-video test is
+needed for this diagnostic handoff, since product runtime is unchanged.
