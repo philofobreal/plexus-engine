@@ -20,6 +20,7 @@ import HostWorker from '../../src/visuals/wormholeHostRender.worker.ts?worker';
 import StableMaterialWorker from '../../research/export/stable-material.worker.ts?worker';
 import PairedEncoderWorker from '../../research/export/paired-encoder.worker.ts?worker';
 import CodecIsolationWorker from '../../research/export/codec-isolation.mjs?worker';
+import {copyInspectionPacket,decodeInspectionPackets,inspectionVp9Color} from '../../research/export/codec-isolation.mjs';
 import { WormholeHostRenderSession } from '../../src/visuals/WormholeHostRenderSession.ts';
 import { Canvas2DRendererBackend } from '../../src/visuals/Canvas2DRendererBackend.ts';
 import { compareRgba } from '../../research/export/wormhole-quality.mjs';
@@ -728,6 +729,29 @@ window.verifyWh07Remux=async(data,frames)=>{
   if(sound.numberOfChannels!==2||rms<=.01)throw Error('Reference remux audio missing');
   return {pass:true,nativePass,nativeIds,frames,decodedIds,times,videoCodec:video.codec,audioCodec:audio.codec,audioRms:rms,audioSamples:sound.length};
  }finally{input.dispose();await audioContext.close();surface.width=surface.height=1;}
+};
+window.inspectWh07Packets=async(data,mime)=>{
+ const bytes=Uint8Array.from(atob(data),c=>c.charCodeAt(0));
+ const input=new Input({source:new BlobSource(new Blob([bytes],{type:mime})),formats:ALL_FORMATS});
+ try{
+  const video=await input.getPrimaryVideoTrack(),config=await video.getDecoderConfig();
+  const copied=[],live=[],snapshotHashes=[];let size=0;
+  for await(const packet of new EncodedPacketSink(video).packets()){
+   const own=copyInspectionPacket(packet);copied.push(own);live.push(packet);size+=own.data.length;
+   if(copied.length>63||size>64*1024*1024)throw Error('Inspection packet limit');
+   snapshotHashes.push(await hash(own.data));
+  }
+  const afterHashes=[];for(const packet of live)afterHashes.push(await hash(packet.data));
+  const variants=[['container',config,{}],['software',{...config,hardwareAcceleration:'prefer-software'},{}],
+   ['hardware',{...config,hardwareAcceleration:'prefer-hardware'},{}],
+   ['explicit VP9',{codec:'vp09.02.51.10',codedWidth:config.codedWidth,codedHeight:config.codedHeight},{}],
+   ['without duration',config,{omitDuration:true}],['latency',{...config,optimizeForLatency:true},{}],
+   ['primaries 709',{...config,codec:inspectionVp9Color(config.codec,{primaries:1})},{}],
+   ['transfer 709',{...config,codec:inspectionVp9Color(config.codec,{transfer:1})},{}],
+   ['both 709',{...config,codec:inspectionVp9Color(config.codec,{primaries:1,transfer:1})},{}]];
+  const decoded=[];for(const [name,cfg,options]of variants)decoded.push({name,config:{...cfg,description:cfg.description?Array.from(new Uint8Array(cfg.description)):undefined},...await decodeInspectionPackets(copied,cfg,options)});
+  return {config:{...config,description:config.description?Array.from(new Uint8Array(config.description)):undefined},packets:copied.map((p,i)=>({type:p.type,timestamp:p.timestamp,duration:p.duration,bytes:p.data.length,sha256:snapshotHashes[i],liveAfterSha256:afterHashes[i]})),decoded};
+ }finally{input.dispose();}
 };
 window.runWh07CodecMatrix=()=>new Promise((resolve,reject)=>{
  const worker=new CodecIsolationWorker(),timer=setTimeout(()=>{worker.terminate();reject(Error('Codec matrix deadline'));},240000);

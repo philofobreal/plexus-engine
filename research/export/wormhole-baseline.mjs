@@ -19,8 +19,8 @@ const git = (...args) => execFileSync('git', args, { encoding: 'utf8', windowsHi
 if (process.argv.includes('--isolate-host') && ['--codec-host','--turbo-host','--stable-material','--paired-encoder','--mp4-only'].some(flag=>process.argv.includes(flag))) {
     throw Error('--isolate-host is an independent diagnostic, not a Turbo candidate comparison.');
 }
-if (process.argv.includes('--remux-cfr') && !process.argv.some(arg=>arg.startsWith('--remux-reference='))) {
-    throw Error('--remux-cfr requires a bounded --remux-reference frame-ID clip.');
+if (['--remux-cfr','--remux-color709','--inspect-remux'].some(flag=>process.argv.includes(flag)) && !process.argv.some(arg=>arg.startsWith('--remux-reference='))) {
+    throw Error('Remux options require a bounded --remux-reference frame-ID clip.');
 }
 if (process.argv.includes('--stable-material') && process.argv.includes('--paired-encoder')) {
     throw Error('Measure stable material and paired codecs separately; combined results have no isolated control.');
@@ -235,6 +235,10 @@ async function capture() {
                 const video=probe.streams.find(s=>s.codec_type==='video'),audio=probe.streams.find(s=>s.codec_type==='audio');
                 assert.equal(video.width,row.width);assert.equal(video.height,row.height);assert.equal(audio.channels,2);
                 if(row.precision)assert.match(video.pix_fmt,/10/,'High-precision export lost bit depth');
+                if(row.name.endsWith('.mp4')&&video.codec_name==='vp9'){
+                    assert.equal(video.color_primaries,'bt709','VP9 MP4 lost declared Canvas primaries');
+                    assert.ok(['bt709','iec61966-2-1'].includes(video.color_transfer),'VP9 MP4 lost declared Canvas transfer');
+                }
                 const ids=execFileSync('ffmpeg',['-v','error','-i',file,'-map','0:v:0','-vf','crop=192:32:0:0,scale=6:1:flags=neighbor','-pix_fmt','gray','-fps_mode','passthrough','-f','rawvideo','pipe:1'],{windowsHide:true,timeout:120_000,maxBuffer:1024*1024});
                 assert.equal(ids.length,row.frames*6);
                 const decoded=[];for(let i=0;i<row.frames;i++){
@@ -258,7 +262,7 @@ async function capture() {
             assert.ok(original.width*original.height<=3840*2160&&Number(original.nb_read_frames)>0);
             const fps=original.r_frame_rate.split('/').map(Number).reduce((a,b)=>a/b);assert.ok([30,60].includes(fps));
             tool('ffmpeg',['-v','error','-nostdin','-n','-i',input,'-map','0:v:0','-map','0:a:0','-c:v','copy',
-                ...(process.argv.includes('--remux-cfr')?['-bsf:v',`setts=pts=N/(${fps}*TB):dts=N/(${fps}*TB):duration=1/(${fps}*TB)`,'-video_track_timescale','90000']:[]),'-c:a','aac','-b:a','192k',
+                ...(process.argv.includes('--remux-cfr')?['-bsf:v',`setts=pts=N/(${fps}*TB):dts=N/(${fps}*TB):duration=1/(${fps}*TB)`,'-video_track_timescale','90000']:[]),...(process.argv.includes('--remux-color709')?['-color_primaries','bt709','-color_trc','bt709']:[]),'-c:a','aac','-b:a','192k',
                 '-avoid_negative_ts','disabled','-use_editlist','1','-movflags','+delay_moov+default_base_moof+frag_keyframe','-frag_duration','1000000','-flush_packets','1',outputFile]);
             const after=probe(outputFile),video=after.streams.find(s=>s.codec_type==='video'),audio=after.streams.find(s=>s.codec_type==='audio');
             assert.equal(video.nb_read_frames,original.nb_read_frames);assert.equal(video.pix_fmt,original.pix_fmt);assert.equal(audio.codec_name,'aac');
@@ -268,6 +272,13 @@ async function capture() {
             const beforeDecoded=decoded(input),afterDecoded=decoded(outputFile);assert.equal(afterDecoded,beforeDecoded,'Decoded pixels changed during remux');
             const bytes=await readFile(outputFile);let browser;
             try{browser=await evaluate('window.verifyWh07Remux('+JSON.stringify(bytes.toString('base64'))+','+Number(video.nb_read_frames)+')');}catch(error){browser={pass:false,message:String(error.message)};}
+            if(process.argv.includes('--inspect-remux')) {
+                const sourceView=await evaluate('window.inspectWh07Packets('+JSON.stringify(source.toString('base64'))+',"video/webm")');
+                const outputView=await evaluate('window.inspectWh07Packets('+JSON.stringify(bytes.toString('base64'))+',"video/mp4")');
+                const inspection={source:sourceView,output:outputView,ffprobeSource:a,ffprobeOutput:b};
+                await writeFile(path.join(output,'packet-inspection.json'),JSON.stringify(inspection,null,2)+'\n',{flag:'wx'});
+                console.log(JSON.stringify({packetInspection:true,source:sourceView.decoded.map(x=>({name:x.name,pass:x.pass,ids:x.ids})),output:outputView.decoded.map(x=>({name:x.name,pass:x.pass,ids:x.ids}))}));
+            }
             const report={pass:browser.pass===true,cfr:process.argv.includes('--remux-cfr'),input,sourceSha256:hash(source),outputSha256:hash(bytes),before,after,sourcePackets:a,outputPackets:b,decoded:beforeDecoded,browser,
                 scope:'Native FFmpeg reference only, not a browser/WASM exporter or a speed claim. Video packets and decoded pixels are identical to accepted WebM. Audio here is an Opus-to-AAC control; a product path must retain original PCM-to-AAC.'};
             await writeFile(path.join(output,'reference-remux.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});
@@ -398,5 +409,5 @@ async function verify(file) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
     if (process.argv[2] === 'capture') await capture();
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--turbo-export-host] [--diagnostics-host] [--codec-host] [--remux-reference=ID_CLIP [--remux-cfr]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--turbo-export-host] [--diagnostics-host] [--codec-host] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | verify [baseline.json]');
 }

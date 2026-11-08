@@ -1,0 +1,284 @@
+{
+  "task": "WH-07b3",
+  "predecessor": "d8830b7716bca751cf4075d847382008daba9a5f",
+  "status": "Implementation and automated local acceptance complete; manual runtime acceptance pending. Final public identity/QA is bound in logs/wh07b3/final-*.json and session checkpoint.",
+  "owners": [
+    "export: pure color metadata helper and existing MP4 worker",
+    "research/test: bounded packet and independent decoder inspection",
+    "docs: audit, lifecycle, architecture, ADR and tracker"
+  ],
+  "cause": {
+    "sameVideoPackets": true,
+    "demuxCacheAliasingObserved": false,
+    "sourceCodec": "vp09.02.50.10.01.01.01.01.01",
+    "untaggedMp4Codec": "vp09.02.50.10.01.02.02.01.01",
+    "untaggedBrowserIds": [
+      1,
+      31
+    ],
+    "explicitTagsBrowserIds": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36
+    ],
+    "seekPass": true,
+    "compressedVideoAndDecodedYuvUnchanged": true,
+    "scope": "Specific 36-picture 4K30 control; not a universal diagnosis of historical visual reports"
+  },
+  "production": {
+    "change": "Preserve native explicit VP9 color primaries/transfer through FFmpeg WASM video copy; only missing/unspecified fields use SDR BT.709 defaults",
+    "measuredNativeEncoderColor": {
+      "primaries": "bt709",
+      "transfer": "iec61966-2-1",
+      "matrix": "bt709",
+      "fullRange": true
+    },
+    "gopBitrateBitDepthPcmClockOpfsUnchanged": true,
+    "h264Unchanged": true,
+    "mp4Turbo": "Still explicit Economy fallback; no speed promotion",
+    "mobile10Bit": "Deferred; unsupported Samsung encoder unchanged"
+  },
+  "research": {
+    "initialInspection": "logs/wh01/run-a82c9fed-7894-4fe3-bd5a-85c2a1996fc2",
+    "taggedReference": "logs/wh01/run-253f47ff-c738-4109-84b6-3c1925bee250",
+    "nativeColorMetadata": "logs/wh01/run-b9dd6847-34fd-407c-8ae3-7c5e125cf541",
+    "nativeReferenceIsNotWasmSpeedProof": true,
+    "mislabeledVariants": "Early numeric-index variants retained in logs/wh07b3/color-isolation*.log, not counted as two-field interaction proof; final named indices 5/6 tested normatively"
+  },
+  "localBrowser": {
+    "run": "logs/wh01/run-339acd12-74be-4bb4-b0de-79c3631e4f56",
+    "pass": true,
+    "hostCases": 37,
+    "baselineCases": 8,
+    "exactCases": 21,
+    "economyCases": 18,
+    "turboOrFallbackCases": 21,
+    "actualFiles": 36,
+    "decodedFrameIds": 770,
+    "tenBitFiles": 12,
+    "mp4Vp9Colors": [
+      {
+        "color_primaries": "bt709",
+        "color_transfer": "iec61966-2-1"
+      },
+      {
+        "color_primaries": "bt709",
+        "color_transfer": "iec61966-2-1"
+      },
+      {
+        "color_primaries": "bt709",
+        "color_transfer": "iec61966-2-1"
+      },
+      {
+        "color_primaries": "bt709",
+        "color_transfer": "iec61966-2-1"
+      },
+      {
+        "color_primaries": "bt709",
+        "color_transfer": "iec61966-2-1"
+      },
+      {
+        "color_primaries": "bt709",
+        "color_transfer": "iec61966-2-1"
+      }
+    ],
+    "productionCodeMatchesLocalQa": true
+  },
+  "validation": {
+    "targeted": {
+      "tests": 119,
+      "pass": 119,
+      "durationMs": 13362.282
+    },
+    "build": "npm run build passed",
+    "retention": {
+      "oldActiveFiles": 231,
+      "activeFiles": 232,
+      "removedTests": [],
+      "newFiles": [
+        "tests/mp4-vp9-color.test.mjs"
+      ],
+      "oldExactBrowserBodyUnchanged": true,
+      "changedPredecessors": [
+        {
+          "path": "research/export/codec-isolation.mjs",
+          "gitObject": "2a315dd5131be1420726914d0d8142615e7e65e6",
+          "sha256": "a1e43b048a9fd5ef66c4b5fff06dd459396fa208fa0e77297ac7e986818fe9d9",
+          "reason": "Additive bounded packet/config inspection; predecessor retained in Git; original cases and exact body retained"
+        },
+        {
+          "path": "research/export/wormhole-baseline.mjs",
+          "gitObject": "e2bccc07aabb3b5ce068b9dba4c7a2564841430f",
+          "sha256": "e91c39114e5723cef8a0ba7b6f8fa03dbac965f9702cb68b0d6947100f0b1f15",
+          "reason": "Additive bounded packet/config inspection; predecessor retained in Git; original cases and exact body retained"
+        },
+        {
+          "path": "tests/browser/wormhole-host-backend-smoke.html",
+          "gitObject": "949672f6d6e011899546bc266fb2c9e05a40de91",
+          "sha256": "0a6d26cafbd2c36aa03af5f7e8a75de7b9cd817ef09374814d16ff394f9d964d",
+          "reason": "Additive bounded packet/config inspection; predecessor retained in Git; original cases and exact body retained"
+        },
+        {
+          "path": "tests/export-codec-isolation.test.mjs",
+          "gitObject": "6d657556f74d3e7b0b5dc96e07743123d8880a0e",
+          "sha256": "408a9e9ca1fad5d3f2a0768a56f5ef054a735713e141374e8d5c401c74550c56",
+          "reason": "Additive bounded packet/config inspection; predecessor retained in Git; original cases and exact body retained"
+        }
+      ],
+      "productionCodeMatchesLocalQa": true,
+      "actualFiles": 36,
+      "decodedFrameIds": 770,
+      "tenBitFiles": 12,
+      "mp4Vp9Colors": [
+        {
+          "color_primaries": "bt709",
+          "color_transfer": "iec61966-2-1"
+        },
+        {
+          "color_primaries": "bt709",
+          "color_transfer": "iec61966-2-1"
+        },
+        {
+          "color_primaries": "bt709",
+          "color_transfer": "iec61966-2-1"
+        },
+        {
+          "color_primaries": "bt709",
+          "color_transfer": "iec61966-2-1"
+        },
+        {
+          "color_primaries": "bt709",
+          "color_transfer": "iec61966-2-1"
+        },
+        {
+          "color_primaries": "bt709",
+          "color_transfer": "iec61966-2-1"
+        }
+      ]
+    },
+    "cumulative": {
+      "tests": 2253,
+      "pass": 2244,
+      "fail": 9,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 504703.5622
+    },
+    "runtime": "Node v25.2.1 / npm 11.6.2; TEMP/TMP scoped to logs/wh07b3/temp",
+    "fallback": "Existing guarded Node publisher because package deploy requires Bun; no install",
+    "diffExport": "Skipped as unnecessary for bounded export fix; no PR requested",
+    "manual": "Pending deployed runtime acceptance: desktop MP410-bit movement, gradient/hue, seek and audio; whole-song/phone/thermal gates remain separate",
+    "knownBaselineFailuresExactNameAndMessage": [
+      {
+        "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+        "message": "vos-wh-drift.json must not reset user-global wormholeStarfield"
+      },
+      {
+        "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+        "message": "establish remains visibly above the opacity floor"
+      },
+      {
+        "name": "weak roles pin a deep-perspective depth and continuity profile",
+        "message": "establish depth\n\n2.03136 !== 4"
+      },
+      {
+        "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+        "message": "deep drift deeper than establish"
+      },
+      {
+        "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+        "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+      },
+      {
+        "name": "wormhole factory presets keep a minimum normalized weighted separation",
+        "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+      },
+      {
+        "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+        "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))"
+      },
+      {
+        "name": "projected forward motion preserves overdrive > punch > drive > drift",
+        "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+      },
+      {
+        "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+        "message": "389.64890777178124 vs 471.543038051684"
+      }
+    ],
+    "localLinksChecked": 221
+  },
+  "commands": {
+    "build": "npm run build",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=4",
+    "targeted": "node --test --test-reporter=tap --test-concurrency=4 tests/mp4-vp9-color.test.mjs tests/export-codec-isolation.test.mjs tests/export-parallel-research.test.mjs tests/export-performance.test.mjs tests/export-scheduling.test.mjs tests/export-preparation.test.mjs tests/mvp-mp4-export.test.mjs tests/export-diagnostics.test.mjs tests/export-output-inspection.test.mjs tests/export-lifecycle.test.mjs tests/export-resources.test.mjs tests/exact-export-frame-bridge.test.mjs tests/mvp-export-panel.test.mjs tests/release-pages.test.mjs",
+    "localQuality": "node research/export/wormhole-baseline.mjs capture --exact-host --export-host --turbo-export-host --diagnostics-host",
+    "referenceNegative": "node research/export/wormhole-baseline.mjs capture --remux-reference=logs/wh01/run-07fbb535-9c4d-487b-909b-f173d9faa07d/export-006.webm --remux-cfr --inspect-remux (expected diagnostic rejection)",
+    "referencePositive": "node research/export/wormhole-baseline.mjs capture --remux-reference=logs/wh01/run-07fbb535-9c4d-487b-909b-f173d9faa07d/export-006.webm --remux-cfr --remux-color709 --inspect-remux",
+    "encoderMetadata": "node research/export/wormhole-baseline.mjs capture --codec-host",
+    "baseline": "node research/export/wormhole-baseline.mjs verify",
+    "release": "node scripts/release-pages.mjs prepare wh07b3-vp9-color; publish; verify (separate checked steps)"
+  },
+  "next": "Manual runtime acceptance, then WH-07b4 shared native VP9 / MP4 packet-sink whole-job qualification with unchanged quality and >=15% speed gate. MP4 Turbo/WH-07 parent partial; mobile10-bit later.",
+  "hashes": {
+    "src/export/Mp4Vp9Color.ts": "567153dfcb099a7e6a247eef667a64ad8045f9ebb65f80259ece77b01caaeb5d",
+    "src/export/mp4-export.worker.ts": "17000f58c839afd1ec6e5a406facf9e48a469992c03c0d23cdecdf460eb3cd3c",
+    "research/export/codec-isolation.mjs": "8493f7b5e9abc296aeb805be42df77631ee48746f3cce3ca1a7258ab0afe5bda",
+    "research/export/wormhole-baseline.mjs": "e0874e43ffa9a27f27f669279ce76379d67f8f9bc29e3b059edfdb3b6777baf7",
+    "tests/export-codec-isolation.test.mjs": "a8acfb9c0cd66c63510200bce4945adddd45c109d60327fe22d85c06aa09d8a2",
+    "tests/mp4-vp9-color.test.mjs": "24dc29dd3e9b69dd9992269396f12971b88a058c48f650305e8f614cfce63ad9",
+    "tests/browser/wormhole-host-backend-smoke.html": "509b7ebd49aac73af643e9bf02e52521836cd1295ff2e4d6dbfe497b1d816c14",
+    "logs/wh07b3/targeted.tap": "5eb5666b7694431bf4a19bfbb24a9f19a7f0df7efe7567682760c96e48bcc769",
+    "logs/wh07b3/build.log": "dd196de0a8881126d50be59e97f6a304b2405d2b5722dd08dc957da49cc139ca",
+    "logs/wh07b3/quality.log": "77f31710530b7f25717b85b0dd5c32b2f609decf290f33b5d11a3befcf240603",
+    "logs/wh07b3/baseline.log": "6e19cf9e27f72cefa505cd01743fa84ddac0dc8e788a2fda9a221790d8a6919f",
+    "logs/wh01/run-a82c9fed-7894-4fe3-bd5a-85c2a1996fc2/build.json": "2d89f3f440ee05779e2e34eb7db4396490a823e303cd307b75c2e965f5e06de9",
+    "logs/wh01/run-a82c9fed-7894-4fe3-bd5a-85c2a1996fc2/packet-inspection.json": "2442a4bd6a59534f1c7650c0f6591fed84ae45e9761c8e97e6d77d970c3f2ba0",
+    "logs/wh01/run-a82c9fed-7894-4fe3-bd5a-85c2a1996fc2/reference-remux.json": "fed79a08aa7fd1b2c8aaf955fc773a972a9654597587c19a57b7707de7f5ef6f",
+    "logs/wh01/run-253f47ff-c738-4109-84b6-3c1925bee250/build.json": "8898f6e34e7f618865012ae1d8d2271d0db51adac12937130884779febec6d9f",
+    "logs/wh01/run-253f47ff-c738-4109-84b6-3c1925bee250/packet-inspection.json": "1df6db169f1b3dc7599c876b7b9c09ffac8b7951270a2517e9587cebeaa99d1f",
+    "logs/wh01/run-253f47ff-c738-4109-84b6-3c1925bee250/reference-remux.json": "e1613701667b4c60096929019d6fad5e118d95e57f14fce2c987ddcfc6988358",
+    "logs/wh01/run-b9dd6847-34fd-407c-8ae3-7c5e125cf541/build.json": "d5f47ff29568147458de00fb00821d399585ed66b0266fd47096b49952892f03",
+    "logs/wh01/run-b9dd6847-34fd-407c-8ae3-7c5e125cf541/codec-matrix.json": "cc09060588293a8cf7f3c5686e896ab55a4a3e9a0968a4524875c467c04d7eaa",
+    "logs/wh01/run-339acd12-74be-4bb4-b0de-79c3631e4f56/build.json": "c29828824be18315686671bea9be00a811913f196543d70a52029674db186cc0",
+    "logs/wh01/run-339acd12-74be-4bb4-b0de-79c3631e4f56/integrated-export.json": "03612bf670ef74198d187f70d1176368d6bb7919b09ea0a80428242cfb28cc5f",
+    "logs/wh01/run-339acd12-74be-4bb4-b0de-79c3631e4f56/integrated-export-artifacts.json": "c57a0f2180c651c2422fe372aaac4cc89ebd52d708ee85230d74961c27d7113b",
+    "logs/wh01/run-339acd12-74be-4bb4-b0de-79c3631e4f56/host-smoke.json": "dbccf7c701acccbe9957c94f06c39d7ef79435b8868802925b7a4d0015e1ec38",
+    "logs/wh01/run-339acd12-74be-4bb4-b0de-79c3631e4f56/exact-host.json": "86636d53ac61456bc526963064bd530811bd396951432307c2c38e6d078662a1",
+    "logs/wh01/run-339acd12-74be-4bb4-b0de-79c3631e4f56/export-diagnostics.json": "24276b03ca3dcb15d7d7d0ceaabfa73a0d2335daa80ad5df2d4bb9185b43dc4d",
+    "logs/wh07b3/cumulative.tap": "d55b6a86b9335dd6817c1f22aa6a27fc53328c39f8f95b873c341dde99615515"
+  }
+}

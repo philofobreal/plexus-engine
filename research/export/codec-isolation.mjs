@@ -113,8 +113,60 @@ export async function probeNativeCodec(request, env = globalThis, timeoutMs = 80
         for(const resource of [encoder,decoder])try{resource?.close();}catch{/* Already closed. */}
         if(canvas)canvas.width=canvas.height=1;chunks.length=0;report.timings.totalMs=now()-started;
         // Binary codec descriptions are not a public report; only the emitted name is retained.
-        if(report.decoderConfig){report.emittedCodec=report.decoderConfig.codec;delete report.decoderConfig;}
+        if(report.decoderConfig){report.emittedCodec=report.decoderConfig.codec;
+            const c=report.decoderConfig.colorSpace;if(c)report.emittedColorSpace=Object.fromEntries(['primaries','transfer','matrix','fullRange'].filter(k=>typeof c[k]==='string'||typeof c[k]==='boolean').map(k=>[k,c[k]]));
+            delete report.decoderConfig;}
     }
+    return report;
+}
+
+/** Own the exact bytes before async iteration advances the demuxer's read cache.
+ * This is a diagnostic copy only, never part of a product hot path. */
+export function copyInspectionPacket(packet) {
+    if (!(packet.data instanceof Uint8Array) || !packet.data.length || packet.data.length>64*1024*1024
+        || !['key','delta'].includes(packet.type) || !Number.isFinite(packet.timestamp) || packet.timestamp<0
+        || !Number.isFinite(packet.duration) || packet.duration<0) throw Error('Invalid inspection packet');
+    return {data:packet.data.slice(),type:packet.type,timestamp:Math.trunc(packet.timestamp*1e6),duration:Math.trunc(packet.duration*1e6)};
+}
+
+/** Named CICP positions avoid confusing cp/tc with matrix coefficients. */
+export function inspectionVp9Color(codec, {primaries,transfer}) {
+    const fields=codec.split('.');if(fields.length!==9||fields[0]!=='vp09')throw Error('Full VP9 codec required');
+    for(const [index,value] of [[5,primaries],[6,transfer]])if(value!==undefined){
+        if(!Number.isInteger(value)||value<0||value>99)throw Error('Invalid CICP value');
+        fields[index]=String(value).padStart(2,'0');
+    }
+    return fields.join('.');
+}
+
+/** Bounded independent decoder consumer, not an encoder or a product fallback. */
+export async function decodeInspectionPackets(packets, config, {omitDuration=false}={}, env=globalThis) {
+    if (!Array.isArray(packets)||!packets.length||packets.length>63
+        || packets.reduce((n,p)=>n+p.data.byteLength,0)>64*1024*1024) throw Error('Inspection window exceeds bound');
+    const report={supported:false,ids:[],timestamps:[],formats:[],submitted:0,pass:false};
+    let decoder,canvas,timer,active=true,failureReason,rejectFailure;
+    const failure=new Promise((_,reject)=>{rejectFailure=reject;});void failure.catch(()=>{});
+    const fail=error=>{if(active){failureReason??=error instanceof Error?error:Error(String(error?.message??error));rejectFailure(failureReason);}};
+    const wait=async p=>{const value=await Promise.race([p,failure]);if(failureReason)throw failureReason;return value;};
+    try {
+        timer=env.setTimeout(()=>fail(Error('Inspection decoder deadline')),15000);
+        const support=await wait(env.VideoDecoder.isConfigSupported(config));report.supported=support.supported;
+        if(!support.supported)return report;
+        canvas=new env.OffscreenCanvas(192,32);const ctx=canvas.getContext('2d',{willReadFrequently:true});if(!ctx)throw Error('Inspection surface unavailable');
+        decoder=new env.VideoDecoder({error:fail,output:frame=>{
+            try{if(!active)return;ctx.drawImage(frame,0,0);let id=0;
+                for(let bit=0;bit<6;bit++)if(ctx.getImageData(bit*32+16,16,1,1).data[0]>128)id|=1<<bit;
+                report.ids.push(id);report.timestamps.push(frame.timestamp);if(!report.formats.includes(frame.format??'opaque'))report.formats.push(frame.format??'opaque');
+            }catch(error){fail(error);}finally{frame.close();}
+        }});decoder.configure(config);
+        for(const packet of packets) {
+            while(decoder.decodeQueueSize>=4)await wait(new Promise(resolve=>env.setTimeout(resolve,1)));
+            const chunk=new env.EncodedVideoChunk({data:packet.data,type:packet.type,timestamp:packet.timestamp,...(!omitDuration?{duration:packet.duration}:{})});
+            decoder.decode(chunk);report.submitted++;
+        }
+        await wait(decoder.flush());report.pass=report.ids.length===packets.length&&report.ids.every((id,i)=>id===i+1);
+    }catch(error){report.error={name:String(error?.name??'Error'),message:String(error?.message??error).slice(0,600)};}
+    finally{active=false;if(timer!==undefined)env.clearTimeout(timer);try{decoder?.close();}catch{}if(canvas)canvas.width=canvas.height=1;}
     return report;
 }
 
