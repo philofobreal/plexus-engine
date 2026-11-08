@@ -19,11 +19,25 @@ acceptance (received for 4K60 10-bit WebM). CPU/GPU/browser-codec/WASM responsib
 [WH-07a](../audits/wormhole-wh07-turbo.md).
 
 
-WH-07b2 isolates producer/transfer versus full encoding and tests exact native
-codec configurations; no product path changes. A packet-preserving native remux
-control passes FFmpeg but fails the browser packet/decoder gate. WH-07b3 must
-close that gate before considering a shared VP9/MP4 packet path. Keep current
-all-key MP4 protection, Economy policy and accepted WebM Turbo. See the audit.
+WH-07b2 isolated producer/transfer versus full encoding and native configurations.
+Its packet-preserving remux failed the browser gate. WH-07b3 isolated unspecified
+MP4 VP9 primaries/transfer as the cause for that reference: explicit fields restore
+all 36 browser frames and seek without changing any compressed video packet.
+The MP4 export worker now captures native `decoderConfig` color metadata at its
+encoded-packet callback and passes allowlisted FFmpeg `-color_primaries` /
+`-color_trc` output tags during `-c:v copy`. Explicit full VP9 CICP fields take
+precedence over named `VideoColorSpace` values; missing/unspecified fields use
+the existing SDR Canvas/WebM BT.709 defaults. The measured encoder's explicit
+BT.709/sRGB pair is retained. This is metadata preservation, not pixel conversion,
+HDR generation, new video encoding or a matrix/range change.
+
+`Mp4Vp9Color.ts` is a pure export-owned leaf; it owns no job, resources, State,
+renderer or worker protocol. The worker keeps the metadata job-local. H.264,
+all-key MP4 protection, bitrate/precision/clock, original PCM-to-AAC and OPFS
+streaming remain unchanged. No extra raw-frame queue, new preference or new
+WASM codec is introduced. MP4 Turbo stays a stated Economy fallback pending
+WH-07b4's independent whole-job speed and quality gates. See the audit for the
+reference, actual browser/WASM validation and manual gate.
 
 ## WH-06c1: explicit FPS and local codec diagnostics (2026-11-08)
 

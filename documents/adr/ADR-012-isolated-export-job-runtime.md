@@ -7,6 +7,12 @@ Economy with an explicit promotion reason. The exact frame barrier, two-frame
 limit, PCM/OPFS ownership and single job state machine remain. See
 [WH-07a](../audits/wormhole-wh07-turbo.md).
 
+WH-07b3 (2026-11-08) preserves native VP9 color metadata in the existing MP4
+worker's video-copy finalizer, with SDR defaults only when unspecified. The pure
+export metadata leaf adds no resource owner, wire message, queue or pixel
+conversion; Economy/all-key protection remains until a separately qualified
+MP4 Turbo candidate. See the same audit for packet/decoder and actual-file proof.
+
 
 WH-06c1 (2026-11-08) adds an observational export diagnostic response and a
 UI-owned 30/60 fps preference. The existing coordinator, exact-source frame

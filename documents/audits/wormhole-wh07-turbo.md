@@ -505,3 +505,132 @@ WebM Turbo and all quality/lifecycle/resource gates. No new codec, GOP change,
 software encoder or larger queue is promoted here. MP4 Turbo and parent WH-07
 remain partial; mobile 10-bit is still later. No new manual whole-video test is
 needed for this diagnostic handoff, since product runtime is unchanged.
+
+## WH-07b3: VP9 MP4 color-metadata interoperability (2026-11-08)
+
+### Finding and scope
+
+The user authorized the next task after the unchanged WH-07b2 diagnostic release.
+This handoff **does change the production MP4 worker**. The integration owner in
+this chat owns export, research/test integration and documentation; no State,
+audio-analysis, shader, host preference or worker-message schema changes.
+
+The accepted 4K30/10-bit, 36-picture WebM control and its native stream-copy MP4
+have identical video packet SHA-256s, including bytes read by the browser demuxer.
+The copied packet buffers remain unchanged after demux iteration: no evidence of
+cache aliasing. Native FFmpeg also decodes identical full-frame YUV stream hashes.
+The effective browser configurations differ in two color fields:
+
+```text
+WebM: vp09.02.50.10.01.01.01.01.01
+ MP4: vp09.02.50.10.01.02.02.01.01
+```
+
+These are components 5 and 6 after splitting on dots (component 0 is `vp09`).
+An independent native decoder with the original MP4 config returns IDs **1,31**;
+software preference or a short VP9 config returns all 36. Hardware preferences
+are hints, not verified CPU/GPU attribution. Duration omission and latency hints
+do not fix this case. The effective metadata is causal for this environment;
+these results do not identify a general OS, driver or MediaBunny defect.
+
+Setting **both** primaries and transfer to BT.709 in the actual copied MP4 yields
+all **36/36** native-decoded IDs, all **36/36** CanvasSink IDs and successful seek,
+with every compressed video packet and the FFmpeg-decoded YUV stream unchanged.
+This is a native CLI reference, not a browser/WASM speed qualification. Its
+Opus-to-AAC control does not replace production's original PCM-to-AAC path.
+
+The final native encoder matrix additionally records emitted `colorSpace`:
+successful VP9 configurations emit BT.709 primaries, **sRGB transfer**
+(`iec61966-2-1`), BT.709 matrix and full range. Production therefore preserves
+that explicit sRGB transfer; it does not blindly apply the reference's BT.709
+transfer to a known sRGB source. Missing/unspecified fields alone use the
+existing SDR Canvas/WebM BT.709 defaults.
+
+### Production change and boundaries
+
+`src/export/Mp4Vp9Color.ts` is a pure, export-owned metadata helper with finite
+CICP/name allowlists. Explicit full VP9 CICP fields take precedence, then named
+`VideoColorSpace`, then the SDR fallback. It does not mutate input or alter pixel
+format, matrix, range or image data. Explicit supported PQ/HLG declarations are
+preserved rather than relabeled SDR; this does not introduce an HDR pipeline.
+
+The existing MP4 worker captures the native encoded-packet callback's
+`decoderConfig` into job-local metadata and supplies `-color_primaries` and
+`-color_trc` to its existing FFmpeg WASM **video stream-copy** finalizer. H.264 is
+unchanged. The all-key MP4 protection, 10-bit precision, bitrate, timestamps,
+original PCM-to-AAC ownership, two-frame/two-buffer limits, progressive OPFS and
+Stop/Cancel cleanup remain. There is no new preference, fallback codec, raw-frame
+copy stage, software video encoder or new dependency.
+
+This closes the specific WH-07b2 reference's browser interoperability gate. It
+does not prove that every historical whole-song "backflow" had this cause, nor
+that long-export/mobile/thermal or external-editor gates are closed. Keep the
+all-key guard until the next candidate independently qualifies. **MP4 Turbo is
+still an explicit Economy fallback.** This task makes no new speed claim.
+
+### Evidence and reproducibility
+
+```text
+node research/export/wormhole-baseline.mjs capture --remux-reference=logs/wh01/run-07fbb535-9c4d-487b-909b-f173d9faa07d/export-006.webm --remux-cfr --inspect-remux
+node research/export/wormhole-baseline.mjs capture --remux-reference=logs/wh01/run-07fbb535-9c4d-487b-909b-f173d9faa07d/export-006.webm --remux-cfr --remux-color709 --inspect-remux
+node research/export/wormhole-baseline.mjs capture --codec-host
+node research/export/wormhole-baseline.mjs capture --exact-host --export-host --turbo-export-host --diagnostics-host
+```
+
+The first command intentionally rejects the original unqualified MP4 after
+saving its negative receipt; the second is the positive tagged-file control.
+Input/output packet hashes and full configs are retained in `packet-inspection.json`.
+The inspection owns bounded packet copies, uses separate fresh native decoders,
+limits clips to 63 pictures/64 MiB and closes frames/codecs/timers on all exits.
+Only the laboratory imports it; no product decoder override was added.
+
+- Initial byte/config comparison: `logs/wh01/run-a82c9fed-7894-4fe3-bd5a-85c2a1996fc2`.
+- Tagged-file positive control: `logs/wh01/run-253f47ff-c738-4109-84b6-3c1925bee250`.
+- Emitted native color metadata: `logs/wh01/run-b9dd6847-34fd-407c-8ae3-7c5e125cf541`.
+- Actual production browser/WASM output: `logs/wh01/run-339acd12-74be-4bb4-b0de-79c3631e4f56`.
+
+The local integrated run passes 37 host, eight fixed baseline, 21 exact-source,
+18 Economy and 21 Turbo/fallback cases. It creates 36 real files and verifies
+them independently, including original PCM audio, frame identity, Stop/Cancel,
+retry, 4K/30/60, ten-bit profiles and explicit VP9 MP4 color declarations. Final
+published verification and cumulative counts are bound in
+[the WH-07b3 receipt](../tests/wormhole-wh07b3-acceptance.json).
+
+Earlier field-isolation attempts used mislabeled numeric positions (one corrected
+attempt still duplicated the transfer-only variant). Their original logs remain
+under `logs/wh07b3/color-isolation*.log`; they are not counted as proof of a
+two-field interaction. The final named-index helper has normative full-string
+tests. The actual positively tagged file, full packet equality and independent
+browser decoding establish the accepted result. No old tests, fixtures or
+negative receipts are removed or rewritten.
+
+Build passed; targeted **119/119** and cumulative **2253 / 2244 pass / exactly
+the same nine baseline failure names AND full messages / zero skip or cancel**,
+504703.5622 ms. All 231 old active Node files remain, now 232. The eight fixed
+WH-01 baseline hashes are unchanged. Local production code hashes match the
+actual WASM output run; final public build/QA identities are recorded under
+`logs/wh07b3/final-*.json` and the session checkpoint.
+
+New production tests cover metadata precedence, CICP positions, explicit sRGB/
+PQ/HLG, unspecified defaults, ownership and untrusted names. Additive diagnostic
+tests cover packet copying, order/dropped deltas, callback failure precedence,
+unsupported configs, stalled queues, bounds and late-output cleanup. Original
+exact browser body and earlier test cases remain. Node/npm, workspace-scoped
+TEMP/TMP and the existing guarded Node Pages publisher are used because the
+package deploy script requires Bun; no dependency installation or golden reset.
+`diff_export.ps1` is unnecessary for this bounded export fix; no PR requested.
+
+References: [VP9 WebCodecs registration](https://www.w3.org/TR/webcodecs-vp9-codec-registration/),
+[VP9 ISO media binding](https://github.com/webmproject/vp9-dash/blob/master/VPCodecISOMediaFileFormatBinding.md),
+and inspected MediaBunny 1.39.1 `vpcC` writer/demuxer sources under `node_modules`.
+
+### Manual gate and next task
+
+After deployment, check a short **MP4 10-bit** export in the intended desktop
+player: moving detail, gradients/hue/brightness, seeking and audio. Stop & save
+can keep the first check short; a full No Good export is still necessary to
+revisit 0:47–1:00 and after 1:25. Samsung's unsupported native VP9 10-bit encoder
+is unchanged. Stop for this manual runtime gate before **WH-07b4**: measure a
+shared native VP9 encoder/MP4 packet-sink candidate against the existing Economy
+control with unchanged quality and the retained whole-job >=15% speed gate.
+Then deferred mobile WH-06c2/e, WH-08, T21b/c, T22–T24. WH-07 remains partial.

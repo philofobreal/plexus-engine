@@ -7,6 +7,11 @@ uses Turbo; an MP4 request explicitly retains Economy until its promotion gate
 passes. No extra worker, second clock/producer, render math, preset ownership or
 codec setting changes. See [WH-07a](../audits/wormhole-wh07-turbo.md).
 
+WH-07b3's `Mp4Vp9Color.ts` is a pure export-owned metadata leaf. The existing
+MP4 worker captures native decoder configuration job-locally and passes finite
+color tags to its video-copy finalizer. This adds no resource owner, worker
+message, State write, preference or pixel conversion. See the same audit.
+
 
 WH-06c1 keeps export diagnosis in the export owner. `ExportDiagnostics.ts`
 imports only the ExportConfig type and owns bounded data validation, not codecs,

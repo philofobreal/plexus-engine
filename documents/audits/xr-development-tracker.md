@@ -2,7 +2,29 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-07b3 packet/decoder interoperability after WH-07b2 isolation after manual acceptance of WH-07a. This follows the user's explicit choice to defer mobile 10-bit work. WH-00–06b and WH-06c1 are delivered. The Samsung 4K30 trace rejects the native VP9 10-bit encoder; WH-06c2/WH-06e are deferred, not fixed. WH-07 remains partial: first WH-07a qualified WebM throughput and explicit MP4 Economy fallback; next WH-07b must address MP4's actual render/encode bottleneck. WH-06d is withdrawn. MP4 default, accepted native 10-bit quality, mobile 4K and deferred Wall/T15 remain. Stop for manual testing after the next completed task.**
+**Current priority: WH-07b3 MP4 VP9 color-metadata fix implemented and locally verified; runtime manual gate open. WH-07a WebM Turbo is manually accepted. The user's mobile 10-bit deferral remains: Samsung 4K30 rejects the native encoder, and WH-06c2/WH-06e are not fixed. MP4 Turbo remains an explicit Economy fallback until its separate quality/resource/speed gates pass. After this runtime handoff stop for manual testing; next WH-07b4 measures a shared native VP9 / MP4 packet-sink candidate. WH-06d is withdrawn. MP4 default, accepted 10-bit quality, mobile 4K and deferred Wall/T15 remain.**
+
+### WH-07b3: VP9 metadata compatibility fix; manual runtime gate open
+
+All 36 demuxed packet hashes agree between the accepted WebM and stream-copied
+MP4. The failing MP4 declares unspecified color primaries/transfer where WebM
+declares BT.709. Filling both fields in the reference yields all 36 native/browser
+frames and successful seek, with unchanged compressed video and FFmpeg-decoded
+YUV hashes. This closes the specific WH-07b2 interoperability case, not every
+historical full-song visual report. The observed native encoder actually emits
+BT.709/sRGB metadata; production preserves that explicit value and supplies SDR
+BT.709 defaults only for missing/unspecified fields. It retains all-key MP4,
+bitrate, 10-bit encoding, original PCM-to-AAC and progressive OPFS ownership.
+
+The runtime MP4 worker, pure metadata leaf and additive tests are described in
+the [audit](wormhole-wh07-turbo.md#wh-07b3-vp9-mp4-color-metadata-interoperability-2026-11-08).
+No new codec, GOP promotion or MP4 Turbo speed claim. Physical Samsung encoding
+support is unchanged. Build, 119/119 targeted tests, 36 actual output files/770 decoded frame IDs and
+2253 cumulative tests (2244 pass, exactly the old nine failures, no skip/cancel)
+are verified. All 231 old active Node files remain, now 232. The
+[receipt](../tests/wormhole-wh07b3-acceptance.json) binds commands/evidence; final
+public identities are in the session checkpoint. Stop for manual MP410-bit
+movement/gradient/seek/audio acceptance. Earlier negative experiments remain.
 
 ### WH-07b2 diagnostic handoff complete: codec/interop gate remains open
 
