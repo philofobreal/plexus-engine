@@ -1,0 +1,1 @@
+function e(e){return new Worker(`/plexus-engine/assets/mp4-export.worker-D7VcrWM5.js`,{name:e?.name})}export{e as t};
