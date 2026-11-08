@@ -168,7 +168,7 @@ and optionally inspect their full-resolution PNGs. WH-06b is the next task.
 
 Implementation commit: 29847ba. Final full Node duration: 717398.1894 ms;
 26-file targeted duration: 149890.0123 ms. All nine failure names and complete
-messages match WH-05. The 9-source predecessor manifest and 226 active test files
+messages match WH-05. The 12-source predecessor manifest and 226 active test files
 are verified. Nine changed/new documents have 235 valid local file references.
 Whitespace and build checks pass. Full-suite diagnostics and all intermediate
 candidate artifacts remain in logs/wh06a; no failed probe is promoted or erased.
@@ -185,3 +185,21 @@ Exact targeted command:
 ```text
 node --test --test-reporter=tap --test-concurrency=4 tests/wormhole-host-worker.test.mjs tests/wormhole-music-display.test.mjs tests/wormhole-render-contract.test.mjs tests/paused-renderer.test.mjs tests/visual-frame-preparation.test.mjs tests/semantics-integration.test.mjs tests/mvp-macro-tuning-mapper.test.mjs tests/contracts.test.mjs tests/performance-optimizations.test.mjs tests/visual-mode-transition.test.mjs tests/postfx-fragmentation.test.mjs tests/wormhole-lifecycle.test.mjs tests/wormhole-determinism.test.mjs tests/xr-gpu-material.test.mjs tests/xr-gpu-lines.test.mjs tests/xr-webgl-backend.test.mjs tests/export-isolated.test.mjs tests/export-deterministic.test.mjs tests/wormhole-exact-frame.test.mjs tests/wormhole-exact-worker.test.mjs tests/wormhole-depth-integrity.test.mjs tests/material-preview-budget.test.mjs tests/preview-quality.test.mjs tests/styles-deterministic.test.mjs tests/wormhole-host-exact.test.mjs tests/wormhole-gpu-raster.test.mjs
 ```
+
+### Public QA entry correction
+
+The first actual public exact probe found HTTP 404: the host smoke HTML had been
+built only by the local research runner, not by the production Vite entry list.
+That failed public probe is retained. The production build now emits the existing
+HTML as an explicit QA entry. The guarded publisher binds that HTML's bytes as an
+input and requires its output/route, so a future missing entry cannot pass prepare.
+The existing release-input mutation test now covers this entry as well as every
+previous laboratory input. No product render, codec or job code changes in this
+build correction. Focused release tests and the final public raw-image check run
+again after it; the earlier whole-suite count is not relabelled as a later run.
+
+The post-fix release-focused command `node --test --test-reporter=tap tests/release-pages.test.mjs`
+passes 5/5 (37221.9485 ms). `npm run build` emits the required QA HTML. This is
+additional verification after the 336 targeted cases, not a rewritten 2203-test
+whole-suite run. The final guarded release and actual public fixture run verify
+the emitted route and its dependencies.

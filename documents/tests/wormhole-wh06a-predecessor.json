@@ -10,6 +10,9 @@
     "tests/wormhole-host-worker.test.mjs": "f1d538264c7ab46203b55d6a9b2bda6de5cb45b61dca42ca4fdfe59545844147",
     "tests/browser/wormhole-host-backend-smoke.html": "160284a3aecb1f2d8b859265b48d4643e187ed35cc79e672d9b18f8f81315c57",
     "research/export/wormhole-baseline.mjs": "d6d14acc5c081d8b1bded2d9d81035b0b69403f635e5a387b383e54defcc026b",
-    "src/visuals/gpu/WormholeGpuRaster.ts": "936efc7451a32fc464c2295f4d9e4281dd09be268dcb6507134670f93847ad1f"
+    "src/visuals/gpu/WormholeGpuRaster.ts": "936efc7451a32fc464c2295f4d9e4281dd09be268dcb6507134670f93847ad1f",
+    "vite.config.ts": "0d795dd5d67ced51913c5f919d5089b6e6b2b0c13ff68aeb94d8eabced6b67ef",
+    "scripts/release-pages.mjs": "3ef3a3bc74310cad70c3db0df3ac5ac0ab66b3150d3d6e33ecc8cca932b204a8",
+    "tests/release-pages.test.mjs": "4dc07c6e65097fbe79a5aa63227ee72b875e879257828da64efb3b963f7e56a5"
   }
 }

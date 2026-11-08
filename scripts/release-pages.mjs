@@ -14,7 +14,8 @@ function files(root,prefix=''){return fs.readdirSync(root,{withFileTypes:true}).
 export function collectBuildInputs(cwd=process.cwd()){
  const paths=git(cwd,'ls-files','--cached','--others','--exclude-standard','--','src','public','scripts','index.html','mvp/index.html','xr/index.html','package.json','package-lock.json','bun.lock','tsconfig*.json','vite.config.*',
   'research/export/wormhole-gpu.html','research/export/wormhole-gpu-lab.mjs','research/export/wormhole-gpu.worker.ts',
-  'research/export/wormhole-baseline-capture.mjs','research/export/wormhole-quality.mjs','research/export/parallel-material-data.mjs').split(/\r?\n/).filter(Boolean);
+  'research/export/wormhole-baseline-capture.mjs','research/export/wormhole-quality.mjs','research/export/parallel-material-data.mjs',
+  'tests/browser/wormhole-host-backend-smoke.html').split(/\r?\n/).filter(Boolean);
  return [...new Set(paths)].filter(p=>fs.existsSync(path.join(cwd,p))&&fs.statSync(path.join(cwd,p)).isFile()).sort().map(p=>({path:p,sha256:hash(fs.readFileSync(path.join(cwd,p)))}));
 }
 export function checkReleaseSource(release,cwd=process.cwd()){
@@ -42,7 +43,7 @@ async function main(){
   const task=process.argv[3];if(!task||!/^[a-z0-9-]+$/.test(task))throw Error('Supply a short task identifier');
   if(git(cwd,'status','--porcelain','--untracked-files=all'))throw Error('Commit the reviewed work before preparing a release');
   const previousCommit=api('git/ref/heads/gh-pages').object.sha,source=buildReleaseInputs(cwd);
-  for(const entry of ['index.html','mvp/index.html','xr/index.html'])if(!fs.existsSync('dist/'+entry))throw Error('Build entry missing: '+entry);
+  for(const entry of ['index.html','mvp/index.html','xr/index.html','tests/browser/wormhole-host-backend-smoke.html'])if(!fs.existsSync('dist/'+entry))throw Error('Build entry missing: '+entry);
   fs.writeFileSync('dist/.nojekyll','');
   const release={id:task+'-'+new Date().toISOString().replaceAll(/[-:.]/g,''),previousCommit,...source,
    files:files('dist').filter(p=>p!=='release.json').map(p=>({path:p,sha256:hash(fs.readFileSync('dist/'+p))}))};
@@ -70,7 +71,7 @@ async function main(){
     normalizedLineEndings.push(f.path);
    }
   }));
-  for(const [route,entry]of [['','index.html'],['mvp/','mvp/index.html'],['xr/','xr/index.html']]){
+  for(const [route,entry]of [['','index.html'],['mvp/','mvp/index.html'],['xr/','xr/index.html'],['tests/browser/wormhole-host-backend-smoke.html','tests/browser/wormhole-host-backend-smoke.html']]){
    const response=await readPublic(base+route+q);if(response.status!==200||hash(response.bytes)!==r.files.find(f=>f.path===entry).sha256)throw Error('Route mismatch: '+route);
   }
   write(output+'/verification.json',{id:r.id,commit:commit.sha,sourceCommit:r.sourceCommit,files:r.files.length,inputs:r.inputs.length,normalizedLineEndings,pass:true});
