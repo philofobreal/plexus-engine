@@ -290,6 +290,7 @@ export function startPlexusRenderer(
         });
 
         p.draw = () => {
+            if (!exactExport.allowDraw()) return;
             // Preferences are cheap host values. Only a real policy change needs a size read.
             const policy = getPreviewPolicy();
             if (lastRatioCap !== policy?.pixelRatioCap || lastLongEdgeCap !== policy?.maxBackingLongEdge) {

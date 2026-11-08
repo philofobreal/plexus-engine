@@ -20,7 +20,8 @@ function fixture() {
 
 test('exact bridge keeps redraw synchronous and waits for the owned image before completing a frame',async()=>{
     const h=fixture(), pixels=[]; h.preparation.resolve(); assert.equal(await h.bridge.begin(config),true);
-    h.onDraw=()=>{assert.equal(h.bridge.frameIndex,0);h.bridge.submit({currentTime:0},lease=>pixels.push(lease.frame.currentTime));};
+    h.onDraw=()=>{assert.equal(h.bridge.allowDraw(),true);assert.equal(h.bridge.allowDraw(),false);assert.equal(h.bridge.frameIndex,0);h.bridge.submit({currentTime:0},lease=>pixels.push(lease.frame.currentTime));};
+    assert.equal(h.bridge.allowDraw(),false,'no export-owned slot yet');
     let done=false;const rendering=h.bridge.renderFrame(0).then(()=>{done=true;}); await flush();
     assert.equal(h.draws,1);assert.equal(done,false);assert.deepEqual(pixels,[]);
     h.complete();await rendering;assert.deepEqual(pixels,[0]);assert.equal(h.releases,1);assert.equal(h.bridge.frameIndex,null);

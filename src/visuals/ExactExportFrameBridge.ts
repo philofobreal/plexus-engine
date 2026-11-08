@@ -12,6 +12,7 @@ interface Job {
     index: number | null;
     lastIndex: number;
     pending: Promise<void> | null;
+    drawClaimed: boolean;
 }
 
 /** Keeps p5.draw synchronous. It captures/queues one resolved request; only this
@@ -35,12 +36,22 @@ export class ExactExportFrameBridge implements HostExportFramePort {
     }
     get frameIndex(): number | null { return this.ready && !this.job?.cancelled ? this.job?.index ?? null : null; }
 
+    /** p5 can redraw on resize even while noLoop is active. One draw may claim the
+     * export-owned slot; unsolicited callbacks must not advance State or a native pool.
+     */
+    allowDraw(): boolean {
+        const job = this.job;
+        if (!job) return true;
+        if (!this.ready || job.cancelled || job.index === null || job.drawClaimed) return false;
+        job.drawClaimed = true; return true;
+    }
+
     async begin(config: HostExportFrameConfig): Promise<boolean> {
         if (this.job) throw Error('An exact render job is already active');
         if (config.fps !== 30 && config.fps !== 60) return false;
         const source = this.createSource();
         if (!source) return false;
-        const job: Job = { source, cancelled: false, index: null, lastIndex: -1, pending: null };
+        const job: Job = { source, cancelled: false, index: null, lastIndex: -1, pending: null, drawClaimed: false };
         this.job = job;
         try {
             await source.prepare(this.readAnalysis(), { ...config, fps: config.fps });
@@ -60,7 +71,7 @@ export class ExactExportFrameBridge implements HostExportFramePort {
         if (!this.ready || !job || job.cancelled) throw Error('Exact export is not ready');
         if (job.index !== null || !Number.isSafeInteger(index) || index !== job.lastIndex + 1)
             throw Error('Exact export requires one contiguous frame at a time');
-        job.index = index; job.pending = null;
+        job.index = index; job.pending = null; job.drawClaimed = false;
         try {
             // Await even on cancellation: p5 may still be executing its own redraw callback.
             await this.redraw();

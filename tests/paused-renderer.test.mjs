@@ -284,6 +284,7 @@ for (const direction of ['steady','incoming','outgoing']) test('exact export ren
  const port=h.p.__plexusExportFramePort;assert.equal(await port.begin({jobId:'renderer',width:1280,height:720,fps:60}),true);
  let finished=false;const rendering=port.renderFrame(0).then(()=>{finished=true;});await Promise.resolve();
  assert.equal(finished,false);assert.equal(posts.length,0);assert.equal(requests.length,1);
+ h.tick(2);assert.equal(requests.length,1);assert.equal(posts.length,0,'unsolicited redraws cannot advance a pending export frame');
  assert.equal(native.length,direction==='steady'?0:1);assert.ok(native.every(c=>c.advanceSharedSimulation));
  const r=requests[0];assert.equal(r.index,0);assert.equal(r.frame.frameCount,1);assert.equal(r.frame.density,1);assert.equal(r.frame.compact,false);
  h.State.visualTuning.postFxFragmentAmount=.999;h.State.currentTime=99;
