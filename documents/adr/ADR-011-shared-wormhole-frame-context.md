@@ -2,6 +2,16 @@
 
 ## Status
 
+WH-04/05 (2026-11-08) deliver the common GPU-material preview session in MVP
+and dashboard. Both retain one host resolver/director and use the same bounded
+broker. WH-05's internal companion capture/ack pairs native crossfade pixels,
+alpha and PostFX with the admitted image's time, reusing the existing two targets.
+The worker wire is unchanged by WH-05. Product exact GPU export remains WH-06,
+selectable Takarékos/Turbó WH-07; the retired isolated MVP export is not restored.
+See [WH-05](../audits/wormhole-wh05-dashboard-composition.md) and
+[ADR-006's asynchronous companion](ADR-006-renderer-owned-visual-identity-crossfade.md#wh-05-asynchronous-preview-companion-2026-11-08).
+Earlier foundation/proposal descriptions below retain their historical scope.
+
 WH-01 (2026-11-07) accepts the common frame stamp and staged ownership contract
 in [WH-01](../audits/wormhole-wh01-contract-baseline.md). The common GPU session
 and host ownership transfer remain WH-02/03/04 work. Existing clocks, gains and

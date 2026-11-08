@@ -52,6 +52,18 @@ preferences; the identity owns the bounded display pass. Embedded v1 preview/v2 
 reuse the existing presentation message. No new transfer buffers, analysis result fields or second
 clock are added. Display-only changes redraw while paused without snapping tuning or replaying cues.
 
+WH-05 reuses that producer in dashboard and MVP. Its optional internal
+WormholeHostPairing capture callback runs synchronously after the immutable input
+copy and before microtask submission. Paired mode admits only when ready, with no
+flight/pending/unpresented image; a matching frame is explicitly acknowledged after
+composition. The compositor freezes exactly that input's native counterpart.
+Changes observed while blocked retain a revision until admission, including paused
+controls. Replacement, rewind, analysis and presentation invalidation discard stale
+pairs using the existing generation/stamp checks. Pair-to-pure-Wormhole exit keeps
+its valid last image to avoid a black flash. No extra worker packet/schema, analysis
+copy per draw, unbounded image queue, second resolver or clock is introduced.
+See [WH-05](../audits/wormhole-wh05-dashboard-composition.md).
+
 ## Boundary Contract
 
 T19c3 generates `plexus_export_job_v1_*.webm` outside the old worker sweep prefix;

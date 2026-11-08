@@ -32,6 +32,18 @@ compatible material; worker failure uses the existing main fallback. Dashboard/
 multi-identity composition is WH-05, product GPU export WH-06.
 See [WH-04](../audits/wormhole-wh04-mvp-gpu-session.md).
 
+WH-05 activates that same preview factory and persisted renderer choice in the
+main dashboard. WorkerIdentityTransition is a renderer-private companion coordinator,
+not a transition/state writer. It borrows the existing two compositor surfaces:
+one native scratch at host cadence and one frozen counterpart for an admitted
+worker snapshot. A finished bitmap, counterpart, crossfade weight and PostFX must
+share that snapshot's song time. Unfinished pairs keep the previous complete
+composite and do not reapply PostFX. Shared simulation still advances once per
+host draw. IdentityTransitionController alone clears the active transition after
+its completed frame. Optional internal capture/ack ports add no worker wire.
+GPU export remains WH-06; no export renderer or clock changes in WH-05.
+See [WH-05](../audits/wormhole-wh05-dashboard-composition.md).
+
 WH-03b normalizes musical transient envelopes in the shared, data-only
 transientDecay.ts sampler: actual event age, immutable publication indexes,
 overlapping cue peaks and logarithmic seeks. Hosts retain cursor/shockwave ownership.

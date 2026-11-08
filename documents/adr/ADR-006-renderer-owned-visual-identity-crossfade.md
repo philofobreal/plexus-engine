@@ -51,3 +51,30 @@ covers preview/export density changes, target reuse and transform restoration.
 ## Verification
 
 `tests/visual-mode-transition.test.mjs` covers alpha boundaries, synchronous switching, clock anchoring, duration clamps, compositor blend/clear behavior, active-only compositing, shared simulation ownership, and the single `State.visualMode` runtime writer. `tests/contracts.test.mjs` pins renderer delegation and the draw-context contract.
+
+## WH-05 asynchronous preview companion (2026-11-08)
+
+The synchronous path and its existing Canvas source-over law stay unchanged.
+For worker Wormhole/native transitions, the two persistent targets have explicit
+roles: incoming holds the current native scratch; outgoing holds its frozen
+admitted counterpart. The native identity still advances the shared pool once
+on every host draw, including worker waits. Capture occurs at the same song time
+as the broker's owned request snapshot. No next counterpart can overwrite it
+until the image has been composed and acknowledged. The helper retains borrowed
+image references only during its synchronous call.
+
+The renderer presents only matching image/counterpart generations, derives alpha
+from captured time and runs the single PostFX seam with that frame's own values.
+During a wait it leaves the complete main image alone, without applying PostFX
+again. Resize invalidates the surface/image rather than stretching an invalid
+pair. Replacement/seek cannot resurrect an old pair. Completion remains owned by
+IdentityTransitionController, accepting only the current generation and completed
+frame time. Failure falls through the synchronous controller; if the native pool
+was already advanced during capture, both fallback draws borrow it without a
+second advancement. Export continues through the synchronous path in this task.
+
+Tests retain all earlier transition cases. New functional controller/broker/renderer
+checks and real Chrome worker/p5 tests cover both directions, busy waits, PostFX,
+rapid replacement, rewind/density changes, live video/alpha and exact paired versus
+synchronous RGBA composition. No new p5.Graphics targets are allocated for pairs.
+See [WH-05 evidence and limits](../audits/wormhole-wh05-dashboard-composition.md).

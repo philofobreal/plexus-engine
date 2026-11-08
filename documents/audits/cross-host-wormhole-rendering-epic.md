@@ -1,7 +1,7 @@
 # Közös, workerben és GPU-n futó Wormhole: epic terv
 
 Dátum: 2026-11-07, Europe/Budapest. Feltárt forrás: `9733a4a4aebf2ff0d68e41f8f3b102c0a40c52de`.
-Állapot: WH-00, [WH-01 szerződés/baseline](wormhole-wh01-contract-baseline.md), [WH-02 GPU-próba](wormhole-wh02-gpu-spike.md) és [WH-03a frame-előkészítés](wormhole-wh03a-frame-preparation.md), [WH-03b időalapú burkolók/kanonikus képkérés](wormhole-wh03b-canonical-time.md) átadva. [WH-04 MVP GPU-session](wormhole-wh04-mvp-gpu-session.md) átadva. Következő WH-05 dashboard/kompozíció a kézi elfogadás után; az éles host/export GPU-integráció WH-04/05/06.
+Állapot: WH-00, [WH-01 szerződés/baseline](wormhole-wh01-contract-baseline.md), [WH-02 GPU-próba](wormhole-wh02-gpu-spike.md), [WH-03a frame-előkészítés](wormhole-wh03a-frame-preparation.md), [WH-03b kanonikus idő](wormhole-wh03b-canonical-time.md), [WH-04 MVP GPU-session](wormhole-wh04-mvp-gpu-session.md) és [WH-05 dashboard/kompozíció](wormhole-wh05-dashboard-composition.md) átadva. Következő WH-06 közös pontos exportforrás, csak a WH-05 kézi elfogadása után. A Takarékos/Turbó profil WH-07, platformminősítés WH-08.
 Integrációs felelős: az aktuális fejlesztési munkamenet egyetlen szerződésgazdája.
 
 ## 1. Cél és helye a főtervben
@@ -23,7 +23,7 @@ Az első implementációs lépés WH-01. Minden implementációs task után: meg
 tesztek, dokumentáció, elkülönített kommit, push, ellenőrzött deploy, rövid
 leírás a várható viselkedésről, majd kézi tesztelési megálló. Az első látványos
 összehasonlítás WH-02-ben, az MVP teljes lejátszási átállása WH-04-ben, a sima
-hosté WH-05-ben várható. Az export a WH-06 feladata. Ez függőségi sorrend,
+hosté a WH-05-ben elkészült; a kézi elfogadás folyamatban. Az export a WH-06 feladata. Ez függőségi sorrend,
 nem naptári vagy már igazolt gyorsulási ígéret.
 
 WH-02 döntés: a szigorú 2D referencia anyag/weave/bloom kapuit a vegyes

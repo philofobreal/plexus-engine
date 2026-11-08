@@ -2,7 +2,26 @@
 
 Started 2026-10-23. Checkpoint 2026-11-07 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01, WH-02 research, WH-03a preparation, WH-03b time envelopes/exact scheduling and WH-04 MVP GPU session are delivered; WH-05 dashboard/composition is next after manual acceptance. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01, WH-02 research, WH-03a preparation, WH-03b time envelopes/exact scheduling and WH-04 MVP GPU session and WH-05 dashboard/composition are delivered; WH-06 exact shared export is next after manual acceptance. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+
+### WH-05 dashboard and paired composition handoff (2026-11-08)
+
+[WH-05](wormhole-wh05-dashboard-composition.md) enables the same Offscreen/GPU
+preview in the dashboard, using the existing menu/storage/Copy setting and active
+backend hint. Saved Compatible/WebGL choices remain respected. Both hosts share
+one bounded companion coordinator for worker/native crossfades: captured song time,
+matching image/counterpart, one PostFX per completed pair and one native pool step
+per host draw. The existing two targets are reused; no second director/gain/audio
+pipeline is introduced. Worker/GPU fallback and synchronous export remain available.
+
+Validation: build succeeds; 310/310 targeted, 37/37 real Chrome host/session,
+GPU laboratory 8/8. Full cumulative 2183/2174 pass with the same nine WH-04
+preset failures by exact name/message, zero skips/cancellations. No new regression.
+225 active Node files and 15 predecessor identities retained; details in the audit.
+
+Stop for manual acceptance. Next: **WH-06 exact shared GPU export source**; then
+WH-07 Takarékos/Turbó profile and WH-08 platform qualification. This task does not
+claim faster full exports, physical mobile/Quest acceptance or changed codec quality.
 
 ### WH-04 MVP GPU session handoff (2026-11-08)
 
@@ -13,7 +32,7 @@ frame identities/dimensions and presents only owned bitmaps. GPU failure keeps
 complete compatible material in the worker; worker failure uses the main fallback.
 The menu reports/copies the active backend. Spectrum and PostFX stay with their
 own image layer/time/tuning. No new analysis, dashboard activation or GPU export.
-Next: **WH-05 dashboard and cross-host composition**, after manual acceptance.
+Historical WH-04 next step: WH-05, delivered above. Current next: WH-06 after manual acceptance.
 
 ### WH-03b timing handoff (2026-11-07)
 
@@ -24,7 +43,7 @@ fade remains a separate presentation policy. Actual local/exact-v2 requests at
 30/60 fps reuse canonical 60 Hz simulation; rewind/fractional oracles remain.
 Repeated requests redraw consumed bitmap surfaces. This is timing foundation,
 not production GPU export promotion or a whole-job speed claim.
-This handoff was followed by WH-04 above. The current next task is WH-05 after manual acceptance.
+This handoff was followed by WH-04 above. WH-05 is delivered above; the current next task is WH-06 after manual acceptance.
 
 ### WH-03a preparation handoff (2026-11-07)
 

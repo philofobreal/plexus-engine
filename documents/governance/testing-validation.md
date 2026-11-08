@@ -98,6 +98,16 @@ Visual identity transition changes:
 - Shared simulation gating must prove that one participant advances shared particle/shockwave pools exactly once. Incoming normally owns advancement; when it does not use the shared pool, eligible outgoing owns it and the other participant receives `advanceSharedSimulation: false`.
 - Wormhole determinism coverage must include immutable depth-phase uniformity under a moving horizon, authored coherence determinism, repeated seeks without accumulated density damage, identical tunnel and curved-galaxy geometry after different histories, and automation-transition re-arming after backward seek.
 
+- Worker/native preview transitions must pair the exact admitted native image with
+  the owned worker frame, not the newest main image. Verify both directions,
+  captured-time alpha and PostFX, no post reapplication while waiting, exactly one
+  native simulation advance per host draw, failure before/after capture, paused
+  changes under backpressure, rapid generation replacement, seek, density resize,
+  video/alpha and synchronous export bypass. Real p5/Chrome tests must complement
+  mocks and assert persistent target reuse plus RGBA parity with the established
+  synchronous compositor. Surface resize may invalidate pixels; a stable surface
+  waiting for the worker must retain the complete previous composite.
+
 Renderer post FX changes (ADR-007):
 
 - Run `node --test tests/postfx-fragmentation.test.mjs` plus `tests/visual-mode-transition.test.mjs`
