@@ -408,7 +408,7 @@ test('the renderer runs the post chain exactly once, after the finished identity
   const renderer = read('src/visuals/PlexusRenderer.ts');
   const calls = renderer.match(/postFxPipeline\.render\(/g) ?? [];
   assert.equal(calls.length, 1, 'exactly one post seam');
-  assert.match(renderer, /const postFxPipeline = new PostFxPipeline\(\[new TemporalFragmentationEffect\(\)\]\);/);
+  assert.match(renderer, /const postFxPipeline = new PostFxPipeline\(\[new TemporalFragmentationEffect\(readPostState\)\], undefined, readPostState\);/);
   // The seam sits after the whole draw branch, so an active crossfade is post-processed once on the
   // final composite rather than once per participating identity.
   assert.match(

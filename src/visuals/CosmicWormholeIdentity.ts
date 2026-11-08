@@ -501,6 +501,9 @@ export class CosmicWormholeIdentity implements VisualIdentity {
      */
     readonly routeFocus = { x: 0, y: 0 };
     private readonly musicDisplay = new WormholeMusicDisplay();
+    private musicDisplayBackend: VisualRendererBackend | null = null;
+    /** Optional separately composited foreground; the adapter owns clearing and lifetime. */
+    setMusicDisplayBackend(backend: VisualRendererBackend | null): void { this.musicDisplayBackend = backend; }
     setMusicDisplay(settings?: MusicDisplaySettings): void { this.musicDisplay.setSettings(settings); }
     /**
      * Read-only drive of the last drawn frame for embedded hosts (XR spatial field), written from the
@@ -1860,7 +1863,7 @@ export class CosmicWormholeIdentity implements VisualIdentity {
             backend.drawFieldRaster(0, 0, 0, backend.width, backend.height, 1, 'lighter');
             if (stageClock) this.markStage('composite', stageStart);
         }
-        if (!this.nativeSink) this.musicDisplay.draw(backend,this.state.frames,this.state.sampleRate,this.state.hopSize,timeSec,this.routeFocus);
+        if (!this.nativeSink) this.musicDisplay.draw(this.musicDisplayBackend ?? backend,this.state.frames,this.state.sampleRate,this.state.hopSize,timeSec,this.routeFocus);
         if (featureFlags.wormholeDiagnostics) wormholeDepthDiagnostics.endFrame();
     }
 

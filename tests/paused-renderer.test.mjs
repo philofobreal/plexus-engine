@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
 
-function createHarness(applyAutomatedSpiral, createWormholeWorker, gain) {
+function createHarness(applyAutomatedSpiral, createWormholeWorker, gain, postProbe) {
   let p;
   let time = 0;
   let draws = 0;
@@ -50,6 +50,8 @@ function createHarness(applyAutomatedSpiral, createWormholeWorker, gain) {
     return exports;
   }
   const { State } = load(resolve('src/state/store.ts'));
+  if (postProbe) { const Pipeline=load(resolve('src/visuals/PostFxPipeline.ts')).PostFxPipeline;
+    Pipeline.prototype.render=function(host,time){postProbe(this.readState(),time);}; }
   const { startPlexusRenderer } = load(resolve('src/visuals/PlexusRenderer.ts'));
   const identity = { id: createWormholeWorker ? 'cosmic-wormhole' : 'test', draw() { draws++; }, syncPosition() {} };
   startPlexusRenderer('preview', {
@@ -207,4 +209,19 @@ test('real renderer factory uses worker preview, invalidates paused frames, rese
   h.preference.wormholeRenderer='compatible';h.tick();assert.equal(sources[1].disposed,1);
   h.preference.wormholeRenderer='offscreen';h.tick();assert.equal(sources.length,3);
   h.p.remove();assert.equal(sources[2].disposed,1);
+});
+
+test('worker image and PostFX use the same frozen tuning, signals and song time',()=>{
+    const seen=[],source={rasterKind:'offscreen-gpu-material',presentedFrame:null,draw(){return true;},reset(){},dispose(){}};
+    const h=createHarness(undefined,()=>source,undefined,(s,time)=>seen.push({time,tuning:s.visualTuning,director:s.directorOutput,modulation:s.modulation}));
+    source.presentedFrame={currentTime:1,visualTuning:{...h.State.visualTuning,postFxFragmentAmount:.8},
+        directorOutput:{...h.State.directorOutput,glitchIntensity:.9},modulation:{...h.State.modulation,spectralChaos:.7}};
+    h.preference.wormholeRenderer='offscreen';h.State.visualMode='cosmic-wormhole';h.State.isPlaying=true;
+    h.advance(4);h.tick();
+    assert.equal(seen.at(-1).time,1);assert.equal(seen.at(-1).tuning,source.presentedFrame.visualTuning);
+    assert.equal(seen.at(-1).director,source.presentedFrame.directorOutput);
+    assert.equal(seen.at(-1).modulation,source.presentedFrame.modulation);
+    assert.notEqual(seen.at(-1).tuning,h.State.visualTuning,'live state is never swapped or mutated for async composition');
+    h.State.isExporting=true;h.State.exportTime=2;h.tick();
+    assert.equal(seen.at(-1).time,2);assert.equal(seen.at(-1).tuning,h.State.visualTuning,'export keeps its synchronous owner');
 });

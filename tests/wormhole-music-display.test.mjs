@@ -127,9 +127,9 @@ test('MVP worker carries only display preferences, keeps analysis preparation on
  const messages=[],port={onmessage:null,onerror:null,onmessageerror:null,postMessage:m=>messages.push(structuredClone(m)),terminate(){}};
  const l=createLoader({'./wormholeHostRender.worker.ts?worker':{}},{setTimeout:()=>1,clearTimeout(){}});
  const {State}=l('state/store.ts'),{WormholeHostWorkerSource}=l('visuals/WormholeHostWorkerSource.ts');
- const source=new WormholeHostWorkerSource(()=>{},()=>port),target={width:1060,height:600,rasterPixelRatio:1,compactMaterialPreview:true,frameCount:1,presentRaster(){},background(){}};
- source.draw(State,target,0,false,false,enabled);port.onmessage({data:{type:'ready',generation:messages[0].generation}});
+ const source=new WormholeHostWorkerSource(()=>{},()=>port,task=>task()),target={width:1060,height:600,rasterPixelRatio:1,compactMaterialPreview:true,frameCount:1,presentRaster(){},background(){}};
+ source.draw(State,target,0,false,false,enabled);port.onmessage({data:{type:'ready',generation:messages[0].generation,contextId:messages[0].contextId}});
  source.draw(State,target,0,false,false,enabled);const on=messages.at(-1);assert.deepEqual(on.frame.musicDisplay,enabled);assert.equal('analysis'in on.frame,false);
- port.onmessage({data:{type:'frame',generation:on.generation,serial:on.serial,bitmap:{close(){}},raster:'webgl',renderMs:1}});
- source.draw(State,target,0,false,false);assert.equal('musicDisplay'in messages.at(-1).frame,false);assert.equal(messages.filter(m=>m.type==='prepare').length,1);source.dispose();
+ port.onmessage({data:{type:'frame',generation:on.generation,serial:on.serial,stamp:on.stamp,bitmap:{width:Math.round(on.frame.width*on.frame.density),height:Math.round(on.frame.height*on.frame.density),close(){}},raster:'webgl',renderMs:1}});
+ source.draw(State,target,0,false,false);port.onmessage({data:{type:'ready',generation:messages.at(-1).generation,contextId:messages.at(-1).contextId}});source.draw(State,target,0,false,false);assert.equal('musicDisplay'in messages.at(-1).frame,false);assert.equal(messages.filter(m=>m.type==='prepare').length,1);source.dispose();
 });

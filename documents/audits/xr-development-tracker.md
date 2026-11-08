@@ -2,7 +2,18 @@
 
 Started 2026-10-23. Checkpoint 2026-11-07 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01, WH-02 research, WH-03a preparation and WH-03b time envelopes/exact scheduling are delivered; WH-04 MVP session/integration is next after manual acceptance. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01, WH-02 research, WH-03a preparation, WH-03b time envelopes/exact scheduling and WH-04 MVP GPU session are delivered; WH-05 dashboard/composition is next after manual acceptance. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+
+### WH-04 MVP GPU session handoff (2026-11-08)
+
+[WH-04](wormhole-wh04-mvp-gpu-session.md) activates shared GPU material/weave/bloom
+under the existing MVP Offscreen choice, retaining reference Canvas lines in the
+worker. A bounded deferred broker snapshots resolved inputs, validates common
+frame identities/dimensions and presents only owned bitmaps. GPU failure keeps
+complete compatible material in the worker; worker failure uses the main fallback.
+The menu reports/copies the active backend. Spectrum and PostFX stay with their
+own image layer/time/tuning. No new analysis, dashboard activation or GPU export.
+Next: **WH-05 dashboard and cross-host composition**, after manual acceptance.
 
 ### WH-03b timing handoff (2026-11-07)
 
@@ -13,7 +24,7 @@ fade remains a separate presentation policy. Actual local/exact-v2 requests at
 30/60 fps reuse canonical 60 Hz simulation; rewind/fractional oracles remain.
 Repeated requests redraw consumed bitmap surfaces. This is timing foundation,
 not production GPU export promotion or a whole-job speed claim.
-Next: **WH-04**, after the user's manual acceptance. No T21/T22 work starts now.
+This handoff was followed by WH-04 above. The current next task is WH-05 after manual acceptance.
 
 ### WH-03a preparation handoff (2026-11-07)
 

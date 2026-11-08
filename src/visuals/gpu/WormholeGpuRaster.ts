@@ -7,12 +7,12 @@ type Target = { texture: WebGLTexture; buffer: WebGLFramebuffer; width: number; 
 type Program = { program: WebGLProgram; uniforms: Map<string, WebGLUniformLocation | null> };
 export type WormholeGpuPrecision = 'float16' | 'float32';
 
-/** Research boundary: fixed carrier ceiling and current UHD output; no host/default integration. */
-export function validateGpuRasterInput(width: number, height: number, base: Uint8Array,
-    material: GrainMaterialFrame | null, lines: GrainLineFrame): void {
+/** Bounded common raster input; preview and export schedulers retain independent limits. */
+export function validateGpuRasterInput(width: number, height: number, base: Uint8Array | null,
+    material: GrainMaterialFrame | null, lines: GrainLineFrame, surface = false): void {
     const integer = (x: number, max: number) => Number.isSafeInteger(x) && x > 0 && x <= max;
     if (!integer(width, 8192) || !integer(height, 8192) || width * height > 3840 * 2160
-        || !(base instanceof Uint8Array) || base.length !== width * height * 4) throw Error('Invalid GPU base image');
+        || (!surface && (!(base instanceof Uint8Array) || base.length !== width * height * 4))) throw Error('Invalid GPU base image');
     const data = (array: Float32Array, count: number, stride: number) => {
         if (!(array instanceof Float32Array) || !Number.isSafeInteger(count) || count < 0 || count > 32768
             || array.length < count * stride) throw Error('Invalid GPU carrier count');
@@ -30,9 +30,9 @@ export function validateGpuRasterInput(width: number, height: number, base: Uint
 
 const COMPOSE = `precision highp float;
 out vec4 outColor;
-uniform sampler2D uBase, uLines, uL0, uL1, uL2;
+uniform sampler2D uBase, uLines, uL0, uL1, uL2, uOverlay;
 uniform vec2 uSize;
-uniform bool uMaterial;
+uniform bool uMaterial, uHasOverlay;
 // Manual bilinear also works on RGBA32F without OES_texture_float_linear.
 vec4 sampleLayer(sampler2D image, vec2 uv) {
     ivec2 size = textureSize(image, 0);
@@ -54,7 +54,13 @@ void main() {
         vec4 a=sampleLayer(uL0,uv), b=sampleLayer(uL1,uv), c=sampleLayer(uL2,uv);
         result += c+b+a;
     }
-    outColor=clamp(result,0.0,1.0);
+    result=clamp(result,0.0,1.0);
+    if(uHasOverlay) {
+        vec4 overlay=texelFetch(uOverlay,ivec2(p.x,int(uSize.y)-1-p.y),0);
+        overlay.rgb*=overlay.a;
+        result=overlay+result*(1.0-overlay.a);
+    }
+    outColor=result;
 }`;
 
 // Match CanvasFieldRasterSurface's straight-alpha Bayer quantization before bilinear upscale.
@@ -86,6 +92,8 @@ export class WormholeGpuRaster {
     private passArray!: WebGLVertexArrayObject; private carrierArray!: WebGLVertexArrayObject;
     private lineArray!: WebGLVertexArrayObject; private carrierData!: WebGLBuffer; private lineData!: WebGLBuffer;
     private base!: WebGLTexture;
+    private overlay!: WebGLTexture;
+    private overlayWidth = 0; private overlayHeight = 0;
     private baseWidth = 0; private baseHeight = 0;
     private disposed = false;
 
@@ -114,7 +122,7 @@ export class WormholeGpuRaster {
             gl.bindBuffer(gl.ARRAY_BUFFER, this.lineData);
             this.attribute(this.line,'aSegment',4,36,0,1); this.attribute(this.line,'aWidth',1,36,16,1);
             this.attribute(this.line,'aColor',4,36,20,1);
-            this.base = this.texture();
+            this.base = this.texture(); this.overlay = this.texture();
             gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE); gl.disable(gl.DITHER);
             gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
             this.check();
@@ -122,11 +130,12 @@ export class WormholeGpuRaster {
     }
 
     /** Upload and issue GPU passes. Call finish or readPixels for completion timing, not this alone. */
-    render(width: number, height: number, base: Uint8Array, material: GrainMaterialFrame | null, lines: GrainLineFrame,
-        baseSource?: OffscreenCanvas): void {
+    render(width: number, height: number, base: Uint8Array | null, material: GrainMaterialFrame | null, lines: GrainLineFrame,
+        baseSource?: OffscreenCanvas, overlaySource?: OffscreenCanvas): void {
         if (this.disposed || this.gl.isContextLost()) throw Error('GPU raster unavailable');
-        validateGpuRasterInput(width,height,base,material,lines);
+        validateGpuRasterInput(width,height,base,material,lines,!!baseSource);
         if(baseSource && (baseSource.width!==width || baseSource.height!==height))throw Error('Mismatched base canvas');
+        if(overlaySource && (overlaySource.width!==width || overlaySource.height!==height))throw Error('Mismatched overlay canvas');
         const gl=this.gl;
         if (this.canvas.width!==width) this.canvas.width=width;
         if (this.canvas.height!==height) this.canvas.height=height;
@@ -136,7 +145,7 @@ export class WormholeGpuRaster {
             this.baseWidth=width;this.baseHeight=height;
         }
         if(baseSource)gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,baseSource);
-        else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,base);
+        else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,base!);
         const cols=material?.cols??1, rows=material?.rows??1;
         const l1w=Math.max(1,Math.round(cols/3)), l1h=Math.max(1,Math.round(rows/3));
         const l2w=Math.max(1,Math.round(cols/8)), l2h=Math.max(1,Math.round(rows/8));
@@ -175,6 +184,16 @@ export class WormholeGpuRaster {
         this.source(this.compose,'uL0',quantized[0].texture,2); this.source(this.compose,'uL1',quantized[1].texture,3);
         this.source(this.compose,'uL2',quantized[2].texture,4);
         gl.uniform2f(this.u(this.compose,'uSize'),width,height); gl.uniform1i(this.u(this.compose,'uMaterial'),material?1:0);
+        gl.uniform1i(this.u(this.compose,'uHasOverlay'),overlaySource?1:0);
+        gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,this.overlay);
+        // A complete texture is mandatory even while the sampler's branch is disabled.
+        const ow=overlaySource?width:1,oh=overlaySource?height:1;
+        if(this.overlayWidth!==ow||this.overlayHeight!==oh){
+            gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,ow,oh,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+            this.overlayWidth=ow;this.overlayHeight=oh;
+        }
+        if(overlaySource)gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,overlaySource);
+        gl.uniform1i(this.u(this.compose,'uOverlay'),5);
         this.pass(this.compose,null); this.check();
     }
 

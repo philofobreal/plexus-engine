@@ -1,55 +1,47 @@
-import type { WormholeHostAnalysis, WormholeHostRequest, WormholeHostResponse } from '../types/WormholeHostFrame';
-import { CosmicWormholeIdentity, type WormholeRenderState } from './CosmicWormholeIdentity';
-import { Canvas2DRendererBackend } from './Canvas2DRendererBackend';
-import { WebGLRendererBackend } from './WebGLRendererBackend';
-import { featureFlags } from '../config/featureFlags';
+import type { WormholeHostRequest, WormholeHostResponse } from '../types/WormholeHostFrame';
+import { assertWormholeRenderFrameStamp } from '../types/WormholeRenderFrame';
+import { WormholeHostRenderSession } from './WormholeHostRenderSession';
 
 const scope = self as unknown as {
     onmessage: ((event: MessageEvent<WormholeHostRequest>) => void) | null;
     postMessage(message: WormholeHostResponse, transfer?: Transferable[]): void;
 };
-let analysis: WormholeHostAnalysis | null = null, state: WormholeRenderState | null = null;
-let identity: CosmicWormholeIdentity | null = null, generation = 0;
-let backend: WebGLRendererBackend | Canvas2DRendererBackend | null = null;
-const createSurface = (w: number, h: number) => new OffscreenCanvas(w, h) as unknown as HTMLCanvasElement;
+let session: WormholeHostRenderSession | null = null, generation = 0, contextId: string | undefined;
 scope.onmessage = event => {
     const message = event.data;
     try {
-        if (message.type === 'prepare' || message.type === 'reset') {
+        if (!Number.isSafeInteger(message.generation) || message.generation < 0) throw Error('Invalid host generation');
+        if (message.type === 'prepare') {
+            if (message.generation < generation) return;
+            if (message.contextId !== undefined && (typeof message.contextId !== 'string' || !message.contextId.trim() || message.contextId.length > 128)) throw Error('Invalid host context');
+            session?.dispose(); generation = message.generation; contextId = message.contextId;
+            // Omitted contextId is the retained legacy-v1 research adapter. The MVP producer
+            // always negotiates its context and must supply a validated common frame stamp.
+            session = new WormholeHostRenderSession(message.analysis, contextId !== undefined);
+            scope.postMessage({ type: 'ready', generation, ...(contextId ? { contextId } : {}) }); return;
+        }
+        if (message.type === 'reset') {
+            if (!session || message.generation < generation) return;
+            if (message.contextId && message.contextId !== contextId) return;
             generation = message.generation;
-            if (message.type === 'prepare') { analysis = message.analysis; state = null; identity = null; }
-            scope.postMessage({ type: 'ready', generation }); return;
+            session.reset(); scope.postMessage({ type: 'ready', generation, ...(contextId ? { contextId } : {}) }); return;
         }
-        if (message.generation !== generation || !analysis) return;
-        const frame = message.frame;
-        if (!state) state = { ...analysis, ...frame };
-        else Object.assign(state, frame);
-        identity ??= new CosmicWormholeIdentity(state);
-        if (!backend) {
-            try { backend = new WebGLRendererBackend(frame.width, frame.height, createSurface); }
-            catch { backend = new Canvas2DRendererBackend(frame.width, frame.height, createSurface); }
+        if (message.generation !== generation || !session) return;
+        if (contextId) {
+            assertWormholeRenderFrameStamp(message.stamp);
+            const stamp = message.stamp;
+            if (stamp.contextId !== contextId || stamp.generation !== generation || stamp.requestSerial !== message.serial
+                || stamp.songTime !== message.frame.currentTime || stamp.mode !== 'preview') throw Error('Mismatched host frame stamp');
         }
-        if (backend instanceof WebGLRendererBackend && backend.contextLost) throw Error('Worker WebGL context lost');
         const started = performance.now();
-        if (backend instanceof WebGLRendererBackend) {
-            backend.setSize(frame.width, frame.height, frame.density);
-            backend.compactMaterialPreview = frame.compact; backend.transparentBackground = frame.transparent;
-        } else {
-            // Same logical coordinates/material budget as the host; scale only the backing raster.
-            backend.setPreviewSize(frame.width, frame.height, frame.density, frame.compact, frame.transparent);
-        }
-        backend.frameCount = frame.frameCount;
-        featureFlags.wormholeSkybox = frame.skybox;
-        identity.setDepthCue(frame.depthCue);
-        identity.setMusicDisplay?.(frame.musicDisplay);
-        if (frame.reset) identity.syncPosition(frame.currentTime);
-        identity.draw(backend, [], []);
-        if (backend instanceof WebGLRendererBackend) backend.finish();
-        const bitmap = (backend.canvas as unknown as OffscreenCanvas).transferToImageBitmap();
-        scope.postMessage({ type: 'frame', generation, serial: message.serial, bitmap,
-            raster: backend instanceof WebGLRendererBackend ? 'webgl' : 'canvas2d', renderMs: performance.now() - started }, [bitmap]);
+        const { bitmap, raster } = session.render(message.frame);
+        try {
+            scope.postMessage({ type: 'frame', generation, serial: message.serial, ...(message.stamp ? { stamp: message.stamp } : {}),
+                bitmap, raster, renderMs: performance.now() - started }, [bitmap]);
+        } catch (error) { bitmap.close(); throw error; }
     } catch (error) {
-        backend instanceof WebGLRendererBackend && backend.dispose(); backend = null;
-        scope.postMessage({ type: 'failure', message: error instanceof Error ? error.message : String(error) });
+        session?.dispose(); session = null;
+        scope.postMessage({ type: 'failure', generation, ...(contextId ? { contextId } : {}),
+            message: error instanceof Error ? error.message : String(error) });
     }
 };

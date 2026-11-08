@@ -263,3 +263,14 @@ Cycling Compatible then WebGL explicitly retries an unavailable/lost context. Ex
 are unchanged. Browser A/B tolerances and retained evidence are in the
 [T05b audit](../audits/xr-shared-backend-validation.md). Encoded-video and physical Quest parity
 remain unmeasured; worker-v2 exact-frame capability is not enabled by this delivery.
+
+
+## WH-04 MVP session integration (2026-11-08)
+
+The existing MVP host now uses the shared GPU material in its Offscreen worker.
+WormholeHostRenderSession consumes resolved frames and owns rendering resources;
+the host retains control/semantic/director resolution. The deferred broker takes
+an owned snapshot before leaving draw, uses the common preview identity and binds
+PostFX/foreground to the completed image. The legacy embedded context and XR
+Three adapters remain. Dashboard composition and exact product exports follow
+WH-05/06. See the [WH-04 evidence and limits](../audits/wormhole-wh04-mvp-gpu-session.md).

@@ -92,6 +92,7 @@ export interface PlexusRendererOptions {
     compactMaterialPreview?: boolean;
     /** MVP live preview only. Export remains synchronous and never consumes an asynchronous bitmap. */
     createWormholeWorker?: (invalidate: () => void) => WormholeHostRasterSource;
+    onWormholeRasterChange?: (kind: string) => void;
     /** When provided, the canvas tracks this container-relative size instead of the full browser window. */
     getPreviewSize?: () => { width: number; height: number };
     /** Caps the p5 backing-store pixel density independently of devicePixelRatio (perf policy). */
@@ -126,6 +127,7 @@ export function startPlexusRenderer(
         let canvasRevision = 0;
         const wormholeRaster = new WormholeRasterPass(() => { canvasRevision++; pausedPreview.invalidate(); });
         let workerRaster: WormholeHostRasterSource | null = null;
+        let reportedRaster = '';
         let workerUsed = false, activeRaster = 'compatible', workerNeedsMainSync = false;
         const drawIdentity: IdentityDraw = (identity, target, particles, shockwaves, context) => {
             const musicDisplay=options?.previewQuality?.musicDisplay;
@@ -200,7 +202,17 @@ export function startPlexusRenderer(
         let compositor: P5RenderTargetCompositor | null = null;
         // Renderer-owned post chain (ADR-007). Buffers are allocated lazily on the first active
         // frame, so an untouched Post FX section costs nothing.
-        const postFxPipeline = new PostFxPipeline([new TemporalFragmentationEffect()]);
+        const workerPostState = { visualTuning: State.visualTuning, directorOutput: State.directorOutput,
+            modulation: State.modulation, isPlaying: false, isExporting: false };
+        const readPostState = () => {
+            const frame = workerUsed ? workerRaster?.presentedFrame : null;
+            if (!frame) return State;
+            workerPostState.visualTuning = frame.visualTuning; workerPostState.directorOutput = frame.directorOutput;
+            workerPostState.modulation = frame.modulation; workerPostState.isPlaying = State.isPlaying;
+            workerPostState.isExporting = false;
+            return workerPostState;
+        };
+        const postFxPipeline = new PostFxPipeline([new TemporalFragmentationEffect(readPostState)], undefined, readPostState);
 
         const framePreparation = new HostVisualFramePreparation(ui, semanticBridge, setActiveVisualTransitionComponent);
 
@@ -405,10 +417,12 @@ export function startPlexusRenderer(
             // Single Post FX seam (ADR-007): the identity frame is finished here in both the
             // steady-state and the crossfade path, so the chain runs exactly once per frame on the
             // final composite, for the live canvas and the offscreen export target alike.
-            postFxPipeline.render(p as unknown as PostFxSurfaceHost, ct);
+            const postFrame = workerUsed ? workerRaster?.presentedFrame : null;
+            postFxPipeline.render(p as unknown as PostFxSurfaceHost, postFrame?.currentTime ?? ct);
             if (!workerUsed && workerRaster) { workerRaster.dispose(); workerRaster = null; }
             const canvas = (p as unknown as { canvas?: HTMLCanvasElement }).canvas;
             if (canvas?.dataset) canvas.dataset.wormholeRaster = activeRaster;
+            if (reportedRaster !== activeRaster) { reportedRaster = activeRaster; options?.onWormholeRasterChange?.(activeRaster); }
             engine.syncMetronomeState(featureFlags.heroEffect && State.visualMode === 'hero', State.visualTuning.heroBeepMode, State.visualTuning.heroBeepVolume);
 
         };

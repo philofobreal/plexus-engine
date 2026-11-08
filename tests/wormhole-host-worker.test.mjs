@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createLoader } from './helpers/xr-loader.mjs';
 
-function harness() {
+function harness(schedule = task => task()) {
     const messages = [], presented = [], timers = new Map(); let stopped = 0, invalidations = 0, id = 0;
     const port = { onmessage: null, onerror: null, onmessageerror: null,
         postMessage(message) { messages.push(structuredClone(message)); }, terminate() { stopped++; } };
@@ -11,15 +11,17 @@ function harness() {
     });
     const { State } = load('state/store.ts');
     const { WormholeHostWorkerSource } = load('visuals/WormholeHostWorkerSource.ts');
-    const source = new WormholeHostWorkerSource(() => invalidations++, () => port);
+    const source = new WormholeHostWorkerSource(() => invalidations++, () => port, schedule);
     const target = { width: 1920, height: 1080, rasterPixelRatio: 2, compactMaterialPreview: false, frameCount: 1,
         presentRaster(image) { presented.push(image); }, background() {} };
     const draw = (playing = false) => source.draw(State, target, .6, false, playing);
     const respond = message => port.onmessage({ data: message });
-    const ready = () => respond({ type: 'ready', generation: messages.at(-1).generation });
-    const image = () => ({ closed: 0, close() { this.closed++; } });
+    const ready = () => respond({ type: 'ready', generation: messages.at(-1).generation, contextId: messages.at(-1).contextId });
+    const image = () => ({ width:Math.max(1,Math.round(target.width*Math.min(target.rasterPixelRatio,(target.compactMaterialPreview?640:960)/Math.max(target.width,target.height)))),
+        height:Math.max(1,Math.round(target.height*Math.min(target.rasterPixelRatio,(target.compactMaterialPreview?640:960)/Math.max(target.width,target.height)))),
+        closed: 0, close() { this.closed++; } });
     const frame = (request = messages.at(-1), bitmap = image()) => {
-        respond({ type: 'frame', generation: request.generation, serial: request.serial, bitmap, raster: 'webgl', renderMs: 7 }); return bitmap;
+        respond({ type: 'frame', generation: request.generation, serial: request.serial, stamp: request.stamp, bitmap, raster: 'webgl', renderMs: 7 }); return bitmap;
     };
     return { source, State, target, port, messages, presented, timers, draw, ready, frame, image, respond,
         get stopped() { return stopped; }, get invalidations() { return invalidations; } };
@@ -136,6 +138,11 @@ test('MVP menu defaults to Offscreen on a fresh device and saves/copies/reloads 
     assert.equal(payloads[0].wormholeRenderer,'offscreen');assert.equal(saved.get('plexus.wormholeRenderer'),'offscreen');
     assert.equal(createPreviewQualityControl(false,true).preference.wormholeRenderer,'offscreen');
     assert.equal(createPreviewQualityControl(false,false).preference.wormholeRenderer,'compatible','Studio never silently selects unavailable worker');
+    control.showWormholeRenderer('offscreen-gpu-material');
+    assert.ok(control.root.children.some(e=>e.textContent?.includes('Active: GPU material in worker')));
+    await control.root.children.find(e=>e.textContent==='Copied preview settings').listeners.click();
+    assert.equal(payloads[1].activeWormholeRenderer,'offscreen-gpu-material');
+    assert.equal(saved.get('plexus.wormholeRenderer'),'offscreen','observed fallback never overwrites choice');
 });
 
 
@@ -152,4 +159,90 @@ test('MVP preparation omits unused acoustic activity without changing the host c
     assert.equal(h.messages.filter(m => m.type === 'prepare').length, 1);
     assert.ok(h.messages.filter(m => m.type === 'render').every(m => !('analysis' in m)));
     h.source.dispose();
+});
+
+test('deferred broker snapshots borrowed values before leaving draw and coalesces the latest pending frame',()=>{
+    const tasks=[],h=harness(task=>tasks.push(task)),flush=()=>{while(tasks.length)tasks.shift()();};
+    h.State.currentTime=1;h.State.currentFrame.e=.4;h.draw();
+    assert.equal(h.messages.length,0,'worker construction/submission is outside draw');
+    h.State.currentFrame.e=.99;flush();assert.equal(h.messages[0].type,'prepare');
+    h.ready();flush();const first=h.messages.at(-1);
+    assert.equal(first.frame.currentFrame.e,.4,'queued frame owns its snapshot');
+    assert.equal(first.stamp.songTime,1);assert.equal(first.stamp.mode,'preview');
+    for(const t of [2,3,4]){h.State.currentTime=t;h.draw(true);flush();}
+    assert.equal(h.messages.filter(m=>m.type==='render').length,1,'one in flight');
+    const malformed={...first,stamp:{...first.stamp,presentationRevision:99}};
+    const rejected=h.frame(malformed);assert.equal(rejected.closed,1);
+    const image=h.frame(first);flush();const next=h.messages.at(-1);
+    assert.equal(next.frame.currentTime,4,'only latest desired request retained');
+    assert.equal(h.messages.filter(m=>m.type==='render').length,2);
+    h.source.reset();flush();assert.equal(image.closed,1);
+    h.respond({type:'failure',generation:first.generation,contextId:first.stamp.contextId,message:'old failure'});
+    assert.notEqual(h.source.rasterKind,'fallback','old generation cannot poison reset');
+    const stale=h.frame(next);assert.equal(stale.closed,1);
+    h.source.dispose();flush();assert.equal(h.stopped,1);assert.equal(h.timers.size,0);
+});
+
+test('display/density revisions invalidate queued images and disposed queued startup creates no worker',()=>{
+    const tasks=[],h=harness(task=>tasks.push(task)),flush=()=>{while(tasks.length)tasks.shift()();};
+    h.draw();h.source.dispose();flush();assert.equal(h.messages.length,0);
+    const nextTasks=[],n=harness(task=>nextTasks.push(task)),tick=()=>{while(nextTasks.length)nextTasks.shift()();};
+    n.draw();tick();n.ready();tick();const old=n.messages.at(-1);
+    n.target.rasterPixelRatio=.25;n.draw();tick();
+    assert.equal(n.frame(old).closed,1);
+    n.ready();tick();const fresh=n.messages.at(-1);
+    assert.ok(fresh.stamp.presentationRevision>old.stamp.presentationRevision);
+    assert.ok(fresh.generation>old.generation);n.source.dispose();
+});
+
+test('negotiated worker rejects wrong context/stamp and disposes the session on transfer failure',()=>{
+    const replies=[],sessions=[];
+    class Session {
+        constructor(a,gpu){this.analysis=a;this.gpu=gpu;this.disposed=0;sessions.push(this);}
+        reset(){this.resetCalled=true;}
+        render(){return {bitmap:{closed:0,close(){this.closed++;}},raster:'gpu-material'};}
+        dispose(){this.disposed++;}
+    }
+    const scope={postMessage(m){replies.push(m);}};
+    createLoader({'./WormholeHostRenderSession':{WormholeHostRenderSession:Session}},{self:scope,performance:{now:()=>0}})('visuals/wormholeHostRender.worker.ts');
+    const send=data=>scope.onmessage({data});
+    const stamp={protocol:1,contextId:'mvp',generation:1,requestSerial:1,presentationRevision:0,songTime:2,mode:'preview'};
+    send({type:'prepare',generation:1,contextId:'mvp',analysis:{}});
+    assert.equal(sessions[0].gpu,true);
+    send({type:'render',generation:1,serial:1,stamp,frame:{currentTime:2}});
+    assert.equal(replies.at(-1).raster,'gpu-material');assert.deepEqual(replies.at(-1).stamp,stamp);
+    send({type:'reset',generation:2,contextId:'different'});
+    send({type:'render',generation:1,serial:2,stamp:{...stamp,requestSerial:2},frame:{currentTime:2}});
+    assert.equal(replies.at(-1).type,'frame','wrong-context reset leaves generation untouched');
+    send({type:'render',generation:1,serial:3,stamp:{...stamp,requestSerial:3,songTime:3},frame:{currentTime:2}});
+    assert.equal(replies.at(-1).type,'failure');assert.equal(replies.at(-1).contextId,'mvp');
+    assert.equal(sessions[0].disposed,1);
+});
+
+test('GPU material session consumes carriers once, separates foreground, reuses targets and releases on loss/dispose',()=>{
+    const draws=[],gpus=[],surfaces=[],identities=[];
+    class Cpu {constructor(){this.canvas={width:1,height:1,transferToImageBitmap:()=>({cpu:true})};surfaces.push(this);}
+        setPreviewSize(w,h,d,c,t){this.width=w;this.height=h;this.canvas.width=Math.round(w*d);this.canvas.height=Math.round(h*d);this.compactMaterialPreview=c;}
+        background(){} }
+    class Legacy extends Cpu{}
+    class Gpu {constructor(){this.canvas={transferToImageBitmap:()=>({gpu:true})};this.calls=[];this.disposed=0;gpus.push(this);}
+        render(...args){this.calls.push(args);if(this.lost)throw Error('context lost');}dispose(){this.disposed++;}}
+    class Identity {constructor(s){this.state=s;identities.push(this);}setMaterialSink(s){this.sink=s;}setMusicDisplay(){}setMusicDisplayBackend(b){this.overlay=b;}
+        setDepthCue(v){this.depth=v;}syncPosition(t){this.position=t;}draw(b){draws.push({sink:this.sink,overlay:this.overlay,backend:b});this.sink?.begin(2,2,b.width,b.height,.5,.6,.4);}}
+    const l=createLoader({'./Canvas2DRendererBackend':{Canvas2DRendererBackend:Cpu},'./WebGLRendererBackend':{WebGLRendererBackend:Legacy},
+        './gpu/WormholeGpuRaster':{WormholeGpuRaster:Gpu},'./CosmicWormholeIdentity':{CosmicWormholeIdentity:Identity}},
+        {OffscreenCanvas:class{constructor(w,h){this.width=w;this.height=h;}}});
+    const Session=l('visuals/WormholeHostRenderSession.ts').WormholeHostRenderSession;
+    const s=new Session({frames:[],events:[],trackAnalysis:{features:[]}});
+    const f={width:640,height:360,density:.5,compact:false,transparent:true,frameCount:2,currentTime:3,
+        depthCue:.6,reset:true,musicDisplay:{mode:'spectrum',size:.5,opacity:1}};
+    assert.equal(s.render(f).raster,'gpu-material');assert.equal(draws.length,1);assert.ok(draws[0].sink);assert.ok(draws[0].overlay);
+    assert.equal(gpus[0].calls.at(-1)[2],null,'no CPU RGBA readback/allocation');
+    assert.equal(gpus[0].calls.at(-1)[4].count,0,'unqualified GPU lines stay off');
+    s.render({...f,reset:false,musicDisplay:undefined});assert.equal(gpus.length,1);assert.equal(draws.at(-1).overlay,null);
+    gpus[0].lost=true;assert.equal(s.render(f).raster,'canvas2d');assert.equal(gpus[0].disposed,1);
+    assert.equal(draws.at(-1).sink,null,'fallback cannot omit CPU material');assert.equal(draws.at(-1).overlay,null);
+    s.dispose();s.dispose();assert.equal(gpus[0].disposed,1);
+    for(const surface of surfaces)assert.equal(surface.canvas.width,1);
+    assert.throws(()=>s.render(f),/disposed/);
 });

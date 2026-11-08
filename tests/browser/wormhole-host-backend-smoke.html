@@ -5,6 +5,10 @@
 <button id="profile" disabled>Measure MVP render paths</button><pre id="profile-result">Performance not measured yet.</pre><div id="host"></div><pre id="result">Preparing…</pre>
 <script type="module">
 import p5 from 'p5';
+import HostWorker from '../../src/visuals/wormholeHostRender.worker.ts?worker';
+import { WormholeHostRenderSession } from '../../src/visuals/WormholeHostRenderSession.ts';
+import { Canvas2DRendererBackend } from '../../src/visuals/Canvas2DRendererBackend.ts';
+import { compareRgba } from '../../research/export/wormhole-quality.mjs';
 import { WormholeHostWorkerSource } from '../../src/visuals/WormholeHostWorkerSource.ts';
 import { WormholeFrameContext } from '../../src/visuals/WormholeFrameContext.ts';
 import { WormholeRasterPass } from '../../src/visuals/WormholeRasterPass.ts';
@@ -50,13 +54,54 @@ try{
  const workerContext=state(raw),workerReference=gfx(320,180,1),workerOutput=gfx(320,180,1);
  workerContext.identity.draw(new P5RendererBackend(workerReference,false),[],[]);
  const standaloneWorker=new WormholeHostWorkerSource(()=>{}),workerTarget=new P5RendererBackend(workerOutput,false);
- for(let i=0;i<120&&!standaloneWorker.rasterKind.startsWith('offscreen-webgl');i++){
+ for(let i=0;i<120&&!standaloneWorker.rasterKind.startsWith('offscreen-gpu-material');i++){
   standaloneWorker.draw(workerContext.state,workerTarget,0,false);await new Promise(requestAnimationFrame);
  }
  standaloneWorker.draw(workerContext.state,workerTarget,0,false);
  const workerCompare=compare(pixels(workerReference),pixels(workerOutput));
- rows.push({case:'resolved worker bitmap parity',raster:standaloneWorker.rasterKind,...workerCompare,pass:standaloneWorker.rasterKind==='offscreen-webgl'&&workerCompare.meanAbsoluteError<=.025&&workerCompare.changedFraction<=.08});
+ rows.push({case:'resolved worker bitmap parity',raster:standaloneWorker.rasterKind,...workerCompare,pass:standaloneWorker.rasterKind==='offscreen-gpu-material'&&workerCompare.meanAbsoluteError<=.025&&workerCompare.changedFraction<=.08});
  standaloneWorker.dispose();
+
+ // Actual production session against a separately rendered Canvas reference. Fixed gates from WH-01.
+ for(const [name,density,transparent,amount,display] of [
+  ['GPU material',1,false,.65,false],['GPU alpha',1,true,.65,false],
+  ['GPU high density',1.5,false,.65,false],['GPU material Off',1,false,0,false],
+  ['GPU foreground',1,false,.65,true],['GPU foreground alpha',1,true,.65,true],
+  ['GPU 1080 layout',.5,false,.65,false],['GPU 1080 layout alpha',.5,true,.65,true]]) {
+  const logicalWidth=name.includes('1080')?1920:320,logicalHeight=logicalWidth*9/16;
+  const c=state({...raw,wormholeWall:0,wormholeOpticsEnabled:0,wormholeNebulaAmount:amount,...(name.includes('1080')?{wormholeNebulaDetail:.8}:{})});
+  const signal={...c.state.currentFrame,e:.7,eRatio:.9,subEnergy:.6,bassEnergy:.5,subFlux:.3,bassFlux:.2,
+   perceptualSpectrum:Array.from({length:24},(_,i)=>.5+.2*Math.sin(i))};
+  Object.assign(c.state.currentFrame,signal);c.state.frames=Array.from({length:400},()=>signal);
+  const musicDisplay=display?{mode:'spectrum',size:.6,opacity:1}:undefined;
+  c.identity.setMusicDisplay(musicDisplay);c.identity.setDepthCue(.6);c.identity.syncPosition(3);
+  const createSurface=(w,h)=>new OffscreenCanvas(w,h);
+  const reference=new Canvas2DRendererBackend(logicalWidth,logicalHeight,createSurface);
+  reference.setPreviewSize(logicalWidth,logicalHeight,density,false,transparent);c.identity.draw(reference,[],[]);
+  const {frames,events,trackAnalysis,sampleRate,hopSize,bpm,...values}=c.state;
+  const session=new WormholeHostRenderSession({frames,events,trackAnalysis,sampleRate,hopSize,bpm});
+  const frame={...values,width:logicalWidth,height:logicalHeight,density,compact:false,depthCue:.6,transparent,
+   skybox:false,reset:true,frameCount:1,musicDisplay};
+  let cpuRasterCalls=0;const previousRaster=Canvas2DRendererBackend.prototype.beginFieldRaster;
+  Canvas2DRendererBackend.prototype.beginFieldRaster=function(...args){cpuRasterCalls++;return previousRaster.apply(this,args);};
+  let rendered;try{rendered=session.render(frame);}finally{Canvas2DRendererBackend.prototype.beginFieldRaster=previousRaster;}
+  const canvas=new OffscreenCanvas(reference.canvas.width,reference.canvas.height);
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(rendered.bitmap,0,0);rendered.bitmap.close();
+  const before=reference.canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+  const after=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+  const quality=compareRgba(new Uint8Array(before.buffer),new Uint8Array(after.buffer),canvas.width,canvas.height);
+  rows.push({case:name,density,raster:rendered.raster,cpuRasterCalls,quality,pass:rendered.raster==='gpu-material'&&cpuRasterCalls===0&&quality.pass});
+  if(name==='GPU foreground alpha'){
+   const extension=session.gpu.gl.getExtension('WEBGL_lose_context');
+   if(!extension)throw Error('Context loss probe unavailable');
+   extension.loseContext();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);
+   let fallbackCalls=0;Canvas2DRendererBackend.prototype.beginFieldRaster=function(...args){fallbackCalls++;return previousRaster.apply(this,args);};
+   let fallback;try{fallback=session.render({...frame,reset:false});}finally{Canvas2DRendererBackend.prototype.beginFieldRaster=previousRaster;}
+   rows.push({case:'GPU loss compatible worker material',raster:fallback.raster,cpuRasterCalls:fallbackCalls,pass:fallback.raster==='canvas2d'&&fallbackCalls>=3});
+   fallback.bitmap.close();
+  }
+  session.dispose();
+ }
  // One persistent GPU surface also survives a real size/density change.
  State.videoBackplateActive=false;
  const resized=gfx(400,225,1.25), resizeState=state(raw);
@@ -96,9 +141,9 @@ try{
   pass:liveBefore===liveAfter&&exported.elt.width===640&&pixels(exported).some(x=>x>0)});
  delete hostP.__plexusExportTarget;State.isExporting=false;
  State.isPlaying=true;State.visualMode='cosmic-wormhole';State.visualModeTransition=null;hostQuality.wormholeRenderer='offscreen';
- for(let i=0;i<120;i++){await hostP.redraw();await new Promise(requestAnimationFrame);if(hostP.canvas.dataset.wormholeRaster==='offscreen-webgl')break;}
+ for(let i=0;i<120;i++){await hostP.redraw();await new Promise(requestAnimationFrame);if(hostP.canvas.dataset.wormholeRaster==='offscreen-gpu-material')break;}
  await hostFrame('worker live + PostFX');
- rows.push({case:'worker actually active',raster:hostP.canvas.dataset.wormholeRaster,pass:hostP.canvas.dataset.wormholeRaster==='offscreen-webgl'});
+ rows.push({case:'worker actually active',raster:hostP.canvas.dataset.wormholeRaster,pass:hostP.canvas.dataset.wormholeRaster==='offscreen-gpu-material'});
  State.visualMode='classic';State.visualModeTransition={from:'cosmic-wormhole',to:'classic',startTimeSec:98,durationSec:2,generation:2};
  await hostFrame('worker live crossfade + PostFX');
  State.isExporting=true;State.exportTime=99;hostP.__plexusExportTarget=exported;
@@ -131,8 +176,8 @@ try{
      for(let i=0;i<8;i++){await new Promise(requestAnimationFrame);await hostP.redraw();}
      for(let wait=0;mode==='offscreen'&&hostP.canvas.dataset.wormholeRaster==='offscreen-pending'&&wait<120;wait++){await new Promise(requestAnimationFrame);await hostP.redraw();}
      const receivedBefore=profileSource?.framesReceived??0;
-     for(let i=0;i<20;i++){await new Promise(requestAnimationFrame);const start=performance.now();await hostP.redraw();buckets[index].push(performance.now()-start);}
-     observed[index]={raster:hostP.canvas.dataset.wormholeRaster,backing:[hostP.canvas.width,hostP.canvas.height]};if(mode==='offscreen'){Object.assign(observed[index],{workerFrames:profileSource.framesReceived-receivedBefore,lastWorkerRenderMs:profileSource.lastRenderMs});if(observed[index].workerFrames<1)throw Error('Worker did not progress');}
+     const sampleStarted=performance.now();for(let i=0;i<20||performance.now()-sampleStarted<1400;i++){await new Promise(requestAnimationFrame);const start=performance.now();await hostP.redraw();buckets[index].push(performance.now()-start);}
+     observed[index]={raster:hostP.canvas.dataset.wormholeRaster,backing:[hostP.canvas.width,hostP.canvas.height]};if(mode==='offscreen'){Object.assign(observed[index],{workerFrames:profileSource.framesReceived-receivedBefore,lastWorkerRenderMs:profileSource.lastRenderMs});if(observed[index].workerFrames<1)throw Error('Worker did not progress: '+JSON.stringify(observed[index]));}
      if(mode==='offscreen'?!observed[index].raster.startsWith('offscreen-'):observed[index].raster!==mode)throw Error('Requested raster not active: '+mode);
      output.textContent='Measuring '+(material?'material':'primitives')+' / '+mode+' / '+(reduced?'Reduced':'Auto')+'…';
     }
@@ -141,12 +186,47 @@ try{
    State.isPlaying=false;profileClockStart=null;let identityDraws=0,posts=0;
    const identity=registry.get('cosmic-wormhole'),draw=identity.draw,post=PostFxPipeline.prototype.render;
    identity.draw=function(...args){identityDraws++;return draw.apply(this,args);};PostFxPipeline.prototype.render=function(...args){posts++;return post.apply(this,args);};
-   try{for(let i=0;i<180;i++)await hostP.redraw();identityDraws=0;posts=0;for(let i=0;i<20;i++)await hostP.redraw();}
+   try{let previous=performance.now();const until=previous+1400;
+    while(performance.now()<until){await new Promise(requestAnimationFrame);const now=performance.now();hostP.deltaTime=now-previous;previous=now;await hostP.redraw();}
+    identityDraws=0;posts=0;for(let i=0;i<20;i++)await hostP.redraw();}
    finally{identity.draw=draw;PostFxPipeline.prototype.render=post;}
-   output.textContent=JSON.stringify({scope:'Desktop real PlexusRenderer CPU draw + submission wall time; includes final p5 copy. Not GPU completion, frame rate or Quest.',logicalSize:hostSize,rounds:'forward then reverse, 8 warmup +20 samples per variant per round',measurements,settledPaused:{samples:20,identityDraws,posts},activeRaster:hostP.canvas.dataset.wormholeRaster},null,2);
+   output.textContent=JSON.stringify({scope:'Desktop real PlexusRenderer CPU draw + submission wall time; includes final p5 copy. Not GPU completion, frame rate or Quest.',logicalSize:hostSize,rounds:'forward then reverse, 8 warmup, at least 20 samples and 1.4 seconds per variant per round',measurements,settledPaused:{samples:20,identityDraws,posts},activeRaster:hostP.canvas.dataset.wormholeRaster},null,2);
   }catch(error){output.textContent='FAIL: '+error.stack;console.error(error);}finally{State.isPlaying=false;button.disabled=false;}
  };
  publish();
 }catch(error){result.textContent='FAIL: '+error.stack;console.error(error);}
+// Matched old-worker/new-worker requests: same logical size, raster cap, resolved frame and history.
+window.runWh04WorkerBenchmark=async()=>{
+ const c=state({...raw,wormholeNebulaAmount:.65,wormholeNebulaDetail:.8,wormholeWall:0,wormholeOpticsEnabled:0});
+ const {frames,events,trackAnalysis,sampleRate,hopSize,bpm,...values}=c.state;
+ const analysis={frames,events,trackAnalysis,sampleRate,hopSize,bpm},workers=[new HostWorker(),new HostWorker()];
+ const send=(worker,message)=>new Promise((resolve,reject)=>{
+  const timer=setTimeout(()=>reject(Error('Worker measurement timed out')),15000);
+  worker.onmessage=({data})=>{clearTimeout(timer);data.type==='failure'?reject(Error(data.message)):resolve(data);};
+  worker.onerror=error=>{clearTimeout(timer);reject(error);};worker.postMessage(message);
+ });
+ const samples=[[],[]],reported=[[],[]];let comparison;
+ try{
+  await Promise.all(workers.map((w,i)=>send(w,{type:'prepare',generation:1,...(i?{contextId:'wh04-matched'}:{}),analysis})));
+  for(let n=0;n<12;n++){
+   const images=[];
+   for(const i of n%2?[1,0]:[0,1]){
+    const time=3+n/30,frame={...values,currentTime:time,width:1920,height:1080,density:.5,compact:false,depthCue:.6,
+     transparent:false,skybox:false,reset:n===0,frameCount:n+1};
+    const stamp={protocol:1,contextId:'wh04-matched',generation:1,requestSerial:n+1,presentationRevision:0,songTime:time,mode:'preview'};
+    const start=performance.now(),m=await send(workers[i],{type:'render',generation:1,serial:n+1,...(i?{stamp}:{}),frame});
+    const elapsed=performance.now()-start;
+    if(n>=4){samples[i].push(elapsed);reported[i].push(m.renderMs);}
+    if(i&&m.raster!=='gpu-material')throw Error('GPU path unavailable in matched benchmark');
+    if(n===11){const canvas=new OffscreenCanvas(960,540),ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(m.bitmap,0,0);images[i]=new Uint8Array(ctx.getImageData(0,0,960,540).data.buffer);}
+    m.bitmap.close();
+   }
+   if(n===11)comparison=compareRgba(images[0],images[1],960,540);
+  }
+  const summary=a=>{const b=[...a].sort((a,b)=>a-b);return {samples:a,p50:b[Math.floor(b.length*.5)],p95:b[Math.floor(b.length*.95)]};};
+  return {scope:'Matched worker request-to-bitmap-ack latency, same 1920x1080 logical / 960x540 raster; four warmups, eight measured AB/BA pairs.',
+   legacy:summary(samples[0]),gpu:summary(samples[1]),reportedRender:[summary(reported[0]),summary(reported[1])],comparison};
+ }finally{workers.forEach(w=>w.terminate());c.dispose();}
+};
 window.addEventListener('pagehide',()=>{pass?.dispose();hostP?.remove();fixtureP?.remove();contexts.forEach(c=>c.dispose());},{once:true});
 </script></html>

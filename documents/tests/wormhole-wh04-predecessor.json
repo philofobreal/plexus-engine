@@ -1,0 +1,19 @@
+{
+  "commit": "ed1bf89844253821b70950c033272091607ee528",
+  "retention": "Exact source and test predicates retained at immutable Git commit; no original case is removed.",
+  "files": {
+    "src/visuals/WormholeHostWorkerSource.ts": "3650a76ada09fa9cbf03053037794fab01f53b4b34e81c68667d8d8a638da01a",
+    "src/visuals/wormholeHostRender.worker.ts": "d258fbf3bc856f8cfcd07fdc5aeb3a96525a257a0a9c86343f3673f8e26ee369",
+    "src/visuals/gpu/WormholeGpuRaster.ts": "a5d13e7be7441a973aa1c3c54a56ca2a5cfe3f30ce959e356207f83e9537d381",
+    "src/visuals/CosmicWormholeIdentity.ts": "4632fb5547b2369c15add7b1b0c118ac905d0e8977184e09c919f5f183a1bb27",
+    "src/types/WormholeHostFrame.ts": "a393ea8cadcc9cd51ac48f67640d03eadbdc0106db90418591b59ff8a3910e25",
+    "src/ui/PreviewQualityControl.ts": "aa4f710573c93a7412e11c129df2fad456ea4d9ad57d77459e1b6371a741c328",
+    "tests/wormhole-host-worker.test.mjs": "b65485350325a09007e32ad967d1c4dd937fd9656bd6b4c1bcb4bc3a527a0839",
+    "tests/paused-renderer.test.mjs": "da525f888ce9cedde873c4ea2da13827b7dd0aac77ed0b6f779f4ca2750a05bb",
+    "tests/browser/wormhole-host-backend-smoke.html": "54976817260d2b1090d058d00fe97fb6f9185281f806ced4f2a0212bc09bc30f",
+    "tests/wormhole-music-display.test.mjs": "97dfbdc28c5a29ec47f81c29fb3a7f75d782697cbde05c853a85e379377f99d2",
+    "src/visuals/PlexusRenderer.ts": "26d391b74c1e8a6c38835cdb58e9a8f6d620e8fc7c83318bec0939fb9998291c",
+    "src/ui/mvp/main.ts": "a3b21fc04b8682c0061f38ae8a0c55ea11738d3f2f2c7ff574ad0f78f72c1e5d",
+    "tests/postfx-fragmentation.test.mjs": "987b435e68719f6777291ea6f610e6d99833f3111aacf434e94b3237fa191416"
+  }
+}

@@ -1,9 +1,11 @@
 import HostWorker from './wormholeHostRender.worker.ts?worker';
 import { projectRenderWorkerAnalysis } from '../types/CanvasVisualSource';
 import type { WormholeHostAnalysis, WormholeHostFrame, WormholeHostRequest, WormholeHostResponse, WormholeHostRasterSource, WormholeHostTarget } from '../types/WormholeHostFrame';
+import { assertWormholeRenderFrameStamp, sameWormholeRenderFrame, type WormholeRenderFrameStamp } from '../types/WormholeRenderFrame';
 import type { WormholeRenderState } from './CosmicWormholeIdentity';
 import { featureFlags } from '../config/featureFlags';
 import { borrowResolvedWormholeFrame } from './VisualFramePreparation';
+import { PausedPreviewGate } from './PausedPreviewGate';
 import { isDefaultMusicDisplay, type MusicDisplaySettings } from '../types/MusicDisplay';
 
 export interface HostWorkerPort {
@@ -13,73 +15,103 @@ export interface HostWorkerPort {
     postMessage(message: WormholeHostRequest): void;
     terminate(): void;
 }
-
-/** One worker, one in-flight request and one retained bitmap. Full analysis crosses once per load.
- * The main thread resolves controls/audio; ALL Wormhole geometry/material/raster work runs off-thread.
+let nextContext = 0;
+/** Preview broker: one flight, one latest desired snapshot, one retained image. Submission and
+ * worker construction run in a microtask outside p5 draw; draw only snapshots/presents synchronously.
  */
 export class WormholeHostWorkerSource implements WormholeHostRasterSource {
     private worker: HostWorkerPort | null = null;
     private analysis: WormholeHostAnalysis | null = null;
-    private generation = 0;
-    private serial = 0;
-    private ready = false;
-    private flight = 0;
+    private generation = 0; private serial = 0; private presentationRevision = 0;
+    private readonly contextId = 'host-preview-' + ++nextContext;
+    private ready = false; private flight: WormholeRenderFrameStamp | null = null;
+    private pending: WormholeHostFrame | null = null;
+    private control: 'prepare' | 'reset' | null = null;
+    private scheduled = false;
     private deadline: ReturnType<typeof setTimeout> | null = null;
     private bitmap: ImageBitmap | null = null;
-    private failed = false;
-    private disposed = false;
-    private needsReset = true;
-    private lastKey = '';
-    private lastTime = -Infinity;
-    private dimensions = '';
-    private sentTime = -Infinity;
+    private flightFrame: WormholeHostFrame | null = null;
+    private bitmapFrame: WormholeHostFrame | null = null;
+    get presentedFrame(): Readonly<WormholeHostFrame> | null { return this.bitmapFrame; }
+    private failed = false; private disposed = false; private needsReset = true;
+    private lastTime = -Infinity; private sentTime = -Infinity;
+    private readonly changed = new PausedPreviewGate();
+    private readonly presentation = new PausedPreviewGate();
+    private hasPresentation = false;
     private kind = 'offscreen-pending';
     get rasterKind(): string { return this.failed ? 'fallback' : this.kind; }
-    lastRenderMs = 0;
-    framesReceived = 0;
+    lastRenderMs = 0; framesReceived = 0;
     private readonly invalidate: () => void;
     private readonly createWorker: () => HostWorkerPort;
-    constructor(invalidate: () => void, createWorker: () => HostWorkerPort = () => new HostWorker()) {
-        this.invalidate = invalidate; this.createWorker = createWorker;
+    private readonly schedule: (task: () => void) => void;
+    constructor(invalidate: () => void, createWorker: () => HostWorkerPort = () => new HostWorker(),
+        schedule: (task: () => void) => void = task => queueMicrotask(task)) {
+        this.invalidate = invalidate; this.createWorker = createWorker; this.schedule = schedule;
     }
-
-    private armDeadline(): void {
-        this.clearDeadline();
-        this.deadline = setTimeout(() => this.fail(), 15000);
-    }
+    private armDeadline(): void { this.clearDeadline(); this.deadline = setTimeout(() => this.fail(), 15000); }
     private clearDeadline(): void { if (this.deadline !== null) clearTimeout(this.deadline); this.deadline = null; }
-    private closeImage(): void { this.bitmap?.close(); this.bitmap = null; }
+    private closeImage(): void { this.bitmap?.close(); this.bitmap = null; this.bitmapFrame = null; }
     private fail(): void {
-        this.failed = true; this.ready = false; this.clearDeadline(); this.closeImage();
-        this.worker?.terminate(); this.worker = null; this.invalidate();
+        if (this.failed || this.disposed) return;
+        this.failed = true; this.ready = false; this.pending = null; this.flight = null; this.flightFrame = null;
+        this.clearDeadline(); this.closeImage(); this.worker?.terminate(); this.worker = null; this.invalidate();
     }
     reset(): void {
         if (this.disposed || this.failed) return;
-        this.generation++; this.ready = false; this.flight = 0; this.needsReset = true;
-        this.lastKey = ''; this.lastTime = -Infinity; this.closeImage();
-        if (this.worker) try {
-            this.armDeadline(); this.worker.postMessage({ type: 'reset', generation: this.generation });
-        } catch { this.fail(); }
-        this.invalidate();
+        this.generation++; this.ready = false; this.flight = null; this.flightFrame = null; this.pending = null; this.needsReset = true;
+        this.changed.invalidate(); this.lastTime = this.sentTime = -Infinity; this.closeImage();
+        if (this.control !== 'prepare') this.control = 'reset';
+        this.enqueue(); this.invalidate();
     }
-    private start(analysis: WormholeHostAnalysis): void {
-        this.worker ??= this.createWorker();
-        const worker = this.worker;
-        worker.onerror = worker.onmessageerror = () => this.fail();
+    private enqueue(): void {
+        if (this.scheduled || this.disposed || this.failed) return;
+        this.scheduled = true;
+        this.schedule(() => { this.scheduled = false; if (!this.disposed && !this.failed) try { this.pump(); } catch { this.fail(); } });
+    }
+    private connect(): void {
+        const worker = this.createWorker(); this.worker = worker;
+        worker.onerror = worker.onmessageerror = () => { if (worker === this.worker) this.fail(); };
         worker.onmessage = event => {
-            const message = event.data;
-            if (this.disposed || this.failed || worker !== this.worker) { if (message.type === 'frame') message.bitmap.close(); return; }
-            if (message.type === 'failure') { this.fail(); return; }
-            if (message.generation !== this.generation) { if (message.type === 'frame') message.bitmap.close(); return; }
-            if (message.type === 'ready') { this.clearDeadline(); this.ready = true; this.invalidate(); return; }
-            if (message.serial !== this.flight) { message.bitmap.close(); return; }
-            this.clearDeadline(); this.flight = 0; this.closeImage(); this.bitmap = message.bitmap;
-            this.framesReceived++; this.kind = 'offscreen-' + message.raster; this.lastRenderMs = message.renderMs; this.invalidate();
+            const m = event.data;
+            if (this.disposed || this.failed || worker !== this.worker || ('generation' in m && m.generation !== this.generation)
+                || ('contextId' in m && m.contextId !== this.contextId)) { if (m.type === 'frame') m.bitmap.close(); return; }
+            if (m.type === 'failure') { this.fail(); return; }
+            if (m.type === 'ready') {
+                if (m.contextId !== this.contextId) { this.fail(); return; }
+                this.clearDeadline(); this.ready = true; this.enqueue(); this.invalidate(); return;
+            }
+            try { assertWormholeRenderFrameStamp(m.stamp); }
+            catch { m.bitmap.close(); return; }
+            if (!this.flight || m.serial !== this.flight.requestSerial || !sameWormholeRenderFrame(m.stamp, this.flight)) { m.bitmap.close(); return; }
+            const expected = this.flightFrame!;
+            if (m.bitmap.width !== Math.max(1,Math.round(expected.width*expected.density))
+                || m.bitmap.height !== Math.max(1,Math.round(expected.height*expected.density))
+                || !['gpu-material','webgl','canvas2d'].includes(m.raster) || !Number.isFinite(m.renderMs) || m.renderMs < 0) {
+                m.bitmap.close(); this.fail(); return;
+            }
+            this.clearDeadline(); this.flight = null; this.closeImage(); this.bitmap = m.bitmap;
+            this.bitmapFrame = this.flightFrame; this.flightFrame = null;
+            this.framesReceived++; this.kind = 'offscreen-' + m.raster; this.lastRenderMs = m.renderMs;
+            this.enqueue(); this.invalidate();
         };
-        this.generation++; this.ready = false; this.flight = 0; this.needsReset = true;
-        this.closeImage(); this.lastKey = ''; this.lastTime = -Infinity;
-        this.analysis = analysis; this.armDeadline();
-        worker.postMessage({ type: 'prepare', generation: this.generation, analysis: projectRenderWorkerAnalysis(analysis) });
+    }
+    private pump(): void {
+        if (!this.analysis) return;
+        if (!this.worker) { this.connect(); this.control = 'prepare'; }
+        if (this.control) {
+            const control = this.control; this.control = null; this.ready = false; this.armDeadline();
+            if (control === 'prepare') this.worker!.postMessage({ type: 'prepare', generation: this.generation,
+                contextId: this.contextId, analysis: projectRenderWorkerAnalysis(this.analysis) });
+            else this.worker!.postMessage({ type: 'reset', generation: this.generation, contextId: this.contextId });
+            return;
+        }
+        if (!this.ready || this.flight || !this.pending) return;
+        const frame = this.pending; this.pending = null;
+        frame.reset = this.needsReset; this.needsReset = false;
+        const stamp: WormholeRenderFrameStamp = { protocol: 1, contextId: this.contextId, generation: this.generation,
+            requestSerial: ++this.serial, presentationRevision: this.presentationRevision, songTime: frame.currentTime, mode: 'preview' };
+        this.flight = stamp; this.flightFrame = frame; this.sentTime = frame.currentTime; this.armDeadline();
+        this.worker!.postMessage({ type: 'render', generation: this.generation, serial: stamp.requestSerial, stamp, frame });
     }
     draw(state: WormholeRenderState, target: WormholeHostTarget, depthCue: number, transparent: boolean, playing = false, musicDisplay?: MusicDisplaySettings): boolean {
         if (this.failed || this.disposed) return false;
@@ -87,41 +119,58 @@ export class WormholeHostWorkerSource implements WormholeHostRasterSource {
             const a = this.analysis;
             if (!a || a.frames !== state.frames || a.events !== state.events || a.trackAnalysis !== state.trackAnalysis
                 || a.sampleRate !== state.sampleRate || a.hopSize !== state.hopSize || a.bpm !== state.bpm) {
-                this.start({ frames: state.frames, events: state.events, trackAnalysis: state.trackAnalysis,
-                    sampleRate: state.sampleRate, hopSize: state.hopSize, bpm: state.bpm });
+                this.analysis = { frames: state.frames, events: state.events, trackAnalysis: state.trackAnalysis,
+                    sampleRate: state.sampleRate, hopSize: state.hopSize, bpm: state.bpm };
+                this.control = 'prepare'; this.reset();
             }
-            const dimensions = `${target.width}/${target.height}/${target.rasterPixelRatio}/${target.compactMaterialPreview}/${transparent}`;
-            if (this.dimensions && dimensions !== this.dimensions) this.reset();
-            this.dimensions = dimensions;
+            this.presentation.begin();
+            for (const value of [target.width,target.height,target.rasterPixelRatio,target.compactMaterialPreview,transparent,depthCue,
+                featureFlags.wormholeSkybox,musicDisplay?.mode,musicDisplay?.size,musicDisplay?.opacity]) this.presentation.watch(value);
+            if (this.presentation.shouldDraw()) {
+                this.presentationRevision++;
+                if (this.hasPresentation) this.reset();
+                this.hasPresentation = true;
+            }
             if (state.currentTime < this.lastTime) this.reset();
             this.lastTime = state.currentTime;
+            if (!Number.isFinite(state.currentTime) || state.currentTime < 0) return true;
             const resolved = borrowResolvedWormholeFrame(state).values;
             const frame: WormholeHostFrame = {
                 ...(musicDisplay&&!isDefaultMusicDisplay(musicDisplay)?{musicDisplay}:{}),
                 width: target.width, height: target.height,
                 density: Math.min(target.rasterPixelRatio, (target.compactMaterialPreview ? 640 : 960) / Math.max(target.width, target.height)),
                 compact: target.compactMaterialPreview, depthCue, transparent, skybox: featureFlags.wormholeSkybox,
-                frameCount: 0, reset: false, currentTime: resolved.currentTime, isExporting: false, exportTime: 0,
+                frameCount: target.frameCount, reset: false, currentTime: resolved.currentTime, isExporting: false, exportTime: 0,
                 visualTuning: resolved.visualTuning, targetTuning: resolved.targetTuning, currentFrame: resolved.currentFrame,
                 currentFeatures: resolved.currentFeatures, modulation: resolved.modulation, beatDecay: resolved.beatDecay,
                 denseImpactFlash: resolved.denseImpactFlash, directorOutput: resolved.directorOutput,
-                activeVisualTransitionId: resolved.activeVisualTransitionId, spiralTransitionAnchor: resolved.spiralTransitionAnchor,
-                playbackFade: resolved.playbackFade
+                activeVisualTransitionId: resolved.activeVisualTransitionId, spiralTransitionAnchor: resolved.spiralTransitionAnchor, playbackFade: resolved.playbackFade
             };
-            const key = JSON.stringify(frame);
-            if (this.ready && !this.flight && key !== this.lastKey && (!playing || this.needsReset || state.currentTime - this.sentTime >= 1 / 30 - .001)) {
-                this.sentTime = state.currentTime; frame.frameCount = target.frameCount; frame.reset = this.needsReset;
-                this.needsReset = false; this.lastKey = key; this.flight = ++this.serial;
-                this.armDeadline(); this.worker!.postMessage({ type: 'render', generation: this.generation, serial: this.flight, frame });
+            // Compare bounded scalar values, not JSON strings or immutable full analysis.
+            this.changed.begin();
+            const watch = (record: object): void => { for (const key in record) {
+                if (key === 'frameCount') continue;
+                const value = (record as Record<string, unknown>)[key]; this.changed.watch(key);
+                if (value && typeof value === 'object') watch(value); else this.changed.watch(value);
+            } };
+            watch(frame);
+            if (this.changed.shouldDraw() && (!playing || this.needsReset || frame.currentTime - this.sentTime >= 1 / 30 - .001)) {
+                // Copy borrowed live values now: the deferred broker must never observe a later draw.
+                this.pending = { ...frame, visualTuning: { ...frame.visualTuning }, targetTuning: { ...frame.targetTuning },
+                    currentFrame: { ...frame.currentFrame, perceptualSpectrum: [...frame.currentFrame.perceptualSpectrum] },
+                    currentFeatures: { ...frame.currentFeatures }, modulation: { ...frame.modulation }, directorOutput: { ...frame.directorOutput },
+                    spiralTransitionAnchor: frame.spiralTransitionAnchor ? { ...frame.spiralTransitionAnchor } : null,
+                    ...(frame.musicDisplay ? { musicDisplay: { ...frame.musicDisplay } } : {}) };
+                this.enqueue();
             }
-            if (this.bitmap) target.presentRaster(this.bitmap);
-            else target.background(0, 0, 0);
+            if (this.failed) return false;
+            if (this.bitmap) target.presentRaster(this.bitmap); else target.background(0, 0, 0);
             return true;
         } catch { this.fail(); return false; }
     }
     dispose(): void {
         if (this.disposed) return;
-        this.disposed = true; this.clearDeadline(); this.closeImage();
+        this.disposed = true; this.pending = null; this.flight = null; this.flightFrame = null; this.clearDeadline(); this.closeImage();
         this.worker?.terminate(); this.worker = null; this.analysis = null;
     }
 }

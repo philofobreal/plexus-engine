@@ -59,14 +59,17 @@ export function createPreviewQualityControl(automaticCompact: boolean, offscreen
     });
     rendererLabel.append(rendererSelect);
     const rendererHint = document.createElement('p');
-    rendererHint.textContent = offscreenAvailable
-        ? 'Offscreen worker moves Wormhole drawing and material off the main thread. Preview: up to 30 fps / 960 px (Reduced: 640 px). Export keeps its full-quality synchronous renderer. Unsupported workers fall back to Compatible. Saved on this device, independently of presets.'
+    let activeRenderer: string | null = null;
+    const defaultRendererHint = offscreenAvailable
+        ? 'Offscreen worker uses GPU material, weave and bloom when supported; reference lines stay in the worker. Preview: up to 30 fps / 960 px (Reduced: 640 px). Export keeps its full-quality synchronous renderer. Unavailable GPU material falls back inside the worker; unavailable workers fall back to Compatible. Saved on this device, independently of presets.'
         : 'Experimental GPU drawing for Wormhole preview and export. Falls back to compatible drawing if unavailable. This device setting is independent of presets.';
+    rendererHint.textContent = defaultRendererHint;
     const copy = document.createElement('button'); copy.type = 'button'; copy.textContent = 'Copy preview settings';
     copy.addEventListener('click', async () => {
         try {
             const payload = JSON.stringify({ version: 1, previewQuality: preference.mode,
                 wormholeRenderer: preference.wormholeRenderer,
+                ...(activeRenderer ? { activeWormholeRenderer: activeRenderer } : {}),
                 ...(onAnalysisBackendChange ? { analyzerBackend } : {}),
                 ...(!isDefaultMusicDisplay(currentDisplay())?{musicDisplay:currentDisplay()}:{}) }, null, 2);
             // Keep the synchronous user gesture on browsers with restricted async clipboard access.
@@ -116,7 +119,13 @@ export function createPreviewQualityControl(automaticCompact: boolean, offscreen
         label.append(select); root.append(label, analysisHint);
     }
     root.append(copy);
-    return { root, preference, showAnalysisBackend(info: AnalysisBackendInfo | null) {
+    return { root, preference, showWormholeRenderer(kind: string) {
+        activeRenderer = kind;
+        const label = kind === 'offscreen-gpu-material' ? 'GPU material in worker'
+            : kind.startsWith('offscreen-') && kind !== 'offscreen-pending' ? 'Compatible material in worker'
+            : kind === 'offscreen-pending' ? 'Preparing worker' : kind === 'fallback' ? 'Compatible fallback' : kind;
+        rendererHint.textContent = defaultRendererHint + ' Active: ' + label + '.';
+    }, showAnalysisBackend(info: AnalysisBackendInfo | null) {
         analysisHint.textContent = info ? `Last analysis: ${info.used === 'wasm' ? 'WebAssembly FFT' : 'TypeScript'}${info.fallback ? ` (${info.fallback})` : ''}. ${defaultAnalysisHint}` : defaultAnalysisHint;
     }, setMode(mode: 'auto' | 'reduced') {
         preference.setMode(mode);

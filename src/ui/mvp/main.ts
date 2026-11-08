@@ -42,7 +42,8 @@ semanticBridge.setSemanticAdapter(semanticAdapter);
 startPlexusRenderer(MVP_CANVAS_CONTAINER_ID, ui, engine, styleRegistry, semanticBridge, {
     getPreviewSize: () => ui.getPreviewSize(),
     previewQuality: previewQuality.preference,
-    createWormholeWorker: invalidate => new WormholeHostWorkerSource(invalidate)
+    createWormholeWorker: invalidate => new WormholeHostWorkerSource(invalidate),
+    onWormholeRasterChange: previewQuality.showWormholeRenderer
 });
 
 const minDelayPromise = new Promise<void>((resolve) => {

@@ -1,3 +1,4 @@
+import type { WormholeRenderFrameStamp } from './WormholeRenderFrame';
 import type { AudioFrame, BeatEvent, TrackAnalysis, VisualTuningConfig, VisualFeatureFrame, ModulationState, DirectorOutput, VisualTransitionAnchor } from './index';
 
 /** Explicit per-host identity inputs, independent of the mutable application store. */
@@ -34,15 +35,17 @@ export type WormholeHostFrame = Omit<WormholeRenderState, keyof WormholeHostAnal
     transparent: boolean; skybox: boolean; frameCount: number; reset: boolean;
 };
 export type WormholeHostRequest =
-    | { type: 'prepare'; generation: number; analysis: WormholeHostAnalysis }
-    | { type: 'reset'; generation: number }
-    | { type: 'render'; generation: number; serial: number; frame: WormholeHostFrame };
+    | { type: 'prepare'; generation: number; contextId?: string; analysis: WormholeHostAnalysis }
+    | { type: 'reset'; generation: number; contextId?: string }
+    | { type: 'render'; generation: number; serial: number; stamp?: WormholeRenderFrameStamp; frame: WormholeHostFrame };
 export type WormholeHostResponse =
-    | { type: 'ready'; generation: number }
-    | { type: 'frame'; generation: number; serial: number; bitmap: ImageBitmap; raster: 'webgl' | 'canvas2d'; renderMs: number }
-    | { type: 'failure'; message: string };
+    | { type: 'ready'; generation: number; contextId?: string }
+    | { type: 'frame'; generation: number; serial: number; stamp?: WormholeRenderFrameStamp; bitmap: ImageBitmap; raster: 'webgl' | 'canvas2d' | 'gpu-material'; renderMs: number }
+    | { type: 'failure'; generation?: number; contextId?: string; message: string };
 export interface WormholeHostRasterSource {
     readonly rasterKind: string;
+    /** Private immutable snapshot belonging to the currently retained image; never live State. */
+    readonly presentedFrame?: Readonly<WormholeHostFrame> | null;
     draw(state: WormholeRenderState, target: WormholeHostTarget, depthCue: number, transparent: boolean, playing?: boolean,
         musicDisplay?: import('./MusicDisplay').MusicDisplaySettings): boolean;
     reset(): void;

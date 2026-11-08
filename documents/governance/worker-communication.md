@@ -30,6 +30,20 @@ and returned companion ownership remain unchanged. Repeat requests must reconstr
 a fresh surface after bitmap consumption. Other fps retain the rewind oracle; a
 preview rate cap cannot govern exact requests. This adds no wire schema.
 
+WH-04 activates the common preview stamp in negotiated MVP host-worker requests.
+Prepare/ready bind a contextId; render/image echo protocol-1 stamp, generation,
+serial, presentation revision and song time. The receiver validates all identities,
+image dimensions, raster label and finite duration before ownership acceptance.
+Unknown/mismatched frames close; stale scoped failures do not poison a new load.
+Optional fields retain the unnegotiated v1 CPU research reference, but the MVP
+producer requires the negotiated ready and stamped images. The adapter projects
+analysis once per publication/generation outside draw. It must copy borrowed live
+values before deferred submission; never queue a ResolvedWormholeFrameView itself.
+One active request, one latest desired snapshot and one retained bitmap are bounded;
+all dispose/failure/resize/seek paths clear or invalidate their owned resources.
+The [WH-04 session](../audits/wormhole-wh04-mvp-gpu-session.md) adds no analysis
+schema or audio lifecycle change.
+
 T16 informational spectrum: the resolved MVP host-frame request may carry optional normalized
 `musicDisplay` preferences (mode/size/opacity). Default Off omits the field and preserves the old
 packet shape; omission resets a previously enabled worker display. Analysis/spectrum frames still

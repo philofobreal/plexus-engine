@@ -19,6 +19,19 @@ adapter imports the leaf without importing Three/XR. WH-02's laboratory is a sep
 Vite entry, not a live host/export backend. Original XR shader bodies stay unchanged;
 strict 2D bloom/coverage profiles are separate constants, not an XR default change.
 
+WH-04 promotes the qualified material kernel to MVP preview through
+WormholeHostRenderSession. The session owns one identity and its Canvas base,
+optional spectrum foreground and GPU targets; it consumes resolved inputs without
+State, audio, UI, a second director or gain/preset resolution. Reference Canvas
+lines remain in the worker. The broker clones borrowed frame values before
+deferred microtask submission; worker construction/projection/posting do not run
+inside p5 draw. One flight/latest desired/image and explicit generation/size
+invalidation bound work. PostFX uses the retained image's tuning/signals/time via
+existing injected readers. GPU failure disposes targets and renders complete
+compatible material; worker failure uses the existing main fallback. Dashboard/
+multi-identity composition is WH-05, product GPU export WH-06.
+See [WH-04](../audits/wormhole-wh04-mvp-gpu-session.md).
+
 WH-03b normalizes musical transient envelopes in the shared, data-only
 transientDecay.ts sampler: actual event age, immutable publication indexes,
 overlapping cue peaks and logarithmic seeks. Hosts retain cursor/shockwave ownership.
