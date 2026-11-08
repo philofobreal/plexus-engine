@@ -1,7 +1,7 @@
 {
-  "id": "wh03b-canonical-time-20261107T154049094Z",
-  "previousCommit": "31d18273e3844eb85bc28cb16c3a3188d59b9c51",
-  "sourceCommit": "ed1bf89844253821b70950c033272091607ee528",
+  "id": "wh04-mvp-gpu-session-20261108T013025025Z",
+  "previousCommit": "9be987d2f4a74433c29b6cafcd8d12d61e873b37",
+  "sourceCommit": "66bbf0f0d8da06ecfc24ed03f8fb617d2f30b676",
   "inputs": [
     {
       "path": "bun.lock",
@@ -989,7 +989,7 @@
     },
     {
       "path": "src/types/WormholeHostFrame.ts",
-      "sha256": "a393ea8cadcc9cd51ac48f67640d03eadbdc0106db90418591b59ff8a3910e25"
+      "sha256": "2600f32bac24923898c0a89a089434b3247e5da3469984febd8afa2c1be1111a"
     },
     {
       "path": "src/types/WormholeNativeFrame.ts",
@@ -1101,7 +1101,7 @@
     },
     {
       "path": "src/ui/PreviewQualityControl.ts",
-      "sha256": "aa4f710573c93a7412e11c129df2fad456ea4d9ad57d77459e1b6371a741c328"
+      "sha256": "cdd78b7dc26084436bad857b8a92112154730ad7c8bcce9e1a901bf2f9a9a201"
     },
     {
       "path": "src/ui/TimelineCanvas.ts",
@@ -1213,7 +1213,7 @@
     },
     {
       "path": "src/ui/mvp/main.ts",
-      "sha256": "a3b21fc04b8682c0061f38ae8a0c55ea11738d3f2f2c7ff574ad0f78f72c1e5d"
+      "sha256": "1e7ee33c76af6441786dbcb950db0207d87f90c14c5495322ced60737488671e"
     },
     {
       "path": "src/ui/mvp/metaTuningStorage.ts",
@@ -1269,7 +1269,7 @@
     },
     {
       "path": "src/visuals/CosmicWormholeIdentity.ts",
-      "sha256": "4632fb5547b2369c15add7b1b0c118ac905d0e8977184e09c919f5f183a1bb27"
+      "sha256": "92de8b351aed7bc035103374257f4a5e1e5c1f6f660004aaa1141f278abf77d9"
     },
     {
       "path": "src/visuals/CyberpunkIdentity.ts",
@@ -1321,7 +1321,7 @@
     },
     {
       "path": "src/visuals/PlexusRenderer.ts",
-      "sha256": "26d391b74c1e8a6c38835cdb58e9a8f6d620e8fc7c83318bec0939fb9998291c"
+      "sha256": "da7f978629d497b17c53727bc1ca5a6b7c549496c114a91481fd07118a3e26df"
     },
     {
       "path": "src/visuals/PostFxPipeline.ts",
@@ -1424,8 +1424,12 @@
       "sha256": "f2d934fa108b91a5c84f29ded1fc4d4bfc8c37b75505109e28ca8f464d037e2c"
     },
     {
+      "path": "src/visuals/WormholeHostRenderSession.ts",
+      "sha256": "45f68fb2e7fffd5e811e63803463329450a48ee0b52ea1691f8c7ddf7f6999e7"
+    },
+    {
       "path": "src/visuals/WormholeHostWorkerSource.ts",
-      "sha256": "3650a76ada09fa9cbf03053037794fab01f53b4b34e81c68667d8d8a638da01a"
+      "sha256": "8852ab67a5313509999d29086cfda49582265b8b81bf2881b0cc7e7fdf2fa329"
     },
     {
       "path": "src/visuals/WormholeLensWarp.ts",
@@ -1489,7 +1493,7 @@
     },
     {
       "path": "src/visuals/gpu/WormholeGpuRaster.ts",
-      "sha256": "a5d13e7be7441a973aa1c3c54a56ca2a5cfe3f30ce959e356207f83e9537d381"
+      "sha256": "936efc7451a32fc464c2295f4d9e4281dd09be268dcb6507134670f93847ad1f"
     },
     {
       "path": "src/visuals/gpu/WormholeGpuShaders.ts",
@@ -1509,7 +1513,7 @@
     },
     {
       "path": "src/visuals/wormholeHostRender.worker.ts",
-      "sha256": "d258fbf3bc856f8cfcd07fdc5aeb3a96525a257a0a9c86343f3673f8e26ee369"
+      "sha256": "6f1224c4687025e3e5955d1a6111f3e6625f4a9507078ec673908b014ab629b5"
     },
     {
       "path": "src/visuals/wormholeNative.worker.ts",
@@ -1766,16 +1770,16 @@
       "sha256": "6589a9a8131f90d59d75489a6fb13db7c977b096524418fd11557c433eea45dc"
     },
     {
-      "path": "assets/Canvas2DRendererBackend-BZSeOwmR.js",
-      "sha256": "e0dee312f6e27e9d9598b88ae934012e6c0c8396ca43625c4ebdc1846871df6b"
+      "path": "assets/Canvas2DRendererBackend-2eaCcCeX.js",
+      "sha256": "c6c12fbed6f3f3e83ba181cc79beee40a4569692a5abe0f09f391809d96790ef"
     },
     {
       "path": "assets/CanvasVisualSource-BXDClNk7.js",
       "sha256": "d1571a8d2b104004ab82556a0be9929d10b1783cd77a085d4275ea60f8ebd774"
     },
     {
-      "path": "assets/CosmicWormholeIdentity-BDNSQXuH.js",
-      "sha256": "fa273cc0871a2d8fa5591fea1cb9f97baf66597941c411f7ae4036d8dfbff481"
+      "path": "assets/CosmicWormholeIdentity-BmS0kRXb.js",
+      "sha256": "f974da1de790f107549f55e442cec9fbb6aaea7e70bf0e82bafbe62894e4ea02"
     },
     {
       "path": "assets/export.worker-D1TpZcqW.js",
@@ -1786,12 +1790,12 @@
       "sha256": "5fe5fb080b24f0c7fbbb305ced4b3d836d37351843709ad220ca72f8c8554a5c"
     },
     {
-      "path": "assets/main-1oq90qss.js",
-      "sha256": "b67dda3341777e53443905d7f57baad8396445ed9697ad7c7a8222198836fc3e"
-    },
-    {
       "path": "assets/main-C7BsYBKL.css",
       "sha256": "a1b2f9efa2ba199b64addcbe1e0fe4db957bd64cfd7b733383707f28de764c6c"
+    },
+    {
+      "path": "assets/main-DWO500dP.js",
+      "sha256": "5815f17f85faf961b8ddf443f2b0b88ddb0c91f788f2bc1dd53f5025fa9c222f"
     },
     {
       "path": "assets/mp4-export.worker-3urq0Zyt.js",
@@ -1802,8 +1806,8 @@
       "sha256": "0ef084e58ac422aeabfd987577c6e9a31ddaa6f1f968e854668b340e6d9462d4"
     },
     {
-      "path": "assets/mvp-Du4E-Nbe.js",
-      "sha256": "23b96f1cbfe7b59afba8044e38ef261fe8613874dc3cf6d89a55b59b8d8da77a"
+      "path": "assets/mvp-cu_rbmie.js",
+      "sha256": "a87a086191b138769e9f24181e9986b79ec27c629cd3ff41a5fa478632e18e19"
     },
     {
       "path": "assets/mvp-sPSHbSJ7.css",
@@ -1814,44 +1818,48 @@
       "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
     },
     {
-      "path": "assets/PreviewQualityControl-O0vJdsBK.js",
-      "sha256": "8cc0671a55c1d03325ac49c628e8ca68ec9efdf2e1b6f958039b0364dd222da2"
+      "path": "assets/PreviewQualityControl-DTyUN9Dd.js",
+      "sha256": "a143d6664049e3090f6a67164c3eec3e2d5319b78c88c3b8c04d3a2284788b18"
     },
     {
-      "path": "assets/resolveMetaTuning-DgmWz6xE.js",
-      "sha256": "40565fe017c40117d971536ef9efe754e5cdfdf49a22d1ecf8bba258413ea417"
+      "path": "assets/WebGLRendererBackend-B78YX7cs.js",
+      "sha256": "4b0d8d1be9b815b05b4a28a4c0d19cfa58cf9f204a8b702fed212c8d7c0f94eb"
     },
     {
-      "path": "assets/WebGLRendererBackend-DsqRjOW1.js",
-      "sha256": "f579b1d4bc278dbf735028091e060699a77be5275dafd07051125441a75b2558"
+      "path": "assets/wormhole-gpu.worker-BBljtBR_.js",
+      "sha256": "a473e123d22bb9e9879746f9b6e88c568d8f01c87d6a3bb903a8e0aadc527161"
     },
     {
-      "path": "assets/wormhole-gpu.worker-s-_d-r9m.js",
-      "sha256": "871e63e7469a24954d19e3b1782c8b69e41c7049f7806d0bfadae54626eaf283"
+      "path": "assets/WormholeExactFrame-Cgqvtp2Y.js",
+      "sha256": "5dc3bf8ff43872e145dca0e5c879736d4c5c3cf197aeaca89641dcee45ea7b53"
     },
     {
-      "path": "assets/wormholeGpuLab-D81K_ZTa.js",
-      "sha256": "c7183aaad1b5e72eaea71a6721d6109f2c483de8e7f77e6ffe59da512f298562"
+      "path": "assets/wormholeGpuLab-Zf3ZgZuo.js",
+      "sha256": "a45208c10ccb718769d02802715bbdf03cf6350957fff6e21b8b2f6a67d17f7a"
     },
     {
-      "path": "assets/wormholeHostRender.worker-CMeqVNwq.js",
-      "sha256": "282e109b1964b914988f086f62e3a6303d5fb39fedef3b2ef3aa96bc69eabf2f"
+      "path": "assets/wormholeHostRender.worker-YhAw5gw7.js",
+      "sha256": "df045f26a32f785f89b615dab0c4d5d50590668926b6ac7304806115406251ee"
     },
     {
-      "path": "assets/wormholeNative.worker-C5GOWg3H.js",
-      "sha256": "2a4282aaa0ba6bccb5aca66a88d245fccbb7018670a5d9901034c997227ad19b"
+      "path": "assets/wormholeNative.worker-B9V_AqCU.js",
+      "sha256": "bd235794b4f767fe3011fa6d97f26536e847a87f65470ce2a2e979ff05a10f62"
     },
     {
-      "path": "assets/wormholeRender.worker-DNoWQEsz.js",
-      "sha256": "261274b6d8dee91edc4039fad5760878d6edf0733bc69ec1135263584552a245"
+      "path": "assets/wormholeRender.worker-DGR_YR-7.js",
+      "sha256": "685dea6c85dea705237ef8314694f3cff1cd70821b465ad2489c43b08420f0eb"
+    },
+    {
+      "path": "assets/WormholeRenderFrame-DoKn2SKx.js",
+      "sha256": "3abf8215f2b55ef35fd6348e591a5a3e83fa2c26243c172cb38e906e12e530c6"
     },
     {
       "path": "assets/xr-Bb_odg6M.css",
       "sha256": "e3bd00a1bee28d11285da166f19fc3f9ae0c501f9f3e08e067e13154a222ab58"
     },
     {
-      "path": "assets/xr-q1WHumnW.js",
-      "sha256": "187c9cbc49799696bd46528912d88c62b70d25f17735247b7c1e815135e09ec1"
+      "path": "assets/xr-ZEij1GXI.js",
+      "sha256": "2b9174faefb273cc270abda207238b83ee4f493e2053690336b4733df680dd44"
     },
     {
       "path": "eso0932a.jpg",
@@ -1903,15 +1911,15 @@
     },
     {
       "path": "index.html",
-      "sha256": "a2adc4b5ab471347a802ada652729c212c5b6f73509dfe59881c078c928bc0f0"
+      "sha256": "22681a72bac09739e85e4b035213888313e2fbbde30c10abd134bfdfc7d1a0db"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "943012154c2dcca24bdbc5f2b1b16f53339c838cec3274b9c1b4b8c0bfc63c2a"
+      "sha256": "060b4d3bc9e19703e64fdcbf419a2890491f18acb99fd65890ba498db3175a6f"
     },
     {
       "path": "research/export/wormhole-gpu.html",
-      "sha256": "748434879a797ffc93f5a21883c8150efcd1b45a88c93eda2433e3dc0f1ab716"
+      "sha256": "a8542e7560168e0ed311421887618969c6993b894f003cf8b1bd798bd43ccdbd"
     },
     {
       "path": "starmap_random_2020_4k_print.jpg",
@@ -2043,7 +2051,7 @@
     },
     {
       "path": "xr/index.html",
-      "sha256": "a4fd56ed5c1b2f2a747fbe54708fefb47d4be719def767ecca83159fc6c39399"
+      "sha256": "7c0f37043e2521f68340ae26d00d8a73f7b91e4e10c1ef4df9f4645b3b7a3800"
     }
   ]
 }
