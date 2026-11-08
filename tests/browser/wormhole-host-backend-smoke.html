@@ -17,6 +17,8 @@ import Mp4Worker from '../../src/export/mp4-export.worker.ts?worker';
 import { TemporalFragmentationEffect } from '../../src/visuals/TemporalFragmentationEffect.ts';
 import { copyWormholeHostFrame } from '../../src/visuals/VisualFramePreparation.ts';
 import HostWorker from '../../src/visuals/wormholeHostRender.worker.ts?worker';
+import StableMaterialWorker from '../../research/export/stable-material.worker.ts?worker';
+import PairedEncoderWorker from '../../research/export/paired-encoder.worker.ts?worker';
 import { WormholeHostRenderSession } from '../../src/visuals/WormholeHostRenderSession.ts';
 import { Canvas2DRendererBackend } from '../../src/visuals/Canvas2DRendererBackend.ts';
 import { compareRgba } from '../../research/export/wormhole-quality.mjs';
@@ -38,7 +40,7 @@ import { VisualDirectorFSM } from '../../src/visuals/VisualDirectorFSM.ts';
 import { State } from '../../src/state/store.ts';
 const result=document.querySelector('#result'), rows=[], contexts=[], graphics=[], canvases=[];
 let fixtureP, hostP, lossCase, pass, invalidations=0,exportAutomation=null;
-const exactUrls=[];let exactRun=null;
+const exactUrls=[];let exactRun=null,stableMaterialExperiment=false;
 const hostQuality={compactMaterialPreview:false,pixelRatioCap:1,maxBackingLongEdge:1920,wormholeRenderer:'webgl'};
 let hostSize={width:320,height:180},profileClockStart=null,profileSource=null,fixedLiveTime=null,positionChanged=null;
 const raw={...cloneDefaultVisualTuning(),wormholeNebulaAmount:.32,wormholeNebulaDetail:.4,wormholeNebulaBloom:.3,
@@ -138,7 +140,7 @@ try{
  hostP=await new Promise(resolve=>startPlexusRenderer('host',{
   updateDashboard(){},prepareAutomationFrame(){exportAutomation?.();},setExportTarget(p){p.noLoop();resolve(p);},getTuningForMorph(tuning){projectionReads++;projectionInputs.push(JSON.stringify(tuning));return tuning;}
  },{getCurrentTime:()=>fixedLiveTime??(profileClockStart===null?99:3+(performance.now()-profileClockStart)/1000),addPositionChangedListener(listener){positionChanged=listener;},addPlaybackEndedListener(){},syncMetronomeState(){}},registry,undefined,
- {getPreviewSize:()=>hostSize,previewQuality:hostQuality,createWormholeWorker:invalidate=>(profileSource=new WormholeHostWorkerSource(invalidate)),createExactWormholeSource:()=>new WormholeHostExactSource()}));
+ {getPreviewSize:()=>hostSize,previewQuality:hostQuality,createWormholeWorker:invalidate=>(profileSource=new WormholeHostWorkerSource(invalidate)),createExactWormholeSource:()=>stableMaterialExperiment?new WormholeHostExactSource(()=>new StableMaterialWorker()):new WormholeHostExactSource()}));
  await hostP.redraw();
  // The host hook is a pure projection: reads may occur before and after semantic resolution.
  // Count actual director/PostFX execution, and prove every projection starts from unchanged raw input.
@@ -644,13 +646,14 @@ window.runWh06c1=async()=>{
 // WH-07 timings use the product renderer without per-frame QA readback or ID overlays.
 // Quality/ordering remain separate gates in runWh06Export; no benchmark timing is a UI promise.
 window.wh07Blobs=new Map();
-window.runWh07Benchmark=async()=>{
+window.runWh07Benchmark=async(options={})=>{
  const rows=[],check=(v,m)=>{if(!v)throw Error(m);};
  const pcm=new AudioBuffer({numberOfChannels:2,sampleRate:48000,length:48000*8});
  for(let c=0;c<2;c++){const d=pcm.getChannelData(c);for(let i=0;i<d.length;i++)d[i]=.12*Math.sin(2*Math.PI*(c?660:440)*i/48000);}
  const originalLoop=hostP.loop;hostP.loop=()=>{};
  try{
   const one=async(resolution,format,scheduling,run,warmup=false)=>{
+   stableMaterialExperiment=options.stableMaterial===true&&scheduling==='cooperative';
    const fps=60,frames=resolution==='4K'?90:240;
    const c=state({...raw,wormholeWall:0,wormholeNebulaAmount:.65,wormholeNebulaDetail:.8,postFxFragmentAmount:.65});
    const signal={...c.state.currentFrame,e:.99,eRatio:.9,densityProj:.9,melodyProj:.7,fxProj:.6,subEnergy:.6,bassEnergy:.5,subFlux:.3,bassFlux:.2,
@@ -662,7 +665,7 @@ window.runWh07Benchmark=async()=>{
    Object.assign(State.visualTuning,c.state.visualTuning);Object.assign(State.targetTuning,c.state.targetTuning);
    hostQuality.wormholeRenderer='offscreen';hostQuality.compactMaterialPreview=true;hostQuality.musicDisplay=undefined;
    positionChanged?.(0);State.playbackFade=1;hostP.noLoop();
-   let profile,performanceReport;const backend=new WebCodecsBackend(hostP,hostP.canvas,{getAudioBuffer:()=>pcm},'WH07',null,scheduling,Mp4Worker,p=>{profile=p;});
+   let profile,performanceReport;const backend=new WebCodecsBackend(hostP,hostP.canvas,{getAudioBuffer:()=>pcm},'WH07',null,scheduling,options.pairedEncoder&&scheduling==='cooperative'?PairedEncoderWorker:Mp4Worker,p=>{profile=p;});
    const started=performance.now();
    try{
     const blob=await backend.start({resolution,aspectRatio:'16:9',fps,format,preflight:true,watermark:false,
@@ -677,12 +680,12 @@ window.runWh07Benchmark=async()=>{
      rows.push({name,resolution,format,scheduling,run,frames,fps,videoBitrate:resolution==='4K'?64000000:8000000,elapsedMs,bytes:blob.size,raster,profile,performanceReport});}
    }finally{await backend.discardResult();c.dispose();hostP.noLoop();}
   };
-  for(const [resolution,format]of [['720p','mp4'],['4K','mp4'],['720p','webm'],['4K','webm']]){
+  for(const [resolution,format]of (options.mp4Only?[['720p','mp4'],['4K','mp4']]:[['720p','mp4'],['4K','mp4'],['720p','webm'],['4K','webm']])){
    await one(resolution,format,'display',0,true);
    for(let run=1;run<=3;run++)for(const scheduling of run%2?['display','cooperative']:['cooperative','display'])await one(resolution,format,scheduling,run);
   }
   return {pass:true,scope:'Short real GPU-rendered product export with constant synthetic music evidence; timings exclude QA pixel readback/artifact copies. No mobile/full-song/thermal guarantee.',rows};
- }finally{hostP.loop=originalLoop;hostP.noLoop();}
+ }finally{stableMaterialExperiment=false;hostP.loop=originalLoop;hostP.noLoop();}
 };
 window.addEventListener('pagehide',()=>{pass?.dispose();hostP?.remove();fixtureP?.remove();contexts.forEach(c=>c.dispose());exactUrls.forEach(url=>URL.revokeObjectURL(url));},{once:true});
 </script></html>

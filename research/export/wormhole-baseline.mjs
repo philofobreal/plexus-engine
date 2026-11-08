@@ -16,6 +16,12 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const root = path.resolve('logs/wh01'), fixture = '/plexus-engine/research/export/wormhole-baseline.html';
 const hostFixture = '/plexus-engine/tests/browser/wormhole-host-backend-smoke.html';
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', windowsHide: true }).trim();
+if (process.argv.includes('--stable-material') && process.argv.includes('--paired-encoder')) {
+    throw Error('Measure stable material and paired codecs separately; combined results have no isolated control.');
+}
+if (['--stable-material','--paired-encoder','--mp4-only'].some(flag=>process.argv.includes(flag)) && !process.argv.includes('--turbo-host')) {
+    throw Error('WH-07b experiment options require --turbo-host.');
+}
 const integer = (x, min, max) => Number.isSafeInteger(x) && x >= min && x <= max;
 export function verifyPack(pack) {
     assert.equal(pack.version, 1); assert.equal(pack.pass, true);
@@ -235,9 +241,9 @@ async function capture() {
             console.log(JSON.stringify({exportRows:report.rows.length,files:artifacts.length,independentlyDecoded:true,turboRows:report.turboRows?.length??0,turboFiles:turboArtifacts.length}));
         }
         if (process.argv.includes('--turbo-host')) {
-            const report=await evaluate('window.runWh07Benchmark()');
+            const report=await evaluate('window.runWh07Benchmark('+JSON.stringify({stableMaterial:process.argv.includes('--stable-material'),pairedEncoder:process.argv.includes('--paired-encoder'),mp4Only:process.argv.includes('--mp4-only')})+')');
             await writeFile(path.join(output,'turbo-benchmark.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});
-            assert.equal(report?.pass,true);assert.equal(report.rows.length,24);
+            assert.equal(report?.pass,true);assert.equal(report.rows.length,process.argv.includes('--mp4-only')?12:24);
             const artifacts=[];
             for(const row of report.rows){
                 assert.match(row.name,/^turbo-(?:720p|4k)-(?:mp4|webm)-(?:display|cooperative)-[1-3]\.(?:mp4|webm)$/);
@@ -326,5 +332,5 @@ async function verify(file) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
     if (process.argv[2] === 'capture') await capture();
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--turbo-export-host] [--diagnostics-host] [--turbo-host] [--public-release=ID] | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--turbo-export-host] [--diagnostics-host] [--turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | verify [baseline.json]');
 }

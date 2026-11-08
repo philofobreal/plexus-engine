@@ -1,0 +1,340 @@
+{
+  "task": "WH-07b1",
+  "status": "Research complete; both candidates rejected; WH-07b/WH-07 remain partial",
+  "predecessor": "037d94ec15dfbdfae083c3cae5a908e3cd215ae5",
+  "productChanges": false,
+  "manualPredecessorAcceptance": {
+    "resolution": "4K",
+    "fps": 60,
+    "bitDepth": 10,
+    "format": "webm",
+    "requestedMode": "turbo",
+    "browser": "Windows Chrome 156",
+    "reported": "Visibly faster; perfect perceived image quality",
+    "copiedScope": "Three-frame successful preflight, performance null; no measured complete-job duration or hardware attribution"
+  },
+  "experiments": [
+    {
+      "experiment": "stable-material",
+      "run": "logs/wh01/run-437143c9-45d7-4a76-baa9-c3006a7b73bf",
+      "harnessCompleted": true,
+      "productPromoted": false,
+      "files": 24,
+      "targets": [
+        {
+          "resolution": "720p",
+          "fps": 60,
+          "pairs": 3,
+          "economyMedianMs": 6917.700000000186,
+          "candidateMedianMs": 7423.700000000186,
+          "timeReduction": -0.07314569871488885,
+          "exactPixelPairs": 0,
+          "speedGatePass": false,
+          "pixelIdentityGatePass": false,
+          "promoted": false,
+          "pairsRaw": [
+            {
+              "resolution": "720p",
+              "format": "mp4",
+              "run": 1,
+              "displayMs": 4803.5,
+              "cooperativeMs": 6614.5999999996275,
+              "gain": -0.3770375767668632,
+              "exactDecodedPixels": false
+            },
+            {
+              "resolution": "720p",
+              "format": "mp4",
+              "run": 2,
+              "displayMs": 6917.700000000186,
+              "cooperativeMs": 7521,
+              "gain": -0.08721106726221106,
+              "exactDecodedPixels": false
+            },
+            {
+              "resolution": "720p",
+              "format": "mp4",
+              "run": 3,
+              "displayMs": 7438.700000000186,
+              "cooperativeMs": 7423.700000000186,
+              "gain": 0.002016481374433665,
+              "exactDecodedPixels": false
+            }
+          ]
+        },
+        {
+          "resolution": "4K",
+          "fps": 60,
+          "pairs": 3,
+          "economyMedianMs": 11570.5,
+          "candidateMedianMs": 11265.800000000745,
+          "timeReduction": 0.02633421200460262,
+          "exactPixelPairs": 0,
+          "speedGatePass": false,
+          "pixelIdentityGatePass": false,
+          "promoted": false,
+          "pairsRaw": [
+            {
+              "resolution": "4K",
+              "format": "mp4",
+              "run": 1,
+              "displayMs": 11705.400000000373,
+              "cooperativeMs": 11034.600000000559,
+              "gain": 0.0573068840022376,
+              "exactDecodedPixels": false
+            },
+            {
+              "resolution": "4K",
+              "format": "mp4",
+              "run": 2,
+              "displayMs": 10915.200000000186,
+              "cooperativeMs": 11265.800000000745,
+              "gain": -0.032120345939657735,
+              "exactDecodedPixels": false
+            },
+            {
+              "resolution": "4K",
+              "format": "mp4",
+              "run": 3,
+              "displayMs": 11570.5,
+              "cooperativeMs": 11908.700000000186,
+              "gain": -0.029229506071490885,
+              "exactDecodedPixels": false
+            }
+          ]
+        }
+      ],
+      "evidence": {
+        "build.json": "1e590e841dd34d9f5f3f537cd5cfa810abc6c676776e7569b6b449ff4ca596ba",
+        "turbo-benchmark.json": "d1367179cfbf58c7fd40bc89c2f711259d0ecab29d7fde815d7e1bf1db87abfe",
+        "turbo-artifacts.json": "250c80ccca8ed330df8f16e673cd11a46ac175ebf44d4e733208a3000542c13c"
+      }
+    },
+    {
+      "experiment": "paired-encoder",
+      "run": "logs/wh01/run-379def75-469b-4f16-835a-00398ee794d5",
+      "harnessCompleted": true,
+      "productPromoted": false,
+      "files": 12,
+      "targets": [
+        {
+          "resolution": "720p",
+          "fps": 60,
+          "pairs": 3,
+          "economyMedianMs": 7659.5,
+          "candidateMedianMs": 8365,
+          "timeReduction": -0.09210783993733274,
+          "exactPixelPairs": 0,
+          "speedGatePass": false,
+          "pixelIdentityGatePass": false,
+          "promoted": false,
+          "pairsRaw": [
+            {
+              "resolution": "720p",
+              "format": "mp4",
+              "run": 1,
+              "displayMs": 10815.199999999255,
+              "cooperativeMs": 9045.900000000373,
+              "gain": 0.1635938309045607,
+              "exactDecodedPixels": false
+            },
+            {
+              "resolution": "720p",
+              "format": "mp4",
+              "run": 2,
+              "displayMs": 7244,
+              "cooperativeMs": 7273.5,
+              "gain": -0.004072335726118093,
+              "exactDecodedPixels": false
+            },
+            {
+              "resolution": "720p",
+              "format": "mp4",
+              "run": 3,
+              "displayMs": 7659.5,
+              "cooperativeMs": 8365,
+              "gain": -0.09210783993733274,
+              "exactDecodedPixels": false
+            }
+          ]
+        },
+        {
+          "resolution": "4K",
+          "fps": 60,
+          "pairs": 3,
+          "economyMedianMs": 11200.400000000373,
+          "candidateMedianMs": 11431,
+          "timeReduction": -0.02058855040888008,
+          "exactPixelPairs": 0,
+          "speedGatePass": false,
+          "pixelIdentityGatePass": false,
+          "promoted": false,
+          "pairsRaw": [
+            {
+              "resolution": "4K",
+              "format": "mp4",
+              "run": 1,
+              "displayMs": 11674,
+              "cooperativeMs": 11431,
+              "gain": 0.020815487407915056,
+              "exactDecodedPixels": false
+            },
+            {
+              "resolution": "4K",
+              "format": "mp4",
+              "run": 2,
+              "displayMs": 11176.60000000149,
+              "cooperativeMs": 11121.400000000373,
+              "gain": 0.004938890181370947,
+              "exactDecodedPixels": false
+            },
+            {
+              "resolution": "4K",
+              "format": "mp4",
+              "run": 3,
+              "displayMs": 11200.400000000373,
+              "cooperativeMs": 12087.599999999627,
+              "gain": -0.07921145673361885,
+              "exactDecodedPixels": false
+            }
+          ]
+        }
+      ],
+      "evidence": {
+        "build.json": "9a994d9996b383e29455e03d2f5a7a60f7962791528047893248515ccc621421",
+        "turbo-benchmark.json": "bf5d5ccbf731fedcaa832136b41b6bc9b8913be233f9b99557ac65dbb991e20d",
+        "turbo-artifacts.json": "4fcb7983f7066b3a6cf3c20a58a716da4156d6a5e0d61d1c5ee49c3275160ea7"
+      }
+    }
+  ],
+  "scope": "Short synthetic GPU-rendered product exports, real native codecs/audio/OPFS/FFmpeg and independent FFmpeg decode. No full-song/thermal/mobile/hardware assignment claim. Harness pass is not candidate acceptance. Stable-surface WebM timings include the already qualified scheduler difference and are not isolated material speed claims.",
+  "sourceFollowup": "Paired worker gained an unused class export solely for Node test access after capture; measured predecessor is hash-verified in logs/wh07b/paired-encoder-measured-source.ts.txt. No method body changed.",
+  "next": "WH-07b2 codec/transfer bottleneck isolation and optional capability-only 10-bit hardware-codec probes. No new product codec or dependency without concrete results/decision.",
+  "validation": {
+    "full": {
+      "tests": 2242,
+      "pass": 2233,
+      "fail": 9,
+      "cancelled": 0,
+      "skipped": 0,
+      "duration_ms": 552246.492
+    },
+    "knownBaselineFailuresExactNameAndMessage": [
+      {
+        "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+        "message": "vos-wh-drift.json must not reset user-global wormholeStarfield"
+      },
+      {
+        "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+        "message": "establish remains visibly above the opacity floor"
+      },
+      {
+        "name": "weak roles pin a deep-perspective depth and continuity profile",
+        "message": "establish depth\n\n2.03136 !== 4"
+      },
+      {
+        "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+        "message": "deep drift deeper than establish"
+      },
+      {
+        "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+        "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+      },
+      {
+        "name": "wormhole factory presets keep a minimum normalized weighted separation",
+        "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+      },
+      {
+        "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+        "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))"
+      },
+      {
+        "name": "projected forward motion preserves overdrive > punch > drive > drift",
+        "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+      },
+      {
+        "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+        "message": "389.64890777178124 vs 471.543038051684"
+      }
+    ],
+    "targeted": {
+      "tests": 44,
+      "pass": 44
+    },
+    "releaseGuard": {
+      "tests": 5,
+      "pass": 5
+    },
+    "build": "passed",
+    "baselineCases": 8,
+    "browserHostCasesPerRun": 37,
+    "productRuntimeChanged": false,
+    "localLinksChecked": 180,
+    "runtime": "Node v25.2.1 / npm 11.6.2",
+    "environmentRecovery": "First release-guard invocation failed four temp Git fixtures in the sandbox default temporary directory. Original log retained. Re-run with TEMP/TMP scoped to logs/wh07b/temp passed 5/5; cumulative run used that scoped directory and has only the nine unchanged baseline failures.",
+    "diffExport": "Skipped as unnecessary for bounded laboratory/doc work; no PR review requested."
+  },
+  "commands": {
+    "build": "npm run build",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=4",
+    "targeted": "node --test --test-reporter=tap --test-concurrency=4 tests/export-performance.test.mjs tests/export-parallel-research.test.mjs tests/export-scheduling.test.mjs tests/export-preparation.test.mjs tests/mvp-mp4-export.test.mjs tests/export-diagnostics.test.mjs tests/export-output-inspection.test.mjs",
+    "releaseGuard": "node --test --test-reporter=tap tests/release-pages.test.mjs (TEMP/TMP scoped to logs/wh07b/temp)",
+    "baseline": "node research/export/wormhole-baseline.mjs verify",
+    "stable": "node research/export/wormhole-baseline.mjs capture --turbo-host --stable-material",
+    "paired": "node research/export/wormhole-baseline.mjs capture --turbo-host --paired-encoder --mp4-only"
+  },
+  "logHashes": {
+    "cumulative.tap": "8960df5dc057e110b1dedb35b3a6933434bc96d6889ef034be13556f8c059b1e",
+    "targeted.tap": "eb5adc14a0174bff1ad24ac62531507e27cd597ca3831852ab72f65b2e7be685",
+    "release-tests.tap": "94b71c1cd9257fb749ac6f978db2a541bf6b052984b98475aa98c46db80a5624",
+    "release-tests-scoped.tap": "675de86f046a2640894dab26169482f4b3843cd59e6503eb9eef6d5b733d519b",
+    "build.log": "f37911df614a0da52a9b61e32954b1fcc301923f07307bd07e2e72ec6c85c4bd",
+    "research-tests.log": "bad8a2904ce50c72b71ae59f984b756b4b29b29a6164a6667e1e4df46fe4b533",
+    "baseline-verification.log": "6e19cf9e27f72cefa505cd01743fa84ddac0dc8e788a2fda9a221790d8a6919f"
+  },
+  "changedPredecessors": [
+    {
+      "path": "tests/browser/wormhole-host-backend-smoke.html",
+      "gitObject": "77b4b5a44fb7a8962e2a03ad1a794613d2fec3e8",
+      "sha256": "9d236491fb9cb8236bd52b94182b15c3881517d7daea77ebb236f7e74da02d10",
+      "reason": "Additive opt-in research or release guard; original assertions/default benchmark/exact test retained"
+    },
+    {
+      "path": "tests/release-pages.test.mjs",
+      "gitObject": "e0d039727ad7d0f9ca82fff83312abe207995a73",
+      "sha256": "d9ba2ff9a9df3e5aa1bb9f4c4b0bd57a4146caff8a936af6747bea321305cc80",
+      "reason": "Additive opt-in research or release guard; original assertions/default benchmark/exact test retained"
+    },
+    {
+      "path": "research/export/wormhole-baseline.mjs",
+      "gitObject": "e5cef95c849a7abfeaf2d26e6c12a422c4357503",
+      "sha256": "b4e943bd9b58cf2fd1ef8ee5d20842f4157ab4563f16b46d8c00a380f68bb757",
+      "reason": "Additive opt-in research or release guard; original assertions/default benchmark/exact test retained"
+    },
+    {
+      "path": "scripts/release-pages.mjs",
+      "gitObject": "af0deb40944c2d7c35e6db41efaa2b5a22d3e6e2",
+      "sha256": "87190048af15e40c581a80260f7a4e6327c2fa01f269fd58ddce70d5d9dfd942",
+      "reason": "Additive opt-in research or release guard; original assertions/default benchmark/exact test retained"
+    }
+  ],
+  "retention": {
+    "oldActiveTestFiles": 229,
+    "activeTestFiles": 230,
+    "removedOldTests": [],
+    "newTests": "tests/export-parallel-research.test.mjs",
+    "protectedExactBodyUnchanged": true,
+    "oldFullReceipt": "documents/tests/wormhole-wh07-acceptance.json",
+    "unchangedOldNodeTestFiles": 228,
+    "onlyExtendedOldNodeTest": "tests/release-pages.test.mjs (same five cases, two extra build inputs, no original assertions removed)"
+  },
+  "currentResearchSourceHashes": {
+    "research/export/stable-material.worker.ts": "dd0539a8d2f73d1cdd807e72e8fda112a22c40e9612f153c5c317920a0977a87",
+    "research/export/paired-encoder.worker.ts": "e3e8445069be8343281eedb89c79a349b3c5dc19b0136d2fcbc7296b9f0712e3",
+    "research/export/wormhole-baseline.mjs": "0ed8a11e78e90903f3fa27019ff2f0af030ffb650958932c61099a6fbafd1a90",
+    "tests/browser/wormhole-host-backend-smoke.html": "280668835adaea79e72fbad50f9dc17de73c49923de5cac72ee9e7466278e606",
+    "tests/export-parallel-research.test.mjs": "eaa72c615505040690f378cfa96e040b88c8dce09a1b5478f188a39f07aacc1a",
+    "scripts/release-pages.mjs": "48a13119045cc42461f328af84c74505ca6f23fba5d690e8e4001dc0cad42730",
+    "tests/release-pages.test.mjs": "65563b27ff02a194f5ca6994260cbc2df0398fc1e257f7089b8170e38e462184"
+  }
+}
