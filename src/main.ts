@@ -3,6 +3,7 @@ import './style.css';
 const bootStart = Date.now();
 import { AudioEngine } from './audio/AudioEngine';
 import { WormholeHostWorkerSource } from './visuals/WormholeHostWorkerSource';
+import { WormholeHostExactSource } from './visuals/WormholeHostExactSource';
 import { featureFlags } from './config/featureFlags';
 import { DashboardUI } from './ui/DashboardUI';
 import { SemanticRendererBridge, startPlexusRenderer } from './visuals/PlexusRenderer';
@@ -294,6 +295,7 @@ const appReadyPromise = new Promise<void>(resolve => {
   startPlexusRenderer('canvas-container', ui, engine, styleRegistry, semanticBridge, {
     previewQuality: previewQuality.preference,
     createWormholeWorker: invalidate => new WormholeHostWorkerSource(invalidate),
+    createExactWormholeSource: () => new WormholeHostExactSource(),
     onWormholeRasterChange: previewQuality.showWormholeRenderer
   });
   resolve();

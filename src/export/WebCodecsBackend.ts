@@ -5,7 +5,11 @@ import type { ExportCapabilities, ExportConfig, ExportWorkerResponse, ExportPrep
 import ExportWorker from './export.worker.ts?worker';
 import { ExportStorageLease } from './ExportStorageLease';
 import type p5 from 'p5';
+import type { HostExportFramePort } from '../types/HostExportFramePort';
+
 import type { ExportAudioSource, ExportRuntime, ExportProfile } from '../types/ExportRenderJob';
+
+let nextHostExportJob = 0;
 
 export interface Mp4StageProfile {
     framesSubmitted: number;
@@ -40,6 +44,8 @@ export class WebCodecsBackend implements ExportBackend {
     private resumeQueueWait: (() => void) | null = null;
     private running = false;
     private ownsLoop = false;
+    private framePort: HostExportFramePort | null = null;
+    private exactFrames = false;
     private interruptWait: ((error: Error) => void) | null = null;
     private waitingForFrame = false;
     private readonly videoElement: HTMLVideoElement | null;
@@ -152,7 +158,21 @@ export class WebCodecsBackend implements ExportBackend {
                 if (mp4Profile) mp4Stages.captureSetup = now() - started - mp4Stages.preflight;
             }
 
-            if (!cooperative || mp4Candidate) {
+            if (!runtime && this.p5Instance.__plexusExportFramePort) {
+                this.framePort = this.p5Instance.__plexusExportFramePort as HostExportFramePort;
+                try {
+                    this.exactFrames = await this.framePort.begin({ jobId: 'host-export-' + ++nextHostExportJob,
+                        width: target.width, height: target.height, fps: config.fps });
+                } catch (error) {
+                    if (this.cancelled) throw new Error('Export cancelled.');
+                    if (this.stoppedEarly) throw new Error('No video frames were captured before stopping.');
+                    throw this.exportError ?? error;
+                }
+                if (this.cancelled) throw new Error('Export cancelled.');
+                if (this.stoppedEarly) throw new Error('No video frames were captured before stopping.');
+                if (this.exportError) throw this.exportError;
+            }
+            if ((!cooperative || mp4Candidate) && !this.exactFrames) {
                 const animationFrameStarted = now();
                 await this.waitForOperation(nextAnimationFrame());
                 stages.animationFrameWait += now() - animationFrameStarted;
@@ -189,14 +209,14 @@ export class WebCodecsBackend implements ExportBackend {
                     else {
                         await this.seekVideoFrame(State.exportTime);
                         if (this.cancelled || this.stoppedEarly) break;
-                        const redraw = this.renderOffscreenFrame();
-                        if (!cooperative) displayFrame = nextAnimationFrame();
+                        const redraw = this.renderOffscreenFrame(i);
+                        if (!cooperative && !this.exactFrames) displayFrame = nextAnimationFrame();
                         // A display callback may arrive before p5 finishes the export frame.
                         // Keep its target alive until redraw settles, including on cancellation.
                         await redraw;
                     }
                     stages.renderRequest += now() - renderStarted;
-                    if (!cooperative) {
+                    if (!cooperative && !this.exactFrames) {
                         const animationFrameStarted = now();
                         await this.waitForOperation(displayFrame ?? nextAnimationFrame());
                         stages.animationFrameWait += now() - animationFrameStarted;
@@ -218,7 +238,7 @@ export class WebCodecsBackend implements ExportBackend {
                 } catch (error) {
                     if (this.cancelled) throw new Error('Export cancelled.');
                     if (this.stoppedEarly && !this.exportError) break;
-                    throw error;
+                    throw this.exportError ?? error;
                 }
                 if (this.cancelled || this.stoppedEarly || !this.worker) { bitmap.close(); break; }
                 const timestampUs = Math.round((i * 1_000_000) / config.fps);
@@ -301,6 +321,7 @@ export class WebCodecsBackend implements ExportBackend {
     cancelExport(): void {
         if (!this.running || this.cancelled) return;
         this.cancelled = true;
+        this.framePort?.cancel();
         const error = new Error('Export cancelled.');
         this.interruptWait?.(error);
         this.rejectExport?.(error);
@@ -315,6 +336,7 @@ export class WebCodecsBackend implements ExportBackend {
     stopAndSave(): void {
         if (!this.running || this.cancelled || this.stoppedEarly) return;
         this.stoppedEarly = true;
+        this.framePort?.cancel();
         this.resumeQueueWait?.();
         if (this.waitingForFrame) this.interruptWait?.(new Error('No video frames were captured before stopping.'));
     }
@@ -351,7 +373,7 @@ export class WebCodecsBackend implements ExportBackend {
                 } else if (event.data.type === 'export_error') {
                     this.rejectExport = null;
                     this.exportError = new Error(event.data.message);
-                    this.interruptWait?.(this.exportError);
+                    this.framePort?.cancel(); this.interruptWait?.(this.exportError);
                     reject(this.exportError);
                 } else if (event.data.type === 'frame_encoded') {
                     this.outstandingFrames = Math.max(0, this.outstandingFrames - 1);
@@ -362,7 +384,7 @@ export class WebCodecsBackend implements ExportBackend {
                     if (this.resumeQueueWait && this.hasQueueCapacity()) this.resumeQueueWait();
                 } else if (event.data.type === 'export_audio_warning' && (this.runtime || requireAudio)) {
                     this.exportError = new Error(`${this.runtime ? 'Isolated export' : 'Export'} audio failed: ${event.data.message}`);
-                    this.interruptWait?.(this.exportError);
+                    this.framePort?.cancel(); this.interruptWait?.(this.exportError);
                     reject(this.exportError);
                 } else if (event.data.type === 'queue_update') {
                     this.workerQueueDepth = event.data.size;
@@ -376,7 +398,7 @@ export class WebCodecsBackend implements ExportBackend {
                 if (this.worker !== worker || this.cancelled) return;
                 this.rejectExport = null;
                 this.exportError = new Error(event.message || 'Export worker failed.');
-                this.interruptWait?.(this.exportError);
+                this.framePort?.cancel(); this.interruptWait?.(this.exportError);
                 reject(this.exportError);
             };
         });
@@ -384,6 +406,7 @@ export class WebCodecsBackend implements ExportBackend {
 
     private async cleanup(completed = false): Promise<void> {
         if (!this.running) return;
+        this.framePort?.dispose(); this.framePort = null; this.exactFrames = false;
         if (this.ownsLoop) {
             delete this.p5Instance.__plexusExportTarget;
             State.isExporting = false;
@@ -448,10 +471,10 @@ export class WebCodecsBackend implements ExportBackend {
         this.p5Instance.__plexusExportTarget = graphics;
     }
 
-    private renderOffscreenFrame(): void | Promise<void> {
+    private renderOffscreenFrame(frameIndex: number): void | Promise<void> {
         if (!this.offscreenGraphics) return;
         this.offscreenGraphics.clear();
-        return this.p5Instance.redraw();
+        return this.exactFrames ? this.framePort!.renderFrame(frameIndex) : this.p5Instance.redraw();
     }
 
     private composeCaptureFrame(width: number, height: number, watermark: boolean): void {

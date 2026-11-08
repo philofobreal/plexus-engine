@@ -13,6 +13,7 @@ import { MvpUI } from './MvpUI';
 import { MVP_CANVAS_CONTAINER_ID } from './PreviewStage';
 import { createPreviewQualityControl } from '../PreviewQualityControl';
 import { WormholeHostWorkerSource } from '../../visuals/WormholeHostWorkerSource';
+import { WormholeHostExactSource } from '../../visuals/WormholeHostExactSource';
 
 // The MVP is locked to the Cosmic Wormhole identity (design doc: "the user never sees a Visual
 // Mode selector"). Asserted explicitly and routed through the one sanctioned State.visualMode
@@ -43,6 +44,7 @@ startPlexusRenderer(MVP_CANVAS_CONTAINER_ID, ui, engine, styleRegistry, semantic
     getPreviewSize: () => ui.getPreviewSize(),
     previewQuality: previewQuality.preference,
     createWormholeWorker: invalidate => new WormholeHostWorkerSource(invalidate),
+    createExactWormholeSource: () => new WormholeHostExactSource(),
     onWormholeRasterChange: previewQuality.showWormholeRenderer
 });
 

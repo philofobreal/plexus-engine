@@ -11,15 +11,16 @@ import type { AudioEngine } from '../audio/AudioEngine';
 import type { VisualCueKind, VisualTuningConfig } from '../types';
 import { VisualDirectorFSM } from './VisualDirectorFSM';
 import { HostVisualFramePreparation } from './HostVisualFramePreparation';
-import { publishAnalysisFrame, decayHostAnalysisFrame, prepareFrameSignals } from './VisualFramePreparation';
+import { publishAnalysisFrame, decayHostAnalysisFrame, prepareFrameSignals, borrowResolvedWormholeFrame } from './VisualFramePreparation';
 import type { StyleRegistry } from './StyleRegistry';
 import type { SemanticRuntimeAdapter } from '../semantics';
 import { ShockwaveLifecycle } from './ShockwaveLifecycle';
 import type { ChoreographyFrame as SemanticScoreFrame } from '../types/semantics';
 import { semanticScoreTransitionId } from './VisualTransitionIdentity';
 import { setActiveVisualTransitionComponent } from '../state/visualTransitionState';
-import { IdentityTransitionController, type IdentityDraw } from './IdentityTransitionController';
+import { IdentityTransitionController, computeCrossfadeAlpha, type IdentityDraw } from './IdentityTransitionController';
 import { WorkerIdentityTransition } from './WorkerIdentityTransition';
+import { ExactExportFrameBridge, type ExactFrameSource } from './ExactExportFrameBridge';
 import { WormholeRasterPass } from './WormholeRasterPass';
 import { P5RenderTargetCompositor } from './P5RenderTargetCompositor';
 import { PostFxPipeline } from './PostFxPipeline';
@@ -91,8 +92,10 @@ export interface PlexusRendererOptions {
     };
     /** Smaller material rasters for compact/mobile previews; exports retain their own budget. */
     compactMaterialPreview?: boolean;
-    /** MVP live preview only. Export remains synchronous and never consumes an asynchronous bitmap. */
+    /** Preview source; its latest-wins images never enter export. */
     createWormholeWorker?: (invalidate: () => void) => WormholeHostRasterSource;
+    /** Composition-root factory for a separate, job-bound exact worker. */
+    createExactWormholeSource?: () => ExactFrameSource;
     onWormholeRasterChange?: (kind: string) => void;
     /** When provided, the canvas tracks this container-relative size instead of the full browser window. */
     getPreviewSize?: () => { width: number; height: number };
@@ -157,7 +160,7 @@ export function startPlexusRenderer(
         };
         // p5 owns the render lifecycle; a GPU context must not survive removal of this renderer.
         const remove = p.remove?.bind(p);
-        if (remove) p.remove = () => { workerRaster?.dispose(); wormholeRaster.dispose(); pairedTransition.reset(); compositor?.dispose(); postFxPipeline.dispose(); remove(); };
+        if (remove) p.remove = () => { exactExport.dispose(); workerRaster?.dispose(); wormholeRaster.dispose(); pairedTransition.reset(); compositor?.dispose(); postFxPipeline.dispose(); remove(); };
 
         // Effective pixel density for a given CSS size: pixelRatioCap bounds the ratio, then
         // maxBackingLongEdge (if set) reduces it further so the backing store's long edge never
@@ -213,11 +216,24 @@ export function startPlexusRenderer(
             const frame = renderPostFrame;
             if (!frame) return State;
             workerPostState.visualTuning = frame.visualTuning; workerPostState.directorOutput = frame.directorOutput;
-            workerPostState.modulation = frame.modulation; workerPostState.isPlaying = State.isPlaying;
-            workerPostState.isExporting = false;
+            workerPostState.modulation = frame.modulation; workerPostState.isPlaying = frame.isExporting ? false : State.isPlaying;
+            workerPostState.isExporting = frame.isExporting;
             return workerPostState;
         };
         const postFxPipeline = new PostFxPipeline([new TemporalFragmentationEffect(readPostState)], undefined, readPostState);
+
+        const exactExport = new ExactExportFrameBridge(() => {
+            if (options?.previewQuality?.wormholeRenderer !== 'offscreen' || !options.createExactWormholeSource
+                || typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined') return null;
+            workerRaster?.dispose(); workerRaster = null; pairedTransition.reset(); wormholeRaster.suspend();
+            syncEventIndex(0); // New job starts its existing host cursors/history at song zero.
+            return options.createExactWormholeSource();
+        }, () => State, () => p.redraw(), kind => {
+            const canvas = (p as unknown as { canvas?: HTMLCanvasElement }).canvas;
+            if (canvas?.dataset) canvas.dataset.exportRaster = kind;
+        }, () => { compositor?.releaseExportSurfaces(); postFxPipeline.dispose(); syncEventIndex(engine.getCurrentTime()); });
+        // Shared data-only port. Export owns its lifetime and awaits it outside p5.draw.
+        (p as p5 & { __plexusExportFramePort?: import('../types/HostExportFramePort').HostExportFramePort }).__plexusExportFramePort = exactExport;
 
         const framePreparation = new HostVisualFramePreparation(ui, semanticBridge, setActiveVisualTransitionComponent);
 
@@ -419,7 +435,44 @@ export function startPlexusRenderer(
             const paired = compositor && transition && transition.to === State.visualMode && ct >= transition.startTimeSec
                 && (transition.from === 'cosmic-wormhole' || transition.to === 'cosmic-wormhole')
                 && options?.previewQuality?.wormholeRenderer === 'offscreen' && options.createWormholeWorker && !State.isExporting;
-            if (paired && compositor) {
+            let exactQueued = false;
+            // Exact export has a separate source and no preview pacing or dropped frames.
+            const exactIndex = exactExport.frameIndex;
+            const exactPair = transition && transition.to === State.visualMode && ct >= transition.startTimeSec
+                && computeCrossfadeAlpha(ct, transition.startTimeSec, transition.durationSec) < 1
+                && (transition.from === 'cosmic-wormhole' || transition.to === 'cosmic-wormhole');
+            const exactWormhole = State.visualMode === 'cosmic-wormhole' || exactPair;
+            if (exactIndex !== null && exactWormhole && compositor) {
+                const incomingWormhole = State.visualMode === 'cosmic-wormhole';
+                const wormhole = styleRegistry.get('cosmic-wormhole');
+                const capturedTransition = exactPair ? { ...transition! } : null;
+                const frame: WormholeHostFrame = {
+                    ...borrowResolvedWormholeFrame(State).values,
+                    width: backend.width, height: backend.height, density: 1, compact: false,
+                    frameCount: exactIndex + 1, reset: false,
+                    depthCue: (wormhole as { depthCueStrength?: number }).depthCueStrength ?? 0,
+                    transparent: State.videoBackplateActive, skybox: featureFlags.wormholeSkybox,
+                    musicDisplay: options?.previewQuality?.musicDisplay
+                };
+                if (capturedTransition) {
+                    compositor.beginPairedFrame(backend.width, backend.height);
+                    const other = styleRegistry.get(incomingWormhole ? capturedTransition.from : capturedTransition.to);
+                    drawIdentity(other, compositor.incomingBackend, particles, shockwaves,
+                        { timeSec: ct, advanceSharedSimulation: true });
+                    compositor.freezePairedCounterpart();
+                }
+                exactExport.submit(frame, lease => {
+                    if (capturedTransition) compositor!.compositePaired(
+                        computeCrossfadeAlpha(lease.frame.currentTime, capturedTransition.startTimeSec, capturedTransition.durationSec),
+                        lease.bitmap, incomingWormhole);
+                    else backend.presentRaster(lease.bitmap);
+                    renderPostFrame = lease.frame; completedFrame = true;
+                    activeRaster = 'exact-' + lease.raster; workerNeedsMainSync = true;
+                    finishFrame();
+                });
+                if (transition && !capturedTransition) identityTransitionController.finishPairedFrame(transition.generation, ct);
+                exactQueued = true; completedFrame = false;
+            } else if (paired && compositor) {
                 wormholeRaster.suspend();
                 workerRaster ??= options!.createWormholeWorker!(() => { canvasRevision++; pausedPreview.invalidate(); });
                 const incoming = styleRegistry.get(transition.to), outgoing = styleRegistry.get(transition.from);
@@ -460,7 +513,10 @@ export function startPlexusRenderer(
             // Single Post FX seam (ADR-007): the identity frame is finished here in both the
             // steady-state and the crossfade path, so the chain runs exactly once per frame on the
             // final composite, for the live canvas and the offscreen export target alike.
-            if (completedFrame) postFxPipeline.render(p as unknown as PostFxSurfaceHost, renderPostFrame?.currentTime ?? ct);
+            const finishFrame = () => {
+                if (completedFrame) postFxPipeline.render(p as unknown as PostFxSurfaceHost, renderPostFrame?.currentTime ?? ct);
+            };
+            if (!exactQueued) finishFrame();
             if (!workerUsed && workerRaster) { workerRaster.dispose(); workerRaster = null; }
             const canvas = (p as unknown as { canvas?: HTMLCanvasElement }).canvas;
             if (canvas?.dataset) canvas.dataset.wormholeRaster = activeRaster;

@@ -347,3 +347,48 @@ test('MVP Stop/Cancel remain latched until cleanup, retain confirmation, and re-
     dialog.setActive(false); dialog.setActive(true);
     assert.equal(stop.disabled, false); assert.equal(cancel.disabled, false);
 });
+
+
+for(const format of ['webm','mp4']) test('production '+format+' awaits the exact renderer port and skips display waits',async()=>{
+ const gates=[],seen=[];let lastFrame=-1,disposed=0;
+ const h=backendHarness({mp4:format==='mp4',bitmap:async()=>{seen.push(lastFrame);return{close(){}};}});
+ h.p5.__plexusExportFramePort={async begin(c){assert.equal(c.fps,60);assert.equal(c.width,1280);return true;},
+  renderFrame(index){const g=deferred();gates.push(g);return g.promise.then(()=>{lastFrame=index;});},cancel(){},dispose(){disposed++;}};
+ const result=h.backend.start({...config(),format},()=>{});
+ for(let i=0;i<4;i++){await until(()=>gates.length===i+1);assert.equal(seen.length,i);gates[i].resolve();}
+ await result;assert.deepEqual(seen,[0,1,2,3]);assert.equal(h.animationFrames,0);assert.equal(disposed,1);
+ assert.deepEqual(h.messages.filter(m=>m.type==='encode_frame').map(m=>m.timestampUs),[0,16667,33333,50000]);
+});
+
+test('exact Stop saves a contiguous prefix and holds the target until render quiesces',async()=>{
+ const pending=deferred();let requested=0,cancelled=0,disposed=0;
+ const h=backendHarness();h.p5.__plexusExportFramePort={async begin(){return true;},
+  async renderFrame(){if(++requested===2)await pending.promise;},cancel(){cancelled++;},dispose(){disposed++;h.calls.push('portDisposed');}};
+ const result=h.backend.start(config(),()=>{});await until(()=>requested===2);h.backend.stopAndSave();
+ assert.ok(h.p5.__plexusExportTarget);assert.equal(disposed,0);pending.resolve();await result;
+ assert.equal(cancelled,1);assert.equal(disposed,1);assert.equal(h.messages.filter(m=>m.type==='encode_frame').length,1);
+ assert.ok(h.calls.indexOf('portDisposed')<h.calls.indexOf('remove'));
+});
+
+test('exact Cancel overrides Stop and closes the port before target removal or preview restart',async()=>{
+ const pending=deferred();let requested=0;
+ const h=backendHarness();h.p5.__plexusExportFramePort={async begin(){return true;},
+  renderFrame(){requested++;return pending.promise;},cancel(){},dispose(){h.calls.push('portDisposed');}};
+ const result=h.backend.start(config(),()=>{});await until(()=>requested===1);h.backend.stopAndSave();h.backend.cancelExport();
+ assert.ok(h.p5.__plexusExportTarget);assert.ok(!h.calls.includes('remove'));pending.resolve();await assert.rejects(result,/cancelled/);
+ assert.equal(h.messages.some(m=>m.type==='finalize_export'),false);
+ assert.ok(h.calls.indexOf('portDisposed')<h.calls.indexOf('loop'));assert.ok(h.calls.indexOf('portDisposed')<h.calls.indexOf('remove'));
+});
+
+test('unavailable exact startup retains compatible export and its display scheduling',async()=>{
+ const h=backendHarness();h.p5.__plexusExportFramePort={async begin(){return false;},renderFrame(){assert.fail('unsupported exact render');},cancel(){},dispose(){}};
+ await h.backend.start(config(),()=>{});assert.equal(h.calls.filter(c=>c==='draw').length,4);assert.equal(h.animationFrames,5);
+});
+
+test('exact worker failure stops the job rather than silently reanchoring on the compatible path',async()=>{
+ const h=backendHarness();let requested=0;
+ h.p5.__plexusExportFramePort={async begin(){return true;},async renderFrame(){if(++requested===2)throw Error('exact material context lost');},cancel(){},dispose(){}};
+ await assert.rejects(h.backend.start(config(),()=>{}),/context lost/);
+ assert.equal(h.messages.filter(m=>m.type==='encode_frame').length,1);assert.equal(h.messages.some(m=>m.type==='finalize_export'),false);
+ assert.equal(h.calls.filter(c=>c==='draw').length,0);assert.equal(h.state.isExporting,false);
+});

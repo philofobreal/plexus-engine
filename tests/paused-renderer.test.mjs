@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
 
-function createHarness(applyAutomatedSpiral, createWormholeWorker, gain, postProbe, identities) {
+function createHarness(applyAutomatedSpiral, createWormholeWorker, gain, postProbe, identities, createExactWormholeSource) {
   let p;
   let time = 0;
   let draws = 0;
@@ -29,6 +29,7 @@ function createHarness(applyAutomatedSpiral, createWormholeWorker, gain, postPro
       this.drawingContext={canvas:this.canvas,save(){},restore(){},setTransform(){},clearRect(){},drawImage(){}};
       return {parent(){},elt:this.canvas}; }
     remove() {}
+    redraw() { this.frameCount++; this.draw(); return Promise.resolve(); }
     createGraphics(width,height) { const canvas={width,height},g={width,height,elt:canvas,
       pixelDensity:()=>this.density,clear(){},remove(){},resizeCanvas(w,h){this.width=w;this.height=h;canvas.width=w;canvas.height=h;}};
       g.drawingContext={canvas,save(){},restore(){},setTransform(){},clearRect(){},drawImage(){}};
@@ -44,7 +45,7 @@ function createHarness(applyAutomatedSpiral, createWormholeWorker, gain, postPro
     vm.runInNewContext(ts.transpileModule(readFileSync(file, 'utf8'), {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
     }).outputText, {
-      exports, window: { devicePixelRatio: 2 },
+      exports, Worker: class {}, OffscreenCanvas: class {}, window: { devicePixelRatio: 2 },
       require(id) {
         if (id === 'p5') return FakeP5;
         if (id === './Particle') return { Particle: class {} };
@@ -67,7 +68,7 @@ function createHarness(applyAutomatedSpiral, createWormholeWorker, gain, postPro
     getCurrentTime: () => time,
     addPositionChangedListener(listener) { position = listener; },
     addPlaybackEndedListener() {}, syncMetronomeState() {}
-  }, { get: id => identities?.[id] ?? identity, forEach: fn => identities ? Object.values(identities).forEach(fn) : fn(identity) }, undefined, { previewQuality: preference, createWormholeWorker });
+  }, { get: id => identities?.[id] ?? identity, forEach: fn => identities ? Object.values(identities).forEach(fn) : fn(identity) }, undefined, { previewQuality: preference, createWormholeWorker, createExactWormholeSource });
   const overrides = {};
   return {
     State, p, preference, overrides, flags: load(resolve('src/config/featureFlags.ts')).featureFlags,
@@ -268,4 +269,27 @@ test('renderer worker failure after counterpart capture never advances native si
  h.State.visualModeTransition={from:'classic',to:'cosmic-wormhole',startTimeSec:0,durationSec:1,generation:1};
  h.advance(.2);h.tick();assert.equal(advances,1);assert.equal(draws,2,'the fallback redraw borrows the already advanced pool');
  assert.equal(wormhole,1);assert.equal(h.p.canvas.dataset.wormholeRaster,'fallback');h.p.remove();
+});
+
+
+for (const direction of ['steady','incoming','outgoing']) test('exact export renderer barrier pairs captured signals and one PostFX: '+direction,async()=>{
+ const posts=[],native=[],requests=[];let released=0,disposed=0;
+ const identities={classic:{id:'classic',usesSharedSimulation:true,syncPosition(){},draw(b,p,w,c){native.push({...c});}},
+  'cosmic-wormhole':{id:'cosmic-wormhole',draw(){assert.fail('exact frame must not use main-thread Wormhole');},syncPosition(){}}};
+ const source={async prepare(){},requestFrame(index,frame){return new Promise(resolve=>requests.push({index,frame:structuredClone(frame),resolve}));},dispose(){disposed++;}};
+ const h=createHarness(undefined,undefined,undefined,(s,time)=>posts.push({time,tuning:s.visualTuning,isExporting:s.isExporting}),identities,()=>source);
+ h.preference.wormholeRenderer='offscreen';h.State.isExporting=true;h.State.exportTime=0;
+ h.State.visualMode=direction==='outgoing'?'classic':'cosmic-wormhole';
+ if(direction!=='steady')h.State.visualModeTransition={from:direction==='incoming'?'classic':'cosmic-wormhole',to:h.State.visualMode,startTimeSec:-.5,durationSec:1,generation:1};
+ const port=h.p.__plexusExportFramePort;assert.equal(await port.begin({jobId:'renderer',width:1280,height:720,fps:60}),true);
+ let finished=false;const rendering=port.renderFrame(0).then(()=>{finished=true;});await Promise.resolve();
+ assert.equal(finished,false);assert.equal(posts.length,0);assert.equal(requests.length,1);
+ assert.equal(native.length,direction==='steady'?0:1);assert.ok(native.every(c=>c.advanceSharedSimulation));
+ const r=requests[0];assert.equal(r.index,0);assert.equal(r.frame.frameCount,1);assert.equal(r.frame.density,1);assert.equal(r.frame.compact,false);
+ h.State.visualTuning.postFxFragmentAmount=.999;h.State.currentTime=99;
+ r.resolve({frame:r.frame,bitmap:{},raster:'gpu-material',release(){released++;}});await rendering;
+ assert.equal(posts.length,1);assert.equal(posts[0].time,0);assert.equal(posts[0].isExporting,true);
+ assert.equal(posts[0].tuning,r.frame.visualTuning);assert.notEqual(posts[0].tuning,h.State.visualTuning);
+ assert.equal(released,1);assert.equal(h.p.canvas.dataset.exportRaster,'exact-gpu-material');
+ port.dispose();h.p.remove();assert.equal(disposed,1);
 });

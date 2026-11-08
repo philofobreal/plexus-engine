@@ -61,6 +61,12 @@ export class P5RenderTargetCompositor implements RenderTargetCompositor {
         const other = (this.outgoing as GraphicsWithCanvas).elt;
         this.compositeImages(alpha, wormholeIncoming ? other : wormhole, wormholeIncoming ? wormhole : other);
     }
+    /** End of a quiescent export: retain the two target objects, release their UHD backing stores. */
+    releaseExportSurfaces(): void {
+        for (const target of [this.outgoing, this.incoming]) { target.pixelDensity(1); target.resizeCanvas(1, 1); }
+        (this.outgoingBackend as P5RendererBackend).invalidateDrawingState();
+        (this.incomingBackend as P5RendererBackend).invalidateDrawingState();
+    }
     dispose(): void { if (this.disposed) return; this.disposed = true; this.outgoing.remove?.(); this.incoming.remove?.(); }
 
     composite(alpha: number): void {
