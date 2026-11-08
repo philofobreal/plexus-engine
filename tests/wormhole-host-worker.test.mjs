@@ -200,10 +200,11 @@ test('negotiated worker rejects wrong context/stamp and disposes the session on 
     class Session {
         constructor(a,gpu){this.analysis=a;this.gpu=gpu;this.disposed=0;sessions.push(this);}
         reset(){this.resetCalled=true;}
-        render(){return {bitmap:{closed:0,close(){this.closed++;}},raster:'gpu-material'};}
+        render(){this.image={closed:0,close(){this.closed++;}};return {bitmap:this.image,raster:'gpu-material'};}
         dispose(){this.disposed++;}
     }
-    const scope={postMessage(m){replies.push(m);}};
+    let transferFails=false;
+    const scope={postMessage(m){if(transferFails&&m.type==='frame')throw Error('transfer rejected');replies.push(m);}};
     createLoader({'./WormholeHostRenderSession':{WormholeHostRenderSession:Session}},{self:scope,performance:{now:()=>0}})('visuals/wormholeHostRender.worker.ts');
     const send=data=>scope.onmessage({data});
     const stamp={protocol:1,contextId:'mvp',generation:1,requestSerial:1,presentationRevision:0,songTime:2,mode:'preview'};
@@ -217,6 +218,12 @@ test('negotiated worker rejects wrong context/stamp and disposes the session on 
     send({type:'render',generation:1,serial:3,stamp:{...stamp,requestSerial:3,songTime:3},frame:{currentTime:2}});
     assert.equal(replies.at(-1).type,'failure');assert.equal(replies.at(-1).contextId,'mvp');
     assert.equal(sessions[0].disposed,1);
+    send({type:'prepare',generation:2,contextId:'mvp',analysis:{}});
+    transferFails=true;
+    send({type:'render',generation:2,serial:1,stamp:{...stamp,generation:2},frame:{currentTime:2}});
+    assert.equal(replies.at(-1).type,'failure');
+    assert.equal(sessions[1].image.closed,1,'failed transfer retains producer ownership until close');
+    assert.equal(sessions[1].disposed,1,'failed transfer disposes all session resources');
 });
 
 test('GPU material session consumes carriers once, separates foreground, reuses targets and releases on loss/dispose',()=>{
