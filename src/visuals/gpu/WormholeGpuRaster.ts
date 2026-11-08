@@ -146,14 +146,8 @@ export class WormholeGpuRaster {
         }
         if(baseSource)gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,baseSource);
         else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,base!);
-        const cols=material?.cols??1, rows=material?.rows??1;
-        const l1w=Math.max(1,Math.round(cols/3)), l1h=Math.max(1,Math.round(rows/3));
-        const l2w=Math.max(1,Math.round(cols/8)), l2h=Math.max(1,Math.round(rows/8));
-        const accum=this.target(0,cols,rows), resolved=this.target(1,cols,rows);
-        const l1=[this.target(2,l1w,l1h),this.target(3,l1w,l1h)];
-        const l2=[this.target(4,l2w,l2h),this.target(5,l2w,l2h)];
         const lineTarget=this.target(6,width,height,true);
-        const quantized=[this.target(7,cols,rows,true),this.target(8,l1w,l1h,true),this.target(9,l2w,l2h,true)];
+
         this.bind(lineTarget); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
         if (lines.count) {
             gl.useProgram(this.line.program); gl.bindVertexArray(this.lineArray);
@@ -162,6 +156,33 @@ export class WormholeGpuRaster {
             gl.enable(gl.BLEND); gl.blendEquation(gl.FUNC_ADD); gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
             gl.drawArraysInstanced(gl.TRIANGLES,0,6,lines.count); gl.disable(gl.BLEND);
         }
+        const quantized=this.prepareMaterial(material);
+        this.source(this.compose,'uBase',this.base,0); this.source(this.compose,'uLines',lineTarget.texture,1);
+        this.source(this.compose,'uL0',quantized[0].texture,2); this.source(this.compose,'uL1',quantized[1].texture,3);
+        this.source(this.compose,'uL2',quantized[2].texture,4);
+        gl.uniform2f(this.u(this.compose,'uSize'),width,height); gl.uniform1i(this.u(this.compose,'uMaterial'),material?1:0);
+        gl.uniform1i(this.u(this.compose,'uHasOverlay'),overlaySource?1:0);
+        gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,this.overlay);
+        // A complete texture is mandatory even while the sampler's branch is disabled.
+        const ow=overlaySource?width:1,oh=overlaySource?height:1;
+        if(this.overlayWidth!==ow||this.overlayHeight!==oh){
+            gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,ow,oh,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+            this.overlayWidth=ow;this.overlayHeight=oh;
+        }
+        if(overlaySource)gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,overlaySource);
+        gl.uniform1i(this.u(this.compose,'uOverlay'),5);
+        this.pass(this.compose,null); this.check();
+    }
+
+    private prepareMaterial(material: GrainMaterialFrame | null): Target[] {
+        const gl=this.gl;gl.clearColor(0,0,0,0);
+        const cols=material?.cols??1, rows=material?.rows??1;
+        const l1w=Math.max(1,Math.round(cols/3)), l1h=Math.max(1,Math.round(rows/3));
+        const l2w=Math.max(1,Math.round(cols/8)), l2h=Math.max(1,Math.round(rows/8));
+        const accum=this.target(0,cols,rows), resolved=this.target(1,cols,rows);
+        const l1=[this.target(2,l1w,l1h),this.target(3,l1w,l1h)];
+        const l2=[this.target(4,l2w,l2h),this.target(5,l2w,l2h)];
+        const quantized=[this.target(7,cols,rows,true),this.target(8,l1w,l1h,true),this.target(9,l2w,l2h,true)];
         if (material) {
             this.bind(accum); gl.clear(gl.COLOR_BUFFER_BIT);
             gl.useProgram(this.carrier.program); gl.bindVertexArray(this.carrierArray);
@@ -180,21 +201,31 @@ export class WormholeGpuRaster {
                 this.pass(this.quantize,quantized[i]);
             }
         }
-        this.source(this.compose,'uBase',this.base,0); this.source(this.compose,'uLines',lineTarget.texture,1);
-        this.source(this.compose,'uL0',quantized[0].texture,2); this.source(this.compose,'uL1',quantized[1].texture,3);
-        this.source(this.compose,'uL2',quantized[2].texture,4);
-        gl.uniform2f(this.u(this.compose,'uSize'),width,height); gl.uniform1i(this.u(this.compose,'uMaterial'),material?1:0);
-        gl.uniform1i(this.u(this.compose,'uHasOverlay'),overlaySource?1:0);
-        gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,this.overlay);
-        // A complete texture is mandatory even while the sampler's branch is disabled.
-        const ow=overlaySource?width:1,oh=overlaySource?height:1;
-        if(this.overlayWidth!==ow||this.overlayHeight!==oh){
-            gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,ow,oh,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
-            this.overlayWidth=ow;this.overlayHeight=oh;
-        }
-        if(overlaySource)gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,overlaySource);
-        gl.uniform1i(this.u(this.compose,'uOverlay'),5);
-        this.pass(this.compose,null); this.check();
+        return quantized;
+    }
+
+    /** Exact output keeps the browser's native RGBA8 per-layer sampling/composition law.
+     * Deposition, resolve, weave and IIR remain GPU passes; no readPixels or CPU field raster.
+     */
+    compositeExactMaterial(material: GrainMaterialFrame | null, destination: OffscreenCanvas): void {
+        if(this.disposed || this.gl.isContextLost())throw Error('GPU raster unavailable');
+        validateGpuRasterInput(destination.width,destination.height,null,material,
+            {width:destination.width,height:destination.height,count:0,square:false,data:new Float32Array(0)},true);
+        if(!material)return;
+        const gl=this.gl,layers=this.prepareMaterial(material),ctx=destination.getContext('2d');
+        if(!ctx)throw Error('Exact composition target unavailable');
+        ctx.save();
+        try{
+            ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='lighter';ctx.imageSmoothingEnabled=true;
+            for(const i of [2,1,0]){
+                const layer=layers[i];
+                if(this.canvas.width!==layer.width)this.canvas.width=layer.width;
+                if(this.canvas.height!==layer.height)this.canvas.height=layer.height;
+                gl.bindFramebuffer(gl.READ_FRAMEBUFFER,layer.buffer);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,null);
+                gl.blitFramebuffer(0,0,layer.width,layer.height,0,0,layer.width,layer.height,gl.COLOR_BUFFER_BIT,gl.NEAREST);
+                this.check();ctx.drawImage(this.canvas,0,0,layer.width,layer.height,0,0,destination.width,destination.height);
+            }
+        }finally{ctx.restore();gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
     }
 
     /** Readback is research/quality instrumentation, never required by the rendering path. */

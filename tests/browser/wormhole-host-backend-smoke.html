@@ -3,12 +3,19 @@
 <h2>Studio/MVP Wormhole backend gate</h2><p>Same resolved input. Left: p5 reference. Right: shared WebGL. Fixed song time: 3 s.</p>
 <button id="loss" disabled>Lose WebGL context and verify fallback</button><section id="views"></section>
 <button id="profile" disabled>Measure MVP render paths</button><pre id="profile-result">Performance not measured yet.</pre><div id="host"></div><pre id="result">Preparing…</pre>
+<h2>WH-06a exact source (export integration follows)</h2>
+<p>This checks full-size source images, not an encoded video. Expect PASS for every fixed quality/clock gate.
+The two 4K sample pairs should retain the same shape, gradients and detail. PNG links download the full image; gallery previews are reduced.</p>
+<button id="exact" disabled>Validate exact 720p / 4K source frames</button><pre id="exact-result">Run the exact source check after the preview checks finish.</pre>
+<section id="exact-views"></section>
 <script type="module">
 import p5 from 'p5';
 import HostWorker from '../../src/visuals/wormholeHostRender.worker.ts?worker';
 import { WormholeHostRenderSession } from '../../src/visuals/WormholeHostRenderSession.ts';
 import { Canvas2DRendererBackend } from '../../src/visuals/Canvas2DRendererBackend.ts';
 import { compareRgba } from '../../research/export/wormhole-quality.mjs';
+import { WormholeHostExactSource } from '../../src/visuals/WormholeHostExactSource.ts';
+import { compareTemporal } from '../../research/export/wormhole-quality.mjs';
 import { WormholeHostWorkerSource } from '../../src/visuals/WormholeHostWorkerSource.ts';
 import { WormholeFrameContext } from '../../src/visuals/WormholeFrameContext.ts';
 import { WormholeRasterPass } from '../../src/visuals/WormholeRasterPass.ts';
@@ -25,6 +32,7 @@ import { VisualDirectorFSM } from '../../src/visuals/VisualDirectorFSM.ts';
 import { State } from '../../src/state/store.ts';
 const result=document.querySelector('#result'), rows=[], contexts=[], graphics=[], canvases=[];
 let fixtureP, hostP, lossCase, pass, invalidations=0;
+const exactUrls=[];let exactRun=null;
 const hostQuality={compactMaterialPreview:false,pixelRatioCap:1,maxBackingLongEdge:1920,wormholeRenderer:'webgl'};
 let hostSize={width:320,height:180},profileClockStart=null,profileSource=null,fixedLiveTime=null,positionChanged=null;
 const raw={...cloneDefaultVisualTuning(),wormholeNebulaAmount:.32,wormholeNebulaDetail:.4,wormholeNebulaBloom:.3,
@@ -322,5 +330,113 @@ window.runWh04WorkerBenchmark=async()=>{
    legacy:summary(samples[0]),gpu:summary(samples[1]),reportedRender:[summary(reported[0]),summary(reported[1])],comparison};
  }finally{workers.forEach(w=>w.terminate());c.dispose();}
 };
-window.addEventListener('pagehide',()=>{pass?.dispose();hostP?.remove();fixtureP?.remove();contexts.forEach(c=>c.dispose());},{once:true});
+// WH-06a is deliberately opt-in: repeated preview/laboratory runs retain the original 37 cases.
+window.runWh06Exact=()=>exactRun??=(async()=>{
+ const output=document.querySelector('#exact-result'),button=document.querySelector('#exact');button.disabled=true;
+ const rows=[],sizes=[['720p',1280,720],['720p portrait',720,1280],['720p square',720,720],
+  ['4K',3840,2160],['4K portrait',2160,3840],['4K square',2160,2160]];
+ const cases=[30,60].flatMap(fps=>sizes.map(([label,width,height])=>({label,fps,width,height,transparent:height>width})));
+ cases.push({label:'4K alpha + spectrum',fps:30,width:3840,height:2160,transparent:true,display:true},
+  {label:'720p material Off',fps:60,width:1280,height:720,transparent:false,amount:0},
+  {label:'720p evolving resolved controls',fps:30,width:1280,height:720,transparent:false,evolving:true},
+  {label:'4K dense',fps:30,width:3840,height:2160,transparent:false,dense:true,start:90},
+  {label:'4K dense alpha',fps:30,width:3840,height:2160,transparent:true,dense:true,start:90});
+ const createSurface=(w,h)=>new OffscreenCanvas(w,h);
+ const makeContext=spec=>{
+  const c=new WormholeFrameContext(seed({...raw,wormholeWall:0,wormholeOpticsEnabled:0,wormholeNebulaAmount:spec.amount??.65,wormholeNebulaDetail:.8,...(spec.dense?{wormholeNebulaDetail:1,wormholeNebulaWeave:1,wormholeNebulaBloom:1,wormholeGrainDensity:1,wormholeSpiralArms:4,wormholeSpiral:1}:{})}));
+  const signal={...c.state.currentFrame,e:.7,eRatio:.9,subEnergy:.6,bassEnergy:.5,subFlux:.3,bassFlux:.2,
+   perceptualSpectrum:Array.from({length:24},(_,i)=>.5+.2*Math.sin(i))};
+  c.state.currentFrame=signal;c.state.frames=Array.from({length:400},()=>signal);
+  c.state.isExporting=true;c.state.currentTime=c.state.exportTime=(spec.start??0)/spec.fps;c.state.playbackFade=1;
+  if(spec.dense){Object.assign(c.state.currentFeatures,{melody:.7,vocal:.6,fx:.5,density:.9,brightness:.6,tension:.5});
+   Object.assign(c.state.modulation,{macroMomentum:.9,densityDrive:.9,rhythmicImpulse:.6});}
+  c.identity.setDepthCue(.6);c.identity.setMusicDisplay(spec.display?{mode:'spectrum',size:.6,opacity:1}:undefined);c.identity.syncPosition(c.state.currentTime);return c;
+ };
+ const frame=(c,spec,index)=>{const {frames,events,trackAnalysis,sampleRate,hopSize,bpm,...values}=c.state;
+  return {...values,width:spec.width,height:spec.height,density:1,compact:false,depthCue:.6,transparent:spec.transparent,
+   skybox:false,frameCount:index+1,reset:index===0,...(spec.display?{musicDisplay:{mode:'spectrum',size:.6,opacity:1}}:{})};};
+ const analysis=c=>{const {frames,events,trackAnalysis,sampleRate,hopSize,bpm}=c.state;return {frames,events,trackAnalysis,sampleRate,hopSize,bpm};};
+ const capture=surface=>surface.getContext('2d',{willReadFrequently:true}).getImageData(0,0,surface.width,surface.height).data;
+ const show=async(label,surface)=>{
+  const g=gfx(320,Math.round(320*surface.height/surface.width),1);g.drawingContext.drawImage(surface,0,0,g.width,g.height);
+  const f=document.createElement('figure'),caption=document.createElement('figcaption'),link=document.createElement('a');caption.textContent=label;
+  const url=URL.createObjectURL(await surface.convertToBlob({type:'image/png'}));exactUrls.push(url);link.href=url;link.download=label.replaceAll(/[^a-z0-9]+/gi,'-')+'.png';link.textContent='Full-resolution PNG';
+  f.append(caption,g.elt,link);document.querySelector('#exact-views').append(f);
+ };
+ try{
+  for(const spec of cases){
+   output.textContent='Checking '+spec.label+' / '+spec.fps+' fps…';
+   const c=makeContext(spec),reference=new Canvas2DRendererBackend(spec.width,spec.height,createSurface),surface=createSurface(spec.width,spec.height);
+   reference.setPreviewSize(spec.width,spec.height,1,false,spec.transparent);
+   const source=new WormholeHostExactSource(),config={jobId:'wh06a-'+rows.length,fps:spec.fps,width:spec.width,height:spec.height};
+   const quality=[],temporal=[],repeats=[],requests=[];let previous=null,frameCount=0;
+   try{
+    await source.prepare(analysis(c),config);
+    for(const index of [0,1,1,2].map(i=>i+(spec.start??0))){
+     c.state.currentTime=c.state.exportTime=index/spec.fps;
+     if(spec.evolving){Object.assign(c.state.visualTuning,{wormholeSpeed:1+index,wormholeSpiralDirection:index%2?1:-1,
+      wormholeNebulaAmount:[.3,.65,.9][index],wormholeNebulaWeave:index/2,wormholeGrainDensity:index?.8:.1});
+      c.state.modulation.rhythmicImpulse=index/2;c.state.activeVisualTransitionId=index?'automation:evolve':null;}
+     reference.frameCount=index+1;c.identity.draw(reference,[],[]);
+     const before=capture(reference.canvas),owned=frame(c,spec,index),started=performance.now();
+     const lease=await source.requestFrame(index,owned);requests.push(performance.now()-started);
+     try{
+      if(lease.stamp.frameIndex!==index||lease.stamp.timestampUs!==Math.round(index*1e6/spec.fps)||lease.stamp.jobId!==config.jobId
+       ||lease.bitmap.width!==spec.width||lease.bitmap.height!==spec.height||lease.raster!=='gpu-material')throw Error('Exact frame identity/density/backend mismatch');
+      const ctx=surface.getContext('2d',{willReadFrequently:true});ctx.clearRect(0,0,spec.width,spec.height);ctx.drawImage(lease.bitmap,0,0);const after=capture(surface);
+      const metrics=compareRgba(before,after,spec.width,spec.height);quality.push(metrics);frameCount++;
+      if(previous){if(previous.index===index)repeats.push({gpuExact:after.every((v,i)=>v===previous.after[i]),referenceExact:before.every((v,i)=>v===previous.before[i]),pass:after.every((v,i)=>v===previous.after[i])&&before.every((v,i)=>v===previous.before[i])});
+       else temporal.push(compareTemporal(previous.before,before,previous.after,after,spec.width,spec.height));}
+      if(index===(spec.start??0)+1&&previous?.index!==index&&spec.dense){await show(spec.label+' scalar',reference.canvas);await show(spec.label+' GPU',surface);}
+      previous={index,before,after};
+     }finally{const bitmap=lease.bitmap;lease.release();lease.release();if(bitmap.width!==0)throw Error('Exact image lease was not closed');}
+    }
+   }finally{source.dispose();reference.canvas.width=reference.canvas.height=1;surface.width=surface.height=1;c.dispose();}
+   rows.push({case:spec.label,fps:spec.fps,width:spec.width,height:spec.height,transparent:spec.transparent,frames:frameCount,
+    quality,temporal,repeats,requestToLeaseMs:requests,pass:frameCount===4&&quality.every(r=>r.pass)&&temporal.every(r=>r.pass)&&repeats.every(r=>r.pass)});
+  }
+  // Actual GPU loss restores the complete compatible exact frame through the same session.
+  const spec={width:1280,height:720,transparent:true,display:true,fps:30},c=makeContext(spec),reference=new Canvas2DRendererBackend(1280,720,createSurface);
+  reference.setPreviewSize(1280,720,1,false,true);c.identity.draw(reference,[],[]);const before=capture(reference.canvas),session=new WormholeHostRenderSession(analysis(c));
+  try{
+   const input=frame(c,spec,0),oldRaster=Canvas2DRendererBackend.prototype.beginFieldRaster;let cpuCalls=0;
+   Canvas2DRendererBackend.prototype.beginFieldRaster=function(...args){cpuCalls++;return oldRaster.apply(this,args);};
+   let first;try{first=session.render(input,true);}finally{Canvas2DRendererBackend.prototype.beginFieldRaster=oldRaster;}
+   rows.push({case:'exact GPU material has no CPU field raster',cpuCalls,raster:first.raster,pass:cpuCalls===0&&first.raster==='gpu-material'});
+   first.bitmap.close();const ext=session.gpu?.gl.getExtension('WEBGL_lose_context');
+   if(!ext)throw Error('Exact GPU context loss probe unavailable');ext.loseContext();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);
+   const cached=session.repeat(),surface=createSurface(1280,720);let cachedQuality;
+   try{surface.getContext('2d').drawImage(cached.bitmap,0,0);cachedQuality=compareRgba(before,capture(surface),1280,720);}
+   finally{cached.bitmap.close();surface.width=surface.height=1;}
+   let failedClosed=false;try{session.render({...input,currentTime:1/30,exportTime:1/30,frameCount:2},true);}catch(error){failedClosed=error.message.includes('new compatible job');}
+   rows.push({case:'exact cached image survives GPU loss; next frame fails closed',cachedQuality,failedClosed,pass:cachedQuality.pass&&failedClosed});
+  }finally{session.dispose();reference.canvas.width=reference.canvas.height=1;c.dispose();}
+  const fallbackContext=makeContext(spec),fallbackRef=new Canvas2DRendererBackend(1280,720,createSurface),fallbackSession=new WormholeHostRenderSession(analysis(fallbackContext),false);
+  try{fallbackRef.setPreviewSize(1280,720,1,false,true);fallbackContext.identity.draw(fallbackRef,[],[]);const expected=capture(fallbackRef.canvas),surface=createSurface(1280,720);
+   const initial=fallbackSession.render(frame(fallbackContext,spec,0),true);let firstPixels,quality;
+   try{surface.getContext('2d').drawImage(initial.bitmap,0,0);firstPixels=capture(surface);quality=compareRgba(expected,firstPixels,1280,720);}finally{initial.bitmap.close();}
+   const repeat=fallbackSession.repeat();let repeatExact;
+   try{const ctx=surface.getContext('2d');ctx.clearRect(0,0,1280,720);ctx.drawImage(repeat.bitmap,0,0);repeatExact=capture(surface).every((v,i)=>v===firstPixels[i]);}finally{repeat.bitmap.close();surface.width=surface.height=1;}
+   rows.push({case:'exact compatible fallback keeps complete pixels and repeat',raster:initial.raster,quality,repeatExact,pass:initial.raster==='canvas2d'&&quality.pass&&repeatExact});
+  }finally{fallbackSession.dispose();fallbackRef.canvas.width=fallbackRef.canvas.height=1;fallbackContext.dispose();}
+  // A real in-flight abort terminates its worker; a new job/source is independent and usable.
+  let created=0,terminated=0;const factory=()=>{created++;const worker=new HostWorker(),terminate=worker.terminate.bind(worker);
+   worker.terminate=()=>{terminated++;terminate();};return worker;};
+  const retrySpec={width:1280,height:720,transparent:false,fps:60},retryContext=makeContext(retrySpec),aborted=new WormholeHostExactSource(factory),controller=new AbortController();
+  let cancelled=false;try{await aborted.prepare(analysis(retryContext),{jobId:'abort',fps:60,width:1280,height:720});
+   const pending=aborted.requestFrame(0,frame(retryContext,retrySpec,0),controller.signal);await Promise.resolve();controller.abort();
+   try{await pending;}catch{cancelled=true;}
+  }finally{aborted.dispose();}
+  const retry=new WormholeHostExactSource(factory);try{await retry.prepare(analysis(retryContext),{jobId:'retry',fps:60,width:1280,height:720});
+   const lease=await retry.requestFrame(0,frame(retryContext,retrySpec,0));lease.release();
+  }finally{retry.dispose();retryContext.dispose();}
+  rows.push({case:'exact real-worker abort and retry',created,terminated,pass:cancelled&&created===2&&terminated===2});
+  const report={scope:'WH-06a source only: resolved-input GPU frames; not video/encoder or full-export acceleration.',pass:rows.every(r=>r.pass),rows};
+  output.textContent=JSON.stringify(report,null,2);return report;
+ }catch(error){output.textContent='FAIL: '+error.stack;throw error;}
+ finally{button.disabled=false;}
+})();
+document.querySelector('#exact').disabled=false;
+document.querySelector('#exact').onclick=()=>{window.runWh06Exact().catch(console.error);};
+window.addEventListener('pagehide',()=>{pass?.dispose();hostP?.remove();fixtureP?.remove();contexts.forEach(c=>c.dispose());exactUrls.forEach(url=>URL.revokeObjectURL(url));},{once:true});
 </script></html>

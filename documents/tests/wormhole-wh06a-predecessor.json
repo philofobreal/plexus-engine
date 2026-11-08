@@ -1,0 +1,15 @@
+{
+  "commit": "278b86eb24bd4032b81f56dcdbaea7df9d66ea9d",
+  "retention": "Immutable Git/SHA predecessor; preview cases and earlier fixed quality gates remain active.",
+  "files": {
+    "src/types/WormholeHostFrame.ts": "47c837b414c2fdb3574c5cf325a27bb3c6d9c8df581fb9fed69d93577b68c0a6",
+    "src/visuals/VisualFramePreparation.ts": "caa634d46b3611052e14450bc4134ba0195884677adff36edc724cf27fedce34",
+    "src/visuals/WormholeHostWorkerSource.ts": "b1c7c548c1349092b770961d110a08acf4cfe6b1bcd21f003f407b01d06e95e3",
+    "src/visuals/WormholeHostRenderSession.ts": "45f68fb2e7fffd5e811e63803463329450a48ee0b52ea1691f8c7ddf7f6999e7",
+    "src/visuals/wormholeHostRender.worker.ts": "6f1224c4687025e3e5955d1a6111f3e6625f4a9507078ec673908b014ab629b5",
+    "tests/wormhole-host-worker.test.mjs": "f1d538264c7ab46203b55d6a9b2bda6de5cb45b61dca42ca4fdfe59545844147",
+    "tests/browser/wormhole-host-backend-smoke.html": "160284a3aecb1f2d8b859265b48d4643e187ed35cc79e672d9b18f8f81315c57",
+    "research/export/wormhole-baseline.mjs": "d6d14acc5c081d8b1bded2d9d81035b0b69403f635e5a387b383e54defcc026b",
+    "src/visuals/gpu/WormholeGpuRaster.ts": "936efc7451a32fc464c2295f4d9e4281dd09be268dcb6507134670f93847ad1f"
+  }
+}

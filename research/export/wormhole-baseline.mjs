@@ -145,6 +145,29 @@ async function capture() {
         }
         await writeFile(path.join(output, 'host-smoke.json'), JSON.stringify(host, null, 2) + '\n', { flag: 'wx' });
         assert.equal(host?.pass, true, JSON.stringify(host));
+        if (process.argv.includes('--exact-host')) {
+            const exact = await evaluate('window.runWh06Exact()');
+            await writeFile(path.join(output,'exact-host.json'),JSON.stringify(exact,null,2)+'\n',{flag:'wx'});
+            assert.equal(exact?.pass,true,JSON.stringify(exact));
+            const samples=await evaluate(`(async()=>{
+                const rows=[];
+                for(const a of document.querySelectorAll('#exact-views a')){
+                    const blob=await(await fetch(a.href)).blob();
+                    const data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(blob);});
+                    rows.push({name:a.download,data});
+                }return rows;
+            })()`);
+            const images=[];
+            for(const [index,sample] of samples.entries()){
+                assert.match(sample.name,/^[a-zA-Z0-9-]+\.png$/);const data=Buffer.from(sample.data.split(',')[1],'base64');
+                const name='exact-'+index+'-'+sample.name;
+                await writeFile(path.join(output,name),data,{flag:'wx'});
+                images.push({name,sha256:hash(data),width:data.readUInt32BE(16),height:data.readUInt32BE(20)});
+            }
+            assert.equal(images.length,4);assert.ok(images.every(i=>i.width===3840&&i.height===2160));
+            await writeFile(path.join(output,'exact-images.json'),JSON.stringify(images,null,2)+'\n',{flag:'wx'});
+            console.log(JSON.stringify({exactRows:exact.rows.length,exactPass:exact.pass,fullSizeSamples:images.length}));
+        }
         await writeFile(path.join(root, 'active-run.txt'), output + '\n');
         console.log(JSON.stringify({ output, pass: true, cases: 8, hostRows: host.rows.length }));
     } finally {
@@ -168,5 +191,5 @@ async function verify(file) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
     if (process.argv[2] === 'capture') await capture();
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] | verify [baseline.json]');
 }

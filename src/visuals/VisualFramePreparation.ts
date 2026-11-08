@@ -1,5 +1,5 @@
 import type { AudioFrame, VisualFeatureFrame, VisualTuningConfig } from '../types';
-import type { WormholeRenderState, ResolvedWormholeFrameView } from '../types/WormholeHostFrame';
+import type { WormholeRenderState, ResolvedWormholeFrameView, WormholeHostFrame } from '../types/WormholeHostFrame';
 import type { VisualDirectorFSM } from './VisualDirectorFSM';
 import { applyTuningMorph, cloneDefaultVisualTuning, writeModulationBus } from '../config/visualTuning';
 import { SemanticTuningProjection } from './SemanticTuningProjection';
@@ -102,4 +102,13 @@ export function borrowResolvedWormholeFrame(state: WormholeRenderState): Resolve
         activeVisualTransitionId: state.activeVisualTransitionId, spiralTransitionAnchor: state.spiralTransitionAnchor,
         playbackFade: state.playbackFade
     } };
+}
+
+/** Convert bounded borrowed inputs into an owned request before any deferred work. */
+export function copyWormholeHostFrame(frame: WormholeHostFrame): WormholeHostFrame {
+    return { ...frame, visualTuning: { ...frame.visualTuning }, targetTuning: { ...frame.targetTuning },
+        currentFrame: { ...frame.currentFrame, perceptualSpectrum: [...frame.currentFrame.perceptualSpectrum] },
+        currentFeatures: { ...frame.currentFeatures }, modulation: { ...frame.modulation }, directorOutput: { ...frame.directorOutput },
+        spiralTransitionAnchor: frame.spiralTransitionAnchor ? { ...frame.spiralTransitionAnchor } : null,
+        ...(frame.musicDisplay ? { musicDisplay: { ...frame.musicDisplay } } : {}) };
 }

@@ -4,7 +4,7 @@ import type { WormholeHostAnalysis, WormholeHostFrame, WormholeHostRequest, Worm
 import { assertWormholeRenderFrameStamp, sameWormholeRenderFrame, type WormholeRenderFrameStamp } from '../types/WormholeRenderFrame';
 import type { WormholeRenderState } from './CosmicWormholeIdentity';
 import { featureFlags } from '../config/featureFlags';
-import { borrowResolvedWormholeFrame } from './VisualFramePreparation';
+import { borrowResolvedWormholeFrame, copyWormholeHostFrame } from './VisualFramePreparation';
 import { PausedPreviewGate } from './PausedPreviewGate';
 import { isDefaultMusicDisplay, type MusicDisplaySettings } from '../types/MusicDisplay';
 
@@ -173,11 +173,7 @@ export class WormholeHostWorkerSource implements WormholeHostRasterSource {
                 && (!pairing || (this.ready && !this.flight && !this.pending && !this.awaitingPresentation))
                 && (!playing || this.needsReset || frame.currentTime - this.sentTime >= 1 / 30 - .001)) {
                 // Copy borrowed live values now: the deferred broker must never observe a later draw.
-                this.pending = { ...frame, visualTuning: { ...frame.visualTuning }, targetTuning: { ...frame.targetTuning },
-                    currentFrame: { ...frame.currentFrame, perceptualSpectrum: [...frame.currentFrame.perceptualSpectrum] },
-                    currentFeatures: { ...frame.currentFeatures }, modulation: { ...frame.modulation }, directorOutput: { ...frame.directorOutput },
-                    spiralTransitionAnchor: frame.spiralTransitionAnchor ? { ...frame.spiralTransitionAnchor } : null,
-                    ...(frame.musicDisplay ? { musicDisplay: { ...frame.musicDisplay } } : {}) };
+                this.pending = copyWormholeHostFrame(frame);
                 pairing?.capture(this.pending);
                 this.queuedRevision = this.inputRevision;
                 this.enqueue();
