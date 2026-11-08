@@ -1,5 +1,13 @@
 # ADR-012: Immutable export job and isolated render runtime
 
+WH-07a (2026-11-08) adds a device/job throughput preference and one bounded
+terminal performance observation through the existing facade. Qualified WebM
+may use event-driven admission and task yields; requested Turbo for MP4 retains
+Economy with an explicit promotion reason. The exact frame barrier, two-frame
+limit, PCM/OPFS ownership and single job state machine remain. See
+[WH-07a](../audits/wormhole-wh07-turbo.md).
+
+
 WH-06c1 (2026-11-08) adds an observational export diagnostic response and a
 UI-owned 30/60 fps preference. The existing coordinator, exact-source frame
 barrier, codec acceptance, queue bounds and OPFS lifetimes remain authoritative.

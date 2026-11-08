@@ -1,3 +1,4 @@
+import { readExportPerformance, type ExportPerformanceReport } from './ExportPerformance';
 import type { ExportConfig } from './ExportTypes';
 
 export type CodecSupport = 'not-checked' | 'not-required' | 'supported' | 'unsupported' | 'unavailable' | 'error';
@@ -57,23 +58,26 @@ export function normalizeExportFps(value: unknown): 30 | 60 { return value === 3
 export class ExportDiagnosticJournal {
     private requested: Partial<ExportConfig> | null = null;
     private events: ExportCodecDiagnostic[] = [];
+    private performance: ExportPerformanceReport | null = null;
     private failure: { name: string; message: string } | null = null;
     begin(config: ExportConfig): void {
-        const { resolution,aspectRatio,fps,watermark,format,mp4VideoCodec,webmBitDepth,preflight,videoBitrate } = config;
-        this.requested = { resolution,aspectRatio,fps,watermark,format,mp4VideoCodec,webmBitDepth,preflight,videoBitrate };
-        this.events = []; this.failure = null;
+        const { resolution,aspectRatio,fps,watermark,format,mp4VideoCodec,webmBitDepth,preflight,videoBitrate, performanceMode } = config;
+        this.requested = { resolution,aspectRatio,fps,watermark,format,mp4VideoCodec,webmBitDepth,preflight,videoBitrate,performanceMode };
+        this.events = []; this.failure = null; this.performance = null;
     }
     record(value: unknown): void {
         const report = readExportDiagnostic(value); if (!report) return;
         this.events.push(report); if (this.events.length > 12) this.events.shift();
     }
+    recordPerformance(value: unknown): void { this.performance = readExportPerformance(value); }
     fail(error: unknown): void {
         const e = error as { name?: unknown; message?: unknown } | null;
         this.failure = { name:String(e?.name ?? 'Error').slice(0,64), message:String(e?.message ?? error).slice(0,1000) };
     }
     snapshot() {
         return { version:1 as const, requested:this.requested ? {...this.requested} : null,
-            events:this.events.map(e=>({...e})), failure:this.failure ? {...this.failure} : null,
+            events:this.events.map(e=>({...e})),
+            performance:this.performance ? {...readExportPerformance(this.performance)!,scope:'Host/worker wall-clock stages overlap; do not sum them or infer GPU/CPU usage.'} : null, failure:this.failure ? {...this.failure} : null,
             scope:'Last attempt in this view. Probes describe codec support, not GPU/CPU assignment or long-export reliability.' };
     }
 }

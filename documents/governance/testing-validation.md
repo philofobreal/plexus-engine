@@ -1,5 +1,16 @@
 ﻿# Testing And Validation
 
+WH-07a retains all previous cases and source identities. Compare identical
+codec/precision/bitrate/GOP with at least three alternating full-job pairs and
+independent decoded-pixel identity. Keep rejected MP4 timings distinct; the
+15% promotion gate is per claimed target, not an average across formats.
+Test unchanged two-frame/two-PCM-buffer bounds, prompt queue feedback, explicit
+MP4 fallback, yielding, cancellation, stale task messages/observers, port closure,
+retry, persisted controls and owned scalar timing records. Separate uninstrumented
+performance trials from raw-image/frame-ID QA. See
+[WH-07a evidence](../audits/wormhole-wh07-turbo.md).
+
+
 ## WH-06c1 diagnostic retention
 
 Keep all WH-06b source/host/encoded gates and cumulative Node cases. Exercise

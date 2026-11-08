@@ -403,6 +403,8 @@ export class DashboardUI {
             {
                 exportResolution: this.els.exportResolution,
                 exportFps: document.getElementById('export-fps'),
+                exportPerformance: document.getElementById('export-performance'),
+                performanceStatus: document.getElementById('export-performance-status'),
                 copyExportBtn: document.getElementById('copy-export-diagnostics'),
                 diagnosticStatus: document.getElementById('export-diagnostic-status'),
                 exportAspect: this.els.exportAspect,
@@ -491,7 +493,8 @@ export class DashboardUI {
             this.exportCanvas!,
             this.engine,
             State.videoBackplateActive ? this.videoElement : null,
-            {onDiagnostic:report=>{if(this.currentExporter===exporter)this.exportCtrl.recordDiagnostic(report);}}
+            {onDiagnostic:report=>{if(this.currentExporter===exporter)this.exportCtrl.recordDiagnostic(report);},
+                onPerformance:report=>{if(this.currentExporter===exporter)this.exportCtrl.recordPerformance(report);}}
         );
         this.currentExporter = exporter;
 

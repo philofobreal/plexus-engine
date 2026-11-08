@@ -2,7 +2,31 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01, WH-02 research, WH-03a preparation, WH-03b time envelopes/exact scheduling and WH-04 MVP GPU session and WH-05 dashboard/composition are delivered; WH-06a exact resolved-input source is delivered; WH-06b host/export integration is delivered; WH-06c1 diagnostics/FPS is delivered for manual acceptance after partial WH-06b acceptance; WH-06c2 mobile 10-bit admission and WH-06e fallback feasibility precede WH-07. WH-06d 8-bit quality work is withdrawn by the user; 10-bit quality/speed/resource efficiency take priority over file size. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+**Current priority: WH-07a WebM Turbo/device controls after the user's explicit choice to defer mobile 10-bit work. WH-00–06b and WH-06c1 are delivered. The Samsung 4K30 trace rejects the native VP9 10-bit encoder; WH-06c2/WH-06e are deferred, not fixed. WH-07 remains partial: first WH-07a qualified WebM throughput and explicit MP4 Economy fallback; next WH-07b must address MP4's actual render/encode bottleneck. WH-06d is withdrawn. MP4 default, accepted native 10-bit quality, mobile 4K and deferred Wall/T15 remain. After the current handoff stop for manual testing.**
+
+### WH-07a handoff: WebM Turbo, MP4 speed gate still open (2026-11-08)
+
+The user explicitly chose **Turbo first; mobile 10-bit later**. WH-06e's optional
+WASM encoder and further WH-06c2 mobile admission work no longer block this
+step. Keep the accepted native 10-bit renderer/codec/quality, MP4 default,
+existing compatible formats and deferred WH-06d/Wall policy.
+
+WH-07 compares the unchanged economy path with event-driven bounded queue
+feedback and cooperative task scheduling, then exposes a saved/copied device
+preference in both hosts. No second render producer, extra encoding worker,
+precision/bitrate/GOP change or implicit software-codec switch is introduced.
+Repeated paired timings and independent decoded-pixel comparison govern the
+speed claims; old unsuccessful scheduling/parallel experiments remain evidence.
+Per-format results are reported separately. WebM 720p60 improved by 35–37% in
+three alternating pairs with identical independently decoded pixels. Final actual-default
+medians improve by 36.81% at 720p60 and 17.65% at 4K60 (three pairs each).
+Cumulative 2239/2230 pass with the same nine baseline names/messages; targeted
+245/245; local quality 36 files / 770 independently decoded IDs. MP4 missed
+the retained 15% gate; an explicit Turbo request therefore keeps Economy for
+MP4 and records the reason. WH-07b is the separate next measured MP4 step;
+parent WH-07 is not complete. See [current implementation and evidence](wormhole-wh07-turbo.md).
+After tested deployment, stop for
+the user's manual test; do not automatically start the deferred mobile encoder.
 
 ### Samsung 4K30 follow-up: encoder refused, decision pending (2026-11-08)
 

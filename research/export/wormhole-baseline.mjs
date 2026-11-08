@@ -201,7 +201,7 @@ async function capture() {
         }
 
         if(process.argv.includes('--export-host')){
-            let report;try{report=await evaluate('window.runWh06Export()');}catch(error){
+            let report;try{report=await evaluate('window.runWh06Export('+JSON.stringify({turbo:process.argv.includes('--turbo-export-host')})+')');}catch(error){
                 await writeFile(path.join(output,'integrated-export-failure.json'),JSON.stringify(await evaluate('window.wh06ExportFailure'),null,2)+'\n',{flag:'wx'});
                 for(const name of await evaluate('Array.from(window.wh06ExportBlobs.keys())')){
                     assert.match(name,/^export-\d{3}\.(?:webm|mp4)$/);
@@ -212,8 +212,8 @@ async function capture() {
             }
             await writeFile(path.join(output,'integrated-export.json'),JSON.stringify(report??{failure:await evaluate('document.querySelector("#export-result").textContent')},null,2)+'\n',{flag:'wx'});
             assert.equal(report?.pass,true,'Integrated export failed; see integrated-export.json');
-            const artifacts=[];
-            for(const row of report.rows.filter(r=>r.name)){
+            const artifacts=[],turboArtifacts=[];
+            for(const row of [...report.rows,...(report.turboRows??[])].filter(r=>r.name)){
                 assert.match(row.name,/^export-\d{3}\.(?:webm|mp4)$/);
                 const encoded=await evaluate(`(async()=>{const blob=window.wh06ExportBlobs.get(${JSON.stringify(row.name)});return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob);});})()`);
                 assert.match(encoded,/^data:.*;base64,/);const bytes=Buffer.from(encoded.slice(encoded.indexOf(',')+1),'base64');
@@ -229,10 +229,34 @@ async function capture() {
                     let id=0;for(let bit=0;bit<6;bit++)if(ids[i*6+bit]>128)id|=1<<bit;
                     assert.equal(id,i+1,'Independent FFmpeg decoded frame ID mismatch');decoded.push(id);
                 }
-                artifacts.push({name:row.name,sha256:hash(bytes),bytes:bytes.length,video,audio,decodedIds:decoded});
+                (row.performanceMode==='turbo'?turboArtifacts:artifacts).push({name:row.name,sha256:hash(bytes),bytes:bytes.length,video,audio,decodedIds:decoded});
             }
-            await writeFile(path.join(output,'integrated-export-artifacts.json'),JSON.stringify({pass:true,artifacts},null,2)+'\n',{flag:'wx'});
-            console.log(JSON.stringify({exportRows:report.rows.length,files:artifacts.length,independentlyDecoded:true}));
+            await writeFile(path.join(output,'integrated-export-artifacts.json'),JSON.stringify({pass:true,artifacts,...(turboArtifacts.length?{turboArtifacts}:{})},null,2)+'\n',{flag:'wx'});
+            console.log(JSON.stringify({exportRows:report.rows.length,files:artifacts.length,independentlyDecoded:true,turboRows:report.turboRows?.length??0,turboFiles:turboArtifacts.length}));
+        }
+        if (process.argv.includes('--turbo-host')) {
+            const report=await evaluate('window.runWh07Benchmark()');
+            await writeFile(path.join(output,'turbo-benchmark.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});
+            assert.equal(report?.pass,true);assert.equal(report.rows.length,24);
+            const artifacts=[];
+            for(const row of report.rows){
+                assert.match(row.name,/^turbo-(?:720p|4k)-(?:mp4|webm)-(?:display|cooperative)-[1-3]\.(?:mp4|webm)$/);
+                const data=await evaluate(`(async()=>{const blob=window.wh07Blobs.get(${JSON.stringify(row.name)});return await new Promise((r,j)=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=j;f.readAsDataURL(blob);});})()`);
+                const bytes=Buffer.from(data.split(',')[1],'base64');assert.ok(bytes.length<=128*1024*1024);const file=path.join(output,row.name);await writeFile(file,bytes,{flag:'wx'});
+                const metadata=JSON.parse(execFileSync('ffprobe',['-v','error','-count_frames','-show_streams','-of','json',file],{windowsHide:true,encoding:'utf8',timeout:120_000}));
+                const video=metadata.streams.find(s=>s.codec_type==='video'),audio=metadata.streams.find(s=>s.codec_type==='audio');
+                assert.equal(Number(video.nb_read_frames),row.frames);assert.match(video.pix_fmt,/10/);assert.equal(audio.channels,2);
+                const decoded=execFileSync('ffmpeg',['-v','error','-i',file,'-map','0:v:0','-an','-f','streamhash','-'],{windowsHide:true,encoding:'utf8',timeout:120_000}).trim();
+                artifacts.push({name:row.name,sha256:hash(bytes),video,audio,decoded});
+            }
+            const comparisons=report.rows.filter(r=>r.scheduling==='display').map(row=>{
+                const candidate=report.rows.find(r=>r.resolution===row.resolution&&r.format===row.format&&r.run===row.run&&r.scheduling==='cooperative');
+                const baseline=artifacts.find(a=>a.name===row.name),actual=artifacts.find(a=>a.name===candidate.name);
+                return {resolution:row.resolution,format:row.format,run:row.run,displayMs:row.elapsedMs,cooperativeMs:candidate.elapsedMs,
+                    gain:1-candidate.elapsedMs/row.elapsedMs,exactDecodedPixels:baseline.decoded===actual.decoded};
+            });
+            await writeFile(path.join(output,'turbo-artifacts.json'),JSON.stringify({artifacts,comparisons},null,2)+'\n',{flag:'wx'});
+            console.log(JSON.stringify({turboComparisons:comparisons}));
         }
         if (publicRelease && process.argv.includes('--diagnostics-host')) {
             const hosts=[];
@@ -243,18 +267,30 @@ async function capture() {
                 const actual=await evaluate(`(()=>{
                     const fps=document.querySelector(${JSON.stringify(selector)});
                     const before=fps?.value;
+                    const speed=document.querySelector(${JSON.stringify(route?'.mvp-export-performance':'#export-performance')}),beforeSpeed=speed?.value;
+                    if(!speed)throw Error('Product throughput control missing');
+                    speed.value=${JSON.stringify(route?'economy':'turbo')};speed.dispatchEvent(new Event('change',{bubbles:true}));
                     if(!fps)throw Error('Product FPS control missing');
                     fps.value=${JSON.stringify(route?'60':'30')};fps.dispatchEvent(new Event('change',{bubbles:true}));
-                    return {before,selected:fps.value,saved:localStorage.getItem('plexus.export.fps'),
+                    return {before,beforeSpeed,selected:fps.value,saved:localStorage.getItem('plexus.export.fps'),speed:speed.value,savedSpeed:localStorage.getItem('plexus.export.performance.v1'),
                         copy:Boolean(document.querySelector(${JSON.stringify(route?'.mvp-export-copy':'#copy-export-diagnostics')})),
                         summary:Boolean(document.querySelector(${JSON.stringify(route?'.mvp-export-codec-diagnostic':'#export-diagnostic-status')})),
                         dashboardSummaryOutsideActions:!document.querySelector('#export-diagnostic-status')?.closest('.timeline-actions')};
                 })()`);
                 assert.equal(actual.copy,true);assert.equal(actual.summary,true);
                 assert.equal(actual.saved,route?'60':'30');
-                if(route)assert.equal(actual.before,'30','MVP must read dashboard FPS preference');
+                assert.equal(actual.savedSpeed,route?'economy':'turbo');
+                if(route){assert.equal(actual.beforeSpeed,'turbo','MVP must read dashboard throughput preference');assert.equal(actual.before,'30','MVP must read dashboard FPS preference');}
                 else assert.equal(actual.dashboardSummaryOutsideActions,true);
                 hosts.push({route,...actual});
+                if(route){
+                    // Layout-only sample: expose the already constructed empty-track dialog.
+                    // This does not claim an audio-backed product-button or mobile codec test.
+                    await send('Emulation.setDeviceMetricsOverride',{width:412,height:915,deviceScaleFactor:1,mobile:false});
+                    await evaluate('document.querySelector(".mvp-export-performance").closest(".mvp-modal-scrim").classList.remove("mvp-hidden")');
+                }
+                const picture=await send('Page.captureScreenshot',{format:'png'});
+                await writeFile(path.join(output,route?'product-mvp-export-layout.png':'product-dashboard-layout.png'),Buffer.from(picture.data,'base64'),{flag:'wx'});
             }
             await writeFile(path.join(output,'diagnostic-host-controls.json'),JSON.stringify({pass:true,release:publicRelease,hosts,
                 scope:'Actual published startup controls and cross-host FPS persistence; no audio export or physical-mobile claim.'},null,2)+'\n',{flag:'wx'});
@@ -282,5 +318,5 @@ async function verify(file) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
     if (process.argv[2] === 'capture') await capture();
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--diagnostics-host] [--public-release=ID] | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--turbo-export-host] [--diagnostics-host] [--turbo-host] [--public-release=ID] | verify [baseline.json]');
 }

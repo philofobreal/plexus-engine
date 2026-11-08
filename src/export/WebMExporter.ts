@@ -1,3 +1,4 @@
+import type { ExportPerformanceObserver } from './ExportPerformance';
 import type { ExportDiagnosticObserver } from './ExportDiagnostics';
 import type { ExportBackend } from './ExportBackend';
 import type { ExportConfig } from './ExportTypes';
@@ -23,7 +24,7 @@ export class WebMExporter {
         audioEngine: any,
         videoElement: HTMLVideoElement | null = null,
         options?: { prepareRuntime?: (config: ExportConfig, signal: AbortSignal) => Promise<ExportRuntime>;
-            onProfile?: (profile: ExportProfile) => void; onDiagnostic?: ExportDiagnosticObserver; createMp4Backend?: (trackName: string) => Promise<ExportBackend> }
+            onProfile?: (profile: ExportProfile) => void; onDiagnostic?: ExportDiagnosticObserver; onPerformance?: ExportPerformanceObserver; createMp4Backend?: (trackName: string) => Promise<ExportBackend> }
     ) {
         this.p5Instance = p5Instance;
         this.canvas = canvas;
@@ -53,7 +54,10 @@ export class WebMExporter {
             }, runtime, this.options?.onProfile, report => {
                 if (this.activeJob === job && job.command !== 'cancel')
                     try { this.options?.onDiagnostic?.(report); } catch { /* Diagnostics are observational. */ }
-            });
+            }, this.options?.onPerformance ? report => {
+                if (this.activeJob === job && job.command !== 'cancel')
+                    try { this.options?.onPerformance?.(report); } catch { /* Observation is optional. */ }
+            } : undefined);
             // A backend completion already queued when Cancel arrived must not download.
             if (job.command === 'cancel') throw new Error('Export cancelled.');
             return blob;

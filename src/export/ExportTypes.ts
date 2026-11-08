@@ -1,3 +1,4 @@
+import type { ExportPerformanceMode } from './ExportPerformance';
 import type { ExportCodecDiagnostic } from './ExportDiagnostics';
 import type { ExportPreparationReport } from '../types/ExportRenderJob';
 export type { ExportPreparationReport } from '../types/ExportRenderJob';
@@ -8,6 +9,8 @@ export type ExportBackendId = 'webcodecs' | 'none';
 export type ExportVideoCodec = 'vp8' | `vp09.00.${string}.08`;
 
 export interface ExportConfig {
+    /** Device/job throughput preference; never changes resolution, precision or codec. */
+    performanceMode?: ExportPerformanceMode;
     /** MP4 is opt-in and currently owned by the MVP host. */
     format?: ExportFormat;
     /** Device/job policy, never a visual preset property. Omission preserves the existing backend. */
@@ -49,6 +52,8 @@ export interface StartExportRequest {
     storageFile?: string;
     preflight?: boolean;
     profile?: boolean;
+    /** Opt-in prompt queue feedback; the legacy periodic backstop remains. */
+    queueEvents?: true;
     type: 'start_export';
     width: number;
     height: number;

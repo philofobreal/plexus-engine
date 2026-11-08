@@ -221,3 +221,56 @@ test('dashboard shares the explicit FPS preference, copies diagnostics and locks
     els.exportFps.value = '60'; els.exportFps.dispatchEvent(new Event('change'));
     assert.equal(h.saved.get(EXPORT_FPS_KEY), '60');
 });
+
+
+test('MVP Turbo is saved, copied, locked per job and reports actual completed timing without stale snapshots', () => {
+    const { EXPORT_PERFORMANCE_KEY } = load('export/ExportPerformance.ts');
+    const h = uiEnvironment(), dialog = h.open(), find = s => dialog.root.querySelector(s);
+    const select = find('.mvp-export-performance');
+    assert.equal(select.value, 'economy');
+    select.value = 'turbo'; select.dispatchEvent(new Event('change'));
+    assert.equal(h.saved.get(EXPORT_PERFORMANCE_KEY), 'turbo');
+    assert.equal(h.open().root.querySelector('.mvp-export-performance').value, 'turbo');
+    find('.mvp-export-start').click();
+    assert.equal(h.starts[0].performanceMode, 'turbo');
+    dialog.setActive(true); assert.equal(select.disabled, true);
+    const performance = { version:1, requested:'turbo', active:'turbo', scheduling:'cooperative', frameSource:'exact',
+        outcome:'completed', framesSubmitted:60, peakOutstandingFrames:2, audioPoolLimitBytes:25600,
+        hostMs:{total:1200,renderRequest:900},workerMs:{videoSubmit:800} };
+    dialog.recordPerformance(performance); performance.hostMs.total = 99999;
+    dialog.setActive(false); assert.equal(select.disabled, false);
+    select.value = 'economy'; find('.mvp-export-copy').click();
+    const copied = h.copies.at(-1);
+    assert.equal(copied.export.performanceMode, 'economy');
+    assert.equal(copied.diagnostics.requested.performanceMode, 'turbo');
+    assert.equal(copied.diagnostics.performance.hostMs.total, 1200);
+    assert.equal(copied.diagnostics.performance.peakOutstandingFrames, 2);
+    assert.match(find('.mvp-export-performance-status').textContent,/Turbo export: 60 frames, 1.2 s/);
+    assert.match(copied.diagnostics.performance.scope,/overlap/);
+    dialog.setActive(true); find('.mvp-export-copy').click();
+    assert.equal(h.copies.at(-1).diagnostics.performance, null);
+    h.saved.set(EXPORT_PERFORMANCE_KEY, 'invalid');
+    assert.equal(h.open().root.querySelector('.mvp-export-performance').value, 'economy');
+    h.unavailable();
+    assert.equal(h.open().root.querySelector('.mvp-export-performance').value, 'economy');
+});
+
+test('dashboard uses the same Turbo preference and copies owned timing from its current export', () => {
+    const { EXPORT_PERFORMANCE_KEY } = load('export/ExportPerformance.ts');
+    const h = uiEnvironment(), els = Object.fromEntries(['exportResolution','exportAspect','exportWatermark','exportVideoBtn',
+        'stopExportBtn','cancelExportBtn','status','exportFps','copyExportBtn','diagnosticStatus','exportPerformance','performanceStatus']
+        .map(k => [k,new h.Element()]));
+    h.saved.set(EXPORT_PERFORMANCE_KEY,'turbo');
+    els.exportResolution.value='4K';els.exportAspect.value='16:9';
+    const Controller=h.loader('ui/controllers/ExportController.ts').ExportController;
+    const controller=new Controller(els,{onExportStart:c=>h.starts.push(c),onExportStop(){},onExportCancel(){}});
+    controller.setCanExport(true);els.exportVideoBtn.click();
+    assert.equal(h.starts[0].performanceMode,'turbo');assert.equal(h.starts[0].resolution,'4K');
+    controller.setExportActive(true);assert.equal(els.exportPerformance.disabled,true);
+    controller.recordPerformance({version:1,requested:'turbo',active:'turbo',scheduling:'cooperative',frameSource:'exact',outcome:'completed',
+        framesSubmitted:60,peakOutstandingFrames:2,audioPoolLimitBytes:25600,hostMs:{total:1500},workerMs:{}});
+    els.copyExportBtn.click();assert.equal(h.copies[0].diagnostics.performance.active,'turbo');
+    controller.resetExportUi();assert.equal(els.exportPerformance.disabled,false);
+    els.exportPerformance.value='economy';els.exportPerformance.dispatchEvent(new Event('change'));
+    assert.equal(h.saved.get(EXPORT_PERFORMANCE_KEY),'economy');
+});

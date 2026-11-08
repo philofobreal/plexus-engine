@@ -1,5 +1,14 @@
 ﻿# Worker Communication
 
+WH-07a export throughput: `StartExportRequest.queueEvents?: true` enables
+additional prompt WebM capacity observations (native dequeue, submission and
+output) while retaining the periodic backstop. It does not change packet/PCM
+ownership or increase the two-frame bound. The performance report is an optional
+host-owned terminal callback, not an analyzer/render wire or hardware-usage claim.
+Current-worker and current-job guards still apply; see
+[WH-07a](../audits/wormhole-wh07-turbo.md).
+
+
 ## WH-06c1 export diagnostic observation (2026-11-08)
 
 Export workers may emit `{ type: 'export_diagnostic', report }`, where report

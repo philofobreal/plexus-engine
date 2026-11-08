@@ -1,5 +1,24 @@
 # Staged export lifecycle
 
+## WH-07a — optional WebM Turbo (2026-11-08)
+
+The user prioritized Turbo before mobile 10-bit fallback. Economy retains the
+existing export path. Turbo uses event-driven bounded WebM queue admission and
+a reusable browser-task yield channel. Both hosts persist/copy
+`plexus.export.performance.v1` (economy/turbo); unknown values use Economy.
+Precision, bitrate/GOP, exact GPU/Compatible source, PCM and progressive OPFS
+ownership remain. No new software codec is introduced.
+
+The request and effective mode are separate: MP4 currently uses Economy with
+`mp4-throughput-unqualified` because the repeated candidate missed the retained
+15% speed gate. WebM qualified on the recorded short workload with identical
+independently decoded pixels. The UI explains the format limitation and copies
+one bounded terminal timing report; no arbitrary telemetry/history is collected.
+WH-07 is partial; WH-07b addresses the actual MP4 bottleneck after manual
+acceptance. Details, commands and limits:
+[WH-07a](../audits/wormhole-wh07-turbo.md).
+
+
 ## WH-06c1: explicit FPS and local codec diagnostics (2026-11-08)
 
 Dashboard and MVP expose an export-only 30/60 fps preference, default 60,

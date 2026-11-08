@@ -1,3 +1,4 @@
+import { EXPORT_PERFORMANCE_KEY, normalizeExportPerformance, readExportPerformance, describeExportPerformance } from '../../export/ExportPerformance';
 import { ExportDiagnosticJournal, EXPORT_FPS_KEY, normalizeExportFps, readExportDiagnostic, describeExportDiagnostic } from '../../export/ExportDiagnostics';
 import type { ExportCapabilities, ExportConfig, ExportResolution } from '../../export/ExportTypes';
 
@@ -26,6 +27,7 @@ export class ExportDialog {
     private readonly resolutionBtns: HTMLButtonElement[];
     private readonly formatSelect: HTMLSelectElement;
     private readonly fpsSelect: HTMLSelectElement;
+    private readonly performanceSelect: HTMLSelectElement;
     private readonly diagnostics = new ExportDiagnosticJournal();
     private readonly callbacks: ExportDialogCallbacks;
     private isActive = false;
@@ -68,6 +70,13 @@ export class ExportDialog {
                     </select>
                     <small>30 fps can work when the selected codec cannot export this resolution at 60 fps. Resolution and bit depth stay as selected.</small>
                 </label>
+                <label class="mvp-field">
+                    <span class="mvp-field-row">Export speed</span>
+                    <select class="mvp-export-performance" aria-label="Export speed">
+                        <option value="economy" selected>Economy</option><option value="turbo">Turbo (WebM)</option>
+                    </select>
+                    <small>Turbo accelerates WebM with the same quality settings and bounded memory. MP4 currently uses Economy. Throughput depends on the device; Turbo can use more power and battery.</small>
+                </label>
                 <small class="mvp-export-mp4-note mvp-hidden">MP4 uses temporary browser storage. <a href="../export/ffmpeg-5.1.10/" target="_blank" rel="noopener">FFmpeg and source code</a></small>
                 <small class="mvp-export-vp9-note mvp-hidden">10-bit MP4 preserves brief detail with independent frames; files can be larger. Requires a player or editor that supports VP9 in MP4.</small>
                 <div class="mvp-capability-warning mvp-hidden"></div>
@@ -78,6 +87,7 @@ export class ExportDialog {
                 </div>
                 <div class="mvp-modal-status" role="status"></div>
                 <small class="mvp-export-codec-diagnostic" aria-live="polite" hidden></small>
+                <small class="mvp-export-performance-status" aria-live="polite" hidden></small>
                 <div class="mvp-field mvp-export-cache">
                     <button type="button" class="mvp-btn mvp-export-clear-cache">Clear this tab's finished exports</button>
                     <small class="mvp-export-cache-status"></small>
@@ -106,6 +116,13 @@ export class ExportDialog {
         this.capabilityWarningEl = this.root.querySelector('.mvp-capability-warning')!;
         this.resolutionBtns = Array.from(this.root.querySelectorAll('.mvp-export-resolution button'));
         this.formatSelect = this.root.querySelector('.mvp-export-format')!;
+        this.performanceSelect = this.root.querySelector('.mvp-export-performance')!;
+        this.performanceSelect.value = 'economy';
+        try { this.performanceSelect.value = normalizeExportPerformance(localStorage.getItem(EXPORT_PERFORMANCE_KEY)); } catch { /* Optional device preference. */ }
+        this.performanceSelect.addEventListener('change', () => {
+            if (this.isActive) return;
+            try { localStorage.setItem(EXPORT_PERFORMANCE_KEY,normalizeExportPerformance(this.performanceSelect.value)); } catch { /* Storage may be disabled. */ }
+        });
         this.fpsSelect = this.root.querySelector('.mvp-export-fps')!;
         this.fpsSelect.value = '60';
         try { this.fpsSelect.value = String(normalizeExportFps(localStorage.getItem(EXPORT_FPS_KEY))); } catch { /* Device preference is optional. */ }
@@ -184,7 +201,7 @@ export class ExportDialog {
     private getConfig(): ExportConfig {
         const active = this.root.querySelector('.mvp-export-resolution button.is-active') as HTMLElement | null;
         const resolution = (active?.dataset.res ?? '720p') as ExportResolution;
-        return { resolution, aspectRatio: '16:9', fps: normalizeExportFps(this.fpsSelect.value), watermark: false,
+        return { resolution, aspectRatio: '16:9', performanceMode: normalizeExportPerformance(this.performanceSelect.value), fps: normalizeExportFps(this.fpsSelect.value), watermark: false,
             ...(this.formatSelect.value === 'mp4' ? { format: 'mp4' }
                 : this.formatSelect.value === 'mp4vp9' ? { format: 'mp4', mp4VideoCodec: 'vp9-10bit' }
                 : this.formatSelect.value === 'webm10' ? { webmBitDepth: 10 } : {}) };
@@ -256,7 +273,7 @@ export class ExportDialog {
     setActive(isActive: boolean): void {
         const focused = document.activeElement;
         this.isActive = isActive;
-        if (isActive) { this.diagnostics.begin(this.getConfig()); this.root.querySelector<HTMLElement>('.mvp-export-codec-diagnostic')!.hidden=true; }
+        if (isActive) { this.diagnostics.begin(this.getConfig()); this.root.querySelector<HTMLElement>('.mvp-export-codec-diagnostic')!.hidden=true; this.root.querySelector<HTMLElement>('.mvp-export-performance-status')!.hidden=true; }
         this.refreshCache();
         this.controlPending = false;
         this.stopBtn.disabled = !isActive;
@@ -273,6 +290,7 @@ export class ExportDialog {
         });
         this.formatSelect.disabled = isActive;
         this.fpsSelect.disabled = isActive;
+        this.performanceSelect.disabled = isActive;
         this.progressBar.style.width = '0%';
         this.progressValue.textContent = '0%';
         if (focused === this.startBtn && isActive) this.minimizeBtn.focus();
@@ -292,6 +310,12 @@ export class ExportDialog {
     }
 
     recordDiagnostic(value: unknown): void { const report=readExportDiagnostic(value); if(!report)return; this.diagnostics.record(report); const view=this.root.querySelector<HTMLElement>('.mvp-export-codec-diagnostic')!; view.textContent=describeExportDiagnostic(report);view.hidden=false; }
+    recordPerformance(value: unknown): void {
+        const report = readExportPerformance(value); if (!report) return;
+        this.diagnostics.recordPerformance(report);
+        const view = this.root.querySelector<HTMLElement>('.mvp-export-performance-status')!;
+        view.textContent = describeExportPerformance(report); view.hidden = false;
+    }
     recordFailure(error: unknown): void { this.diagnostics.fail(error); }
 
     setStatus(message: string): void {

@@ -25,6 +25,8 @@ interface VideoEncoderConfigLike {
 }
 
 interface VideoEncoderLike {
+    encodeQueueSize?: number;
+    addEventListener?(type: 'dequeue', listener: () => void): void;
     configure(config: VideoEncoderConfigLike): void;
     encode(frame: VideoFrameLike, options?: { keyFrame?: boolean }): void;
     flush(): Promise<void>;
@@ -84,6 +86,7 @@ let totalEncodeTimeMs = 0;
 let peakEncodeTimeMs = 0;
 let submittedVideoFrameCount = 0;
 let keyframeIntervalFrames = 60;
+let queueEvents = false;
 let queueCheckInterval: ReturnType<typeof setInterval> | null = null;
 let profile = false, preparationStarted = 0, preparationMs = 0, firstFrameAt: number | null = null;
 let audioSubmittedSamples = 0, audioConfigured = false;
@@ -176,6 +179,7 @@ async function startExport(message: StartExportRequest) {
         output: (chunk) => {
             if (!muxer) throw new Error('Muxer is not initialized.');
             muxer.addVideoChunk(chunk);
+            if (queueEvents) reportQueue();
             framesEncodedCount++;
             totalEncodedBytes += chunk.byteLength;
             if (framesEncodedCount % 30 === 0) {
@@ -196,6 +200,8 @@ async function startExport(message: StartExportRequest) {
         }
     });
     encoder.configure(config);
+    queueEvents = message.queueEvents === true;
+    if (queueEvents) encoder.addEventListener?.('dequeue', reportQueue);
     submittedVideoFrameCount = 0;
     keyframeIntervalFrames = Math.max(1, Math.round(config.framerate));
 
@@ -290,7 +296,12 @@ function encodeFrame(message: EncodeFrameRequest) {
     postFrameEncoded(message.timestampUs, message.audioPlanar);
 }
 
+function reportQueue(): void {
+    if (encoder) workerScope.postMessage({ type: 'queue_update', size: encoder.encodeQueueSize || 0 });
+}
+
 function postFrameEncoded(timestampUs: number, audioBuffer?: Float32Array): void {
+    if (queueEvents) reportQueue();
     if (audioBuffer) {
         workerScope.postMessage({
             type: 'frame_encoded',

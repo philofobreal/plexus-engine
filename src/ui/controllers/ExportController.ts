@@ -1,3 +1,4 @@
+import { EXPORT_PERFORMANCE_KEY, normalizeExportPerformance, readExportPerformance, describeExportPerformance } from '../../export/ExportPerformance';
 import { ExportDiagnosticJournal, EXPORT_FPS_KEY, normalizeExportFps, readExportDiagnostic, describeExportDiagnostic } from '../../export/ExportDiagnostics';
 import type { ExportCapabilities } from '../../export/ExportTypes';
 import type { ExportConfig } from '../../export/WebMExporter';
@@ -17,6 +18,8 @@ type ExportEls = {
     cancelExportBtn: HTMLElement;
     status: HTMLElement;
     exportFps?: HTMLElement | null;
+    exportPerformance?: HTMLElement | null;
+    performanceStatus?: HTMLElement | null;
     copyExportBtn?: HTMLElement | null;
     diagnosticStatus?: HTMLElement | null;
 };
@@ -30,6 +33,14 @@ export class ExportController {
     constructor(els: ExportEls, callbacks: ExportCallbacks) {
         this.els = els;
         this.callbacks = callbacks;
+        if (this.els.exportPerformance) {
+            const select = this.els.exportPerformance as HTMLSelectElement;
+            select.value = 'economy';
+            try { select.value = normalizeExportPerformance(localStorage.getItem(EXPORT_PERFORMANCE_KEY)); } catch { /* Optional preference. */ }
+            select.addEventListener('change', () => {
+                try { localStorage.setItem(EXPORT_PERFORMANCE_KEY,normalizeExportPerformance(select.value)); } catch { /* Optional preference. */ }
+            });
+        }
         if (this.els.exportFps) {
             try { (this.els.exportFps as HTMLSelectElement).value=String(normalizeExportFps(localStorage.getItem(EXPORT_FPS_KEY))); } catch { /* Optional device preference. */ }
             this.els.exportFps.addEventListener('change',()=>{
@@ -82,9 +93,16 @@ export class ExportController {
     }
 
     recordDiagnostic(value: unknown): void { const report=readExportDiagnostic(value);if(!report)return;this.diagnostics.record(report);if(this.els.diagnosticStatus){this.els.diagnosticStatus.textContent=describeExportDiagnostic(report);this.els.diagnosticStatus.hidden=false;} }
+    recordPerformance(value: unknown): void {
+        const report = readExportPerformance(value); if (!report) return;
+        this.diagnostics.recordPerformance(report);
+        if (this.els.performanceStatus) { this.els.performanceStatus.textContent = describeExportPerformance(report); this.els.performanceStatus.hidden = false; }
+    }
     recordFailure(error: unknown): void { this.diagnostics.fail(error); }
 
     setExportActive(isActive: boolean): void {
+        if (this.els.exportPerformance) (this.els.exportPerformance as HTMLSelectElement).disabled = isActive;
+        if (isActive && this.els.performanceStatus) this.els.performanceStatus.hidden = true;
         if (isActive) { this.diagnostics.begin(this.getConfig());if(this.els.diagnosticStatus)this.els.diagnosticStatus.hidden=true; }
         if (this.els.exportFps) (this.els.exportFps as HTMLSelectElement).disabled=isActive;
         (this.els.exportResolution as HTMLSelectElement).disabled = isActive;
@@ -98,6 +116,7 @@ export class ExportController {
     }
 
     resetExportUi(): void {
+        if (this.els.exportPerformance) (this.els.exportPerformance as HTMLSelectElement).disabled = false;
         if (this.els.exportFps) (this.els.exportFps as HTMLSelectElement).disabled=false;
         (this.els.exportResolution as HTMLSelectElement).disabled = false;
         (this.els.exportAspect as HTMLSelectElement).disabled = false;
@@ -126,7 +145,7 @@ export class ExportController {
         const resolution = (this.els.exportResolution as HTMLSelectElement).value as ExportConfig['resolution'];
         const aspectRatio = (this.els.exportAspect as HTMLSelectElement).value as ExportConfig['aspectRatio'];
         const watermark = (this.els.exportWatermark as HTMLInputElement).checked;
-        return { resolution, aspectRatio, fps: normalizeExportFps((this.els.exportFps as HTMLSelectElement | undefined)?.value), watermark };
+        return { resolution, aspectRatio, ...(this.els.exportPerformance ? {performanceMode:normalizeExportPerformance((this.els.exportPerformance as HTMLSelectElement).value)} : {}), fps: normalizeExportFps((this.els.exportFps as HTMLSelectElement | undefined)?.value), watermark };
     }
 
     private initBindings(): void {

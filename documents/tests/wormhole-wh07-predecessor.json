@@ -1,0 +1,27 @@
+{
+  "commit": "77c0d5b8395e4d33d103d8a41725b246609bc932",
+  "retention": "WH-07 retains all earlier tests, numeric image gates, codec/precision/bitrate/GOP and two-frame admission. The user selected Turbo before mobile 10-bit fallback.",
+  "files": {
+    "src/export/WebCodecsBackend.ts": "3b8820c2194dcf7f3547162aaa4d17df5fd0d4c6081ee36ad553d92b5ce9d7af",
+    "src/export/export.worker.ts": "5bb7d72ac0e543379129f298076674b5c847c54ab0570732456f4dbf524ca0d3",
+    "src/export/ExportTypes.ts": "718565d9cac88d1b0c3a3fc3130bbefba035733ca9054cea8b9d087d89510226",
+    "src/export/ExportBackend.ts": "e2f7a4fc7aeab3b3f83b90b75cd66a08efb76f2a4cf0a0a47a4b3e64f3c45e75",
+    "src/export/WebMExporter.ts": "b4812ad4969d7c5677d3d489a7c2b91a826b8977081a52e3c1cc466de5104abd",
+    "src/export/ExportDiagnostics.ts": "b16860bd045f95964723086b5960386306748655737567060a139b8a68b5343c",
+    "src/ui/controllers/ExportController.ts": "b2e16ac6f2480976dfb17000fac20deb4fc19e9765b2bc73fbbb00ea36715fa3",
+    "src/ui/DashboardUI.ts": "227390cfd7b6f5dfd08d8e2ba2f0b5ad7e42809aade0ddfe0695628165154f03",
+    "src/main.ts": "e5088cfa92bcb6cb4e003829ebabd07f35571269b467a8075af1615949b78c1e",
+    "src/ui/mvp/ExportDialog.ts": "c3fa8b519dfb500c877e3c427d2b05064f03421f1fc34b1a5efd5275dec3b5a8",
+    "src/ui/mvp/MvpUI.ts": "dfddd0d1c2f6b390c15aabf0226aff79da69c467bd30c80ce98d9aa18713078f",
+    "src/ui/mvp/MvpVisualController.ts": "a53150c1b5a41f7bc803b54d6855d1f7c08c1c5b2b7d139d8137806d6ea1d900",
+    "tests/browser/wormhole-host-backend-smoke.html": "bfaf5078c42ae7e418570c4ece6e38d50180b2d0312243511fe002c70aa087eb",
+    "research/export/wormhole-baseline.mjs": "4f37097dc099e548dc0ac969d2569cb7fe408d47d8d29e73fa2b8daaab3f7996",
+    "tests/export-scheduling.test.mjs": "210d1a035ee3bb2a5767bd1b7e330d6a7c76dbbce9930cf776355a869b1cc276",
+    "tests/export-diagnostics.test.mjs": "2a36b36ef1443b54836ffd1cd6119503a3247b4ad3d422e76b2400e65ae6cfbd",
+    "tests/mvp-background-export.test.mjs": "c2d4da7ec99e330300acab0a93bf8dc23cbb792d5f819c68e33d812a0b8701c0",
+    "tests/export-deterministic.test.mjs": "dd36ba4efe583fe5da44fae06674be27b7253bc62e9548c3468a840a458d2283",
+    "src/ui/mvp/mvp.css": "6eb870beb586b68a406a8ae4b3997c236a015b265e118319052ce5bd1710ffda",
+    "tests/mvp-export-panel.test.mjs": "df7a06fdc3e45a50874c70daa84d7f1879824218e47d972b9b913e3044026ceb",
+    "src/style.css": "b316097a183c8c5abc508ff108d72fbb96d9397b31658eca65a588740ff62042"
+  }
+}

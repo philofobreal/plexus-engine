@@ -1,5 +1,13 @@
 # Architecture Contract
 
+WH-07a adds the dependency-free `ExportPerformance.ts` policy/validation leaf.
+Export owns bounded queue/task scheduling and one terminal timing observation;
+UI owns the versioned device preference and copied journal. Only qualified WebM
+uses Turbo; an MP4 request explicitly retains Economy until its promotion gate
+passes. No extra worker, second clock/producer, render math, preset ownership or
+codec setting changes. See [WH-07a](../audits/wormhole-wh07-turbo.md).
+
+
 WH-06c1 keeps export diagnosis in the export owner. `ExportDiagnostics.ts`
 imports only the ExportConfig type and owns bounded data validation, not codecs,
 State, DOM, audio or persistence. Workers produce optional observations; backend

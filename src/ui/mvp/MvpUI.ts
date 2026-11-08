@@ -625,7 +625,8 @@ export class MvpUI {
             this.unsavedChangesGuard.sync();
             const blob = await this.controller.startExport(config, progress => {
                 if (this.exportJob === job) this.exportDialog.setProgress(progress);
-            }, report => { if (this.exportJob === job) this.exportDialog.recordDiagnostic(report); });
+            }, report => { if (this.exportJob === job) this.exportDialog.recordDiagnostic(report); },
+                report => { if (this.exportJob === job) this.exportDialog.recordPerformance(report); });
             if (this.exportJob !== job) return;
             const extension = config.format === 'mp4' ? 'mp4' : 'webm';
             const highPrecision = extension === 'mp4'

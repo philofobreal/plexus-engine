@@ -8,7 +8,7 @@
 The two 4K sample pairs should retain the same shape, gradients and detail. PNG links download the full image; gallery previews are reduced.</p>
 <button id="exact" disabled>Validate exact 720p / 4K source frames</button><pre id="exact-result">Run the exact source check after the preview checks finish.</pre>
 <section id="exact-views"></section>
-<h2>WH-06b actual WebM / MP4 export</h2><p>Runs short encoded jobs, exact frame IDs, sound and cleanup checks. Downloads are test artifacts; this is not a complete-song or physical-mobile qualification.</p><button id="export-test">Validate integrated export</button><pre id="export-result">Not run.</pre>
+<h2>WH-06b actual WebM / MP4 export</h2><p>Runs short encoded jobs, exact frame IDs, sound and cleanup checks. Downloads are test artifacts; this is not a complete-song or physical-mobile qualification.</p><button id="export-test">Validate Economy + Turbo export</button><pre id="export-result">Not run.</pre>
 <script type="module">
 import p5 from 'p5';
 import { ALL_FORMATS, BlobSource, CanvasSink, EncodedPacketSink, Input } from 'mediabunny';
@@ -448,8 +448,8 @@ document.querySelector('#exact').onclick=()=>{window.runWh06Exact().catch(consol
 // WH-06b opt-in: real renderer port + product encoder workers/OPFS. Existing 37/21 gates stay intact.
 let exportRun=null;
 window.wh06ExportBlobs=new Map();
-window.runWh06Export=()=>exportRun??=(async()=>{
- const output=document.querySelector('#export-result'),rows=[],check=(v,m)=>{if(!v)throw Error(m);};
+window.runWh06Export=(options={})=>exportRun??=(async()=>{
+ const output=document.querySelector('#export-result'),rows=[],turboRows=[],check=(v,m)=>{if(!v)throw Error(m);};
  document.querySelector('#export-test').disabled=true;
  const savedPost=PostFxPipeline.prototype.render,savedUpdate=Particle.prototype.update,
   savedFreeze=P5RenderTargetCompositor.prototype.freezePairedCounterpart,savedPair=P5RenderTargetCompositor.prototype.compositePaired;
@@ -541,13 +541,13 @@ window.runWh06Export=()=>exportRun??=(async()=>{
   rawReference=spec.compare?new WormholeHostRenderSession({frames:State.frames,events:State.events,trackAnalysis:State.trackAnalysis,
    sampleRate:State.sampleRate,hopSize:State.hopSize,bpm:State.bpm},false):null;
   const backend=new WebCodecsBackend(hostP,hostP.canvas,audio,'WH06',null,'display',Mp4Worker);
-  const diagnostics=[];
+  const diagnostics=[],performances=[];
   const started=performance.now();let issued=false;
   try{
    const blob=await backend.start({resolution:spec.resolution,aspectRatio:spec.aspect,fps:spec.fps,format:spec.format,
-    preflight:true,watermark:false,...(spec.precision?spec.format==='webm'?{webmBitDepth:10}:{mp4VideoCodec:'vp9-10bit'}:{})},p=>{
+    preflight:true,watermark:false,...(spec.performanceMode?{performanceMode:spec.performanceMode}:{}),...(spec.precision?spec.format==='webm'?{webmBitDepth:10}:{mp4VideoCodec:'vp9-10bit'}:{})},p=>{
      if(command&&!issued&&p>0){issued=true;command==='stop'?backend.stopAndSave():backend.cancelExport();}
-    },undefined,undefined,report=>diagnostics.push(report));
+    },undefined,undefined,report=>diagnostics.push(report),report=>performances.push(report));
    const elapsedMs=performance.now()-started;
    const count=command==='stop'?Math.round(State.currentTime*spec.fps)+1:spec.frames;
    // Stop callback runs only after submission; the accepted prefix ends at currentTime.
@@ -560,13 +560,16 @@ window.runWh06Export=()=>exportRun??=(async()=>{
    if(spec.transitions)check(pairCount===24,'Both transitions must finish 12 paired frames each: '+pairCount);
    if(spec.post)check(appliedPost>0,'PostFX fixture must perform actual effect writes, not only a bypass');
    const row={...spec,name,pairCount,appliedPost,command:command??'full',bytes:blob.size,elapsedMs,raster,completed,...decoded,
-    quality:currentSpec.quality,diagnostics};
+    quality:currentSpec.quality,diagnostics,performances};
    check(diagnostics.some(d=>d.stage==='complete'&&d.width===decoded.width&&d.height===decoded.height&&d.fps===spec.fps),'Missing worker codec diagnostic');
    if(spec.precision)check(diagnostics.some(d=>d.bitDepth===10&&d.encoder==='supported'&&d.decoder==='supported'&&d.decodedFrames===3),'Missing strict 10-bit encode/decode diagnostic');
-   rows.push(row);return row;
+   check(performances.length===1&&performances[0].active===(spec.performanceMode==='turbo'&&spec.format!=='mp4'?'turbo':'economy'),'Wrong active throughput policy');
+   if(spec.performanceMode==='turbo'&&spec.format==='mp4')check(performances[0].fallbackReason==='mp4-throughput-unqualified','MP4 fallback must be explicit');
+   check(performances[0].peakOutstandingFrames<=2,'Throughput mode increased frame admission');
+   (spec.performanceMode==='turbo'?turboRows:rows).push(row);return row;
   }catch(error){
    if(command!=='cancel'||!String(error).includes('cancelled'))throw error;
-   check(!hostP.__plexusExportTarget&&!State.isExporting,'Cancel leaked target');rows.push({command:'cancel',pass:true});
+   check(!hostP.__plexusExportTarget&&!State.isExporting,'Cancel leaked target');(spec.performanceMode==='turbo'?turboRows:rows).push({command:'cancel',pass:true,performances});
   }finally{await backend.discardResult();rawReference?.dispose();rawReference=null;referencePost?.dispose();referencePost=null;c.dispose();hostP.noLoop();}
  };
  try{
@@ -584,18 +587,27 @@ window.runWh06Export=()=>exportRun??=(async()=>{
   for(const format of ['webm','mp4'])await one({...base,format,frames:48});
   await one({...base,format:'mp4',precision:true,frames:48});
   await one(base,'stop');await one(base,'cancel');await one({...base,frames:4});
-  const report={pass:true,scope:'Short real product renderer/worker/encoder/OPFS. 10 media configurations plus 2 transition/3 timeline stress jobs; no physical mobile/full-song claim.',rows};
+  if(options.turbo){
+   for(const [resolution,aspect,fps,format,precision]of specs)await one({resolution,aspect,fps,format,precision,
+    performanceMode:'turbo',frames:resolution==='4K'&&aspect==='16:9'?36:8,compare:resolution==='720p',post:true,display:aspect==='9:16'});
+   for(const format of ['webm','mp4'])await one({resolution:'720p',aspect:'16:9',fps:30,format,frames:48,transitions:true,post:true,extraRedraws:true,performanceMode:'turbo'});
+   for(const format of ['webm','mp4'])await one({...base,format,frames:48,performanceMode:'turbo'});
+   await one({...base,format:'mp4',precision:true,frames:48,performanceMode:'turbo'});
+   for(const format of ['webm','mp4']){const c={...base,format,performanceMode:'turbo'};await one(c,'stop');await one(c,'cancel');await one({...c,frames:4});}
+  }
+  const report={pass:true,scope:'Short real product renderer/worker/encoder/OPFS. 10 media configurations plus 2 transition/3 timeline stress jobs; no physical mobile/full-song claim.',rows,...(options.turbo?{turboRows}:{})};
   output.textContent=JSON.stringify(report,null,2);return report;
  }catch(error){window.wh06ExportFailure={failure:String(error.stack??error),spec:currentSpec,rows};output.textContent='FAIL: '+(error.stack??error);throw error;}
  finally{exportAutomation=null;TemporalFragmentationEffect.prototype.apply=savedApply;PostFxPipeline.prototype.render=savedPost;Particle.prototype.update=savedUpdate;P5RenderTargetCompositor.prototype.freezePairedCounterpart=savedFreeze;P5RenderTargetCompositor.prototype.compositePaired=savedPair;WormholeHostExactSource.prototype.requestFrame=originalRequest;port.renderFrame=originalRender;hostP.loop=originalLoop;
   window.createImageBitmap=originalBitmap;scratch.width=scratch.height=referenceCanvas.width=referenceCanvas.height=1;}
 })();
-document.querySelector('#export-test').onclick=()=>window.runWh06Export().catch(console.error);
+document.querySelector('#export-test').onclick=()=>window.runWh06Export({turbo:true}).catch(console.error);
 // WH-06c1: real DOM/storage/copy contract, independent from device codec support.
 window.runWh06c1=async()=>{
  const {ExportDialog}=await import('../../src/ui/mvp/ExportDialog.ts');
  const {EXPORT_FPS_KEY}=await import('../../src/export/ExportDiagnostics.ts');
- const key='plexus.mvp.exportFormat',saved=[localStorage.getItem(EXPORT_FPS_KEY),localStorage.getItem(key)],
+ const {EXPORT_PERFORMANCE_KEY}=await import('../../src/export/ExportPerformance.ts');
+ const key='plexus.mvp.exportFormat',saved=[localStorage.getItem(EXPORT_FPS_KEY),localStorage.getItem(key),localStorage.getItem(EXPORT_PERFORMANCE_KEY)],
   descriptor=Object.getOwnPropertyDescriptor(navigator,'clipboard');
  const copies=[],starts=[],check=(v,m)=>{if(!v)throw Error(m);};let dialog,reopened;
  try{
@@ -613,13 +625,64 @@ window.runWh06c1=async()=>{
   check(copies[0].diagnostics.userAgent===navigator.userAgent,'Browser version missing');
   reopened=new ExportDialog({onStart(){},onStop(){},onCancel(){}});check(reopened.root.querySelector('.mvp-export-fps').value==='30','FPS preference lost');
   const summary=dialog.root.querySelector('.mvp-export-codec-diagnostic');check(!summary.hidden&&summary.textContent.includes('Encoder: unsupported'),'Visible diagnostic missing');
-  return {pass:true,checks:8,scope:'Real DOM/localStorage/clipboard boundary with an explicitly simulated codec refusal; real codecs are verified by runWh06Export.',copied:copies[0]};
+  const throughput=dialog.root.querySelector('.mvp-export-performance');throughput.value='turbo';throughput.dispatchEvent(new Event('change'));
+  check(localStorage.getItem(EXPORT_PERFORMANCE_KEY)==='turbo','Turbo preference not stored');
+  dialog.setActive(true);check(throughput.disabled,'Active Turbo selector not locked');
+  dialog.recordPerformance({version:1,requested:'turbo',active:'economy',scheduling:'display',frameSource:'exact',outcome:'completed',fallbackReason:'mp4-throughput-unqualified',framesSubmitted:2,
+   peakOutstandingFrames:2,audioPoolLimitBytes:25600,hostMs:{total:120},workerMs:{}});dialog.setActive(false);copy();await Promise.resolve();
+  check(copies[1].diagnostics.performance.requested==='turbo'&&copies[1].diagnostics.performance.active==='economy'&&copies[1].export.performanceMode==='turbo','Turbo timing/copy missing');
+  reopened.root.remove();reopened=new ExportDialog({onStart(){},onStop(){},onCancel(){}});
+  check(reopened.root.querySelector('.mvp-export-performance').value==='turbo','Turbo preference lost on reopen');
+  return {pass:true,checks:8,turboChecks:4,turboCopied:copies[1],scope:'Real DOM/localStorage/clipboard boundary with an explicitly simulated codec refusal; real codecs are verified by runWh06Export.',copied:copies[0]};
  }finally{
   dialog?.root.remove();reopened?.root.remove();
-  for(const [i,k]of [EXPORT_FPS_KEY,key].entries())saved[i]===null?localStorage.removeItem(k):localStorage.setItem(k,saved[i]);
+  for(const [i,k]of [EXPORT_FPS_KEY,key,EXPORT_PERFORMANCE_KEY].entries())saved[i]===null?localStorage.removeItem(k):localStorage.setItem(k,saved[i]);
   descriptor?Object.defineProperty(navigator,'clipboard',descriptor):delete navigator.clipboard;
  }
 };
 
+// WH-07 timings use the product renderer without per-frame QA readback or ID overlays.
+// Quality/ordering remain separate gates in runWh06Export; no benchmark timing is a UI promise.
+window.wh07Blobs=new Map();
+window.runWh07Benchmark=async()=>{
+ const rows=[],check=(v,m)=>{if(!v)throw Error(m);};
+ const pcm=new AudioBuffer({numberOfChannels:2,sampleRate:48000,length:48000*8});
+ for(let c=0;c<2;c++){const d=pcm.getChannelData(c);for(let i=0;i<d.length;i++)d[i]=.12*Math.sin(2*Math.PI*(c?660:440)*i/48000);}
+ const originalLoop=hostP.loop;hostP.loop=()=>{};
+ try{
+  const one=async(resolution,format,scheduling,run,warmup=false)=>{
+   const fps=60,frames=resolution==='4K'?90:240;
+   const c=state({...raw,wormholeWall:0,wormholeNebulaAmount:.65,wormholeNebulaDetail:.8,postFxFragmentAmount:.65});
+   const signal={...c.state.currentFrame,e:.99,eRatio:.9,densityProj:.9,melodyProj:.7,fxProj:.6,subEnergy:.6,bassEnergy:.5,subFlux:.3,bassFlux:.2,
+    perceptualSpectrum:Array.from({length:24},(_,i)=>.5+.2*Math.sin(i))};
+   Object.assign(State,{frames:Array.from({length:800},()=>signal),events:[],trackAnalysis:c.state.trackAnalysis,sampleRate:48000,hopSize:512,bpm:120,
+    duration:frames/fps,playbackFade:1,isPlaying:false,visualMode:'cosmic-wormhole',visualModeTransition:null,currentTime:0,exportTime:0,isExporting:false,videoBackplateActive:false});
+   const features={...c.state.currentFeatures,melody:.7,vocal:.6,fx:.6,density:.9,brightness:.6,tension:.7};
+   State.trackAnalysis={...State.trackAnalysis,features:Array.from({length:800},()=>features)};
+   Object.assign(State.visualTuning,c.state.visualTuning);Object.assign(State.targetTuning,c.state.targetTuning);
+   hostQuality.wormholeRenderer='offscreen';hostQuality.compactMaterialPreview=true;hostQuality.musicDisplay=undefined;
+   positionChanged?.(0);State.playbackFade=1;hostP.noLoop();
+   let profile,performanceReport;const backend=new WebCodecsBackend(hostP,hostP.canvas,{getAudioBuffer:()=>pcm},'WH07',null,scheduling,Mp4Worker,p=>{profile=p;});
+   const started=performance.now();
+   try{
+    const blob=await backend.start({resolution,aspectRatio:'16:9',fps,format,preflight:true,watermark:false,
+     ...(scheduling==='cooperative'?{performanceMode:'turbo'}:{}),
+     ...(format==='mp4'?{mp4VideoCodec:'vp9-10bit'}:{webmBitDepth:10,videoBitrate:resolution==='4K'?64000000:8000000})},()=>{},undefined,undefined,undefined,r=>{performanceReport=r;});
+    const elapsedMs=performance.now()-started;
+    check(!hostP.__plexusExportTarget&&!State.isExporting,'Benchmark cleanup failed');
+    const raster=hostP.canvas.dataset.exportRaster;check(raster==='exact-gpu-material','Benchmark did not use exact GPU material');
+    // All copies/inspection happen after the timed interval.
+    const name=`turbo-${resolution.toLowerCase()}-${format}-${scheduling}-${run}.${format}`;
+    if(!warmup){check(blob.size<128*1024*1024,'Benchmark artifact exceeds cap');window.wh07Blobs.set(name,new Blob([await blob.arrayBuffer()],{type:blob.type}));
+     rows.push({name,resolution,format,scheduling,run,frames,fps,videoBitrate:resolution==='4K'?64000000:8000000,elapsedMs,bytes:blob.size,raster,profile,performanceReport});}
+   }finally{await backend.discardResult();c.dispose();hostP.noLoop();}
+  };
+  for(const [resolution,format]of [['720p','mp4'],['4K','mp4'],['720p','webm'],['4K','webm']]){
+   await one(resolution,format,'display',0,true);
+   for(let run=1;run<=3;run++)for(const scheduling of run%2?['display','cooperative']:['cooperative','display'])await one(resolution,format,scheduling,run);
+  }
+  return {pass:true,scope:'Short real GPU-rendered product export with constant synthetic music evidence; timings exclude QA pixel readback/artifact copies. No mobile/full-song/thermal guarantee.',rows};
+ }finally{hostP.loop=originalLoop;hostP.noLoop();}
+};
 window.addEventListener('pagehide',()=>{pass?.dispose();hostP?.remove();fixtureP?.remove();contexts.forEach(c=>c.dispose());exactUrls.forEach(url=>URL.revokeObjectURL(url));},{once:true});
 </script></html>

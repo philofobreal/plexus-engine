@@ -147,9 +147,11 @@ test('MVP export ignores stale mode and memory preferences and copies only curre
     dialog.root.querySelector('.mvp-export-copy').click();
     assert.deepEqual(reads, []);
     assert.doesNotMatch(dialog.root.innerHTML, /Export rendering|Isolated Wormhole|Export memory limit/);
-    assert.deepEqual(starts, [config]);
+    // WH-07 adds device policy; retain every preceding format/render assertion.
+    assert.deepEqual(starts.map(({performanceMode, ...previous}) => previous), [config]);
+    assert.equal(starts[0].performanceMode, 'economy');
     // Preserve the predecessor payload contract while separately checking additive diagnostics.
-    assert.deepEqual(copies.map(({ diagnostics, ...previous }) => previous), [{ export: config, cache }]);
+    assert.deepEqual(copies.map(({ diagnostics, export: {performanceMode, ...previousExport}, ...previous }) => ({...previous,export:previousExport})), [{ export: config, cache }]);
     assert.equal(copies[0].diagnostics.version, 1);
     assert.equal(copies[0].diagnostics.requested, null);
     assert.deepEqual(copies[0].diagnostics.events, []);

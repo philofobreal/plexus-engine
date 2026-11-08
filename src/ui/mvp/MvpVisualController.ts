@@ -1,3 +1,4 @@
+import type { ExportPerformanceObserver } from '../../export/ExportPerformance';
 import type { ExportDiagnosticObserver } from '../../export/ExportDiagnostics';
 import { findActiveAutomationPoint } from '../../automation/performanceAutomationRuntime';
 import { AudioEngine } from '../../audio/AudioEngine';
@@ -991,7 +992,7 @@ export class MvpVisualController {
         return State.duration > 0 && Boolean(this.exportP5Instance && this.exportCanvas);
     }
 
-    async startExport(config: ExportConfig, onProgress: (progress: number) => void, onDiagnostic?: ExportDiagnosticObserver): Promise<Blob> {
+    async startExport(config: ExportConfig, onProgress: (progress: number) => void, onDiagnostic?: ExportDiagnosticObserver, onPerformance?: ExportPerformanceObserver): Promise<Blob> {
         if (!this.canExport() || this.currentExporter || this.exportCacheClearing) throw new Error('Export is not available right now.');
         this.markSessionChanged();
         if (State.isPlaying) this.engine.stop(false);
@@ -1001,9 +1002,10 @@ export class MvpVisualController {
         const mp4 = config.format === 'mp4';
         const p5 = this.exportP5Instance, canvas = this.exportCanvas!;
         const observe: ExportDiagnosticObserver = report => { if (this.currentExporter === exporter) onDiagnostic?.(report); };
+        const observePerformance: ExportPerformanceObserver = report => { if (this.currentExporter === exporter) onPerformance?.(report); };
         const exporter = mp4
             ? new WebMExporter(p5, canvas, this.engine, null, {
-                onDiagnostic: observe,
+                onDiagnostic: observe, onPerformance: observePerformance,
                 createMp4Backend: async name => {
                     const [{ WebCodecsBackend }, { default: Mp4Worker }] = await Promise.all([
                         import('../../export/WebCodecsBackend'), import('../../export/mp4-export.worker.ts?worker'),
@@ -1011,7 +1013,7 @@ export class MvpVisualController {
                     return new WebCodecsBackend(p5, canvas, this.engine, name, null, 'display', Mp4Worker);
                 },
             })
-            : new WebMExporter(p5, canvas, this.engine, null, {onDiagnostic:observe});
+            : new WebMExporter(p5, canvas, this.engine, null, {onDiagnostic:observe,onPerformance:observePerformance});
         this.currentExporter = exporter;
         try {
             const encoding = mp4 ? {
@@ -1021,7 +1023,7 @@ export class MvpVisualController {
                 ...(resolution === '4K' ? { preflight: true, videoBitrate: 64_000_000 } : {}),
                 ...(config.webmBitDepth === 10 ? { webmBitDepth: 10 as const } : {}),
             };
-            return await exporter.startExport({ resolution, aspectRatio, fps, watermark, trackName, ...encoding }, progress => {
+            return await exporter.startExport({ resolution, aspectRatio, fps, watermark, trackName, ...encoding, ...(config.performanceMode ? {performanceMode:config.performanceMode} : {}) }, progress => {
                 if (this.currentExporter === exporter) onProgress(progress);
             });
         } finally {

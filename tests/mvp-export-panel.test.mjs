@@ -88,12 +88,12 @@ test('MVP reserves one job, ignores stale progress and releases the workspace on
     const ui = Object.create(exports.MvpUI.prototype);
     const workspace = new Element(), existingLock = new Element(), panel = new Element();
     existingLock.inert = true;
-    const jobs = [], downloads = [], updates = [], statuses = [], guard = [], diagnostics = [], failures = [];
+    const jobs = [], downloads = [], updates = [], statuses = [], guard = [], diagnostics = [], failures = [], performances = [];
     Object.assign(ui, {
         root: { children: [workspace, panel, existingLock] },
         exportDialog: { root: panel, setActive() {}, setStatus: status => statuses.push(status), setProgress: p => updates.push(p),
-            recordDiagnostic: report => diagnostics.push(report), recordFailure: error => failures.push(error.message) },
-        controller: { startExport: (_config, progress, diagnostic) => new Promise((resolve, reject) => jobs.push({ progress, diagnostic, resolve, reject })) },
+            recordDiagnostic: report => diagnostics.push(report), recordFailure: error => failures.push(error.message), recordPerformance: report => performances.push(report) },
+        controller: { startExport: (_config, progress, diagnostic, performance) => new Promise((resolve, reject) => jobs.push({ progress, diagnostic, performance, resolve, reject })) },
         unsavedChangesGuard: { sync: () => guard.push(Boolean(ui.exportJob)) },
         downloadBlob: blob => downloads.push(blob)
     });
@@ -111,12 +111,15 @@ test('MVP reserves one job, ignores stale progress and releases the workspace on
     const second = ui.runExport({});
     jobs[0].progress(.9);
     jobs[0].diagnostic('stale');
+    jobs[0].performance('stale');
+    jobs[1].performance('current');
     jobs[1].diagnostic('current');
     jobs[1].progress(.2);
     jobs[1].reject(new Error('Export cancelled.'));
     await second;
     assert.deepEqual(updates, [.2]);
     assert.deepEqual(diagnostics, ['current']);
+    assert.deepEqual(performances, ['current']);
     assert.deepEqual(failures, ['Export cancelled.']);
     assert.equal(statuses.at(-1), 'Export cancelled.');
     assert.deepEqual(downloads, [blob]);

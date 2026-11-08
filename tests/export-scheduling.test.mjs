@@ -12,7 +12,8 @@ async function until(check) {
     assert.fail('Export did not reach the expected boundary');
 }
 
-function fixture(scheduling, { autoAck = false } = {}) {
+function fixture(scheduling, { autoAck = false, overrides = {}, observerThrows = false } = {}) {
+    const performanceReports = [];
     const requests = [], rendered = [], progress = [], profiles = [], watchdogs = new Map();
     let worker, animationFrames = 0, polls = 0;
     class Worker {
@@ -63,9 +64,9 @@ function fixture(scheduling, { autoAck = false } = {}) {
         async renderFrame(index, fps) { rendered.push([index, fps]); return {}; }
     };
     return {
-        backend, requests, rendered, progress, profiles, watchdogs,
+        backend, requests, rendered, progress, profiles, watchdogs, performanceReports,
         frames: () => requests.filter(message => message.type === 'encode_frame'),
-        start: () => backend.start(config, value => progress.push(value), runtime, profile => profiles.push(profile)),
+        start: () => backend.start({ ...config, ...overrides }, value => progress.push(value), runtime, profile => profiles.push(profile), undefined, report => { performanceReports.push(report); if(observerThrows)throw Error('Observer'); }),
         get worker() { return worker; }, get animationFrames() { return animationFrames; }, get polls() { return polls; }
     };
 }
@@ -124,5 +125,57 @@ test('Cancel, worker error and watchdog release a cooperative queue wait without
         assert.equal(h.worker.terminated, true);
         assert.equal(h.backend.resumeQueueWait, null);
         assert.equal(h.watchdogs.size, 0);
+    }
+});
+
+
+test('explicit Turbo preserves media input and admission limits while enabling event-driven WebM feedback', async () => {
+    const economy = fixture(undefined, { autoAck: true, overrides: { performanceMode: 'economy' } });
+    const turbo = fixture(undefined, { autoAck: true, overrides: { performanceMode: 'turbo' }, observerThrows: true });
+    await economy.start(); await turbo.start();
+    const payloads = h => h.frames().map(f => [f.timestampUs, f.audioSampleCount, [...f.audioPlanar]]);
+    assert.deepEqual(payloads(turbo), payloads(economy));
+    const selected = h => Object.fromEntries(Object.entries(h.requests[0]).filter(([k]) => k !== 'queueEvents'));
+    assert.deepEqual(selected(turbo), selected(economy));
+    assert.equal(economy.requests[0].queueEvents, undefined);
+    assert.equal(turbo.requests[0].queueEvents, true);
+    assert.equal(turbo.animationFrames, 0);
+    assert.equal(turbo.polls, 0);
+    assert.equal(turbo.performanceReports[0].active, 'turbo');
+    assert.equal(turbo.performanceReports[0].scheduling, 'cooperative');
+    assert.ok(turbo.performanceReports[0].peakOutstandingFrames <= 2);
+    assert.equal(turbo.performanceReports[0].audioPoolLimitBytes, economy.performanceReports[0].audioPoolLimitBytes);
+    assert.equal(turbo.performanceReports[0].outcome, 'completed');
+    assert.equal(turbo.worker.terminated, true);
+});
+
+test('explicit Economy overrides an injected research schedule and unknown modes retain the production default', async () => {
+    for (const [scheduling, performanceMode] of [['cooperative', 'economy'], [undefined, 'unknown']]) {
+        const h = fixture(scheduling, { autoAck: true, overrides: { performanceMode } });
+        await h.start();
+        assert.equal(h.animationFrames, 5);
+        assert.equal(h.requests[0].queueEvents, undefined);
+        assert.equal(h.performanceReports[0].active, 'economy');
+        assert.equal(h.performanceReports[0].scheduling, 'display');
+    }
+});
+
+test('Turbo Stop, Cancel and failure release bounded queue waits with truthful terminal counters', async () => {
+    for (const command of ['stop', 'cancel', 'error']) {
+        const h = fixture(undefined, { overrides: { performanceMode: 'turbo' } });
+        const work = h.start();
+        const rejected = command === 'stop' ? null : assert.rejects(work, /cancelled|failed/);
+        await until(() => h.frames().length === 2 && h.backend.resumeQueueWait);
+        if(command === 'stop')h.backend.stopAndSave();
+        else if(command === 'cancel')h.backend.cancelExport();
+        else h.worker.emit({type:'export_error',message:'failed'});
+        if(rejected)await rejected;else await work;
+        const report = h.performanceReports[0];
+        assert.equal(report.framesSubmitted, 2);
+        assert.equal(report.peakOutstandingFrames, 2);
+        assert.equal(report.outcome, command === 'stop' ? 'completed' : command === 'cancel' ? 'cancelled' : 'failed');
+        assert.equal(h.backend.resumeQueueWait, null);
+        assert.equal(h.watchdogs.size, 0);
+        assert.equal(h.worker.terminated, true);
     }
 });
