@@ -1,7 +1,7 @@
 {
-  "id": "wh07b3-vp9-color-20261108T214616935Z",
-  "previousCommit": "3bf025a49fca8509e594acc67cbf3d6fd9e5212d",
-  "sourceCommit": "8cabeebb5dc63fe4ccb399567bbf56dacc355450",
+  "id": "wh07b4-native-packet-20261108T222922110Z",
+  "previousCommit": "ad408788acb9182c553e15d004cb57fdc5fda857",
+  "sourceCommit": "cacb81bde77197da2f51ec322fc08b4a3c227c88",
   "inputs": [
     {
       "path": "bun.lock",
@@ -204,6 +204,10 @@
       "sha256": "8493f7b5e9abc296aeb805be42df77631ee48746f3cce3ca1a7258ab0afe5bda"
     },
     {
+      "path": "research/export/native-packet.worker.ts",
+      "sha256": "ecb62dec44b6fe314e6ab65cbc21a56f6ef10df9b59ba51df665f0c6277ae450"
+    },
+    {
       "path": "research/export/paired-encoder.worker.ts",
       "sha256": "e3e8445069be8343281eedb89c79a349b3c5dc19b0136d2fcbc7296b9f0712e3"
     },
@@ -377,7 +381,7 @@
     },
     {
       "path": "scripts/release-pages.mjs",
-      "sha256": "d7b965c385620ae47cafb8c195cd5bbfb2360a4f0dd4c02b83cfb1a3159ef67f"
+      "sha256": "01709d6e0df1f0eb4d818eb897f73b589b3cc141afd461e0a9927ddab022d7f2"
     },
     {
       "path": "scripts/release-wall-default-off.mjs",
@@ -1789,7 +1793,7 @@
     },
     {
       "path": "tests/browser/wormhole-host-backend-smoke.html",
-      "sha256": "509b7ebd49aac73af643e9bf02e52521836cd1295ff2e4d6dbfe497b1d816c14"
+      "sha256": "a7c7989007d640168898c87c6c52429ee3093539dbb7235147569471ba20a773"
     },
     {
       "path": "tsconfig.json",
@@ -1890,6 +1894,10 @@
       "sha256": "f29ff1a0768d85dab5bacf25eadf00db14f80a44fa9f82492300c2d36dcbe582"
     },
     {
+      "path": "assets/native-packet.worker-C4IZlbPg.js",
+      "sha256": "aea3b6a049ab29cd0924a3f4c26f2114f215baf2105a7e45ad00b64015f21286"
+    },
+    {
       "path": "assets/paired-encoder.worker-Da15FbFC.js",
       "sha256": "e18ec9e1b9c66f8643d06fc8f83e80f52b89a459e4a4ad6ba9de6bd95875aa40"
     },
@@ -1954,8 +1962,8 @@
       "sha256": "61ccac8e4b0984d4859ce8dd1dd7b7658f032161595a402a37950f5ff36b409d"
     },
     {
-      "path": "assets/wormholeHostLab-DrD32E-h.js",
-      "sha256": "12a60349b9b70460921250f60a7657edb0cf53b49cfffcba0771e40a9f454a6c"
+      "path": "assets/wormholeHostLab-DHbHJjT0.js",
+      "sha256": "2a637f7c0c1816c985f05a118e0cae8088483b1c96169171e3dc0d9f468ae05c"
     },
     {
       "path": "assets/wormholeHostRender.worker-DSD9FOKw.js",
@@ -2047,7 +2055,7 @@
     },
     {
       "path": "tests/browser/wormhole-host-backend-smoke.html",
-      "sha256": "aaa66a0f04d36f059edcdc3e91365dff0be97fd1a707207b1f0ec299b6673572"
+      "sha256": "17d6b9356e7764aa4b6fb9c795b3ab1ba182eaaddf5ef206a4f34ec21333dd21"
     },
     {
       "path": "visual-tuning-presets/default.json",
