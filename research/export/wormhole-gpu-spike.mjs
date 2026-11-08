@@ -98,7 +98,7 @@ async function capture() {
             catch { await sleep(200); }
         }
         assert.ok(port, 'Chrome debug endpoint missing');
-        const tabs = await (await fetch('http://127.0.0.1:' + port + '/json/list')).json();
+        const tabs = await (await fetch('http://127.0.0.1:' + port + '/json/list', { headers: { Connection: 'close' } })).json();
         socket = new WebSocket(tabs.find(tab => tab.type === 'page').webSocketDebuggerUrl);
         await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
         let serial = 0;
@@ -140,6 +140,10 @@ async function capture() {
                 await evaluate('localStorage.setItem("plexus.wormholeRenderer","compatible")');await send('Page.navigate',{url});
                 for(let i=0;i<400&&await evaluate(raster)!=='compatible';i++)await sleep(50);
                 assert.equal(await evaluate(raster),'compatible','Saved Compatible respected: '+route);
+                if(route==='mvp/')await evaluate("document.querySelector('[aria-label=\"Advanced tuning\"]').click()");
+                assert.equal(await evaluate("document.querySelector('[aria-label=\"Wormhole renderer\"]').value"),'compatible');
+                for(let i=0;i<8;i++)await evaluate('new Promise(requestAnimationFrame)');
+                assert.equal(await evaluate(raster),'compatible','Saved choice remains active: '+route);
                 await evaluate('localStorage.setItem("plexus.wormholeRenderer","offscreen")');
                 hosts.push({route,hint,modes,pixels,savedCompatibleRespected:true});
             }
@@ -182,7 +186,17 @@ async function capture() {
         assert.equal(host?.pass, true, JSON.stringify(host));
         await writeFile(path.join(root, 'active-run.txt'), output + '\n');
         console.log(JSON.stringify({ output, qualityPass: run.pass, cases: 8, hostRows: host.rows.length }));
-    } finally { socket?.close(); child.kill(); await new Promise(resolve => server.close(resolve)); }
+    } finally {
+        // Finish the CDP close handshake before terminating our private Chrome instance.
+        if (socket && socket.readyState !== WebSocket.CLOSED) await new Promise(resolve => {
+            const timer = setTimeout(resolve, 1000);
+            socket.addEventListener('close', () => { clearTimeout(timer); resolve(); }, { once: true });
+            socket.close();
+        });
+        child.kill();
+        server.closeAllConnections();
+        await new Promise(resolve => server.close(resolve));
+    }
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){
     if(process.argv[2]==='capture')await capture();

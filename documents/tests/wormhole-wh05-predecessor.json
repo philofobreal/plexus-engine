@@ -15,6 +15,7 @@
     "tests/paused-renderer.test.mjs": "18180f11db184af8d8f66723b9b8304677c9863d2bc158393b06cb3ca3efdb0a",
     "tests/wormhole-host-worker.test.mjs": "9bd9b813cf9700e671b16adf780ef1538ef3daae94f2ffb2a69b79d27d72fcbb",
     "tests/browser/wormhole-host-backend-smoke.html": "3b81d9075903d5c84427bd89b49ac7e70f969c1cdff0199b64e4740ae67c2332",
-    "research/export/wormhole-gpu-spike.mjs": "f092d86a1b03e139051210fc87066ae89ef888a3f3cdcb9a9abdb3a77c034398"
+    "research/export/wormhole-gpu-spike.mjs": "f092d86a1b03e139051210fc87066ae89ef888a3f3cdcb9a9abdb3a77c034398",
+    "research/export/wormhole-baseline.mjs": "198446d753c88fbb495d4ce54fd311bb120c37cce863eeefa5aa1eb8c6e8e4eb"
   }
 }

@@ -116,7 +116,7 @@ async function capture() {
             catch { await sleep(200); }
         }
         assert.ok(port, 'Chrome debug endpoint missing');
-        const tabs = await (await fetch('http://127.0.0.1:' + port + '/json/list')).json();
+        const tabs = await (await fetch('http://127.0.0.1:' + port + '/json/list', { headers: { Connection: 'close' } })).json();
         socket = new WebSocket(tabs.find(tab => tab.type === 'page').webSocketDebuggerUrl);
         await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
         let serial = 0;
@@ -140,13 +140,24 @@ async function capture() {
         let host;
         for (let i = 0; i < 400; i++) {
             const text = await evaluate('document.querySelector("#result")?.textContent');
+            if (text?.startsWith('FAIL:')) throw Error(text);
             if (text?.startsWith('{')) { host = JSON.parse(text); break; } await sleep(200);
         }
         await writeFile(path.join(output, 'host-smoke.json'), JSON.stringify(host, null, 2) + '\n', { flag: 'wx' });
         assert.equal(host?.pass, true, JSON.stringify(host));
         await writeFile(path.join(root, 'active-run.txt'), output + '\n');
         console.log(JSON.stringify({ output, pass: true, cases: 8, hostRows: host.rows.length }));
-    } finally { socket?.close(); child.kill(); await new Promise(resolve => server.close(resolve)); }
+    } finally {
+        // Finish the CDP close handshake before terminating our private Chrome instance.
+        if (socket && socket.readyState !== WebSocket.CLOSED) await new Promise(resolve => {
+            const timer = setTimeout(resolve, 1000);
+            socket.addEventListener('close', () => { clearTimeout(timer); resolve(); }, { once: true });
+            socket.close();
+        });
+        child.kill();
+        server.closeAllConnections();
+        await new Promise(resolve => server.close(resolve));
+    }
 }
 async function verify(file) {
     const output = file ? path.dirname(path.resolve(file)) : (await readFile(path.join(root, 'active-run.txt'), 'utf8')).trim();
