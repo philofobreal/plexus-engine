@@ -136,7 +136,10 @@ async function capture() {
             clip: { x: 0, y: 0, width: dimensions.width, height: dimensions.height, scale: 1 } });
         await writeFile(path.join(output, 'reference-gallery.png'), Buffer.from(screenshot.data, 'base64'), { flag: 'wx' });
         console.log('Scalar reference captured; checking existing host regression fixture');
-        await send('Page.navigate', { url: origin + hostFixture });
+        const publicRelease=process.argv.find(arg=>arg.startsWith('--public-release='))?.slice(17);
+        if(publicRelease)assert.match(publicRelease,/^[a-zA-Z0-9-]+$/);
+        const hostUrl=publicRelease?'https://philofobreal.github.io'+hostFixture+'?release='+publicRelease:origin+hostFixture;
+        await send('Page.navigate', { url: hostUrl });
         let host;
         for (let i = 0; i < 400; i++) {
             const text = await evaluate('document.querySelector("#result")?.textContent');
@@ -169,7 +172,7 @@ async function capture() {
             console.log(JSON.stringify({exactRows:exact.rows.length,exactPass:exact.pass,fullSizeSamples:images.length}));
         }
         await writeFile(path.join(root, 'active-run.txt'), output + '\n');
-        console.log(JSON.stringify({ output, pass: true, cases: 8, hostRows: host.rows.length }));
+        console.log(JSON.stringify({ output, pass: true, cases: 8, hostRows: host.rows.length, ...(publicRelease?{publicRelease}:{}) }));
     } finally {
         // Finish the CDP close handshake before terminating our private Chrome instance.
         if (socket && socket.readyState !== WebSocket.CLOSED) await new Promise(resolve => {
@@ -191,5 +194,5 @@ async function verify(file) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
     if (process.argv[2] === 'capture') await capture();
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--public-release=ID] | verify [baseline.json]');
 }

@@ -134,6 +134,8 @@ Commands and exact file lists are recorded in logs/wh06a/acceptance.json:
 `node --test --test-reporter=tap --test-concurrency=4` with the retained explicit
 26-file list; `node research/export/wormhole-baseline.mjs capture --exact-host`;
 `node research/export/wormhole-baseline.mjs verify`;
+`node research/export/wormhole-baseline.mjs capture --exact-host --public-release=ID`
+for the actual deployed host/exact fixture, keeping the scalar reference local;
 `node research/export/wormhole-gpu-spike.mjs capture float16 cpu-lines` and `verify`.
 No dependency install or Graphify rebuild. Node/npm are available. The guarded
 Node publisher replaces the Bun-dependent package deploy command. diff_export.ps1
