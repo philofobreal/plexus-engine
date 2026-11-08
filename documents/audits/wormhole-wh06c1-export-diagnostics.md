@@ -125,3 +125,81 @@ quality/speed/resource efficiency outweigh file size. Existing 8-bit choices
 remain compatibility paths until mobile 10-bit is qualified. Any new software
 encoder/dependency or substantial CPU cost requires the scheduled measured
 decision. Do not begin the next task before this manual handoff.
+
+## Samsung 4K30 follow-up — native encoder refusal (2026-11-08)
+
+The user supplied the first concrete physical-phone diagnostic after WH-06c1:
+Samsung S22 Ultra / Android Chrome UA `Chrome/157.0.0.0`, 3840x2160, 30 fps,
+MP4 VP9 10-bit, 64,000,000 bit/s, `vp09.02.51.10`. Encoder query:
+**unsupported**; decoder query: **supported**; encoded/decoded frames: **0/0**.
+No cache file was produced. This is an encoding-admission refusal, not a decoder
+false negative, output corruption, storage admission or a render-speed failure.
+It establishes rejection of this exact configuration, not every 10-bit codec,
+resolution, bitrate or browser implementation on the phone. The user also reports
+both 10-bit variants fail, but the supplied detailed trace is the MP4 variant.
+Both existing 10-bit containers share the VP9 profile-2 admission helper.
+
+The level remains 5.1 at 30 fps because 64 Mbit/s exceeds level 5's 60 Mbit/s
+ceiling. The primary [WebM level table](https://www.webmproject.org/vp9/levels/)
+confirms this is a valid declared level; lowering FPS alone does not lower that
+bitrate-derived level. A level-5 label with the same bitrate would misdeclare the
+configuration. A lower-bitrate support query can diagnose a limit, but selecting
+it is not permission to silently alter the accepted quality profile.
+
+Primary-source inspection found that Chromium's current
+[libvpx build selection](https://github.com/chromium/chromium/blob/main/third_party/libvpx/BUILD.gn)
+uses the non-highbd arm64 configuration for mobile Android; its
+[configuration header](https://github.com/chromium/chromium/blob/main/third_party/libvpx/source/config/linux/arm64/vpx_config.h)
+has `CONFIG_VP9_HIGHBITDEPTH 0`. The
+[VPX encoder](https://github.com/chromium/chromium/blob/main/media/video/vpx_video_encoder.cc)
+requires `VPX_CODEC_CAP_HIGHBITDEPTH` for profiles 2/3. This plausibly explains why
+an ARM64 phone can expose a 10-bit decoder but lack a suitable VP9 encoder. These
+are upstream sources inspected on 2026-11-08, not proof of the exact binary or
+hardware backend on this device. Runtime `unsupported` remains authoritative for
+the supplied request. Per the [WebCodecs specification](https://www.w3.org/TR/webcodecs/#enumdef-hardwareacceleration),
+acceleration preferences are hints and cannot supply a missing implementation.
+
+Local source inspection confirms `research/export/ffmpeg-mp4-core.Dockerfile`
+enables the AAC encoder and VP9 decoder, with video copied during MP4 finalize;
+it does not include a VP9 video encoder. Merely changing a runtime flag in the
+current WASM core cannot create the missing encoder. The installed native
+FFmpeg reports `libvpx-vp9` and `yuv420p10le` (`ffmpeg -hide_banner -h
+encoder=libvpx-vp9`); this is a native capability observation, not a browser-WASM
+performance or phone qualification result. No package/model/toolchain was
+installed and no encoder/decoder gate was bypassed.
+
+### Revised next step and decision
+
+WH-06c2 remains an admission investigation, not a delivered mobile fix. This
+specific trace rules out its proposed decoder-false-negative repair as the
+solution to this failure. Prioritize the already scheduled WH-06e feasibility
+step for an actual additional 10-bit encoder. Preserve native VP9 10-bit and its
+accepted quality wherever available. A conditional native HEVC/AV1 Main10 probe
+may be investigated, but no such format is implemented or assumed supported on
+this device.
+
+Recommended experiment, pending the user's CPU/speed-priority decision:
+
+1. Probe a bounded matrix of VP9 profile-2 rate-control/level constraints and
+   native 10-bit alternatives. Queries alone do not promote a product path.
+2. Build an isolated high-bit-depth libvpx WASM candidate, lazy-loaded in a worker,
+   after checking the existing toolchain/cache and pinning source/build identity.
+3. Preserve the complete exact GPU-rendered source, accepted all-intra VP9 MP4
+   detail, precision, audio clock and bounded frame/PCM queues. Stream encoded
+   chunks to OPFS through the existing job/storage owners; avoid raw-video staging
+   or whole-movie buffers. No new exporter state machine.
+4. Measure complete encode/convert/write/finalize time, peak memory, cancellation,
+   retry and independently decoded frame/detail/gradient quality. Probe SIMD;
+   threads are optional only with actual cross-origin isolation/SharedArrayBuffer,
+   with a single-thread fallback. Do not claim WASM uses the video-encoder GPU.
+5. Only promote an explicit, saved, copyable software compatibility choice if
+   the quality/resource tests pass. Software 4K can be slower and more power
+   intensive; do not make it the default on a qualified native device.
+
+The alternative priority is WH-07 Turbo for already working native desktop
+exports, with mobile 10-bit deferred. The user was asked which priority to take
+before installing a new encoder/dependency or accepting substantial CPU cost.
+No product implementation, commit or release is claimed by this investigation.
+The last deployed runtime remains source `1a219e8`, release
+`wh06c1-export-diagnostics-20261108T153541553Z`; previous acceptance receipts stay
+immutable. The original WH-06d withdrawal remains in force.

@@ -268,6 +268,17 @@ a nagyobb frame/timing refaktor előtt végezzük, hogy a tényleges gyorsítás
 képminőségi lehetőséget korán ellenőrizzük. A két WH-03 rész külön átadást kap.
 A profilok taskja nem késlelteti az első lejátszási összehasonlítást.
 
+### Samsung 4K30 pontosítás — döntésre váró prioritás (2026-11-08)
+
+Az új naplóban encoder `unsupported`, decoder `supported`, 0/0 próbakép van:
+4K30 VP9 profile 2, 64 Mbit/s. Ezt nem oldja meg a dekóder tiltásának lazítása.
+A WH-06c2 feltárás nem mobilos javításként zárult; az ehhez szükséges tényleges
+új kódoló a WH-06e megvalósíthatósági kapuja. A felhasználó döntését kértük:
+most opcionális worker/WASM 10-bit tartalékút mérése (nagyobb CPU-/energiaigény,
+4K-ban lehetséges lassulás), vagy előbb WH-07 Turbó a működő natív exportokhoz.
+A jó natív 10 bites út és minden minőségi kapu megmarad. Részletek a
+[WH-06c1 utóvizsgálatában](wormhole-wh06c1-export-diagnostics.md#samsung-4k30-follow-up--native-encoder-refusal-2026-11-08).
+
 ### Felhasználói teszt és prioritás (2026-11-08)
 
 Desktopon a 10-bit VP9/AAC MP4 képi minősége elfogadott és a korábbinál gyorsabb;

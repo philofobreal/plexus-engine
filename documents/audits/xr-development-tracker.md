@@ -4,6 +4,22 @@ Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: 
 
 **Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01, WH-02 research, WH-03a preparation, WH-03b time envelopes/exact scheduling and WH-04 MVP GPU session and WH-05 dashboard/composition are delivered; WH-06a exact resolved-input source is delivered; WH-06b host/export integration is delivered; WH-06c1 diagnostics/FPS is delivered for manual acceptance after partial WH-06b acceptance; WH-06c2 mobile 10-bit admission and WH-06e fallback feasibility precede WH-07. WH-06d 8-bit quality work is withdrawn by the user; 10-bit quality/speed/resource efficiency take priority over file size. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
 
+### Samsung 4K30 follow-up: encoder refused, decision pending (2026-11-08)
+
+The supplied physical-phone trace has VP9 profile-2 encoder `unsupported`,
+decoder `supported`, zero encoded/decoded frames at 4K30 / 64 Mbit/s. WH-06c2's
+decoder-admission change cannot solve this particular refusal. Current upstream
+mobile ARM64 Chromium also disables highbd in its software libvpx build; this
+is explanatory source evidence, not a device-wide capability claim. Level 5.1
+is correct at 64 Mbit/s even at 30 fps. Current FFmpeg WASM has no VP9 encoder.
+
+See the [recorded investigation and bounded feasibility proposal](wormhole-wh06c1-export-diagnostics.md#samsung-4k30-follow-up--native-encoder-refusal-2026-11-08).
+Recommended next priority is WH-06e's optional worker/WASM 10-bit feasibility
+measurement, retaining the accepted native path. Asked the user to choose this
+CPU/energy tradeoff versus WH-07 Turbo first; no new encoder, gate bypass or
+runtime release is authorized by a rejected support query. WH-06c2 is not marked
+as a completed mobile fix. Last published runtime is still WH-06c1 / 1a219e8.
+
 ### WH-06c1 handoff: mobile evidence and revised queue (2026-11-08)
 
 The user reports faster exports and flawless desktop VP9 10-bit MP4 quality.
