@@ -16,14 +16,17 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const root = path.resolve('logs/wh01'), fixture = '/plexus-engine/research/export/wormhole-baseline.html';
 const hostFixture = '/plexus-engine/tests/browser/wormhole-host-backend-smoke.html';
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', windowsHide: true }).trim();
-if (process.argv.includes('--isolate-host') && ['--codec-host','--turbo-host','--stable-material','--paired-encoder','--mp4-only'].some(flag=>process.argv.includes(flag))) {
+if (process.argv.includes('--isolate-host') && ['--codec-host','--turbo-host','--stable-material','--paired-encoder','--mp4-only','--native-packets'].some(flag=>process.argv.includes(flag))) {
     throw Error('--isolate-host is an independent diagnostic, not a Turbo candidate comparison.');
 }
 if (['--remux-cfr','--remux-color709','--inspect-remux'].some(flag=>process.argv.includes(flag)) && !process.argv.some(arg=>arg.startsWith('--remux-reference='))) {
     throw Error('Remux options require a bounded --remux-reference frame-ID clip.');
 }
-if (process.argv.includes('--stable-material') && process.argv.includes('--paired-encoder')) {
-    throw Error('Measure stable material and paired codecs separately; combined results have no isolated control.');
+if (['--stable-material','--paired-encoder','--native-packets'].filter(flag=>process.argv.includes(flag)).length>1) {
+    throw Error('Measure worker candidates separately; combined results have no isolated control.');
+}
+if (process.argv.includes('--native-packets') && !['--export-host','--turbo-host'].some(flag=>process.argv.includes(flag))) {
+    throw Error('--native-packets requires an export quality or throughput run.');
 }
 if (['--stable-material','--paired-encoder','--mp4-only'].some(flag=>process.argv.includes(flag)) && !process.argv.includes('--turbo-host')) {
     throw Error('WH-07b experiment options require --turbo-host.');
@@ -213,7 +216,7 @@ async function capture() {
         }
 
         if(process.argv.includes('--export-host')){
-            let report;try{report=await evaluate('window.runWh06Export('+JSON.stringify({turbo:process.argv.includes('--turbo-export-host')})+')');}catch(error){
+            let report;try{report=await evaluate('window.runWh06Export('+JSON.stringify({turbo:process.argv.includes('--turbo-export-host'),nativePackets:process.argv.includes('--native-packets')})+')');}catch(error){
                 await writeFile(path.join(output,'integrated-export-failure.json'),JSON.stringify(await evaluate('window.wh06ExportFailure'),null,2)+'\n',{flag:'wx'});
                 for(const name of await evaluate('Array.from(window.wh06ExportBlobs.keys())')){
                     assert.match(name,/^export-\d{3}\.(?:webm|mp4)$/);
@@ -318,7 +321,7 @@ async function capture() {
             console.log(JSON.stringify({isolationRows:report.rows.length,actualVideos:artifacts.length,codecProbes:codecs.rows.length,scope:'Diagnostic only, no product or Turbo promotion'}));
         }
         if (process.argv.includes('--turbo-host')) {
-            const report=await evaluate('window.runWh07Benchmark('+JSON.stringify({stableMaterial:process.argv.includes('--stable-material'),pairedEncoder:process.argv.includes('--paired-encoder'),mp4Only:process.argv.includes('--mp4-only')})+')');
+            const report=await evaluate('window.runWh07Benchmark('+JSON.stringify({stableMaterial:process.argv.includes('--stable-material'),pairedEncoder:process.argv.includes('--paired-encoder'),mp4Only:process.argv.includes('--mp4-only'),nativePackets:process.argv.includes('--native-packets')})+')');
             await writeFile(path.join(output,'turbo-benchmark.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});
             assert.equal(report?.pass,true);assert.equal(report.rows.length,process.argv.includes('--mp4-only')?12:24);
             const artifacts=[];
@@ -409,5 +412,5 @@ async function verify(file) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
     if (process.argv[2] === 'capture') await capture();
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--turbo-export-host] [--diagnostics-host] [--codec-host] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--native-packets] [--turbo-export-host] [--diagnostics-host] [--codec-host] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | verify [baseline.json]');
 }

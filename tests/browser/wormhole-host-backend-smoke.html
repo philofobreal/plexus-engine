@@ -19,6 +19,7 @@ import { copyWormholeHostFrame } from '../../src/visuals/VisualFramePreparation.
 import HostWorker from '../../src/visuals/wormholeHostRender.worker.ts?worker';
 import StableMaterialWorker from '../../research/export/stable-material.worker.ts?worker';
 import PairedEncoderWorker from '../../research/export/paired-encoder.worker.ts?worker';
+import NativePacketWorker from '../../research/export/native-packet.worker.ts?worker';
 import CodecIsolationWorker from '../../research/export/codec-isolation.mjs?worker';
 import {copyInspectionPacket,decodeInspectionPackets,inspectionVp9Color} from '../../research/export/codec-isolation.mjs';
 import { WormholeHostRenderSession } from '../../src/visuals/WormholeHostRenderSession.ts';
@@ -544,7 +545,7 @@ window.runWh06Export=(options={})=>exportRun??=(async()=>{
   positionChanged?.(0);State.playbackFade=1;hostP.noLoop();
   rawReference=spec.compare?new WormholeHostRenderSession({frames:State.frames,events:State.events,trackAnalysis:State.trackAnalysis,
    sampleRate:State.sampleRate,hopSize:State.hopSize,bpm:State.bpm},false):null;
-  const backend=new WebCodecsBackend(hostP,hostP.canvas,audio,'WH06',null,'display',Mp4Worker);
+  const backend=new WebCodecsBackend(hostP,hostP.canvas,audio,'WH06',null,'display',options.nativePackets?NativePacketWorker:Mp4Worker);
   const diagnostics=[],performances=[];
   const started=performance.now();let issued=false;
   try{
@@ -668,7 +669,7 @@ window.runWh07Benchmark=async(options={})=>{
    Object.assign(State.visualTuning,c.state.visualTuning);Object.assign(State.targetTuning,c.state.targetTuning);
    hostQuality.wormholeRenderer='offscreen';hostQuality.compactMaterialPreview=true;hostQuality.musicDisplay=undefined;
    positionChanged?.(0);State.playbackFade=1;hostP.noLoop();
-   let profile,performanceReport;const backend=new WebCodecsBackend(hostP,hostP.canvas,{getAudioBuffer:()=>pcm},'WH07',null,scheduling,probe?CodecIsolationWorker:options.pairedEncoder&&scheduling==='cooperative'?PairedEncoderWorker:Mp4Worker,p=>{profile=p;});
+   let profile,performanceReport;const backend=new WebCodecsBackend(hostP,hostP.canvas,{getAudioBuffer:()=>pcm},'WH07',null,scheduling,probe?CodecIsolationWorker:options.nativePackets&&scheduling==='cooperative'?NativePacketWorker:options.pairedEncoder&&scheduling==='cooperative'?PairedEncoderWorker:Mp4Worker,p=>{profile=p;});
    const started=performance.now();
    try{
     const blob=await backend.start({resolution,aspectRatio:'16:9',fps,format,preflight:true,watermark:false,

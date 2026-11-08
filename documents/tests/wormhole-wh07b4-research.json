@@ -1,0 +1,577 @@
+{
+  "task": "WH-07b4",
+  "predecessor": "8cabeebb5dc63fe4ccb399567bbf56dacc355450",
+  "status": "Research handoff complete, candidate not promoted. Product runtime unchanged from manually accepted WH-07b3; public identity bound in logs/wh07b4/final-*.json and checkpoint.",
+  "manualAcceptance": {
+    "task": "WH-07b3",
+    "resolution": "4K",
+    "aspectRatio": "16:9",
+    "fps": 60,
+    "format": "mp4",
+    "codec": "vp9-10bit",
+    "requestedPerformance": "turbo",
+    "effectivePerformance": "economy",
+    "userObservation": "Faster perceived export, good image quality, lower GPU usage",
+    "suppliedJournalScope": "performance null; 3-frame codec probe and 1-frame MP4 packet probe. Not a whole-job timing, frame count or hardware attribution."
+  },
+  "production": {
+    "srcUnchanged": true,
+    "mp4Turbo": "Explicit Economy fallback remains",
+    "gopBitratePrecisionQueuePcmOpfsUnchanged": true,
+    "mobile10Bit": "Deferred"
+  },
+  "candidate": {
+    "path": "research/export/native-packet.worker.ts",
+    "scope": "Lab-only supported MediaBunny CustomVideoEncoder/packet hook; same native VP9, existing MP4 worker audio/OPFS/WASM/metadata reuse",
+    "frameDurationCaveat": "Constructor options omit duration, but the public library sample may expose a VideoFrame whose duration is inherited. The independent initial no-duration probe is separate and also fails. No zero-copy/raw-bitmap claim.",
+    "nativeAdmission": 4,
+    "hostRawFrameLeases": 2,
+    "newSoftwareVideoEncoder": false,
+    "globalCodecReplacement": false,
+    "measuredSource": "logs/wh07b4/native-packet-measured-source.ts.txt",
+    "postMeasurementChange": "Explanatory comment only, final compiled worker identity verified at release"
+  },
+  "performance": {
+    "run": "logs/wh01/run-96697767-f555-4631-8426-5fa55d121e81",
+    "groups": [
+      {
+        "resolution": "720p",
+        "controlMedianMs": 5094.400000002235,
+        "candidateMedianMs": 4835.900000002235,
+        "timeReduction": 0.050741991206007864,
+        "orderedTrials": [
+          {
+            "role": "display",
+            "elapsedMs": 4949.20000000298
+          },
+          {
+            "role": "cooperative",
+            "elapsedMs": 4799.5
+          },
+          {
+            "role": "cooperative",
+            "elapsedMs": 4835.900000002235
+          },
+          {
+            "role": "display",
+            "elapsedMs": 5094.400000002235
+          },
+          {
+            "role": "display",
+            "elapsedMs": 5101.599999997765
+          },
+          {
+            "role": "cooperative",
+            "elapsedMs": 5061.300000000745
+          }
+        ]
+      },
+      {
+        "resolution": "4K",
+        "controlMedianMs": 5945,
+        "candidateMedianMs": 6204.300000000745,
+        "timeReduction": -0.04361648444083177,
+        "orderedTrials": [
+          {
+            "role": "display",
+            "elapsedMs": 12032.300000000745
+          },
+          {
+            "role": "cooperative",
+            "elapsedMs": 11558
+          },
+          {
+            "role": "cooperative",
+            "elapsedMs": 6204.300000000745
+          },
+          {
+            "role": "display",
+            "elapsedMs": 5945
+          },
+          {
+            "role": "display",
+            "elapsedMs": 5802.699999999255
+          },
+          {
+            "role": "cooperative",
+            "elapsedMs": 5773.699999999255
+          }
+        ]
+      }
+    ],
+    "actualFiles": 12,
+    "exactDecodedPairs": 6,
+    "comparisons": [
+      {
+        "resolution": "720p",
+        "format": "mp4",
+        "run": 1,
+        "displayMs": 4949.20000000298,
+        "cooperativeMs": 4799.5,
+        "gain": 0.030247312697585516,
+        "exactDecodedPixels": true
+      },
+      {
+        "resolution": "720p",
+        "format": "mp4",
+        "run": 2,
+        "displayMs": 5094.400000002235,
+        "cooperativeMs": 4835.900000002235,
+        "gain": 0.050741991206007864,
+        "exactDecodedPixels": true
+      },
+      {
+        "resolution": "720p",
+        "format": "mp4",
+        "run": 3,
+        "displayMs": 5101.599999997765,
+        "cooperativeMs": 5061.300000000745,
+        "gain": 0.007899482514708622,
+        "exactDecodedPixels": true
+      },
+      {
+        "resolution": "4K",
+        "format": "mp4",
+        "run": 1,
+        "displayMs": 12032.300000000745,
+        "cooperativeMs": 11558,
+        "gain": 0.0394188974677091,
+        "exactDecodedPixels": true
+      },
+      {
+        "resolution": "4K",
+        "format": "mp4",
+        "run": 2,
+        "displayMs": 5945,
+        "cooperativeMs": 6204.300000000745,
+        "gain": -0.04361648444083177,
+        "exactDecodedPixels": true
+      },
+      {
+        "resolution": "4K",
+        "format": "mp4",
+        "run": 3,
+        "displayMs": 5802.699999999255,
+        "cooperativeMs": 5773.699999999255,
+        "gain": 0.00499767349682112,
+        "exactDecodedPixels": true
+      }
+    ],
+    "promotionThreshold": 0.15,
+    "promoted": false,
+    "scope": "Short real exact-GPU/product-codec/audio/OPFS/WASM full jobs. Timing completed before cumulative Node suite started. No QA readback/decode/file-copy in timed intervals. Retain first4K trial variability; no CPU/GPU percentage claim."
+  },
+  "negativeProfiles": [
+    {
+      "run": "logs/wh01/run-709b6f90-2bbf-48cd-b5d6-575f9e9f9e4d",
+      "file": "export-009.mp4",
+      "sha256": "0ce7d162d8bb13a502f84cb4a5cbd474d0b4229d2cd853ec63904d13f42d09f8",
+      "inputIds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "decodedIds": [
+        1,
+        2,
+        3,
+        4,
+        4,
+        6,
+        7,
+        8
+      ],
+      "barValues": [
+        [
+          255,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          255,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          255,
+          255,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          255,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          255,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          255,
+          255,
+          0,
+          0,
+          0
+        ],
+        [
+          255,
+          255,
+          255,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          255,
+          0,
+          0
+        ]
+      ],
+      "scope": "Correct bitmap IDs observed before worker transfer, independent FFmpeg decode. Not proof of the last correct boundary inside the encoder worker."
+    },
+    {
+      "run": "logs/wh01/run-e2810ce9-8ce0-48b5-9cfd-35563676d4b7",
+      "file": "export-009.mp4",
+      "sha256": "655b1b94fc335484f369bd7d4d50cd4389b62338db5321b6e673a9f32426480e",
+      "inputIds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "decodedIds": [
+        1,
+        2,
+        3,
+        4,
+        4,
+        6,
+        7,
+        8
+      ],
+      "barValues": [
+        [
+          255,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          255,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          255,
+          255,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          255,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          255,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          255,
+          255,
+          0,
+          0,
+          0
+        ],
+        [
+          255,
+          255,
+          255,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          255,
+          0,
+          0
+        ]
+      ],
+      "scope": "Correct bitmap IDs observed before worker transfer, independent FFmpeg decode. Not proof of the last correct boundary inside the encoder worker."
+    },
+    {
+      "run": "logs/wh01/run-e532865a-b06d-44d5-ac75-47c965102fdb",
+      "file": "export-009.mp4",
+      "sha256": "0ce7d162d8bb13a502f84cb4a5cbd474d0b4229d2cd853ec63904d13f42d09f8",
+      "inputIds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "decodedIds": [
+        1,
+        2,
+        3,
+        4,
+        4,
+        6,
+        7,
+        8
+      ],
+      "barValues": [
+        [
+          255,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          255,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          255,
+          255,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          255,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          255,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          255,
+          255,
+          0,
+          0,
+          0
+        ],
+        [
+          255,
+          255,
+          255,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          255,
+          0,
+          0
+        ]
+      ],
+      "scope": "Correct bitmap IDs observed before worker transfer, independent FFmpeg decode. Not proof of the last correct boundary inside the encoder worker."
+    }
+  ],
+  "validation": {
+    "build": "npm run build passed",
+    "targeted": {
+      "tests": 123,
+      "pass": 123,
+      "durationMs": 16565.5685
+    },
+    "cumulative": {
+      "tests": 2257,
+      "pass": 2248,
+      "fail": 9,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 489556.6925
+    },
+    "newCases": 4,
+    "oldActiveFiles": 232,
+    "activeTestFiles": 233,
+    "removedTests": [],
+    "oldExactBrowserBodyUnchanged": true,
+    "changedPredecessors": [
+      {
+        "path": "research/export/wormhole-baseline.mjs",
+        "gitObject": "90d5d7624daef5c315cf57ba94c6cfb7c87bfd5d",
+        "sha256": "e0874e43ffa9a27f27f669279ce76379d67f8f9bc29e3b059edfdb3b6777baf7",
+        "reason": "Additive opt-in lab selection or published lab input guard. Original cases/default benchmark retained."
+      },
+      {
+        "path": "tests/browser/wormhole-host-backend-smoke.html",
+        "gitObject": "40d15499e4c63fae51b18dfede0edb494dee414b",
+        "sha256": "509b7ebd49aac73af643e9bf02e52521836cd1295ff2e4d6dbfe497b1d816c14",
+        "reason": "Additive opt-in lab selection or published lab input guard. Original cases/default benchmark retained."
+      },
+      {
+        "path": "tests/release-pages.test.mjs",
+        "gitObject": "6aba38f4de3b25b1ae8456256ae99f57ddad5e87",
+        "sha256": "8620fee936e3fbab77e7d1275a7b354b29b03520381518bbfcd1c5c8a95c0208",
+        "reason": "Additive opt-in lab selection or published lab input guard. Original cases/default benchmark retained."
+      },
+      {
+        "path": "scripts/release-pages.mjs",
+        "gitObject": "458354bfee6418f7d6c7a836eeba3de17c4478f8",
+        "sha256": "d7b965c385620ae47cafb8c195cd5bbfb2360a4f0dd4c02b83cfb1a3159ef67f",
+        "reason": "Additive opt-in lab selection or published lab input guard. Original cases/default benchmark retained."
+      }
+    ],
+    "runtime": "Node v25.2.1 / npm 11.6.2; cumulative TEMP/TMP logs/wh07b4/temp; targeted inherited logs/wh07b3/temp",
+    "diffExport": "Skipped as unnecessary for bounded lab/export research; no PR requested",
+    "unrun": "No new physical-mobile/headset/full-song/thermal or destination-editor qualification. Candidate inter-frame gates fail and are not hidden; no product promotion.",
+    "localLinksChecked": 189,
+    "researchTypeCheck": "passed with explicit --ignoreConfig (TypeScript6 requires it when naming a file); initial TS5112 log retained",
+    "knownBaselineFailuresExactNameAndMessage": [
+      {
+        "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+        "message": "vos-wh-drift.json must not reset user-global wormholeStarfield"
+      },
+      {
+        "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+        "message": "establish remains visibly above the opacity floor"
+      },
+      {
+        "name": "weak roles pin a deep-perspective depth and continuity profile",
+        "message": "establish depth\n\n2.03136 !== 4"
+      },
+      {
+        "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+        "message": "deep drift deeper than establish"
+      },
+      {
+        "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+        "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+      },
+      {
+        "name": "wormhole factory presets keep a minimum normalized weighted separation",
+        "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+      },
+      {
+        "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+        "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))"
+      },
+      {
+        "name": "projected forward motion preserves overdrive > punch > drive > drift",
+        "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+      },
+      {
+        "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+        "message": "389.64890777178124 vs 471.543038051684"
+      }
+    ]
+  },
+  "commands": {
+    "build": "npm run build",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=4",
+    "targeted": "node --test --test-reporter=tap --test-concurrency=4 tests/export-native-packet.test.mjs tests/mp4-vp9-color.test.mjs tests/export-codec-isolation.test.mjs tests/export-parallel-research.test.mjs tests/export-performance.test.mjs tests/export-scheduling.test.mjs tests/export-preparation.test.mjs tests/mvp-mp4-export.test.mjs tests/export-diagnostics.test.mjs tests/export-output-inspection.test.mjs tests/export-lifecycle.test.mjs tests/export-resources.test.mjs tests/exact-export-frame-bridge.test.mjs tests/mvp-export-panel.test.mjs tests/release-pages.test.mjs",
+    "speed": "node research/export/wormhole-baseline.mjs capture --turbo-host --mp4-only --native-packets",
+    "negativeExisting": "node research/export/wormhole-baseline.mjs capture --export-host --mp4-inter-frame",
+    "negativeDuration": "node research/export/wormhole-baseline.mjs capture --export-host --mp4-inter-frame --mp4-no-duration",
+    "negativePacket": "node research/export/wormhole-baseline.mjs capture --export-host --native-packets --mp4-inter-frame",
+    "negativeScope": "All three expected quality rejections; original MP4s and failed receipts preserved. Not successful output acceptance.",
+    "researchTypes": "node node_modules/typescript/bin/tsc --ignoreConfig --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --lib ES2023,DOM,DOM.Iterable --skipLibCheck --types vite/client research/export/native-packet.worker.ts"
+  },
+  "next": "WH-07b5 tiny deterministic worker-input/VP9/container detail-loss isolation, then quality-first predictive profile and >=15% speed qualification. Stop at this handoff. MP4 Turbo/WH-07 parent partial; mobile10-bit later.",
+  "hashes": {
+    "research/export/native-packet.worker.ts": "ecb62dec44b6fe314e6ab65cbc21a56f6ef10df9b59ba51df665f0c6277ae450",
+    "research/export/wormhole-baseline.mjs": "bd2867b4f75a06286cdd5bfc41287e965f87474f57b8bc8f71c424b17c9efe1c",
+    "scripts/release-pages.mjs": "01709d6e0df1f0eb4d818eb897f73b589b3cc141afd461e0a9927ddab022d7f2",
+    "tests/export-native-packet.test.mjs": "497a6787acb10f2b19e900a1928a9c716a3622b7e4c03396e5562689d7fbf3e0",
+    "tests/browser/wormhole-host-backend-smoke.html": "a7c7989007d640168898c87c6c52429ee3093539dbb7235147569471ba20a773",
+    "tests/release-pages.test.mjs": "dd220dd9db7fa351bf148a17773d0dfd68a2a3067dd817f896c3d4acbb6b55e1",
+    "logs/wh07b4/targeted.tap": "7fda90fd0809cdf13f153c9ebc784678cb09971ef87f47f47e3ea97a9dca2b87",
+    "logs/wh07b4/build-final.log": "f33c92ef52be2ad3ba1feb6196e350c1932f2cbd6622ea31627b88c63323797e",
+    "logs/wh07b4/native-packet-measured-source.ts.txt": "d2ea0226b410a1c492629aecf95689f6d6d714f1702a25f8b2a1b2758876bb4a",
+    "logs/wh01/run-96697767-f555-4631-8426-5fa55d121e81/build.json": "16b1e2538db42b2904870beaa161e51f6002dcd71b19eedf600b5ead0cad56a7",
+    "logs/wh01/run-96697767-f555-4631-8426-5fa55d121e81/host-smoke.json": "6d85e6faa10527729028316b30fe3c5327c68732140095c002d82f20e80b5281",
+    "logs/wh01/run-96697767-f555-4631-8426-5fa55d121e81/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/run-96697767-f555-4631-8426-5fa55d121e81/turbo-benchmark.json": "932ec6c7e6b1fd26d6400a47f13ce2c9d0727916bfc9029b3d9e8fc0148b1a98",
+    "logs/wh01/run-96697767-f555-4631-8426-5fa55d121e81/turbo-artifacts.json": "564b787e9a8372218ddc9ec4b35b3523ea928e9c14233397453e83a954f15768",
+    "logs/wh01/run-709b6f90-2bbf-48cd-b5d6-575f9e9f9e4d/build.json": "7044014db538472df7ba1166bf20184c12d7f2d8325ca892c401f0c0ba03cf64",
+    "logs/wh01/run-709b6f90-2bbf-48cd-b5d6-575f9e9f9e4d/host-smoke.json": "0b75df9e287f30d1623d93c58c41b0403405d328e084da340754ad4f229413a9",
+    "logs/wh01/run-709b6f90-2bbf-48cd-b5d6-575f9e9f9e4d/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/run-709b6f90-2bbf-48cd-b5d6-575f9e9f9e4d/integrated-export-failure.json": "7b9b9fcf266e8f806dc45f8f9c565b0d829d656fc6f823257ccca97c4760b7b3",
+    "logs/wh01/run-709b6f90-2bbf-48cd-b5d6-575f9e9f9e4d/independent-failed-frame.json": "6d89b15f9649e32daa05d4edba8f1948e15f07e3a44e2db442fe507af117debd",
+    "logs/wh01/run-e2810ce9-8ce0-48b5-9cfd-35563676d4b7/build.json": "6930854de0e464d6f482fbab35df0eba85faab32285a96132948447cf5f310aa",
+    "logs/wh01/run-e2810ce9-8ce0-48b5-9cfd-35563676d4b7/host-smoke.json": "378d72dd394217cb0270e1fa9519125ca3b29c255e600c6a2f46effefba8688b",
+    "logs/wh01/run-e2810ce9-8ce0-48b5-9cfd-35563676d4b7/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/run-e2810ce9-8ce0-48b5-9cfd-35563676d4b7/integrated-export-failure.json": "7ef7b3c446e543369c266763ebc094e11c22e3b206e0589207bca9e367845503",
+    "logs/wh01/run-e2810ce9-8ce0-48b5-9cfd-35563676d4b7/independent-failed-frame.json": "f968f3a584c81bf717db4db50e784b1c0645c87edeb7950ca511c4a5b1bb59c2",
+    "logs/wh01/run-e532865a-b06d-44d5-ac75-47c965102fdb/build.json": "2f53621800905b58f2c313201019e3c2c65fcfad38c4797273f7296764e17d67",
+    "logs/wh01/run-e532865a-b06d-44d5-ac75-47c965102fdb/host-smoke.json": "b69d7583adbe04a2f8bbf1d700b0f3204a344b252aeb376be988b009a55e81af",
+    "logs/wh01/run-e532865a-b06d-44d5-ac75-47c965102fdb/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/run-e532865a-b06d-44d5-ac75-47c965102fdb/integrated-export-failure.json": "ee6f8f3d6120b4a299c617dfe82d10c352f590138550f78068784bd683d4a5cf",
+    "logs/wh01/run-e532865a-b06d-44d5-ac75-47c965102fdb/independent-failed-frame.json": "424aa8c93df91bc23e0c5b8705af9b1c2c90e202eb5fa60eab3760f3e851e749",
+    "logs/wh07b4/research-types-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/wh07b4/cumulative.tap": "a4cd203160a1ec4da7d997f714ee57e435828e202b55b7c3d5bb08b5c1f57d42"
+  }
+}
