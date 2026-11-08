@@ -14,7 +14,8 @@
     "src/export/mp4-export.worker.ts": "808fe2d35ea62cd1a432c81cd561246d93d9ae31aa620145bbf00721884835d1",
     "tests/mvp-mp4-export.test.mjs": "096ca1c63de7b030086c2b5897c037d1342c97bd760daa565ea8e441c5bc8199",
     "src/ui/mvp/ExportDialog.ts": "6de6f6e005616b019299a5dd80cac29a29858570dd213aa51ac912507685015f",
-    "tests/renderer-preview-density.test.mjs": "964356b52172fb047564cbf924d06ff84d47d00f6b2531253f5f518a4f0c57f7"
+    "tests/renderer-preview-density.test.mjs": "964356b52172fb047564cbf924d06ff84d47d00f6b2531253f5f518a4f0c57f7",
+    "src/ui/PreviewQualityControl.ts": "fd13e2f89b98a0ec67dea76256dca24e1aa80853bb9806ec89f84d645c346f77"
   },
   "reviewPredecessor": {
     "commit": "cd0693ffce17ad57cd35356542143e1124e4abb5",

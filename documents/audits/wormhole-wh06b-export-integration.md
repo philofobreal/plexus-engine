@@ -167,7 +167,7 @@ metrics are independently recomputed. The WH-01 pack hash remains unchanged.
 
 The WH-06a exact test body remains byte-identical (SHA-256
 `6b6a19bceaecfecdf213a9af053c9ee2f08e95509955982b07bc140008abd42c`).
-Thirteen original file predecessors and four review-stage predecessors are bound
+Fourteen original file predecessors and four review-stage predecessors are bound
 to immutable Git/SHA identities. No preset, golden or acceptance gate is loosened.
 The original VP9 inter-frame failure and video remain under
 `logs/wh01/run-f088871e-1f5f-47df-9da4-54b9a6a210e5`; rejected duration and successful
@@ -175,6 +175,14 @@ independent-picture experiments remain distinct source/bundle-bound runs.
 Production build and git diff whitespace checks pass. Vite's large-chunk notice
 is retained as informational output. Full-song, physical-device and performance
 multiplier limits above still apply.
+
+Public qualification also passed the 37 host / 21 source / 18 integrated cases
+and 17 files / 382 decoded IDs on release `wh06b-export-gpu-20261108T134240071Z`;
+public dashboard/MVP renderer switching and persistence passed. It exposed one
+stale menu help sentence, corrected in a copy-only follow-up (including an ASCII
+frequency separator). Preview/density tests and the production build are rerun;
+renderer, worker, codec behavior and the earlier output receipts are unchanged.
+The final live release identity is retained in the session checkpoint.
 
 ## Manual acceptance and continuation
 

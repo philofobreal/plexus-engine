@@ -61,7 +61,7 @@ export function createPreviewQualityControl(automaticCompact: boolean, offscreen
     const rendererHint = document.createElement('p');
     let activeRenderer: string | null = null;
     const defaultRendererHint = offscreenAvailable
-        ? 'Offscreen worker uses GPU material, weave and bloom when supported; reference lines stay in the worker. Preview: up to 30 fps / 960 px (Reduced: 640 px). Export keeps its full-quality synchronous renderer. Unavailable GPU material falls back inside the worker; unavailable workers fall back to Compatible. Saved on this device, independently of presets.'
+        ? 'Offscreen worker uses GPU material, weave and bloom when supported; reference lines stay in the worker. Preview: up to 30 fps / 960 px (Reduced: 640 px). Exports use a separate full-resolution worker and wait for every frame (30/60 fps; other rates use Compatible). Unavailable GPU material falls back inside the worker; unavailable workers fall back to Compatible. Saved on this device, independently of presets.'
         : 'Experimental GPU drawing for Wormhole preview and export. Falls back to compatible drawing if unavailable. This device setting is independent of presets.';
     rendererHint.textContent = defaultRendererHint;
     const copy = document.createElement('button'); copy.type = 'button'; copy.textContent = 'Copy preview settings';
@@ -99,7 +99,7 @@ export function createPreviewQualityControl(automaticCompact: boolean, offscreen
         const input=document.createElement('input');input.type='range';input.min='0';input.max='100';input.step='5';input.value=String(currentDisplay()[key]*100);input.setAttribute('aria-label',`Spectrum ${key}`);
         input.addEventListener('input',()=>saveDisplay({[key]:Number(input.value)/100}));label.append(input);root.append(label);
     }
-    const displayHint=document.createElement('p');displayHint.textContent='24 precomputed, track-relative bands (20 Hz–16 kHz). Open below the center; size and opacity preserve readability. Also used in export. Saved independently of presets.';root.append(displayHint);
+    const displayHint=document.createElement('p');displayHint.textContent='24 precomputed, track-relative bands (20 Hz-16 kHz). Open below the center; size and opacity preserve readability. Also used in export. Saved independently of presets.';root.append(displayHint);
     const analysisHint = document.createElement('p');
     const defaultAnalysisHint = 'Applies on the next audio load. Auto uses WebAssembly FFT when available; failures fall back to TypeScript. Gameplay and musical decisions stay the same.';
     analysisHint.textContent = defaultAnalysisHint;

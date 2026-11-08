@@ -57,7 +57,7 @@
     }
   ],
   "retention": {
-    "files": 13,
+    "files": 14,
     "reviewFiles": 4,
     "protectedExactBodySha256": "6b6a19bceaecfecdf213a9af053c9ee2f08e95509955982b07bc140008abd42c",
     "activeNodeFiles": 227,
@@ -268,6 +268,11 @@
       "tests": 9,
       "pass": 9
     },
-    "priorFullRun": "logs/wh06b/full-final.tap retained with its extra TypeError from an obsolete generic test stub; fixture now loads the real dependency-free bridge; all original assertions retained; full-closure.tap validates final state."
+    "priorFullRun": "logs/wh06b/full-final.tap retained with its extra TypeError from an obsolete generic test stub; fixture now loads the real dependency-free bridge; all original assertions retained; full-closure.tap validates final state.",
+    "copyOnlyFollowup": {
+      "file": "src/ui/PreviewQualityControl.ts",
+      "sha256": "1784f6e297cb4685ea84a9297c840770e3af634cb72ca1ce58eca38660b852cb",
+      "scope": "Only help text; product renderer/codec/worker behavior unchanged. Existing preview/density suites rerun; earlier full cumulative and encoded artifact receipts retained."
+    }
   }
 }
