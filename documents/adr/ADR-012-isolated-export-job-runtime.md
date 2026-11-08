@@ -2,6 +2,16 @@
 
 ## Status
 
+WH-06b (2026-11-08) integrates the internal exact source through
+HostExportFramePort, not the retired isolated product mode. Export owns begin,
+contiguous index/fps, Stop/Cancel, encoder/PCM/OPFS and target teardown. Visuals
+own cloned frame input, native pairing, the one PostFX completion seam and worker
+lease disposal. The target is retained until redraw/deferred writes quiesce.
+No mutable State swap, async p5.draw, new product runtime selector or RAM gate.
+Optional VP9 10-bit MP4 now uses independent pictures after a retained-detail
+regression was independently decoded. See [WH-06b](../audits/wormhole-wh06b-export-integration.md).
+Earlier task-scoped statements below retain their historical scope.
+
 WH-06a (2026-11-08) delivers the internal exact resolved-frame source under the
 existing common visual session, without restoring the isolated product mode.
 Its broker supplies a job/stamp-bound full-size image and captured values, one

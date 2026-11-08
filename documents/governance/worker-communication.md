@@ -64,6 +64,13 @@ its valid last image to avoid a black flash. No extra worker packet/schema, anal
 copy per draw, unbounded image queue, second resolver or clock is introduced.
 See [WH-05](../audits/wormhole-wh05-dashboard-composition.md).
 
+WH-06b connects this exact wire to product export without extending worker messages.
+HostExportFramePort is an in-process typed barrier, not another worker schema.
+A source/image belongs to one export job; begin/Stop/Cancel/cleanup remain
+export-owned and no target can be removed while redraw/deferred writes are live.
+Renderer completion consumes the owned values and releases its lease even when
+composition/PostFX fails. See [WH-06b](../audits/wormhole-wh06b-export-integration.md).
+
 WH-06a adds optional prepare.exact and its ready echo to this host worker only.
 The descriptor binds jobId, 30/60 fps and fixed even full-size dimensions. Exact
 frames require density=1, compact=false, isExporting=true, frameCount=index+1,

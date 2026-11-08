@@ -32,6 +32,19 @@ compatible material; worker failure uses the existing main fallback. Dashboard/
 multi-identity composition is WH-05, product GPU export WH-06.
 See [WH-04](../audits/wormhole-wh04-mvp-gpu-session.md).
 
+WH-06b integrates that source through the dependency-light HostExportFramePort.
+Both composition roots supply fresh sources. Export owns begin/index/fps and
+awaits redraw plus the deferred renderer completion before final capture/PCM/
+encoding. Draw itself stays synchronous. Exact companions use the same two
+crossfade objects and captured-time PostFX reader; the controller alone completes
+transition state. Stop/Cancel invalidate pending presentation, but teardown waits
+for quiescent writes before releasing targets or restarting preview. Job end
+releases source/GPU images, shrinks crossfade backing stores and frees the post
+snapshot. Legacy explicit renderer choices/unsupported FPS retain synchronous
+export. No State replacement, preview-image reuse, second music resolver or
+restoration of the isolated product flow. See [WH-06b](../audits/wormhole-wh06b-export-integration.md).
+The WH-06a statements below describe that source-only handoff.
+
 WH-06a supplies WormholeHostExactSource under visuals ownership, using the common
 resolved-input session. The export coordinator will own its job lifetime in
 WH-06b; there is no product export wiring in this part. Its optional prepare.exact
@@ -245,13 +258,13 @@ Mode-specific visual implementations should live in separate `VisualIdentity` im
 - `VisualIdentity.syncPosition?(timeSec)` is an optional, idempotent discontinuity hook. `PlexusRenderer` invokes it for every registered identity after play/seek/stop position synchronization. It may re-anchor deterministic visual state but must not initiate playback or automation decisions.
 - `requestVisualModeChange()` is the sole runtime writer of `State.visualMode`. It flips the logical mode synchronously and records at most one transition using playback time or exact export time. Active dual-render duration is clamped to `0.1..4.0` seconds.
 - `requestVisualModeChange()` also owns creation/replacement of `State.visualModeTransition`; it clears the record for paused/stopped switching. `IdentityTransitionController` is the only renderer consumer allowed to clear a completed or backward-time transition record; a record whose `to` no longer matches the logical mode is bypassed. Effect modules and UI controllers must neither read/write the record nor infer transition lifecycle from `State.visualMode`.
-- `IdentityTransitionController` owns Phase 1 A-to-B replacement and is the only module allowed to invoke `RenderTargetCompositor`. Inactive rendering bypasses compositor targets. Active rendering uses exactly two persistent buffers and finishes in one identity.
+- `IdentityTransitionController` owns synchronous Phase 1 A-to-B replacement. Renderer-owned preview/exact companion seams may invoke the paired compositor methods; transition creation/completion remains with the existing state/controller owners. Inactive rendering bypasses compositor targets. Active rendering uses exactly two persistent buffers and finishes in one identity.
 - Composition uses Canvas2D `source-over` with explicit `A * (1 - alpha) + B * alpha` weights; additive `lighter` blending is forbidden for identity replacement. Both transition buffers are cleared at the start of every active transition frame so transparent, chroma-key, and video-backplate modes cannot retain ghost pixels. Offscreen targets remain renderer-private and identities receive only `VisualRendererBackend`.
 - Effect/identity modules must not allocate, retain, resize, clear, or composite render targets; import `P5RenderTargetCompositor`; call Canvas compositing APIs; write `State.visualMode`/`State.visualModeTransition`; or advance/delete shared particles and shockwaves when their draw context has `advanceSharedSimulation: false`.
 ### Renderer Post FX Seam (ADR-007)
 
 - The post chain is renderer-owned and identity-independent. `PlexusRenderer` invokes
-  `PostFxPipeline.render()` exactly once per `draw()`, after the identity draw branch: after the
+  `PostFxPipeline.render()` exactly once per completed frame, after the identity draw branch (or its exact deferred completion): after the
   direct identity draw in steady state, and after `RenderTargetCompositor.composite()` during an
   active transition. It processes the single finished frame, never one frame per participating
   identity. See `../adr/ADR-007-renderer-owned-post-fx-pipeline.md`.

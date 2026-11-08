@@ -8,8 +8,14 @@
 The two 4K sample pairs should retain the same shape, gradients and detail. PNG links download the full image; gallery previews are reduced.</p>
 <button id="exact" disabled>Validate exact 720p / 4K source frames</button><pre id="exact-result">Run the exact source check after the preview checks finish.</pre>
 <section id="exact-views"></section>
+<h2>WH-06b actual WebM / MP4 export</h2><p>Runs short encoded jobs, exact frame IDs, sound and cleanup checks. Downloads are test artifacts; this is not a complete-song or physical-mobile qualification.</p><button id="export-test">Validate integrated export</button><pre id="export-result">Not run.</pre>
 <script type="module">
 import p5 from 'p5';
+import { ALL_FORMATS, BlobSource, CanvasSink, EncodedPacketSink, Input } from 'mediabunny';
+import { WebCodecsBackend } from '../../src/export/WebCodecsBackend.ts';
+import Mp4Worker from '../../src/export/mp4-export.worker.ts?worker';
+import { TemporalFragmentationEffect } from '../../src/visuals/TemporalFragmentationEffect.ts';
+import { copyWormholeHostFrame } from '../../src/visuals/VisualFramePreparation.ts';
 import HostWorker from '../../src/visuals/wormholeHostRender.worker.ts?worker';
 import { WormholeHostRenderSession } from '../../src/visuals/WormholeHostRenderSession.ts';
 import { Canvas2DRendererBackend } from '../../src/visuals/Canvas2DRendererBackend.ts';
@@ -31,7 +37,7 @@ import { PostFxPipeline } from '../../src/visuals/PostFxPipeline.ts';
 import { VisualDirectorFSM } from '../../src/visuals/VisualDirectorFSM.ts';
 import { State } from '../../src/state/store.ts';
 const result=document.querySelector('#result'), rows=[], contexts=[], graphics=[], canvases=[];
-let fixtureP, hostP, lossCase, pass, invalidations=0;
+let fixtureP, hostP, lossCase, pass, invalidations=0,exportAutomation=null;
 const exactUrls=[];let exactRun=null;
 const hostQuality={compactMaterialPreview:false,pixelRatioCap:1,maxBackingLongEdge:1920,wormholeRenderer:'webgl'};
 let hostSize={width:320,height:180},profileClockStart=null,profileSource=null,fixedLiveTime=null,positionChanged=null;
@@ -130,9 +136,9 @@ try{
  State.targetTuning.postFxFragmentAmount=.4;State.visualTuning.postFxFragmentAmount=.4;
  const registry=createDefaultStyleRegistry();registry.forEach(i=>i.syncPosition?.(3));
  hostP=await new Promise(resolve=>startPlexusRenderer('host',{
-  updateDashboard(){},setExportTarget(p){p.noLoop();resolve(p);},getTuningForMorph(tuning){projectionReads++;projectionInputs.push(JSON.stringify(tuning));return tuning;}
+  updateDashboard(){},prepareAutomationFrame(){exportAutomation?.();},setExportTarget(p){p.noLoop();resolve(p);},getTuningForMorph(tuning){projectionReads++;projectionInputs.push(JSON.stringify(tuning));return tuning;}
  },{getCurrentTime:()=>fixedLiveTime??(profileClockStart===null?99:3+(performance.now()-profileClockStart)/1000),addPositionChangedListener(listener){positionChanged=listener;},addPlaybackEndedListener(){},syncMetronomeState(){}},registry,undefined,
- {getPreviewSize:()=>hostSize,previewQuality:hostQuality,createWormholeWorker:invalidate=>(profileSource=new WormholeHostWorkerSource(invalidate))}));
+ {getPreviewSize:()=>hostSize,previewQuality:hostQuality,createWormholeWorker:invalidate=>(profileSource=new WormholeHostWorkerSource(invalidate)),createExactWormholeSource:()=>new WormholeHostExactSource()}));
  await hostP.redraw();
  // The host hook is a pure projection: reads may occur before and after semantic resolution.
  // Count actual director/PostFX execution, and prove every projection starts from unchanged raw input.
@@ -438,5 +444,148 @@ window.runWh06Exact=()=>exactRun??=(async()=>{
 })();
 document.querySelector('#exact').disabled=false;
 document.querySelector('#exact').onclick=()=>{window.runWh06Exact().catch(console.error);};
+
+// WH-06b opt-in: real renderer port + product encoder workers/OPFS. Existing 37/21 gates stay intact.
+let exportRun=null;
+window.wh06ExportBlobs=new Map();
+window.runWh06Export=()=>exportRun??=(async()=>{
+ const output=document.querySelector('#export-result'),rows=[],check=(v,m)=>{if(!v)throw Error(m);};
+ document.querySelector('#export-test').disabled=true;
+ const savedPost=PostFxPipeline.prototype.render,savedUpdate=Particle.prototype.update,
+  savedFreeze=P5RenderTargetCompositor.prototype.freezePairedCounterpart,savedPair=P5RenderTargetCompositor.prototype.compositePaired;
+ const savedApply=TemporalFragmentationEffect.prototype.apply;let appliedPost=0;
+ TemporalFragmentationEffect.prototype.apply=function(target,...args){if(target.canvas===hostP.__plexusExportTarget?.elt)appliedPost++;return savedApply.call(this,target,...args);};
+ let mainPosts=0,poolSteps=0,frozenTime=null,pairCount=0;
+ PostFxPipeline.prototype.render=function(host,...args){if(host===hostP)mainPosts++;return savedPost.call(this,host,...args);};
+ Particle.prototype.update=function(...args){poolSteps++;return savedUpdate.apply(this,args);};
+ P5RenderTargetCompositor.prototype.freezePairedCounterpart=function(...args){frozenTime=State.currentTime;return savedFreeze.apply(this,args);};
+ P5RenderTargetCompositor.prototype.compositePaired=function(...args){check(frozenTime===State.exportTime,'Native counterpart time mismatch');pairCount++;return savedPair.apply(this,args);};
+ const originalLoop=hostP.loop,originalRequest=WormholeHostExactSource.prototype.requestFrame;
+ const port=hostP.__plexusExportFramePort,originalRender=port.renderFrame.bind(port);
+ let captured=null,currentSpec=null,rawReference=null,referencePost=null,completed=0;
+ const originalBitmap=window.createImageBitmap;
+ window.createImageBitmap=async(...args)=>{const bitmap=await originalBitmap(...args);const probe=new OffscreenCanvas(192,32),c=probe.getContext('2d');c.drawImage(bitmap,0,0);let id=0;for(let bit=0;bit<6;bit++)if(c.getImageData(bit*32+16,16,1,1).data[0]>128)id|=1<<bit;currentSpec.encoderInputIds.push(id);return bitmap;};
+ const scratch=document.createElement('canvas'),ctx=scratch.getContext('2d',{willReadFrequently:true});
+ const referenceCanvas=document.createElement('canvas'),refctx=referenceCanvas.getContext('2d',{willReadFrequently:true});
+ const pcm=new AudioBuffer({numberOfChannels:2,sampleRate:48000,length:48000*4});
+ for(let c=0;c<2;c++){const data=pcm.getChannelData(c);for(let i=0;i<data.length;i++)data[i]=.12*Math.sin(2*Math.PI*(c?660:440)*i/48000);}
+ const audio={getAudioBuffer:()=>pcm};
+ // Manual fixture clock: backend still calls loop/remove normally, without an extra live draw between jobs.
+ hostP.loop=()=>{};
+ WormholeHostExactSource.prototype.requestFrame=function(index,frame,...args){captured={index,frame:copyWormholeHostFrame(frame)};return originalRequest.call(this,index,frame,...args);};
+ port.renderFrame=async index=>{
+  const beforePosts=mainPosts,beforeSteps=poolSteps;captured=null;const rendering=originalRender(index);
+  if(currentSpec.extraRedraws&&index===5){hostP.resizeCanvas(340,190);hostP.draw();hostP.draw();}
+  await rendering;completed++;
+  check(mainPosts-beforePosts===1,'PostFX must run exactly once after the final image');
+  check([0,75].includes(poolSteps-beforeSteps),'Shared pool must advance at most once per exact frame');
+  check(currentSpec.transitions||captured?.index===index,'Missing exact source request');
+  const frame=captured?.frame,g=hostP.__plexusExportTarget,dst=g.drawingContext;
+  if(frame)check(frame.currentTime===index/currentSpec.fps&&frame.frameCount===index+1&&frame.density===1&&!frame.compact,'Wrong exact timeline/density');
+  if(rawReference){
+   const image=rawReference.render(frame,true);check(image.raster==='canvas2d','Reference must stay CPU Canvas');
+   referenceCanvas.width=frame.width;referenceCanvas.height=frame.height;refctx.drawImage(image.bitmap,0,0);image.bitmap.close();
+   const read=()=>({...frame,isPlaying:false});
+   referencePost??=new PostFxPipeline([new TemporalFragmentationEffect(read)],undefined,read);
+   // A new reader per frame is intentional in QA; the production chain owns one persistent reader.
+   referencePost.dispose();referencePost=new PostFxPipeline([new TemporalFragmentationEffect(read)],undefined,read);
+   referencePost.render({drawingContext:refctx},frame.currentTime);
+   const quality=compareRgba(refctx.getImageData(0,0,frame.width,frame.height).data,
+    dst.getImageData(0,0,frame.width,frame.height).data,frame.width,frame.height);
+   currentSpec.quality.push(quality);check(quality.pass,'Integrated exact/PostFX quality: '+JSON.stringify(quality));
+  }
+  // Diagnostic ID added AFTER quality comparison. Detects repeated/reordered decoded frames, independent of motion judgement.
+  dst.save();dst.setTransform(1,0,0,1,0,0);dst.globalAlpha=1;dst.globalCompositeOperation='source-over';
+  for(let bit=0;bit<6;bit++){dst.fillStyle=(index+1)&(1<<bit)?'#fff':'#000';dst.fillRect(bit*32,0,32,32);}dst.restore();
+ };
+ const verify=async(blob,spec,frames)=>{
+  const media=new Input({formats:ALL_FORMATS,source:new BlobSource(blob)}),audioContext=new AudioContext({sampleRate:48000});
+  try{
+   const [video,sound]=await Promise.all([media.getPrimaryVideoTrack(),media.getPrimaryAudioTrack()]);
+   const base=spec.resolution==='4K'?2160:720,w=spec.aspect==='9:16'?base:spec.aspect==='1:1'?base:base*16/9,
+    h=spec.aspect==='9:16'?base*16/9:base;
+   check(video?.codedWidth===w&&video?.codedHeight===h&&sound?.numberOfChannels===2,'Wrong media dimensions/audio channels');
+   check(video.codec===(spec.format==='webm'||spec.precision?'vp9':'avc'),'Wrong video codec');
+   const times=[];for await(const packet of new EncodedPacketSink(video).packets())times.push(packet.timestamp);
+   check(times.length===frames&&times.every((t,i)=>Math.abs(t-i/spec.fps)<.0011),'Noncontiguous encoded frame clock');
+   const decoded=[];const sink=new CanvasSink(video);scratch.width=192;scratch.height=32;
+   for(let i=0;i<frames;i++){
+    const sample=await sink.getCanvas(times[i]+.00001);check(sample,'Missing decoded image');ctx.drawImage(sample.canvas,0,0);
+    let id=0;for(let bit=0;bit<6;bit++)if(ctx.getImageData(bit*32+16,16,1,1).data[0]>128)id|=1<<bit;
+    decoded.push(id);check(id===i+1,'Decoded frame ID mismatch '+id+' != '+(i+1)+' '+JSON.stringify(spec)+' pts='+JSON.stringify(times)+' sample='+sample.timestamp);
+   }
+   const samples=await audioContext.decodeAudioData(await blob.arrayBuffer());
+   check(samples.numberOfChannels===2&&Math.abs(samples.length-frames*48000/spec.fps)<=1024,'Audio endpoint mismatch');
+   const rms=Math.sqrt(samples.getChannelData(0).reduce((sum,v)=>sum+v*v,0)/samples.length);check(rms>.01,'Missing audio signal');
+   return {frames,width:w,height:h,videoCodec:video.codec,audioCodec:sound.codec,decodedIds:decoded,times,audioSamples:samples.length,audioRms:rms};
+  }finally{media.dispose();await audioContext.close();}
+ };
+ let sequence=0;
+ const one=async(spec,command)=>{
+  currentSpec={...spec,quality:[],encoderInputIds:[]};completed=0;captured=null;pairCount=0;appliedPost=0;
+  exportAutomation=spec.transitions?()=>{if(!State.isExporting)return;const i=Math.round(State.exportTime*spec.fps);
+   if(i===2)requestVisualModeChange('cosmic-wormhole',{durationSec:.4});if(i===20)requestVisualModeChange('classic',{durationSec:.4});}:null;
+  const c=state({...raw,wormholeWall:0,wormholeNebulaAmount:.65,wormholeNebulaDetail:.8,
+   postFxFragmentAmount:spec.post?.65:0});
+  const signal={...c.state.currentFrame,e:.99,eRatio:.9,densityProj:.9,melodyProj:.7,fxProj:.6,subEnergy:.6,bassEnergy:.5,subFlux:.3,bassFlux:.2,
+   perceptualSpectrum:Array.from({length:24},(_,i)=>.5+.2*Math.sin(i))};
+  Object.assign(State,{frames:Array.from({length:400},()=>signal),events:[],trackAnalysis:c.state.trackAnalysis,
+   sampleRate:48000,hopSize:512,bpm:120,duration:spec.frames/spec.fps,playbackFade:1,isPlaying:false,
+   visualMode:spec.transitions?'classic':'cosmic-wormhole',visualModeTransition:null,currentTime:0,exportTime:0,isExporting:false,videoBackplateActive:false});
+  const features={...c.state.currentFeatures,melody:.7,vocal:.6,fx:.6,density:.9,brightness:.6,tension:.7};
+  State.trackAnalysis={...State.trackAnalysis,features:Array.from({length:400},()=>features)};
+  Object.assign(State.visualTuning,c.state.visualTuning);Object.assign(State.targetTuning,c.state.targetTuning);
+  hostQuality.wormholeRenderer=spec.mode??'offscreen';hostQuality.compactMaterialPreview=true;
+  hostQuality.musicDisplay=spec.display?{mode:'spectrum',size:1,opacity:1}:undefined;
+  positionChanged?.(0);State.playbackFade=1;hostP.noLoop();
+  rawReference=spec.compare?new WormholeHostRenderSession({frames:State.frames,events:State.events,trackAnalysis:State.trackAnalysis,
+   sampleRate:State.sampleRate,hopSize:State.hopSize,bpm:State.bpm},false):null;
+  const backend=new WebCodecsBackend(hostP,hostP.canvas,audio,'WH06',null,'display',Mp4Worker);
+  const started=performance.now();let issued=false;
+  try{
+   const blob=await backend.start({resolution:spec.resolution,aspectRatio:spec.aspect,fps:spec.fps,format:spec.format,
+    preflight:true,watermark:false,...(spec.precision?spec.format==='webm'?{webmBitDepth:10}:{mp4VideoCodec:'vp9-10bit'}:{})},p=>{
+     if(command&&!issued&&p>0){issued=true;command==='stop'?backend.stopAndSave():backend.cancelExport();}
+    });
+   const elapsedMs=performance.now()-started;
+   const count=command==='stop'?Math.round(State.currentTime*spec.fps)+1:spec.frames;
+   // Stop callback runs only after submission; the accepted prefix ends at currentTime.
+   const name='export-'+String(sequence++).padStart(3,'0')+'.'+spec.format;
+   check(blob.size<=64*1024*1024,'QA artifact exceeds bounded capture');
+   window.wh06ExportBlobs.set(name,new Blob([await blob.arrayBuffer()],{type:blob.type}));const decoded=await verify(blob,spec,count);
+   check(!hostP.__plexusExportTarget&&!State.isExporting,'Export target/state leaked');
+   const raster=hostP.canvas.dataset.exportRaster;
+   check(spec.mode==='compatible'||raster==='exact-gpu-material','Qualified GPU did not render exact source: '+raster);
+   if(spec.transitions)check(pairCount===24,'Both transitions must finish 12 paired frames each: '+pairCount);
+   if(spec.post)check(appliedPost>0,'PostFX fixture must perform actual effect writes, not only a bypass');
+   const row={...spec,name,pairCount,appliedPost,command:command??'full',bytes:blob.size,elapsedMs,raster,completed,...decoded,
+    quality:currentSpec.quality};rows.push(row);return row;
+  }catch(error){
+   if(command!=='cancel'||!String(error).includes('cancelled'))throw error;
+   check(!hostP.__plexusExportTarget&&!State.isExporting,'Cancel leaked target');rows.push({command:'cancel',pass:true});
+  }finally{await backend.discardResult();rawReference?.dispose();rawReference=null;referencePost?.dispose();referencePost=null;c.dispose();hostP.noLoop();}
+ };
+ try{
+  const specs=[
+   ['720p','16:9',30,'webm',false],['720p','16:9',60,'mp4',false],
+   ['720p','9:16',60,'webm',true],['720p','9:16',30,'mp4',true],
+   ['720p','1:1',30,'webm',false],['720p','1:1',30,'mp4',false],
+   ['4K','16:9',30,'webm',true],['4K','16:9',30,'mp4',false],
+   ['4K','9:16',30,'webm',true],['4K','1:1',30,'mp4',true]
+  ];
+  for(const [resolution,aspect,fps,format,precision]of specs){output.textContent='Encoding '+[resolution,aspect,fps,format,precision?'10bit':'8bit'].join(' ');
+   await one({resolution,aspect,fps,format,precision,frames:resolution==='4K'&&aspect==='16:9'?36:8,compare:resolution==='720p',post:true,display:aspect==='9:16'});}
+  for(const format of ['webm','mp4'])await one({resolution:'720p',aspect:'16:9',fps:30,format,frames:48,transitions:true,post:true,extraRedraws:true});
+  const base={resolution:'720p',aspect:'16:9',fps:30,format:'webm',frames:12};
+  for(const format of ['webm','mp4'])await one({...base,format,frames:48});
+  await one({...base,format:'mp4',precision:true,frames:48});
+  await one(base,'stop');await one(base,'cancel');await one({...base,frames:4});
+  const report={pass:true,scope:'Short real product renderer/worker/encoder/OPFS. 10 media configurations plus 2 transition/3 timeline stress jobs; no physical mobile/full-song claim.',rows};
+  output.textContent=JSON.stringify(report,null,2);return report;
+ }catch(error){window.wh06ExportFailure={failure:String(error.stack??error),spec:currentSpec,rows};output.textContent='FAIL: '+(error.stack??error);throw error;}
+ finally{exportAutomation=null;TemporalFragmentationEffect.prototype.apply=savedApply;PostFxPipeline.prototype.render=savedPost;Particle.prototype.update=savedUpdate;P5RenderTargetCompositor.prototype.freezePairedCounterpart=savedFreeze;P5RenderTargetCompositor.prototype.compositePaired=savedPair;WormholeHostExactSource.prototype.requestFrame=originalRequest;port.renderFrame=originalRender;hostP.loop=originalLoop;
+  window.createImageBitmap=originalBitmap;scratch.width=scratch.height=referenceCanvas.width=referenceCanvas.height=1;}
+})();
+document.querySelector('#export-test').onclick=()=>window.runWh06Export().catch(console.error);
 window.addEventListener('pagehide',()=>{pass?.dispose();hostP?.remove();fixtureP?.remove();contexts.forEach(c=>c.dispose());exactUrls.forEach(url=>URL.revokeObjectURL(url));},{once:true});
 </script></html>

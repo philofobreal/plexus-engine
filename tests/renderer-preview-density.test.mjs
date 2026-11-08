@@ -61,6 +61,8 @@ function startHost({ dpr, width, height, options }) {
         if (id === '../state/store') return { State: { visualMode: 'cosmic-wormhole', isExporting: false } };
         if (id === './P5RenderTargetCompositor') return load('src/visuals/P5RenderTargetCompositor.ts');
         if (id === './PausedPreviewGate') return load('src/visuals/PausedPreviewGate.ts');
+        // WH-06b: use the real dependency-free bridge; the generic Empty is not its draw-ownership contract.
+        if (id === './ExactExportFrameBridge') return load('src/visuals/ExactExportFrameBridge.ts');
         // T13e adds reusable tuning buffers before setup. Keep the density-only boundary;
         // original fixture/assertions are retained in Git7ffbd92.
         if (id === '../config/visualTuning') return { cloneDefaultVisualTuning: () => ({}) };

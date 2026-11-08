@@ -12,6 +12,20 @@ Reusable Python/JavaScript programs, generators, diagnostics, evaluators and rep
 
 See [analyzer development method](../../research/analyzer-lab/docs/ANALYZER-DEVELOPMENT-METHOD.md) for musical task definitions and experiment/promotion gates. Retention does not establish musical independence, library truth or physical XR precision.
 
+## WH-06b integrated export retention
+
+Retain the WH-06a 21 source gates, WH-05 37 host checks and fixed WH-01 image
+policy. Add the exact port/renderer/backend lifecycle suites without deleting
+legacy Compatible or isolated-research cases. A frame-completion test must cover
+native-only frames, both crossfade directions, captured PostFX, one pool step,
+redraw/presentation failure, startup fallback, unsupported FPS, Stop, Cancel,
+late images, quiescent target teardown and retry. Encoded acceptance must check
+actual source-frame IDs and independent decoded IDs, not packet PTS alone.
+Preserve negative inter-frame VP9/duration experiments and their source/bundle
+identities; the promoted 10-bit MP4 profile must retain its bit depth. Do not
+interpret instrumented QA job times as product speed measurements.
+See [WH-06b validation and limits](../audits/wormhole-wh06b-export-integration.md).
+
 ## Validation Matrix
 
 Documentation-only governance changes:

@@ -1,0 +1,29 @@
+{
+  "commit": "ac7b67449950a603da751eeb4efbe4d04f7c770d",
+  "retention": "Immutable Git/SHA predecessor. All previous tests and quality gates remain active. New exact export integration is additive; compatible behavior is retained.",
+  "files": {
+    "src/visuals/PlexusRenderer.ts": "baa39a17e9745a0fc8cff21d6e760fba3a2daa2031c852b1bfe6d712df718f1a",
+    "src/export/WebCodecsBackend.ts": "cba249972e4fc1bc69f2127eb2defe3046177b3a8499be3b4127722c40692bb8",
+    "src/main.ts": "7d3f63effd08f36d270d5467699e0edc1ce18f25e35e33e249c30555f2fcb914",
+    "src/ui/mvp/main.ts": "1e7ee33c76af6441786dbcb950db0207d87f90c14c5495322ced60737488671e",
+    "tests/paused-renderer.test.mjs": "de8b6f67fd96d988379a7dd72ca70890b3e7c87aad759a452607c36c943e0c89",
+    "tests/export-lifecycle.test.mjs": "28de831294e427a84a0902799e952e5d0a6246c6b5a0dd14db8daab1c17b755d",
+    "tests/browser/wormhole-host-backend-smoke.html": "d49289eef8f80917c069d4b05f4bb39cdb2cf69c72d61922276d6480cb0b2026",
+    "research/export/wormhole-baseline.mjs": "15165a34faca6789bbdc5fe80024f3e670896d5c48aef570189d782d0fbe7361",
+    "src/visuals/P5RenderTargetCompositor.ts": "db0e00d176997adf7b3489ca32b0e41f553af75389e4ae1c1eaacd9c25a8c343",
+    "src/export/mp4-export.worker.ts": "808fe2d35ea62cd1a432c81cd561246d93d9ae31aa620145bbf00721884835d1",
+    "tests/mvp-mp4-export.test.mjs": "096ca1c63de7b030086c2b5897c037d1342c97bd760daa565ea8e441c5bc8199",
+    "src/ui/mvp/ExportDialog.ts": "6de6f6e005616b019299a5dd80cac29a29858570dd213aa51ac912507685015f",
+    "tests/renderer-preview-density.test.mjs": "964356b52172fb047564cbf924d06ff84d47d00f6b2531253f5f518a4f0c57f7"
+  },
+  "reviewPredecessor": {
+    "commit": "cd0693ffce17ad57cd35356542143e1124e4abb5",
+    "reason": "Additive ownership guard and assertions after integration review; retain the initially committed implementation and every earlier test.",
+    "files": {
+      "src/visuals/ExactExportFrameBridge.ts": "db2dc91d3cdeaf588a898be9406bb68d49897d1a9a5e41f43a987d0dd26e859a",
+      "src/visuals/PlexusRenderer.ts": "07f17c95fc50a14d7d687274c899ec284deb7bdf824e7030a7e5dc1e6a60e31a",
+      "tests/exact-export-frame-bridge.test.mjs": "78d427adbd3c4d6a1c783b57b533621c4a05dc33ad58265d3e77e5e2dd0ac023",
+      "tests/paused-renderer.test.mjs": "eb4e0daca19ff09e5da53f9828af90387835fc269462badcdb4c262e943df011"
+    }
+  }
+}

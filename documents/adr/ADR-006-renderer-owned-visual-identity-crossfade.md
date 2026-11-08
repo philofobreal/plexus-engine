@@ -78,3 +78,15 @@ checks and real Chrome worker/p5 tests cover both directions, busy waits, PostFX
 rapid replacement, rewind/density changes, live video/alpha and exact paired versus
 synchronous RGBA composition. No new p5.Graphics targets are allocated for pairs.
 See [WH-05 evidence and limits](../audits/wormhole-wh05-dashboard-composition.md).
+
+
+## WH-06b exact export companion (2026-11-08)
+
+The renderer's exact completion seam captures one native counterpart at the
+requested export index, queues the owned Wormhole input and awaits its image
+outside synchronous p5.draw. The native pool steps once; there is no preview
+cadence while waiting. Paired composition keeps the same two persistent objects,
+source-over weights and captured-time PostFX. Controller-owned transition
+completion stays unchanged. Stop/Cancel invalidate late presentation and retain
+the target until redraw/deferred completion quiesce; job end shrinks the reused
+backing stores. See [WH-06b](../audits/wormhole-wh06b-export-integration.md).

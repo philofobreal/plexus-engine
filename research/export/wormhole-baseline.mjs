@@ -68,13 +68,31 @@ async function capture() {
     const output = path.join(root, 'run-' + randomUUID()), site = path.join(output, 'site');
     await mkdir(output, { recursive: true });
     const paths = git('ls-files', '--cached', '--others', '--exclude-standard', '--', 'src', 'research/export',
-        'tests/helpers', 'tests/browser/wormhole-host-backend-smoke.html', 'documents/governance', 'AGENTS.md').split(/\r?\n/).filter(Boolean);
+        'public', 'tests/helpers', 'tests/browser/wormhole-host-backend-smoke.html', 'documents/governance', 'AGENTS.md').split(/\r?\n/).filter(Boolean);
     const sourceInputs = await Promise.all([...new Set(paths)].sort().map(async file => ({ path: file, sha256: hash(await readFile(file)) })));
-    const built = await build({ configFile: false, base: '/plexus-engine/', publicDir: false,
+    let durationProbeHits=0;
+    const durationProbe=()=>({name:'wh06-mp4-duration-probe',enforce:'pre',transform(code,id){
+        if(!id.split('?')[0].replaceAll('\\','/').endsWith('/src/export/mp4-export.worker.ts'))return;
+        const before='new VideoSample(bitmap, { timestamp: frames / fps, duration: 1 / fps })';
+        assert.equal(code.split(before).length,2,'MP4 duration probe boundary changed');durationProbeHits++;
+        return code.replace(before,'new VideoSample(bitmap, { timestamp: timestampUs / 1e6 })');
+    }});
+    const intraProbe=()=>({name:'wh06-mp4-intra-probe',enforce:'pre',transform(code,id){
+        if(!id.split('?')[0].replaceAll('\\','/').endsWith('/src/export/mp4-export.worker.ts'))return;
+        const before="encoding = { codec: 'vp9', fullCodecString, bitrate, keyFrameInterval: 0,";
+        assert.equal(code.split(before).length,2,'MP4 intra probe boundary changed');durationProbeHits++;
+        return code.replace(before,process.argv.includes('--mp4-inter-frame')?before.replace('keyFrameInterval: 0','keyFrameInterval: 1'):before);
+    }});
+    const built = await build({ configFile: false, base: '/plexus-engine/', publicDir: 'public',
+        worker: { plugins: () => [
+            ...(process.argv.includes('--mp4-no-duration') ? [durationProbe()] : []),
+            ...((process.argv.includes('--mp4-all-intra')||process.argv.includes('--mp4-inter-frame')) ? [intraProbe()] : [])
+        ] },
         build: { outDir: site, rollupOptions: { input: ['research/export/wormhole-baseline.html',
             'tests/browser/wormhole-host-backend-smoke.html'] } } });
+    if(process.argv.includes('--mp4-no-duration')||process.argv.includes('--mp4-all-intra')||process.argv.includes('--mp4-inter-frame'))assert.ok(durationProbeHits>0,'Probe must inspect the actual worker policy');
     const bundles = (Array.isArray(built) ? built : [built]).flatMap(result => result.output);
-    const manifest = { version: 1, baseCommit: git('rev-parse', 'HEAD'), dirty: git('status', '--porcelain'),
+    const manifest = { version: 1, arguments: process.argv.slice(2), baseCommit: git('rev-parse', 'HEAD'), dirty: git('status', '--porcelain'),
         sourceInputs, bundles: await Promise.all(bundles.map(async entry => ({ path: entry.fileName,
             sha256: hash(await readFile(path.join(site, entry.fileName))) }))) };
     for (const input of sourceInputs) assert.equal(hash(await readFile(input.path)), input.sha256, 'Source changed while building');
@@ -127,7 +145,11 @@ async function capture() {
             } };
             socket.addEventListener('message', listener); socket.send(JSON.stringify({ id, method, params }));
         });
-        const evaluate = async expression => (await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }))?.result?.value;
+        const evaluate = async expression => {
+            const response = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+            if (response.exceptionDetails) throw Error(response.exceptionDetails.exception?.description ?? JSON.stringify(response.exceptionDetails));
+            return response.result?.value;
+        };
         await send('Page.navigate', { url: origin + fixture });
         for (let i = 0; i < 100 && !await evaluate('Boolean(window.runWh01)'); i++) await sleep(100);
         const run = await evaluate('window.runWh01()'); assert.equal(run?.pass, true, JSON.stringify(run));
@@ -171,6 +193,41 @@ async function capture() {
             await writeFile(path.join(output,'exact-images.json'),JSON.stringify(images,null,2)+'\n',{flag:'wx'});
             console.log(JSON.stringify({exactRows:exact.rows.length,exactPass:exact.pass,fullSizeSamples:images.length}));
         }
+
+        if(process.argv.includes('--export-host')){
+            let report;try{report=await evaluate('window.runWh06Export()');}catch(error){
+                await writeFile(path.join(output,'integrated-export-failure.json'),JSON.stringify(await evaluate('window.wh06ExportFailure'),null,2)+'\n',{flag:'wx'});
+                for(const name of await evaluate('Array.from(window.wh06ExportBlobs.keys())')){
+                    assert.match(name,/^export-\d{3}\.(?:webm|mp4)$/);
+                    const data=await evaluate(`(async()=>{const blob=window.wh06ExportBlobs.get(${JSON.stringify(name)});return await new Promise((r,j)=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=j;f.readAsDataURL(blob);});})()`);
+                    const bytes=Buffer.from(data.split(',')[1],'base64');assert.ok(bytes.length<=64*1024*1024);
+                    await writeFile(path.join(output,name),bytes,{flag:'wx'});
+                }throw error;
+            }
+            await writeFile(path.join(output,'integrated-export.json'),JSON.stringify(report??{failure:await evaluate('document.querySelector("#export-result").textContent')},null,2)+'\n',{flag:'wx'});
+            assert.equal(report?.pass,true,'Integrated export failed; see integrated-export.json');
+            const artifacts=[];
+            for(const row of report.rows.filter(r=>r.name)){
+                assert.match(row.name,/^export-\d{3}\.(?:webm|mp4)$/);
+                const encoded=await evaluate(`(async()=>{const blob=window.wh06ExportBlobs.get(${JSON.stringify(row.name)});return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob);});})()`);
+                assert.match(encoded,/^data:.*;base64,/);const bytes=Buffer.from(encoded.slice(encoded.indexOf(',')+1),'base64');
+                assert.ok(bytes.length>0&&bytes.length<=64*1024*1024);assert.equal(bytes.length,row.bytes);
+                const file=path.join(output,row.name);await writeFile(file,bytes,{flag:'wx'});
+                const probe=JSON.parse(execFileSync('ffprobe',['-v','error','-show_streams','-show_format','-of','json',file],{windowsHide:true,encoding:'utf8',timeout:60_000}));
+                const video=probe.streams.find(s=>s.codec_type==='video'),audio=probe.streams.find(s=>s.codec_type==='audio');
+                assert.equal(video.width,row.width);assert.equal(video.height,row.height);assert.equal(audio.channels,2);
+                if(row.precision)assert.match(video.pix_fmt,/10/,'High-precision export lost bit depth');
+                const ids=execFileSync('ffmpeg',['-v','error','-i',file,'-map','0:v:0','-vf','crop=192:32:0:0,scale=6:1:flags=neighbor','-pix_fmt','gray','-fps_mode','passthrough','-f','rawvideo','pipe:1'],{windowsHide:true,timeout:120_000,maxBuffer:1024*1024});
+                assert.equal(ids.length,row.frames*6);
+                const decoded=[];for(let i=0;i<row.frames;i++){
+                    let id=0;for(let bit=0;bit<6;bit++)if(ids[i*6+bit]>128)id|=1<<bit;
+                    assert.equal(id,i+1,'Independent FFmpeg decoded frame ID mismatch');decoded.push(id);
+                }
+                artifacts.push({name:row.name,sha256:hash(bytes),bytes:bytes.length,video,audio,decodedIds:decoded});
+            }
+            await writeFile(path.join(output,'integrated-export-artifacts.json'),JSON.stringify({pass:true,artifacts},null,2)+'\n',{flag:'wx'});
+            console.log(JSON.stringify({exportRows:report.rows.length,files:artifacts.length,independentlyDecoded:true}));
+        }
         await writeFile(path.join(root, 'active-run.txt'), output + '\n');
         console.log(JSON.stringify({ output, pass: true, cases: 8, hostRows: host.rows.length, ...(publicRelease?{publicRelease}:{}) }));
     } finally {
@@ -194,5 +251,5 @@ async function verify(file) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
     if (process.argv[2] === 'capture') await capture();
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--public-release=ID] | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--public-release=ID] | verify [baseline.json]');
 }

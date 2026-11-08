@@ -2,6 +2,14 @@
 
 ## Status
 
+WH-06b (2026-11-08) wires the source into dashboard WebM and MVP WebM/MP4.
+The renderer publishes a dependency-light completion port; export owns its job
+and awaits both synchronous p5 redraw and deferred composition/PostFX. The
+existing Offscreen worker preference enables the exact route; unsupported FPS
+or startup falls back before submission. No preview bitmap or second resolver
+enters export. See [WH-06b evidence](../audits/wormhole-wh06b-export-integration.md).
+Earlier task-scoped descriptions below remain historical.
+
 WH-06a (2026-11-08) accepts the job-bound resolved-input exact source and common
 session extension. Exact transport has no preview density/rate cap; it negotiates
 job/fps/full dimensions and returns one stamped owned image/companion lease.

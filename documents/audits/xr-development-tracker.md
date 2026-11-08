@@ -2,7 +2,27 @@
 
 Started 2026-10-23. Checkpoint 2026-11-07 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01, WH-02 research, WH-03a preparation, WH-03b time envelopes/exact scheduling and WH-04 MVP GPU session and WH-05 dashboard/composition are delivered; WH-06a exact resolved-input source is delivered; WH-06b host/export integration is next after manual acceptance. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01, WH-02 research, WH-03a preparation, WH-03b time envelopes/exact scheduling and WH-04 MVP GPU session and WH-05 dashboard/composition are delivered; WH-06a exact resolved-input source is delivered; WH-06b host/export integration is delivered; WH-07 Takarékos/Turbó is next after WH-06b manual acceptance. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+
+### WH-06b product export handoff (2026-11-08)
+
+[WH-06b](wormhole-wh06b-export-integration.md) connects the existing Offscreen
+worker preference to dashboard WebM and MVP WebM/MP4. Exact completion waits for
+worker pixels, native crossfade and one captured-state PostFX seam before capture
+and encoding. No preview images, async p5.draw, second director or State swap.
+Stop/Cancel retain contiguous-prefix and quiescent-cleanup ownership. Large
+transition/PostFX backing stores release at job end. Optional VP9 10-bit MP4 uses
+independent pictures after a retained-detail regression was reproduced; the UI
+notes its possible larger files. Default H.264 MP4 and mobile 4K remain.
+
+Validation: 2224 cumulative Node cases / 2215 pass / the same nine baseline errors; 228/228 targeted, 37 host + 21 source + 8 GPU cases; 17 encoded files / 382 decoded frame IDs. Validation receipts and exact commands are in the audit. The raw source/host
+predecessors remain active, plus real encoded files with two-decoder frame IDs,
+audio, both transition directions and Stop/Cancel/retry. No whole-song speed
+multiplier or physical-mobile qualification is claimed. Stop for manual testing.
+Next WH-07 adds selectable Takarékos/Turbó scheduling, then WH-08 long/platform
+qualification; T21b/T21c and T22-T24 remain after the epic.
+
+Earlier task sections below retain the scope/status at their original handoff.
 
 ### WH-06a exact source handoff (2026-11-08)
 

@@ -1,0 +1,273 @@
+{
+  "task": "WH-06b",
+  "baseCommit": "ac7b67449950a603da751eeb4efbe4d04f7c770d",
+  "runtime": "v25.2.1",
+  "full": {
+    "tests": 2224,
+    "pass": 2215,
+    "fail": 9,
+    "cancelled": 0,
+    "skipped": 0,
+    "duration_ms": 576479.1425
+  },
+  "targeted": {
+    "tests": 228,
+    "pass": 228,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "duration_ms": 48808.6456
+  },
+  "failures": [
+    {
+      "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+      "message": "vos-wh-drift.json must not reset user-global wormholeStarfield"
+    },
+    {
+      "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+      "message": "establish remains visibly above the opacity floor"
+    },
+    {
+      "name": "weak roles pin a deep-perspective depth and continuity profile",
+      "message": "establish depth\n\n2.03136 !== 4"
+    },
+    {
+      "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+      "message": "deep drift deeper than establish"
+    },
+    {
+      "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+      "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+    },
+    {
+      "name": "wormhole factory presets keep a minimum normalized weighted separation",
+      "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+    },
+    {
+      "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+      "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))"
+    },
+    {
+      "name": "projected forward motion preserves overdrive > punch > drive > drift",
+      "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+    },
+    {
+      "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+      "message": "389.64890777178124 vs 471.543038051684"
+    }
+  ],
+  "retention": {
+    "files": 13,
+    "reviewFiles": 4,
+    "protectedExactBodySha256": "6b6a19bceaecfecdf213a9af053c9ee2f08e95509955982b07bc140008abd42c",
+    "activeNodeFiles": 227,
+    "documents": 10,
+    "links": 244
+  },
+  "browser": {
+    "hostDir": "C:\\Users\\budap\\.codex\\worktrees\\e977\\novy\\Plexus Engine (VJ System)\\plexus-engine\\logs\\wh01\\run-37865dea-0ce1-491e-865f-1f15afbfdb35",
+    "previewHostRows": 37,
+    "exactRows": 21,
+    "gpuDir": "C:\\Users\\budap\\.codex\\worktrees\\e977\\novy\\Plexus Engine (VJ System)\\plexus-engine\\logs\\wh02\\run-48e54b8e-e93a-41eb-8153-8dcd5f762109",
+    "previewGpuCases": 8,
+    "baselineSha256": "937b39bf0a1c2f0b77abc8cdde91654a3840e41b95aecbbb0a98b0245573270f",
+    "exportRows": 18,
+    "encodedFiles": 17,
+    "independentlyDecodedFrames": 382,
+    "rawPostFxComparisons": 48,
+    "maxDarkTileMeanError": 0.08499374999999995,
+    "maxMeanError": 8.680555555555556e-06,
+    "transitionPairs": [
+      24,
+      24
+    ],
+    "accepted10BitFiles": 6,
+    "artifacts": [
+      {
+        "name": "export-000.webm",
+        "sha256": "5dc52e1798ce54f9c1b689efed33627ccf74c957479eea69c506b2472f0192f4",
+        "bytes": 18945,
+        "codec": "vp9",
+        "pixelFormat": "yuv420p",
+        "frames": 8
+      },
+      {
+        "name": "export-001.mp4",
+        "sha256": "225b7bb5afea6faf917b95a5c4046e31269621d4993dfa22c756f36bd682b111",
+        "bytes": 24183,
+        "codec": "h264",
+        "pixelFormat": "yuv420p",
+        "frames": 8
+      },
+      {
+        "name": "export-002.webm",
+        "sha256": "b233c2e4d21c77ec67c678f8fff5f0dc42c8283f215d09064236301aafce1501",
+        "bytes": 10317,
+        "codec": "vp9",
+        "pixelFormat": "yuv420p10le",
+        "frames": 8
+      },
+      {
+        "name": "export-003.mp4",
+        "sha256": "e253a8154a2f9bb5aae975bc1179c7e5d81db881b4957b1fd4bfb6db3fe94537",
+        "bytes": 103388,
+        "codec": "vp9",
+        "pixelFormat": "yuv420p10le",
+        "frames": 8
+      },
+      {
+        "name": "export-004.webm",
+        "sha256": "4741577e49db7bceb360d107fe12931f7166ead45a9084684ad98056d84330a0",
+        "bytes": 13292,
+        "codec": "vp9",
+        "pixelFormat": "yuv420p",
+        "frames": 8
+      },
+      {
+        "name": "export-005.mp4",
+        "sha256": "f265e94e2a7b41758501dc2e1a87e7710d7580f56350536c6420cb8cbee48624",
+        "bytes": 60155,
+        "codec": "h264",
+        "pixelFormat": "yuv420p",
+        "frames": 8
+      },
+      {
+        "name": "export-006.webm",
+        "sha256": "7667c4a1ad12c2d101e37c57832cf5ece9b4b5d96625e75d9946aa7fc4fb600d",
+        "bytes": 1311041,
+        "codec": "vp9",
+        "pixelFormat": "yuv420p10le",
+        "frames": 36
+      },
+      {
+        "name": "export-007.mp4",
+        "sha256": "624317b567a721e8ed79a155dff58d77141a0511edbcef285808b0e8d5fe6b24",
+        "bytes": 480554,
+        "codec": "h264",
+        "pixelFormat": "yuv420p",
+        "frames": 36
+      },
+      {
+        "name": "export-008.webm",
+        "sha256": "486832a34a237a1fa3a96cc549369fd1ec756ad65258f564648097962125e50f",
+        "bytes": 42048,
+        "codec": "vp9",
+        "pixelFormat": "yuv420p10le",
+        "frames": 8
+      },
+      {
+        "name": "export-009.mp4",
+        "sha256": "066a9ac5b92769c654b34f9698988a09c54486b3e60615672930e87ca0611bc0",
+        "bytes": 161846,
+        "codec": "vp9",
+        "pixelFormat": "yuv420p10le",
+        "frames": 8
+      },
+      {
+        "name": "export-010.webm",
+        "sha256": "a2dc9c44de1028e8d81ba384e7a00b977e1fc16992970fc3fbdce800eec7d065",
+        "bytes": 190539,
+        "codec": "vp9",
+        "pixelFormat": "yuv420p",
+        "frames": 48
+      },
+      {
+        "name": "export-011.mp4",
+        "sha256": "5be833be66c2b2ccfcd1bbfd5e41ed52eab82f90b61d068de296b7117ff03357",
+        "bytes": 461130,
+        "codec": "h264",
+        "pixelFormat": "yuv420p",
+        "frames": 48
+      },
+      {
+        "name": "export-012.webm",
+        "sha256": "5a5fec10440364edf666b1d775881df92b344fd95e30069cd3f70d059b663155",
+        "bytes": 243915,
+        "codec": "vp9",
+        "pixelFormat": "yuv420p",
+        "frames": 48
+      },
+      {
+        "name": "export-013.mp4",
+        "sha256": "279c710e5c7fb51952f9e23420965a9b4223c0fc6f3e77cb071d5f9efb11060d",
+        "bytes": 436069,
+        "codec": "h264",
+        "pixelFormat": "yuv420p",
+        "frames": 48
+      },
+      {
+        "name": "export-014.mp4",
+        "sha256": "a63500d72e73265c39ee5a5c7c5edfd59103283d1711c51892339ac86792a1eb",
+        "bytes": 1751585,
+        "codec": "vp9",
+        "pixelFormat": "yuv420p10le",
+        "frames": 48
+      },
+      {
+        "name": "export-015.webm",
+        "sha256": "10bfabd083c9a6e81d517b3d02ff2e91ea38377af7d35b488f2087e9ab0d20f8",
+        "bytes": 15761,
+        "codec": "vp9",
+        "pixelFormat": "yuv420p",
+        "frames": 2
+      },
+      {
+        "name": "export-016.webm",
+        "sha256": "88a5b16a5e70e725e20c0fcf403c4a3111556e70fa91fc72683e47f11742a7b1",
+        "bytes": 16694,
+        "codec": "vp9",
+        "pixelFormat": "yuv420p",
+        "frames": 4
+      }
+    ],
+    "sourceManifestSha256": "4442c1f5624c100e393a865384ff3ee0e5093f29a70461e0e8cbb75081ac9900"
+  },
+  "commands": {
+    "build": "npm run build",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=8",
+    "targeted": "node --test --test-reporter=tap --test-concurrency=4 tests/exact-export-frame-bridge.test.mjs tests/export-lifecycle.test.mjs tests/export-scheduling.test.mjs tests/postfx-fragmentation.test.mjs tests/paused-renderer.test.mjs tests/mvp-mp4-export.test.mjs tests/mvp-export-panel.test.mjs tests/mvp-background-export.test.mjs tests/export-resources.test.mjs tests/export-preparation.test.mjs tests/export-isolated.test.mjs tests/export-deterministic.test.mjs tests/visual-mode-transition.test.mjs tests/contracts.test.mjs tests/wormhole-host-exact.test.mjs tests/wormhole-host-worker.test.mjs tests/styles-deterministic.test.mjs tests/material-preview-budget.test.mjs tests/preview-quality.test.mjs",
+    "browser": "node research/export/wormhole-baseline.mjs capture --exact-host --export-host [--public-release=ID]; node research/export/wormhole-baseline.mjs verify",
+    "gpu": "node research/export/wormhole-gpu-spike.mjs capture float16 cpu-lines [--public-release=ID]; node research/export/wormhole-gpu-spike.mjs verify",
+    "release": "node scripts/release-pages.mjs prepare wh06b-export-gpu; node scripts/release-pages.mjs publish; node scripts/release-pages.mjs verify"
+  },
+  "limits": [
+    "No complete-song/thermal or physical mobile/Quest/editor qualification",
+    "No speed multiplier from instrumented QA jobs; WH-07 adds selectable scheduling profiles",
+    "Encoded 4K samples at 30fps; 4K60 remains source-only acceptance here",
+    "High-precision VP9 MP4 independent pictures can be larger; H.264/default/WebM codec behavior unchanged"
+  ],
+  "logs": {
+    "full": "87e6d5323c376f20dac726c66c51902e507bfdcb663294e7ba1770d87748ecb4",
+    "targeted": "ce47d6146fabb8faddd7e854e8803ce330036e9f149e1ecaa64a6eea46019406",
+    "exact": "e4a471a5dc31bf61fa99930c68b609e7703b7d8e9d50e5579bc51f2b391a5913",
+    "integrated": "b307a0db387a3dad3a2f4b24d6b63457dedf1922023806d4389f7844151618ba",
+    "artifacts": "3629304bc4969798f1e42d6091ea1933a519e644f7a8890399dddff9030649db"
+  },
+  "sourceRuntimeCommits": [
+    "cd0693ffce17ad57cd35356542143e1124e4abb5",
+    "fc95a0df487c5e305c1b29bcb863c1ac36076ff7",
+    "85347722057d89e2baf8556afcca37acf0a2dfe1"
+  ],
+  "runtimeSourceHashes": {
+    "src/export/WebCodecsBackend.ts": "e6357f8214c5550e43d3f64be8ef5fd41fec1b6d7de34cefa8887c58db62b618",
+    "src/export/mp4-export.worker.ts": "baab5a3ec3745935f1c7f62c91797728d6067225e43a08f053518889435c481f",
+    "src/main.ts": "9075e5e45df0a19cbd5d07b39c48ae9328774bc28420fb5f5f314853633aed3e",
+    "src/types/HostExportFramePort.ts": "ea57014593833d0ddc848f706bdf864c16b6c0802f15d3e7f5ea8a66a2d0100b",
+    "src/ui/mvp/ExportDialog.ts": "db866ab686feea18198ff9b69275d32ed1ecc86d5a68ab85f1c92e948a617546",
+    "src/ui/mvp/main.ts": "5770c9b4d957de373f20505ea3cca19e2922caa904efd54511b8e68695920d90",
+    "src/visuals/ExactExportFrameBridge.ts": "f0315adb17d3699aaaacc30afa48d832ad67ce36fdc82e6e37ef1784796366c4",
+    "src/visuals/P5RenderTargetCompositor.ts": "9f49885e6133670f900f5bfd494584e04ccb737e6e70815794b137259a797010",
+    "src/visuals/PlexusRenderer.ts": "692f9df8d7229dcf82ba0fcbdc23d6d0f76789df9ada6a9787e5b962004240f8"
+  },
+  "supplemental": {
+    "ownershipTargeted": {
+      "tests": 106,
+      "pass": 106
+    },
+    "densityFixture": {
+      "tests": 9,
+      "pass": 9
+    },
+    "priorFullRun": "logs/wh06b/full-final.tap retained with its extra TypeError from an obsolete generic test stub; fixture now loads the real dependency-free bridge; all original assertions retained; full-closure.tap validates final state."
+  }
+}

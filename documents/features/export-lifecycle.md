@@ -1,5 +1,14 @@
 # Staged export lifecycle
 
+WH-06b (2026-11-08) delivers the [product exact-source integration](../audits/wormhole-wh06b-export-integration.md).
+Both hosts' existing Offscreen worker choice also selects the job-bound render
+source during export. The encoder waits for the full identity/crossfade/PostFX
+image; it never samples a preview bitmap. Stop/Cancel retain the contiguous
+prefix/cleanup contract. Optional 10-bit MP4 uses independent pictures to
+preserve brief detail and may produce larger files. WH-07 Takarékos/Turbó is next
+after manual acceptance; no whole-video speed multiplier is claimed here.
+Earlier planning/task notes below retain their historical scope.
+
 Current planning update, 2026-11-07: the requested
 [cross-host Wormhole rendering epic](../audits/cross-host-wormhole-rendering-epic.md)
 supersedes the export-only next-spike schedule. Dashboard and MVP playback and
