@@ -1,0 +1,970 @@
+{
+  "task": "WH-07b2",
+  "predecessor": "26be0d01ae9c0e730b41032d14a9e4321cf2b5bc",
+  "status": "Diagnostic handoff complete; no MP4 Turbo promotion or product runtime change",
+  "pipeline": {
+    "run": "logs/wh01/run-66b4735c-2f84-4d8b-a4b7-2129f2a00fab",
+    "rows": 12,
+    "actualFiles": 6,
+    "groups": [
+      {
+        "resolution": "720p",
+        "fullMp4": {
+          "medianMs": 7569.199999999255,
+          "frames": 240,
+          "fps": 60,
+          "hostMedianMs": {
+            "renderRequest": 5900.20000000298,
+            "animationFrameWait": 0,
+            "mainThreadYield": 694.5000000037253,
+            "bitmap": 17.099999994039536,
+            "queueWait": 0.2999999988824129,
+            "finalizeWait": 721.8000000007451,
+            "backendRequest": 7568,
+            "preflight": 218.5,
+            "captureSetup": 0.599999999627471,
+            "composition": 19.5,
+            "transferSubmit": 17.100000001490116,
+            "total": 7568.799999998882
+          },
+          "observations": [
+            7569.199999999255,
+            7708.4000000003725,
+            7192.699999999255
+          ]
+        },
+        "upstreamOnly": {
+          "medianMs": 6093.0999999996275,
+          "frames": 240,
+          "fps": 60,
+          "hostMedianMs": {
+            "renderRequest": 4935.200000010431,
+            "animationFrameWait": 0,
+            "mainThreadYield": 1039.4000000040978,
+            "bitmap": 14.800000002607703,
+            "queueWait": 0.6999999992549419,
+            "finalizeWait": 0.599999999627471,
+            "backendRequest": 6092.5999999996275,
+            "preflight": 9.800000000745058,
+            "captureSetup": 0.7999999988824129,
+            "composition": 11.899999994784594,
+            "transferSubmit": 16.299999987706542,
+            "total": 6093.0999999996275
+          },
+          "observations": [
+            6040.699999999255,
+            6093.0999999996275,
+            6367.800000000745
+          ]
+        }
+      },
+      {
+        "resolution": "4K",
+        "fullMp4": {
+          "medianMs": 11281.200000001118,
+          "frames": 90,
+          "fps": 60,
+          "hostMedianMs": {
+            "renderRequest": 7711.500000003725,
+            "animationFrameWait": 0,
+            "mainThreadYield": 333.99999999813735,
+            "bitmap": 27.39999999292195,
+            "queueWait": 1306.3999999985099,
+            "finalizeWait": 1182.5999999996275,
+            "backendRequest": 11280.300000000745,
+            "preflight": 1007.9000000003725,
+            "captureSetup": 0.900000000372529,
+            "composition": 3.5999999903142452,
+            "transferSubmit": 4.400000002235174,
+            "total": 11281.200000001118
+          },
+          "observations": [
+            14101.200000001118,
+            11281.200000001118,
+            10763.900000000373
+          ]
+        },
+        "upstreamOnly": {
+          "medianMs": 2104.699999999255,
+          "frames": 90,
+          "fps": 60,
+          "hostMedianMs": {
+            "renderRequest": 1682.4000000059605,
+            "animationFrameWait": 0,
+            "mainThreadYield": 331.7000000104308,
+            "bitmap": 6.299999998882413,
+            "queueWait": 0.09999999962747097,
+            "finalizeWait": 1.300000000745058,
+            "backendRequest": 2104.199999999255,
+            "preflight": 15.199999999254942,
+            "captureSetup": 0.6999999992549419,
+            "composition": 3.399999998509884,
+            "transferSubmit": 5.000000007450581,
+            "total": 2104.699999999255
+          },
+          "observations": [
+            2329,
+            1820.5999999996275,
+            2104.699999999255
+          ]
+        }
+      }
+    ],
+    "scope": "Same actual producer/bitmap/PCM path; upstream-only returns a JSON completion token with no codec/storage output. Timings overlap and do not measure CPU shares, hardware attribution or a real Turbo gain.",
+    "measuredVersionNote": "Pipeline run predates callback-failure priority fix and final codec matrix expansion. These affect codec diagnostics, not the unchanged transfer sink; retain original build and worker bundle as measured. Final codec observations are a separate run."
+  },
+  "codecs": {
+    "run": "logs/wh01/run-d835d83c-7a7f-4fb1-8ea5-145a6d935c15",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim.",
+    "rows": [
+      {
+        "config": {
+          "codec": "vp09.02.51.10",
+          "width": 1280,
+          "height": 720,
+          "framerate": 60,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "complete",
+        "encoder": "supported",
+        "decoder": "supported",
+        "encodedFrames": 3,
+        "decodedFrames": 3,
+        "allKey": true,
+        "bytes": 5036,
+        "formats": [
+          "opaque"
+        ],
+        "timestamps": [
+          0,
+          16667,
+          33333
+        ],
+        "timings": {
+          "queryMs": 593.7000000011176,
+          "inputEncodeMs": 84.69999999925494,
+          "decodeMs": 26.200000001117587,
+          "totalMs": 705.5
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim.",
+        "decodedTenBitObserved": false,
+        "emittedCodec": "vp09.02.51.10"
+      },
+      {
+        "config": {
+          "codec": "vp09.02.51.10",
+          "width": 1280,
+          "height": 720,
+          "framerate": 60,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "prefer-hardware",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0.2000000011175871,
+          "totalMs": 0.2000000011175871
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim."
+      },
+      {
+        "config": {
+          "codec": "vp09.02.51.10",
+          "width": 1280,
+          "height": 720,
+          "framerate": 60,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "prefer-software",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "complete",
+        "encoder": "supported",
+        "decoder": "supported",
+        "encodedFrames": 3,
+        "decodedFrames": 3,
+        "allKey": true,
+        "bytes": 5036,
+        "formats": [
+          "opaque"
+        ],
+        "timestamps": [
+          0,
+          16667,
+          33333
+        ],
+        "timings": {
+          "queryMs": 16.5,
+          "inputEncodeMs": 43,
+          "decodeMs": 25.100000001490116,
+          "totalMs": 85.09999999962747
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim.",
+        "decodedTenBitObserved": false,
+        "emittedCodec": "vp09.02.51.10"
+      },
+      {
+        "config": {
+          "codec": "vp09.02.51.10",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 60,
+          "bitrate": 64000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "complete",
+        "encoder": "supported",
+        "decoder": "supported",
+        "encodedFrames": 3,
+        "decodedFrames": 3,
+        "allKey": true,
+        "bytes": 27334,
+        "formats": [
+          "opaque"
+        ],
+        "timestamps": [
+          0,
+          16667,
+          33333
+        ],
+        "timings": {
+          "queryMs": 257.30000000074506,
+          "inputEncodeMs": 734.0999999996275,
+          "decodeMs": 67.90000000037253,
+          "totalMs": 1059.9000000003725
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim.",
+        "decodedTenBitObserved": false,
+        "emittedCodec": "vp09.02.51.10"
+      },
+      {
+        "config": {
+          "codec": "vp09.02.51.10",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 60,
+          "bitrate": 64000000,
+          "hardwareAcceleration": "prefer-hardware",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 3.5,
+          "totalMs": 3.5
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim."
+      },
+      {
+        "config": {
+          "codec": "vp09.02.51.10",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 60,
+          "bitrate": 64000000,
+          "hardwareAcceleration": "prefer-software",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "complete",
+        "encoder": "supported",
+        "decoder": "supported",
+        "encodedFrames": 3,
+        "decodedFrames": 3,
+        "allKey": true,
+        "bytes": 27334,
+        "formats": [
+          "opaque"
+        ],
+        "timestamps": [
+          0,
+          16667,
+          33333
+        ],
+        "timings": {
+          "queryMs": 273.30000000074506,
+          "inputEncodeMs": 583.4000000003725,
+          "decodeMs": 65.40000000037253,
+          "totalMs": 922.5
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim.",
+        "decodedTenBitObserved": false,
+        "emittedCodec": "vp09.02.51.10"
+      },
+      {
+        "config": {
+          "codec": "av01.0.13H.10",
+          "width": 1280,
+          "height": 720,
+          "framerate": 60,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encode",
+        "encoder": "supported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0.2000000011175871,
+          "totalMs": 4.200000001117587
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim.",
+        "error": {
+          "name": "OperationError",
+          "message": "Unsupported configuration parameters."
+        }
+      },
+      {
+        "config": {
+          "codec": "av01.0.13H.10",
+          "width": 1280,
+          "height": 720,
+          "framerate": 60,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "prefer-hardware",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encode",
+        "encoder": "supported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0.09999999962747097,
+          "totalMs": 1.199999999254942
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim.",
+        "error": {
+          "name": "OperationError",
+          "message": "Encoder initialization error."
+        }
+      },
+      {
+        "config": {
+          "codec": "av01.0.13H.10",
+          "width": 1280,
+          "height": 720,
+          "framerate": 60,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "prefer-software",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0.19999999925494194,
+          "totalMs": 0.19999999925494194
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim."
+      },
+      {
+        "config": {
+          "codec": "av01.0.13H.10",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 60,
+          "bitrate": 64000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encode",
+        "encoder": "supported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0,
+          "totalMs": 1.300000000745058
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim.",
+        "error": {
+          "name": "OperationError",
+          "message": "Unsupported configuration parameters."
+        }
+      },
+      {
+        "config": {
+          "codec": "av01.0.13H.10",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 60,
+          "bitrate": 64000000,
+          "hardwareAcceleration": "prefer-hardware",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encode",
+        "encoder": "supported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0.09999999962747097,
+          "totalMs": 1
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim.",
+        "error": {
+          "name": "OperationError",
+          "message": "Encoder initialization error."
+        }
+      },
+      {
+        "config": {
+          "codec": "av01.0.13H.10",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 60,
+          "bitrate": 64000000,
+          "hardwareAcceleration": "prefer-software",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0,
+          "totalMs": 0
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim."
+      },
+      {
+        "config": {
+          "codec": "av01.0.13M.10",
+          "width": 1280,
+          "height": 720,
+          "framerate": 60,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encode",
+        "encoder": "supported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0,
+          "totalMs": 1.200000001117587
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim.",
+        "error": {
+          "name": "OperationError",
+          "message": "Unsupported configuration parameters."
+        }
+      },
+      {
+        "config": {
+          "codec": "av01.0.13M.10",
+          "width": 1280,
+          "height": 720,
+          "framerate": 60,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "prefer-hardware",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encode",
+        "encoder": "supported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0.09999999962747097,
+          "totalMs": 1.099999999627471
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim.",
+        "error": {
+          "name": "OperationError",
+          "message": "Encoder initialization error."
+        }
+      },
+      {
+        "config": {
+          "codec": "av01.0.13M.10",
+          "width": 1280,
+          "height": 720,
+          "framerate": 60,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "prefer-software",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0.09999999962747097,
+          "totalMs": 0.09999999962747097
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim."
+      },
+      {
+        "config": {
+          "codec": "av01.0.17M.10",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 60,
+          "bitrate": 64000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encode",
+        "encoder": "supported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0,
+          "totalMs": 1.300000000745058
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim.",
+        "error": {
+          "name": "OperationError",
+          "message": "Unsupported configuration parameters."
+        }
+      },
+      {
+        "config": {
+          "codec": "av01.0.17M.10",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 60,
+          "bitrate": 64000000,
+          "hardwareAcceleration": "prefer-hardware",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encode",
+        "encoder": "supported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0,
+          "totalMs": 5.400000000372529
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim.",
+        "error": {
+          "name": "OperationError",
+          "message": "Encoder initialization error."
+        }
+      },
+      {
+        "config": {
+          "codec": "av01.0.17M.10",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 60,
+          "bitrate": 64000000,
+          "hardwareAcceleration": "prefer-software",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0.30000000074505806,
+          "totalMs": 0.30000000074505806
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim."
+      },
+      {
+        "config": {
+          "codec": "hvc1.2.4.H153.B0",
+          "width": 1280,
+          "height": 720,
+          "framerate": 60,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0,
+          "totalMs": 0
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim."
+      },
+      {
+        "config": {
+          "codec": "hvc1.2.4.H153.B0",
+          "width": 1280,
+          "height": 720,
+          "framerate": 60,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "prefer-hardware",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0,
+          "totalMs": 0
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim."
+      },
+      {
+        "config": {
+          "codec": "hvc1.2.4.H153.B0",
+          "width": 1280,
+          "height": 720,
+          "framerate": 60,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "prefer-software",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0,
+          "totalMs": 0
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim."
+      },
+      {
+        "config": {
+          "codec": "hvc1.2.4.H153.B0",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 60,
+          "bitrate": 64000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0.09999999962747097,
+          "totalMs": 0.09999999962747097
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim."
+      },
+      {
+        "config": {
+          "codec": "hvc1.2.4.H153.B0",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 60,
+          "bitrate": 64000000,
+          "hardwareAcceleration": "prefer-hardware",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0.10000000149011612,
+          "totalMs": 0.10000000149011612
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim."
+      },
+      {
+        "config": {
+          "codec": "hvc1.2.4.H153.B0",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 60,
+          "bitrate": 64000000,
+          "hardwareAcceleration": "prefer-software",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "encodedFrames": 0,
+        "decodedFrames": 0,
+        "allKey": true,
+        "bytes": 0,
+        "formats": [],
+        "timestamps": [],
+        "timings": {
+          "queryMs": 0,
+          "totalMs": 0
+        },
+        "scope": "Three synthetic all-key pictures; no full-export speed, perceptual quality, container compatibility or hardware-attribution claim."
+      }
+    ],
+    "observed": "VP9 no-preference/software complete, hardware preference refused. AV1 Main/High support query can pass but actual initialization fails; HEVC exact profiles refused. Opaque decoded formats do not establish bit depth; six full MP4 control files independently confirm 10-bit."
+  },
+  "remuxReference": {
+    "run": "logs/wh01/run-914cb611-c097-43f1-a0ad-c1693bca93f5",
+    "input": "C:\\Users\\budap\\.codex\\worktrees\\e977\\novy\\Plexus Engine (VJ System)\\plexus-engine\\logs\\wh01\\run-07fbb535-9c4d-487b-909b-f173d9faa07d\\export-006.webm",
+    "sourceSha256": "360ecb983b1a04c6f0338dc11ebf943d7beeea85bad4876e0e5f3f82f81ba10e",
+    "outputSha256": "fe40c42ca0aafa2b33e621403b215d9e84ed243600d0a6ac51a0e0a0dab6f7b3",
+    "videoPackets": 36,
+    "encodedPayloadsIdentical": true,
+    "ffmpegDecodedPixelIdentity": true,
+    "browserPass": false,
+    "browserEvidence": {
+      "pass": false,
+      "message": "Error: Direct native remux IDs [1,31]\n    at window.verifyWh07Remux (http://127.0.0.1:63009/plexus-engine/assets/wormhole-host-backend-smoke-CQLUkfNj.js:2542:118884)"
+    },
+    "scope": "Native FFmpeg reference only, not a browser/WASM exporter or a speed claim. Video packets and decoded pixels are identical to accepted WebM. Audio here is an Opus-to-AAC control; a product path must retain original PCM-to-AAC.",
+    "history": [
+      {
+        "run": "logs/wh01/run-457dd861-a1f7-4edd-af8e-4577cf78adef",
+        "outcome": "Native payload/pixel identity passed; browser CanvasSink missing frame; original log retained"
+      },
+      {
+        "run": "logs/wh01/run-79908bf3-01b4-4e95-8a06-52f90979254c",
+        "outcome": "Rejected experiment: incorrect CFR timebase produced 3-second spacing; no source overwrite or promotion"
+      },
+      {
+        "run": "logs/wh01/run-850e5a9d-0881-48cf-b8be-f0e645ede29c",
+        "outcome": "Corrected CFR spacing; browser seek still fails at picture 2"
+      }
+    ]
+  },
+  "validation": {
+    "full": {
+      "tests": 2247,
+      "pass": 2238,
+      "fail": 9,
+      "cancelled": 0,
+      "skipped": 0,
+      "duration_ms": 651581.6521
+    },
+    "knownBaselineFailuresExactNameAndMessage": [
+      {
+        "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+        "message": "vos-wh-drift.json must not reset user-global wormholeStarfield"
+      },
+      {
+        "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+        "message": "establish remains visibly above the opacity floor"
+      },
+      {
+        "name": "weak roles pin a deep-perspective depth and continuity profile",
+        "message": "establish depth\n\n2.03136 !== 4"
+      },
+      {
+        "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+        "message": "deep drift deeper than establish"
+      },
+      {
+        "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+        "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+      },
+      {
+        "name": "wormhole factory presets keep a minimum normalized weighted separation",
+        "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+      },
+      {
+        "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+        "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))"
+      },
+      {
+        "name": "projected forward motion preserves overdrive > punch > drive > drift",
+        "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+      },
+      {
+        "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+        "message": "389.64890777178124 vs 471.543038051684"
+      }
+    ],
+    "targeted": {
+      "tests": 54,
+      "pass": 54
+    },
+    "newCases": 5,
+    "activeTestFiles": 231,
+    "oldActiveFiles": 230,
+    "removedTests": [],
+    "onlyExtendedOldNodeFile": "tests/release-pages.test.mjs: add one published laboratory input; no original assertions removed",
+    "oldExactBrowserBodyUnchanged": true,
+    "initialNewTestFailure": "Callback byte-limit failure could lose precedence to an already resolved flush. Fixed in helper wait, original failed log retained; final 5/5 and cumulative tests pass.",
+    "runtime": "Node v25.2.1 / npm 11.6.2; TEMP/TMP scoped to logs/wh07b2/temp",
+    "build": "npm run build passed",
+    "diffExport": "Skipped for bounded diagnostic/doc handoff; no PR requested",
+    "localLinksChecked": 184
+  },
+  "commands": {
+    "pipeline": "node research/export/wormhole-baseline.mjs capture --isolate-host",
+    "codecs": "node research/export/wormhole-baseline.mjs capture --codec-host",
+    "reference": "node research/export/wormhole-baseline.mjs capture --remux-reference=logs/wh01/run-07fbb535-9c4d-487b-909b-f173d9faa07d/export-006.webm --remux-cfr (expected diagnostic rejection, not an accepted export)",
+    "build": "npm run build",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=4",
+    "targeted": "node --test --test-reporter=tap --test-concurrency=4 tests/export-codec-isolation.test.mjs tests/export-parallel-research.test.mjs tests/export-performance.test.mjs tests/export-scheduling.test.mjs tests/export-preparation.test.mjs tests/mvp-mp4-export.test.mjs tests/export-diagnostics.test.mjs tests/export-output-inspection.test.mjs tests/release-pages.test.mjs",
+    "baseline": "node research/export/wormhole-baseline.mjs verify"
+  },
+  "hashes": {
+    "logs/wh01/run-66b4735c-2f84-4d8b-a4b7-2129f2a00fab/build.json": "a1c715d46a64b97077aca604e1eed8cf94d974eace2d26a8dbc5077389961408",
+    "logs/wh01/run-66b4735c-2f84-4d8b-a4b7-2129f2a00fab/pipeline-isolation.json": "0017fd9e7b316e008560530b9654fadec91c18758dc0ee0168339e3edf7231e1",
+    "logs/wh01/run-66b4735c-2f84-4d8b-a4b7-2129f2a00fab/isolation-artifacts.json": "8c4c30523ffbdcfcd14a782541fd59d108f9becaae82585d356b00c8bd157317",
+    "logs/wh01/run-d835d83c-7a7f-4fb1-8ea5-145a6d935c15/build.json": "ae686740b5d2a500ef2d070623724e73bbf90cc106509d172bcd931e75a1d1d6",
+    "logs/wh01/run-d835d83c-7a7f-4fb1-8ea5-145a6d935c15/codec-matrix.json": "973d197a9602a0432a3842abeaf3f97c33c89914af2cb3c4be9753a1fd475744",
+    "logs/wh01/run-914cb611-c097-43f1-a0ad-c1693bca93f5/build.json": "e5dcc067dfeb87b8b0420121acc0604fb247b966bd94132751570cdccdad1d5d",
+    "logs/wh01/run-914cb611-c097-43f1-a0ad-c1693bca93f5/reference-remux.json": "e16c6a3ad21bd3aadae183d72eb345db9ab27d1a658dd2495967d7b453516d59",
+    "logs/wh07b2/cumulative.tap": "c1fdff8a4b3ff48e10da80483319bbc7c0901ae9a31683b2b507363e3b36924a",
+    "logs/wh07b2/targeted.tap": "fe46a6d860a3f3991a0daf5f6730f912cbc005fb7dcbedced2d666af142baa89",
+    "logs/wh07b2/build-final.log": "28cfaec6f2d9adffe5af54d907d7da6732b7e5a962614abeb64ced9077d1d1ad",
+    "research/export/codec-isolation.mjs": "a1e43b048a9fd5ef66c4b5fff06dd459396fa208fa0e77297ac7e986818fe9d9",
+    "tests/export-codec-isolation.test.mjs": "408a9e9ca1fad5d3f2a0768a56f5ef054a735713e141374e8d5c401c74550c56"
+  },
+  "changedPredecessors": [
+    {
+      "path": "tests/browser/wormhole-host-backend-smoke.html",
+      "gitObject": "10b4b728c8e07a609baad3e9af19376d87b4a9f1",
+      "sha256": "280668835adaea79e72fbad50f9dc17de73c49923de5cac72ee9e7466278e606",
+      "reason": "Additive laboratory diagnostics or release-input assertion; original cases/default benchmark retained"
+    },
+    {
+      "path": "tests/release-pages.test.mjs",
+      "gitObject": "9c4ab952f3f66676b051678abd2594c987074d0a",
+      "sha256": "65563b27ff02a194f5ca6994260cbc2df0398fc1e257f7089b8170e38e462184",
+      "reason": "Additive laboratory diagnostics or release-input assertion; original cases/default benchmark retained"
+    },
+    {
+      "path": "research/export/wormhole-baseline.mjs",
+      "gitObject": "4fbfae930453a4317023f9749ec12bc5ef8c7cb5",
+      "sha256": "24325d31af2dadd3e2bddae29b4cb55c7ebf6c7050864f776014373be75db64d",
+      "reason": "Additive laboratory diagnostics or release-input assertion; original cases/default benchmark retained"
+    },
+    {
+      "path": "scripts/release-pages.mjs",
+      "gitObject": "d4ad41b1df988034e4d5252f2cd3f352b5ac71ba",
+      "sha256": "48a13119045cc42461f328af84c74505ca6f23fba5d690e8e4001dc0cad42730",
+      "reason": "Additive laboratory diagnostics or release-input assertion; original cases/default benchmark retained"
+    }
+  ],
+  "next": "WH-07b3: compare actual demuxed packet bytes and decoder configurations across accepted WebM and MP4, then qualify shared native VP9 / MP4 packet sink. Keep current all-key MP4 protection and Economy until its independent decoder/frame/prefix/audio/quality and speed gates pass.",
+  "currentCodeHashes": {
+    "research/export/codec-isolation.mjs": "a1e43b048a9fd5ef66c4b5fff06dd459396fa208fa0e77297ac7e986818fe9d9",
+    "research/export/wormhole-baseline.mjs": "e91c39114e5723cef8a0ba7b6f8fa03dbac965f9702cb68b0d6947100f0b1f15",
+    "tests/browser/wormhole-host-backend-smoke.html": "0a6d26cafbd2c36aa03af5f7e8a75de7b9cd817ef09374814d16ff394f9d964d",
+    "tests/export-codec-isolation.test.mjs": "408a9e9ca1fad5d3f2a0768a56f5ef054a735713e141374e8d5c401c74550c56",
+    "tests/release-pages.test.mjs": "8620fee936e3fbab77e7d1275a7b354b29b03520381518bbfcd1c5c8a95c0208",
+    "scripts/release-pages.mjs": "d7b965c385620ae47cafb8c195cd5bbfb2360a4f0dd4c02b83cfb1a3159ef67f"
+  }
+}

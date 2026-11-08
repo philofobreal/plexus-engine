@@ -16,6 +16,12 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const root = path.resolve('logs/wh01'), fixture = '/plexus-engine/research/export/wormhole-baseline.html';
 const hostFixture = '/plexus-engine/tests/browser/wormhole-host-backend-smoke.html';
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', windowsHide: true }).trim();
+if (process.argv.includes('--isolate-host') && ['--codec-host','--turbo-host','--stable-material','--paired-encoder','--mp4-only'].some(flag=>process.argv.includes(flag))) {
+    throw Error('--isolate-host is an independent diagnostic, not a Turbo candidate comparison.');
+}
+if (process.argv.includes('--remux-cfr') && !process.argv.some(arg=>arg.startsWith('--remux-reference='))) {
+    throw Error('--remux-cfr requires a bounded --remux-reference frame-ID clip.');
+}
 if (process.argv.includes('--stable-material') && process.argv.includes('--paired-encoder')) {
     throw Error('Measure stable material and paired codecs separately; combined results have no isolated control.');
 }
@@ -240,6 +246,66 @@ async function capture() {
             await writeFile(path.join(output,'integrated-export-artifacts.json'),JSON.stringify({pass:true,artifacts,...(turboArtifacts.length?{turboArtifacts}:{})},null,2)+'\n',{flag:'wx'});
             console.log(JSON.stringify({exportRows:report.rows.length,files:artifacts.length,independentlyDecoded:true,turboRows:report.turboRows?.length??0,turboFiles:turboArtifacts.length}));
         }
+        const remuxInput=process.argv.find(arg=>arg.startsWith('--remux-reference='))?.slice(18);
+        if(remuxInput) {
+            const input=path.resolve(remuxInput),info=await stat(input);assert.ok(info.isFile()&&info.size>0&&info.size<=64*1024*1024,'Reference clip must fit 64 MiB');
+            const source=await readFile(input);assert.equal(source.length,info.size,'Reference input changed');
+            const outputFile=path.join(output,'reference-remux.mp4');
+            const tool=(name,args)=>execFileSync(name,args,{windowsHide:true,encoding:'utf8',timeout:120_000,maxBuffer:4*1024*1024});
+            const probe=file=>JSON.parse(tool('ffprobe',['-v','error','-count_frames','-show_streams','-of','json',file]));
+            const before=probe(input),original=before.streams.find(s=>s.codec_type==='video');
+            assert.equal(original.codec_name,'vp9');assert.match(original.pix_fmt,/10/);assert.ok(Number(original.nb_read_frames)<=63,'Use the frame-ID reference clip');
+            assert.ok(original.width*original.height<=3840*2160&&Number(original.nb_read_frames)>0);
+            const fps=original.r_frame_rate.split('/').map(Number).reduce((a,b)=>a/b);assert.ok([30,60].includes(fps));
+            tool('ffmpeg',['-v','error','-nostdin','-n','-i',input,'-map','0:v:0','-map','0:a:0','-c:v','copy',
+                ...(process.argv.includes('--remux-cfr')?['-bsf:v',`setts=pts=N/(${fps}*TB):dts=N/(${fps}*TB):duration=1/(${fps}*TB)`,'-video_track_timescale','90000']:[]),'-c:a','aac','-b:a','192k',
+                '-avoid_negative_ts','disabled','-use_editlist','1','-movflags','+delay_moov+default_base_moof+frag_keyframe','-frag_duration','1000000','-flush_packets','1',outputFile]);
+            const after=probe(outputFile),video=after.streams.find(s=>s.codec_type==='video'),audio=after.streams.find(s=>s.codec_type==='audio');
+            assert.equal(video.nb_read_frames,original.nb_read_frames);assert.equal(video.pix_fmt,original.pix_fmt);assert.equal(audio.codec_name,'aac');
+            const packets=file=>JSON.parse(tool('ffprobe',['-v','error','-select_streams','v:0','-show_packets','-show_data_hash','sha256','-show_entries','packet=pts_time,dts_time,flags,data_hash','-of','json',file])).packets;
+            const a=packets(input),b=packets(outputFile);assert.deepEqual(b.map(x=>x.data_hash),a.map(x=>x.data_hash),'Encoded packet payload changed');
+            const decoded=file=>tool('ffmpeg',['-v','error','-i',file,'-map','0:v:0','-an','-f','streamhash','-']).trim();
+            const beforeDecoded=decoded(input),afterDecoded=decoded(outputFile);assert.equal(afterDecoded,beforeDecoded,'Decoded pixels changed during remux');
+            const bytes=await readFile(outputFile);let browser;
+            try{browser=await evaluate('window.verifyWh07Remux('+JSON.stringify(bytes.toString('base64'))+','+Number(video.nb_read_frames)+')');}catch(error){browser={pass:false,message:String(error.message)};}
+            const report={pass:browser.pass===true,cfr:process.argv.includes('--remux-cfr'),input,sourceSha256:hash(source),outputSha256:hash(bytes),before,after,sourcePackets:a,outputPackets:b,decoded:beforeDecoded,browser,
+                scope:'Native FFmpeg reference only, not a browser/WASM exporter or a speed claim. Video packets and decoded pixels are identical to accepted WebM. Audio here is an Opus-to-AAC control; a product path must retain original PCM-to-AAC.'};
+            await writeFile(path.join(output,'reference-remux.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});
+            assert.equal(browser.pass,true,JSON.stringify(browser));
+            console.log(JSON.stringify({referenceRemux:true,frames:b.length,encodedPacketsIdentical:true,decodedPixelsIdentical:true,browserIds:browser.decodedIds}));
+        }
+        if(process.argv.includes('--codec-host')) {
+            const codecs=await evaluate('window.runWh07CodecMatrix()');assert.equal(codecs.type,'codec_matrix_done');assert.equal(codecs.rows.length,24);
+            await writeFile(path.join(output,'codec-matrix.json'),JSON.stringify(codecs,null,2)+'\n',{flag:'wx'});
+            console.log(JSON.stringify({codecProbes:codecs.rows.length,scope:codecs.scope}));
+        }
+        if (process.argv.includes('--isolate-host')) {
+            const report=await evaluate('window.runWh07Benchmark({mp4Only:true,pipelineProbe:true})');
+            assert.equal(report?.pass,true);assert.equal(report.rows.length,12);
+            await writeFile(path.join(output,'pipeline-isolation.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});
+            const artifacts=[];
+            for(const row of report.rows) {
+                assert.ok(row.performanceReport.peakOutstandingFrames<=2);
+                if(row.media===false) {
+                    assert.equal(row.isolation.kind,'unencoded-pipeline-probe');assert.equal(row.isolation.frames,row.frames);
+                    assert.ok(row.name.endsWith('.json'));continue;
+                }
+                assert.match(row.name,/^turbo-(?:720p|4k)-mp4-display-[1-3]\.mp4$/);
+                const data=await evaluate(`(async()=>{const blob=window.wh07Blobs.get(${JSON.stringify(row.name)});return await new Promise((r,j)=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=j;f.readAsDataURL(blob);});})()`);
+                const bytes=Buffer.from(data.split(',')[1],'base64');assert.ok(bytes.length<=128*1024*1024);
+                const file=path.join(output,row.name);await writeFile(file,bytes,{flag:'wx'});
+                const metadata=JSON.parse(execFileSync('ffprobe',['-v','error','-count_frames','-show_streams','-of','json',file],{windowsHide:true,encoding:'utf8',timeout:120_000}));
+                const video=metadata.streams.find(s=>s.codec_type==='video'),audio=metadata.streams.find(s=>s.codec_type==='audio');
+                assert.equal(Number(video.nb_read_frames),row.frames);assert.match(video.pix_fmt,/10/);assert.equal(audio.channels,2);
+                const decoded=execFileSync('ffmpeg',['-v','error','-i',file,'-map','0:v:0','-an','-f','streamhash','-'],{windowsHide:true,encoding:'utf8',timeout:120_000}).trim();
+                artifacts.push({name:row.name,sha256:hash(bytes),video,audio,decoded});
+            }
+            assert.equal(artifacts.length,6);
+            await writeFile(path.join(output,'isolation-artifacts.json'),JSON.stringify({artifacts},null,2)+'\n',{flag:'wx'});
+            const codecs=await evaluate('window.runWh07CodecMatrix()');assert.equal(codecs.type,'codec_matrix_done');assert.equal(codecs.rows.length,24);
+            await writeFile(path.join(output,'codec-matrix.json'),JSON.stringify(codecs,null,2)+'\n',{flag:'wx'});
+            console.log(JSON.stringify({isolationRows:report.rows.length,actualVideos:artifacts.length,codecProbes:codecs.rows.length,scope:'Diagnostic only, no product or Turbo promotion'}));
+        }
         if (process.argv.includes('--turbo-host')) {
             const report=await evaluate('window.runWh07Benchmark('+JSON.stringify({stableMaterial:process.argv.includes('--stable-material'),pairedEncoder:process.argv.includes('--paired-encoder'),mp4Only:process.argv.includes('--mp4-only')})+')');
             await writeFile(path.join(output,'turbo-benchmark.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});
@@ -332,5 +398,5 @@ async function verify(file) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
     if (process.argv[2] === 'capture') await capture();
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--turbo-export-host] [--diagnostics-host] [--turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--turbo-export-host] [--diagnostics-host] [--codec-host] [--remux-reference=ID_CLIP [--remux-cfr]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | verify [baseline.json]');
 }

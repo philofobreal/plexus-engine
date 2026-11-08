@@ -19,6 +19,7 @@ import { copyWormholeHostFrame } from '../../src/visuals/VisualFramePreparation.
 import HostWorker from '../../src/visuals/wormholeHostRender.worker.ts?worker';
 import StableMaterialWorker from '../../research/export/stable-material.worker.ts?worker';
 import PairedEncoderWorker from '../../research/export/paired-encoder.worker.ts?worker';
+import CodecIsolationWorker from '../../research/export/codec-isolation.mjs?worker';
 import { WormholeHostRenderSession } from '../../src/visuals/WormholeHostRenderSession.ts';
 import { Canvas2DRendererBackend } from '../../src/visuals/Canvas2DRendererBackend.ts';
 import { compareRgba } from '../../research/export/wormhole-quality.mjs';
@@ -654,6 +655,7 @@ window.runWh07Benchmark=async(options={})=>{
  try{
   const one=async(resolution,format,scheduling,run,warmup=false)=>{
    stableMaterialExperiment=options.stableMaterial===true&&scheduling==='cooperative';
+   const probe=options.pipelineProbe===true&&scheduling==='cooperative';
    const fps=60,frames=resolution==='4K'?90:240;
    const c=state({...raw,wormholeWall:0,wormholeNebulaAmount:.65,wormholeNebulaDetail:.8,postFxFragmentAmount:.65});
    const signal={...c.state.currentFrame,e:.99,eRatio:.9,densityProj:.9,melodyProj:.7,fxProj:.6,subEnergy:.6,bassEnergy:.5,subFlux:.3,bassFlux:.2,
@@ -665,7 +667,7 @@ window.runWh07Benchmark=async(options={})=>{
    Object.assign(State.visualTuning,c.state.visualTuning);Object.assign(State.targetTuning,c.state.targetTuning);
    hostQuality.wormholeRenderer='offscreen';hostQuality.compactMaterialPreview=true;hostQuality.musicDisplay=undefined;
    positionChanged?.(0);State.playbackFade=1;hostP.noLoop();
-   let profile,performanceReport;const backend=new WebCodecsBackend(hostP,hostP.canvas,{getAudioBuffer:()=>pcm},'WH07',null,scheduling,options.pairedEncoder&&scheduling==='cooperative'?PairedEncoderWorker:Mp4Worker,p=>{profile=p;});
+   let profile,performanceReport;const backend=new WebCodecsBackend(hostP,hostP.canvas,{getAudioBuffer:()=>pcm},'WH07',null,scheduling,probe?CodecIsolationWorker:options.pairedEncoder&&scheduling==='cooperative'?PairedEncoderWorker:Mp4Worker,p=>{profile=p;});
    const started=performance.now();
    try{
     const blob=await backend.start({resolution,aspectRatio:'16:9',fps,format,preflight:true,watermark:false,
@@ -676,8 +678,12 @@ window.runWh07Benchmark=async(options={})=>{
     const raster=hostP.canvas.dataset.exportRaster;check(raster==='exact-gpu-material','Benchmark did not use exact GPU material');
     // All copies/inspection happen after the timed interval.
     const name=`turbo-${resolution.toLowerCase()}-${format}-${scheduling}-${run}.${format}`;
-    if(!warmup){check(blob.size<128*1024*1024,'Benchmark artifact exceeds cap');window.wh07Blobs.set(name,new Blob([await blob.arrayBuffer()],{type:blob.type}));
-     rows.push({name,resolution,format,scheduling,run,frames,fps,videoBitrate:resolution==='4K'?64000000:8000000,elapsedMs,bytes:blob.size,raster,profile,performanceReport});}
+    if(!warmup){check(blob.size<128*1024*1024,'Benchmark artifact exceeds cap');
+     let isolation;
+     if(probe){isolation=JSON.parse(await blob.text());check(isolation.kind==='unencoded-pipeline-probe'&&isolation.frames===frames,'Invalid non-media completion token');}
+     else window.wh07Blobs.set(name,new Blob([await blob.arrayBuffer()],{type:blob.type}));
+     rows.push({name:probe?name.replace(/\.mp4$/,'.json'):name,resolution,format,scheduling,run,frames,fps,videoBitrate:resolution==='4K'?64000000:8000000,elapsedMs,bytes:blob.size,raster,profile,performanceReport,
+      ...(probe?{isolation,media:false,scope:'Actual producer/transfer/PCM path, no codec or file creation; timing floor only, never an accelerated export.'}:{})});}
    }finally{await backend.discardResult();c.dispose();hostP.noLoop();}
   };
   for(const [resolution,format]of (options.mp4Only?[['720p','mp4'],['4K','mp4']]:[['720p','mp4'],['4K','mp4'],['720p','webm'],['4K','webm']])){
@@ -687,5 +693,47 @@ window.runWh07Benchmark=async(options={})=>{
   return {pass:true,scope:'Short real GPU-rendered product export with constant synthetic music evidence; timings exclude QA pixel readback/artifact copies. No mobile/full-song/thermal guarantee.',rows};
  }finally{stableMaterialExperiment=false;hostP.loop=originalLoop;hostP.noLoop();}
 };
+// Verify a reference stream-copy file with a decoder independent of native FFmpeg.
+window.verifyWh07Remux=async(data,frames)=>{
+ const bytes=Uint8Array.from(atob(data),c=>c.charCodeAt(0)),blob=new Blob([bytes],{type:'video/mp4'});
+ const input=new Input({source:new BlobSource(blob),formats:ALL_FORMATS}),audioContext=new AudioContext();
+ const surface=new OffscreenCanvas(192,32),ctx=surface.getContext('2d',{willReadFrequently:true});
+ try{
+  const video=await input.getPrimaryVideoTrack(),audio=await input.getPrimaryAudioTrack();
+  if(!video||!audio||video.codec!=='vp9'||audio.codec!=='aac')throw Error('Unexpected reference remux streams');
+  const packets=new EncodedPacketSink(video),times=[],durations=[],types=[],coded=[];for await(const packet of packets.packets()){times.push(packet.timestamp);durations.push(packet.duration);types.push(packet.type);coded.push(packet);}
+  if(times.length!==frames)throw Error('Reference remux packet count');
+  const nativeIds=[];let nativeError,decoder;
+  const decoderConfig=await video.getDecoderConfig();
+  try{
+   decoder=new VideoDecoder({error:error=>{nativeError=error;},output:frame=>{
+    try{ctx.drawImage(frame,0,0);let id=0;for(let bit=0;bit<6;bit++)if(ctx.getImageData(bit*32+16,16,1,1).data[0]>128)id|=1<<bit;nativeIds.push(id);}
+    catch(error){nativeError=error;}finally{frame.close();}
+   }});decoder.configure(decoderConfig);
+   const until=performance.now()+30000;
+   for(const packet of coded){while(decoder.decodeQueueSize>=4&&!nativeError){if(performance.now()>until)throw Error('Native remux decoder timeout');await new Promise(r=>setTimeout(r,1));}if(nativeError)throw nativeError;decoder.decode(packet.toEncodedVideoChunk());}
+   await decoder.flush();if(nativeError)throw nativeError;
+  }finally{decoder?.close();}
+  const nativePass=nativeIds.length===frames&&nativeIds.every((id,i)=>id===i+1);
+  if(!nativePass)throw Error('Direct native remux IDs '+JSON.stringify(nativeIds));
+  const sink=new CanvasSink(video),decodedIds=[];
+
+  for(let i=0;i<frames;i++){
+   const frame=await sink.getCanvas(times[i]+.00001);if(!frame)return {pass:false,nativePass,nativeIds,seekFailure:{index:i,time:times[i]},times,durations,types,decoderCodec:decoderConfig.codec};
+   ctx.drawImage(frame.canvas,0,0);let id=0;for(let bit=0;bit<6;bit++)if(ctx.getImageData(bit*32+16,16,1,1).data[0]>128)id|=1<<bit;
+   if(id!==i+1)throw Error('Reference remux ID '+id+' != '+(i+1));decodedIds.push(id);
+  }
+  const sound=await audioContext.decodeAudioData(await blob.arrayBuffer());
+  const rms=Math.sqrt(sound.getChannelData(0).reduce((sum,v)=>sum+v*v,0)/sound.length);
+  if(sound.numberOfChannels!==2||rms<=.01)throw Error('Reference remux audio missing');
+  return {pass:true,nativePass,nativeIds,frames,decodedIds,times,videoCodec:video.codec,audioCodec:audio.codec,audioRms:rms,audioSamples:sound.length};
+ }finally{input.dispose();await audioContext.close();surface.width=surface.height=1;}
+};
+window.runWh07CodecMatrix=()=>new Promise((resolve,reject)=>{
+ const worker=new CodecIsolationWorker(),timer=setTimeout(()=>{worker.terminate();reject(Error('Codec matrix deadline'));},240000);
+ const finish=()=>{clearTimeout(timer);worker.terminate();};
+ worker.onmessage=({data})=>{if(data.type==='codec_matrix_done'){finish();resolve(data);}else if(data.type==='codec_matrix_error'){finish();reject(Error(data.message));}};
+ worker.onerror=event=>{finish();reject(Error(event.message));};worker.postMessage({type:'codec_matrix'});
+});
 window.addEventListener('pagehide',()=>{pass?.dispose();hostP?.remove();fixtureP?.remove();contexts.forEach(c=>c.dispose());exactUrls.forEach(url=>URL.revokeObjectURL(url));},{once:true});
 </script></html>

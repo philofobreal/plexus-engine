@@ -15,7 +15,7 @@ export function collectBuildInputs(cwd=process.cwd()){
  const paths=git(cwd,'ls-files','--cached','--others','--exclude-standard','--','src','public','scripts','index.html','mvp/index.html','xr/index.html','package.json','package-lock.json','bun.lock','tsconfig*.json','vite.config.*',
   'research/export/wormhole-gpu.html','research/export/wormhole-gpu-lab.mjs','research/export/wormhole-gpu.worker.ts',
   'research/export/wormhole-baseline-capture.mjs','research/export/wormhole-quality.mjs','research/export/parallel-material-data.mjs',
-  'research/export/stable-material.worker.ts','research/export/paired-encoder.worker.ts',
+  'research/export/stable-material.worker.ts','research/export/paired-encoder.worker.ts','research/export/codec-isolation.mjs',
   'tests/browser/wormhole-host-backend-smoke.html').split(/\r?\n/).filter(Boolean);
  return [...new Set(paths)].filter(p=>fs.existsSync(path.join(cwd,p))&&fs.statSync(path.join(cwd,p)).isFile()).sort().map(p=>({path:p,sha256:hash(fs.readFileSync(path.join(cwd,p)))}));
 }
