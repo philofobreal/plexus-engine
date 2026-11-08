@@ -3,7 +3,7 @@
 Date: 2026-11-08, Europe/Budapest. Integration owner: this chat's agent.
 Predecessor: `77c0d5b`; original source/test identities are retained in
 [the predecessor manifest](../tests/wormhole-wh07-predecessor.json).
-Status: implementation, cumulative/local quality and speed qualification complete. Release/public receipts are retained in `logs/wh07/final-*.json` and the session checkpoint; stop for manual acceptance.
+Status: implementation, cumulative/local quality and speed qualification complete. The user accepted faster 4K60 10-bit WebM with perfect perceived image quality. Release/public receipts are retained in `logs/wh07/final-*.json` and the session checkpoint. WH-07b may proceed; mobile 10-bit remains deferred.
 WH-07 remains partial: this is its first functional handoff, not a claim of
 qualified MP4 acceleration or physical-mobile performance.
 
@@ -67,6 +67,51 @@ qualification also measures 4K60 WebM and the explicit MP4 Economy fallback.
 Do not reinterpret the rejected MP4 candidate as passing because WebM improved.
 
 ## Architecture and bounds
+
+### CPU, GPU, browser codecs and WASM: separate responsibilities
+
+| Stage | Owner and execution | What Turbo changes |
+| --- | --- | --- |
+| Musical state, automation, frame index and composition orchestration | Existing host JavaScript/CPU; exact song time is `frameIndex / fps` | No new clock, analysis or producer |
+| Wormhole geometry and carrier preparation | The existing render worker executes JavaScript/CPU | No new geometry approximation |
+| Material deposition, resolve, weave and bloom filtering | WebGL2 shaders in the render worker; exact accumulation/filtering retains Float32 | No lower precision, reduced density or raster resolution |
+| Base lines/cosmos, per-layer composition, transitions and PostFX | Existing Canvas/host adapters; the browser may GPU-accelerate Canvas internally | Native sampling, layer order and completion barriers retained |
+| Video compression | Browser `VideoEncoder` via WebCodecs in the encoder worker; VP9 profile 2 for the accepted 10-bit WebM | Same codec, bitrate and GOP; prompt queue feedback |
+| WebM audio/container | Browser Opus `AudioEncoder` and the existing JavaScript WebM muxer | Same audio settings and bounded progressive output |
+| MP4 audio/container | Current FFmpeg WASM core encodes AAC and copies the already encoded video into fragmented MP4 | WH-07a retains Economy for MP4; no video re-encoding by WASM |
+| Temporary output and download | Worker-owned progressive OPFS files; explicit result/download ownership | Same disk streaming and bounded PCM/frame admission |
+
+Web Workers move JavaScript off the UI thread; they do not automatically turn
+that work into GPU computation. WASM also executes CPU code here, with its own
+linear memory. Neither is a substitute for WebGL shaders or the browser's native
+video encoder. GPU rendering, CPU orchestration and asynchronous codec work
+already overlap; Turbo reduces avoidable polling/yield delays in that pipeline.
+It does not split the movie into independent render chunks or start a farm of
+video encoders. Stateful animation remains sequential and deterministic.
+
+WebCodecs leaves the codec implementation to the browser. Even
+`hardwareAcceleration: 'prefer-hardware'` is a hint, not a guaranteed hardware
+selection or a usage meter. The default allows browser/device optimization;
+forcing a preference can reduce support. See the primary
+[W3C hardware-acceleration contract](https://www.w3.org/TR/webcodecs/#hardware-acceleration).
+Our support/probe and wall-clock reports cannot attribute codec work to CPU,
+3D GPU or the dedicated video engine. A Task Manager **Video Decode** graph is
+not proof of which encoder performed the export.
+
+### User acceptance and copied diagnostic scope
+
+The user reports visibly faster export and perfect WebM image quality with
+Windows Chrome 156, 3840x2160, 60 fps, Turbo, WebM 10-bit, no watermark.
+Their copied configuration requests `vp09.02.51.10` at 64 Mbit/s and shows a
+successful three-frame encoder/decoder preflight. This is separate manual
+perceptual acceptance; it supplies no measured complete-job duration.
+`encodedFrames: 3` / `decodedFrames: 3` describe that temporary codec probe,
+not the movie's frame count. In this copy `performance` is null and the tab has
+no finished cached file, so the copy alone cannot establish terminal job
+timing, frame source or hardware assignment. It does not contradict the user's
+observed successful export. The terminal performance report after completion
+is the appropriate evidence for effective mode and duration. No whole-song,
+thermal, Stop/Cancel or physical-mobile acceptance is inferred from this report.
 
 - `ExportPerformance.ts` is a dependency-free policy/type/validation leaf.
   It owns strict mode normalization, the MP4 promotion fallback and a versioned,
@@ -191,3 +236,123 @@ The real 412px layout check requires both selectors to be readable and touch
 sized. This changes only export-dialog CSS; renderer/codec/worker source and
 accepted video pixels remain unchanged. Build and targeted UI checks run again;
 final release inputs and critical worker artifacts bind the follow-up.
+
+
+## WH-07b1: MP4 bottleneck experiments, both rejected (2026-11-08)
+
+The predecessor WebM Turbo was manually accepted. This is the next bounded
+research handoff, **not completion of WH-07b or promotion of MP4 Turbo**.
+Integration owner: this chat; visuals owns material composition, export owns
+codec/queue/mux, research owns experimental worker adapters and reproduction,
+UI/state/audio ownership is unchanged. No file under `src/` changed.
+
+The original profiles put most MP4 wall time in `renderRequest`, with codec
+probe, encode backpressure and FFmpeg finalization also material. Those are
+wall-clock intervals, not CPU samples. They overlap across workers; adding them
+or calling all render waits GPU computation would misstate the bottleneck.
+The earlier scheduling-only negative experiments remain intact.
+
+Two isolated candidates were implemented in laboratory worker entrypoints:
+
+1. `research/export/stable-material.worker.ts`: keep a padded GPU presentation
+   surface at material-grid dimensions instead of resizing the default drawing
+   buffer for each of three layers. Duplicate a texel at each border, preserve
+   Float32 passes and native per-layer Canvas additive composition. The old
+   worker remains the control. This tests resource reuse, not lower resolution.
+2. `research/export/paired-encoder.worker.ts`: two native `VideoEncoder`
+   instances process independent VP9 key pictures, with timestamp-order output
+   before the existing Mediabunny/OPFS/FFmpeg path. The render producer and its
+   history remain sequential. Dependent three-frame probe pictures remain on
+   the first encoder. At most four pending encoded pictures bound the reorder
+   queue (the library's existing backpressure threshold); host raw/PCM admission
+   remains unchanged. A reset/close generation rejects late output/errors.
+   This is a deliberately constrained research facade, not a general replacement
+   implementation of the WebCodecs interface or a product codec pool.
+
+Both use the actual product backend, 10-bit VP9/all-key MP4, real audio/OPFS/
+FFmpeg, 60 fps, 240 frames at 720p and 90 at 4K. Each target has three alternating
+control/candidate pairs plus an explicit warmup. The paired-codec experiment
+uses the original renderer, not the rejected stable-surface candidate. Export
+intervals exclude artifact copies, hashing and independent FFmpeg decoding.
+No deterministic CI assertion depends on wall-clock speed.
+
+| Candidate | 720p median control / candidate | 4K median control / candidate | Promotion |
+| --- | --- | --- | --- |
+| Stable presentation surface | 6917.7 / 7423.7 ms (7.3% slower) | 11570.5 / 11265.8 ms (2.6% less time) | Rejected |
+| Two native codecs | 7659.5 / 8365.0 ms (9.2% slower) | 11200.4 / 11431.0 ms (2.1% slower) | Rejected |
+
+These are separate runs with their own controls, not comparable absolute device
+performance scores or a guarantee on another machine. Individual paired gains
+are mixed. Neither candidate meets the retained 15% per-target whole-job gate.
+In each experiment **zero of six MP4 pairs** have identical independently decoded
+pixel hashes. This is an identity failure, not proof of visible degradation;
+no perceptual tolerance was loosened and no better image quality is claimed.
+Stable-surface WebM rows also differ in scheduler and are not isolated material
+speed evidence. The accepted product renderer, WebM Turbo, MP4 Economy, codec,
+precision, bitrate/GOP, native/Compatible fallback and storage policy remain.
+
+Retained evidence (harness completion is not promotion):
+
+- Stable surface: `logs/wh01/run-437143c9-45d7-4a76-baa9-c3006a7b73bf`, 24 files.
+- Native codec pair: `logs/wh01/run-379def75-469b-4f16-835a-00398ee794d5`, 12 files.
+- Each run keeps `build.json`, `turbo-benchmark.json`, `turbo-artifacts.json`,
+  encoded files and independent decoded hashes. `logs/wh07b/research-summary.json`
+  binds the controls, per-pair timings, output identities and rejected decision.
+- The paired worker gained an unused class export for Node access after capture;
+  its hash-verified measured predecessor is retained in
+  `logs/wh07b/paired-encoder-measured-source.ts.txt`. Its method body is unchanged.
+
+Reproduce the isolated experiments (not ordinary user export):
+
+```text
+node research/export/wormhole-baseline.mjs capture --turbo-host --stable-material
+node research/export/wormhole-baseline.mjs capture --turbo-host --paired-encoder --mp4-only
+node --test tests/export-parallel-research.test.mjs
+```
+
+The default 24-row WH-07a benchmark and all earlier tests stay active. New flags
+are opt-in and cannot combine the two candidates. The original 37 host rows and
+immutable eight-case baseline pass in both runs. The new Node cases cover
+out-of-order completion, packet identity, the pending-picture limit, dependent
+probe routing, actual support delegation, missing/failed flush, reset/close,
+late callbacks and fresh retry. Actual browser/FFmpeg output, not those mocks,
+is the evidence used to reject speed/pixel promotion.
+
+Next **WH-07b2**: isolate remaining native-codec and frame-transfer costs, including
+capability-only measurements of available 10-bit hardware-codec paths if useful.
+Do not add a product codec, silently substitute formats, raise the memory queue
+or install a new software codec based on these failed experiments. A new codec
+needs concrete quality, compatibility and device evidence before a product
+decision. Mobile WH-06c2/e remains later. Stop after this research handoff and
+its verified publication; the parent WH-07 remains partial.
+
+
+### WH-07b1 validation and publication gate
+
+`npm run build` passed. Targeted export/research suites passed **44/44**;
+`node --test --test-reporter=tap tests/release-pages.test.mjs` passed **5/5** with
+TEMP/TMP scoped to `logs/wh07b/temp`. The first invocation of the latter failed
+four temporary Git fixtures in the sandbox's default temporary directory; its
+original log is retained, not relabeled as a code baseline. The scoped rerun
+and cumulative run use the writable workspace temporary directory.
+
+`npm test -- --test-reporter=tap --test-concurrency=4` discovered all **230 active
+files**, including the original 229 and the new research suite: **2242 tests,
+2233 pass, exactly the same nine preset failure names AND full messages,
+zero skips/cancels**, 552246.492 ms. The old release-guard test adds the two
+laboratory worker inputs to its existing mutation checks; no original assertion
+is removed. The original exact-source browser test body is unchanged. The
+immutable baseline passes all eight cases and keeps SHA
+`937b39bf0a1c2f0b77abc8cdde91654a3840e41b95aecbbb0a98b0245573270f`.
+
+The guarded publisher now binds both new worker source files, not just the lab
+HTML that imports them. The permanent [WH-07b1 research receipt](../tests/wormhole-wh07b1-research.json)
+retains predecessor Git/SHA identities, measured sources, every pair and rejected
+promotion, exact commands, full baseline failures, log hashes and test retention.
+Node/npm and the existing Node Pages publisher are used because package deploy
+requires Bun; no install, golden reset or Graphify rebuild. `diff_export.ps1`
+is unnecessary for this bounded research/documentation handoff; no PR review
+was requested. No physical phone, full-song/thermal or new-codec qualification
+is claimed. Public release identity, unchanged runtime/worker hashes and final
+host/control smoke are recorded in `logs/wh07b/final-*.json` and the session
+checkpoint. Stop after publication; WH-07b2 has not started.

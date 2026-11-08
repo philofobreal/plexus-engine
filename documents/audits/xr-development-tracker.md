@@ -2,7 +2,31 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-07a WebM Turbo/device controls after the user's explicit choice to defer mobile 10-bit work. WH-00–06b and WH-06c1 are delivered. The Samsung 4K30 trace rejects the native VP9 10-bit encoder; WH-06c2/WH-06e are deferred, not fixed. WH-07 remains partial: first WH-07a qualified WebM throughput and explicit MP4 Economy fallback; next WH-07b must address MP4's actual render/encode bottleneck. WH-06d is withdrawn. MP4 default, accepted native 10-bit quality, mobile 4K and deferred Wall/T15 remain. After the current handoff stop for manual testing.**
+**Current priority: WH-07b measured MP4 render/encode acceleration after manual acceptance of WH-07a. This follows the user's explicit choice to defer mobile 10-bit work. WH-00–06b and WH-06c1 are delivered. The Samsung 4K30 trace rejects the native VP9 10-bit encoder; WH-06c2/WH-06e are deferred, not fixed. WH-07 remains partial: first WH-07a qualified WebM throughput and explicit MP4 Economy fallback; next WH-07b must address MP4's actual render/encode bottleneck. WH-06d is withdrawn. MP4 default, accepted native 10-bit quality, mobile 4K and deferred Wall/T15 remain. Stop for manual testing after the next completed task.**
+
+### WH-07b1 research complete: no MP4 candidate promoted
+
+The user accepted 4K60 10-bit WebM Turbo as visibly faster with perfect perceived
+quality on Windows Chrome 156. Their copied three-frame codec probe is not a
+terminal timing/hardware report (`performance: null`). The
+[WH-07 audit](wormhole-wh07-turbo.md#cpu-gpu-browser-codecs-and-wasm-separate-responsibilities)
+now explains CPU geometry/orchestration, GPU material, native browser codecs,
+WASM AAC/mux and progressive OPFS ownership.
+
+Two actual browser experiments completed: stable padded GPU presentation surface
+(24 files) and two ordered native VP9 encoders (12 files), three alternating
+pairs at 720p60 and 4K60. Neither met the 15% whole-job gate; both differed in
+independently decoded MP4 pixels (0/6 exact pairs per experiment). This does not
+prove perceptual degradation. Neither candidate is imported by product roots.
+The original 37 host cases and fixed eight-case baseline passed in both runs.
+Current MP4 Economy and accepted WebM Turbo remain unchanged.
+
+WH-07b remains partial. Next **WH-07b2** isolates codec/frame-transfer costs and,
+if useful, performs capability-only 10-bit hardware-codec measurements. No new
+format, software encoder, larger queue or silent downgrade is authorized by
+these negative results. Build, targeted 44/44 and release guard 5/5 passed; cumulative 2242/2233 with only the same nine exact baseline failures. Publish this bounded research handoff and stop;
+mobile 10-bit remains later. Results, technical responsibilities and exact
+commands: [WH-07 audit](wormhole-wh07-turbo.md#wh-07b1-mp4-bottleneck-experiments-both-rejected-2026-11-08).
 
 ### WH-07a handoff: WebM Turbo, MP4 speed gate still open (2026-11-08)
 

@@ -15,7 +15,7 @@ The request and effective mode are separate: MP4 currently uses Economy with
 independently decoded pixels. The UI explains the format limitation and copies
 one bounded terminal timing report; no arbitrary telemetry/history is collected.
 WH-07 is partial; WH-07b addresses the actual MP4 bottleneck after manual
-acceptance. Details, commands and limits:
+acceptance (received for 4K60 10-bit WebM). CPU/GPU/browser-codec/WASM responsibilities and the supplied probe scope are documented in the audit. Details, commands and limits:
 [WH-07a](../audits/wormhole-wh07-turbo.md).
 
 
