@@ -16,6 +16,13 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const root = path.resolve('logs/wh01'), fixture = '/plexus-engine/research/export/wormhole-baseline.html';
 const hostFixture = '/plexus-engine/tests/browser/wormhole-host-backend-smoke.html';
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', windowsHide: true }).trim();
+const detailProfileArg = process.argv.find(arg => arg.startsWith('--detail-profile='))?.slice('--detail-profile='.length);
+if (detailProfileArg !== undefined && (!process.argv.includes('--detail-host') || !['reference','detail','text','variable'].includes(detailProfileArg))) {
+    throw Error('A listed --detail-profile requires --detail-host.');
+}
+if (process.argv.includes('--detail-host') && ['--export-host','--turbo-host','--isolate-host','--codec-host','--native-packets'].some(flag=>process.argv.includes(flag))) {
+    throw Error('--detail-host is a separate bounded diagnostic.');
+}
 if (process.argv.includes('--isolate-host') && ['--codec-host','--turbo-host','--stable-material','--paired-encoder','--mp4-only','--native-packets'].some(flag=>process.argv.includes(flag))) {
     throw Error('--isolate-host is an independent diagnostic, not a Turbo candidate comparison.');
 }
@@ -288,6 +295,24 @@ async function capture() {
             assert.equal(browser.pass,true,JSON.stringify(browser));
             console.log(JSON.stringify({referenceRemux:true,frames:b.length,encodedPacketsIdentical:true,decodedPixelsIdentical:true,browserIds:browser.decodedIds}));
         }
+        if(process.argv.includes('--detail-host')) {
+            const profile=detailProfileArg??'reference';
+            const report=await evaluate('window.runWh07Detail('+JSON.stringify(profile)+')');
+            await writeFile(path.join(output,'predictive-detail.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});
+            assert.equal(report.pass,true);assert.equal(report.inputs.length,8);
+            const artifacts=[];
+            for(const row of report.containers){
+                assert.match(row.name,/^detail-(?:packets|product)\.(?:webm|mp4)$/);
+                const encoded=await evaluate(`(async()=>{const b=window.wh07DetailBlobs.get(${JSON.stringify(row.name)});return await new Promise((r,j)=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=j;f.readAsDataURL(b);});})()`);
+                const bytes=Buffer.from(encoded.split(',')[1],'base64');assert.ok(bytes.length<=64*1024*1024);
+                const file=path.join(output,row.name);await writeFile(file,bytes,{flag:'wx'});
+                const raw=execFileSync('ffmpeg',['-v','error','-i',file,'-map','0:v:0','-vf','crop=192:32:0:0,scale=6:1:flags=neighbor','-pix_fmt','gray','-fps_mode','passthrough','-f','rawvideo','pipe:1'],{windowsHide:true,timeout:120000,maxBuffer:1024*1024});
+                assert.equal(raw.length,48);const ids=[];for(let i=0;i<8;i++)ids.push([...raw.subarray(i*6,i*6+6)].reduce((id,v,bit)=>v>128?id|(1<<bit):id,0));
+                artifacts.push({name:row.name,sha256:hash(bytes),decodedIds:ids});
+            }
+            await writeFile(path.join(output,'predictive-detail-artifacts.json'),JSON.stringify({artifacts},null,2)+'\n',{flag:'wx'});
+            console.log(JSON.stringify({detailProbe:true,inputIds:report.inputs.map(r=>r.id),nativeIds:report.native.ids,containers:artifacts}));
+        }
         if(process.argv.includes('--codec-host')) {
             const codecs=await evaluate('window.runWh07CodecMatrix()');assert.equal(codecs.type,'codec_matrix_done');assert.equal(codecs.rows.length,24);
             await writeFile(path.join(output,'codec-matrix.json'),JSON.stringify(codecs,null,2)+'\n',{flag:'wx'});
@@ -412,5 +437,5 @@ async function verify(file) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
     if (process.argv[2] === 'capture') await capture();
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--native-packets] [--turbo-export-host] [--diagnostics-host] [--codec-host] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--native-packets] [--turbo-export-host] [--diagnostics-host] [--codec-host] [--detail-host [--detail-profile=reference|detail|text|variable]] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | verify [baseline.json]');
 }

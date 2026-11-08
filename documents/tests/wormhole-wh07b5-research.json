@@ -1,0 +1,891 @@
+{
+  "task": "WH-07b5",
+  "predecessor": "cacb81bde77197da2f51ec322fc08b4a3c227c88",
+  "status": "Short research handoff complete; no production promotion. Final public identity/QA bound in logs/wh07b5/final-*.json and checkpoint.",
+  "authorization": "User explicitly waived redundant manual video testing for unchanged WH-07b4 runtime, requested task/subtask summary and continuation. Roadmap given; WH-07b5 performed.",
+  "production": {
+    "srcUnchanged": true,
+    "mp4Turbo": "Still explicit Economy fallback",
+    "acceptedRuntime": "WH-07b3 4K60/10-bit MP4 manually accepted; WebM Turbo accepted",
+    "newGpuCpuReassignment": false
+  },
+  "finding": {
+    "workerInputIdsCorrectImmediatelyBeforeNativeEncode": true,
+    "lossAlreadyInNativeVp9": true,
+    "allThreeContainerPayloadsIdentical": true,
+    "lossIsChanged32SquareRegionNotEntireMissingOrDuplicatedPicture": true,
+    "wholeFrameDigests": [
+      {
+        "run": "logs/wh01/run-3739883d-680d-46e0-914e-f989939f1a61",
+        "profile": "reference",
+        "allKey": false,
+        "ids": [
+          1,
+          2,
+          3,
+          4,
+          4,
+          6,
+          7,
+          8
+        ],
+        "frameHashes": [
+          "bd7679bb097be4e6d7891a5128df6cc5",
+          "1fa9e3d23804441f6011367088623a10",
+          "9529a98ad3722e59e0eece8d23269121",
+          "c7096d0230039d8c4b3da1e10ec7be8d",
+          "2f2c7a9e2765d4fc066122cd306c9c24",
+          "55f2f493b45f73ed46a0e2ebca871db2",
+          "e1a1c5869a72a9dea55733363c43b02c",
+          "56ba52ac555bfa8858e43d9a18b8e6ea"
+        ],
+        "wholeFrameRepeats": []
+      },
+      {
+        "run": "logs/wh01/run-1fa1ae98-b4d0-4707-9133-da80c86b4bfb",
+        "profile": "detail",
+        "allKey": false,
+        "ids": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "frameHashes": [
+          "bd7679bb097be4e6d7891a5128df6cc5",
+          "5f12d43ce2d80f37c1d9ef2ba14e4ee5",
+          "2d3f5034a3c76fc62323419eb4571db7",
+          "c1ce13d162e02b7d97714130a5e21ba6",
+          "c571da3cf9c6f44c6d61f4508190e534",
+          "f734e2a0950bc84fe1ec3846722e6c16",
+          "125a9a7f847739895dcc3a60d50c256d",
+          "749b03c385912bac1481668ca9ee16c8"
+        ],
+        "wholeFrameRepeats": []
+      },
+      {
+        "run": "logs/wh01/run-8ab023f4-bb7a-4d3d-acc1-61083e301d6f",
+        "profile": "text",
+        "allKey": false,
+        "ids": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "frameHashes": [
+          "bd7679bb097be4e6d7891a5128df6cc5",
+          "5f12d43ce2d80f37c1d9ef2ba14e4ee5",
+          "2d3f5034a3c76fc62323419eb4571db7",
+          "c1ce13d162e02b7d97714130a5e21ba6",
+          "c571da3cf9c6f44c6d61f4508190e534",
+          "f734e2a0950bc84fe1ec3846722e6c16",
+          "125a9a7f847739895dcc3a60d50c256d",
+          "749b03c385912bac1481668ca9ee16c8"
+        ],
+        "wholeFrameRepeats": []
+      },
+      {
+        "run": "logs/wh01/run-1d53956a-c075-48b2-9f72-f50c75737298",
+        "profile": "variable",
+        "allKey": false,
+        "ids": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "frameHashes": [
+          "bd7679bb097be4e6d7891a5128df6cc5",
+          "3f1c4b2d048921b2462c0b87c3b94b65",
+          "e7acc0c9dacc74d0eb53bb3a07c83de3",
+          "f58988c986a0c2eb37acd81e05c84f2b",
+          "cec8d793c9fb55a1819ad100dfc89cd8",
+          "015e34de36cc2d1f4b644b84700151f2",
+          "b39a265b929b4121516a2ddddabd716e",
+          "5bc1c86f8ccd4cea63cc9f3f86944abf"
+        ],
+        "wholeFrameRepeats": []
+      },
+      {
+        "run": "logs/wh01/run-6567fd3b-28e8-453b-bf8d-c758146d8927",
+        "profile": "reference",
+        "allKey": false,
+        "ids": [
+          1,
+          2,
+          3,
+          4,
+          4,
+          6,
+          7,
+          8
+        ],
+        "frameHashes": [
+          "bd7679bb097be4e6d7891a5128df6cc5",
+          "1fa9e3d23804441f6011367088623a10",
+          "9529a98ad3722e59e0eece8d23269121",
+          "c7096d0230039d8c4b3da1e10ec7be8d",
+          "2f2c7a9e2765d4fc066122cd306c9c24",
+          "55f2f493b45f73ed46a0e2ebca871db2",
+          "e1a1c5869a72a9dea55733363c43b02c",
+          "56ba52ac555bfa8858e43d9a18b8e6ea"
+        ],
+        "wholeFrameRepeats": []
+      },
+      {
+        "run": "logs/wh01/run-4a5b523b-272e-4af7-9603-6ab2cb17c144",
+        "profile": "reference",
+        "allKey": true,
+        "ids": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "frameHashes": [
+          "bd7679bb097be4e6d7891a5128df6cc5",
+          "f3a94aef3c567b292f7b021f3887ff5e",
+          "0bea51baff9cc45678a0aa2ecfd2b285",
+          "5de78fd6a48476760588f35d4ff869c4",
+          "e04d3add7817a4e98351e1936470f1ab",
+          "5fdef0d2f02e8947761bd4bdb02f0392",
+          "d8176fd53efd2da2be3e2d79a8070a5c",
+          "073eb6779355022719a249f5bdb0c163"
+        ],
+        "wholeFrameRepeats": []
+      }
+    ],
+    "repeatedReferencePayloadsIdentical": true,
+    "detailAndTextPayloadsIdentical": true,
+    "scope": "One deterministic8-picture2160-square30fps/14Mbps VP9 profile2/10-bit fixture. Readback instrumented; no speed, general bug, full-song perceptual or physical-device claim."
+  },
+  "profiles": [
+    {
+      "run": "logs/wh01/run-3739883d-680d-46e0-914e-f989939f1a61",
+      "profile": "reference",
+      "allKey": false,
+      "inputIds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "nativeIds": [
+        1,
+        2,
+        3,
+        4,
+        4,
+        6,
+        7,
+        8
+      ],
+      "packetHashes": [
+        "66c7bc6a72d0d6fab8be66beef6604a61e39444f28e82207ce1272471f38abdc",
+        "da087b36eda39dfb9e297ba6c9cc5bad21f6edbeee470d41a12cf9bc50f3c35d",
+        "325bd68d530f230de2744ed1252e581078fee945347d1b79ca8eb73d50ef0234",
+        "835d7d5f500d78c1273aa6210f6cf28058b92d5f1296442b7e6a355f6fb2c7f5",
+        "5a522c9beda83305f654889131f88dec9e5af675ec886a7e21032297e2b5b6c7",
+        "a9715329c9e427f4ee72907d4a7dabeec4dae25e45c65edead2e68d3bc3cbb0b",
+        "5946c2479f768a2e07af4fd4f18307c5c4aa2ea5eb4ce3fe34cf938056736fe0",
+        "0d53cde4437086524abb9eb47e2dde55cfb26f814348db6b0a60b2cd888d78cf"
+      ],
+      "containers": [
+        {
+          "name": "detail-packets.webm",
+          "sha256": "9673e0e189a78b40bbc24e31fbc62f0bc940826c2d31b2d0d8a1f1aa2fbc5f6c",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            4,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "detail-packets.mp4",
+          "sha256": "0e3e7208a47f70e0326bc893751c57b4f84e9bbd3a9b32c598f80c2b8483fb6e",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            4,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "detail-product.mp4",
+          "sha256": "0ce7d162d8bb13a502f84cb4a5cbd474d0b4229d2cd853ec63904d13f42d09f8",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            4,
+            6,
+            7,
+            8
+          ]
+        }
+      ],
+      "encoder": {
+        "codec": "vp09.02.50.10",
+        "width": 2160,
+        "height": 2160,
+        "displayWidth": 2160,
+        "displayHeight": 2160,
+        "bitrate": 14000000,
+        "bitrateMode": "constant",
+        "alpha": "discard",
+        "framerate": 30,
+        "latencyMode": "quality"
+      },
+      "allPayloadsIdentical": true
+    },
+    {
+      "run": "logs/wh01/run-4a5b523b-272e-4af7-9603-6ab2cb17c144",
+      "profile": "reference",
+      "allKey": true,
+      "inputIds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "nativeIds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "packetHashes": [
+        "66c7bc6a72d0d6fab8be66beef6604a61e39444f28e82207ce1272471f38abdc",
+        "594408cfe50599fe378284d77d29524efa486ff05dad0c9a226be271ed34ed75",
+        "54cc757c6113ad1baa783940759568f319c44126057ea0c3a554c98b267bc603",
+        "d6347e6e6e189fee196d9bbf350fa40feb48d32a9d46fe6048144863b404756b",
+        "cd931ea008fc906b1963ce42e42c10872e7a6c76e43c1758c71490866f2f0d17",
+        "e0cf040e93ba53295dface2aef5ba6e69a01ade8eb268daae813504bd862fa78",
+        "ab8a33d12a83fae4485ff292dd83ff042cd86ffa8329ade8a0db041a568248c4",
+        "03a1b87f3b967fa45e14b772fcb860184c4057b13a60b4afec396d15959638df"
+      ],
+      "containers": [
+        {
+          "name": "detail-packets.webm",
+          "sha256": "269a5d0c25a28dc70bfe55f1d1c49d76e274abfeea7979dbbe4a73bbafabdff5",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "detail-packets.mp4",
+          "sha256": "aac524c3478dc71e32b04a707225c9d61afce12a7bb0869092dfa89968b052c4",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "detail-product.mp4",
+          "sha256": "066a9ac5b92769c654b34f9698988a09c54486b3e60615672930e87ca0611bc0",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        }
+      ],
+      "encoder": {
+        "codec": "vp09.02.50.10",
+        "width": 2160,
+        "height": 2160,
+        "displayWidth": 2160,
+        "displayHeight": 2160,
+        "bitrate": 14000000,
+        "bitrateMode": "constant",
+        "alpha": "discard",
+        "framerate": 30,
+        "latencyMode": "quality"
+      },
+      "allPayloadsIdentical": true
+    },
+    {
+      "run": "logs/wh01/run-1fa1ae98-b4d0-4707-9133-da80c86b4bfb",
+      "profile": "detail",
+      "allKey": false,
+      "inputIds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "nativeIds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "packetHashes": [
+        "66c7bc6a72d0d6fab8be66beef6604a61e39444f28e82207ce1272471f38abdc",
+        "b059db6c790f07cd735a4c9859d46c297545c253f68e22027643131802aed5aa",
+        "65b5ef0761ea7cf011dbad2a6522de87ad77028a106697d866bdee60b3b0605c",
+        "75307745ca52ab53f308ed20c1aadcbd7a0e02974c7c4ff0167f626b6061459b",
+        "29e82cdf6dd7ecbfe7404e56de53c5ac7c6ab84c7dace54fbfb9ada4c5465841",
+        "44fe30af4e418c0afd0a1313ccab9ffb535c4877a7c7529562cae4cf60d070ad",
+        "6a1b624cd63f7e9e9616549d0a680205ae1f6a65f6b083bac77c9e232f7bac6e",
+        "6c3aa6c9ff83fc41fd7d956aa74c173cd1fdcc99d32fc5cc2a7209e973985caf"
+      ],
+      "containers": [
+        {
+          "name": "detail-packets.webm",
+          "sha256": "e13a2852c01adbfca46bfac6c2952f169273dc270e25f0344ea0081687b0dc1b",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "detail-packets.mp4",
+          "sha256": "ecba3c281af5f1d2a4791d27777a9bee8e48379f49a7191cc0d10c568837a0ae",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "detail-product.mp4",
+          "sha256": "32a64622db4b9a99ee5d245a91755ea9d59840fb742149bd7386a60f894b8ab5",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        }
+      ],
+      "encoder": {
+        "codec": "vp09.02.50.10",
+        "width": 2160,
+        "height": 2160,
+        "displayWidth": 2160,
+        "displayHeight": 2160,
+        "bitrate": 14000000,
+        "bitrateMode": "constant",
+        "alpha": "discard",
+        "framerate": 30,
+        "latencyMode": "quality",
+        "contentHint": "detail"
+      },
+      "allPayloadsIdentical": true
+    },
+    {
+      "run": "logs/wh01/run-8ab023f4-bb7a-4d3d-acc1-61083e301d6f",
+      "profile": "text",
+      "allKey": false,
+      "inputIds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "nativeIds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "packetHashes": [
+        "66c7bc6a72d0d6fab8be66beef6604a61e39444f28e82207ce1272471f38abdc",
+        "b059db6c790f07cd735a4c9859d46c297545c253f68e22027643131802aed5aa",
+        "65b5ef0761ea7cf011dbad2a6522de87ad77028a106697d866bdee60b3b0605c",
+        "75307745ca52ab53f308ed20c1aadcbd7a0e02974c7c4ff0167f626b6061459b",
+        "29e82cdf6dd7ecbfe7404e56de53c5ac7c6ab84c7dace54fbfb9ada4c5465841",
+        "44fe30af4e418c0afd0a1313ccab9ffb535c4877a7c7529562cae4cf60d070ad",
+        "6a1b624cd63f7e9e9616549d0a680205ae1f6a65f6b083bac77c9e232f7bac6e",
+        "6c3aa6c9ff83fc41fd7d956aa74c173cd1fdcc99d32fc5cc2a7209e973985caf"
+      ],
+      "containers": [
+        {
+          "name": "detail-packets.webm",
+          "sha256": "e13a2852c01adbfca46bfac6c2952f169273dc270e25f0344ea0081687b0dc1b",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "detail-packets.mp4",
+          "sha256": "75919e0687fb8cb1d381b00c98909c3aab5734a91206350c117346013bfc3350",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "detail-product.mp4",
+          "sha256": "32a64622db4b9a99ee5d245a91755ea9d59840fb742149bd7386a60f894b8ab5",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        }
+      ],
+      "encoder": {
+        "codec": "vp09.02.50.10",
+        "width": 2160,
+        "height": 2160,
+        "displayWidth": 2160,
+        "displayHeight": 2160,
+        "bitrate": 14000000,
+        "bitrateMode": "constant",
+        "alpha": "discard",
+        "framerate": 30,
+        "latencyMode": "quality",
+        "contentHint": "text"
+      },
+      "allPayloadsIdentical": true
+    },
+    {
+      "run": "logs/wh01/run-1d53956a-c075-48b2-9f72-f50c75737298",
+      "profile": "variable",
+      "allKey": false,
+      "inputIds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "nativeIds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "packetHashes": [
+        "66c7bc6a72d0d6fab8be66beef6604a61e39444f28e82207ce1272471f38abdc",
+        "0741e9b6b94a138b6dbd962c6ecf85f7cf353c6c720abafd3bf4483c46f9a632",
+        "84f9b72459ef97982f5ce48bf542801a055cad71522c1d55773002876a55e3da",
+        "516911f2f3bd5f3956f9e061790b4534b82782d58a80e2bbf4af42489121d365",
+        "7f5d5c1ec7e6f8f77c4625b784815219896fcdd760d3da8f6edcb5ea777da80a",
+        "45a92941dbc17ce7e5a379a27162385d80691a16e05d2e92f5ee7e44607a7990",
+        "76e51b6fada36cf7ae93395a04964cc099d82f5eea03bcb660075be8bcd3133e",
+        "b47b9a7e755347093f82f2829a2c18955b7e37abd9f2b0e596523b3983c19703"
+      ],
+      "containers": [
+        {
+          "name": "detail-packets.webm",
+          "sha256": "dfd0658f42e8169acbb55167497944658768e43b67e6a3ff99ab92002968f23c",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "detail-packets.mp4",
+          "sha256": "d7e10aff7a751ec743824f78fc70e37fee4089b0c325132558fffcbcd3c7b19b",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "detail-product.mp4",
+          "sha256": "7161a04a2a4cba92ac959e009f71e50a4bbd986b7b1a5f369941959c4ec0fd6d",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        }
+      ],
+      "encoder": {
+        "codec": "vp09.02.50.10",
+        "width": 2160,
+        "height": 2160,
+        "displayWidth": 2160,
+        "displayHeight": 2160,
+        "bitrate": 14000000,
+        "bitrateMode": "variable",
+        "alpha": "discard",
+        "framerate": 30,
+        "latencyMode": "quality"
+      },
+      "allPayloadsIdentical": true
+    },
+    {
+      "run": "logs/wh01/run-6567fd3b-28e8-453b-bf8d-c758146d8927",
+      "profile": "reference",
+      "allKey": false,
+      "inputIds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "nativeIds": [
+        1,
+        2,
+        3,
+        4,
+        4,
+        6,
+        7,
+        8
+      ],
+      "packetHashes": [
+        "66c7bc6a72d0d6fab8be66beef6604a61e39444f28e82207ce1272471f38abdc",
+        "da087b36eda39dfb9e297ba6c9cc5bad21f6edbeee470d41a12cf9bc50f3c35d",
+        "325bd68d530f230de2744ed1252e581078fee945347d1b79ca8eb73d50ef0234",
+        "835d7d5f500d78c1273aa6210f6cf28058b92d5f1296442b7e6a355f6fb2c7f5",
+        "5a522c9beda83305f654889131f88dec9e5af675ec886a7e21032297e2b5b6c7",
+        "a9715329c9e427f4ee72907d4a7dabeec4dae25e45c65edead2e68d3bc3cbb0b",
+        "5946c2479f768a2e07af4fd4f18307c5c4aa2ea5eb4ce3fe34cf938056736fe0",
+        "0d53cde4437086524abb9eb47e2dde55cfb26f814348db6b0a60b2cd888d78cf"
+      ],
+      "containers": [
+        {
+          "name": "detail-packets.webm",
+          "sha256": "9673e0e189a78b40bbc24e31fbc62f0bc940826c2d31b2d0d8a1f1aa2fbc5f6c",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            4,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "detail-packets.mp4",
+          "sha256": "16121198cdddeb43beacb34a899e13693294b55d72546fb57a8b8dcc3db97b22",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            4,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "detail-product.mp4",
+          "sha256": "0ce7d162d8bb13a502f84cb4a5cbd474d0b4229d2cd853ec63904d13f42d09f8",
+          "decodedIds": [
+            1,
+            2,
+            3,
+            4,
+            4,
+            6,
+            7,
+            8
+          ]
+        }
+      ],
+      "encoder": {
+        "codec": "vp09.02.50.10",
+        "width": 2160,
+        "height": 2160,
+        "displayWidth": 2160,
+        "displayHeight": 2160,
+        "bitrate": 14000000,
+        "bitrateMode": "constant",
+        "alpha": "discard",
+        "framerate": 30,
+        "latencyMode": "quality"
+      },
+      "allPayloadsIdentical": true
+    }
+  ],
+  "candidate": {
+    "preferred": "contentHint detail",
+    "reason": "Preserves constant bitrate, quality mode, codec and bit depth while resolving the tiny changed-region counterexample; text also works, variable bitrate separate budget control",
+    "status": "Advisory hint and short evidence only. Full matrix and uninstrumented speed must pass before promotion.",
+    "notClaimed": "Specific temporal filter/driver/library bug or automatic CPU/GPU attribution"
+  },
+  "validation": {
+    "actualDiagnosticFiles": 18,
+    "independentFfmpegFrameIds": 144,
+    "sourceWorkloads": 6,
+    "allActualTenBitFiles": true,
+    "productAudioFiles": 6,
+    "videoOnlyReferenceFiles": 12,
+    "build": "npm run build passed",
+    "researchTypes": "Explicit TypeScript6 --ignoreConfig check passed",
+    "targeted": {
+      "tests": 127,
+      "pass": 127,
+      "durationMs": 16433.0826
+    },
+    "cumulative": {
+      "tests": 2261,
+      "pass": 2252,
+      "fail": 9,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 563421.2952
+    },
+    "newCases": 4,
+    "oldActiveFiles": 233,
+    "activeTestFiles": 233,
+    "removedTests": [],
+    "oldExactBrowserBodyUnchanged": true,
+    "changedPredecessors": [
+      {
+        "path": "research/export/native-packet.worker.ts",
+        "gitObject": "499e67a42c72254e3a0bb27a81736823ae45f0d8",
+        "sha256": "ecb62dec44b6fe314e6ab65cbc21a56f6ef10df9b59ba51df665f0c6277ae450",
+        "reason": "Additive bounded observation/detail-only profile runner/tests; default cases and original exact browser body retained"
+      },
+      {
+        "path": "research/export/wormhole-baseline.mjs",
+        "gitObject": "24ca373f8d4a769f378b466ef3c6b06bf254536a",
+        "sha256": "bd2867b4f75a06286cdd5bfc41287e965f87474f57b8bc8f71c424b17c9efe1c",
+        "reason": "Additive bounded observation/detail-only profile runner/tests; default cases and original exact browser body retained"
+      },
+      {
+        "path": "tests/browser/wormhole-host-backend-smoke.html",
+        "gitObject": "bdeb228eb707c405bdf5fb97d81238aa044bf44c",
+        "sha256": "a7c7989007d640168898c87c6c52429ee3093539dbb7235147569471ba20a773",
+        "reason": "Additive bounded observation/detail-only profile runner/tests; default cases and original exact browser body retained"
+      },
+      {
+        "path": "tests/export-native-packet.test.mjs",
+        "gitObject": "fd849442fc0f2e36546efe37a193be14d962c75c",
+        "sha256": "497a6787acb10f2b19e900a1928a9c716a3622b7e4c03396e5562689d7fbf3e0",
+        "reason": "Additive bounded observation/detail-only profile runner/tests; default cases and original exact browser body retained"
+      }
+    ],
+    "fixtureEvolution": "Four original native-packet cases retained, fixture now simulates inherited frame duration and owned encoded bytes; four additive observation/limits/profile/delegation cases",
+    "initialInvalidRun": "New function initially appended outside HTML script; function unavailable, no media qualification. Log retained at logs/wh07b5/detail.log; fixed before six accepted diagnostic runs.",
+    "runtime": "Node25.2.1/npm11.6.2; full TEMP/TMP logs/wh07b5/temp, targeted logs/wh07b4/temp",
+    "diffExport": "Skipped as unnecessary for bounded research/docs handoff; no PR requested",
+    "unrun": "Full candidate quality/whole-job speed, physical phone/Quest/full-song/thermal/editor checks deferred to recorded gates.",
+    "localLinksChecked": 191,
+    "knownBaselineFailuresExactNameAndMessage": [
+      {
+        "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+        "message": "vos-wh-drift.json must not reset user-global wormholeStarfield"
+      },
+      {
+        "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+        "message": "establish remains visibly above the opacity floor"
+      },
+      {
+        "name": "weak roles pin a deep-perspective depth and continuity profile",
+        "message": "establish depth\n\n2.03136 !== 4"
+      },
+      {
+        "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+        "message": "deep drift deeper than establish"
+      },
+      {
+        "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+        "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+      },
+      {
+        "name": "wormhole factory presets keep a minimum normalized weighted separation",
+        "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+      },
+      {
+        "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+        "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))"
+      },
+      {
+        "name": "projected forward motion preserves overdrive > punch > drive > drift",
+        "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+      },
+      {
+        "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+        "message": "389.64890777178124 vs 471.543038051684"
+      }
+    ]
+  },
+  "commands": {
+    "build": "npm run build",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=4",
+    "targeted": "node --test --test-reporter=tap --test-concurrency=4 tests/export-native-packet.test.mjs tests/mp4-vp9-color.test.mjs tests/export-codec-isolation.test.mjs tests/export-parallel-research.test.mjs tests/export-performance.test.mjs tests/export-scheduling.test.mjs tests/export-preparation.test.mjs tests/mvp-mp4-export.test.mjs tests/export-diagnostics.test.mjs tests/export-output-inspection.test.mjs tests/export-lifecycle.test.mjs tests/export-resources.test.mjs tests/exact-export-frame-bridge.test.mjs tests/mvp-export-panel.test.mjs tests/release-pages.test.mjs",
+    "researchTypes": "node node_modules/typescript/bin/tsc --ignoreConfig --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --lib ES2023,DOM,DOM.Iterable --skipLibCheck --types vite/client research/export/native-packet.worker.ts",
+    "allKeyControl": "node research/export/wormhole-baseline.mjs capture --detail-host",
+    "predictiveProfiles": "node research/export/wormhole-baseline.mjs capture --detail-host --mp4-inter-frame --detail-profile=reference|detail|text|variable (each named value separately; reference repeated last)",
+    "frameDigest": "ffmpeg -v error -i detail-product.mp4 -map 0:v:0 -an -f framemd5 pipe:1",
+    "releaseFallback": "Existing Node scripts/release-pages.mjs prepare/publish/verify because package deploy requires Bun; no install"
+  },
+  "next": "WH-07b6 full retained detail-profile image/audio/aspect/FPS/StopCancel/retry matrix and uninstrumented speed qualification. Preserve accepted all-key control; no changed-GOP/pixel-identity claims. MP4 Turbo requires quality/resource and >=15% speed gates. MobileWH-06c2/e, WH-08, T21b/c,T22-T24 afterward; T25 each handoff.",
+  "hashes": {
+    "logs/wh01/run-3739883d-680d-46e0-914e-f989939f1a61/build.json": "ee8a2cbd523844ac1118199557c172852f7b2cf5401fb50bbc8620d7d2f00fe2",
+    "logs/wh01/run-3739883d-680d-46e0-914e-f989939f1a61/host-smoke.json": "a6a39187ae01fdd6740637a0a574f90334bfb00de27ec02bb50b4912bd4154af",
+    "logs/wh01/run-3739883d-680d-46e0-914e-f989939f1a61/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/run-3739883d-680d-46e0-914e-f989939f1a61/predictive-detail.json": "e23e856a098c8192ee7d14b8a8ff5052d5752d1bfdc3bf4d24a06c3aacdc1a60",
+    "logs/wh01/run-3739883d-680d-46e0-914e-f989939f1a61/predictive-detail-artifacts.json": "bdbe170176f67b896babecb616db25d4ed87315b8c6cf03d3ebc4f5e74c63168",
+    "logs/wh01/run-4a5b523b-272e-4af7-9603-6ab2cb17c144/build.json": "e7fb833d08d4f248eb639cbbbf6f63af66b2619ad733e8411bba2f7b4c7abdf2",
+    "logs/wh01/run-4a5b523b-272e-4af7-9603-6ab2cb17c144/host-smoke.json": "8c18ee725b93ffc53113f95aebb46fa1c2b4b8fbd09c31ffff70224e79eff5a0",
+    "logs/wh01/run-4a5b523b-272e-4af7-9603-6ab2cb17c144/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/run-4a5b523b-272e-4af7-9603-6ab2cb17c144/predictive-detail.json": "5a10262e9acb059043925c8473a443220ec50e55168185f988d7a7156e61cad7",
+    "logs/wh01/run-4a5b523b-272e-4af7-9603-6ab2cb17c144/predictive-detail-artifacts.json": "bd99dee05341e82b233501bc874a61247136cafec432a16d9040a43709cb6faa",
+    "logs/wh01/run-1fa1ae98-b4d0-4707-9133-da80c86b4bfb/build.json": "84237aa14dde9cd46e54650035c679160fa2d9fe880cd53c137e701e326cc3d4",
+    "logs/wh01/run-1fa1ae98-b4d0-4707-9133-da80c86b4bfb/host-smoke.json": "398d74713e2f0b80798a972836e1fba9cdf06ab1b08d72728f2e2916756331d8",
+    "logs/wh01/run-1fa1ae98-b4d0-4707-9133-da80c86b4bfb/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/run-1fa1ae98-b4d0-4707-9133-da80c86b4bfb/predictive-detail.json": "e430f401d4e8ad763b3e090ec7815b3d1a3813d04bc49c8bb5ea168d7409c5ce",
+    "logs/wh01/run-1fa1ae98-b4d0-4707-9133-da80c86b4bfb/predictive-detail-artifacts.json": "94593fabad76495cd675152290397d4b67a7b931597b9783ae2950e0aaf9b660",
+    "logs/wh01/run-8ab023f4-bb7a-4d3d-acc1-61083e301d6f/build.json": "3b7933cfa74e5bc55554d74c79b322691dcdc5f3a06f9b6c20a83d77c2af56a5",
+    "logs/wh01/run-8ab023f4-bb7a-4d3d-acc1-61083e301d6f/host-smoke.json": "e4344be4a6302725953a9095cb2cccbd3a782addf7775adedd287fb1a7ecfcdb",
+    "logs/wh01/run-8ab023f4-bb7a-4d3d-acc1-61083e301d6f/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/run-8ab023f4-bb7a-4d3d-acc1-61083e301d6f/predictive-detail.json": "a348c4873030af8c5febf2cacdccff05228d3a121617341af095081c670682d6",
+    "logs/wh01/run-8ab023f4-bb7a-4d3d-acc1-61083e301d6f/predictive-detail-artifacts.json": "b6d4c59a04f4abba6823a7898f1d0cd8ce65afa2ee688bbdc5174d61d9501f0f",
+    "logs/wh01/run-1d53956a-c075-48b2-9f72-f50c75737298/build.json": "732f703ef90a6e046681ca109f0c5f07264d08785f6ff7ffaf105130e8510588",
+    "logs/wh01/run-1d53956a-c075-48b2-9f72-f50c75737298/host-smoke.json": "a00e8a1051900cf3cac998977de7a9962ddb6ae5d58643cdbd1279502ed8ed10",
+    "logs/wh01/run-1d53956a-c075-48b2-9f72-f50c75737298/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/run-1d53956a-c075-48b2-9f72-f50c75737298/predictive-detail.json": "114bbffe4200c1dd4a3e298b39969a4a55d10465cb222e2722adc23bbb12a0b0",
+    "logs/wh01/run-1d53956a-c075-48b2-9f72-f50c75737298/predictive-detail-artifacts.json": "7fae321c1ea30cf9a68eca0233ca5578a3337e017fa69ecbf90b6a615fe617f3",
+    "logs/wh01/run-6567fd3b-28e8-453b-bf8d-c758146d8927/build.json": "0363319c90d030b6acf5e8e5390b7f81223838329b6bba658c0e4b13f589b43b",
+    "logs/wh01/run-6567fd3b-28e8-453b-bf8d-c758146d8927/host-smoke.json": "d342ab46fe19b726e6c7d2bd94f61899a820bd82fa2addfd3899e1938638cd9b",
+    "logs/wh01/run-6567fd3b-28e8-453b-bf8d-c758146d8927/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/run-6567fd3b-28e8-453b-bf8d-c758146d8927/predictive-detail.json": "c28ae2bf191bdb9ec2c91cb807fa92a69b7a97b99802bb0d63d72d35f2915ccf",
+    "logs/wh01/run-6567fd3b-28e8-453b-bf8d-c758146d8927/predictive-detail-artifacts.json": "d8ad01848d9701dc047c5618b7c4205bfca2f1fa22ea7ca78111bcc71a39a331",
+    "research/export/native-packet.worker.ts": "bfc0db83b56f91897567a90ad3bee3de02aa3067165cd27bf4a7b7c44e013c04",
+    "research/export/wormhole-baseline.mjs": "9902d05de5ecc2e9848ec18425efde62004d466fa1030b9c855ea1f15433733c",
+    "tests/browser/wormhole-host-backend-smoke.html": "7784b6299a4f43689f40366fcde09893ef63a228a87086cacefe78163e6acfd3",
+    "tests/export-native-packet.test.mjs": "3c2c51e783b5688f4e1f19cc3024bbc5c0df0a2905b696f2cc5f2015c6ac0192",
+    "logs/wh07b5/targeted.tap": "a78462b0de43947dc54deb0b59ea89018b0eae5df0efcfe6d09f98000ed0e1f4",
+    "logs/wh07b5/build.log": "eaf8db648a95583b80667ec7ba01ecf88573ae816300397fb4e625df847130c3",
+    "logs/wh07b5/types-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/wh07b5/frame-digest-comparison.json": "1a1d60acb85ed6107129cca533d09ad4ad414bf25e528c45361576bb83a3d1b3",
+    "logs/wh07b5/cumulative.tap": "0cdf5ef5366d39407c5e9f8729fad6c7d1c47939166ae22d914b0f4b4854e2a0"
+  }
+}

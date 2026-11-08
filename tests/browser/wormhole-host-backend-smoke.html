@@ -11,7 +11,7 @@ The two 4K sample pairs should retain the same shape, gradients and detail. PNG 
 <h2>WH-06b actual WebM / MP4 export</h2><p>Runs short encoded jobs, exact frame IDs, sound and cleanup checks. Downloads are test artifacts; this is not a complete-song or physical-mobile qualification.</p><button id="export-test">Validate Economy + Turbo export</button><pre id="export-result">Not run.</pre>
 <script type="module">
 import p5 from 'p5';
-import { ALL_FORMATS, BlobSource, CanvasSink, EncodedPacketSink, Input } from 'mediabunny';
+import { ALL_FORMATS, BlobSource, CanvasSink, EncodedPacketSink, Input, Output, BufferTarget, WebMOutputFormat, Mp4OutputFormat, EncodedVideoPacketSource, EncodedPacket } from 'mediabunny';
 import { WebCodecsBackend } from '../../src/export/WebCodecsBackend.ts';
 import Mp4Worker from '../../src/export/mp4-export.worker.ts?worker';
 import { TemporalFragmentationEffect } from '../../src/visuals/TemporalFragmentationEffect.ts';
@@ -545,7 +545,12 @@ window.runWh06Export=(options={})=>exportRun??=(async()=>{
   positionChanged?.(0);State.playbackFade=1;hostP.noLoop();
   rawReference=spec.compare?new WormholeHostRenderSession({frames:State.frames,events:State.events,trackAnalysis:State.trackAnalysis,
    sampleRate:State.sampleRate,hopSize:State.hopSize,bpm:State.bpm},false):null;
-  const backend=new WebCodecsBackend(hostP,hostP.canvas,audio,'WH06',null,'display',options.nativePackets?NativePacketWorker:Mp4Worker);
+  const worker=options.observeInputs?class extends NativePacketWorker {
+   constructor(){super();this.addEventListener('message',event=>{if(event.data?.type==='wh07_input_observation'){
+    if(window.wh07InputObservations.length>=4)throw Error('Observation window limit');window.wh07InputObservations.push(event.data.report);
+   }});this.postMessage({type:'wh07_observe_inputs',enabled:true,profile:options.detailProfile??'reference'});}
+  }:options.nativePackets?NativePacketWorker:Mp4Worker;
+  const backend=new WebCodecsBackend(hostP,hostP.canvas,audio,'WH06',null,'display',worker);
   const diagnostics=[],performances=[];
   const started=performance.now();let issued=false;
   try{
@@ -578,7 +583,7 @@ window.runWh06Export=(options={})=>exportRun??=(async()=>{
   }finally{await backend.discardResult();rawReference?.dispose();rawReference=null;referencePost?.dispose();referencePost=null;c.dispose();hostP.noLoop();}
  };
  try{
-  const specs=[
+  const specs=options.detailOnly?[['4K',options.detailAspect??'1:1',30,'mp4',true]]:[
    ['720p','16:9',30,'webm',false],['720p','16:9',60,'mp4',false],
    ['720p','9:16',60,'webm',true],['720p','9:16',30,'mp4',true],
    ['720p','1:1',30,'webm',false],['720p','1:1',30,'mp4',false],
@@ -587,6 +592,7 @@ window.runWh06Export=(options={})=>exportRun??=(async()=>{
   ];
   for(const [resolution,aspect,fps,format,precision]of specs){output.textContent='Encoding '+[resolution,aspect,fps,format,precision?'10bit':'8bit'].join(' ');
    await one({resolution,aspect,fps,format,precision,frames:resolution==='4K'&&aspect==='16:9'?36:8,compare:resolution==='720p',post:true,display:aspect==='9:16'});}
+  if(options.detailOnly)return {pass:true,scope:'One bounded diagnostic clip, not the original export matrix',rows};
   for(const format of ['webm','mp4'])await one({resolution:'720p',aspect:'16:9',fps:30,format,frames:48,transitions:true,post:true,extraRedraws:true});
   const base={resolution:'720p',aspect:'16:9',fps:30,format:'webm',frames:12};
   for(const format of ['webm','mp4'])await one({...base,format,frames:48});
@@ -761,4 +767,49 @@ window.runWh07CodecMatrix=()=>new Promise((resolve,reject)=>{
  worker.onerror=event=>{finish();reject(Error(event.message));};worker.postMessage({type:'codec_matrix'});
 });
 window.addEventListener('pagehide',()=>{pass?.dispose();hostP?.remove();fixtureP?.remove();contexts.forEach(c=>c.dispose());exactUrls.forEach(url=>URL.revokeObjectURL(url));},{once:true});
+
+
+// WH-07b5: exact same native VP9 payloads through independent consumers/containers.
+window.wh07InputObservations=[];window.wh07DetailBlobs=new Map();
+window.runWh07Detail=async(profile='reference')=>{
+ let exportFailure;try{await window.runWh06Export({detailOnly:true,nativePackets:true,observeInputs:true,detailProfile:profile});}
+ catch(error){exportFailure=String(error.message).slice(0,1000);}
+ const observation=window.wh07InputObservations.find(r=>r.inputs.length===8);
+ if(!observation)throw Error('No complete worker input observation');
+ if(observation.inputs.some((row,index)=>row.id!==index+1))throw Error('Worker input IDs already wrong');
+ const packets=observation.packets,hashes=await Promise.all(packets.map(p=>hash(p.data)));
+ const native=await decodeInspectionPackets(packets,observation.decoderConfig);
+ const color=observation.decoderConfig.colorSpace;
+ if(color?.primaries!=='bt709'||color?.matrix!=='bt709'||color?.fullRange!==true
+  ||!['bt709','iec61966-2-1'].includes(color?.transfer))throw Error('Unqualified observed SDR color space');
+ // Preserve the encoder's actual SDR metadata, matching the product FFmpeg tags.
+ const codec=observation.decoderConfig.codec.split('.').slice(0,4).concat(['01','01',color.transfer==='iec61966-2-1'?'13':'01','01','01']).join('.');
+ const meta={decoderConfig:{...observation.decoderConfig,codec}},containers=[];
+ const inspect=async(blob,name)=>{
+  const input=new Input({source:new BlobSource(blob),formats:ALL_FORMATS});
+  try{
+   const video=await input.getPrimaryVideoTrack(),config=await video.getDecoderConfig(),owned=[];
+   for await(const packet of new EncodedPacketSink(video).packets()){owned.push(copyInspectionPacket(packet));if(owned.length>63)throw Error('Detail packet count');}
+   const actualHashes=await Promise.all(owned.map(p=>hash(p.data)));
+   const decoded=await decodeInspectionPackets(owned,config);
+   const row={name,bytes:blob.size,codec:config.codec,packetHashes:actualHashes,payloadsIdentical:actualHashes.length===hashes.length&&actualHashes.every((v,i)=>v===hashes[i]),decoded};
+   window.wh07DetailBlobs.set(name,blob);containers.push(row);
+  }finally{input.dispose();}
+ };
+ for(const format of ['webm','mp4']){
+  const target=new BufferTarget(),output=new Output({target,format:format==='webm'?new WebMOutputFormat():new Mp4OutputFormat()}),source=new EncodedVideoPacketSource('vp9');
+  output.addVideoTrack(source,{frameRate:30});
+  try{await output.start();for(let i=0;i<packets.length;i++){
+   const p=packets[i];await source.add(new EncodedPacket(p.data,p.type,p.timestamp/1e6,p.duration/1e6),i===0?meta:undefined);
+  }source.close();await output.finalize();if(target.buffer.byteLength>64*1024*1024)throw Error('Detail artifact cap');
+   await inspect(new Blob([target.buffer],{type:'video/'+format}),'detail-packets.'+format);
+  }finally{if(output.state!=='finalized'&&output.state!=='canceled')await output.cancel();}
+ }
+ const original=window.wh06ExportBlobs.get('export-000.mp4');if(!original)throw Error('Missing actual product-path file');
+ await inspect(original,'detail-product.mp4');
+ if(!containers.every(row=>row.payloadsIdentical))throw Error('Container changed VP9 payload');
+ return {pass:true,scope:'One8-picture2160-square30fps synthetic exact-GPU clip. Readback observation may affect scheduling; no quality/speed promotion.',
+  profile,exportFailure,encoder:observation.config,decoder:observation.decoderConfig,inputs:observation.inputs,packetHashes:hashes,native,containers};
+};
+
 </script></html>
