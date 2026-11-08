@@ -162,7 +162,9 @@ async function start(request: StartExportRequest) {
         const fullCodecString = vp9ExportCodec(width, height, fps, bitrate, 10);
         await probeExportEncoding({ codec: fullCodecString, width, height, framerate: fps, bitrate,
             latencyMode: 'quality', bitrateMode: 'constant', webmBitDepth: 10 }, sampleRate, false);
-        encoding = { codec: 'vp9', fullCodecString, bitrate, keyFrameInterval: 1,
+        // Independent VP9 pictures preserve brief details: WH-06b's frame-ID probe
+        // caught temporal remnants with the former inter-frame profile (same valid input).
+        encoding = { codec: 'vp9', fullCodecString, bitrate, keyFrameInterval: 0,
             latencyMode: 'quality', bitrateMode: 'constant' };
         await probeMp4Video(width, height, fps, encoding);
     } else {

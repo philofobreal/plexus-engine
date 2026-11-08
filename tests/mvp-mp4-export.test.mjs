@@ -191,3 +191,12 @@ test('4K worker refusal and Stop are handled before allocating the render surfac
         assert.equal(State.isExporting, false);
     }
 });
+
+
+test('high-precision MP4 uses independent pictures to preserve brief frame details', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const source = await readFile('src/export/mp4-export.worker.ts','utf8');
+    assert.match(source, /encoding = \{ codec: 'vp9', fullCodecString, bitrate, keyFrameInterval: 0,/);
+    assert.match(source, /codec: 'avc', bitrate, keyFrameInterval: 1/);
+    assert.match(source, /picture.add\(sample\)/);
+});

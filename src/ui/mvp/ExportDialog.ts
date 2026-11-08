@@ -59,7 +59,7 @@ export class ExportDialog {
                     </select>
                 </label>
                 <small class="mvp-export-mp4-note mvp-hidden">MP4 uses temporary browser storage. <a href="../export/ffmpeg-5.1.10/" target="_blank" rel="noopener">FFmpeg and source code</a></small>
-                <small class="mvp-export-vp9-note mvp-hidden">10-bit MP4 needs a player or editor that supports VP9 in MP4.</small>
+                <small class="mvp-export-vp9-note mvp-hidden">10-bit MP4 preserves brief detail with independent frames; files can be larger. Requires a player or editor that supports VP9 in MP4.</small>
                 <div class="mvp-capability-warning mvp-hidden"></div>
                 </div>
                 <div class="mvp-export-progress mvp-hidden">
