@@ -170,6 +170,12 @@ async function capture() {
         }
         await writeFile(path.join(output, 'host-smoke.json'), JSON.stringify(host, null, 2) + '\n', { flag: 'wx' });
         assert.equal(host?.pass, true, JSON.stringify(host));
+        if (process.argv.includes('--diagnostics-host')) {
+            const diagnostic = await evaluate('window.runWh06c1()');
+            await writeFile(path.join(output,'export-diagnostics.json'),JSON.stringify(diagnostic,null,2)+'\n',{flag:'wx'});
+            assert.equal(diagnostic?.pass,true,JSON.stringify(diagnostic));
+            console.log(JSON.stringify({diagnosticChecks:diagnostic.checks,pass:diagnostic.pass}));
+        }
         if (process.argv.includes('--exact-host')) {
             const exact = await evaluate('window.runWh06Exact()');
             await writeFile(path.join(output,'exact-host.json'),JSON.stringify(exact,null,2)+'\n',{flag:'wx'});
@@ -228,6 +234,31 @@ async function capture() {
             await writeFile(path.join(output,'integrated-export-artifacts.json'),JSON.stringify({pass:true,artifacts},null,2)+'\n',{flag:'wx'});
             console.log(JSON.stringify({exportRows:report.rows.length,files:artifacts.length,independentlyDecoded:true}));
         }
+        if (publicRelease && process.argv.includes('--diagnostics-host')) {
+            const hosts=[];
+            for (const route of ['', 'mvp/']) {
+                await send('Page.navigate',{url:'https://philofobreal.github.io/plexus-engine/'+route+'?release='+publicRelease});
+                const selector=route?'.mvp-export-fps':'#export-fps';
+                for(let i=0;i<200&&!await evaluate('Boolean(document.querySelector('+JSON.stringify(selector)+'))');i++)await sleep(100);
+                const actual=await evaluate(`(()=>{
+                    const fps=document.querySelector(${JSON.stringify(selector)});
+                    const before=fps?.value;
+                    if(!fps)throw Error('Product FPS control missing');
+                    fps.value=${JSON.stringify(route?'60':'30')};fps.dispatchEvent(new Event('change',{bubbles:true}));
+                    return {before,selected:fps.value,saved:localStorage.getItem('plexus.export.fps'),
+                        copy:Boolean(document.querySelector(${JSON.stringify(route?'.mvp-export-copy':'#copy-export-diagnostics')})),
+                        summary:Boolean(document.querySelector(${JSON.stringify(route?'.mvp-export-codec-diagnostic':'#export-diagnostic-status')})),
+                        dashboardSummaryOutsideActions:!document.querySelector('#export-diagnostic-status')?.closest('.timeline-actions')};
+                })()`);
+                assert.equal(actual.copy,true);assert.equal(actual.summary,true);
+                assert.equal(actual.saved,route?'60':'30');
+                if(route)assert.equal(actual.before,'30','MVP must read dashboard FPS preference');
+                else assert.equal(actual.dashboardSummaryOutsideActions,true);
+                hosts.push({route,...actual});
+            }
+            await writeFile(path.join(output,'diagnostic-host-controls.json'),JSON.stringify({pass:true,release:publicRelease,hosts,
+                scope:'Actual published startup controls and cross-host FPS persistence; no audio export or physical-mobile claim.'},null,2)+'\n',{flag:'wx'});
+        }
         await writeFile(path.join(root, 'active-run.txt'), output + '\n');
         console.log(JSON.stringify({ output, pass: true, cases: 8, hostRows: host.rows.length, ...(publicRelease?{publicRelease}:{}) }));
     } finally {
@@ -251,5 +282,5 @@ async function verify(file) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
     if (process.argv[2] === 'capture') await capture();
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--public-release=ID] | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--exact-host] [--export-host] [--diagnostics-host] [--public-release=ID] | verify [baseline.json]');
 }

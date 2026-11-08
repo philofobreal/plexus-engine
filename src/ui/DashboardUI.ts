@@ -402,6 +402,9 @@ export class DashboardUI {
         this.exportCtrl = new ExportController(
             {
                 exportResolution: this.els.exportResolution,
+                exportFps: document.getElementById('export-fps'),
+                copyExportBtn: document.getElementById('copy-export-diagnostics'),
+                diagnosticStatus: document.getElementById('export-diagnostic-status'),
                 exportAspect: this.els.exportAspect,
                 exportWatermark: document.getElementById('export-watermark')!,
                 exportVideoBtn: this.els.exportVideoBtn,
@@ -487,7 +490,8 @@ export class DashboardUI {
             this.exportP5Instance,
             this.exportCanvas!,
             this.engine,
-            State.videoBackplateActive ? this.videoElement : null
+            State.videoBackplateActive ? this.videoElement : null,
+            {onDiagnostic:report=>{if(this.currentExporter===exporter)this.exportCtrl.recordDiagnostic(report);}}
         );
         this.currentExporter = exporter;
 
@@ -499,7 +503,8 @@ export class DashboardUI {
             this.downloadBlob(blob, 'plexus-visual.webm');
         } catch (error) {
             if (!String(error instanceof Error ? error.message : error).includes('cancelled')) {
-                this.els.status.innerText = 'Hiba: export sikertelen';
+                this.exportCtrl.recordFailure(error);
+                this.els.status.innerText = 'Hiba: export sikertelen: ' + (error instanceof Error ? error.message : String(error));
             }
         } finally {
             if (this.currentExporter === exporter) this.currentExporter = null;

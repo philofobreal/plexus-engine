@@ -625,7 +625,7 @@ export class MvpUI {
             this.unsavedChangesGuard.sync();
             const blob = await this.controller.startExport(config, progress => {
                 if (this.exportJob === job) this.exportDialog.setProgress(progress);
-            });
+            }, report => { if (this.exportJob === job) this.exportDialog.recordDiagnostic(report); });
             if (this.exportJob !== job) return;
             const extension = config.format === 'mp4' ? 'mp4' : 'webm';
             const highPrecision = extension === 'mp4'
@@ -635,6 +635,7 @@ export class MvpUI {
             this.exportDialog.setStatus('Done — check your downloads.');
         } catch (error) {
             if (this.exportJob === job) {
+                this.exportDialog.recordFailure(error);
                 const message = error instanceof Error ? error.message : String(error);
                 this.exportDialog.setStatus(message.includes('cancelled') ? 'Export cancelled.' : message);
             }

@@ -1,0 +1,26 @@
+{
+  "commit": "a76317aed3f123245ac11961c601853b1e0060c6",
+  "retention": "WH-06c1 adds diagnostic observations and an explicit FPS preference. Encoder/decoder gates, output precision, all old tests and numeric quality gates remain active.",
+  "files": {
+    "src/export/ExportPreparation.ts": "f1417bcd3b84bced3ae111c64c135e72306c09f845bcaa74d3bd83ac1d9b9aef",
+    "src/export/ExportTypes.ts": "b2b7d1788e118be63a187497d10459af31a25fe388b762da1357595006b6f477",
+    "src/export/ExportBackend.ts": "2c91b88997e2884a2825c2e185bced315eadc148ee028aa4ae671ce881676575",
+    "src/export/WebCodecsBackend.ts": "e6357f8214c5550e43d3f64be8ef5fd41fec1b6d7de34cefa8887c58db62b618",
+    "src/export/WebMExporter.ts": "ca117459b7dff94dfd3e445e8a4116b72572dafbcadb9d38a0f4659297c9ee4d",
+    "src/export/export.worker.ts": "4bee88a3450d0524f3a39dc313bdb82c7fc16feffea8c3ff9ebede324323695d",
+    "src/export/mp4-export.worker.ts": "baab5a3ec3745935f1c7f62c91797728d6067225e43a08f053518889435c481f",
+    "src/ui/mvp/ExportDialog.ts": "db866ab686feea18198ff9b69275d32ed1ecc86d5a68ab85f1c92e948a617546",
+    "src/ui/mvp/MvpUI.ts": "725ff7dff0d383bd2271ef44952d5527290b9d7bc91464bf19a1c499356fe289",
+    "src/ui/mvp/MvpVisualController.ts": "c86f76b41743c313a50119f02038579cd38d843c3cf4197acf6567359c6e483c",
+    "src/ui/controllers/ExportController.ts": "20ff95b53b689ec4bd49bc8060e8a27684cb3c7975b47dc9fab8be39bbfdaa80",
+    "src/ui/DashboardUI.ts": "c339866df3af8a59b9b19d14280696c52776f1c71c33b03d8ceb3400bec12b5e",
+    "src/main.ts": "9075e5e45df0a19cbd5d07b39c48ae9328774bc28420fb5f5f314853633aed3e",
+    "tests/export-preparation.test.mjs": "a08bde98aac2eee45240391c2e43b2ee26e7f214064d8cd69c218a2d8eb33a95",
+    "tests/mvp-background-export.test.mjs": "a9f85adcb59cb874b8f631478dd278b5380a6155241c652404d780dcb2f9d3ab",
+    "tests/mvp-export-panel.test.mjs": "0df554b5278fad8ffa89544f09f82e44abaf870d18724c9d7090fc8dc5b00f3c",
+    "tests/browser/wormhole-host-backend-smoke.html": "87262fcae8b28b965d0de218b8d79eee878740239fe705e11393faca82bd2c39",
+    "research/export/wormhole-baseline.mjs": "bb1a8a0c183ac13965933958d0027afb68c649386741fd5ff74de56643b9e3ad",
+    "tests/export-deterministic.test.mjs": "ff4ac8bc41f2e8fb864350e086c2850a07b87203dd21ff6a1cc9b96de1121cbb",
+    "src/ui/mvp/mvp.css": "0052f04968181cc20ca3c0c44645a4d781d5fdd5700ca4e088c6d2462d561951"
+  }
+}

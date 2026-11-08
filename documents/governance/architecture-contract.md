@@ -1,4 +1,13 @@
 # Architecture Contract
+
+WH-06c1 keeps export diagnosis in the export owner. `ExportDiagnostics.ts`
+imports only the ExportConfig type and owns bounded data validation, not codecs,
+State, DOM, audio or persistence. Workers produce optional observations; backend
+and facade enforce current-job guards. Each UI view owns one diagnostic journal
+and clipboard formatting. Shared export FPS is a local device/workflow preference,
+not a preset or render setting. The existing job coordinator and render ownership
+remain unchanged. See [WH-06c1](../audits/wormhole-wh06c1-export-diagnostics.md).
+
 This document extends `../../AGENTS.md`. If there is a conflict, `AGENTS.md` is authoritative.
 
 ## System Shape

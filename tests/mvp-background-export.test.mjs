@@ -88,7 +88,10 @@ test('MVP uses the supported renderer and locks playback history even when given
 
     const job = controller.startExport({ ...config, runtime: 'isolated-wormhole', memoryLimitMiB: 512, preflight: true },
         value => updates.push(value));
-    assert.deepEqual(args, [p5, canvas, engine]);
+    // WH-06c1 adds an optional observer; preserve the predecessor constructor inputs.
+    assert.deepEqual(args.slice(0, 3), [p5, canvas, engine]);
+    assert.equal(args[3], null);
+    assert.equal(typeof args[4].onDiagnostic, 'function');
     assert.deepEqual(selected, config);
     assert.deepEqual(stops, [false]);
     assert.equal(controller.canUseHistory(), false);
@@ -145,7 +148,11 @@ test('MVP export ignores stale mode and memory preferences and copies only curre
     assert.deepEqual(reads, []);
     assert.doesNotMatch(dialog.root.innerHTML, /Export rendering|Isolated Wormhole|Export memory limit/);
     assert.deepEqual(starts, [config]);
-    assert.deepEqual(copies, [{ export: config, cache }]);
+    // Preserve the predecessor payload contract while separately checking additive diagnostics.
+    assert.deepEqual(copies.map(({ diagnostics, ...previous }) => previous), [{ export: config, cache }]);
+    assert.equal(copies[0].diagnostics.version, 1);
+    assert.equal(copies[0].diagnostics.requested, null);
+    assert.deepEqual(copies[0].diagnostics.events, []);
 
     dialog.applyCapabilityReport({ preferredBackend: 'webcodecs', canExport4K: false, warnings: ['4K disabled'] });
     dialog.restoreResolution('4K');

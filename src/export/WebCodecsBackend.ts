@@ -1,3 +1,4 @@
+import { readExportDiagnostic, publishExportDiagnostic, type ExportDiagnosticObserver } from './ExportDiagnostics';
 import { State } from '../state/store';
 import type { ExportBackend } from './ExportBackend';
 import { ExportBackendRegistry, type ExportBackendFactory } from './ExportBackendRegistry';
@@ -46,6 +47,7 @@ export class WebCodecsBackend implements ExportBackend {
     private ownsLoop = false;
     private framePort: HostExportFramePort | null = null;
     private exactFrames = false;
+    private diagnosticObserver: ExportDiagnosticObserver | undefined;
     private interruptWait: ((error: Error) => void) | null = null;
     private waitingForFrame = false;
     private readonly videoElement: HTMLVideoElement | null;
@@ -84,7 +86,7 @@ export class WebCodecsBackend implements ExportBackend {
     }
 
     async start(config: ExportConfig, onProgress: (progress: number) => void, runtime?: ExportRuntime,
-        onProfile?: (profile: ExportProfile) => void): Promise<Blob> {
+        onProfile?: (profile: ExportProfile) => void, onDiagnostic?: ExportDiagnosticObserver): Promise<Blob> {
         if (this.running) throw new Error('An export is already running.');
         // A new request must never discard the previous, already published result.
         this.storageLease = null; this.storageDiscard = null;
@@ -116,6 +118,7 @@ export class WebCodecsBackend implements ExportBackend {
         let submittedFrames = 0, peakOutstandingFrames = 0, outcome: ExportProfile['outcome'] = 'failed';
         const totalFrames = Math.floor(duration * config.fps);
 
+        this.diagnosticObserver = onDiagnostic;
         this.running = true;
         this.cancelled = false;
         this.stoppedEarly = false;
@@ -361,7 +364,10 @@ export class WebCodecsBackend implements ExportBackend {
             this.rejectExport = reject;
             worker.onmessage = (event: MessageEvent<ExportWorkerResponse>) => {
                 if (this.worker !== worker || this.cancelled) return;
-                if (event.data.type === 'export_done') {
+                if (event.data.type === 'export_diagnostic') {
+                    const report = readExportDiagnostic(event.data.report);
+                    if (report) publishExportDiagnostic(this.diagnosticObserver,report);
+                } else if (event.data.type === 'export_done') {
                     this.workerTimings = event.data.timings ?? {};
                     this.rejectExport = null;
                     resolve(event.data.blob);
@@ -426,6 +432,7 @@ export class WebCodecsBackend implements ExportBackend {
         this.captureCanvas = null;
         this.audioPool = [];
         this.runtime = undefined;
+        this.diagnosticObserver = undefined;
         try {
             if (completed && !this.cancelled) this.storageLease?.retain();
             else await this.discardResult();

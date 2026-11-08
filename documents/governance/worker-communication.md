@@ -1,5 +1,20 @@
 ﻿# Worker Communication
 
+## WH-06c1 export diagnostic observation (2026-11-08)
+
+Export workers may emit `{ type: 'export_diagnostic', report }`, where report
+uses `ExportDiagnostics.ts` version 1: codec/configuration, support enums, probe
+stage/counts and bounded error/emitted-codec strings. No binary/PCM/analysis
+payload, hardware-backend claim or persisted history belongs on this message.
+The backend validates and copies an explicit flat allowlist before publication.
+The current worker identity/cancel guard applies; facade and view also match the
+current job. Observation exceptions cannot fail or unblock an export. No new
+request fields, transfer lists, acknowledgements or renderer work are introduced.
+The UI journal retains at most twelve reports for one attempt. Exact source,
+encoder/decode gates, cancellation, output acceptance and resource ownership are
+unchanged; see [WH-06c1](../audits/wormhole-wh06c1-export-diagnostics.md).
+
+
 This document extends `../../AGENTS.md`. If there is a conflict, `AGENTS.md` is authoritative.
 
 WH-01 common identity (2026-11-07): `WormholeRenderFrameStamp` version 1 is a

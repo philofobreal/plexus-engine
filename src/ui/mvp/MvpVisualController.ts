@@ -1,3 +1,4 @@
+import type { ExportDiagnosticObserver } from '../../export/ExportDiagnostics';
 import { findActiveAutomationPoint } from '../../automation/performanceAutomationRuntime';
 import { AudioEngine } from '../../audio/AudioEngine';
 import { generatePerformancePlan } from '../../automation/performancePlanGenerator';
@@ -990,7 +991,7 @@ export class MvpVisualController {
         return State.duration > 0 && Boolean(this.exportP5Instance && this.exportCanvas);
     }
 
-    async startExport(config: ExportConfig, onProgress: (progress: number) => void): Promise<Blob> {
+    async startExport(config: ExportConfig, onProgress: (progress: number) => void, onDiagnostic?: ExportDiagnosticObserver): Promise<Blob> {
         if (!this.canExport() || this.currentExporter || this.exportCacheClearing) throw new Error('Export is not available right now.');
         this.markSessionChanged();
         if (State.isPlaying) this.engine.stop(false);
@@ -999,8 +1000,10 @@ export class MvpVisualController {
         const { resolution, aspectRatio, fps, watermark, trackName } = config;
         const mp4 = config.format === 'mp4';
         const p5 = this.exportP5Instance, canvas = this.exportCanvas!;
+        const observe: ExportDiagnosticObserver = report => { if (this.currentExporter === exporter) onDiagnostic?.(report); };
         const exporter = mp4
             ? new WebMExporter(p5, canvas, this.engine, null, {
+                onDiagnostic: observe,
                 createMp4Backend: async name => {
                     const [{ WebCodecsBackend }, { default: Mp4Worker }] = await Promise.all([
                         import('../../export/WebCodecsBackend'), import('../../export/mp4-export.worker.ts?worker'),
@@ -1008,7 +1011,7 @@ export class MvpVisualController {
                     return new WebCodecsBackend(p5, canvas, this.engine, name, null, 'display', Mp4Worker);
                 },
             })
-            : new WebMExporter(p5, canvas, this.engine);
+            : new WebMExporter(p5, canvas, this.engine, null, {onDiagnostic:observe});
         this.currentExporter = exporter;
         try {
             const encoding = mp4 ? {

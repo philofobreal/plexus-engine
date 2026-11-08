@@ -1,3 +1,4 @@
+import { diagnosticFailure, publishExportDiagnostic, type ExportCodecDiagnostic } from './ExportDiagnostics';
 import { Mp4OutputFormat, NullTarget, Output, StreamTarget, VideoSample, VideoSampleSource } from 'mediabunny';
 import { validMp4ExportStorageName } from './ExportStorageLease';
 import { checkMp4Storage, planMp4Storage } from './Mp4StorageAdmission';
@@ -66,9 +67,14 @@ async function probeMp4Video(width: number, height: number, fps: number, encodin
     const probe = new Output({ format: new Mp4OutputFormat(), target: new NullTarget() });
     let packets = 0;
     let emittedLevel: number | undefined;
+    const diagnostic: ExportCodecDiagnostic = { version:1,codec:encoding.fullCodecString ?? encoding.codec,
+        width,height,fps,bitrate:typeof encoding.bitrate === 'number' ? encoding.bitrate : 0,
+        bitDepth:encoding.codec === 'vp9' ? 10 : 8,stage:'encode',encoder:'not-checked',decoder:'not-required',encodedFrames:0,decodedFrames:0 };
+    const emit = (d: ExportCodecDiagnostic) => publishExportDiagnostic(report=>scope.postMessage({type:'export_diagnostic',report}),d);
     let canvas: OffscreenCanvas | undefined;
     const source = new VideoSampleSource({ ...encoding, onEncodedPacket: (_packet, metadata) => {
         packets++;
+        if (metadata?.decoderConfig?.codec) diagnostic.emittedCodec = metadata.decoderConfig.codec;
         if (metadata?.decoderConfig) emittedLevel = readMp4AvcLevel(metadata.decoderConfig.description);
     } });
     probe.addVideoTrack(source, { frameRate: fps });
@@ -82,7 +88,9 @@ async function probeMp4Video(width: number, height: number, fps: number, encodin
         try { await source.add(sample); } finally { sample.close(); }
         source.close(); await probe.finalize();
         if (packets !== 1) throw Error('Probe produced no usable frame');
-    } catch {
+        emit({...diagnostic,stage:'complete',encoder:'supported',encodedFrames:packets});
+    } catch (error) {
+        emit(diagnosticFailure({...diagnostic,encodedFrames:packets},error));
         if (probe.state === 'started' || probe.state === 'pending') await probe.cancel().catch(() => {});
         const codec = encoding.codec === 'avc' ? 'H.264' : 'VP9';
         throw mp4Error(`${codec} encoding is unavailable at this resolution and frame rate.`);
@@ -161,7 +169,7 @@ async function start(request: StartExportRequest) {
     if (highPrecision) {
         const fullCodecString = vp9ExportCodec(width, height, fps, bitrate, 10);
         await probeExportEncoding({ codec: fullCodecString, width, height, framerate: fps, bitrate,
-            latencyMode: 'quality', bitrateMode: 'constant', webmBitDepth: 10 }, sampleRate, false);
+            latencyMode: 'quality', bitrateMode: 'constant', webmBitDepth: 10 }, sampleRate, false, globalThis, 10_000, report => scope.postMessage({type:'export_diagnostic',report}));
         // Independent VP9 pictures preserve brief details: WH-06b's frame-ID probe
         // caught temporal remnants with the former inter-frame profile (same valid input).
         encoding = { codec: 'vp9', fullCodecString, bitrate, keyFrameInterval: 0,

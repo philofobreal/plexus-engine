@@ -1,8 +1,30 @@
 # Plexus XR development tracker
 
-Started 2026-10-23. Checkpoint 2026-11-07 (Europe/Budapest). Integration owner: the agent in this chat.
+Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01, WH-02 research, WH-03a preparation, WH-03b time envelopes/exact scheduling and WH-04 MVP GPU session and WH-05 dashboard/composition are delivered; WH-06a exact resolved-input source is delivered; WH-06b host/export integration is delivered; WH-07 Takarékos/Turbó is next after WH-06b manual acceptance. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+**Current planning priority: the [cross-host Wormhole rendering epic](cross-host-wormhole-rendering-epic.md), requested on 2026-11-07. It covers dashboard and MVP playback plus all existing exports, with shared Offscreen/GPU rendering and separate preview/exact scheduling. WH-00, WH-01, WH-02 research, WH-03a preparation, WH-03b time envelopes/exact scheduling and WH-04 MVP GPU session and WH-05 dashboard/composition are delivered; WH-06a exact resolved-input source is delivered; WH-06b host/export integration is delivered; WH-06c1 diagnostics/FPS is delivered for manual acceptance after partial WH-06b acceptance; WH-06c2 mobile 10-bit admission and WH-06e fallback feasibility precede WH-07. WH-06d 8-bit quality work is withdrawn by the user; 10-bit quality/speed/resource efficiency take priority over file size. T20c1's two/four CPU-worker experiments did not pass the speed gate. The previous standalone T20c2 GPU spike is now WH-02, before the larger frame/timing refactor; export integration is WH-06. T21b/T21c follow this epic, then T22-T24. MP4 default, mobile 4K, accepted 10-bit quality and deferred T15/Wall work remain in force.**
+
+### WH-06c1 handoff: mobile evidence and revised queue (2026-11-08)
+
+The user reports faster exports and flawless desktop VP9 10-bit MP4 quality.
+Samsung S22 Ultra/Chrome can export normal MP4/WebM; its tested 4K60 10-bit modes
+fail. No exact error/browser version is available. Do not infer that all mobile
+10-bit resolutions/rates are unsupported. Rendering GPU use does not identify
+the video encoder implementation; Intel engine labels may say Video Decode.
+
+New queue is in the [epic](cross-host-wormhole-rendering-epic.md): WH-06c1
+copyable codec/error diagnostics and saved 30/60 fps; WH-06c2 split admission
+checks with output validation; WH-06e measured 10-bit fallback feasibility and
+explicit dependency/CPU-cost decision; WH-07 Takarékos/Turbó; WH-08 full song /
+physical platforms; T21b/c captions; T22-T24 Studio/auth/hosting. WH-06d is withdrawn.
+Keep existing 8-bit compatibility until a mobile 10-bit path is qualified.
+WH-06c1 delivers the saved, explicit 30/60 fps selector in both hosts and bounded
+copyable encoder/decoder/probe/error diagnostics. Existing strict 10-bit gates,
+precision and OPFS behavior remain. Cumulative 2231/2222 pass with exactly the
+same nine baseline failures; targeted 73/73; local browser 37 host + 21 source +
+8 UI checks, 18 export cases, 17 files / 382 independently decoded IDs. See the
+[handoff and limitations](wormhole-wh06c1-export-diagnostics.md). Deploy, then
+stop for manual testing. WH-06c2 is next only after the user's continuation.
 
 ### WH-06b product export handoff (2026-11-08)
 

@@ -1,3 +1,4 @@
+import { ExportDiagnosticJournal, EXPORT_FPS_KEY, normalizeExportFps, readExportDiagnostic, describeExportDiagnostic } from '../../export/ExportDiagnostics';
 import type { ExportCapabilities } from '../../export/ExportTypes';
 import type { ExportConfig } from '../../export/WebMExporter';
 
@@ -15,16 +16,31 @@ type ExportEls = {
     stopExportBtn: HTMLElement;
     cancelExportBtn: HTMLElement;
     status: HTMLElement;
+    exportFps?: HTMLElement | null;
+    copyExportBtn?: HTMLElement | null;
+    diagnosticStatus?: HTMLElement | null;
 };
 
 export class ExportController {
     private els: ExportEls;
     private callbacks: ExportCallbacks;
     private canExportFlag = false;
+    private readonly diagnostics = new ExportDiagnosticJournal();
 
     constructor(els: ExportEls, callbacks: ExportCallbacks) {
         this.els = els;
         this.callbacks = callbacks;
+        if (this.els.exportFps) {
+            try { (this.els.exportFps as HTMLSelectElement).value=String(normalizeExportFps(localStorage.getItem(EXPORT_FPS_KEY))); } catch { /* Optional device preference. */ }
+            this.els.exportFps.addEventListener('change',()=>{
+                try { localStorage.setItem(EXPORT_FPS_KEY,String(normalizeExportFps((this.els.exportFps as HTMLSelectElement).value))); } catch { /* Storage may be disabled. */ }
+            });
+        }
+        this.els.copyExportBtn?.addEventListener('click',()=>{
+            if (!navigator.clipboard?.writeText) { this.els.status.innerText='Clipboard unavailable.'; return; }
+            void navigator.clipboard.writeText(JSON.stringify({export:this.getConfig(),diagnostics:{...this.diagnostics.snapshot(),userAgent:navigator.userAgent?.slice(0,512)??'unavailable'}},null,2))
+                .catch(()=>{this.els.status.innerText='Unable to copy export diagnostics.';});
+        });
         this.initBindings();
     }
 
@@ -65,7 +81,12 @@ export class ExportController {
         (this.els.exportVideoBtn as HTMLButtonElement).disabled = !canExport;
     }
 
+    recordDiagnostic(value: unknown): void { const report=readExportDiagnostic(value);if(!report)return;this.diagnostics.record(report);if(this.els.diagnosticStatus){this.els.diagnosticStatus.textContent=describeExportDiagnostic(report);this.els.diagnosticStatus.hidden=false;} }
+    recordFailure(error: unknown): void { this.diagnostics.fail(error); }
+
     setExportActive(isActive: boolean): void {
+        if (isActive) { this.diagnostics.begin(this.getConfig());if(this.els.diagnosticStatus)this.els.diagnosticStatus.hidden=true; }
+        if (this.els.exportFps) (this.els.exportFps as HTMLSelectElement).disabled=isActive;
         (this.els.exportResolution as HTMLSelectElement).disabled = isActive;
         (this.els.exportAspect as HTMLSelectElement).disabled = isActive;
         (this.els.exportWatermark as HTMLInputElement).disabled = isActive;
@@ -77,6 +98,7 @@ export class ExportController {
     }
 
     resetExportUi(): void {
+        if (this.els.exportFps) (this.els.exportFps as HTMLSelectElement).disabled=false;
         (this.els.exportResolution as HTMLSelectElement).disabled = false;
         (this.els.exportAspect as HTMLSelectElement).disabled = false;
         (this.els.exportWatermark as HTMLInputElement).disabled = false;
@@ -104,7 +126,7 @@ export class ExportController {
         const resolution = (this.els.exportResolution as HTMLSelectElement).value as ExportConfig['resolution'];
         const aspectRatio = (this.els.exportAspect as HTMLSelectElement).value as ExportConfig['aspectRatio'];
         const watermark = (this.els.exportWatermark as HTMLInputElement).checked;
-        return { resolution, aspectRatio, fps: 60, watermark };
+        return { resolution, aspectRatio, fps: normalizeExportFps((this.els.exportFps as HTMLSelectElement | undefined)?.value), watermark };
     }
 
     private initBindings(): void {

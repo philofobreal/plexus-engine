@@ -217,15 +217,20 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
               <option value="9:16">9:16</option>
               <option value="1:1">1:1</option>
             </select>
+            <select id="export-fps" class="timeline-select" aria-label="Export frame rate">
+              <option value="30">30 fps</option><option value="60" selected>60 fps</option>
+            </select>
             <label class="timeline-checkbox" for="export-watermark">
               <input type="checkbox" id="export-watermark">
               <span>Watermark</span>
             </label>
             <button id="export-video-btn" class="timeline-export-btn" disabled>Export</button>
+            <button id="copy-export-diagnostics" class="timeline-export-btn" aria-label="Copy export settings and diagnostics">Copy export</button>
             <button id="stop-export-btn" class="timeline-export-btn is-hidden" disabled>Stop</button>
             <button id="cancel-export-btn" class="timeline-export-btn is-hidden" disabled>Cancel</button>
           </div>
         </div>
+        <output id="export-diagnostic-status" aria-live="polite" style="font-size: 12px; line-height: 1.4; overflow-wrap: anywhere;" hidden></output>
         <div id="strict-generator-settings" class="timeline-header-row is-hidden" style="padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); margin-bottom: 8px;">
           <span class="timeline-title" style="margin-right: 8px;">Strict Mode:</span>
           <select id="strict-p1" class="timeline-select preset-select"></select>

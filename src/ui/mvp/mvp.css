@@ -1250,7 +1250,7 @@ button, input, select {
 .mvp-export-compact .mvp-modal-title { margin-bottom: 8px; }
 .mvp-export-compact .mvp-modal-actions { margin-top: 10px; }
 .mvp-export-compact .mvp-export-details { display: inline-flex; }
-.mvp-export-compact :is(.mvp-export-settings, .mvp-export-cache, .mvp-export-copy, .mvp-export-start, .mvp-export-minimize) {
+.mvp-export-compact :is(.mvp-export-codec-diagnostic, .mvp-export-settings, .mvp-export-cache, .mvp-export-copy, .mvp-export-start, .mvp-export-minimize) {
   display: none;
 }
 .mvp-export-progress { display: flex; align-items: center; gap: 10px; }

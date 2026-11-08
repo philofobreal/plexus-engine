@@ -148,9 +148,9 @@ async function startExport(message: StartExportRequest) {
     let prepared;
     if (message.preflight || message.webmBitDepth === 10) {
         const probeConfig = { ...config, webmBitDepth: message.webmBitDepth };
-        const result = await probeExportEncoding(probeConfig, exportSampleRate, message.hasAudio === true).catch(error => {
+        const result = await probeExportEncoding(probeConfig, exportSampleRate, message.hasAudio === true, globalThis, 10_000, report => workerScope.postMessage({type:'export_diagnostic',report})).catch(error => {
             if (config.bitrate <= defaultBitrate) throw error;
-            return probeExportEncoding({ ...probeConfig, bitrate: defaultBitrate }, exportSampleRate, message.hasAudio === true);
+            return probeExportEncoding({ ...probeConfig, bitrate: defaultBitrate }, exportSampleRate, message.hasAudio === true, globalThis, 10_000, report => workerScope.postMessage({type:'export_diagnostic',report}));
         });
         config = result.config; prepared = result.report;
     }

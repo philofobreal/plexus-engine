@@ -1,5 +1,18 @@
 ﻿# Testing And Validation
 
+## WH-06c1 diagnostic retention
+
+Keep all WH-06b source/host/encoded gates and cumulative Node cases. Exercise
+separate encoder/decoder refusals before allocation, named query/probe errors,
+strict 10-bit rejection without downgrade, resource closure, observer isolation,
+malformed/stale worker messages, bounded/owned journal data, saved 30/60 fps and
+copied current versus last-attempt settings. Additive fixture adaptations retain
+predecessor Git/SHA identities and all original behavioral assertions. Real
+browser checks cover DOM/storage/copy and worker diagnostics in both containers;
+synthetic unsupported configurations are labeled, never physical-device claims.
+See [WH-06c1 evidence](../audits/wormhole-wh06c1-export-diagnostics.md).
+
+
 This document extends `../../AGENTS.md`. If there is a conflict, `AGENTS.md` is authoritative.
 
 ## Cumulative regression and research retention

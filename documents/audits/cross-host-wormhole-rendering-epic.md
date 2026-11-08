@@ -1,7 +1,7 @@
 # Közös, workerben és GPU-n futó Wormhole: epic terv
 
 Dátum: 2026-11-07, Europe/Budapest. Feltárt forrás: `9733a4a4aebf2ff0d68e41f8f3b102c0a40c52de`.
-Állapot: WH-00, [WH-01 szerződés/baseline](wormhole-wh01-contract-baseline.md), [WH-02 GPU-próba](wormhole-wh02-gpu-spike.md), [WH-03a frame-előkészítés](wormhole-wh03a-frame-preparation.md), [WH-03b kanonikus idő](wormhole-wh03b-canonical-time.md), [WH-04 MVP GPU-session](wormhole-wh04-mvp-gpu-session.md) és [WH-05 dashboard/kompozíció](wormhole-wh05-dashboard-composition.md) átadva. [WH-06a pontos exportforrás](wormhole-wh06a-exact-source.md) és [WH-06b termékexport-integráció](wormhole-wh06b-export-integration.md) átadva. A meglévő Offscreen worker választás a dashboard WebM és MVP WebM/MP4 exportját is beköti a pontos forrásra. Következő a WH-07, csak a WH-06b kézi elfogadása után. A Takarékos/Turbó profil WH-07, platformminősítés WH-08.
+Állapot: WH-00, [WH-01 szerződés/baseline](wormhole-wh01-contract-baseline.md), [WH-02 GPU-próba](wormhole-wh02-gpu-spike.md), [WH-03a frame-előkészítés](wormhole-wh03a-frame-preparation.md), [WH-03b kanonikus idő](wormhole-wh03b-canonical-time.md), [WH-04 MVP GPU-session](wormhole-wh04-mvp-gpu-session.md) és [WH-05 dashboard/kompozíció](wormhole-wh05-dashboard-composition.md) átadva. [WH-06a pontos exportforrás](wormhole-wh06a-exact-source.md) és [WH-06b termékexport-integráció](wormhole-wh06b-export-integration.md) átadva. A meglévő Offscreen worker választás a dashboard WebM és MVP WebM/MP4 exportját is beköti a pontos forrásra. A WH-06b felhasználói tesztje gyorsulást és jó desktopos 10 bites minőséget igazolt; mobilos 4K60/10-bit kompatibilitás nyitott. [WH-06c1 diagnosztika/FPS](wormhole-wh06c1-export-diagnostics.md) elkészült, kézi elfogadásra vár; következő WH-06c2. Az alábbi 2026-11-08-i új sorrend az irányadó. A Takarékos/Turbó profil WH-07, platformminősítés WH-08.
 Integrációs felelős: az aktuális fejlesztési munkamenet egyetlen szerződésgazdája.
 
 ## 1. Cél és helye a főtervben
@@ -254,7 +254,11 @@ nyersképes, sötétrégiós és időbeli összehasonlítás kell a kódolás el
 | WH-05 | Dashboard lejátszás és teljes host-kompozíció / visuals, dashboard, UI facade | Bekötött worker factory; más identity, crossfade, videóháttér és PostFX helyes együttműködése; egyetlen state-/simulation-tulajdonos | Mindkét host; Wormhole be/ki, stíluscsere, videó, kijelző, alpha; WH-04 |
 | WH-06a | Jobhoz kötött pontos resolved-frame forrás / visuals, worker, types | Teljes felbontás, saját exact stamp/lease, közös GPU-kernel, Float32/native kompozíció, bitazonos repeat, abort/fallback/fail-closed; termékexport-bekötés nélkül | 720p/4K aspect/FPS/alpha/dense nyersképek, változatlan kapuk; WH-05; átadva |
 | WH-06b | Pontos közös forrás bekötése mindkét host exportjába / export, visuals, composition | Képkocka-befejezési barrier; összetartozó kép/crossfade/PostFX; minden jelenlegi formátum; pontos sorrend, PCM, Stop, Cancel, retry, OPFS cleanup | Rövid 720p/4K WebM és MVP MP4, elfogadott10bit, minden aspect; WH-06a; átadva, kézi elfogadásra vár |
-| WH-07 | Takarékos/Turbó profil és közös menü, storage, Copy, diagnosztika / export policy, config, UI | Mindkét profil a közös optimalizált renderútból indul; mért többlet-átlapolás; jelzett aktív/fallback mód; verziózott migráció | Mentés, reload, Copy, profilváltás és elutasított képességpróba; WH-06b |
+| WH-06c1 | Kodekdiagnosztika és 30/60 fps / export, UI | Kért és ténylegesen próbált konfiguráció, külön encoder/decoder eredmény, hiba fázisa; Copy; eszközön mentett FPS | Átadva, kézi tesztre vár. S22 Ultra/Chrome: 4K60 VP9 10-bit hiba elkülöníthető; meglévő kapuk változatlanok |
+| WH-06c2 | 10 bites engedélyezés és ellenőrzés / export | A kódoló támogatásától külön mért visszadekódolás; indokolatlan tiltás javítása; ellenőrzött 10 bites kimenet | WH-06c1 valódi mobilos diagnosztikája alapján; unsupported kódolóra nincs sikerígéret |
+| WH-06d | 8 bites minőségfeljavítás | Kivéve az aktív tervből a felhasználó 2026-11-08-i döntésére | 8 bit csak meglévő kompatibilitási tartalék; erre nem végzünk új minőségoptimalizálást |
+| WH-06e | Mobilos 10 bites tartalékút / export, build, research | Képesség szerinti útválasztás; szükség esetén szoftveres/WASM-kódoló megvalósíthatósági és teljes-job mérés | Új encoder/dependency vagy jelentős CPU/időigény előtt konkrét mérés és felhasználói döntési kapu; sem felbontást, sem bitmélységet nem csökkentünk észrevétlenül |
+| WH-07 | Takarékos/Turbó profil és közös menü, storage, Copy, diagnosztika / export policy, config, UI | Mindkét profil a közös optimalizált renderútból indul; mért többlet-átlapolás; jelzett aktív/fallback mód; verziózott migráció | Mentés, reload, Copy, profilváltás és elutasított képességpróba; WH-06c/e minőségi kapuk |
 | WH-08 | Hosszú, platformközi minősítés, defaultváltás és duplikált útvonalak visszabontása / integráció, build, docs | Teljes dal, termikus tartósság, mobil, XR regresszió, minőségi és gyorsulási kapuk, igazolt rollback | Végső kézi elfogadás; WH-07. Működő kompatibilis út és védett elődtesztek megmaradnak |
 
 WH-04–06 összetett taskok: ha egy munkamenethez túl nagyok, szerződés + adapter,
@@ -263,6 +267,24 @@ Nem indítunk egyszerre több szerződés-/állapottulajdonost. A GPU-próbát W
 a nagyobb frame/timing refaktor előtt végezzük, hogy a tényleges gyorsítási és
 képminőségi lehetőséget korán ellenőrizzük. A két WH-03 rész külön átadást kap.
 A profilok taskja nem késlelteti az első lejátszási összehasonlítást.
+
+### Felhasználói teszt és prioritás (2026-11-08)
+
+Desktopon a 10-bit VP9/AAC MP4 képi minősége elfogadott és a korábbinál gyorsabb;
+a H.264 és normál WebM gyorsabb, de a minőségük nem elfogadott referenciának.
+Samsung S22 Ultra + Chrome esetén a felhasználó a két 10 bites módot 4K/60 fps
+beállítással próbálta, sikertelenül. Pontos runtime hiba/böngészőverzió még nincs;
+ebből kisebb felbontás/FPS vagy minden 10-bit konfiguráció tiltása nem következik.
+A WH-06c1 előtt a Copy csak kért beállításokat/cache-t tartalmazott; az új
+diagnosztika külön kódoló-/dekóder-/próbaeredményt és hibaüzenetet is ad.
+
+A minőség, gyorsaság, skálázhatóság és erőforrás-hatékonyság fontosabb a
+fájlméretnél. A jó desktopos 10 bites eredmény a referencia. A WH-06d elmarad;
+a meglévő 8 bites funkciót a minősített mobilos 10 bites útig nem bontjuk vissza.
+Sorrend: WH-06c1, WH-06c2, WH-06e döntés/minősített út, WH-07, WH-08,
+T21b elhelyezés/előnézet, T21c exportált feliratparitás, T22-T24 Studio/auth/hosting.
+T15 és további Wall-fejlesztés halasztva, T25 minden kiadás kapuja.
+Minden task végén teszt, dokumentáció, commit/push/deploy és kézi megálló.
 
 ## 8. Felhasználói policy és erőforrások
 

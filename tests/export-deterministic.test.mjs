@@ -133,6 +133,11 @@ class ExportCapabilityDetector {
     State,
     FakeWorker,
     ExportWorker: FakeWorker,
+    // WH-06c1: load the real new observation leaf; retain every rendering assertion.
+    require: id => {
+      if (id === './ExportDiagnostics') return createLoader()('export/ExportDiagnostics.ts');
+      throw Error('Unexpected export fixture dependency: ' + id);
+    },
     Blob,
     VideoFrame: FakeVideoFrame,
     createImageBitmap: async (canvas) => {

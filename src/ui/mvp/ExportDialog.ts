@@ -1,3 +1,4 @@
+import { ExportDiagnosticJournal, EXPORT_FPS_KEY, normalizeExportFps, readExportDiagnostic, describeExportDiagnostic } from '../../export/ExportDiagnostics';
 import type { ExportCapabilities, ExportConfig, ExportResolution } from '../../export/ExportTypes';
 
 const exportFormatKey = 'plexus.mvp.exportFormat';
@@ -24,6 +25,8 @@ export class ExportDialog {
     private readonly capabilityWarningEl: HTMLElement;
     private readonly resolutionBtns: HTMLButtonElement[];
     private readonly formatSelect: HTMLSelectElement;
+    private readonly fpsSelect: HTMLSelectElement;
+    private readonly diagnostics = new ExportDiagnosticJournal();
     private readonly callbacks: ExportDialogCallbacks;
     private isActive = false;
     private controlPending = false;
@@ -58,6 +61,13 @@ export class ExportDialog {
                         <option value="mp4vp9">MP4 (10-bit VP9 + AAC)</option>
                     </select>
                 </label>
+                <label class="mvp-field">
+                    <span class="mvp-field-row">Frame rate</span>
+                    <select class="mvp-export-fps" aria-label="Export frame rate">
+                        <option value="30">30 fps</option><option value="60" selected>60 fps</option>
+                    </select>
+                    <small>30 fps can work when the selected codec cannot export this resolution at 60 fps. Resolution and bit depth stay as selected.</small>
+                </label>
                 <small class="mvp-export-mp4-note mvp-hidden">MP4 uses temporary browser storage. <a href="../export/ffmpeg-5.1.10/" target="_blank" rel="noopener">FFmpeg and source code</a></small>
                 <small class="mvp-export-vp9-note mvp-hidden">10-bit MP4 preserves brief detail with independent frames; files can be larger. Requires a player or editor that supports VP9 in MP4.</small>
                 <div class="mvp-capability-warning mvp-hidden"></div>
@@ -67,6 +77,7 @@ export class ExportDialog {
                     <output aria-label="Export progress" aria-live="off">0%</output>
                 </div>
                 <div class="mvp-modal-status" role="status"></div>
+                <small class="mvp-export-codec-diagnostic" aria-live="polite" hidden></small>
                 <div class="mvp-field mvp-export-cache">
                     <button type="button" class="mvp-btn mvp-export-clear-cache">Clear this tab's finished exports</button>
                     <small class="mvp-export-cache-status"></small>
@@ -95,6 +106,14 @@ export class ExportDialog {
         this.capabilityWarningEl = this.root.querySelector('.mvp-capability-warning')!;
         this.resolutionBtns = Array.from(this.root.querySelectorAll('.mvp-export-resolution button'));
         this.formatSelect = this.root.querySelector('.mvp-export-format')!;
+        this.fpsSelect = this.root.querySelector('.mvp-export-fps')!;
+        this.fpsSelect.value = '60';
+        try { this.fpsSelect.value = String(normalizeExportFps(localStorage.getItem(EXPORT_FPS_KEY))); } catch { /* Device preference is optional. */ }
+        this.fpsSelect.addEventListener('change', () => {
+            if (this.isActive) return;
+            this.fpsSelect.value = String(normalizeExportFps(this.fpsSelect.value));
+            try { localStorage.setItem(EXPORT_FPS_KEY,this.fpsSelect.value); } catch { /* Storage may be disabled. */ }
+        });
         try {
             const saved = localStorage.getItem(exportFormatKey);
             if (saved === 'webm' || saved === 'webm10' || saved === 'mp4vp9') this.formatSelect.value = saved;
@@ -116,6 +135,7 @@ export class ExportDialog {
         this.root.querySelector('.mvp-export-copy')!.addEventListener('click', () => {
             if (!navigator.clipboard?.writeText) { this.setStatus('Clipboard unavailable.'); return; }
             void navigator.clipboard.writeText(JSON.stringify({ export: this.getConfig(),
+                diagnostics: { ...this.diagnostics.snapshot(), userAgent: typeof navigator === 'undefined' ? 'unavailable' : navigator.userAgent?.slice(0,512) ?? 'unavailable' },
                 ...(this.callbacks.getCacheSummary ? { cache: this.callbacks.getCacheSummary() } : {}) }, null, 2))
                 .catch(() => this.setStatus('Unable to copy export settings.'));
         });
@@ -164,7 +184,7 @@ export class ExportDialog {
     private getConfig(): ExportConfig {
         const active = this.root.querySelector('.mvp-export-resolution button.is-active') as HTMLElement | null;
         const resolution = (active?.dataset.res ?? '720p') as ExportResolution;
-        return { resolution, aspectRatio: '16:9', fps: 60, watermark: false,
+        return { resolution, aspectRatio: '16:9', fps: normalizeExportFps(this.fpsSelect.value), watermark: false,
             ...(this.formatSelect.value === 'mp4' ? { format: 'mp4' }
                 : this.formatSelect.value === 'mp4vp9' ? { format: 'mp4', mp4VideoCodec: 'vp9-10bit' }
                 : this.formatSelect.value === 'webm10' ? { webmBitDepth: 10 } : {}) };
@@ -236,6 +256,7 @@ export class ExportDialog {
     setActive(isActive: boolean): void {
         const focused = document.activeElement;
         this.isActive = isActive;
+        if (isActive) { this.diagnostics.begin(this.getConfig()); this.root.querySelector<HTMLElement>('.mvp-export-codec-diagnostic')!.hidden=true; }
         this.refreshCache();
         this.controlPending = false;
         this.stopBtn.disabled = !isActive;
@@ -251,6 +272,7 @@ export class ExportDialog {
             if (btn.dataset.capabilityDisabled !== 'true') btn.disabled = isActive;
         });
         this.formatSelect.disabled = isActive;
+        this.fpsSelect.disabled = isActive;
         this.progressBar.style.width = '0%';
         this.progressValue.textContent = '0%';
         if (focused === this.startBtn && isActive) this.minimizeBtn.focus();
@@ -268,6 +290,9 @@ export class ExportDialog {
             this.setStatus(mp4 && progress >= .9 ? 'Finishing MP4 and encoding audio…' : 'Exporting video…');
         }
     }
+
+    recordDiagnostic(value: unknown): void { const report=readExportDiagnostic(value); if(!report)return; this.diagnostics.record(report); const view=this.root.querySelector<HTMLElement>('.mvp-export-codec-diagnostic')!; view.textContent=describeExportDiagnostic(report);view.hidden=false; }
+    recordFailure(error: unknown): void { this.diagnostics.fail(error); }
 
     setStatus(message: string): void {
         if (this.statusEl.textContent !== message) this.statusEl.textContent = message;

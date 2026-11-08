@@ -1,5 +1,12 @@
 # ADR-012: Immutable export job and isolated render runtime
 
+WH-06c1 (2026-11-08) adds an observational export diagnostic response and a
+UI-owned 30/60 fps preference. The existing coordinator, exact-source frame
+barrier, codec acceptance, queue bounds and OPFS lifetimes remain authoritative.
+It introduces no second job state machine, new WASM codec or silent fallback.
+See [diagnostic ownership and acceptance](../audits/wormhole-wh06c1-export-diagnostics.md).
+
+
 ## Status
 
 WH-06b (2026-11-08) integrates the internal exact source through

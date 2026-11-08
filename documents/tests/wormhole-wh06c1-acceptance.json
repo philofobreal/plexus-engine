@@ -1,0 +1,206 @@
+{
+  "task": "WH-06c1",
+  "predecessor": "a76317aed3f123245ac11961c601853b1e0060c6",
+  "runtime": "v25.2.1",
+  "full": {
+    "tests": 2231,
+    "pass": 2222,
+    "fail": 9,
+    "cancelled": 0,
+    "skipped": 0,
+    "duration_ms": 521563.4197
+  },
+  "targeted": {
+    "tests": 73,
+    "pass": 73,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "duration_ms": 4347.8615
+  },
+  "failures": [
+    {
+      "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+      "message": "vos-wh-drift.json must not reset user-global wormholeStarfield"
+    },
+    {
+      "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+      "message": "establish remains visibly above the opacity floor"
+    },
+    {
+      "name": "weak roles pin a deep-perspective depth and continuity profile",
+      "message": "establish depth\n\n2.03136 !== 4"
+    },
+    {
+      "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+      "message": "deep drift deeper than establish"
+    },
+    {
+      "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+      "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+    },
+    {
+      "name": "wormhole factory presets keep a minimum normalized weighted separation",
+      "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+    },
+    {
+      "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+      "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))"
+    },
+    {
+      "name": "projected forward motion preserves overdrive > punch > drive > drift",
+      "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+    },
+    {
+      "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+      "message": "389.64890777178124 vs 471.543038051684"
+    }
+  ],
+  "retention": {
+    "predecessorFiles": 20,
+    "activeNodeFiles": 228,
+    "allEarlierCasesRetained": true,
+    "initialRun": "logs/wh06c1/initial-full-result.json"
+  },
+  "browser": {
+    "hostDir": "C:\\Users\\budap\\.codex\\worktrees\\e977\\novy\\Plexus Engine (VJ System)\\plexus-engine\\logs\\wh01\\run-0a0fc801-b647-4e2f-b1a7-2ef02aaf9946",
+    "hostChecks": 37,
+    "exactChecks": 21,
+    "uiChecks": 8,
+    "exportCases": 18,
+    "encodedFiles": 17,
+    "independentDecodedFrames": 382,
+    "tenBitFiles": 6,
+    "diagnosticMessages": 32,
+    "finalLayoutOnlyDifferences": [
+      "src/main.ts",
+      "src/ui/mvp/mvp.css"
+    ],
+    "artifacts": [
+      {
+        "name": "export-000.webm",
+        "sha256": "5dc52e1798ce54f9c1b689efed33627ccf74c957479eea69c506b2472f0192f4",
+        "pixelFormat": "yuv420p",
+        "frames": 8
+      },
+      {
+        "name": "export-001.mp4",
+        "sha256": "225b7bb5afea6faf917b95a5c4046e31269621d4993dfa22c756f36bd682b111",
+        "pixelFormat": "yuv420p",
+        "frames": 8
+      },
+      {
+        "name": "export-002.webm",
+        "sha256": "b233c2e4d21c77ec67c678f8fff5f0dc42c8283f215d09064236301aafce1501",
+        "pixelFormat": "yuv420p10le",
+        "frames": 8
+      },
+      {
+        "name": "export-003.mp4",
+        "sha256": "e253a8154a2f9bb5aae975bc1179c7e5d81db881b4957b1fd4bfb6db3fe94537",
+        "pixelFormat": "yuv420p10le",
+        "frames": 8
+      },
+      {
+        "name": "export-004.webm",
+        "sha256": "4741577e49db7bceb360d107fe12931f7166ead45a9084684ad98056d84330a0",
+        "pixelFormat": "yuv420p",
+        "frames": 8
+      },
+      {
+        "name": "export-005.mp4",
+        "sha256": "f265e94e2a7b41758501dc2e1a87e7710d7580f56350536c6420cb8cbee48624",
+        "pixelFormat": "yuv420p",
+        "frames": 8
+      },
+      {
+        "name": "export-006.webm",
+        "sha256": "ade371f1e57c04d66dc376f2c1a87482b1b2f52f7fcc869d30fa536a1a992695",
+        "pixelFormat": "yuv420p10le",
+        "frames": 36
+      },
+      {
+        "name": "export-007.mp4",
+        "sha256": "624317b567a721e8ed79a155dff58d77141a0511edbcef285808b0e8d5fe6b24",
+        "pixelFormat": "yuv420p",
+        "frames": 36
+      },
+      {
+        "name": "export-008.webm",
+        "sha256": "8e5e42c8276c3dfa3bebad6fba6638d70ab01a06fb1b1e28431d553f3dde23fa",
+        "pixelFormat": "yuv420p10le",
+        "frames": 8
+      },
+      {
+        "name": "export-009.mp4",
+        "sha256": "066a9ac5b92769c654b34f9698988a09c54486b3e60615672930e87ca0611bc0",
+        "pixelFormat": "yuv420p10le",
+        "frames": 8
+      },
+      {
+        "name": "export-010.webm",
+        "sha256": "1c7ce88349536a0b46b9ba6f60a9c785e4b738c66844bdc11a87a381199799fe",
+        "pixelFormat": "yuv420p",
+        "frames": 48
+      },
+      {
+        "name": "export-011.mp4",
+        "sha256": "9d26c1d11c3c395095f9cfb95e2a167d670188613b5aabbac2d6efa705639172",
+        "pixelFormat": "yuv420p",
+        "frames": 48
+      },
+      {
+        "name": "export-012.webm",
+        "sha256": "5a5fec10440364edf666b1d775881df92b344fd95e30069cd3f70d059b663155",
+        "pixelFormat": "yuv420p",
+        "frames": 48
+      },
+      {
+        "name": "export-013.mp4",
+        "sha256": "279c710e5c7fb51952f9e23420965a9b4223c0fc6f3e77cb071d5f9efb11060d",
+        "pixelFormat": "yuv420p",
+        "frames": 48
+      },
+      {
+        "name": "export-014.mp4",
+        "sha256": "a63500d72e73265c39ee5a5c7c5edfd59103283d1711c51892339ac86792a1eb",
+        "pixelFormat": "yuv420p10le",
+        "frames": 48
+      },
+      {
+        "name": "export-015.webm",
+        "sha256": "10bfabd083c9a6e81d517b3d02ff2e91ea38377af7d35b488f2087e9ab0d20f8",
+        "pixelFormat": "yuv420p",
+        "frames": 2
+      },
+      {
+        "name": "export-016.webm",
+        "sha256": "88a5b16a5e70e725e20c0fcf403c4a3111556e70fa91fc72683e47f11742a7b1",
+        "pixelFormat": "yuv420p",
+        "frames": 4
+      }
+    ]
+  },
+  "commands": {
+    "build": "npm run build",
+    "targeted": "node --test --test-reporter=tap tests/export-diagnostics.test.mjs tests/export-preparation.test.mjs tests/export-lifecycle.test.mjs tests/export-deterministic.test.mjs tests/mvp-mp4-export.test.mjs tests/mvp-export-panel.test.mjs tests/mvp-background-export.test.mjs tests/ui-interaction.test.mjs",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=4",
+    "browser": "node research/export/wormhole-baseline.mjs capture --exact-host --export-host --diagnostics-host [--public-release=ID]",
+    "verify": "node research/export/wormhole-baseline.mjs verify",
+    "release": "node scripts/release-pages.mjs prepare wh06c1-export-diagnostics; node scripts/release-pages.mjs publish; node scripts/release-pages.mjs verify"
+  },
+  "limits": [
+    "No physical Samsung/whole-song/thermal or speed-multiplier claim",
+    "10-bit decoder gate and actual encode/decode acceptance unchanged; no silent 8-bit downgrade",
+    "Existing 8-bit compatibility retained; WH-06d quality work withdrawn",
+    "Final release/public receipts stored in logs/wh06c1 and the session checkpoint"
+  ],
+  "hashes": {
+    "full": "47fa4d5c5614acd7fc4f66298262e95ef7883dbceb32f20beaa864f5b83e3df8",
+    "targeted": "234cdbe43ce6825ba316cd1ae8c098fb56562dbb414fccb89982e55f1e2af9a8",
+    "browserBuild": "e4af95bcf2c56c1c0541f44cbf100eafce278493008429a75914ac628a37a4ec",
+    "browserDiagnostics": "a75ebdf610b86c749e3684722571094c867a61b769199005648e8c19790a0687",
+    "browserArtifacts": "02d5d34fdddce381d62d802500a15bf0639d8e22982d69bc067e39b62836de9a",
+    "productionBuild": "206f3e0470eaa26462cd758252af2ef1566e57fe28e61f23b147ba574b508591"
+  }
+}

@@ -1,5 +1,33 @@
 # Staged export lifecycle
 
+## WH-06c1: explicit FPS and local codec diagnostics (2026-11-08)
+
+Dashboard and MVP expose an export-only 30/60 fps preference, default 60,
+saved as `plexus.export.fps`; visual presets never own it. MVP retains its
+explicit format preference, default MP4 and mobile 4K. A user changes FPS
+explicitly; no automatic resolution, bit-depth or frame-rate downgrade occurs.
+
+`ExportDiagnostics.ts` defines a bounded, flat, allowlisted observation. Both
+video support queries are recorded before rejecting a 10-bit request. The
+existing decoder gate and actual encode/decode trial remain. The MP4 container
+probe additionally reports its encoded packet and emitted codec string. These
+are capability observations, not GPU/CPU assignment or whole-song qualification.
+
+Each view owns the last attempt: requested settings, at most twelve reports and
+one final error. Copy includes current controls separately from last-attempt
+settings and the browser user-agent string (to identify Chrome version). No
+audio, analysis, track path, decoder description bytes, automatic telemetry or
+persistent diagnostic history is added. FPS alone is persisted. Live status
+summarizes the last codec check; ordinary export errors remain visible.
+
+The 8-bit quality-improvement task WH-06d is withdrawn by user direction.
+Accepted desktop 10-bit quality is the reference; speed, resource efficiency and
+quality take priority over file size. Existing 8-bit compatibility paths remain
+pending mobile 10-bit qualification. Next is WH-06c2, not WH-07. See the
+[updated epic](../audits/cross-host-wormhole-rendering-epic.md) and
+[task evidence](../audits/wormhole-wh06c1-export-diagnostics.md).
+
+
 WH-06b (2026-11-08) delivers the [product exact-source integration](../audits/wormhole-wh06b-export-integration.md).
 Both hosts' existing Offscreen worker choice also selects the job-bound render
 source during export. The encoder waits for the full identity/crossfade/PostFX

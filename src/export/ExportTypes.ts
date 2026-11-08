@@ -1,3 +1,4 @@
+import type { ExportCodecDiagnostic } from './ExportDiagnostics';
 import type { ExportPreparationReport } from '../types/ExportRenderJob';
 export type { ExportPreparationReport } from '../types/ExportRenderJob';
 export type ExportResolution = '720p' | '1080p' | '4K';
@@ -133,6 +134,7 @@ export type FrameEncodedMessage = FrameEncodedResponse;
 export type ExportTelemetryMessage = TelemetryResponse;
 
 export type ExportWorkerResponse =
+    | { type: 'export_diagnostic'; report: ExportCodecDiagnostic }
     | { type: 'export_prepared'; report: ExportPreparationReport }
     | { type: 'export_ready' }
     | DoneResponse

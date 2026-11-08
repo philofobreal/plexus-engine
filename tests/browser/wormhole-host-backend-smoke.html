@@ -541,12 +541,13 @@ window.runWh06Export=()=>exportRun??=(async()=>{
   rawReference=spec.compare?new WormholeHostRenderSession({frames:State.frames,events:State.events,trackAnalysis:State.trackAnalysis,
    sampleRate:State.sampleRate,hopSize:State.hopSize,bpm:State.bpm},false):null;
   const backend=new WebCodecsBackend(hostP,hostP.canvas,audio,'WH06',null,'display',Mp4Worker);
+  const diagnostics=[];
   const started=performance.now();let issued=false;
   try{
    const blob=await backend.start({resolution:spec.resolution,aspectRatio:spec.aspect,fps:spec.fps,format:spec.format,
     preflight:true,watermark:false,...(spec.precision?spec.format==='webm'?{webmBitDepth:10}:{mp4VideoCodec:'vp9-10bit'}:{})},p=>{
      if(command&&!issued&&p>0){issued=true;command==='stop'?backend.stopAndSave():backend.cancelExport();}
-    });
+    },undefined,undefined,report=>diagnostics.push(report));
    const elapsedMs=performance.now()-started;
    const count=command==='stop'?Math.round(State.currentTime*spec.fps)+1:spec.frames;
    // Stop callback runs only after submission; the accepted prefix ends at currentTime.
@@ -559,7 +560,10 @@ window.runWh06Export=()=>exportRun??=(async()=>{
    if(spec.transitions)check(pairCount===24,'Both transitions must finish 12 paired frames each: '+pairCount);
    if(spec.post)check(appliedPost>0,'PostFX fixture must perform actual effect writes, not only a bypass');
    const row={...spec,name,pairCount,appliedPost,command:command??'full',bytes:blob.size,elapsedMs,raster,completed,...decoded,
-    quality:currentSpec.quality};rows.push(row);return row;
+    quality:currentSpec.quality,diagnostics};
+   check(diagnostics.some(d=>d.stage==='complete'&&d.width===decoded.width&&d.height===decoded.height&&d.fps===spec.fps),'Missing worker codec diagnostic');
+   if(spec.precision)check(diagnostics.some(d=>d.bitDepth===10&&d.encoder==='supported'&&d.decoder==='supported'&&d.decodedFrames===3),'Missing strict 10-bit encode/decode diagnostic');
+   rows.push(row);return row;
   }catch(error){
    if(command!=='cancel'||!String(error).includes('cancelled'))throw error;
    check(!hostP.__plexusExportTarget&&!State.isExporting,'Cancel leaked target');rows.push({command:'cancel',pass:true});
@@ -587,5 +591,35 @@ window.runWh06Export=()=>exportRun??=(async()=>{
   window.createImageBitmap=originalBitmap;scratch.width=scratch.height=referenceCanvas.width=referenceCanvas.height=1;}
 })();
 document.querySelector('#export-test').onclick=()=>window.runWh06Export().catch(console.error);
+// WH-06c1: real DOM/storage/copy contract, independent from device codec support.
+window.runWh06c1=async()=>{
+ const {ExportDialog}=await import('../../src/ui/mvp/ExportDialog.ts');
+ const {EXPORT_FPS_KEY}=await import('../../src/export/ExportDiagnostics.ts');
+ const key='plexus.mvp.exportFormat',saved=[localStorage.getItem(EXPORT_FPS_KEY),localStorage.getItem(key)],
+  descriptor=Object.getOwnPropertyDescriptor(navigator,'clipboard');
+ const copies=[],starts=[],check=(v,m)=>{if(!v)throw Error(m);};let dialog,reopened;
+ try{
+  Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>copies.push(JSON.parse(value))}});
+  localStorage.setItem(EXPORT_FPS_KEY,'60');localStorage.setItem(key,'mp4vp9');
+  dialog=new ExportDialog({onStart:c=>starts.push(c),onStop(){},onCancel(){}});document.body.append(dialog.root);dialog.restoreResolution('4K');dialog.open();
+  const fps=dialog.root.querySelector('.mvp-export-fps'),copy=()=>dialog.root.querySelector('.mvp-export-copy').click();
+  dialog.root.querySelector('.mvp-export-start').click();check(starts[0].fps===60&&starts[0].mp4VideoCodec==='vp9-10bit'&&starts[0].resolution==='4K','Selected settings lost');
+  dialog.setActive(true);check(fps.disabled,'Active FPS not locked');
+  dialog.recordDiagnostic({version:1,codec:'vp09.02.51.10',width:3840,height:2160,fps:60,bitrate:64000000,bitDepth:10,stage:'encoder-query',encoder:'unsupported',decoder:'supported',encodedFrames:0,decodedFrames:0,errorName:'NotSupportedError',message:'QA simulated unsupported configuration'});
+  dialog.recordFailure(new DOMException('QA simulated unsupported configuration','NotSupportedError'));dialog.setActive(false);
+  fps.value='30';fps.dispatchEvent(new Event('change'));copy();await Promise.resolve();
+  check(copies[0].export.fps===30&&copies[0].diagnostics.requested.fps===60,'Current and last settings mixed');
+  check(copies[0].diagnostics.events[0].encoder==='unsupported'&&copies[0].diagnostics.failure.name==='NotSupportedError','Failure lost');
+  check(copies[0].diagnostics.userAgent===navigator.userAgent,'Browser version missing');
+  reopened=new ExportDialog({onStart(){},onStop(){},onCancel(){}});check(reopened.root.querySelector('.mvp-export-fps').value==='30','FPS preference lost');
+  const summary=dialog.root.querySelector('.mvp-export-codec-diagnostic');check(!summary.hidden&&summary.textContent.includes('Encoder: unsupported'),'Visible diagnostic missing');
+  return {pass:true,checks:8,scope:'Real DOM/localStorage/clipboard boundary with an explicitly simulated codec refusal; real codecs are verified by runWh06Export.',copied:copies[0]};
+ }finally{
+  dialog?.root.remove();reopened?.root.remove();
+  for(const [i,k]of [EXPORT_FPS_KEY,key].entries())saved[i]===null?localStorage.removeItem(k):localStorage.setItem(k,saved[i]);
+  descriptor?Object.defineProperty(navigator,'clipboard',descriptor):delete navigator.clipboard;
+ }
+};
+
 window.addEventListener('pagehide',()=>{pass?.dispose();hostP?.remove();fixtureP?.remove();contexts.forEach(c=>c.dispose());exactUrls.forEach(url=>URL.revokeObjectURL(url));},{once:true});
 </script></html>
