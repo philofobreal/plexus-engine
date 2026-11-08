@@ -36,7 +36,10 @@ renderer or worker protocol. The worker keeps the metadata job-local. H.264,
 all-key MP4 protection, bitrate/precision/clock, original PCM-to-AAC and OPFS
 streaming remain unchanged. No extra raw-frame queue, new preference or new
 WASM codec is introduced. MP4 Turbo stays a stated Economy fallback pending
-WH-07b4's independent whole-job speed and quality gates. See the audit for the
+a separately qualified candidate: WH-07b4's packet adapter missed the speed gate
+and the inter-frame profile still loses a short changed region. WH-07b3 is now
+manually accepted at 4K60/10-bit MP4; WH-07b5 isolates predictive-profile detail
+loss. Production has no new packet adapter or codec selection. See the audit for the
 reference, actual browser/WASM validation and manual gate.
 
 ## WH-06c1: explicit FPS and local codec diagnostics (2026-11-08)
@@ -62,7 +65,8 @@ summarizes the last codec check; ordinary export errors remain visible.
 The 8-bit quality-improvement task WH-06d is withdrawn by user direction.
 Accepted desktop 10-bit quality is the reference; speed, resource efficiency and
 quality take priority over file size. Existing 8-bit compatibility paths remain
-pending mobile 10-bit qualification. Next is WH-06c2, not WH-07. See the
+pending mobile 10-bit qualification. This was the WH-06c1 handoff order; the
+user subsequently prioritized WH-07 before WH-06c2/e (see current status above). See the
 [updated epic](../audits/cross-host-wormhole-rendering-epic.md) and
 [task evidence](../audits/wormhole-wh06c1-export-diagnostics.md).
 

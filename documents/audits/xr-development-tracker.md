@@ -2,9 +2,27 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-07b3 MP4 VP9 color-metadata fix implemented and locally verified; runtime manual gate open. WH-07a WebM Turbo is manually accepted. The user's mobile 10-bit deferral remains: Samsung 4K30 rejects the native encoder, and WH-06c2/WH-06e are not fixed. MP4 Turbo remains an explicit Economy fallback until its separate quality/resource/speed gates pass. After this runtime handoff stop for manual testing; next WH-07b4 measures a shared native VP9 / MP4 packet-sink candidate. WH-06d is withdrawn. MP4 default, accepted 10-bit quality, mobile 4K and deferred Wall/T15 remain.**
+**Current priority: WH-07b3 manually accepted at 4K60/10-bit MP4 (faster perceived export, good image). WH-07b4 packet candidate measured and rejected (5.07% at720p, -4.36% at4K; <15% gate). Next WH-07b5 short-detail loss isolation. WH-07a WebM Turbo is manually accepted. The user's mobile 10-bit deferral remains: Samsung 4K30 rejects the native encoder, and WH-06c2/WH-06e are not fixed. MP4 Turbo remains an explicit Economy fallback until its separate quality/resource/speed gates pass. The next completed task stops for handoff; WH-07b4 completed a bounded packet-sink comparison; no production replacement. WH-06d is withdrawn. MP4 default, accepted 10-bit quality, mobile 4K and deferred Wall/T15 remain.**
 
-### WH-07b3: VP9 metadata compatibility fix; manual runtime gate open
+### WH-07b4 research complete: retain accepted Economy
+
+The native packet-hook adapter completes twelve real same-GOP MP4 files, with
+all six control/candidate decoded video hashes identical. Median whole-job time
+improves only 5.07% at720p and regresses4.36% at4K; neither meets15%. Three separate
+inter-frame trials (existing, no-duration and native adapter) lose the same brief
+changed region in a2160-square/30fps case; independent FFmpeg confirms the browser
+failure with correct pre-transfer bitmap IDs. No candidate is promoted, no
+production `src/` changes. The user's accepted WH-07b3 runtime remains.
+
+The audit records CPU/GPU/native-codec/WASM/OPFS responsibilities and why copied
+preflight counts/GPU percentages cannot identify CPU shares. Next **WH-07b5**
+first isolates short-detail loss at the worker/native input and container boundary
+using a tiny source, before another full-job speed qualification. MP4 Turbo and
+WH-07 remain partial; mobile10-bit stays deferred. Final tests/public identity
+are recorded in the [WH-07b4 receipt](../tests/wormhole-wh07b4-research.json)
+and checkpoint. Stop at this handoff.
+
+### WH-07b3: VP9 metadata fix manually accepted
 
 All 36 demuxed packet hashes agree between the accepted WebM and stream-copied
 MP4. The failing MP4 declares unspecified color primaries/transfer where WebM
@@ -23,8 +41,8 @@ support is unchanged. Build, 119/119 targeted tests, 36 actual output files/770 
 2253 cumulative tests (2244 pass, exactly the old nine failures, no skip/cancel)
 are verified. All 231 old active Node files remain, now 232. The
 [receipt](../tests/wormhole-wh07b3-acceptance.json) binds commands/evidence; final
-public identities are in the session checkpoint. Stop for manual MP410-bit
-movement/gradient/seek/audio acceptance. Earlier negative experiments remain.
+public identities are in the session checkpoint. The user accepted MP410-bit
+movement and image quality at4K60 and authorized WH-07b4. Earlier negative experiments remain.
 
 ### WH-07b2 diagnostic handoff complete: codec/interop gate remains open
 

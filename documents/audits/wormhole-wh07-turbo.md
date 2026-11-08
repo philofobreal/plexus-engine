@@ -634,3 +634,151 @@ is unchanged. Stop for this manual runtime gate before **WH-07b4**: measure a
 shared native VP9 encoder/MP4 packet-sink candidate against the existing Economy
 control with unchanged quality and the retained whole-job >=15% speed gate.
 Then deferred mobile WH-06c2/e, WH-08, T21b/c, T22–T24. WH-07 remains partial.
+
+
+## WH-07b4: native VP9 packet-path qualification (2026-11-08)
+
+### Manual acceptance and hardware interpretation
+
+The user accepted WH-07b3 with Windows Chrome 156, 4K60, 16:9, watermark Off,
+VP9 10-bit MP4, requested Turbo: faster perceived export and good image quality,
+with lower observed GPU usage. This is valuable manual acceptance, not a timed
+paired speed measurement or CPU/GPU attribution. The supplied journal has
+`performance: null`, a three-picture encode/decode preflight and a one-picture
+MP4 packet probe. Those counts are not the exported movie's frame count.
+Requested MP4 Turbo still resolves to the qualified Economy path. The metadata
+fix did not move rendering or encoding work from GPU to CPU.
+
+The responsibility table earlier in this audit remains authoritative. JS host
+orchestration and worker geometry execute on CPU; WebGL2 material shaders on GPU;
+Canvas composition/copy acceleration is browser-specific. The native WebCodecs
+VP9 implementation may use CPU or a media engine; neither the copied journal nor
+GPU percentages reveal its assignment. FFmpeg WASM runs CPU-side AAC encoding
+and MP4 mux/video-copy, not a second video compression pass. OPFS remains
+progressive disk output with bounded frame/PCM admission. Workers move CPU work
+off the UI thread; WASM does not inherently imply GPU use or multithreading.
+The shipped FFmpeg5.1.10 Docker recipe explicitly disables pthreads/w32threads/
+os2threads. Its WASM linear memory starts at32MiB and can grow to256MiB; these
+are core-memory limits, not total browser/process/GPU memory measurements. AAC
+and mux therefore use the current CPU-side single-thread core in one worker;
+the browser's native codec can independently schedule its own threads/media
+resources. Progressive OPFS avoids retaining the entire finished movie in that
+WASM heap or a whole-video JavaScript buffer. The renderer/codec still own
+additional resources outside the WASM heap. Source:
+`public/export/ffmpeg-5.1.10/ffmpeg-mp4-core.Dockerfile`.
+
+The Video Decode graph does not identify the export encoder. Video Encode,
+3D/Compute, process CPU and elapsed job time should be observed together, with
+no universal percentage inferred. Lower GPU utilization may reflect less work,
+more waiting or scheduling differences. See the linked W3C hardware contract.
+
+### Controlled research and unchanged product ownership
+
+Before introducing a new backend, reuse the existing retained inter-frame and
+no-duration probes against the accepted metadata fix. The initial inter-frame
+run retains correct inputs 1..8 but independently decodes 1,2,3,4,4,6,7,8 in a
+2160x2160/30 fps 10-bit MP4. Browser and native FFmpeg agree. This is an actual
+lost changed region, not merely seek rounding or a player-only issue. The
+negative run and original file remain under
+`logs/wh01/run-709b6f90-2bbf-48cd-b5d6-575f9e9f9e4d`; the independent byte/bar
+inspection is `independent-failed-frame.json`. Color metadata alone therefore
+cannot justify removing all-key protection for the entire matrix.
+
+The new `research/export/native-packet.worker.ts` uses MediaBunny 1.39.1's
+supported `CustomVideoEncoder` registration and encoded-packet hook. It is a
+laboratory-only adapter around the same native browser VP9 encoder. It submits
+`new VideoFrame(sample.toCanvasImageSource(), { timestamp: round(time*1e6) })`,
+matching WebM-style constructor options. The library may supply an existing
+VideoFrame whose duration is inherited; this adapter is not a zero-copy/raw-
+bitmap or verified duration-free path. The separate `--mp4-no-duration` probe
+constructs the initial sample without duration and still fails. Packet duration
+remains exactly 1/fps. Key-frame options, bitrate, profile,
+latency and native hardware selection are preserved; it adds no global codec
+replacement, second encoder, renderer, audio owner or production preference.
+
+It reuses the actual product MP4 worker for PCM-to-AAC, metadata preservation,
+OPFS admission/write/finalization and cleanup. Native queue admission retains
+four entries; the existing host retains two raw frame/PCM leases. Browser-owned
+codec internals remain opaque, not a measured RAM bound. Deadline/error/close
+paths remove dequeue listeners, close owned frames/codecs and ignore late
+callbacks. The library continues to own packet mux backpressure. The lab input
+is added to the existing release identity guard. Old exact browser body,
+default benchmark, tests and failed probes remain; no source golden is reset.
+
+Use the existing runner with `--export-host --native-packets` for candidate
+quality and `--turbo-host --mp4-only --native-packets` for three alternating
+full-job pairs at 720p60 and 4K60. Same-GOP comparisons retain all-key on both
+sides; inter-frame experiments are explicitly separate profile research and
+cannot claim unchanged-GOP Turbo promotion. No benchmark includes QA readback,
+artifact copying or independent decode time. Keep accepted production Economy
+until independent image/audio/lifecycle/resource and >=15% speed gates pass.
+Final outcomes, commands, hashes and remaining task are bound in the
+[WH-07b4 receipt](../tests/wormhole-wh07b4-research.json) and session checkpoint.
+
+
+### Result: retain Economy, no candidate promoted
+
+All three inter-frame trials fail the same square 4K30 frame-identity gate:
+
+| Trial | Run directory suffix | Result |
+| --- | --- | --- |
+| Existing MP4, one-second GOP | `709b6f90-2bbf-48cd-b5d6-575f9e9f9e4d` | Input1..8, decode1,2,3,4,4,6,7,8 |
+| Same, initial sample without duration | `e2810ce9-8ce0-48b5-9cfd-35563676d4b7` | Same browser failure |
+| Native packet adapter, one-second GOP | `e532865a-b06d-44d5-ac75-47c965102fdb` | Same browser failure |
+
+All are under `logs/wh01/run-<suffix>` with the original failed MP4, build flags
+and negative receipt. No claim that duration, library wrapping or color tags
+alone solve the remaining predictive-profile issue. Correct bitmap IDs are
+observed before transfer; locating the last correct pixel boundary inside the
+encoder worker remains a next-step requirement, not an attributed browser bug.
+
+The separate same-GOP **all-key** throughput run is
+`logs/wh01/run-96697767-f555-4631-8426-5fa55d121e81`. It completes 12 real MP4
+files with audio/OPFS/WASM finalization, three alternating pairs per resolution.
+All six control/candidate decoded full-frame stream hashes are identical.
+
+| Profile | Control median ms | Native packet median ms | Time reduction |
+| --- | ---: | ---: | ---: |
+| 720p60, 8 Mbit/s, 240 frames | 5094.4 | 4835.9 | 5.07% |
+| 4K60, 64 Mbit/s, 90 frames | 5945.0 | 6204.3 | -4.36% |
+
+Every ordered trial remains in `turbo-benchmark.json`; individual gains are
+3.02%,5.07%,0.79% at720p and3.94%,-4.36%,0.50% at4K. First4K trials take about
+12/11.6s versus later5.8–6.2s: retain that variability rather than pool or discard
+samples. These short whole-job observations cannot identify CPU/GPU shares or
+universal speed. `pass:true` in the raw benchmark means the harness completed,
+not that the >=15% promotion gate passed. It does not pass either target.
+
+Production `src/` is unchanged from the user's accepted WH-07b3 release. The new
+worker is imported only by the opt-in laboratory. A post-measurement explanatory
+comment clarifies inherited duration; measured source is retained as
+`logs/wh07b4/native-packet-measured-source.ts.txt`, with final bundle identity
+checked at release. No new renderer, codec, queue, UI or fallback is promoted.
+The hardware explanation is documented; this task adds no whole-song/manual
+quality claim or mobile10-bit fix.
+
+Next **WH-07b5** isolates short-detail loss with a tiny deterministic source:
+record actual worker-side input immediately before VideoEncoder, compare exact
+same pictures/VP9 payloads through WebM and MP4, inspect predictive frame/packet
+behavior, then qualify a quality-preserving profile before another full-job speed
+promotion attempt. Preserve original all-key control and the existing numeric,
+frame-ID, source/raw quality, audio and lifecycle gates. A supported native codec
+still owns its CPU/media-engine implementation; no forced GPU preference or
+software codec is justified by these results. MP4 Turbo/WH-07 remains partial;
+mobile10-bit is still later. Stop after this research handoff.
+
+
+Build and the new research worker's explicit TypeScript check passed. Targeted
+**123/123**; cumulative **2257 / 2248 pass / exactly the same nine baseline names
+AND full messages / zero skip or cancel**,489556.6925ms. All232 previous active
+Node files remain, now233; four additive native-packet lifetime/ownership cases.
+The original exact browser body and eight fixed baseline hashes remain. The
+first standalone TypeScript6 command required `--ignoreConfig`; its initial
+TS5112 log remains, and the corrected explicit file check passed. No runtime
+fallback, install, golden reset or Graphify rebuild. Node/npm with workspace TEMP
+was used; deploy uses the existing guarded Node publisher because the package
+script requires Bun. `diff_export.ps1` is unnecessary for this bounded lab/docs
+handoff; no PR requested. Final public input/artifact/hash checks and startup/UI
+QA are bound in `logs/wh07b4/final-*.json` and the checkpoint. Product runtime
+identity preserves the prior full encoded QA and newly received manual result;
+no redundant whole-video test is required for this unchanged-runtime handoff.
