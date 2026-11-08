@@ -1,1 +1,0 @@
-function e(e){if(!e.trackAnalysis?.musicActivity&&!e.trackAnalysis?.rhythmOnsets)return e;let{musicActivity:t,rhythmOnsets:n,...r}=e.trackAnalysis;return{...e,trackAnalysis:r}}function t(e,t){return Number.isFinite(e)&&Number.isFinite(t)&&e>=0&&e<=1&&Math.abs(e-t)<=.1}export{e as n,t};
