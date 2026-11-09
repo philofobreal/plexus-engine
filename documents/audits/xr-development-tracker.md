@@ -2,7 +2,22 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-07b7 native quality-control pilot passed for quantizer0 (12/12 files,351 pictures improve source fidelity; all-key replay scores exactly match accepted product). Higher sampled quantizers fail11/12 each. No speed or product promotion: accepted desktop WebM Turbo and MP4 ten-bit Economy remain; requested MP4 Turbo still explicitly falls back. Next WH-07b8 narrows the quality range and qualifies selected actual MP4/audio/OPFS/lifecycle then separate whole-job speed. Larger files are permitted. Samsung native ten-bit encoder refusal remains; WH-06c2/e later,WH-08 physical/full-song/thermal/default qualification,T21b/c,T22-T24. WH-07 partial;WH-06d withdrawn,Wall/T15 deferred.**
+**Current priority: WH-07b8 refinement complete; no candidate preserves the accepted fidelity across all12 cases. q1/2/4 are packet-identical on the measured browser; q4 actual MP4 loses fidelity in6/12,with unchanged native packets. A separate MP4 level-metadata mismatch also exists in accepted all-key UHD60/1080p60 controls. Next WH-07b9 isolates/fixes that compatibility metadata first; then WH-07b10 investigates shorter prediction spans with honest level/rate/storage/preflight and only then whole-job speed. No new Turbo gain or production change. Accepted WebM Turbo and MP4 ten-bit Economy remain; mobile ten-bit WH-06c2/e later. WH-07 partial;WH-06d withdrawn,Wall/T15 deferred.**
+
+### WH-07b8 refinement closed; MP4 metadata parity is next
+
+60 native files/1755 frames plus12 actual MP4/351 frames. q1/2/4 fidelity6/12,
+rate11/12,both5/12; q8 fidelity4/12,rate12/12. Actual MP4 q4 repeats the same
+source-score loss as native replay; all12 packet sequences and351 input hashes
+match. Audio/Stop/Cancel/retry pass; speed is gated out by fidelity failure.
+UHD60 q4 errors15,19..59 with keys0/60 motivate shorter-GOP research,not a proven
+filter diagnosis. Actual MP4 declares too-low VP9 levels in selected60fps cases;
+accepted all-key controls confirm the pre-existing compatibility issue.
+[Audit](wormhole-wh07-turbo.md#wh-07b8--narrow-quality-range-and-actual-mp4-boundary-2026-11-09),
+[receipt](../tests/wormhole-wh07b8-research.json). Next **WH-07b9** metadata-boundary
+isolation and minimal shared fix,preserving packets/OPFS; real change then manual
+test. **WH-07b10** shorter prediction spans/q0 control,actual quantizer preflight,
+level/rate/storage and separate speed gate. Current accepted exports unchanged.
 
 ### WH-07b7 native quality feasibility complete; no production promotion
 

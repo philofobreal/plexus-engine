@@ -1170,3 +1170,156 @@ deploy is replaced by the existing guarded Node publisher prepare/publish/verify
 `diff_export.ps1` was considered unnecessary for this bounded research increment;
 no PR requested. No new physical device/full-song/editor qualification or redundant
 manual video test is claimed. WH-07b8 has not started at this handoff.
+
+
+## WH-07b8 — narrow quality range and actual MP4 boundary (2026-11-09)
+
+One integration owner covers the research worker, browser fixture, evaluator,
+tests and docs. The user authorized the next task after WH-07b7. Production
+`src/`, accepted WebM Turbo and explicit MP4 Economy fallback remain unchanged.
+No new user preference or software codec is introduced.
+
+The opt-in `--quality-refine` cohort retains WH-07b7's original default cases and
+adds a separate `refine-v1` manifest: all-key control plus quantizers1,2,4,8 over
+the same twelve cases/351 retained PNGs. Both accepted-product and replay-control
+per-picture fidelity gates remain fixed. `evaluateReplayBounds` additionally
+checks declared VP9 Profile2/level5.1 metadata, padded picture size/luma rate,
+complete short-stream average video rate<=120Mbit/s and a conservative four-packet
+window<=46Mbit. These checks do not certify tile counts,reference buffers or all
+alt-ref/bitstream constraints. The primary definitions are the
+[WebM VP9 level table](https://www.webmproject.org/vp9/levels/) and
+[VP9 WebCodecs registration](https://www.w3.org/TR/webcodecs-vp9-codec-registration/).
+
+The existing NativePacketEncoder lab adapter adds a finite, opt-in
+`wh07_quality_profile` message/`configureNativeQuality(1|2|4|8)`. Each codec instance
+captures the selection, removes the requested bitrate from its private effective
+config, uses native quantizer mode/detail hint and explicit per-frame quantizer,
+and keeps one-second keys/contiguous indices. Caller config/options/sample remain
+borrowed and unchanged. Original observation configuration resets the selection;
+fresh workers retain accepted all-key/default behavior. Probe capture stays off.
+The lab backend still reuses product MP4 original PCM/AAC,FFmpeg video-copy and
+progressive OPFS ownership,with unchanged two host frame/PCM leases and native
+four-entry admission. Browser internal codec memory remains opaque.
+
+Invocations:
+
+```sh
+node research/export/wormhole-baseline.mjs capture --quantizer-source=logs/wh01/run-74b0aa3d-3033-43bb-8d7c-7e84af1e23c1 --quality-refine
+node research/export/wormhole-baseline.mjs analyze-replay REFINE_RUN logs/wh01/source-comparison-9fd1e979-d27e-4be7-b4c4-f3f9c43fdf01/comparison.json
+node research/export/wormhole-baseline.mjs capture --export-host --profile-source --quality-candidate=4
+```
+
+Candidate flags are local-lab only and cannot combine with public release/GOP
+transforms/other adapters. Existing matrix/exact source fixture/default profiles
+are retained. The actual MP4 cohort adds the already existing bounded packet
+inspector after encoding, outside any speed measurement. It observes real
+container decoder metadata and copied packet sizes,with independent decode
+variants; source PNGs are captured only in the existing QA-only source cohort.
+No product message protocol or storage policy is silently overridden by this
+adapter. Thus a short successful export does not establish long-job storage
+admission or support for the actual quantizer configuration before allocation.
+
+Three new Node cases cover declared-rate thresholds,burst windows,padded sample
+limits,invalid metadata and the retained q0 negative control. Two additional
+native-packet cases cover per-instance quantizer/GOP/ownership and finite channel
+validation/reference reset. All original cases and233 active test files remain;
+there is no new test file,dependency,golden reset or Graphify rebuild. Scoped
+Graphify returned no unique encodeSourceProfile node; direct source inspection
+confirmed the seam. The late CLI-only addition calls the pre-existing packet
+inspector; the native encoder and new test bodies were fixed before the full Node
+run started. Actual browser validation covers that additive I/O branch.
+
+
+### Results and decision
+
+Refinement capture `run-5cb078b3-bd68-4418-8d7d-a322bb10131c` produces60 actual
+ten-bit WebM files/1755 independently decoded ordered IDs. Analysis
+`replay-comparison-413293f5-48d5-4e58-871b-a8aa6dbca04f` retains every negative
+result and unchanged fidelity thresholds.
+
+| Quantizer | Fidelity-pass files | Sampled5.1-bound files | Both gates |
+| --- | ---: | ---: | ---: |
+| 1 | 6/12 | 11/12 | 5/12 |
+| 2 | 6/12 | 11/12 | 5/12 |
+| 4 | 6/12 | 11/12 | 5/12 |
+| 8 | 4/12 | 12/12 | 4/12 |
+
+Values1/2/4 produce identical native packet hashes for all twelve sources on this
+recorded browser. They are not three independent quality improvements; do not
+infer the implementation's internal quantizer mapping from this observation.
+For q1/2/4,worst accepted-source loss remains0.001179 SSIM /1.50dB PSNR; q8
+loses up to0.001878 /2.25dB. The q4 UHD60 native average108.205Mbit/s fits the
+sampled5.1 rate bound, but portrait60's156.993Mbit/s does not. No global profile
+qualifies. These are complete short-file averages,not full-song estimates.
+
+Actual product-path q4 capture `run-b54f7385-78f7-47f1-8676-1381b045d8e2` completes
+13 cases,12 real MP4 files/351 ordered frame IDs,original stereo AAC and
+Stop/Cancel/retry. All351 actual input PNG hashes match the accepted control.
+`source-comparison-35b69c04-fa2a-4155-8e9d-e4a21e8a6872` rejects6/12 files on
+source fidelity,exactly like native replay. All12 MP4 VP9 packet sequences equal
+the corresponding native q4 replay hashes,and all351 source SSIM/PSNR scores
+match. Therefore this candidate's measured loss already exists before MP4 muxing;
+the container is not introducing this additional texture error.
+
+In UHD60,the q4 quality gate fails at picture15 and19..59 (zero-based),while
+keys are0 and60; the next key/prefix passes again. This supports investigating
+shorter prediction spans,but does not prove a particular temporal filter,driver
+or internal reference mechanism. Do not reduce quality limits after seeing a
+failed result. Since quality is not qualified,whole-job speed trials were not
+run and no new Turbo gain is claimed.
+
+### Separate MP4 metadata finding
+
+The retained packet inspector also exposes a format-metadata issue: actual MP4
+container decoder configurations declare levels31/40/50 even for selected60fps
+cases. For example UHD60 reports `vp09.02.50.10...` and1080p60 reports
+`vp09.02.40.10...`; their sample rates require higher levels in the existing
+`vp9ExportCodec` policy. q4's measured average rate also exceeds its declared
+container level in10/12 short files. Native replay's fixed5.1 configuration must
+not be confused with these actual MP4 container declarations.
+
+Demux inspection of the retained **accepted all-key** control independently
+confirms the same UHD60/1080p60 level declarations. Thus this is not introduced
+by the q4 adapter and is not a claim that the user-accepted image is degraded.
+It is a separate compatibility defect,with no proven causal attribution to the
+user's earlier visual-flow report. The exact metadata-loss boundary (native
+configuration,intermediate mux,FFmpeg copy/final mux) still needs isolation.
+Do not guess a fix or merely relabel a too-high-rate stream.
+
+Short success also does not qualify existing long-file admission for q4: the
+product budget uses nominal8/14/64Mbit/s with1.5x headroom and2MiB fixed overhead.
+A q4 UHD60 sample at108Mbit/s can fit this short budget yet exceed its long-job
+96Mbit/s steady video allowance. The current preflight probes the original CBR
+configuration,not the new quantizer profile. Both concerns block promotion.
+All accepted product settings/streaming OPFS remain unchanged in this task.
+
+**Next WH-07b9 takes priority:** isolate and fix MP4 VP9 level-metadata parity
+against actual frame rate/configuration/rate,using copy/remux controls before
+choosing the smallest shared export-owned solution. Preserve every compressed
+video/audio packet and bounded OPFS,then validate metadata,decode/seek and both
+hosts. A real product change requires the user's manual test. Do not infer that
+an encoder `-level` option necessarily affects stream-copy output.
+
+**After that WH-07b10:** investigate shorter GOPs against the observed q4 drift,
+with retained q0 as the positive quality control and genuinely queried/decoded
+higher levels only if their output conforms. Check actual quantizer preflight,
+rate/level bounds and realistic storage admission before any production profile.
+Only a quality-preserving candidate proceeds to separate three-pair whole-job
+speed tests and the15% gate per target. Native constant-quantizer scanning alone
+is exhausted for the sampled1/2/4/8 range. Mobile10-bit remains deferred; WH-08,
+T21b/c andT22-T24 keep their subsequent positions.
+
+Validation: build,research-worker explicit TypeScript and MJS syntax pass;
+focused29/29,targeted157/157. Full2280/2271 pass/**the exact same nine baseline
+names AND full messages**/zero skipped or cancelled,990701.033ms. All233 old
+active Node files,old test blocks,protected exact browser body and eight baseline
+reference hashes remain. The negative quality command exits1 as its designed
+rejection; this is not a new Node regression. No dependencies,golden or Graphify
+rebuild. Node25.2.1/npm11.6.2 with workspace TEMP/TMP `logs/wh07b8/temp`. Existing
+chunk-size warnings are informational. The Bun-only package deploy uses the
+existing guarded Node publisher prepare/publish/verify. `diff_export.ps1` was
+considered unnecessary for this bounded research increment; no PR requested.
+Commands,source identities and retained evidence:
+[WH-07b8 receipt](../tests/wormhole-wh07b8-research.json). Final release/public QA
+are bound under ignored `logs/wh07b8/final-*.json` and checkpoint. No new manual
+whole-video test is necessary for this unchanged product runtime.

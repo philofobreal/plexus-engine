@@ -44,9 +44,13 @@ loss. WH-07b5 now isolates the loss before container muxing and finds a promisin
 against351 matched inputs, despite16.98% short UHD speed saving. Next WH-07b7
 has now shown native quantizer0 improves all351 retained input pictures across12
 cases; higher sampled quantizers each fail11/12. No product quantizer profile or
-MP4 Turbo promotion has been implemented. WH-07b8 narrows the quality range and
-qualifies actual MP4/audio/OPFS/lifecycle before separate whole-job speed trials;
-larger files are allowed. This pilot is not a mobile ten-bit fix or hardware claim. Production has no new packet
+MP4 Turbo promotion has been implemented. WH-07b8 now rejects the sampled1/2/4/8
+constant profiles on fidelity; actual MP4 q4 repeats native loss in6/12 files.
+Audio/Stop/Cancel/retry pass,but speed remains gated out. A separate too-low VP9
+level declaration in selected60fps MP4s also exists in accepted controls: WH-07b9
+isolates/fixes this metadata compatibility boundary first. WH-07b10 then explores
+shorter prediction spans and valid level/rate/storage/preflight before speed.
+Larger files remain allowed;there is no mobile ten-bit fix or hardware claim. Production has no new packet
 adapter or codec selection. See the audit for the
 reference, actual browser/WASM validation and manual gate.
 
