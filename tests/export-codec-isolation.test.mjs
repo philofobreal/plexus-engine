@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {makeTransferSink,probeNativeCodec,codecProbeConfigurations,copyInspectionPacket,decodeInspectionPackets,inspectionVp9Color,encodeSourceProfile} from '../research/export/codec-isolation.mjs';
+import {makeTransferSink,probeNativeCodec,codecProbeConfigurations,copyInspectionPacket,decodeInspectionPackets,inspectionVp9Color,encodeSourceProfile,evaluateReplayBounds} from '../research/export/codec-isolation.mjs';
 
 const start={type:'start_export',frames:4,fps:60,sampleRate:48000,sourceSamples:3200};
 const picture=(index,count=800)=>({type:'encode_frame',timestampUs:Math.round(index*1e6/60),audioSampleCount:count,audioPlanar:new Float32Array(count*2),
@@ -196,4 +196,24 @@ test('source replay closes all borrowed resources on codec, loading, size, cap a
 test('source replay closes a source that resolves after its timeout and never submits it',async()=>{
  const f=replayFixture();let resolve;const pending=new Promise(r=>resolve=r);const r=await encodeSourceProfile(f.request,()=>pending,f.env);assert.match(r.error.message,/timed out/);
  const bitmap=await f.load();resolve(bitmap);await new Promise(r=>setTimeout(r,0));assert.equal(bitmap.closed,1);assert.equal(f.created[0].calls.length,0);
+});
+
+
+test('sampled VP9 bounds retain the declared5.1 bitrate ceiling and reject the high-quality negative control',()=>{
+ const base={codec:'vp09.02.51.10',width:3840,height:2160,fps:60};
+ assert.equal(evaluateReplayBounds({...base,packetBytes:[250000]}).pass,true);
+ assert.equal(evaluateReplayBounds({...base,packetBytes:[250001]}).pass,false);
+ const q0=evaluateReplayBounds({...base,packetBytes:Array(63).fill(Math.floor(59903313/63))});assert.equal(q0.pass,false);assert.ok(q0.videoBitsPerSecond>456000000);
+});
+
+test('sampled VP9 bounds separately enforce four-picture bursts and padded luma sample rates',()=>{
+ const base={codec:'vp09.02.51.10',width:3840,height:2160,fps:60};
+ const burst=evaluateReplayBounds({...base,packetBytes:[2000000,2000000,1000000,1000000,...Array(59).fill(1)]});
+ assert.ok(burst.videoBitsPerSecond<120000000);assert.equal(burst.maxFourPictureBits,48000000);assert.equal(burst.pass,false);
+ assert.equal(evaluateReplayBounds({...base,width:4000,height:2400,packetBytes:[1]}).pass,false);
+});
+
+test('sampled VP9 bounds reject incomplete, malformed or unlisted metadata without mutating input',()=>{
+ const base={codec:'vp09.02.51.10',width:1280,height:720,fps:60,packetBytes:[1000,2000]};const before=structuredClone(base);assert.equal(evaluateReplayBounds(base).pass,true);assert.deepEqual(base,before);
+ for(const patch of [{codec:'vp09.02.50.10'},{fps:0},{width:Infinity},{height:0},{packetBytes:[]},{packetBytes:[-1]},{packetBytes:[1.5]},{packetBytes:Array(64).fill(1)},{packetBytes:[64*1024*1024+1]}])assert.throws(()=>evaluateReplayBounds({...base,...patch}),/Invalid replay bounds/);
 });

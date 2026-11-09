@@ -25,7 +25,7 @@ function fixture(options={}) {
     encoder.config={codec:'vp09.02.51.10',framerate:60,width:3840,height:2160,bitrate:64000000,latencyMode:'quality',bitrateMode:'constant'};
     encoder.onPacket=(packet,metadata)=>{if(options.packetError)throw Error('packet callback');packets.push({packet,metadata});};
     const source={identity:'borrowed bitmap',id:1},sample={timestamp:1/60,toCanvasImageSource:()=>source};
-    return {encoder,codecs,frames,packets,registered,source,sample,Class:module.NativePacketEncoder,observe:module.observeNativeInputs};
+    return {encoder,codecs,frames,packets,registered,source,sample,Class:module.NativePacketEncoder,observe:module.observeNativeInputs,quality:module.configureNativeQuality};
 }
 
 test('native packet candidate uses canonical WebM-style input and preserves packet metadata/GOP without owning the sample',async()=>{
@@ -117,4 +117,20 @@ test('predictive laboratory configuration requires its explicit non-observing re
  const forwarded=[],scope={onmessage:event=>forwarded.push(event.data),postMessage:()=>{throw Error('Unrequested observation');}},f=fixture({self:scope});
  for(const request of [{profile:'reference',observe:false},{profile:'predictive-detail',observe:true}])assert.throws(()=>scope.onmessage({data:{type:'wh07_configure_predictive',...request}}),/Invalid predictive/);
  scope.onmessage({data:{type:'wh07_configure_predictive',profile:'predictive-detail',observe:false}});scope.onmessage({data:{type:'start_export',frames:90}});assert.equal(forwarded[0].frames,90);f.encoder.init();f.sample.timestamp=0;await f.encoder.encode(f.sample,{keyFrame:true});f.codecs[0].emit();await f.encoder.flush();f.encoder.close();assert.equal(f.packets.length,1);
+});
+
+
+test('native quality profile is lab-only, removes bitrate and preserves per-picture quantizer, keys and caller ownership',async()=>{
+ for(const q of [1,2,4,8]){
+  const f=fixture();f.quality(q);const before=structuredClone(f.encoder.config);f.encoder.init();
+  assert.equal(f.codecs[0].config.bitrateMode,'quantizer');assert.equal(f.codecs[0].config.bitrate,undefined);assert.equal(f.codecs[0].config.contentHint,'detail');assert.deepEqual(f.encoder.config,before);
+  for(let i=0;i<=60;i++){f.sample.timestamp=i/60;const options={keyFrame:true};await f.encoder.encode(f.sample,options);assert.equal(f.codecs[0].last.config.vp9.quantizer,q);assert.equal(f.codecs[0].last.config.keyFrame,i%60===0);assert.deepEqual(options,{keyFrame:true});}
+  assert.equal(f.encoder.observation,undefined);assert.equal(f.encoder.probeCanvas,undefined);assert.ok(f.frames.every(x=>x.closes===1));f.encoder.close();assert.equal(f.codecs[0].closes,1);
+ }
+});
+
+test('native quality laboratory message refuses unlisted values and reference configuration resets its selection',async()=>{
+ const forwarded=[],scope={onmessage:event=>forwarded.push(event.data)},f=fixture({self:scope});
+ for(const q of [undefined,0,-1,3,16,'4',Infinity])assert.throws(()=>scope.onmessage({data:{type:'wh07_quality_profile',quantizer:q}}),/Unlisted native quality/);
+ scope.onmessage({data:{type:'wh07_quality_profile',quantizer:4}});scope.onmessage({data:{type:'start_export'}});assert.equal(forwarded[0].type,'start_export');f.observe();f.encoder.init();await f.encoder.encode(f.sample,{keyFrame:true});assert.equal(f.codecs[0].config.bitrateMode,'constant');assert.equal(f.codecs[0].last.config.vp9,undefined);f.encoder.close();
 });

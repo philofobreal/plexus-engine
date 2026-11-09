@@ -9,6 +9,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { build } from 'vite';
 import { QUALITY_POLICY, BASELINE_CASES, compareRgba, evaluateEncodedStats, compareOwnSource } from './wormhole-quality.mjs';
+import { evaluateReplayBounds } from './codec-isolation.mjs';
 import { CARRIER_FIELDS } from './parallel-material-data.mjs';
 import { createLoader } from '../../tests/helpers/xr-loader.mjs';
 const { assertWormholeRenderFrameStamp: validateStamp } = createLoader()('types/WormholeRenderFrame.ts');
@@ -45,10 +46,16 @@ if (process.argv.includes('--native-packets') && !['--export-host','--turbo-host
 if (['--stable-material','--paired-encoder','--mp4-only'].some(flag=>process.argv.includes(flag)) && !process.argv.includes('--turbo-host')) {
     throw Error('WH-07b experiment options require --turbo-host.');
 }
+const qualityCandidateArg=process.argv.find(arg=>arg.startsWith('--quality-candidate='))?.slice('--quality-candidate='.length);
+const qualityQuantizer=qualityCandidateArg===undefined?undefined:Number(qualityCandidateArg);
+if(qualityCandidateArg!==undefined&&(!['1','2','4','8'].includes(qualityCandidateArg)||!['--export-host','--turbo-host'].some(f=>process.argv.includes(f))
+    ||['--predictive-detail','--native-packets','--detail-host','--mp4-inter-frame','--stable-material','--paired-encoder','--public-release='].some(f=>process.argv.some(a=>a.startsWith(f)))))throw Error('A listed --quality-candidate requires its own local export or speed cohort');
+const refineQuality=process.argv.includes('--quality-refine');
 const replaySourceArg=process.argv.find(arg=>arg.startsWith('--quantizer-source='))?.slice('--quantizer-source='.length);
-if(replaySourceArg && (process.argv[2]!=='capture' || process.argv.slice(3).some(arg=>!arg.startsWith('--quantizer-source=')))) {
+if(replaySourceArg && (process.argv[2]!=='capture' || process.argv.slice(3).some(arg=>!arg.startsWith('--quantizer-source=')&&arg!=='--quality-refine'))) {
     throw Error('--quantizer-source is a separate loopback-only feasibility cohort.');
 }
+if(refineQuality&&!replaySourceArg)throw Error('--quality-refine requires --quantizer-source');
 const integer = (x, min, max) => Number.isSafeInteger(x) && x >= min && x <= max;
 export function verifyPack(pack) {
     assert.equal(pack.version, 1); assert.equal(pack.pass, true);
@@ -146,7 +153,7 @@ async function capture() {
                 replaySources.set(f.name,{file,sha256:f.sha256});
             }
         }
-        await writeFile(path.join(output,'replay-inputs.json'),JSON.stringify({directory:replayDirectory,sources:replayManifest.sources},null,2)+'\n',{flag:'wx'});
+        await writeFile(path.join(output,'replay-inputs.json'),JSON.stringify({directory:replayDirectory,sources:replayManifest.sources,...(refineQuality?{profileSet:'refine-v1'}:{})},null,2)+'\n',{flag:'wx'});
     }
     const server = createServer(async (req, res) => {
         try {
@@ -230,7 +237,7 @@ async function capture() {
             const rows=[];
             for(const source of replayManifest.sources){
                 const spec=replaySpecs.find(r=>r.name===source.name);
-                for(const quantizer of [null,0,16,32,64]){
+                for(const quantizer of (refineQuality?[null,1,2,4,8]:[null,0,16,32,64])){
                     const name=source.name.replace('.mp4','')+'-'+(quantizer===null?'all-key':'q'+quantizer)+'.webm';
                     const request={width:spec.width,height:spec.height,fps:source.fps,bitrate:spec.width*spec.height>=3840*2160?64000000:spec.width*spec.height>=1920*1080?14000000:8000000,
                         profile:quantizer===null?'all-key':'quantizer',...(quantizer===null?{}:{quantizer}),frames:source.frames.map(({name,index})=>({name,index}))};
@@ -282,7 +289,7 @@ async function capture() {
         }
 
         if(process.argv.includes('--export-host')){
-            let report;try{report=await evaluate('window.runWh06Export('+JSON.stringify({turbo:process.argv.includes('--turbo-export-host'),nativePackets:process.argv.includes('--native-packets'),predictiveDetail:process.argv.includes('--predictive-detail'),profileSourceOnly:process.argv.includes('--profile-source')})+')');}catch(error){
+            let report;try{report=await evaluate('window.runWh06Export('+JSON.stringify({turbo:process.argv.includes('--turbo-export-host'),nativePackets:process.argv.includes('--native-packets'),predictiveDetail:process.argv.includes('--predictive-detail'),profileSourceOnly:process.argv.includes('--profile-source'),qualityQuantizer})+')');}catch(error){
                 await writeFile(path.join(output,'integrated-export-failure.json'),JSON.stringify(await evaluate('window.wh06ExportFailure'),null,2)+'\n',{flag:'wx'});
                 for(const name of await evaluate('Array.from(window.wh06ExportBlobs.keys())')){
                     assert.match(name,/^export-\d{3}\.(?:webm|mp4)$/);
@@ -314,7 +321,8 @@ async function capture() {
                     let id=0;for(let bit=0;bit<6;bit++)if(ids[i*6+bit]>128)id|=1<<bit;
                     assert.equal(id,i+1,'Independent FFmpeg decoded frame ID mismatch');decoded.push(id);
                 }
-                (row.performanceMode==='turbo'?turboArtifacts:artifacts).push({name:row.name,sha256:hash(bytes),bytes:bytes.length,video,audio,decodedIds:decoded});
+                const inspection=qualityQuantizer!==undefined&&row.format==='mp4'&&row.precision?await evaluate('window.inspectWh07Packets('+JSON.stringify(bytes.toString('base64'))+',"video/mp4")'):undefined;
+                (row.performanceMode==='turbo'?turboArtifacts:artifacts).push({name:row.name,sha256:hash(bytes),bytes:bytes.length,video,audio,decodedIds:decoded,...(inspection?{inspection}:{})});
             }
             if(process.argv.includes('--profile-source')){
                 const sources=[];
@@ -420,7 +428,7 @@ async function capture() {
             console.log(JSON.stringify({isolationRows:report.rows.length,actualVideos:artifacts.length,codecProbes:codecs.rows.length,scope:'Diagnostic only, no product or Turbo promotion'}));
         }
         if (process.argv.includes('--turbo-host')) {
-            const report=await evaluate('window.runWh07Benchmark('+JSON.stringify({stableMaterial:process.argv.includes('--stable-material'),pairedEncoder:process.argv.includes('--paired-encoder'),mp4Only:process.argv.includes('--mp4-only'),nativePackets:process.argv.includes('--native-packets'),predictiveDetail:process.argv.includes('--predictive-detail'),profileSourceOnly:process.argv.includes('--profile-source')})+')');
+            const report=await evaluate('window.runWh07Benchmark('+JSON.stringify({stableMaterial:process.argv.includes('--stable-material'),pairedEncoder:process.argv.includes('--paired-encoder'),mp4Only:process.argv.includes('--mp4-only'),nativePackets:process.argv.includes('--native-packets'),predictiveDetail:process.argv.includes('--predictive-detail'),profileSourceOnly:process.argv.includes('--profile-source'),qualityQuantizer})+')');
             await writeFile(path.join(output,'turbo-benchmark.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});
             assert.equal(report?.pass,true);assert.equal(report.rows.length,process.argv.includes('--mp4-only')?12:24);
             const artifacts=[];
@@ -559,6 +567,7 @@ async function compareSources(baselineDirectory,candidateDirectory){
 async function analyzeReplay(directory,acceptedComparisonFile){
     const run=path.resolve(directory??''),inputs=JSON.parse(await readFile(path.join(run,'replay-inputs.json'),'utf8')),
         replay=JSON.parse(await readFile(path.join(run,'source-replay.json'),'utf8'));
+    const quantizers=inputs.profileSet==='refine-v1'?[1,2,4,8]:[0,16,32,64];
     assert.equal(replay.measurementComplete,true);assert.equal(inputs.sources.length,12);assert.equal(replay.rows.length,60);
     const acceptedBytes=await readFile(path.resolve(acceptedComparisonFile??'')),accepted=JSON.parse(acceptedBytes);
     assert.equal(path.resolve(accepted.baseline),path.resolve(inputs.directory),'Accepted source identity differs');
@@ -567,7 +576,7 @@ async function analyzeReplay(directory,acceptedComparisonFile){
     for(const [index,row]of replay.rows.entries()){
         const source=inputs.sources.find(s=>s.name===row.source);assert.ok(source);
         if(!row.name){rows.push({...row,eligible:false});continue;}
-        assert.match(row.name,/^export-\d{3}-(?:all-key|q(?:0|16|32|64))\.webm$/);const file=path.join(run,row.name);assert.equal(hash(await readFile(file)),row.sha256);
+        assert.match(row.name,/^export-\d{3}-(?:all-key|q(?:0|1|2|4|8|16|32|64))\.webm$/);assert.ok(row.profile==='all-key'||quantizers.includes(row.quantizer));const file=path.join(run,row.name);assert.equal(hash(await readFile(file)),row.sha256);
         for(const f of source.frames)assert.equal(hash(await readFile(path.join(inputs.directory,f.name))),f.sha256);
         const ssim='ssim-'+index+'.txt',psnr='psnr-'+index+'.txt',pattern=path.join(inputs.directory,'source-'+source.name.replace('.mp4','')+'-%03d.png');
         const filter=`[0:v]settb=AVTB,setpts=N/(${source.fps}*TB),format=gbrp16le,split=2[a][c];[1:v]settb=AVTB,setpts=N/(${source.fps}*TB),format=gbrp16le,split=2[b][d];[a][b]ssim=stats_file=${ssim}[s];[c][d]psnr=stats_file=${psnr}[p]`;
@@ -584,7 +593,11 @@ async function analyzeReplay(directory,acceptedComparisonFile){
         row.eligible=row.quality.pass&&row.acceptedQuality.pass&&row.decoded?.pass&&row.video?.pix_fmt==='yuv420p10le'&&Number(row.video.nb_read_frames)===row.request.frames
             &&row.independentIds.length===row.request.frames&&row.independentIds.every((id,i)=>id===i+1);
     }
-    const profiles=[0,16,32,64].map(quantizer=>({quantizer,cases:rows.filter(r=>r.quantizer===quantizer).length,
+    if(inputs.profileSet==='refine-v1')for(const row of rows.filter(r=>r.scores)){
+        row.sampledBounds=evaluateReplayBounds({codec:row.decoderConfig.codec,width:row.request.width,height:row.request.height,fps:row.request.fps,packetBytes:row.packets.map(p=>p.bytes)});
+        row.fidelityEligible=row.eligible;row.eligible=row.fidelityEligible&&row.sampledBounds.pass;
+    }
+    const profiles=quantizers.map(quantizer=>({quantizer,cases:rows.filter(r=>r.quantizer===quantizer).length,
         eligible:rows.filter(r=>r.quantizer===quantizer).length===12&&rows.filter(r=>r.quantizer===quantizer).every(r=>r.eligible),
         failedSources:rows.filter(r=>r.quantizer===quantizer&&!r.eligible).map(r=>r.source)}));
     const report={measurementComplete:true,productionPromoted:false,run,acceptedComparison:{path:path.resolve(acceptedComparisonFile),sha256:hash(acceptedBytes)},scope:'Native short codec feasibility against replay all-key AND accepted product own-source fidelity. No integrated MP4/audio/lifecycle/whole-job speed promotion.',profiles,rows};
@@ -603,5 +616,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     else if (process.argv[2] === 'compare-source') await compareSources(process.argv[3],process.argv[4]);
     else if (process.argv[2] === 'compare-encoded') await compareEncoded(process.argv[3],process.argv[4]);
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--quantizer-source=PRIOR_SOURCE_RUN] [--exact-host] [--export-host [--profile-source]] [--native-packets | --predictive-detail] [--turbo-export-host] [--diagnostics-host] [--codec-host] [--detail-host [--detail-profile=reference|detail|text|variable]] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | analyze-replay RUN ACCEPTED_SOURCE_COMPARISON | compare-source BASELINE_RUN CANDIDATE_RUN | compare-encoded BASELINE_RUN CANDIDATE_RUN | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--quantizer-source=PRIOR_SOURCE_RUN [--quality-refine]] [--exact-host] [--export-host [--profile-source]] [--native-packets | --predictive-detail | --quality-candidate=1|2|4|8] [--turbo-export-host] [--diagnostics-host] [--codec-host] [--detail-host [--detail-profile=reference|detail|text|variable]] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | analyze-replay RUN ACCEPTED_SOURCE_COMPARISON | compare-source BASELINE_RUN CANDIDATE_RUN | compare-encoded BASELINE_RUN CANDIDATE_RUN | verify [baseline.json]');
 }

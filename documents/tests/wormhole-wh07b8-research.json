@@ -1,0 +1,556 @@
+{
+  "version": 1,
+  "task": "WH-07b8",
+  "predecessor": "ac679b80c400feb704201410f69b3359236b4b68",
+  "status": "Refinement and actual MP4 boundary complete; no profile qualified,no production promotion. Next metadata parity fix WH-07b9. Final release identities in logs/wh07b8/final-*.json/checkpoint.",
+  "production": {
+    "srcUnchanged": true,
+    "mp4Turbo": "Explicit Economy fallback retained",
+    "webmTurbo": "Accepted and unchanged",
+    "newUserPreferenceCodecOrQueue": false,
+    "newWasmSoftwareCodec": false
+  },
+  "finding": {
+    "nativeProfiles": [
+      {
+        "quantizer": 1,
+        "files": 12,
+        "frames": 351,
+        "fidelityFiles": 6,
+        "sampledBoundsFiles": 11,
+        "bothFiles": 5,
+        "worstSsimDrop": 0.0011790000000000411,
+        "worstPsnrDropDb": 1.5,
+        "fileBytes": 44348950
+      },
+      {
+        "quantizer": 2,
+        "files": 12,
+        "frames": 351,
+        "fidelityFiles": 6,
+        "sampledBoundsFiles": 11,
+        "bothFiles": 5,
+        "worstSsimDrop": 0.0011790000000000411,
+        "worstPsnrDropDb": 1.5,
+        "fileBytes": 44348950
+      },
+      {
+        "quantizer": 4,
+        "files": 12,
+        "frames": 351,
+        "fidelityFiles": 6,
+        "sampledBoundsFiles": 11,
+        "bothFiles": 5,
+        "worstSsimDrop": 0.0011790000000000411,
+        "worstPsnrDropDb": 1.5,
+        "fileBytes": 44348950
+      },
+      {
+        "quantizer": 8,
+        "files": 12,
+        "frames": 351,
+        "fidelityFiles": 4,
+        "sampledBoundsFiles": 12,
+        "bothFiles": 4,
+        "worstSsimDrop": 0.0018779999999999353,
+        "worstPsnrDropDb": 2.25,
+        "fileBytes": 16572447
+      }
+    ],
+    "q1q2q4AllNativePacketSequencesIdentical": true,
+    "refinementFiles": 60,
+    "refinementFrames": 1755,
+    "actualMp4Cases": 13,
+    "actualMp4Files": 12,
+    "actualMp4Frames": 351,
+    "allActualInputsHashMatchAccepted": true,
+    "mp4FidelityPassFiles": 6,
+    "allMp4PacketSequencesMatchNativeReplay": true,
+    "allMp4SourceSsimPsnrScoresMatchNativeReplay": true,
+    "q4Uhd60BadPictures": [
+      15,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59
+    ],
+    "q4Uhd60KeyPictures": [
+      0,
+      60
+    ],
+    "interpretation": "Loss exists before MP4 muxing; shorter prediction spans are a next hypothesis,not proof of a specific native filter or driver defect.",
+    "actualMp4Metadata": {
+      "rows": [
+        {
+          "name": "export-000.mp4",
+          "codec": "vp09.02.31.10.01.01.13.01.01",
+          "level": 31,
+          "fps": 30,
+          "frames": 8,
+          "videoMbps": 15.45021,
+          "ceilingMbps": 12.0,
+          "withinDeclaredAverage": false,
+          "packetsEqualNativeReplay": true,
+          "containerDecodePass": true
+        },
+        {
+          "name": "export-001.mp4",
+          "codec": "vp09.02.50.10.01.01.13.01.01",
+          "level": 50,
+          "fps": 30,
+          "frames": 8,
+          "videoMbps": 57.76695,
+          "ceilingMbps": 60.0,
+          "withinDeclaredAverage": true,
+          "packetsEqualNativeReplay": true,
+          "containerDecodePass": true
+        },
+        {
+          "name": "export-002.mp4",
+          "codec": "vp09.02.31.10.01.01.13.01.01",
+          "level": 31,
+          "fps": 30,
+          "frames": 48,
+          "videoMbps": 11.535925,
+          "ceilingMbps": 12.0,
+          "withinDeclaredAverage": true,
+          "packetsEqualNativeReplay": true,
+          "containerDecodePass": true
+        },
+        {
+          "name": "export-003.mp4",
+          "codec": "vp09.02.50.10.01.01.13.01.01",
+          "level": 50,
+          "fps": 60,
+          "frames": 63,
+          "videoMbps": 108.20492952380953,
+          "ceilingMbps": 60.0,
+          "withinDeclaredAverage": false,
+          "packetsEqualNativeReplay": true,
+          "containerDecodePass": true
+        },
+        {
+          "name": "export-004.mp4",
+          "codec": "vp09.02.50.10.01.01.13.01.01",
+          "level": 50,
+          "fps": 30,
+          "frames": 36,
+          "videoMbps": 70.12577333333333,
+          "ceilingMbps": 60.0,
+          "withinDeclaredAverage": false,
+          "packetsEqualNativeReplay": true,
+          "containerDecodePass": true
+        },
+        {
+          "name": "export-005.mp4",
+          "codec": "vp09.02.40.10.01.01.13.01.01",
+          "level": 40,
+          "fps": 60,
+          "frames": 63,
+          "videoMbps": 34.02299428571428,
+          "ceilingMbps": 18.0,
+          "withinDeclaredAverage": false,
+          "packetsEqualNativeReplay": true,
+          "containerDecodePass": true
+        },
+        {
+          "name": "export-006.mp4",
+          "codec": "vp09.02.40.10.01.01.13.01.01",
+          "level": 40,
+          "fps": 30,
+          "frames": 36,
+          "videoMbps": 21.93428666666667,
+          "ceilingMbps": 18.0,
+          "withinDeclaredAverage": false,
+          "packetsEqualNativeReplay": true,
+          "containerDecodePass": true
+        },
+        {
+          "name": "export-007.mp4",
+          "codec": "vp09.02.50.10.01.01.13.01.01",
+          "level": 50,
+          "fps": 60,
+          "frames": 8,
+          "videoMbps": 156.99252,
+          "ceilingMbps": 60.0,
+          "withinDeclaredAverage": false,
+          "packetsEqualNativeReplay": true,
+          "containerDecodePass": true
+        },
+        {
+          "name": "export-008.mp4",
+          "codec": "vp09.02.50.10.01.01.13.01.01",
+          "level": 50,
+          "fps": 60,
+          "frames": 8,
+          "videoMbps": 94.51878,
+          "ceilingMbps": 60.0,
+          "withinDeclaredAverage": false,
+          "packetsEqualNativeReplay": true,
+          "containerDecodePass": true
+        },
+        {
+          "name": "export-009.mp4",
+          "codec": "vp09.02.31.10.01.01.13.01.01",
+          "level": 31,
+          "fps": 60,
+          "frames": 63,
+          "videoMbps": 17.905660952380952,
+          "ceilingMbps": 12.0,
+          "withinDeclaredAverage": false,
+          "packetsEqualNativeReplay": true,
+          "containerDecodePass": true
+        },
+        {
+          "name": "export-010.mp4",
+          "codec": "vp09.02.31.10.01.01.13.01.01",
+          "level": 31,
+          "fps": 60,
+          "frames": 2,
+          "videoMbps": 44.61744,
+          "ceilingMbps": 12.0,
+          "withinDeclaredAverage": false,
+          "packetsEqualNativeReplay": true,
+          "containerDecodePass": true
+        },
+        {
+          "name": "export-011.mp4",
+          "codec": "vp09.02.31.10.01.01.13.01.01",
+          "level": 31,
+          "fps": 60,
+          "frames": 8,
+          "videoMbps": 23.38344,
+          "ceilingMbps": 12.0,
+          "withinDeclaredAverage": false,
+          "packetsEqualNativeReplay": true,
+          "containerDecodePass": true
+        }
+      ],
+      "scope": "Short actual MP4 metadata/packet observation,not long-file admission or speed."
+    },
+    "acceptedControlMetadata": {
+      "directory": "logs/wh01/run-74b0aa3d-3033-43bb-8d7c-7e84af1e23c1",
+      "rows": [
+        {
+          "name": "export-000.mp4",
+          "width": 720,
+          "height": 1280,
+          "fps": 30,
+          "containerCodec": "vp09.02.31.10.01.01.13.01.01",
+          "preflightCodec": "vp09.02.31.10"
+        },
+        {
+          "name": "export-001.mp4",
+          "width": 2160,
+          "height": 2160,
+          "fps": 30,
+          "containerCodec": "vp09.02.50.10.01.01.13.01.01",
+          "preflightCodec": "vp09.02.50.10"
+        },
+        {
+          "name": "export-002.mp4",
+          "width": 1280,
+          "height": 720,
+          "fps": 30,
+          "containerCodec": "vp09.02.31.10.01.01.13.01.01",
+          "preflightCodec": "vp09.02.31.10"
+        },
+        {
+          "name": "export-003.mp4",
+          "width": 3840,
+          "height": 2160,
+          "fps": 60,
+          "containerCodec": "vp09.02.50.10.01.01.13.01.01",
+          "preflightCodec": "vp09.02.51.10"
+        },
+        {
+          "name": "export-004.mp4",
+          "width": 3840,
+          "height": 2160,
+          "fps": 30,
+          "containerCodec": "vp09.02.50.10.01.01.13.01.01",
+          "preflightCodec": "vp09.02.51.10"
+        },
+        {
+          "name": "export-005.mp4",
+          "width": 1920,
+          "height": 1080,
+          "fps": 60,
+          "containerCodec": "vp09.02.40.10.01.01.13.01.01",
+          "preflightCodec": "vp09.02.41.10"
+        },
+        {
+          "name": "export-006.mp4",
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "containerCodec": "vp09.02.40.10.01.01.13.01.01",
+          "preflightCodec": "vp09.02.40.10"
+        },
+        {
+          "name": "export-007.mp4",
+          "width": 2160,
+          "height": 3840,
+          "fps": 60,
+          "containerCodec": "vp09.02.50.10.01.01.13.01.01",
+          "preflightCodec": "vp09.02.51.10"
+        },
+        {
+          "name": "export-008.mp4",
+          "width": 2160,
+          "height": 2160,
+          "fps": 60,
+          "containerCodec": "vp09.02.50.10.01.01.13.01.01",
+          "preflightCodec": "vp09.02.50.10"
+        },
+        {
+          "name": "export-009.mp4",
+          "width": 1280,
+          "height": 720,
+          "fps": 60,
+          "containerCodec": "vp09.02.31.10.01.01.13.01.01",
+          "preflightCodec": "vp09.02.40.10"
+        },
+        {
+          "name": "export-010.mp4",
+          "width": 1280,
+          "height": 720,
+          "fps": 60,
+          "containerCodec": "vp09.02.31.10.01.01.13.01.01",
+          "preflightCodec": "vp09.02.40.10"
+        },
+        {
+          "name": "export-011.mp4",
+          "width": 1280,
+          "height": 720,
+          "fps": 60,
+          "containerCodec": "vp09.02.31.10.01.01.13.01.01",
+          "preflightCodec": "vp09.02.40.10"
+        }
+      ]
+    },
+    "metadataInterpretation": "Selected60fps accepted all-key MP4s also declare lower container levels than the preflight. Separate compatibility defect,exact native/intermediate/final mux loss boundary still open. No proven causal link to user visual-flow report.",
+    "storageInterpretation": "Nominal8/14/64Mbps x1.5+2MiB short admission can admit q4 samples yet underbudget long steady rate (UHD sample108Mbps vs96Mbps allowance). Actual quantizer preflight is not added to product; current preflight still CBR. No promotion.",
+    "speed": {
+      "run": false,
+      "reason": "Quality failed; speed cannot qualify the candidate. QA/PNG/readback/native inspection/concurrent Node/FFmpeg timings not used."
+    }
+  },
+  "runs": {
+    "refine": "logs/wh01/run-5cb078b3-bd68-4418-8d7d-a322bb10131c",
+    "analysis": "logs/wh01/replay-comparison-413293f5-48d5-4e58-871b-a8aa6dbca04f/comparison.json",
+    "actualMp4": "logs/wh01/run-b54f7385-78f7-47f1-8676-1381b045d8e2",
+    "actualSourceComparison": "logs/wh01/source-comparison-35b69c04-fa2a-4155-8e9d-e4a21e8a6872/comparison.json"
+  },
+  "validation": {
+    "build": "npm run build passed (existing chunk warnings)",
+    "researchTypes": "Explicit research-worker TypeScript passed",
+    "syntax": "Both changed MJS modules node --check passed",
+    "focused": {
+      "pass": 29,
+      "tests": 29
+    },
+    "targeted": {
+      "tests": 157,
+      "pass": 157,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "durationMs": 33370.3922
+    },
+    "cumulative": {
+      "tests": 2280,
+      "pass": 2271,
+      "fail": 9,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 990701.033
+    },
+    "knownBaselineFailuresExactNameAndMessage": [
+      {
+        "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+        "message": "vos-wh-drift.json must not reset user-global wormholeStarfield"
+      },
+      {
+        "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+        "message": "establish remains visibly above the opacity floor"
+      },
+      {
+        "name": "weak roles pin a deep-perspective depth and continuity profile",
+        "message": "establish depth\n\n2.03136 !== 4"
+      },
+      {
+        "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+        "message": "deep drift deeper than establish"
+      },
+      {
+        "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+        "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+      },
+      {
+        "name": "wormhole factory presets keep a minimum normalized weighted separation",
+        "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+      },
+      {
+        "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+        "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))"
+      },
+      {
+        "name": "projected forward motion preserves overdrive > punch > drive > drift",
+        "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+      },
+      {
+        "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+        "message": "389.64890777178124 vs 471.543038051684"
+      }
+    ],
+    "newCases": 5,
+    "oldActiveFiles": 233,
+    "activeTestFiles": 233,
+    "removedTests": 0,
+    "oldBlocksRetained": true,
+    "protectedBrowserBodyUnchanged": true,
+    "protectedBodySha256": "78446e8de76ef79b7f081d65ac8cdc9933cb516cea3d66fc3f7c48ce666112c8",
+    "fixedEightReferenceHashesUnchanged": true,
+    "localLinksChecked": 204,
+    "changedPredecessors": [
+      {
+        "path": "research/export/codec-isolation.mjs",
+        "gitObject": "846bfa4030699f45f8d811872241dd0bc05d37b2",
+        "sha256": "6d22afe095a65b3ea8acf84e32a6eef62e3c669e2d7e20028aa6d0005b7ecfcd",
+        "reason": "Additive separate refine-v1 cohort, sample bounds and local native-quality adapter/validation; all previous cases/defaults retained"
+      },
+      {
+        "path": "research/export/native-packet.worker.ts",
+        "gitObject": "514d60d76e6a664d7312e137ea01b46c41fb01a3",
+        "sha256": "ffa20b85ba8729a7dc9c2fdd3c0be181d62904777a624e4d0443cbfe8cf5ad76",
+        "reason": "Additive separate refine-v1 cohort, sample bounds and local native-quality adapter/validation; all previous cases/defaults retained"
+      },
+      {
+        "path": "research/export/wormhole-baseline.mjs",
+        "gitObject": "73a2fa651f5a36e0cf19e58c0ab8ef67e09f7c67",
+        "sha256": "e6cb6cb67e330e6908022683c3fca0840abb82f01fc3b0f42bb387c0a26ae7b8",
+        "reason": "Additive separate refine-v1 cohort, sample bounds and local native-quality adapter/validation; all previous cases/defaults retained"
+      },
+      {
+        "path": "tests/browser/wormhole-host-backend-smoke.html",
+        "gitObject": "356ea7b6b77fc79c00a62fb319c45cf979b1cc2e",
+        "sha256": "c5616ebe44d944d53bdcb62cd1c5ea5b254b4c7acc0d9be12a71fb13df588556",
+        "reason": "Additive separate refine-v1 cohort, sample bounds and local native-quality adapter/validation; all previous cases/defaults retained"
+      },
+      {
+        "path": "tests/export-codec-isolation.test.mjs",
+        "gitObject": "73fdf7fbfe643275da28473c16e585d65c24ba0a",
+        "sha256": "980d7e54f8bb16b16e76b94420ca2053aeb1f48686f64645073bbae97de45131",
+        "reason": "Additive separate refine-v1 cohort, sample bounds and local native-quality adapter/validation; all previous cases/defaults retained"
+      },
+      {
+        "path": "tests/export-native-packet.test.mjs",
+        "gitObject": "984fc18ad28d29308c932480dc7155edb1ea0e78",
+        "sha256": "2047cb0ed4c6081d77905d3133fffb2ec327c636248dd51db93db0af82fde478",
+        "reason": "Additive separate refine-v1 cohort, sample bounds and local native-quality adapter/validation; all previous cases/defaults retained"
+      }
+    ],
+    "lateCliOnlyEvolution": "Existing bounded packet inspector invoked in actual MP4 QA after Node run began. Native code/new test bodies were fixed before full run. CLI I/O branch covered by complete actual browser cohort; source hashes in each build manifest retain both phases.",
+    "negativeQualityCommand": "compare-source intentionally exits1; negative evidence retained,not hidden or treated as a new Node regression",
+    "runtime": "Node25.2.1/npm11.6.2;workspace TEMP/TMP logs/wh07b8/temp;no dependencies/golden/Graphify reset",
+    "graphify": "graphify affected encodeSourceProfile --depth2 no unique node; verified direct sources",
+    "diffExport": "Considered unnecessary for bounded research increment,no PR requested",
+    "unrun": "No speed benchmark or physical-device/full-song/editor/thermal qualification; no new user whole-video test for unchanged product"
+  },
+  "commands": {
+    "build": "npm run build",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=4",
+    "targeted": "node --test --test-reporter=tap --test-concurrency=4 tests/export-native-packet.test.mjs tests/wormhole-render-contract.test.mjs tests/mp4-vp9-color.test.mjs tests/export-codec-isolation.test.mjs tests/export-parallel-research.test.mjs tests/export-performance.test.mjs tests/export-scheduling.test.mjs tests/export-preparation.test.mjs tests/mvp-mp4-export.test.mjs tests/export-diagnostics.test.mjs tests/export-output-inspection.test.mjs tests/export-lifecycle.test.mjs tests/export-resources.test.mjs tests/exact-export-frame-bridge.test.mjs tests/mvp-export-panel.test.mjs tests/release-pages.test.mjs",
+    "focused": "node --test tests/export-native-packet.test.mjs tests/export-codec-isolation.test.mjs",
+    "types": "node node_modules/typescript/bin/tsc --ignoreConfig --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --lib ES2023,DOM,DOM.Iterable --skipLibCheck --types vite/client research/export/native-packet.worker.ts",
+    "refine": "node research/export/wormhole-baseline.mjs capture --quantizer-source=logs/wh01/run-74b0aa3d-3033-43bb-8d7c-7e84af1e23c1 --quality-refine",
+    "analysis": "node research/export/wormhole-baseline.mjs analyze-replay logs/wh01/run-5cb078b3-bd68-4418-8d7d-a322bb10131c logs/wh01/source-comparison-9fd1e979-d27e-4be7-b4c4-f3f9c43fdf01/comparison.json",
+    "actual": "node research/export/wormhole-baseline.mjs capture --export-host --profile-source --quality-candidate=4",
+    "comparison": "node research/export/wormhole-baseline.mjs compare-source logs/wh01/run-74b0aa3d-3033-43bb-8d7c-7e84af1e23c1 logs/wh01/run-b54f7385-78f7-47f1-8676-1381b045d8e2",
+    "acceptedMetadata": "Mediabunny Input/BlobSource/ALL_FORMATS over accepted control MP4s; getPrimaryVideoTrack().getDecoderConfig() paired with retained preflight codec,close each input. See compact accepted-mp4-metadata.json hash.",
+    "releaseFallback": "node scripts/release-pages.mjs prepare wh07b8-refinement-boundary; publish; verify. Existing guarded Node path because package deploy invokes Bun."
+  },
+  "next": [
+    "WH-07b9 isolate/fix native-to-MP4 level metadata parity with copy/remux controls,preserve compressed packets and streaming resources,then manual user test after actual runtime change",
+    "WH-07b10 shorter prediction spans with q0 control,honest codec levels,actual quality preflight and long storage admission; only fidelity-preserving candidates reach separate whole-job15% trials",
+    "Mobile10bit WH-06c2/e later,WH-08 full-song/platform/thermal/default,T21b/c,T22-T24,T25 each release;WH-06d withdrawn,Wall/T15 deferred"
+  ],
+  "sources": [
+    {
+      "title": "WebM VP9 levels",
+      "url": "https://www.webmproject.org/vp9/levels/"
+    },
+    {
+      "title": "VP9 WebCodecs registration (draft)",
+      "url": "https://www.w3.org/TR/webcodecs-vp9-codec-registration/"
+    }
+  ],
+  "hashes": {
+    "logs/wh01/run-5cb078b3-bd68-4418-8d7d-a322bb10131c/baseline.json": "937b39bf0a1c2f0b77abc8cdde91654a3840e41b95aecbbb0a98b0245573270f",
+    "logs/wh01/run-5cb078b3-bd68-4418-8d7d-a322bb10131c/build.json": "79ebd0be1549c1b345fce8f9330964bd51932597bd8f1bb2ab2deaa7953913fb",
+    "logs/wh01/run-5cb078b3-bd68-4418-8d7d-a322bb10131c/host-smoke.json": "8f9a12fb30306dfeb81e747b4fc4ad21c36171f902d18cfc07f2ab96aa474563",
+    "logs/wh01/run-5cb078b3-bd68-4418-8d7d-a322bb10131c/replay-inputs.json": "e495834358825619e41df1686d12069d2f88c6c394ccfd419e49a51c906bb830",
+    "logs/wh01/run-5cb078b3-bd68-4418-8d7d-a322bb10131c/source-replay.json": "3c885a3f1a49482059739666f78b2a791b47c3d986b8eb41a6fc87279629a4df",
+    "logs/wh01/run-5cb078b3-bd68-4418-8d7d-a322bb10131c/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/run-b54f7385-78f7-47f1-8676-1381b045d8e2/baseline.json": "937b39bf0a1c2f0b77abc8cdde91654a3840e41b95aecbbb0a98b0245573270f",
+    "logs/wh01/run-b54f7385-78f7-47f1-8676-1381b045d8e2/build.json": "9040074973b12a18a73f57128e40c5820ea335aee046b7ef22a76cad77fe3c98",
+    "logs/wh01/run-b54f7385-78f7-47f1-8676-1381b045d8e2/host-smoke.json": "4bbbd6f7deb870cc3172ef1856b8b9c788e424998ffe917590a1d3a178ed260a",
+    "logs/wh01/run-b54f7385-78f7-47f1-8676-1381b045d8e2/integrated-export-artifacts.json": "9f8bc844fe152f4775e2b8da4b12dcb2a97052865e27a632ca1f8f0a07baa773",
+    "logs/wh01/run-b54f7385-78f7-47f1-8676-1381b045d8e2/integrated-export.json": "14a30b6ca117078de58da4f716f000e63ba5623e36b37f61ae7a1fd44d0d0cb2",
+    "logs/wh01/run-b54f7385-78f7-47f1-8676-1381b045d8e2/source-frames.json": "548d3c3322be3356ef9233438f59b463a10f5531b6ea8390afce3fa7b44d6aee",
+    "logs/wh01/run-b54f7385-78f7-47f1-8676-1381b045d8e2/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/replay-comparison-413293f5-48d5-4e58-871b-a8aa6dbca04f/comparison.json": "747eeaae40d253be012871d5e2209ef6bc5f454e847000a6cf93ca6ac0e18f61",
+    "logs/wh01/source-comparison-35b69c04-fa2a-4155-8e9d-e4a21e8a6872/comparison.json": "b9d1becde4f364790e92351259d3a62a93c26fcd5487b3fc65cf77f9a5de34be",
+    "research/export/codec-isolation.mjs": "1f41fec8f6a87249f1c758ff020b40dc5a8e29a03de702f038be274386fac51b",
+    "research/export/native-packet.worker.ts": "5a2ab2b6bb6b3127026f084fb07ba54f58f82827c828f4048a49225ca8567036",
+    "research/export/wormhole-baseline.mjs": "91c8cb7db47a030e975b5ea2739ec9d15fd34c181f7c95a838570fad0cd16c61",
+    "tests/browser/wormhole-host-backend-smoke.html": "be11c17a4d881f2da0f5c86e839807369ec58d6ae09930109d5b4137387f2c80",
+    "tests/export-codec-isolation.test.mjs": "fc05a4ff86f085aa791bdb10fd02495ddab651ec3e21a389b6ee2dcb64321e04",
+    "tests/export-native-packet.test.mjs": "5416cf7a5ddc764efd478dfc7a277ccfd942a06036a1ca876241d84a0f6ab7d3",
+    "logs/wh07b8/mp4-boundary-audit.json": "2ee3ba3961b47c11f31cff350e7d1a961930f26e44507a4698dfdbe26db8a5f2",
+    "logs/wh07b8/accepted-mp4-metadata.json": "a2417152105acdbb19e042d4e84b54dd10dffb49730af69dba88ee5548420e9e",
+    "logs/wh07b8/cumulative.tap": "9dde939cfdd04d85ed33bcc7e823b23f839d4c192a575717f222bf3824248a15",
+    "logs/wh07b8/targeted.tap": "6e7734c8f40020e1ee97dc5893e22d5f5be6e5ad6fd03166bf10ec6e7facf927",
+    "logs/wh07b8/native-targeted.log": "34644e70905d4e62e844900bd3d85f0a73225e943a2c68836baa4589fe6a06f3",
+    "logs/wh07b8/research-tsc.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/wh07b8/build.log": "540df344e033a883e920acdbb2cfca29754f94c449362c668876a831feb4c625"
+  }
+}

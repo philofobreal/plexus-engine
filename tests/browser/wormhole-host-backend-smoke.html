@@ -451,6 +451,9 @@ document.querySelector('#exact').disabled=false;
 document.querySelector('#exact').onclick=()=>{window.runWh06Exact().catch(console.error);};
 
 // WH-07b6 opt-in candidate only; no readback observer in qualification/timings.
+function qualityWorker(quantizer) {return class extends NativePacketWorker {
+ constructor(){super();this.postMessage({type:'wh07_quality_profile',quantizer});}
+};}
 class PredictiveDetailWorker extends NativePacketWorker {
  constructor(){super();this.postMessage({type:'wh07_configure_predictive',profile:'predictive-detail',observe:false});}
 }
@@ -558,7 +561,7 @@ window.runWh06Export=(options={})=>exportRun??=(async()=>{
    constructor(){super();this.addEventListener('message',event=>{if(event.data?.type==='wh07_input_observation'){
     if(window.wh07InputObservations.length>=4)throw Error('Observation window limit');window.wh07InputObservations.push(event.data.report);
    }});this.postMessage({type:'wh07_observe_inputs',enabled:true,profile:options.detailProfile??'reference'});}
-  }:options.predictiveDetail?PredictiveDetailWorker:options.nativePackets?NativePacketWorker:Mp4Worker;
+  }:options.qualityQuantizer!==undefined?qualityWorker(options.qualityQuantizer):options.predictiveDetail?PredictiveDetailWorker:options.nativePackets?NativePacketWorker:Mp4Worker;
   const backend=new WebCodecsBackend(hostP,hostP.canvas,audio,'WH06',null,'display',worker);
   const diagnostics=[],performances=[];
   const started=performance.now();let issued=false;
@@ -699,7 +702,7 @@ window.runWh07Benchmark=async(options={})=>{
    Object.assign(State.visualTuning,c.state.visualTuning);Object.assign(State.targetTuning,c.state.targetTuning);
    hostQuality.wormholeRenderer='offscreen';hostQuality.compactMaterialPreview=true;hostQuality.musicDisplay=undefined;
    positionChanged?.(0);State.playbackFade=1;hostP.noLoop();
-   let profile,performanceReport;const backend=new WebCodecsBackend(hostP,hostP.canvas,{getAudioBuffer:()=>pcm},'WH07',null,scheduling,probe?CodecIsolationWorker:options.predictiveDetail&&scheduling==='cooperative'?PredictiveDetailWorker:options.nativePackets&&scheduling==='cooperative'?NativePacketWorker:options.pairedEncoder&&scheduling==='cooperative'?PairedEncoderWorker:Mp4Worker,p=>{profile=p;});
+   let profile,performanceReport;const backend=new WebCodecsBackend(hostP,hostP.canvas,{getAudioBuffer:()=>pcm},'WH07',null,scheduling,probe?CodecIsolationWorker:options.qualityQuantizer!==undefined&&scheduling==='cooperative'?qualityWorker(options.qualityQuantizer):options.predictiveDetail&&scheduling==='cooperative'?PredictiveDetailWorker:options.nativePackets&&scheduling==='cooperative'?NativePacketWorker:options.pairedEncoder&&scheduling==='cooperative'?PairedEncoderWorker:Mp4Worker,p=>{profile=p;});
    const started=performance.now();
    try{
     const blob=await backend.start({resolution,aspectRatio:'16:9',fps,format,preflight:true,watermark:false,

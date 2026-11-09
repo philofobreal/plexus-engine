@@ -170,6 +170,19 @@ export async function decodeInspectionPackets(packets, config, {omitDuration=fal
     return report;
 }
 
+/** Short stream bounds only: not a VP9 tile/reference/alt-ref bitstream certification. */
+export function evaluateReplayBounds({codec,width,height,fps,packetBytes}) {
+    if (!/^vp09\.02\.51\.10(?:\.|$)/.test(codec) || ![width,height].every(n=>Number.isSafeInteger(n)&&n>0&&n<=8384)
+        || ![30,60].includes(fps) || !Array.isArray(packetBytes) || !packetBytes.length || packetBytes.length>63
+        || !packetBytes.every(n=>Number.isSafeInteger(n)&&n>0) || packetBytes.reduce((a,b)=>a+b,0)>64*1024*1024) throw Error('Invalid replay bounds');
+    const totalBytes=packetBytes.reduce((a,b)=>a+b,0),pixels=Math.ceil(width/32)*32*Math.ceil(height/32)*32;
+    const videoBitsPerSecond=totalBytes*8*fps/packetBytes.length;
+    const maxFourPictureBits=Math.max(...packetBytes.map((_,i)=>packetBytes.slice(i,i+4).reduce((a,b)=>a+b,0)*8));
+    return {policy:'wh-07b8-vp9-51-sampled-v1',videoBitsPerSecond,maxFourPictureBits,
+        pass:pixels<=8912896&&pixels*fps<=588251136&&videoBitsPerSecond<=120000000&&maxFourPictureBits<=46000000,
+        scope:'Complete short-stream average, conservative four-packet window and padded picture/sample rate. No full-song, tile/reference/alt-ref or hardware guarantee.'};
+}
+
 /** WH-07b7: short, laboratory-only native rate-control feasibility. Source
  * loader lends one bitmap at a time; returned packets are owned QA copies,
  * capped at64MiB, not a replacement for the product's progressive OPFS path.
