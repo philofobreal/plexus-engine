@@ -1018,3 +1018,155 @@ no PR requested. Node25.2.1/npm11.6.2 with workspace TEMP; the Bun-only package
 deploy is replaced by existing guarded `node scripts/release-pages.mjs`
 prepare/publish/verify. No physical device/editor/full-song success is claimed.
 No redundant whole-video manual test is required for unchanged product runtime.
+
+
+## WH-07b7 — native quality-control feasibility (2026-11-09)
+
+Owner: research worker/fixture, tests and documentation, one integration owner.
+The user authorized continuation and confirmed that unchanged product behavior
+needs no redundant full-video manual test. This stage investigates native VP9
+quality control; it does not change product export, menu/storage/Copy, scheduling,
+codec selection, OPFS, audio or the accepted ten-bit defaults.
+
+### Repeatable inputs and isolated codec question
+
+The previous accepted all-key capture retains351 real input PNGs across12 short
+cases, including UHD30/60,1080p30/60,720p30/60,portrait/square,one-second GOP
+boundary and short Stop/retry prefixes. This experiment reuses exactly those
+PNGs; it does not regenerate the visual renderer or overwrite the old results.
+
+`encodeSourceProfile` extends the existing lab-only `codec-isolation.mjs`. The
+existing isolation worker accepts one `quality_replay` job from its one-use
+browser wrapper, queries the native configuration, encodes the given pictures,
+and returns owned packet copies. New config is `bitrateMode: quantizer`,
+`latencyMode: quality`,ten-bit VP9,`contentHint: detail`,one-second keys and an
+explicit per-picture `vp9.quantizer`. Values0,16,32,64 sample the API's0..255
+range. There is no requested bitrate in quantizer mode;8/14/64Mbps remain only
+in the separately encoded all-key control, selected by pixel area like product.
+Support-query recognition and actual encode/decode are distinct observations.
+The WebCodecs specification and VP9 registration are works in progress and do
+not require a browser to implement this codec or mode:
+[WebCodecs](https://www.w3.org/TR/webcodecs/#videoencoderconfig),
+[VP9 registration](https://www.w3.org/TR/webcodecs-vp9-codec-registration/).
+
+Loopback CLI:
+
+```sh
+node research/export/wormhole-baseline.mjs capture --quantizer-source=logs/wh01/run-74b0aa3d-3033-43bb-8d7c-7e84af1e23c1
+node research/export/wormhole-baseline.mjs analyze-replay RUN logs/wh01/source-comparison-9fd1e979-d27e-4be7-b4c4-f3f9c43fdf01/comparison.json
+```
+
+The source server permits only names present in the verified manifest, checks
+PNG signatures/dimensions and every SHA, and enforces16MiB/input,512MiB/archive.
+The native replay keeps one loaded bitmap, closes each created VideoFrame,
+limits native admission to four and63 pictures, and caps packet output at64MiB.
+The deadline closes native resources and late loading results; callback errors,
+unsupported/unrecognized configs and packet limits are recorded separately.
+The one-use worker terminates after completion/failure/deadline. Short QA muxing
+uses bounded in-memory WebM buffers; this is not a replacement for production
+progressive OPFS and is not evidence for long-file RAM behavior. Native codec
+internal memory and CPU/media-engine assignment remain opaque.
+
+All-key and four quantizer profiles are requested for every case. The browser
+checks actual native decode IDs; FFmpeg independently checks every output ID,
+frame count,dimensions and `yuv420p10le`. Full decoded frames are compared with
+the retained PNGs in RGB16 using unchanged SSIM/PSNR evaluation. Candidate
+source fidelity is checked against both the replay all-key control and the
+previously accepted product all-key source scores, not just against another
+lossy candidate. Per-picture regression limits remain SSIM drop0.0001 and
+PSNR drop0.1dB; every picture must satisfy them. The analyzer's `eligible` means
+this short native/fidelity gate only, never production promotion.
+
+These are no-audio native-codec WebM probes of source prefixes. They do not
+repeat Stop/Cancel behavior, verify MP4 FFmpeg metadata/muxing, measure whole-job
+speed, certify hardware acceleration or qualify physical mobile. Those remain
+integration gates. Even a better-looking high-rate profile needs codec-level/
+peak-rate conformity, realistic storage admission, output byte limits and
+whole-job throughput before promotion. The existing MP4 Economy fallback and
+accepted WebM Turbo remain unchanged.
+
+### Regression retention
+
+Five meaningful cases extend the existing codec-isolation suite: quantizer0/255
+and63-picture keys/ownership; invalid inputs before allocation; unsupported and
+unrecognized modes; callback/size/load/context/packet/queue failure cleanup; and
+late source closure after deadline. All original cases,protected browser exact
+body,fixed image policies and233 active Node suites remain. There is no new test
+file,dependency,golden change or Graphify rebuild. Scoped Graphify found no
+unique `NativePacketEncoder` node; direct source inspection established the seam.
+The first local harness run failed on an out-of-scope `check` helper before any
+valid artifact handoff; its log/build remain and it is not quality evidence.
+The wrapper now uses an explicit bound check. Commands,predecessor identities,
+raw results and hashes are retained in the versioned
+[WH-07b7 receipt](../tests/wormhole-wh07b7-research.json); final publication and
+public-default QA are bound under ignored `logs/wh07b7/final-*.json` and checkpoint.
+
+
+### Measured outcome
+
+The corrected capture is `logs/wh01/run-9f1cab3d-b176-4cc5-8aa5-ecf36dcfcaf3`;
+analysis is `logs/wh01/replay-comparison-9cced45e-3da7-4452-8738-a38e7a84eaa6`.
+All60 real WebM files encode and independently decode1755 ordered IDs and are
+actually `yuv420p10le`. All12 replay all-key controls exactly reproduce the
+accepted product source SSIM/PSNR scores,so the retained-input replay is a valid
+control for this question. Audio/MP4 lifecycle are outside this pilot.
+
+| Native profile | Files / pictures | Files satisfying both fidelity references | Total short-file bytes |
+| --- | --- | ---: | ---: |
+| All-key accepted-style control | 12 /351 | 12 | 25,900,895 |
+| Quantizer0 | 12 /351 | 12 | 161,840,400 |
+| Quantizer16 | 12 /351 | 1 | 5,603,636 |
+| Quantizer32 | 12 /351 | 1 | 2,230,307 |
+| Quantizer64 | 12 /351 | 1 | 1,010,099 |
+
+Quantizer0 improves source fidelity on **every measured picture**: minimum
+SSIM improvement0.001214 and minimum PSNR improvement2.07dB. This does not mean
+lossless RGB or HDR: source/color conversion and4:2:0 chroma still apply. The
+larger quantizers each fail11 of12 cases; the surviving case is the two-picture
+Stop prefix,not a full cohort pass. Worst losses against accepted product for
+q16/q32/q64 are respectively0.002541/0.004860/0.007755 SSIM and2.81/4.68/7.11dB.
+
+For UHD60/63 pictures,q0's no-audio WebM is59,904,232bytes versus8,893,521bytes
+for control. The user permits larger files; size alone does not reject q0.
+However,whole-job speed,declared codec level/peak rate,realistic progressive
+storage admission and long-job resource stability have not been qualified.
+The hard64MiB QA cap was not exceeded. No speed measurement is taken from this
+PNG-loading,packet-copying,decode-instrumented run or concurrent Node/FFmpeg work.
+No CPU/GPU assignment is inferred from query success.
+
+**Decision:** native quality control is feasible and q0 passes the short fidelity
+gate; production promotion remains false. Next **WH-07b8** narrows the0..16 range
+(e.g.1,2,4,8,with explicit key-picture policy),retaining q0 as the quality control,
+and qualifies a selected profile in the actual MP4/audio/OPFS/Stop/Cancel/retry
+path. Only a profile preserving the accepted fidelity may proceed to separate
+uninstrumented whole-job trials against Economy,three alternating pairs and the
+retained15% gate per claimed target. Reuse retained inputs and existing research
+owners; do not repeat a full visual render to explore quantization. Keep larger
+files if needed; do not silently reduce precision,FPS,resolution or texture.
+A candidate must have honest codec-level and storage bounds before integration.
+No new preference or mobile ten-bit solution is delivered by WH-07b7.
+
+
+A concrete conformance limitation was also measured: the UHD60 q0 native payload
+is59,903,313bytes over63/60 seconds,or456.406Mbit/s,while native decoder metadata
+still advertises `vp09.02.51.10`. The
+[VP9 level table](https://www.webmproject.org/vp9/levels/) limits5.1 average video
+rate to120Mbit/s. This is packet-only data,not container/audio overhead or a
+whole-song projection. Native query and local decode success therefore do not
+establish a conforming level. q0 remains a positive fidelity control;it is not
+promotion-ready under the current advertised level. WH-07b8 must qualify a
+quality-preserving profile with honest level/rate and storage bounds,not simply
+raise metadata or silently lower quality. No accepted product encoding changed.
+
+
+Build and both MJS syntax checks pass; targeted152/152. Cumulative
+**2275 /2266 pass /exactly the same nine baseline names AND full messages /
+zero skipped or cancelled**,919389.3174ms. All233 old active Node suites remain,
+with five additive cases in the existing codec-isolation suite;200 local doc
+references pass. Node25.2.1/npm11.6.2,workspace TEMP/TMP `logs/wh07b7/temp`.
+The cumulative run overlapped only non-timed native/quality research,not a speed
+benchmark. Existing chunk-size warnings are informational. The Bun-only package
+deploy is replaced by the existing guarded Node publisher prepare/publish/verify.
+`diff_export.ps1` was considered unnecessary for this bounded research increment;
+no PR requested. No new physical device/full-song/editor qualification or redundant
+manual video test is claimed. WH-07b8 has not started at this handoff.

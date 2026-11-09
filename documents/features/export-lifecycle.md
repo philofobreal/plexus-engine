@@ -42,8 +42,11 @@ manually accepted at 4K60/10-bit MP4; WH-07b5 isolates predictive-profile detail
 loss. WH-07b5 now isolates the loss before container muxing and finds a promising
 `detail` hint in one eight-picture study. WH-07b6 now rejects that candidate: all12 own-source files lose fidelity
 against351 matched inputs, despite16.98% short UHD speed saving. Next WH-07b7
-examines quality-first native quantizer/rate feasibility, allowing larger files;
-no quantizer profile or MP4 Turbo promotion has been implemented. Production has no new packet
+has now shown native quantizer0 improves all351 retained input pictures across12
+cases; higher sampled quantizers each fail11/12. No product quantizer profile or
+MP4 Turbo promotion has been implemented. WH-07b8 narrows the quality range and
+qualifies actual MP4/audio/OPFS/lifecycle before separate whole-job speed trials;
+larger files are allowed. This pilot is not a mobile ten-bit fix or hardware claim. Production has no new packet
 adapter or codec selection. See the audit for the
 reference, actual browser/WASM validation and manual gate.
 

@@ -2,7 +2,22 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-07b6 full qualification complete; predictive detail MP4 rejected on matched-input fidelity (12/12 files,351 equal source PNGs; max SSIM drop0.008862 /PSNR8.32dB). Short UHD speed saving16.98% paired median is insufficient without quality;720p3.38%. Next WH-07b7 quality-first native quantizer/rate feasibility, larger files allowed. Accepted desktop WebM Turbo and WH-07b3 4K60/10-bit MP4 remain unchanged; requested MP4 Turbo still explicitly falls back to Economy. Samsung native VP9 ten-bit encoder refusal remains; WH-06c2/e later. WH-07 parent partial; next completed task stops for handoff. MP4 default/mobile4K/Wall-Cockpit Off remain; WH-06d withdrawn, Wall/T15 deferred.**
+**Current priority: WH-07b7 native quality-control pilot passed for quantizer0 (12/12 files,351 pictures improve source fidelity; all-key replay scores exactly match accepted product). Higher sampled quantizers fail11/12 each. No speed or product promotion: accepted desktop WebM Turbo and MP4 ten-bit Economy remain; requested MP4 Turbo still explicitly falls back. Next WH-07b8 narrows the quality range and qualifies selected actual MP4/audio/OPFS/lifecycle then separate whole-job speed. Larger files are permitted. Samsung native ten-bit encoder refusal remains; WH-06c2/e later,WH-08 physical/full-song/thermal/default qualification,T21b/c,T22-T24. WH-07 partial;WH-06d withdrawn,Wall/T15 deferred.**
+
+### WH-07b7 native quality feasibility complete; no production promotion
+
+Replayed351 retained real input PNGs across12 cases with all-key control and
+q0/16/32/64:60 real ten-bit WebM files,1755 independent ordered frame IDs.
+All-key source scores exactly match accepted product;q0 improves all351 frames
+(minimum SSIM+0.001214 /PSNR+2.07dB);q16/32/64 each fail11/12 cases. q0's files
+are larger (UHD60/63pictures about60MB),which the user permits;speed,level/rate,
+storage and product integration remain unqualified. Source/precision/defaults
+and accepted MP4 Economy fallback/WebM Turbo remain unchanged,no new manual
+whole-video test. [Audit](wormhole-wh07-turbo.md#wh-07b7--native-quality-control-feasibility-2026-11-09),
+[receipt](../tests/wormhole-wh07b7-research.json). Next WH-07b8 narrows the0..16
+quality range and tests actual MP4/audio/OPFS/lifecycle,then a selected
+quality-preserving profile's separate whole-job speed. Mobile ten-bit remains
+later;no automatic CPU/GPU attribution or physical-device success claimed.
 
 ### WH-07b6 qualification complete, candidate not promoted
 
