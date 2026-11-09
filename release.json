@@ -1,7 +1,7 @@
 {
-  "id": "wh07b6-profile-qualification-20261109T001145876Z",
-  "previousCommit": "ea00487052688fecac0fc2a3fc460c86efebf109",
-  "sourceCommit": "87f1d4a647c7627895fdd22112b3e78dd635616d",
+  "id": "wh07b7-quality-feasibility-20261109T004154061Z",
+  "previousCommit": "6a85c6bac9776d02005a02a5a772ab752006243f",
+  "sourceCommit": "ac679b80c400feb704201410f69b3359236b4b68",
   "inputs": [
     {
       "path": "bun.lock",
@@ -201,7 +201,7 @@
     },
     {
       "path": "research/export/codec-isolation.mjs",
-      "sha256": "8493f7b5e9abc296aeb805be42df77631ee48746f3cce3ca1a7258ab0afe5bda"
+      "sha256": "6d22afe095a65b3ea8acf84e32a6eef62e3c669e2d7e20028aa6d0005b7ecfcd"
     },
     {
       "path": "research/export/native-packet.worker.ts",
@@ -1793,7 +1793,7 @@
     },
     {
       "path": "tests/browser/wormhole-host-backend-smoke.html",
-      "sha256": "78d00acec6655090b3d9b9477015edd9edfd59429a9201f03b16a8142c1079f3"
+      "sha256": "c5616ebe44d944d53bdcb62cd1c5ea5b254b4c7acc0d9be12a71fb13df588556"
     },
     {
       "path": "tsconfig.json",
@@ -1822,8 +1822,8 @@
       "sha256": "ff2b6d39b26d695ca19d71fad4b67f64b85ac9f8c876eb5feb4146d23dba5516"
     },
     {
-      "path": "assets/codec-isolation-CapL0Tr-.js",
-      "sha256": "613c288179985c8e09d2bfa6db2d60208dd18c803e9cb9b0d158ab1128bf78cb"
+      "path": "assets/codec-isolation-ZJHquUDU.js",
+      "sha256": "eea8216d99d378886cb37d0e18d6119939cfd125fd4e7a3ff093aa96906a47ac"
     },
     {
       "path": "assets/CosmicWormholeIdentity-D9x8ggGr.js",
@@ -1962,8 +1962,8 @@
       "sha256": "61ccac8e4b0984d4859ce8dd1dd7b7658f032161595a402a37950f5ff36b409d"
     },
     {
-      "path": "assets/wormholeHostLab-DFZFQEP1.js",
-      "sha256": "1ba3d613a99d54bb290d85a584f0fec2e63697855663459097c5b8ed256efae9"
+      "path": "assets/wormholeHostLab-BJ80Niwd.js",
+      "sha256": "a4863340cebd6f4f946f027f51994c57e644e880458aed2d42c3160b1b495b74"
     },
     {
       "path": "assets/wormholeHostRender.worker-DSD9FOKw.js",
@@ -2055,7 +2055,7 @@
     },
     {
       "path": "tests/browser/wormhole-host-backend-smoke.html",
-      "sha256": "e13ceab6f22467ae70c713c074c53fd31a280dc368989d5599a88a0e348a3ba8"
+      "sha256": "77ed343504fa217f6b40a5544d129be9d02bb30264c0929ec0c8196c5e154c84"
     },
     {
       "path": "visual-tuning-presets/default.json",
