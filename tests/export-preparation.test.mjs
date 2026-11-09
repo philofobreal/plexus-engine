@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createLoader } from './helpers/xr-loader.mjs';
 
 const load = createLoader({}, { setTimeout, clearTimeout, TextEncoder, TextDecoder, Blob, Float32Array });
-const { vp9ExportCodec, probeExportEncoding } = load('export/ExportPreparation.ts');
+const { vp9ExportCodec, probeExportEncoding, readVp9ExportLevel, mp4Vp9LevelArgs } = load('export/ExportPreparation.ts');
 const { exportMemoryBudget, captureExportSnapshot } = load('export/ExportSnapshot.ts');
 const settings = { codec: 'legacy', width: 3840, height: 2160, framerate: 60, bitrate: 40_000_000, latencyMode: 'quality', bitrateMode: 'constant' };
 
@@ -194,4 +194,27 @@ test('real worker retries a refused WebM bitrate before OPFS and excludes probe 
     assert.equal(messages.filter(m => m.type === 'frame_encoded').length, 1);
     assert.ok(messages.find(m => m.type === 'export_done').blob.size > 0);
     assert.equal(h.frames.length, 4); assert.ok(h.encoders.every(e => e.closed));
+});
+
+
+test('VP9 MP4 metadata keeps the FPS, bitrate and native-level floor without changing codec configuration',()=>{
+ for(const [width,height,fps,bitrate,level]of [[1280,720,30,8e6,31],[1280,720,60,8e6,40],[1920,1080,60,14e6,41],[3840,2160,30,64e6,51],[3840,2160,60,64e6,51],[2160,3840,60,64e6,51]]){
+  const config={width,height,fps,bitrate};const before=structuredClone(config);assert.deepEqual([...mp4Vp9LevelArgs(config)],['-level:v',String(level)]);assert.deepEqual(config,before);
+ }
+ assert.deepEqual([...mp4Vp9LevelArgs({width:1280,height:720,fps:30,bitrate:8e6,nativeLevel:51})],['-level:v','51']);
+});
+
+test('VP9 MP4 metadata accounts for the observed prefix and four-picture burst instead of relabelling an over-limit stream',()=>{
+ const base={width:1280,height:720,fps:30,bitrate:8e6};
+ assert.deepEqual([...mp4Vp9LevelArgs({...base,bitrate:13e6})],['-level:v','40']);
+ assert.deepEqual([...mp4Vp9LevelArgs({...base,maxFourBytes:1250000})],['-level:v','31']);
+ assert.deepEqual([...mp4Vp9LevelArgs({...base,maxFourBytes:1250001})],['-level:v','40']);
+ assert.deepEqual([...mp4Vp9LevelArgs({...base,maxFourBytes:2250001})],['-level:v','50']);
+ for(const patch of [{bitrate:121e6},{nativeLevel:37},{nativeLevel:62},{nativeLevel:NaN},{nativeLevel:'51'},{maxFourBytes:-1},{maxFourBytes:5750001},{maxFourBytes:Infinity},{maxFourBytes:Number.MAX_SAFE_INTEGER}])assert.throws(()=>mp4Vp9LevelArgs({...base,...patch}),/Invalid|exceeds/);
+});
+
+test('VP9 native level parsing accepts explicit CICP and unknown level but refuses foreign, malformed and injectable metadata',()=>{
+ assert.equal(readVp9ExportLevel(),0);assert.equal(readVp9ExportLevel('vp09.02.00.10'),0);assert.equal(readVp9ExportLevel('vp09.02.51.10.01.01.13.01.01'),51);
+ assert.equal(readVp9ExportLevel('vp09.02.62.10'),62);
+ for(const codec of ['vp09.00.51.08','vp09.02.99.10','vp09.02.5.10','vp09.02.51.10;bad','vp09.02.51.10.01','av01.0.13M.10',null,{}])assert.throws(()=>readVp9ExportLevel(codec),/Invalid native/);
 });

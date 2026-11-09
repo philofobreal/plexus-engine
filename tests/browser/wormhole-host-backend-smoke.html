@@ -509,7 +509,7 @@ window.runWh06Export=(options={})=>exportRun??=(async()=>{
   // Diagnostic ID added AFTER quality comparison. Detects repeated/reordered decoded frames, independent of motion judgement.
   dst.save();dst.setTransform(1,0,0,1,0,0);dst.globalAlpha=1;dst.globalCompositeOperation='source-over';
   for(let bit=0;bit<6;bit++){dst.fillStyle=(index+1)&(1<<bit)?'#fff':'#000';dst.fillRect(bit*32,0,32,32);}dst.restore();
-  if(options.profileSourceOnly){
+  if(options.profileSourceOnly&&!options.noSourceArchive){
    const blob=await new Promise((resolve,reject)=>dst.canvas.toBlob(b=>b?resolve(b):reject(Error('Source PNG failed')),'image/png'));
    if(blob.size>16*1024*1024||currentSpec.sourceFrames.length>=63)throw Error('Source capture bound');
    currentSpec.sourceFrames.push({index,blob});
@@ -608,9 +608,9 @@ window.runWh06Export=(options={})=>exportRun??=(async()=>{
    for(const [resolution,aspect,fps,frames]of cases)await one({resolution,aspect,fps,frames,format:'mp4',precision:true,post:true,display:aspect==='9:16',compare:resolution==='720p'});
    const prefix={resolution:'720p',aspect:'16:9',fps:60,frames:63,format:'mp4',precision:true,post:true};
    await one(prefix,'stop');await one(prefix,'cancel');await one({...prefix,frames:8});
-   return {pass:true,scope:'Own-source qualification cohort,10 VP9 configurations plus Stop/Cancel/retry; original full matrix remains separate.',rows};
+   return {pass:true,scope:options.noSourceArchive?'Retained12-file VP9 matrix without duplicate PNG archive; compare accepted encoded references.':'Own-source qualification cohort,10 VP9 configurations plus Stop/Cancel/retry; original full matrix remains separate.',rows};
   }
-  const specs=options.detailOnly?[['4K',options.detailAspect??'1:1',30,'mp4',true]]:[
+  const specs=options.detailOnly?[['4K',options.levelBoundary?'16:9':options.detailAspect??'1:1',options.levelBoundary?60:30,'mp4',true]]:[
    ['720p','16:9',30,'webm',false],['720p','16:9',60,'mp4',false],
    ['720p','9:16',60,'webm',true],['720p','9:16',30,'mp4',true],
    ['720p','1:1',30,'webm',false],['720p','1:1',30,'mp4',false],
@@ -618,7 +618,7 @@ window.runWh06Export=(options={})=>exportRun??=(async()=>{
    ['4K','9:16',30,'webm',true],['4K','1:1',30,'mp4',true]
   ];
   for(const [resolution,aspect,fps,format,precision]of specs){output.textContent='Encoding '+[resolution,aspect,fps,format,precision?'10bit':'8bit'].join(' ');
-   await one({resolution,aspect,fps,format,precision,frames:resolution==='4K'&&aspect==='16:9'?36:8,compare:resolution==='720p',post:true,display:aspect==='9:16'});}
+   await one({resolution,aspect,fps,format,precision,frames:options.levelBoundary?8:resolution==='4K'&&aspect==='16:9'?36:8,compare:resolution==='720p',post:true,display:aspect==='9:16'});}
   if(options.detailOnly)return {pass:true,scope:'One bounded diagnostic clip, not the original export matrix',rows};
   for(const format of ['webm','mp4'])await one({resolution:'720p',aspect:'16:9',fps:30,format,frames:48,transitions:true,post:true,extraRedraws:true});
   const base={resolution:'720p',aspect:'16:9',fps:30,format:'webm',frames:12};
@@ -798,8 +798,8 @@ window.addEventListener('pagehide',()=>{pass?.dispose();hostP?.remove();fixtureP
 
 // WH-07b5: exact same native VP9 payloads through independent consumers/containers.
 window.wh07InputObservations=[];window.wh07DetailBlobs=new Map();
-window.runWh07Detail=async(profile='reference')=>{
- let exportFailure;try{await window.runWh06Export({detailOnly:true,nativePackets:true,observeInputs:true,detailProfile:profile});}
+window.runWh07Detail=async(profile='reference',levelBoundary=false)=>{
+ let exportFailure;try{await window.runWh06Export({detailOnly:true,nativePackets:true,observeInputs:true,detailProfile:profile,levelBoundary});}
  catch(error){exportFailure=String(error.message).slice(0,1000);}
  const observation=window.wh07InputObservations.find(r=>r.inputs.length===8);
  if(!observation)throw Error('No complete worker input observation');
@@ -823,19 +823,19 @@ window.runWh07Detail=async(profile='reference')=>{
    window.wh07DetailBlobs.set(name,blob);containers.push(row);
   }finally{input.dispose();}
  };
- for(const format of ['webm','mp4']){
-  const target=new BufferTarget(),output=new Output({target,format:format==='webm'?new WebMOutputFormat():new Mp4OutputFormat()}),source=new EncodedVideoPacketSource('vp9');
-  output.addVideoTrack(source,{frameRate:30});
+ for(const format of (levelBoundary?['webm','mp4','stage']:['webm','mp4'])){
+  const target=new BufferTarget(),output=new Output({target,format:format==='webm'?new WebMOutputFormat():new Mp4OutputFormat(format==='stage'?{fastStart:'fragmented',minimumFragmentDuration:1}:{})}),source=new EncodedVideoPacketSource('vp9');
+  output.addVideoTrack(source,{frameRate:levelBoundary?60:30});
   try{await output.start();for(let i=0;i<packets.length;i++){
-   const p=packets[i];await source.add(new EncodedPacket(p.data,p.type,p.timestamp/1e6,p.duration/1e6),i===0?meta:undefined);
+   const p=packets[i];await source.add(new EncodedPacket(p.data,p.type,p.timestamp/1e6,p.duration/1e6),i===0?(format==='stage'?{decoderConfig:observation.decoderConfig}:meta):undefined);
   }source.close();await output.finalize();if(target.buffer.byteLength>64*1024*1024)throw Error('Detail artifact cap');
-   await inspect(new Blob([target.buffer],{type:'video/'+format}),'detail-packets.'+format);
+   await inspect(new Blob([target.buffer],{type:'video/'+(format==='stage'?'mp4':format)}),format==='stage'?'detail-stage.mp4':'detail-packets.'+format);
   }finally{if(output.state!=='finalized'&&output.state!=='canceled')await output.cancel();}
  }
  const original=window.wh06ExportBlobs.get('export-000.mp4');if(!original)throw Error('Missing actual product-path file');
  await inspect(original,'detail-product.mp4');
  if(!containers.every(row=>row.payloadsIdentical))throw Error('Container changed VP9 payload');
- return {pass:true,scope:'One8-picture2160-square30fps synthetic exact-GPU clip. Readback observation may affect scheduling; no quality/speed promotion.',
+ return {pass:true,scope:levelBoundary?'Eight UHD60 pictures,native observation and reconstructed intermediate with same production mux options; no speed claim.':'One8-picture2160-square30fps synthetic exact-GPU clip. Readback observation may affect scheduling; no quality/speed promotion.',
   profile,exportFailure,encoder:observation.config,decoder:observation.decoderConfig,inputs:observation.inputs,packetHashes:hashes,native,containers};
 };
 

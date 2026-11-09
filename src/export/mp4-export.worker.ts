@@ -3,7 +3,7 @@ import { Mp4OutputFormat, NullTarget, Output, StreamTarget, VideoSample, VideoSa
 import { validMp4ExportStorageName } from './ExportStorageLease';
 import { checkMp4Storage, planMp4Storage } from './Mp4StorageAdmission';
 import { readMp4AvcLevel, selectMp4AvcEncoding, selectMp4AvcLevel } from './Mp4AvcLevel';
-import { probeExportEncoding, vp9ExportCodec } from './ExportPreparation';
+import { probeExportEncoding, vp9ExportCodec, readVp9ExportLevel, mp4Vp9LevelArgs } from './ExportPreparation';
 import { resolveMp4Vp9Color, mp4Vp9ColorArgs, type Mp4Vp9Color } from './Mp4Vp9Color';
 import type { EncodeFrameRequest, ExportWorkerRequest, ExportWorkerResponse, StartExportRequest } from './ExportTypes';
 
@@ -100,7 +100,7 @@ async function probeMp4Video(width: number, height: number, fps: number, encodin
     }
     return emittedLevel;
 }
-function finalizeMp4(core: Core, video: File, wav: File, access: Access, plan: Plan, color?: Mp4Vp9Color) {
+function finalizeMp4(core: Core, video: File, wav: File, access: Access, plan: Plan, color?: Mp4Vp9Color, levelArgs: string[] = []) {
     const fs = core.FS, messages: string[] = [];
     let offset = 0, failure: unknown;
     core.setLogger(({ message }) => { if (messages.push(message) > 10) messages.shift(); });
@@ -121,7 +121,7 @@ function finalizeMp4(core: Core, video: File, wav: File, access: Access, plan: P
         fs.mkdev('/dev/plexus-out', 0o222, dev);
         core.setTimeout(Math.min(870_000, Math.max(65_000, plan.seconds * 1000 + 10_000)));
         core.exec('-i', '/input/video.mp4', '-i', '/input/audio.wav', '-map', '0:v:0', '-map', '1:a:0',
-            '-c:v', 'copy', ...(color?mp4Vp9ColorArgs(color):[]), '-c:a', 'aac', '-b:a', '192k', '-f', 'mp4', '-avoid_negative_ts', 'disabled', '-use_editlist', '1',
+            '-c:v', 'copy', ...(color?mp4Vp9ColorArgs(color):[]), ...levelArgs, '-c:a', 'aac', '-b:a', '192k', '-f', 'mp4', '-avoid_negative_ts', 'disabled', '-use_editlist', '1',
             '-movflags', '+delay_moov+default_base_moof+frag_keyframe', '-frag_duration', '1000000', '-flush_packets', '1', '/dev/plexus-out');
         if (failure) throw failure;
         if (core.ret !== 0 || offset === 0) {
@@ -212,8 +212,20 @@ async function start(request: StartExportRequest) {
         const output = writer = new Output({ format: new Mp4OutputFormat({ fastStart: 'fragmented', minimumFragmentDuration: 1 }), target });
         let warnedAboutLevel = false;
         let videoColor: Mp4Vp9Color | undefined;
+        let nativeVp9Level=0,payloadBytes=0,payloadPackets=0,maxFourBytes=0;
+        const lastPacketSizes: number[] = [];
         const picture = new VideoSampleSource({ ...encoding, onEncodedPacket: (_packet, metadata) => {
-            if(highPrecision && metadata?.decoderConfig) videoColor=resolveMp4Vp9Color(metadata.decoderConfig);
+            if(highPrecision) {
+                const bytes=_packet.data.byteLength;
+                if (!Number.isSafeInteger(bytes) || bytes<=0 || !Number.isSafeInteger(payloadBytes+bytes)) throw mp4Error('Invalid VP9 packet accounting.');
+                payloadBytes+=bytes; payloadPackets++; lastPacketSizes.push(bytes);
+                if(lastPacketSizes.length>4)lastPacketSizes.shift();
+                maxFourBytes=Math.max(maxFourBytes,lastPacketSizes.reduce((a,b)=>a+b,0));
+                if(metadata?.decoderConfig){
+                    videoColor=resolveMp4Vp9Color(metadata.decoderConfig);
+                    nativeVp9Level=Math.max(nativeVp9Level,readVp9ExportLevel(metadata.decoderConfig.codec));
+                }
+            }
             if (level === undefined || warnedAboutLevel || !metadata?.decoderConfig) return;
             const actual = readMp4AvcLevel(metadata.decoderConfig.description);
             if (actual === undefined || actual >= level) return;
@@ -255,6 +267,9 @@ async function start(request: StartExportRequest) {
                 if (samples !== plan.samples) throw mp4Error('MP4 could not finalize the captured audio prefix.');
                 picture.close(); await output.finalize();
                 measure('videoFlush');
+                if(highPrecision && payloadPackets!==frames)throw mp4Error('VP9 packet prefix is incomplete.');
+                const levelArgs=highPrecision?mp4Vp9LevelArgs({width,height,fps,
+                    bitrate:Math.max(bitrate,Math.ceil(payloadBytes*8*fps/frames)),nativeLevel:nativeVp9Level,maxFourBytes}):[];
                 write(wave.access, wavHeader(sampleRate, samples), 0, plan.limits.audio);
                 wave.access.flush(); wave.access.close(); waveAccess = undefined;
                 video.access.flush(); video.access.close(); videoAccess = undefined;
@@ -263,7 +278,7 @@ async function start(request: StartExportRequest) {
                 if (!videoBytes || videoFile.size !== videoBytes || wav.size !== plan.limits.audio) throw mp4Error('MP4 input files are incomplete.');
                 const final = await openAccess(dir, 'plexus-visual.mp4');
                 measure('prepareMux');
-                try { finalizeMp4(core, videoFile, wav, final.access, plan, highPrecision?(videoColor??resolveMp4Vp9Color()):undefined); final.access.flush(); }
+                try { finalizeMp4(core, videoFile, wav, final.access, plan, highPrecision?(videoColor??resolveMp4Vp9Color()):undefined,levelArgs); final.access.flush(); }
                 finally { final.access.close(); }
                 measure('ffmpegFinalize');
                 const blob = await final.file.getFile();

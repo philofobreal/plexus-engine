@@ -7,17 +7,47 @@ export interface ExportEncoderSettings {
     latencyMode: 'quality' | 'realtime'; bitrateMode?: 'constant' | 'variable';
 }
 
+// Level, padded luma picture/rate, average bitrate, dimension, four-picture bits.
+const vp9KnownLevels = [0,10,11,20,21,30,31,40,41,50,51,52,60,61,62];
+const vp9Levels = [[31,983040,36864000,12000000,2752,10000000],
+    [40,2228224,83558400,18000000,4160,16000000],
+    [41,2228224,160432128,30000000,4160,18000000],
+    [50,8912896,311951360,60000000,8384,36000000],
+    [51,8912896,588251136,120000000,8384,46000000]] as const;
+
 /** WebM VP9 levels: picture size, luma sample rate, bitrate, max dimension. */
 export function vp9ExportCodec(width: number, height: number, fps: number, bitrate: number, bitDepth: 8 | 10 = 8): string {
-    const levels = [[31, 983040, 36864000, 12000000, 2752], [40, 2228224, 83558400, 18000000, 4160],
-        [41, 2228224, 160432128, 30000000, 4160], [50, 8912896, 311951360, 60000000, 8384],
-        [51, 8912896, 588251136, 120000000, 8384]];
     if (![width, height, fps, bitrate].every(x => Number.isFinite(x) && x > 0)) throw new Error('Invalid encoder settings.');
     // Account for transform edge extension, not just visible image dimensions.
     const pixels = Math.ceil(width / 32) * 32 * Math.ceil(height / 32) * 32;
-    const level = levels.find(([, picture, rate, bits, dim]) => pixels <= picture && pixels * fps <= rate && bitrate <= bits && Math.max(width, height) <= dim);
+    const level = vp9Levels.find(([, picture, rate, bits, dim]) => pixels <= picture && pixels * fps <= rate && bitrate <= bits && Math.max(width, height) <= dim);
     if (!level) throw new Error('Output exceeds the supported export codec levels.');
     return bitDepth === 10 ? `vp09.02.${level[0]}.10` : `vp09.00.${level[0]}.08`;
+}
+
+/** Preserve explicit native levels; unknown native metadata uses the measured floor. */
+export function readVp9ExportLevel(codec?: string): number {
+    if (codec === undefined) return 0;
+    const parts = typeof codec === 'string' ? codec.split('.') : [];
+    if (![4,9].includes(parts.length) || parts[0] !== 'vp09' || parts[1] !== '02' || parts[3] !== '10'
+        || !parts.slice(1).every(p=>/^\d{2}$/.test(p))
+        || !vp9KnownLevels.includes(Number(parts[2]))) throw Error('Invalid native VP9 level metadata.');
+    return Number(parts[2]);
+}
+
+/** FFmpeg stream-copy must receive a level: its fallback can ignore frame rate.
+ * Input bitrate includes the observed complete prefix; bursts can raise the floor.
+ * This declares bounded stream properties, not a full VP9 bitstream certification.
+ */
+export function mp4Vp9LevelArgs({width,height,fps,bitrate,nativeLevel=0,maxFourBytes=0}: {
+    width:number;height:number;fps:number;bitrate:number;nativeLevel?:number;maxFourBytes?:number;
+}): string[] {
+    if (!Number.isSafeInteger(nativeLevel) || !vp9KnownLevels.includes(nativeLevel) || !Number.isSafeInteger(maxFourBytes) || maxFourBytes<0
+        || !Number.isSafeInteger(maxFourBytes*8)) throw Error('Invalid VP9 stream bounds.');
+    const minimum=Number(vp9ExportCodec(width,height,fps,bitrate,10).split('.')[2]);
+    const chosen=vp9Levels.find(([level,,,,,cpb])=>level>=Math.max(minimum,nativeLevel)&&maxFourBytes*8<=cpb);
+    if (!chosen) throw Error('VP9 stream exceeds the supported export levels.');
+    return ['-level:v',String(chosen[0])];
 }
 
 /** Runs only in the dedicated export worker. Diagnostics observe the existing gates:

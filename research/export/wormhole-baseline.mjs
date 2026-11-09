@@ -17,6 +17,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const root = path.resolve('logs/wh01'), fixture = '/plexus-engine/research/export/wormhole-baseline.html';
 const hostFixture = '/plexus-engine/tests/browser/wormhole-host-backend-smoke.html';
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', windowsHide: true }).trim();
+if(process.argv.includes('--level-boundary')&&(!process.argv.includes('--detail-host')||process.argv.some(a=>a.startsWith('--public-release='))))throw Error('--level-boundary is a separate local detail diagnostic');
 const detailProfileArg = process.argv.find(arg => arg.startsWith('--detail-profile='))?.slice('--detail-profile='.length);
 if (detailProfileArg !== undefined && (!process.argv.includes('--detail-host') || !['reference','detail','text','variable'].includes(detailProfileArg))) {
     throw Error('A listed --detail-profile requires --detail-host.');
@@ -24,6 +25,7 @@ if (detailProfileArg !== undefined && (!process.argv.includes('--detail-host') |
 if (process.argv.includes('--detail-host') && ['--export-host','--turbo-host','--isolate-host','--codec-host','--native-packets'].some(flag=>process.argv.includes(flag))) {
     throw Error('--detail-host is a separate bounded diagnostic.');
 }
+if(process.argv.includes('--profile-check')&&(!process.argv.includes('--export-host')||['--profile-source','--turbo-export-host','--detail-host','--quality-candidate='].some(f=>process.argv.some(a=>a.startsWith(f)))))throw Error('--profile-check requires its separate --export-host matrix');
 if (process.argv.includes('--profile-source') && (!process.argv.includes('--export-host') || ['--turbo-export-host','--turbo-host','--detail-host','--isolate-host'].some(flag=>process.argv.includes(flag)))) {
     throw Error('--profile-source requires its separate --export-host qualification cohort.');
 }
@@ -289,7 +291,7 @@ async function capture() {
         }
 
         if(process.argv.includes('--export-host')){
-            let report;try{report=await evaluate('window.runWh06Export('+JSON.stringify({turbo:process.argv.includes('--turbo-export-host'),nativePackets:process.argv.includes('--native-packets'),predictiveDetail:process.argv.includes('--predictive-detail'),profileSourceOnly:process.argv.includes('--profile-source'),qualityQuantizer})+')');}catch(error){
+            let report;try{report=await evaluate('window.runWh06Export('+JSON.stringify({turbo:process.argv.includes('--turbo-export-host'),nativePackets:process.argv.includes('--native-packets'),predictiveDetail:process.argv.includes('--predictive-detail'),profileSourceOnly:process.argv.includes('--profile-source')||process.argv.includes('--profile-check'),noSourceArchive:process.argv.includes('--profile-check'),qualityQuantizer})+')');}catch(error){
                 await writeFile(path.join(output,'integrated-export-failure.json'),JSON.stringify(await evaluate('window.wh06ExportFailure'),null,2)+'\n',{flag:'wx'});
                 for(const name of await evaluate('Array.from(window.wh06ExportBlobs.keys())')){
                     assert.match(name,/^export-\d{3}\.(?:webm|mp4)$/);
@@ -379,12 +381,12 @@ async function capture() {
         }
         if(process.argv.includes('--detail-host')) {
             const profile=detailProfileArg??'reference';
-            const report=await evaluate('window.runWh07Detail('+JSON.stringify(profile)+')');
+            const report=await evaluate('window.runWh07Detail('+JSON.stringify(profile)+','+process.argv.includes('--level-boundary')+')');
             await writeFile(path.join(output,'predictive-detail.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});
             assert.equal(report.pass,true);assert.equal(report.inputs.length,8);
             const artifacts=[];
             for(const row of report.containers){
-                assert.match(row.name,/^detail-(?:packets|product)\.(?:webm|mp4)$/);
+                assert.match(row.name,/^detail-(?:packets|product|stage)\.(?:webm|mp4)$/);
                 const encoded=await evaluate(`(async()=>{const b=window.wh07DetailBlobs.get(${JSON.stringify(row.name)});return await new Promise((r,j)=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=j;f.readAsDataURL(b);});})()`);
                 const bytes=Buffer.from(encoded.split(',')[1],'base64');assert.ok(bytes.length<=64*1024*1024);
                 const file=path.join(output,row.name);await writeFile(file,bytes,{flag:'wx'});
@@ -428,7 +430,7 @@ async function capture() {
             console.log(JSON.stringify({isolationRows:report.rows.length,actualVideos:artifacts.length,codecProbes:codecs.rows.length,scope:'Diagnostic only, no product or Turbo promotion'}));
         }
         if (process.argv.includes('--turbo-host')) {
-            const report=await evaluate('window.runWh07Benchmark('+JSON.stringify({stableMaterial:process.argv.includes('--stable-material'),pairedEncoder:process.argv.includes('--paired-encoder'),mp4Only:process.argv.includes('--mp4-only'),nativePackets:process.argv.includes('--native-packets'),predictiveDetail:process.argv.includes('--predictive-detail'),profileSourceOnly:process.argv.includes('--profile-source'),qualityQuantizer})+')');
+            const report=await evaluate('window.runWh07Benchmark('+JSON.stringify({stableMaterial:process.argv.includes('--stable-material'),pairedEncoder:process.argv.includes('--paired-encoder'),mp4Only:process.argv.includes('--mp4-only'),nativePackets:process.argv.includes('--native-packets'),predictiveDetail:process.argv.includes('--predictive-detail'),profileSourceOnly:process.argv.includes('--profile-source')||process.argv.includes('--profile-check'),noSourceArchive:process.argv.includes('--profile-check'),qualityQuantizer})+')');
             await writeFile(path.join(output,'turbo-benchmark.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});
             assert.equal(report?.pass,true);assert.equal(report.rows.length,process.argv.includes('--mp4-only')?12:24);
             const artifacts=[];
@@ -604,6 +606,75 @@ async function analyzeReplay(directory,acceptedComparisonFile){
     await writeFile(path.join(output,'comparison.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify({output,profiles}));
 }
 
+async function probeLevel(directory){
+    const dir=path.resolve(directory??''),data=JSON.parse(await readFile(path.join(dir,'predictive-detail.json'),'utf8'));
+    assert.equal(data.encoder.width,3840);assert.equal(data.encoder.height,2160);assert.equal(data.encoder.framerate,60);assert.equal(data.inputs.length,8);
+    const native=data.decoder.codec,expected=Number(native.split('.')[2]);assert.equal(expected,51);
+    const input=await readFile(path.join(dir,'detail-stage.mp4'));assert.ok(input.length<16*1024*1024);
+    const {Input,BlobSource,ALL_FORMATS,EncodedPacketSink}=await import('mediabunny');
+    const config=async(bytes)=>{const media=new Input({source:new BlobSource(new Blob([bytes])),formats:ALL_FORMATS});try{return await(await media.getPrimaryVideoTrack()).getDecoderConfig();}finally{media.dispose();}};
+    const packets=async bytes=>{const media=new Input({source:new BlobSource(new Blob([bytes])),formats:ALL_FORMATS});try{
+        const track=await media.getPrimaryVideoTrack(),out=[];
+        for await(const p of new EncodedPacketSink(track).packets())out.push(hash(p.data));
+        assert.equal(out.length,8);return out;
+    }finally{media.dispose();}};
+    const decode=file=>execFileSync('ffmpeg',['-v','error','-threads','2','-i',file,'-map','0:v:0','-an','-f','streamhash','-hash','sha256','-'],{windowsHide:true,timeout:120000,maxBuffer:1024*1024}).toString().trim();
+    const referencePackets=await packets(input),referenceDecoded=decode(path.join(dir,'detail-stage.mp4'));
+    assert.equal(Number((await config(input)).codec.split('.')[2]),expected);
+    const output=path.join(root,'level-probe-'+randomUUID());await mkdir(output,{recursive:true});const rows=[];
+    const corePath=path.resolve('public/export/ffmpeg-5.1.10/ffmpeg-core.js'),wasmPath=path.resolve('public/export/ffmpeg-5.1.10/ffmpeg-core.wasm');
+    const {default:createCore}=await import(pathToFileURL(corePath));const wasm=await readFile(wasmPath);
+    for(const [name,args]of [['copy',[]],['level',['-level:v','51']],['fps',['-r','60']],['both',['-level:v','51','-r','60']]]){
+        const logs=[],core=await createCore({wasmBinary:wasm});core.setLogger(({message})=>{if(logs.push(message)>12)logs.shift();});core.setProgress(()=>{});core.setTimeout(30000);
+        core.FS.writeFile('input.mp4',input);
+        core.exec('-i','input.mp4','-map','0:v:0','-c:v','copy',...args,'-an','-f','mp4','-avoid_negative_ts','disabled','-use_editlist','1','-movflags','+delay_moov+default_base_moof+frag_keyframe','-frag_duration','1000000','-flush_packets','1','output.mp4');
+        assert.equal(core.ret,0,logs.join('\n'));const bytes=core.FS.readFile('output.mp4');assert.ok(bytes.length&&bytes.length<16*1024*1024);
+        const file=path.join(output,name+'.mp4');await writeFile(file,bytes,{flag:'wx'});
+        const videoPackets=await packets(bytes),decodedHash=decode(file);
+        assert.deepEqual(videoPackets,referencePackets);assert.equal(decodedHash,referenceDecoded);
+        const codec=(await config(bytes)).codec;assert.equal(Number(codec.split('.')[2]),args.includes('-level:v')?51:50);
+        rows.push({name,args,codec,sha256:hash(bytes),bytes:bytes.length,videoPackets,decodedHash,logs});
+        core.FS.unlink('input.mp4');core.FS.unlink('output.mp4');
+    }
+    const result={nativeCodec:native,source:dir,stageCodec:(await config(input)).codec,stageSha256:hash(input),actualProductCodec:data.containers.find(r=>r.name==='detail-product.mp4').codec,
+        referencePackets,referenceDecoded,videoOnlyIdentity:true,coreSha256:hash(await readFile(corePath)),wasmSha256:hash(wasm),rows,scope:'Exact shipped5.1.10 WASM under Node,MEMFS bounded16MiB clip; same-packet intermediate reconstruction,not direct OPFS dump or browser timing.'};
+    await writeFile(path.join(output,'level-probe.json'),JSON.stringify(result,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify({output,native,stage:result.stageCodec,actual:result.actualProductCodec,variants:rows.map(({name,codec})=>({name,codec}))}));
+}
+
+async function auditMp4Levels(baselineDirectory,fixedDirectory){
+    const beforeDir=path.resolve(baselineDirectory??''),afterDir=path.resolve(fixedDirectory??'');assert.notEqual(beforeDir,afterDir);
+    const read=async(dir,file)=>JSON.parse(await readFile(path.join(dir,file),'utf8'));
+    const original=await read(beforeDir,'integrated-export.json'),fixed=await read(afterDir,'integrated-export.json');
+    const beforeRows=original.rows.filter(r=>r.name),afterRows=fixed.rows.filter(r=>r.name);assert.equal(beforeRows.length,12);assert.equal(afterRows.length,12);
+    const {Input,BlobSource,ALL_FORMATS,EncodedPacketSink}=await import('mediabunny');
+    const {mp4Vp9LevelArgs,readVp9ExportLevel}=createLoader()('export/ExportPreparation.ts');
+    const inspect=async(dir,spec)=>{
+        assert.match(spec.name,/^export-\d{3}\.mp4$/);const bytes=await readFile(path.join(dir,spec.name));assert.ok(bytes.length<64*1024*1024);
+        const input=new Input({source:new BlobSource(new Blob([bytes])),formats:ALL_FORMATS});
+        try{
+            const video=await input.getPrimaryVideoTrack(),audio=await input.getPrimaryAudioTrack();assert.ok(video&&audio);
+            const packets=async track=>{const out=[];for await(const p of new EncodedPacketSink(track).packets())out.push({sha256:hash(p.data),bytes:p.data.byteLength,timestamp:p.timestamp,duration:p.duration,type:p.type});assert.ok(out.length<1000);return out;};
+            return {fileSha256:hash(bytes),bytes:bytes.length,videoCodec:await video.getDecoderConfig(),audioCodec:await audio.getDecoderConfig(),video:await packets(video),audio:await packets(audio)};
+        }finally{input.dispose();}
+    };
+    const output=path.join(root,'level-audit-'+randomUUID());await mkdir(output,{recursive:true});const rows=[];
+    for(const spec of afterRows){
+        const old=beforeRows.find(r=>r.name===spec.name);assert.ok(old);for(const k of ['width','height','fps','frames'])assert.equal(spec[k],old[k]);
+        const before=await inspect(beforeDir,old),after=await inspect(afterDir,spec);assert.equal(after.video.length,spec.frames);
+        assert.deepEqual(after.video,before.video,'Video packet bytes or timing changed');assert.deepEqual(after.audio,before.audio,'AAC packets or timing changed');assert.deepEqual(after.audioCodec,before.audioCodec);
+        const preflight=spec.diagnostics.find(d=>d.stage==='encoder-query');assert.ok(preflight);
+        const payload=after.video.reduce((n,p)=>n+p.bytes,0),burst=Math.max(...after.video.map((_,i)=>after.video.slice(i,i+4).reduce((n,p)=>n+p.bytes,0)));
+        const floor=Number(mp4Vp9LevelArgs({width:spec.width,height:spec.height,fps:spec.fps,bitrate:Math.max(preflight.bitrate,Math.ceil(payload*8*spec.fps/spec.frames)),nativeLevel:readVp9ExportLevel(preflight.codec),maxFourBytes:burst})[1]);
+        const actual=readVp9ExportLevel(after.videoCodec.codec);assert.ok(actual>=floor&&actual<=51,'Incorrect final MP4 level');
+        const expectedCodec=before.videoCodec.codec.split('.');expectedCodec[2]=String(actual);assert.equal(after.videoCodec.codec,expectedCodec.join('.'),'Non-level VP9 configuration changed');
+        const decode=file=>execFileSync('ffmpeg',['-v','error','-threads','2','-i',file,'-map','0:v:0','-an','-f','streamhash','-hash','sha256','-'],{windowsHide:true,timeout:120000,maxBuffer:1024*1024}).toString().trim();
+        const a=decode(path.join(beforeDir,spec.name)),b=decode(path.join(afterDir,spec.name));assert.equal(a,b,'Decoded video changed');
+        rows.push({name:spec.name,width:spec.width,height:spec.height,fps:spec.fps,frames:spec.frames,before,after,requiredLevel:floor,actualLevel:actual,videoAndAacPacketIdentity:true,decodedHash:a});
+    }
+    const result={pass:true,baseline:beforeDir,fixed:afterDir,rows,scope:'Actual12-file product MP4 metadata parity and independent encoded video/AAC/timing plus decoded-video identity; no hardware or speed claim.'};
+    await writeFile(path.join(output,'level-audit.json'),JSON.stringify(result,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify({output,pass:true,files:rows.length,frames:rows.reduce((n,r)=>n+r.frames,0),levels:rows.map(r=>({name:r.name,old:r.before.videoCodec.codec,current:r.after.videoCodec.codec}))}));
+}
+
 async function verify(file) {
     const output = file ? path.dirname(path.resolve(file)) : (await readFile(path.join(root, 'active-run.txt'), 'utf8')).trim();
     const baseline = await readFile(file ?? path.join(output, 'baseline.json'));
@@ -612,9 +683,11 @@ async function verify(file) {
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
     if (process.argv[2] === 'capture') await capture();
+    else if (process.argv[2] === 'audit-mp4-levels') await auditMp4Levels(process.argv[3],process.argv[4]);
+    else if (process.argv[2] === 'level-probe') await probeLevel(process.argv[3]);
     else if (process.argv[2] === 'analyze-replay') await analyzeReplay(process.argv[3],process.argv[4]);
     else if (process.argv[2] === 'compare-source') await compareSources(process.argv[3],process.argv[4]);
     else if (process.argv[2] === 'compare-encoded') await compareEncoded(process.argv[3],process.argv[4]);
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--quantizer-source=PRIOR_SOURCE_RUN [--quality-refine]] [--exact-host] [--export-host [--profile-source]] [--native-packets | --predictive-detail | --quality-candidate=1|2|4|8] [--turbo-export-host] [--diagnostics-host] [--codec-host] [--detail-host [--detail-profile=reference|detail|text|variable]] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | analyze-replay RUN ACCEPTED_SOURCE_COMPARISON | compare-source BASELINE_RUN CANDIDATE_RUN | compare-encoded BASELINE_RUN CANDIDATE_RUN | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--quantizer-source=PRIOR_SOURCE_RUN [--quality-refine]] [--exact-host] [--export-host [--profile-source | --profile-check]] [--native-packets | --predictive-detail | --quality-candidate=1|2|4|8] [--turbo-export-host] [--diagnostics-host] [--codec-host] [--detail-host [--level-boundary] [--detail-profile=reference|detail|text|variable]] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | audit-mp4-levels BASELINE_RUN FIXED_RUN | level-probe RUN | analyze-replay RUN ACCEPTED_SOURCE_COMPARISON | compare-source BASELINE_RUN CANDIDATE_RUN | compare-encoded BASELINE_RUN CANDIDATE_RUN | verify [baseline.json]');
 }

@@ -1,0 +1,425 @@
+{
+  "version": 1,
+  "task": "WH-07b9",
+  "predecessor": "1eb5f3f6dafed61cec45b066897b5937ee813ae0",
+  "status": "Metadata fix implemented and qualified locally; final commit/Pages/public-QA identities in ignored logs/wh07b9/final-*.json and checkpoint. Stop for short manual acceptance, then b10.",
+  "owners": {
+    "purePolicy": "src/export/ExportPreparation.ts",
+    "jobCountersAndFinalizer": "src/export/mp4-export.worker.ts",
+    "research": "existing standalone CLI/browser diagnostics; no production ownership",
+    "integration": "single agent in this chat"
+  },
+  "production": {
+    "videoEncodingUnchanged": true,
+    "compressedVideoAndAacAndTimingPreserved": true,
+    "newModulePreferenceCodecQueueOrProtocol": false,
+    "mp4Turbo": "Explicit Economy fallback retained",
+    "webmTurbo": "Accepted and unchanged",
+    "opfs": "Existing progressive file/device sink and cleanup, no new full-file RAM stage",
+    "memory": "Four numeric recent packet sizes and scalar counters only; bounded16MiB video-only MEMFS used in offline control experiment, not browser product",
+    "notClaimed": "Complete VP9 bitstream conformance, new quality/speed gain, CPU/GPU reassignment, physical-mobile native10bit success"
+  },
+  "finding": {
+    "nativeCodec": "vp09.02.51.10",
+    "intermediateCodec": "vp09.02.51.10.01.01.13.01.01",
+    "oldActualProductCodec": "vp09.02.50.10.01.01.13.01.01",
+    "intermediateScope": "Exact shipped5.1.10 WASM under Node,MEMFS bounded16MiB clip; same-packet intermediate reconstruction,not direct OPFS dump or browser timing.",
+    "controls": [
+      {
+        "name": "copy",
+        "args": [],
+        "codec": "vp09.02.50.10.01.01.13.01.01",
+        "sha256": "ece264119f5391fea4b4c73f49fb82a95abae26090f827b9796c5d93c95b1108"
+      },
+      {
+        "name": "level",
+        "args": [
+          "-level:v",
+          "51"
+        ],
+        "codec": "vp09.02.51.10.01.01.13.01.01",
+        "sha256": "44596b7a2359781b6d74acbb5d5bff644f72c9d9a541ce106a18767c54e995c0"
+      },
+      {
+        "name": "fps",
+        "args": [
+          "-r",
+          "60"
+        ],
+        "codec": "vp09.02.50.10.01.01.13.01.01",
+        "sha256": "ece264119f5391fea4b4c73f49fb82a95abae26090f827b9796c5d93c95b1108"
+      },
+      {
+        "name": "both",
+        "args": [
+          "-level:v",
+          "51",
+          "-r",
+          "60"
+        ],
+        "codec": "vp09.02.51.10.01.01.13.01.01",
+        "sha256": "44596b7a2359781b6d74acbb5d5bff644f72c9d9a541ce106a18767c54e995c0"
+      }
+    ],
+    "controlPacketAndDecodedIdentity": true,
+    "coreSha256": "b72028720fa6ab660c9a90af680e9587828fb54bc282632a4c59788412805dbf",
+    "wasmSha256": "430d6a10612772ead0349d0d823b34b0771f00eec82f9c9e1a5399747b9f4e0b",
+    "actualFiles": 12,
+    "actualFrames": 351,
+    "videoAacTimingAndDecodedIdentity": true,
+    "oneByteFiles": 7,
+    "entirelyIdenticalFiles": 5,
+    "levelPairs": [
+      {
+        "name": "export-000.mp4",
+        "old": "vp09.02.31.10.01.01.13.01.01",
+        "fixed": "vp09.02.31.10.01.01.13.01.01",
+        "requiredLevel": 31
+      },
+      {
+        "name": "export-001.mp4",
+        "old": "vp09.02.50.10.01.01.13.01.01",
+        "fixed": "vp09.02.50.10.01.01.13.01.01",
+        "requiredLevel": 50
+      },
+      {
+        "name": "export-002.mp4",
+        "old": "vp09.02.31.10.01.01.13.01.01",
+        "fixed": "vp09.02.31.10.01.01.13.01.01",
+        "requiredLevel": 31
+      },
+      {
+        "name": "export-003.mp4",
+        "old": "vp09.02.50.10.01.01.13.01.01",
+        "fixed": "vp09.02.51.10.01.01.13.01.01",
+        "requiredLevel": 51
+      },
+      {
+        "name": "export-004.mp4",
+        "old": "vp09.02.50.10.01.01.13.01.01",
+        "fixed": "vp09.02.51.10.01.01.13.01.01",
+        "requiredLevel": 51
+      },
+      {
+        "name": "export-005.mp4",
+        "old": "vp09.02.40.10.01.01.13.01.01",
+        "fixed": "vp09.02.41.10.01.01.13.01.01",
+        "requiredLevel": 41
+      },
+      {
+        "name": "export-006.mp4",
+        "old": "vp09.02.40.10.01.01.13.01.01",
+        "fixed": "vp09.02.40.10.01.01.13.01.01",
+        "requiredLevel": 40
+      },
+      {
+        "name": "export-007.mp4",
+        "old": "vp09.02.50.10.01.01.13.01.01",
+        "fixed": "vp09.02.51.10.01.01.13.01.01",
+        "requiredLevel": 51
+      },
+      {
+        "name": "export-008.mp4",
+        "old": "vp09.02.50.10.01.01.13.01.01",
+        "fixed": "vp09.02.50.10.01.01.13.01.01",
+        "requiredLevel": 50
+      },
+      {
+        "name": "export-009.mp4",
+        "old": "vp09.02.31.10.01.01.13.01.01",
+        "fixed": "vp09.02.40.10.01.01.13.01.01",
+        "requiredLevel": 40
+      },
+      {
+        "name": "export-010.mp4",
+        "old": "vp09.02.31.10.01.01.13.01.01",
+        "fixed": "vp09.02.40.10.01.01.13.01.01",
+        "requiredLevel": 40
+      },
+      {
+        "name": "export-011.mp4",
+        "old": "vp09.02.31.10.01.01.13.01.01",
+        "fixed": "vp09.02.40.10.01.01.13.01.01",
+        "requiredLevel": 40
+      }
+    ],
+    "failureReason": "Shipped FFmpeg MP4 VP9 unknown-level fallback derives from picture size without frame rate; -level:v preserves actual bound while -r alone does not.",
+    "policy": "Maximum native level plus padded dimensions/FPS and nominal/observed prefix average and four-picture burst floor; supported31/40/41/50/51, excessive bounds explicitly fail."
+  },
+  "runs": {
+    "boundary": "logs/wh01/run-348d34fb-bc71-4ead-b684-04dea21c95eb",
+    "initialControls": "logs/wh01/level-probe-b07a152f-7a5d-4c5c-ad13-cfa2ab4a5863",
+    "controls": "logs/wh01/level-probe-0b3b4e2e-5c80-4f7e-8176-5a5191bfe676",
+    "fixedProfile": "logs/wh01/run-abb45fde-8e8e-4525-bc4d-59462300826e",
+    "identityAudit": "logs/wh01/level-audit-690fbc7a-0188-4b59-aac5-0e8b569a60f1",
+    "failedFullBrowser": "logs/wh01/run-1bd6175a-93fa-4e80-b7ad-5f1c811e415b",
+    "fullBrowser": "logs/wh01/run-4458dd61-33c3-4f15-9779-381be41fe536"
+  },
+  "validation": {
+    "cumulative": {
+      "tests": 2283,
+      "pass": 2274,
+      "fail": 9,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 1111577.7016
+    },
+    "knownBaselineFailuresExactNameAndMessage": [
+      {
+        "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+        "message": "vos-wh-drift.json must not reset user-global wormholeStarfield"
+      },
+      {
+        "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+        "message": "establish remains visibly above the opacity floor"
+      },
+      {
+        "name": "weak roles pin a deep-perspective depth and continuity profile",
+        "message": "establish depth\n\n2.03136 !== 4"
+      },
+      {
+        "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+        "message": "deep drift deeper than establish"
+      },
+      {
+        "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+        "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+      },
+      {
+        "name": "wormhole factory presets keep a minimum normalized weighted separation",
+        "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+      },
+      {
+        "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+        "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))"
+      },
+      {
+        "name": "projected forward motion preserves overdrive > punch > drive > drift",
+        "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+      },
+      {
+        "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+        "message": "389.64890777178124 vs 471.543038051684"
+      }
+    ],
+    "predecessor": "1eb5f3f6dafed61cec45b066897b5937ee813ae0",
+    "oldActiveFiles": 233,
+    "activeFiles": 233,
+    "removedTests": 0,
+    "oldPreparationBlocksRetained": true,
+    "protectedBodySha256": "2a8e41930ebb4eaea0526e3057d526c1d10645fd51d90274c7101ef46482d113",
+    "protectedBrowserBodyUnchanged": true,
+    "fixedEightReferenceHashesUnchanged": true,
+    "referenceImages": [
+      {
+        "id": "dashboard-policy",
+        "sha256": "45b1b6998e5c95fed348f0167a38a942ecf6a6820fdcc0664956f445c179eaf5",
+        "carriers": 2239,
+        "prepared": 2228,
+        "lines": 673
+      },
+      {
+        "id": "dashboard-policy-next",
+        "sha256": "42c90e0ae4298a3ef20309466cf52f941bc2f83701c283c1d531db5f1752ed00",
+        "carriers": 2229,
+        "prepared": 2217,
+        "lines": 669
+      },
+      {
+        "id": "mvp-policy",
+        "sha256": "5f8fa76a72f1b1b65a1fba8fe842ba15406b9b16c866cb29824d98874e0f06c1",
+        "carriers": 2212,
+        "prepared": 2201,
+        "lines": 673
+      },
+      {
+        "id": "mvp-policy-next",
+        "sha256": "443a94d367931aa8780ca60c5758fba6305c21e4b65537d858d55211f0dbf587",
+        "carriers": 2203,
+        "prepared": 2190,
+        "lines": 669
+      },
+      {
+        "id": "dense-exact",
+        "sha256": "e9c46e67902d45c1690f7101f71439b599c15aaaa5fb5e42fdd9f574ddff8102",
+        "carriers": 4488,
+        "prepared": 4462,
+        "lines": 1351
+      },
+      {
+        "id": "reverse-portrait",
+        "sha256": "236a58b3e3cc51002205308951d4709677ffb4a258ab1ee8940fb3fa7f795f12",
+        "carriers": 2214,
+        "prepared": 2152,
+        "lines": 673
+      },
+      {
+        "id": "transparent",
+        "sha256": "0a4728338508a609c5492a778baf661aea01e2b2a855da98e688508f9f7917c7",
+        "carriers": 2212,
+        "prepared": 2200,
+        "lines": 673
+      },
+      {
+        "id": "material-off",
+        "sha256": "793b05e217fd8bf623fdbead78d748ef98cfebfe65cf6a418ba03d315377400e",
+        "carriers": 0,
+        "prepared": 0,
+        "lines": 0
+      }
+    ],
+    "build": "npm run build passed; final guarded release prepare rebuilds current source",
+    "focused": {
+      "tests": 16,
+      "pass": 16
+    },
+    "targeted": {
+      "tests": 160,
+      "pass": 160,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "durationMs": 27959.7523
+    },
+    "newCases": 3,
+    "browser": {
+      "baselines": 8,
+      "hostRows": 37,
+      "exactRows": 21,
+      "fullSizeSamples": 4,
+      "economyRows": 18,
+      "turboRows": 21,
+      "files": 36,
+      "decodedFrameIds": 770,
+      "tenBitFiles": 12,
+      "fullBrowserPass": true,
+      "profileCases": 13,
+      "profileFiles": 12,
+      "profileFrames": 351
+    },
+    "changedPredecessors": [
+      {
+        "path": "src/export/ExportPreparation.ts",
+        "gitObject": "938fec41f176f0e6edfac17a20aac4ee976272da",
+        "sha256": "f9f4169187a45efbaff807faf670ffaaa4c5c20846e6c9be74216c7f94697888",
+        "currentSha256": "ae9df19229deda98129acc8e81adb25f1eb7e4745f4a9bfbace4598d94ed2162",
+        "reason": "Preserve MP4 VP9 level with finite shared policy and bounded worker observations; additive retained tests and separate packet/decode/boundary diagnostics."
+      },
+      {
+        "path": "src/export/mp4-export.worker.ts",
+        "gitObject": "7230afc5a16e15f0da8c7c66ecda0c8dee41dd22",
+        "sha256": "17000f58c839afd1ec6e5a406facf9e48a469992c03c0d23cdecdf460eb3cd3c",
+        "currentSha256": "4be36fd1f9c83e377eeb59767f9e727e415ef3979ec80badbb3480dca7acdbcb",
+        "reason": "Preserve MP4 VP9 level with finite shared policy and bounded worker observations; additive retained tests and separate packet/decode/boundary diagnostics."
+      },
+      {
+        "path": "tests/export-preparation.test.mjs",
+        "gitObject": "68d289540a30a59254739da3d31e0f001da76db9",
+        "sha256": "a08bde98aac2eee45240391c2e43b2ee26e7f214064d8cd69c218a2d8eb33a95",
+        "currentSha256": "6f67932dfe2d7218eaab5893773aba8c0007e4f267ceb1d74d093ac8f64ee713",
+        "reason": "Preserve MP4 VP9 level with finite shared policy and bounded worker observations; additive retained tests and separate packet/decode/boundary diagnostics."
+      },
+      {
+        "path": "tests/browser/wormhole-host-backend-smoke.html",
+        "gitObject": "b25b676721363fb8ddfff08bedac34c50b0be4a0",
+        "sha256": "be11c17a4d881f2da0f5c86e839807369ec58d6ae09930109d5b4137387f2c80",
+        "currentSha256": "f372737f7637f06a60378d0d9af1fb6ea22331b0917c9d9a11031bd9f51cc213",
+        "reason": "Preserve MP4 VP9 level with finite shared policy and bounded worker observations; additive retained tests and separate packet/decode/boundary diagnostics."
+      },
+      {
+        "path": "research/export/wormhole-baseline.mjs",
+        "gitObject": "2f304085b64a285ec5d5b5ac1158a4b5f8840a79",
+        "sha256": "91c8cb7db47a030e975b5ea2739ec9d15fd34c181f7c95a838570fad0cd16c61",
+        "currentSha256": "3b686ba32fdb3e45e9a5aa42d2b09354c4c87b7b9b48307e3d99df229e98952d",
+        "reason": "Preserve MP4 VP9 level with finite shared policy and bounded worker observations; additive retained tests and separate packet/decode/boundary diagnostics."
+      }
+    ],
+    "lateCliOnlyEvolution": "After full Node start only additive offline audit/probe and public profile-check support evolved; protected exact body and production/core tests stayed fixed. First full browser run failed due to a diagnostic scope error; original Turbo loop restored and entire matrix rerun; negative raw run retained. No failed product check excluded.",
+    "localLinksChecked": true,
+    "runtime": "Node25.2.1/npm11.6.2, workspace TEMP/TMP logs/wh07b9/temp. No dependency/golden/Graphify rebuild. Existing chunk-size warning only.",
+    "diffExport": "Considered unnecessary for bounded change; no PR requested.",
+    "unrun": [
+      "Physical S22 native10bit remains unsupported and deferred.",
+      "Whole-song/thermal and cross-device qualification belongs to WH-08.",
+      "No b10 predictive profile or new MP4 Turbo speed qualification.",
+      "User short4K60 MP4 Stop/save/play/seek/audio/quality acceptance pending after publication."
+    ]
+  },
+  "commands": {
+    "build": "npm run build",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=4",
+    "targeted": "node --test --test-reporter=tap --test-concurrency=4 tests/export-native-packet.test.mjs tests/wormhole-render-contract.test.mjs tests/mp4-vp9-color.test.mjs tests/export-codec-isolation.test.mjs tests/export-parallel-research.test.mjs tests/export-performance.test.mjs tests/export-scheduling.test.mjs tests/export-preparation.test.mjs tests/mvp-mp4-export.test.mjs tests/export-diagnostics.test.mjs tests/export-output-inspection.test.mjs tests/export-lifecycle.test.mjs tests/export-resources.test.mjs tests/exact-export-frame-bridge.test.mjs tests/mvp-export-panel.test.mjs tests/release-pages.test.mjs",
+    "focused": "node --test tests/export-preparation.test.mjs tests/mp4-vp9-color.test.mjs",
+    "finalFocused": "node --test tests/export-preparation.test.mjs",
+    "syntax": "node --check research/export/wormhole-baseline.mjs",
+    "boundary": "node research/export/wormhole-baseline.mjs capture --detail-host --level-boundary",
+    "controls": "node research/export/wormhole-baseline.mjs level-probe logs/wh01/run-348d34fb-bc71-4ead-b684-04dea21c95eb",
+    "fixedProfile": "node research/export/wormhole-baseline.mjs capture --export-host --profile-check",
+    "audit": "node research/export/wormhole-baseline.mjs audit-mp4-levels logs/wh01/run-74b0aa3d-3033-43bb-8d7c-7e84af1e23c1 logs/wh01/run-abb45fde-8e8e-4525-bc4d-59462300826e",
+    "fullBrowser": "node research/export/wormhole-baseline.mjs capture --exact-host --export-host --turbo-export-host",
+    "releaseFallback": "node scripts/release-pages.mjs prepare wh07b9-vp9-level; node scripts/release-pages.mjs publish; node scripts/release-pages.mjs verify. Sequential checked exits. Existing guarded Node fallback because package deploy invokes unavailable Bun.",
+    "publicFull": "node research/export/wormhole-baseline.mjs capture --exact-host --export-host --turbo-export-host --diagnostics-host --public-release=RELEASE_ID",
+    "publicProfile": "node research/export/wormhole-baseline.mjs capture --export-host --profile-check --public-release=RELEASE_ID",
+    "byteAudit": "For each fixed/retained corresponding export-NNN.mp4, assert equal byte length; count unequal zip(bytes) positions, record offset and old/new values. Seven one-byte level changes at562; five entirely identical. Packet and decoded identity separately verified by audit command."
+  },
+  "sources": [
+    {
+      "title": "FFmpeg5.1 VP9 configuration writer",
+      "url": "https://ffmpeg.org/doxygen/5.1/vpcc_8c_source.html"
+    },
+    {
+      "title": "WebM VP9 levels",
+      "url": "https://www.webmproject.org/vp9/levels/"
+    }
+  ],
+  "next": [
+    "Manual short4K60 MP4 ten-bit Stop/save/play/seek/audio/accepted-quality check; stop until user accepts.",
+    "WH-07b10 shorter prediction spans/q0 control, valid level/rate/storage/preflight; whole-job speed only after fidelity.",
+    "WH-06c2/e mobile10bit deferred; WH-08 qualification; T21b/c caption placement/fonts/transitions/editor/burn-in; T22-T24; T25 each handoff."
+  ],
+  "hashes": {
+    "logs/wh01/level-audit-690fbc7a-0188-4b59-aac5-0e8b569a60f1/level-audit.json": "d62945597c64514cf60922522cf8b7a0109c3435d49b2375ffb07f723112f02e",
+    "logs/wh01/level-probe-0b3b4e2e-5c80-4f7e-8176-5a5191bfe676/level-probe.json": "0fa773d3f2a5ac1aceb6c87cf6f22275a75a86ddcdb84d81414da1dd6bf8561c",
+    "logs/wh01/level-probe-b07a152f-7a5d-4c5c-ad13-cfa2ab4a5863/level-probe.json": "cc589c2ccc4820958ada5731c326638602d4bc436656d37a7ad1381df68db74c",
+    "logs/wh01/run-1bd6175a-93fa-4e80-b7ad-5f1c811e415b/baseline.json": "937b39bf0a1c2f0b77abc8cdde91654a3840e41b95aecbbb0a98b0245573270f",
+    "logs/wh01/run-1bd6175a-93fa-4e80-b7ad-5f1c811e415b/build.json": "29cc7ca8ea298e8ec55ff2d8f2334479b515bf9f4c6119f137e65e63bfd127a7",
+    "logs/wh01/run-1bd6175a-93fa-4e80-b7ad-5f1c811e415b/exact-host.json": "79f2ebbade6a6dad1e4096e1c63ef4f74530a7f99e7bf0931485aa4c21ac4014",
+    "logs/wh01/run-1bd6175a-93fa-4e80-b7ad-5f1c811e415b/exact-images.json": "3949e2b529c2e686164413b136572030e327e54b69e780777b0acc9413754e0d",
+    "logs/wh01/run-1bd6175a-93fa-4e80-b7ad-5f1c811e415b/host-smoke.json": "78b849e145852ded3563eb19ff1ed1a6cbbabb65837eac9dbd8874348b7ceba8",
+    "logs/wh01/run-1bd6175a-93fa-4e80-b7ad-5f1c811e415b/integrated-export-failure.json": "cdc5cd2cbef0ac8a02ed886e0eab0e64cb40c11c3710f5d157778bdb17cac5a8",
+    "logs/wh01/run-1bd6175a-93fa-4e80-b7ad-5f1c811e415b/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/run-348d34fb-bc71-4ead-b684-04dea21c95eb/baseline.json": "937b39bf0a1c2f0b77abc8cdde91654a3840e41b95aecbbb0a98b0245573270f",
+    "logs/wh01/run-348d34fb-bc71-4ead-b684-04dea21c95eb/build.json": "6ff4aaa301ca8fed266e37cd50fcccfe3216e8105be0bf11a7e0b8f8ad115c67",
+    "logs/wh01/run-348d34fb-bc71-4ead-b684-04dea21c95eb/host-smoke.json": "eea6a3d0c9f417b6a79e5f5188991a3120e2f0ec90b5d8daa4b0535a9fbacae3",
+    "logs/wh01/run-348d34fb-bc71-4ead-b684-04dea21c95eb/predictive-detail-artifacts.json": "6f3fb35f034644b9bc6dec61fdeb05ac0a31baf1e604bf316add556bd957e177",
+    "logs/wh01/run-348d34fb-bc71-4ead-b684-04dea21c95eb/predictive-detail.json": "949a9e2bddcb1316d19df82220c26d51a2e3c8b5a007d56f398609702ea8585a",
+    "logs/wh01/run-348d34fb-bc71-4ead-b684-04dea21c95eb/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/run-4458dd61-33c3-4f15-9779-381be41fe536/baseline.json": "937b39bf0a1c2f0b77abc8cdde91654a3840e41b95aecbbb0a98b0245573270f",
+    "logs/wh01/run-4458dd61-33c3-4f15-9779-381be41fe536/build.json": "26f27206f0410e1dd95081fe41f1647b48838c384932144bbedb663d411ca3db",
+    "logs/wh01/run-4458dd61-33c3-4f15-9779-381be41fe536/exact-host.json": "2e86c069b8f70dd31daaa56a2d594a3aae35533e109d53b82860d96f943bdb92",
+    "logs/wh01/run-4458dd61-33c3-4f15-9779-381be41fe536/exact-images.json": "3949e2b529c2e686164413b136572030e327e54b69e780777b0acc9413754e0d",
+    "logs/wh01/run-4458dd61-33c3-4f15-9779-381be41fe536/host-smoke.json": "00473b47e0cb9b4385fa82bc57485909750be4e92805051b21fdeff3e15df679",
+    "logs/wh01/run-4458dd61-33c3-4f15-9779-381be41fe536/integrated-export-artifacts.json": "f712332976e8234f26ca98e59ec34dc58726fd2a575ee01c8990e7b9e70578a0",
+    "logs/wh01/run-4458dd61-33c3-4f15-9779-381be41fe536/integrated-export.json": "d9d804c9dc4febbafef043fbf0791173ba79e05bd22756a07f03b9829881657c",
+    "logs/wh01/run-4458dd61-33c3-4f15-9779-381be41fe536/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh01/run-abb45fde-8e8e-4525-bc4d-59462300826e/baseline.json": "937b39bf0a1c2f0b77abc8cdde91654a3840e41b95aecbbb0a98b0245573270f",
+    "logs/wh01/run-abb45fde-8e8e-4525-bc4d-59462300826e/build.json": "f969d32e4ba875b43125f4e5225d48a73d7275bfa42e227233dd8c28bd07f852",
+    "logs/wh01/run-abb45fde-8e8e-4525-bc4d-59462300826e/host-smoke.json": "320617c9c1a4c34c5bf2f438294058743c3d46e61c3091de04032877590a92c2",
+    "logs/wh01/run-abb45fde-8e8e-4525-bc4d-59462300826e/integrated-export-artifacts.json": "788d4ced49d5d3d2a48232611f1b1de77a8e18485aae8fac7d06755275f562ce",
+    "logs/wh01/run-abb45fde-8e8e-4525-bc4d-59462300826e/integrated-export.json": "3eab20d115115f6579aa946d1b2d52cf720abb0c384bff5667c40c475b500b58",
+    "logs/wh01/run-abb45fde-8e8e-4525-bc4d-59462300826e/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "logs/wh07b9/build.log": "28c58e48934ebe640132de552a91179daa3ea6d4d0fc7892c22d2a3f80aa150e",
+    "logs/wh07b9/byte-differences.json": "3d4c8aef365e3a2407dde370746c09023da20abb52e81393617c6f690e86ea08",
+    "logs/wh07b9/cumulative.tap": "3785400b837ee161c83ffd1c5cd5326fc9fa54c51554a2cab67977aee1b5f89d",
+    "logs/wh07b9/node-results.json": "ff610881e7130a95d4000f478b176a82bff31bd8a755dc788ce3d4909550a95e",
+    "logs/wh07b9/preparation-final.log": "78eccaa6a37098a8aab1c871988761d56af62f5f789683f3387c3d661c4eb2d7",
+    "logs/wh07b9/preparation-targeted.log": "49cdd31e23cd93c3fa9d317a75b4090961b490b00e60eda1ddd7a245982c5e85",
+    "logs/wh07b9/retention.json": "df4cf14888de73af15f2b99a3c313366b3e8351bd7500700e362c73e2e0678ab",
+    "logs/wh07b9/targeted.tap": "58bd197cfee84a3a61f119d6f69690da796aee014e5f6de3aef3d20857b2cd40",
+    "research/export/wormhole-baseline.mjs": "3b686ba32fdb3e45e9a5aa42d2b09354c4c87b7b9b48307e3d99df229e98952d",
+    "src/export/ExportPreparation.ts": "ae9df19229deda98129acc8e81adb25f1eb7e4745f4a9bfbace4598d94ed2162",
+    "src/export/mp4-export.worker.ts": "4be36fd1f9c83e377eeb59767f9e727e415ef3979ec80badbb3480dca7acdbcb",
+    "tests/browser/wormhole-host-backend-smoke.html": "f372737f7637f06a60378d0d9af1fb6ea22331b0917c9d9a11031bd9f51cc213",
+    "tests/export-preparation.test.mjs": "6f67932dfe2d7218eaab5893773aba8c0007e4f267ceb1d74d093ac8f64ee713"
+  }
+}
