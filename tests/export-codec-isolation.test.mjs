@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {makeTransferSink,probeNativeCodec,codecProbeConfigurations,copyInspectionPacket,decodeInspectionPackets,inspectionVp9Color} from '../research/export/codec-isolation.mjs';
+import {makeTransferSink,probeNativeCodec,codecProbeConfigurations,copyInspectionPacket,decodeInspectionPackets,inspectionVp9Color,encodeSourceProfile} from '../research/export/codec-isolation.mjs';
 
 const start={type:'start_export',frames:4,fps:60,sampleRate:48000,sourceSamples:3200};
 const picture=(index,count=800)=>({type:'encode_frame',timestampUs:Math.round(index*1e6/60),audioSampleCount:count,audioPlanar:new Float32Array(count*2),
@@ -135,4 +135,65 @@ test('independent packet decoding preserves callback errors, bounds stalled queu
         else {assert.match(r.error.message,options.blocked?/deadline/:/callback failed/);assert.equal(f.created[0].closed,1);}
     }
     const f=decoderFixture();await assert.rejects(decodeInspectionPackets(Array.from({length:64},()=>f.packets[0]),{}, {},f.env),/bound/);
+});
+
+
+function replayFixture(options={}) {
+ const created=[],bitmaps=[],frames=[],canvases=[];
+ class Native extends EventTarget {
+  encodeQueueSize=0;
+  constructor(init){super();this.init=init;this.calls=[];created.push(this);}
+  configure(config){this.config=config;if(options.configureError)throw Error('configure refused');}
+  encode(frame,config){
+   this.calls.push({timestamp:frame.timestamp,config});if(options.blocked)this.encodeQueueSize=4;
+   if(options.callbackError){this.init.error(Error('encode callback'));return;}
+   const data=new Uint8Array([1,2,3]);this.init.output({timestamp:frame.timestamp,type:config.keyFrame?'key':'delta',byteLength:options.oversized?64*1024*1024+1:data.length,copyTo:out=>out.set(data)},
+    {decoderConfig:{codec:'vp09.02.51.10',codedWidth:1280,codedHeight:720}});
+  }
+  async flush(){}
+  close(){this.closed=(this.closed??0)+1;}
+ }
+ Native.isConfigSupported=async config=>({supported:options.supported!==false,config:{...config,...(options.unrecognized?{bitrateMode:'constant'}:{})}});
+ class Frame {constructor(canvas,config){Object.assign(this,config);frames.push(this);}close(){this.closed=(this.closed??0)+1;}}
+ class Canvas {constructor(width,height){Object.assign(this,{width,height});canvases.push(this);}getContext(){return options.noContext?null:{drawImage(){}};}}
+ const request={width:1280,height:720,fps:60,bitrate:8000000,profile:'quantizer',quantizer:16,
+  frames:Array.from({length:3},(_,index)=>({index,name:'source-export-000-'+String(index).padStart(3,'0')+'.png'}))};
+ const load=async()=>{const bitmap={width:options.wrongSize?720:1280,height:720,close(){this.closed=(this.closed??0)+1;}};bitmaps.push(bitmap);return bitmap;};
+ const env={VideoEncoder:Native,VideoFrame:Frame,OffscreenCanvas:Canvas,setTimeout:(f,ms)=>setTimeout(f,Math.min(ms,20)),clearTimeout};
+ return {request,env,load,created,frames,bitmaps,canvases};
+}
+
+test('source replay applies explicit per-picture VP9 quantizer and bounded contiguous key frames without mutating input',async()=>{
+ for(const q of [0,255]){
+  const f=replayFixture();f.request.quantizer=q;f.request.frames=Array.from({length:63},(_,index)=>({index,name:'source-export-000-'+String(index).padStart(3,'0')+'.png'}));const before=structuredClone(f.request);
+  const r=await encodeSourceProfile(f.request,f.load,f.env);assert.equal(r.stage,'complete');assert.equal(r.frames,63);assert.equal(r.packets.length,63);assert.equal(r.config.bitrateMode,'quantizer');assert.equal(r.config.bitrate,undefined);
+  assert.deepEqual(f.created[0].calls.filter(x=>x.config.keyFrame).map(x=>x.timestamp),[0,1000000]);assert.ok(f.created[0].calls.every(x=>x.config.vp9.quantizer===q));assert.deepEqual(f.request,before);
+  assert.ok(f.frames.every(x=>x.closed===1));assert.ok(f.bitmaps.every(x=>x.closed===1));assert.equal(f.canvases[0].width,1);assert.equal(f.created[0].closed,1);
+  const beforeReport=JSON.stringify(r);f.created[0].init.output({byteLength:1},{});assert.equal(JSON.stringify(r),beforeReport);
+ }
+ const f=replayFixture();delete f.request.quantizer;f.request.profile='all-key';const r=await encodeSourceProfile(f.request,f.load,f.env);
+ assert.equal(r.stage,'complete');assert.equal(r.config.bitrate,8000000);assert.equal(r.config.contentHint,undefined);assert.ok(f.created[0].calls.every(x=>x.config.keyFrame&&!x.config.vp9));
+});
+
+test('source replay refuses malformed dimensions, unbounded sources, quantizers and noncontiguous input before native allocation',async()=>{
+ for(const patch of [{width:4096},{width:3840,height:3840},{fps:24},{bitrate:1},{profile:'unknown'},{quantizer:-1},{quantizer:256},{quantizer:1.5},{frames:[]},{frames:Array.from({length:64},(_,index)=>({index,name:'source-export-000-000.png'}))},{frames:[{index:1,name:'source-export-000-001.png'}]},{frames:[{index:0,name:'../escape.png'}]}]){
+  const f=replayFixture();await assert.rejects(encodeSourceProfile({...f.request,...patch},f.load,f.env),/Invalid source replay/);assert.equal(f.created.length+f.canvases.length+f.bitmaps.length,0);
+ }
+});
+
+test('source replay distinguishes native refusal and unrecognized rate control without allocating picture resources',async()=>{
+ const f=replayFixture({supported:false}),r=await encodeSourceProfile(f.request,f.load,f.env);assert.equal(r.encoder,'unsupported');assert.equal(r.stage,'query');assert.equal(f.created.length+f.canvases.length,0);
+ const g=replayFixture({unrecognized:true}),bad=await encodeSourceProfile(g.request,g.load,g.env);assert.match(bad.error.message,/not recognized/);assert.equal(g.created.length,0);
+});
+
+test('source replay closes all borrowed resources on codec, loading, size, cap and queue failures',async()=>{
+ for(const options of [{configureError:true},{callbackError:true},{oversized:true},{blocked:true},{wrongSize:true},{noContext:true}]){
+  const f=replayFixture(options),r=await encodeSourceProfile(f.request,f.load,f.env);assert.ok(r.error);assert.equal(f.created[0].closed,1);assert.ok(f.frames.every(x=>x.closed===1));assert.ok(f.bitmaps.every(x=>x.closed===1));if(f.canvases.length)assert.equal(f.canvases[0].width,1);
+ }
+ const f=replayFixture(),r=await encodeSourceProfile(f.request,()=>Promise.reject(Error('PNG load refused')),f.env);assert.match(r.error.message,/PNG load refused/);assert.equal(f.created[0].closed,1);
+});
+
+test('source replay closes a source that resolves after its timeout and never submits it',async()=>{
+ const f=replayFixture();let resolve;const pending=new Promise(r=>resolve=r);const r=await encodeSourceProfile(f.request,()=>pending,f.env);assert.match(r.error.message,/timed out/);
+ const bitmap=await f.load();resolve(bitmap);await new Promise(r=>setTimeout(r,0));assert.equal(bitmap.closed,1);assert.equal(f.created[0].calls.length,0);
 });

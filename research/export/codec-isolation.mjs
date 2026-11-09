@@ -170,11 +170,80 @@ export async function decodeInspectionPackets(packets, config, {omitDuration=fal
     return report;
 }
 
+/** WH-07b7: short, laboratory-only native rate-control feasibility. Source
+ * loader lends one bitmap at a time; returned packets are owned QA copies,
+ * capped at64MiB, not a replacement for the product's progressive OPFS path.
+ */
+export async function encodeSourceProfile(request, loadSource, env = globalThis, timeoutMs = 120000) {
+    const {width,height,fps,bitrate,profile,quantizer,frames} = request ?? {};
+    if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 720 || height < 720
+        || width > 3840 || height > 3840 || width * height > 3840 * 2160 || ![30,60].includes(fps)
+        || ![8000000,14000000,64000000].includes(bitrate) || !['all-key','quantizer'].includes(profile)
+        || (profile === 'quantizer' ? !Number.isInteger(quantizer) || quantizer < 0 || quantizer > 255 : quantizer !== undefined)
+        || !Array.isArray(frames) || frames.length < 1 || frames.length > 63
+        || frames.some((f,i)=>f.index !== i || !/^source-export-\d{3}-\d{3}\.png$/.test(f.name))) throw Error('Invalid source replay');
+    const config={codec:'vp09.02.51.10',width,height,framerate:fps,latencyMode:'quality',alpha:'discard',
+        ...(profile==='quantizer'?{bitrateMode:'quantizer',contentHint:'detail'}:{bitrateMode:'constant',bitrate})};
+    const report={profile,...(profile==='quantizer'?{quantizer}:{}),config,encoder:'not-checked',stage:'query',
+        frames:0,bytes:0,packets:[],scope:'Short native codec feasibility; no product MP4, whole-job speed, hardware or mobile qualification.'};
+    let encoder,canvas,timer,active=true,reason,rejectFailure,detachQueue;
+    const failure=new Promise((_,reject)=>{rejectFailure=reject;});void failure.catch(()=>{});
+    const fail=error=>{if(active){reason??=error instanceof Error?error:Error(String(error));rejectFailure(reason);}};
+    const wait=async promise=>{const result=await Promise.race([promise,failure]);if(reason)throw reason;return result;};
+    try {
+        timer=env.setTimeout(()=>fail(Error('Source replay timed out')),timeoutMs);
+        if(!env.VideoEncoder?.isConfigSupported){report.encoder='unavailable';return report;}
+        const support=await wait(env.VideoEncoder.isConfigSupported(config));
+        report.encoder=support.supported?'supported':'unsupported';report.recognizedConfig=support.config;
+        if(!support.supported)return report;
+        if(support.config.bitrateMode!==config.bitrateMode)throw Error('Rate-control mode not recognized');
+        encoder=new env.VideoEncoder({error:fail,output:(chunk,metadata)=>{
+            if(!active || reason)return;
+            if(report.packets.length>=frames.length || report.bytes+chunk.byteLength>64*1024*1024){fail(Error('Source replay packet bound'));return;}
+            const data=new Uint8Array(chunk.byteLength);chunk.copyTo(data);report.bytes+=data.byteLength;
+            report.packets.push({data,type:chunk.type,timestamp:chunk.timestamp,duration:Math.round(1e6/fps)});
+            if(metadata?.decoderConfig)report.decoderConfig=structuredClone(metadata.decoderConfig);
+        }});encoder.configure(config);report.stage='encode';
+        canvas=new env.OffscreenCanvas(width,height);const ctx=canvas.getContext('2d');if(!ctx)throw Error('Source replay canvas unavailable');
+        for(const source of frames){
+            // Failure during an asynchronous load must also close a late result.
+            const loading=Promise.resolve().then(()=>loadSource(source));loading.then(bitmap=>{if(!active || reason)bitmap.close();},()=>{});
+            const bitmap=await wait(loading);
+            try {
+                if(bitmap.width!==width || bitmap.height!==height)throw Error('Source replay dimensions changed');
+                ctx.drawImage(bitmap,0,0);const frame=new env.VideoFrame(canvas,{timestamp:Math.round(source.index*1e6/fps)});
+                try {encoder.encode(frame,{keyFrame:profile==='all-key'||source.index%fps===0,
+                    ...(profile==='quantizer'?{vp9:{quantizer}}:{})});}finally{frame.close();}
+            } finally {bitmap.close();}
+            report.frames++;
+            if(encoder.encodeQueueSize>=4)await wait(new Promise(resolve=>{
+                const dequeued=()=>{if(encoder.encodeQueueSize<4){encoder.removeEventListener('dequeue',dequeued);resolve();}};
+                encoder.addEventListener('dequeue',dequeued);detachQueue=()=>encoder.removeEventListener('dequeue',dequeued);dequeued();
+            }));
+        }
+        await wait(encoder.flush());
+        if(report.packets.length!==frames.length || report.packets.some((p,i)=>p.timestamp!==Math.round(i*1e6/fps))
+            || !report.decoderConfig)throw Error('Incomplete or unordered replay packets');
+        report.stage='complete';
+    } catch(error){report.error={name:String(error?.name??'Error').slice(0,80),message:String(error?.message??error).slice(0,600)};}
+    finally {active=false;detachQueue?.();if(timer!==undefined)env.clearTimeout(timer);try{encoder?.close();}catch{}if(canvas)canvas.width=canvas.height=1;}
+    return report;
+}
+
 if (typeof WorkerGlobalScope !== 'undefined' && globalThis instanceof WorkerGlobalScope) {
     const send=(message,transfer=[])=>globalThis.postMessage(message,transfer);
     const sink=makeTransferSink(send);
     globalThis.onmessage=async({data})=>{
-        if(data?.type==='codec_matrix') {
+        if(data?.type==='quality_replay') {
+            try {
+                const report=await encodeSourceProfile(data.request,async source=>{
+                    const response=await fetch(new URL('/_wh07-source/'+source.name,globalThis.location.origin));
+                    if(!response.ok)throw Error('Source PNG unavailable');
+                    return createImageBitmap(await response.blob());
+                });
+                send({type:'quality_replay_done',report},report.packets.map(p=>p.data.buffer));
+            }catch(error){send({type:'quality_replay_error',message:String(error?.message??error)});}
+        }else if(data?.type==='codec_matrix') {
             try {
                 const rows=[];for(const request of codecProbeConfigurations())rows.push(await probeNativeCodec(request));
                 send({type:'codec_matrix_done',rows,userAgent:globalThis.navigator.userAgent,scope:CODEC_PROBE_SCOPE});

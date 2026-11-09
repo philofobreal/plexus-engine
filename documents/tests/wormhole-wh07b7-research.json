@@ -1,0 +1,358 @@
+{
+  "version": 1,
+  "task": "WH-07b7",
+  "predecessor": "87f1d4a647c7627895fdd22112b3e78dd635616d",
+  "status": "Native short quality feasibility complete: q0 improves all351 pictures; declared level mismatch prevents promotion. Product unchanged; final public identities bound in logs/wh07b7/final-*.json and checkpoint.",
+  "authorization": "User continued after WH-07b6; no new manual test required for unchanged runtime.",
+  "production": {
+    "srcUnchanged": true,
+    "mp4Turbo": "Explicit Economy fallback retained",
+    "webmTurbo": "Accepted and unchanged",
+    "newPreferenceCodecOrQueue": false,
+    "newSoftwareWasmCodec": false
+  },
+  "finding": {
+    "nativeQuantizerSupportedOnRecordedDesktopBrowser": true,
+    "sourcePngs": 351,
+    "cases": 12,
+    "profiles": [
+      {
+        "profile": "all-key",
+        "quantizer": null,
+        "files": 12,
+        "frames": 351,
+        "eligibleFiles": 12,
+        "fileBytes": 25900895,
+        "maxSourceSsimRegression": 0.0,
+        "maxSourcePsnrRegressionDb": 0.0
+      },
+      {
+        "profile": "quantizer",
+        "quantizer": 0,
+        "files": 12,
+        "frames": 351,
+        "eligibleFiles": 12,
+        "fileBytes": 161840400,
+        "maxSourceSsimRegression": -0.0012140000000000484,
+        "maxSourcePsnrRegressionDb": -2.0700000000000003
+      },
+      {
+        "profile": "quantizer",
+        "quantizer": 16,
+        "files": 12,
+        "frames": 351,
+        "eligibleFiles": 1,
+        "fileBytes": 5603636,
+        "maxSourceSsimRegression": 0.0025410000000000155,
+        "maxSourcePsnrRegressionDb": 2.8100000000000023
+      },
+      {
+        "profile": "quantizer",
+        "quantizer": 32,
+        "files": 12,
+        "frames": 351,
+        "eligibleFiles": 1,
+        "fileBytes": 2230307,
+        "maxSourceSsimRegression": 0.0048599999999999755,
+        "maxSourcePsnrRegressionDb": 4.68
+      },
+      {
+        "profile": "quantizer",
+        "quantizer": 64,
+        "files": 12,
+        "frames": 351,
+        "eligibleFiles": 1,
+        "fileBytes": 1010099,
+        "maxSourceSsimRegression": 0.007754999999999956,
+        "maxSourcePsnrRegressionDb": 7.109999999999999
+      }
+    ],
+    "actualFiles": 60,
+    "nativeAndIndependentFfmpegOrderedIds": 1755,
+    "allOutputsActuallyTenBit": true,
+    "replayAllKeySourceScoresExactlyMatchAcceptedProduct": true,
+    "allQ0PicturesImprove": true,
+    "q0MinimumSsimImprovement": 0.001214,
+    "q0MinimumPsnrImprovementDb": 2.07,
+    "q0Uhd60ExampleBytes": 59904232,
+    "controlUhd60ExampleBytes": 8893521,
+    "q0ActualKeyPictureIndicesUhd60": [
+      0,
+      60
+    ],
+    "scope": "Native quality/short feasibility only. PNG load, instrumentation and concurrent Node/FFmpeg work preclude throughput claims. No actual MP4/audio/StopCancel/full-song/physical-mobile/thermal qualification or CPU/GPU attribution. No claim of lossless RGB/HDR.",
+    "policies": {
+      "ssimMaxPerPictureRegression": 0.0001,
+      "psnrMaxPerPictureRegressionDb": 0.1,
+      "references": "Both replay all-key and previously accepted product own-source scores; unchanged source score evaluator/policy"
+    },
+    "openBeforePromotion": [
+      "Narrow0..16 native quality range while retaining q0 control",
+      "Codec-level and peak-rate conformity",
+      "Realistic storage admission and long-job resource behavior",
+      "Actual MP4/audio/OPFS/Stop/Cancel/retry integration",
+      "Separate uninstrumented whole-job three-pair15% speed gate per target",
+      "Manual user validation after any actual product change"
+    ],
+    "nativeLevelMismatch": {
+      "profile": "quantizer0",
+      "declaredNativeLevel": "5.1",
+      "levelMaxAverageMbps": 120,
+      "formula": "native packet bytes *8 / (pictures/fps) /1e6; no audio/container overhead",
+      "scope": "Complete short clip average,not a full-song estimate; decoder acceptance does not certify level conformity. q0 is only a positive fidelity control,not promotion-ready.",
+      "rows": [
+        {
+          "source": "export-000.mp4",
+          "packetBytes": 1339108,
+          "frames": 8,
+          "fps": 30,
+          "nativeCodec": "vp09.02.51.10",
+          "shortVideoAverageMbps": 40.17324
+        },
+        {
+          "source": "export-001.mp4",
+          "packetBytes": 6125340,
+          "frames": 8,
+          "fps": 30,
+          "nativeCodec": "vp09.02.51.10",
+          "shortVideoAverageMbps": 183.7602
+        },
+        {
+          "source": "export-002.mp4",
+          "packetBytes": 6252065,
+          "frames": 48,
+          "fps": 30,
+          "nativeCodec": "vp09.02.51.10",
+          "shortVideoAverageMbps": 31.260325
+        },
+        {
+          "source": "export-003.mp4",
+          "packetBytes": 59903313,
+          "frames": 63,
+          "fps": 60,
+          "nativeCodec": "vp09.02.51.10",
+          "shortVideoAverageMbps": 456.40619428571426
+        },
+        {
+          "source": "export-004.mp4",
+          "packetBytes": 37760849,
+          "frames": 36,
+          "fps": 30,
+          "nativeCodec": "vp09.02.51.10",
+          "shortVideoAverageMbps": 251.73899333333335
+        },
+        {
+          "source": "export-005.mp4",
+          "packetBytes": 16810710,
+          "frames": 63,
+          "fps": 60,
+          "nativeCodec": "vp09.02.51.10",
+          "shortVideoAverageMbps": 128.0816
+        },
+        {
+          "source": "export-006.mp4",
+          "packetBytes": 10466326,
+          "frames": 36,
+          "fps": 30,
+          "nativeCodec": "vp09.02.51.10",
+          "shortVideoAverageMbps": 69.77550666666667
+        },
+        {
+          "source": "export-007.mp4",
+          "packetBytes": 8717088,
+          "frames": 8,
+          "fps": 60,
+          "nativeCodec": "vp09.02.51.10",
+          "shortVideoAverageMbps": 523.02528
+        },
+        {
+          "source": "export-008.mp4",
+          "packetBytes": 5676947,
+          "frames": 8,
+          "fps": 60,
+          "nativeCodec": "vp09.02.51.10",
+          "shortVideoAverageMbps": 340.61682
+        },
+        {
+          "source": "export-009.mp4",
+          "packetBytes": 7287514,
+          "frames": 63,
+          "fps": 60,
+          "nativeCodec": "vp09.02.51.10",
+          "shortVideoAverageMbps": 55.523916190476186
+        },
+        {
+          "source": "export-010.mp4",
+          "packetBytes": 401913,
+          "frames": 2,
+          "fps": 60,
+          "nativeCodec": "vp09.02.51.10",
+          "shortVideoAverageMbps": 96.45912
+        },
+        {
+          "source": "export-011.mp4",
+          "packetBytes": 1092059,
+          "frames": 8,
+          "fps": 60,
+          "nativeCodec": "vp09.02.51.10",
+          "shortVideoAverageMbps": 65.52354
+        }
+      ]
+    }
+  },
+  "runs": {
+    "replay": "logs/wh01/run-9f1cab3d-b176-4cc5-8aa5-ecf36dcfcaf3",
+    "analysis": "logs/wh01/replay-comparison-9cced45e-3da7-4452-8738-a38e7a84eaa6/comparison.json",
+    "acceptedControlSources": "logs/wh01/run-74b0aa3d-3033-43bb-8d7c-7e84af1e23c1",
+    "acceptedSourceComparison": {
+      "path": "C:\\Users\\budap\\.codex\\worktrees\\e977\\novy\\Plexus Engine (VJ System)\\plexus-engine\\logs\\wh01\\source-comparison-9fd1e979-d27e-4be7-b4c4-f3f9c43fdf01\\comparison.json",
+      "sha256": "8797279e95da8f7e24e78061b2124fb9db6db5b7b997f19197c0e33ce1da9a19"
+    },
+    "invalidInitialHarnessRun": "logs/wh01/run-3b75d4b2-2bee-417f-a88f-73f77d7a1ce2",
+    "invalidReason": "Out-of-scope check helper in new browser wrapper; no valid artifact handoff, retained not claimed as quality evidence. Fixed before complete cohort."
+  },
+  "validation": {
+    "build": "npm run build passed; existing chunk-size warnings",
+    "syntax": [
+      "node --check research/export/codec-isolation.mjs",
+      "node --check research/export/wormhole-baseline.mjs"
+    ],
+    "targeted": {
+      "tests": 152,
+      "pass": 152,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 22004.506
+    },
+    "focusedCodecCases": 13,
+    "newCases": 5,
+    "oldActiveFiles": 233,
+    "activeTestFiles": 233,
+    "removedTests": 0,
+    "oldCodecCasesRetained": true,
+    "protectedExactBrowserBodyUnchanged": true,
+    "protectedExactBodySha256": "78446e8de76ef79b7f081d65ac8cdc9933cb516cea3d66fc3f7c48ce666112c8",
+    "eightBaselineReferenceHashesUnchanged": true,
+    "changedPredecessors": [
+      {
+        "path": "research/export/codec-isolation.mjs",
+        "gitObject": "308be6d208eb99fef5131c2391ea31b5285dc8d3",
+        "sha256": "8493f7b5e9abc296aeb805be42df77631ee48746f3cce3ca1a7258ab0afe5bda",
+        "reason": "Additive opt-in native quality replay/source analysis; all previous tests,fixture bodies and default cohorts retained"
+      },
+      {
+        "path": "research/export/wormhole-baseline.mjs",
+        "gitObject": "42288b3efcbed6c800d7f705737518805d133e88",
+        "sha256": "76ab0223d1def602f2684151208c454a5a59f5e3fb74449932011a9cb4edfc13",
+        "reason": "Additive opt-in native quality replay/source analysis; all previous tests,fixture bodies and default cohorts retained"
+      },
+      {
+        "path": "tests/browser/wormhole-host-backend-smoke.html",
+        "gitObject": "777a99d6221a4a2d6159a8c1a05873e8dfddad63",
+        "sha256": "78d00acec6655090b3d9b9477015edd9edfd59429a9201f03b16a8142c1079f3",
+        "reason": "Additive opt-in native quality replay/source analysis; all previous tests,fixture bodies and default cohorts retained"
+      },
+      {
+        "path": "tests/export-codec-isolation.test.mjs",
+        "gitObject": "60b9df1f07f0b5a69df255ebaa0d6a3048cc3bf7",
+        "sha256": "a8acfb9c0cd66c63510200bce4945adddd45c109d60327fe22d85c06aa09d8a2",
+        "reason": "Additive opt-in native quality replay/source analysis; all previous tests,fixture bodies and default cohorts retained"
+      }
+    ],
+    "resourceScope": "Lab-only one source bitmap/closed per-frame VF,four native admission,63picture/64MiB packet cap,one-use worker termination;16MiB PNG and512MiB verified source archive. Short mux copies do not replace product progressive OPFS. Native internal allocations opaque.",
+    "runtime": "Node25.2.1/npm11.6.2;workspace TEMP/TMP logs/wh07b7/temp;no install,golden or Graphify rebuild",
+    "graphify": "graphify affected NativePacketEncoder --depth2 found no unique node; verified seam directly",
+    "diffExport": "Considered unnecessary for bounded research increment,no PR requested",
+    "unrun": "Physical mobile/Quest,full-song,thermal,video-editor and integrated candidate MP4/audio/lifecycle; no speed or hardware assignment claim",
+    "localLinksChecked": 200,
+    "cumulative": {
+      "tests": 2275,
+      "pass": 2266,
+      "fail": 9,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 919389.3174
+    },
+    "knownBaselineFailuresExactNameAndMessage": [
+      {
+        "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+        "message": "vos-wh-drift.json must not reset user-global wormholeStarfield"
+      },
+      {
+        "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+        "message": "establish remains visibly above the opacity floor"
+      },
+      {
+        "name": "weak roles pin a deep-perspective depth and continuity profile",
+        "message": "establish depth\n\n2.03136 !== 4"
+      },
+      {
+        "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+        "message": "deep drift deeper than establish"
+      },
+      {
+        "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+        "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+      },
+      {
+        "name": "wormhole factory presets keep a minimum normalized weighted separation",
+        "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+      },
+      {
+        "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+        "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))"
+      },
+      {
+        "name": "projected forward motion preserves overdrive > punch > drive > drift",
+        "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+      },
+      {
+        "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+        "message": "389.64890777178124 vs 471.543038051684"
+      }
+    ]
+  },
+  "commands": {
+    "build": "npm run build",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=4",
+    "targeted": "node --test --test-reporter=tap --test-concurrency=4 tests/export-native-packet.test.mjs tests/wormhole-render-contract.test.mjs tests/mp4-vp9-color.test.mjs tests/export-codec-isolation.test.mjs tests/export-parallel-research.test.mjs tests/export-performance.test.mjs tests/export-scheduling.test.mjs tests/export-preparation.test.mjs tests/mvp-mp4-export.test.mjs tests/export-diagnostics.test.mjs tests/export-output-inspection.test.mjs tests/export-lifecycle.test.mjs tests/export-resources.test.mjs tests/exact-export-frame-bridge.test.mjs tests/mvp-export-panel.test.mjs tests/release-pages.test.mjs",
+    "focused": "node --test tests/export-codec-isolation.test.mjs",
+    "replay": "node research/export/wormhole-baseline.mjs capture --quantizer-source=logs/wh01/run-74b0aa3d-3033-43bb-8d7c-7e84af1e23c1",
+    "analysis": "node research/export/wormhole-baseline.mjs analyze-replay logs/wh01/run-9f1cab3d-b176-4cc5-8aa5-ecf36dcfcaf3 logs/wh01/source-comparison-9fd1e979-d27e-4be7-b4c4-f3f9c43fdf01/comparison.json",
+    "releaseFallback": "node scripts/release-pages.mjs prepare wh07b7-quality-feasibility; publish; verify (Bun-only package deploy replaced by guarded Node publisher)"
+  },
+  "next": "WH-07b8: narrow0..16 range (e.g.1,2,4,8,explicit key policy),retain q0 quality control. Selected quality-preserving profile actual MP4/audio/OPFS/lifecycle and independent whole-job speed. No implementation or promotion promised by this pilot.",
+  "sources": [
+    {
+      "title": "W3C VP9 codec registration (draft),quantizer0..255",
+      "url": "https://www.w3.org/TR/webcodecs-vp9-codec-registration/"
+    },
+    {
+      "title": "WebCodecs working draft,configuration support and bitrateMode",
+      "url": "https://www.w3.org/TR/webcodecs/#videoencoderconfig"
+    },
+    {
+      "title": "WebM Project VP9 levels,5.1 maximum120Mbps",
+      "url": "https://www.webmproject.org/vp9/levels/"
+    }
+  ],
+  "hashes": {
+    "logs/wh01/replay-comparison-9cced45e-3da7-4452-8738-a38e7a84eaa6/comparison.json": "954b0f747404123410a247ba0d533c19f2a6826eaf0d5154c6102acf9081eaf2",
+    "logs/wh01/run-9f1cab3d-b176-4cc5-8aa5-ecf36dcfcaf3/build.json": "f49f90d6bd094cfe3eb0b235439dc73d8b7e02498e00514c4ff14f76cd856f10",
+    "logs/wh01/run-9f1cab3d-b176-4cc5-8aa5-ecf36dcfcaf3/source-replay.json": "761c027339ffbb45c7ba632022d8d19e4bef7c48aa54a7a722c660fe3aa8d740",
+    "logs/wh01/run-9f1cab3d-b176-4cc5-8aa5-ecf36dcfcaf3/replay-inputs.json": "cd7a035328fd33b8f582e73069ddaee085ac32e8c2417cd75322059cc56c6447",
+    "logs/wh01/run-9f1cab3d-b176-4cc5-8aa5-ecf36dcfcaf3/baseline.json": "937b39bf0a1c2f0b77abc8cdde91654a3840e41b95aecbbb0a98b0245573270f",
+    "logs/wh01/run-9f1cab3d-b176-4cc5-8aa5-ecf36dcfcaf3/host-smoke.json": "451f96acd956312ac4da9925fc7510bdcdbe712cf1e6dd29dc79e2869e105288",
+    "logs/wh01/run-9f1cab3d-b176-4cc5-8aa5-ecf36dcfcaf3/verification.json": "eefadc4edbeb09a07f1dc3b9d6ca480d26253948ee17d6da49a760b795e6a7b0",
+    "research/export/codec-isolation.mjs": "6d22afe095a65b3ea8acf84e32a6eef62e3c669e2d7e20028aa6d0005b7ecfcd",
+    "research/export/wormhole-baseline.mjs": "e6cb6cb67e330e6908022683c3fca0840abb82f01fc3b0f42bb387c0a26ae7b8",
+    "tests/browser/wormhole-host-backend-smoke.html": "c5616ebe44d944d53bdcb62cd1c5ea5b254b4c7acc0d9be12a71fb13df588556",
+    "tests/export-codec-isolation.test.mjs": "980d7e54f8bb16b16e76b94420ca2053aeb1f48686f64645073bbae97de45131",
+    "logs/wh07b7/targeted.tap": "30f1cc7ad6956ccd150fc3bc627e81d964949105ee75c0e17319e5a00144b2a0",
+    "logs/wh07b7/codec-targeted.tap": "0823bed35d6281af4f6027fc8d52e8c43b7e50288208bf1089207847d9f7704a",
+    "logs/wh07b7/build.log": "c601c805918edebd12b41bce8ceb32a0c3c34869afb7c48ea35c019518bfc086",
+    "logs/wh07b7/replay-capture.log": "36303c64468e2553ee3d4de5cf8db3e0245c9f7254f53109a54913c64ad4070a",
+    "logs/wh07b7/cumulative.tap": "e2832eb7dd8ad0592cc864c4a0b0da9dc2a615cfeac25637dfa5c4c93fe98aaa"
+  }
+}

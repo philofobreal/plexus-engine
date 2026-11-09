@@ -836,4 +836,31 @@ window.runWh07Detail=async(profile='reference')=>{
   profile,exportFailure,encoder:observation.config,decoder:observation.decoderConfig,inputs:observation.inputs,packetHashes:hashes,native,containers};
 };
 
+// WH-07b7: replay retained actual input PNGs without regenerating the renderer.
+window.wh07ReplayBlobs=new Map();
+window.runWh07Replay=async(request,name)=>{
+ const worker=new CodecIsolationWorker();let timer;
+ try{
+  const report=await new Promise((resolve,reject)=>{
+   timer=setTimeout(()=>reject(Error('Replay worker deadline')),150000);
+   worker.onerror=e=>reject(Error(e.message));worker.onmessage=({data})=>{
+    if(data.type==='quality_replay_done')resolve(data.report);
+    else if(data.type==='quality_replay_error')reject(Error(data.message));
+   };worker.postMessage({type:'quality_replay',request});
+  });
+  if(report.stage!=='complete')return {...report,packets:undefined};
+  const packetHashes=await Promise.all(report.packets.map(p=>hash(p.data)));
+  const decoded=await decodeInspectionPackets(report.packets,report.decoderConfig);
+  const target=new BufferTarget(),output=new Output({target,format:new WebMOutputFormat()}),source=new EncodedVideoPacketSource('vp9');
+  output.addVideoTrack(source,{frameRate:request.fps});
+  try{
+   await output.start();for(let i=0;i<report.packets.length;i++){
+    const p=report.packets[i];await source.add(new EncodedPacket(p.data,p.type,p.timestamp/1e6,1/request.fps),i===0?{decoderConfig:report.decoderConfig}:undefined);
+   }source.close();await output.finalize();if(target.buffer.byteLength>64*1024*1024)throw Error('Replay file cap');
+   window.wh07ReplayBlobs.set(name,new Blob([target.buffer],{type:'video/webm'}));
+  }finally{if(output.state!=='finalized'&&output.state!=='canceled')await output.cancel();}
+  const packetMeta=report.packets.map(({data,...meta})=>({...meta,bytes:data.length}));
+  return {...report,packets:packetMeta,packetHashes,decoded,name};
+ }finally{clearTimeout(timer);worker.terminate();}
+};
 </script></html>
