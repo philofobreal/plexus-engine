@@ -40,8 +40,10 @@ a separately qualified candidate: WH-07b4's packet adapter missed the speed gate
 and the inter-frame profile still loses a short changed region. WH-07b3 is now
 manually accepted at 4K60/10-bit MP4; WH-07b5 isolates predictive-profile detail
 loss. WH-07b5 now isolates the loss before container muxing and finds a promising
-`detail` hint in one eight-picture study. WH-07b6 must qualify its full quality/
-speed matrix before any MP4 Turbo promotion. Production has no new packet
+`detail` hint in one eight-picture study. WH-07b6 now rejects that candidate: all12 own-source files lose fidelity
+against351 matched inputs, despite16.98% short UHD speed saving. Next WH-07b7
+examines quality-first native quantizer/rate feasibility, allowing larger files;
+no quantizer profile or MP4 Turbo promotion has been implemented. Production has no new packet
 adapter or codec selection. See the audit for the
 reference, actual browser/WASM validation and manual gate.
 

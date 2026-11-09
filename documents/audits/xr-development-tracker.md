@@ -2,7 +2,25 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-07b3 manually accepted at 4K60/10-bit MP4 (faster perceived export, good image). WH-07b4 packet candidate measured and rejected (5.07% at720p, -4.36% at4K; <15% gate). WH-07b5 isolates native detail loss; detail hint passes the short reference. Next WH-07b6 full candidate quality/speed qualification. WH-07a WebM Turbo is manually accepted. The user's mobile 10-bit deferral remains: Samsung 4K30 rejects the native encoder, and WH-06c2/WH-06e are not fixed. MP4 Turbo remains an explicit Economy fallback until its separate quality/resource/speed gates pass. The next completed task stops for handoff; WH-07b4 completed a bounded packet-sink comparison; no production replacement. WH-06d is withdrawn. MP4 default, accepted 10-bit quality, mobile 4K and deferred Wall/T15 remain.**
+**Current priority: WH-07b6 full qualification complete; predictive detail MP4 rejected on matched-input fidelity (12/12 files,351 equal source PNGs; max SSIM drop0.008862 /PSNR8.32dB). Short UHD speed saving16.98% paired median is insufficient without quality;720p3.38%. Next WH-07b7 quality-first native quantizer/rate feasibility, larger files allowed. Accepted desktop WebM Turbo and WH-07b3 4K60/10-bit MP4 remain unchanged; requested MP4 Turbo still explicitly falls back to Economy. Samsung native VP9 ten-bit encoder refusal remains; WH-06c2/e later. WH-07 parent partial; next completed task stops for handoff. MP4 default/mobile4K/Wall-Cockpit Off remain; WH-06d withdrawn, Wall/T15 deferred.**
+
+### WH-07b6 qualification complete, candidate not promoted
+
+Full retained36-file control/candidate matrices pass marker/audio/lifecycle gates.
+Separate4K60/1080p/aspect/key-boundary/ten-bit Stop-Cancel-retry cohort adds13cases,
+12files/351pictures per run. All source hashes match; all12 candidate files lose
+source fidelity beyond unchanged limits. Cross-lossy comparison's four unchanged
+classic-transition differences are not attributed to the VP9 change; own-source
+evidence is decisive. Separate unobserved three-pair speed test:720p60 median
+paired3.38%,UHD60 16.98%, no quality promotion. No production source changes;
+no redundant user full-video test. Build/types and147/147 targeted pass; cumulative
+2270/2261pass/same9 exact name+message/0skip-cancel,233 old suites retained.
+See [audit](wormhole-wh07-turbo.md#wh-07b6--predictive-detail-qualification-rejected-2026-11-09)
+and [receipt](../tests/wormhole-wh07b6-research.json). Next **WH-07b7** measures
+quality-first native quantizer/rate feasibility using retained actual inputs,
+then speed only if quality passes; not yet implemented or promised. Subsequent
+WH-06c2/e mobile ten-bit, WH-08 physical/full-song/thermal/default qualification,
+T21b/c caption placement/fonts/transitions/editor/burn-in, T22-T24; T25 each handoff.
 
 ### WH-07b5 short diagnostic complete; preferred candidate is detail hint
 

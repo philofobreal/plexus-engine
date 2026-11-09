@@ -902,3 +902,119 @@ replaces the package's Bun-only deploy command. `diff_export.ps1` is unnecessary
 for this bounded research handoff; no PR requested. No physical/full-song/editor/
 thermal gate is claimed. No redundant user video test is needed for unchanged
 product runtime; full candidate quality and speed remain WH-07b6.
+
+
+## WH-07b6 — predictive detail qualification rejected (2026-11-09)
+
+**Decision: retain the accepted product export.** The lab-only `detail` hint and
+one-second GOP pass the earlier short marker counterexample, but fail actual
+source fidelity. `src/` is unchanged. WebM Turbo remains accepted; requested MP4
+Turbo still reports Economy fallback. The candidate is not a new production
+codec, hardware policy, worker pool, preference or quality downgrade.
+
+### Quality before promotion
+
+The existing full cohort remains intact: 18 Economy and21 Turbo/fallback cases,
+36 real files per run, with independent frame IDs, audio and Stop/Cancel/retry.
+Candidate `run-0266be6e-f927-4e04-8848-51c7afd2a37f` and accepted all-key control
+`run-91b1935b-4dda-48d4-894e-092c109ece53` pass these gates; candidate also passes
+37 host, eight retained baseline and21 exact-source cases. This existing cohort
+lacked 4K60 VP9 MP4, so it alone could not qualify the requested target.
+
+An additive own-source cohort covers 720p/1080p/UHD at30/60fps, square/portrait
+60fps, the one-second key boundary (63 pictures), and ten-bit Stop/Cancel/retry:
+13 cases,12 real files,351 actual input pictures per run. Source PNGs are
+captured immediately after the marker overlay, before native submission. Control
+`run-74b0aa3d-3033-43bb-8d7c-7e84af1e23c1` and candidate
+`run-db1cc4d0-96fd-4db4-a62f-5395a95ea680` have **all351 source hashes equal**.
+The independent FFmpeg RGB16 comparison measures each decode against its own
+input, then compares candidate fidelity with all-key fidelity, picture by picture.
+All12 files fail the retained source-regression limits (SSIM drop<=0.0001,
+PSNR drop<=0.1dB): maximum measured loss **0.008862 SSIM /8.32dB PSNR**.
+Correct marker IDs and ten-bit pixel format do not imply preserved texture.
+Negative evidence and the original gates remain; no promotion is justified.
+
+The earlier lossy-output-versus-lossy-output comparison also remains archived:
+10/36 fail SSIM>=0.995 and PSNR>=40dB. Six changed VP9 files differ, but four
+unchanged classic-transition cases also differ. `Particle` uses `p.random` during
+initialization/turning and these actual input pictures were not captured. Those
+four differences cannot be attributed to the candidate codec. Nor does a
+difference between two lossy outputs determine which is closer to the input.
+The separately matched own-source comparison above resolves that ambiguity for
+the12 candidate files. Neither gate was relaxed to erase an adverse result.
+
+Own-source PNGs are QA artifacts only: at most63/case,16MiB each,512MiB/run,
+kept under ignored `logs/wh01` UUID directories, never committed/published or
+allocated by production export. Both captures and all raw FFmpeg stats remain.
+Original WH-01 raw/temporal policies, all eight baseline hashes and the exact
+browser source body are unchanged. No replacement fixtures or golden reset.
+
+### Separately measured throughput
+
+After Node and FFmpeg quality work finished, an unobserved run used three
+alternating whole-job pairs for720p60/240pictures/8Mbps and UHD60/90pictures/
+64Mbps. Timed work includes actual GPU-rendered export and finalization, but
+excludes QA readback/artifact copying. Run `run-0a70df5f-de6c-4f60-a526-ab3c174bf283`
+retains all12 actual MP4 files and stage reports.
+
+| Target | Pair1 | Pair2 | Pair3 | Median paired time saving |
+| --- | ---: | ---: | ---: | ---: |
+| 720p60 | 3.38% | 1.67% | 5.64% | 3.38% |
+| UHD60 | 16.63% | 16.98% | 20.23% | 16.98% |
+
+Control/candidate median times separately:4727.2/4619.9ms and5750.4/4672.5ms.
+The median of paired percentages is deliberately distinguished from the ratio
+of these independently sorted medians. The benchmark's historical `cooperative`
+label denotes the candidate category; both requests still resolve through the
+existing MP4 Economy policy. No newly qualified cooperative scheduler is claimed.
+These short workloads are not a full-song/mobile/thermal guarantee. UHD speed
+alone cannot override quality failure;720p also misses the15% speed threshold.
+
+Requested CBR and precision remain8/14/64Mbps and ten-bit. Short-file
+bytes/duration are nevertheless substantially smaller with the candidate; e.g.
+UHD60 control about68.05 versus12.25Mbps, including audio/container overhead.
+This is an observed short-window file average, not elementary-video bitrate or
+proof of particular native rate-control internals. A hint is advisory and a
+configured bitrate does not prove preserved texture. More CPU workers alone
+would not fix the demonstrated fidelity loss.
+
+### Implementation, tests and next gate
+
+`NativePacketEncoder` adds only an explicit laboratory configuration message;
+without it, the prior all-key/default path and ordinary product message delegation
+remain. Predictive mode enforces contiguous source indices and rounded one-second
+key boundaries. With observation disabled it creates no probe canvas, sample
+archive or pixel readback. Original frame/options/config ownership is retained,
+with two host frame/PCM leases and four-entry native admission. Internal browser
+codec resource use is opaque; these bounds do not measure total GPU/CPU RAM.
+
+Nine new cases extend two existing Node suites: predictive ownership/contiguity/
+channel validation, strict per-picture scoring, malformed/truncated/out-of-order
+stats, own-source thresholds and infinite PSNR. All original blocks and233 active
+Node files remain. Build and explicit research-worker TypeScript check pass.
+Targeted147/147; full2270/2261 pass/**the exact same nine baseline names AND full
+messages**/zero skipped or cancelled,516233.3981ms. No dependency install,
+Graphify rebuild or product source edit. Commands, source predecessors, fixed
+policies, failures and artifact hashes are in the
+[WH-07b6 receipt](../tests/wormhole-wh07b6-research.json). Final release and public
+QA identities are bound under ignored `logs/wh07b6/final-*.json` and the checkpoint.
+
+**Next WH-07b7:** a bounded quality-first native rate/quantizer feasibility study,
+reusing the captured source images. The user accepts larger files. Query support,
+then actually encode/decode and measure per-picture fidelity before a new speed
+claim. WebCodecs VP9 per-picture quantizer range is0..255 (not libvpx's0..63);
+no quantizer profile is implemented or qualified by this task. Retain ten-bit,
+clocks/audio, OPFS, bounded queues and accepted quality. See the
+[VP9 codec registration](https://www.w3.org/TR/webcodecs-vp9-codec-registration/)
+and [FFmpeg SSIM/PSNR documentation](https://ffmpeg.org/ffmpeg-filters.html#ssim).
+Only after quality/resource/15% speed gates may the existing MP4 Turbo menu route
+change, followed by the user's manual test. WH-06c2/e mobile ten-bit fallback
+remains later, then WH-08 long-song/platform/thermal qualification, T21b/c caption
+placement/fonts/transitions/editor/burn-in, T22-T24 and the repeated T25 gate.
+WH-06d8-bit quality work remains withdrawn; Wall/T15 remains deferred.
+
+For this bounded research handoff `diff_export.ps1` was considered but unnecessary;
+no PR requested. Node25.2.1/npm11.6.2 with workspace TEMP; the Bun-only package
+deploy is replaced by existing guarded `node scripts/release-pages.mjs`
+prepare/publish/verify. No physical device/editor/full-song success is claimed.
+No redundant whole-video manual test is required for unchanged product runtime.
