@@ -4,6 +4,50 @@ export const QUALITY_POLICY = Object.freeze({
     maxDarkTileMeanError: .75, darkLumaCeiling: 32, tileSize: 8,
     maxTemporalError: 1.5, maxAlphaMeanError: .5, maxSpatialError: 1.5,
 });
+// Cross-profile encoded-image qualification, distinct from unchanged WH-01 raw gates.
+// Fixed before comparison: every frame, FFmpeg RGB16 SSIM and PSNR versus accepted output.
+export const ENCODED_QUALITY_POLICY = Object.freeze({ version: 'wh-07b6-gbrp16-v1',
+    format: 'gbrp16le', minFrameSsim: .995, minFramePsnrDb: 40 });
+// Own-input comparison is independent of similarity between two lossy outputs.
+export const SOURCE_REGRESSION_POLICY = Object.freeze({ version: 'wh-07b6-own-source-v1',
+    maxFrameSsimDrop: .0001, maxFramePsnrDropDb: .1 });
+
+export function compareOwnSource(reference, candidate) {
+    if (!Array.isArray(reference) || !Array.isArray(candidate) || !reference.length || reference.length > 63
+        || reference.length !== candidate.length) throw Error('Incomplete source comparison');
+    const read = (f, i) => {
+        if (f?.frame !== i || !Number.isFinite(f.ssim) || f.ssim < -1 || f.ssim > 1
+            || !(f.psnrDb === 'inf' || typeof f.psnrDb === 'number' && Number.isFinite(f.psnrDb) && f.psnrDb >= 0)) throw Error('Malformed source score');
+        return f.psnrDb === 'inf' ? Infinity : f.psnrDb;
+    };
+    const frames = reference.map((before, i) => {
+        const after = candidate[i], oldDb = read(before, i), newDb = read(after, i);
+        return { frame: i, sourceSsimBefore: before.ssim, sourceSsimAfter: after.ssim,
+            sourcePsnrBefore: before.psnrDb, sourcePsnrAfter: after.psnrDb,
+            pass: after.ssim + SOURCE_REGRESSION_POLICY.maxFrameSsimDrop >= before.ssim
+                && (oldDb === Infinity ? newDb === Infinity : newDb + SOURCE_REGRESSION_POLICY.maxFramePsnrDropDb >= oldDb) };
+    });
+    return { pass: frames.every(f => f.pass), policy: SOURCE_REGRESSION_POLICY, frames };
+}
+
+export function evaluateEncodedStats(ssimText, psnrText, expectedFrames) {
+    if (!Number.isSafeInteger(expectedFrames) || expectedFrames < 1 || expectedFrames > 63) throw Error('Invalid encoded comparison count');
+    const lines = text => typeof text === 'string' ? text.trim().split(/\r?\n/) : [];
+    const ssim = lines(ssimText), psnr = lines(psnrText);
+    if (ssim.length !== expectedFrames || psnr.length !== expectedFrames) throw Error('Incomplete encoded comparison');
+    const frames = ssim.map((line, i) => {
+        const n = /^n:(\d+)\s/.exec(line), other = /^n:(\d+)\s/.exec(psnr[i]);
+        const s = /\bAll:([-+\d.]+)(?:\s|$)/.exec(line), p = /\bpsnr_avg:(inf|[-+\d.]+)(?:\s|$)/.exec(psnr[i]);
+        const score = Number(s?.[1]), db = p?.[1] === 'inf' ? Infinity : Number(p?.[1]);
+        if (Number(n?.[1]) !== i + 1 || Number(other?.[1]) !== i + 1 || !s || !p
+            || !Number.isFinite(score) || score < -1 || score > 1 || !(Number.isFinite(db) || db === Infinity) || db < 0) throw Error('Malformed encoded comparison');
+        return { frame: i, ssim: score, psnrDb: db === Infinity ? 'inf' : db,
+            pass: score >= ENCODED_QUALITY_POLICY.minFrameSsim && db >= ENCODED_QUALITY_POLICY.minFramePsnrDb };
+    });
+    const minPsnr = Math.min(...frames.map(f => f.psnrDb === 'inf' ? Infinity : f.psnrDb));
+    return { pass: frames.every(f => f.pass), policy: ENCODED_QUALITY_POLICY, frames,
+        minSsim: Math.min(...frames.map(f => f.ssim)), minPsnrDb: minPsnr === Infinity ? 'inf' : minPsnr };
+}
 export const BASELINE_CASES = Object.freeze([
     { id: 'dashboard-policy', depthCue: 0, mode: 'preview', time: 3 },
     { id: 'dashboard-policy-next', depthCue: 0, mode: 'preview', time: 3 + 1 / 60 },

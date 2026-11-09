@@ -9,11 +9,11 @@ type InputObservation = { config: VideoEncoderConfig; decoderConfig?: VideoDecod
     packets: { data: Uint8Array; type: string; timestamp: number; duration: number }[] };
 type InputObserver = (report: InputObservation, transfer: Transferable[]) => void;
 let inputObserver: InputObserver | undefined;
-type DetailProfile = 'reference' | 'detail' | 'text' | 'variable';
+type DetailProfile = 'reference' | 'detail' | 'text' | 'variable' | 'predictive-detail';
 let detailProfile: DetailProfile = 'reference';
 /** Laboratory channel only; capture callback before a new codec instance starts. */
 export function observeNativeInputs(observer?: InputObserver, profile: DetailProfile = 'reference') {
-    if (!['reference', 'detail', 'text', 'variable'].includes(profile)) throw Error('Invalid detail profile');
+    if (!['reference', 'detail', 'text', 'variable', 'predictive-detail'].includes(profile)) throw Error('Invalid detail profile');
     inputObserver = observer; detailProfile = profile;
 }
 
@@ -30,15 +30,18 @@ export class NativePacketEncoder extends CustomVideoEncoder {
     private observation?: InputObservation;
     private probeCanvas?: OffscreenCanvas;
     private probeBytes = 0;
+    private predictive = false;
+    private submitted = 0;
     init() {
         if (this.encoder || !Number.isFinite(this.config.framerate) || this.config.framerate! <= 0) {
             throw Error('Native packet encoder requires one initialization and a frame rate');
         }
         this.active = true;
         this.observe = inputObserver;
+        this.predictive = detailProfile === 'predictive-detail';
         const effective: VideoEncoderConfig & { contentHint?: string } = { ...this.config, alpha: 'discard',
             ...(this.observe && detailProfile === 'variable' ? { bitrateMode: 'variable' as const } : {}),
-            ...(this.observe && ['detail', 'text'].includes(detailProfile) ? { contentHint: detailProfile } : {}) };
+            ...(this.predictive ? { contentHint: 'detail' } : this.observe && ['detail', 'text'].includes(detailProfile) ? { contentHint: detailProfile } : {}) };
         if (this.observe) this.observation = { config: effective, inputs: [], packets: [] };
         this.encoder = new VideoEncoder({ error: e => this.fail(e), output: (chunk, metadata) => {
             if (!this.active) return;
@@ -82,7 +85,9 @@ export class NativePacketEncoder extends CustomVideoEncoder {
                 this.observation.inputs.push({ timestamp: frame.timestamp, duration: frame.duration ?? null,
                     id: bars.reduce((id, value, bit) => value > 128 ? id | (1 << bit) : id, 0), bars });
             }
-            this.encoder!.encode(frame, options);
+            if (this.predictive && Math.round(sample.timestamp * this.config.framerate!) !== this.submitted) throw Error('Noncontiguous predictive picture');
+            this.encoder!.encode(frame, this.predictive ? { ...options, keyFrame: this.submitted % Math.round(this.config.framerate!) === 0 } : options);
+            this.submitted++;
         } finally { frame.close(); }
         // Match the existing library's four-entry native admission bound. The
         // browser's internal codec resources are opaque, not counted as RAM usage.
@@ -118,7 +123,10 @@ registerEncoder(NativePacketEncoder);
 if (typeof self !== 'undefined') {
     const receive = self.onmessage;
     self.onmessage = event => {
-        if (event.data?.type === 'wh07_observe_inputs') {
+        if (event.data?.type === 'wh07_configure_predictive') {
+            if (event.data.profile !== 'predictive-detail' || event.data.observe !== false) throw Error('Invalid predictive configuration');
+            observeNativeInputs(undefined, 'predictive-detail');
+        } else if (event.data?.type === 'wh07_observe_inputs') {
             if (event.data.enabled !== true) throw Error('Invalid input observation request');
             observeNativeInputs((report, transfer) => (self as unknown as {
                 postMessage(message: unknown, transfer: Transferable[]): void;

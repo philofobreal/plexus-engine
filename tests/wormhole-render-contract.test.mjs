@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createLoader } from './helpers/xr-loader.mjs';
-import { QUALITY_POLICY, BASELINE_CASES, compareRgba, compareTemporal, visibleDifferenceRgba } from '../research/export/wormhole-quality.mjs';
+import { QUALITY_POLICY, ENCODED_QUALITY_POLICY, evaluateEncodedStats, compareOwnSource, SOURCE_REGRESSION_POLICY, BASELINE_CASES, compareRgba, compareTemporal, visibleDifferenceRgba } from '../research/export/wormhole-quality.mjs';
 import { CARRIER_FIELDS } from '../research/export/parallel-material-data.mjs';
 import { verifyPack } from '../research/export/wormhole-baseline.mjs';
 import { createHash } from 'node:crypto';
@@ -114,4 +114,44 @@ test('visible difference rejects malformed images and gains and has the same una
  assert.throws(()=>visibleDifferenceRgba(a,b,2,1));
  const shown=visibleDifferenceRgba(a,b,1,1,1),mean=(shown[0]+shown[1]+shown[2])/3;
  assert.ok(Math.abs(mean-compareRgba(a,b,1,1).meanError)<=.5);
+});
+
+
+test('encoded cross-profile gates require every aligned frame and serialize perfect PSNR without a null score',()=>{
+ const r=evaluateEncodedStats('n:1 R:1 G:1 B:1 All:1 (inf)\nn:2 All:1','n:1 mse_avg:0 psnr_avg:inf\nn:2 psnr_avg:inf',2);
+ assert.equal(r.pass,true);assert.equal(r.minPsnrDb,'inf');assert.equal(JSON.parse(JSON.stringify(r)).minPsnrDb,'inf');assert.equal(r.frames.length,2);
+ assert.equal(ENCODED_QUALITY_POLICY.minFrameSsim,.995);assert.equal(ENCODED_QUALITY_POLICY.minFramePsnrDb,40);assert.equal(QUALITY_POLICY.version,'wh-01-rgba-v1');
+});
+
+test('encoded cross-profile acceptance cannot hide a bad picture behind a good average',()=>{
+ assert.equal(evaluateEncodedStats('n:1 All:0.995','n:1 psnr_avg:40',1).pass,true);
+ for(const [ssim,psnr]of [[.994999,50],[1,39.99]]){
+  const r=evaluateEncodedStats('n:1 All:1\nn:2 All:'+ssim,'n:1 psnr_avg:inf\nn:2 psnr_avg:'+psnr,2);assert.equal(r.pass,false);assert.equal(r.frames[1].pass,false);
+ }
+});
+
+test('encoded score parsing rejects partial, duplicated, malformed and out-of-order evidence',()=>{
+ for(const n of [0,64,1.5])assert.throws(()=>evaluateEncodedStats('', '',n),/count/);
+ assert.throws(()=>evaluateEncodedStats('n:1 All:1','n:1 psnr_avg:40',2),/Incomplete/);
+ for(const [ssim,psnr]of [['n:2 All:1','n:1 psnr_avg:40'],['n:1 All:NaN','n:1 psnr_avg:40'],['n:1 All:1.01','n:1 psnr_avg:40'],['n:1 All:1','n:1 psnr_avg:NaN'],['n:1 All:1','n:1 psnr_avg:-1']])assert.throws(()=>evaluateEncodedStats(ssim,psnr,1),/Malformed/);
+});
+
+
+test('own-source decisions compare reconstruction fidelity instead of requiring two lossy encodings to be identical',()=>{
+ const before=[{frame:0,ssim:.98,psnrDb:42}],after=[{frame:0,ssim:.99,psnrDb:46}],snapshot=JSON.stringify([before,after]);
+ assert.equal(compareOwnSource(before,after).pass,true);assert.equal(JSON.stringify([before,after]),snapshot);assert.equal(SOURCE_REGRESSION_POLICY.maxFrameSsimDrop,.0001);assert.equal(SOURCE_REGRESSION_POLICY.maxFramePsnrDropDb,.1);
+ assert.equal(compareOwnSource([{frame:0,ssim:1,psnrDb:'inf'}],[{frame:0,ssim:1,psnrDb:'inf'}]).pass,true);
+});
+
+test('own-source regression limits apply to every picture and cannot lose a perfect reference behind an infinite score',()=>{
+ const before=[{frame:0,ssim:.99,psnrDb:45}];
+ for(const after of [{frame:0,ssim:.9898,psnrDb:46},{frame:0,ssim:1,psnrDb:44.89}])assert.equal(compareOwnSource(before,[after]).pass,false);
+ assert.equal(compareOwnSource([{frame:0,ssim:1,psnrDb:'inf'}],[{frame:0,ssim:1,psnrDb:99}]).pass,false);
+ assert.equal(compareOwnSource(before,[{frame:0,ssim:1,psnrDb:'inf'}]).pass,true);
+});
+
+test('own-source evidence rejects truncated, malformed or misindexed score records',()=>{
+ const valid=[{frame:0,ssim:1,psnrDb:40}];
+ assert.throws(()=>compareOwnSource([],[]),/Incomplete/);assert.throws(()=>compareOwnSource(valid,[]),/Incomplete/);
+ for(const record of [{frame:1,ssim:1,psnrDb:40},{frame:0,ssim:NaN,psnrDb:40},{frame:0,ssim:1,psnrDb:null}])assert.throws(()=>compareOwnSource(valid,[record]),/Malformed/);
 });

@@ -97,3 +97,24 @@ test('laboratory observation channel validates requests and delegates ordinary w
  assert.equal(sent.length,1);assert.equal(sent[0].message.type,'wh07_input_observation');assert.equal(sent[0].message.report.config.contentHint,'detail');
  f.codecs[0].emit();assert.equal(sent.length,1);
 });
+
+
+test('predictive detail qualification works without readback and keeps one-second key boundaries with bounded frame ownership',async()=>{
+ for(const fps of [30,60]){
+  const f=fixture();f.encoder.config.framerate=fps;const original=structuredClone(f.encoder.config);f.observe(undefined,'predictive-detail');f.encoder.init();const keys=[];
+  for(let i=0;i<=fps*2;i++){f.sample.timestamp=i/fps;const options={keyFrame:true};await f.encoder.encode(f.sample,options);keys.push(f.codecs[0].last.config.keyFrame);assert.equal(options.keyFrame,true);}
+  assert.deepEqual(keys.map((v,i)=>v?i:-1).filter(i=>i>=0),[0,fps,fps*2]);assert.equal(f.codecs[0].config.contentHint,'detail');assert.equal(f.codecs[0].config.bitrateMode,'constant');assert.deepEqual(f.encoder.config,original);
+  assert.equal(f.encoder.observation,undefined);assert.equal(f.encoder.probeCanvas,undefined);assert.ok(f.frames.every(frame=>frame.closes===1));await f.encoder.flush();f.encoder.close();assert.equal(f.codecs[0].closes,1);
+ }
+});
+
+test('predictive detail refuses noncontiguous source pictures and fresh instances retain the default all-key request',async()=>{
+ const f=fixture();f.observe(undefined,'predictive-detail');f.encoder.init();await assert.rejects(f.encoder.encode(f.sample,{keyFrame:true}),/Noncontiguous predictive/);assert.equal(f.frames[0].closes,1);f.encoder.close();
+ const fresh=fixture();fresh.encoder.init();await fresh.encoder.encode(fresh.sample,{keyFrame:true});assert.equal(fresh.codecs[0].last.config.keyFrame,true);assert.equal(fresh.codecs[0].config.contentHint,undefined);fresh.encoder.close();
+});
+
+test('predictive laboratory configuration requires its explicit non-observing request and still delegates product commands',async()=>{
+ const forwarded=[],scope={onmessage:event=>forwarded.push(event.data),postMessage:()=>{throw Error('Unrequested observation');}},f=fixture({self:scope});
+ for(const request of [{profile:'reference',observe:false},{profile:'predictive-detail',observe:true}])assert.throws(()=>scope.onmessage({data:{type:'wh07_configure_predictive',...request}}),/Invalid predictive/);
+ scope.onmessage({data:{type:'wh07_configure_predictive',profile:'predictive-detail',observe:false}});scope.onmessage({data:{type:'start_export',frames:90}});assert.equal(forwarded[0].frames,90);f.encoder.init();f.sample.timestamp=0;await f.encoder.encode(f.sample,{keyFrame:true});f.codecs[0].emit();await f.encoder.flush();f.encoder.close();assert.equal(f.packets.length,1);
+});

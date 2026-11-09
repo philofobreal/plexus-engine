@@ -450,9 +450,13 @@ window.runWh06Exact=()=>exactRun??=(async()=>{
 document.querySelector('#exact').disabled=false;
 document.querySelector('#exact').onclick=()=>{window.runWh06Exact().catch(console.error);};
 
+// WH-07b6 opt-in candidate only; no readback observer in qualification/timings.
+class PredictiveDetailWorker extends NativePacketWorker {
+ constructor(){super();this.postMessage({type:'wh07_configure_predictive',profile:'predictive-detail',observe:false});}
+}
 // WH-06b opt-in: real renderer port + product encoder workers/OPFS. Existing 37/21 gates stay intact.
 let exportRun=null;
-window.wh06ExportBlobs=new Map();
+window.wh06ExportBlobs=new Map();window.wh07SourceBlobs=new Map();let sourceArchiveBytes=0;
 window.runWh06Export=(options={})=>exportRun??=(async()=>{
  const output=document.querySelector('#export-result'),rows=[],turboRows=[],check=(v,m)=>{if(!v)throw Error(m);};
  document.querySelector('#export-test').disabled=true;
@@ -502,12 +506,17 @@ window.runWh06Export=(options={})=>exportRun??=(async()=>{
   // Diagnostic ID added AFTER quality comparison. Detects repeated/reordered decoded frames, independent of motion judgement.
   dst.save();dst.setTransform(1,0,0,1,0,0);dst.globalAlpha=1;dst.globalCompositeOperation='source-over';
   for(let bit=0;bit<6;bit++){dst.fillStyle=(index+1)&(1<<bit)?'#fff':'#000';dst.fillRect(bit*32,0,32,32);}dst.restore();
+  if(options.profileSourceOnly){
+   const blob=await new Promise((resolve,reject)=>dst.canvas.toBlob(b=>b?resolve(b):reject(Error('Source PNG failed')),'image/png'));
+   if(blob.size>16*1024*1024||currentSpec.sourceFrames.length>=63)throw Error('Source capture bound');
+   currentSpec.sourceFrames.push({index,blob});
+  }
  };
  const verify=async(blob,spec,frames)=>{
   const media=new Input({formats:ALL_FORMATS,source:new BlobSource(blob)}),audioContext=new AudioContext({sampleRate:48000});
   try{
    const [video,sound]=await Promise.all([media.getPrimaryVideoTrack(),media.getPrimaryAudioTrack()]);
-   const base=spec.resolution==='4K'?2160:720,w=spec.aspect==='9:16'?base:spec.aspect==='1:1'?base:base*16/9,
+   const base=spec.resolution==='4K'?2160:spec.resolution==='1080p'?1080:720,w=spec.aspect==='9:16'?base:spec.aspect==='1:1'?base:base*16/9,
     h=spec.aspect==='9:16'?base*16/9:base;
    check(video?.codedWidth===w&&video?.codedHeight===h&&sound?.numberOfChannels===2,'Wrong media dimensions/audio channels');
    check(video.codec===(spec.format==='webm'||spec.precision?'vp9':'avc'),'Wrong video codec');
@@ -527,7 +536,7 @@ window.runWh06Export=(options={})=>exportRun??=(async()=>{
  };
  let sequence=0;
  const one=async(spec,command)=>{
-  currentSpec={...spec,quality:[],encoderInputIds:[]};completed=0;captured=null;pairCount=0;appliedPost=0;
+  currentSpec={...spec,quality:[],encoderInputIds:[],sourceFrames:[]};completed=0;captured=null;pairCount=0;appliedPost=0;
   exportAutomation=spec.transitions?()=>{if(!State.isExporting)return;const i=Math.round(State.exportTime*spec.fps);
    if(i===2)requestVisualModeChange('cosmic-wormhole',{durationSec:.4});if(i===20)requestVisualModeChange('classic',{durationSec:.4});}:null;
   const c=state({...raw,wormholeWall:0,wormholeNebulaAmount:.65,wormholeNebulaDetail:.8,
@@ -549,7 +558,7 @@ window.runWh06Export=(options={})=>exportRun??=(async()=>{
    constructor(){super();this.addEventListener('message',event=>{if(event.data?.type==='wh07_input_observation'){
     if(window.wh07InputObservations.length>=4)throw Error('Observation window limit');window.wh07InputObservations.push(event.data.report);
    }});this.postMessage({type:'wh07_observe_inputs',enabled:true,profile:options.detailProfile??'reference'});}
-  }:options.nativePackets?NativePacketWorker:Mp4Worker;
+  }:options.predictiveDetail?PredictiveDetailWorker:options.nativePackets?NativePacketWorker:Mp4Worker;
   const backend=new WebCodecsBackend(hostP,hostP.canvas,audio,'WH06',null,'display',worker);
   const diagnostics=[],performances=[];
   const started=performance.now();let issued=false;
@@ -569,8 +578,14 @@ window.runWh06Export=(options={})=>exportRun??=(async()=>{
    check(spec.mode==='compatible'||raster==='exact-gpu-material','Qualified GPU did not render exact source: '+raster);
    if(spec.transitions)check(pairCount===24,'Both transitions must finish 12 paired frames each: '+pairCount);
    if(spec.post)check(appliedPost>0,'PostFX fixture must perform actual effect writes, not only a bypass');
+   const sourceFrames=[];
+   for(const sample of currentSpec.sourceFrames){
+    const imageName='source-'+name.replace('.mp4','')+'-'+String(sample.index).padStart(3,'0')+'.png';
+    sourceArchiveBytes+=sample.blob.size;if(sourceArchiveBytes>512*1024*1024)throw Error('Source archive exceeds512MiB QA cap');
+    window.wh07SourceBlobs.set(imageName,sample.blob);sourceFrames.push({index:sample.index,name:imageName,bytes:sample.blob.size});
+   }
    const row={...spec,name,pairCount,appliedPost,command:command??'full',bytes:blob.size,elapsedMs,raster,completed,...decoded,
-    quality:currentSpec.quality,diagnostics,performances};
+    quality:currentSpec.quality,diagnostics,performances,...(sourceFrames.length?{sourceFrames}:{})};
    check(diagnostics.some(d=>d.stage==='complete'&&d.width===decoded.width&&d.height===decoded.height&&d.fps===spec.fps),'Missing worker codec diagnostic');
    if(spec.precision)check(diagnostics.some(d=>d.bitDepth===10&&d.encoder==='supported'&&d.decoder==='supported'&&d.decodedFrames===3),'Missing strict 10-bit encode/decode diagnostic');
    check(performances.length===1&&performances[0].active===(spec.performanceMode==='turbo'&&spec.format!=='mp4'?'turbo':'economy'),'Wrong active throughput policy');
@@ -583,6 +598,15 @@ window.runWh06Export=(options={})=>exportRun??=(async()=>{
   }finally{await backend.discardResult();rawReference?.dispose();rawReference=null;referencePost?.dispose();referencePost=null;c.dispose();hostP.noLoop();}
  };
  try{
+  if(options.profileSourceOnly){
+   const cases=[['720p','9:16',30,8],['4K','1:1',30,8],['720p','16:9',30,48],
+    ['4K','16:9',60,63],['4K','16:9',30,36],['1080p','16:9',60,63],['1080p','16:9',30,36],
+    ['4K','9:16',60,8],['4K','1:1',60,8],['720p','16:9',60,63]];
+   for(const [resolution,aspect,fps,frames]of cases)await one({resolution,aspect,fps,frames,format:'mp4',precision:true,post:true,display:aspect==='9:16',compare:resolution==='720p'});
+   const prefix={resolution:'720p',aspect:'16:9',fps:60,frames:63,format:'mp4',precision:true,post:true};
+   await one(prefix,'stop');await one(prefix,'cancel');await one({...prefix,frames:8});
+   return {pass:true,scope:'Own-source qualification cohort,10 VP9 configurations plus Stop/Cancel/retry; original full matrix remains separate.',rows};
+  }
   const specs=options.detailOnly?[['4K',options.detailAspect??'1:1',30,'mp4',true]]:[
    ['720p','16:9',30,'webm',false],['720p','16:9',60,'mp4',false],
    ['720p','9:16',60,'webm',true],['720p','9:16',30,'mp4',true],
@@ -675,7 +699,7 @@ window.runWh07Benchmark=async(options={})=>{
    Object.assign(State.visualTuning,c.state.visualTuning);Object.assign(State.targetTuning,c.state.targetTuning);
    hostQuality.wormholeRenderer='offscreen';hostQuality.compactMaterialPreview=true;hostQuality.musicDisplay=undefined;
    positionChanged?.(0);State.playbackFade=1;hostP.noLoop();
-   let profile,performanceReport;const backend=new WebCodecsBackend(hostP,hostP.canvas,{getAudioBuffer:()=>pcm},'WH07',null,scheduling,probe?CodecIsolationWorker:options.nativePackets&&scheduling==='cooperative'?NativePacketWorker:options.pairedEncoder&&scheduling==='cooperative'?PairedEncoderWorker:Mp4Worker,p=>{profile=p;});
+   let profile,performanceReport;const backend=new WebCodecsBackend(hostP,hostP.canvas,{getAudioBuffer:()=>pcm},'WH07',null,scheduling,probe?CodecIsolationWorker:options.predictiveDetail&&scheduling==='cooperative'?PredictiveDetailWorker:options.nativePackets&&scheduling==='cooperative'?NativePacketWorker:options.pairedEncoder&&scheduling==='cooperative'?PairedEncoderWorker:Mp4Worker,p=>{profile=p;});
    const started=performance.now();
    try{
     const blob=await backend.start({resolution,aspectRatio:'16:9',fps,format,preflight:true,watermark:false,
