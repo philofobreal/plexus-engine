@@ -1,0 +1,1 @@
+function e(e){return new Worker(`/plexus-engine/assets/mp4-export.worker-vFkJHgb6.js`,{name:e?.name})}export{e as t};
