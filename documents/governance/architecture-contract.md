@@ -13,6 +13,14 @@ color tags to its video-copy finalizer. This adds no resource owner, worker
 message, State write, preference or pixel conversion. See the same audit.
 
 
+WH-07b9 extends the existing pure `ExportPreparation` level policy with a
+finite MP4 stream-copy level argument. The MP4 worker owns native-level and
+prefix-rate/four-packet-burst observations, storing four numbers, not packet
+copies. The policy preserves the higher native level, rejects unsupported bounds
+and adds no resource, protocol, clock or preference owner. Existing OPFS and
+PCM-to-AAC finalization remain. This is metadata preservation, not a new encoding
+profile or full bitstream certification. See the same WH-07 audit.
+
 WH-06c1 keeps export diagnosis in the export owner. `ExportDiagnostics.ts`
 imports only the ExportConfig type and owns bounded data validation, not codecs,
 State, DOM, audio or persistence. Workers produce optional observations; backend

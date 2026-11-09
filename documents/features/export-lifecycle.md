@@ -1,5 +1,17 @@
 # Staged export lifecycle
 
+## WH-07b9 — VP9 MP4 compatibility metadata (2026-11-09)
+
+The existing MP4 worker supplies an explicit level during FFmpeg video copy,
+preserving the native level and dimension/FPS/nominal-and-observed bitrate/burst
+floor. Unsupported bounds fail explicitly. The previous FFmpeg fallback could
+lose FPS/rate information and declare too low a level. All12 actual old/new
+accepted MP4 pairs preserve video and AAC packets, timing and decoded pixels;
+seven change one metadata byte, five remain identical. Streaming OPFS, color,
+precision and all-key protection remain. This adds no codec or MP4 Turbo gain.
+Short manual4K60 MP4 ten-bit Stop/save/play/seek/audio acceptance is pending;
+then WH-07b10. [Proof and commands](../tests/wormhole-wh07b9-acceptance.json).
+
 ## WH-07a — optional WebM Turbo (2026-11-08)
 
 The user prioritized Turbo before mobile 10-bit fallback. Economy retains the
@@ -48,7 +60,7 @@ MP4 Turbo promotion has been implemented. WH-07b8 now rejects the sampled1/2/4/8
 constant profiles on fidelity; actual MP4 q4 repeats native loss in6/12 files.
 Audio/Stop/Cancel/retry pass,but speed remains gated out. A separate too-low VP9
 level declaration in selected60fps MP4s also exists in accepted controls: WH-07b9
-isolates/fixes this metadata compatibility boundary first. WH-07b10 then explores
+has now fixed this metadata compatibility boundary with unchanged packet payloads (see above). WH-07b10 then explores
 shorter prediction spans and valid level/rate/storage/preflight before speed.
 Larger files remain allowed;there is no mobile ten-bit fix or hardware claim. Production has no new packet
 adapter or codec selection. See the audit for the

@@ -1323,3 +1323,73 @@ Commands,source identities and retained evidence:
 [WH-07b8 receipt](../tests/wormhole-wh07b8-research.json). Final release/public QA
 are bound under ignored `logs/wh07b8/final-*.json` and checkpoint. No new manual
 whole-video test is necessary for this unchanged product runtime.
+
+
+## WH-07b9 — preserve the actual VP9 MP4 level (2026-11-09)
+
+Production compatibility fix, not a new encoding profile. The accepted all-key
+10-bit MP4 already declared levels below its FPS/rate requirement: UHD60 50
+instead of 51, 1080p60 40 instead of 41, and 720p60 31 instead of 40. UHD30 at
+the retained 64 Mbit/s also requires 51. This does not establish the cause of
+previous visual flow artifacts, and makes no new speed or mobile claim.
+
+The bounded UHD60/eight-picture boundary run observed native codec 51 and
+reconstructed the same encoded packets with the production fragmented MP4 mux
+options: its intermediate also declares 51, while the old final MP4 declares
+50. The intermediate is a same-packet reconstruction, not a dump of OPFS.
+The exact shipped FFmpeg 5.1.10 WASM was then exercised under Node: copy and
+copy plus `-r 60` produce 50; `-level:v 51`, with or without `-r`, produces 51.
+All four outputs retain all eight encoded packet hashes and independent decoded
+video hashes. This bounded, video-only MEMFS experiment is not browser timing
+or a claim about long-export memory. The FFmpeg 5.1 MP4 VP9 writer passes no
+frame rate when deriving an unspecified level; its picture-size fallback explains
+the result. Sources: [FFmpeg 5.1 VP9 configuration writer](https://ffmpeg.org/doxygen/5.1/vpcc_8c_source.html),
+[VP9 level limits](https://www.webmproject.org/vp9/levels/).
+
+The existing pure `ExportPreparation` policy now supplies a finite `-level:v`
+argument. It preserves the higher explicit native level and floors by padded
+picture size, dimensions, FPS, nominal/observed complete-prefix bitrate and
+observed rolling four-picture byte burst. The existing MP4 worker owns only
+job-local counters and at most four numeric packet sizes; no additional packet
+archive, readback, producer, queue or clock. Unsupported native levels or
+measured bounds are rejected rather than falsely lowered. This is bounded
+metadata policy, not complete VP9 tile/reference/bitstream certification.
+The existing video-copy finalizer, explicit color metadata, PCM-to-AAC path,
+streaming OPFS leases, Stop/Cancel, defaults and all-key protection remain.
+No new module, dependency, user option or WASM software video codec.
+
+The actual 12-file matrix covers UHD60/30, portrait/square/landscape, 1080p60/30,
+720p60/30, ten-bit Stop-and-save, Cancel and retry. Against the retained accepted
+all-key controls, all 351 video packets, AAC packets, timestamps/durations/types,
+audio configurations and independently decoded video hashes match. Seven MP4s
+change exactly one byte (the level); five are entirely byte-identical. Thus the
+accepted image and audio are preserved. Local full regression additionally passes
+8 fixed baselines, 37 host rows, 21 exact rows/four full-size samples, 18 Economy
+and 21 requested-Turbo rows: 36 real files/770 decoded frame IDs, including twelve
+ten-bit files. MP4 Turbo still explicitly uses Economy; WebM Turbo remains accepted.
+
+Validation: build and MJS syntax pass; focused 16/16, targeted 160/160. Full
+2283 tests/2274 pass/the same nine baseline names AND entire messages/zero skipped
+or cancelled, 1111577.7016 ms. All 233 active predecessor test files, original
+preparation test blocks, protected exact browser body and eight reference hashes
+remain. The first full-browser attempt caught an accidental diagnostic-only
+scope error in its Turbo loop; its failed raw run is retained, the loop restored,
+and the complete matrix rerun successfully. No product fallback was hidden.
+Later CLI additions only strengthen offline packet/decode auditing and allow the
+same separate profile matrix against the public release; no subsequent runtime
+or Node test-body change. No golden/Graphify/dependency changes. `diff_export.ps1`
+was considered unnecessary for this bounded change; no PR requested.
+
+Node 25.2.1/npm 11.6.2 run the declared scripts. Existing chunk-size warnings are
+informational. The package deploy command requires Bun, so the established guarded
+Node release script prepare/publish/verify is used. Raw source, failed and successful
+runs remain ignored and immutable. Commands, hashes and ownership evidence:
+[WH-07b9 acceptance receipt](../tests/wormhole-wh07b9-acceptance.json).
+Final source/Pages/public-QA binding is recorded in `logs/wh07b9/final-*.json`
+and the checkpoint after publication. Manual gate: a short 4K60 MP4 (10-bit
+VP9 + AAC), Stop & save, playback, seeking and audio, with accepted quality
+retained. No full-song regeneration is required for this metadata-only fix.
+Stop here for user acceptance; then WH-07b10 shorter prediction spans/q0 control,
+valid level/rate/storage/preflight and separate whole-job speed qualification.
+Mobile S22 native 10-bit remains deferred to WH-06c2/e, then WH-08, T21b/c,
+T22-T24; T25 maintains handoffs. No candidate quality or speed promotion in b9.

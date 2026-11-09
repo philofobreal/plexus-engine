@@ -2,7 +2,19 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-07b8 refinement complete; no candidate preserves the accepted fidelity across all12 cases. q1/2/4 are packet-identical on the measured browser; q4 actual MP4 loses fidelity in6/12,with unchanged native packets. A separate MP4 level-metadata mismatch also exists in accepted all-key UHD60/1080p60 controls. Next WH-07b9 isolates/fixes that compatibility metadata first; then WH-07b10 investigates shorter prediction spans with honest level/rate/storage/preflight and only then whole-job speed. No new Turbo gain or production change. Accepted WebM Turbo and MP4 ten-bit Economy remain; mobile ten-bit WH-06c2/e later. WH-07 partial;WH-06d withdrawn,Wall/T15 deferred.**
+**Current priority: WH-07b9 fixes the existing VP9 MP4 level declaration without re-encoding. All12 actual accepted/fixed pairs retain encoded video/AAC/timing and351 decoded pictures; seven files change one metadata byte, five remain entirely identical. Full regression and local36-file export matrix pass, with the same nine baseline Node failures. Commit/push/verified release and public QA are bound in the checkpoint/final receipts. Manual short4K60 ten-bit MP4 check is pending; stop for user acceptance. Then WH-07b10 shorter prediction spans/q0 control, valid rate/level/storage/preflight, and speed only after quality. No MP4 Turbo promotion; WebM Turbo remains accepted, MP4 explicitly Economy. Mobile WH-06c2/e later; WH-07 partial, WH-06d withdrawn, Wall/T15 deferred.**
+
+### WH-07b9 metadata parity fixed; manual acceptance pending
+
+Native and same-packet fragmented intermediate report51; old final MP4 reports50.
+Exact shipped FFmpeg/WASM controls prove explicit `-level:v` preserves the level;
+`-r` alone does not. Existing ExportPreparation owns finite level policy; the MP4
+worker observes bounded packet counters and keeps OPFS/audio/clock ownership.
+12 actual pairs/351 pictures retain video/AAC/decoded identity; seven single-byte
+changes and five bit-identical files. Full2283/2274pass/same9 entire messages,
+160/160 targeted. [Audit](wormhole-wh07-turbo.md#wh-07b9--preserve-the-actual-vp9-mp4-level-2026-11-09),
+[receipt](../tests/wormhole-wh07b9-acceptance.json). Short manual4K60 ten-bit MP4
+Stop/save/play/seek/audio check; then b10. No new speed or mobile support claim.
 
 ### WH-07b8 refinement closed; MP4 metadata parity is next
 

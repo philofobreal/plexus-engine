@@ -14,6 +14,14 @@ conversion; Economy/all-key protection remains until a separately qualified
 MP4 Turbo candidate. See the same audit for packet/decoder and actual-file proof.
 
 
+WH-07b9 extends the existing pure `ExportPreparation` level policy with a
+finite MP4 stream-copy level argument. The MP4 worker owns native-level and
+prefix-rate/four-packet-burst observations, storing four numbers, not packet
+copies. The policy preserves the higher native level, rejects unsupported bounds
+and adds no resource, protocol, clock or preference owner. Existing OPFS and
+PCM-to-AAC finalization remain. This is metadata preservation, not a new encoding
+profile or full bitstream certification. See the same WH-07 audit.
+
 WH-06c1 (2026-11-08) adds an observational export diagnostic response and a
 UI-owned 30/60 fps preference. The existing coordinator, exact-source frame
 barrier, codec acceptance, queue bounds and OPFS lifetimes remain authoritative.
