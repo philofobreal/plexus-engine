@@ -340,3 +340,34 @@ baseline if needed. Encoding time drives this decision. Short-clip results
 leave long-job timing, thermal behavior, whole-process memory and 4K
 performance open.
 [Measurement receipt](../tests/wormhole-wh06e-research.json).
+
+
+## WH-06e — scalar and SIMD128 comparison (2026-11-13)
+
+The published mobile probe offers **Skalár** and **SIMD** under the WASM
+section. Run both with the page in the foreground on the same phone, play
+each sample, and copy its report before starting the other. The report
+records the requested variant and the SHA-256 of the binary it actually
+loaded. The worker checks that hash and browser validation before running
+the binary. Each run loads one encoder variant and uses one CPU thread.
+
+Both builds use the same pinned libvpx revision, Emscripten version, source
+pictures, lossless all-key codec settings, memory cap and MP4 muxer. The
+candidate adds `-msimd128` when compiling libvpx and its C adapter, enabling
+compiler autovectorization. Disassembly confirms SIMD instructions in the
+candidate. The generated JavaScript loader matches the scalar loader byte
+for byte, so both use one loader. The original source archive and notices
+also apply to both binaries. [Emscripten SIMD documentation](https://emscripten.org/docs/porting/simd.html).
+
+Three alternating Node pairs on the development PC measured 11.98 seconds
+median for scalar and 12.50 seconds for SIMD, or about 4.4% longer for the
+candidate in this run. Both used 113.375 MiB of WASM linear memory and produced
+1,671,579-byte MP4s. Compare the encoded packet hashes and timestamps rather
+than complete MP4 file hashes, since the MP4 muxer writes creation timestamps.
+The browser check also independently decodes every frame with FFmpeg and
+compares the result to the established lossless source hash.
+
+This build isolates compiler SIMD as a variable. The result on this PC does
+not establish the effect on the S22 Ultra. The physical comparison is still
+pending. Any further quality, rate-control or resolution change needs its
+own measurement. [Measurement receipt](../tests/wormhole-wh06e-simd-research.json).

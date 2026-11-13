@@ -1,0 +1,390 @@
+{
+  "task": "WH-06e SIMD comparison",
+  "version": 1,
+  "date": "2026-11-13",
+  "predecessor": "2c978bef7456d6c5b506cffba67578657742b159",
+  "status": "SIMD candidate qualified for paired physical-device diagnostic. Desktop Node comparison showed no speed gain. S22 Ultra reports pending.",
+  "scope": "One second 720p30 synthetic lossless 10-bit VP9 all-key MP4. Both encoders use one CPU thread. No product promotion.",
+  "build": {
+    "libvpx": "1.17.0 / 6df3ec34557879fff673706f4a1d9fbd0f3a6f0e",
+    "emscripten": "3.1.40 pinned image",
+    "variantFlag": "-msimd128 during library and adapter compilation",
+    "disassemblyMatches": {
+      "scalar": 0,
+      "simd": 119645
+    },
+    "sameLoaderAndSourceArchive": true
+  },
+  "desktop": {
+    "pairs": [
+      {
+        "variant": "scalar",
+        "encodedFrames": 30,
+        "encodedBytes": 1670807,
+        "encodedBitDepth": 10,
+        "wasmLinearMemoryBytes": 118882304,
+        "inputMs": 26.079199999998565,
+        "encodeMs": 11156.253299999998,
+        "muxMs": 5.878099999999904,
+        "meanBitsPerSecond": 13366456,
+        "maxFourPictureBits": 1788232,
+        "fileBytes": 1671579,
+        "totalMs": 11214.3265,
+        "encoder": "libvpx 1.17.0 / WASM scalar / one thread",
+        "width": 1280,
+        "height": 720,
+        "fps": 30,
+        "codec": "vp09.02.40.10.01.01.01.01.00",
+        "audio": false
+      },
+      {
+        "variant": "simd",
+        "encodedFrames": 30,
+        "encodedBytes": 1670807,
+        "encodedBitDepth": 10,
+        "wasmLinearMemoryBytes": 118882304,
+        "inputMs": 64.7785000000149,
+        "encodeMs": 12410.707499999997,
+        "muxMs": 3.1284000000068772,
+        "meanBitsPerSecond": 13366456,
+        "maxFourPictureBits": 1788232,
+        "fileBytes": 1671579,
+        "totalMs": 12503.154700000001,
+        "encoder": "libvpx 1.17.0 / WASM scalar / one thread",
+        "width": 1280,
+        "height": 720,
+        "fps": 30,
+        "codec": "vp09.02.40.10.01.01.01.01.00",
+        "audio": false
+      },
+      {
+        "variant": "simd",
+        "encodedFrames": 30,
+        "encodedBytes": 1670807,
+        "encodedBitDepth": 10,
+        "wasmLinearMemoryBytes": 118882304,
+        "inputMs": 67.66509999999471,
+        "encodeMs": 12008.810099999999,
+        "muxMs": 3.1671999999816762,
+        "meanBitsPerSecond": 13366456,
+        "maxFourPictureBits": 1788232,
+        "fileBytes": 1671579,
+        "totalMs": 12102.107799999998,
+        "encoder": "libvpx 1.17.0 / WASM scalar / one thread",
+        "width": 1280,
+        "height": 720,
+        "fps": 30,
+        "codec": "vp09.02.40.10.01.01.01.01.00",
+        "audio": false
+      },
+      {
+        "variant": "scalar",
+        "encodedFrames": 30,
+        "encodedBytes": 1670807,
+        "encodedBitDepth": 10,
+        "wasmLinearMemoryBytes": 118882304,
+        "inputMs": 28.76850000002014,
+        "encodeMs": 12048.77889999999,
+        "muxMs": 3.5262000000002445,
+        "meanBitsPerSecond": 13366456,
+        "maxFourPictureBits": 1788232,
+        "fileBytes": 1671579,
+        "totalMs": 12102.0582,
+        "encoder": "libvpx 1.17.0 / WASM scalar / one thread",
+        "width": 1280,
+        "height": 720,
+        "fps": 30,
+        "codec": "vp09.02.40.10.01.01.01.01.00",
+        "audio": false
+      },
+      {
+        "variant": "scalar",
+        "encodedFrames": 30,
+        "encodedBytes": 1670807,
+        "encodedBitDepth": 10,
+        "wasmLinearMemoryBytes": 118882304,
+        "inputMs": 26.14020000002347,
+        "encodeMs": 11920.050899999966,
+        "muxMs": 5.647700000023178,
+        "meanBitsPerSecond": 13366456,
+        "maxFourPictureBits": 1788232,
+        "fileBytes": 1671579,
+        "totalMs": 11975.462099999997,
+        "encoder": "libvpx 1.17.0 / WASM scalar / one thread",
+        "width": 1280,
+        "height": 720,
+        "fps": 30,
+        "codec": "vp09.02.40.10.01.01.01.01.00",
+        "audio": false
+      },
+      {
+        "variant": "simd",
+        "encodedFrames": 30,
+        "encodedBytes": 1670807,
+        "encodedBitDepth": 10,
+        "wasmLinearMemoryBytes": 118882304,
+        "inputMs": 59.48469999997178,
+        "encodeMs": 12589.724599999972,
+        "muxMs": 2.460799999993469,
+        "meanBitsPerSecond": 13366456,
+        "maxFourPictureBits": 1788232,
+        "fileBytes": 1671579,
+        "totalMs": 12687.738099999995,
+        "encoder": "libvpx 1.17.0 / WASM scalar / one thread",
+        "width": 1280,
+        "height": 720,
+        "fps": 30,
+        "codec": "vp09.02.40.10.01.01.01.01.00",
+        "audio": false
+      }
+    ],
+    "medianMs": {
+      "scalar": 11975.462099999997,
+      "simd": 12503.154700000001
+    },
+    "simdTimeChangePct": 4.406448749898373,
+    "condition": "Sequential initial Node runs, loading excluded. Later browser QA ran with separate load and does not provide a paired speed comparison.",
+    "localBrowserRun": "logs/wh01/run-8385a4c4-202b-43a3-ae9e-72fcc765ede0",
+    "localBrowserProof": {
+      "pass": true,
+      "report": {
+        "version": 1,
+        "release": null,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+        "status": "complete",
+        "variant": "simd",
+        "framesAtStop": 30,
+        "stats": {
+          "encodedFrames": 30,
+          "encodedBytes": 1670807,
+          "encodedBitDepth": 10,
+          "wasmLinearMemoryBytes": 118882304,
+          "inputMs": 273.69999995827675,
+          "encodeMs": 62610.80000004172,
+          "muxMs": 18.30000001192093,
+          "meanBitsPerSecond": 13366456,
+          "maxFourPictureBits": 1788232,
+          "fileBytes": 1671579,
+          "totalMs": 63220.5,
+          "encoder": "libvpx 1.17.0 / WASM SIMD128 / one thread",
+          "width": 1280,
+          "height": 720,
+          "fps": 30,
+          "codec": "vp09.02.40.10.01.01.01.01.00",
+          "audio": false,
+          "loadMs": 219.39999997615814,
+          "variant": "simd",
+          "wasmSha256": "90054c5d31643beb149be4ec63d0be6b2121d146b74818febc3ee01f922effb1"
+        },
+        "playback": "ended",
+        "decodedVideoWidth": 1280,
+        "decodedVideoHeight": 720,
+        "playbackFrames": 30,
+        "droppedPlaybackFrames": 0
+      },
+      "sha256": "f229bc48a35f7a06439d761f3326e9ebe8e4c02cdbd218e586fb5796aad1905e",
+      "decodedHash": "0,v,SHA256=6bed43471dca408ee9e11bcc0c270217e1f38ace4680bd87226c56a48b80dbb8"
+    },
+    "reproduction": {
+      "scope": "Sequential desktop Node runs of the same 720p30 clip. Core loading excluded.",
+      "scalarMedianMs": 31316.4381,
+      "simdMedianMs": 31847.285799999998,
+      "rows": [
+        {
+          "variant": "scalar",
+          "name": "scalar-1.mp4",
+          "wasmSha256": "a64f6d0f7be179a509177a6c79784fc05364e5aa1c54cf40579906095f4c03cb",
+          "encodeMs": 25987.834600000006,
+          "totalMs": 26077.977300000002,
+          "fileBytes": 1671579,
+          "wasmLinearMemoryBytes": 118882304
+        },
+        {
+          "variant": "simd",
+          "name": "simd-2.mp4",
+          "wasmSha256": "90054c5d31643beb149be4ec63d0be6b2121d146b74818febc3ee01f922effb1",
+          "encodeMs": 31638.29210000002,
+          "totalMs": 31847.285799999998,
+          "fileBytes": 1671579,
+          "wasmLinearMemoryBytes": 118882304
+        },
+        {
+          "variant": "simd",
+          "name": "simd-3.mp4",
+          "wasmSha256": "90054c5d31643beb149be4ec63d0be6b2121d146b74818febc3ee01f922effb1",
+          "encodeMs": 35514.035300000025,
+          "totalMs": 35797.414399999994,
+          "fileBytes": 1671579,
+          "wasmLinearMemoryBytes": 118882304
+        },
+        {
+          "variant": "scalar",
+          "name": "scalar-4.mp4",
+          "wasmSha256": "a64f6d0f7be179a509177a6c79784fc05364e5aa1c54cf40579906095f4c03cb",
+          "encodeMs": 35132.16750000001,
+          "totalMs": 35275.7696,
+          "fileBytes": 1671579,
+          "wasmLinearMemoryBytes": 118882304
+        },
+        {
+          "variant": "scalar",
+          "name": "scalar-5.mp4",
+          "wasmSha256": "a64f6d0f7be179a509177a6c79784fc05364e5aa1c54cf40579906095f4c03cb",
+          "encodeMs": 31194.799499999965,
+          "totalMs": 31316.4381,
+          "fileBytes": 1671579,
+          "wasmLinearMemoryBytes": 118882304
+        },
+        {
+          "variant": "simd",
+          "name": "simd-6.mp4",
+          "wasmSha256": "90054c5d31643beb149be4ec63d0be6b2121d146b74818febc3ee01f922effb1",
+          "encodeMs": 30759.647200000065,
+          "totalMs": 31044.486800000013,
+          "fileBytes": 1671579,
+          "wasmLinearMemoryBytes": 118882304
+        }
+      ],
+      "conditions": "Run concurrent with cumulative tests; timings not merged with the initial comparison."
+    }
+  },
+  "physicalMobile": {
+    "status": "pending",
+    "required": "Run scalar and SIMD on S22 Ultra, play each sample, copy both reports. Verify the actual WASM hashes."
+  },
+  "validation": {
+    "build": "passed",
+    "targeted": 40,
+    "activeFiles": 233,
+    "previousTestsRetained": true,
+    "referenceHashesMatch": true,
+    "productionSrcAndLegacyHostFixtureUnchanged": true,
+    "packetEquality": "Actual built binaries, 30 matching packet payload hashes, timestamps, durations, profile metadata and heap bytes in Node.",
+    "browser": "Full Chrome worker/cancel/retry/MP4 playback plus FFmpeg decoded hash.",
+    "notRun": [
+      "Phone speed, heat, long-song and 4K pending."
+    ],
+    "runtime": "Node/npm for build and tests. Docker pinned Emscripten toolchain for WASM. Existing guarded Node Pages release.",
+    "diffExport": "Skipped for bounded diagnostic handoff.",
+    "cumulative": {
+      "tests": 2289,
+      "pass": 2280,
+      "fail": 9,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 924173.7537
+    },
+    "knownBaselineFailuresExactNameAndMessage": [
+      {
+        "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+        "message": "vos-wh-drift.json must not reset user-global wormholeStarfield"
+      },
+      {
+        "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+        "message": "establish remains visibly above the opacity floor"
+      },
+      {
+        "name": "weak roles pin a deep-perspective depth and continuity profile",
+        "message": "establish depth\n\n2.03136 !== 4"
+      },
+      {
+        "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+        "message": "deep drift deeper than establish"
+      },
+      {
+        "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+        "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+      },
+      {
+        "name": "wormhole factory presets keep a minimum normalized weighted separation",
+        "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+      },
+      {
+        "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+        "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))"
+      },
+      {
+        "name": "projected forward motion preserves overdrive > punch > drive > drift",
+        "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+      },
+      {
+        "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+        "message": "389.64890777178124 vs 471.543038051684"
+      }
+    ]
+  },
+  "commands": {
+    "compile": "docker buildx build --file research/export/vp9-10bit-probe.Dockerfile --build-arg WASM_SIMD_FLAGS=-msimd128 --output type=local,dest=logs/wh06e-simd/core research/export",
+    "build": "npm run build",
+    "targeted": "node --test tests/export-codec-isolation.test.mjs tests/release-pages.test.mjs tests/export-preparation.test.mjs",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=4",
+    "initialPairs": "node logs/wh06e-simd/node-pairs.mjs",
+    "reproducePairs": "node research/export/wormhole-baseline.mjs compare-wasm-vp9",
+    "browser": "node research/export/wormhole-baseline.mjs capture --wasm-simd-host",
+    "public": [
+      "node research/export/wormhole-baseline.mjs capture --wasm-codec-host --public-release=RELEASE_ID",
+      "node research/export/wormhole-baseline.mjs capture --wasm-simd-host --diagnostics-host --public-release=RELEASE_ID"
+    ],
+    "release": [
+      "node scripts/release-pages.mjs prepare wh06e-simd",
+      "node scripts/release-pages.mjs publish",
+      "node scripts/release-pages.mjs verify"
+    ]
+  },
+  "predecessorFiles": [
+    {
+      "path": "research/export/vp9-10bit-probe.Dockerfile",
+      "gitObject": "1d0caf93abc677bd6fa42a1cda671db840fb72a3",
+      "sha256": "6ef3b7439ba09327ef581f6b5e5a866af59850bbd809e693f9df62d85a85a06c"
+    },
+    {
+      "path": "research/export/vp9-10bit-probe.worker.mjs",
+      "gitObject": "11749aab82bfb1cedb8cafdd61765687607185e6",
+      "sha256": "5dbb2235df0b090775ab02399bc2dd9782bf323e374db635ae94c166b1c0f0fe"
+    },
+    {
+      "path": "research/export/wormhole-baseline.mjs",
+      "gitObject": "9e03c4cc9e7d57327ad06b4cf863aac3595e41ef",
+      "sha256": "6263b3d1104275415839edf09e353268e42c6159528ac8fe0bfe3115812888c0"
+    },
+    {
+      "path": "tests/browser/mobile-codec-probe.html",
+      "gitObject": "120b4976c893fd2faba462587f354f22ca62b9b4",
+      "sha256": "0c6fa61b7cbbedb886c3b6451f3f6d769572e4b17eeb59633d972a82633cc852"
+    },
+    {
+      "path": "tests/export-codec-isolation.test.mjs",
+      "gitObject": "6a8d2778c3f0ebee87563f0cd36eb6c83c1396e4",
+      "sha256": "ab4b60c88559e99996a5aa0ff18201a7fce8ceb9f96d75b0a73279b15aaa33b3"
+    }
+  ],
+  "hashes": {
+    "research/export/vp9-10bit-probe.Dockerfile": "08de8bdace333e742732052fffd0238b76e2e098816668f66c99684e7f478ee5",
+    "research/export/vp9-10bit-probe.worker.mjs": "26f59e1c59eefce0f3bc4b58a82ca02dbb8879a8bd7ffa35daf1e123a16ddb8f",
+    "research/export/wormhole-baseline.mjs": "16f2151a240f85de8c04e7e361fe89f2f2049c6069620f4d5e76c4fb51ff95db",
+    "tests/browser/mobile-codec-probe.html": "07b7a0204eca5b20a2f868ad057d85db27fd021af79256f425667b3982e2f2d8",
+    "tests/export-codec-isolation.test.mjs": "974a92d318fa0dcc52ce5edd651b25f100fc3ea6b498fe4af69f0f028ce84174",
+    "public/export/libvpx-1.17.0/libvpx-source.tar.gz": "1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a",
+    "public/export/libvpx-1.17.0/LICENSE": "8267348d5af1262c11d1a08de2f5afc77457755f1ac658627dd9acf71011d615",
+    "public/export/libvpx-1.17.0/PATENTS": "cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c",
+    "public/export/libvpx-1.17.0/vp9-10bit-probe-simd.wasm": "90054c5d31643beb149be4ec63d0be6b2121d146b74818febc3ee01f922effb1",
+    "public/export/libvpx-1.17.0/vp9-10bit-probe.mjs": "f557f578baecf7ba551b5ac906ae135170fe08b02ace037e140cb4fe42d2dd4d",
+    "public/export/libvpx-1.17.0/vp9-10bit-probe.wasm": "a64f6d0f7be179a509177a6c79784fc05364e5aa1c54cf40579906095f4c03cb",
+    "logs/wh01/run-8385a4c4-202b-43a3-ae9e-72fcc765ede0/build.json": "14f4cf5d1770fb19ca114c52eeced0958e513a48cb1d828fbcd4384e605673b0",
+    "logs/wh01/run-8385a4c4-202b-43a3-ae9e-72fcc765ede0/verification.json": "ad5d30a5373fe1b4537053f311f3fb4a69aecadf82beb529dc961b4b3458513b",
+    "logs/wh01/run-8385a4c4-202b-43a3-ae9e-72fcc765ede0/host-smoke.json": "ce8ca949cc53ab82f0773ecb12b39662a436291fe9d0a4d0ca3c7ecd0c443211",
+    "logs/wh01/run-8385a4c4-202b-43a3-ae9e-72fcc765ede0/wasm-codec-browser.json": "0f09f56323f3d442333136c9d0258a08a64eb24909185d8b14285e058bc2690c",
+    "logs/wh01/run-8385a4c4-202b-43a3-ae9e-72fcc765ede0/wasm-codec-layout.png": "1933877eb64e6148f7544afa0e2b3e1f53292b9f8456681e8755546143c3d161",
+    "logs/wh01/run-8385a4c4-202b-43a3-ae9e-72fcc765ede0/vp9-10bit-probe.mp4": "f229bc48a35f7a06439d761f3326e9ebe8e4c02cdbd218e586fb5796aad1905e",
+    "logs/wh06e-simd/build-core.log": "6c74eb735dceee3d8e87a7706006f9d92be6d8818c88580b43151c039d3f2b78",
+    "logs/wh06e-simd/build.log": "a2d791712fea33a407843e6ba60cdec38e48dd6640bb01ea775756cb274a305f",
+    "logs/wh06e-simd/node-pairs.json": "a9d0f10a962193420ef28724a32286a2d9bb7921039a08b8f18be4b516d1d526",
+    "logs/wh06e-simd/node-pairs.mjs": "2fadfadcda148d21d100e7aae34978be1f7d0547b5ea637945df323db8c8e9d5",
+    "logs/wh06e-simd/targeted.tap": "4cccffe362d4691d4611e179bcb1f20e19788fd63051fa9996872f3ef48b408d",
+    "logs/wh06e-simd/local-browser.log": "885e94a1bea5f80672422d1fe603d3768ae081d5cfe7ec18e6c0c3c9ca43ce31",
+    "logs/wh06e-simd/reproduction/node-pairs.json": "2cff02c46d5e12ccac614416f1bb01719385e556b493aba359baa66c03d8dbac",
+    "logs/wh06e-simd/reproduction.log": "7dcec21a7669afa3e82aee44c277a8b6bf84cf6df28bb062bdf9647372469c54",
+    "logs/wh06e-simd/cumulative.tap": "e8d87902a4e2997717e1805923fcce3e4c70b2b7651b79409dfee11e0e3cfdef",
+    "logs/wh06e-simd/node-results.json": "576a25613116a5b9e03cf68c2162fc10eadc0344c2dae9d3e333a42d93498e8a"
+  }
+}

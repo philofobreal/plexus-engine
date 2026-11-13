@@ -2,7 +2,15 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-06e short software VP9 feasibility is confirmed on the S22 Ultra. The one-second 720p30 10-bit sample took 19.01 seconds and played all 30 pictures without reported drops. Next compare a SIMD encoder at the same resolution before deciding on larger samples or product integration.**
+**Current priority: WH-06e scalar/SIMD comparison is ready for the S22 Ultra. The desktop Node median was 11.98 s scalar and 12.50 s SIMD. Return both phone reports before choosing another optimization or resolution.**
+
+### WH-06e SIMD phone measurement pending
+
+The public WASM probe can select either build and records the verified binary
+hash. Both run the same one-second 720p30 lossless 10-bit VP9 clip. The local
+desktop experiment observed no SIMD speed gain. The physical-device
+comparison remains open.
+[Measurements and commands](../tests/wormhole-wh06e-simd-research.json).
 
 ### WH-06e software VP9 phone measurement complete
 
