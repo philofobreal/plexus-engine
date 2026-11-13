@@ -2,14 +2,15 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-06e short WASM VP9 probe is ready for an S22 Ultra run. Use the public mobile probe's WASM section and return its report after playback. The desktop output is a verified 720p30 10-bit one-second MP4. Select the next optimization or stop based on the physical-device result.**
+**Current priority: WH-06e short software VP9 feasibility is confirmed on the S22 Ultra. The one-second 720p30 10-bit sample took 19.01 seconds and played all 30 pictures without reported drops. Next compare a SIMD encoder at the same resolution before deciding on larger samples or product integration.**
 
-### WH-06e software VP9 phone measurement pending
+### WH-06e software VP9 phone measurement complete
 
-The short probe encodes 30 synthetic pictures with one scalar WASM libvpx
-thread. It confirms the encoded bit depth and records playback and memory
-independently. The initial Windows Chrome run played all 30 pictures.
-The S22 Ultra result will guide a follow-up performance investigation.
+The 720p30 probe spent 18.91 of 19.01 seconds encoding and used 113.375 MiB of
+WASM linear memory. The copied release field comes from the URL and carries
+the older WH-06c2 label. The output statistics match the verified WASM sample.
+The phone report measures one short clip. Long-job stability and thermal
+behavior remain for later qualification.
 [Probe and measurements](wormhole-wh06c1-export-diagnostics.md#wh-06e--720p30-software-vp9-feasibility-probe-2026-11-13),
 [receipt](../tests/wormhole-wh06e-research.json).
 

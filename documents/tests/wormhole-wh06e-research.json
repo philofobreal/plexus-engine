@@ -3,7 +3,7 @@
   "version": 1,
   "date": "2026-11-13",
   "predecessor": "7acde3ccf7bd756e3ea28afbd84fd680af09c173",
-  "status": "720p30 software VP9 feasibility probe verified in desktop Chrome. Physical S22 Ultra result pending.",
+  "status": "Short 720p30 software VP9 feasibility confirmed on S22 Ultra. Scalar throughput motivates a same-resolution optimization probe before scaling.",
   "owners": {
     "codec": "research C adapter and pinned libvpx binary",
     "browser": "independent worker and existing diagnostic page",
@@ -78,9 +78,47 @@
     "conditions": "Asynchronous browser runs under concurrent test load. No phone or whole-song performance claim."
   },
   "physicalMobile": {
-    "status": "pending",
-    "device": "Samsung Galaxy S22 Ultra",
-    "required": "WASM report after playback or error. Assess timing and memory before larger clips or production integration."
+    "status": "complete",
+    "device": "Samsung Galaxy S22 Ultra, as identified by the user",
+    "report": {
+      "version": 1,
+      "release": "wh06c2-mobile-codecs-20261113T212140976Z",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36",
+      "status": "complete",
+      "framesAtStop": 30,
+      "stats": {
+        "encodedFrames": 30,
+        "encodedBytes": 1670807,
+        "encodedBitDepth": 10,
+        "wasmLinearMemoryBytes": 118882304,
+        "inputMs": 45.40000081062317,
+        "encodeMs": 18913.79999947548,
+        "muxMs": 7.099999666213989,
+        "meanBitsPerSecond": 13366456,
+        "maxFourPictureBits": 1788232,
+        "fileBytes": 1671579,
+        "totalMs": 19009.5,
+        "encoder": "libvpx 1.17.0 / WASM scalar / one thread",
+        "width": 1280,
+        "height": 720,
+        "fps": 30,
+        "codec": "vp09.02.40.10.01.01.01.01.00",
+        "audio": false,
+        "loadMs": 491
+      },
+      "playback": "ended",
+      "decodedVideoWidth": 1280,
+      "decodedVideoHeight": 720,
+      "playbackFrames": 30,
+      "droppedPlaybackFrames": 0
+    },
+    "artifact": "logs/wh06e/s22-ultra-3f187f48b9da.json",
+    "sha256": "3f187f48b9daa30f0408602b0e4d1e180abf231c8f4a2d5539da0ef40cd185a0",
+    "artifactScope": "Canonical JSON transcribed from the user message. Only report data was provided.",
+    "releaseAttribution": "The report echoes the URL release query, not a verified build identity. The older label predates the WASM assets. Stable output statistics match the verified public WASM sample. No mobile file hash was provided.",
+    "encodeShareOfJob": 0.9949656750296156,
+    "framesPerSecond": 1.5781582892764145,
+    "next": "Prioritize a bounded same-source 720p30 optimization study before a higher-resolution or production export."
   },
   "failuresResolved": [
     "Remote Git ADD using a detached commit failed; pinned tag plus commit check succeeded.",
@@ -105,7 +143,8 @@
     },
     "browser": "Chrome automation, real worker, cancellation/retry, full sample playback and independent FFmpeg decode",
     "notRun": [
-      "Physical device, thermal and full song, pending later qualification.",
+      "Long exports, thermal behavior and whole-process memory are pending later qualification.",
+      "No mobile MP4 binary was submitted for independent decoding or byte identity comparison. The device result is based on the returned probe and playback report.",
       "No 4K WASM test or production export integration in this task."
     ],
     "runtime": "Node 25.2.1/npm 11.6.2, Chrome 157, native FFmpeg and pinned Docker WASM build. Guarded Node publisher.",
@@ -205,6 +244,7 @@
     "logs/wh06e/local-final.log": "e758ce3585a9c83e6a646917190f377c3bd50b27b73d656a06a719ca8ed01b69",
     "logs/wh06e/build.log": "a007ce941284878b98736656b278fa0ee8db5e5c92f2ea43034a220365bdcd74",
     "logs/wh06e/cumulative.tap": "8634a08e356a2dc0a45e403c06445401245f0e8d1602bce7995a5dfc0c836f54",
-    "logs/wh06e/node-results.json": "e32772d52abef86e5ae2e6671e0fddbad764d9c61acf862326adc87e4e7fdc44"
+    "logs/wh06e/node-results.json": "e32772d52abef86e5ae2e6671e0fddbad764d9c61acf862326adc87e4e7fdc44",
+    "logs/wh06e/s22-ultra-3f187f48b9da.json": "3f187f48b9daa30f0408602b0e4d1e180abf231c8f4a2d5539da0ef40cd185a0"
   }
 }

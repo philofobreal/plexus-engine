@@ -320,7 +320,23 @@ level 4.0 bounds. A Node assertion was updated to check codec fields and
 color metadata separately because the demuxer omits default CICP fields from
 the returned codec string.
 
-The S22 Ultra report is pending. It will determine whether software encoding
-at 720p30 merits a faster prototype. No long-job timing, thermal behavior,
-total process memory or 4K performance can be inferred from this short clip.
-See the [measurement receipt](../tests/wormhole-wh06e-research.json).
+The S22 Ultra Chrome 157 run completed all 30 encoded pictures and played
+all 30 with zero reported drops. The one-second 720p30 MP4 took 19.01 seconds
+after the module loaded. Encoding took 18.91 seconds, or 99.5% of the measured
+job. Core loading took a separate 491 ms. The WASM linear memory was
+118,882,304 bytes (113.375 MiB), and the output was 1,671,579 bytes. The
+report establishes short software encoding and playback on the phone.
+The mobile MP4 itself was not supplied for independent decoding.
+
+The copied release field contains the earlier WH-06c2 query value. The
+page copies that value from its URL, and the older release predates the
+WASM assets. The encoded profile, dimensions, frame count, payload and file
+sizes, burst rate and WASM linear memory match the verified WASM probe.
+The report retains the original label and the attribution limitation.
+
+The next study should measure a SIMD build against the same scalar source,
+then test rate-control changes against the established image-quality
+baseline if needed. Encoding time drives this decision. Short-clip results
+leave long-job timing, thermal behavior, whole-process memory and 4K
+performance open.
+[Measurement receipt](../tests/wormhole-wh06e-research.json).

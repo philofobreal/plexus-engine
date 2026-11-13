@@ -57,11 +57,10 @@ kódoló lekérdezésekor. A következő lépés a WH-06e rövid, szoftveres 10 
 kódolási próba.
 [Mérési eredmények](../tests/wormhole-wh06c2-research.json).
 
-**WH-06e rövid WASM-próba.** A rögzített libvpx build 720p/30 fps sebességű,
-egy másodperces 10 bites VP9 MP4-et készít. A 30 dekódolt kép mintái egyeznek
-a generált forrással. Az S22 Ultra jelentése adja meg a készüléken mért időt
-és lejátszási eredményt. Ez a rövid próba előzi meg az optimalizálás és a
-termékintegráció döntését.
+**WH-06e rövid WASM-próba igazolva az S22 Ultrán.** A 720p/30 fps-es, egy
+másodperces 10 bites MP4 19,01 másodperc alatt készült el. Mind a 30 képkocka
+lejátszódott. A futásból 18,91 másodpercet a kódolás tett ki. Következőként
+ugyanezen a mintán mérjük a SIMD kódolót, mielőtt nagyobb felbontásra lépnénk.
 [Próba és mérések](../tests/wormhole-wh06e-research.json).
 
 ## 1. Cél és helye a főtervben
