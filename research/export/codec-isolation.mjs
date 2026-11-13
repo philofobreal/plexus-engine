@@ -52,17 +52,58 @@ export function codecProbeConfigurations() {
             ...(codec.family==='AV1-Main'&&resolution==='4K'?{codec:'av01.0.17M.10'}:{}),resolution,width,height,bitrate,framerate:60,hardwareAcceleration}))));
 }
 
+export const MOBILE_CODEC_SCOPE = 'Three synthetic key pictures per configuration. Reports browser encoding, VP9 bitstream depth, and decoder results. Export quality, hardware assignment and long-job reliability require separate tests.';
+
+export function mobileCodecProbeConfigurations() {
+    // Match the landscape MP4 VP9 product policy. The test suite compares these strings to vp9ExportCodec.
+    const product = [
+        ['720p', 1280, 720, 8_000_000, [31, 40]],
+        ['1080p', 1920, 1080, 14_000_000, [40, 41]],
+        ['4K', 3840, 2160, 64_000_000, [51, 51]],
+    ].flatMap(([resolution, width, height, bitrate, levels]) =>
+        [30, 60].map((framerate, i) => ({
+            id: 'vp9-' + resolution + '-' + framerate, group: 'product', family: 'VP9',
+            codec: 'vp09.02.' + levels[i] + '.10', resolution, width, height, bitrate, framerate,
+        })));
+    const alternatives = [
+        ['av1', 'AV1', 'av01.0.13M.10'],
+        ['hevc', 'HEVC', 'hvc1.2.4.H153.B0'],
+    ].flatMap(([name, family, codec]) => [
+        ['720p', 1280, 720, 8_000_000], ['4K', 3840, 2160, 32_000_000],
+    ].map(([resolution, width, height, bitrate]) => ({
+        id: name + '-' + resolution + '-30', group: 'alternative', family, codec,
+        resolution, width, height, bitrate, framerate: 30,
+    })));
+    return [
+        {id:'vp9-8bit-control', group:'control', family:'VP9', codec:'vp09.00.31.08',
+            resolution:'720p', width:1280, height:720, bitrate:8_000_000, framerate:30},
+        ...product,
+        {id:'vp9-4K-30-48mbps', group:'lower-rate', family:'VP9', codec:'vp09.02.50.10',
+            resolution:'4K', width:3840, height:2160, bitrate:48_000_000, framerate:30},
+        ...alternatives,
+    ].map(row => ({...row, hardwareAcceleration:'no-preference'}));
+}
+
 /** Query -> encode -> decode, independently recorded; all resources close on
  * success, callback failure, timeout, rejection and an unsupported configuration.
  */
-export async function probeNativeCodec(request, env = globalThis, timeoutMs = 8000) {
-    const {codec,width,height,framerate,bitrate,hardwareAcceleration} = request;
-    if (!codecProbeConfigurations().some(c=>['codec','width','height','framerate','bitrate','hardwareAcceleration'].every(k=>c[k]===request[k]))) throw Error('Unlisted codec probe');
+export async function probeNativeCodec(request, env = globalThis, timeoutMs = 8000, cohort = 'desktop') {
+    const mobile = cohort === 'mobile';
+    if (!mobile && cohort !== 'desktop') throw Error('Unknown codec probe cohort');
+    const configurations = mobile ? mobileCodecProbeConfigurations() : codecProbeConfigurations();
+    const fields = ['codec', 'width', 'height', 'framerate', 'bitrate', 'hardwareAcceleration'];
+    if (mobile) fields.push('id');
+    const selected = configurations.find(config => fields.every(key => config[key] === request?.[key]));
+    if (!selected) throw Error('Unlisted codec probe');
+    const {codec,width,height,framerate,bitrate,hardwareAcceleration} = selected;
     const config={codec,width,height,framerate,bitrate,hardwareAcceleration,latencyMode:'quality',bitrateMode:'constant'};
     const report={config,stage:'encoder-query',encoder:'not-checked',decoder:'not-checked',encodedFrames:0,decodedFrames:0,
-        allKey:true,bytes:0,formats:[],timestamps:[],timings:{},scope:CODEC_PROBE_SCOPE};
+        allKey:true,bytes:0,formats:[],timestamps:[],timings:{},scope:mobile ? MOBILE_CODEC_SCOPE : CODEC_PROBE_SCOPE};
     let encoder,decoder,canvas,timer,active=true;
     const chunks=[], formats=new Set(), now=()=>env.performance.now();
+    const decodedTimestamps = [];
+    if (mobile) Object.assign(report, {id: selected.id, group: selected.group, family: selected.family,
+        resolution: selected.resolution, decodedTimestamps});
     let rejectFailure, failureReason;
     const failure=new Promise((_,reject)=>{rejectFailure=reject;}); void failure.catch(()=>{});
     const fail=error=>{if(active){failureReason??=error instanceof Error?error:Error(String(error?.message??error));rejectFailure(failureReason);}};
@@ -72,7 +113,21 @@ export async function probeNativeCodec(request, env = globalThis, timeoutMs = 80
         timer=env.setTimeout(()=>fail(Error('Codec isolation probe timed out')),timeoutMs);
         if (!env.VideoEncoder?.isConfigSupported) {report.encoder='unavailable';return report;}
         const query=now(); const support=await wait(env.VideoEncoder.isConfigSupported(config));report.timings.queryMs=now()-query;
-        report.encoder=support.supported?'supported':'unsupported'; if(!support.supported)return report;
+        report.encoder=support.supported?'supported':'unsupported';
+        if (mobile && !support.supported && env.VideoDecoder?.isConfigSupported) {
+            report.requestedDecoderQuery = 'not-checked';
+            try {
+                const decoder = await wait(env.VideoDecoder.isConfigSupported({codec, codedWidth:width, codedHeight:height}));
+                report.requestedDecoderQuery = decoder.supported ? 'supported' : 'unsupported';
+            } catch (error) {
+                report.requestedDecoderQuery = 'error';
+                if (failureReason) throw error;
+            }
+        }
+        if (!support.supported) return report;
+        if (mobile && Object.entries(config).some(([key, value]) => support.config?.[key] !== value)) {
+            throw Error('The browser did not recognize the requested encoder configuration.');
+        }
         report.stage='encode';
         encoder=new env.VideoEncoder({error:fail,output:(chunk,metadata)=>{
             if(!active)return;
@@ -92,6 +147,9 @@ export async function probeNativeCodec(request, env = globalThis, timeoutMs = 80
         }
         await wait(encoder.flush());report.timings.inputEncodeMs=now()-encodeStart;
         if(report.encodedFrames!==3 || !report.allKey || report.timestamps.some((t,i)=>t!==Math.round(i*1e6/framerate))) throw Error('Incomplete or unordered independent codec pictures');
+        if (mobile && codec.startsWith('vp09.')) {
+            report.encodedVp9Depths = chunks.map(vp9KeyPictureBitDepth);
+        }
         report.stage='decoder-query';
         if(!env.VideoDecoder?.isConfigSupported){report.decoder='unavailable';return report;}
         const decodeConfig=report.decoderConfig??{codec,codedWidth:width,codedHeight:height};
@@ -99,12 +157,16 @@ export async function probeNativeCodec(request, env = globalThis, timeoutMs = 80
         report.stage='decode';
         decoder=new env.VideoDecoder({error:fail,output:frame=>{
             try{if(!active)return;report.decodedFrames++;formats.add(frame.format??'opaque');
+                if (mobile) decodedTimestamps.push(frame.timestamp);
                 if(frame.displayWidth!==width || frame.displayHeight!==height)fail(Error('Unexpected decoded dimensions'));
             }finally{frame.close();}
         }});decoder.configure(decodeConfig);const decodeStart=now();
         for(const chunk of chunks)decoder.decode(chunk);
         await wait(decoder.flush());report.timings.decodeMs=now()-decodeStart;report.formats=[...formats];
         if(report.decodedFrames!==3)throw Error('Incomplete codec decode probe');
+        if (mobile && decodedTimestamps.some((timestamp, index) => timestamp !== report.timestamps[index])) {
+            throw Error('Decoded pictures returned out of order or with changed timestamps.');
+        }
         report.decodedTenBitObserved=report.formats.length>0&&report.formats.every(f=>['I420P10','I422P10','I444P10','P010'].includes(f));
         report.stage='complete';
     } catch(error) {report.error={name:String(error?.name??'Error').slice(0,80),message:String(error?.message??error).slice(0,600)};}
@@ -114,10 +176,53 @@ export async function probeNativeCodec(request, env = globalThis, timeoutMs = 80
         if(canvas)canvas.width=canvas.height=1;chunks.length=0;report.timings.totalMs=now()-started;
         // Binary codec descriptions are not a public report; only the emitted name is retained.
         if(report.decoderConfig){report.emittedCodec=report.decoderConfig.codec;
+            if (mobile) report.emittedCodecMatchesProfile = sameMobileProfile(codec, report.emittedCodec);
             const c=report.decoderConfig.colorSpace;if(c)report.emittedColorSpace=Object.fromEntries(['primaries','transfer','matrix','fullRange'].filter(k=>typeof c[k]==='string'||typeof c[k]==='boolean').map(k=>[k,c[k]]));
             delete report.decoderConfig;}
     }
     return report;
+}
+
+// VP9 uncompressed header, sections 6.2 and 6.2.2. Only Profile 0/2 key pictures
+// are probed here. Inspect the first five bytes of each bounded packet.
+function vp9KeyPictureBitDepth(chunk) {
+    if (chunk.byteLength < 5) return null;
+    // WebCodecs copyTo requires a destination large enough for the whole packet.
+    // Each probe retains at most 16 MiB of compressed data and borrows one copy.
+    const bytes = new Uint8Array(chunk.byteLength);
+    chunk.copyTo(bytes);
+    const header = bytes[0];
+    const profile = ((header & 0x10) >> 3) | ((header & 0x20) >> 5);
+    if ((header >> 6) !== 2 || (header & 0x0c) !== 0 || ![0, 2].includes(profile)
+        || bytes[1] !== 0x49 || bytes[2] !== 0x83 || bytes[3] !== 0x42) return null;
+    if (profile === 0) return 8;
+    return (bytes[4] & 0x80) === 0 ? 10 : 12;
+}
+
+function sameMobileProfile(requested, emitted) {
+    if (typeof emitted !== 'string') return null;
+    const expected = requested.toLowerCase().split('.');
+    const actual = emitted.toLowerCase().split('.');
+    if (expected[0] === 'hvc1') return ['hvc1', 'hev1'].includes(actual[0]) && actual[1] === expected[1];
+    return actual[0] === expected[0] && actual[1] === expected[1] && actual[3] === expected[3];
+}
+
+export function mobileCodecOutcome(row) {
+    if (row.error) return 'probe-error';
+    if (row.encoder === 'unavailable') return 'api-unavailable';
+    if (row.encoder === 'unsupported') return 'encoder-unsupported';
+    if (row.decoder === 'unsupported' || row.decoder === 'unavailable') return 'decoder-unavailable';
+    if (row.stage !== 'complete') return 'incomplete';
+    const encodedDepth = row.encodedVp9Depths;
+    if (row.emittedCodecMatchesProfile === false) return 'different-encoded-profile';
+    if (row.group === 'control') return encodedDepth?.length === 3 && encodedDepth.every(depth => depth === 8)
+        ? 'control-pass' : 'bit-depth-unconfirmed';
+    if (encodedDepth) {
+        if (encodedDepth.length === 3 && encodedDepth.every(depth => depth === 10)) return 'ten-bit-confirmed';
+        return 'ten-bit-unconfirmed';
+    }
+    if (row.decodedTenBitObserved && row.emittedCodecMatchesProfile === true) return 'ten-bit-confirmed';
+    return 'ten-bit-unconfirmed';
 }
 
 /** Own the exact bytes before async iteration advances the demuxer's read cache.
@@ -267,6 +372,17 @@ if (typeof WorkerGlobalScope !== 'undefined' && globalThis instanceof WorkerGlob
                 });
                 send({type:'quality_replay_done',report},report.packets.map(p=>p.data.buffer));
             }catch(error){send({type:'quality_replay_error',message:String(error?.message??error)});}
+        }else if(data?.type==='mobile_codec_matrix') {
+            try {
+                const cases = mobileCodecProbeConfigurations();
+                for (const request of cases) {
+                    const row = await probeNativeCodec(request, globalThis, 8000, 'mobile');
+                    send({type:'mobile_codec_row', row:{...row, outcome:mobileCodecOutcome(row)}});
+                }
+                send({type:'mobile_codec_done'});
+            } catch(error) {
+                send({type:'mobile_codec_error', message:String(error?.message ?? error).slice(0, 600)});
+            }
         }else if(data?.type==='codec_matrix') {
             try {
                 const rows=[];for(const request of codecProbeConfigurations())rows.push(await probeNativeCodec(request));

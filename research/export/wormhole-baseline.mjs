@@ -9,7 +9,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { build } from 'vite';
 import { QUALITY_POLICY, BASELINE_CASES, compareRgba, evaluateEncodedStats, compareOwnSource } from './wormhole-quality.mjs';
-import { evaluateReplayBounds } from './codec-isolation.mjs';
+import { evaluateReplayBounds, mobileCodecProbeConfigurations, mobileCodecOutcome } from './codec-isolation.mjs';
 import { CARRIER_FIELDS } from './parallel-material-data.mjs';
 import { createLoader } from '../../tests/helpers/xr-loader.mjs';
 const { assertWormholeRenderFrameStamp: validateStamp } = createLoader()('types/WormholeRenderFrame.ts');
@@ -126,7 +126,7 @@ async function capture() {
     const output = path.join(root, 'run-' + randomUUID()), site = path.join(output, 'site');
     await mkdir(output, { recursive: true });
     const paths = git('ls-files', '--cached', '--others', '--exclude-standard', '--', 'src', 'research/export',
-        'public', 'tests/helpers', 'tests/browser/wormhole-host-backend-smoke.html', 'documents/governance', 'AGENTS.md').split(/\r?\n/).filter(Boolean);
+        'public', 'tests/helpers', 'tests/browser/wormhole-host-backend-smoke.html', 'tests/browser/mobile-codec-probe.html', 'documents/governance', 'AGENTS.md').split(/\r?\n/).filter(Boolean);
     const sourceInputs = await Promise.all([...new Set(paths)].sort().map(async file => ({ path: file, sha256: hash(await readFile(file)) })));
     let durationProbeHits=0;
     const durationProbe=()=>({name:'wh06-mp4-duration-probe',enforce:'pre',transform(code,id){
@@ -147,7 +147,7 @@ async function capture() {
             ...((process.argv.includes('--mp4-all-intra')||process.argv.includes('--mp4-inter-frame')) ? [intraProbe()] : [])
         ] },
         build: { outDir: site, rollupOptions: { input: ['research/export/wormhole-baseline.html',
-            'tests/browser/wormhole-host-backend-smoke.html'] } } });
+            'tests/browser/wormhole-host-backend-smoke.html', 'tests/browser/mobile-codec-probe.html'] } } });
     if(process.argv.includes('--mp4-no-duration')||process.argv.includes('--mp4-all-intra')||process.argv.includes('--mp4-inter-frame'))assert.ok(durationProbeHits>0,'Probe must inspect the actual worker policy');
     const bundles = (Array.isArray(built) ? built : [built]).flatMap(result => result.output);
     const manifest = { version: 1, arguments: process.argv.slice(2), baseCommit: git('rev-parse', 'HEAD'), dirty: git('status', '--porcelain'),
@@ -226,8 +226,8 @@ async function capture() {
             } };
             socket.addEventListener('message', listener); socket.send(JSON.stringify({ id, method, params }));
         });
-        const evaluate = async expression => {
-            const response = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+        const evaluate = async (expression, userGesture = false) => {
+            const response = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, userGesture });
             if (response.exceptionDetails) throw Error(response.exceptionDetails.exception?.description ?? JSON.stringify(response.exceptionDetails));
             return response.result?.value;
         };
@@ -514,6 +514,65 @@ async function capture() {
             await writeFile(path.join(output,'diagnostic-host-controls.json'),JSON.stringify({pass:true,release:publicRelease,hosts,
                 scope:'Actual published startup controls and cross-host FPS persistence; no audio export or physical-mobile claim.'},null,2)+'\n',{flag:'wx'});
         }
+        if (process.argv.includes('--mobile-codec-host')) {
+            const route = '/plexus-engine/tests/browser/mobile-codec-probe.html';
+            const probeUrl = publicRelease ? 'https://philofobreal.github.io' + route + '?release=' + publicRelease : origin + route;
+            await send('Emulation.setDeviceMetricsOverride', {width:390, height:844, deviceScaleFactor:1, mobile:true});
+            await send('Page.navigate', {url:probeUrl});
+            for (let i = 0; i < 100 && !await evaluate('document.querySelector("#start")?.disabled === false'); i++) await sleep(100);
+            const readReport = () => evaluate('JSON.parse(document.querySelector("#report").value || "null")');
+            await evaluate('document.querySelector("#start").click(); document.querySelector("#cancel").click();');
+            assert.equal((await readReport()).status, 'cancelled');
+            await evaluate('document.querySelector("#start").click()');
+            let report;
+            for (let i = 0; i < 240; i++) {
+                report = await readReport();
+                if (report) break;
+                await sleep(500);
+            }
+            assert.equal(report?.status, 'complete', JSON.stringify(report));
+            assert.equal(report.release, publicRelease ?? null);
+            await writeFile(path.join(output, 'mobile-codec-observed.json'), JSON.stringify(report, null, 2)+'\n', {flag:'wx'});
+            const cases = mobileCodecProbeConfigurations();
+            assert.deepEqual(report.rows.map(r => r.id), cases.map(r => r.id));
+            for (const [i, row] of report.rows.entries()) {
+                for (const key of ['codec', 'width', 'height', 'framerate', 'bitrate']) assert.equal(row.config[key], cases[i][key]);
+                assert.equal(row.outcome, mobileCodecOutcome(row));
+                if (row.stage === 'complete') assert.deepEqual(row.decodedTimestamps, row.timestamps);
+            }
+            assert.equal(report.rows[0].outcome, 'control-pass', 'Desktop browser must complete the 8-bit control');
+            assert.ok(report.rows.some(row => row.group === 'product' && row.outcome === 'ten-bit-confirmed'),
+                'Desktop browser must confirm a 10-bit VP9 bitstream and decode it');
+
+            // Exercise the actual clipboard action and downloaded JSON in an isolated browser profile.
+            await send('Browser.grantPermissions', {origin:new URL(probeUrl).origin, permissions:['clipboardReadWrite', 'clipboardSanitizedWrite']});
+            await send('Emulation.setFocusEmulationEnabled', {enabled:true});
+            const copied = await evaluate(`(async () => {
+                document.querySelector('#copy').click();
+                for (let i = 0; i < 40; i++) {
+                    if (document.querySelector('#status').textContent.includes('vágólapra')) return navigator.clipboard.readText();
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+                return null;
+            })()`, true);
+            if (copied) assert.deepEqual(JSON.parse(copied), report);
+            else assert.equal(await evaluate(`document.querySelector('#report').selectionEnd === document.querySelector('#report').value.length`), true);
+            await send('Browser.setDownloadBehavior', {behavior:'allow', downloadPath:output});
+            await evaluate('document.querySelector("#save").click()');
+            let saved;
+            for (let i = 0; i < 50; i++) {
+                try { saved = await readFile(path.join(output, 'plexus-mobile-codec-report.json'), 'utf8'); break; }
+                catch (error) { if (error.code !== 'ENOENT') throw error; await sleep(100); }
+            }
+            assert.deepEqual(JSON.parse(saved), report);
+            assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Probe layout must fit a phone viewport');
+            const screenshot = await send('Page.captureScreenshot', {format:'png'});
+            await writeFile(path.join(output, 'mobile-codec-layout.png'), Buffer.from(screenshot.data, 'base64'), {flag:'wx'});
+            const proof = {pass:true, cases:report.rows.length, cancelRetry:true, copied:Boolean(copied), selectedForCopy:!copied, downloaded:true,
+                scope:'Desktop Chrome with a phone viewport. Physical phone results are collected separately.', report};
+            await writeFile(path.join(output, 'mobile-codec-browser.json'), JSON.stringify(proof, null, 2)+'\n', {flag:'wx'});
+            console.log(JSON.stringify({mobileCodecProbe:proof.pass, cases:proof.cases, outcomes:report.rows.map(r => [r.id,r.outcome])}));
+        }
         await writeFile(path.join(root, 'active-run.txt'), output + '\n');
         console.log(JSON.stringify({ output, pass: true, cases: 8, hostRows: host.rows.length, ...(publicRelease?{publicRelease}:{}) }));
     } finally {
@@ -763,5 +822,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     else if (process.argv[2] === 'compare-source') await compareSources(process.argv[3],process.argv[4]);
     else if (process.argv[2] === 'compare-encoded') await compareEncoded(process.argv[3],process.argv[4]);
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--quantizer-source=PRIOR_SOURCE_RUN [--quality-refine | --short-gop]] [--exact-host] [--export-host [--profile-source | --profile-check]] [--native-packets | --predictive-detail | --quality-candidate=1|2|4|8] [--turbo-export-host] [--diagnostics-host] [--codec-host] [--detail-host [--level-boundary] [--detail-profile=reference|detail|text|variable]] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | audit-mp4-levels BASELINE_RUN FIXED_RUN | level-probe RUN | analyze-replay RUN ACCEPTED_SOURCE_COMPARISON | compare-source BASELINE_RUN CANDIDATE_RUN | compare-encoded BASELINE_RUN CANDIDATE_RUN | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--quantizer-source=PRIOR_SOURCE_RUN [--quality-refine | --short-gop]] [--exact-host] [--export-host [--profile-source | --profile-check]] [--native-packets | --predictive-detail | --quality-candidate=1|2|4|8] [--turbo-export-host] [--diagnostics-host] [--mobile-codec-host] [--codec-host] [--detail-host [--level-boundary] [--detail-profile=reference|detail|text|variable]] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | audit-mp4-levels BASELINE_RUN FIXED_RUN | level-probe RUN | analyze-replay RUN ACCEPTED_SOURCE_COMPARISON | compare-source BASELINE_RUN CANDIDATE_RUN | compare-encoded BASELINE_RUN CANDIDATE_RUN | verify [baseline.json]');
 }

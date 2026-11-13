@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plexus · 10 bites mobilos videópróba</title>
+<style>
+:root { color-scheme: dark; font: 16px system-ui; }
+body { background: #101321; color: #edf4fc; margin: 0; }
+main { max-width: 42rem; margin: auto; padding: 1rem; }
+h1 { font-size: 1.5rem; }
+button { min-height: 44px; padding: 0.5rem 0.85rem; font: inherit; margin: 0 0.25rem 0.5rem 0; }
+ul { padding-left: 1.25rem; }
+li { padding: 0.35rem 0; overflow-wrap: anywhere; }
+textarea { width: 100%; box-sizing: border-box; font: 0.85rem monospace; }
+</style>
+</head>
+<body>
+<main>
+<h1>10 bites mobilos videópróba</h1>
+<p>A Chrome 12 beállítással próbál három mintaképet kódolni és visszaolvasni. Tartsd nyitva ezt a lapot. A próba helyben fut, és nem kér zenefájlt.</p>
+<button id="start" type="button" disabled>Próba indítása</button>
+<button id="cancel" type="button" disabled>Megszakítás</button>
+<button id="copy" type="button" disabled>Jelentés másolása</button>
+<button id="save" type="button" disabled>Jelentés mentése</button>
+<p id="status" role="status">A próba még nem futott.</p>
+<ul id="results" aria-label="Mérési eredmények"></ul>
+<label for="report">Részletes JSON-jelentés</label>
+<textarea id="report" rows="6" readonly></textarea>
+</main>
+<script type="module">
+import CodecWorker from '../../research/export/codec-isolation.mjs?worker';
+import { MOBILE_CODEC_SCOPE, mobileCodecProbeConfigurations } from '../../research/export/codec-isolation.mjs';
+
+const start = document.querySelector('#start');
+const cancel = document.querySelector('#cancel');
+const copy = document.querySelector('#copy');
+const save = document.querySelector('#save');
+const status = document.querySelector('#status');
+const results = document.querySelector('#results');
+const reportField = document.querySelector('#report');
+const expected = mobileCodecProbeConfigurations();
+const labels = {
+    'control-pass': '8 bites kontroll sikeres',
+    'ten-bit-confirmed': '10 bites kódolás és visszaolvasás igazolva',
+    'ten-bit-unconfirmed': 'Visszaolvasható, a 10 bit nem igazolt',
+    'bit-depth-unconfirmed': 'A kontroll bitmélysége nem igazolt',
+    'encoder-unsupported': 'A kódoló elutasította',
+    'decoder-unavailable': 'A visszaolvasás nem támogatott',
+    'api-unavailable': 'A kódoló API nem érhető el',
+    'probe-error': 'A próba hibával zárult',
+    'different-encoded-profile': 'A kimenet eltérő kodekprofilt jelzett',
+    incomplete: 'A próba hiányos',
+};
+let active;
+let report;
+
+function finish(job, outcome, message) {
+    if (active !== job) return;
+    active = undefined;
+    clearTimeout(job.deadline);
+    job.worker?.terminate();
+    report = {...job.report, status:outcome, ...(message ? {error:message} : {})};
+    reportField.value = JSON.stringify(report, null, 2);
+    start.disabled = false;
+    cancel.disabled = true;
+    copy.disabled = save.disabled = false;
+    const verified = report.rows.filter(row => row.outcome === 'ten-bit-confirmed').length;
+    status.textContent = outcome === 'complete'
+        ? `Kész. ${report.rows.length}/${expected.length} mérés, ${verified} igazolt 10 bites eredmény.`
+        : `${message} Elkészült mérések: ${report.rows.length}/${expected.length}.`;
+}
+
+start.addEventListener('click', () => {
+    if (active) return;
+    report = undefined;
+    reportField.value = '';
+    results.replaceChildren();
+    start.disabled = copy.disabled = save.disabled = true;
+    cancel.disabled = false;
+    status.textContent = `Mérés folyamatban (0/${expected.length})`;
+    const job = {report:{version:1, scope:MOBILE_CODEC_SCOPE, userAgent:navigator.userAgent,
+        release:new URLSearchParams(location.search).get('release'), rows:[]}};
+    active = job;
+    try {
+        const worker = job.worker = new CodecWorker();
+        job.deadline = setTimeout(() => finish(job, 'failed', 'A próba túllépte az időkeretet.'), 110000);
+        worker.onerror = () => finish(job, 'failed', 'A böngésző nem tudta futtatni a kódolópróbát.');
+        worker.onmessageerror = () => finish(job, 'failed', 'A mérés eredménye nem olvasható.');
+        worker.onmessage = ({data}) => {
+            if (active !== job) return;
+            if (data.type === 'mobile_codec_error') {
+                finish(job, 'failed', data.message);
+            } else if (data.type === 'mobile_codec_done') {
+                if (job.report.rows.length === expected.length) finish(job, 'complete');
+                else finish(job, 'failed', 'A mérési sorok hiányosak.');
+            } else if (data.type === 'mobile_codec_row') {
+                const config = expected[job.report.rows.length];
+                if (data.row?.id !== config?.id || !config) {
+                    finish(job, 'failed', 'A mérési sorok sorrendje hibás.');
+                    return;
+                }
+                job.report.rows.push(data.row);
+                const row = document.createElement('li');
+                const title = config.group === 'control' ? 'VP9 8 bit' : config.family + ' 10 bit';
+                row.textContent = `${title} · ${config.resolution}/${config.framerate} fps · ${config.bitrate / 1e6} Mbit/s · ${labels[data.row.outcome]}`;
+                results.append(row);
+                status.textContent = `Mérés folyamatban (${job.report.rows.length}/${expected.length})`;
+            }
+        };
+        worker.postMessage({type:'mobile_codec_matrix'});
+    } catch {
+        finish(job, 'failed', 'A kódolópróba nem indítható.');
+    }
+});
+cancel.addEventListener('click', () => {
+    if (active) finish(active, 'cancelled', 'A mérés megszakadt.');
+});
+copy.addEventListener('click', async () => {
+    const current = report;
+    if (!current) return;
+    try {
+        await navigator.clipboard.writeText(reportField.value);
+        if (report === current) status.textContent = 'A jelentés a vágólapra került.';
+    } catch {
+        if (report !== current) return;
+        reportField.focus();
+        reportField.select();
+        status.textContent = 'A jelentés ki van jelölve. Másold a kijelölt szöveget, vagy mentsd fájlba.';
+    }
+});
+save.addEventListener('click', () => {
+    if (!report) return;
+    const url = URL.createObjectURL(new Blob([reportField.value], {type:'application/json'}));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'plexus-mobile-codec-report.json';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+window.addEventListener('pagehide', () => {
+    if (active) finish(active, 'cancelled', 'A mérés megszakadt.');
+});
+start.disabled = false;
+</script>
+</body>
+</html>

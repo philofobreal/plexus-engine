@@ -74,7 +74,7 @@ test('historical task publishers fail before any deployment or source snapshot c
 test('release identity binds every published GPU laboratory input without unrelated research files', t => {
     const f=fixture(t),files=['wormhole-gpu.html','wormhole-gpu-lab.mjs','wormhole-gpu.worker.ts',
         'wormhole-baseline-capture.mjs','wormhole-quality.mjs','parallel-material-data.mjs',
-        'stable-material.worker.ts','paired-encoder.worker.ts','native-packet.worker.ts','codec-isolation.mjs'].map(n=>'research/export/'+n).concat(['tests/browser/wormhole-host-backend-smoke.html']);
+        'stable-material.worker.ts','paired-encoder.worker.ts','native-packet.worker.ts','codec-isolation.mjs'].map(n=>'research/export/'+n).concat(['tests/browser/wormhole-host-backend-smoke.html','tests/browser/mobile-codec-probe.html']);
     for(const name of files)f.write(name,'initial');
     f.commit();const source=f.snapshot();
     for(const name of files){

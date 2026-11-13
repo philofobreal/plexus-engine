@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {makeTransferSink,probeNativeCodec,codecProbeConfigurations,copyInspectionPacket,decodeInspectionPackets,inspectionVp9Color,encodeSourceProfile,evaluateReplayBounds} from '../research/export/codec-isolation.mjs';
+import {makeTransferSink,probeNativeCodec,codecProbeConfigurations,copyInspectionPacket,decodeInspectionPackets,inspectionVp9Color,encodeSourceProfile,evaluateReplayBounds,mobileCodecProbeConfigurations,mobileCodecOutcome} from '../research/export/codec-isolation.mjs';
 
 const start={type:'start_export',frames:4,fps:60,sampleRate:48000,sourceSamples:3200};
 const picture=(index,count=800)=>({type:'encode_frame',timestampUs:Math.round(index*1e6/60),audioSampleCount:count,audioPlanar:new Float32Array(count*2),
@@ -30,11 +30,17 @@ test('upstream isolation rejects gaps, invalid PCM and starts without acknowledg
 function fixture(options={}) {
     const resources={encoders:[],decoders:[],frames:[],canvas:[]};
     class Encoder {
-        static async isConfigSupported(){if(options.hangQuery)return new Promise(()=>{});return {supported:options.supported!==false};}
+        static async isConfigSupported(config) {
+            if (options.hangQuery) return new Promise(() => {});
+            return {supported: options.supported !== false, config: options.unrecognized ? {} : {...config}};
+        }
         constructor(init){this.init=init;resources.encoders.push(this);}
         configure(config){this.config={...config};}
-        encode(frame){this.init.output({type:'key',timestamp:frame.timestamp,byteLength:options.oversize?17*1024*1024:50},
-            {decoderConfig:{codec:'vp09.02.51.10',description:new Uint8Array(4)}});}
+        encode(frame){
+            const depth = options.encodedDepth ?? 10;
+            const header = [depth === 8 ? 0x82 : 0x92, 0x49, 0x83, options.badSync ? 0 : 0x42, depth === 12 ? 0x80 : 0];
+            this.init.output({type:'key',timestamp:frame.timestamp,byteLength:options.oversize?17*1024*1024:50,copyTo:bytes=>bytes.set(header)},
+            {decoderConfig:{codec:options.emittedCodec ?? 'vp09.02.51.10',description:new Uint8Array(4)}});}
         async flush(){if(options.hangEncode)return new Promise(()=>{});}
         close(){this.closes=(this.closes??0)+1;}
     }
@@ -42,7 +48,7 @@ function fixture(options={}) {
         static async isConfigSupported(){return {supported:options.decoderSupported!==false};}
         constructor(init){this.init=init;resources.decoders.push(this);}
         configure(){}
-        decode(){const frame={format:options.eightBit?'I420':'I420P10',displayWidth:1280,displayHeight:720,closed:0,close(){this.closed++;}};
+        decode(chunk){const frame={format:options.opaque?'':options.eightBit?'I420':'I420P10',timestamp:chunk.timestamp+(options.shiftDecoded?1:0),displayWidth:1280,displayHeight:720,closed:0,close(){this.closed++;}};
             resources.frames.push(frame);this.init.output(frame);}
         async flush(){}
         close(){this.closes=(this.closes??0)+1;}
@@ -252,4 +258,53 @@ test('short-GOP constant rate retains its bitrate and rejects unbounded or mixed
  for (const patch of [{keyInterval: 0}, {keyInterval: 60}, {keyInterval: undefined}, {quantizer: 4}, {profile: 'all-key'}]) {
   await assert.rejects(encodeSourceProfile({...request, ...patch}, f.load, f.env), /Invalid source replay/);
  }
+});
+
+
+test('mobile VP9 probes match the product codec selector and isolate alternative configurations', async () => {
+    const {createLoader} = await import('./helpers/xr-loader.mjs');
+    const {vp9ExportCodec} = createLoader()('export/ExportPreparation.ts');
+    const rows = mobileCodecProbeConfigurations();
+    assert.equal(rows.length, 12);
+    assert.equal(new Set(rows.map(row => row.id)).size, rows.length);
+    assert.deepEqual(rows.filter(row => row.group === 'product').map(row => [row.width, row.framerate, row.bitrate]), [
+        [1280, 30, 8e6], [1280, 60, 8e6], [1920, 30, 14e6], [1920, 60, 14e6], [3840, 30, 64e6], [3840, 60, 64e6],
+    ]);
+    for (const row of rows.filter(row => row.family === 'VP9')) {
+        const {width, height, framerate, bitrate, codec} = row;
+        assert.equal(codec, vp9ExportCodec(width, height, framerate, bitrate, row.group === 'control' ? 8 : 10));
+    }
+    const {env, resources} = fixture();
+    await assert.rejects(probeNativeCodec({...rows[1], bitrate: 9e6}, env, 100, 'mobile'), /Unlisted/);
+    assert.equal(resources.encoders.length, 0);
+});
+
+test('mobile probe confirms profile and bit depth, and classifies decoder-only support separately', async () => {
+    const selected = mobileCodecProbeConfigurations().find(row => row.id === 'vp9-720p-30');
+    const probe = async options => {
+        const {env, resources} = fixture({emittedCodec: selected.codec, ...options});
+        const row = await probeNativeCodec(selected, env, 100, 'mobile');
+        assert.ok(resources.frames.every(frame => frame.closed === 1));
+        return {row, resources};
+    };
+    const {row: verified} = await probe({});
+    assert.equal(mobileCodecOutcome(verified), 'ten-bit-confirmed');
+    assert.deepEqual(verified.decodedTimestamps, [0, 33333, 66667]);
+    assert.deepEqual(verified.encodedVp9Depths, [10, 10, 10]);
+    const {row: opaque} = await probe({opaque:true});
+    assert.equal(opaque.decodedTenBitObserved, false);
+    assert.equal(mobileCodecOutcome(opaque), 'ten-bit-confirmed');
+    for (const options of [{encodedDepth:8, eightBit:true}, {encodedDepth:12}, {badSync:true}]) {
+        assert.equal(mobileCodecOutcome((await probe(options)).row), 'ten-bit-unconfirmed');
+    }
+    assert.equal(mobileCodecOutcome((await probe({emittedCodec:'vp09.00.31.08'})).row), 'different-encoded-profile');
+    assert.equal(mobileCodecOutcome((await probe({shiftDecoded:true})).row), 'probe-error');
+    const {row: refused, resources} = await probe({supported:false});
+    assert.equal(mobileCodecOutcome(refused), 'encoder-unsupported');
+    assert.equal(refused.requestedDecoderQuery, 'supported');
+    assert.equal(refused.decodedFrames, 0);
+    assert.equal(resources.encoders.length, 0);
+    const unrecognized = await probe({unrecognized:true});
+    assert.equal(mobileCodecOutcome(unrecognized.row), 'probe-error');
+    assert.equal(unrecognized.resources.encoders.length, 0);
 });

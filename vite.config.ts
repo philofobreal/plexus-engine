@@ -16,7 +16,8 @@ export default defineConfig({
         mvp: resolve(__dirname, 'mvp/index.html'),
         xr: resolve(__dirname, 'xr/index.html'),
         wormholeGpuLab: resolve(__dirname, 'research/export/wormhole-gpu.html'),
-        wormholeHostLab: resolve(__dirname, 'tests/browser/wormhole-host-backend-smoke.html')
+        wormholeHostLab: resolve(__dirname, 'tests/browser/wormhole-host-backend-smoke.html'),
+        mobileCodecProbe: resolve(__dirname, 'tests/browser/mobile-codec-probe.html')
       }
     }
   }
