@@ -1,7 +1,7 @@
 {
-  "id": "wh06e-wasm-vp9-20261113T215859937Z",
-  "previousCommit": "4284ebcb150449d2c57a5db40ca2e8b4e0a39b7b",
-  "sourceCommit": "4a0264e24221782edf5eb234cea4999a5a03d0ab",
+  "id": "wh06e-simd-20261113T223938105Z",
+  "previousCommit": "1b9a39b981594d1580d9a48e679f722aceea8966",
+  "sourceCommit": "7dada949a9d39cfaf0b29db1b56af01459ca65cb",
   "inputs": [
     {
       "path": "bun.lock",
@@ -74,6 +74,10 @@
     {
       "path": "public/export/libvpx-1.17.0/libvpx-source.tar.gz",
       "sha256": "1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a"
+    },
+    {
+      "path": "public/export/libvpx-1.17.0/vp9-10bit-probe-simd.wasm",
+      "sha256": "90054c5d31643beb149be4ec63d0be6b2121d146b74818febc3ee01f922effb1"
     },
     {
       "path": "public/export/libvpx-1.17.0/vp9-10bit-probe.mjs",
@@ -241,7 +245,7 @@
     },
     {
       "path": "research/export/vp9-10bit-probe.Dockerfile",
-      "sha256": "6ef3b7439ba09327ef581f6b5e5a866af59850bbd809e693f9df62d85a85a06c"
+      "sha256": "08de8bdace333e742732052fffd0238b76e2e098816668f66c99684e7f478ee5"
     },
     {
       "path": "research/export/vp9-10bit-probe.c",
@@ -249,7 +253,7 @@
     },
     {
       "path": "research/export/vp9-10bit-probe.worker.mjs",
-      "sha256": "5dbb2235df0b090775ab02399bc2dd9782bf323e374db635ae94c166b1c0f0fe"
+      "sha256": "26f59e1c59eefce0f3bc4b58a82ca02dbb8879a8bd7ffa35daf1e123a16ddb8f"
     },
     {
       "path": "research/export/wormhole-baseline-capture.mjs",
@@ -1825,7 +1829,7 @@
     },
     {
       "path": "tests/browser/mobile-codec-probe.html",
-      "sha256": "0c6fa61b7cbbedb886c3b6451f3f6d769572e4b17eeb59633d972a82633cc852"
+      "sha256": "07b7a0204eca5b20a2f868ad057d85db27fd021af79256f425667b3982e2f2d8"
     },
     {
       "path": "tests/browser/wormhole-host-backend-smoke.html",
@@ -1914,8 +1918,8 @@
       "sha256": "433cc355ed73826173666ff61e7a4abf3c15c5262acc4b7a5c125c352e7d11ee"
     },
     {
-      "path": "assets/mobileCodecProbe-J6gSxqbb.js",
-      "sha256": "038b9f245843038d01672c180385333014b8797c0fd0dfa811ab3ff199fd4655"
+      "path": "assets/mobileCodecProbe-CHIWk64C.js",
+      "sha256": "b2357dc293a38657c02c25ae75e5d6ab42f6dcaab4a81373e9bf475fb9ebdbbb"
     },
     {
       "path": "assets/modulepreload-polyfill-Dezn_h7o.js",
@@ -1982,8 +1986,8 @@
       "sha256": "ab002d260358609e76de87ca4163a65654a74994df576295ae951548abc8feb7"
     },
     {
-      "path": "assets/vp9-10bit-probe.worker-BzwtREdC.js",
-      "sha256": "bda917fb73bc0e6ec3c968e53ca13bd522ff41441260e2b5fe2bfb0ec06a3151"
+      "path": "assets/vp9-10bit-probe.worker-D_MpYC5I.js",
+      "sha256": "8f492f2cef7eedf2863454d4b6accc98b8221efc4b788c43e56a731ef6d71736"
     },
     {
       "path": "assets/WebCodecsBackend-Cuw5E67l.js",
@@ -2094,6 +2098,10 @@
       "sha256": "cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c"
     },
     {
+      "path": "export/libvpx-1.17.0/vp9-10bit-probe-simd.wasm",
+      "sha256": "90054c5d31643beb149be4ec63d0be6b2121d146b74818febc3ee01f922effb1"
+    },
+    {
       "path": "export/libvpx-1.17.0/vp9-10bit-probe.mjs",
       "sha256": "f557f578baecf7ba551b5ac906ae135170fe08b02ace037e140cb4fe42d2dd4d"
     },
@@ -2127,7 +2135,7 @@
     },
     {
       "path": "tests/browser/mobile-codec-probe.html",
-      "sha256": "e7dd9c9a4c1243381f088c59457144e7cbcae58d20170919c48dffc7f0b7c157"
+      "sha256": "3d3cedc999a818e4a19ec422c198a409f5b450010bc69a26c575a7e4038ee40d"
     },
     {
       "path": "tests/browser/wormhole-host-backend-smoke.html",
