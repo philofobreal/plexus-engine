@@ -203,3 +203,66 @@ No product implementation, commit or release is claimed by this investigation.
 The last deployed runtime remains source `1a219e8`, release
 `wh06c1-export-diagnostics-20261108T153541553Z`; previous acceptance receipts stay
 immutable. The original WH-06d withdrawal remains in force.
+
+
+## WH-06c2 — physical-device codec probe (2026-11-13)
+
+The published [mobile codec probe](https://philofobreal.github.io/plexus-engine/tests/browser/mobile-codec-probe.html)
+runs on the phone without a track, a render session, an export job or an
+upload. Open it in Chrome on the S22 Ultra, start the test, and share the
+copied JSON or saved report. A complete report contains all twelve rows.
+The page also retains partial rows after an explicit cancellation or error.
+
+| Group | Requests |
+| --- | --- |
+| 8-bit control | VP9 Profile 0 at 720p30, 8 Mbit/s |
+| Product 10-bit VP9 | 720p at 8 Mbit/s, 1080p at 14 Mbit/s, and 4K at 64 Mbit/s, each at 30 and 60 fps |
+| Lower-rate 10-bit VP9 | 4K30 at 48 Mbit/s, level 5.0 |
+| Alternatives | AV1 Main 10 and HEVC Main 10, each at 720p30/8 Mbit/s and 4K30/32 Mbit/s |
+
+The six product rows match the MP4 VP9 codec selector. The lower-rate row
+changes both bitrate and requested level to test a distinct conforming
+configuration. It is diagnostic and would require separate picture quality
+and full export qualification before use in the product. The AV1 and HEVC rows
+are alternatives to investigate if supported on the phone.
+[VP9 level definitions](https://www.webmproject.org/vp9/levels/),
+[AV1 codec registration](https://www.w3.org/TR/webcodecs-av1-codec-registration/),
+[HEVC codec registration](https://www.w3.org/TR/webcodecs-hevc-codec-registration/).
+
+The research worker runs one configuration at a time. It checks the encoder's
+recognized settings, then encodes and decodes three synthetic key pictures.
+It records input and output timestamps and dimensions, encoded bytes, and the
+decoded pixel formats when the browser exposes them. If the encoder refuses
+a configuration, a separate decoder query records possible decode-only
+support. Requested settings use the browser's default acceleration policy.
+[WebCodecs](https://www.w3.org/TR/webcodecs/).
+
+For VP9, the worker reads the uncompressed header of all three compressed
+key pictures and verifies their bit depth. The result requires complete ordered
+decoding as well. This lets a platform with opaque decoded surfaces demonstrate
+a 10-bit stream without inferring a pixel format from the codec string.
+For AV1 and HEVC, 10-bit confirmation requires both matching emitted codec
+profile and an exposed 10-bit decoded format. Other successful decodes remain
+unconfirmed. Each case has an eight-second deadline and a 16 MiB compressed
+data ceiling. The page reports progress and terminates its worker on finish,
+cancel, failure, deadline or page exit.
+[VP9 bitstream specification, sections 6.2 and 6.2.2](https://storage.googleapis.com/downloads.webmproject.org/docs/vp9/vp9-bitstream-specification-v0.6-20160331-draft.pdf).
+
+In the Windows Chrome 157 run, all twelve rows returned. The 8-bit control
+and seven 10-bit VP9 rows encoded and decoded all three pictures. The VP9
+10-bit surfaces were opaque. The coded headers report 10 bits on all 21
+pictures. The two AV1 configurations reported support and then failed
+during the encode trial. The two HEVC encoder queries refused and the decoder queries
+reported support. These observations apply to that Windows browser. The first
+QA assertion expected visible 10-bit pixel formats, and a subsequent clipboard
+check lacked simulated focus. The final run verifies the VP9 header evidence,
+a completed decode, cancel/retry, clipboard copy and downloaded JSON in a
+phone-sized browser viewport.
+
+The S22 Ultra physical result is pending. The previously supplied 4K30
+64 Mbit/s refusal remains the device evidence available at this checkpoint.
+The short report will decide the next experiment: a successful product VP9
+row warrants an actual short MP4 check at that setting, an alternate codec
+result warrants an integration feasibility check, and refusals across the
+tested 10-bit rows inform WH-06e. Neither a short pass nor a decoder query
+qualifies a full-song export. See the [research receipt](../tests/wormhole-wh06c2-research.json).

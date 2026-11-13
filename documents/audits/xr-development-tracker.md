@@ -2,7 +2,15 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-07b10 desktop MP4 Turbo feasibility is closed. None of the three short-GOP candidates met the fidelity, VP9 level and storage gates together. MP4 uses the accepted Economy path. Next WH-06c2 maps native 10-bit mobile support, followed by conditional WH-06e encoder feasibility and WH-08 long-export qualification. The user authorized the WH-07b10 continuation. The prior manual WH-07b9 check has no separate recorded result.**
+**Current priority: WH-06c2 mobile codec probe is ready for an S22 Ultra run. Collect the twelve-row report from physical Android Chrome before selecting a native integration or a WH-06e encoder experiment. The Windows probe confirms seven VP9 10-bit configurations on that browser. WH-08 still covers long-job and device qualification.**
+
+### WH-06c2 physical-device measurement pending
+
+The public probe uses the same VP9 configuration at six landscape product
+settings. It includes a VP9 8-bit control, 4K30/48 Mbit/s VP9 and four AV1/HEVC
+diagnostic requests. Start it in Chrome on the S22 Ultra and send the JSON.
+[Probe and protocol](wormhole-wh06c1-export-diagnostics.md#wh-06c2--physical-device-codec-probe-2026-11-13),
+[receipt](../tests/wormhole-wh06c2-research.json).
 
 ### WH-07b10 desktop MP4 decision
 

@@ -1,0 +1,483 @@
+{
+  "task": "WH-06c2",
+  "version": 1,
+  "date": "2026-11-13",
+  "predecessor": "37c74ba35366878419bfc6024b1351d0ad02dbf0",
+  "status": "Mobile diagnostic ready. Physical Samsung report pending.",
+  "owners": {
+    "research": "codec worker and independent probe page",
+    "release": "Vite input and guarded Pages publisher",
+    "integration": "single agent"
+  },
+  "scope": "Desktop Chrome with a phone viewport. Physical phone results are collected separately.",
+  "observedBrowser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+  "rows": [
+    {
+      "id": "vp9-8bit-control",
+      "group": "control",
+      "config": {
+        "codec": "vp09.00.31.08",
+        "width": 1280,
+        "height": 720,
+        "framerate": 30,
+        "bitrate": 8000000,
+        "hardwareAcceleration": "no-preference",
+        "latencyMode": "quality",
+        "bitrateMode": "constant"
+      },
+      "stage": "complete",
+      "encoder": "supported",
+      "decoder": "supported",
+      "formats": [
+        "NV12"
+      ],
+      "outcome": "control-pass",
+      "encodedFrames": 3,
+      "decodedFrames": 3,
+      "encodedVp9Depths": [
+        8,
+        8,
+        8
+      ]
+    },
+    {
+      "id": "vp9-720p-30",
+      "group": "product",
+      "config": {
+        "codec": "vp09.02.31.10",
+        "width": 1280,
+        "height": 720,
+        "framerate": 30,
+        "bitrate": 8000000,
+        "hardwareAcceleration": "no-preference",
+        "latencyMode": "quality",
+        "bitrateMode": "constant"
+      },
+      "stage": "complete",
+      "encoder": "supported",
+      "decoder": "supported",
+      "formats": [
+        "opaque"
+      ],
+      "outcome": "ten-bit-confirmed",
+      "encodedFrames": 3,
+      "decodedFrames": 3,
+      "encodedVp9Depths": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "id": "vp9-720p-60",
+      "group": "product",
+      "config": {
+        "codec": "vp09.02.40.10",
+        "width": 1280,
+        "height": 720,
+        "framerate": 60,
+        "bitrate": 8000000,
+        "hardwareAcceleration": "no-preference",
+        "latencyMode": "quality",
+        "bitrateMode": "constant"
+      },
+      "stage": "complete",
+      "encoder": "supported",
+      "decoder": "supported",
+      "formats": [
+        "opaque"
+      ],
+      "outcome": "ten-bit-confirmed",
+      "encodedFrames": 3,
+      "decodedFrames": 3,
+      "encodedVp9Depths": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "id": "vp9-1080p-30",
+      "group": "product",
+      "config": {
+        "codec": "vp09.02.40.10",
+        "width": 1920,
+        "height": 1080,
+        "framerate": 30,
+        "bitrate": 14000000,
+        "hardwareAcceleration": "no-preference",
+        "latencyMode": "quality",
+        "bitrateMode": "constant"
+      },
+      "stage": "complete",
+      "encoder": "supported",
+      "decoder": "supported",
+      "formats": [
+        "opaque"
+      ],
+      "outcome": "ten-bit-confirmed",
+      "encodedFrames": 3,
+      "decodedFrames": 3,
+      "encodedVp9Depths": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "id": "vp9-1080p-60",
+      "group": "product",
+      "config": {
+        "codec": "vp09.02.41.10",
+        "width": 1920,
+        "height": 1080,
+        "framerate": 60,
+        "bitrate": 14000000,
+        "hardwareAcceleration": "no-preference",
+        "latencyMode": "quality",
+        "bitrateMode": "constant"
+      },
+      "stage": "complete",
+      "encoder": "supported",
+      "decoder": "supported",
+      "formats": [
+        "opaque"
+      ],
+      "outcome": "ten-bit-confirmed",
+      "encodedFrames": 3,
+      "decodedFrames": 3,
+      "encodedVp9Depths": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "id": "vp9-4K-30",
+      "group": "product",
+      "config": {
+        "codec": "vp09.02.51.10",
+        "width": 3840,
+        "height": 2160,
+        "framerate": 30,
+        "bitrate": 64000000,
+        "hardwareAcceleration": "no-preference",
+        "latencyMode": "quality",
+        "bitrateMode": "constant"
+      },
+      "stage": "complete",
+      "encoder": "supported",
+      "decoder": "supported",
+      "formats": [
+        "opaque"
+      ],
+      "outcome": "ten-bit-confirmed",
+      "encodedFrames": 3,
+      "decodedFrames": 3,
+      "encodedVp9Depths": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "id": "vp9-4K-60",
+      "group": "product",
+      "config": {
+        "codec": "vp09.02.51.10",
+        "width": 3840,
+        "height": 2160,
+        "framerate": 60,
+        "bitrate": 64000000,
+        "hardwareAcceleration": "no-preference",
+        "latencyMode": "quality",
+        "bitrateMode": "constant"
+      },
+      "stage": "complete",
+      "encoder": "supported",
+      "decoder": "supported",
+      "formats": [
+        "opaque"
+      ],
+      "outcome": "ten-bit-confirmed",
+      "encodedFrames": 3,
+      "decodedFrames": 3,
+      "encodedVp9Depths": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "id": "vp9-4K-30-48mbps",
+      "group": "lower-rate",
+      "config": {
+        "codec": "vp09.02.50.10",
+        "width": 3840,
+        "height": 2160,
+        "framerate": 30,
+        "bitrate": 48000000,
+        "hardwareAcceleration": "no-preference",
+        "latencyMode": "quality",
+        "bitrateMode": "constant"
+      },
+      "stage": "complete",
+      "encoder": "supported",
+      "decoder": "supported",
+      "formats": [
+        "opaque"
+      ],
+      "outcome": "ten-bit-confirmed",
+      "encodedFrames": 3,
+      "decodedFrames": 3,
+      "encodedVp9Depths": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "id": "av1-720p-30",
+      "group": "alternative",
+      "config": {
+        "codec": "av01.0.13M.10",
+        "width": 1280,
+        "height": 720,
+        "framerate": 30,
+        "bitrate": 8000000,
+        "hardwareAcceleration": "no-preference",
+        "latencyMode": "quality",
+        "bitrateMode": "constant"
+      },
+      "stage": "encode",
+      "encoder": "supported",
+      "decoder": "not-checked",
+      "formats": [],
+      "outcome": "probe-error",
+      "encodedFrames": 0,
+      "decodedFrames": 0,
+      "error": {
+        "name": "OperationError",
+        "message": "Unsupported configuration parameters."
+      }
+    },
+    {
+      "id": "av1-4K-30",
+      "group": "alternative",
+      "config": {
+        "codec": "av01.0.13M.10",
+        "width": 3840,
+        "height": 2160,
+        "framerate": 30,
+        "bitrate": 32000000,
+        "hardwareAcceleration": "no-preference",
+        "latencyMode": "quality",
+        "bitrateMode": "constant"
+      },
+      "stage": "encode",
+      "encoder": "supported",
+      "decoder": "not-checked",
+      "formats": [],
+      "outcome": "probe-error",
+      "encodedFrames": 0,
+      "decodedFrames": 0,
+      "error": {
+        "name": "OperationError",
+        "message": "Unsupported configuration parameters."
+      }
+    },
+    {
+      "id": "hevc-720p-30",
+      "group": "alternative",
+      "config": {
+        "codec": "hvc1.2.4.H153.B0",
+        "width": 1280,
+        "height": 720,
+        "framerate": 30,
+        "bitrate": 8000000,
+        "hardwareAcceleration": "no-preference",
+        "latencyMode": "quality",
+        "bitrateMode": "constant"
+      },
+      "stage": "encoder-query",
+      "encoder": "unsupported",
+      "decoder": "not-checked",
+      "formats": [],
+      "outcome": "encoder-unsupported",
+      "encodedFrames": 0,
+      "decodedFrames": 0,
+      "requestedDecoderQuery": "supported"
+    },
+    {
+      "id": "hevc-4K-30",
+      "group": "alternative",
+      "config": {
+        "codec": "hvc1.2.4.H153.B0",
+        "width": 3840,
+        "height": 2160,
+        "framerate": 30,
+        "bitrate": 32000000,
+        "hardwareAcceleration": "no-preference",
+        "latencyMode": "quality",
+        "bitrateMode": "constant"
+      },
+      "stage": "encoder-query",
+      "encoder": "unsupported",
+      "decoder": "not-checked",
+      "formats": [],
+      "outcome": "encoder-unsupported",
+      "encodedFrames": 0,
+      "decodedFrames": 0,
+      "requestedDecoderQuery": "supported"
+    }
+  ],
+  "physicalMobile": {
+    "status": "pending",
+    "previousDevice": "Samsung Galaxy S22 Ultra, Android Chrome",
+    "previousEvidence": "VP9 10-bit 4K30 at 64 Mbit/s: encoder unsupported, decoder supported, no pictures."
+  },
+  "validation": {
+    "activeFiles": 233,
+    "targeted": 38,
+    "focused": 20,
+    "build": "passed",
+    "priorEightReferenceHashesMatch": true,
+    "oldHostFixtureUnchanged": true,
+    "desktopBrowser": "logs/wh01/run-f145cbb5-2d4b-4d6a-a48e-730f42a5ae31",
+    "cancelRetry": true,
+    "clipboard": true,
+    "download": true,
+    "diffExport": "Skipped for bounded diagnostic handoff.",
+    "runtime": "Node/npm for build, tests and guarded Pages deployment. Escalated Chrome process for browser automation.",
+    "firstAttempts": [
+      "run-2a4d10fa-65a8-4d32-894c-074deb7e6974: assertion incorrectly required exposed decoded pixel format",
+      "run-17eb0f89-acde-4ccf-8ad7-3e8a4a894e5a: clipboard assertion lacked simulated focus"
+    ],
+    "cumulative": {
+      "tests": 2287,
+      "pass": 2278,
+      "fail": 9,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 1029647.0226
+    },
+    "knownBaselineFailuresExactNameAndMessage": [
+      {
+        "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+        "message": "vos-wh-drift.json must not reset user-global wormholeStarfield"
+      },
+      {
+        "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+        "message": "establish remains visibly above the opacity floor"
+      },
+      {
+        "name": "weak roles pin a deep-perspective depth and continuity profile",
+        "message": "establish depth\n\n2.03136 !== 4"
+      },
+      {
+        "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+        "message": "deep drift deeper than establish"
+      },
+      {
+        "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+        "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+      },
+      {
+        "name": "wormhole factory presets keep a minimum normalized weighted separation",
+        "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+      },
+      {
+        "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+        "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))"
+      },
+      {
+        "name": "projected forward motion preserves overdrive > punch > drive > drift",
+        "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+      },
+      {
+        "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+        "message": "389.64890777178124 vs 471.543038051684"
+      }
+    ],
+    "localExportRegression": {
+      "run": "logs/wh01/run-6eb259f0-5ab5-493a-ae2f-0a0d5b1f710a",
+      "exactCases": 21,
+      "encodedFiles": 36,
+      "independentFrameIds": 770
+    },
+    "awaitedPhysicalDevice": true
+  },
+  "commands": {
+    "build": "npm run build",
+    "focused": "node --test tests/export-codec-isolation.test.mjs",
+    "targeted": "node --test tests/export-codec-isolation.test.mjs tests/release-pages.test.mjs tests/export-preparation.test.mjs",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=4",
+    "browser": "node research/export/wormhole-baseline.mjs capture --mobile-codec-host",
+    "localExportRegression": "node research/export/wormhole-baseline.mjs capture --exact-host --export-host --turbo-export-host",
+    "public": "node research/export/wormhole-baseline.mjs capture --mobile-codec-host --diagnostics-host --public-release=RELEASE_ID",
+    "deploy": [
+      "node scripts/release-pages.mjs prepare wh06c2-mobile-codecs",
+      "node scripts/release-pages.mjs publish",
+      "node scripts/release-pages.mjs verify"
+    ]
+  },
+  "predecessorFiles": [
+    {
+      "path": "research/export/codec-isolation.mjs",
+      "gitObject": "2be590d93b926c05d18804b0f952840374ea30ee",
+      "sha256": "fbab68603aef1a52256acf276b7b1498243cffb497fe2fa5560d8dbf678dc360"
+    },
+    {
+      "path": "research/export/wormhole-baseline.mjs",
+      "gitObject": "6c2b244abec754e8edd42f99882291c7101ccacb",
+      "sha256": "0fcee4de0b2b42b649f3f6952c02fdc1919536337f34715cf1e4db1b4e9687ec"
+    },
+    {
+      "path": "scripts/release-pages.mjs",
+      "gitObject": "906fa3825a070f000a77c16b76fa11a44322eada",
+      "sha256": "01709d6e0df1f0eb4d818eb897f73b589b3cc141afd461e0a9927ddab022d7f2"
+    },
+    {
+      "path": "tests/export-codec-isolation.test.mjs",
+      "gitObject": "9e7037788d99e3da9c4f2296c5def3c4e65d59bd",
+      "sha256": "11c34d61e19ad11466d9bdea08dd41d3a8844bdd6ae043538f80d631a076cb1b"
+    },
+    {
+      "path": "tests/release-pages.test.mjs",
+      "gitObject": "6cb38ea3da0fd8bb812818f6f5b0e4848e36a185",
+      "sha256": "dd220dd9db7fa351bf148a17773d0dfd68a2a3067dd817f896c3d4acbb6b55e1"
+    },
+    {
+      "path": "vite.config.ts",
+      "gitObject": "27462b0e2a820de9a49e290c0ac7c2f1664d4be7",
+      "sha256": "b7bcc744623699aaa4d5dbcd466b1c1f597313d23087b374deb91877def05922"
+    }
+  ],
+  "hashes": {
+    "research/export/codec-isolation.mjs": "0bb7c19498cd60ad41e842ff3c75f6280952bf8c423728736a08b855e549f0e6",
+    "research/export/wormhole-baseline.mjs": "612ecdc8b1b04a87add08e49ca00e1a9574aca3d3ebf36392f673d14df04fc9e",
+    "scripts/release-pages.mjs": "160ae1cd16bb7199b11bab363675905a85bfd144a8dc51d83689f535f9aa638d",
+    "tests/export-codec-isolation.test.mjs": "146d0e7f6b089ae9734c00403a35bd33f805df63a7f4966120db10d2dab13cc1",
+    "tests/release-pages.test.mjs": "aa819f6dafc00331f7fe6eeac9eb45ee9e21dcc68dfe1287db38a10d3b59699f",
+    "vite.config.ts": "1498f51a0a936518d2c8682fabe1d1cba82f0d1c86449b815a9d6992d4acd254",
+    "tests/browser/mobile-codec-probe.html": "a9374f6b0c5ecceabc7aaad8ad48903ea9a0cddb90ee80914bf32e36f9cbf219",
+    "logs/wh01/run-f145cbb5-2d4b-4d6a-a48e-730f42a5ae31/build.json": "e55e88112502d64b9132c364978b43020ed471976632dce04354b6a339524d37",
+    "logs/wh01/run-f145cbb5-2d4b-4d6a-a48e-730f42a5ae31/verification.json": "ad5d30a5373fe1b4537053f311f3fb4a69aecadf82beb529dc961b4b3458513b",
+    "logs/wh01/run-f145cbb5-2d4b-4d6a-a48e-730f42a5ae31/host-smoke.json": "a838e62f95f51f7f126707b884486d9dcd76971062383e014ba616162bf4d165",
+    "logs/wh01/run-f145cbb5-2d4b-4d6a-a48e-730f42a5ae31/mobile-codec-browser.json": "b344038cc5a510c600990a7d4fdfb0c32488fa82ea2c1e5dc9e012eec0a358ba",
+    "logs/wh01/run-f145cbb5-2d4b-4d6a-a48e-730f42a5ae31/mobile-codec-observed.json": "1cbc681595e0554361a18e800f44d9a053199c6f44a5c71c03726abd154a6260",
+    "logs/wh01/run-f145cbb5-2d4b-4d6a-a48e-730f42a5ae31/mobile-codec-layout.png": "4ec4531b3d7627f0b263484f3448e128c7e3cda728215d173a54ff26f26d6fee",
+    "logs/wh01/run-f145cbb5-2d4b-4d6a-a48e-730f42a5ae31/plexus-mobile-codec-report.json": "58ca27643f55ba14e91d91405b9ce08032c6d5e32fb082ecd6decddb73818b6c",
+    "logs/wh06c2/targeted-final.tap": "b8799e4ffa87f9a94fa6e1301aed55b09a3c311d44c850357ff4a463856c4aeb",
+    "logs/wh06c2/focused-final.tap": "a4aa221c08501344a9716cfce05e8283d5ca5b83ae41f57b00a1f593b722fa90",
+    "logs/wh06c2/build-final.log": "ef5acab89fb0c34e2900446b86e1c0b38ca63dd80a8a0f60ea51809543ed41ca",
+    "logs/wh06c2/local-browser.log": "da677ef3db8eda7144ad6509974526dc821c8a05aa8e043765ca21723e9db544",
+    "logs/wh06c2/local-browser-final.log": "6b591e0150e5dee7befe6b19eaff03b3c2dc075b0f4463782226e36e7d641f35",
+    "logs/wh06c2/local-bitstream.log": "73d1449d5f292b73fbf6e6b1d1276203ab6eb79a617efc14361da71fab5dedc3",
+    "logs/wh01/run-6eb259f0-5ab5-493a-ae2f-0a0d5b1f710a/build.json": "a6286d61f6562bb9bca194e3248263413e801325deed988d17a1ec818b03bbae",
+    "logs/wh01/run-6eb259f0-5ab5-493a-ae2f-0a0d5b1f710a/integrated-export-artifacts.json": "2f66b6e6ee3ca27928206a3540d14c1faef85b962f9777b3280fa7855539da6a",
+    "logs/wh01/run-6eb259f0-5ab5-493a-ae2f-0a0d5b1f710a/exact-host.json": "5c08401535f890ff1fd4ab4f3aa11abb4b610fc1a8f86bcdfcd124c8e2c87029",
+    "logs/wh06c2/node-results.json": "9798f6ac699c21b3cb51db02300988cfec7e25a94cdba78a99702cd5d7dc2aff",
+    "logs/wh06c2/cumulative.tap": "2840956426a350871d65713f523372beb0ce66a8ffe4448dc3474bc09a39f98e"
+  }
+}

@@ -51,6 +51,10 @@ A következő lépés a WH-06c2 mobilos képességtérkép, majd a WH-06e tartal
 feltételes vizsgálata és a WH-08 hosszú, készülékes minősítés.
 [Mérések](../tests/wormhole-wh07b10-research.json).
 
+**WH-06c2 mérésre kész.** A tizenkét beállításos böngészős próba elkészült.
+A következő döntéshez az S22 Ultra Chrome-ban futtatott jelentése kell.
+[Próba és mérési protokoll](wormhole-wh06c1-export-diagnostics.md#wh-06c2--physical-device-codec-probe-2026-11-13).
+
 ## 1. Cél és helye a főtervben
 
 A sima host (a jelenlegi `src/main.ts` dashboard) és az MVP ugyanarra a közös
