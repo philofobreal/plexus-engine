@@ -1,0 +1,344 @@
+{
+  "version": 1,
+  "task": "WH-07b10",
+  "date": "2026-11-13",
+  "predecessor": "873003731ef1d86cc670f06ea2e3d293bc500b23",
+  "status": "Desktop native VP9 feasibility concluded. No candidate passed all gates. Next WH-06c2 on user continuation.",
+  "scope": "Loopback Windows Chrome 157 research; native VP9 replay uses retained PNGs and emits video-only WebM. No new product encoder, timing claim or physical mobile outcome.",
+  "decision": {
+    "promoteMp4Turbo": false,
+    "qualifiedCandidateCount": 0,
+    "next": "WH-06c2 native mobile capability map, then conditional WH-06e and WH-08",
+    "priorManualResult": "Continuation authorized; no separate WH-07b9 manual test result supplied."
+  },
+  "method": {
+    "cases": 12,
+    "archivedSourceFrames": 351,
+    "actualTenBitFiles": 60,
+    "decodedFrames": 1755,
+    "positiveControlsFidelityCases": {
+      "acceptedAllKey": 12,
+      "q0": 12
+    },
+    "allKeyCasesPassingSampledLevelAndStorage": 12,
+    "fidelity": "Existing per-picture own-source SSIM/PSNR gates and archived accepted scores. All IDs also checked with Chrome and FFmpeg.",
+    "rate": "Requested VP9 5.1 plus the production MP4 level selector, measured mean payload and largest four-picture burst. The sampled bounds do not certify all VP9 level requirements.",
+    "storage": "Five-minute extrapolation against current OPFS video allowance, including steady headroom. Not an actual long-export measurement."
+  },
+  "profiles": [
+    {
+      "name": "q0",
+      "profile": "quantizer",
+      "quantizer": 0,
+      "fidelityCases": 12,
+      "sampledLevelCases": 6,
+      "storageCases": 0,
+      "deltaPictures": 333,
+      "cases": 12,
+      "eligible": false,
+      "failedSources": [
+        "export-000.mp4",
+        "export-001.mp4",
+        "export-002.mp4",
+        "export-003.mp4",
+        "export-004.mp4",
+        "export-005.mp4",
+        "export-006.mp4",
+        "export-007.mp4",
+        "export-008.mp4",
+        "export-009.mp4",
+        "export-010.mp4",
+        "export-011.mp4"
+      ]
+    },
+    {
+      "name": "q4-g4",
+      "profile": "quantizer",
+      "quantizer": 4,
+      "keyInterval": 4,
+      "fidelityCases": 8,
+      "sampledLevelCases": 9,
+      "storageCases": 0,
+      "deltaPictures": 262,
+      "cases": 12,
+      "eligible": false,
+      "failedSources": [
+        "export-000.mp4",
+        "export-001.mp4",
+        "export-002.mp4",
+        "export-003.mp4",
+        "export-004.mp4",
+        "export-005.mp4",
+        "export-006.mp4",
+        "export-007.mp4",
+        "export-008.mp4",
+        "export-009.mp4",
+        "export-010.mp4",
+        "export-011.mp4"
+      ]
+    },
+    {
+      "name": "q4-g12",
+      "profile": "quantizer",
+      "quantizer": 4,
+      "keyInterval": 12,
+      "fidelityCases": 7,
+      "sampledLevelCases": 10,
+      "storageCases": 1,
+      "deltaPictures": 317,
+      "cases": 12,
+      "eligible": false,
+      "failedSources": [
+        "export-000.mp4",
+        "export-001.mp4",
+        "export-002.mp4",
+        "export-003.mp4",
+        "export-004.mp4",
+        "export-005.mp4",
+        "export-006.mp4",
+        "export-007.mp4",
+        "export-008.mp4",
+        "export-009.mp4",
+        "export-010.mp4",
+        "export-011.mp4"
+      ]
+    },
+    {
+      "name": "cbr-g4",
+      "profile": "constant-detail",
+      "keyInterval": 4,
+      "fidelityCases": 0,
+      "sampledLevelCases": 12,
+      "storageCases": 12,
+      "deltaPictures": 262,
+      "cases": 12,
+      "eligible": false,
+      "failedSources": [
+        "export-000.mp4",
+        "export-001.mp4",
+        "export-002.mp4",
+        "export-003.mp4",
+        "export-004.mp4",
+        "export-005.mp4",
+        "export-006.mp4",
+        "export-007.mp4",
+        "export-008.mp4",
+        "export-009.mp4",
+        "export-010.mp4",
+        "export-011.mp4"
+      ]
+    }
+  ],
+  "uhd60": [
+    {
+      "name": "export-003-all-key.webm",
+      "fidelityPass": true,
+      "fidelityFailedFrames": 0,
+      "averageBitsPerSecond": 67753165.71428572,
+      "maxFourPictureBits": 5622344,
+      "storage": {
+        "seconds": 300,
+        "projectedVideoPayloadBytes": 2540743725,
+        "productVideoLimitBytes": 3602097152,
+        "steadyVideoCeilingBitsPerSecond": 96000000,
+        "pass": true,
+        "scope": "Sampled payload extrapolation with headroom for container bytes. Full-song storage admission requires an integrated run."
+      },
+      "levelPass": true
+    },
+    {
+      "name": "export-003-q0.webm",
+      "fidelityPass": true,
+      "fidelityFailedFrames": 0,
+      "averageBitsPerSecond": 456406194.28571427,
+      "maxFourPictureBits": 38492368,
+      "storage": {
+        "seconds": 300,
+        "projectedVideoPayloadBytes": 17115232313,
+        "productVideoLimitBytes": 3602097152,
+        "steadyVideoCeilingBitsPerSecond": 96000000,
+        "pass": false,
+        "scope": "Sampled payload extrapolation with headroom for container bytes. Full-song storage admission requires an integrated run."
+      },
+      "levelPass": false
+    },
+    {
+      "name": "export-003-q4-g4.webm",
+      "fidelityPass": true,
+      "fidelityFailedFrames": 0,
+      "averageBitsPerSecond": 214134918.0952381,
+      "maxFourPictureBits": 17371640,
+      "storage": {
+        "seconds": 300,
+        "projectedVideoPayloadBytes": 8030059463,
+        "productVideoLimitBytes": 3602097152,
+        "steadyVideoCeilingBitsPerSecond": 96000000,
+        "pass": false,
+        "scope": "Sampled payload extrapolation with headroom for container bytes. Full-song storage admission requires an integrated run."
+      },
+      "levelPass": false
+    },
+    {
+      "name": "export-003-q4-g12.webm",
+      "fidelityPass": true,
+      "fidelityFailedFrames": 0,
+      "averageBitsPerSecond": 139716563.80952382,
+      "maxFourPictureBits": 16763864,
+      "storage": {
+        "seconds": 300,
+        "projectedVideoPayloadBytes": 5239371150,
+        "productVideoLimitBytes": 3602097152,
+        "steadyVideoCeilingBitsPerSecond": 96000000,
+        "pass": false,
+        "scope": "Sampled payload extrapolation with headroom for container bytes. Full-song storage admission requires an integrated run."
+      },
+      "levelPass": false
+    },
+    {
+      "name": "export-003-cbr-g4.webm",
+      "fidelityPass": false,
+      "fidelityFailedFrames": 58,
+      "averageBitsPerSecond": 15578438.095238095,
+      "maxFourPictureBits": 3989768,
+      "storage": {
+        "seconds": 300,
+        "projectedVideoPayloadBytes": 584191463,
+        "productVideoLimitBytes": 3602097152,
+        "steadyVideoCeilingBitsPerSecond": 96000000,
+        "pass": true,
+        "scope": "Sampled payload extrapolation with headroom for container bytes. Full-song storage admission requires an integrated run."
+      },
+      "levelPass": true
+    }
+  ],
+  "validation": {
+    "focused": 18,
+    "targeted": 162,
+    "activeTestFiles": 233,
+    "previousTestBlocksRetained": true,
+    "priorEightRenderReferencesRetained": true,
+    "previousRefineReportRowsAndProfilesExactlyReproduced": true,
+    "browser": "Actual Chrome automation plus independent native FFmpeg decode, not an HTTP-only check.",
+    "execution": "Node 25.2.1/npm 11.6.2, Chrome 157.0.8103.39, native FFmpeg N-124279-g0f6ba39122. Workspace TEMP/TMP for cumulative tests. Initial Chrome process needs the approved unsandboxed command on this host. Guarded Node Pages deployment binds commit/build and public file hashes.",
+    "diffExport": "Skipped for bounded research handoff.",
+    "cumulative": {
+      "tests": 2285,
+      "pass": 2276,
+      "fail": 9,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 1078823.8126
+    },
+    "knownBaselineFailuresExactNameAndMessage": [
+      {
+        "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+        "message": "vos-wh-drift.json must not reset user-global wormholeStarfield"
+      },
+      {
+        "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+        "message": "establish remains visibly above the opacity floor"
+      },
+      {
+        "name": "weak roles pin a deep-perspective depth and continuity profile",
+        "message": "establish depth\n\n2.03136 !== 4"
+      },
+      {
+        "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+        "message": "deep drift deeper than establish"
+      },
+      {
+        "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+        "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+      },
+      {
+        "name": "wormhole factory presets keep a minimum normalized weighted separation",
+        "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+      },
+      {
+        "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+        "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))"
+      },
+      {
+        "name": "projected forward motion preserves overdrive > punch > drive > drift",
+        "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+      },
+      {
+        "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+        "message": "389.64890777178124 vs 471.543038051684"
+      }
+    ],
+    "build": "npm run build passed",
+    "notRun": [
+      "Full-job comparative speed and candidate MP4 integration because no profile qualified.",
+      "Physical mobile and full-song tests belong to the next mobile and platform tasks."
+    ]
+  },
+  "attempts": {
+    "chromeEndpointFailure": "logs/wh01/run-c9e20684-89f5-4700-baf8-d3e21d59799b",
+    "cliLoggingFailure": "logs/wh01/run-99077c2e-947e-40ac-a32e-fb633b0f1651",
+    "completedCapture": "logs/wh01/run-9bc57fc1-cc2b-4351-b7ad-0873ddd6c57d",
+    "analysis": "logs/wh01/replay-comparison-e9780081-2c49-43c1-8eb0-6a1d0be5f56d/comparison.json",
+    "legacyRecheck": "logs/wh01/replay-comparison-7f9e6c78-f53e-4eb5-8ae3-d75489bdd434/comparison.json"
+  },
+  "commands": {
+    "capture": "node research/export/wormhole-baseline.mjs capture --quantizer-source=logs/wh01/run-74b0aa3d-3033-43bb-8d7c-7e84af1e23c1 --short-gop",
+    "analysis": "node research/export/wormhole-baseline.mjs analyze-replay logs/wh01/run-9bc57fc1-cc2b-4351-b7ad-0873ddd6c57d logs/wh01/source-comparison-9fd1e979-d27e-4be7-b4c4-f3f9c43fdf01/comparison.json",
+    "legacyRecheck": "node research/export/wormhole-baseline.mjs analyze-replay logs/wh01/run-5cb078b3-bd68-4418-8d7d-a322bb10131c logs/wh01/source-comparison-9fd1e979-d27e-4be7-b4c4-f3f9c43fdf01/comparison.json",
+    "build": "npm run build",
+    "focused": "node --test tests/export-codec-isolation.test.mjs",
+    "targeted": "node --test --test-reporter=tap --test-concurrency=4 tests/export-native-packet.test.mjs tests/wormhole-render-contract.test.mjs tests/mp4-vp9-color.test.mjs tests/export-codec-isolation.test.mjs tests/export-parallel-research.test.mjs tests/export-performance.test.mjs tests/export-scheduling.test.mjs tests/export-preparation.test.mjs tests/mvp-mp4-export.test.mjs tests/export-diagnostics.test.mjs tests/export-output-inspection.test.mjs tests/export-lifecycle.test.mjs tests/export-resources.test.mjs tests/exact-export-frame-bridge.test.mjs tests/mvp-export-panel.test.mjs tests/release-pages.test.mjs",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=4",
+    "release": [
+      "node scripts/release-pages.mjs prepare wh07b10-short-gop",
+      "node scripts/release-pages.mjs publish",
+      "node scripts/release-pages.mjs verify"
+    ],
+    "public": "node research/export/wormhole-baseline.mjs capture --diagnostics-host --public-release=RELEASE_ID"
+  },
+  "predecessorFiles": [
+    {
+      "path": "research/export/codec-isolation.mjs",
+      "gitObject": "819d23caad650c65a5809208781416b93c014e75",
+      "sha256": "1f41fec8f6a87249f1c758ff020b40dc5a8e29a03de702f038be274386fac51b"
+    },
+    {
+      "path": "research/export/wormhole-baseline.mjs",
+      "gitObject": "8ab1f4030e85a2a435f55ee4a8405ae0014f2fa3",
+      "sha256": "3b686ba32fdb3e45e9a5aa42d2b09354c4c87b7b9b48307e3d99df229e98952d"
+    },
+    {
+      "path": "tests/export-codec-isolation.test.mjs",
+      "gitObject": "e711ef98ae7f6801ef0af43f1956977378dd2e72",
+      "sha256": "fc05a4ff86f085aa791bdb10fd02495ddab651ec3e21a389b6ee2dcb64321e04"
+    }
+  ],
+  "sources": [
+    "https://www.w3.org/TR/webcodecs/#videoencoderencodeoptions",
+    "https://www.webmproject.org/vp9/levels/"
+  ],
+  "hashes": {
+    "logs/wh01/replay-comparison-7f9e6c78-f53e-4eb5-8ae3-d75489bdd434/comparison.json": "747eeaae40d253be012871d5e2209ef6bc5f454e847000a6cf93ca6ac0e18f61",
+    "logs/wh01/replay-comparison-e9780081-2c49-43c1-8eb0-6a1d0be5f56d/comparison.json": "0d6a868cdfe68ed1635fc17c2d5389e9c2a2479ff00ae3aacf13d58615907892",
+    "logs/wh01/run-74b0aa3d-3033-43bb-8d7c-7e84af1e23c1/source-frames.json": "548d3c3322be3356ef9233438f59b463a10f5531b6ea8390afce3fa7b44d6aee",
+    "logs/wh01/run-9bc57fc1-cc2b-4351-b7ad-0873ddd6c57d/baseline.json": "78c0f1df4160d0cbd83a0f36b44f069e3c9a7f50b47a4923fa98dd6d5d852a50",
+    "logs/wh01/run-9bc57fc1-cc2b-4351-b7ad-0873ddd6c57d/build.json": "0c89237a5869efd472bc0fb72fcb7bb17892fd29e20a256284d086093620d7e7",
+    "logs/wh01/run-9bc57fc1-cc2b-4351-b7ad-0873ddd6c57d/host-smoke.json": "ca9b8d3f04266e8b12c49f93b41468145c4fcff02f5b98c704714d2d84d46289",
+    "logs/wh01/run-9bc57fc1-cc2b-4351-b7ad-0873ddd6c57d/replay-inputs.json": "b9265a0e93d1d22b96863c84261c9e0ef618d5cdeed82bf17c5663d13b4a8e93",
+    "logs/wh01/run-9bc57fc1-cc2b-4351-b7ad-0873ddd6c57d/source-replay.json": "0b3bc78723a25bb8de444e48f95831cb6090c0023014bf63f2ffc72d33f56b8b",
+    "logs/wh01/run-9bc57fc1-cc2b-4351-b7ad-0873ddd6c57d/verification.json": "ad5d30a5373fe1b4537053f311f3fb4a69aecadf82beb529dc961b4b3458513b",
+    "logs/wh01/source-comparison-9fd1e979-d27e-4be7-b4c4-f3f9c43fdf01/comparison.json": "8797279e95da8f7e24e78061b2124fb9db6db5b7b997f19197c0e33ce1da9a19",
+    "logs/wh07b10/analysis.log": "8bbad401ecf1ff1478827cb06af4afa87ee2d6fb47275f4f058d2c0e9fba0f86",
+    "logs/wh07b10/build.log": "8b76b60027b0fa32c6fe32b7ce2f3ff20c50c6ae96aa96acc628cea653536fea",
+    "logs/wh07b10/focused.tap": "0bf64e55885b696d3061ab60a251573dc9013c1ab5d8c5d6157b3d0b891945d1",
+    "logs/wh07b10/legacy-refine-recheck.log": "c5ced7b9f74dd277641012c9efceacf76c39fbeff0b001ba80765f7a7d747976",
+    "logs/wh07b10/replay-browser.log": "f36d6438789270c39f6c37078e0ad52ac1ce74f4a8cec202ab8e1ae6c5499989",
+    "logs/wh07b10/replay-final.log": "c5ecb0496e7423086d779bc607b36f416d306e00e0d8e9761340988e1fe3ce1e",
+    "logs/wh07b10/replay.log": "605ab3e85e373dcb759218b368a91b0ab8ebb3176653190046f1a884da969fa6",
+    "logs/wh07b10/targeted.tap": "78c4e3b3b650a27889970dfe3e77781b14cd72ea5bcc94ecd8cdddd13624d4b5",
+    "research/export/codec-isolation.mjs": "fbab68603aef1a52256acf276b7b1498243cffb497fe2fa5560d8dbf678dc360",
+    "research/export/wormhole-baseline.mjs": "0fcee4de0b2b42b649f3f6952c02fdc1919536337f34715cf1e4db1b4e9687ec",
+    "tests/export-codec-isolation.test.mjs": "11c34d61e19ad11466d9bdea08dd41d3a8844bdd6ae043538f80d631a076cb1b",
+    "logs/wh07b10/cumulative.tap": "090562117c21070e15414a126b821dacacc946f17a11587e8ba3d91f7d98c9a7",
+    "logs/wh07b10/node-results.json": "2231e097f07d609a2bc93167f8d2cbed136de56f6e55768987542ed5e6c74022"
+  }
+}

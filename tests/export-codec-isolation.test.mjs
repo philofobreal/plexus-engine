@@ -217,3 +217,39 @@ test('sampled VP9 bounds reject incomplete, malformed or unlisted metadata witho
  const base={codec:'vp09.02.51.10',width:1280,height:720,fps:60,packetBytes:[1000,2000]};const before=structuredClone(base);assert.equal(evaluateReplayBounds(base).pass,true);assert.deepEqual(base,before);
  for(const patch of [{codec:'vp09.02.50.10'},{fps:0},{width:Infinity},{height:0},{packetBytes:[]},{packetBytes:[-1]},{packetBytes:[1.5]},{packetBytes:Array(64).fill(1)},{packetBytes:[64*1024*1024+1]}])assert.throws(()=>evaluateReplayBounds({...base,...patch}),/Invalid replay bounds/);
 });
+
+
+test('short-GOP replay verifies the queried encoder settings and every requested key picture', async () => {
+ for (const keyInterval of [4, 12]) {
+  const f = replayFixture();
+  const request = {...f.request, keyInterval, frames: Array.from({length: 26}, (_, index) => ({index, name: `source-export-000-${String(index).padStart(3, '0')}.png`}))};
+  const report = await encodeSourceProfile(request, f.load, f.env);
+  assert.equal(report.stage, 'complete');
+  assert.deepEqual(report.packets.flatMap((p, i) => p.type === 'key' ? [i] : []), keyInterval === 4 ? [0, 4, 8, 12, 16, 20, 24] : [0, 12, 24]);
+ }
+ const f = replayFixture();
+ const query = f.env.VideoEncoder.isConfigSupported;
+ f.env.VideoEncoder.isConfigSupported = async config => {
+  const answer = await query(config);
+  delete answer.config.contentHint;
+  return answer;
+ };
+ const report = await encodeSourceProfile({...f.request, keyInterval: 4}, f.load, f.env);
+ assert.match(report.error.message, /configuration not recognized/);
+ assert.equal(f.created.length, 0);
+});
+
+test('short-GOP constant rate retains its bitrate and rejects unbounded or mixed controls', async () => {
+ const f = replayFixture();
+ const request = {...f.request, profile: 'constant-detail', keyInterval: 4};
+ delete request.quantizer;
+ const report = await encodeSourceProfile(request, f.load, f.env);
+ assert.equal(report.stage, 'complete');
+ assert.equal(report.config.bitrate, request.bitrate);
+ assert.equal(report.config.bitrateMode, 'constant');
+ assert.equal(report.config.contentHint, 'detail');
+ assert.ok(f.created[0].calls.every(call => !call.config.vp9));
+ for (const patch of [{keyInterval: 0}, {keyInterval: 60}, {keyInterval: undefined}, {quantizer: 4}, {profile: 'all-key'}]) {
+  await assert.rejects(encodeSourceProfile({...request, ...patch}, f.load, f.env), /Invalid source replay/);
+ }
+});

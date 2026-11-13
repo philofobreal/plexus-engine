@@ -188,16 +188,21 @@ export function evaluateReplayBounds({codec,width,height,fps,packetBytes}) {
  * capped at64MiB, not a replacement for the product's progressive OPFS path.
  */
 export async function encodeSourceProfile(request, loadSource, env = globalThis, timeoutMs = 120000) {
-    const {width,height,fps,bitrate,profile,quantizer,frames} = request ?? {};
+    const {width,height,fps,bitrate,profile,quantizer,keyInterval,frames} = request ?? {};
+    const usesQuantizer = profile === 'quantizer';
+    const constantDetail = profile === 'constant-detail';
     if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 720 || height < 720
         || width > 3840 || height > 3840 || width * height > 3840 * 2160 || ![30,60].includes(fps)
-        || ![8000000,14000000,64000000].includes(bitrate) || !['all-key','quantizer'].includes(profile)
-        || (profile === 'quantizer' ? !Number.isInteger(quantizer) || quantizer < 0 || quantizer > 255 : quantizer !== undefined)
+        || ![8000000,14000000,64000000].includes(bitrate) || !['all-key', 'quantizer', 'constant-detail'].includes(profile)
+        || (usesQuantizer ? !Number.isInteger(quantizer) || quantizer < 0 || quantizer > 255 : quantizer !== undefined)
+        || (keyInterval !== undefined && (profile === 'all-key' || ![4, 12].includes(keyInterval)))
+        || (constantDetail && keyInterval === undefined)
         || !Array.isArray(frames) || frames.length < 1 || frames.length > 63
         || frames.some((f,i)=>f.index !== i || !/^source-export-\d{3}-\d{3}\.png$/.test(f.name))) throw Error('Invalid source replay');
     const config={codec:'vp09.02.51.10',width,height,framerate:fps,latencyMode:'quality',alpha:'discard',
-        ...(profile==='quantizer'?{bitrateMode:'quantizer',contentHint:'detail'}:{bitrateMode:'constant',bitrate})};
-    const report={profile,...(profile==='quantizer'?{quantizer}:{}),config,encoder:'not-checked',stage:'query',
+        ...(usesQuantizer ? {bitrateMode:'quantizer',contentHint:'detail'} : {bitrateMode:'constant',bitrate}),
+        ...(constantDetail ? {contentHint:'detail'} : {})};
+    const report={profile,...(usesQuantizer ? {quantizer} : {}),...(keyInterval !== undefined ? {keyInterval} : {}),config,encoder:'not-checked',stage:'query',
         frames:0,bytes:0,packets:[],scope:'Short native codec feasibility; no product MP4, whole-job speed, hardware or mobile qualification.'};
     let encoder,canvas,timer,active=true,reason,rejectFailure,detachQueue;
     const failure=new Promise((_,reject)=>{rejectFailure=reject;});void failure.catch(()=>{});
@@ -210,6 +215,9 @@ export async function encodeSourceProfile(request, loadSource, env = globalThis,
         report.encoder=support.supported?'supported':'unsupported';report.recognizedConfig=support.config;
         if(!support.supported)return report;
         if(support.config.bitrateMode!==config.bitrateMode)throw Error('Rate-control mode not recognized');
+        if (keyInterval !== undefined && Object.entries(config).some(([key, value]) => support.config[key] !== value)) {
+            throw Error('Short-GOP encoder configuration not recognized');
+        }
         encoder=new env.VideoEncoder({error:fail,output:(chunk,metadata)=>{
             if(!active || reason)return;
             if(report.packets.length>=frames.length || report.bytes+chunk.byteLength>64*1024*1024){fail(Error('Source replay packet bound'));return;}
@@ -225,8 +233,8 @@ export async function encodeSourceProfile(request, loadSource, env = globalThis,
             try {
                 if(bitmap.width!==width || bitmap.height!==height)throw Error('Source replay dimensions changed');
                 ctx.drawImage(bitmap,0,0);const frame=new env.VideoFrame(canvas,{timestamp:Math.round(source.index*1e6/fps)});
-                try {encoder.encode(frame,{keyFrame:profile==='all-key'||source.index%fps===0,
-                    ...(profile==='quantizer'?{vp9:{quantizer}}:{})});}finally{frame.close();}
+                try {encoder.encode(frame,{keyFrame:profile==='all-key'||source.index%(keyInterval ?? fps)===0,
+                    ...(usesQuantizer?{vp9:{quantizer}}:{})});}finally{frame.close();}
             } finally {bitmap.close();}
             report.frames++;
             if(encoder.encodeQueueSize>=4)await wait(new Promise(resolve=>{
@@ -237,6 +245,9 @@ export async function encodeSourceProfile(request, loadSource, env = globalThis,
         await wait(encoder.flush());
         if(report.packets.length!==frames.length || report.packets.some((p,i)=>p.timestamp!==Math.round(i*1e6/fps))
             || !report.decoderConfig)throw Error('Incomplete or unordered replay packets');
+        if (keyInterval !== undefined && report.packets.some((packet, index) => index % keyInterval === 0 && packet.type !== 'key')) {
+            throw Error('Missing requested key picture');
+        }
         report.stage='complete';
     } catch(error){report.error={name:String(error?.name??'Error').slice(0,80),message:String(error?.message??error).slice(0,600)};}
     finally {active=false;detachQueue?.();if(timer!==undefined)env.clearTimeout(timer);try{encoder?.close();}catch{}if(canvas)canvas.width=canvas.height=1;}

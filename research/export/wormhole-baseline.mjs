@@ -53,11 +53,27 @@ const qualityQuantizer=qualityCandidateArg===undefined?undefined:Number(qualityC
 if(qualityCandidateArg!==undefined&&(!['1','2','4','8'].includes(qualityCandidateArg)||!['--export-host','--turbo-host'].some(f=>process.argv.includes(f))
     ||['--predictive-detail','--native-packets','--detail-host','--mp4-inter-frame','--stable-material','--paired-encoder','--public-release='].some(f=>process.argv.some(a=>a.startsWith(f)))))throw Error('A listed --quality-candidate requires its own local export or speed cohort');
 const refineQuality=process.argv.includes('--quality-refine');
+const shortGop = process.argv.includes('--short-gop');
 const replaySourceArg=process.argv.find(arg=>arg.startsWith('--quantizer-source='))?.slice('--quantizer-source='.length);
-if(replaySourceArg && (process.argv[2]!=='capture' || process.argv.slice(3).some(arg=>!arg.startsWith('--quantizer-source=')&&arg!=='--quality-refine'))) {
+if(replaySourceArg && (process.argv[2]!=='capture' || process.argv.slice(3).some(arg=>!arg.startsWith('--quantizer-source=')&&!['--quality-refine', '--short-gop'].includes(arg)))) {
     throw Error('--quantizer-source is a separate loopback-only feasibility cohort.');
 }
-if(refineQuality&&!replaySourceArg)throw Error('--quality-refine requires --quantizer-source');
+if ((refineQuality || shortGop) && (!replaySourceArg || (refineQuality && shortGop))) {
+    throw Error('Choose one quality cohort with --quantizer-source');
+}
+
+function replayProfiles(profileSet) {
+    const control = { name: 'all-key', profile: 'all-key' };
+    if (profileSet === 'short-gop-v1') return [
+        control,
+        { name: 'q0', profile: 'quantizer', quantizer: 0 },
+        { name: 'q4-g4', profile: 'quantizer', quantizer: 4, keyInterval: 4 },
+        { name: 'q4-g12', profile: 'quantizer', quantizer: 4, keyInterval: 12 },
+        { name: 'cbr-g4', profile: 'constant-detail', keyInterval: 4 },
+    ];
+    const quantizers = profileSet === 'refine-v1' ? [1, 2, 4, 8] : [0, 16, 32, 64];
+    return [control, ...quantizers.map(quantizer => ({ name: 'q' + quantizer, profile: 'quantizer', quantizer }))];
+}
 const integer = (x, min, max) => Number.isSafeInteger(x) && x >= min && x <= max;
 export function verifyPack(pack) {
     assert.equal(pack.version, 1); assert.equal(pack.pass, true);
@@ -155,7 +171,7 @@ async function capture() {
                 replaySources.set(f.name,{file,sha256:f.sha256});
             }
         }
-        await writeFile(path.join(output,'replay-inputs.json'),JSON.stringify({directory:replayDirectory,sources:replayManifest.sources,...(refineQuality?{profileSet:'refine-v1'}:{})},null,2)+'\n',{flag:'wx'});
+        await writeFile(path.join(output,'replay-inputs.json'),JSON.stringify({directory:replayDirectory,sources:replayManifest.sources,...(shortGop ? {profileSet:'short-gop-v1'} : refineQuality ? {profileSet:'refine-v1'} : {})},null,2)+'\n',{flag:'wx'});
     }
     const server = createServer(async (req, res) => {
         try {
@@ -239,10 +255,10 @@ async function capture() {
             const rows=[];
             for(const source of replayManifest.sources){
                 const spec=replaySpecs.find(r=>r.name===source.name);
-                for(const quantizer of (refineQuality?[null,1,2,4,8]:[null,0,16,32,64])){
-                    const name=source.name.replace('.mp4','')+'-'+(quantizer===null?'all-key':'q'+quantizer)+'.webm';
+                for (const {name: suffix, ...settings} of replayProfiles(shortGop ? 'short-gop-v1' : refineQuality ? 'refine-v1' : undefined)) {
+                    const name = source.name.replace('.mp4', '') + '-' + suffix + '.webm';
                     const request={width:spec.width,height:spec.height,fps:source.fps,bitrate:spec.width*spec.height>=3840*2160?64000000:spec.width*spec.height>=1920*1080?14000000:8000000,
-                        profile:quantizer===null?'all-key':'quantizer',...(quantizer===null?{}:{quantizer}),frames:source.frames.map(({name,index})=>({name,index}))};
+                        ...settings,frames:source.frames.map(({name,index})=>({name,index}))};
                     const report=await evaluate('window.runWh07Replay('+JSON.stringify(request)+','+JSON.stringify(name)+')');
                     const row={source:source.name,request:{...request,frames:request.frames.length},...report};
                     if(report.name){
@@ -255,7 +271,7 @@ async function capture() {
                         await evaluate('window.wh07ReplayBlobs.clear()');
                     }
                     rows.push(row);await writeFile(path.join(output,'source-replay.json'),JSON.stringify({measurementComplete:false,rows},null,2)+'\n');
-                    console.log(JSON.stringify({replay:source.name,profile:request.profile,quantizer,stage:report.stage,error:report.error,bytes:row.fileBytes}));
+                    console.log(JSON.stringify({replay: source.name, ...settings, stage: report.stage, error: report.error, bytes: row.fileBytes}));
                 }
             }
             await writeFile(path.join(output,'source-replay.json'),JSON.stringify({measurementComplete:true,productionPromoted:false,rows},null,2)+'\n');
@@ -569,16 +585,30 @@ async function compareSources(baselineDirectory,candidateDirectory){
 async function analyzeReplay(directory,acceptedComparisonFile){
     const run=path.resolve(directory??''),inputs=JSON.parse(await readFile(path.join(run,'replay-inputs.json'),'utf8')),
         replay=JSON.parse(await readFile(path.join(run,'source-replay.json'),'utf8'));
-    const quantizers=inputs.profileSet==='refine-v1'?[1,2,4,8]:[0,16,32,64];
-    assert.equal(replay.measurementComplete,true);assert.equal(inputs.sources.length,12);assert.equal(replay.rows.length,60);
+    const profilesToCheck = replayProfiles(inputs.profileSet);
+    const shortGopRun = inputs.profileSet === 'short-gop-v1';
+    assert.ok([undefined, 'refine-v1', 'short-gop-v1'].includes(inputs.profileSet), 'Unknown replay cohort');
+    assert.equal(replay.measurementComplete, true);
+    assert.equal(inputs.sources.length, 12);
+    assert.equal(replay.rows.length, inputs.sources.length * profilesToCheck.length);
+    const expected = new Set(inputs.sources.flatMap(source => {
+        assert.match(source.name, /^export-\d{3}\.mp4$/);
+        return profilesToCheck.map(p => source.name.replace('.mp4', '') + '-' + p.name + '.webm');
+    }));
     const acceptedBytes=await readFile(path.resolve(acceptedComparisonFile??'')),accepted=JSON.parse(acceptedBytes);
     assert.equal(path.resolve(accepted.baseline),path.resolve(inputs.directory),'Accepted source identity differs');
     assert.equal(accepted.rows.length,12);
     const output=path.join(root,'replay-comparison-'+randomUUID());await mkdir(output,{recursive:true});const rows=[];
     for(const [index,row]of replay.rows.entries()){
         const source=inputs.sources.find(s=>s.name===row.source);assert.ok(source);
-        if(!row.name){rows.push({...row,eligible:false});continue;}
-        assert.match(row.name,/^export-\d{3}-(?:all-key|q(?:0|1|2|4|8|16|32|64))\.webm$/);assert.ok(row.profile==='all-key'||quantizers.includes(row.quantizer));const file=path.join(run,row.name);assert.equal(hash(await readFile(file)),row.sha256);
+        const settings = profilesToCheck.find(p => p.profile === row.profile && p.quantizer === row.quantizer && p.keyInterval === row.keyInterval);
+        assert.ok(settings, 'Unexpected replay profile');
+        const key = source.name.replace('.mp4', '') + '-' + settings.name + '.webm';
+        assert.ok(expected.delete(key), 'Unexpected or duplicate replay row');
+        if (!row.name) { rows.push({...row, eligible: false}); continue; }
+        assert.equal(row.name, key);
+        const file = path.join(run, row.name);
+        assert.equal(hash(await readFile(file)), row.sha256);
         for(const f of source.frames)assert.equal(hash(await readFile(path.join(inputs.directory,f.name))),f.sha256);
         const ssim='ssim-'+index+'.txt',psnr='psnr-'+index+'.txt',pattern=path.join(inputs.directory,'source-'+source.name.replace('.mp4','')+'-%03d.png');
         const filter=`[0:v]settb=AVTB,setpts=N/(${source.fps}*TB),format=gbrp16le,split=2[a][c];[1:v]settb=AVTB,setpts=N/(${source.fps}*TB),format=gbrp16le,split=2[b][d];[a][b]ssim=stats_file=${ssim}[s];[c][d]psnr=stats_file=${psnr}[p]`;
@@ -586,6 +616,7 @@ async function analyzeReplay(directory,acceptedComparisonFile){
         const scores=evaluateEncodedStats(await readFile(path.join(output,ssim),'utf8'),await readFile(path.join(output,psnr),'utf8'),source.frames.length).frames;
         rows.push({...row,scores});
     }
+    assert.equal(expected.size, 0);
     for(const row of rows.filter(r=>r.scores)){
         const control=rows.find(r=>r.source===row.source&&r.profile==='all-key');assert.ok(control?.scores,'Replay all-key control failed');
         row.quality=compareOwnSource(control.scores,row.scores);
@@ -595,13 +626,56 @@ async function analyzeReplay(directory,acceptedComparisonFile){
         row.eligible=row.quality.pass&&row.acceptedQuality.pass&&row.decoded?.pass&&row.video?.pix_fmt==='yuv420p10le'&&Number(row.video.nb_read_frames)===row.request.frames
             &&row.independentIds.length===row.request.frames&&row.independentIds.every((id,i)=>id===i+1);
     }
-    if(inputs.profileSet==='refine-v1')for(const row of rows.filter(r=>r.scores)){
-        row.sampledBounds=evaluateReplayBounds({codec:row.decoderConfig.codec,width:row.request.width,height:row.request.height,fps:row.request.fps,packetBytes:row.packets.map(p=>p.bytes)});
-        row.fidelityEligible=row.eligible;row.eligible=row.fidelityEligible&&row.sampledBounds.pass;
+    if (inputs.profileSet === 'refine-v1' || shortGopRun) {
+        const load = createLoader();
+        const {mp4Vp9LevelArgs, readVp9ExportLevel} = load('export/ExportPreparation.ts');
+        const {planMp4Storage} = load('export/Mp4StorageAdmission.ts');
+        for (const row of rows.filter(r => r.scores)) {
+            const {width, height, fps, bitrate} = row.request;
+            const packetBytes = row.packets.map(p => p.bytes);
+            row.sampledBounds = evaluateReplayBounds({codec: row.decoderConfig.codec, width, height, fps, packetBytes});
+            row.fidelityEligible = row.eligible;
+            row.eligible = row.fidelityEligible && row.sampledBounds.pass;
+            if (!shortGopRun) continue;
+
+            // Compare with the current product budget after the fixed short-job allowance has amortized.
+            const seconds = 300;
+            const plan = planMp4Storage({frames: seconds * fps, fps, sampleRate: 48000,
+                sourceSamples: seconds * 48000, videoBitrate: bitrate});
+            assert.ok(plan.ok);
+            const rate = Math.ceil(row.sampledBounds.videoBitsPerSecond);
+            const projectedVideoPayloadBytes = Math.ceil(seconds * rate / 8);
+            row.storageProjection = {seconds, projectedVideoPayloadBytes, productVideoLimitBytes: plan.limits.video,
+                steadyVideoCeilingBitsPerSecond: bitrate * 1.5,
+                pass: rate < bitrate * 1.5 && projectedVideoPayloadBytes < plan.limits.video,
+                scope: 'Sampled payload extrapolation with headroom for container bytes. Full-song storage admission requires an integrated run.'};
+            try {
+                row.productLevel = Number(mp4Vp9LevelArgs({width, height, fps, bitrate: Math.max(bitrate, rate),
+                    nativeLevel: readVp9ExportLevel(row.decoderConfig.codec),
+                    maxFourBytes: row.sampledBounds.maxFourPictureBits / 8})[1]);
+            } catch (error) {
+                row.productLevelError = error.message;
+            }
+            row.keyPictures = row.packets.flatMap((packet, i) => packet.type === 'key' ? [i] : []);
+            row.deltaPictures = row.packets.length - row.keyPictures.length;
+            row.eligible = row.eligible && row.storageProjection.pass && Number.isInteger(row.productLevel);
+        }
+        if (shortGopRun) {
+            assert.equal(rows.filter(row => row.profile === 'all-key' && row.fidelityEligible).length, 12, 'Accepted all-key fidelity control drift');
+            assert.equal(rows.filter(row => row.quantizer === 0 && row.fidelityEligible).length, 12, 'Positive q0 fidelity control drift');
+        }
     }
-    const profiles=quantizers.map(quantizer=>({quantizer,cases:rows.filter(r=>r.quantizer===quantizer).length,
-        eligible:rows.filter(r=>r.quantizer===quantizer).length===12&&rows.filter(r=>r.quantizer===quantizer).every(r=>r.eligible),
-        failedSources:rows.filter(r=>r.quantizer===quantizer&&!r.eligible).map(r=>r.source)}));
+    const profiles = profilesToCheck.filter(p => p.profile !== 'all-key').map(({name, ...settings}) => {
+        const members = rows.filter(row => row.profile === settings.profile && row.quantizer === settings.quantizer && row.keyInterval === settings.keyInterval);
+        const allPassed = members.length === 12 && members.every(r => r.eligible);
+        return {...(shortGopRun ? {name, ...settings, fidelityCases: members.filter(r => r.fidelityEligible).length,
+            sampledLevelCases: members.filter(r => r.sampledBounds?.pass && Number.isInteger(r.productLevel)).length,
+            storageCases: members.filter(r => r.storageProjection?.pass).length,
+            deltaPictures: members.reduce((sum, r) => sum + (r.deltaPictures ?? 0), 0)} : {quantizer: settings.quantizer}),
+            cases: members.length,
+            eligible: allPassed && (!shortGopRun || (settings.keyInterval !== undefined && members.some(r => r.deltaPictures > 0))),
+            failedSources: members.filter(r => !r.eligible).map(r => r.source)};
+    });
     const report={measurementComplete:true,productionPromoted:false,run,acceptedComparison:{path:path.resolve(acceptedComparisonFile),sha256:hash(acceptedBytes)},scope:'Native short codec feasibility against replay all-key AND accepted product own-source fidelity. No integrated MP4/audio/lifecycle/whole-job speed promotion.',profiles,rows};
     await writeFile(path.join(output,'comparison.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify({output,profiles}));
 }
@@ -689,5 +763,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     else if (process.argv[2] === 'compare-source') await compareSources(process.argv[3],process.argv[4]);
     else if (process.argv[2] === 'compare-encoded') await compareEncoded(process.argv[3],process.argv[4]);
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--quantizer-source=PRIOR_SOURCE_RUN [--quality-refine]] [--exact-host] [--export-host [--profile-source | --profile-check]] [--native-packets | --predictive-detail | --quality-candidate=1|2|4|8] [--turbo-export-host] [--diagnostics-host] [--codec-host] [--detail-host [--level-boundary] [--detail-profile=reference|detail|text|variable]] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | audit-mp4-levels BASELINE_RUN FIXED_RUN | level-probe RUN | analyze-replay RUN ACCEPTED_SOURCE_COMPARISON | compare-source BASELINE_RUN CANDIDATE_RUN | compare-encoded BASELINE_RUN CANDIDATE_RUN | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--quantizer-source=PRIOR_SOURCE_RUN [--quality-refine | --short-gop]] [--exact-host] [--export-host [--profile-source | --profile-check]] [--native-packets | --predictive-detail | --quality-candidate=1|2|4|8] [--turbo-export-host] [--diagnostics-host] [--codec-host] [--detail-host [--level-boundary] [--detail-profile=reference|detail|text|variable]] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | audit-mp4-levels BASELINE_RUN FIXED_RUN | level-probe RUN | analyze-replay RUN ACCEPTED_SOURCE_COMPARISON | compare-source BASELINE_RUN CANDIDATE_RUN | compare-encoded BASELINE_RUN CANDIDATE_RUN | verify [baseline.json]');
 }
