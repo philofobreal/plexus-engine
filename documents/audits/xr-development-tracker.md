@@ -2,7 +2,17 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-07b9 fixes the existing VP9 MP4 level declaration without re-encoding. All12 actual accepted/fixed pairs retain encoded video/AAC/timing and351 decoded pictures; seven files change one metadata byte, five remain entirely identical. Full regression and local36-file export matrix pass, with the same nine baseline Node failures. Commit/push/verified release and public QA are bound in the checkpoint/final receipts. Manual short4K60 ten-bit MP4 check is pending; stop for user acceptance. Then WH-07b10 shorter prediction spans/q0 control, valid rate/level/storage/preflight, and speed only after quality. No MP4 Turbo promotion; WebM Turbo remains accepted, MP4 explicitly Economy. Mobile WH-06c2/e later; WH-07 partial, WH-06d withdrawn, Wall/T15 deferred.**
+**Current priority: WH-07b10 desktop MP4 Turbo feasibility is closed. None of the three short-GOP candidates met the fidelity, VP9 level and storage gates together. MP4 uses the accepted Economy path. Next WH-06c2 maps native 10-bit mobile support, followed by conditional WH-06e encoder feasibility and WH-08 long-export qualification. The user authorized the WH-07b10 continuation. The prior manual WH-07b9 check has no separate recorded result.**
+
+### WH-07b10 desktop MP4 decision
+
+60 ten-bit files and 1,755 ordered decoded pictures. The q4 intervals of four
+and twelve pictures pass fidelity on 8/12 and 7/12 cases. Neither passes all
+three gates on any case. Fixed bitrate fits the sampled level and storage on
+12/12 cases and fails fidelity on 12/12. Desktop integration remains conditional
+on a qualifying profile. Proceed next to the deferred mobile capability work.
+[Audit](wormhole-wh07-turbo.md#wh-07b10--shorter-vp9-prediction-spans-2026-11-13),
+[receipt](../tests/wormhole-wh07b10-research.json).
 
 ### WH-07b9 metadata parity fixed; manual acceptance pending
 

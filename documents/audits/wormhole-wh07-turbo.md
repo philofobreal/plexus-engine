@@ -1393,3 +1393,85 @@ Stop here for user acceptance; then WH-07b10 shorter prediction spans/q0 control
 valid level/rate/storage/preflight and separate whole-job speed qualification.
 Mobile S22 native 10-bit remains deferred to WH-06c2/e, then WH-08, T21b/c,
 T22-T24; T25 maintains handoffs. No candidate quality or speed promotion in b9.
+
+
+## WH-07b10 — shorter VP9 prediction spans (2026-11-13)
+
+The desktop feasibility cohort replays 351 archived inputs across twelve cases.
+It uses the same accepted MP4 comparison and the same per-picture SSIM/PSNR
+thresholds as WH-07b8. The all-key control uses the accepted fixed bitrate. The
+q0 positive fidelity control retains the one-second key interval. The three
+candidates request a key every four or twelve pictures at q4, or every four
+pictures with the accepted fixed bitrate and the `detail` hint. All use the
+existing native VP9 Profile 2 research worker at the requested level 5.1.
+
+The worker verifies the returned encoder configuration for each short-interval
+candidate, checks that every requested key appears, and records emitted key and
+predicted pictures. WebCodecs permits an encoder to insert additional keys.
+The browser decoder and independent FFmpeg decoder verify each frame ID. The
+score compares each decoded picture against its original source, with both the
+current all-key replay and the archived accepted MP4 as references.
+[WebCodecs encode options](https://www.w3.org/TR/webcodecs/#videoencoderencodeoptions).
+
+The evaluator reuses the WH-07b9 MP4 level selector and checks the observed
+average bitrate and largest four-picture packet window against the sampled
+level 5.1 limits. It projects the observed payload into the existing five-minute
+MP4 storage plan and requires the observed average to fit its steady video
+allowance. This projection gives a reason to reject a profile with insufficient
+headroom. Long-song admission and complete VP9 bitstream conformance require
+separate evidence. Larger files are acceptable when the codec and storage
+admission can support them. [VP9 level limits](https://www.webmproject.org/vp9/levels/).
+
+Reproduce with the existing local research commands:
+
+```sh
+node research/export/wormhole-baseline.mjs capture --quantizer-source=logs/wh01/run-74b0aa3d-3033-43bb-8d7c-7e84af1e23c1 --short-gop
+node research/export/wormhole-baseline.mjs analyze-replay REPLAY_RUN logs/wh01/source-comparison-9fd1e979-d27e-4be7-b4c4-f3f9c43fdf01/comparison.json
+```
+
+### Results and decision
+
+Chrome 157 on Windows produced 60 ten-bit files. The browser decoder and FFmpeg
+independently recovered all 1,755 ordered frame IDs. Both fidelity controls pass
+all twelve cases. All twelve accepted all-key cases also pass the sampled codec
+and storage checks. The three candidate profiles give these results:
+
+| Profile | Fidelity | Sampled VP9 level | Projected storage | All gates |
+| --- | ---: | ---: | ---: | ---: |
+| q4, key every 4 pictures | 8/12 | 9/12 | 0/12 | 0/12 |
+| q4, key every 12 pictures | 7/12 | 10/12 | 1/12 | 0/12 |
+| Fixed bitrate with detail hint, key every 4 pictures | 0/12 | 12/12 | 12/12 | 0/12 |
+| q0 fidelity control, one-second key interval | 12/12 | 6/12 | 0/12 | 0/12 |
+
+In the 63-picture UHD60 landscape sample, both short q4 candidates pass fidelity.
+Their video rates are 214.13 and 139.72 Mbit/s. Both exceed the current VP9 level
+5.1 ceiling of 120 Mbit/s and the current steady storage allowance of 96 Mbit/s.
+At the measured rates, the five-minute video-payload estimates are 8.03 GB and
+5.24 GB against a 3.60 GB temporary-video allocation. These are extrapolations
+from the short sample. The fixed-rate candidate uses 15.58 Mbit/s in the same
+sample and fails the per-picture fidelity gate on 58 of 63 pictures. The only
+q4 candidate clip that fits the projected storage limit is 4K30 with a
+12-picture interval, and it fails the fidelity gate on three pictures.
+
+This closes the scheduled desktop native VP9 candidate study. No candidate
+qualifies for MP4 Turbo integration or a paired whole-job speed measurement.
+The effective MP4 export mode remains Economy. Proceed to WH-06c2 when the user
+continues. Its objective is the actual mobile native 10-bit capability map.
+WH-06e then evaluates an additional encoder where needed. WH-08 still covers
+full-song and physical-device qualification.
+
+The first attempt stopped before the Chrome debugging endpoint opened in the
+sandbox. The next attempt found a stale progress-log variable in the new CLI
+loop. The complete rerun uses the existing Chrome automation outside the
+sandbox after that correction. Both unsuccessful runs remain recorded. A
+separate evaluation of the retained 60-file WH-07b8 cohort reproduced every
+previous row and profile result exactly. The new tests exercise the requested
+key cadence, recognized encoder configuration, fixed bitrate and finite input
+validation in the existing test file. [Reproduction receipt](../tests/wormhole-wh07b10-research.json).
+
+Validation passed with `npm run build` and 162 targeted cases. The complete
+Node suite ran 2,285 cases. It passed 2,276 and reproduced the same nine
+predecessor failures by name and full message, with zero skips or cancellations.
+All 233 active files and prior codec test blocks are retained. The eight raw
+reference hashes match the previous release. The release receipt records the
+public browser check and built artifact identities.

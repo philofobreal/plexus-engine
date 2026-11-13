@@ -1,5 +1,14 @@
 # Staged export lifecycle
 
+## WH-07b10 — desktop MP4 Turbo feasibility (2026-11-13)
+
+Three short-interval VP9 profiles were evaluated against the accepted all-key
+10-bit MP4. None met the per-picture fidelity, sampled VP9 level and projected
+long-export storage gates together. The existing MP4 Economy route continues to
+serve both performance selections. WH-06c2 is next for native mobile capability
+mapping, with WH-06e conditional encoder feasibility after it.
+[Measured results](../tests/wormhole-wh07b10-research.json).
+
 ## WH-07b9 — VP9 MP4 compatibility metadata (2026-11-09)
 
 The existing MP4 worker supplies an explicit level during FFmpeg video copy,

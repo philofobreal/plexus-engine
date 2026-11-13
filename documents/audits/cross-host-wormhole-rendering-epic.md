@@ -44,6 +44,13 @@ kodek/profil/gyorsulási állítás vagy mobilos10bit-javítás. Rövid kézi4K6
 MP4 ellenőrzés után **WH-07b10**, majd a fent rögzített WH-06c2/e, WH-08,
 T21b/c, T22-T24; T25 átadások. [B9 bizonyíték](../tests/wormhole-wh07b9-acceptance.json).
 
+**WH-07b10 lezárás (2026-11-13).** A három desktopos rövid kulcsképkocka-közű
+jelölt közül egyik sem teljesíti együtt a képhűségi, VP9-szint- és
+tárhelyfeltételeket. Az elfogadott 10 bites MP4 Economy út marad használatban.
+A következő lépés a WH-06c2 mobilos képességtérkép, majd a WH-06e tartalék kódoló
+feltételes vizsgálata és a WH-08 hosszú, készülékes minősítés.
+[Mérések](../tests/wormhole-wh07b10-research.json).
+
 ## 1. Cél és helye a főtervben
 
 A sima host (a jelenlegi `src/main.ts` dashboard) és az MVP ugyanarra a közös
