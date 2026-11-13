@@ -12,6 +12,8 @@ h1 { font-size: 1.5rem; }
 button { min-height: 44px; padding: 0.5rem 0.85rem; font: inherit; margin: 0 0.25rem 0.5rem 0; }
 ul { padding-left: 1.25rem; }
 li { padding: 0.35rem 0; overflow-wrap: anywhere; }
+video { display: block; width: 100%; margin: 0.75rem 0; }
+video[hidden] { display: none; }
 textarea { width: 100%; box-sizing: border-box; font: 0.85rem monospace; }
 </style>
 </head>
@@ -27,9 +29,22 @@ textarea { width: 100%; box-sizing: border-box; font: 0.85rem monospace; }
 <ul id="results" aria-label="Mérési eredmények"></ul>
 <label for="report">Részletes JSON-jelentés</label>
 <textarea id="report" rows="6" readonly></textarea>
+<section aria-labelledby="wasm-title">
+<h2 id="wasm-title">10 bites WASM-próba</h2>
+<p>Egy másodperces, 720p/30 fps-es néma MP4-et készít a telefon processzorával. Tartsd nyitva a lapot, majd indítsd el az elkészült videót.</p>
+<button id="wasm-start" type="button" disabled>WASM-próba indítása</button>
+<button id="wasm-cancel" type="button" disabled>Megszakítás</button>
+<p id="wasm-status" role="status">A WASM-próba még nem futott.</p>
+<video id="wasm-video" controls muted playsinline preload="metadata" hidden></video>
+<a id="wasm-download" download="plexus-720p-vp9-10bit-probe.mp4" hidden>MP4 letöltése</a>
+<p><label for="wasm-report">WASM-jelentés</label></p>
+<textarea id="wasm-report" rows="6" readonly></textarea>
+<button id="wasm-copy" type="button" disabled>WASM-jelentés másolása</button>
+</section>
 </main>
 <script type="module">
 import CodecWorker from '../../research/export/codec-isolation.mjs?worker';
+import WasmProbeWorker from '../../research/export/vp9-10bit-probe.worker.mjs?worker';
 import { MOBILE_CODEC_SCOPE, mobileCodecProbeConfigurations } from '../../research/export/codec-isolation.mjs';
 
 const start = document.querySelector('#start');
@@ -62,7 +77,7 @@ function finish(job, outcome, message) {
     job.worker?.terminate();
     report = {...job.report, status:outcome, ...(message ? {error:message} : {})};
     reportField.value = JSON.stringify(report, null, 2);
-    start.disabled = false;
+    start.disabled = wasmStart.disabled = false;
     cancel.disabled = true;
     copy.disabled = save.disabled = false;
     const verified = report.rows.filter(row => row.outcome === 'ten-bit-confirmed').length;
@@ -72,11 +87,11 @@ function finish(job, outcome, message) {
 }
 
 start.addEventListener('click', () => {
-    if (active) return;
+    if (active || wasmJob) return;
     report = undefined;
     reportField.value = '';
     results.replaceChildren();
-    start.disabled = copy.disabled = save.disabled = true;
+    start.disabled = wasmStart.disabled = copy.disabled = save.disabled = true;
     cancel.disabled = false;
     status.textContent = `Mérés folyamatban (0/${expected.length})`;
     const job = {report:{version:1, scope:MOBILE_CODEC_SCOPE, userAgent:navigator.userAgent,
@@ -141,7 +156,129 @@ save.addEventListener('click', () => {
 window.addEventListener('pagehide', () => {
     if (active) finish(active, 'cancelled', 'A mérés megszakadt.');
 });
-start.disabled = false;
+const wasmStart = document.querySelector('#wasm-start');
+const wasmCancel = document.querySelector('#wasm-cancel');
+const wasmStatus = document.querySelector('#wasm-status');
+const wasmVideo = document.querySelector('#wasm-video');
+const wasmDownload = document.querySelector('#wasm-download');
+const wasmReportField = document.querySelector('#wasm-report');
+const wasmCopy = document.querySelector('#wasm-copy');
+let wasmJob;
+let wasmReport;
+let sampleUrl;
+
+function clearSample() {
+    wasmVideo.pause();
+    wasmVideo.removeAttribute('src');
+    wasmVideo.load();
+    wasmVideo.hidden = wasmDownload.hidden = true;
+    wasmDownload.removeAttribute('href');
+    if (sampleUrl) URL.revokeObjectURL(sampleUrl);
+    sampleUrl = undefined;
+}
+
+function showWasmReport() {
+    wasmReportField.value = JSON.stringify(wasmReport, null, 2);
+    wasmCopy.disabled = false;
+}
+
+function finishWasm(job, status, message, stats) {
+    if (wasmJob !== job) return;
+    wasmJob = undefined;
+    clearTimeout(job.deadline);
+    job.worker?.terminate();
+    start.disabled = wasmStart.disabled = false;
+    wasmCancel.disabled = true;
+    wasmReport = {version:1, release:new URLSearchParams(location.search).get('release'),
+        userAgent:navigator.userAgent, status, framesAtStop:job.frames, ...(stats ? {stats} : {}),
+        ...(message ? {message} : {}),
+        ...(status === 'complete' ? {playback:'not-tested'} : {})};
+    showWasmReport();
+    wasmStatus.textContent = message ?? 'Az MP4 elkészült. Játszd le, majd másold ki a WASM-jelentést.';
+}
+
+wasmStart.addEventListener('click', () => {
+    if (active || wasmJob) return;
+    wasmReport = undefined;
+    wasmReportField.value = '';
+    wasmCopy.disabled = true;
+    clearSample();
+    start.disabled = wasmStart.disabled = true;
+    wasmCancel.disabled = false;
+    wasmStatus.textContent = 'A WASM-kódoló betöltése…';
+    const job = wasmJob = {frames:0};
+    try {
+        const worker = job.worker = new WasmProbeWorker();
+        job.deadline = setTimeout(() => finishWasm(job, 'failed', 'A próba elérte a 180 másodperces időkorlátot.'), 180000);
+        worker.onerror = () => finishWasm(job, 'failed', 'A böngésző nem tudta futtatni a WASM-kódolót.');
+        worker.onmessageerror = () => finishWasm(job, 'failed', 'A WASM-próba eredménye nem olvasható.');
+        worker.onmessage = ({data}) => {
+            if (wasmJob !== job) return;
+            if (data.type === 'progress') {
+                job.frames = data.frames;
+                wasmStatus.textContent = `Kódolás folyamatban (${data.frames}/30)`;
+            } else if (data.type === 'error') {
+                finishWasm(job, 'failed', data.message);
+            } else if (data.type === 'complete') {
+                if (!(data.buffer instanceof ArrayBuffer) || !data.buffer.byteLength
+                    || data.buffer.byteLength > 8 * 1024 * 1024 || data.stats?.encodedFrames !== 30) {
+                    finishWasm(job, 'failed', 'A WASM-próba hiányos fájlt adott.');
+                    return;
+                }
+                sampleUrl = URL.createObjectURL(new Blob([data.buffer], {type:'video/mp4'}));
+                finishWasm(job, 'complete', undefined, data.stats);
+                wasmDownload.href = sampleUrl;
+                wasmDownload.hidden = wasmVideo.hidden = false;
+                wasmVideo.src = sampleUrl;
+            }
+        };
+        worker.postMessage({type:'wasm_codec_probe'});
+    } catch {
+        finishWasm(job, 'failed', 'A WASM-próba nem indítható.');
+    }
+});
+
+wasmCancel.addEventListener('click', () => {
+    if (wasmJob) finishWasm(wasmJob, 'cancelled', 'A WASM-próba megszakadt.');
+});
+wasmVideo.addEventListener('ended', () => {
+    if (!sampleUrl || wasmReport?.status !== 'complete') return;
+    const quality = wasmVideo.getVideoPlaybackQuality?.();
+    wasmReport.playback = 'ended';
+    wasmReport.decodedVideoWidth = wasmVideo.videoWidth;
+    wasmReport.decodedVideoHeight = wasmVideo.videoHeight;
+    if (quality) {
+        wasmReport.playbackFrames = quality.totalVideoFrames;
+        wasmReport.droppedPlaybackFrames = quality.droppedVideoFrames;
+    }
+    showWasmReport();
+    wasmStatus.textContent = 'A videó végig lejátszódott. Másold ki a WASM-jelentést.';
+});
+wasmVideo.addEventListener('error', () => {
+    if (!sampleUrl || wasmReport?.status !== 'complete' || !wasmVideo.error) return;
+    wasmReport.playback = 'error';
+    wasmReport.playbackErrorCode = wasmVideo.error.code;
+    showWasmReport();
+    wasmStatus.textContent = 'A böngésző lejátszási hibát jelzett. Másold ki a WASM-jelentést.';
+});
+wasmCopy.addEventListener('click', async () => {
+    const current = wasmReport;
+    if (!current) return;
+    try {
+        await navigator.clipboard.writeText(wasmReportField.value);
+        if (wasmReport === current) wasmStatus.textContent = 'A WASM-jelentés a vágólapra került.';
+    } catch {
+        if (wasmReport !== current) return;
+        wasmReportField.focus();
+        wasmReportField.select();
+        wasmStatus.textContent = 'Másold ki a kijelölt WASM-jelentést.';
+    }
+});
+window.addEventListener('pagehide', () => {
+    if (wasmJob) finishWasm(wasmJob, 'cancelled', 'A WASM-próba megszakadt.');
+    clearSample();
+});
+start.disabled = wasmStart.disabled = false;
 </script>
 </body>
 </html>

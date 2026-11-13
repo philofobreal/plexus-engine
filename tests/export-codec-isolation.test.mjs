@@ -308,3 +308,39 @@ test('mobile probe confirms profile and bit depth, and classifies decoder-only s
     assert.equal(mobileCodecOutcome(unrecognized.row), 'probe-error');
     assert.equal(unrecognized.resources.encoders.length, 0);
 });
+
+
+test('shipped libvpx WASM encodes a complete 720p30 ten-bit MP4 with bounded memory and ordered key pictures', async () => {
+    const {readFile} = await import('node:fs/promises');
+    const {ALL_FORMATS, BlobSource, EncodedPacketSink, Input} = await import('mediabunny');
+    const {default:createCore} = await import('../public/export/libvpx-1.17.0/vp9-10bit-probe.mjs');
+    const {encodeVp9Probe, vp9Probe} = await import('../research/export/vp9-10bit-probe.worker.mjs');
+    const binary = await readFile(new URL('../public/export/libvpx-1.17.0/vp9-10bit-probe.wasm', import.meta.url));
+    const core = await createCore({wasmBinary:binary});
+    const {buffer, stats} = await encodeVp9Probe(core);
+    assert.equal(stats.encodedFrames, 30);
+    assert.equal(stats.encodedBitDepth, 10);
+    assert.ok(stats.wasmLinearMemoryBytes <= vp9Probe.maxHeapBytes);
+    assert.ok(buffer.byteLength <= vp9Probe.maxBytes);
+    assert.ok(stats.meanBitsPerSecond <= 18_000_000);
+    const media = new Input({formats:ALL_FORMATS, source:new BlobSource(new Blob([buffer]))});
+    try {
+        assert.equal(await media.getPrimaryAudioTrack(), null);
+        const track = await media.getPrimaryVideoTrack();
+        const config = await track.getDecoderConfig();
+        assert.equal(config.codec.split('.').slice(0, 4).join('.'), vp9Probe.codec.split('.').slice(0, 4).join('.'));
+        assert.deepEqual(config.colorSpace, {primaries:'bt709', transfer:'bt709', matrix:'bt709', fullRange:false});
+        assert.equal(config.codedWidth, 1280);
+        assert.equal(config.codedHeight, 720);
+        let count = 0;
+        for await (const packet of new EncodedPacketSink(track).packets()) {
+            assert.equal(packet.type, 'key');
+            assert.ok(Math.abs(packet.timestamp - count / 30) < 1e-6);
+            count++;
+        }
+        assert.equal(count, 30);
+    } finally {
+        media.dispose();
+    }
+    assert.equal(core._probe_plane(0), 0, 'probe releases input planes after mux');
+});

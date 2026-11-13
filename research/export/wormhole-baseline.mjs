@@ -198,7 +198,7 @@ async function capture() {
             const file = path.resolve(site, decodeURIComponent(url.pathname.slice('/plexus-engine/'.length)));
             if (!file.startsWith(site + path.sep)) { res.writeHead(404).end(); return; }
             const data = await readFile(file);
-            const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm' };
+            const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.mjs': 'text/javascript' };
             res.writeHead(200, { 'Content-Type': types[path.extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
             res.end(req.method === 'HEAD' ? undefined : data);
         } catch (error) { res.writeHead(400).end(String(error)); }
@@ -573,6 +573,68 @@ async function capture() {
             await writeFile(path.join(output, 'mobile-codec-browser.json'), JSON.stringify(proof, null, 2)+'\n', {flag:'wx'});
             console.log(JSON.stringify({mobileCodecProbe:proof.pass, cases:proof.cases, outcomes:report.rows.map(r => [r.id,r.outcome])}));
         }
+        if (process.argv.includes('--wasm-codec-host')) {
+            const route = '/plexus-engine/tests/browser/mobile-codec-probe.html';
+            const url = publicRelease ? 'https://philofobreal.github.io' + route + '?release=' + publicRelease : origin + route;
+            await send('Emulation.setDeviceMetricsOverride', {width:390, height:844, deviceScaleFactor:1, mobile:true});
+            await send('Page.navigate', {url});
+            for (let i = 0; i < 100 && !await evaluate('document.querySelector("#wasm-start")?.disabled === false'); i++) await sleep(100);
+            const reportField = 'JSON.parse(document.querySelector("#wasm-report").value || "null")';
+            await evaluate('document.querySelector("#wasm-start").click(); document.querySelector("#wasm-cancel").click();');
+            assert.equal((await evaluate(reportField))?.status, 'cancelled');
+            await evaluate('document.querySelector("#wasm-start").click()');
+            let report;
+            for (let i = 0; i < 380; i++) {
+                report = await evaluate(reportField);
+                if (report) break;
+                await sleep(500);
+            }
+            await writeFile(path.join(output, 'wasm-codec-observed.json'), JSON.stringify(report,null,2)+'\n', {flag:'wx'});
+            assert.equal(report?.status, 'complete', JSON.stringify(report));
+            assert.equal(report.release, publicRelease ?? null);
+            assert.equal(report.stats.encodedFrames, 30);
+            assert.equal(report.stats.encodedBitDepth, 10);
+            assert.ok(report.stats.wasmLinearMemoryBytes <= 128 * 1024 * 1024);
+            const videoBytes = await evaluate(`(async () => {
+                const link = document.querySelector('#wasm-download');
+                const clip = await (await fetch(link.href)).blob();
+                return new Promise((resolve,reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(clip);
+                });
+            })()`);
+            const clip = Buffer.from(videoBytes,'base64');
+            assert.equal(clip.byteLength, report.stats.fileBytes);
+            await writeFile(path.join(output, 'vp9-10bit-probe.mp4'),clip,{flag:'wx'});
+            await evaluate(`(async () => {
+                const video = document.querySelector('#wasm-video');
+                try { await video.play(); } catch {}
+                return true;
+            })()`, true);
+            for (let i = 0; i < 60; i++) {
+                report = await evaluate(reportField);
+                if (report.playback !== 'not-tested') break;
+                await sleep(100);
+            }
+            assert.equal(report.playback, 'ended', JSON.stringify(report));
+            assert.equal(report.decodedVideoWidth,1280);
+            assert.equal(report.decodedVideoHeight,720);
+            const clipPath = path.join(output, 'vp9-10bit-probe.mp4');
+            const streams = JSON.parse(execFileSync('ffprobe', ['-v','error','-show_streams','-of','json',clipPath],
+                {windowsHide:true,encoding:'utf8',timeout:30000})).streams;
+            assert.equal(streams.length,1);
+            assert.deepEqual([streams[0].codec_name, streams[0].profile, streams[0].pix_fmt, streams[0].nb_frames],
+                ['vp9','Profile 2','yuv420p10le','30']);
+            const decodedHash = execFileSync('ffmpeg', ['-v','error','-threads','2','-i',clipPath,'-an',
+                '-pix_fmt','yuv420p10le','-f','streamhash','-hash','sha256','-'], {windowsHide:true,encoding:'utf8',timeout:30000}).trim();
+            assert.equal(decodedHash, '0,v,SHA256=6bed43471dca408ee9e11bcc0c270217e1f38ace4680bd87226c56a48b80dbb8');
+            const screenshot = await send('Page.captureScreenshot',{format:'png'});
+            await writeFile(path.join(output,'wasm-codec-layout.png'),Buffer.from(screenshot.data,'base64'),{flag:'wx'});
+            await writeFile(path.join(output,'wasm-codec-browser.json'),JSON.stringify({pass:true, report, sha256:hash(clip), decodedHash},null,2)+'\n',{flag:'wx'});
+            console.log(JSON.stringify({wasmCodecProbe:true, ...report.stats, playback:report.playback}));
+        }
         await writeFile(path.join(root, 'active-run.txt'), output + '\n');
         console.log(JSON.stringify({ output, pass: true, cases: 8, hostRows: host.rows.length, ...(publicRelease?{publicRelease}:{}) }));
     } finally {
@@ -822,5 +884,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     else if (process.argv[2] === 'compare-source') await compareSources(process.argv[3],process.argv[4]);
     else if (process.argv[2] === 'compare-encoded') await compareEncoded(process.argv[3],process.argv[4]);
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--quantizer-source=PRIOR_SOURCE_RUN [--quality-refine | --short-gop]] [--exact-host] [--export-host [--profile-source | --profile-check]] [--native-packets | --predictive-detail | --quality-candidate=1|2|4|8] [--turbo-export-host] [--diagnostics-host] [--mobile-codec-host] [--codec-host] [--detail-host [--level-boundary] [--detail-profile=reference|detail|text|variable]] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | audit-mp4-levels BASELINE_RUN FIXED_RUN | level-probe RUN | analyze-replay RUN ACCEPTED_SOURCE_COMPARISON | compare-source BASELINE_RUN CANDIDATE_RUN | compare-encoded BASELINE_RUN CANDIDATE_RUN | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--quantizer-source=PRIOR_SOURCE_RUN [--quality-refine | --short-gop]] [--exact-host] [--export-host [--profile-source | --profile-check]] [--native-packets | --predictive-detail | --quality-candidate=1|2|4|8] [--turbo-export-host] [--diagnostics-host] [--mobile-codec-host] [--wasm-codec-host] [--codec-host] [--detail-host [--level-boundary] [--detail-profile=reference|detail|text|variable]] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | audit-mp4-levels BASELINE_RUN FIXED_RUN | level-probe RUN | analyze-replay RUN ACCEPTED_SOURCE_COMPARISON | compare-source BASELINE_RUN CANDIDATE_RUN | compare-encoded BASELINE_RUN CANDIDATE_RUN | verify [baseline.json]');
 }

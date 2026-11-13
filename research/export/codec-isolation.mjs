@@ -185,12 +185,12 @@ export async function probeNativeCodec(request, env = globalThis, timeoutMs = 80
 
 // VP9 uncompressed header, sections 6.2 and 6.2.2. Only Profile 0/2 key pictures
 // are probed here. Inspect the first five bytes of each bounded packet.
-function vp9KeyPictureBitDepth(chunk) {
+export function vp9KeyPictureBitDepth(chunk) {
     if (chunk.byteLength < 5) return null;
     // WebCodecs copyTo requires a destination large enough for the whole packet.
     // Each probe retains at most 16 MiB of compressed data and borrows one copy.
-    const bytes = new Uint8Array(chunk.byteLength);
-    chunk.copyTo(bytes);
+    const bytes = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk.byteLength);
+    if (bytes !== chunk) chunk.copyTo(bytes);
     const header = bytes[0];
     const profile = ((header & 0x10) >> 3) | ((header & 0x20) >> 5);
     if ((header >> 6) !== 2 || (header & 0x0c) !== 0 || ![0, 2].includes(profile)

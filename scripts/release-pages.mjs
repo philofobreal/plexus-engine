@@ -16,6 +16,7 @@ export function collectBuildInputs(cwd=process.cwd()){
   'research/export/wormhole-gpu.html','research/export/wormhole-gpu-lab.mjs','research/export/wormhole-gpu.worker.ts',
   'research/export/wormhole-baseline-capture.mjs','research/export/wormhole-quality.mjs','research/export/parallel-material-data.mjs',
   'research/export/stable-material.worker.ts','research/export/paired-encoder.worker.ts','research/export/native-packet.worker.ts','research/export/codec-isolation.mjs',
+  'research/export/vp9-10bit-probe.worker.mjs','research/export/vp9-10bit-probe.Dockerfile','research/export/vp9-10bit-probe.c',
   'tests/browser/wormhole-host-backend-smoke.html','tests/browser/mobile-codec-probe.html').split(/\r?\n/).filter(Boolean);
  return [...new Set(paths)].filter(p=>fs.existsSync(path.join(cwd,p))&&fs.statSync(path.join(cwd,p)).isFile()).sort().map(p=>({path:p,sha256:hash(fs.readFileSync(path.join(cwd,p)))}));
 }
@@ -68,7 +69,7 @@ async function main(){
    const response=await readPublic(base+f.path+q),bytes=response.bytes;if(response.status!==200)throw Error('Public status: '+f.path);
    if(hash(bytes)!==f.sha256){
     const built=fs.readFileSync('dist/'+f.path),canonical=b=>b.toString('utf8').replaceAll('\r\n','\n');
-    if(!/\.(json|md|svg|html|css|js)$/.test(f.path)||hash(built)!==f.sha256||hash(canonical(bytes))!==hash(canonical(built)))throw Error('Public mismatch: '+f.path);
+    if(!/\.(json|md|svg|html|css|m?js)$/.test(f.path)||hash(built)!==f.sha256||hash(canonical(bytes))!==hash(canonical(built)))throw Error('Public mismatch: '+f.path);
     normalizedLineEndings.push(f.path);
    }
   }));
