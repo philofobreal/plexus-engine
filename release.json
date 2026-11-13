@@ -1,7 +1,7 @@
 {
-  "id": "wh06c2-mobile-codecs-20261113T212140976Z",
-  "previousCommit": "72dffeb22ee3d01ac25a3df8b655c70954979222",
-  "sourceCommit": "8540fb80abc480e99501aebc6f5972ac9e0b3634",
+  "id": "wh06e-wasm-vp9-20261113T215859937Z",
+  "previousCommit": "4284ebcb150449d2c57a5db40ca2e8b4e0a39b7b",
+  "sourceCommit": "4a0264e24221782edf5eb234cea4999a5a03d0ab",
   "inputs": [
     {
       "path": "bun.lock",
@@ -62,6 +62,26 @@
     {
       "path": "public/export/ffmpeg-5.1.10/index.html",
       "sha256": "ffbd72941959628f7910dce06e772ec93d75858bb8c5d405284ad88c332320ae"
+    },
+    {
+      "path": "public/export/libvpx-1.17.0/LICENSE",
+      "sha256": "8267348d5af1262c11d1a08de2f5afc77457755f1ac658627dd9acf71011d615"
+    },
+    {
+      "path": "public/export/libvpx-1.17.0/PATENTS",
+      "sha256": "cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c"
+    },
+    {
+      "path": "public/export/libvpx-1.17.0/libvpx-source.tar.gz",
+      "sha256": "1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a"
+    },
+    {
+      "path": "public/export/libvpx-1.17.0/vp9-10bit-probe.mjs",
+      "sha256": "f557f578baecf7ba551b5ac906ae135170fe08b02ace037e140cb4fe42d2dd4d"
+    },
+    {
+      "path": "public/export/libvpx-1.17.0/vp9-10bit-probe.wasm",
+      "sha256": "a64f6d0f7be179a509177a6c79784fc05364e5aa1c54cf40579906095f4c03cb"
     },
     {
       "path": "public/favicon.svg",
@@ -201,7 +221,7 @@
     },
     {
       "path": "research/export/codec-isolation.mjs",
-      "sha256": "0bb7c19498cd60ad41e842ff3c75f6280952bf8c423728736a08b855e549f0e6"
+      "sha256": "651baed866c1a6989b858dfad14ec08e1095478d23aa62c595325d319ab07293"
     },
     {
       "path": "research/export/native-packet.worker.ts",
@@ -218,6 +238,18 @@
     {
       "path": "research/export/stable-material.worker.ts",
       "sha256": "dd0539a8d2f73d1cdd807e72e8fda112a22c40e9612f153c5c317920a0977a87"
+    },
+    {
+      "path": "research/export/vp9-10bit-probe.Dockerfile",
+      "sha256": "6ef3b7439ba09327ef581f6b5e5a866af59850bbd809e693f9df62d85a85a06c"
+    },
+    {
+      "path": "research/export/vp9-10bit-probe.c",
+      "sha256": "f6ff4589300447a315c63458c26138420169feb79df6a9a2917170a1f551de28"
+    },
+    {
+      "path": "research/export/vp9-10bit-probe.worker.mjs",
+      "sha256": "5dbb2235df0b090775ab02399bc2dd9782bf323e374db635ae94c166b1c0f0fe"
     },
     {
       "path": "research/export/wormhole-baseline-capture.mjs",
@@ -381,7 +413,7 @@
     },
     {
       "path": "scripts/release-pages.mjs",
-      "sha256": "160ae1cd16bb7199b11bab363675905a85bfd144a8dc51d83689f535f9aa638d"
+      "sha256": "9f2ee8292979431a2cd51e16af36f0fe60d9fa9e922a5c006b45efac5f3fbdda"
     },
     {
       "path": "scripts/release-wall-default-off.mjs",
@@ -1793,7 +1825,7 @@
     },
     {
       "path": "tests/browser/mobile-codec-probe.html",
-      "sha256": "a9374f6b0c5ecceabc7aaad8ad48903ea9a0cddb90ee80914bf32e36f9cbf219"
+      "sha256": "0c6fa61b7cbbedb886c3b6451f3f6d769572e4b17eeb59633d972a82633cc852"
     },
     {
       "path": "tests/browser/wormhole-host-backend-smoke.html",
@@ -1826,12 +1858,12 @@
       "sha256": "a1b71192648bb3fc5a9df5fb3655a4bf2c95f40b97aeb9bb11eb86d6cf268f76"
     },
     {
-      "path": "assets/codec-isolation-CcnOX-q5.js",
-      "sha256": "9ab8e5f7d99d3e51f95ff2d68283981435daa0379e16e30186cd849a6c2424ce"
+      "path": "assets/codec-isolation-BIqUhlcJ.js",
+      "sha256": "0352b42045a5971e9acae0e3134580585176086360984fa6a0334975d4d719f8"
     },
     {
-      "path": "assets/codec-isolation-D_bfFX04.js",
-      "sha256": "b184fe3cedc7fd75035126b33cc3191d6fb9f5690fdbef0d1ffd5b3ef47a4e1c"
+      "path": "assets/codec-isolation-CXNaAX9d.js",
+      "sha256": "bbb869465d7eb80bc00bfc3e31859298100d379dd96fa48c834ae776abd19104"
     },
     {
       "path": "assets/CosmicWormholeIdentity-Whl20rZa.js",
@@ -1882,8 +1914,8 @@
       "sha256": "433cc355ed73826173666ff61e7a4abf3c15c5262acc4b7a5c125c352e7d11ee"
     },
     {
-      "path": "assets/mobileCodecProbe-CwrcUCEa.js",
-      "sha256": "a81229bdf59e8ca198caee68638d1c9e852519fdb3f5706f1fb8c5aae3aa9091"
+      "path": "assets/mobileCodecProbe-J6gSxqbb.js",
+      "sha256": "038b9f245843038d01672c180385333014b8797c0fd0dfa811ab3ff199fd4655"
     },
     {
       "path": "assets/modulepreload-polyfill-Dezn_h7o.js",
@@ -1950,6 +1982,10 @@
       "sha256": "ab002d260358609e76de87ca4163a65654a74994df576295ae951548abc8feb7"
     },
     {
+      "path": "assets/vp9-10bit-probe.worker-BzwtREdC.js",
+      "sha256": "bda917fb73bc0e6ec3c968e53ca13bd522ff41441260e2b5fe2bfb0ec06a3151"
+    },
+    {
       "path": "assets/WebCodecsBackend-Cuw5E67l.js",
       "sha256": "c524f39965fec4f62e23e745e27149a5bf9736cb921464cfd70bd7055cc83f1e"
     },
@@ -1978,8 +2014,8 @@
       "sha256": "61ccac8e4b0984d4859ce8dd1dd7b7658f032161595a402a37950f5ff36b409d"
     },
     {
-      "path": "assets/wormholeHostLab-4OeTLRnu.js",
-      "sha256": "ef9054d56ed1a5a3741f4d1766a09fd175059eb2eeee0d9a1eab64b7c44619a4"
+      "path": "assets/wormholeHostLab-DW3wK48z.js",
+      "sha256": "0a9311a20d1cc0f61dad69c784f2c06fb77c2e43bbb61380207928a53d629096"
     },
     {
       "path": "assets/wormholeHostRender.worker-DSD9FOKw.js",
@@ -2046,6 +2082,26 @@
       "sha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
     },
     {
+      "path": "export/libvpx-1.17.0/libvpx-source.tar.gz",
+      "sha256": "1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a"
+    },
+    {
+      "path": "export/libvpx-1.17.0/LICENSE",
+      "sha256": "8267348d5af1262c11d1a08de2f5afc77457755f1ac658627dd9acf71011d615"
+    },
+    {
+      "path": "export/libvpx-1.17.0/PATENTS",
+      "sha256": "cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c"
+    },
+    {
+      "path": "export/libvpx-1.17.0/vp9-10bit-probe.mjs",
+      "sha256": "f557f578baecf7ba551b5ac906ae135170fe08b02ace037e140cb4fe42d2dd4d"
+    },
+    {
+      "path": "export/libvpx-1.17.0/vp9-10bit-probe.wasm",
+      "sha256": "a64f6d0f7be179a509177a6c79784fc05364e5aa1c54cf40579906095f4c03cb"
+    },
+    {
       "path": "favicon.svg",
       "sha256": "61bc9a161de58248288e6905425d7180f0624c2865007b97d763fdac12043a66"
     },
@@ -2071,11 +2127,11 @@
     },
     {
       "path": "tests/browser/mobile-codec-probe.html",
-      "sha256": "f52ded76423e4603e7f8c2708b1726fb3fd660d9819af5ff94e7fedf41c2323b"
+      "sha256": "e7dd9c9a4c1243381f088c59457144e7cbcae58d20170919c48dffc7f0b7c157"
     },
     {
       "path": "tests/browser/wormhole-host-backend-smoke.html",
-      "sha256": "bdcaa33dd6e90bf4e8c5c74b4922dde5691a6d0ac10fcfcef5d22d33d56489c6"
+      "sha256": "a3f00cf56ee5f1ab17cf37d0dcebf727a075c782674934e1f68966bb46eab124"
     },
     {
       "path": "visual-tuning-presets/default.json",

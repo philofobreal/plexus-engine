@@ -12,11 +12,13 @@ h1 { font-size: 1.5rem; }
 button { min-height: 44px; padding: 0.5rem 0.85rem; font: inherit; margin: 0 0.25rem 0.5rem 0; }
 ul { padding-left: 1.25rem; }
 li { padding: 0.35rem 0; overflow-wrap: anywhere; }
+video { display: block; width: 100%; margin: 0.75rem 0; }
+video[hidden] { display: none; }
 textarea { width: 100%; box-sizing: border-box; font: 0.85rem monospace; }
 </style>
-  <script type="module" crossorigin src="/plexus-engine/assets/mobileCodecProbe-CwrcUCEa.js"></script>
+  <script type="module" crossorigin src="/plexus-engine/assets/mobileCodecProbe-J6gSxqbb.js"></script>
   <link rel="modulepreload" crossorigin href="/plexus-engine/assets/modulepreload-polyfill-Dezn_h7o.js">
-  <link rel="modulepreload" crossorigin href="/plexus-engine/assets/codec-isolation-CcnOX-q5.js">
+  <link rel="modulepreload" crossorigin href="/plexus-engine/assets/codec-isolation-BIqUhlcJ.js">
 </head>
 <body>
 <main>
@@ -30,6 +32,18 @@ textarea { width: 100%; box-sizing: border-box; font: 0.85rem monospace; }
 <ul id="results" aria-label="Mérési eredmények"></ul>
 <label for="report">Részletes JSON-jelentés</label>
 <textarea id="report" rows="6" readonly></textarea>
+<section aria-labelledby="wasm-title">
+<h2 id="wasm-title">10 bites WASM-próba</h2>
+<p>Egy másodperces, 720p/30 fps-es néma MP4-et készít a telefon processzorával. Tartsd nyitva a lapot, majd indítsd el az elkészült videót.</p>
+<button id="wasm-start" type="button" disabled>WASM-próba indítása</button>
+<button id="wasm-cancel" type="button" disabled>Megszakítás</button>
+<p id="wasm-status" role="status">A WASM-próba még nem futott.</p>
+<video id="wasm-video" controls muted playsinline preload="metadata" hidden></video>
+<a id="wasm-download" download="plexus-720p-vp9-10bit-probe.mp4" hidden>MP4 letöltése</a>
+<p><label for="wasm-report">WASM-jelentés</label></p>
+<textarea id="wasm-report" rows="6" readonly></textarea>
+<button id="wasm-copy" type="button" disabled>WASM-jelentés másolása</button>
+</section>
 </main>
 </body>
 </html>
