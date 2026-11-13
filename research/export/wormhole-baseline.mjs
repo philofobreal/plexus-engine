@@ -573,12 +573,14 @@ async function capture() {
             await writeFile(path.join(output, 'mobile-codec-browser.json'), JSON.stringify(proof, null, 2)+'\n', {flag:'wx'});
             console.log(JSON.stringify({mobileCodecProbe:proof.pass, cases:proof.cases, outcomes:report.rows.map(r => [r.id,r.outcome])}));
         }
-        if (process.argv.includes('--wasm-codec-host')) {
+        if (process.argv.includes('--wasm-codec-host') || process.argv.includes('--wasm-simd-host')) {
+            const variant = process.argv.includes('--wasm-simd-host') ? 'simd' : 'scalar';
             const route = '/plexus-engine/tests/browser/mobile-codec-probe.html';
             const url = publicRelease ? 'https://philofobreal.github.io' + route + '?release=' + publicRelease : origin + route;
             await send('Emulation.setDeviceMetricsOverride', {width:390, height:844, deviceScaleFactor:1, mobile:true});
             await send('Page.navigate', {url});
             for (let i = 0; i < 100 && !await evaluate('document.querySelector("#wasm-start")?.disabled === false'); i++) await sleep(100);
+            await evaluate('document.querySelector("#wasm-variant").value = ' + JSON.stringify(variant));
             const reportField = 'JSON.parse(document.querySelector("#wasm-report").value || "null")';
             await evaluate('document.querySelector("#wasm-start").click(); document.querySelector("#wasm-cancel").click();');
             assert.equal((await evaluate(reportField))?.status, 'cancelled');
@@ -592,6 +594,9 @@ async function capture() {
             await writeFile(path.join(output, 'wasm-codec-observed.json'), JSON.stringify(report,null,2)+'\n', {flag:'wx'});
             assert.equal(report?.status, 'complete', JSON.stringify(report));
             assert.equal(report.release, publicRelease ?? null);
+            assert.equal(report.variant, variant);
+            assert.equal(report.stats.variant, variant);
+            assert.match(report.stats.wasmSha256, /^[a-f0-9]{64}$/);
             assert.equal(report.stats.encodedFrames, 30);
             assert.equal(report.stats.encodedBitDepth, 10);
             assert.ok(report.stats.wasmLinearMemoryBytes <= 128 * 1024 * 1024);
@@ -870,6 +875,31 @@ async function auditMp4Levels(baselineDirectory,fixedDirectory){
     await writeFile(path.join(output,'level-audit.json'),JSON.stringify(result,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify({output,pass:true,files:rows.length,frames:rows.reduce((n,r)=>n+r.frames,0),levels:rows.map(r=>({name:r.name,old:r.before.videoCodec.codec,current:r.after.videoCodec.codec}))}));
 }
 
+async function compareWasmVp9Builds(directory) {
+    const out = path.resolve(directory ?? path.join(root, 'wasm-pairs-' + randomUUID()));
+    await mkdir(out, {recursive:true});
+    const {encodeVp9Probe} = await import('./vp9-10bit-probe.worker.mjs');
+    const codecDir = path.resolve('public/export/libvpx-1.17.0');
+    const {default:createCore} = await import(pathToFileURL(path.join(codecDir, 'vp9-10bit-probe.mjs')).href);
+    const rows = [];
+    for (const variant of ['scalar', 'simd', 'simd', 'scalar', 'scalar', 'simd']) {
+        const suffix = variant === 'simd' ? '-simd' : '';
+        const binary = await readFile(path.join(codecDir, 'vp9-10bit-probe' + suffix + '.wasm'));
+        const core = await createCore({wasmBinary:binary});
+        const {buffer, stats} = await encodeVp9Probe(core);
+        const name = variant + '-' + (rows.length + 1) + '.mp4';
+        await writeFile(path.join(out, name), Buffer.from(buffer), {flag:'wx'});
+        const row = {variant, name, wasmSha256:hash(binary), encodeMs:stats.encodeMs, totalMs:stats.totalMs,
+            fileBytes:stats.fileBytes, wasmLinearMemoryBytes:stats.wasmLinearMemoryBytes};
+        rows.push(row);
+        console.log(JSON.stringify(row));
+    }
+    const median = variant => rows.filter(row => row.variant === variant).map(row => row.totalMs).sort((a, b) => a-b)[1];
+    await writeFile(path.join(out, 'node-pairs.json'), JSON.stringify({scope:'Sequential desktop Node runs of the same 720p30 clip. Core loading excluded.',
+        scalarMedianMs:median('scalar'), simdMedianMs:median('simd'), rows}, null, 2)+'\n', {flag:'wx'});
+    console.log(JSON.stringify({output:out, scalarMedianMs:median('scalar'), simdMedianMs:median('simd')}));
+}
+
 async function verify(file) {
     const output = file ? path.dirname(path.resolve(file)) : (await readFile(path.join(root, 'active-run.txt'), 'utf8')).trim();
     const baseline = await readFile(file ?? path.join(output, 'baseline.json'));
@@ -883,6 +913,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     else if (process.argv[2] === 'analyze-replay') await analyzeReplay(process.argv[3],process.argv[4]);
     else if (process.argv[2] === 'compare-source') await compareSources(process.argv[3],process.argv[4]);
     else if (process.argv[2] === 'compare-encoded') await compareEncoded(process.argv[3],process.argv[4]);
+    else if (process.argv[2] === 'compare-wasm-vp9') await compareWasmVp9Builds(process.argv[3]);
     else if (process.argv[2] === 'verify') await verify(process.argv[3]);
-    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--quantizer-source=PRIOR_SOURCE_RUN [--quality-refine | --short-gop]] [--exact-host] [--export-host [--profile-source | --profile-check]] [--native-packets | --predictive-detail | --quality-candidate=1|2|4|8] [--turbo-export-host] [--diagnostics-host] [--mobile-codec-host] [--wasm-codec-host] [--codec-host] [--detail-host [--level-boundary] [--detail-profile=reference|detail|text|variable]] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | audit-mp4-levels BASELINE_RUN FIXED_RUN | level-probe RUN | analyze-replay RUN ACCEPTED_SOURCE_COMPARISON | compare-source BASELINE_RUN CANDIDATE_RUN | compare-encoded BASELINE_RUN CANDIDATE_RUN | verify [baseline.json]');
+    else throw Error('Use: node research/export/wormhole-baseline.mjs capture [--quantizer-source=PRIOR_SOURCE_RUN [--quality-refine | --short-gop]] [--exact-host] [--export-host [--profile-source | --profile-check]] [--native-packets | --predictive-detail | --quality-candidate=1|2|4|8] [--turbo-export-host] [--diagnostics-host] [--mobile-codec-host] [--wasm-codec-host | --wasm-simd-host] [--codec-host] [--detail-host [--level-boundary] [--detail-profile=reference|detail|text|variable]] [--remux-reference=ID_CLIP [--remux-cfr] [--remux-color709] [--inspect-remux]] [--isolate-host | --turbo-host [--stable-material | --paired-encoder] [--mp4-only]] [--public-release=ID] | audit-mp4-levels BASELINE_RUN FIXED_RUN | level-probe RUN | analyze-replay RUN ACCEPTED_SOURCE_COMPARISON | compare-source BASELINE_RUN CANDIDATE_RUN | compare-encoded BASELINE_RUN CANDIDATE_RUN | compare-wasm-vp9 [OUTPUT_DIRECTORY] | verify [baseline.json]');
 }

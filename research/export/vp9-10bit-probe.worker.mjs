@@ -91,19 +91,35 @@ export async function encodeVp9Probe(core, { progress } = {}) {
     }
 }
 
+const probeBinaries = {
+    scalar: {name:'vp9-10bit-probe.wasm', sha256:'a64f6d0f7be179a509177a6c79784fc05364e5aa1c54cf40579906095f4c03cb'},
+    simd: {name:'vp9-10bit-probe-simd.wasm', sha256:'90054c5d31643beb149be4ec63d0be6b2121d146b74818febc3ee01f922effb1'},
+};
+
 if (typeof WorkerGlobalScope !== 'undefined' && globalThis instanceof WorkerGlobalScope) {
     let started = false;
     self.onmessage = async ({data}) => {
         if (data?.type !== 'wasm_codec_probe' || started) return;
         started = true;
         try {
+            const variant = data.variant ?? 'scalar';
+            if (variant !== 'scalar' && variant !== 'simd') throw Error('Unknown WASM encoder variant');
+            const binary = probeBinaries[variant];
             const directory = new URL(import.meta.env.BASE_URL + 'export/libvpx-1.17.0/', self.location.origin);
             const loadStart = performance.now();
             const {default:createCore} = await import(/* @vite-ignore */ new URL('vp9-10bit-probe.mjs', directory).href);
-            const core = await createCore({locateFile:name => new URL(name, directory).href});
+            const response = await fetch(new URL(binary.name, directory));
+            if (!response.ok) throw Error('WASM binary download failed (HTTP ' + response.status + ')');
+            const bytes = await response.arrayBuffer();
+            const digest = await crypto.subtle.digest('SHA-256', bytes);
+            const sha256 = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('');
+            if (sha256 !== binary.sha256) throw Error('WASM binary hash does not match the requested variant');
+            if (!WebAssembly.validate(bytes)) throw Error('The browser cannot run this WASM variant');
+            const core = await createCore({wasmBinary:new Uint8Array(bytes)});
             const loadMs = performance.now() - loadStart;
             const {buffer, stats} = await encodeVp9Probe(core, {progress:frames => self.postMessage({type:'progress',frames})});
-            self.postMessage({type:'complete', stats:{...stats,loadMs}, buffer}, [buffer]);
+            self.postMessage({type:'complete', stats:{...stats, loadMs, variant, wasmSha256:sha256,
+                encoder:'libvpx 1.17.0 / WASM ' + (variant === 'simd' ? 'SIMD128' : 'scalar') + ' / one thread'}, buffer}, [buffer]);
         } catch (error) {
             self.postMessage({type:'error', message:String(error?.message ?? error).slice(0, 400)});
         }

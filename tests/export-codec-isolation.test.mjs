@@ -344,3 +344,33 @@ test('shipped libvpx WASM encodes a complete 720p30 ten-bit MP4 with bounded mem
     }
     assert.equal(core._probe_plane(0), 0, 'probe releases input planes after mux');
 });
+
+
+test('shipped scalar and SIMD VP9 builds produce identical compressed picture packets', async () => {
+    const {readFile} = await import('node:fs/promises');
+    const {createHash} = await import('node:crypto');
+    const {ALL_FORMATS, BlobSource, EncodedPacketSink, Input} = await import('mediabunny');
+    const {default:createCore} = await import('../public/export/libvpx-1.17.0/vp9-10bit-probe.mjs');
+    const {encodeVp9Probe} = await import('../research/export/vp9-10bit-probe.worker.mjs');
+    const snapshots = [];
+    for (const suffix of ['', '-simd']) {
+        const binary = await readFile(new URL('../public/export/libvpx-1.17.0/vp9-10bit-probe' + suffix + '.wasm', import.meta.url));
+        const core = await createCore({wasmBinary:binary});
+        const {buffer,stats} = await encodeVp9Probe(core);
+        assert.equal(stats.encodedFrames, 30);
+        const input = new Input({formats:ALL_FORMATS, source:new BlobSource(new Blob([buffer]))});
+        try {
+            const track = await input.getPrimaryVideoTrack();
+            const packets = [];
+            for await (const packet of new EncodedPacketSink(track).packets()) {
+                packets.push({type:packet.type, timestamp:packet.timestamp, duration:packet.duration,
+                    sha256:createHash('sha256').update(packet.data).digest('hex')});
+            }
+            snapshots.push({packets, config:await track.getDecoderConfig(), heapBytes:stats.wasmLinearMemoryBytes});
+        } finally {
+            input.dispose();
+        }
+    }
+    assert.equal(snapshots[0].packets.length, 30);
+    assert.deepEqual(snapshots[1], snapshots[0]);
+});

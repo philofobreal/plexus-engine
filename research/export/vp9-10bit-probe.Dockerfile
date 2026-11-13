@@ -6,14 +6,16 @@ RUN test "$(git -C /source rev-parse HEAD)" = 6df3ec34557879fff673706f4a1d9fbd0f
     && git -C /source archive --prefix=libvpx-1.17.0/ HEAD | gzip -n > /libvpx-source.tar.gz \
     && mkdir /libvpx && tar -xzf /libvpx-source.tar.gz -C /libvpx --strip-components=1
 WORKDIR /libvpx
+ARG WASM_SIMD_FLAGS=
 RUN AR=emar LD=emcc emconfigure ./configure --target=generic-gnu --disable-runtime-cpu-detect \
     --disable-multithread --disable-vp8 --disable-vp9-decoder --enable-vp9-highbitdepth \
     --disable-examples --disable-tools --disable-docs --disable-unit-tests \
     --disable-webm-io --disable-libyuv --disable-install-bins --disable-debug-libs \
+    --extra-cflags="$WASM_SIMD_FLAGS" \
     && emmake make -j4
 COPY vp9-10bit-probe.c /probe.c
 RUN mkdir /out \
-    && emcc -O3 -I. /probe.c libvpx.a -o /out/vp9-10bit-probe.mjs \
+    && emcc -O3 $WASM_SIMD_FLAGS -I. /probe.c libvpx.a -o /out/vp9-10bit-probe.mjs \
     --no-entry -sMODULARIZE=1 -sEXPORT_ES6=1 -sFILESYSTEM=0 -sALLOW_MEMORY_GROWTH=1 \
     -sEXPORTED_RUNTIME_METHODS='["UTF8ToString"]' \
     -sINITIAL_MEMORY=16777216 -sMAXIMUM_MEMORY=134217728 \

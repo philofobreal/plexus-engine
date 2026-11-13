@@ -9,7 +9,7 @@
 body { background: #101321; color: #edf4fc; margin: 0; }
 main { max-width: 42rem; margin: auto; padding: 1rem; }
 h1 { font-size: 1.5rem; }
-button { min-height: 44px; padding: 0.5rem 0.85rem; font: inherit; margin: 0 0.25rem 0.5rem 0; }
+button, select { min-height: 44px; padding: 0.5rem 0.85rem; font: inherit; margin: 0 0.25rem 0.5rem 0; }
 ul { padding-left: 1.25rem; }
 li { padding: 0.35rem 0; overflow-wrap: anywhere; }
 video { display: block; width: 100%; margin: 0.75rem 0; }
@@ -32,6 +32,8 @@ textarea { width: 100%; box-sizing: border-box; font: 0.85rem monospace; }
 <section aria-labelledby="wasm-title">
 <h2 id="wasm-title">10 bites WASM-próba</h2>
 <p>Egy másodperces, 720p/30 fps-es néma MP4-et készít a telefon processzorával. Tartsd nyitva a lapot, majd indítsd el az elkészült videót.</p>
+<p><label for="wasm-variant">Kódoló</label>
+<select id="wasm-variant"><option value="scalar">Skalár</option><option value="simd">SIMD</option></select></p>
 <button id="wasm-start" type="button" disabled>WASM-próba indítása</button>
 <button id="wasm-cancel" type="button" disabled>Megszakítás</button>
 <p id="wasm-status" role="status">A WASM-próba még nem futott.</p>
@@ -157,6 +159,7 @@ window.addEventListener('pagehide', () => {
     if (active) finish(active, 'cancelled', 'A mérés megszakadt.');
 });
 const wasmStart = document.querySelector('#wasm-start');
+const wasmVariant = document.querySelector('#wasm-variant');
 const wasmCancel = document.querySelector('#wasm-cancel');
 const wasmStatus = document.querySelector('#wasm-status');
 const wasmVideo = document.querySelector('#wasm-video');
@@ -189,8 +192,9 @@ function finishWasm(job, status, message, stats) {
     job.worker?.terminate();
     start.disabled = wasmStart.disabled = false;
     wasmCancel.disabled = true;
+    wasmVariant.disabled = false;
     wasmReport = {version:1, release:new URLSearchParams(location.search).get('release'),
-        userAgent:navigator.userAgent, status, framesAtStop:job.frames, ...(stats ? {stats} : {}),
+        userAgent:navigator.userAgent, status, variant:job.variant, framesAtStop:job.frames, ...(stats ? {stats} : {}),
         ...(message ? {message} : {}),
         ...(status === 'complete' ? {playback:'not-tested'} : {})};
     showWasmReport();
@@ -206,7 +210,8 @@ wasmStart.addEventListener('click', () => {
     start.disabled = wasmStart.disabled = true;
     wasmCancel.disabled = false;
     wasmStatus.textContent = 'A WASM-kódoló betöltése…';
-    const job = wasmJob = {frames:0};
+    wasmVariant.disabled = true;
+    const job = wasmJob = {frames:0, variant:wasmVariant.value};
     try {
         const worker = job.worker = new WasmProbeWorker();
         job.deadline = setTimeout(() => finishWasm(job, 'failed', 'A próba elérte a 180 másodperces időkorlátot.'), 180000);
@@ -221,7 +226,8 @@ wasmStart.addEventListener('click', () => {
                 finishWasm(job, 'failed', data.message);
             } else if (data.type === 'complete') {
                 if (!(data.buffer instanceof ArrayBuffer) || !data.buffer.byteLength
-                    || data.buffer.byteLength > 8 * 1024 * 1024 || data.stats?.encodedFrames !== 30) {
+                    || data.buffer.byteLength > 8 * 1024 * 1024 || data.stats?.encodedFrames !== 30
+                    || data.stats.variant !== job.variant) {
                     finishWasm(job, 'failed', 'A WASM-próba hiányos fájlt adott.');
                     return;
                 }
@@ -232,7 +238,7 @@ wasmStart.addEventListener('click', () => {
                 wasmVideo.src = sampleUrl;
             }
         };
-        worker.postMessage({type:'wasm_codec_probe'});
+        worker.postMessage({type:'wasm_codec_probe', variant:job.variant});
     } catch {
         finishWasm(job, 'failed', 'A WASM-próba nem indítható.');
     }
