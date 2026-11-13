@@ -3,7 +3,7 @@
   "version": 1,
   "date": "2026-11-13",
   "predecessor": "37c74ba35366878419bfc6024b1351d0ad02dbf0",
-  "status": "Mobile diagnostic ready. Physical Samsung report pending.",
+  "status": "Physical S22 Ultra measurement complete. All eleven tested 10-bit encoder configurations refused. Next WH-06e software-encoder feasibility.",
   "owners": {
     "research": "codec worker and independent probe page",
     "release": "Vite input and guarded Pages publisher",
@@ -332,9 +332,291 @@
     }
   ],
   "physicalMobile": {
-    "status": "pending",
-    "previousDevice": "Samsung Galaxy S22 Ultra, Android Chrome",
-    "previousEvidence": "VP9 10-bit 4K30 at 64 Mbit/s: encoder unsupported, decoder supported, no pictures."
+    "status": "complete",
+    "device": "Samsung Galaxy S22 Ultra, as identified by the user",
+    "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36",
+    "release": "wh06c2-mobile-codecs-20261113T212140976Z",
+    "scope": "Three synthetic key pictures per configuration. Reports browser encoding, VP9 bitstream depth, and decoder results. Export quality, hardware assignment and long-job reliability require separate tests.",
+    "artifact": "logs/wh06c2/s22-ultra-a9b99ce5d0a0.json",
+    "sha256": "a9b99ce5d0a0bb8852fc340c6c22e37c673fc2e71d5c7efe3138415de870175f",
+    "rows": [
+      {
+        "id": "vp9-8bit-control",
+        "group": "control",
+        "family": "VP9",
+        "config": {
+          "codec": "vp09.00.31.08",
+          "width": 1280,
+          "height": 720,
+          "framerate": 30,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "complete",
+        "outcome": "control-pass",
+        "encoder": "supported",
+        "decoder": "supported",
+        "encodedFrames": 3,
+        "decodedFrames": 3,
+        "encodedVp9Depths": [
+          8,
+          8,
+          8
+        ]
+      },
+      {
+        "id": "vp9-720p-30",
+        "group": "product",
+        "family": "VP9",
+        "config": {
+          "codec": "vp09.02.31.10",
+          "width": 1280,
+          "height": 720,
+          "framerate": 30,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "outcome": "encoder-unsupported",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "requestedDecoderQuery": "supported",
+        "encodedFrames": 0,
+        "decodedFrames": 0
+      },
+      {
+        "id": "vp9-720p-60",
+        "group": "product",
+        "family": "VP9",
+        "config": {
+          "codec": "vp09.02.40.10",
+          "width": 1280,
+          "height": 720,
+          "framerate": 60,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "outcome": "encoder-unsupported",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "requestedDecoderQuery": "supported",
+        "encodedFrames": 0,
+        "decodedFrames": 0
+      },
+      {
+        "id": "vp9-1080p-30",
+        "group": "product",
+        "family": "VP9",
+        "config": {
+          "codec": "vp09.02.40.10",
+          "width": 1920,
+          "height": 1080,
+          "framerate": 30,
+          "bitrate": 14000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "outcome": "encoder-unsupported",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "requestedDecoderQuery": "supported",
+        "encodedFrames": 0,
+        "decodedFrames": 0
+      },
+      {
+        "id": "vp9-1080p-60",
+        "group": "product",
+        "family": "VP9",
+        "config": {
+          "codec": "vp09.02.41.10",
+          "width": 1920,
+          "height": 1080,
+          "framerate": 60,
+          "bitrate": 14000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "outcome": "encoder-unsupported",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "requestedDecoderQuery": "supported",
+        "encodedFrames": 0,
+        "decodedFrames": 0
+      },
+      {
+        "id": "vp9-4K-30",
+        "group": "product",
+        "family": "VP9",
+        "config": {
+          "codec": "vp09.02.51.10",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 30,
+          "bitrate": 64000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "outcome": "encoder-unsupported",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "requestedDecoderQuery": "supported",
+        "encodedFrames": 0,
+        "decodedFrames": 0
+      },
+      {
+        "id": "vp9-4K-60",
+        "group": "product",
+        "family": "VP9",
+        "config": {
+          "codec": "vp09.02.51.10",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 60,
+          "bitrate": 64000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "outcome": "encoder-unsupported",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "requestedDecoderQuery": "supported",
+        "encodedFrames": 0,
+        "decodedFrames": 0
+      },
+      {
+        "id": "vp9-4K-30-48mbps",
+        "group": "lower-rate",
+        "family": "VP9",
+        "config": {
+          "codec": "vp09.02.50.10",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 30,
+          "bitrate": 48000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "outcome": "encoder-unsupported",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "requestedDecoderQuery": "supported",
+        "encodedFrames": 0,
+        "decodedFrames": 0
+      },
+      {
+        "id": "av1-720p-30",
+        "group": "alternative",
+        "family": "AV1",
+        "config": {
+          "codec": "av01.0.13M.10",
+          "width": 1280,
+          "height": 720,
+          "framerate": 30,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "outcome": "encoder-unsupported",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "requestedDecoderQuery": "supported",
+        "encodedFrames": 0,
+        "decodedFrames": 0
+      },
+      {
+        "id": "av1-4K-30",
+        "group": "alternative",
+        "family": "AV1",
+        "config": {
+          "codec": "av01.0.13M.10",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 30,
+          "bitrate": 32000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "outcome": "encoder-unsupported",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "requestedDecoderQuery": "supported",
+        "encodedFrames": 0,
+        "decodedFrames": 0
+      },
+      {
+        "id": "hevc-720p-30",
+        "group": "alternative",
+        "family": "HEVC",
+        "config": {
+          "codec": "hvc1.2.4.H153.B0",
+          "width": 1280,
+          "height": 720,
+          "framerate": 30,
+          "bitrate": 8000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "outcome": "encoder-unsupported",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "requestedDecoderQuery": "supported",
+        "encodedFrames": 0,
+        "decodedFrames": 0
+      },
+      {
+        "id": "hevc-4K-30",
+        "group": "alternative",
+        "family": "HEVC",
+        "config": {
+          "codec": "hvc1.2.4.H153.B0",
+          "width": 3840,
+          "height": 2160,
+          "framerate": 30,
+          "bitrate": 32000000,
+          "hardwareAcceleration": "no-preference",
+          "latencyMode": "quality",
+          "bitrateMode": "constant"
+        },
+        "stage": "encoder-query",
+        "outcome": "encoder-unsupported",
+        "encoder": "unsupported",
+        "decoder": "not-checked",
+        "requestedDecoderQuery": "supported",
+        "encodedFrames": 0,
+        "decodedFrames": 0
+      }
+    ],
+    "summary": {
+      "controlPicturesEncodedAndDecoded": 3,
+      "tenBitEncoderRefusals": 11,
+      "tenBitSuccessfulDecoderQueries": 11,
+      "tenBitPicturesEncoded": 0,
+      "tenBitPicturesDecoded": 0
+    },
+    "next": "WH-06e: measure a software 10-bit encoder on the phone, starting with a short 720p30 sample before considering larger jobs."
   },
   "validation": {
     "activeFiles": 233,
@@ -405,7 +687,7 @@
       "encodedFiles": 36,
       "independentFrameIds": 770
     },
-    "awaitedPhysicalDevice": true
+    "physicalDeviceReportValidatedAgainstPublishedMatrix": true
   },
   "commands": {
     "build": "npm run build",
@@ -478,6 +760,7 @@
     "logs/wh01/run-6eb259f0-5ab5-493a-ae2f-0a0d5b1f710a/integrated-export-artifacts.json": "2f66b6e6ee3ca27928206a3540d14c1faef85b962f9777b3280fa7855539da6a",
     "logs/wh01/run-6eb259f0-5ab5-493a-ae2f-0a0d5b1f710a/exact-host.json": "5c08401535f890ff1fd4ab4f3aa11abb4b610fc1a8f86bcdfcd124c8e2c87029",
     "logs/wh06c2/node-results.json": "9798f6ac699c21b3cb51db02300988cfec7e25a94cdba78a99702cd5d7dc2aff",
-    "logs/wh06c2/cumulative.tap": "2840956426a350871d65713f523372beb0ce66a8ffe4448dc3474bc09a39f98e"
+    "logs/wh06c2/cumulative.tap": "2840956426a350871d65713f523372beb0ce66a8ffe4448dc3474bc09a39f98e",
+    "logs/wh06c2/s22-ultra-a9b99ce5d0a0.json": "a9b99ce5d0a0bb8852fc340c6c22e37c673fc2e71d5c7efe3138415de870175f"
   }
 }

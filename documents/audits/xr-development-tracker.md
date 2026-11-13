@@ -2,13 +2,15 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-06c2 mobile codec probe is ready for an S22 Ultra run. Collect the twelve-row report from physical Android Chrome before selecting a native integration or a WH-06e encoder experiment. The Windows probe confirms seven VP9 10-bit configurations on that browser. WH-08 still covers long-job and device qualification.**
+**Current priority: WH-06c2 is complete on the S22 Ultra. Chrome refused all eleven tested 10-bit encoder configurations. Next WH-06e measures a short software 10-bit encode. WH-08 covers long-job and physical-device qualification.**
 
-### WH-06c2 physical-device measurement pending
+### WH-06c2 physical-device measurement complete
 
-The public probe uses the same VP9 configuration at six landscape product
-settings. It includes a VP9 8-bit control, 4K30/48 Mbit/s VP9 and four AV1/HEVC
-diagnostic requests. Start it in Chrome on the S22 Ultra and send the JSON.
+The user returned all twelve rows from the published probe. The VP9 8-bit
+control encoded and decoded all three pictures. Chrome refused all seven
+tested 10-bit VP9 configurations and all four AV1/HEVC configurations at the
+encoder query. All eleven decoder queries reported support. The validated
+report has zero actual 10-bit encoded or decoded pictures.
 [Probe and protocol](wormhole-wh06c1-export-diagnostics.md#wh-06c2--physical-device-codec-probe-2026-11-13),
 [receipt](../tests/wormhole-wh06c2-research.json).
 

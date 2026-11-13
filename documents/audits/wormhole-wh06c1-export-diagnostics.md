@@ -259,10 +259,16 @@ check lacked simulated focus. The final run verifies the VP9 header evidence,
 a completed decode, cancel/retry, clipboard copy and downloaded JSON in a
 phone-sized browser viewport.
 
-The S22 Ultra physical result is pending. The previously supplied 4K30
-64 Mbit/s refusal remains the device evidence available at this checkpoint.
-The short report will decide the next experiment: a successful product VP9
-row warrants an actual short MP4 check at that setting, an alternate codec
-result warrants an integration feasibility check, and refusals across the
-tested 10-bit rows inform WH-06e. Neither a short pass nor a decoder query
-qualifies a full-song export. See the [research receipt](../tests/wormhole-wh06c2-research.json).
+The user returned all twelve results from Chrome 157 on the physical Samsung
+Galaxy S22 Ultra. The VP9 8-bit control encoded and decoded all three pictures.
+The browser refused every tested 10-bit encoder configuration before encoding
+a picture. This covers six product VP9 settings, the 4K30/48 Mbit/s VP9 row,
+and the four AV1/HEVC rows. All eleven requested decoder queries reported
+support. The report contains zero actual 10-bit decoded pictures.
+
+The measured device/browser combination has no usable native encoder among
+the tested configurations. WH-06c2 is complete. WH-06e can use this evidence
+to test a separate software 10-bit encoder on a short 720p30 sample, then
+consider higher resolutions if output quality, decoding, elapsed time and
+resource use justify it. Full-song reliability belongs to WH-08.
+[Validated physical-device result and source hash](../tests/wormhole-wh06c2-research.json).
