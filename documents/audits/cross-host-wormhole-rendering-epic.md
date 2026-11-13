@@ -63,6 +63,13 @@ lejátszódott. A futásból 18,91 másodpercet a kódolás tett ki. Következő
 ugyanezen a mintán mérjük a SIMD kódolót, mielőtt nagyobb felbontásra lépnénk.
 [Próba és mérések](../tests/wormhole-wh06e-research.json).
 
+**WH-06e telefonos skalár/SIMD összevetés kész (2026-11-14).** Az S22 Ultra
+ugyanazon a mintán 19,19 s alatt végzett skalár, 19,93 s alatt SIMD módban.
+Mindkét futás 30 képet játszott le eldobás nélkül. A következő 720p30 próba
+a skalár kódoló beállításait méri a veszteségmentes referenciához képest,
+Wormhole-gradienseken és mozgó jeleneteken is ellenőrizve a képminőséget.
+[Páros mérés](../tests/wormhole-wh06e-simd-research.json).
+
 ## 1. Cél és helye a főtervben
 
 A sima host (a jelenlegi `src/main.ts` dashboard) és az MVP ugyanarra a közös

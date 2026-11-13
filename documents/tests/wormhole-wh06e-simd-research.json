@@ -3,7 +3,7 @@
   "version": 1,
   "date": "2026-11-13",
   "predecessor": "2c978bef7456d6c5b506cffba67578657742b159",
-  "status": "SIMD candidate qualified for paired physical-device diagnostic. Desktop Node comparison showed no speed gain. S22 Ultra reports pending.",
+  "status": "Desktop and S22 Ultra comparisons complete. The SIMD build showed no speed gain in the measured runs. Scalar remains the software reference.",
   "scope": "One second 720p30 synthetic lossless 10-bit VP9 all-key MP4. Both encoders use one CPU thread. No product promotion.",
   "build": {
     "libvpx": "1.17.0 / 6df3ec34557879fff673706f4a1d9fbd0f3a6f0e",
@@ -249,8 +249,92 @@
     }
   },
   "physicalMobile": {
-    "status": "pending",
-    "required": "Run scalar and SIMD on S22 Ultra, play each sample, copy both reports. Verify the actual WASM hashes."
+    "status": "complete",
+    "date": "2026-11-14",
+    "device": "Samsung Galaxy S22 Ultra",
+    "scope": "One user-reported completed run per variant in Chrome 157. One-second, 720p30 silent synthetic clip. Timing excludes the separate core load. The original URL label is retained; the verified hashes identify the actual loaded encoder binaries.",
+    "comparison": {
+      "simdTotalDeltaMs": 741.2000000476837,
+      "simdTotalChangePct": 3.8631329322580177,
+      "simdEncodeChangePct": 3.826097878801149,
+      "encodeSharePct": {
+        "scalar": 99.55124696978056,
+        "simd": 99.51574942942014
+      }
+    },
+    "reports": {
+      "scalar": {
+        "version": 1,
+        "release": "wh06c2-mobile-codecs-20261113T212140976Z",
+        "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36",
+        "status": "complete",
+        "variant": "scalar",
+        "framesAtStop": 30,
+        "stats": {
+          "encodedFrames": 30,
+          "encodedBytes": 1670807,
+          "encodedBitDepth": 10,
+          "wasmLinearMemoryBytes": 118882304,
+          "inputMs": 45.59999966621399,
+          "encodeMs": 19100.39999985695,
+          "muxMs": 5.900000095367432,
+          "meanBitsPerSecond": 13366456,
+          "maxFourPictureBits": 1788232,
+          "fileBytes": 1671579,
+          "totalMs": 19186.5,
+          "encoder": "libvpx 1.17.0 / WASM scalar / one thread",
+          "width": 1280,
+          "height": 720,
+          "fps": 30,
+          "codec": "vp09.02.40.10.01.01.01.01.00",
+          "audio": false,
+          "loadMs": 474.2999999523163,
+          "variant": "scalar",
+          "wasmSha256": "a64f6d0f7be179a509177a6c79784fc05364e5aa1c54cf40579906095f4c03cb"
+        },
+        "playback": "ended",
+        "decodedVideoWidth": 1280,
+        "decodedVideoHeight": 720,
+        "playbackFrames": 30,
+        "droppedPlaybackFrames": 0
+      },
+      "simd": {
+        "version": 1,
+        "release": "wh06c2-mobile-codecs-20261113T212140976Z",
+        "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36",
+        "status": "complete",
+        "variant": "simd",
+        "framesAtStop": 30,
+        "stats": {
+          "encodedFrames": 30,
+          "encodedBytes": 1670807,
+          "encodedBitDepth": 10,
+          "wasmLinearMemoryBytes": 118882304,
+          "inputMs": 51.10000038146973,
+          "encodeMs": 19831.19999909401,
+          "muxMs": 6.499999761581421,
+          "meanBitsPerSecond": 13366456,
+          "maxFourPictureBits": 1788232,
+          "fileBytes": 1671579,
+          "totalMs": 19927.700000047684,
+          "encoder": "libvpx 1.17.0 / WASM SIMD128 / one thread",
+          "width": 1280,
+          "height": 720,
+          "fps": 30,
+          "codec": "vp09.02.40.10.01.01.01.01.00",
+          "audio": false,
+          "loadMs": 360.90000009536743,
+          "variant": "simd",
+          "wasmSha256": "90054c5d31643beb149be4ec63d0be6b2121d146b74818febc3ee01f922effb1"
+        },
+        "playback": "ended",
+        "decodedVideoWidth": 1280,
+        "decodedVideoHeight": 720,
+        "playbackFrames": 30,
+        "droppedPlaybackFrames": 0
+      }
+    },
+    "decision": "Keep scalar as the software reference. Do not promote this SIMD build as a performance optimization. The next lab step is to measure scalar encoder settings and rate control against the lossless reference at 720p30, with a dedicated Wormhole image-quality comparison before resolution or product integration."
   },
   "validation": {
     "build": "passed",
@@ -262,7 +346,7 @@
     "packetEquality": "Actual built binaries, 30 matching packet payload hashes, timestamps, durations, profile metadata and heap bytes in Node.",
     "browser": "Full Chrome worker/cancel/retry/MP4 playback plus FFmpeg decoded hash.",
     "notRun": [
-      "Phone speed, heat, long-song and 4K pending."
+      "Phone heat, long-song and 4K pending. No mobile sample files were supplied for independent decoding."
     ],
     "runtime": "Node/npm for build and tests. Docker pinned Emscripten toolchain for WASM. Existing guarded Node Pages release.",
     "diffExport": "Skipped for bounded diagnostic handoff.",

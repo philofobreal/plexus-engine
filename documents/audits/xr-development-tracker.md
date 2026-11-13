@@ -2,14 +2,15 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-06e scalar/SIMD comparison is ready for the S22 Ultra. The desktop Node median was 11.98 s scalar and 12.50 s SIMD. Return both phone reports before choosing another optimization or resolution.**
+**Current priority: measure WH-06e scalar VP9 encoder settings and rate control at 720p30, against the lossless reference. Check Wormhole gradient and motion fidelity before raising resolution or integrating a fallback.**
 
-### WH-06e SIMD phone measurement pending
+### WH-06e scalar/SIMD phone comparison complete
 
-The public WASM probe can select either build and records the verified binary
-hash. Both run the same one-second 720p30 lossless 10-bit VP9 clip. The local
-desktop experiment observed no SIMD speed gain. The physical-device
-comparison remains open.
+The S22 Ultra Chrome 157 reports measure 19.19 s scalar and 19.93 s SIMD
+after loading. Both runs played all 30 frames with zero reported drops.
+Their binary hashes match the published builds. Encoding took over 99.5%
+of the measured time. The scalar build remains the reference for the next
+encoder experiment.
 [Measurements and commands](../tests/wormhole-wh06e-simd-research.json).
 
 ### WH-06e software VP9 phone measurement complete

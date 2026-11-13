@@ -367,7 +367,17 @@ than complete MP4 file hashes, since the MP4 muxer writes creation timestamps.
 The browser check also independently decodes every frame with FFmpeg and
 compares the result to the established lossless source hash.
 
-This build isolates compiler SIMD as a variable. The result on this PC does
-not establish the effect on the S22 Ultra. The physical comparison is still
-pending. Any further quality, rate-control or resolution change needs its
-own measurement. [Measurement receipt](../tests/wormhole-wh06e-simd-research.json).
+On 2026-11-14 the S22 Ultra Chrome 157 reports measured 19.19 s scalar and
+19.93 s SIMD after loading. In this single pair the SIMD run took 0.74 s
+longer (+3.9%). Encoding accounted for over 99.5% of the measured time in
+each run. Both generated 1,671,579-byte MP4s with 113.375 MiB WASM linear
+memory and played all 30 frames with zero reported drops. The release field
+still carries the earlier URL label. Each reported WASM SHA-256 matches the
+published binary for that variant. The reports cover one silent second,
+with long-job timing, device temperature and whole-process memory still open.
+
+Keep scalar as the software reference. Next measure encoder settings and
+rate control at the same resolution, with the lossless sample as a control.
+Check banding, flicker and motion continuity on representative Wormhole
+frames before considering higher resolutions or integration.
+[Measurement receipt](../tests/wormhole-wh06e-simd-research.json).
