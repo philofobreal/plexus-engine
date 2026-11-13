@@ -1,0 +1,210 @@
+{
+  "task": "WH-06e",
+  "version": 1,
+  "date": "2026-11-13",
+  "predecessor": "7acde3ccf7bd756e3ea28afbd84fd680af09c173",
+  "status": "720p30 software VP9 feasibility probe verified in desktop Chrome. Physical S22 Ultra result pending.",
+  "owners": {
+    "codec": "research C adapter and pinned libvpx binary",
+    "browser": "independent worker and existing diagnostic page",
+    "release": "guarded Pages publisher",
+    "integration": "single agent"
+  },
+  "source": {
+    "project": "libvpx v1.17.0",
+    "commit": "6df3ec34557879fff673706f4a1d9fbd0f3a6f0e",
+    "compiler": "Emscripten 3.1.40",
+    "imageDigest": "sha256:c1e807a6e03ac5bd5b37bae2ace3c46c08579e2ddeb951037a3b8dac7067f2cc"
+  },
+  "settings": {
+    "input": "synthetic 10-bit YUV 4:2:0 BT.709 limited-range gradients, moving edge and binary picture IDs",
+    "width": 1280,
+    "height": 720,
+    "fps": 30,
+    "frames": 30,
+    "audio": false,
+    "threads": 1,
+    "simd": false,
+    "codec": "VP9 Profile 2 lossless all-key",
+    "container": "MP4",
+    "maxWasmBytes": 134217728,
+    "maxPayloadBytes": 8388608,
+    "deadlineMs": 180000
+  },
+  "desktop": {
+    "firstBrowserRun": "logs/wh01/run-6cf067c1-20ff-4a46-8ec6-2e34fb704ace",
+    "finalBrowserRun": "logs/wh01/run-b02789af-329d-4fbf-a745-05daaac3c71c",
+    "finalProof": {
+      "pass": true,
+      "report": {
+        "version": 1,
+        "release": null,
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+        "status": "complete",
+        "framesAtStop": 30,
+        "stats": {
+          "encodedFrames": 30,
+          "encodedBytes": 1670807,
+          "encodedBitDepth": 10,
+          "wasmLinearMemoryBytes": 118882304,
+          "inputMs": 74.30000004172325,
+          "encodeMs": 39183.4999999702,
+          "muxMs": 13.60000005364418,
+          "meanBitsPerSecond": 13366456,
+          "maxFourPictureBits": 1788232,
+          "fileBytes": 1671579,
+          "totalMs": 39508.90000000596,
+          "encoder": "libvpx 1.17.0 / WASM scalar / one thread",
+          "width": 1280,
+          "height": 720,
+          "fps": 30,
+          "codec": "vp09.02.40.10.01.01.01.01.00",
+          "audio": false,
+          "loadMs": 68
+        },
+        "playback": "ended",
+        "decodedVideoWidth": 1280,
+        "decodedVideoHeight": 720,
+        "playbackFrames": 30,
+        "droppedPlaybackFrames": 0
+      },
+      "sha256": "53160d96afa276f50234bc627008f5e2a56093cb87d7ae556b4c77747ce09971",
+      "decodedHash": "0,v,SHA256=6bed43471dca408ee9e11bcc0c270217e1f38ace4680bd87226c56a48b80dbb8"
+    },
+    "node": {
+      "initialElapsedMs": 10880,
+      "wasmLinearMemoryBytes": 118882304
+    },
+    "conditions": "Asynchronous browser runs under concurrent test load. No phone or whole-song performance claim."
+  },
+  "physicalMobile": {
+    "status": "pending",
+    "device": "Samsung Galaxy S22 Ultra",
+    "required": "WASM report after playback or error. Assess timing and memory before larger clips or production integration."
+  },
+  "failuresResolved": [
+    "Remote Git ADD using a detached commit failed; pinned tag plus commit check succeeded.",
+    "The 64 MiB WASM heap failed allocating a scaled source buffer; the final quality path uses 128 MiB maximum.",
+    "Level 3.1 rate limit was exceeded; final level 4.0 matches checked sampled bitrate and burst bounds.",
+    "The first test compared serialized CICP codec suffix. The demuxer exposes those fields in colorSpace, which the corrected test asserts separately."
+  ],
+  "validation": {
+    "build": "npm run build passed",
+    "targeted": 39,
+    "activeFiles": 233,
+    "oldFixtureAndProductionSrcUnchanged": true,
+    "priorReferenceHashesMatch": true,
+    "nativeProbeRerun": 12,
+    "wasmNodeTest": "actual built binary and MP4 packet demux",
+    "decodedSampleIdentity": {
+      "frames": 30,
+      "planeSamples": 41472000,
+      "lossless": true,
+      "expectedAndDecodedSha256": "6bed43471dca408ee9e11bcc0c270217e1f38ace4680bd87226c56a48b80dbb8",
+      "decodedBytes": 82944000
+    },
+    "browser": "Chrome automation, real worker, cancellation/retry, full sample playback and independent FFmpeg decode",
+    "notRun": [
+      "Physical device, thermal and full song, pending later qualification.",
+      "No 4K WASM test or production export integration in this task."
+    ],
+    "runtime": "Node 25.2.1/npm 11.6.2, Chrome 157, native FFmpeg and pinned Docker WASM build. Guarded Node publisher.",
+    "diffExport": "Skipped for a bounded research handoff.",
+    "cumulative": {
+      "tests": 2288,
+      "pass": 2279,
+      "fail": 9,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 962350.4124
+    },
+    "knownBaselineFailuresExactNameAndMessage": [
+      {
+        "name": "every wormhole clip preset carries role keys explicitly and leaves user-global masters untouched",
+        "message": "vos-wh-drift.json must not reset user-global wormholeStarfield"
+      },
+      {
+        "name": "all presets stay visible and ring quantization is limited to authored ring roles",
+        "message": "establish remains visibly above the opacity floor"
+      },
+      {
+        "name": "weak roles pin a deep-perspective depth and continuity profile",
+        "message": "establish depth\n\n2.03136 !== 4"
+      },
+      {
+        "name": "clip roles have materially different wormhole behaviour (role-level contrast)",
+        "message": "deep drift deeper than establish"
+      },
+      {
+        "name": "factory preset pairs preserve their authored near/far projected tunnel geometry",
+        "message": "vos-wh-dissolve.json/vos-wh-drift.json projected scale contrast 0.580/0.492"
+      },
+      {
+        "name": "wormhole factory presets keep a minimum normalized weighted separation",
+        "message": "vos-wh-drift.json / vos-wh-establish.json distance 0.073388 is below 0.09"
+      },
+      {
+        "name": "wormhole preset speeds retain the authored dramaturgical ordering",
+        "message": "The expression evaluated to a falsy value:\n\n  assert.ok(role('dissolve') > role('drift'))"
+      },
+      {
+        "name": "projected forward motion preserves overdrive > punch > drive > drift",
+        "message": "{\"overdrive\":{\"changedRatio\":1,\"motion\":389.64890777178124},\"punch\":{\"changedRatio\":1,\"motion\":172.16594789064624},\"drive\":{\"changedRatio\":1,\"motion\":471.543038051684},\"drift\":{\"changedRatio\":1,\"motion\":90.85003926445653}}"
+      },
+      {
+        "name": "raising wormholeSpeed increases projected travel rather than only trail length",
+        "message": "389.64890777178124 vs 471.543038051684"
+      }
+    ],
+    "diffCheck": "Handwritten files clean. The upstream LICENSE and generated Emscripten loader retain original whitespace."
+  },
+  "commands": {
+    "compile": "docker buildx build --file research/export/vp9-10bit-probe.Dockerfile --output type=local,dest=logs/wh06e/core-quality research/export",
+    "build": "npm run build",
+    "targeted": "node --test tests/export-codec-isolation.test.mjs tests/release-pages.test.mjs tests/export-preparation.test.mjs",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=4",
+    "browser": "node research/export/wormhole-baseline.mjs capture --wasm-codec-host",
+    "nativeAndWasm": "node research/export/wormhole-baseline.mjs capture --mobile-codec-host --wasm-codec-host",
+    "public": "node research/export/wormhole-baseline.mjs capture --wasm-codec-host --diagnostics-host --public-release=RELEASE_ID",
+    "decodedHash": "ffmpeg -v error -threads 2 -i SAMPLE.mp4 -an -pix_fmt yuv420p10le -f streamhash -hash sha256 -",
+    "release": [
+      "node scripts/release-pages.mjs prepare wh06e-wasm-vp9",
+      "node scripts/release-pages.mjs publish",
+      "node scripts/release-pages.mjs verify"
+    ]
+  },
+  "hashes": {
+    "research/export/vp9-10bit-probe.c": "f6ff4589300447a315c63458c26138420169feb79df6a9a2917170a1f551de28",
+    "research/export/vp9-10bit-probe.Dockerfile": "6ef3b7439ba09327ef581f6b5e5a866af59850bbd809e693f9df62d85a85a06c",
+    "research/export/vp9-10bit-probe.worker.mjs": "5dbb2235df0b090775ab02399bc2dd9782bf323e374db635ae94c166b1c0f0fe",
+    "research/export/codec-isolation.mjs": "651baed866c1a6989b858dfad14ec08e1095478d23aa62c595325d319ab07293",
+    "research/export/wormhole-baseline.mjs": "6263b3d1104275415839edf09e353268e42c6159528ac8fe0bfe3115812888c0",
+    "scripts/release-pages.mjs": "9f2ee8292979431a2cd51e16af36f0fe60d9fa9e922a5c006b45efac5f3fbdda",
+    "tests/browser/mobile-codec-probe.html": "0c6fa61b7cbbedb886c3b6451f3f6d769572e4b17eeb59633d972a82633cc852",
+    "tests/export-codec-isolation.test.mjs": "ab4b60c88559e99996a5aa0ff18201a7fce8ceb9f96d75b0a73279b15aaa33b3",
+    "tests/release-pages.test.mjs": "efdffb80836fc4aa98d0401f637ec0fa9480f989f68db917a27241cfa05acbb5",
+    "public/export/libvpx-1.17.0/libvpx-source.tar.gz": "1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a",
+    "public/export/libvpx-1.17.0/LICENSE": "8267348d5af1262c11d1a08de2f5afc77457755f1ac658627dd9acf71011d615",
+    "public/export/libvpx-1.17.0/PATENTS": "cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c",
+    "public/export/libvpx-1.17.0/vp9-10bit-probe.mjs": "f557f578baecf7ba551b5ac906ae135170fe08b02ace037e140cb4fe42d2dd4d",
+    "public/export/libvpx-1.17.0/vp9-10bit-probe.wasm": "a64f6d0f7be179a509177a6c79784fc05364e5aa1c54cf40579906095f4c03cb",
+    "logs/wh01/run-b02789af-329d-4fbf-a745-05daaac3c71c/build.json": "91791a94994e89e32822e5183a7feb5091c55f16453e42e5f4432d6581066af5",
+    "logs/wh01/run-b02789af-329d-4fbf-a745-05daaac3c71c/wasm-codec-browser.json": "5ead2be12db3d0b185b31385c0349ea9153b30ef1a1996e5b73391a7c7a3cf3e",
+    "logs/wh01/run-b02789af-329d-4fbf-a745-05daaac3c71c/vp9-10bit-probe.mp4": "53160d96afa276f50234bc627008f5e2a56093cb87d7ae556b4c77747ce09971",
+    "logs/wh01/run-b02789af-329d-4fbf-a745-05daaac3c71c/verification.json": "ad5d30a5373fe1b4537053f311f3fb4a69aecadf82beb529dc961b4b3458513b",
+    "logs/wh01/run-b02789af-329d-4fbf-a745-05daaac3c71c/wasm-codec-layout.png": "a449b48aa2c94786a1d3d80cbd59e91507e51f1c271f2f71b62f7bf5f3bcac54",
+    "logs/wh01/run-6cf067c1-20ff-4a46-8ec6-2e34fb704ace/mobile-codec-browser.json": "d1c75ee0f536a628f0b0bfedfc974f70e34d26fa23205a106b7042a9f9dc70c6",
+    "logs/wh01/run-6cf067c1-20ff-4a46-8ec6-2e34fb704ace/wasm-codec-browser.json": "ba248c6c57d5d5fd2c3af4cef08dea7ef626d670cce4f272ac9ef72327857781",
+    "logs/wh06e/decoded-identity.json": "f215df0a8606a07b3b2c91182e4aa3b62a27f3fc3d745a145fd462b9f85696d4",
+    "logs/wh06e/first-probe.log": "5a37918f29f72a8b7f196306b2445adb93fef5fa9a83e4f6532f4477c8362c40",
+    "logs/wh06e/first-probe.mp4": "05e291ed272ecab2f5f95ba7a53aff43a3fed2c0db10afe5cfeb466c5b184df5",
+    "logs/wh06e/core-quality-build.log": "503a38a59884f472945a925d3a3fe5a92a6951b2dc98318a2159b4a1fa30aca3",
+    "logs/wh06e/core-build.log": "e8040d57ccc90b21a5b6b86713869d197a945c681c0d0574e9bb050a98b3e818",
+    "logs/wh06e/core-detail-build.log": "5fc67c95d6eb14553413c49806524aecd72aab556e88a24f20c4dc39f3ff81f4",
+    "logs/wh06e/targeted-final.tap": "78d58a7237a5f404ccec49b2feb32cbddca1ec637d392527774aee14523dda3d",
+    "logs/wh06e/local-final.log": "e758ce3585a9c83e6a646917190f377c3bd50b27b73d656a06a719ca8ed01b69",
+    "logs/wh06e/build.log": "a007ce941284878b98736656b278fa0ee8db5e5c92f2ea43034a220365bdcd74",
+    "logs/wh06e/cumulative.tap": "8634a08e356a2dc0a45e403c06445401245f0e8d1602bce7995a5dfc0c836f54",
+    "logs/wh06e/node-results.json": "e32772d52abef86e5ae2e6671e0fddbad764d9c61acf862326adc87e4e7fdc44"
+  }
+}

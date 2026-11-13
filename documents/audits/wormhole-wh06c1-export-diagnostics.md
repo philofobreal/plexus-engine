@@ -272,3 +272,55 @@ to test a separate software 10-bit encoder on a short 720p30 sample, then
 consider higher resolutions if output quality, decoding, elapsed time and
 resource use justify it. Full-song reliability belongs to WH-08.
 [Validated physical-device result and source hash](../tests/wormhole-wh06c2-research.json).
+
+
+## WH-06e — 720p30 software VP9 feasibility probe (2026-11-13)
+
+The [published probe](https://philofobreal.github.io/plexus-engine/tests/browser/mobile-codec-probe.html)
+adds a separate WASM run below the native matrix. On the S22 Ultra, start the
+WASM probe, keep the page open, play the one-second MP4, then copy its report.
+The report includes load, input, encode, mux and elapsed time, the WASM linear
+memory size, file size, frame count and playback status. The MP4 is downloadable.
+The browser runs the measurement locally with synthetic video and no audio.
+
+The research module uses libvpx 1.17.0 from commit
+`6df3ec34557879fff673706f4a1d9fbd0f3a6f0e`. Its Dockerfile checks the source
+commit and uses the pinned Emscripten 3.1.40 image. The published binary, generated
+loader, source archive, license and patent notice are served from
+`public/export/libvpx-1.17.0/`. The worker loads the core when the probe starts.
+It uses scalar WASM on one CPU thread. It writes a fixed one-second 1280×720
+clip at 30 fps from 10-bit YUV 4:2:0 planes. libvpx uses lossless all-key VP9
+Profile 2 with no lookahead. The existing Mediabunny packet muxer writes MP4
+with BT.709 limited-range metadata and level 4.0. Each encoded picture's
+header is checked for 10-bit depth. Sampled stream rate and four-picture
+bursts are checked against the level. [libvpx source](https://github.com/webmproject/libvpx/tree/6df3ec34557879fff673706f4a1d9fbd0f3a6f0e).
+[VP9 level limits](https://www.webmproject.org/vp9/levels/).
+
+The probe holds one reusable source image, at most 128 MiB of WASM linear
+memory, and at most 8 MiB of compressed payload or finished MP4. The small
+sample uses an in-memory mux target. Product integration would require the
+existing incremental storage and bounded-frame model. The page terminates the
+probe worker on cancel, error, completion, page exit or a 180-second deadline.
+
+Independent FFmpeg decode of the first complete clip yielded 30
+`yuv420p10le` pictures. All 41,472,000 plane samples match the generated
+source. The final browser probe also requires that decoded SHA-256. The
+first successful encode measured about 10.9 seconds under Node. A Windows
+Chrome run while regression tests were active measured 52.8 seconds and
+118,882,304 bytes (113.375 MiB) of WASM linear memory. The file is 1,671,579
+bytes, with 13.37 Mbit/s of sampled video payload. Chrome played all 30
+pictures without drops in that run. These timings describe separate local
+runs under different load and are unsuitable for a platform speed comparison.
+
+Initial development exposed three constraints. Docker's remote Git ADD needed
+the release tag and a commit check to fetch the pinned revision. The 64 MiB
+memory cap was too small for the first encoder path. The measured payload was
+above the 12 Mbit/s level 3.1 ceiling, so the final probe uses the sampled
+level 4.0 bounds. A Node assertion was updated to check codec fields and
+color metadata separately because the demuxer omits default CICP fields from
+the returned codec string.
+
+The S22 Ultra report is pending. It will determine whether software encoding
+at 720p30 merits a faster prototype. No long-job timing, thermal behavior,
+total process memory or 4K performance can be inferred from this short clip.
+See the [measurement receipt](../tests/wormhole-wh06e-research.json).

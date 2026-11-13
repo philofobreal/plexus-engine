@@ -2,7 +2,16 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority: WH-06c2 is complete on the S22 Ultra. Chrome refused all eleven tested 10-bit encoder configurations. Next WH-06e measures a short software 10-bit encode. WH-08 covers long-job and physical-device qualification.**
+**Current priority: WH-06e short WASM VP9 probe is ready for an S22 Ultra run. Use the public mobile probe's WASM section and return its report after playback. The desktop output is a verified 720p30 10-bit one-second MP4. Select the next optimization or stop based on the physical-device result.**
+
+### WH-06e software VP9 phone measurement pending
+
+The short probe encodes 30 synthetic pictures with one scalar WASM libvpx
+thread. It confirms the encoded bit depth and records playback and memory
+independently. The initial Windows Chrome run played all 30 pictures.
+The S22 Ultra result will guide a follow-up performance investigation.
+[Probe and measurements](wormhole-wh06c1-export-diagnostics.md#wh-06e--720p30-software-vp9-feasibility-probe-2026-11-13),
+[receipt](../tests/wormhole-wh06e-research.json).
 
 ### WH-06c2 physical-device measurement complete
 
