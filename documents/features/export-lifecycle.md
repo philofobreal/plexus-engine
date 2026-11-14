@@ -2044,6 +2044,66 @@ Use `motion-production "<reference MP3>"` and
 `node research/export/mvp-motion-verify.mjs --production` to check the
 actual production worker without the experiment transforms.
 
+### WH-08 — full-track closeout and WebM seeking
+
+WH-08 exercises the built MVP through the actual upload, export, download
+and playback controls using the complete 410.594-second No Good reference.
+The native checks independently decode every frame, verify presentation
+time and stereo audio endpoints, and compare PCM against the original
+track at seven positions. The reported 0:47–1:00 and 1:25 windows receive
+a separate reduced-luma check for exact repeated pictures and short reversals.
+That check cannot identify motion within an individual rendered layer.
+
+Saved 720p30 MP4s contain 12,317 frames in both the VP9 Profile 2 and the H.264
+profiles. The latter ran in a phone-sized view under Windows Chrome. The
+native audio windows in both files peak at zero measured lag at 0.25 ms
+resolution, and both seek in Chrome. Stop & save yields a playable prefix.
+An accepted Cancel creates no download, and a new export succeeds in the
+same tab. These are desktop checks. The S22 Ultra result belongs to the
+manual device record.
+
+The previously shipped 10-bit WebM completed the save and decoded through
+FFmpeg. Chrome on Windows reported a D3D11 hardware-decode error on a seek
+to 2 s. FFmpeg stream-copy into a new WebM reproduced the error. Software
+decoding succeeded at seven seek points. Two color-tagged remuxes, one with
+sRGB transfer and one with BT.709, both seek on the reported D3D11 decoder.
+All 12,317 VP9 packet payloads and 20,529 Opus packet payloads are identical
+across the original and these controls.
+
+The export worker now passes the encoder's first video decoder configuration
+to the WebM muxer. It serializes supported primaries, transfer, matrix and
+range for 10-bit VP9, reusing the existing SDR fallback for primaries and
+transfer when the encoder omits them. The worker reserves a fixed-width
+duration in its OPFS header and writes the actual value on finalization,
+including Stop & save. It continues streaming clusters to OPFS and verifies
+each write. This changes container metadata. The encoder, bit depth and
+keyframe cadence follow the existing profile. [Matroska color elements](https://www.rfc-editor.org/rfc/rfc9559.html#section-5.1.4.1.28.16).
+
+The corrected 720p30 WebM Turbo completed all 12,317 frames. It reports
+410.567 s in Chrome, and the Windows D3D11 decoder passed all seven seek
+positions. The 720p30 and 4K60 WebM Turbo prefix tests both passed Stop
+& save, confirmed Cancel with no video download, and saved and played
+the retry. This is a bounded 4K check. Full-length 4K and Android playback
+of the changed WebM metadata remain outside that desktop result.
+
+[Recorded commands and WH-08 evidence](../tests/wormhole-wh08-closeout.json).
+
+Reproduce locally from the project root, with the reference track outside
+the public build and a fresh directory under `logs/wh08/`. `desktop`
+selects VP9 MP4, `mobile-layout` selects H.264 MP4 in a phone-sized Chrome
+view, and `webm` selects 10-bit WebM Turbo. Set `PLEXUS_LOCAL_BUILD_ID`
+for an ordinary local build without a generated release marker.
+
+```text
+npm run build
+node research/export/mvp-export-closeout.mjs TRACK logs/wh08/NEW_RUN webm
+node research/export/mvp-export-closeout-inspect.mjs TRACK logs/wh08/NEW_RUN
+```
+
+Use the runner's `--controls-only` option for Stop/Cancel/retry or
+`--playback-only` to inspect existing downloads without encoding again.
+The loopback runner does not publish audio or generated video.
+
 ### Full-length MP4 and WebM follow-up
 
 The two November 6 exports supplied for the No Good playback report each

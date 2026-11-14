@@ -2,11 +2,12 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Export closeout scope (2026-11-14).** WH-06e is a bounded 720p30
-software VP9 study. WH-08 then qualifies the existing export modes on
-longer files, desktop and mobile. T21b caption placement and preview follows.
-Mobile software 10-bit integration, 4K qualification and additional MP4
-Turbo experiments can be scheduled independently of T21b.
+**Current priority (2026-11-14).** WH-08 closes the existing export modes.
+The full-song check exposed a Windows Chrome hardware-seek failure in
+10-bit WebM. The fix preserves VP9 color metadata and writes the final
+WebM duration to OPFS. Continue with T21b caption placement and preview
+after the manual handoff. Mobile software 10-bit integration, 4K
+qualification for that encoder and more MP4 Turbo research stay separate.
 
 ### WH-06e bounded software VP9 tuning complete
 
@@ -18,14 +19,15 @@ clips. Phone timing, longer exports and integration remain open. Continue
 with WH-08 for the existing export modes.
 [Method and results](wormhole-wh06c1-export-diagnostics.md#wh-06e--bounded-scalar-encoder-tuning-2026-11-14).
 
-### Next task — WH-08 closeout of shipped export modes
+### WH-08 closeout of shipped export modes
 
-Use a full reference track on desktop and one shipped export mode that
-already works on the S22 Ultra. Record the actual effective mode, format,
-resolution, frame rate, export duration and outcome. Check completed
-downloads, seeking after export, audible sync and the reported problem
-windows on desktop. Exercise Stop & save, Cancel and retry on short exports.
-Record physical-device coverage separately from browser automation.
+The 410.59-second No Good reference exercised the ordinary MVP upload and
+download flow at 720p30. Both MP4 versions passed playback seeking and the
+native checks. The old WebM played with software decoding. Adding the
+correct color fields made the same VP9/Opus packets seek on Chrome's D3D11
+path. The S22 Ultra check uses H.264 + AAC at 720p30 and remains a physical
+check, separate from the emulated-layout Windows run.
+[WH-08 validation](../features/export-lifecycle.md#wh-08--full-track-closeout-and-webm-seeking).
 
 ### WH-06e scalar/SIMD phone comparison complete
 

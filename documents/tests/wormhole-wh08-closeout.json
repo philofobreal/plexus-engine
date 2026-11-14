@@ -1,0 +1,587 @@
+{
+  "version": 1,
+  "task": "WH-08 full-track closeout and WebM seeking",
+  "date": "2026-11-14",
+  "predecessorRelease": "wh06e-tuning-20261114T004243100Z",
+  "source": {
+    "label": "The Prodigy - No Good (Start the Dance), Bad For You Mix",
+    "duration": 410.593719,
+    "sha256": "95cb3354d324829ab8f62d7ff8e9679db7c44b146f39d07e21d38bd60fbf8da1"
+  },
+  "environment": "Windows Chrome 157, Node 25.2.1, native FFmpeg N-124279-g0f6ba39122-20260430. Phone-sized layout is Windows desktop.",
+  "implementation": [
+    "83896f4",
+    "210215e"
+  ],
+  "research": "9b8e89a",
+  "full": [
+    {
+      "run": "desktop",
+      "release": "wh06e-tuning-20261114T004243100Z",
+      "mode": "Economy export (MP4 uses the qualified Economy path): 12317 frames, 378.1 s; exact rendering. Quality settings unchanged.",
+      "config": {
+        "res": "720p",
+        "format": "mp4vp9",
+        "fps": "30",
+        "speed": "turbo"
+      },
+      "wallMs": 378528,
+      "bytes": 494098483,
+      "sha256": "09a8aef3633163a528f3674d9f60a85c6fe93f548e05a999cb859ceb84d66df1",
+      "frames": 12317,
+      "keys": 12317,
+      "pixelFormat": "yuv420p10le",
+      "audioCodec": "aac",
+      "videoClockErrorMs": 0.0003333333467026023,
+      "decodedEndpointDeltaMs": 14.708333333317114,
+      "audio": [
+        {
+          "second": 2,
+          "correlation": 0.9990086501909253,
+          "offsetMs": 0
+        },
+        {
+          "second": 47,
+          "correlation": 0.998016165777717,
+          "offsetMs": 0
+        },
+        {
+          "second": 59,
+          "correlation": 0.998751706001148,
+          "offsetMs": 0
+        },
+        {
+          "second": 85,
+          "correlation": 0.9883703711124227,
+          "offsetMs": 0
+        },
+        {
+          "second": 90,
+          "correlation": 0.9964830297994347,
+          "offsetMs": 0
+        },
+        {
+          "second": 205,
+          "correlation": 0.9981097868137329,
+          "offsetMs": 0
+        },
+        {
+          "second": 408,
+          "correlation": 0.9806566297763163,
+          "offsetMs": 0
+        }
+      ],
+      "motionDuplicatePairs": 0.0,
+      "exactTwoFrameReturns": 0.0,
+      "playback": {
+        "duration": 410.588,
+        "width": 1280,
+        "height": 720,
+        "seeking": [
+          {
+            "requested": 2,
+            "decoded": 2,
+            "maxColor": 150
+          },
+          {
+            "requested": 47,
+            "decoded": 47,
+            "maxColor": 37
+          },
+          {
+            "requested": 60,
+            "decoded": 60,
+            "maxColor": 29
+          },
+          {
+            "requested": 85,
+            "decoded": 85,
+            "maxColor": 44
+          },
+          {
+            "requested": 92,
+            "decoded": 92,
+            "maxColor": 53
+          },
+          {
+            "requested": 205,
+            "decoded": 205,
+            "maxColor": 70
+          },
+          {
+            "requested": 407,
+            "decoded": 407,
+            "maxColor": 41
+          }
+        ],
+        "playedSec": 0.5610679999999775,
+        "quality": {
+          "totalVideoFrames": 42,
+          "droppedVideoFrames": 0
+        }
+      },
+      "playbackError": null
+    },
+    {
+      "run": "mobile-layout",
+      "release": "wh06e-tuning-20261114T004243100Z",
+      "mode": "Economy export: 12317 frames, 357.6 s; exact rendering. Quality settings unchanged.",
+      "config": {
+        "res": "720p",
+        "format": "mp4",
+        "fps": "30",
+        "speed": "economy"
+      },
+      "wallMs": 358753,
+      "bytes": 278356402,
+      "sha256": "78c63ecf9ab302abbdc0f13670f3db3ce2f426ede2cab818757a5365c275bbf7",
+      "frames": 12317,
+      "keys": 411,
+      "pixelFormat": "yuv420p",
+      "audioCodec": "aac",
+      "videoClockErrorMs": 0.0003333333467026023,
+      "decodedEndpointDeltaMs": 14.708333333317114,
+      "audio": [
+        {
+          "second": 2,
+          "correlation": 0.9990086501909253,
+          "offsetMs": 0
+        },
+        {
+          "second": 47,
+          "correlation": 0.998016165777717,
+          "offsetMs": 0
+        },
+        {
+          "second": 59,
+          "correlation": 0.998751706001148,
+          "offsetMs": 0
+        },
+        {
+          "second": 85,
+          "correlation": 0.9883703711124227,
+          "offsetMs": 0
+        },
+        {
+          "second": 90,
+          "correlation": 0.9964830297994347,
+          "offsetMs": 0
+        },
+        {
+          "second": 205,
+          "correlation": 0.9981097868137329,
+          "offsetMs": 0
+        },
+        {
+          "second": 408,
+          "correlation": 0.9806566297763163,
+          "offsetMs": 0
+        }
+      ],
+      "motionDuplicatePairs": 0.0,
+      "exactTwoFrameReturns": 0.0,
+      "playback": {
+        "duration": 410.588,
+        "width": 1280,
+        "height": 720,
+        "seeking": [
+          {
+            "requested": 2,
+            "decoded": 2,
+            "maxColor": 153
+          },
+          {
+            "requested": 47,
+            "decoded": 47,
+            "maxColor": 38
+          },
+          {
+            "requested": 60,
+            "decoded": 60,
+            "maxColor": 30
+          },
+          {
+            "requested": 85,
+            "decoded": 85,
+            "maxColor": 45
+          },
+          {
+            "requested": 92,
+            "decoded": 92,
+            "maxColor": 54
+          },
+          {
+            "requested": 205,
+            "decoded": 205,
+            "maxColor": 71
+          },
+          {
+            "requested": 407,
+            "decoded": 407,
+            "maxColor": 42
+          }
+        ],
+        "playedSec": 0.5600959999999873,
+        "quality": {
+          "totalVideoFrames": 43,
+          "droppedVideoFrames": 0
+        }
+      },
+      "playbackError": null
+    },
+    {
+      "run": "webm",
+      "release": "wh06e-tuning-20261114T004243100Z",
+      "mode": "Turbo export: 12317 frames, 347.1 s; exact rendering. Quality settings unchanged.",
+      "config": {
+        "res": "720p",
+        "format": "webm10",
+        "fps": "30",
+        "speed": "turbo"
+      },
+      "wallMs": 347163,
+      "bytes": 388307184,
+      "sha256": "587ae29d881222b69d10892ee16f96a5a63922f1ffe0c9eb388a22f862d366e7",
+      "frames": 12317,
+      "keys": 411,
+      "pixelFormat": "yuv420p10le",
+      "audioCodec": "opus",
+      "videoClockErrorMs": 0.33333333334439885,
+      "decodedEndpointDeltaMs": 0.08333333335031057,
+      "audio": [
+        {
+          "second": 2,
+          "correlation": 0.9980264408126596,
+          "offsetMs": 0
+        },
+        {
+          "second": 47,
+          "correlation": 0.9976758902087824,
+          "offsetMs": 0
+        },
+        {
+          "second": 59,
+          "correlation": 0.9977273513909879,
+          "offsetMs": 0
+        },
+        {
+          "second": 85,
+          "correlation": 0.9887189705480544,
+          "offsetMs": 0
+        },
+        {
+          "second": 90,
+          "correlation": 0.9927612620262997,
+          "offsetMs": 0
+        },
+        {
+          "second": 205,
+          "correlation": 0.9969433964835264,
+          "offsetMs": 0
+        },
+        {
+          "second": 408,
+          "correlation": 0.9630940850545263,
+          "offsetMs": 0
+        }
+      ],
+      "motionDuplicatePairs": 0.0,
+      "exactTwoFrameReturns": 0.0,
+      "playback": null,
+      "playbackError": "Error: Browser media error: PipelineStatus::PIPELINE_ERROR_DECODE: video decode error!\n    at HTMLVideoElement.fail (<anonymous>:14:47)"
+    },
+    {
+      "run": "webm-schema",
+      "release": "wh08-schema-local",
+      "mode": "Turbo export: 12317 frames, 418.5 s; exact rendering. Quality settings unchanged.",
+      "config": {
+        "res": "720p",
+        "format": "webm10",
+        "fps": "30",
+        "speed": "turbo"
+      },
+      "wallMs": 418933,
+      "bytes": 388326000,
+      "sha256": "4e1397d7598fcc0eb14b009fffd9c9c557bb092733fa30ae98db89df143f6ca9",
+      "frames": 12317,
+      "keys": 411,
+      "pixelFormat": "yuv420p10le",
+      "audioCodec": "opus",
+      "videoClockErrorMs": 0.33333333334439885,
+      "decodedEndpointDeltaMs": 0.08333333335031057,
+      "audio": [
+        {
+          "second": 2,
+          "correlation": 0.9980264408126596,
+          "offsetMs": 0
+        },
+        {
+          "second": 47,
+          "correlation": 0.9976758902087824,
+          "offsetMs": 0
+        },
+        {
+          "second": 59,
+          "correlation": 0.9977273513909879,
+          "offsetMs": 0
+        },
+        {
+          "second": 85,
+          "correlation": 0.9887189705480544,
+          "offsetMs": 0
+        },
+        {
+          "second": 90,
+          "correlation": 0.9927612620262997,
+          "offsetMs": 0
+        },
+        {
+          "second": 205,
+          "correlation": 0.9969433964835264,
+          "offsetMs": 0
+        },
+        {
+          "second": 408,
+          "correlation": 0.9630940850545263,
+          "offsetMs": 0
+        }
+      ],
+      "motionDuplicatePairs": 0.0,
+      "exactTwoFrameReturns": 0.0,
+      "playback": {
+        "duration": 410.566666,
+        "width": 1280,
+        "height": 720,
+        "seeking": [
+          {
+            "requested": 2,
+            "decoded": 2,
+            "maxColor": 149
+          },
+          {
+            "requested": 47,
+            "decoded": 47,
+            "maxColor": 37
+          },
+          {
+            "requested": 60,
+            "decoded": 60,
+            "maxColor": 29
+          },
+          {
+            "requested": 85,
+            "decoded": 85,
+            "maxColor": 44
+          },
+          {
+            "requested": 92,
+            "decoded": 92,
+            "maxColor": 54
+          },
+          {
+            "requested": 205,
+            "decoded": 205,
+            "maxColor": 69
+          },
+          {
+            "requested": 407,
+            "decoded": 407,
+            "maxColor": 41
+          }
+        ],
+        "playedSec": 0.5602030000000013,
+        "quality": {
+          "totalVideoFrames": 252,
+          "droppedVideoFrames": 0
+        }
+      },
+      "playbackError": null
+    }
+  ],
+  "controls": [
+    {
+      "run": "desktop-controls",
+      "profile": "desktop",
+      "cancel": true,
+      "stopAndRetry": [
+        {
+          "name": "stop.mp4",
+          "frames": 219,
+          "sha256": "4824fcdb6962d3ea7f7cfd9972ee122fb0a2f0a55c9d797064b3eaf35389f37a",
+          "duration": 7.3,
+          "audio": [
+            {
+              "second": 1,
+              "correlation": 0.9992351419285215,
+              "offsetMs": 0
+            },
+            {
+              "second": 5,
+              "correlation": 0.9986554826470353,
+              "offsetMs": 0
+            }
+          ],
+          "seekCount": 2
+        },
+        {
+          "name": "retry.mp4",
+          "frames": 211,
+          "sha256": "d752918417c51a85bf45f2389cf60522a6f280d93daa1fb410c62197c8fdad9d",
+          "duration": 7.033333333333333,
+          "audio": [
+            {
+              "second": 1,
+              "correlation": 0.9992351419285215,
+              "offsetMs": 0
+            },
+            {
+              "second": 5,
+              "correlation": 0.9986554826470353,
+              "offsetMs": 0
+            }
+          ],
+          "seekCount": 2
+        }
+      ]
+    },
+    {
+      "run": "webm-controls-final",
+      "profile": "webm",
+      "cancel": true,
+      "stopAndRetry": [
+        {
+          "name": "stop.webm",
+          "frames": 200,
+          "sha256": "f9f7faffd02354f84b58d620dd1af3b7f325f7536ef31ee5194cd324bfb4b5a7",
+          "duration": 6.666666666666667,
+          "audio": [
+            {
+              "second": 1,
+              "correlation": 0.9982594748243733,
+              "offsetMs": 0
+            },
+            {
+              "second": 4,
+              "correlation": 0.9979119744352702,
+              "offsetMs": 0
+            }
+          ],
+          "seekCount": 2
+        },
+        {
+          "name": "retry.webm",
+          "frames": 200,
+          "sha256": "4c48e7194fd1e4d68a18af00eed37f4e5bcd3ec8458fe351fca30ffb5efb974c",
+          "duration": 6.666666666666667,
+          "audio": [
+            {
+              "second": 1,
+              "correlation": 0.9982594748243733,
+              "offsetMs": 0
+            },
+            {
+              "second": 4,
+              "correlation": 0.9979119744352702,
+              "offsetMs": 0
+            }
+          ],
+          "seekCount": 2
+        }
+      ]
+    },
+    {
+      "run": "uhd-controls",
+      "profile": "uhd",
+      "cancel": true,
+      "stopAndRetry": [
+        {
+          "name": "stop.webm",
+          "frames": 376,
+          "sha256": "db726b07a607bd7d19eb5bfdd8d61c573d982a2671353c1609524a89ebfd2674",
+          "duration": 6.266666666666667,
+          "audio": [
+            {
+              "second": 1,
+              "correlation": 0.9982594748243733,
+              "offsetMs": 0
+            },
+            {
+              "second": 4,
+              "correlation": 0.9979119744352702,
+              "offsetMs": 0
+            }
+          ],
+          "seekCount": 2
+        },
+        {
+          "name": "retry.webm",
+          "frames": 373,
+          "sha256": "ff2ed4f091678f1bf23e26e0e2d63cee4a01ca8d55dfc2feed351b623778229f",
+          "duration": 6.216666666666667,
+          "audio": [
+            {
+              "second": 1,
+              "correlation": 0.9982594748243733,
+              "offsetMs": 0
+            },
+            {
+              "second": 4,
+              "correlation": 0.9979119744352702,
+              "offsetMs": 0
+            }
+          ],
+          "seekCount": 2
+        }
+      ]
+    }
+  ],
+  "isolation": {
+    "originalD3D11": "Decode error on seek to 2 s.",
+    "streamCopyD3D11": "Decode error on seek to 2 s. Original and all remux controls have identical ordered 12317 video and 20529 audio packet payload hashes.",
+    "software": "VpxVideoDecoder, 7/7 seeks.",
+    "taggedSrgb": "D3D11VideoDecoder, 7/7 seeks.",
+    "taggedBt709": "D3D11VideoDecoder, 7/7 seeks.",
+    "rejectedIntermediates": [
+      "webm-fixed: matrix/range absent and incorrect Primaries element ID",
+      "webm-controls: matrix/range present, incorrect Primaries element ID"
+    ],
+    "fixed": "D3D11VideoDecoder with BT.709 primaries and matrix, sRGB transfer and full range. Finite duration recorded."
+  },
+  "physicalDevice": {
+    "device": "Samsung Galaxy S22 Ultra / Chrome",
+    "requested": "720p30 H.264 + AAC Economy with complete reference, downloaded playback and seeks",
+    "status": "pending"
+  },
+  "limits": [
+    "Full-length at 720p30. 4K60 is a short prefix test.",
+    "Luma checks detect exact repeated pictures or short reversals at reduced resolution, without an original layer reference.",
+    "No mobile or whole-job performance claim.",
+    "Baseline harness required a clean playback pass for existing downloads and explicit Cancel dialog handling."
+  ],
+  "validation": {
+    "targeted": 83,
+    "nodeTests": "logs/wh08/node-results.json",
+    "publishVerification": "logs/wh08/final-public-qa.json",
+    "diffExport": "Skipped for bounded handoff."
+  },
+  "commands": {
+    "build": "npm run build",
+    "targeted": "node --test tests/export-webm-duration.test.mjs tests/export-opus-muxer.test.mjs tests/export-preparation.test.mjs tests/export-lifecycle.test.mjs tests/export-cache.test.mjs tests/export-diagnostics.test.mjs tests/export-performance.test.mjs tests/mvp-export-panel.test.mjs tests/mvp-mp4-export.test.mjs",
+    "full": "npm test -- --test-reporter=tap --test-concurrency=4",
+    "browser": "node research/export/mvp-export-closeout.mjs TRACK RUN [desktop|mobile-layout|webm|uhd] [--controls-only|--playback-only]",
+    "inspect": "node research/export/mvp-export-closeout-inspect.mjs TRACK RUN",
+    "remux": "ffmpeg -v error -nostdin -n -i full.webm -map 0 -c copy remux.webm",
+    "color": "ffmpeg -v error -nostdin -n -i full.webm -map 0 -c copy -color_primaries bt709 -color_trc iec61966-2-1 -colorspace bt709 -color_range pc color.webm",
+    "packetProof": "ffprobe -v error -show_packets -show_data_hash sha256 -show_entries packet=stream_index,data_hash -of compact FILE",
+    "publishedSmoke": "node research/export/wormhole-baseline.mjs capture --diagnostics-host --public-release=RELEASE_ID",
+    "release": [
+      "node scripts/release-pages.mjs prepare wh08-export-closeout",
+      "node scripts/release-pages.mjs publish",
+      "node scripts/release-pages.mjs verify"
+    ],
+    "other": [
+      "node --check on both runners",
+      "git diff --check"
+    ]
+  }
+}
