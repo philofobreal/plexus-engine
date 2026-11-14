@@ -2,12 +2,9 @@
 
 Started 2026-10-23. Checkpoint 2026-11-08 (Europe/Budapest). Integration owner: the agent in this chat.
 
-**Current priority (2026-11-14).** WH-08 closes the existing export modes.
-The full-song check exposed a Windows Chrome hardware-seek failure in
-10-bit WebM. The fix preserves VP9 color metadata and writes the final
-WebM duration to OPFS. Continue with T21b caption placement and preview
-after the manual handoff. Mobile software 10-bit integration, 4K
-qualification for that encoder and more MP4 Turbo research stay separate.
+**Next task (2026-11-14).** T21b caption placement and preview follows the
+accepted WH-08 handoff. Mobile software 10-bit integration, 4K qualification
+for that encoder and more MP4 Turbo research stay separate.
 
 ### WH-06e bounded software VP9 tuning complete
 
@@ -25,8 +22,10 @@ The 410.59-second No Good reference exercised the ordinary MVP upload and
 download flow at 720p30. Both MP4 versions passed playback seeking and the
 native checks. The old WebM played with software decoding. Adding the
 correct color fields made the same VP9/Opus packets seek on Chrome's D3D11
-path. The S22 Ultra check uses H.264 + AAC at 720p30 and remains a physical
-check, separate from the emulated-layout Windows run.
+path. The user accepted the S22 Ultra Chrome H.264 + AAC export at 720p30
+in Economy. The physical report records 12,317 submitted frames and 22 min
+24 s for the completed job. Seek points and audio sync were not reported
+individually on the phone.
 [WH-08 validation](../features/export-lifecycle.md#wh-08--full-track-closeout-and-webm-seeking).
 
 ### WH-06e scalar/SIMD phone comparison complete

@@ -2059,8 +2059,14 @@ profiles. The latter ran in a phone-sized view under Windows Chrome. The
 native audio windows in both files peak at zero measured lag at 0.25 ms
 resolution, and both seek in Chrome. Stop & save yields a playable prefix.
 An accepted Cancel creates no download, and a new export succeeds in the
-same tab. These are desktop checks. The S22 Ultra result belongs to the
-manual device record.
+same tab.
+
+The user reported a successful full export and good video quality on the
+physical S22 Ultra in Chrome 157. The 720p30 H.264 + AAC Economy diagnostic
+shows 12,317 submitted frames and a completed exact-rendering job in 22 min
+24 s. Render requests took 18 min 14 s of host wall time. FFmpeg finalization
+took 1 min 37 s on the worker. Host and worker timings can overlap. The
+phone report gives no individual seek-point or sync observations.
 
 The previously shipped 10-bit WebM completed the save and decoded through
 FFmpeg. Chrome on Windows reported a D3D11 hardware-decode error on a seek

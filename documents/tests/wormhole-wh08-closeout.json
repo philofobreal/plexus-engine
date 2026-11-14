@@ -548,14 +548,106 @@
     "fixed": "D3D11VideoDecoder with BT.709 primaries and matrix, sRGB transfer and full range. Finite duration recorded."
   },
   "physicalDevice": {
-    "device": "Samsung Galaxy S22 Ultra / Chrome",
-    "requested": "720p30 H.264 + AAC Economy with complete reference, downloaded playback and seeks",
-    "status": "pending"
+    "device": "Samsung Galaxy S22 Ultra / Chrome 157",
+    "date": "2026-11-14",
+    "status": "accepted",
+    "scope": "The user reported a successful full export and good video quality. No individual seek-point or audio-sync observations, release marker, or exported file were supplied. The submitted count matches the 720p30 desktop No Good runs.",
+    "summary": {
+      "exportSeconds": 1344.021,
+      "renderRequestSeconds": 1094.1101000211238,
+      "renderRequestSharePct": 81.40572952514312,
+      "ffmpegFinalizeSeconds": 96.67309999990464
+    },
+    "report": {
+      "export": {
+        "resolution": "720p",
+        "aspectRatio": "16:9",
+        "performanceMode": "economy",
+        "fps": 30,
+        "watermark": false,
+        "format": "mp4"
+      },
+      "diagnostics": {
+        "version": 1,
+        "requested": {
+          "resolution": "720p",
+          "aspectRatio": "16:9",
+          "performanceMode": "economy",
+          "fps": 30,
+          "watermark": false,
+          "format": "mp4"
+        },
+        "events": [
+          {
+            "version": 1,
+            "codec": "avc1.64001f",
+            "width": 1280,
+            "height": 720,
+            "fps": 30,
+            "bitrate": 6000000,
+            "bitDepth": 8,
+            "stage": "complete",
+            "encoder": "supported",
+            "decoder": "not-required",
+            "encodedFrames": 1,
+            "decodedFrames": 0,
+            "emittedCodec": "avc1.64001f"
+          }
+        ],
+        "performance": {
+          "version": 1,
+          "requested": "economy",
+          "active": "economy",
+          "scheduling": "display",
+          "frameSource": "exact",
+          "outcome": "completed",
+          "framesSubmitted": 12317,
+          "peakOutstandingFrames": 1,
+          "audioPoolLimitBytes": 25600,
+          "hostMs": {
+            "renderRequest": 1094110.100021124,
+            "animationFrameWait": 0,
+            "mainThreadYield": 128885.50000166893,
+            "bitmap": 3575.100005865097,
+            "queueWait": 108.6999979019165,
+            "finalizeWait": 97400.79999995232,
+            "backendRequest": 1344012.7999999523,
+            "preflight": 314.7999999523163,
+            "captureSetup": 1.5999999046325684,
+            "composition": 3690.6999905109406,
+            "transferSubmit": 9074.999992847443,
+            "total": 1344021
+          },
+          "workerMs": {
+            "storageAdmission": 2.5999999046325684,
+            "codecProbe": 218.90000009536743,
+            "coreLoad": 45.59999990463257,
+            "stagingSetup": 14.400000095367432,
+            "videoSubmit": 29095.899980306625,
+            "pcmStage": 9652.700012922287,
+            "videoFlush": 39.5,
+            "prepareMux": 46.5,
+            "ffmpegFinalize": 96673.09999990463,
+            "resultCleanup": 640,
+            "workerTotal": 1343978.7999999523
+          },
+          "scope": "Host/worker wall-clock stages overlap; do not sum them or infer GPU/CPU usage."
+        },
+        "failure": null,
+        "scope": "Last attempt in this view. Probes describe codec support, not GPU/CPU assignment or long-export reliability.",
+        "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36"
+      },
+      "cache": {
+        "files": 2,
+        "cleanupPending": 0,
+        "scope": "Finished exports owned by this tab since its last reload; active jobs and other visits are excluded."
+      }
+    }
   },
   "limits": [
     "Full-length at 720p30. 4K60 is a short prefix test.",
     "Luma checks detect exact repeated pictures or short reversals at reduced resolution, without an original layer reference.",
-    "No mobile or whole-job performance claim.",
+    "The physical device timing covers one completed H.264 run. It does not establish comparable mode speed, long-run thermal behavior or hardware attribution.",
     "Baseline harness required a clean playback pass for existing downloads and explicit Cancel dialog handling."
   ],
   "validation": {
