@@ -6,7 +6,7 @@ export const vp9Probe = Object.freeze({
     maxHeapBytes: 128 * 1024 * 1024, codec: 'vp09.02.40.10.01.01.01.01.00',
 });
 
-export async function encodeVp9Probe(core, { progress } = {}) {
+export async function encodeVp9Probe(core, { progress, fill, tuning } = {}) {
     const {width, height, fps, frames, codec, maxBytes, maxHeapBytes} = vp9Probe;
     const source = new EncodedVideoPacketSource('vp9');
     const target = new BufferTarget();
@@ -52,13 +52,13 @@ export async function encodeVp9Probe(core, { progress } = {}) {
     }
     let opened = false;
     try {
-        const openCode = core._probe_open();
+        const openCode = tuning ? core._probe_open_profile(tuning.realtime, tuning.quantizer) : core._probe_open();
         opened = openCode === 0;
         check(openCode, 'open');
         await output.start();
         for (let i = 0; i < frames; i++) {
             const beginInput = performance.now();
-            check(core._probe_fill(i), 'input');
+            check(fill ? fill(core, i) : core._probe_fill(i), 'input');
             stats.inputMs += performance.now() - beginInput;
             const beginEncode = performance.now();
             check(core._probe_encode(i), 'encode');
@@ -74,7 +74,8 @@ export async function encodeVp9Probe(core, { progress } = {}) {
         const meanBitsPerSecond = stats.encodedBytes * 8 * fps / frames;
         const maxFourPictureBits = Math.max(...packetSizes.map((_, i) =>
             packetSizes.slice(i, i + 4).reduce((sum, size) => sum + size * 8, 0)));
-        if (meanBitsPerSecond > 18_000_000 || maxFourPictureBits > 16_000_000) {
+        const sampledRatePass = meanBitsPerSecond <= 18_000_000 && maxFourPictureBits <= 16_000_000;
+        if (!tuning && !sampledRatePass) {
             throw Error('Sampled VP9 payload exceeds level 4.0 (' + meanBitsPerSecond + ' bit/s)');
         }
         source.close();
@@ -83,6 +84,7 @@ export async function encodeVp9Probe(core, { progress } = {}) {
         stats.muxMs += performance.now() - beginMux;
         if (!target.buffer?.byteLength || target.buffer.byteLength > maxBytes) throw Error('MP4 exceeds the probe bounds');
         return {buffer:target.buffer, stats:{...stats, meanBitsPerSecond, maxFourPictureBits, fileBytes:target.buffer.byteLength,
+            ...(tuning && {sampledRatePass}),
             totalMs:performance.now() - begin, encoder:'libvpx 1.17.0 / WASM scalar / one thread',
             width, height, fps, codec, audio:false}};
     } finally {

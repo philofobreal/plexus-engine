@@ -374,3 +374,26 @@ test('shipped scalar and SIMD VP9 builds produce identical compressed picture pa
     assert.equal(snapshots[0].packets.length, 30);
     assert.deepEqual(snapshots[1], snapshots[0]);
 });
+
+test('local VP9 tuning uses the explicit profile and borrowed input and closes after an input failure', async () => {
+    const {encodeVp9Probe} = await import('../research/export/vp9-10bit-probe.worker.mjs');
+    const calls = [];
+    const core = {
+        HEAPU8: new Uint8Array(0),
+        _probe_open_profile(realtime, quantizer) {
+            calls.push(['open', realtime, quantizer]);
+            return 0;
+        },
+        _probe_close() { calls.push(['close']); },
+    };
+    const error = new Error('Test input failed');
+    await assert.rejects(encodeVp9Probe(core, {
+        tuning: {realtime:1, quantizer:4},
+        fill(module, frame) {
+            assert.equal(module, core);
+            calls.push(['fill', frame]);
+            throw error;
+        },
+    }), thrown => thrown === error);
+    assert.deepEqual(calls, [['open', 1, 4], ['fill', 0], ['close']]);
+});

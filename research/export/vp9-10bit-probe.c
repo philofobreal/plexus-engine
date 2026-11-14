@@ -19,8 +19,17 @@ int probe_close(void) {
     return vpx_codec_destroy(&codec);
 }
 
-int probe_open(void) {
+#ifdef PROBE_TUNING
+static unsigned long deadline;
+int probe_open_profile(int realtime, int quantizer) {
     if (opened) return -1;
+    if ((realtime != 0 && realtime != 1) || quantizer < 0 || quantizer > 63) return -6;
+    deadline = realtime ? VPX_DL_REALTIME : VPX_DL_GOOD_QUALITY;
+#else
+int probe_open(void) {
+    const int quantizer = 0;
+    if (opened) return -1;
+#endif
     vpx_codec_enc_cfg_t config;
     if (vpx_codec_enc_config_default(vpx_codec_vp9_cx(), &config, 0)) return -2;
     config.g_w = WIDTH;
@@ -33,6 +42,11 @@ int probe_open(void) {
     config.g_threads = 1;
     config.g_lag_in_frames = 0;
     config.kf_mode = VPX_KF_DISABLED;
+    if (quantizer) {
+        config.rc_end_usage = VPX_Q;
+        config.rc_min_quantizer = (unsigned int)quantizer;
+        config.rc_max_quantizer = (unsigned int)quantizer;
+    }
     if (vpx_codec_enc_init(&codec, vpx_codec_vp9_cx(), &config, VPX_CODEC_USE_HIGHBITDEPTH)) return -3;
     if (!vpx_img_alloc(&image, VPX_IMG_FMT_I42016, WIDTH, HEIGHT, 32)) {
         vpx_codec_destroy(&codec);
@@ -43,7 +57,7 @@ int probe_open(void) {
     image.cs = VPX_CS_BT_709;
     image.range = VPX_CR_STUDIO_RANGE;
     if (vpx_codec_control(&codec, VP8E_SET_CPUUSED, 8)
-        || vpx_codec_control(&codec, VP9E_SET_LOSSLESS, 1)
+        || vpx_codec_control(&codec, VP9E_SET_LOSSLESS, (unsigned int)(quantizer == 0))
         || vpx_codec_control(&codec, VP9E_SET_COLOR_SPACE, VPX_CS_BT_709)
         || vpx_codec_control(&codec, VP9E_SET_COLOR_RANGE, VPX_CR_STUDIO_RANGE)) {
         probe_close();
@@ -51,6 +65,12 @@ int probe_open(void) {
     }
     return 0;
 }
+
+#ifdef PROBE_TUNING
+int probe_open(void) {
+    return probe_open_profile(0, 0);
+}
+#endif
 
 int probe_fill(int frame) {
     if (!opened || frame < 0 || frame >= FRAMES) return -1;
@@ -89,8 +109,11 @@ int probe_encode(int frame) {
     if (!opened || frame < -1 || frame >= FRAMES) return -1;
     packet_iterator = NULL;
     packet = NULL;
+#ifndef PROBE_TUNING
+    const unsigned long deadline = VPX_DL_GOOD_QUALITY;
+#endif
     return vpx_codec_encode(&codec, frame >= 0 ? &image : NULL, frame < 0 ? FRAMES : frame, 1,
-                            frame >= 0 ? VPX_EFLAG_FORCE_KF : 0, VPX_DL_GOOD_QUALITY);
+                            frame >= 0 ? VPX_EFLAG_FORCE_KF : 0, deadline);
 }
 
 int probe_next_packet(void) {

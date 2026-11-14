@@ -14,12 +14,18 @@ RUN AR=emar LD=emcc emconfigure ./configure --target=generic-gnu --disable-runti
     --extra-cflags="$WASM_SIMD_FLAGS" \
     && emmake make -j4
 COPY vp9-10bit-probe.c /probe.c
-RUN mkdir /out \
-    && emcc -O3 $WASM_SIMD_FLAGS -I. /probe.c libvpx.a -o /out/vp9-10bit-probe.mjs \
+ARG PROBE_TUNING=0
+RUN case "$PROBE_TUNING" in \
+        0) tuning_flag=; tuning_export= ;; \
+        1) tuning_flag=-DPROBE_TUNING; tuning_export=',"_probe_open_profile"' ;; \
+        *) exit 1 ;; \
+    esac \
+    && mkdir /out \
+    && emcc -O3 $WASM_SIMD_FLAGS $tuning_flag -I. /probe.c libvpx.a -o /out/vp9-10bit-probe.mjs \
     --no-entry -sMODULARIZE=1 -sEXPORT_ES6=1 -sFILESYSTEM=0 -sALLOW_MEMORY_GROWTH=1 \
     -sEXPORTED_RUNTIME_METHODS='["UTF8ToString"]' \
     -sINITIAL_MEMORY=16777216 -sMAXIMUM_MEMORY=134217728 \
-    -sEXPORTED_FUNCTIONS='["_probe_error","_probe_open","_probe_close","_probe_fill","_probe_plane","_probe_stride","_probe_encode","_probe_next_packet","_probe_packet_data","_probe_packet_size","_probe_packet_index","_probe_packet_is_key"]' \
+    -sEXPORTED_FUNCTIONS='["_probe_error","_probe_open","_probe_close","_probe_fill","_probe_plane","_probe_stride","_probe_encode","_probe_next_packet","_probe_packet_data","_probe_packet_size","_probe_packet_index","_probe_packet_is_key"'"$tuning_export"']' \
     && cp LICENSE PATENTS /out/ \
     && cp /libvpx-source.tar.gz /out/
 FROM scratch
