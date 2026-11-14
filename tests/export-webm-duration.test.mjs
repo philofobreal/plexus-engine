@@ -29,6 +29,35 @@ test('WebM video DefaultDuration decodes as integer nanoseconds in streamed and 
     }
 });
 
+test('seekable OPFS WebM rewrites only its fixed-size header with duration and native VP9 color', async () => {
+    const chunks = [];
+    let finalizedHeader;
+    const muxer = new WebMMuxer({ width: 1280, height: 720, fps: 30, codecId: 'V_VP9',
+        sampleRate: 48000, hasAudio: true, vp9HighPrecision: true,
+        onChunk: bytes => chunks.push(bytes), rewriteHeader: bytes => { finalizedHeader = bytes; } });
+    const packet = timestamp => ({ timestamp, duration: 33333, type:'key',
+        byteLength:1, copyTo(bytes) { bytes[0] = 0x12; } });
+    muxer.setAudioConfig();
+    assert.equal(chunks.length, 0, 'Opus setup must not emit a header with missing 10-bit video metadata');
+    muxer.addVideoChunk(packet(0), {codec:'vp09.02.31.10',
+        colorSpace:{primaries:'bt709',transfer:'iec61966-2-1',matrix:'bt709',fullRange:true}});
+    muxer.addVideoChunk(packet(1_000_000), {codec:'vp09.02.31.10',colorSpace:{transfer:'bt709'}});
+    muxer.finalize();
+    assert.equal(chunks.length, 3);
+    assert.equal(finalizedHeader.length, chunks[0].length);
+    const bytes = Buffer.from(finalizedHeader);
+    const color = bytes.indexOf(Buffer.from([0x55, 0xb0, 0x90]));
+    assert.ok(color >= 0);
+    assert.deepEqual([...bytes.subarray(color + 3, color + 19)], [
+        0x55, 0xb1, 0x81, 1, 0x55, 0xb9, 0x81, 2, 0x55, 0xbd, 0x81, 1, 0x55, 0xba, 0x81, 13,
+    ]);
+    const duration = bytes.indexOf(Buffer.from([0x44, 0x89, 0x88]));
+    assert.ok(duration >= 0);
+    assert.equal(Buffer.from(chunks[0]).readDoubleBE(duration + 3), 0);
+    assert.equal(bytes.readDoubleBE(duration + 3), 1033);
+    assert.deepEqual(bytes.subarray(duration + 11), Buffer.from(chunks[0]).subarray(duration + 11));
+});
+
 test('Opus SimpleBlock is seekable while the trimmed tail keeps BlockGroup flags reserved', async () => {
     const chunks = [];
     const muxer = new WebMMuxer({ width: 3840, height: 2160, fps: 60, codecId: 'V_VP9',

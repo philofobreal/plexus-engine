@@ -178,7 +178,16 @@ test('real worker retries a refused WebM bitrate before OPFS and excludes probe 
     const workerLoad = createLoader({}, { ...h.env, self, setTimeout, clearTimeout, performance, TextEncoder, TextDecoder, Blob, Float32Array,
         setInterval: () => 1, clearInterval() {}, navigator: { storage: { async getDirectory() {
             order.push(h.frames.length); return { async *entries() {}, async getFileHandle() { return {
-                async createSyncAccessHandle() { return { truncate() {}, write(c) { chunks.push(c); }, flush() {}, close() {} }; },
+                async createSyncAccessHandle() { return { truncate() {}, write(c, { at }) {
+                    if (at === 0 && chunks.length) {
+                        assert.equal(c.byteLength, chunks[0].byteLength, 'Finalized header must not shift cluster offsets');
+                        chunks[0] = c;
+                    } else {
+                        assert.equal(at, chunks.reduce((size, chunk) => size + chunk.byteLength, 0));
+                        chunks.push(c);
+                    }
+                    return c.byteLength;
+                }, flush() {}, close() {} }; },
                 async getFile() { return new Blob(chunks); }
             }; } };
         } } } });

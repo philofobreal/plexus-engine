@@ -1,6 +1,22 @@
 import type { EncodedChunkLike, Muxer, MuxerConfig } from './Muxer';
+import { resolveMp4Vp9Color, type Mp4Vp9Color } from './Mp4Vp9Color';
 
-interface WebMMuxerConfig extends MuxerConfig {}
+interface WebMMuxerConfig extends MuxerConfig {
+    vp9HighPrecision?: boolean;
+    rewriteHeader?: (header: Uint8Array) => void;
+}
+
+const webmPrimaries: Readonly<Record<string, number>> = {
+    bt709: 1, bt470bg: 5, smpte170m: 6, bt2020: 9, smpte432: 12,
+};
+const webmTransfer: Readonly<Record<string, number>> = {
+    bt709: 1, smpte170m: 6, linear: 8, 'iec61966-2-1': 13, smpte2084: 16, 'arib-std-b67': 18,
+};
+const webmMatrix: Readonly<Record<string, number>> = {
+    rgb: 0, bt709: 1, bt470bg: 5, smpte170m: 6, 'bt2020-ncl': 9,
+};
+
+type Vp9DecoderConfig = Pick<VideoDecoderConfig, 'codec' | 'colorSpace'>;
 
 export class WebMMuxer implements Muxer {
     private readonly clusters: Uint8Array[] = [];
@@ -12,8 +28,11 @@ export class WebMMuxer implements Muxer {
     private readonly fps: number;
     private readonly codecId: string;
     private readonly sampleRate: number;
+    private readonly vp9HighPrecision: boolean;
+    private videoColor?: Mp4Vp9Color & { matrix?: number; range?: number };
     private hasAudio: boolean;
     private readonly onChunk?: (chunk: Uint8Array) => void;
+    private readonly rewriteHeader?: (header: Uint8Array) => void;
     private headerEmitted = false;
     private clusterTimecode = 0;
     private clusterOpen = false;
@@ -31,8 +50,10 @@ export class WebMMuxer implements Muxer {
         this.fps = config.fps;
         this.codecId = config.codecId;
         this.sampleRate = config.sampleRate;
+        this.vp9HighPrecision = config.vp9HighPrecision === true && config.codecId === 'V_VP9';
         this.hasAudio = config.hasAudio;
         this.onChunk = config.onChunk;
+        this.rewriteHeader = config.rewriteHeader;
         this.audioHead = createOpusHead(config.sampleRate);
         this.audioConfigReady = !config.hasAudio;
     }
@@ -53,8 +74,6 @@ export class WebMMuxer implements Muxer {
         }
         this.audioConfigReady = true;
         this.emitHeader();
-        for (const cluster of this.pendingClusters) this.onChunk?.(cluster);
-        this.pendingClusters.length = 0; this.pendingClusterBytes = 0;
     }
 
     setAudioEndTime(timeUs: number): void {
@@ -64,7 +83,16 @@ export class WebMMuxer implements Muxer {
 
     private get codecDelayUs(): number { return new DataView(this.audioHead.buffer, this.audioHead.byteOffset).getUint16(10, true) * 1_000_000 / 48_000; }
 
-    addVideoChunk(chunk: EncodedChunkLike): void {
+    addVideoChunk(chunk: EncodedChunkLike, decoderConfig?: Vp9DecoderConfig): void {
+        if (this.vp9HighPrecision && !this.videoColor) {
+            const space = decoderConfig?.colorSpace;
+            this.videoColor = {
+                ...resolveMp4Vp9Color(decoderConfig),
+                matrix: space?.matrix && Object.hasOwn(webmMatrix, space.matrix) ? webmMatrix[space.matrix] : undefined,
+                range: typeof space?.fullRange === 'boolean' ? (space.fullRange ? 2 : 1) : undefined,
+            };
+            this.emitHeader();
+        }
         const data = new Uint8Array(chunk.byteLength);
         chunk.copyTo(data);
 
@@ -113,6 +141,7 @@ export class WebMMuxer implements Muxer {
         this.closeCurrentCluster();
         if (this.onChunk) {
             this.emitHeader();
+            this.rewriteHeader?.(this.createHeader());
             return new Blob([], { type: 'video/webm' });
         }
         const parts: BlobPart[] = [
@@ -144,7 +173,7 @@ export class WebMMuxer implements Muxer {
             ebmlStringElement(0x4D80, 'Plexus Engine'),
             ebmlStringElement(0x5741, 'Plexus Engine Export Worker')
         ];
-        if (!this.onChunk) {
+        if (!this.onChunk || this.rewriteHeader) {
             baseInfo.splice(1, 0, ebmlFloatElement(0x4489, this.durationMs));
         }
         return concatBytes(...baseInfo);
@@ -159,7 +188,13 @@ export class WebMMuxer implements Muxer {
             ebmlUIntElement(0x23E383, Math.max(1, Math.round(1_000_000_000 / this.fps))),
             ebmlElement(0xE0, concatBytes(
                 ebmlUIntElement(0xB0, this.width),
-                ebmlUIntElement(0xBA, this.height)
+                ebmlUIntElement(0xBA, this.height),
+                ...(this.videoColor ? [ebmlElement(0x55B0, concatBytes(
+                    ...(this.videoColor.matrix !== undefined ? [ebmlUIntElement(0x55B1, this.videoColor.matrix)] : []),
+                    ...(this.videoColor.range !== undefined ? [ebmlUIntElement(0x55B9, this.videoColor.range)] : []),
+                    ebmlUIntElement(0x55BD, webmPrimaries[this.videoColor.primaries]),
+                    ebmlUIntElement(0x55BA, webmTransfer[this.videoColor.transfer])
+                ))] : [])
             ))
         ));
 
@@ -207,7 +242,7 @@ export class WebMMuxer implements Muxer {
         if (this.onChunk) {
             if (!this.headerEmitted) {
                 this.pendingClusterBytes += clusterBytes.byteLength;
-                if (this.pendingClusterBytes > 16 * 1024 * 1024) throw new Error('Audio configuration did not arrive within the WebM header buffer budget.');
+                if (this.pendingClusterBytes > 16 * 1024 * 1024) throw new Error('Track configuration did not arrive within the WebM header buffer budget.');
                 this.pendingClusters.push(clusterBytes);
             } else this.onChunk(clusterBytes);
             return;
@@ -216,16 +251,23 @@ export class WebMMuxer implements Muxer {
     }
 
     private emitHeader(): void {
-        if (!this.onChunk || this.headerEmitted || (this.hasAudio && !this.audioConfigReady)) return;
-        const headerBytes = concatBytes(
+        if (!this.onChunk || this.headerEmitted || (this.hasAudio && !this.audioConfigReady)
+            || (this.vp9HighPrecision && !this.videoColor)) return;
+        this.headerEmitted = true;
+        this.onChunk(this.createHeader());
+        for (const cluster of this.pendingClusters) this.onChunk(cluster);
+        this.pendingClusters.length = 0;
+        this.pendingClusterBytes = 0;
+    }
+
+    private createHeader(): Uint8Array {
+        return concatBytes(
             ebmlElement(0x1A45DFA3, this.createEbmlHeader()),
             ebmlId(0x18538067),
             unknownSizeBytes(8),
             ebmlElement(0x1549A966, this.createInfo()),
             ebmlElement(0x1654AE6B, this.createTracks())
         );
-        this.headerEmitted = true;
-        this.onChunk(headerBytes);
     }
 }
 

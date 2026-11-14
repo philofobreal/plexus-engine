@@ -1,4 +1,4 @@
-import type { EncodedChunkLike, Muxer } from './Muxer';
+import type { EncodedChunkLike } from './Muxer';
 import { WebMMuxer } from './WebMMuxer';
 import { probeExportEncoding } from './ExportPreparation';
 import { exportStorageName, validExportStorageName } from './ExportStorageLease';
@@ -47,7 +47,7 @@ interface AudioEncoderLike {
 }
 
 type VideoEncoderConstructor = new (init: {
-    output: (chunk: EncodedChunkLike) => void;
+    output: (chunk: EncodedChunkLike, metadata?: EncodedVideoChunkMetadata) => void;
     error: (error: Error) => void;
 }) => VideoEncoderLike;
 
@@ -78,7 +78,7 @@ let opfsFileHandle: FileSystemFileHandle | null = null;
 let opfsAccessHandle: any = null; // FileSystemSyncAccessHandle
 let encoder: VideoEncoderLike | null = null;
 let audioEncoder: AudioEncoderLike | null = null;
-let muxer: Muxer | null = null;
+let muxer: WebMMuxer | null = null;
 let exportSampleRate = 48_000;
 let framesEncodedCount = 0;
 let totalEncodedBytes = 0;
@@ -163,6 +163,7 @@ async function startExport(message: StartExportRequest) {
     opfsAccessHandle = await (opfsFileHandle as any).createSyncAccessHandle();
     opfsAccessHandle.truncate(0);
 
+    let fileOffset = 0;
     muxer = new WebMMuxer({
         width: config.width,
         height: config.height,
@@ -170,15 +171,24 @@ async function startExport(message: StartExportRequest) {
         codecId: config.codec === 'vp8' ? 'V_VP8' : 'V_VP9',
         sampleRate: exportSampleRate,
         hasAudio: false,
+        vp9HighPrecision: message.webmBitDepth === 10,
         onChunk: (chunk) => {
-            opfsAccessHandle.write(chunk);
+            if (opfsAccessHandle.write(chunk, { at: fileOffset }) !== chunk.byteLength) {
+                throw new Error('WebM storage write was incomplete.');
+            }
+            fileOffset += chunk.byteLength;
+        },
+        rewriteHeader: header => {
+            if (opfsAccessHandle.write(header, { at: 0 }) !== header.byteLength) {
+                throw new Error('WebM header write was incomplete.');
+            }
         }
     });
 
     encoder = new Encoder({
-        output: (chunk) => {
+        output: (chunk, metadata) => {
             if (!muxer) throw new Error('Muxer is not initialized.');
-            muxer.addVideoChunk(chunk);
+            muxer.addVideoChunk(chunk, metadata?.decoderConfig);
             if (queueEvents) reportQueue();
             framesEncodedCount++;
             totalEncodedBytes += chunk.byteLength;
@@ -333,11 +343,8 @@ async function finalizeExport() {
     encoder = null;
     const afterAudioFlush = profile ? performance.now() : 0;
 
-    const blob = muxer.finalize();
+    muxer.finalize();
     muxer = null;
-    if (blob) {
-        opfsAccessHandle.write(new Uint8Array(await blob.arrayBuffer()));
-    }
     opfsAccessHandle.flush();
     opfsAccessHandle.close();
     opfsAccessHandle = null;
