@@ -192,7 +192,7 @@ export class WebMMuxer implements Muxer {
                 ...(this.videoColor ? [ebmlElement(0x55B0, concatBytes(
                     ...(this.videoColor.matrix !== undefined ? [ebmlUIntElement(0x55B1, this.videoColor.matrix)] : []),
                     ...(this.videoColor.range !== undefined ? [ebmlUIntElement(0x55B9, this.videoColor.range)] : []),
-                    ebmlUIntElement(0x55BD, webmPrimaries[this.videoColor.primaries]),
+                    ebmlUIntElement(0x55BB, webmPrimaries[this.videoColor.primaries]),
                     ebmlUIntElement(0x55BA, webmTransfer[this.videoColor.transfer])
                 ))] : [])
             ))
