@@ -1,7 +1,7 @@
 {
-  "id": "wh06e-tuning-20261114T004243100Z",
-  "previousCommit": "00457cc9e45e411f568d48e2bc5dce6bdc49ff4b",
-  "sourceCommit": "22381800f2beef4e15c75787e865bebcd3c3debd",
+  "id": "wh08-export-closeout-20261114T024803680Z",
+  "previousCommit": "3d9ea0412d2c21432ef95e3faf8a3bdb287f834a",
+  "sourceCommit": "ce106bf065349c6896564ab159de0e1eae63a6ad",
   "inputs": [
     {
       "path": "bun.lock",
@@ -821,11 +821,11 @@
     },
     {
       "path": "src/export/WebMMuxer.ts",
-      "sha256": "616c683131683d885f427901e0bee21d366636942921d45355e853f1ab145ff9"
+      "sha256": "596ff534e6e837376525a675ba9917bcebd8ed80458e2c9f5ecd6946ec44fee1"
     },
     {
       "path": "src/export/export.worker.ts",
-      "sha256": "62d5f1099d4b9dbd1e3983ee55203cb9ff084cb33d1818ee0c1a71b144c3e7b6"
+      "sha256": "767ea5151298a36db7baafd3b53e4fbafc466417e9480072dc3d39a91771585f"
     },
     {
       "path": "src/export/mp4-export.worker.ts",
@@ -1874,8 +1874,8 @@
       "sha256": "b1a4f045f99fc904848d2ccc7a7b5165c0955ed451f0597de633739c251ef37e"
     },
     {
-      "path": "assets/export.worker-CP6C3n3-.js",
-      "sha256": "33ba5f38f246334891351e82f576fbba602f75c7f614a704327901044801a108"
+      "path": "assets/export.worker-DnfJD54j.js",
+      "sha256": "864a3da4ba7e08429001b985e3e5c7d7b2af22e14a01af10bbea28f6dfc0cdcf"
     },
     {
       "path": "assets/ExportDiagnostics-Bp8riQQi.js",
@@ -1914,8 +1914,8 @@
       "sha256": "c3ea93fee004ae5581d6fc4121453b3d87737c6ea8c28dbe71bd69a260a48d2a"
     },
     {
-      "path": "assets/main-CxHpL34x.js",
-      "sha256": "433cc355ed73826173666ff61e7a4abf3c15c5262acc4b7a5c125c352e7d11ee"
+      "path": "assets/main-DuS5CPrz.js",
+      "sha256": "eeeb27a6dd0465bbd00d0448bf982327fbe1baad4020e79919d459f7a79e450e"
     },
     {
       "path": "assets/mobileCodecProbe-Bb21oOHO.js",
@@ -1926,44 +1926,44 @@
       "sha256": "785597bca2e7dd97a652a20a197c077079e635a5663433448e0e1d9fd8c98a64"
     },
     {
-      "path": "assets/mp4-export.worker-BAFy27qI.js",
-      "sha256": "5bb082433a8b1b73959537b99a3fb31cc2c4a7a41a9621f508c7d16567bfab6a"
+      "path": "assets/mp4-export.worker-B-RPbXsC.js",
+      "sha256": "d07000dab94e649b5c057611f21f6f4127e89117ce838f095681f134970c4469"
     },
     {
-      "path": "assets/mp4-export.worker-BWCpHGMu.js",
-      "sha256": "7e4df5499672cb45e8cc4c6fdfaeb6f6b174b899139ba034afc25b8aaef2e153"
+      "path": "assets/mp4-export.worker-BRAcjpSK.js",
+      "sha256": "5c58d1b9f6148d441d5699310d1a2874651f33b4a95602a52264e5e1e8309a33"
     },
     {
-      "path": "assets/mp4-export.worker-vFkJHgb6.js",
-      "sha256": "6c166898e0d448b5d401f20d228fefd080ba7135392570dab913ce508b0552cd"
+      "path": "assets/mp4-export.worker-DAfa3X3b.js",
+      "sha256": "50ab56f00e45360d9473d80902be97bd75b3c959308d9ecce2d5a895dcac5ee4"
     },
     {
-      "path": "assets/mvp-BfmN79Qf.js",
-      "sha256": "c0282114847c75485ffb738c1596e11fdc50c9226a23f52b114bcf7944123acd"
+      "path": "assets/mvp-BgpdQqt1.js",
+      "sha256": "1c0525afa1a9787b39a382fcdf19d7619859e5f633cdd8336757c81cb1ad4dd2"
     },
     {
       "path": "assets/mvp-C6jNp95m.css",
       "sha256": "782e0d577fe9d36a0a572a37681fc1afcdd3884bf10c919de9006ca2b1c13328"
     },
     {
-      "path": "assets/native-packet.worker-Bae-KfsT.js",
-      "sha256": "32bb3b909959cec112d3cde864b7e83370e207c34d34355cb84a16d5d730876f"
+      "path": "assets/native-packet.worker-DPbtHky3.js",
+      "sha256": "bdf2fe86876df6ecff3dfda5f0bbc9a4374980623d2a0f82a0a4456cec519059"
     },
     {
-      "path": "assets/paired-encoder.worker-Bl26VXO6.js",
-      "sha256": "8179236d068321945ee9d45903f1519f0fef4679d7cf80ed4e2177d770d4a52e"
+      "path": "assets/paired-encoder.worker-BnjONWId.js",
+      "sha256": "457ce151b6c580ab0b19770f2cf7da96f00f0266eb5777329638b4bbb99555c7"
     },
     {
       "path": "assets/preload-helper-4Vc6RGAM.js",
       "sha256": "b384125473f026f3b008bea2579ce5a6509a2a7a5659f23e4aca88bb433b5190"
     },
     {
-      "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
-      "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
+      "path": "assets/PreviewQualityControl-Bu7MZFS7.js",
+      "sha256": "d06e618f5857d8247e3ba86ae51e04d42324b5a1f8897c289ab44cd723d49af6"
     },
     {
-      "path": "assets/PreviewQualityControl-Y0aaDg-C.js",
-      "sha256": "7ef0dc098b654b6b894409b8259ac951656b6788d88fab5db65c7598cbd42705"
+      "path": "assets/PreviewQualityControl-Dihs3YQ2.css",
+      "sha256": "9ecc8ced1c0db44af40221cedb15eb601fcab2faa976debc455e98713503e762"
     },
     {
       "path": "assets/resolveMetaTuning-Dc62jUEr.js",
@@ -1990,12 +1990,12 @@
       "sha256": "b77c3de43c2cc191b9a8baa74307c1989c8f94f4200f0f1c73f35781153a845c"
     },
     {
-      "path": "assets/WebCodecsBackend-Cuw5E67l.js",
-      "sha256": "c524f39965fec4f62e23e745e27149a5bf9736cb921464cfd70bd7055cc83f1e"
+      "path": "assets/WebCodecsBackend-C674_2By.js",
+      "sha256": "bfd2aee341dcb13d981857891d71a31d4179df7a85ec47dec22a04082e221a51"
     },
     {
-      "path": "assets/WebCodecsBackend-DQvqwihi.js",
-      "sha256": "2c10f73841bb3172f7ee4a64d435011d19dcf8793990f29a41323881d221816e"
+      "path": "assets/WebCodecsBackend-DpJfrpIR.js",
+      "sha256": "4baebe76d155d2a369f310abe82dcf1916e8d39740fd7769cfc0da74d6fb0c76"
     },
     {
       "path": "assets/WebGLRendererBackend-DOvrv0ga.js",
@@ -2018,8 +2018,8 @@
       "sha256": "61ccac8e4b0984d4859ce8dd1dd7b7658f032161595a402a37950f5ff36b409d"
     },
     {
-      "path": "assets/wormholeHostLab-DW3wK48z.js",
-      "sha256": "0a9311a20d1cc0f61dad69c784f2c06fb77c2e43bbb61380207928a53d629096"
+      "path": "assets/wormholeHostLab-Ch50Ufri.js",
+      "sha256": "cb7a1af698f6e7d62ddcffd09bbd1ed2fe6f0ef9b34777ac5a173c67a3e13d58"
     },
     {
       "path": "assets/wormholeHostRender.worker-DSD9FOKw.js",
@@ -2119,11 +2119,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "e310c4339c1e1622f28c3178c75f4029397d8f895e8f0c504ded3c71c957d25a"
+      "sha256": "b7c1cefd09058e0fb9722645a05cdb83b4eee9aa159937ff17d82ec474de13eb"
     },
     {
       "path": "mvp/index.html",
-      "sha256": "5fd0513536e6029f9938b6f8dc2035e54da67cdea47333d59e4216b004c944eb"
+      "sha256": "510ba5ab1eada9c9f5539dd7f6001c1cda4b8620f80ef3de0903f375ecdeaab2"
     },
     {
       "path": "research/export/wormhole-gpu.html",
@@ -2139,7 +2139,7 @@
     },
     {
       "path": "tests/browser/wormhole-host-backend-smoke.html",
-      "sha256": "a3f00cf56ee5f1ab17cf37d0dcebf727a075c782674934e1f68966bb46eab124"
+      "sha256": "2878fc723810fe5e0ea77ea7cb59c38610f67765185cf79791da786d44207c08"
     },
     {
       "path": "visual-tuning-presets/default.json",
