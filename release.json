@@ -1,7 +1,7 @@
 {
-  "id": "wh06e-simd-20261113T223938105Z",
-  "previousCommit": "1b9a39b981594d1580d9a48e679f722aceea8966",
-  "sourceCommit": "7dada949a9d39cfaf0b29db1b56af01459ca65cb",
+  "id": "wh06e-tuning-20261114T004243100Z",
+  "previousCommit": "00457cc9e45e411f568d48e2bc5dce6bdc49ff4b",
+  "sourceCommit": "22381800f2beef4e15c75787e865bebcd3c3debd",
   "inputs": [
     {
       "path": "bun.lock",
@@ -245,15 +245,15 @@
     },
     {
       "path": "research/export/vp9-10bit-probe.Dockerfile",
-      "sha256": "08de8bdace333e742732052fffd0238b76e2e098816668f66c99684e7f478ee5"
+      "sha256": "fab682864924ffdfae646bb723afa6c4adbb84fbef5c563e7522a36d87436d22"
     },
     {
       "path": "research/export/vp9-10bit-probe.c",
-      "sha256": "f6ff4589300447a315c63458c26138420169feb79df6a9a2917170a1f551de28"
+      "sha256": "5923e8e19d5ddc240def9e08fc843b27f7d97c1c850e04745d405499fac4db1d"
     },
     {
       "path": "research/export/vp9-10bit-probe.worker.mjs",
-      "sha256": "26f59e1c59eefce0f3bc4b58a82ca02dbb8879a8bd7ffa35daf1e123a16ddb8f"
+      "sha256": "fd10d9f1f94fcd0ae56246af52b6b2b34cb9b1a2042366d7c89bde669095804d"
     },
     {
       "path": "research/export/wormhole-baseline-capture.mjs",
@@ -1918,8 +1918,8 @@
       "sha256": "433cc355ed73826173666ff61e7a4abf3c15c5262acc4b7a5c125c352e7d11ee"
     },
     {
-      "path": "assets/mobileCodecProbe-CHIWk64C.js",
-      "sha256": "b2357dc293a38657c02c25ae75e5d6ab42f6dcaab4a81373e9bf475fb9ebdbbb"
+      "path": "assets/mobileCodecProbe-Bb21oOHO.js",
+      "sha256": "e893b462ac92aac28545567bc9dc33c59ea65b129bc00de3df74697df5e42200"
     },
     {
       "path": "assets/modulepreload-polyfill-Dezn_h7o.js",
@@ -1986,8 +1986,8 @@
       "sha256": "ab002d260358609e76de87ca4163a65654a74994df576295ae951548abc8feb7"
     },
     {
-      "path": "assets/vp9-10bit-probe.worker-D_MpYC5I.js",
-      "sha256": "8f492f2cef7eedf2863454d4b6accc98b8221efc4b788c43e56a731ef6d71736"
+      "path": "assets/vp9-10bit-probe.worker-CYiDQ0YZ.js",
+      "sha256": "b77c3de43c2cc191b9a8baa74307c1989c8f94f4200f0f1c73f35781153a845c"
     },
     {
       "path": "assets/WebCodecsBackend-Cuw5E67l.js",
@@ -2135,7 +2135,7 @@
     },
     {
       "path": "tests/browser/mobile-codec-probe.html",
-      "sha256": "3d3cedc999a818e4a19ec422c198a409f5b450010bc69a26c575a7e4038ee40d"
+      "sha256": "a95867af64a41d06bedd908078d36166377fd5e8fe7e4f76de13850986aefa38"
     },
     {
       "path": "tests/browser/wormhole-host-backend-smoke.html",
