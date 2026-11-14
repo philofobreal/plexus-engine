@@ -381,3 +381,45 @@ rate control at the same resolution, with the lossless sample as a control.
 Check banding, flicker and motion continuity on representative Wormhole
 frames before considering higher resolutions or integration.
 [Measurement receipt](../tests/wormhole-wh06e-simd-research.json).
+
+## WH-06e — bounded scalar encoder tuning (2026-11-14)
+
+The Node benchmark uses the same pinned, single-threaded libvpx build and
+30 all-key pictures per run. It crosses the good-quality and realtime
+encoder modes with lossless and fixed q4. The second clip replays the final
+30 archived Wormhole pictures of `export-002.mp4` from the WH-07b10 input
+cohort. The archived 8-bit RGBA PNG hashes are checked before conversion to
+limited-range BT.709 YUV420p10. The comparison measures encoder changes
+against those same YUV planes. The upstream encoder mode and quantizer controls are
+defined by the [pinned libvpx API](https://github.com/webmproject/libvpx/tree/v1.17.0/vpx).
+
+| Wormhole profile | Sample time | Video payload rate | Image checks | Sampled level 4.0 rate checks |
+| --- | ---: | ---: | --- | --- |
+| Lossless, good quality | 17.63 s | 60.38 Mbit/s | Bit-exact | Fail |
+| Lossless, realtime | 2.07 s | 61.46 Mbit/s | Bit-exact | Fail |
+| q4, good quality | 21.48 s | 6.30 Mbit/s | Pass | Pass |
+| q4, realtime | 1.58 s | 7.90 Mbit/s | Pass | Pass |
+
+FFmpeg independently decoded all eight files and recovered all 240 frame
+IDs. The realtime q4 Wormhole sample scored at least 0.997049 SSIM and
+55.37 dB PSNR on every frame. On the limited-range luma scale, the largest
+mean dark-tile error was 0.605 code values out of 255, and the largest
+frame-to-frame mean error was 0.086. The respective limits were 0.75 and
+1.5. Three corresponding frames were also inspected side by side.
+The synthetic q4 realtime clip passed the same checks.
+
+Three alternating Node timing pairs on the Wormhole sequence measured
+17.27 s median for lossless good-quality and 1.61 s for q4 realtime. This
+91% reduction covers copying each input picture to WASM, encoding and
+muxing. It excludes rendering, core load and independent decoding. Both
+profiles reported 113.375 MiB WASM linear memory. The realtime q4 candidate
+retains 10-bit precision with lossy encoding. Both lossless Wormhole files
+exceeded the current probe's sampled average bitrate cap. This research
+records those failures while retaining the fixture's existing strict
+browser path and its published scalar and SIMD binaries.
+
+The candidate remains in local research. The phone, whole-song, audio,
+OPFS and 4K paths require their own qualification. WH-08 now covers the
+existing export modes, followed by T21b caption placement and preview.
+Further MP4 Turbo work and mobile software 10-bit integration are separate
+items. [Measurement receipt and reproduction](../tests/wormhole-wh06e-tuning-research.json).
